@@ -1,0 +1,22 @@
+image: python:latest
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+before_script:
+  - python -V
+  - pip install poetry
+  # gitlab cannot pickup absolute path, hence use a local virtualenv
+  - poetry config settings.virtualenvs.create true
+  - poetry config settings.virtualenvs.in-project true
+
+stages:
+  - unit-test
+      
+Unit tests:
+  stage: unit-test
+  tags: 
+    - rhodan
+  script:
+    - poetry run pytest
+  
