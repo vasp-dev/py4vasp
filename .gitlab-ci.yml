@@ -6,17 +6,26 @@ variables:
 before_script:
   - python -V
   - pip install poetry
+  - poetry install
   # gitlab cannot pickup absolute path, hence use a local virtualenv
   - poetry config settings.virtualenvs.create true
   - poetry config settings.virtualenvs.in-project true
 
 stages:
   - unit-test
-      
+  - code-style
+
 Unit tests:
   stage: unit-test
-  tags: 
+  tags:
     - rhodan
   script:
     - poetry run pytest
-  
+
+Code style:
+  stage: code-style
+  tags:
+    - rhodan
+  script:
+    - poetry run black --check .
+
