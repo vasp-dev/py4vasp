@@ -6,6 +6,10 @@ authors = ["Martin Schlipf <martin.schlipf@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
+h5py = "^2.10.0"
+numpy = "^1.17.4"
+pandas = "^0.25.3"
+cufflinks = "^0.17.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.0"
