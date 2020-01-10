@@ -147,5 +147,5 @@ class Dos:
 
     def _read_element(self, index):
         sum_dos = lambda dos, i: dos + self._partial_dos[i]
-        zero_dos = np.zeros_like(self._energies[:])
+        zero_dos = np.zeros(len(self._energies))
         return functools.reduce(sum_dos, itertools.product(*index), zero_dos)
