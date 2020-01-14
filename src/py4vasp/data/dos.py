@@ -3,10 +3,7 @@ import functools
 import itertools
 import numpy as np
 import pandas as pd
-import cufflinks as cf
 from collections import namedtuple
-
-cf.go_offline()
 
 
 class Dos:
