@@ -12,30 +12,33 @@ class Band:
     _Orbital = namedtuple("_Orbital", "indices, label")
     _Spin = namedtuple("_Spin", "indices, label")
 
-    def __init__(self, vaspout):
-        self._fermi_energy = vaspout["results/dos/efermi"][()]
-        self._kpoints = vaspout["results/eigenvalues/kpoint_coords"]
-        self._bands = vaspout["results/eigenvalues/eigenvalues"]
+    def __init__(self, raw_band):
+        self._raw = raw_band
+        self._fermi_energy = raw_band.fermi_energy
+        self._kpoints = raw_band.kpoints
+        self._bands = raw_band.eigenvalues
         self._spin_polarized = len(self._bands) == 2
-        scale = vaspout["results/positions/scale"][()]
-        lattice_vectors = vaspout["results/positions/lattice_vectors"]
-        self._cell = scale * lattice_vectors
-        self._line_length = vaspout["input/kpoints/number_kpoints"][()]
+        scale = raw_band.cell.scale
+        lattice_vectors = raw_band.cell.lattice_vectors
+        self._cell = scale * np.array(lattice_vectors)
+        self._line_length = np.array(raw_band.line_length)
         self._num_lines = len(self._kpoints) // self._line_length
-        indices_key = "input/kpoints/positions_labels_kpoints"
-        self._indices = vaspout[indices_key] if indices_key in vaspout else []
-        labels_key = "input/kpoints/labels_kpoints"
-        self._labels = vaspout[labels_key] if labels_key in vaspout else []
-        self._has_projectors = "results/projectors" in vaspout
+        self._indices = raw_band.label_indices
+        self._labels = raw_band.labels
+        self._has_projectors = raw_band.projectors is not None
         if self._has_projectors:
-            self._init_projectors(vaspout)
+            self._init_projectors(raw_band.projectors)
 
-    def _init_projectors(self, vaspout):
-        self._projections = vaspout["results/projectors/par"]
-        ion_types = vaspout["results/positions/ion_types"]
+    @classmethod
+    def from_file(cls, file):
+        return cls(file.band())
+
+    def _init_projectors(self, raw_proj):
+        self._projections = raw_proj.bands
+        ion_types = raw_proj.ion_types
         ion_types = [type.decode().strip() for type in ion_types]
-        self._init_atom_dict(ion_types, vaspout["results/positions/number_ion_types"])
-        orbitals = vaspout["results/projectors/lchar"]
+        self._init_atom_dict(ion_types, raw_proj.number_ion_types)
+        orbitals = raw_proj.orbital_types
         orbitals = [orb.decode().strip() for orb in orbitals]
         self._init_orbital_dict(orbitals)
         self._init_spin_dict()
@@ -177,7 +180,7 @@ class Band:
             return None
         # convert from input kpoint list to full list
         labels = np.zeros(len(self._kpoints), dtype=self._labels.dtype)
-        indices = self._indices[:]
+        indices = np.array(self._indices)
         indices = self._line_length * (indices // 2) + indices % 2 - 1
         labels[indices] = self._labels
         return [l.decode().strip() for l in labels]

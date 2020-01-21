@@ -12,21 +12,26 @@ class Dos:
     _Orbital = namedtuple("_Orbital", "indices, label")
     _Spin = namedtuple("_Spin", "indices, label")
 
-    def __init__(self, vaspout):
-        self._fermi_energy = vaspout["results/dos/efermi"][()]
-        self._energies = vaspout["results/dos/energies"]
-        self._dos = vaspout["results/dos/dos"]
+    def __init__(self, raw_dos):
+        self._raw = raw_dos
+        self._fermi_energy = raw_dos.fermi_energy
+        self._energies = raw_dos.energies
+        self._dos = raw_dos.dos
         self._spin_polarized = self._dos.shape[0] == 2
-        self._has_partial_dos = vaspout["results/dos/jobpar"][()] == 1
+        self._has_partial_dos = raw_dos.projectors is not None
         if self._has_partial_dos:
-            self._init_partial_dos(vaspout)
+            self._init_partial_dos(raw_dos.projectors)
 
-    def _init_partial_dos(self, vaspout):
-        self._partial_dos = vaspout["results/dos/dospar"]
-        ion_types = vaspout["results/positions/ion_types"]
+    @classmethod
+    def from_file(cls, file):
+        return cls(file.dos())
+
+    def _init_partial_dos(self, raw_proj):
+        self._partial_dos = raw_proj.dos
+        ion_types = raw_proj.ion_types
         ion_types = [type.decode().strip() for type in ion_types]
-        self._init_atom_dict(ion_types, vaspout["results/positions/number_ion_types"])
-        orbitals = vaspout["results/projectors/lchar"]
+        self._init_atom_dict(ion_types, raw_proj.number_ion_types)
+        orbitals = raw_proj.orbital_types
         orbitals = [orb.decode().strip() for orb in orbitals]
         self._init_orbital_dict(orbitals)
         self._init_spin_dict()
@@ -86,7 +91,7 @@ class Dos:
 
     def to_frame(self, selection=None):
         df = pd.DataFrame(self._read_data(selection))
-        df.fermi_energy = self._fermi_energy
+        df.fermi_energy = np.array(self._fermi_energy)
         return df
 
     def _read_data(self, selection):
