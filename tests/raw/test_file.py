@@ -77,9 +77,9 @@ def reference_dos(use_projectors):
 
 
 def write_dos(h5f, dos):
-    h5f["results/dos/efermi"] = dos.fermi_energy
-    h5f["results/dos/energies"] = dos.energies
-    h5f["results/dos/dos"] = dos.dos
+    h5f["results/electron_dos/efermi"] = dos.fermi_energy
+    h5f["results/electron_dos/energies"] = dos.energies
+    h5f["results/electron_dos/dos"] = dos.dos
     if dos.projectors:
         write_projectors(h5f, dos.projectors)
 
@@ -110,9 +110,9 @@ def reference_band(use_projectors, use_labels):
 
 
 def write_band(h5f, band):
-    h5f["results/dos/efermi"] = band.fermi_energy
-    h5f["results/eigenvalues/kpoint_coords"] = band.kpoints
-    h5f["results/eigenvalues/eigenvalues"] = band.eigenvalues
+    h5f["results/electron_dos/efermi"] = band.fermi_energy
+    h5f["results/electron_eigenvalues/kpoint_coords"] = band.kpoints
+    h5f["results/electron_eigenvalues/eigenvalues"] = band.eigenvalues
     h5f["input/kpoints/number_kpoints"] = band.line_length
     write_cell(h5f, band.cell)
     if band.label_indices is not None:
@@ -152,7 +152,7 @@ def write_projectors(h5f, proj):
     h5f["results/positions/number_ion_types"] = proj.number_ion_types
     h5f["results/positions/ion_types"] = proj.ion_types
     h5f["results/projectors/lchar"] = proj.orbital_types
-    h5f["results/dos/dospar"] = proj.dos
+    h5f["results/electron_dos/dospar"] = proj.dos
     h5f["results/projectors/par"] = proj.bands
 
 
