@@ -1,17 +1,11 @@
-import re
 import functools
 import itertools
 import numpy as np
 import plotly.graph_objects as go
-from collections import namedtuple
+from .projectors import Projectors
 
 
 class Band:
-    _Index = namedtuple("_Index", "spin, atom, orbital")
-    _Atom = namedtuple("_Atom", "indices, label")
-    _Orbital = namedtuple("_Orbital", "indices, label")
-    _Spin = namedtuple("_Spin", "indices, label")
-
     def __init__(self, raw_band):
         self._raw = raw_band
         self._fermi_energy = raw_band.fermi_energy
@@ -25,57 +19,13 @@ class Band:
         self._num_lines = len(self._kpoints) // self._line_length
         self._indices = raw_band.label_indices
         self._labels = raw_band.labels
-        self._has_projectors = raw_band.projectors is not None
-        if self._has_projectors:
-            self._init_projectors(raw_band.projectors)
+        if raw_band.projectors is not None:
+            self._projectors = Projectors(raw_band.projectors)
+        self._projections = raw_band.projections
 
     @classmethod
     def from_file(cls, file):
         return cls(file.band())
-
-    def _init_projectors(self, raw_proj):
-        self._projections = raw_proj.bands
-        ion_types = raw_proj.ion_types
-        ion_types = [type.decode().strip() for type in ion_types]
-        self._init_atom_dict(ion_types, raw_proj.number_ion_types)
-        orbitals = raw_proj.orbital_types
-        orbitals = [orb.decode().strip() for orb in orbitals]
-        self._init_orbital_dict(orbitals)
-        self._init_spin_dict()
-
-    def _init_atom_dict(self, ion_types, number_ion_types):
-        num_atoms = self._projections.shape[1]
-        all_atoms = self._Atom(indices=range(num_atoms), label=None)
-        self._atom_dict = {"*": all_atoms}
-        start = 0
-        for type, number in zip(ion_types, number_ion_types):
-            _range = range(start, start + number)
-            self._atom_dict[type] = self._Atom(indices=_range, label=type)
-            for i in _range:
-                # create labels like Si_1, Si_2, Si_3 (starting at 1)
-                label = type + "_" + str(_range.index(i) + 1)
-                self._atom_dict[str(i + 1)] = self._Atom(indices=[i], label=label)
-            start += number
-        # atoms may be preceeded by :
-        for key in self._atom_dict.copy():
-            self._atom_dict[key + ":"] = self._atom_dict[key]
-
-    def _init_orbital_dict(self, orbitals):
-        num_orbitals = self._projections.shape[2]
-        all_orbitals = self._Orbital(indices=range(num_orbitals), label=None)
-        self._orbital_dict = {"*": all_orbitals}
-        for i, orbital in enumerate(orbitals):
-            self._orbital_dict[orbital] = self._Orbital(indices=[i], label=orbital)
-        if "px" in self._orbital_dict:
-            self._orbital_dict["p"] = self._Orbital(indices=range(1, 4), label="p")
-            self._orbital_dict["d"] = self._Orbital(indices=range(4, 9), label="d")
-            self._orbital_dict["f"] = self._Orbital(indices=range(9, 16), label="f")
-
-    def _init_spin_dict(self):
-        labels = ["up", "down"] if self._spin_polarized else [None]
-        self._spin_dict = {
-            key: self._Spin(indices=[i], label=key) for i, key in enumerate(labels)
-        }
 
     def read(self, selection=None):
         kpoints = self._kpoints[:]
@@ -124,12 +74,6 @@ class Band:
         else:
             return {"bands": self._bands[0] - self._fermi_energy}
 
-    def _read_projections(self, selection):
-        if selection is None:
-            return {}
-        parts = self._parse_selection(selection)
-        return self._read_elements(parts)
-
     def _scatter(self, name, kdists, lines):
         # insert NaN to split separate lines
         num_bands = lines.shape[-1]
@@ -146,24 +90,17 @@ class Band:
         )
         return functools.reduce(concatenate_distances, kpoint_norms)
 
-    def _parse_selection(self, selection):
-        atom = self._atom_dict["*"]
-        selection = re.sub("\s*:\s*", ": ", selection)
-        for part in re.split("[ ,]+", selection):
-            if part in self._orbital_dict:
-                orbital = self._orbital_dict[part]
-            else:
-                atom = self._atom_dict[part]
-                orbital = self._orbital_dict["*"]
-            if ":" not in part:  # exclude ":" because it starts a new atom
-                for spin in self._spin_dict.values():
-                    yield atom, orbital, spin
+    def _read_projections(self, selection):
+        if selection is None:
+            return {}
+        return self._read_elements(selection)
 
-    def _read_elements(self, parts):
+    def _read_elements(self, selection):
         res = {}
-        for atom, orbital, spin in parts:
+        for select in self._projectors.parse_selection(selection):
+            atom, orbital, spin = self._projectors.select(*select)
             label = self._merge_labels([atom.label, orbital.label, spin.label])
-            index = self._Index(spin.indices, atom.indices, orbital.indices)
+            index = (spin.indices, atom.indices, orbital.indices)
             res[label] = self._read_element(index)
         return res
 

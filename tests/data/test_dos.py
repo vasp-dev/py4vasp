@@ -99,7 +99,7 @@ def test_magnetic_Dos_plot(magnetic_Dos):
 
 
 @pytest.fixture
-def nonmagnetic_projections():
+def nonmagnetic_projections(nonmagnetic_Dos):
     """ Setup a l resolved Dos containing all relevant quantities."""
     ref = {
         "Si_s": np.random.random(num_energies),
@@ -117,25 +117,25 @@ def nonmagnetic_projections():
         number_ion_types=[1, 2],
         ion_types=np.array(["Si", "C "], dtype="S"),
         orbital_types=np.array([" s", " p", " d", " f"], dtype="S"),
-        dos=np.zeros((num_spins, len(atoms), lmax, num_energies)),
-        bands=None,
+        number_spins=num_spins,
     )
+    nonmagnetic_Dos.projectors = raw_proj
+    nonmagnetic_Dos.projections = np.zeros((num_spins, len(atoms), lmax, num_energies))
     orbitals = ["s", "p", "d"]
     for iatom, atom in enumerate(atoms):
         for l, orbital in enumerate(orbitals):
             key = atom + "_" + orbital
             if key in ref:
-                raw_proj.dos[:, iatom, l] = ref[key]
-    return raw_proj, ref
+                nonmagnetic_Dos.projections[:, iatom, l] = ref[key]
+    return nonmagnetic_Dos, ref
 
 
-def test_nonmagnetic_l_Dos_to_frame(nonmagnetic_Dos, nonmagnetic_projections):
+def test_nonmagnetic_l_Dos_to_frame(nonmagnetic_projections):
     """ Test whether reading the nonmagnetic l resolved Dos yields the expected results."""
-    raw_dos = nonmagnetic_Dos
-    raw_dos.projectors, ref = nonmagnetic_projections
+    raw_dos, ref = nonmagnetic_projections
     equivalent_selections = [
-        "s Si:d Si C:s,p 1:p 2 3:s",
-        "1: p, C : s Si : d, *: s, 2 Si:* C: p 3 : s",
+        "s Si(d) Si C(s,p) 1(p) 2 3(s)",
+        "1( p), C(s) Si(d), *(s), 2 Si(*) p(C) s(3)",
     ]
     for selection in equivalent_selections:
         dos = Dos(raw_dos).to_frame(selection)
@@ -149,11 +149,10 @@ def test_nonmagnetic_l_Dos_to_frame(nonmagnetic_Dos, nonmagnetic_projections):
         assert_allclose(dos.C_2_s, ref["C2_s"])
 
 
-def test_nonmagnetic_l_Dos_plot(nonmagnetic_Dos, nonmagnetic_projections):
+def test_nonmagnetic_l_Dos_plot(nonmagnetic_projections):
     """ Test whether plotting the nonmagnetic l resolved Dos yields the expected results."""
-    raw_dos = nonmagnetic_Dos
-    raw_dos.projectors, ref = nonmagnetic_projections
-    selection = "p 3 Si:d"
+    raw_dos, ref = nonmagnetic_projections
+    selection = "p 3 Si(d)"
     fig = Dos(raw_dos).plot(selection)
     assert len(fig.data) == 4  # total Dos + 3 selections
     assert_allclose(fig.data[1].y, ref["Si_p"] + ref["C1_p"] + ref["C2_p"])
@@ -162,7 +161,7 @@ def test_nonmagnetic_l_Dos_plot(nonmagnetic_Dos, nonmagnetic_projections):
 
 
 @pytest.fixture
-def magnetic_projections():
+def magnetic_projections(magnetic_Dos):
     """ Setup a lm resolved Dos containing all relevant quantities."""
     num_spins = 2
     lm_size = 16
@@ -174,22 +173,22 @@ def magnetic_projections():
         number_ion_types=[1],
         ion_types=np.array(["Fe"], dtype="S"),
         orbital_types=np.array(orbitals, dtype="S"),
-        dos=np.zeros((num_spins, 1, lm_size, num_energies)),
-        bands=None,
+        number_spins=num_spins,
     )
+    magnetic_Dos.projectors = raw_proj
+    magnetic_Dos.projections = np.zeros((num_spins, 1, lm_size, num_energies))
     ref = {}
     for ispin, spin in enumerate(["up", "down"]):
         for lm, orbital in enumerate(orbitals):
             key = orbital.strip() + "_" + spin
             ref[key] = np.random.random(num_energies)
-            raw_proj.dos[ispin, :, lm] = ref[key]
-    return raw_proj, ref
+            magnetic_Dos.projections[ispin, :, lm] = ref[key]
+    return magnetic_Dos, ref
 
 
-def test_magnetic_lm_Dos_read(magnetic_Dos, magnetic_projections):
+def test_magnetic_lm_Dos_read(magnetic_projections):
     """ Test whether reading lm resolved Dos works as expected."""
-    raw_dos = magnetic_Dos
-    raw_dos.projectors, ref = magnetic_projections
+    raw_dos, ref = magnetic_projections
     dos = Dos(raw_dos).read("px p d f")
     assert_allclose(dos["px_up"], ref["px_up"])
     assert_allclose(dos["px_down"], ref["px_down"])
@@ -204,8 +203,7 @@ def test_magnetic_lm_Dos_read(magnetic_Dos, magnetic_projections):
 
 def test_magnetic_lm_Dos_plot(magnetic_Dos, magnetic_projections):
     """ Test whether plotting lm resolved Dos works as expected."""
-    raw_dos = magnetic_Dos
-    raw_dos.projectors, ref = magnetic_projections
+    raw_dos, ref = magnetic_projections
     fig = Dos(raw_dos).plot("dxz p")
     data = fig.data
     assert len(data) == 6  # spin resolved total + 2 selections

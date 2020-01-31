@@ -13,6 +13,8 @@ num_spins = 2
 num_energies = 20
 num_kpoints = 10
 num_bands = 3
+num_atoms = 10  # sum(range(5))
+lmax = 3
 fermi_energy = 0.123
 
 SetupTest = namedtuple(
@@ -80,8 +82,10 @@ def write_dos(h5f, dos):
     h5f["results/electron_dos/efermi"] = dos.fermi_energy
     h5f["results/electron_dos/energies"] = dos.energies
     h5f["results/electron_dos/dos"] = dos.dos
-    if dos.projectors:
+    if dos.projectors is not None:
         write_projectors(h5f, dos.projectors)
+    if dos.projections is not None:
+        h5f["results/electron_dos/dospar"] = proj.dos
 
 
 def test_band(tmpdir):
@@ -96,17 +100,21 @@ def test_band(tmpdir):
 
 
 def reference_band(use_projectors, use_labels):
-    shape = (num_spins, num_kpoints, num_bands)
-    return raw.Band(
+    shape_eval = (num_spins, num_kpoints, num_bands)
+    shape_proj = (num_spins, num_atoms, lmax, num_kpoints, num_bands)
+    band = raw.Band(
         fermi_energy=fermi_energy,
         line_length=num_kpoints,
         kpoints=np.linspace(np.zeros(3), np.ones(3), num_kpoints),
-        eigenvalues=np.arange(np.prod(shape)).reshape(shape),
+        eigenvalues=np.arange(np.prod(shape_eval)).reshape(shape_eval),
         cell=reference_cell(),
         labels=np.array(["G", "X"], dtype="S") if use_labels else None,
         label_indices=[0, 1] if use_labels else None,
-        projectors=reference_projectors() if use_projectors else None,
     )
+    if use_projectors:
+        band.projectors = reference_projectors()
+        band.projections = np.arange(np.prod(shape_proj)).reshape(shape_proj)
+    return band
 
 
 def write_band(h5f, band):
@@ -121,6 +129,8 @@ def write_band(h5f, band):
         h5f["input/kpoints/labels_kpoints"] = band.labels
     if band.projectors:
         write_projectors(h5f, band.projectors)
+    if band.projections is not None:
+        h5f["results/projectors/par"] = band.projections
 
 
 def test_projectors(tmpdir):
@@ -135,16 +145,12 @@ def test_projectors(tmpdir):
 
 
 def reference_projectors():
-    num_atoms = 10  # sum(range(5))
-    lmax = 3
     shape_dos = (num_spins, num_atoms, lmax, num_energies)
-    shape_bands = (num_spins, num_atoms, lmax, num_kpoints, num_bands)
     return raw.Projectors(
         number_ion_types=np.arange(5),
         ion_types=np.array(["B", "C", "N", "O", "F"], dtype="S"),
         orbital_types=np.array(["s", "p", "d", "f"], dtype="S"),
-        dos=np.arange(np.prod(shape_dos)).reshape(shape_dos),
-        bands=np.arange(np.prod(shape_bands)).reshape(shape_bands),
+        number_spins=num_spins,
     )
 
 
@@ -152,8 +158,7 @@ def write_projectors(h5f, proj):
     h5f["results/positions/number_ion_types"] = proj.number_ion_types
     h5f["results/positions/ion_types"] = proj.ion_types
     h5f["results/projectors/lchar"] = proj.orbital_types
-    h5f["results/electron_dos/dospar"] = proj.dos
-    h5f["results/projectors/par"] = proj.bands
+    h5f["results/electron_eigenvalues/ispin"] = proj.number_spins
 
 
 def test_cell(tmpdir):

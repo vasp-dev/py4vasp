@@ -24,8 +24,7 @@ class Projectors:
     number_ion_types: np.ndarray
     ion_types: np.ndarray
     orbital_types: np.ndarray
-    dos: np.ndarray
-    bands: np.ndarray
+    number_spins: int
     __eq__ = _dataclass_equal
 
 
@@ -41,6 +40,7 @@ class Dos:
     fermi_energy: float
     energies: np.ndarray
     dos: np.ndarray
+    projections: np.ndarray = None
     projectors: Projectors = None
     __eq__ = _dataclass_equal
 
@@ -54,5 +54,6 @@ class Band:
     cell: Cell
     labels: np.ndarray = np.empty(0, dtype="S")
     label_indices: np.ndarray = np.empty(0, dtype="int")
+    projections: np.ndarray = None
     projectors: Projectors = None
     __eq__ = _dataclass_equal
