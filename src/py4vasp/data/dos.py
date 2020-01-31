@@ -1,17 +1,11 @@
-import re
 import functools
 import itertools
 import numpy as np
 import pandas as pd
-from collections import namedtuple
+from .projectors import Projectors
 
 
 class Dos:
-    _Index = namedtuple("_Index", "spin, atom, orbital")
-    _Atom = namedtuple("_Atom", "indices, label")
-    _Orbital = namedtuple("_Orbital", "indices, label")
-    _Spin = namedtuple("_Spin", "indices, label")
-
     def __init__(self, raw_dos):
         self._raw = raw_dos
         self._fermi_energy = raw_dos.fermi_energy
@@ -20,55 +14,12 @@ class Dos:
         self._spin_polarized = self._dos.shape[0] == 2
         self._has_partial_dos = raw_dos.projectors is not None
         if self._has_partial_dos:
-            self._init_partial_dos(raw_dos.projectors)
+            self._projectors = Projectors(raw_dos.projectors)
+        self._projections = raw_dos.projections
 
     @classmethod
     def from_file(cls, file):
         return cls(file.dos())
-
-    def _init_partial_dos(self, raw_proj):
-        self._partial_dos = raw_proj.dos
-        ion_types = raw_proj.ion_types
-        ion_types = [type.decode().strip() for type in ion_types]
-        self._init_atom_dict(ion_types, raw_proj.number_ion_types)
-        orbitals = raw_proj.orbital_types
-        orbitals = [orb.decode().strip() for orb in orbitals]
-        self._init_orbital_dict(orbitals)
-        self._init_spin_dict()
-
-    def _init_atom_dict(self, ion_types, number_ion_types):
-        num_atoms = self._partial_dos.shape[1]
-        all_atoms = self._Atom(indices=range(num_atoms), label=None)
-        self._atom_dict = {"*": all_atoms}
-        start = 0
-        for type, number in zip(ion_types, number_ion_types):
-            _range = range(start, start + number)
-            self._atom_dict[type] = self._Atom(indices=_range, label=type)
-            for i in _range:
-                # create labels like Si_1, Si_2, Si_3 (starting at 1)
-                label = type + "_" + str(_range.index(i) + 1)
-                self._atom_dict[str(i + 1)] = self._Atom(indices=[i], label=label)
-            start += number
-        # atoms may be preceeded by :
-        for key in self._atom_dict.copy():
-            self._atom_dict[key + ":"] = self._atom_dict[key]
-
-    def _init_orbital_dict(self, orbitals):
-        num_orbitals = self._partial_dos.shape[2]
-        all_orbitals = self._Orbital(indices=range(num_orbitals), label=None)
-        self._orbital_dict = {"*": all_orbitals}
-        for i, orbital in enumerate(orbitals):
-            self._orbital_dict[orbital] = self._Orbital(indices=[i], label=orbital)
-        if "px" in self._orbital_dict:
-            self._orbital_dict["p"] = self._Orbital(indices=range(1, 4), label="p")
-            self._orbital_dict["d"] = self._Orbital(indices=range(4, 9), label="d")
-            self._orbital_dict["f"] = self._Orbital(indices=range(9, 16), label="f")
-
-    def _init_spin_dict(self):
-        labels = ["up", "down"] if self._spin_polarized else [None]
-        self._spin_dict = {
-            key: self._Spin(indices=[i], label=key) for i, key in enumerate(labels)
-        }
 
     def plot(self, selection=None):
         df = self.to_frame(selection)
@@ -114,8 +65,7 @@ class Dos:
         if selection is None:
             return {}
         self._raise_error_if_partial_Dos_not_available()
-        parts = self._parse_filter(selection)
-        return self._read_elements(parts)
+        return self._read_elements(selection)
 
     def _raise_error_if_partial_Dos_not_available(self):
         if not self._has_partial_dos:
@@ -123,24 +73,12 @@ class Dos:
                 "Filtering requires partial DOS which was not found in HDF5 file."
             )
 
-    def _parse_filter(self, selection):
-        atom = self._atom_dict["*"]
-        selection = re.sub("\s*:\s*", ": ", selection)
-        for part in re.split("[ ,]+", selection):
-            if part in self._orbital_dict:
-                orbital = self._orbital_dict[part]
-            else:
-                atom = self._atom_dict[part]
-                orbital = self._orbital_dict["*"]
-            if ":" not in part:  # exclude ":" because it starts a new atom
-                for spin in self._spin_dict.values():
-                    yield atom, orbital, spin
-
-    def _read_elements(self, parts):
+    def _read_elements(self, selection):
         res = {}
-        for atom, orbital, spin in parts:
+        for select in self._projectors.parse_selection(selection):
+            atom, orbital, spin = self._projectors.select(*select)
             label = self._merge_labels([atom.label, orbital.label, spin.label])
-            index = self._Index(spin.indices, atom.indices, orbital.indices)
+            index = (spin.indices, atom.indices, orbital.indices)
             res[label] = self._read_element(index)
         return res
 
@@ -148,6 +86,6 @@ class Dos:
         return "_".join(filter(None, labels))
 
     def _read_element(self, index):
-        sum_dos = lambda dos, i: dos + self._partial_dos[i]
+        sum_dos = lambda dos, i: dos + self._projections[i]
         zero_dos = np.zeros(len(self._energies))
         return functools.reduce(sum_dos, itertools.product(*index), zero_dos)

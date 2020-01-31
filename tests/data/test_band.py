@@ -124,12 +124,12 @@ def spin_band_structure():
         line_length=num_kpoints,
         kpoints=np.linspace(np.zeros(3), np.ones(3), num_kpoints),
         eigenvalues=np.arange(size_eig).reshape(shape_eig),
+        projections=np.random.uniform(low=0.2, size=shape_proj),
         projectors=raw.Projectors(
             number_ion_types=[1],
             ion_types=np.array(["Si"], dtype="S"),
             orbital_types=np.array(["s"], dtype="S"),
-            bands=np.random.uniform(low=0.2, size=shape_proj),
-            dos=None,
+            number_spins=num_spins,
         ),
         fermi_energy=0.0,
         cell=raw.Cell(scale=1, lattice_vectors=np.eye(3)),
@@ -142,8 +142,8 @@ def test_spin_band_structure_read(spin_band_structure):
     band = Band(raw_band).read("s")
     assert_allclose(band["up"], raw_band.eigenvalues[0])
     assert_allclose(band["down"], raw_band.eigenvalues[1])
-    assert_allclose(band["projections"]["s_up"], raw_band.projectors.bands[0, 0])
-    assert_allclose(band["projections"]["s_down"], raw_band.projectors.bands[1, 0])
+    assert_allclose(band["projections"]["s_up"], raw_band.projections[0, 0])
+    assert_allclose(band["projections"]["s_down"], raw_band.projections[1, 0])
 
 
 def test_spin_band_structure_plot(spin_band_structure):
@@ -155,7 +155,7 @@ def test_spin_band_structure_plot(spin_band_structure):
     for i, (spin, data) in enumerate(zip(spins, fig.data)):
         assert data.name == "Si_" + spin
         bands = np.nditer(raw_band.eigenvalues[i])
-        weights = np.nditer(raw_band.projectors.bands[i, 0, 0])
+        weights = np.nditer(raw_band.projections[i, 0, 0])
         for band, weight in zip(bands, weights):
             upper = band + width * weight
             lower = band - width * weight
@@ -174,12 +174,12 @@ def projected_band_structure():
         line_length=num_kpoints,
         kpoints=np.linspace(np.zeros(3), np.ones(3), num_kpoints),
         eigenvalues=np.arange(np.prod(shape_eig)).reshape(shape_eig),
+        projections=np.random.uniform(low=0.2, size=shape_proj),
         projectors=raw.Projectors(
             number_ion_types=[1],
             ion_types=np.array(["Si"], dtype="S"),
             orbital_types=np.array(["s"], dtype="S"),
-            bands=np.random.uniform(low=0.2, size=shape_proj),
-            dos=None,
+            number_spins=num_spins,
         ),
         fermi_energy=0.0,
         cell=raw.Cell(scale=1, lattice_vectors=np.eye(3)),
@@ -189,8 +189,8 @@ def projected_band_structure():
 
 def test_projected_band_structure_read(projected_band_structure):
     raw_band = projected_band_structure
-    band = Band(raw_band).read("Si:s")
-    assert_allclose(band["projections"]["Si_s"], raw_band.projectors.bands[0, 0, 0])
+    band = Band(raw_band).read("Si(s)")
+    assert_allclose(band["projections"]["Si_s"], raw_band.projections[0, 0, 0])
 
 
 def test_projected_band_structure_plot(projected_band_structure):
@@ -208,7 +208,7 @@ def test_projected_band_structure_plot(projected_band_structure):
         num_NaN_y = np.count_nonzero(np.isnan(data.y))
         assert num_NaN_x == num_NaN_y > 0
         bands = np.nditer(raw_band.eigenvalues[0])
-        weights = np.nditer(raw_band.projectors.bands[0, 0, 0])
+        weights = np.nditer(raw_band.projections[0, 0, 0])
         for band, weight in zip(bands, weights):
             upper = band + default_width * weight
             lower = band - default_width * weight

@@ -12,6 +12,7 @@ class File:
             energies=self._h5f["results/electron_dos/energies"],
             dos=self._h5f["results/electron_dos/dos"],
             projectors=self.projectors(),
+            projections=self._safe_get_key("results/electron_dos/dospar"),
         )
 
     def band(self):
@@ -24,6 +25,7 @@ class File:
             label_indices=self._safe_get_key("input/kpoints/positions_labels_kpoints"),
             cell=self.cell(),
             projectors=self.projectors(),
+            projections=self._safe_get_key("results/projectors/par"),
         )
 
     def projectors(self):
@@ -33,8 +35,7 @@ class File:
             ion_types=self._h5f["results/positions/ion_types"],
             number_ion_types=self._h5f["results/positions/number_ion_types"],
             orbital_types=self._h5f["results/projectors/lchar"],
-            dos=self._h5f["results/electron_dos/dospar"],
-            bands=self._h5f["results/projectors/par"],
+            number_spins=self._h5f["results/electron_eigenvalues/ispin"],
         )
 
     def cell(self):
