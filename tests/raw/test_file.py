@@ -108,9 +108,10 @@ def reference_band(use_projectors, use_labels):
         kpoints=np.linspace(np.zeros(3), np.ones(3), num_kpoints),
         eigenvalues=np.arange(np.prod(shape_eval)).reshape(shape_eval),
         cell=reference_cell(),
-        labels=np.array(["G", "X"], dtype="S") if use_labels else None,
-        label_indices=[0, 1] if use_labels else None,
     )
+    if use_labels:
+        band.labels = np.array(["G", "X"], dtype="S")
+        band.label_indices = [0, 1]
     if use_projectors:
         band.projectors = reference_projectors()
         band.projections = np.arange(np.prod(shape_proj)).reshape(shape_proj)
@@ -127,7 +128,7 @@ def write_band(h5f, band):
         h5f["input/kpoints/positions_labels_kpoints"] = band.label_indices
     if band.labels is not None:
         h5f["input/kpoints/labels_kpoints"] = band.labels
-    if band.projectors:
+    if band.projectors is not None:
         write_projectors(h5f, band.projectors)
     if band.projections is not None:
         h5f["results/projectors/par"] = band.projections
