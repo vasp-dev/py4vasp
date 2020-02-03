@@ -52,8 +52,8 @@ class Band:
     kpoints: np.ndarray
     eigenvalues: np.ndarray
     cell: Cell
-    labels: np.ndarray = np.empty(0, dtype="S")
-    label_indices: np.ndarray = np.empty(0, dtype="int")
+    labels: np.ndarray = None
+    label_indices: np.ndarray = None
     projections: np.ndarray = None
     projectors: Projectors = None
     __eq__ = _dataclass_equal
