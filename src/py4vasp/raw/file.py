@@ -8,7 +8,7 @@ class File:
 
     def dos(self):
         return raw.Dos(
-            fermi_energy=self._h5f["results/electron_dos/efermi"],
+            fermi_energy=self._h5f["results/electron_dos/efermi"][()],
             energies=self._h5f["results/electron_dos/energies"],
             dos=self._h5f["results/electron_dos/dos"],
             projectors=self.projectors(),
@@ -17,8 +17,8 @@ class File:
 
     def band(self):
         return raw.Band(
-            fermi_energy=self._h5f["results/electron_dos/efermi"],
-            line_length=self._h5f["input/kpoints/number_kpoints"],
+            fermi_energy=self._h5f["results/electron_dos/efermi"][()],
+            line_length=self._h5f["input/kpoints/number_kpoints"][()],
             kpoints=self._h5f["results/electron_eigenvalues/kpoint_coords"],
             eigenvalues=self._h5f["results/electron_eigenvalues/eigenvalues"],
             labels=self._safe_get_key("input/kpoints/labels_kpoints"),
@@ -35,12 +35,12 @@ class File:
             ion_types=self._h5f["results/positions/ion_types"],
             number_ion_types=self._h5f["results/positions/number_ion_types"],
             orbital_types=self._h5f["results/projectors/lchar"],
-            number_spins=self._h5f["results/electron_eigenvalues/ispin"],
+            number_spins=self._h5f["results/electron_eigenvalues/ispin"][()],
         )
 
     def cell(self):
         return raw.Cell(
-            scale=self._h5f["results/positions/scale"],
+            scale=self._h5f["results/positions/scale"][()],
             lattice_vectors=self._h5f["results/positions/lattice_vectors"],
         )
 

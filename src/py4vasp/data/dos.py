@@ -42,7 +42,7 @@ class Dos:
 
     def to_frame(self, selection=None):
         df = pd.DataFrame(self._read_data(selection))
-        df.fermi_energy = np.array(self._fermi_energy)
+        df.fermi_energy = self._fermi_energy
         return df
 
     def _read_data(self, selection):
