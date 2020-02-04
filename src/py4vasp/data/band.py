@@ -15,8 +15,8 @@ class Band:
         self._spin_polarized = len(self._bands) == 2
         scale = raw_band.cell.scale
         lattice_vectors = raw_band.cell.lattice_vectors
-        self._cell = scale * np.array(lattice_vectors)
-        self._line_length = np.array(raw_band.line_length)
+        self._cell = scale * lattice_vectors
+        self._line_length = raw_band.line_length
         self._num_lines = len(self._kpoints) // self._line_length
         self._indices = raw_band.label_indices
         self._labels = raw_band.labels
@@ -62,7 +62,7 @@ class Band:
         if self._kdists is not None:
             return self._kdists
         if kpoints is None:
-            kpoints = self._kpoints
+            kpoints = self._kpoints[:]
         cartesian_kpoints = np.linalg.solve(self._cell, kpoints.T).T
         kpoint_lines = np.split(cartesian_kpoints, self._num_lines)
         kpoint_norms = [np.linalg.norm(line - line[0], axis=1) for line in kpoint_lines]
