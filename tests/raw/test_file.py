@@ -187,7 +187,7 @@ def test_cell(tmpdir):
         options=((True,), (False,)),
         create_reference=reference_cell,
         write_reference=write_cell,
-        check_actual=check_actual,
+        check_actual=check_cell,
     )
     generic_test(setup)
 
@@ -201,7 +201,36 @@ def write_cell(h5f, cell):
     h5f["results/positions/lattice_vectors"] = cell.lattice_vectors
 
 
-def check_actual(file, reference):
+def check_cell(file, reference):
     actual = file.cell()
     assert actual == reference
     assert isinstance(actual.scale, Number)
+
+
+def test_energies(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=((True,), (False,)),
+        create_reference=reference_energies,
+        write_reference=write_energies,
+        check_actual=check_energies,
+    )
+    generic_test(setup)
+
+
+def reference_energies():
+    labels = np.array(["total", "kinetic", "temperature"], dtype="S")
+    shape = (100, len(labels))
+    return raw.Convergence(
+        labels=labels, energies=np.arange(np.prod(shape)).reshape(shape)
+    )
+
+
+def write_energies(h5f, convergence):
+    h5f["intermediate/history/energies_tags"] = convergence.labels
+    h5f["intermediate/history/energies"] = convergence.energies
+
+
+def check_energies(file, reference):
+    actual = file.convergence()
+    assert file.convergence() == reference
