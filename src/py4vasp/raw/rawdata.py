@@ -57,3 +57,10 @@ class Band:
     projections: np.ndarray = None
     projectors: Projectors = None
     __eq__ = _dataclass_equal
+
+
+@dataclass
+class Convergence:
+    labels: np.ndarray
+    energies: np.ndarray
+    __eq__ = _dataclass_equal

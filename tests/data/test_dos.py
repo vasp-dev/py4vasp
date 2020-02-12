@@ -3,14 +3,8 @@ import py4vasp.raw as raw
 import pytest
 import types
 import numpy as np
-from numpy.testing import assert_array_almost_equal_nulp
-
 
 num_energies = 50
-
-
-def assert_allclose(actual, desired):
-    assert_array_almost_equal_nulp(actual, desired, 10)
 
 
 @pytest.fixture
@@ -23,11 +17,11 @@ def nonmagnetic_Dos():
     return raw_dos
 
 
-def test_nonmagnetic_Dos_read(nonmagnetic_Dos):
+def test_nonmagnetic_Dos_read(nonmagnetic_Dos, Assert):
     raw_dos = nonmagnetic_Dos
     dos = Dos(raw_dos).read()
-    assert_allclose(dos["energies"], raw_dos.energies - raw_dos.fermi_energy)
-    assert_allclose(dos["total"], raw_dos.dos[0])
+    Assert.allclose(dos["energies"], raw_dos.energies - raw_dos.fermi_energy)
+    Assert.allclose(dos["total"], raw_dos.dos[0])
     assert dos["fermi_energy"] == raw_dos.fermi_energy
 
 
@@ -37,24 +31,24 @@ def test_nonmagnetic_Dos_read_error(nonmagnetic_Dos):
         Dos(raw_dos).read("s")
 
 
-def test_nonmagnetic_Dos_to_frame(nonmagnetic_Dos):
+def test_nonmagnetic_Dos_to_frame(nonmagnetic_Dos, Assert):
     """ Test whether reading the nonmagnetic Dos yields the expected results."""
     raw_dos = nonmagnetic_Dos
     dos = Dos(raw_dos).to_frame()
-    assert_allclose(dos.energies, raw_dos.energies - raw_dos.fermi_energy)
-    assert_allclose(dos.total, raw_dos.dos[0])
+    Assert.allclose(dos.energies, raw_dos.energies - raw_dos.fermi_energy)
+    Assert.allclose(dos.total, raw_dos.dos[0])
     assert dos.fermi_energy == raw_dos.fermi_energy
 
 
-def test_nonmagnetic_Dos_plot(nonmagnetic_Dos):
+def test_nonmagnetic_Dos_plot(nonmagnetic_Dos, Assert):
     """ Test whether plotting the nonmagnetic Dos yields the expected results."""
     raw_dos = nonmagnetic_Dos
     fig = Dos(raw_dos).plot()
     assert fig.layout.xaxis.title.text == "Energy (eV)"
     assert fig.layout.yaxis.title.text == "DOS (1/eV)"
     assert len(fig.data) == 1
-    assert_allclose(fig.data[0].x, raw_dos.energies - raw_dos.fermi_energy)
-    assert_allclose(fig.data[0].y, raw_dos.dos[0])
+    Assert.allclose(fig.data[0].x, raw_dos.energies - raw_dos.fermi_energy)
+    Assert.allclose(fig.data[0].y, raw_dos.dos[0])
 
 
 def test_nonmagnetic_Dos_from_file(nonmagnetic_Dos):
@@ -78,24 +72,24 @@ def magnetic_Dos():
     return raw_dos
 
 
-def test_magnetic_Dos_to_frame(magnetic_Dos):
+def test_magnetic_Dos_to_frame(magnetic_Dos, Assert):
     """ Test whether reading the magnetic Dos yields the expected results."""
     raw_dos = magnetic_Dos
     dos = Dos(raw_dos).to_frame()
-    assert_allclose(dos.energies, raw_dos.energies - raw_dos.fermi_energy)
-    assert_allclose(dos.up, raw_dos.dos[0])
-    assert_allclose(dos.down, raw_dos.dos[1])
+    Assert.allclose(dos.energies, raw_dos.energies - raw_dos.fermi_energy)
+    Assert.allclose(dos.up, raw_dos.dos[0])
+    Assert.allclose(dos.down, raw_dos.dos[1])
     assert dos.fermi_energy == raw_dos.fermi_energy
 
 
-def test_magnetic_Dos_plot(magnetic_Dos):
+def test_magnetic_Dos_plot(magnetic_Dos, Assert):
     """ Test whether plotting the magnetic Dos yields the expected results."""
     raw_dos = magnetic_Dos
     fig = Dos(raw_dos).plot()
     assert len(fig.data) == 2
-    assert_allclose(fig.data[0].x, fig.data[1].x)
-    assert_allclose(fig.data[0].y, raw_dos.dos[0])
-    assert_allclose(fig.data[1].y, -raw_dos.dos[1])
+    Assert.allclose(fig.data[0].x, fig.data[1].x)
+    Assert.allclose(fig.data[0].y, raw_dos.dos[0])
+    Assert.allclose(fig.data[1].y, -raw_dos.dos[1])
 
 
 @pytest.fixture
@@ -130,7 +124,7 @@ def nonmagnetic_projections(nonmagnetic_Dos):
     return nonmagnetic_Dos, ref
 
 
-def test_nonmagnetic_l_Dos_to_frame(nonmagnetic_projections):
+def test_nonmagnetic_l_Dos_to_frame(nonmagnetic_projections, Assert):
     """ Test whether reading the nonmagnetic l resolved Dos yields the expected results."""
     raw_dos, ref = nonmagnetic_projections
     equivalent_selections = [
@@ -139,25 +133,25 @@ def test_nonmagnetic_l_Dos_to_frame(nonmagnetic_projections):
     ]
     for selection in equivalent_selections:
         dos = Dos(raw_dos).to_frame(selection)
-        assert_allclose(dos.s, ref["Si_s"] + ref["C1_s"] + ref["C2_s"])
-        assert_allclose(dos.Si, ref["Si_s"] + ref["Si_p"] + ref["Si_d"])
-        assert_allclose(dos.Si_d, ref["Si_d"])
-        assert_allclose(dos.Si_1_p, ref["Si_p"])
-        assert_allclose(dos.C_s, ref["C1_s"] + ref["C2_s"])
-        assert_allclose(dos.C_p, ref["C1_p"] + ref["C2_p"])
-        assert_allclose(dos.C_1, ref["C1_s"] + ref["C1_p"])
-        assert_allclose(dos.C_2_s, ref["C2_s"])
+        Assert.allclose(dos.s, ref["Si_s"] + ref["C1_s"] + ref["C2_s"])
+        Assert.allclose(dos.Si, ref["Si_s"] + ref["Si_p"] + ref["Si_d"])
+        Assert.allclose(dos.Si_d, ref["Si_d"])
+        Assert.allclose(dos.Si_1_p, ref["Si_p"])
+        Assert.allclose(dos.C_s, ref["C1_s"] + ref["C2_s"])
+        Assert.allclose(dos.C_p, ref["C1_p"] + ref["C2_p"])
+        Assert.allclose(dos.C_1, ref["C1_s"] + ref["C1_p"])
+        Assert.allclose(dos.C_2_s, ref["C2_s"])
 
 
-def test_nonmagnetic_l_Dos_plot(nonmagnetic_projections):
+def test_nonmagnetic_l_Dos_plot(nonmagnetic_projections, Assert):
     """ Test whether plotting the nonmagnetic l resolved Dos yields the expected results."""
     raw_dos, ref = nonmagnetic_projections
     selection = "p 3 Si(d)"
     fig = Dos(raw_dos).plot(selection)
     assert len(fig.data) == 4  # total Dos + 3 selections
-    assert_allclose(fig.data[1].y, ref["Si_p"] + ref["C1_p"] + ref["C2_p"])
-    assert_allclose(fig.data[2].y, ref["C2_s"] + ref["C2_p"])
-    assert_allclose(fig.data[3].y, ref["Si_d"])
+    Assert.allclose(fig.data[1].y, ref["Si_p"] + ref["C1_p"] + ref["C2_p"])
+    Assert.allclose(fig.data[2].y, ref["C2_s"] + ref["C2_p"])
+    Assert.allclose(fig.data[3].y, ref["Si_d"])
 
 
 @pytest.fixture
@@ -186,22 +180,22 @@ def magnetic_projections(magnetic_Dos):
     return magnetic_Dos, ref
 
 
-def test_magnetic_lm_Dos_read(magnetic_projections):
+def test_magnetic_lm_Dos_read(magnetic_projections, Assert):
     """ Test whether reading lm resolved Dos works as expected."""
     raw_dos, ref = magnetic_projections
     dos = Dos(raw_dos).read("px p d f")
-    assert_allclose(dos["px_up"], ref["px_up"])
-    assert_allclose(dos["px_down"], ref["px_down"])
-    assert_allclose(dos["p_up"], ref["px_up"] + ref["py_up"] + ref["pz_up"])
+    Assert.allclose(dos["px_up"], ref["px_up"])
+    Assert.allclose(dos["px_down"], ref["px_down"])
+    Assert.allclose(dos["p_up"], ref["px_up"] + ref["py_up"] + ref["pz_up"])
     d_down = ref["dxy_down"] + ref["dyz_down"] + ref["dz2_down"]
     d_down += ref["dxz_down"] + ref["x2-y2_down"]
-    assert_allclose(dos["d_down"], d_down)
+    Assert.allclose(dos["d_down"], d_down)
     f_up = ref["fy3x2_up"] + ref["fxyz_up"] + ref["fyz2_up"] + ref["fz3_up"]
     f_up += ref["fxz2_up"] + ref["fzx2_up"] + ref["fx3_up"]
-    assert_allclose(dos["f_up"], f_up)
+    Assert.allclose(dos["f_up"], f_up)
 
 
-def test_magnetic_lm_Dos_plot(magnetic_Dos, magnetic_projections):
+def test_magnetic_lm_Dos_plot(magnetic_Dos, magnetic_projections, Assert):
     """ Test whether plotting lm resolved Dos works as expected."""
     raw_dos, ref = magnetic_projections
     fig = Dos(raw_dos).plot("dxz p")
@@ -209,6 +203,6 @@ def test_magnetic_lm_Dos_plot(magnetic_Dos, magnetic_projections):
     assert len(data) == 6  # spin resolved total + 2 selections
     names = [d.name for d in data]
     dxz_up = names.index("dxz_up")
-    assert_allclose(data[dxz_up].y, ref["dxz_up"])
+    Assert.allclose(data[dxz_up].y, ref["dxz_up"])
     p_down = names.index("p_down")
-    assert_allclose(data[p_down].y, -(ref["px_down"] + ref["py_down"] + ref["pz_down"]))
+    Assert.allclose(data[p_down].y, -(ref["px_down"] + ref["py_down"] + ref["pz_down"]))

@@ -1,4 +1,5 @@
 from .band import Band
+from .convergence import Convergence
 from .dos import Dos
 from .projectors import Projectors
 

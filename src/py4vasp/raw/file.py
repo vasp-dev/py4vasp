@@ -44,6 +44,12 @@ class File:
             lattice_vectors=self._h5f["results/positions/lattice_vectors"],
         )
 
+    def convergence(self):
+        return raw.Convergence(
+            labels=self._h5f["intermediate/history/energies_tags"],
+            energies=self._h5f["intermediate/history/energies"],
+        )
+
     def close(self):
         self._h5f.close()
 
