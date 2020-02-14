@@ -23,6 +23,6 @@ Code style is enforced, but is not something the developer should spend time on,
 * Create an issue for the bugfix or feature you are working on
 * Create a branch prefixing it with the number of the issue
 * Implement the bugfix or feature on the branch adding tests to check it
-* Create a pull request when the issue is resolved
+* Create a pull request and link it to the issue it resolves
 
 A typical pull request should have up to approximately 200 lines of code otherwise reviewing the changes gets unwieldy.
