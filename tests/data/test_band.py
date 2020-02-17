@@ -3,11 +3,6 @@ import py4vasp.raw as raw
 import pytest
 import types
 import numpy as np
-from numpy.testing import assert_array_almost_equal_nulp
-
-
-def assert_allclose(actual, desired):
-    assert_array_almost_equal_nulp(actual, desired, 10)
 
 
 @pytest.fixture
@@ -30,19 +25,19 @@ def two_parabolic_bands():
     return raw_band, ref
 
 
-def test_parabolic_band_read(two_parabolic_bands):
+def test_parabolic_band_read(two_parabolic_bands, Assert):
     raw_band, ref = two_parabolic_bands
     band = Band(raw_band).read()
     assert band["bands"].shape == (len(ref["valence_band"]), 2)
     assert band["fermi_energy"] == raw_band.fermi_energy
-    assert_allclose(band["kpoints"], raw_band.kpoints)
-    assert_allclose(band["kpoint_distances"], ref["kdists"])
+    Assert.allclose(band["kpoints"], raw_band.kpoints)
+    Assert.allclose(band["kpoint_distances"], ref["kdists"])
     assert band["kpoint_labels"] is None
-    assert_allclose(band["bands"][:, 0], ref["valence_band"] - raw_band.fermi_energy)
-    assert_allclose(band["bands"][:, 1], ref["conduction_band"] - raw_band.fermi_energy)
+    Assert.allclose(band["bands"][:, 0], ref["valence_band"] - raw_band.fermi_energy)
+    Assert.allclose(band["bands"][:, 1], ref["conduction_band"] - raw_band.fermi_energy)
 
 
-def test_parabolic_band_plot(two_parabolic_bands):
+def test_parabolic_band_plot(two_parabolic_bands, Assert):
     raw_band, ref = two_parabolic_bands
     fig = Band(raw_band).plot()
     assert fig.layout.yaxis.title.text == "Energy (eV)"
@@ -56,7 +51,7 @@ def test_parabolic_band_plot(two_parabolic_bands):
     for val, vb, cb in zip(ref["kdists"], ref["valence_band"], ref["conduction_band"]):
         bands = fig.data[0].y[np.where(np.isclose(fig.data[0].x, val))]
         ref_bands = np.array([vb, cb]) - raw_band.fermi_energy
-        assert_allclose(bands, ref_bands)
+        Assert.allclose(bands, ref_bands)
 
 
 def test_parabolic_band_from_file(two_parabolic_bands):
@@ -96,21 +91,21 @@ def kpoint_path():
     return raw_band, ref
 
 
-def test_kpoint_path_read(kpoint_path):
+def test_kpoint_path_read(kpoint_path, Assert):
     raw_band, ref = kpoint_path
     band = Band(raw_band).read()
-    assert_allclose(band["kpoints"], raw_band.kpoints)
-    assert_allclose(band["kpoint_distances"], ref["kdists"])
+    Assert.allclose(band["kpoints"], raw_band.kpoints)
+    Assert.allclose(band["kpoint_distances"], ref["kdists"])
     assert band["kpoint_labels"] == ref["klabels"]
 
 
-def test_kpoint_path_plot(kpoint_path):
+def test_kpoint_path_plot(kpoint_path, Assert):
     raw_band, ref = kpoint_path
     fig = Band(raw_band).plot()
     xticks = (ref["kdists"][0], ref["kdists"][raw_band.line_length], ref["kdists"][-1])
     assert len(fig.data[0].x) == len(fig.data[0].y)
     assert fig.layout.xaxis.tickmode == "array"
-    assert_allclose(fig.layout.xaxis.tickvals, np.array(xticks))
+    Assert.allclose(fig.layout.xaxis.tickvals, np.array(xticks))
     assert fig.layout.xaxis.ticktext == ref["ticklabels"]
 
 
@@ -137,16 +132,16 @@ def spin_band_structure():
     return raw_band
 
 
-def test_spin_band_structure_read(spin_band_structure):
+def test_spin_band_structure_read(spin_band_structure, Assert):
     raw_band = spin_band_structure
     band = Band(raw_band).read("s")
-    assert_allclose(band["up"], raw_band.eigenvalues[0])
-    assert_allclose(band["down"], raw_band.eigenvalues[1])
-    assert_allclose(band["projections"]["s_up"], raw_band.projections[0, 0])
-    assert_allclose(band["projections"]["s_down"], raw_band.projections[1, 0])
+    Assert.allclose(band["up"], raw_band.eigenvalues[0])
+    Assert.allclose(band["down"], raw_band.eigenvalues[1])
+    Assert.allclose(band["projections"]["s_up"], raw_band.projections[0, 0])
+    Assert.allclose(band["projections"]["s_down"], raw_band.projections[1, 0])
 
 
-def test_spin_band_structure_plot(spin_band_structure):
+def test_spin_band_structure_plot(spin_band_structure, Assert):
     width = 0.05
     raw_band = spin_band_structure
     fig = Band(raw_band).plot("Si", width)
@@ -162,7 +157,7 @@ def test_spin_band_structure_plot(spin_band_structure):
             pos_upper = data.x[np.where(np.isclose(data.y, upper))]
             pos_lower = data.x[np.where(np.isclose(data.y, lower))]
             assert len(pos_upper) == len(pos_lower) == 1
-            assert_allclose(pos_upper, pos_lower)
+            Assert.allclose(pos_upper, pos_lower)
 
 
 @pytest.fixture
@@ -187,13 +182,13 @@ def projected_band_structure():
     return raw_band
 
 
-def test_projected_band_structure_read(projected_band_structure):
+def test_projected_band_structure_read(projected_band_structure, Assert):
     raw_band = projected_band_structure
     band = Band(raw_band).read("Si(s)")
-    assert_allclose(band["projections"]["Si_s"], raw_band.projections[0, 0, 0])
+    Assert.allclose(band["projections"]["Si_s"], raw_band.projections[0, 0, 0])
 
 
-def test_projected_band_structure_plot(projected_band_structure):
+def test_projected_band_structure_plot(projected_band_structure, Assert):
     default_width = 0.5
     raw_band = projected_band_structure
     fig = Band(raw_band).plot("s, 1")
@@ -215,4 +210,4 @@ def test_projected_band_structure_plot(projected_band_structure):
             pos_upper = data.x[np.where(np.isclose(data.y, upper))]
             pos_lower = data.x[np.where(np.isclose(data.y, lower))]
             assert len(pos_upper) == len(pos_lower) == 1
-            assert_allclose(pos_upper, pos_lower)
+            Assert.allclose(pos_upper, pos_lower)

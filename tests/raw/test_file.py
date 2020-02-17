@@ -8,6 +8,7 @@ import numpy as np
 import itertools
 from tempfile import TemporaryFile
 from collections import namedtuple
+from numbers import Number, Integral
 
 num_spins = 2
 num_energies = 20
@@ -18,7 +19,7 @@ lmax = 3
 fermi_energy = 0.123
 
 SetupTest = namedtuple(
-    "SetupTest", "directory, options, create_reference, write_reference, attribute"
+    "SetupTest", "directory, options, create_reference, write_reference, check_actual"
 )
 
 
@@ -43,8 +44,7 @@ def generic_test(setup):
             setup.write_reference(h5f, reference)
             h5f.close()
             file = open_vasp_file(use_default, filename)
-            actual = getattr(file, setup.attribute)()
-            assert actual == reference
+            setup.check_actual(file, reference)
             file.close()  # must be after comparison, because file is read lazily
 
 
@@ -63,7 +63,7 @@ def test_dos(tmpdir):
         options=itertools.product((True, False), repeat=2),
         create_reference=reference_dos,
         write_reference=write_dos,
-        attribute="dos",
+        check_actual=check_dos,
     )
     generic_test(setup)
 
@@ -88,13 +88,19 @@ def write_dos(h5f, dos):
         h5f["results/electron_dos/dospar"] = proj.dos
 
 
+def check_dos(file, reference):
+    actual = file.dos()
+    assert actual == reference
+    assert isinstance(actual.fermi_energy, Number)
+
+
 def test_band(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
         options=itertools.product((True, False), repeat=3),
         create_reference=reference_band,
         write_reference=write_band,
-        attribute="band",
+        check_actual=check_band,
     )
     generic_test(setup)
 
@@ -108,9 +114,10 @@ def reference_band(use_projectors, use_labels):
         kpoints=np.linspace(np.zeros(3), np.ones(3), num_kpoints),
         eigenvalues=np.arange(np.prod(shape_eval)).reshape(shape_eval),
         cell=reference_cell(),
-        labels=np.array(["G", "X"], dtype="S") if use_labels else None,
-        label_indices=[0, 1] if use_labels else None,
     )
+    if use_labels:
+        band.labels = np.array(["G", "X"], dtype="S")
+        band.label_indices = [0, 1]
     if use_projectors:
         band.projectors = reference_projectors()
         band.projections = np.arange(np.prod(shape_proj)).reshape(shape_proj)
@@ -127,10 +134,17 @@ def write_band(h5f, band):
         h5f["input/kpoints/positions_labels_kpoints"] = band.label_indices
     if band.labels is not None:
         h5f["input/kpoints/labels_kpoints"] = band.labels
-    if band.projectors:
+    if band.projectors is not None:
         write_projectors(h5f, band.projectors)
     if band.projections is not None:
         h5f["results/projectors/par"] = band.projections
+
+
+def check_band(file, reference):
+    actual = file.band()
+    assert actual == reference
+    assert isinstance(actual.fermi_energy, Number)
+    assert isinstance(actual.line_length, Integral)
 
 
 def test_projectors(tmpdir):
@@ -139,7 +153,7 @@ def test_projectors(tmpdir):
         options=((True,), (False,)),
         create_reference=reference_projectors,
         write_reference=write_projectors,
-        attribute="projectors",
+        check_actual=check_projectors,
     )
     generic_test(setup)
 
@@ -161,13 +175,19 @@ def write_projectors(h5f, proj):
     h5f["results/electron_eigenvalues/ispin"] = proj.number_spins
 
 
+def check_projectors(file, reference):
+    actual = file.projectors()
+    assert actual == reference
+    assert isinstance(actual.number_spins, Integral)
+
+
 def test_cell(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
         options=((True,), (False,)),
         create_reference=reference_cell,
         write_reference=write_cell,
-        attribute="cell",
+        check_actual=check_cell,
     )
     generic_test(setup)
 
@@ -179,3 +199,38 @@ def reference_cell():
 def write_cell(h5f, cell):
     h5f["results/positions/scale"] = cell.scale
     h5f["results/positions/lattice_vectors"] = cell.lattice_vectors
+
+
+def check_cell(file, reference):
+    actual = file.cell()
+    assert actual == reference
+    assert isinstance(actual.scale, Number)
+
+
+def test_energies(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=((True,), (False,)),
+        create_reference=reference_energies,
+        write_reference=write_energies,
+        check_actual=check_energies,
+    )
+    generic_test(setup)
+
+
+def reference_energies():
+    labels = np.array(["total", "kinetic", "temperature"], dtype="S")
+    shape = (100, len(labels))
+    return raw.Convergence(
+        labels=labels, energies=np.arange(np.prod(shape)).reshape(shape)
+    )
+
+
+def write_energies(h5f, convergence):
+    h5f["intermediate/history/energies_tags"] = convergence.labels
+    h5f["intermediate/history/energies"] = convergence.energies
+
+
+def check_energies(file, reference):
+    actual = file.convergence()
+    assert file.convergence() == reference
