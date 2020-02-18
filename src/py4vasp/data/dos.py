@@ -1,10 +1,9 @@
-from contextlib import contextmanager
 import functools
 import itertools
 import numpy as np
 import pandas as pd
 from .projectors import Projectors
-import py4vasp.raw as raw
+from py4vasp.data import _util
 
 
 class Dos:
@@ -20,13 +19,8 @@ class Dos:
         self._projections = raw_dos.projections
 
     @classmethod
-    @contextmanager
     def from_file(cls, file=None):
-        if file is None or isinstance(file, str):
-            with raw.File(file) as local_file:
-                yield cls(local_file.dos())
-        else:
-            yield cls(file.dos())
+        return _util.from_file(cls, file, "dos")
 
     def plot(self, selection=None):
         df = self.to_frame(selection)

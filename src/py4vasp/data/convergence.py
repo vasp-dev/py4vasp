@@ -1,6 +1,5 @@
 import plotly.graph_objects as go
-from contextlib import contextmanager
-import py4vasp.raw as raw
+from py4vasp.data import _util
 
 
 class Convergence:
@@ -8,13 +7,8 @@ class Convergence:
         self._raw = raw_conv
 
     @classmethod
-    @contextmanager
     def from_file(cls, file=None):
-        if file is None or isinstance(file, str):
-            with raw.File(file) as local_file:
-                yield cls(local_file.convergence())
-        else:
-            yield cls(file.convergence())
+        return _util.from_file(cls, file, "convergence")
 
     def read(self, selection=None):
         if selection is None:

@@ -1,10 +1,9 @@
-from contextlib import contextmanager
 import functools
 import itertools
 import numpy as np
 import plotly.graph_objects as go
 from .projectors import Projectors
-import py4vasp.raw as raw
+from py4vasp.data import _util
 
 
 class Band:
@@ -27,13 +26,8 @@ class Band:
         self._projections = raw_band.projections
 
     @classmethod
-    @contextmanager
     def from_file(cls, file=None):
-        if file is None or isinstance(file, str):
-            with raw.File(file) as local_file:
-                yield cls(local_file.band())
-        else:
-            yield cls(file.band())
+        return _util.from_file(cls, file, "band")
 
     def read(self, selection=None):
         res = {
