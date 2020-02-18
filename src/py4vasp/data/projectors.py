@@ -3,6 +3,7 @@ from typing import NamedTuple, Iterable, Union
 from dataclasses import dataclass
 import re
 import numpy as np
+from py4vasp.data import _util
 
 
 _default = "*"
@@ -82,10 +83,15 @@ class Projectors:
         spin: Union[str, Selection]
 
     def __init__(self, raw_proj):
+        self._raw = raw_proj
         self._init_atom_dict(raw_proj)
         self._init_orbital_dict(raw_proj)
         self._init_spin_dict(raw_proj)
         self._spin_polarized = raw_proj.number_spins == 2
+
+    @classmethod
+    def from_file(cls, file=None):
+        return _util.from_file(cls, file, "projectors")
 
     def _init_atom_dict(self, raw_proj):
         num_atoms = np.sum(raw_proj.number_ion_types)
