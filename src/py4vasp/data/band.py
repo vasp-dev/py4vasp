@@ -4,6 +4,7 @@ import itertools
 import numpy as np
 import plotly.graph_objects as go
 from .projectors import Projectors
+import py4vasp.raw as raw
 
 
 class Band:
@@ -27,8 +28,12 @@ class Band:
 
     @classmethod
     @contextmanager
-    def from_file(cls, file):
-        yield cls(file.band())
+    def from_file(cls, file=None):
+        if file is None or isinstance(file, str):
+            with raw.File(file) as local_file:
+                yield cls(local_file.band())
+        else:
+            yield cls(file.band())
 
     def read(self, selection=None):
         res = {
