@@ -1,4 +1,3 @@
-from unittest.mock import patch
 from py4vasp.data import Band
 import py4vasp.raw as raw
 import pytest
@@ -54,51 +53,10 @@ def test_parabolic_band_plot(two_parabolic_bands, Assert):
         Assert.allclose(bands, ref_bands)
 
 
-def test_parabolic_band_from_file(two_parabolic_bands):
+def test_parabolic_band_from_file(two_parabolic_bands, mock_file, check_read):
     raw_band, _ = two_parabolic_bands
-    reference = Band(raw_band)
-    with patch.object(raw.File, "__init__", autospec=True, return_value=None) as init:
-        with patch.object(
-            raw.File, "band", autospec=True, return_value=raw_band
-        ) as band:
-            with patch.object(raw.File, "close", autospec=True) as close:
-                mocks = {"init": init, "band": band, "close": close}
-                check_read_from_open_file(mocks, reference)
-                check_read_from_default_file(mocks, reference)
-                check_read_from_filename("test", mocks, reference)
-
-
-def check_read_from_open_file(mocks, reference):
-    with raw.File() as file:
-        reset_mocks(mocks)
-        with Band.from_file(file) as actual:
-            assert actual._raw == reference._raw
-        mocks["init"].assert_not_called()
-        mocks["band"].assert_called_once()
-        mocks["close"].assert_not_called()
-
-
-def check_read_from_default_file(mocks, reference):
-    reset_mocks(mocks)
-    with Band.from_file() as actual:
-        assert actual._raw == reference._raw
-    mocks["init"].assert_called_once()
-    mocks["band"].assert_called_once()
-    mocks["close"].assert_called_once()
-
-
-def check_read_from_filename(filename, mocks, reference):
-    reset_mocks(mocks)
-    with Band.from_file(filename) as actual:
-        assert actual._raw == reference._raw
-    mocks["init"].assert_called_once()
-    mocks["band"].assert_called_once()
-    mocks["close"].assert_called_once()
-
-
-def reset_mocks(mocks):
-    for mock in mocks.values():
-        mock.reset_mock()
+    with mock_file("band", raw_band) as mocks:
+        check_read(Band, mocks, raw_band)
 
 
 @pytest.fixture
