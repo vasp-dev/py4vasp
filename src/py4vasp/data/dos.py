@@ -4,6 +4,7 @@ import itertools
 import numpy as np
 import pandas as pd
 from .projectors import Projectors
+import py4vasp.raw as raw
 
 
 class Dos:
@@ -20,7 +21,9 @@ class Dos:
 
     @classmethod
     @contextmanager
-    def from_file(cls, file):
+    def from_file(cls, file=None):
+        if file is None or isinstance(file, str):
+            file = raw.File(file)
         yield cls(file.dos())
 
     def plot(self, selection=None):

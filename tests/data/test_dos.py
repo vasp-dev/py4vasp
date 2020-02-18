@@ -1,7 +1,7 @@
+from unittest.mock import patch
 from py4vasp.data import Dos
 import py4vasp.raw as raw
 import pytest
-import types
 import numpy as np
 
 num_energies = 50
@@ -53,11 +53,32 @@ def test_nonmagnetic_Dos_plot(nonmagnetic_Dos, Assert):
 
 def test_nonmagnetic_Dos_from_file(nonmagnetic_Dos):
     raw_dos = nonmagnetic_Dos
-    file = types.SimpleNamespace()
-    file.dos = lambda: raw_dos
     reference = Dos(raw_dos)
+    with patch("py4vasp.raw.File", autospec=True) as MockFile:
+        MockFile.return_value.dos.return_value = raw_dos
+        check_read_from_open_file(MockFile(), MockFile, reference)
+        check_read_from_default_file(MockFile, reference)
+        check_read_from_filename("test", MockFile, reference)
+
+
+def check_read_from_open_file(file, MockFile, reference):
     with Dos.from_file(file) as actual:
         assert actual._raw == reference._raw
+    MockFile.reset_mock()
+
+
+def check_read_from_default_file(MockFile, reference):
+    with Dos.from_file() as actual:
+        assert actual._raw == reference._raw
+        MockFile.assert_called_once_with(None)
+    MockFile.reset_mock()
+
+
+def check_read_from_filename(filename, MockFile, reference):
+    with Dos.from_file(filename) as actual:
+        assert actual._raw == reference._raw
+        MockFile.assert_called_once_with(filename)
+    MockFile.reset_mock()
 
 
 @pytest.fixture

@@ -4,7 +4,10 @@ import py4vasp.raw as raw
 
 
 class File(AbstractContextManager):
-    def __init__(self, filename="vaspout.h5"):
+    default_filename = "vaspout.h5"
+
+    def __init__(self, filename=None):
+        filename = filename or File.default_filename
         self._h5f = h5py.File(filename, "r")
 
     def dos(self):
