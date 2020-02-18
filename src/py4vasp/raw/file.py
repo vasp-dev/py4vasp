@@ -9,6 +9,7 @@ class File(AbstractContextManager):
     def __init__(self, filename=None):
         filename = filename or File.default_filename
         self._h5f = h5py.File(filename, "r")
+        self.closed = False
 
     def dos(self):
         return raw.Dos(
@@ -56,6 +57,7 @@ class File(AbstractContextManager):
 
     def close(self):
         self._h5f.close()
+        self.closed = True
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()

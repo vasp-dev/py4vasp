@@ -40,10 +40,12 @@ def test_file_as_context():
     h5f = h5py.File(tf, "w")
     h5f.close()
     with File(tf) as file:
+        assert not file.closed
         h5f = file._h5f
     # check that file is closed and accessing it raises ValueError
     with pytest.raises(ValueError):
         h5f.file
+    assert file.closed
 
 
 def generic_test(setup):
