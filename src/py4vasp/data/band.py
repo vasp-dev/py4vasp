@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import functools
 import itertools
 import numpy as np
@@ -25,8 +26,9 @@ class Band:
         self._projections = raw_band.projections
 
     @classmethod
+    @contextmanager
     def from_file(cls, file):
-        return cls(file.band())
+        yield cls(file.band())
 
     def read(self, selection=None):
         res = {

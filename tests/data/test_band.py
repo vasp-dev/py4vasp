@@ -59,8 +59,8 @@ def test_parabolic_band_from_file(two_parabolic_bands):
     file = types.SimpleNamespace()
     file.band = lambda: raw_band
     reference = Band(raw_band)
-    actual = Band.from_file(file)
-    assert actual._raw == reference._raw
+    with Band.from_file(file) as actual:
+        assert actual._raw == reference._raw
 
 
 @pytest.fixture

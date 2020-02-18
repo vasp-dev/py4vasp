@@ -56,8 +56,8 @@ def test_nonmagnetic_Dos_from_file(nonmagnetic_Dos):
     file = types.SimpleNamespace()
     file.dos = lambda: raw_dos
     reference = Dos(raw_dos)
-    actual = Dos.from_file(file)
-    assert actual._raw == reference._raw
+    with Dos.from_file(file) as actual:
+        assert actual._raw == reference._raw
 
 
 @pytest.fixture

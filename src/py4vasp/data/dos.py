@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import functools
 import itertools
 import numpy as np
@@ -18,8 +19,9 @@ class Dos:
         self._projections = raw_dos.projections
 
     @classmethod
+    @contextmanager
     def from_file(cls, file):
-        return cls(file.dos())
+        yield cls(file.dos())
 
     def plot(self, selection=None):
         df = self.to_frame(selection)
