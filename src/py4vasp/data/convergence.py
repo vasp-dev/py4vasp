@@ -1,9 +1,15 @@
 import plotly.graph_objects as go
+from contextlib import contextmanager
 
 
 class Convergence:
     def __init__(self, raw_conv):
         self._conv = raw_conv
+
+    @classmethod
+    @contextmanager
+    def from_file(cls, file):
+        yield cls(file.convergence())
 
     def read(self, selection=None):
         if selection is None:

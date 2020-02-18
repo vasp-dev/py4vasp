@@ -33,3 +33,11 @@ def test_plot_convergence(reference_convergence, Assert):
     fig = conv.plot("temperature")
     assert fig.layout.yaxis.title.text == "Temperature (K)"
     Assert.allclose(fig.data[0].y, reference_convergence.energies[:, 1])
+
+
+def test_convergence_from_file(reference_convergence):
+    file = types.SimpleNamespace()
+    file.convergence = lambda: reference_convergence
+    reference = Convergence(reference_convergence)
+    with Convergence.from_file(file) as actual:
+        assert actual._conv == reference._conv
