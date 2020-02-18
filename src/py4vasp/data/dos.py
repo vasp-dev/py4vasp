@@ -23,8 +23,10 @@ class Dos:
     @contextmanager
     def from_file(cls, file=None):
         if file is None or isinstance(file, str):
-            file = raw.File(file)
-        yield cls(file.dos())
+            with raw.File(file) as local_file:
+                yield cls(local_file.dos())
+        else:
+            yield cls(file.dos())
 
     def plot(self, selection=None):
         df = self.to_frame(selection)

@@ -54,31 +54,46 @@ def test_nonmagnetic_Dos_plot(nonmagnetic_Dos, Assert):
 def test_nonmagnetic_Dos_from_file(nonmagnetic_Dos):
     raw_dos = nonmagnetic_Dos
     reference = Dos(raw_dos)
-    with patch("py4vasp.raw.File", autospec=True) as MockFile:
-        MockFile.return_value.dos.return_value = raw_dos
-        check_read_from_open_file(MockFile(), MockFile, reference)
-        check_read_from_default_file(MockFile, reference)
-        check_read_from_filename("test", MockFile, reference)
+    with patch.object(raw.File, "__init__", autospec=True, return_value=None) as init:
+        with patch.object(raw.File, "dos", autospec=True, return_value=raw_dos) as dos:
+            with patch.object(raw.File, "close", autospec=True) as close:
+                mocks = {"init": init, "dos": dos, "close": close}
+                check_read_from_open_file(mocks, reference)
+                check_read_from_default_file(mocks, reference)
+                check_read_from_filename("test", mocks, reference)
 
 
-def check_read_from_open_file(file, MockFile, reference):
-    with Dos.from_file(file) as actual:
-        assert actual._raw == reference._raw
-    MockFile.reset_mock()
+def check_read_from_open_file(mocks, reference):
+    with raw.File() as file:
+        reset_mocks(mocks)
+        with Dos.from_file(file) as actual:
+            assert actual._raw == reference._raw
+        mocks["init"].assert_not_called()
+        mocks["dos"].assert_called_once()
+        mocks["close"].assert_not_called()
 
 
-def check_read_from_default_file(MockFile, reference):
+def check_read_from_default_file(mocks, reference):
+    reset_mocks(mocks)
     with Dos.from_file() as actual:
         assert actual._raw == reference._raw
-        MockFile.assert_called_once_with(None)
-    MockFile.reset_mock()
+    mocks["init"].assert_called_once()
+    mocks["dos"].assert_called_once()
+    mocks["close"].assert_called_once()
 
 
-def check_read_from_filename(filename, MockFile, reference):
+def check_read_from_filename(filename, mocks, reference):
+    reset_mocks(mocks)
     with Dos.from_file(filename) as actual:
         assert actual._raw == reference._raw
-        MockFile.assert_called_once_with(filename)
-    MockFile.reset_mock()
+    mocks["init"].assert_called_once()
+    mocks["dos"].assert_called_once()
+    mocks["close"].assert_called_once()
+
+
+def reset_mocks(mocks):
+    for mock in mocks.values():
+        mock.reset_mock()
 
 
 @pytest.fixture
