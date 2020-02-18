@@ -12,6 +12,7 @@ class File(AbstractContextManager):
         self.closed = False
 
     def dos(self):
+        self._assert_not_closed()
         return raw.Dos(
             fermi_energy=self._h5f["results/electron_dos/efermi"][()],
             energies=self._h5f["results/electron_dos/energies"],
@@ -21,6 +22,7 @@ class File(AbstractContextManager):
         )
 
     def band(self):
+        self._assert_not_closed()
         return raw.Band(
             fermi_energy=self._h5f["results/electron_dos/efermi"][()],
             line_length=self._h5f["input/kpoints/number_kpoints"][()],
@@ -34,6 +36,7 @@ class File(AbstractContextManager):
         )
 
     def projectors(self):
+        self._assert_not_closed()
         if "results/projectors" not in self._h5f:
             return None
         return raw.Projectors(
@@ -44,12 +47,14 @@ class File(AbstractContextManager):
         )
 
     def cell(self):
+        self._assert_not_closed()
         return raw.Cell(
             scale=self._h5f["results/positions/scale"][()],
             lattice_vectors=self._h5f["results/positions/lattice_vectors"],
         )
 
     def convergence(self):
+        self._assert_not_closed()
         return raw.Convergence(
             labels=self._h5f["intermediate/history/energies_tags"],
             energies=self._h5f["intermediate/history/energies"],
@@ -61,6 +66,9 @@ class File(AbstractContextManager):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
+
+    def _assert_not_closed(self):
+        assert not self.closed, "I/O operation on closed file."
 
     def _safe_get_key(self, key):
         if key in self._h5f:

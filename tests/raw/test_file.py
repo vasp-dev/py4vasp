@@ -6,6 +6,7 @@ import h5py
 import os
 import numpy as np
 import itertools
+import inspect
 from tempfile import TemporaryFile
 from collections import namedtuple
 from numbers import Number, Integral
@@ -43,9 +44,16 @@ def test_file_as_context():
         assert not file.closed
         h5f = file._h5f
     # check that file is closed and accessing it raises ValueError
+    assert file.closed
     with pytest.raises(ValueError):
         h5f.file
-    assert file.closed
+    for func in inspect.getmembers(file, predicate=inspect.isroutine):
+        name = func[0]
+        if name[0] == "_" or name in ["close"]:
+            continue
+        with pytest.raises(AssertionError):
+            print(name)
+            getattr(file, name)()
 
 
 def generic_test(setup):
