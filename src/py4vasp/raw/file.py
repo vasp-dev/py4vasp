@@ -1,8 +1,9 @@
+from contextlib import AbstractContextManager
 import h5py
 import py4vasp.raw as raw
 
 
-class File:
+class File(AbstractContextManager):
     def __init__(self, filename="vaspout.h5"):
         self._h5f = h5py.File(filename, "r")
 
@@ -52,6 +53,9 @@ class File:
 
     def close(self):
         self._h5f.close()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
 
     def _safe_get_key(self, key):
         if key in self._h5f:

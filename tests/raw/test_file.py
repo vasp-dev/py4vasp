@@ -35,6 +35,17 @@ def working_directory(path):
         os.chdir(prev_cwd)
 
 
+def test_file_as_context():
+    tf = TemporaryFile()
+    h5f = h5py.File(tf, "w")
+    h5f.close()
+    with File(tf) as file:
+        h5f = file._h5f
+    # check that file is closed and accessing it raises ValueError
+    with pytest.raises(ValueError):
+        h5f.file
+
+
 def generic_test(setup):
     with working_directory(setup.directory):
         for option in setup.options:
