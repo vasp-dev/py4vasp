@@ -28,6 +28,11 @@ def without_spin():
     return proj
 
 
+def test_from_file(without_spin, mock_file, check_read):
+    with mock_file("projectors", without_spin) as mocks:
+        check_read(Projectors, mocks, without_spin)
+
+
 @pytest.fixture
 def spin_polarized(without_spin):
     without_spin.number_spins = 2

@@ -3,6 +3,7 @@ import itertools
 import numpy as np
 import plotly.graph_objects as go
 from .projectors import Projectors
+from py4vasp.data import _util
 
 
 class Band:
@@ -25,8 +26,8 @@ class Band:
         self._projections = raw_band.projections
 
     @classmethod
-    def from_file(cls, file):
-        return cls(file.band())
+    def from_file(cls, file=None):
+        return _util.from_file(cls, file, "band")
 
     def read(self, selection=None):
         res = {

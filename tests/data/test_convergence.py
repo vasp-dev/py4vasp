@@ -1,8 +1,7 @@
 from py4vasp.data import Convergence
-import py4vasp.raw as raw
 import pytest
-import types
 import numpy as np
+import py4vasp.raw as raw
 
 
 @pytest.fixture
@@ -33,3 +32,8 @@ def test_plot_convergence(reference_convergence, Assert):
     fig = conv.plot("temperature")
     assert fig.layout.yaxis.title.text == "Temperature (K)"
     Assert.allclose(fig.data[0].y, reference_convergence.energies[:, 1])
+
+
+def test_convergence_from_file(reference_convergence, mock_file, check_read):
+    with mock_file("convergence", reference_convergence) as mocks:
+        check_read(Convergence, mocks, reference_convergence)

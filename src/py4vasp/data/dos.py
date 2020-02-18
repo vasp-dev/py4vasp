@@ -3,6 +3,7 @@ import itertools
 import numpy as np
 import pandas as pd
 from .projectors import Projectors
+from py4vasp.data import _util
 
 
 class Dos:
@@ -18,8 +19,8 @@ class Dos:
         self._projections = raw_dos.projections
 
     @classmethod
-    def from_file(cls, file):
-        return cls(file.dos())
+    def from_file(cls, file=None):
+        return _util.from_file(cls, file, "dos")
 
     def plot(self, selection=None):
         df = self.to_frame(selection)

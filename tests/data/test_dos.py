@@ -1,7 +1,6 @@
 from py4vasp.data import Dos
 import py4vasp.raw as raw
 import pytest
-import types
 import numpy as np
 
 num_energies = 50
@@ -51,13 +50,9 @@ def test_nonmagnetic_Dos_plot(nonmagnetic_Dos, Assert):
     Assert.allclose(fig.data[0].y, raw_dos.dos[0])
 
 
-def test_nonmagnetic_Dos_from_file(nonmagnetic_Dos):
-    raw_dos = nonmagnetic_Dos
-    file = types.SimpleNamespace()
-    file.dos = lambda: raw_dos
-    reference = Dos(raw_dos)
-    actual = Dos.from_file(file)
-    assert actual._raw == reference._raw
+def test_nonmagnetic_Dos_from_file(nonmagnetic_Dos, mock_file, check_read):
+    with mock_file("dos", nonmagnetic_Dos) as mocks:
+        check_read(Dos, mocks, nonmagnetic_Dos)
 
 
 @pytest.fixture

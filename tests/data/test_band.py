@@ -1,7 +1,6 @@
 from py4vasp.data import Band
 import py4vasp.raw as raw
 import pytest
-import types
 import numpy as np
 
 
@@ -54,13 +53,10 @@ def test_parabolic_band_plot(two_parabolic_bands, Assert):
         Assert.allclose(bands, ref_bands)
 
 
-def test_parabolic_band_from_file(two_parabolic_bands):
+def test_parabolic_band_from_file(two_parabolic_bands, mock_file, check_read):
     raw_band, _ = two_parabolic_bands
-    file = types.SimpleNamespace()
-    file.band = lambda: raw_band
-    reference = Band(raw_band)
-    actual = Band.from_file(file)
-    assert actual._raw == reference._raw
+    with mock_file("band", raw_band) as mocks:
+        check_read(Band, mocks, raw_band)
 
 
 @pytest.fixture
