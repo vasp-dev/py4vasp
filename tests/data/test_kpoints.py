@@ -8,7 +8,7 @@ import numpy as np
 @pytest.fixture
 def default_kpoints():
     number_kpoints = 20
-    shape = (3, number_kpoints)
+    shape = (number_kpoints, 3)
     return raw.Kpoints(
         mode="explicit",
         number=number_kpoints,
@@ -44,3 +44,25 @@ def test_mode(default_kpoints):
         with pytest.raises(RefinementException):
             test_kpoints.mode = unknown_mode
             Kpoints(test_kpoints).read()
+
+
+def test_line_length(default_kpoints):
+    test_kpoints = default_kpoints
+    assert Kpoints(test_kpoints).line_length() == len(default_kpoints.coordinates)
+    test_kpoints.mode = "auto"
+    test_kpoints.number = 0  # automatic mode is indicated by setting number to 0
+    assert Kpoints(test_kpoints).line_length() == len(default_kpoints.coordinates)
+    test_kpoints.mode = "line"
+    test_kpoints.number = 5
+    assert Kpoints(test_kpoints).line_length() == test_kpoints.number
+
+
+def test_number_lines(default_kpoints):
+    test_kpoints = default_kpoints
+    assert Kpoints(test_kpoints).number_lines() == 1
+    test_kpoints.mode = "line"
+    test_kpoints.number = 5
+    assert (
+        Kpoints(test_kpoints).number_lines()
+        == len(default_kpoints.coordinates) / test_kpoints.number
+    )

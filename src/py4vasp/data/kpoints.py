@@ -14,6 +14,14 @@ class Kpoints:
             "labels": None,
         }
 
+    def line_length(self):
+        if self._mode() == "line":
+            return self._raw.number
+        return len(self._raw.coordinates)
+
+    def number_lines(self):
+        return len(self._raw.coordinates) // self.line_length()
+
     def _mode(self):
         mode = _util.decode_if_possible(self._raw.mode).strip() or "# empty string"
         first_char = mode[0].lower()
