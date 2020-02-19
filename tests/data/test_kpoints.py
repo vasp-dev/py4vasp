@@ -16,5 +16,10 @@ def default_kpoints():
     )
 
 
-def test_read(default_kpoints):
-    pass
+def test_read(default_kpoints, Assert):
+    kpoints = Kpoints(default_kpoints)
+    actual = kpoints.read()
+    assert actual["mode"] == default_kpoints.mode
+    Assert.allclose(actual["coordinates"], default_kpoints.coordinates)
+    Assert.allclose(actual["weights"], default_kpoints.weights)
+    assert actual["labels"] is None
