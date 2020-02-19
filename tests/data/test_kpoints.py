@@ -49,14 +49,39 @@ def test_line_length(raw_kpoints):
     raw_kpoints.mode = "auto"
     raw_kpoints.number = 0  # automatic mode is indicated by setting number to 0
     assert Kpoints(raw_kpoints).line_length() == len(raw_kpoints.coordinates)
-    raw_kpoints.mode = "line"
-    raw_kpoints.number = 5
+    set_line_mode(raw_kpoints)
     assert Kpoints(raw_kpoints).line_length() == raw_kpoints.number
 
 
 def test_number_lines(raw_kpoints):
     assert Kpoints(raw_kpoints).number_lines() == 1
-    raw_kpoints.mode = "line"
-    raw_kpoints.number = 5
+    set_line_mode(raw_kpoints)
     ref_number_lines = len(raw_kpoints.coordinates) / raw_kpoints.number
     assert Kpoints(raw_kpoints).number_lines() == ref_number_lines
+
+
+def test_labels(raw_kpoints):
+    raw_kpoints.labels = ["A", b"B", "C"]
+    raw_kpoints.label_indices = [5, 8, 14]
+    actual = Kpoints(raw_kpoints).read()
+    ref = [""] * len(raw_kpoints.coordinates)
+    # note index difference between Fortran and Python
+    ref[4] = "A"
+    ref[7] = "B"
+    ref[13] = "C"
+    assert actual["labels"] == ref
+    set_line_mode(raw_kpoints)
+    raw_kpoints.labels = ["W", "X", " Y ", "Z"]
+    raw_kpoints.label_indices = [1, 2, 3, 6]
+    actual = Kpoints(raw_kpoints).read()
+    ref = [""] * len(raw_kpoints.coordinates)
+    ref[0] = "W"
+    ref[raw_kpoints.number - 1] = "X"
+    ref[raw_kpoints.number] = "Y"
+    ref[3 * raw_kpoints.number - 1] = "Z"
+    assert actual["labels"] == ref
+
+
+def set_line_mode(kpoints):
+    kpoints.mode = "line"
+    kpoints.number = 5
