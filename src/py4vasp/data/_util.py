@@ -10,3 +10,10 @@ def from_file(cls, file, attr):
         context = nullcontext(file)
     with context as file:
         yield cls(getattr(file, attr)())
+
+
+def decode_if_possible(string):
+    try:
+        return string.decode()
+    except (UnicodeDecodeError, AttributeError):
+        return string
