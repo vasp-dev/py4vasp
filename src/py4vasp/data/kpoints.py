@@ -27,7 +27,7 @@ class Kpoints:
 
     def distances(self):
         cell = self._raw.cell.lattice_vectors * self._raw.cell.scale
-        cartesian_kpoints = np.linalg.solve(cell, self._raw.coordinates.T).T
+        cartesian_kpoints = np.linalg.solve(cell, self._raw.coordinates[:].T).T
         kpoint_lines = np.split(cartesian_kpoints, self.number_lines())
         kpoint_norms = [np.linalg.norm(line - line[0], axis=1) for line in kpoint_lines]
         concatenate_distances = lambda current, addition: (
