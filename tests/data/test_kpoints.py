@@ -21,6 +21,7 @@ def raw_kpoints():
 def test_read(raw_kpoints, Assert):
     actual = Kpoints(raw_kpoints).read()
     assert actual["mode"] == raw_kpoints.mode
+    assert actual["line_length"] == raw_kpoints.number
     Assert.allclose(actual["coordinates"], raw_kpoints.coordinates)
     Assert.allclose(actual["weights"], raw_kpoints.weights)
     assert actual["labels"] is None

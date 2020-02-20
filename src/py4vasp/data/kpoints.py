@@ -11,6 +11,7 @@ class Kpoints:
     def read(self):
         return {
             "mode": self.mode(),
+            "line_length": self.line_length(),
             "coordinates": self._raw.coordinates[:],
             "weights": self._raw.weights[:],
             "labels": self.labels(),
