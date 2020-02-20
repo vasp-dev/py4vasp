@@ -60,12 +60,8 @@ class Dos:
 @dataclass
 class Band:
     fermi_energy: float
-    line_length: int
-    kpoints: np.ndarray
+    kpoints: Kpoints
     eigenvalues: np.ndarray
-    cell: Cell
-    labels: np.ndarray = None
-    label_indices: np.ndarray = None
     projections: np.ndarray = None
     projectors: Projectors = None
     __eq__ = _dataclass_equal

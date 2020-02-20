@@ -25,12 +25,8 @@ class File(AbstractContextManager):
         self._assert_not_closed()
         return raw.Band(
             fermi_energy=self._h5f["results/electron_dos/efermi"][()],
-            line_length=self._h5f["input/kpoints/number_kpoints"][()],
-            kpoints=self._h5f["results/electron_eigenvalues/kpoint_coords"],
+            kpoints=self.kpoints(),
             eigenvalues=self._h5f["results/electron_eigenvalues/eigenvalues"],
-            labels=self._safe_get_key("input/kpoints/labels_kpoints"),
-            label_indices=self._safe_get_key("input/kpoints/positions_labels_kpoints"),
-            cell=self.cell(),
             projectors=self.projectors(),
             projections=self._safe_get_key("results/projectors/par"),
         )
