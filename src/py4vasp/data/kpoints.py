@@ -7,6 +7,7 @@ import numpy as np
 class Kpoints:
     def __init__(self, raw_kpoints):
         self._raw = raw_kpoints
+        self._distances = None
 
     def read(self):
         return {
@@ -26,6 +27,8 @@ class Kpoints:
         return len(self._raw.coordinates) // self.line_length()
 
     def distances(self):
+        if self._distances is not None:
+            return self._distances
         cell = self._raw.cell.lattice_vectors * self._raw.cell.scale
         cartesian_kpoints = np.linalg.solve(cell, self._raw.coordinates[:].T).T
         kpoint_lines = np.split(cartesian_kpoints, self.number_lines())
@@ -33,7 +36,8 @@ class Kpoints:
         concatenate_distances = lambda current, addition: (
             np.concatenate((current, addition + current[-1]))
         )
-        return functools.reduce(concatenate_distances, kpoint_norms)
+        self._distances = functools.reduce(concatenate_distances, kpoint_norms)
+        return self._distances
 
     def mode(self):
         mode = _util.decode_if_possible(self._raw.mode).strip() or "# empty string"
