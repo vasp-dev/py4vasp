@@ -37,12 +37,12 @@ def test_mode(raw_kpoints):
     for mode, formats in allowed_mode_formats.items():
         for format in formats:
             raw_kpoints.mode = format
-            test_mode = Kpoints(raw_kpoints).read()["mode"]
+            test_mode = Kpoints(raw_kpoints).mode()
             assert test_mode == mode
     for unknown_mode in ["x", "y", "z", " "]:
         with pytest.raises(RefinementException):
             raw_kpoints.mode = unknown_mode
-            Kpoints(raw_kpoints).read()
+            Kpoints(raw_kpoints).mode()
 
 
 def test_line_length(raw_kpoints):
@@ -64,23 +64,23 @@ def test_number_lines(raw_kpoints):
 def test_labels(raw_kpoints):
     raw_kpoints.labels = ["A", b"B", "C"]
     raw_kpoints.label_indices = [5, 8, 14]
-    actual = Kpoints(raw_kpoints).read()
+    actual = Kpoints(raw_kpoints).labels()
     ref = [""] * len(raw_kpoints.coordinates)
     # note index difference between Fortran and Python
     ref[4] = "A"
     ref[7] = "B"
     ref[13] = "C"
-    assert actual["labels"] == ref
+    assert actual == ref
     set_line_mode(raw_kpoints)
     raw_kpoints.labels = ["W", "X", " Y ", "Z"]
     raw_kpoints.label_indices = [1, 2, 3, 6]
-    actual = Kpoints(raw_kpoints).read()
+    actual = Kpoints(raw_kpoints).labels()
     ref = [""] * len(raw_kpoints.coordinates)
     ref[0] = "W"
     ref[raw_kpoints.number - 1] = "X"
     ref[raw_kpoints.number] = "Y"
     ref[3 * raw_kpoints.number - 1] = "Z"
-    assert actual["labels"] == ref
+    assert actual == ref
 
 
 def test_distances_nontrivial_cell(raw_kpoints, Assert):

@@ -10,14 +10,14 @@ class Kpoints:
 
     def read(self):
         return {
-            "mode": self._mode(),
+            "mode": self.mode(),
             "coordinates": self._raw.coordinates[:],
             "weights": self._raw.weights[:],
-            "labels": self._labels(),
+            "labels": self.labels(),
         }
 
     def line_length(self):
-        if self._mode() == "line":
+        if self.mode() == "line":
             return self._raw.number
         return len(self._raw.coordinates)
 
@@ -34,7 +34,7 @@ class Kpoints:
         )
         return functools.reduce(concatenate_distances, kpoint_norms)
 
-    def _mode(self):
+    def mode(self):
         mode = _util.decode_if_possible(self._raw.mode).strip() or "# empty string"
         first_char = mode[0].lower()
         if first_char == "a":
@@ -53,11 +53,11 @@ class Kpoints:
                 + "when refining the raw kpoints data."
             )
 
-    def _labels(self):
+    def labels(self):
         if self._raw.labels is None or self._raw.label_indices is None:
             return None
         labels = [""] * len(self._raw.coordinates)
-        use_line_mode = self._mode() == "line"
+        use_line_mode = self.mode() == "line"
         for label, index in zip(self._raw.labels, self._raw.label_indices):
             label = _util.decode_if_possible(label.strip())
             if use_line_mode:
