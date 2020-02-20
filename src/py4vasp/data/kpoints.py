@@ -1,5 +1,7 @@
 from py4vasp.data import _util
 from py4vasp.exceptions import RefinementException
+import functools
+import numpy as np
 
 
 class Kpoints:
@@ -21,6 +23,16 @@ class Kpoints:
 
     def number_lines(self):
         return len(self._raw.coordinates) // self.line_length()
+
+    def distances(self):
+        cell = self._raw.cell.lattice_vectors * self._raw.cell.scale
+        cartesian_kpoints = np.linalg.solve(cell, self._raw.coordinates.T).T
+        kpoint_lines = np.split(cartesian_kpoints, self.number_lines())
+        kpoint_norms = [np.linalg.norm(line - line[0], axis=1) for line in kpoint_lines]
+        concatenate_distances = lambda current, addition: (
+            np.concatenate((current, addition + current[-1]))
+        )
+        return functools.reduce(concatenate_distances, kpoint_norms)
 
     def _mode(self):
         mode = _util.decode_if_possible(self._raw.mode).strip() or "# empty string"

@@ -14,6 +14,7 @@ def raw_kpoints():
         number=number_kpoints,
         coordinates=np.arange(np.prod(shape)).reshape(shape),
         weights=np.arange(number_kpoints),
+        cell=raw.Cell(scale=1.0, lattice_vectors=np.eye(3)),
     )
 
 
@@ -80,6 +81,32 @@ def test_labels(raw_kpoints):
     ref[raw_kpoints.number] = "Y"
     ref[3 * raw_kpoints.number - 1] = "Z"
     assert actual["labels"] == ref
+
+
+def test_distances_nontrivial_cell(raw_kpoints, Assert):
+    cell = raw.Cell(
+        scale=2.0, lattice_vectors=np.array([[3, 0, 0], [-1, 2, 0], [0, 0, 4]])
+    )
+    cartesian_kpoints = np.linspace(np.zeros(3), np.ones(3))
+    direct_kpoints = cartesian_kpoints @ cell.lattice_vectors.T * cell.scale
+    ref_dists = np.linalg.norm(cartesian_kpoints, axis=1)
+    raw_kpoints.cell = cell
+    raw_kpoints.coordinates = direct_kpoints
+    dists = Kpoints(raw_kpoints).distances()
+    Assert.allclose(dists, ref_dists)
+
+
+def test_distances_lines(raw_kpoints, Assert):
+    set_line_mode(raw_kpoints)
+    first_line = np.linspace([0.5, 0.5, 0.5], [1, 0, 0], raw_kpoints.number)
+    second_line = np.linspace([0, 1, 0], [0, 0, 0], raw_kpoints.number)
+    raw_kpoints.coordinates = np.concatenate((first_line, second_line))
+    first_dists = np.linalg.norm(first_line - first_line[0], axis=1)
+    second_dists = np.linalg.norm(second_line - second_line[0], axis=1)
+    second_dists += first_dists[-1]
+    ref_dists = np.concatenate((first_dists, second_dists))
+    dists = Kpoints(raw_kpoints).distances()
+    Assert.allclose(dists, ref_dists)
 
 
 def set_line_mode(kpoints):

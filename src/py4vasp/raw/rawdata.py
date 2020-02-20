@@ -41,6 +41,7 @@ class Kpoints:
     number: int
     coordinates: np.ndarray
     weights: np.ndarray
+    cell: Cell
     labels: np.ndarray = None
     label_indices: np.ndarray = None
     __eq__ = _dataclass_equal
