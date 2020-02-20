@@ -46,6 +46,18 @@ class File(AbstractContextManager):
             number_spins=self._h5f["results/electron_eigenvalues/ispin"][()],
         )
 
+    def kpoints(self):
+        self._assert_not_closed()
+        return raw.Kpoints(
+            mode=self._h5f["input/kpoints/mode"][()],
+            number=self._h5f["input/kpoints/number_kpoints"][()],
+            coordinates=self._h5f["results/electron_eigenvalues/kpoint_coords"],
+            weights=self._h5f["results/electron_eigenvalues/kpoints_symmetry_weight"],
+            labels=self._safe_get_key("input/kpoints/labels_kpoints"),
+            label_indices=self._safe_get_key("input/kpoints/positions_labels_kpoints"),
+            cell=self.cell(),
+        )
+
     def cell(self):
         self._assert_not_closed()
         return raw.Cell(
