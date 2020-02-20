@@ -52,7 +52,6 @@ def test_file_as_context():
         if name[0] == "_" or name in ["close"]:
             continue
         with pytest.raises(AssertionError):
-            print(name)
             getattr(file, name)()
 
 
@@ -131,14 +130,9 @@ def reference_band(use_projectors, use_labels):
     shape_proj = (num_spins, num_atoms, lmax, num_kpoints, num_bands)
     band = raw.Band(
         fermi_energy=fermi_energy,
-        line_length=num_kpoints,
-        kpoints=np.linspace(np.zeros(3), np.ones(3), num_kpoints),
+        kpoints=reference_kpoints(use_labels),
         eigenvalues=np.arange(np.prod(shape_eval)).reshape(shape_eval),
-        cell=reference_cell(),
     )
-    if use_labels:
-        band.labels = np.array(["G", "X"], dtype="S")
-        band.label_indices = [0, 1]
     if use_projectors:
         band.projectors = reference_projectors()
         band.projections = np.arange(np.prod(shape_proj)).reshape(shape_proj)
@@ -147,14 +141,8 @@ def reference_band(use_projectors, use_labels):
 
 def write_band(h5f, band):
     h5f["results/electron_dos/efermi"] = band.fermi_energy
-    h5f["results/electron_eigenvalues/kpoint_coords"] = band.kpoints
     h5f["results/electron_eigenvalues/eigenvalues"] = band.eigenvalues
-    h5f["input/kpoints/number_kpoints"] = band.line_length
-    write_cell(h5f, band.cell)
-    if band.label_indices is not None:
-        h5f["input/kpoints/positions_labels_kpoints"] = band.label_indices
-    if band.labels is not None:
-        h5f["input/kpoints/labels_kpoints"] = band.labels
+    write_kpoints(h5f, band.kpoints)
     if band.projectors is not None:
         write_projectors(h5f, band.projectors)
     if band.projections is not None:
@@ -165,7 +153,6 @@ def check_band(file, reference):
     actual = file.band()
     assert actual == reference
     assert isinstance(actual.fermi_energy, Number)
-    assert isinstance(actual.line_length, Integral)
 
 
 def test_projectors(tmpdir):
@@ -253,5 +240,48 @@ def write_energies(h5f, convergence):
 
 
 def check_energies(file, reference):
-    actual = file.convergence()
     assert file.convergence() == reference
+
+
+def test_kpoints(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=itertools.product((True, False), repeat=2),
+        create_reference=reference_kpoints,
+        write_reference=write_kpoints,
+        check_actual=check_kpoints,
+    )
+    generic_test(setup)
+
+
+def reference_kpoints(use_labels):
+    kpoints = raw.Kpoints(
+        mode="explicit",
+        number=num_kpoints,
+        coordinates=np.linspace(np.zeros(3), np.ones(3), num_kpoints),
+        weights=np.arange(num_kpoints),
+        cell=reference_cell(),
+    )
+    if use_labels:
+        kpoints.labels = np.array(["G", "X"], dtype="S")
+        kpoints.label_indices = [0, 1]
+    return kpoints
+
+
+def write_kpoints(h5f, kpoints):
+    h5f["input/kpoints/mode"] = kpoints.mode
+    h5f["input/kpoints/number_kpoints"] = kpoints.number
+    h5f["results/electron_eigenvalues/kpoint_coords"] = kpoints.coordinates
+    h5f["results/electron_eigenvalues/kpoints_symmetry_weight"] = kpoints.weights
+    write_cell(h5f, kpoints.cell)
+    if kpoints.label_indices is not None:
+        h5f["input/kpoints/positions_labels_kpoints"] = kpoints.label_indices
+    if kpoints.labels is not None:
+        h5f["input/kpoints/labels_kpoints"] = kpoints.labels
+
+
+def check_kpoints(file, reference):
+    actual = file.kpoints()
+    assert actual == reference
+    assert isinstance(actual.number, Integral)
+    assert isinstance(actual.mode, str)

@@ -3,27 +3,17 @@ import itertools
 import numpy as np
 import plotly.graph_objects as go
 from .projectors import Projectors
+from .kpoints import Kpoints
 from py4vasp.data import _util
 
 
 class Band:
     def __init__(self, raw_band):
         self._raw = raw_band
-        self._fermi_energy = raw_band.fermi_energy
-        self._kpoints = raw_band.kpoints
-        self._kdists = None
-        self._bands = raw_band.eigenvalues
-        self._spin_polarized = len(self._bands) == 2
-        scale = raw_band.cell.scale
-        lattice_vectors = raw_band.cell.lattice_vectors
-        self._cell = scale * lattice_vectors
-        self._line_length = raw_band.line_length
-        self._num_lines = len(self._kpoints) // self._line_length
-        self._indices = raw_band.label_indices
-        self._labels = raw_band.labels
+        self._kpoints = Kpoints(raw_band.kpoints)
+        self._spin_polarized = len(raw_band.eigenvalues) == 2
         if raw_band.projectors is not None:
             self._projectors = Projectors(raw_band.projectors)
-        self._projections = raw_band.projections
 
     @classmethod
     def from_file(cls, file=None):
@@ -31,18 +21,16 @@ class Band:
 
     def read(self, selection=None):
         res = {
-            "kpoints": self._kpoints[:],
-            "kpoint_labels": self._kpoint_labels(),
-            "fermi_energy": self._fermi_energy,
+            "kpoint_distances": self._kpoints.distances(),
+            "kpoint_labels": self._kpoints.labels(),
+            "fermi_energy": self._raw.fermi_energy,
             **self._shift_bands_by_fermi_energy(),
             "projections": self._read_projections(selection),
         }
-        res["kpoint_distances"] = self._kpoint_distances(res["kpoints"])
         return res
 
     def plot(self, selection=None, width=0.5):
-        ticks = self._ticks()
-        labels = self._ticklabels()
+        ticks, labels = self._ticks_and_labels()
         data = self._band_structure(selection, width)
         default = {
             "xaxis": {"tickmode": "array", "tickvals": ticks, "ticktext": labels},
@@ -53,25 +41,11 @@ class Band:
     def _shift_bands_by_fermi_energy(self):
         if self._spin_polarized:
             return {
-                "up": self._bands[0] - self._fermi_energy,
-                "down": self._bands[1] - self._fermi_energy,
+                "up": self._raw.eigenvalues[0] - self._raw.fermi_energy,
+                "down": self._raw.eigenvalues[1] - self._raw.fermi_energy,
             }
         else:
-            return {"bands": self._bands[0] - self._fermi_energy}
-
-    def _kpoint_distances(self, kpoints=None):
-        if self._kdists is not None:
-            return self._kdists
-        if kpoints is None:
-            kpoints = self._kpoints[:]
-        cartesian_kpoints = np.linalg.solve(self._cell, kpoints.T).T
-        kpoint_lines = np.split(cartesian_kpoints, self._num_lines)
-        kpoint_norms = [np.linalg.norm(line - line[0], axis=1) for line in kpoint_lines]
-        concatenate_distances = lambda current, addition: (
-            np.concatenate((current, addition + current[-1]))
-        )
-        self._kdists = functools.reduce(concatenate_distances, kpoint_norms)
-        return self._kdists
+            return {"bands": self._raw.eigenvalues[0] - self._raw.fermi_energy}
 
     def _band_structure(self, selection, width):
         bands = self._shift_bands_by_fermi_energy()
@@ -82,7 +56,7 @@ class Band:
             return self._fat_band_structure(bands, projections, width)
 
     def _regular_band_structure(self, bands):
-        kdists = self._kpoint_distances()
+        kdists = self._kpoints.distances()
         return [self._scatter(name, kdists, lines) for name, lines in bands.items()]
 
     def _fat_band_structure(self, bands, projections, width):
@@ -96,7 +70,7 @@ class Band:
         (key, lines), (name, projection) = args
         if self._spin_polarized and not key in name:
             return None
-        kdists = self._kpoint_distances()
+        kdists = self._kpoints.distances()
         fatband_kdists = np.concatenate((kdists, np.flip(kdists)))
         upper = lines + width * projection
         lower = lines - width * projection
@@ -131,30 +105,27 @@ class Band:
         return "_".join(filter(None, labels))
 
     def _read_element(self, index):
-        sum_weight = lambda weight, i: weight + self._projections[i]
-        zero_weight = np.zeros(self._bands.shape[1:])
+        sum_weight = lambda weight, i: weight + self._raw.projections[i]
+        zero_weight = np.zeros(self._raw.eigenvalues.shape[1:])
         return functools.reduce(sum_weight, itertools.product(*index), zero_weight)
 
-    def _kpoint_labels(self):
-        if self._indices is None or self._labels is None:
-            return None
-        # convert from input kpoint list to full list
-        labels = np.zeros(len(self._kpoints), dtype=self._labels.dtype)
-        indices = np.array(self._indices)
-        indices = self._line_length * (indices // 2) + indices % 2 - 1
-        labels[indices] = self._labels
-        return [l.decode().strip() for l in labels]
-
-    def _ticks(self):
-        kdists = self._kpoint_distances()
-        return [*kdists[:: self._line_length], kdists[-1]]
-
-    def _ticklabels(self):
-        labels = [" "] * (self._num_lines + 1)
-        if self._indices is None or self._labels is None:
-            return labels
-        for index, label in zip(self._indices, self._labels):
-            i = index // 2  # line has 2 ends
-            label = label.decode().strip()
-            labels[i] = (labels[i] + "|" + label) if labels[i].strip() else label
-        return labels
+    def _ticks_and_labels(self):
+        labels = self._kpoints.labels()
+        if labels is None:
+            return None, None
+        labels = np.array(labels)
+        indices = np.arange(len(self._raw.kpoints.coordinates))
+        line_length = self._kpoints.line_length()
+        edge_of_line = (indices + 1) % line_length == 0
+        edge_of_line[0] = True
+        mask = np.logical_or(edge_of_line, labels != "")
+        masked_dists = self._kpoints.distances()[mask]
+        masked_labels = labels[mask]
+        ticks, indices = np.unique(masked_dists, return_inverse=True)
+        labels = [""] * len(ticks)
+        for i, label in zip(indices, masked_labels):
+            if labels[i].strip():
+                labels[i] = labels[i] + "|" + label
+            else:
+                labels[i] = label or " "
+        return ticks, labels

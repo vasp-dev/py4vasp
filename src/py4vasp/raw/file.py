@@ -25,12 +25,8 @@ class File(AbstractContextManager):
         self._assert_not_closed()
         return raw.Band(
             fermi_energy=self._h5f["results/electron_dos/efermi"][()],
-            line_length=self._h5f["input/kpoints/number_kpoints"][()],
-            kpoints=self._h5f["results/electron_eigenvalues/kpoint_coords"],
+            kpoints=self.kpoints(),
             eigenvalues=self._h5f["results/electron_eigenvalues/eigenvalues"],
-            labels=self._safe_get_key("input/kpoints/labels_kpoints"),
-            label_indices=self._safe_get_key("input/kpoints/positions_labels_kpoints"),
-            cell=self.cell(),
             projectors=self.projectors(),
             projections=self._safe_get_key("results/projectors/par"),
         )
@@ -44,6 +40,18 @@ class File(AbstractContextManager):
             number_ion_types=self._h5f["results/positions/number_ion_types"],
             orbital_types=self._h5f["results/projectors/lchar"],
             number_spins=self._h5f["results/electron_eigenvalues/ispin"][()],
+        )
+
+    def kpoints(self):
+        self._assert_not_closed()
+        return raw.Kpoints(
+            mode=self._h5f["input/kpoints/mode"][()],
+            number=self._h5f["input/kpoints/number_kpoints"][()],
+            coordinates=self._h5f["results/electron_eigenvalues/kpoint_coords"],
+            weights=self._h5f["results/electron_eigenvalues/kpoints_symmetry_weight"],
+            labels=self._safe_get_key("input/kpoints/labels_kpoints"),
+            label_indices=self._safe_get_key("input/kpoints/positions_labels_kpoints"),
+            cell=self.cell(),
         )
 
     def cell(self):

@@ -1,6 +1,7 @@
 from .band import Band
 from .convergence import Convergence
 from .dos import Dos
+from .kpoints import Kpoints
 from .projectors import Projectors
 
 import plotly.io as pio

@@ -16,10 +16,14 @@ def two_parabolic_bands():
     ref["conduction_band"] = 1.0 + ref["kdists"] ** 2
     raw_band = raw.Band(
         fermi_energy=0.5,
-        line_length=len(cartesian_kpoints),
-        kpoints=direct_kpoints,
         eigenvalues=[np.array([ref["valence_band"], ref["conduction_band"]]).T],
-        cell=cell,
+        kpoints=raw.Kpoints(
+            mode="explicit",
+            number=len(cartesian_kpoints),
+            coordinates=direct_kpoints,
+            weights=None,
+            cell=cell,
+        ),
     )
     return raw_band, ref
 
@@ -29,7 +33,6 @@ def test_parabolic_band_read(two_parabolic_bands, Assert):
     band = Band(raw_band).read()
     assert band["bands"].shape == (len(ref["valence_band"]), 2)
     assert band["fermi_energy"] == raw_band.fermi_energy
-    Assert.allclose(band["kpoints"], raw_band.kpoints)
     Assert.allclose(band["kpoint_distances"], ref["kdists"])
     assert band["kpoint_labels"] is None
     Assert.allclose(band["bands"][:, 0], ref["valence_band"] - raw_band.fermi_energy)
@@ -67,13 +70,17 @@ def kpoint_path():
     first_path = np.linspace(kpoints[0], kpoints[1], N)
     second_path = np.linspace(kpoints[2], kpoints[3], N)
     raw_band = raw.Band(
-        line_length=N,
-        kpoints=np.concatenate((first_path, second_path)),
-        labels=np.array(["X", "Y", "G"], dtype="S"),
-        label_indices=[2, 3, 4],
         fermi_energy=0.0,
         eigenvalues=np.zeros((1, num_kpoints, 1)),
-        cell=raw.Cell(scale=1, lattice_vectors=np.eye(3)),
+        kpoints=raw.Kpoints(
+            mode="line",
+            number=N,
+            coordinates=np.concatenate((first_path, second_path)),
+            weights=None,
+            cell=raw.Cell(scale=1, lattice_vectors=np.eye(3)),
+            labels=np.array(["X", "Y", "G"], dtype="S"),
+            label_indices=[2, 3, 4],
+        ),
     )
     first_dists = np.linalg.norm(first_path - first_path[0], axis=1)
     second_dists = np.linalg.norm(second_path - second_path[0], axis=1)
@@ -90,7 +97,6 @@ def kpoint_path():
 def test_kpoint_path_read(kpoint_path, Assert):
     raw_band, ref = kpoint_path
     band = Band(raw_band).read()
-    Assert.allclose(band["kpoints"], raw_band.kpoints)
     Assert.allclose(band["kpoint_distances"], ref["kdists"])
     assert band["kpoint_labels"] == ref["klabels"]
 
@@ -98,7 +104,7 @@ def test_kpoint_path_read(kpoint_path, Assert):
 def test_kpoint_path_plot(kpoint_path, Assert):
     raw_band, ref = kpoint_path
     fig = Band(raw_band).plot()
-    xticks = (ref["kdists"][0], ref["kdists"][raw_band.line_length], ref["kdists"][-1])
+    xticks = (ref["kdists"][0], ref["kdists"][ref["line_length"]], ref["kdists"][-1])
     assert len(fig.data[0].x) == len(fig.data[0].y)
     assert fig.layout.xaxis.tickmode == "array"
     Assert.allclose(fig.layout.xaxis.tickvals, np.array(xticks))
@@ -112,8 +118,6 @@ def spin_band_structure():
     shape_eig = (num_spins, num_kpoints, num_bands)
     size_eig = np.prod(shape_eig)
     raw_band = raw.Band(
-        line_length=num_kpoints,
-        kpoints=np.linspace(np.zeros(3), np.ones(3), num_kpoints),
         eigenvalues=np.arange(size_eig).reshape(shape_eig),
         projections=np.random.uniform(low=0.2, size=shape_proj),
         projectors=raw.Projectors(
@@ -123,7 +127,13 @@ def spin_band_structure():
             number_spins=num_spins,
         ),
         fermi_energy=0.0,
-        cell=raw.Cell(scale=1, lattice_vectors=np.eye(3)),
+        kpoints=raw.Kpoints(
+            mode="explicit",
+            coordinates=np.linspace(np.zeros(3), np.ones(3), num_kpoints),
+            weights=None,
+            number=num_kpoints,
+            cell=raw.Cell(scale=1, lattice_vectors=np.eye(3)),
+        ),
     )
     return raw_band
 
@@ -162,8 +172,6 @@ def projected_band_structure():
     shape_proj = (num_spins, num_atoms, num_orbitals, num_kpoints, num_bands)
     shape_eig = (num_spins, num_kpoints, num_bands)
     raw_band = raw.Band(
-        line_length=num_kpoints,
-        kpoints=np.linspace(np.zeros(3), np.ones(3), num_kpoints),
         eigenvalues=np.arange(np.prod(shape_eig)).reshape(shape_eig),
         projections=np.random.uniform(low=0.2, size=shape_proj),
         projectors=raw.Projectors(
@@ -173,7 +181,13 @@ def projected_band_structure():
             number_spins=num_spins,
         ),
         fermi_energy=0.0,
-        cell=raw.Cell(scale=1, lattice_vectors=np.eye(3)),
+        kpoints=raw.Kpoints(
+            mode="explicit",
+            coordinates=np.linspace(np.zeros(3), np.ones(3), num_kpoints),
+            weights=None,
+            number=num_kpoints,
+            cell=raw.Cell(scale=1, lattice_vectors=np.eye(3)),
+        ),
     )
     return raw_band
 
