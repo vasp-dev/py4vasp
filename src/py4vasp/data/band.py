@@ -112,19 +112,19 @@ class Band:
     def _ticks_and_labels(self):
         def filter_unique(current, item):
             tick, label = item
-            label = label or " " # use space because plotly replace empty labels
-            if current is None:
-                return ([tick], [label])
-            ticks, labels = current
-            if tick == ticks[-1]:
-                labels[-1] = labels[-1] + "|" + label if labels[-1].strip() else label
+            previous_tick = current[-2]
+            if tick == previous_tick:
+                previous_label = current[-1]
+                label = previous_label + "|" + label if previous_label else label
+                return current[:-1] + (label,)
             else:
-                ticks.append(tick)
-                labels.append(label)
-            return ticks, labels
+                return current + item
 
         ticks_and_labels = self._degenerate_ticks_and_labels()
-        return functools.reduce(filter_unique, ticks_and_labels, None)
+        ticks_and_labels = functools.reduce(filter_unique, ticks_and_labels)
+        ticks = [tick for tick in ticks_and_labels[::2]]
+        labels = [label or " " for label in ticks_and_labels[1::2]]
+        return ticks, labels
 
     def _degenerate_ticks_and_labels(self):
         labels = self._kpoint_labels()
