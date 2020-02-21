@@ -6,6 +6,8 @@ import numpy as np
 number_spins = 1
 number_kpoints = 60
 number_bands = 1
+number_atoms = 1
+number_orbitals = 1
 
 
 @pytest.fixture
@@ -139,44 +141,60 @@ def test_kpoint_path_plot(kpoint_path, Assert):
 
 
 @pytest.fixture
-def spin_band_structure():
-    num_spins, num_atoms, num_orbitals, num_kpoints, num_bands = 2, 1, 1, 50, 5
-    shape_proj = (num_spins, num_atoms, num_orbitals, num_kpoints, num_bands)
-    shape_eig = (num_spins, num_kpoints, num_bands)
-    size_eig = np.prod(shape_eig)
-    raw_band = raw.Band(
-        eigenvalues=np.arange(size_eig).reshape(shape_eig),
-        projections=np.random.uniform(low=0.2, size=shape_proj),
-        projectors=raw.Projectors(
-            number_ion_types=[1],
-            ion_types=np.array(["Si"], dtype="S"),
-            orbital_types=np.array(["s"], dtype="S"),
-            number_spins=num_spins,
-        ),
-        fermi_energy=0.0,
-        kpoints=raw.Kpoints(
-            mode="explicit",
-            coordinates=np.linspace(np.zeros(3), np.ones(3), num_kpoints),
-            weights=None,
-            number=num_kpoints,
-            cell=raw.Cell(scale=1, lattice_vectors=np.eye(3)),
-        ),
-    )
+def spin_band(raw_band):
+    number_spins_ = 2
+    shape = (number_spins_, number_kpoints, number_bands)
+    raw_band.eigenvalues = np.arange(np.prod(shape)).reshape(shape)
     return raw_band
 
 
-def test_spin_band_structure_read(spin_band_structure, Assert):
-    raw_band = spin_band_structure
+def test_spin_band_read(spin_band, Assert):
+    band = Band(spin_band).read()
+    Assert.allclose(band["up"], spin_band.eigenvalues[0])
+    Assert.allclose(band["down"], spin_band.eigenvalues[1])
+
+
+def test_spin_band_fermi_energy(spin_band, Assert):
+    spin_band.fermi_energy = 0.5
+    band = Band(spin_band).read()
+    Assert.allclose(band["up"], spin_band.eigenvalues[0] - spin_band.fermi_energy)
+    Assert.allclose(band["down"], spin_band.eigenvalues[1] - spin_band.fermi_energy)
+
+
+def test_spin_band_plot(spin_band, Assert):
+    fig = Band(spin_band).plot()
+    assert len(fig.data) == 2
+    spins = ["up", "down"]
+    for i, (spin, data) in enumerate(zip(spins, fig.data)):
+        assert data.name == spin
+        mask = np.isfinite(data.x)
+        Assert.allclose(data.y[mask], spin_band.eigenvalues[i].flatten("F"))
+
+
+@pytest.fixture
+def spin_projections(spin_band):
+    number_spins_ = 2
+    shape = (number_spins_, number_atoms, number_orbitals, number_kpoints, number_bands)
+    spin_band.projections = np.random.uniform(low=0.2, size=shape)
+    spin_band.projectors = raw.Projectors(
+        number_ion_types=[1],
+        ion_types=np.array(["Si"], dtype="S"),
+        orbital_types=np.array(["s"], dtype="S"),
+        number_spins=number_spins_,
+    )
+    return spin_band
+
+
+def test_spin_projections_read(spin_projections, Assert):
+    raw_band = spin_projections
     band = Band(raw_band).read("s")
-    Assert.allclose(band["up"], raw_band.eigenvalues[0])
-    Assert.allclose(band["down"], raw_band.eigenvalues[1])
     Assert.allclose(band["projections"]["s_up"], raw_band.projections[0, 0])
     Assert.allclose(band["projections"]["s_down"], raw_band.projections[1, 0])
 
 
-def test_spin_band_structure_plot(spin_band_structure, Assert):
+def test_spin_projections_plot(spin_projections, Assert):
+    raw_band = spin_projections
     width = 0.05
-    raw_band = spin_band_structure
     fig = Band(raw_band).plot("Si", width)
     assert len(fig.data) == 2
     spins = ["up", "down"]
