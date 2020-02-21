@@ -1,7 +1,51 @@
-from py4vasp.data import Band
+from py4vasp.data import Band, Kpoints
 import py4vasp.raw as raw
 import pytest
 import numpy as np
+
+
+@pytest.fixture
+def raw_band():
+    number_kpoints = 60
+    return raw.Band(
+        fermi_energy=0.5,
+        eigenvalues=np.array([np.linspace([0], [1], number_kpoints)]),
+        kpoints=raw.Kpoints(
+            mode="explicit",
+            number=number_kpoints,
+            coordinates=np.linspace(np.zeros(3), np.ones(3), number_kpoints),
+            weights=None,
+            cell=raw.Cell(scale=1.0, lattice_vectors=np.eye(3)),
+        ),
+    )
+
+
+def test_default_read(raw_band, Assert):
+    band = Band(raw_band).read()
+    assert band["fermi_energy"] == raw_band.fermi_energy
+    Assert.allclose(band["bands"], raw_band.eigenvalues[0] - raw_band.fermi_energy)
+    kpoints = Kpoints(raw_band.kpoints)
+    Assert.allclose(band["kpoint_distances"], kpoints.distances())
+    assert band["kpoint_labels"] == kpoints.labels()
+    assert len(band["projections"]) == 0
+
+
+def test_default_plot(raw_band, Assert):
+    fig = Band(raw_band).plot()
+    assert fig.layout.yaxis.title.text == "Energy (eV)"
+    assert len(fig.data) == 1
+    assert fig.data[0].fill is None
+    assert fig.data[0].mode is None
+    ref_dists = Kpoints(raw_band.kpoints).distances()
+    ref_bands = raw_band.eigenvalues.flatten() - raw_band.fermi_energy
+    mask = np.isfinite(fig.data[0].x)  # Band may insert NaN to split plot
+    Assert.allclose(fig.data[0].x[mask], ref_dists)
+    Assert.allclose(fig.data[0].y[mask], ref_bands)
+
+
+def test_default_from_file(raw_band, mock_file, check_read):
+    with mock_file("band", raw_band) as mocks:
+        check_read(Band, mocks, raw_band)
 
 
 @pytest.fixture
