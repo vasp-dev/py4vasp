@@ -3,10 +3,11 @@ import py4vasp.raw as raw
 import pytest
 import numpy as np
 
+number_kpoints = 60
+
 
 @pytest.fixture
 def raw_band():
-    number_kpoints = 60
     return raw.Band(
         fermi_energy=0.5,
         eigenvalues=np.array([np.linspace([0], [1], number_kpoints)]),
@@ -49,61 +50,41 @@ def test_default_from_file(raw_band, mock_file, check_read):
 
 
 @pytest.fixture
-def two_parabolic_bands():
-    cell = raw.Cell(
-        scale=2.0, lattice_vectors=np.array([[3, 0, 0], [-1, 2, 0], [0, 0, 4]])
-    )
-    cartesian_kpoints = np.linspace(np.zeros(3), np.ones(3))
-    direct_kpoints = cartesian_kpoints @ cell.lattice_vectors.T * cell.scale
-    ref = {"kdists": np.linalg.norm(cartesian_kpoints, axis=1)}
-    ref["valence_band"] = -ref["kdists"] ** 2
-    ref["conduction_band"] = 1.0 + ref["kdists"] ** 2
-    raw_band = raw.Band(
-        fermi_energy=0.5,
-        eigenvalues=[np.array([ref["valence_band"], ref["conduction_band"]]).T],
-        kpoints=raw.Kpoints(
-            mode="explicit",
-            number=len(cartesian_kpoints),
-            coordinates=direct_kpoints,
-            weights=None,
-            cell=cell,
-        ),
-    )
-    return raw_band, ref
+def multiple_bands(raw_band):
+    number_bands = 3
+    shape = (1, number_kpoints, number_bands)
+    raw_band.eigenvalues = np.arange(np.prod(shape)).reshape(shape)
+    return raw_band
 
 
-def test_parabolic_band_read(two_parabolic_bands, Assert):
-    raw_band, ref = two_parabolic_bands
-    band = Band(raw_band).read()
-    assert band["bands"].shape == (len(ref["valence_band"]), 2)
-    assert band["fermi_energy"] == raw_band.fermi_energy
-    Assert.allclose(band["kpoint_distances"], ref["kdists"])
-    assert band["kpoint_labels"] is None
-    Assert.allclose(band["bands"][:, 0], ref["valence_band"] - raw_band.fermi_energy)
-    Assert.allclose(band["bands"][:, 1], ref["conduction_band"] - raw_band.fermi_energy)
+def test_multiple_bands_read(multiple_bands, Assert):
+    band = Band(multiple_bands).read()
+    ref_bands = multiple_bands.eigenvalues[0] - multiple_bands.fermi_energy
+    Assert.allclose(band["bands"], ref_bands)
 
 
-def test_parabolic_band_plot(two_parabolic_bands, Assert):
-    raw_band, ref = two_parabolic_bands
-    fig = Band(raw_band).plot()
-    assert fig.layout.yaxis.title.text == "Energy (eV)"
-    assert len(fig.data) == 1
-    assert fig.data[0].fill is None
-    assert fig.data[0].mode is None
+def test_multiple_bands_plot(multiple_bands, Assert):
+    fig = Band(multiple_bands).plot()
+    assert len(fig.data) == 1  # all bands in one plot
     assert len(fig.data[0].x) == len(fig.data[0].y)
     num_NaN_x = np.count_nonzero(np.isnan(fig.data[0].x))
     num_NaN_y = np.count_nonzero(np.isnan(fig.data[0].y))
     assert num_NaN_x == num_NaN_y > 0
-    for val, vb, cb in zip(ref["kdists"], ref["valence_band"], ref["conduction_band"]):
-        bands = fig.data[0].y[np.where(np.isclose(fig.data[0].x, val))]
-        ref_bands = np.array([vb, cb]) - raw_band.fermi_energy
-        Assert.allclose(bands, ref_bands)
+    ref_bands = multiple_bands.eigenvalues.flatten("F") - multiple_bands.fermi_energy
+    mask = np.isfinite(fig.data[0].x)
+    Assert.allclose(fig.data[0].y[mask], ref_bands)
 
 
-def test_parabolic_band_from_file(two_parabolic_bands, mock_file, check_read):
-    raw_band, _ = two_parabolic_bands
-    with mock_file("band", raw_band) as mocks:
-        check_read(Band, mocks, raw_band)
+def test_nontrivial_cell(raw_band, Assert):
+    raw_band.kpoints.cell = raw.Cell(
+        scale=2.0, lattice_vectors=np.array([[3, 0, 0], [-1, 2, 0], [0, 0, 4]])
+    )
+    cartesian_kpoints = np.linspace(np.zeros(3), np.ones(3))
+    cell = raw_band.kpoints.cell.lattice_vectors * raw_band.kpoints.cell.scale
+    raw_band.kpoints.coordinates = cartesian_kpoints @ cell.T
+    band = Band(raw_band).read()
+    ref_dists = np.linalg.norm(cartesian_kpoints, axis=1)
+    Assert.allclose(band["kpoint_distances"], ref_dists)
 
 
 @pytest.fixture
