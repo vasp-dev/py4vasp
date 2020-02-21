@@ -88,52 +88,31 @@ def test_nontrivial_cell(raw_band, Assert):
 
 
 @pytest.fixture
-def kpoint_path():
-    N = 50
-    num_kpoints = 2 * N
+def kpoint_path(raw_band):
     kpoints = np.array([[0.5, 0.5, 0.5], [1, 0, 0], [0, 1, 0], [0, 0, 0]])
-    first_path = np.linspace(kpoints[0], kpoints[1], N)
-    second_path = np.linspace(kpoints[2], kpoints[3], N)
-    raw_band = raw.Band(
-        fermi_energy=0.0,
-        eigenvalues=np.zeros((1, num_kpoints, 1)),
-        kpoints=raw.Kpoints(
-            mode="line",
-            number=N,
-            coordinates=np.concatenate((first_path, second_path)),
-            weights=None,
-            cell=raw.Cell(scale=1, lattice_vectors=np.eye(3)),
-            labels=np.array(["X", "Y", "G"], dtype="S"),
-            label_indices=[2, 3, 4],
-        ),
-    )
-    first_dists = np.linalg.norm(first_path - first_path[0], axis=1)
-    second_dists = np.linalg.norm(second_path - second_path[0], axis=1)
-    second_dists += first_dists[-1]
-    ref = {
-        "line_length": N,
-        "kdists": np.concatenate((first_dists, second_dists)),
-        "klabels": ([""] * (N - 1) + ["X", "Y"] + [""] * (N - 2) + ["G"]),
-        "ticklabels": (" ", "X|Y", "G"),
-    }
-    return raw_band, ref
+    first_path = np.linspace(kpoints[0], kpoints[1], number_kpoints)
+    second_path = np.linspace(kpoints[2], kpoints[3], number_kpoints)
+    raw_band.kpoints.mode = "line"
+    raw_band.kpoints.coordinates = np.concatenate((first_path, second_path))
+    raw_band.kpoints.labels = np.array(["X", "Y", "G"], dtype="S")
+    raw_band.kpoints.label_indices = label_indices = [2, 3, 4]
+    return raw_band
 
 
 def test_kpoint_path_read(kpoint_path, Assert):
-    raw_band, ref = kpoint_path
-    band = Band(raw_band).read()
-    Assert.allclose(band["kpoint_distances"], ref["kdists"])
-    assert band["kpoint_labels"] == ref["klabels"]
+    band = Band(kpoint_path).read()
+    kpoints = Kpoints(kpoint_path.kpoints)
+    Assert.allclose(band["kpoint_distances"], kpoints.distances())
+    assert band["kpoint_labels"] == kpoints.labels()
 
 
 def test_kpoint_path_plot(kpoint_path, Assert):
-    raw_band, ref = kpoint_path
-    fig = Band(raw_band).plot()
-    xticks = (ref["kdists"][0], ref["kdists"][ref["line_length"]], ref["kdists"][-1])
-    assert len(fig.data[0].x) == len(fig.data[0].y)
+    fig = Band(kpoint_path).plot()
+    dists = Kpoints(kpoint_path.kpoints).distances()
+    xticks = (dists[0], dists[number_kpoints], dists[-1])
     assert fig.layout.xaxis.tickmode == "array"
     Assert.allclose(fig.layout.xaxis.tickvals, np.array(xticks))
-    assert fig.layout.xaxis.ticktext == ref["ticklabels"]
+    assert fig.layout.xaxis.ticktext == (" ", "X|Y", "G")
 
 
 @pytest.fixture
