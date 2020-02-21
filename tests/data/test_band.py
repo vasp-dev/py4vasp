@@ -175,14 +175,7 @@ def test_spin_band_plot(spin_band, Assert):
 def spin_projections(spin_band):
     number_spins_ = 2
     shape = (number_spins_, number_atoms, number_orbitals, number_kpoints, number_bands)
-    spin_band.projections = np.random.uniform(low=0.2, size=shape)
-    spin_band.projectors = raw.Projectors(
-        number_ion_types=[1],
-        ion_types=np.array(["Si"], dtype="S"),
-        orbital_types=np.array(["s"], dtype="S"),
-        number_spins=number_spins_,
-    )
-    return spin_band
+    return set_projections(spin_band, shape)
 
 
 def test_spin_projections_read(spin_projections, Assert):
@@ -212,40 +205,20 @@ def test_spin_projections_plot(spin_projections, Assert):
 
 
 @pytest.fixture
-def projected_band_structure():
-    num_spins, num_atoms, num_orbitals, num_kpoints, num_bands = 1, 1, 1, 60, 2
-    shape_proj = (num_spins, num_atoms, num_orbitals, num_kpoints, num_bands)
-    shape_eig = (num_spins, num_kpoints, num_bands)
-    raw_band = raw.Band(
-        eigenvalues=np.arange(np.prod(shape_eig)).reshape(shape_eig),
-        projections=np.random.uniform(low=0.2, size=shape_proj),
-        projectors=raw.Projectors(
-            number_ion_types=[1],
-            ion_types=np.array(["Si"], dtype="S"),
-            orbital_types=np.array(["s"], dtype="S"),
-            number_spins=num_spins,
-        ),
-        fermi_energy=0.0,
-        kpoints=raw.Kpoints(
-            mode="explicit",
-            coordinates=np.linspace(np.zeros(3), np.ones(3), num_kpoints),
-            weights=None,
-            number=num_kpoints,
-            cell=raw.Cell(scale=1, lattice_vectors=np.eye(3)),
-        ),
-    )
-    return raw_band
+def raw_projections(raw_band):
+    shape = (number_spins, number_atoms, number_orbitals, number_kpoints, number_bands)
+    return set_projections(raw_band, shape)
 
 
-def test_projected_band_structure_read(projected_band_structure, Assert):
-    raw_band = projected_band_structure
+def test_raw_projections_read(raw_projections, Assert):
+    raw_band = raw_projections
     band = Band(raw_band).read("Si(s)")
     Assert.allclose(band["projections"]["Si_s"], raw_band.projections[0, 0, 0])
 
 
-def test_projected_band_structure_plot(projected_band_structure, Assert):
+def test_raw_projections_plot(raw_projections, Assert):
+    raw_band = raw_projections
     default_width = 0.5
-    raw_band = projected_band_structure
     fig = Band(raw_band).plot("s, 1")
     assert len(fig.data) == 2
     assert fig.data[0].name == "s"
@@ -266,3 +239,14 @@ def test_projected_band_structure_plot(projected_band_structure, Assert):
             pos_lower = data.x[np.where(np.isclose(data.y, lower))]
             assert len(pos_upper) == len(pos_lower) == 1
             Assert.allclose(pos_upper, pos_lower)
+
+
+def set_projections(raw_band, shape):
+    raw_band.projections = np.random.uniform(low=0.2, size=shape)
+    raw_band.projectors = raw.Projectors(
+        number_ion_types=[1],
+        ion_types=np.array(["Si"], dtype="S"),
+        orbital_types=np.array(["s"], dtype="S"),
+        number_spins=shape[0],
+    )
+    return raw_band
