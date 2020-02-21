@@ -3,13 +3,15 @@ import py4vasp.raw as raw
 import pytest
 import numpy as np
 
+number_spins = 1
 number_kpoints = 60
+number_bands = 1
 
 
 @pytest.fixture
 def raw_band():
     return raw.Band(
-        fermi_energy=0.5,
+        fermi_energy=0.0,
         eigenvalues=np.array([np.linspace([0], [1], number_kpoints)]),
         kpoints=raw.Kpoints(
             mode="explicit",
@@ -24,7 +26,7 @@ def raw_band():
 def test_default_read(raw_band, Assert):
     band = Band(raw_band).read()
     assert band["fermi_energy"] == raw_band.fermi_energy
-    Assert.allclose(band["bands"], raw_band.eigenvalues[0] - raw_band.fermi_energy)
+    Assert.allclose(band["bands"], raw_band.eigenvalues[0])
     kpoints = Kpoints(raw_band.kpoints)
     Assert.allclose(band["kpoint_distances"], kpoints.distances())
     assert band["kpoint_labels"] == kpoints.labels()
@@ -38,7 +40,7 @@ def test_default_plot(raw_band, Assert):
     assert fig.data[0].fill is None
     assert fig.data[0].mode is None
     ref_dists = Kpoints(raw_band.kpoints).distances()
-    ref_bands = raw_band.eigenvalues.flatten() - raw_band.fermi_energy
+    ref_bands = raw_band.eigenvalues.flatten()
     mask = np.isfinite(fig.data[0].x)  # Band may insert NaN to split plot
     Assert.allclose(fig.data[0].x[mask], ref_dists)
     Assert.allclose(fig.data[0].y[mask], ref_bands)
@@ -51,15 +53,15 @@ def test_default_from_file(raw_band, mock_file, check_read):
 
 @pytest.fixture
 def multiple_bands(raw_band):
-    number_bands = 3
-    shape = (1, number_kpoints, number_bands)
+    number_bands_ = 3
+    shape = (number_spins, number_kpoints, number_bands_)
     raw_band.eigenvalues = np.arange(np.prod(shape)).reshape(shape)
     return raw_band
 
 
 def test_multiple_bands_read(multiple_bands, Assert):
     band = Band(multiple_bands).read()
-    ref_bands = multiple_bands.eigenvalues[0] - multiple_bands.fermi_energy
+    ref_bands = multiple_bands.eigenvalues[0]
     Assert.allclose(band["bands"], ref_bands)
 
 
@@ -70,7 +72,7 @@ def test_multiple_bands_plot(multiple_bands, Assert):
     num_NaN_x = np.count_nonzero(np.isnan(fig.data[0].x))
     num_NaN_y = np.count_nonzero(np.isnan(fig.data[0].y))
     assert num_NaN_x == num_NaN_y > 0
-    ref_bands = multiple_bands.eigenvalues.flatten("F") - multiple_bands.fermi_energy
+    ref_bands = multiple_bands.eigenvalues.flatten("F")
     mask = np.isfinite(fig.data[0].x)
     Assert.allclose(fig.data[0].y[mask], ref_bands)
 
@@ -85,6 +87,27 @@ def test_nontrivial_cell(raw_band, Assert):
     band = Band(raw_band).read()
     ref_dists = np.linalg.norm(cartesian_kpoints, axis=1)
     Assert.allclose(band["kpoint_distances"], ref_dists)
+
+
+@pytest.fixture
+def fermi_energy(raw_band):
+    raw_band.fermi_energy = 0.5
+    return raw_band
+
+
+def test_fermi_energy_read(fermi_energy, Assert):
+    raw_band = fermi_energy
+    band = Band(raw_band).read()
+    assert band["fermi_energy"] == raw_band.fermi_energy
+    Assert.allclose(band["bands"], raw_band.eigenvalues[0] - raw_band.fermi_energy)
+
+
+def test_fermi_energy_plot(fermi_energy, Assert):
+    raw_band = fermi_energy
+    fig = Band(raw_band).plot()
+    ref_bands = raw_band.eigenvalues.flatten() - raw_band.fermi_energy
+    mask = np.isfinite(fig.data[0].x)
+    Assert.allclose(fig.data[0].y[mask], ref_bands)
 
 
 @pytest.fixture
