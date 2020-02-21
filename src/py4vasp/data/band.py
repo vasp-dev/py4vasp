@@ -110,22 +110,35 @@ class Band:
         return functools.reduce(sum_weight, itertools.product(*index), zero_weight)
 
     def _ticks_and_labels(self):
+        def filter_unique(current, item):
+            tick, label = item
+            label = label or " " # use space because plotly replace empty labels
+            if current is None:
+                return ([tick], [label])
+            ticks, labels = current
+            if tick == ticks[-1]:
+                labels[-1] = labels[-1] + "|" + label if labels[-1].strip() else label
+            else:
+                ticks.append(tick)
+                labels.append(label)
+            return ticks, labels
+
+        ticks_and_labels = self._degenerate_ticks_and_labels()
+        return functools.reduce(filter_unique, ticks_and_labels, None)
+
+    def _degenerate_ticks_and_labels(self):
+        labels = self._kpoint_labels()
+        mask = np.logical_or(self._edge_of_line(), labels != "")
+        return zip(self._kpoints.distances()[mask], labels[mask])
+
+    def _kpoint_labels(self):
         labels = self._kpoints.labels()
         if labels is None:
-            return None, None
-        labels = np.array(labels)
+            labels = [""] * len(self._raw.kpoints.coordinates)
+        return np.array(labels)
+
+    def _edge_of_line(self):
         indices = np.arange(len(self._raw.kpoints.coordinates))
-        line_length = self._kpoints.line_length()
-        edge_of_line = (indices + 1) % line_length == 0
+        edge_of_line = (indices + 1) % self._kpoints.line_length() == 0
         edge_of_line[0] = True
-        mask = np.logical_or(edge_of_line, labels != "")
-        masked_dists = self._kpoints.distances()[mask]
-        masked_labels = labels[mask]
-        ticks, indices = np.unique(masked_dists, return_inverse=True)
-        labels = [""] * len(ticks)
-        for i, label in zip(indices, masked_labels):
-            if labels[i].strip():
-                labels[i] = labels[i] + "|" + label
-            else:
-                labels[i] = label or " "
-        return ticks, labels
+        return edge_of_line

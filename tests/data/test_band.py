@@ -113,31 +113,53 @@ def test_fermi_energy_plot(fermi_energy, Assert):
 
 
 @pytest.fixture
-def kpoint_path(raw_band):
-    kpoints = np.array([[0.5, 0.5, 0.5], [1, 0, 0], [0, 1, 0], [0, 0, 0]])
-    first_path = np.linspace(kpoints[0], kpoints[1], number_kpoints)
-    second_path = np.linspace(kpoints[2], kpoints[3], number_kpoints)
+def line_without_labels(raw_band):
+    R = [0.5, 0.5, 0.5]
+    X = [1, 0, 0]
+    Y = [0, 1, 0]
+    G = [0, 0, 0]
+    M = [0.5, 0.5, 0]
+    path1 = np.linspace(R, X, number_kpoints)
+    path2 = np.linspace(Y, G, number_kpoints)
+    path3 = np.linspace(G, X, number_kpoints)
+    path4 = np.linspace(X, M, number_kpoints)
     raw_band.kpoints.mode = "line"
-    raw_band.kpoints.coordinates = np.concatenate((first_path, second_path))
-    raw_band.kpoints.labels = np.array(["X", "Y", "G"], dtype="S")
-    raw_band.kpoints.label_indices = label_indices = [2, 3, 4]
+    raw_band.kpoints.coordinates = np.concatenate((path1, path2, path3, path4))
     return raw_band
 
 
-def test_kpoint_path_read(kpoint_path, Assert):
-    band = Band(kpoint_path).read()
-    kpoints = Kpoints(kpoint_path.kpoints)
+def test_line_without_labels_plot(line_without_labels, Assert):
+    fig = Band(line_without_labels).plot()
+    check_ticks(fig, line_without_labels, Assert)
+    assert fig.layout.xaxis.ticktext == (" ", " ", " ", " ", " ")
+
+
+@pytest.fixture
+def line_with_labels(line_without_labels):
+    labels = ["X", "Y", "G", "X"]
+    line_without_labels.kpoints.labels = np.array(labels, dtype="S")
+    line_without_labels.kpoints.label_indices = label_indices = [2, 3, 4, 6]
+    return line_without_labels
+
+
+def test_line_with_labels_read(line_with_labels, Assert):
+    band = Band(line_with_labels).read()
+    kpoints = Kpoints(line_with_labels.kpoints)
     Assert.allclose(band["kpoint_distances"], kpoints.distances())
     assert band["kpoint_labels"] == kpoints.labels()
 
 
-def test_kpoint_path_plot(kpoint_path, Assert):
-    fig = Band(kpoint_path).plot()
-    dists = Kpoints(kpoint_path.kpoints).distances()
-    xticks = (dists[0], dists[number_kpoints], dists[-1])
+def test_line_with_labels_plot(line_with_labels, Assert):
+    fig = Band(line_with_labels).plot()
+    check_ticks(fig, line_with_labels, Assert)
+    assert fig.layout.xaxis.ticktext == (" ", "X|Y", "G", "X", " ")
+
+
+def check_ticks(fig, raw_band, Assert):
+    dists = Kpoints(raw_band.kpoints).distances()
+    xticks = (*dists[::number_kpoints], dists[-1])
     assert fig.layout.xaxis.tickmode == "array"
     Assert.allclose(fig.layout.xaxis.tickvals, np.array(xticks))
-    assert fig.layout.xaxis.ticktext == (" ", "X|Y", "G")
 
 
 @pytest.fixture
