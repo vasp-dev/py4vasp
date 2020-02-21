@@ -122,8 +122,12 @@ class Band:
 
         ticks_and_labels = self._degenerate_ticks_and_labels()
         ticks_and_labels = functools.reduce(filter_unique, ticks_and_labels)
+        return self._split_and_replace_empty_labels(ticks_and_labels)
+
+    def _split_and_replace_empty_labels(self, ticks_and_labels):
         ticks = [tick for tick in ticks_and_labels[::2]]
         labels = [label or " " for label in ticks_and_labels[1::2]]
+            # plotly replaces empty labels with tick position, so we replace them
         return ticks, labels
 
     def _degenerate_ticks_and_labels(self):
