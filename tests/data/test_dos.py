@@ -149,6 +149,16 @@ def test_nonmagnetic_l_Dos_plot(nonmagnetic_projections, Assert):
     Assert.allclose(fig.data[3].y, ref["Si_d"])
 
 
+def test_more_projections_style(nonmagnetic_projections, Assert):
+    """Vasp 6.1 may store more orbital types then projections available. This
+    test checks whether that leads to any issues"""
+    raw_dos, ref = nonmagnetic_projections
+    shape = raw_dos.projections.shape
+    shape = (shape[0], shape[1], shape[2] - 1, shape[3])
+    raw_dos.projections = np.random.uniform(low=0.2, size=shape)
+    dos = Dos(raw_dos).read("Si")
+
+
 @pytest.fixture
 def magnetic_projections(magnetic_Dos):
     """ Setup a lm resolved Dos containing all relevant quantities."""

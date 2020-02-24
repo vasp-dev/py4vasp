@@ -79,9 +79,12 @@ class Dos:
         for select in self._projectors.parse_selection(selection):
             atom, orbital, spin = self._projectors.select(*select)
             label = self._merge_labels([atom.label, orbital.label, spin.label])
-            index = (spin.indices, atom.indices, orbital.indices)
+            index = (spin.indices, atom.indices, self._filter_orbitals(orbital.indices))
             res[label] = self._read_element(index)
         return res
+
+    def _filter_orbitals(self, orbitals):
+        return filter(lambda x: x < self._raw.projections.shape[2], orbitals)
 
     def _merge_labels(self, labels):
         return "_".join(filter(None, labels))
