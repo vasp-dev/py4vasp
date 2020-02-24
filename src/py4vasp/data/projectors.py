@@ -179,3 +179,14 @@ class Projectors:
         else:
             for key in ("up", "down"):
                 yield index._replace(spin=key)
+
+
+class _NoProjectorsAvailable:
+    pass
+
+
+def _projectors_or_dummy(projectors):
+    if projectors is None:
+        return _NoProjectorsAvailable()
+    else:
+        return Projectors(projectors)

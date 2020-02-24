@@ -2,7 +2,7 @@ import functools
 import itertools
 import numpy as np
 import plotly.graph_objects as go
-from .projectors import Projectors
+from .projectors import _projectors_or_dummy
 from .kpoints import Kpoints
 from py4vasp.data import _util
 
@@ -12,8 +12,7 @@ class Band:
         self._raw = raw_band
         self._kpoints = Kpoints(raw_band.kpoints)
         self._spin_polarized = len(raw_band.eigenvalues) == 2
-        if raw_band.projectors is not None:
-            self._projectors = Projectors(raw_band.projectors)
+        self._projectors = _projectors_or_dummy(raw_band.projectors)
 
     @classmethod
     def from_file(cls, file=None):

@@ -2,7 +2,7 @@ import functools
 import itertools
 import numpy as np
 import pandas as pd
-from .projectors import Projectors
+from .projectors import _projectors_or_dummy
 from py4vasp.data import _util
 
 
@@ -14,8 +14,7 @@ class Dos:
         self._dos = raw_dos.dos
         self._spin_polarized = self._dos.shape[0] == 2
         self._has_partial_dos = raw_dos.projectors is not None
-        if self._has_partial_dos:
-            self._projectors = Projectors(raw_dos.projectors)
+        self._projectors = _projectors_or_dummy(raw_dos.projectors)
         self._projections = raw_dos.projections
 
     @classmethod
