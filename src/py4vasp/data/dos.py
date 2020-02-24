@@ -81,13 +81,8 @@ class Dos:
                 [atom.label, orbital.label, spin.label]
             )
             index = (spin.indices, atom.indices, self._filter_orbitals(orbital.indices))
-            res[label] = self._read_element(index)
+            res[label] = self._projectors._read_element(index, self._raw.projections)
         return res
 
     def _filter_orbitals(self, orbitals):
         return filter(lambda x: x < self._raw.projections.shape[2], orbitals)
-
-    def _read_element(self, index):
-        sum_dos = lambda dos, i: dos + self._projections[i]
-        zero_dos = np.zeros(len(self._energies))
-        return functools.reduce(sum_dos, itertools.product(*index), zero_dos)

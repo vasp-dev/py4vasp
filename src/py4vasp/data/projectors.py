@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import NamedTuple, Iterable, Union
 from dataclasses import dataclass
+import functools
+import itertools
 import re
 import numpy as np
 from py4vasp.data import _util
@@ -182,6 +184,11 @@ class Projectors:
 
     def _merge_labels(self, labels):
         return "_".join(filter(None, labels))
+
+    def _read_element(self, index, projections):
+        sum_projections = lambda proj, i: proj + projections[i]
+        zeros = np.zeros(projections.shape[3:])
+        return functools.reduce(sum_projections, itertools.product(*index), zeros)
 
 
 class _NoProjectorsAvailable:

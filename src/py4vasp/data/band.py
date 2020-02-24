@@ -99,16 +99,11 @@ class Band:
                 [atom.label, orbital.label, spin.label]
             )
             index = (spin.indices, atom.indices, self._filter_orbitals(orbital.indices))
-            res[label] = self._read_element(index)
+            res[label] = self._projectors._read_element(index, self._raw.projections)
         return res
 
     def _filter_orbitals(self, orbitals):
         return filter(lambda x: x < self._raw.projections.shape[2], orbitals)
-
-    def _read_element(self, index):
-        sum_weight = lambda weight, i: weight + self._raw.projections[i]
-        zero_weight = np.zeros(self._raw.eigenvalues.shape[1:])
-        return functools.reduce(sum_weight, itertools.product(*index), zero_weight)
 
     def _ticks_and_labels(self):
         def filter_unique(current, item):
