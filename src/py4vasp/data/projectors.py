@@ -180,6 +180,9 @@ class Projectors:
             for key in ("up", "down"):
                 yield index._replace(spin=key)
 
+    def _merge_labels(self, labels):
+        return "_".join(filter(None, labels))
+
 
 class _NoProjectorsAvailable:
     pass
