@@ -6,6 +6,7 @@ import itertools
 import re
 import numpy as np
 from py4vasp.data import _util
+from py4vasp.exceptions import UsageException
 
 
 _default = "*"
@@ -212,7 +213,7 @@ class Projectors:
 class _NoProjectorsAvailable:
     def read(self, selection, projections):
         if selection is not None:
-            raise ValueError(
+            raise UsageException(
                 "Projectors are not available, rerun Vasp setting LORBIT = 10 or 11."
             )
         return {}

@@ -1,4 +1,5 @@
 from py4vasp.data import Dos
+from py4vasp.exceptions import UsageException
 import py4vasp.raw as raw
 import pytest
 import numpy as np
@@ -26,7 +27,7 @@ def test_nonmagnetic_Dos_read(nonmagnetic_Dos, Assert):
 
 def test_nonmagnetic_Dos_read_error(nonmagnetic_Dos):
     raw_dos = nonmagnetic_Dos
-    with pytest.raises(ValueError):
+    with pytest.raises(UsageException):
         Dos(raw_dos).read("s")
 
 
