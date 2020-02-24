@@ -182,6 +182,11 @@ class Projectors:
             for key in ("up", "down"):
                 yield index._replace(spin=key)
 
+    def read(self, selection, projections):
+        if selection is None:
+            return {}
+        return self._read_elements(selection, projections)
+
     def _read_elements(self, selection, projections):
         res = {}
         for select in self.parse_selection(selection):
@@ -205,7 +210,12 @@ class Projectors:
 
 
 class _NoProjectorsAvailable:
-    pass
+    def read(self, selection, projections):
+        if selection is not None:
+            raise ValueError(
+                "Projectors are not available, rerun Vasp setting LORBIT = 10 or 11."
+            )
+        return {}
 
 
 def _projectors_or_dummy(projectors):

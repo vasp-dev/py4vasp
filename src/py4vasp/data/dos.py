@@ -49,7 +49,7 @@ class Dos:
         return {
             **self._read_energies(),
             **self._read_total_dos(),
-            **self._read_partial_dos(selection),
+            **self._projectors.read(selection, self._raw.projections),
         }
 
     def _read_energies(self):
@@ -60,15 +60,3 @@ class Dos:
             return {"up": self._dos[0, :], "down": self._dos[1, :]}
         else:
             return {"total": self._dos[0, :]}
-
-    def _read_partial_dos(self, selection):
-        if selection is None:
-            return {}
-        self._raise_error_if_partial_Dos_not_available()
-        return self._projectors._read_elements(selection, self._raw.projections)
-
-    def _raise_error_if_partial_Dos_not_available(self):
-        if not self._has_partial_dos:
-            raise ValueError(
-                "Filtering requires partial DOS which was not found in HDF5 file."
-            )

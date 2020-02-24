@@ -24,7 +24,7 @@ class Band:
             "kpoint_labels": self._kpoints.labels(),
             "fermi_energy": self._raw.fermi_energy,
             **self._shift_bands_by_fermi_energy(),
-            "projections": self._read_projections(selection),
+            "projections": self._projectors.read(selection, self._raw.projections),
         }
         return res
 
@@ -48,7 +48,7 @@ class Band:
 
     def _band_structure(self, selection, width):
         bands = self._shift_bands_by_fermi_energy()
-        projections = self._read_projections(selection)
+        projections = self._projectors.read(selection, self._raw.projections)
         if len(projections) == 0:
             return self._regular_band_structure(bands)
         else:
@@ -85,11 +85,6 @@ class Band:
         kdists = np.tile([*kdists, np.NaN], num_bands)
         lines = np.append(lines, [np.repeat(np.NaN, num_bands)], axis=0)
         return go.Scatter(x=kdists, y=lines.flatten(order="F"), name=name)
-
-    def _read_projections(self, selection):
-        if selection is None:
-            return {}
-        return self._projectors._read_elements(selection, self._raw.projections)
 
     def _ticks_and_labels(self):
         def filter_unique(current, item):
