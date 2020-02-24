@@ -263,6 +263,14 @@ def test_raw_projections_plot(raw_projections, Assert):
             Assert.allclose(pos_upper, pos_lower)
 
 
+def test_more_projections_style(raw_projections, Assert):
+    """Vasp 6.1 may define more orbital types then are available as projections.
+    Here we check that the correct orbitals are read."""
+    raw_projections.projectors.orbital_types = np.array(["s", "p"], dtype="S")
+    band = Band(raw_projections).read("Si")
+    Assert.allclose(band["projections"]["Si"], raw_projections.projections[0, 0, 0])
+
+
 def set_projections(raw_band, shape):
     raw_band.projections = np.random.uniform(low=0.2, size=shape)
     raw_band.projectors = raw.Projectors(

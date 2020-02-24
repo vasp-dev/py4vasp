@@ -1,9 +1,12 @@
 from __future__ import annotations
 from typing import NamedTuple, Iterable, Union
 from dataclasses import dataclass
+import functools
+import itertools
 import re
 import numpy as np
 from py4vasp.data import _util
+from py4vasp.exceptions import UsageException
 
 
 _default = "*"
@@ -179,3 +182,45 @@ class Projectors:
         else:
             for key in ("up", "down"):
                 yield index._replace(spin=key)
+
+    def read(self, selection, projections):
+        if selection is None:
+            return {}
+        return self._read_elements(selection, projections)
+
+    def _read_elements(self, selection, projections):
+        res = {}
+        for select in self.parse_selection(selection):
+            atom, orbital, spin = self.select(*select)
+            label = self._merge_labels([atom.label, orbital.label, spin.label])
+            orbitals = self._filter_orbitals(orbital.indices, projections.shape[2])
+            index = (spin.indices, atom.indices, orbitals)
+            res[label] = self._read_element(index, projections)
+        return res
+
+    def _merge_labels(self, labels):
+        return "_".join(filter(None, labels))
+
+    def _filter_orbitals(self, orbitals, number_orbitals):
+        return filter(lambda x: x < number_orbitals, orbitals)
+
+    def _read_element(self, index, projections):
+        sum_projections = lambda proj, i: proj + projections[i]
+        zeros = np.zeros(projections.shape[3:])
+        return functools.reduce(sum_projections, itertools.product(*index), zeros)
+
+
+class _NoProjectorsAvailable:
+    def read(self, selection, projections):
+        if selection is not None:
+            raise UsageException(
+                "Projectors are not available, rerun Vasp setting LORBIT = 10 or 11."
+            )
+        return {}
+
+
+def _projectors_or_dummy(projectors):
+    if projectors is None:
+        return _NoProjectorsAvailable()
+    else:
+        return Projectors(projectors)

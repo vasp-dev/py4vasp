@@ -2,7 +2,7 @@ import functools
 import itertools
 import numpy as np
 import plotly.graph_objects as go
-from .projectors import Projectors
+from .projectors import _projectors_or_dummy
 from .kpoints import Kpoints
 from py4vasp.data import _util
 
@@ -12,8 +12,7 @@ class Band:
         self._raw = raw_band
         self._kpoints = Kpoints(raw_band.kpoints)
         self._spin_polarized = len(raw_band.eigenvalues) == 2
-        if raw_band.projectors is not None:
-            self._projectors = Projectors(raw_band.projectors)
+        self._projectors = _projectors_or_dummy(raw_band.projectors)
 
     @classmethod
     def from_file(cls, file=None):
@@ -25,7 +24,7 @@ class Band:
             "kpoint_labels": self._kpoints.labels(),
             "fermi_energy": self._raw.fermi_energy,
             **self._shift_bands_by_fermi_energy(),
-            "projections": self._read_projections(selection),
+            "projections": self._projectors.read(selection, self._raw.projections),
         }
         return res
 
@@ -49,7 +48,7 @@ class Band:
 
     def _band_structure(self, selection, width):
         bands = self._shift_bands_by_fermi_energy()
-        projections = self._read_projections(selection)
+        projections = self._projectors.read(selection, self._raw.projections)
         if len(projections) == 0:
             return self._regular_band_structure(bands)
         else:
@@ -86,28 +85,6 @@ class Band:
         kdists = np.tile([*kdists, np.NaN], num_bands)
         lines = np.append(lines, [np.repeat(np.NaN, num_bands)], axis=0)
         return go.Scatter(x=kdists, y=lines.flatten(order="F"), name=name)
-
-    def _read_projections(self, selection):
-        if selection is None:
-            return {}
-        return self._read_elements(selection)
-
-    def _read_elements(self, selection):
-        res = {}
-        for select in self._projectors.parse_selection(selection):
-            atom, orbital, spin = self._projectors.select(*select)
-            label = self._merge_labels([atom.label, orbital.label, spin.label])
-            index = (spin.indices, atom.indices, orbital.indices)
-            res[label] = self._read_element(index)
-        return res
-
-    def _merge_labels(self, labels):
-        return "_".join(filter(None, labels))
-
-    def _read_element(self, index):
-        sum_weight = lambda weight, i: weight + self._raw.projections[i]
-        zero_weight = np.zeros(self._raw.eigenvalues.shape[1:])
-        return functools.reduce(sum_weight, itertools.product(*index), zero_weight)
 
     def _ticks_and_labels(self):
         def filter_unique(current, item):

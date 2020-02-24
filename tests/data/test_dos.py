@@ -1,4 +1,5 @@
 from py4vasp.data import Dos
+from py4vasp.exceptions import UsageException
 import py4vasp.raw as raw
 import pytest
 import numpy as np
@@ -26,7 +27,7 @@ def test_nonmagnetic_Dos_read(nonmagnetic_Dos, Assert):
 
 def test_nonmagnetic_Dos_read_error(nonmagnetic_Dos):
     raw_dos = nonmagnetic_Dos
-    with pytest.raises(ValueError):
+    with pytest.raises(UsageException):
         Dos(raw_dos).read("s")
 
 
@@ -147,6 +148,16 @@ def test_nonmagnetic_l_Dos_plot(nonmagnetic_projections, Assert):
     Assert.allclose(fig.data[1].y, ref["Si_p"] + ref["C1_p"] + ref["C2_p"])
     Assert.allclose(fig.data[2].y, ref["C2_s"] + ref["C2_p"])
     Assert.allclose(fig.data[3].y, ref["Si_d"])
+
+
+def test_more_projections_style(nonmagnetic_projections, Assert):
+    """Vasp 6.1 may store more orbital types then projections available. This
+    test checks whether that leads to any issues"""
+    raw_dos, ref = nonmagnetic_projections
+    shape = raw_dos.projections.shape
+    shape = (shape[0], shape[1], shape[2] - 1, shape[3])
+    raw_dos.projections = np.random.uniform(low=0.2, size=shape)
+    dos = Dos(raw_dos).read("Si")
 
 
 @pytest.fixture
