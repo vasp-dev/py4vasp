@@ -185,6 +185,9 @@ class Projectors:
     def _merge_labels(self, labels):
         return "_".join(filter(None, labels))
 
+    def _filter_orbitals(self, orbitals, number_orbitals):
+        return filter(lambda x: x < number_orbitals, orbitals)
+
     def _read_element(self, index, projections):
         sum_projections = lambda proj, i: proj + projections[i]
         zeros = np.zeros(projections.shape[3:])
