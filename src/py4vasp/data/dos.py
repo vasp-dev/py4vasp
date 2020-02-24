@@ -65,27 +65,10 @@ class Dos:
         if selection is None:
             return {}
         self._raise_error_if_partial_Dos_not_available()
-        return self._read_elements(selection)
+        return self._projectors._read_elements(selection, self._raw.projections)
 
     def _raise_error_if_partial_Dos_not_available(self):
         if not self._has_partial_dos:
             raise ValueError(
                 "Filtering requires partial DOS which was not found in HDF5 file."
             )
-
-    def _read_elements(self, selection):
-        res = {}
-        for select in self._projectors.parse_selection(selection):
-            atom, orbital, spin = self._projectors.select(*select)
-            label = self._projectors._merge_labels(
-                [atom.label, orbital.label, spin.label]
-            )
-            index = (
-                spin.indices,
-                atom.indices,
-                self._projectors._filter_orbitals(
-                    orbital.indices, self._raw.projections.shape[2]
-                ),
-            )
-            res[label] = self._projectors._read_element(index, self._raw.projections)
-        return res

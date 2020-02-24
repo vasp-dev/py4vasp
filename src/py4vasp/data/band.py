@@ -89,24 +89,7 @@ class Band:
     def _read_projections(self, selection):
         if selection is None:
             return {}
-        return self._read_elements(selection)
-
-    def _read_elements(self, selection):
-        res = {}
-        for select in self._projectors.parse_selection(selection):
-            atom, orbital, spin = self._projectors.select(*select)
-            label = self._projectors._merge_labels(
-                [atom.label, orbital.label, spin.label]
-            )
-            index = (
-                spin.indices,
-                atom.indices,
-                self._projectors._filter_orbitals(
-                    orbital.indices, self._raw.projections.shape[2]
-                ),
-            )
-            res[label] = self._projectors._read_element(index, self._raw.projections)
-        return res
+        return self._projectors._read_elements(selection, self._raw.projections)
 
     def _ticks_and_labels(self):
         def filter_unique(current, item):

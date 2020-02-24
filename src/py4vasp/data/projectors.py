@@ -182,6 +182,16 @@ class Projectors:
             for key in ("up", "down"):
                 yield index._replace(spin=key)
 
+    def _read_elements(self, selection, projections):
+        res = {}
+        for select in self.parse_selection(selection):
+            atom, orbital, spin = self.select(*select)
+            label = self._merge_labels([atom.label, orbital.label, spin.label])
+            orbitals = self._filter_orbitals(orbital.indices, projections.shape[2])
+            index = (spin.indices, atom.indices, orbitals)
+            res[label] = self._read_element(index, projections)
+        return res
+
     def _merge_labels(self, labels):
         return "_".join(filter(None, labels))
 
