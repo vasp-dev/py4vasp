@@ -10,6 +10,9 @@ class Kpoints:
         self._distances = None
 
     def read(self):
+        return self.to_dict()
+
+    def to_dict(self):
         return {
             "mode": self.mode(),
             "line_length": self.line_length(),

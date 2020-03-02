@@ -10,16 +10,22 @@ class Convergence:
     def from_file(cls, file=None):
         return _util.from_file(cls, file, "convergence")
 
-    def read(self, selection=None):
+    def read(self, *args):
+        return self.to_dict(*args)
+
+    def plot(self, *args):
+        return self.to_plotly(*args)
+
+    def to_dict(self, selection=None):
         if selection is None:
             selection = "TOTEN"
         for i, label in enumerate(self._raw.labels):
             label = str(label, "utf-8").strip()
             if selection in label:
-                return label, self._raw.energies[:, i]
+                return {label: self._raw.energies[:, i]}
 
-    def plot(self, selection=None):
-        label, data = self.read(selection)
+    def to_plotly(self, selection=None):
+        label, data = self.read(selection).popitem()
         label = "Temperature (K)" if "TEIN" in label else "Energy (eV)"
         data = go.Scatter(y=data)
         default = {

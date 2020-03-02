@@ -15,10 +15,12 @@ def reference_convergence():
 
 def test_read_convergence(reference_convergence, Assert):
     conv = Convergence(reference_convergence)
-    label, data = conv.read()
+    dict_ = conv.read()
+    assert len(dict_) == 1
+    label, data = dict_.popitem()
     assert label == reference_convergence.labels[0].decode().strip()
     Assert.allclose(data, reference_convergence.energies[:, 0])
-    label, data = conv.read("temperature")
+    label, data = conv.read("temperature").popitem()
     assert label == reference_convergence.labels[1].decode().strip()
     Assert.allclose(data, reference_convergence.energies[:, 1])
 

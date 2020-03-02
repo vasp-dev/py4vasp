@@ -21,7 +21,10 @@ class Dos:
     def from_file(cls, file=None):
         return _util.from_file(cls, file, "dos")
 
-    def plot(self, selection=None):
+    def plot(self, *args):
+        return self.to_plotly(*args)
+
+    def to_plotly(self, selection=None):
         df = self.to_frame(selection)
         if self._spin_polarized:
             for col in filter(lambda col: "down" in col, df):
@@ -34,8 +37,8 @@ class Dos:
         }
         return df.iplot(**default)
 
-    def read(self, selection=None):
-        return self.to_dict(selection)
+    def read(self, *args):
+        return self.to_dict(*args)
 
     def to_dict(self, selection=None):
         return {**self._read_data(selection), "fermi_energy": self._fermi_energy}

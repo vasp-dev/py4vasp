@@ -18,17 +18,22 @@ class Band:
     def from_file(cls, file=None):
         return _util.from_file(cls, file, "band")
 
-    def read(self, selection=None):
-        res = {
+    def read(self, *args):
+        return self.to_dict(*args)
+
+    def plot(self, *args):
+        return self.to_plotly(*args)
+
+    def to_dict(self, selection=None):
+        return {
             "kpoint_distances": self._kpoints.distances(),
             "kpoint_labels": self._kpoints.labels(),
             "fermi_energy": self._raw.fermi_energy,
             **self._shift_bands_by_fermi_energy(),
             "projections": self._projectors.read(selection, self._raw.projections),
         }
-        return res
 
-    def plot(self, selection=None, width=0.5):
+    def to_plotly(self, selection=None, width=0.5):
         ticks, labels = self._ticks_and_labels()
         data = self._band_structure(selection, width)
         default = {
