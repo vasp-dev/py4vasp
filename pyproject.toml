@@ -15,6 +15,24 @@ cufflinks = "^0.17.0"
 pytest = "^3.0"
 black = {version = "^18.3-alpha.0", allows-prereleases = true}
 pytest-cov = "^2.8.1"
+sphinx = "^3.0.4"
+
+[tool.poetry2conda]
+name = "py4vasp-env"
+
+[tool.poetry2conda.dependencies]
+python = {channel = "anaconda"}
+h5py = {channel = "anaconda"}
+numpy = {channel = "anaconda"}
+pandas = {channel = "anaconda"}
+cufflinks = {channel = "conda-forge", name = "cufflinks-py"}
+mdtraj = {channel = "conda-forge"}
+sphinx = {channel = "anaconda"}
+
 [build-system]
 requires = ["poetry>=1.0"]
 build-backend = "poetry.masonry.api"
+
+[tool.dephell.main]
+from = {format = "poetry", path = "pyproject.toml"}
+to = {format = "setuppy", path = "setup.py"}

@@ -229,18 +229,16 @@ def test_energies(tmpdir):
 def reference_energies():
     labels = np.array(["total", "kinetic", "temperature"], dtype="S")
     shape = (100, len(labels))
-    return raw.Convergence(
-        labels=labels, energies=np.arange(np.prod(shape)).reshape(shape)
-    )
+    return raw.Energy(labels=labels, values=np.arange(np.prod(shape)).reshape(shape))
 
 
-def write_energies(h5f, convergence):
-    h5f["intermediate/history/energies_tags"] = convergence.labels
-    h5f["intermediate/history/energies"] = convergence.energies
+def write_energies(h5f, energy):
+    h5f["intermediate/history/energies_tags"] = energy.labels
+    h5f["intermediate/history/energies"] = energy.values
 
 
 def check_energies(file, reference):
-    assert file.convergence() == reference
+    assert file.energy() == reference
 
 
 def test_kpoints(tmpdir):

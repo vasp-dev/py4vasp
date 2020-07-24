@@ -8,6 +8,24 @@ import numpy as np
 from py4vasp.data import _util
 from py4vasp.exceptions import UsageException
 
+_selection_doc = """
+    selection : str
+        A string specifying the projection of the orbitals. There are three distinct
+        possibilities:
+
+        -   To specify the **atom**, you can either use its element name (Si, Al, ...)
+            or its index as given in the input file (1, 2, ...). For the latter
+            option it is also possible to specify ranges (e.g. 1-4).
+        -   To select a particular **orbital** you can give a string (s, px, dxz, ...)
+            or select multiple orbitals by their angular momentum (s, p, d, f).
+        -   For the **spin**, you have the options up, down, or total.
+
+        For all of these options a wildcard \* exists, which selects all elements. You
+        separate multiple selections by commas or whitespace and can nest them using
+        parenthesis, e.g. `Sr(s, p)` or `s(up), p(down)`. The order of the selections
+        does not matter, but is is case sensitive to distinguish p (angular momentum
+        l = 1) from P (phosphorus).
+    """.strip()
 
 _default = "*"
 _spin_not_set = "not set"
@@ -75,15 +93,74 @@ def _is_state_complete(state, char):
     return state.level == 0 and char in _seperators and state.part != ""
 
 
+_parse_selection_doc = (
+    """ Generate all possible indices where the projected information is stored.
+
+Given a string specifying which atoms, orbitals, and spin should be selected
+an iterable object is created that contains the indices compatible with the
+selection.
+
+Parameters
+----------
+{}
+
+Yields
+------
+Iterable[Index]
+    Indices of the atom, the orbital and the spin compatible with a specific
+    selection.
+"""
+).format(_selection_doc)
+
+_to_dict_doc = (
+    """ Read the selected data from an array and store it in a dictionary.
+
+Parameters
+----------
+{}
+projections : np.ndarray
+    Array containing projected data.
+
+Returns
+-------
+dict
+    Dictionary where the label of the selection is linked to a particular
+    column of the array. If a particular selection includes multiple indices
+    these elements are added.
+"""
+).format(_selection_doc)
+
+
 class Projectors:
+    """ The projectors used for atom and orbital resolved quantities.
+
+    This is a common class used by all quantities that contains some projected
+    quantity, e.g., the electronic band structure and the DOS. It provides
+    utility functionality to access specific indices of the projected arrays
+    based on a simple mini language specifying the atom or orbital names.
+
+    Parameters
+    ----------
+    raw_proj : raw.Projectors
+        Dataclass containing data about the elements, the orbitals, and the spin
+        for which projectors are available.
+    """
+
     class Selection(NamedTuple):
+        "Helper class specifying which indices to extract their label."
         indices: Iterable[int]
+        "Indices from which the specified quantity is read."
         label: str = ""
+        "Label identifying the quantity."
 
     class Index(NamedTuple):
+        "Helper class specifying which atom, orbital, and spin are selected."
         atom: Union[str, Selection]
+        "Label of the atom or a Selection object to read the corresponding data."
         orbital: Union[str, Selection]
+        "Label of the orbital or a Selection object to read the corresponding data."
         spin: Union[str, Selection]
+        "Label of the spin component or a Selection object to read the corresponding data."
 
     def __init__(self, raw_proj):
         self._raw = raw_proj
@@ -93,6 +170,7 @@ class Projectors:
         self._spin_polarized = raw_proj.number_spins == 2
 
     @classmethod
+    @_util.add_doc(_util.from_file_doc("atom and orbital projectors"))
     def from_file(cls, file=None):
         return _util.from_file(cls, file, "projectors")
 
@@ -133,6 +211,29 @@ class Projectors:
         }
 
     def select(self, atom=_default, orbital=_default, spin=_default):
+        """ Map selection strings onto corresponding Selection objects.
+
+        Parameters
+        ----------
+        atom : str
+            Element name or index of the atom in the input file of Vasp. If a
+            range is specified (e.g. 1-3) a pointer to multiple indices will be
+            created.
+        orbital : str
+            Character identifying the angular momentum of the orbital. You may
+            select a specific one (e.g. px) or all of the same character (e.g. d).
+        spin : str
+            Select "up" or "down" for a specific spin component or "total" for
+            the sum of both.
+        For all parameters you can pass "*" to default to all (atoms, orbitals,
+        or spins).
+
+        Returns
+        -------
+        Index
+            Indices to access the selected projection from an array and an
+            associated label.
+        """
         return self.Index(
             atom=self._select_atom(atom),
             orbital=self._orbital_dict[orbital],
@@ -148,6 +249,7 @@ class Projectors:
         else:
             return self._atom_dict[atom]
 
+    @_util.add_doc(_parse_selection_doc)
     def parse_selection(self, selection):
         default_index = self.Index(atom=_default, orbital=_default, spin=_spin_not_set)
         yield from self._parse_recursive(selection, default_index)
@@ -183,10 +285,15 @@ class Projectors:
             for key in ("up", "down"):
                 yield index._replace(spin=key)
 
-    def read(self, selection, projections):
+    @_util.add_doc(_to_dict_doc)
+    def to_dict(self, selection, projections):
         if selection is None:
             return {}
         return self._read_elements(selection, projections)
+
+    @functools.wraps(to_dict)
+    def read(self, *args):
+        return self.to_dict(*args)
 
     def _read_elements(self, selection, projections):
         res = {}
@@ -214,7 +321,7 @@ class _NoProjectorsAvailable:
     def read(self, selection, projections):
         if selection is not None:
             raise UsageException(
-                "Projectors are not available, rerun Vasp setting LORBIT = 10 or 11."
+                "Projectors are not available, rerun Vasp setting LORBIT >= 10."
             )
         return {}
 
