@@ -9,12 +9,16 @@ python = "^3.7"
 h5py = "^2.10.0"
 numpy = "^1.17.4"
 pandas = "^0.25.3"
-cufflinks = "^0.17.0"
+cufflinks = "^0.17.3"
+pymatgen = "^2020.4.2"
+nglview = "^2.7.5"
+ase = "^3.19.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.0"
 black = {version = "^18.3-alpha.0", allows-prereleases = true}
 pytest-cov = "^2.8.1"
+pylint = "^2.5.0"
 sphinx = "^3.0.4"
 
 [tool.poetry2conda]
@@ -27,6 +31,7 @@ numpy = {channel = "anaconda"}
 pandas = {channel = "anaconda"}
 cufflinks = {channel = "conda-forge", name = "cufflinks-py"}
 mdtraj = {channel = "conda-forge"}
+ase = {channel = "conda-forge"}
 sphinx = {channel = "anaconda"}
 
 [build-system]

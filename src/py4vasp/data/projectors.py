@@ -8,7 +8,7 @@ import numpy as np
 from py4vasp.data import _util
 from py4vasp.exceptions import UsageException
 
-_selection_doc = """
+_selection_doc = r"""
     selection : str
         A string specifying the projection of the orbitals. There are three distinct
         possibilities:
@@ -33,7 +33,7 @@ _begin_spec = "("
 _end_spec = ")"
 _seperators = (" ", ",")
 _range_separator = "-"
-_range = re.compile(r"^(\d+)" + re.escape(_range_separator) + "(\d+)$")
+_range = re.compile(r"^(\d+)" + re.escape(_range_separator) + r"(\d+)$")
 _whitespace_begin_spec = re.compile(r"\s*" + re.escape(_begin_spec) + r"\s*")
 _whitespace_end_spec = re.compile(r"\s*" + re.escape(_end_spec) + r"\s*")
 _whitespace_range = re.compile(r"\s*" + re.escape(_range_separator) + r"\s*")

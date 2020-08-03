@@ -129,6 +129,20 @@ class File(AbstractContextManager):
             lattice_vectors=self._h5f["results/positions/lattice_vectors"],
         )
 
+    def structure(self):
+        """ Read the structure information.
+
+        Returns
+        -------
+        raw.Structure
+        """
+        self._assert_not_closed()
+        return raw.Structure(
+            cell = self.cell(),
+            cartesian_positions = self._h5f["results/positions/cartesian_positions"],
+            species = self._h5f["results/positions/species"],
+        )
+
     def energy(self):
         """ Read the energies during the ionic convergence.
 

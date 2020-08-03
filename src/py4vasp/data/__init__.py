@@ -22,6 +22,7 @@ from .dos import Dos
 from .energy import Energy
 from .kpoints import Kpoints
 from .projectors import Projectors
+from .structure import Structure
 
 import plotly.io as pio
 import cufflinks as cf

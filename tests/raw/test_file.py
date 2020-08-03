@@ -283,3 +283,32 @@ def check_kpoints(file, reference):
     assert actual == reference
     assert isinstance(actual.number, Integral)
     assert isinstance(actual.mode, str)
+
+
+def test_structure(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=itertools.product((True, False)),
+        create_reference=reference_structure,
+        write_reference=write_structure,
+        check_actual=check_structure,
+    )
+    generic_test(setup)
+
+
+def reference_structure():
+    structure = raw.Structure(
+        cell=reference_cell(),
+        cartesian_positions=np.linspace(np.zeros(3), np.ones(3), num_atoms),
+        species = np.array(["C"]*num_atoms, dtype="S2")
+    )
+    return structure
+
+def write_structure(h5f, structure):
+    write_cell(h5f, structure.cell)
+    h5f["results/positions/cartesian_positions"] = structure.cartesian_positions
+    h5f["results/positions/species"] = structure.species
+
+def check_structure(file, reference):
+    actual = file.structure()
+    assert actual == reference
