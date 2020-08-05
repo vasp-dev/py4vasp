@@ -2,7 +2,10 @@
 name = "py4vasp"
 version = "0.1.0"
 description = ""
-authors = ["Martin Schlipf <martin.schlipf@gmail.com>"]
+authors = [
+    "Martin Schlipf <martin.schlipf@gmail.com>",
+    "Orest Dubay <orest-d@users.noreply.github.com>"
+]
 
 [tool.poetry.dependencies]
 python = "^3.7"
@@ -31,7 +34,9 @@ numpy = {channel = "anaconda"}
 pandas = {channel = "anaconda"}
 cufflinks = {channel = "conda-forge", name = "cufflinks-py"}
 mdtraj = {channel = "conda-forge"}
+nglview = {channel = "conda-forge"}
 ase = {channel = "conda-forge"}
+pymatgen = {channel = "conda-forge"}
 sphinx = {channel = "anaconda"}
 
 [build-system]

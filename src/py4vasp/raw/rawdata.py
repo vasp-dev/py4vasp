@@ -42,12 +42,14 @@ class Cell:
     "Lattice vectors defining the unit cell."
     __eq__ = _dataclass_equal
 
+
 @dataclass
 class Structure:
     cell: Cell
     cartesian_positions: np.ndarray
     species: np.ndarray = None
     __eq__ = _dataclass_equal
+
 
 @dataclass
 class Kpoints:

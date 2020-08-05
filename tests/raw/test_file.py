@@ -300,14 +300,16 @@ def reference_structure():
     structure = raw.Structure(
         cell=reference_cell(),
         cartesian_positions=np.linspace(np.zeros(3), np.ones(3), num_atoms),
-        species = np.array(["C"]*num_atoms, dtype="S2")
+        species=np.array(["C"] * num_atoms, dtype="S2"),
     )
     return structure
+
 
 def write_structure(h5f, structure):
     write_cell(h5f, structure.cell)
     h5f["results/positions/cartesian_positions"] = structure.cartesian_positions
     h5f["results/positions/species"] = structure.species
+
 
 def check_structure(file, reference):
     actual = file.structure()
