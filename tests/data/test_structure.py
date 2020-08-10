@@ -8,7 +8,7 @@ import numpy as np
 
 @pytest.fixture
 def raw_structure():
-    number_atoms = 20
+    number_atoms = 6
     shape = (number_atoms, 3)
     return raw.Structure(
         cell=raw.Cell(scale=1.0, lattice_vectors=np.eye(3)),
@@ -25,18 +25,17 @@ def get_messages_after_structure_information(view):
 
 def test_read(raw_structure, Assert):
     actual = Structure(raw_structure).read()
-    assert (actual["cell"] == raw_structure.cell.lattice_vectors).all()
+    Assert.allclose(actual["cell"], raw_structure.cell.lattice_vectors)
     Assert.allclose(actual["cartesian_positions"], raw_structure.cartesian_positions)
     assert (actual["species"] == raw_structure.species).all()
 
 
-def test_to_pymatgen(raw_structure):
-    structure = Structure(raw_structure)
-    mg_structure = structure.to_pymatgen()
-    a, b, c = mg_structure.lattice.as_dict()["matrix"]
-    assert a == [1, 0, 0]
-    assert b == [0, 1, 0]
-    assert c == [0, 0, 1]
+def test_to_ase(raw_structure, Assert):
+    structure = Structure(raw_structure).to_ase()
+    Assert.allclose(structure.cell.array, raw_structure.cell.lattice_vectors)
+    Assert.allclose(structure.positions, raw_structure.cartesian_positions)
+    assert all(structure.symbols == "C6")
+    assert all(structure.pbc)
 
 
 def test_plot(raw_structure):
@@ -47,3 +46,19 @@ def test_plot(raw_structure):
         structure.plot()
         init.assert_called_once()
         cell.assert_called_once()
+
+
+def test_supercell(raw_structure, Assert):
+    structure = Structure(raw_structure)
+    number_atoms = len(structure)
+    cell = raw_structure.cell.lattice_vectors
+    # scale all dimensions by constant factor
+    scale = 2
+    supercell = structure.to_ase(supercell=scale)
+    assert len(supercell) == number_atoms * scale ** 3
+    Assert.allclose(supercell.cell.array, cell * scale)
+    # scale differently for each dimension
+    scale = (2, 1, 3)
+    supercell = structure.to_ase(supercell=scale)
+    assert len(supercell) == number_atoms * np.prod(scale)
+    Assert.allclose(supercell.cell.array, cell * scale)

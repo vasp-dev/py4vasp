@@ -1,6 +1,7 @@
 from unittest.mock import patch
 from py4vasp.data import Structure, Viewer3d
 from py4vasp.data.viewer3d import _Arrow3d, _x_axis, _y_axis, _z_axis
+from py4vasp.exceptions import RefinementException
 from .test_structure import raw_structure
 import numpy as np
 import pytest
@@ -9,10 +10,14 @@ import nglview
 
 @pytest.fixture
 def viewer3d(raw_structure):
+    return make_viewer(raw_structure)
+
+
+def make_viewer(raw_structure, supercell=None):
     structure = Structure(raw_structure)
-    viewer = structure.plot()
+    viewer = structure.plot(supercell)
+    viewer.raw_structure = raw_structure
     viewer.default_messages = count_messages(viewer, setup=True)
-    viewer.positions = raw_structure.cartesian_positions
     return viewer
 
 
@@ -76,14 +81,13 @@ def assert_arrow_message(Assert):
 
 
 def test_arrows(viewer3d, assert_arrow_message):
-    direction = np.array((0, 0, 1))
-    number_atoms = len(viewer3d._structure)
-    arrows = np.repeat([direction], number_atoms, axis=0)
-    viewer3d.show_arrows_at_atoms(arrows)
-    messages = last_messages(viewer3d, number_atoms)
+    number_atoms = len(viewer3d.raw_structure.cartesian_positions)
+    positions = viewer3d.raw_structure.cartesian_positions
     color = [0.1, 0.1, 0.8]
+    arrows = create_arrows(viewer3d, number_atoms)
+    messages = last_messages(viewer3d, number_atoms)
     assert len(messages) == number_atoms
-    for message, tail, arrow in zip(messages, viewer3d.positions, arrows):
+    for message, tail, arrow in zip(messages, positions, arrows):
         tip = tail + arrow
         assert_arrow_message(message, _Arrow3d(tail, tip, color))
     viewer3d.show_arrows_at_atoms(arrows)
@@ -92,3 +96,23 @@ def test_arrows(viewer3d, assert_arrow_message):
     # ngl deletes the sent messages to indicate removal of the shapes
     assert count_messages(viewer3d) == 0
     viewer3d.hide_arrows_at_atoms()
+
+
+def test_supercell(raw_structure, assert_arrow_message):
+    supercell = (1, 2, 3)
+    viewer = make_viewer(raw_structure, supercell)
+    number_atoms = len(raw_structure.cartesian_positions)
+    create_arrows(viewer, number_atoms)
+    assert count_messages(viewer) == np.prod(supercell) * number_atoms
+
+
+def test_bare_ngl_cannot_add_arrows_at_atoms(viewer3d):
+    viewer = Viewer3d(viewer3d._ngl)
+    with pytest.raises(RefinementException):
+        create_arrows(viewer, 1)
+
+
+def create_arrows(viewer, number_atoms):
+    arrows = np.repeat([(0, 0, 1)], number_atoms, axis=0)
+    viewer.show_arrows_at_atoms(arrows)
+    return arrows
