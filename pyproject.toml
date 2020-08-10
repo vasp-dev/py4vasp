@@ -15,6 +15,7 @@ pandas = "^0.25.3"
 cufflinks = "^0.17.3"
 nglview = "^2.7.5"
 ase = "^3.19.0"
+mdtraj = "^1.9.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.0"
@@ -40,6 +41,7 @@ sphinx = {channel = "anaconda"}
 [tool.dephell.main]
 from = {format = "poetry", path = "pyproject.toml"}
 to = {format = "setuppy", path = "setup.py"}
+
 [build-system]
 requires = ["poetry>=1.0"]
 build-backend = "poetry.masonry.api"

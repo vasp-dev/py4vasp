@@ -5,6 +5,7 @@ import functools
 import itertools
 import re
 import numpy as np
+from .topology import Topology
 from py4vasp.data import _util
 from py4vasp.exceptions import UsageException
 
@@ -27,7 +28,7 @@ _selection_doc = r"""
         l = 1) from P (phosphorus).
     """.strip()
 
-_default = "*"
+_default = _util.default_selection
 _spin_not_set = "not set"
 _begin_spec = "("
 _end_spec = ")"
@@ -164,7 +165,7 @@ class Projectors:
 
     def __init__(self, raw_proj):
         self._raw = raw_proj
-        self._init_atom_dict(raw_proj)
+        self._atom_dict = Topology(raw_proj.topology).read()
         self._init_orbital_dict(raw_proj)
         self._init_spin_dict(raw_proj)
         self._spin_polarized = raw_proj.number_spins == 2
@@ -174,40 +175,25 @@ class Projectors:
     def from_file(cls, file=None):
         return _util.from_file(cls, file, "projectors")
 
-    def _init_atom_dict(self, raw_proj):
-        num_atoms = np.sum(raw_proj.number_ion_types)
-        all_atoms = self.Selection(indices=range(num_atoms))
-        self._atom_dict = {_default: all_atoms}
-        start = 0
-        for type, number in zip(raw_proj.ion_types, raw_proj.number_ion_types):
-            type = str(type, "utf-8").strip()
-            _range = range(start, start + number)
-            self._atom_dict[type] = self.Selection(indices=_range, label=type)
-            for i in _range:
-                # create labels like Si_1, Si_2, Si_3 (starting at 1)
-                label = type + "_" + str(_range.index(i) + 1)
-                self._atom_dict[str(i + 1)] = self.Selection(indices=(i,), label=label)
-            start += number
-
     def _init_orbital_dict(self, raw_proj):
         num_orbitals = len(raw_proj.orbital_types)
-        all_orbitals = self.Selection(indices=range(num_orbitals))
+        all_orbitals = _util.Selection(indices=range(num_orbitals))
         self._orbital_dict = {_default: all_orbitals}
         for i, orbital in enumerate(raw_proj.orbital_types):
             orbital = str(orbital, "utf-8").strip()
-            self._orbital_dict[orbital] = self.Selection(indices=(i,), label=orbital)
+            self._orbital_dict[orbital] = _util.Selection(indices=(i,), label=orbital)
         if "px" in self._orbital_dict:
-            self._orbital_dict["p"] = self.Selection(indices=range(1, 4), label="p")
-            self._orbital_dict["d"] = self.Selection(indices=range(4, 9), label="d")
-            self._orbital_dict["f"] = self.Selection(indices=range(9, 16), label="f")
+            self._orbital_dict["p"] = _util.Selection(indices=range(1, 4), label="p")
+            self._orbital_dict["d"] = _util.Selection(indices=range(4, 9), label="d")
+            self._orbital_dict["f"] = _util.Selection(indices=range(9, 16), label="f")
 
     def _init_spin_dict(self, raw_proj):
         num_spins = raw_proj.number_spins
         self._spin_dict = {
-            "up": self.Selection(indices=(0,), label="up"),
-            "down": self.Selection(indices=(1,), label="down"),
-            "total": self.Selection(indices=range(num_spins), label="total"),
-            _default: self.Selection(indices=range(num_spins)),
+            "up": _util.Selection(indices=(0,), label="up"),
+            "down": _util.Selection(indices=(1,), label="down"),
+            "total": _util.Selection(indices=range(num_spins), label="total"),
+            _default: _util.Selection(indices=range(num_spins)),
         }
 
     def select(self, atom=_default, orbital=_default, spin=_default):
@@ -245,7 +231,7 @@ class Projectors:
         if match:
             lower = self._atom_dict[match.groups()[0]].indices[0]
             upper = self._atom_dict[match.groups()[1]].indices[0]
-            return self.Selection(indices=range(lower, upper + 1), label=atom)
+            return _util.Selection(indices=range(lower, upper + 1), label=atom)
         else:
             return self._atom_dict[atom]
 

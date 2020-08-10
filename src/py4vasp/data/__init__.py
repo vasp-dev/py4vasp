@@ -22,6 +22,8 @@ from .dos import Dos
 from .energy import Energy
 from .kpoints import Kpoints
 from .projectors import Projectors
+from .topology import Topology
+from .trajectory import Trajectory
 from .viewer3d import Viewer3d
 from .structure import Structure
 

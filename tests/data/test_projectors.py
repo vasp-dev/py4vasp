@@ -1,10 +1,10 @@
-from py4vasp.data import Projectors
+from py4vasp.data import Projectors, Topology, _util
 import py4vasp.raw as raw
 import pytest
 import numpy as np
 from typing import NamedTuple, Iterable
 
-Selection = Projectors.Selection
+Selection = _util.Selection
 Index = Projectors.Index
 
 
@@ -16,8 +16,10 @@ class SelectionTestCase(NamedTuple):
 @pytest.fixture
 def without_spin():
     proj = raw.Projectors(
-        number_ion_types=np.array((2, 1, 4)),
-        ion_types=np.array(("Sr", "Ti", "O "), dtype="S"),
+        topology=raw.Topology(
+            number_ion_types=np.array((2, 1, 4)),
+            ion_types=np.array(("Sr", "Ti", "O "), dtype="S"),
+        ),
         orbital_types=np.array(
             (" s", "py", "pz", "px", "dxy", "dyz", "dz2", "dxz", "x2-y2")
             + ("fy3x2", "fxyz", "fyz2", "fz3", "fxz2", "fzx2", "fx3"),
@@ -41,7 +43,7 @@ def spin_polarized(without_spin):
 
 @pytest.fixture
 def for_selection(spin_polarized):
-    index = np.cumsum(spin_polarized.number_ion_types)
+    index = np.cumsum(spin_polarized.topology.number_ion_types)
     ref = {
         "atom": {
             "Sr": Selection(indices=range(index[0]), label="Sr"),

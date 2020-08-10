@@ -16,8 +16,10 @@ num_energies = 20
 num_kpoints = 10
 num_bands = 3
 num_atoms = 10  # sum(range(5))
+num_steps = 15
 lmax = 3
 fermi_energy = 0.123
+default_options = ((True,), (False,))
 
 SetupTest = namedtuple(
     "SetupTest", "directory, options, create_reference, write_reference, check_actual"
@@ -158,7 +160,7 @@ def check_band(file, reference):
 def test_projectors(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
-        options=((True,), (False,)),
+        options=default_options,
         create_reference=reference_projectors,
         write_reference=write_projectors,
         check_actual=check_projectors,
@@ -169,16 +171,14 @@ def test_projectors(tmpdir):
 def reference_projectors():
     shape_dos = (num_spins, num_atoms, lmax, num_energies)
     return raw.Projectors(
-        number_ion_types=np.arange(5),
-        ion_types=np.array(["B", "C", "N", "O", "F"], dtype="S"),
+        topology=reference_topology(),
         orbital_types=np.array(["s", "p", "d", "f"], dtype="S"),
         number_spins=num_spins,
     )
 
 
 def write_projectors(h5f, proj):
-    h5f["results/positions/number_ion_types"] = proj.number_ion_types
-    h5f["results/positions/ion_types"] = proj.ion_types
+    write_topology(h5f, proj.topology)
     h5f["results/projectors/lchar"] = proj.orbital_types
     h5f["results/electron_eigenvalues/ispin"] = proj.number_spins
 
@@ -189,10 +189,70 @@ def check_projectors(file, reference):
     assert isinstance(actual.number_spins, Integral)
 
 
+def test_topoplogy(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=default_options,
+        create_reference=reference_topology,
+        write_reference=write_topology,
+        check_actual=check_topology,
+    )
+    generic_test(setup)
+
+
+def reference_topology():
+    return raw.Topology(
+        number_ion_types=np.arange(5),
+        ion_types=np.array(["B", "C", "N", "O", "F"], dtype="S"),
+    )
+
+
+def write_topology(h5f, topology):
+    h5f["results/positions/number_ion_types"] = topology.number_ion_types
+    h5f["results/positions/ion_types"] = topology.ion_types
+
+
+def check_topology(file, reference):
+    actual = file.topology()
+    assert actual == reference
+
+
+def test_trajectory(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=default_options,
+        create_reference=reference_trajectory,
+        write_reference=write_trajectory,
+        check_actual=check_trajectory,
+    )
+    generic_test(setup)
+
+
+def reference_trajectory():
+    shape_pos = (num_steps, num_atoms, 3)
+    shape_vec = (num_steps, 3, 3)
+    return raw.Trajectory(
+        topology=reference_topology(),
+        positions=np.arange(np.prod(shape_pos)).reshape(shape_pos),
+        lattice_vectors=np.arange(np.prod(shape_vec)).reshape(shape_vec),
+    )
+
+
+def write_trajectory(h5f, trajectory):
+    write_topology(h5f, trajectory.topology)
+    h5f["intermediate/history/position_ions"] = trajectory.positions
+    h5f["intermediate/history/lattice_vectors"] = trajectory.lattice_vectors
+
+
+def check_trajectory(file, reference):
+    actual = file.trajectory()
+    assert actual == reference
+
+
 def test_cell(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
-        options=((True,), (False,)),
+        options=default_options,
         create_reference=reference_cell,
         write_reference=write_cell,
         check_actual=check_cell,
@@ -218,7 +278,7 @@ def check_cell(file, reference):
 def test_energies(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
-        options=((True,), (False,)),
+        options=default_options,
         create_reference=reference_energies,
         write_reference=write_energies,
         check_actual=check_energies,

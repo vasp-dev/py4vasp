@@ -274,8 +274,9 @@ def test_more_projections_style(raw_projections, Assert):
 def set_projections(raw_band, shape):
     raw_band.projections = np.random.uniform(low=0.2, size=shape)
     raw_band.projectors = raw.Projectors(
-        number_ion_types=[1],
-        ion_types=np.array(["Si"], dtype="S"),
+        topology=raw.Topology(
+            number_ion_types=[1], ion_types=np.array(["Si"], dtype="S")
+        ),
         orbital_types=np.array(["s"], dtype="S"),
         number_spins=shape[0],
     )

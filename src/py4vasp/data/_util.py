@@ -1,4 +1,5 @@
 from contextlib import contextmanager, nullcontext
+from typing import NamedTuple, Iterable
 import py4vasp.raw as raw
 
 
@@ -47,3 +48,11 @@ def decode_if_possible(string):
         return string.decode()
     except (UnicodeDecodeError, AttributeError):
         return string
+
+
+default_selection = "*"
+
+
+class Selection(NamedTuple):
+    indices: Iterable[int]
+    label: str = ""

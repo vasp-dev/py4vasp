@@ -20,12 +20,27 @@ def _only_one_None(lhs, rhs):
 
 
 @dataclass
-class Projectors:
-    "Projectors used for orbital projections."
+class Topology:
+    "The topology of the system used, i.e., which elements are contained."
     number_ion_types: np.ndarray
     "Amount of ions of a particular type."
     ion_types: np.ndarray
     "Element of a particular type."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class Trajectory:
+    topology: Topology
+    lattice_vectors: np.ndarray
+    positions: np.ndarray
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class Projectors:
+    "Projectors used for orbital projections."
+    topology: Topology
     orbital_types: np.ndarray
     "Character indicating the orbital angular momentum."
     number_spins: int

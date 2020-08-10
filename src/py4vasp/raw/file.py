@@ -74,6 +74,21 @@ class File(AbstractContextManager):
             projections=self._safe_get_key("results/projectors/par"),
         )
 
+    def topology(self):
+        self._assert_not_closed()
+        return raw.Topology(
+            ion_types=self._h5f["results/positions/ion_types"],
+            number_ion_types=self._h5f["results/positions/number_ion_types"],
+        )
+
+    def trajectory(self):
+        self._assert_not_closed()
+        return raw.Trajectory(
+            topology=self.topology(),
+            positions=self._h5f["intermediate/history/position_ions"],
+            lattice_vectors=self._h5f["intermediate/history/lattice_vectors"],
+        )
+
     def projectors(self):
         """Read the projectors information if present.
 
@@ -87,8 +102,7 @@ class File(AbstractContextManager):
         if "results/projectors" not in self._h5f:
             return None
         return raw.Projectors(
-            ion_types=self._h5f["results/positions/ion_types"],
-            number_ion_types=self._h5f["results/positions/number_ion_types"],
+            topology=self.topology(),
             orbital_types=self._h5f["results/projectors/lchar"],
             number_spins=self._h5f["results/electron_eigenvalues/ispin"][()],
         )
