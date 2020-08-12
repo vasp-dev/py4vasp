@@ -60,9 +60,9 @@ class Cell:
 
 @dataclass
 class Structure:
+    topology: Topology
     cell: Cell
-    cartesian_positions: np.ndarray
-    species: np.ndarray = None
+    positions: np.ndarray
     __eq__ = _dataclass_equal
 
 

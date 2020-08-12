@@ -2,7 +2,7 @@ from unittest.mock import patch
 from py4vasp.data import Structure, Viewer3d
 from py4vasp.data.viewer3d import _Arrow3d, _x_axis, _y_axis, _z_axis
 from py4vasp.exceptions import RefinementException
-from .test_structure import raw_structure
+from .test_structure import raw_structure, raw_topology
 import numpy as np
 import pytest
 import nglview
@@ -81,8 +81,8 @@ def assert_arrow_message(Assert):
 
 
 def test_arrows(viewer3d, assert_arrow_message):
-    number_atoms = len(viewer3d.raw_structure.cartesian_positions)
-    positions = viewer3d.raw_structure.cartesian_positions
+    positions = viewer3d.raw_structure.positions @ viewer3d.raw_structure.actual_cell
+    number_atoms = len(positions)
     color = [0.1, 0.1, 0.8]
     arrows = create_arrows(viewer3d, number_atoms)
     messages = last_messages(viewer3d, number_atoms)
@@ -101,7 +101,7 @@ def test_arrows(viewer3d, assert_arrow_message):
 def test_supercell(raw_structure, assert_arrow_message):
     supercell = (1, 2, 3)
     viewer = make_viewer(raw_structure, supercell)
-    number_atoms = len(raw_structure.cartesian_positions)
+    number_atoms = len(raw_structure.positions)
     create_arrows(viewer, number_atoms)
     assert count_messages(viewer) == np.prod(supercell) * number_atoms
 

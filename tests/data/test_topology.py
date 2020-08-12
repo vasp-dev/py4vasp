@@ -9,10 +9,13 @@ Selection = _util.Selection
 
 @pytest.fixture
 def raw_topology():
-    return raw.Topology(
+    topology = raw.Topology(
         number_ion_types=np.array((2, 1, 4)),
         ion_types=np.array(("Sr", "Ti", "O "), dtype="S"),
     )
+    topology.names = ["Sr_1", "Sr_2", "Ti_1", "O_1", "O_2", "O_3", "O_4"]
+    topology.elements = ["Sr", "Sr", "Ti", "O", "O", "O", "O"]
+    return topology
 
 
 def test_raw_topology(raw_topology):
@@ -29,6 +32,12 @@ def test_raw_topology(raw_topology):
     assert topology["6"] == Selection(indices=(5,), label="O_3")
     assert topology["7"] == Selection(indices=(6,), label="O_4")
     assert topology["*"] == Selection(indices=range(index[-1]))
+
+
+def test_atom_labels(raw_topology):
+    topology = Topology(raw_topology)
+    assert topology.names() == raw_topology.names
+    assert topology.elements() == raw_topology.elements
 
 
 def test_from_file(raw_topology, mock_file, check_read):

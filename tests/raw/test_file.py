@@ -358,17 +358,17 @@ def test_structure(tmpdir):
 
 def reference_structure():
     structure = raw.Structure(
+        topology=reference_topology(),
         cell=reference_cell(),
-        cartesian_positions=np.linspace(np.zeros(3), np.ones(3), num_atoms),
-        species=np.array(["C"] * num_atoms, dtype="S2"),
+        positions=np.linspace(np.zeros(3), np.ones(3), num_atoms),
     )
     return structure
 
 
 def write_structure(h5f, structure):
+    write_topology(h5f, structure.topology)
     write_cell(h5f, structure.cell)
-    h5f["results/positions/cartesian_positions"] = structure.cartesian_positions
-    h5f["results/positions/species"] = structure.species
+    h5f["results/positions/position_ions"] = structure.positions
 
 
 def check_structure(file, reference):

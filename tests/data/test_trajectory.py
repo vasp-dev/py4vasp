@@ -22,9 +22,8 @@ def raw_trajectory(raw_topology):
 
 def test_read_trajectory(raw_trajectory, Assert):
     trajectory = Trajectory(raw_trajectory).read()
-    topology = Topology(raw_trajectory.topology)
-    assert trajectory["names"] == topology.names()
-    assert trajectory["elements"] == topology.elements()
+    assert trajectory["names"] == raw_trajectory.topology.names
+    assert trajectory["elements"] == raw_trajectory.topology.elements
     Assert.allclose(trajectory["positions"], raw_trajectory.positions)
     Assert.allclose(trajectory["lattice_vectors"], raw_trajectory.lattice_vectors)
 

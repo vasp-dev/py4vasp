@@ -152,9 +152,9 @@ class File(AbstractContextManager):
         """
         self._assert_not_closed()
         return raw.Structure(
+            topology=self.topology(),
             cell=self.cell(),
-            cartesian_positions=self._h5f["results/positions/cartesian_positions"],
-            species=self._h5f["results/positions/species"],
+            positions=self._h5f["results/positions/position_ions"],
         )
 
     def energy(self):
