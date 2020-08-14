@@ -10,23 +10,23 @@ from py4vasp.data import _util
 from py4vasp.exceptions import UsageException
 
 _selection_doc = r"""
-    selection : str
-        A string specifying the projection of the orbitals. There are three distinct
-        possibilities:
+selection : str
+    A string specifying the projection of the orbitals. There are three distinct
+    possibilities:
 
-        -   To specify the **atom**, you can either use its element name (Si, Al, ...)
-            or its index as given in the input file (1, 2, ...). For the latter
-            option it is also possible to specify ranges (e.g. 1-4).
-        -   To select a particular **orbital** you can give a string (s, px, dxz, ...)
-            or select multiple orbitals by their angular momentum (s, p, d, f).
-        -   For the **spin**, you have the options up, down, or total.
+    -   To specify the **atom**, you can either use its element name (Si, Al, ...)
+        or its index as given in the input file (1, 2, ...). For the latter
+        option it is also possible to specify ranges (e.g. 1-4).
+    -   To select a particular **orbital** you can give a string (s, px, dxz, ...)
+        or select multiple orbitals by their angular momentum (s, p, d, f).
+    -   For the **spin**, you have the options up, down, or total.
 
-        For all of these options a wildcard \* exists, which selects all elements. You
-        separate multiple selections by commas or whitespace and can nest them using
-        parenthesis, e.g. `Sr(s, p)` or `s(up), p(down)`. The order of the selections
-        does not matter, but is is case sensitive to distinguish p (angular momentum
-        l = 1) from P (phosphorus).
-    """.strip()
+    For all of these options a wildcard \* exists, which selects all elements. You
+    separate multiple selections by commas or whitespace and can nest them using
+    parenthesis, e.g. `Sr(s, p)` or `s(up), p(down)`. The order of the selections
+    does not matter, but is is case sensitive to distinguish p (angular momentum
+    l = 1) from P (phosphorus).
+""".strip()
 
 _default = _util.default_selection
 _spin_not_set = "not set"

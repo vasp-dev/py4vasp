@@ -31,9 +31,14 @@ class Topology:
 
 @dataclass
 class Trajectory:
+    "Describes the evolution of unit cell and atoms within over ionic steps."
     topology: Topology
+    "The topology of the system used, i.e., which elements are contained."
     lattice_vectors: np.ndarray
+    "Lattice vectors defining the unit cell for every time step."
     positions: np.ndarray
+    """Position of all atoms in the unit cell in units of the lattice vectors
+    for every timestep."""
     __eq__ = _dataclass_equal
 
 
@@ -41,6 +46,7 @@ class Trajectory:
 class Projectors:
     "Projectors used for orbital projections."
     topology: Topology
+    "The topology of the system used, i.e., which elements are contained."
     orbital_types: np.ndarray
     "Character indicating the orbital angular momentum."
     number_spins: int
@@ -60,9 +66,13 @@ class Cell:
 
 @dataclass
 class Structure:
+    "Structural information of the system."
     topology: Topology
+    "The topology of the system used, i.e., which elements are contained."
     cell: Cell
+    "Unit cell of the crystal or simulation cell for molecules."
     positions: np.ndarray
+    "Position of all atoms in the unit cell in units of the lattice vectors."
     __eq__ = _dataclass_equal
 
 

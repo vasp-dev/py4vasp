@@ -48,7 +48,7 @@ for c in _classes:
 __all__ = _class_names + list(_functions)
 
 
-def get_function_if_possible(obj, name):
+def _get_function_if_possible(obj, name):
     try:
         return getattr(obj, name)
     except AttributeError as err:
@@ -57,14 +57,51 @@ def get_function_if_possible(obj, name):
         raise NotImplementException(msg) from err
 
 
-def _wrapper_factory(module, name):
+def _generate_documentation(classes, function):
+    class_list = ""
+    example = ""
+    for c in classes:
+        if hasattr(c, function):
+            class_list += "\n* :class:`{}`".format(c.__name__)
+            example = example or c.__name__
+    return """This function wraps the {0} method of the data classes.
+
+{0} is a function available for the following classes:
+{1}
+
+This wrapper deals with opening the Vasp output file, reading the relevant data
+and closing the file after reading. As such it is particularly suited for simple
+access. More advanced users in particular when using the data in a python script
+may want to control the opening of the file explicitly for better efficiency and
+more flexibility.
+
+Parameters
+----------
+cls : Class
+    Choice of quantity of which the {0} function is evaluated.
+
+Notes
+-----
+The remaining arguments passed to this routine are directly passed on to the {0}
+function of the selected class. Please check the help of the individual classes
+to know which arguments are available and what exactly is returned, e.g.
+
+>>> help({2}.{0})
+""".format(
+        function, class_list, example
+    )
+
+
+def _wrapper_factory(module, name, documentation):
+    @_util.add_doc(documentation)
     def wrapper(cls, *args, **kwargs):
         with cls.from_file() as obj:
-            function = get_function_if_possible(obj, name)
+            function = _get_function_if_possible(obj, name)
             return function(*args, **kwargs)
 
     setattr(module, name, wrapper)
 
 
 for function in _functions:
-    _wrapper_factory(_this_mod, function)
+    documentation = _generate_documentation(_classes, function)
+    _wrapper_factory(_this_mod, function, documentation)

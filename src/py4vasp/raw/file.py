@@ -75,6 +75,14 @@ class File(AbstractContextManager):
         )
 
     def topology(self):
+        """ Read the topology data used in the Vasp calculation.
+
+        Returns
+        -------
+        raw.Topology
+            Contains the information which ion types were used and how many ions
+            of each type there are.
+        """
         self._assert_not_closed()
         return raw.Topology(
             ion_types=self._h5f["results/positions/ion_types"],
@@ -82,6 +90,14 @@ class File(AbstractContextManager):
         )
 
     def trajectory(self):
+        """ Read the trajectory data of an ionic relaxation or MD simulation.
+
+        Returns
+        -------
+        raw.Trajectory
+            Contains the topology of the crystal and the position of all atoms
+            and the shape of the unit cell for all ionic steps.
+        """
         self._assert_not_closed()
         return raw.Trajectory(
             topology=self.topology(),
