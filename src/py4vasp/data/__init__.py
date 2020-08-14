@@ -26,6 +26,7 @@ from .topology import Topology
 from .trajectory import Trajectory
 from .viewer3d import Viewer3d
 from .structure import Structure
+from py4vasp.exceptions import NotImplementException
 
 import plotly.io as pio
 import cufflinks as cf
@@ -37,4 +38,33 @@ cf.go_offline()
 cf.set_config_file(theme="ggplot")
 
 _this_mod = sys.modules[__name__]
-__all__ = [name for name, _ in inspect.getmembers(_this_mod, inspect.isclass)]
+_class_names = [name for name, _ in inspect.getmembers(_this_mod, inspect.isclass)]
+_classes = [value for _, value in inspect.getmembers(_this_mod, inspect.isclass)]
+_functions = set(("read", "plot"))
+for c in _classes:
+    for name, _ in inspect.getmembers(c, inspect.isfunction):
+        if "to_" in name:
+            _functions.add(name)
+__all__ = _class_names + list(_functions)
+
+
+def get_function_if_possible(obj, name):
+    try:
+        return getattr(obj, name)
+    except AttributeError as err:
+        class_ = obj.__class__.__name__
+        msg = "For the {} no {} function is implemented.".format(class_, name)
+        raise NotImplementException(msg) from err
+
+
+def _wrapper_factory(module, name):
+    def wrapper(cls, *args, **kwargs):
+        with cls.from_file() as obj:
+            function = get_function_if_possible(obj, name)
+            return function(*args, **kwargs)
+
+    setattr(module, name, wrapper)
+
+
+for function in _functions:
+    _wrapper_factory(_this_mod, function)
