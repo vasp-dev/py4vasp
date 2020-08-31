@@ -17,6 +17,7 @@ num_kpoints = 10
 num_bands = 3
 num_atoms = 10  # sum(range(5))
 num_steps = 15
+num_components = 2  # charge and magnetization
 lmax = 3
 fermi_energy = 0.123
 default_options = ((True,), (False,))
@@ -345,10 +346,36 @@ def check_kpoints(file, reference):
     assert isinstance(actual.mode, str)
 
 
+def test_magnetism(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=default_options,
+        create_reference=reference_magnetism,
+        write_reference=write_magnetism,
+        check_actual=check_magnetism,
+    )
+    generic_test(setup)
+
+
+def reference_magnetism():
+    shape = (num_steps, num_components, num_atoms, lmax)
+    magnetism = raw.Magnetism(moments=np.arange(np.prod(shape)).reshape(shape))
+    return magnetism
+
+
+def write_magnetism(h5f, magnetism):
+    h5f["intermediate/history/magnetism/moments"] = magnetism.moments
+
+
+def check_magnetism(file, reference):
+    actual = file.magnetism()
+    assert actual == reference
+
+
 def test_structure(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
-        options=itertools.product((True, False)),
+        options=itertools.product((True, False), repeat=2),
         create_reference=reference_structure,
         write_reference=write_structure,
         check_actual=check_structure,
@@ -356,11 +383,12 @@ def test_structure(tmpdir):
     generic_test(setup)
 
 
-def reference_structure():
+def reference_structure(use_magnetism):
     structure = raw.Structure(
         topology=reference_topology(),
         cell=reference_cell(),
         positions=np.linspace(np.zeros(3), np.ones(3), num_atoms),
+        magnetism=reference_magnetism() if use_magnetism else None,
     )
     return structure
 
@@ -369,6 +397,8 @@ def write_structure(h5f, structure):
     write_topology(h5f, structure.topology)
     write_cell(h5f, structure.cell)
     h5f["results/positions/position_ions"] = structure.positions
+    if structure.magnetism is not None:
+        write_magnetism(h5f, structure.magnetism)
 
 
 def check_structure(file, reference):

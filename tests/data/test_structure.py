@@ -1,6 +1,7 @@
 from unittest.mock import patch
-from py4vasp.data import Structure
+from py4vasp.data import Structure, Magnetism
 from .test_topology import raw_topology
+from .test_magnetism import raw_magnetism, noncollinear_magnetism
 import py4vasp.data as data
 import py4vasp.raw as raw
 import pytest
@@ -30,6 +31,7 @@ def test_read(raw_structure, Assert):
     Assert.allclose(actual["cell"], raw_structure.actual_cell)
     Assert.allclose(actual["positions"], raw_structure.positions)
     assert actual["elements"] == raw_structure.topology.elements
+    assert "magnetic_moments" not in actual
 
 
 def test_to_ase(raw_structure, Assert):
@@ -81,3 +83,42 @@ def test_supercell(raw_structure, Assert):
     supercell = structure.to_ase(supercell=scale)
     assert len(supercell) == number_atoms * np.prod(scale)
     Assert.allclose(supercell.cell.array, raw_structure.actual_cell * scale)
+
+
+def test_magnetism(raw_magnetism, raw_structure, Assert):
+    raw_structure.magnetism = raw_magnetism
+    structure = Structure(raw_structure)
+    expected_moments = raw_magnetism.total_moments[-1]
+    Assert.allclose(structure.read()["magnetic_moments"], expected_moments)
+    ase = structure.to_ase()
+    Assert.allclose(ase.get_initial_magnetic_moments(), expected_moments)
+    cm_init = patch.object(data.Viewer3d, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(data.Viewer3d, "show_cell")
+    cm_arrows = patch.object(data.Viewer3d, "show_arrows_at_atoms")
+    with cm_init, cm_cell, cm_arrows as arrows:
+        structure.plot()
+        arrows.assert_called_once()
+        args, kwargs = arrows.call_args
+    actual_moments = args[0]
+    rescale_moments = Structure.length_moments / np.max(expected_moments)
+    for actual, expected in zip(actual_moments, expected_moments):
+        Assert.allclose(actual, [0, 0, expected * rescale_moments])
+
+
+def test_noncollinear_magnetism(noncollinear_magnetism, raw_structure, Assert):
+    raw_structure.magnetism = noncollinear_magnetism
+    structure = Structure(raw_structure)
+    cm_init = patch.object(data.Viewer3d, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(data.Viewer3d, "show_cell")
+    cm_arrows = patch.object(data.Viewer3d, "show_arrows_at_atoms")
+    with cm_init, cm_cell, cm_arrows as arrows:
+        structure.plot()
+        arrows.assert_called_once()
+        args, kwargs = arrows.call_args
+    step = -1
+    actual_moments = args[0]
+    expected_moments = Magnetism(noncollinear_magnetism).total_moments(-1)
+    largest_moment = np.max(np.linalg.norm(expected_moments, axis=1))
+    rescale_moments = Structure.length_moments / largest_moment
+    for actual, expected in zip(actual_moments, expected_moments):
+        Assert.allclose(actual, expected * rescale_moments)

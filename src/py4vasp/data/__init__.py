@@ -21,6 +21,7 @@ from .band import Band
 from .dos import Dos
 from .energy import Energy
 from .kpoints import Kpoints
+from .magnetism import Magnetism
 from .projectors import Projectors
 from .topology import Topology
 from .trajectory import Trajectory

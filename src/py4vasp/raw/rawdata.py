@@ -65,6 +65,14 @@ class Cell:
 
 
 @dataclass
+class Magnetism:
+    "Data about the magnetism in the system."
+    moments: np.ndarray
+    "Contains the charge and magnetic moments atom and orbital resolved."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
 class Structure:
     "Structural information of the system."
     topology: Topology
@@ -73,6 +81,8 @@ class Structure:
     "Unit cell of the crystal or simulation cell for molecules."
     positions: np.ndarray
     "Position of all atoms in the unit cell in units of the lattice vectors."
+    magnetism: Magnetism = None
+    "Magnetization of every atom in the unit cell."
     __eq__ = _dataclass_equal
 
 

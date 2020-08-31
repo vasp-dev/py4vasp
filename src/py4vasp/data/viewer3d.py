@@ -10,6 +10,9 @@ class _Arrow3d(NamedTuple):
     color: np.ndarray
     radius: float = 0.2
 
+    def to_serializable(self):
+        return list(self.tail), list(self.tip), list(self.color), float(self.radius)
+
 
 _x_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((3, 0, 0)), color=[1, 0, 0])
 _y_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((0, 3, 0)), color=[0, 1, 0])
@@ -117,4 +120,4 @@ class Viewer3d:
         self._arrows = []
 
     def _make_arrow(self, arrow):
-        return self._ngl.shape.add_arrow(*arrow)
+        return self._ngl.shape.add_arrow(*(arrow.to_serializable()))

@@ -3,6 +3,7 @@ from py4vasp.data import Structure, Viewer3d
 from py4vasp.data.viewer3d import _Arrow3d, _x_axis, _y_axis, _z_axis
 from py4vasp.exceptions import RefinementException
 from .test_structure import raw_structure, raw_topology
+import ipykernel.jsonutil as json
 import numpy as np
 import pytest
 import nglview
@@ -116,3 +117,9 @@ def create_arrows(viewer, number_atoms):
     arrows = np.repeat([(0, 0, 1)], number_atoms, axis=0)
     viewer.show_arrows_at_atoms(arrows)
     return arrows
+
+
+def test_serializable():
+    arrow = _Arrow3d(np.zeros(3), np.ones(3), np.ones(1))
+    for element in arrow.to_serializable():
+        json.json_clean(element)

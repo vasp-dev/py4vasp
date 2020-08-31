@@ -159,6 +159,21 @@ class File(AbstractContextManager):
             lattice_vectors=self._h5f["results/positions/lattice_vectors"],
         )
 
+    def magnetism(self):
+        """ Read the magnetisation data of the crystal.
+
+        Returns
+        -------
+        raw.Magnetism
+            The magnetic moments and charges on every atom in orbital resolved
+            representation.
+        """
+        self._assert_not_closed()
+        key = "intermediate/history/magnetism/moments"
+        if key not in self._h5f:
+            return None
+        return raw.Magnetism(moments=self._h5f[key])
+
     def structure(self):
         """ Read the structure information.
 
@@ -171,6 +186,7 @@ class File(AbstractContextManager):
             topology=self.topology(),
             cell=self.cell(),
             positions=self._h5f["results/positions/position_ions"],
+            magnetism=self.magnetism(),
         )
 
     def energy(self):
