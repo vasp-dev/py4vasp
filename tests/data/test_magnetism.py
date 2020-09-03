@@ -28,6 +28,14 @@ def noncollinear_magnetism(raw_magnetism):
     return raw_magnetism
 
 
+@pytest.fixture
+def charge_only(raw_magnetism):
+    shape = raw_magnetism.moments.shape
+    shape = (shape[0] * shape[1], 1, shape[2], shape[3])
+    raw_magnetism.moments = raw_magnetism.moments.reshape(shape)
+    return raw_magnetism
+
+
 def test_from_file(raw_magnetism, mock_file, check_read):
     with mock_file("magnetism", raw_magnetism) as mocks:
         check_read(Magnetism, mocks, raw_magnetism)
@@ -83,11 +91,9 @@ def test_noncollinear(noncollinear_magnetism, Assert):
         Assert.allclose(total_moments[new_order], expected_total_moment)
 
 
-def test_charge_only(raw_magnetism, Assert):
-    shape = raw_magnetism.moments.shape
-    shape = (shape[0] * shape[1], 1, shape[2], shape[3])
-    raw_magnetism.moments = raw_magnetism.moments.reshape(shape)
-    actual = Magnetism(raw_magnetism)
-    Assert.allclose(actual.charges(), raw_magnetism.moments[:, 0])
+def test_charge_only(charge_only, Assert):
+    actual = Magnetism(charge_only)
+    Assert.allclose(actual.charges(), charge_only.moments[:, 0])
     assert actual.moments() is None
     assert actual.total_moments() is None
+    assert "moments" not in actual.read()

@@ -38,11 +38,12 @@ class Structure:
             all the atoms in units of the lattice vectors and the elements of
             the atoms.
         """
+        moments = self._read_magnetic_moments()
         return {
             "cell": self._raw.cell.scale * self._raw.cell.lattice_vectors[:],
             "positions": self._raw.positions[:],
             "elements": Topology(self._raw.topology).elements(),
-            **self._read_magnetic_moments(),
+            **({"magnetic_moments": moments} if moments is not None else {}),
         }
 
     @functools.wraps(to_dict)
@@ -51,10 +52,9 @@ class Structure:
 
     def _read_magnetic_moments(self):
         if self._raw.magnetism is not None:
-            magnetism = Magnetism(self._raw.magnetism)
-            return {"magnetic_moments": magnetism.total_moments(-1)}
+            return Magnetism(self._raw.magnetism).total_moments(-1)
         else:
-            return {}
+            return None
 
     def __len__(self):
         return len(self._raw.positions)
@@ -112,18 +112,26 @@ class Structure:
     def plot(self, *args):
         return self.to_viewer3d(*args)
 
-    def _prepare_magnetic_moments_for_plotting(self,):
-        if self._raw.magnetism is None:
-            return None
-        moments = self._read_magnetic_moments()["magnetic_moments"]
+    def _prepare_magnetic_moments_for_plotting(self):
+        moments = self._read_magnetic_moments()
         moments = self._convert_to_moment_to_3d_vector(moments)
-        rescale_moments = self.length_moments / np.max(np.linalg.norm(moments, axis=1))
-        return rescale_moments * moments
+        max_length_moments = self._max_length_moments(moments)
+        if max_length_moments > 1e-15:
+            rescale_moments = self.length_moments / max_length_moments
+            return rescale_moments * moments
+        else:
+            return None
 
     def _convert_to_moment_to_3d_vector(self, moments):
-        if moments.ndim == 2:
-            return moments
-        moments = moments.reshape((len(moments), 1))
-        no_new_moments = (0, 0)
-        add_zero_for_xy_axis = (2, 0)
-        return np.pad(moments, (no_new_moments, add_zero_for_xy_axis))
+        if moments is not None and moments.ndim == 1:
+            moments = moments.reshape((len(moments), 1))
+            no_new_moments = (0, 0)
+            add_zero_for_xy_axis = (2, 0)
+            moments = np.pad(moments, (no_new_moments, add_zero_for_xy_axis))
+        return moments
+
+    def _max_length_moments(self, moments):
+        if moments is not None:
+            return np.max(np.linalg.norm(moments, axis=1))
+        else:
+            return 0.0

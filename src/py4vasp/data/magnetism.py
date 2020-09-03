@@ -96,7 +96,9 @@ class Magnetism:
 
     @_util.add_doc(_to_dict_doc)
     def to_dict(self, steps=None):
-        return {"charges": self.charges(steps), "moments": self.moments(steps)}
+        moments = self.moments(steps)
+        moments = {"moments": moments} if moments is not None else {}
+        return {"charges": self.charges(steps), **moments}
 
     @functools.wraps(to_dict)
     def read(self, *args):

@@ -49,6 +49,9 @@ class Viewer3d:
             If present the cell is extended by the specified factor along each axis.
         """
         ase = structure.to_ase(supercell)
+        # ngl works with the standard form, so we need to store the positions in the same format
+        standard_cell, _ = ase.cell.standard_form()
+        ase.set_cell(standard_cell, scale_atoms=True)
         res = cls(nglview.show_ase(ase))
         res._positions = ase.positions
         if supercell is not None:

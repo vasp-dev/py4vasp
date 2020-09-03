@@ -123,3 +123,11 @@ def test_serializable():
     arrow = _Arrow3d(np.zeros(3), np.ones(3), np.ones(1))
     for element in arrow.to_serializable():
         json.json_clean(element)
+
+
+def test_standard_form(raw_structure, Assert):
+    x = np.sqrt(0.5)
+    raw_structure.cell.lattice_vectors = np.array([[x, x, 0], [-x, x, 0], [0, 0, 1]])
+    viewer = make_viewer(raw_structure)
+    expected_positions = raw_structure.cell.scale * raw_structure.positions
+    Assert.allclose(viewer._positions, expected_positions)

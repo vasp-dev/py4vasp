@@ -1,7 +1,7 @@
 from unittest.mock import patch
 from py4vasp.data import Structure, Magnetism
 from .test_topology import raw_topology
-from .test_magnetism import raw_magnetism, noncollinear_magnetism
+from .test_magnetism import raw_magnetism, noncollinear_magnetism, charge_only
 import py4vasp.data as data
 import py4vasp.raw as raw
 import pytest
@@ -15,7 +15,8 @@ def raw_structure(raw_topology):
     structure = raw.Structure(
         topology=raw_topology,
         cell=raw.Cell(scale=2.0, lattice_vectors=np.eye(3)),
-        positions=np.arange(np.prod(shape)).reshape(shape) / np.prod(shape),
+        # shift the positions of 0 to avoid relative comparison between tiny numbers
+        positions=(0.5 + np.arange(np.prod(shape)).reshape(shape)) / np.prod(shape),
     )
     structure.actual_cell = structure.cell.scale * structure.cell.lattice_vectors
     return structure
@@ -122,3 +123,27 @@ def test_noncollinear_magnetism(noncollinear_magnetism, raw_structure, Assert):
     rescale_moments = Structure.length_moments / largest_moment
     for actual, expected in zip(actual_moments, expected_moments):
         Assert.allclose(actual, expected * rescale_moments)
+
+
+def test_charge_only(charge_only, raw_structure, Assert):
+    raw_structure.magnetism = charge_only
+    structure = Structure(raw_structure)
+    assert "magnetic_moments" not in structure.read()
+    cm_init = patch.object(data.Viewer3d, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(data.Viewer3d, "show_cell")
+    cm_arrows = patch.object(data.Viewer3d, "show_arrows_at_atoms")
+    with cm_init, cm_cell, cm_arrows as arrows:
+        structure.plot()
+        arrows.assert_not_called()
+
+
+def test_vanishing_moments(raw_magnetism, raw_structure, Assert):
+    raw_magnetism.moments = np.zeros_like(raw_magnetism.moments)
+    raw_structure.magnetism = raw_magnetism
+    structure = Structure(raw_structure)
+    cm_init = patch.object(data.Viewer3d, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(data.Viewer3d, "show_cell")
+    cm_arrows = patch.object(data.Viewer3d, "show_arrows_at_atoms")
+    with cm_init, cm_cell, cm_arrows as arrows:
+        structure.plot()
+        arrows.assert_not_called()
