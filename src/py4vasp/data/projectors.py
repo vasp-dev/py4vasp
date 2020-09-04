@@ -132,6 +132,7 @@ dict
 ).format(_selection_doc)
 
 
+@_util.add_wrappers
 class Projectors:
     """ The projectors used for atom and orbital resolved quantities.
 
@@ -276,10 +277,6 @@ class Projectors:
         if selection is None:
             return {}
         return self._read_elements(selection, projections)
-
-    @functools.wraps(to_dict)
-    def read(self, *args):
-        return self.to_dict(*args)
 
     def _read_elements(self, selection, projections):
         res = {}

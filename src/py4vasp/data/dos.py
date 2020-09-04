@@ -57,6 +57,7 @@ pd.DataFrame
 ).format(_selection_doc)
 
 
+@_util.add_wrappers
 class Dos:
     """ The electronic density of states (DOS).
 
@@ -101,17 +102,9 @@ class Dos:
         }
         return df.iplot(**default)
 
-    @functools.wraps(to_plotly)
-    def plot(self, *args):
-        return self.to_plotly(*args)
-
     @_util.add_doc(_to_dict_doc)
     def to_dict(self, selection=None):
         return {**self._read_data(selection), "fermi_energy": self._fermi_energy}
-
-    @functools.wraps(to_dict)
-    def read(self, *args):
-        return self.to_dict(*args)
 
     @_util.add_doc(_to_frame_doc)
     def to_frame(self, selection=None):

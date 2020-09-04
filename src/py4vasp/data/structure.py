@@ -4,6 +4,7 @@ import numpy as np
 import functools
 
 
+@_util.add_specific_wrappers({"plot": "to_viewer3d"})
 class Structure:
     """ The structure of the crystal.
 
@@ -45,10 +46,6 @@ class Structure:
             "elements": Topology(self._raw.topology).elements(),
             **({"magnetic_moments": moments} if moments is not None else {}),
         }
-
-    @functools.wraps(to_dict)
-    def read(self):
-        return self.to_dict()
 
     def _read_magnetic_moments(self):
         if self._raw.magnetism is not None:
@@ -107,10 +104,6 @@ class Structure:
         if moments is not None:
             viewer.show_arrows_at_atoms(moments)
         return viewer
-
-    @functools.wraps(to_viewer3d)
-    def plot(self, *args):
-        return self.to_viewer3d(*args)
 
     def _prepare_magnetic_moments_for_plotting(self):
         moments = self._read_magnetic_moments()

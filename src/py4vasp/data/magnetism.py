@@ -74,6 +74,7 @@ np.ndarray
 """
 
 
+@_util.add_wrappers
 class Magnetism:
     """ The evolution of the magnetization over the simulation.
 
@@ -99,10 +100,6 @@ class Magnetism:
         moments = self.moments(steps)
         moments = {"moments": moments} if moments is not None else {}
         return {"charges": self.charges(steps), **moments}
-
-    @functools.wraps(to_dict)
-    def read(self, *args):
-        return self.to_dict(*args)
 
     @_util.add_doc(_charges_doc)
     def charges(self, steps=None):

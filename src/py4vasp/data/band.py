@@ -41,6 +41,7 @@ plotly.graph_objects.Figure
 ).format(_selection_doc)
 
 
+@_util.add_wrappers
 class Band:
     """ The electronic band structure.
 
@@ -78,10 +79,6 @@ class Band:
             "projections": self._projectors.read(selection, self._raw.projections),
         }
 
-    @functools.wraps(to_dict)
-    def read(self, *args):
-        return self.to_dict(*args)
-
     @_util.add_doc(_to_plotly_doc)
     def to_plotly(self, selection=None, width=0.5):
         ticks, labels = self._ticks_and_labels()
@@ -91,10 +88,6 @@ class Band:
             "yaxis": {"title": {"text": "Energy (eV)"}},
         }
         return go.Figure(data=data, layout=default)
-
-    @functools.wraps(to_plotly)
-    def plot(self, *args):
-        return self.to_plotly(*args)
 
     def _shift_bands_by_fermi_energy(self):
         if self._spin_polarized:

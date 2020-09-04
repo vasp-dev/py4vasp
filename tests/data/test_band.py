@@ -202,7 +202,7 @@ def spin_projections(spin_band):
 
 def test_spin_projections_read(spin_projections, Assert):
     raw_band = spin_projections
-    band = Band(raw_band).read("s")
+    band = Band(raw_band).read(selection="s")
     Assert.allclose(band["projections"]["s_up"], raw_band.projections[0, 0])
     Assert.allclose(band["projections"]["s_down"], raw_band.projections[1, 0])
 
@@ -241,7 +241,7 @@ def test_raw_projections_read(raw_projections, Assert):
 def test_raw_projections_plot(raw_projections, Assert):
     raw_band = raw_projections
     default_width = 0.5
-    fig = Band(raw_band).plot("s, 1")
+    fig = Band(raw_band).plot(selection="s, 1")
     assert len(fig.data) == 2
     assert fig.data[0].name == "s"
     assert fig.data[1].name == "Si_1"

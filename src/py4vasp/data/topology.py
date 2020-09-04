@@ -7,6 +7,7 @@ import functools
 _subscript = "_"
 
 
+@_util.add_wrappers
 class Topology:
     """ This class accesses the topology of the crystal.
 
@@ -45,10 +46,6 @@ class Topology:
             **self._default_selection(self._raw),
             **self._specific_selection(self._raw),
         }
-
-    @functools.wraps(to_dict)
-    def read(self):
-        return self.to_dict()
 
     def to_frame(self):
         """ Convert the topology to a DataFrame

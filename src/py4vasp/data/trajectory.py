@@ -4,6 +4,7 @@ import mdtraj
 import functools
 
 
+@_util.add_wrappers
 class Trajectory:
     """ The trajectory of the ionic positions during the simulation.
 
@@ -41,10 +42,6 @@ class Trajectory:
             "positions": self._raw.positions[:],
             "lattice_vectors": self._raw.lattice_vectors[:],
         }
-
-    @functools.wraps(to_dict)
-    def read(self):
-        return self.to_dict()
 
     A_to_pm = 0.1
 

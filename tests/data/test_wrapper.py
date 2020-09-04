@@ -18,9 +18,11 @@ def test_plot():
     # with arguments
     res = plot(plotable, "arguments")
     obj.plot.assert_called_with("arguments")
+    # with keyword arguments
+    res = plot(plotable, key="value")
 
 
-def test_plot():
+def test_read():
     readable = MagicMock()
     context = readable.from_file.return_value
     obj = context.__enter__.return_value

@@ -3,6 +3,7 @@ import functools
 from py4vasp.data import _util
 
 
+@_util.add_wrappers
 class Energy:
     """ The energy data for all steps of a relaxation or MD simulation.
 
@@ -47,10 +48,6 @@ class Energy:
             if selection in label:
                 return {label: self._raw.values[:, i]}
 
-    @functools.wraps(to_dict)
-    def read(self, *args):
-        return self.to_dict(*args)
-
     def to_plotly(self, selection=None):
         """ Read the energy data and generate a plotly figure.
 
@@ -74,7 +71,3 @@ class Energy:
             "yaxis": {"title": {"text": label}},
         }
         return go.Figure(data=data, layout=default)
-
-    @functools.wraps(to_plotly)
-    def plot(self, *args):
-        return self.to_plotly(*args)

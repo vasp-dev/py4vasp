@@ -4,6 +4,7 @@ import functools
 import numpy as np
 
 
+@_util.add_wrappers
 class Kpoints:
     """ The **k** points used in the Vasp calculation.
 
@@ -41,10 +42,6 @@ class Kpoints:
             "weights": self._raw.weights[:],
             "labels": self.labels(),
         }
-
-    @functools.wraps(to_dict)
-    def read(self):
-        return self.to_dict()
 
     def line_length(self):
         "Get the number of points per line in the Brillouin zone."
