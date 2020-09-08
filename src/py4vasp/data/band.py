@@ -2,12 +2,62 @@ import functools
 import itertools
 import numpy as np
 import plotly.graph_objects as go
-from .projectors import _projectors_or_dummy
+from .projectors import _projectors_or_dummy, _selection_doc
 from .kpoints import Kpoints
 from py4vasp.data import _util
 
+_to_dict_doc = (
+    """ Read the data into a dictionary.
 
+Parameters
+----------
+{}
+
+Returns
+-------
+dict
+    Contains the **k**-point path for plotting band structures with the
+    eigenvalues shifted to bring the Fermi energy to 0. If available
+    and a selection is passed, the projections of these bands on the
+    selected projectors are included.
+"""
+).format(_selection_doc)
+
+_to_plotly_doc = (
+    """ Read the data and generate a plotly figure.
+
+Parameters
+----------
+{}
+width : float
+    Specifies the width of the flatbands if a selection of projections is specified.
+Returns
+-------
+plotly.graph_objects.Figure
+    plotly figure containing the spin-up and spin-down bands. If a selection
+    is provided the width of the bands represents the projections of the
+    bands onto the specified projectors.
+"""
+).format(_selection_doc)
+
+
+@_util.add_wrappers
 class Band:
+    """ The electronic band structure.
+
+    The most common use case of this class is to produce the electronic band
+    structure along a path in the Brillouin zone used in a non self consistent
+    Vasp calculation. In some cases you may want to use the `to_dict` function
+    just to obtain the eigenvalue and projection data though in that case the
+    **k**-point distances that are calculated are meaningless.
+
+    Parameters
+    ----------
+    raw_band : raw.Band
+        Dataclass containing the raw data necessary to produce a band structure
+        (eigenvalues, kpoints, ...).
+    """
+
     def __init__(self, raw_band):
         self._raw = raw_band
         self._kpoints = Kpoints(raw_band.kpoints)
@@ -15,20 +65,22 @@ class Band:
         self._projectors = _projectors_or_dummy(raw_band.projectors)
 
     @classmethod
+    @_util.add_doc(_util.from_file_doc("electronic band structure"))
     def from_file(cls, file=None):
         return _util.from_file(cls, file, "band")
 
-    def read(self, selection=None):
-        res = {
+    @_util.add_doc(_to_dict_doc)
+    def to_dict(self, selection=None):
+        return {
             "kpoint_distances": self._kpoints.distances(),
             "kpoint_labels": self._kpoints.labels(),
             "fermi_energy": self._raw.fermi_energy,
             **self._shift_bands_by_fermi_energy(),
             "projections": self._projectors.read(selection, self._raw.projections),
         }
-        return res
 
-    def plot(self, selection=None, width=0.5):
+    @_util.add_doc(_to_plotly_doc)
+    def to_plotly(self, selection=None, width=0.5):
         ticks, labels = self._ticks_and_labels()
         data = self._band_structure(selection, width)
         default = {

@@ -2,11 +2,77 @@ import functools
 import itertools
 import numpy as np
 import pandas as pd
-from .projectors import _projectors_or_dummy
+from .projectors import _projectors_or_dummy, _selection_doc
 from py4vasp.data import _util
 
+_to_dict_doc = (
+    """ Read the data into a dictionary.
 
+Parameters
+----------
+{}
+
+Returns
+-------
+dict
+    Contains the energies at which the DOS was evaluated aligned to the
+    Fermi energy and the total DOS or the spin-resolved DOS for
+    spin-polarized calculations. If available and a selection is passed,
+    the orbital resolved DOS for the selected orbitals is included.
+"""
+).format(_selection_doc)
+
+_to_plotly_doc = (
+    """ Read the data and generate a plotly figure.
+
+Parameters
+----------
+{}
+
+Returns
+-------
+plotly.graph_objects.Figure
+    plotly figure containing the total DOS. If the calculation was spin
+    polarized, the resulting DOS is spin resolved and the spin-down DOS
+    is plotted towards negative values. If a selection the orbital
+    resolved DOS is given for the specified projectors.
+"""
+).format(_selection_doc)
+
+_to_frame_doc = (
+    """ Read the data into a pandas DataFrame.
+
+Parameters
+----------
+{}
+
+Returns
+-------
+pd.DataFrame
+    Contains the energies at which the DOS was evaluated aligned to the
+    Fermi energy and the total DOS or the spin-resolved DOS for
+    spin-polarized calculations. If available and a selection is passed,
+    the orbital resolved DOS for the selected orbitals is included.
+"""
+).format(_selection_doc)
+
+
+@_util.add_wrappers
 class Dos:
+    """ The electronic density of states (DOS).
+
+    You can use this class to extract the DOS data of a Vasp calculation.
+    Typically you want to run a non self consistent calculation with a
+    denser mesh for a smoother DOS, but the class will work independent
+    of it. If you generated orbital decomposed DOS, you can use this
+    class to select which subset of these orbitals to read or plot.
+
+    Parameters
+    ----------
+    raw_dos : raw.Dos
+        Dataclass containing the raw data necessary to produce a DOS.
+    """
+
     def __init__(self, raw_dos):
         self._raw = raw_dos
         self._fermi_energy = raw_dos.fermi_energy
@@ -18,10 +84,12 @@ class Dos:
         self._projections = raw_dos.projections
 
     @classmethod
+    @_util.add_doc(_util.from_file_doc("electronic DOS"))
     def from_file(cls, file=None):
         return _util.from_file(cls, file, "dos")
 
-    def plot(self, selection=None):
+    @_util.add_doc(_to_plotly_doc)
+    def to_plotly(self, selection=None):
         df = self.to_frame(selection)
         if self._spin_polarized:
             for col in filter(lambda col: "down" in col, df):
@@ -34,12 +102,11 @@ class Dos:
         }
         return df.iplot(**default)
 
-    def read(self, selection=None):
-        return self.to_dict(selection)
-
+    @_util.add_doc(_to_dict_doc)
     def to_dict(self, selection=None):
         return {**self._read_data(selection), "fermi_energy": self._fermi_energy}
 
+    @_util.add_doc(_to_frame_doc)
     def to_frame(self, selection=None):
         df = pd.DataFrame(self._read_data(selection))
         df.fermi_energy = self._fermi_energy

@@ -2,19 +2,46 @@
 name = "py4vasp"
 version = "0.1.0"
 description = ""
-authors = ["Martin Schlipf <martin.schlipf@gmail.com>"]
+authors = [
+    "Martin Schlipf <martin.schlipf@gmail.com>",
+    "Orest Dubay <orest-d@users.noreply.github.com>"
+]
 
 [tool.poetry.dependencies]
 python = "^3.7"
 h5py = "^2.10.0"
 numpy = "^1.17.4"
 pandas = "^0.25.3"
-cufflinks = "^0.17.0"
+cufflinks = "^0.17.3"
+nglview = "^2.7.5"
+ase = "^3.19.0"
+mdtraj = "^1.9.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.0"
-black = {version = "^18.3-alpha.0", allows-prereleases = true}
+black = {version = "^18.3-alpha.0", allow-prereleases = true}
 pytest-cov = "^2.8.1"
+pylint = "^2.5.0"
+sphinx = "^3.0.4"
+
+[tool.poetry2conda]
+name = "py4vasp-env"
+
+[tool.poetry2conda.dependencies]
+python = {channel = "anaconda"}
+h5py = {channel = "anaconda"}
+numpy = {channel = "anaconda"}
+pandas = {channel = "anaconda"}
+cufflinks = {channel = "conda-forge", name = "cufflinks-py"}
+mdtraj = {channel = "conda-forge"}
+nglview = {channel = "conda-forge"}
+ase = {channel = "conda-forge"}
+sphinx = {channel = "anaconda"}
+
+[tool.dephell.main]
+from = {format = "poetry", path = "pyproject.toml"}
+to = {format = "setuppy", path = "setup.py"}
+
 [build-system]
 requires = ["poetry>=1.0"]
 build-backend = "poetry.masonry.api"

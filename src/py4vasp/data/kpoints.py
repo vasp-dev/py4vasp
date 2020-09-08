@@ -4,12 +4,37 @@ import functools
 import numpy as np
 
 
+@_util.add_wrappers
 class Kpoints:
+    """ The **k** points used in the Vasp calculation.
+
+    This class provides utility functionality to extract information about the
+    **k** points used by Vasp. As such it is mostly used as a helper class for
+    other postprocessing classes to extract the required information, e.g., to
+    generate a band structure.
+
+    Parameters
+    ----------
+    raw_kpoints : raw.Kpoints
+        Dataclass containing the raw **k**-points data used in the calculation.
+    """
+
     def __init__(self, raw_kpoints):
         self._raw = raw_kpoints
         self._distances = None
 
-    def read(self):
+    def to_dict(self):
+        """ Read the **k** points data into a dictionary.
+
+        Returns
+        -------
+        dict
+            Contains the coordinates of the **k** points (in crystal units) as
+            well as their weights used for integrations. Moreover, some data
+            specified in the input file of Vasp are transferred such as the mode
+            used to generate the **k** points, the line length (if line mode was
+            used), and any labels set for specific points.
+        """
         return {
             "mode": self.mode(),
             "line_length": self.line_length(),
@@ -19,14 +44,29 @@ class Kpoints:
         }
 
     def line_length(self):
+        "Get the number of points per line in the Brillouin zone."
         if self.mode() == "line":
             return self._raw.number
         return len(self._raw.coordinates)
 
     def number_lines(self):
+        "Get the number of lines in the Brillouin zone."
         return len(self._raw.coordinates) // self.line_length()
 
     def distances(self):
+        """ Convert the coordinates of the **k** points into a one dimensional array
+
+        For every line in the Brillouin zone, the distance between each **k** point
+        and the start of the line is calculated. Then the distances of different
+        lines are concatenated into a single list. This routine is mostly useful
+        to plot data along high-symmetry lines like band structures.
+
+        Returns
+        -------
+        np.ndarray
+            A reduction of the **k** points onto a one-dimensional array based
+            on the distance between the points.
+        """
         if self._distances is not None:
             return self._distances
         cell = self._raw.cell.lattice_vectors * self._raw.cell.scale
@@ -40,6 +80,7 @@ class Kpoints:
         return self._distances
 
     def mode(self):
+        "Get the **k**-point generation mode specified in the Vasp input file"
         mode = _util.decode_if_possible(self._raw.mode).strip() or "# empty string"
         first_char = mode[0].lower()
         if first_char == "a":
@@ -59,6 +100,7 @@ class Kpoints:
             )
 
     def labels(self):
+        "Get any labels given in the input file for specific **k** points."
         if self._raw.labels is None or self._raw.label_indices is None:
             return None
         labels = [""] * len(self._raw.coordinates)

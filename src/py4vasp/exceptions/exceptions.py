@@ -9,3 +9,7 @@ class RefinementException(Py4VaspException):
 
 class UsageException(Py4VaspException):
     """The user provided input is not suitable for processing"""
+
+
+class NotImplementException(Py4VaspException):
+    """Exception raised when a function is called that is not implemented."""

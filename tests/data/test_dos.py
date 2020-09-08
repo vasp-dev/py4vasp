@@ -104,8 +104,9 @@ def nonmagnetic_projections(nonmagnetic_Dos):
     atoms = ["Si", "C1", "C2"]
     lmax = 4
     raw_proj = raw.Projectors(
-        number_ion_types=[1, 2],
-        ion_types=np.array(["Si", "C "], dtype="S"),
+        topology=raw.Topology(
+            number_ion_types=[1, 2], ion_types=np.array(["Si", "C "], dtype="S")
+        ),
         orbital_types=np.array([" s", " p", " d", " f"], dtype="S"),
         number_spins=num_spins,
     )
@@ -170,8 +171,9 @@ def magnetic_projections(magnetic_Dos):
     f_orbitals = ["fy3x2", " fxyz", " fyz2", "  fz3", " fxz2", " fzx2", "  fx3"]
     orbitals = sp_orbitals + d_orbitals + f_orbitals
     raw_proj = raw.Projectors(
-        number_ion_types=[1],
-        ion_types=np.array(["Fe"], dtype="S"),
+        topology=raw.Topology(
+            number_ion_types=[1], ion_types=np.array(["Fe"], dtype="S")
+        ),
         orbital_types=np.array(orbitals, dtype="S"),
         number_spins=num_spins,
     )
