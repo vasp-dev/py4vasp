@@ -2,6 +2,7 @@ import functools
 import itertools
 import numpy as np
 import plotly.graph_objects as go
+from IPython.lib.pretty import pretty
 from .projectors import _projectors_or_dummy, _selection_doc
 from .kpoints import Kpoints
 from py4vasp.data import _util
@@ -42,7 +43,7 @@ plotly.graph_objects.Figure
 
 
 @_util.add_wrappers
-class Band:
+class Band(_util.Data):
     """ The electronic band structure.
 
     The most common use case of this class is to produce the electronic band
@@ -63,6 +64,16 @@ class Band:
         self._kpoints = Kpoints(raw_band.kpoints)
         self._spin_polarized = len(raw_band.eigenvalues) == 2
         self._projectors = _projectors_or_dummy(raw_band.projectors)
+
+    def _repr_pretty_(self, p, cycle):
+        path = self._create_path_if_available()
+        text = f"""
+{"spin polarized" if self._spin_polarized else ""} band structure{path}:
+   {self._raw.eigenvalues.shape[1]} k-points
+   {self._raw.eigenvalues.shape[2]} bands
+{pretty(self._projectors)}
+        """.strip()
+        p.text(text)
 
     @classmethod
     @_util.add_doc(_util.from_file_doc("electronic band structure"))
@@ -137,6 +148,13 @@ class Band:
         kdists = np.tile([*kdists, np.NaN], num_bands)
         lines = np.append(lines, [np.repeat(np.NaN, num_bands)], axis=0)
         return go.Scatter(x=kdists, y=lines.flatten(order="F"), name=name)
+
+    def _create_path_if_available(self):
+        _, labels = self._ticks_and_labels()
+        if any(len(label.strip()) > 0 for label in labels):
+            return " (" + " - ".join(labels) + ")"
+        else:
+            return ""
 
     def _ticks_and_labels(self):
         def filter_unique(current, item):

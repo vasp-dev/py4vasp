@@ -3,12 +3,13 @@ import numpy as np
 import pandas as pd
 import mdtraj
 import functools
+import itertools
 
 _subscript = "_"
 
 
 @_util.add_wrappers
-class Topology:
+class Topology(_util.Data):
     """ This class accesses the topology of the crystal.
 
     At the current stage this only provides access to the name of the atoms in
@@ -42,10 +43,7 @@ class Topology:
             strings to atom-indices integers. These access strings are used
             throughout all of the refinement classes.
         """
-        return {
-            **self._default_selection(self._raw),
-            **self._specific_selection(self._raw),
-        }
+        return {**self._default_selection(), **self._specific_selection()}
 
     def to_frame(self):
         """ Convert the topology to a DataFrame
@@ -73,24 +71,36 @@ class Topology:
 
     def elements(self):
         """ Extract the element of all atoms. """
-        atom_dict = self.read()
-        elements = []
-        for key, val in atom_dict.items():
-            if key == _util.default_selection:
-                continue
-            elif isinstance(val.indices, range):
-                elements += len(val.indices) * [key]
-        return elements
+        type_numbers = zip(self._ion_types(), self._raw.number_ion_types)
+        repeated_types = (itertools.repeat(*x) for x in type_numbers)
+        return list(itertools.chain.from_iterable(repeated_types))
 
-    def _default_selection(self, topology):
-        num_atoms = np.sum(topology.number_ion_types)
+    def to_poscar(self, format_newline=""):
+        """ Generate the topology lines for the POSCAR file."""
+        ion_types = " ".join(self._ion_types())
+        number_ion_types = " ".join(str(x) for x in self._raw.number_ion_types)
+        return ion_types + format_newline + "\n" + number_ion_types
+
+    def _repr_pretty_(self, p, cycle):
+        to_string = lambda number: str(number) if number > 1 else ""
+        p.text(self._create_repr(to_string))
+
+    def _repr_html_(self):
+        to_string = lambda number: f"<sub>{number}</sub>" if number > 1 else ""
+        return self._create_repr(to_string)
+
+    def _create_repr(self, to_string):
+        number_strings = (to_string(number) for number in self._raw.number_ion_types)
+        return "".join(itertools.chain(*zip(self._ion_types(), number_strings)))
+
+    def _default_selection(self):
+        num_atoms = np.sum(self._raw.number_ion_types)
         return {_util.default_selection: _util.Selection(indices=range(num_atoms))}
 
-    def _specific_selection(self, topology):
+    def _specific_selection(self):
         start = 0
         res = {}
-        for ion_type, number in zip(topology.ion_types, topology.number_ion_types):
-            ion_type = _util.decode_if_possible(ion_type).strip()
+        for ion_type, number in zip(self._ion_types(), self._raw.number_ion_types):
             _range = range(start, start + number)
             res[ion_type] = _util.Selection(indices=_range, label=ion_type)
             for i in _range:
@@ -99,3 +109,7 @@ class Topology:
                 res[str(i + 1)] = _util.Selection(indices=(i,), label=label)
             start += number
         return res
+
+    def _ion_types(self):
+        clean_string = lambda ion_type: _util.decode_if_possible(ion_type).strip()
+        return (clean_string(ion_type) for ion_type in self._raw.ion_types)

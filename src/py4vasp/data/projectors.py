@@ -133,7 +133,7 @@ dict
 
 
 @_util.add_wrappers
-class Projectors:
+class Projectors(_util.Data):
     """ The projectors used for atom and orbital resolved quantities.
 
     This is a common class used by all quantities that contains some projected
@@ -196,6 +196,15 @@ class Projectors:
             "total": _util.Selection(indices=range(num_spins), label="total"),
             _default: _util.Selection(indices=range(num_spins)),
         }
+
+    def _repr_pretty_(self, p, cycle):
+        atoms = "   atoms: " + ", ".join(Topology(self._raw.topology)._ion_types())
+        orbitals = "   orbitals: " + ", ".join(self._orbital_types())
+        p.text(f"projectors:\n{atoms}\n{orbitals}")
+
+    def _orbital_types(self):
+        clean_string = lambda ion_type: _util.decode_if_possible(ion_type).strip()
+        return (clean_string(orbital) for orbital in self._raw.orbital_types)
 
     def select(self, atom=_default, orbital=_default, spin=_default):
         """ Map selection strings onto corresponding Selection objects.
@@ -307,6 +316,9 @@ class _NoProjectorsAvailable:
                 "Projectors are not available, rerun Vasp setting LORBIT >= 10."
             )
         return {}
+
+    def __repr__(self):
+        return ""
 
 
 def _projectors_or_dummy(projectors):

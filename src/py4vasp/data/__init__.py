@@ -24,9 +24,9 @@ from .kpoints import Kpoints
 from .magnetism import Magnetism
 from .projectors import Projectors
 from .topology import Topology
-from .trajectory import Trajectory
 from .viewer3d import Viewer3d
 from .structure import Structure
+from .trajectory import Trajectory
 from py4vasp.exceptions import NotImplementException
 
 import plotly.io as pio

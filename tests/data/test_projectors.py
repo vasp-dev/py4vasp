@@ -217,3 +217,13 @@ def run_parse_selection(setup):
         for format in testcase.equivalent_formats:
             selections = proj.parse_selection(format)
             assert list(selections) == list(testcase.reference_selections)
+
+
+def test_print(without_spin):
+    actual, _ = _util.format_(Projectors(without_spin))
+    reference = """
+projectors:
+   atoms: Sr, Ti, O
+   orbitals: s, py, pz, px, dxy, dyz, dz2, dxz, x2-y2, fy3x2, fxyz, fyz2, fz3, fxz2, fzx2, fx3
+   """.strip()
+    assert actual == {"text/plain": reference}

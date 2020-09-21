@@ -1,4 +1,6 @@
 from contextlib import contextmanager, nullcontext
+from IPython.core.formatters import DisplayFormatter
+from IPython.lib.pretty import pretty
 from typing import NamedTuple, Iterable
 import py4vasp.raw as raw
 import functools
@@ -82,3 +84,23 @@ def _make_wrapper(cls, wrap_this_func):
 
 
 add_wrappers = add_specific_wrappers()
+
+format_ = DisplayFormatter().format
+
+
+class DataMeta(type):
+    def _repr_pretty_(cls, *args, **kwargs):
+        with cls.from_file() as obj:
+            obj._repr_pretty_(*args, **kwargs)
+
+    def _repr_mimebundle_(cls, *args, **kwargs):
+        with cls.from_file() as obj:
+            return format_(obj, *args, **kwargs)
+
+    def __str__(cls):
+        return pretty(cls)
+
+
+class Data(metaclass=DataMeta):
+    def __str__(self):
+        return pretty(self)

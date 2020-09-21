@@ -75,7 +75,7 @@ np.ndarray
 
 
 @_util.add_wrappers
-class Magnetism:
+class Magnetism(_util.Data):
     """ The evolution of the magnetization over the simulation.
 
     This class gives access to the magnetic moments and charges projected on the
@@ -94,6 +94,20 @@ class Magnetism:
     @_util.add_doc(_util.from_file_doc("orbital-resolved magnetic moments"))
     def from_file(cls, file=None):
         return _util.from_file(cls, file, "magnetism")
+
+    def _repr_pretty_(self, p, cycle):
+        magmom = "MAGMOM = "
+        moments_last_step = self.total_moments(-1)
+        moments_to_string = lambda vec: " ".join(f"{moment:.2f}" for moment in vec)
+        if moments_last_step is None:
+            text = "not available"
+        elif moments_last_step.ndim == 1:
+            text = magmom + moments_to_string(moments_last_step)
+        else:
+            separator = " \\\n         "
+            generator = (moments_to_string(vec) for vec in moments_last_step)
+            text = magmom + separator.join(generator)
+        p.text(text)
 
     @_util.add_doc(_to_dict_doc)
     def to_dict(self, steps=None):

@@ -1,7 +1,7 @@
-from py4vasp.data import plot, read, to_dict
+from py4vasp.data import plot, read, to_dict, _util, _classes
 from py4vasp.exceptions import NotImplementException
 from unittest.mock import MagicMock
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 import pytest
 
 
@@ -60,3 +60,30 @@ def test_exception():
 
     with pytest.raises(NotImplementException):
         read(NoReadDefined)
+
+
+def test_print():
+    class DataImpl(_util.Data):
+        def __init__(self, name="default"):
+            self.name = name
+
+        @classmethod
+        def from_file(cls):
+            return nullcontext(cls())
+
+        def _repr_pretty_(self, p, cycle):
+            p.text(f"{self.name} pretty")
+
+        def _repr_html_(self):
+            return f"{self.name} html"
+
+    res, _ = _util.format_(DataImpl)
+    assert {"text/plain": "default pretty", "text/html": "default html"}
+    assert str(DataImpl) == "default pretty"
+    data_impl = DataImpl("special")
+    res, _ = _util.format_(data_impl)
+    assert {"text/plain": "special pretty", "text/html": "special html"}
+    assert str(data_impl) == "special pretty"
+    for class_ in _classes:
+        if hasattr(class_, "_repr_pretty_"):
+            assert issubclass(class_, _util.Data)

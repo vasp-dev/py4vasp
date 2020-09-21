@@ -4,7 +4,7 @@ from py4vasp.data import _util
 
 
 @_util.add_wrappers
-class Energy:
+class Energy(_util.Data):
     """ The energy data for all steps of a relaxation or MD simulation.
 
     You can use this class to inspect how the ionic relaxation converges or
@@ -24,6 +24,13 @@ class Energy:
     @_util.add_doc(_util.from_file_doc("energies in an relaxation or MD simulation"))
     def from_file(cls, file=None):
         return _util.from_file(cls, file, "energy")
+
+    def _repr_pretty_(self, p, cycle):
+        text = "Energies at last step:"
+        for label, value in zip(self._raw.labels, self._raw.values[-1]):
+            label = f"{_util.decode_if_possible(label):22.22}"
+            text += f"\n   {label}={value:17.6f}"
+        p.text(text)
 
     def to_dict(self, selection=None):
         """ Read the energy data and store it in a dictionary.

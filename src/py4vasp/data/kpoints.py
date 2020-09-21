@@ -5,7 +5,7 @@ import numpy as np
 
 
 @_util.add_wrappers
-class Kpoints:
+class Kpoints(_util.Data):
     """ The **k** points used in the Vasp calculation.
 
     This class provides utility functionality to extract information about the
@@ -22,6 +22,14 @@ class Kpoints:
     def __init__(self, raw_kpoints):
         self._raw = raw_kpoints
         self._distances = None
+
+    def _repr_pretty_(self, p, cycle):
+        text = f"""k-points
+{len(self._raw.coordinates)}
+reciprocal"""
+        for kpoint, weight in zip(self._raw.coordinates, self._raw.weights):
+            text += "\n" + f"{kpoint[0]} {kpoint[1]} {kpoint[2]}  {weight}"
+        p.text(text)
 
     def to_dict(self):
         """ Read the **k** points data into a dictionary.

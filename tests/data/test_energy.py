@@ -1,4 +1,4 @@
-from py4vasp.data import Energy
+from py4vasp.data import Energy, _util
 import pytest
 import numpy as np
 import py4vasp.raw as raw
@@ -37,3 +37,13 @@ def test_plot_energy(reference_energy, Assert):
 def test_energy_from_file(reference_energy, mock_file, check_read):
     with mock_file("energy", reference_energy) as mocks:
         check_read(Energy, mocks, reference_energy)
+
+
+def test_print(reference_energy):
+    actual, _ = _util.format_(Energy(reference_energy))
+    reference = f"""
+Energies at last step:
+   ion-electron   TOTEN  =       198.000000
+   temperature    TEIN   =       199.000000
+    """.strip()
+    assert actual == {"text/plain": reference}

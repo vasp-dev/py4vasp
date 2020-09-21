@@ -57,10 +57,10 @@ class Projectors:
 @dataclass
 class Cell:
     "Unit cell of the crystal or simulation cell for molecules."
-    scale: float
-    "Global scaling factor applied to all lattice vectors."
     lattice_vectors: np.ndarray
     "Lattice vectors defining the unit cell."
+    scale: float = 1.0
+    "Global scaling factor applied to all lattice vectors."
     __eq__ = _dataclass_equal
 
 

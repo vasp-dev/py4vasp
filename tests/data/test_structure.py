@@ -1,5 +1,5 @@
 from unittest.mock import patch
-from py4vasp.data import Structure, Magnetism
+from py4vasp.data import Structure, Magnetism, _util
 from .test_topology import raw_topology
 from .test_magnetism import raw_magnetism, noncollinear_magnetism, charge_only
 import py4vasp.data as data
@@ -147,3 +147,45 @@ def test_vanishing_moments(raw_magnetism, raw_structure, Assert):
     with cm_init, cm_cell, cm_arrows as arrows:
         structure.plot()
         arrows.assert_not_called()
+
+
+def test_print(raw_structure):
+    actual, _ = _util.format_(Structure(raw_structure))
+    ref_plain = """
+Sr2TiO4
+1.0
+2.0 0.0 0.0
+0.0 2.0 0.0
+0.0 0.0 2.0
+Sr Ti O
+2 1 4
+Direct
+0.023809523809523808 0.07142857142857142 0.11904761904761904
+0.16666666666666666 0.21428571428571427 0.2619047619047619
+0.30952380952380953 0.35714285714285715 0.40476190476190477
+0.4523809523809524 0.5 0.5476190476190477
+0.5952380952380952 0.6428571428571429 0.6904761904761905
+0.7380952380952381 0.7857142857142857 0.8333333333333334
+0.8809523809523809 0.9285714285714286 0.9761904761904762
+    """.strip()
+    ref_html = """
+Sr2TiO4<br>
+1.0<br>
+<table>
+<tr><td>2.0</td><td>0.0</td><td>0.0</td></tr>
+<tr><td>0.0</td><td>2.0</td><td>0.0</td></tr>
+<tr><td>0.0</td><td>0.0</td><td>2.0</td></tr>
+</table>
+Sr Ti O<br>
+2 1 4<br>
+Direct<br>
+<table>
+<tr><td>0.023809523809523808</td><td>0.07142857142857142</td><td>0.11904761904761904</td></tr>
+<tr><td>0.16666666666666666</td><td>0.21428571428571427</td><td>0.2619047619047619</td></tr>
+<tr><td>0.30952380952380953</td><td>0.35714285714285715</td><td>0.40476190476190477</td></tr>
+<tr><td>0.4523809523809524</td><td>0.5</td><td>0.5476190476190477</td></tr>
+<tr><td>0.5952380952380952</td><td>0.6428571428571429</td><td>0.6904761904761905</td></tr>
+<tr><td>0.7380952380952381</td><td>0.7857142857142857</td><td>0.8333333333333334</td></tr>
+<tr><td>0.8809523809523809</td><td>0.9285714285714286</td><td>0.9761904761904762</td></tr>
+</table>""".strip()
+    assert actual == {"text/plain": ref_plain, "text/html": ref_html}

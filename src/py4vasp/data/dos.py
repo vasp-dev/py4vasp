@@ -2,6 +2,7 @@ import functools
 import itertools
 import numpy as np
 import pandas as pd
+from IPython.lib.pretty import pretty
 from .projectors import _projectors_or_dummy, _selection_doc
 from py4vasp.data import _util
 
@@ -58,7 +59,7 @@ pd.DataFrame
 
 
 @_util.add_wrappers
-class Dos:
+class Dos(_util.Data):
     """ The electronic density of states (DOS).
 
     You can use this class to extract the DOS data of a Vasp calculation.
@@ -82,6 +83,14 @@ class Dos:
         self._has_partial_dos = raw_dos.projectors is not None
         self._projectors = _projectors_or_dummy(raw_dos.projectors)
         self._projections = raw_dos.projections
+
+    def _repr_pretty_(self, p, cycle):
+        text = f"""
+{"spin polarized" if self._spin_polarized else ""} Dos:
+   energies: [{self._energies[0]:0.2f}, {self._energies[-1]:0.2f}] {len(self._energies)} points
+{pretty(self._projectors)}
+        """.strip()
+        p.text(text)
 
     @classmethod
     @_util.add_doc(_util.from_file_doc("electronic DOS"))

@@ -70,3 +70,9 @@ def test_to_mdtraj(raw_topology):
     }
     ref = pd.DataFrame(ref_data)
     assert ref.equals(actual)
+
+
+def test_print(raw_topology):
+    actual, _ = _util.format_(Topology(raw_topology))
+    reference = {"text/plain": "Sr2TiO4", "text/html": "Sr<sub>2</sub>TiO<sub>4</sub>"}
+    assert actual == reference

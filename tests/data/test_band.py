@@ -1,4 +1,5 @@
-from py4vasp.data import Band, Kpoints
+from py4vasp.data import Band, Kpoints, Projectors, _util
+from IPython.lib.pretty import pretty
 import py4vasp.raw as raw
 import pytest
 import numpy as np
@@ -79,6 +80,16 @@ def test_multiple_bands_plot(multiple_bands, Assert):
     Assert.allclose(fig.data[0].y[mask], ref_bands)
 
 
+def test_print_multiple_bands(multiple_bands):
+    actual, _ = _util.format_(Band(multiple_bands))
+    reference = f"""
+band structure:
+   {multiple_bands.kpoints.number} k-points
+   {multiple_bands.eigenvalues.shape[2]} bands
+    """.strip()
+    assert actual == {"text/plain": reference}
+
+
 def test_nontrivial_cell(raw_band, Assert):
     raw_band.kpoints.cell = raw.Cell(
         scale=2.0, lattice_vectors=np.array([[3, 0, 0], [-1, 2, 0], [0, 0, 4]])
@@ -134,6 +145,16 @@ def test_line_without_labels_plot(line_without_labels, Assert):
     assert fig.layout.xaxis.ticktext == (" ", " ", " ", " ", " ")
 
 
+def test_print_line_without_labels(line_without_labels):
+    actual, _ = _util.format_(Band(line_without_labels))
+    reference = f"""
+band structure:
+   {line_without_labels.eigenvalues.shape[1]} k-points
+   {line_without_labels.eigenvalues.shape[2]} bands
+    """.strip()
+    assert actual == {"text/plain": reference}
+
+
 @pytest.fixture
 def line_with_labels(line_without_labels):
     labels = ["X", "Y", "G", "X"]
@@ -160,6 +181,16 @@ def check_ticks(fig, raw_band, Assert):
     xticks = (*dists[::number_kpoints], dists[-1])
     assert fig.layout.xaxis.tickmode == "array"
     Assert.allclose(fig.layout.xaxis.tickvals, np.array(xticks))
+
+
+def test_print_line_with_labels(line_with_labels):
+    actual, _ = _util.format_(Band(line_with_labels))
+    reference = f"""
+band structure (  - X|Y - G - X -  ):
+   {line_with_labels.eigenvalues.shape[1]} k-points
+   {line_with_labels.eigenvalues.shape[2]} bands
+    """.strip()
+    assert actual == {"text/plain": reference}
 
 
 @pytest.fixture
@@ -224,6 +255,18 @@ def test_spin_projections_plot(spin_projections, Assert):
             pos_lower = data.x[np.where(np.isclose(data.y, lower))]
             assert len(pos_upper) == len(pos_lower) == 1
             Assert.allclose(pos_upper, pos_lower)
+
+
+def test_print_line_without_labels(spin_projections):
+    actual, _ = _util.format_(Band(spin_projections))
+    projectors = pretty(Projectors(spin_projections.projectors))
+    reference = f"""
+spin polarized band structure:
+   {spin_projections.eigenvalues.shape[1]} k-points
+   {spin_projections.eigenvalues.shape[2]} bands
+{projectors}
+    """.strip()
+    assert actual == {"text/plain": reference}
 
 
 @pytest.fixture
