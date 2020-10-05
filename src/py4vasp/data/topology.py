@@ -95,18 +95,18 @@ class Topology(_util.Data):
 
     def _default_selection(self):
         num_atoms = np.sum(self._raw.number_ion_types)
-        return {_util.default_selection: _util.Selection(indices=range(num_atoms))}
+        return {_util.default_selection: _util.Selection(indices=slice(num_atoms))}
 
     def _specific_selection(self):
         start = 0
         res = {}
         for ion_type, number in zip(self._ion_types(), self._raw.number_ion_types):
-            _range = range(start, start + number)
-            res[ion_type] = _util.Selection(indices=_range, label=ion_type)
-            for i in _range:
+            end = start + number
+            res[ion_type] = _util.Selection(indices=slice(start, end), label=ion_type)
+            for i in range(start, end):
                 # create labels like Si_1, Si_2, Si_3 (starting at 1)
-                label = ion_type + _subscript + str(_range.index(i) + 1)
-                res[str(i + 1)] = _util.Selection(indices=(i,), label=label)
+                label = ion_type + _subscript + str(i - start + 1)
+                res[str(i + 1)] = _util.Selection(indices=slice(i, i + 1), label=label)
             start += number
         return res
 

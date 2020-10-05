@@ -21,17 +21,17 @@ def raw_topology():
 def test_raw_topology(raw_topology):
     index = np.cumsum(raw_topology.number_ion_types)
     topology = Topology(raw_topology).read()
-    assert topology["Sr"] == Selection(indices=range(index[0]), label="Sr")
-    assert topology["Ti"] == Selection(indices=range(index[0], index[1]), label="Ti")
-    assert topology["O"] == Selection(indices=range(index[1], index[2]), label="O")
-    assert topology["1"] == Selection(indices=(0,), label="Sr_1")
-    assert topology["2"] == Selection(indices=(1,), label="Sr_2")
-    assert topology["3"] == Selection(indices=(2,), label="Ti_1")
-    assert topology["4"] == Selection(indices=(3,), label="O_1")
-    assert topology["5"] == Selection(indices=(4,), label="O_2")
-    assert topology["6"] == Selection(indices=(5,), label="O_3")
-    assert topology["7"] == Selection(indices=(6,), label="O_4")
-    assert topology["*"] == Selection(indices=range(index[-1]))
+    assert topology["Sr"] == Selection(indices=slice(0, index[0]), label="Sr")
+    assert topology["Ti"] == Selection(indices=slice(index[0], index[1]), label="Ti")
+    assert topology["O"] == Selection(indices=slice(index[1], index[2]), label="O")
+    assert topology["1"] == Selection(indices=slice(0, 1), label="Sr_1")
+    assert topology["2"] == Selection(indices=slice(1, 2), label="Sr_2")
+    assert topology["3"] == Selection(indices=slice(2, 3), label="Ti_1")
+    assert topology["4"] == Selection(indices=slice(3, 4), label="O_1")
+    assert topology["5"] == Selection(indices=slice(4, 5), label="O_2")
+    assert topology["6"] == Selection(indices=slice(5, 6), label="O_3")
+    assert topology["7"] == Selection(indices=slice(6, 7), label="O_4")
+    assert topology["*"] == Selection(indices=slice(index[-1]))
 
 
 def test_atom_labels(raw_topology):

@@ -57,8 +57,11 @@ default_selection = "*"
 
 
 class Selection(NamedTuple):
+    "Helper class specifying which indices to extract their label."
     indices: Iterable[int]
+    "Indices from which the specified quantity is read."
     label: str = ""
+    "Label identifying the quantity."
 
 
 def add_specific_wrappers(specific_wrappers={}):

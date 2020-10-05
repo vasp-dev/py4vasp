@@ -1,8 +1,6 @@
 from __future__ import annotations
 from typing import NamedTuple, Iterable, Union
 from dataclasses import dataclass
-import functools
-import itertools
 import re
 import numpy as np
 from .topology import Topology
@@ -119,7 +117,7 @@ _to_dict_doc = (
 Parameters
 ----------
 {}
-projections : np.ndarray
+projections : np.ndarray or None
     Array containing projected data.
 
 Returns
@@ -127,7 +125,8 @@ Returns
 dict
     Dictionary where the label of the selection is linked to a particular
     column of the array. If a particular selection includes multiple indices
-    these elements are added.
+    these elements are added. If the projections are not present, the relevant
+    indices are returned.
 """
 ).format(_selection_doc)
 
@@ -147,13 +146,6 @@ class Projectors(_util.Data):
         Dataclass containing data about the elements, the orbitals, and the spin
         for which projectors are available.
     """
-
-    class Selection(NamedTuple):
-        "Helper class specifying which indices to extract their label."
-        indices: Iterable[int]
-        "Indices from which the specified quantity is read."
-        label: str = ""
-        "Label identifying the quantity."
 
     class Index(NamedTuple):
         "Helper class specifying which atom, orbital, and spin are selected."
@@ -178,23 +170,23 @@ class Projectors(_util.Data):
 
     def _init_orbital_dict(self, raw_proj):
         num_orbitals = len(raw_proj.orbital_types)
-        all_orbitals = _util.Selection(indices=range(num_orbitals))
+        all_orbitals = _util.Selection(indices=slice(num_orbitals))
         self._orbital_dict = {_default: all_orbitals}
         for i, orbital in enumerate(raw_proj.orbital_types):
             orbital = str(orbital, "utf-8").strip()
             self._orbital_dict[orbital] = _util.Selection(indices=(i,), label=orbital)
         if "px" in self._orbital_dict:
-            self._orbital_dict["p"] = _util.Selection(indices=range(1, 4), label="p")
-            self._orbital_dict["d"] = _util.Selection(indices=range(4, 9), label="d")
-            self._orbital_dict["f"] = _util.Selection(indices=range(9, 16), label="f")
+            self._orbital_dict["p"] = _util.Selection(indices=slice(1, 4), label="p")
+            self._orbital_dict["d"] = _util.Selection(indices=slice(4, 9), label="d")
+            self._orbital_dict["f"] = _util.Selection(indices=slice(9, 16), label="f")
 
     def _init_spin_dict(self, raw_proj):
         num_spins = raw_proj.number_spins
         self._spin_dict = {
-            "up": _util.Selection(indices=(0,), label="up"),
-            "down": _util.Selection(indices=(1,), label="down"),
-            "total": _util.Selection(indices=range(num_spins), label="total"),
-            _default: _util.Selection(indices=range(num_spins)),
+            "up": _util.Selection(indices=slice(1), label="up"),
+            "down": _util.Selection(indices=slice(1, 2), label="down"),
+            "total": _util.Selection(indices=slice(num_spins), label="total"),
+            _default: _util.Selection(indices=slice(num_spins)),
         }
 
     def _repr_pretty_(self, p, cycle):
@@ -239,9 +231,9 @@ class Projectors(_util.Data):
     def _select_atom(self, atom):
         match = _range.match(atom)
         if match:
-            lower = self._atom_dict[match.groups()[0]].indices[0]
-            upper = self._atom_dict[match.groups()[1]].indices[0]
-            return _util.Selection(indices=range(lower, upper + 1), label=atom)
+            lower = self._atom_dict[match.groups()[0]].indices.start
+            upper = self._atom_dict[match.groups()[1]].indices.start
+            return _util.Selection(indices=slice(lower, upper + 1), label=atom)
         else:
             return self._atom_dict[atom]
 
@@ -282,31 +274,33 @@ class Projectors(_util.Data):
                 yield index._replace(spin=key)
 
     @_util.add_doc(_to_dict_doc)
-    def to_dict(self, selection, projections):
+    def to_dict(self, selection=None, projections=None):
         if selection is None:
             return {}
+        if projections is None:
+            return self._get_indices(selection)
         return self._read_elements(selection, projections)
 
-    def _read_elements(self, selection, projections):
+    def _get_indices(self, selection):
         res = {}
         for select in self.parse_selection(selection):
             atom, orbital, spin = self.select(*select)
             label = self._merge_labels([atom.label, orbital.label, spin.label])
-            orbitals = self._filter_orbitals(orbital.indices, projections.shape[2])
-            index = (spin.indices, atom.indices, orbitals)
-            res[label] = self._read_element(index, projections)
+            indices = (spin.indices, atom.indices, orbital.indices)
+            res[label] = indices
         return res
+
+    def _read_elements(self, selection, projections):
+        return {
+            label: np.sum(projections[indices], axis=(0, 1, 2))
+            for label, indices in self._get_indices(selection).items()
+        }
 
     def _merge_labels(self, labels):
         return "_".join(filter(None, labels))
 
     def _filter_orbitals(self, orbitals, number_orbitals):
         return filter(lambda x: x < number_orbitals, orbitals)
-
-    def _read_element(self, index, projections):
-        sum_projections = lambda proj, i: proj + projections[i]
-        zeros = np.zeros(projections.shape[3:])
-        return functools.reduce(sum_projections, itertools.product(*index), zeros)
 
 
 class _NoProjectorsAvailable:
