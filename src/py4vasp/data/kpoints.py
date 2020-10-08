@@ -31,6 +31,11 @@ reciprocal"""
             text += "\n" + f"{kpoint[0]} {kpoint[1]} {kpoint[2]}  {weight}"
         p.text(text)
 
+    @classmethod
+    @_util.add_doc(_util.from_file_doc("**k**-points"))
+    def from_file(cls, file=None):
+        return _util.from_file(cls, file, "kpoints")
+
     def to_dict(self):
         """ Read the **k** points data into a dictionary.
 

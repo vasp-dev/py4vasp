@@ -27,6 +27,11 @@ def test_read(raw_kpoints, Assert):
     assert actual["labels"] is None
 
 
+def test_from_file(raw_kpoints, mock_file, check_read):
+    with mock_file("kpoints", raw_kpoints) as mocks:
+        check_read(Kpoints, mocks, raw_kpoints)
+
+
 def test_mode(raw_kpoints):
     allowed_mode_formats = {
         "automatic": ["a", b"A", "auto"],
