@@ -283,8 +283,14 @@ def test_raw_projections_read(raw_projections, Assert):
 
 def test_raw_projections_plot(raw_projections, Assert):
     raw_band = raw_projections
+    band = Band(raw_band)
     default_width = 0.5
-    fig = Band(raw_band).plot(selection="s, 1")
+    check_figure(band.plot(selection="s, 1"), default_width, raw_band, Assert)
+    width = 0.1
+    check_figure(band.plot(selection="s, 1", width=width), width, raw_band, Assert)
+
+
+def check_figure(fig, width, raw_band, Assert):
     assert len(fig.data) == 2
     assert fig.data[0].name == "s"
     assert fig.data[1].name == "Si_1"
@@ -298,10 +304,10 @@ def test_raw_projections_plot(raw_projections, Assert):
         bands = np.nditer(raw_band.eigenvalues[0])
         weights = np.nditer(raw_band.projections[0, 0, 0])
         for band, weight in zip(bands, weights):
-            upper = band + default_width * weight
-            lower = band - default_width * weight
-            pos_upper = data.x[np.where(np.isclose(data.y, upper))]
-            pos_lower = data.x[np.where(np.isclose(data.y, lower))]
+            upper = band + width * weight
+            lower = band - width * weight
+            pos_upper = data.x[np.where(np.isclose(data.y, upper, 1e-10, 1e-10))]
+            pos_lower = data.x[np.where(np.isclose(data.y, lower, 1e-10, 1e-10))]
             assert len(pos_upper) == len(pos_lower) == 1
             Assert.allclose(pos_upper, pos_lower)
 
