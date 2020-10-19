@@ -1,4 +1,5 @@
 from py4vasp.data import _util
+import py4vasp.exceptions as exception
 import numpy as np
 import pandas as pd
 import mdtraj
@@ -76,7 +77,22 @@ class Topology(_util.Data):
         return list(itertools.chain.from_iterable(repeated_types))
 
     def to_poscar(self, format_newline=""):
-        """ Generate the topology lines for the POSCAR file."""
+        """ Generate the topology lines for the POSCAR file.
+
+        Parameters
+        ----------
+        format_newline : str
+            If you want to display the POSCAR file in a particular way, you can
+            use an additional string to add formatting.
+
+        Returns
+        -------
+        str
+            A string used to describe the atoms in the system in the POSCAR file
+            augmented by the additional formatting string, if given.
+        """
+        error_message = "The formatting information must be a string."
+        _util.raise_error_if_not_string(format_newline, error_message)
         ion_types = " ".join(self._ion_types())
         number_ion_types = " ".join(str(x) for x in self._raw.number_ion_types)
         return ion_types + format_newline + "\n" + number_ion_types

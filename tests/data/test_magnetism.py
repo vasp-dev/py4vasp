@@ -1,5 +1,6 @@
 from py4vasp.data import Magnetism, _util
 from .test_topology import raw_topology
+import py4vasp.exceptions as exception
 import py4vasp.raw as raw
 import numpy as np
 import pytest
@@ -122,3 +123,23 @@ def test_charge_only(charge_only, Assert):
 def test_print_charge(charge_only):
     actual, _ = _util.format_(Magnetism(charge_only))
     assert actual == {"text/plain": "not available"}
+
+
+def test_nonexisting_magnetism():
+    with pytest.raises(exception.NoData):
+        magnetism = Magnetism(None)
+
+
+def test_incorrect_argument(raw_magnetism, noncollinear_magnetism):
+    for magnetism in (Magnetism(raw_magnetism), Magnetism(noncollinear_magnetism)):
+        with pytest.raises(exception.IncorrectUsage):
+            magnetism.read("index not an integer")
+        out_of_bounds = 999
+        with pytest.raises(exception.IncorrectUsage):
+            magnetism.moments(out_of_bounds)
+        with pytest.raises(exception.IncorrectUsage):
+            magnetism.total_moments(out_of_bounds)
+        with pytest.raises(exception.IncorrectUsage):
+            magnetism.charges(out_of_bounds)
+        with pytest.raises(exception.IncorrectUsage):
+            magnetism.total_charges(out_of_bounds)

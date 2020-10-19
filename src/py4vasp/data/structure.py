@@ -1,6 +1,7 @@
 from py4vasp.data import _util, Viewer3d, Topology, Magnetism
 from IPython.lib.pretty import pretty
 from dataclasses import dataclass
+import py4vasp.exceptions as exception
 import ase
 import numpy as np
 import functools
@@ -122,7 +123,14 @@ Direct{format_.newline}
         if "magnetic_moments" in data:
             structure.set_initial_magnetic_moments(data["magnetic_moments"])
         if supercell is not None:
-            structure *= supercell
+            try:
+                structure *= supercell
+            except (TypeError, IndexError) as err:
+                error_message = (
+                    "Generating the supercell failed. Please make sure the requested "
+                    "supercell is either an integer or a list of 3 integers."
+                )
+                raise exception.IncorrectUsage(error_message) from err
         return structure
 
     def to_viewer3d(self, supercell=None):

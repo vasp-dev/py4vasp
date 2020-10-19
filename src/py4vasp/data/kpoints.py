@@ -1,5 +1,5 @@
 from py4vasp.data import _util
-from py4vasp.exceptions import RefinementException
+import py4vasp.exceptions as exception
 import functools
 import numpy as np
 
@@ -107,7 +107,7 @@ reciprocal"""
         elif first_char == "m":
             return "monkhorst"
         else:
-            raise RefinementException(
+            raise exception.RefinementError(
                 "Could not understand the mode '{}' ".format(mode)
                 + "when refining the raw kpoints data."
             )

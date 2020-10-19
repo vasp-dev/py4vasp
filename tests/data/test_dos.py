@@ -1,5 +1,5 @@
 from py4vasp.data import Dos, _util
-from py4vasp.exceptions import UsageException
+import py4vasp.exceptions as exception
 import py4vasp.raw as raw
 import pytest
 import numpy as np
@@ -27,7 +27,7 @@ def test_nonmagnetic_Dos_read(nonmagnetic_Dos, Assert):
 
 def test_nonmagnetic_Dos_read_error(nonmagnetic_Dos):
     raw_dos = nonmagnetic_Dos
-    with pytest.raises(UsageException):
+    with pytest.raises(exception.IncorrectUsage):
         Dos(raw_dos).read("s")
 
 
@@ -245,3 +245,8 @@ def test_magnetic_lm_Dos_plot(magnetic_Dos, magnetic_projections, Assert):
     Assert.allclose(data[dxz_up].y, ref["dxz_up"])
     p_down = names.index("p_down")
     Assert.allclose(data[p_down].y, -(ref["px_down"] + ref["py_down"] + ref["pz_down"]))
+
+
+def test_nonexisting_dos():
+    with pytest.raises(exception.NoData):
+        dos = Dos(None)

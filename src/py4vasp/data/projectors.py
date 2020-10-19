@@ -5,7 +5,7 @@ import re
 import numpy as np
 from .topology import Topology
 from py4vasp.data import _util
-from py4vasp.exceptions import UsageException
+import py4vasp.exceptions as exception
 
 _selection_doc = r"""
 selection : str
@@ -131,6 +131,16 @@ dict
 ).format(_selection_doc)
 
 
+class _Projections(_util.Reader):
+    def error_message(self, key, err):
+        return (
+            "Error reading the projections. Please make sure the size of the array "
+            f"{self.shape} is compatible with the selected indices. Please also test "
+            "if the passed projections allow access by index arrays. "
+            "Additionally, you may consider the original error message:\n" + err.args[0]
+        )
+
+
 @_util.add_wrappers
 class Projectors(_util.Data):
     """ The projectors used for atom and orbital resolved quantities.
@@ -157,6 +167,8 @@ class Projectors(_util.Data):
         "Label of the spin component or a Selection object to read the corresponding data."
 
     def __init__(self, raw_proj):
+        error_message = "No projectors found, please verify the LORBIT tag is set."
+        _util.raise_error_if_data_is_none(raw_proj, error_message)
         self._raw = raw_proj
         self._atom_dict = Topology(raw_proj.topology).read()
         self._init_orbital_dict(raw_proj)
@@ -222,6 +234,8 @@ class Projectors(_util.Data):
             Indices to access the selected projection from an array and an
             associated label.
         """
+        self._raise_error_if_not_found_in_dict(orbital, self._orbital_dict)
+        self._raise_error_if_not_found_in_dict(spin, self._spin_dict)
         return self.Index(
             atom=self._select_atom(atom),
             orbital=self._orbital_dict[orbital],
@@ -231,11 +245,25 @@ class Projectors(_util.Data):
     def _select_atom(self, atom):
         match = _range.match(atom)
         if match:
-            lower = self._atom_dict[match.groups()[0]].indices.start
-            upper = self._atom_dict[match.groups()[1]].indices.start
-            return _util.Selection(indices=slice(lower, upper + 1), label=atom)
+            slice_ = self._get_slice_from_atom_dict(match)
+            return _util.Selection(indices=slice_, label=atom)
         else:
+            self._raise_error_if_not_found_in_dict(atom, self._atom_dict)
             return self._atom_dict[atom]
+
+    def _get_slice_from_atom_dict(self, match):
+        self._raise_error_if_not_found_in_dict(match.groups()[0], self._atom_dict)
+        self._raise_error_if_not_found_in_dict(match.groups()[1], self._atom_dict)
+        lower = self._atom_dict[match.groups()[0]].indices.start
+        upper = self._atom_dict[match.groups()[1]].indices.start
+        return slice(lower, upper + 1)
+
+    def _raise_error_if_not_found_in_dict(self, selection, dict_):
+        if selection not in dict_:
+            raise exception.IncorrectUsage(
+                f"Could not find {selection} in projectors. Please check the spelling. "
+                f"The available selection are one of {', '.join(dict_)}."
+            )
 
     @_util.add_doc(_parse_selection_doc)
     def parse_selection(self, selection):
@@ -261,7 +289,11 @@ class Projectors(_util.Data):
         elif part in self._spin_dict:
             index = index._replace(spin=part)
         else:
-            raise KeyError("Could not find " + part + " in the list or projectors.")
+            raise exception.IncorrectUsage(
+                "Could not find " + part + " in the list of projectors. Please check "
+                "if everything is spelled correctly. Notice that the selection is case "
+                "sensitive so that 's' (orbital) can be distinguished from 'S' (sulfur)."
+            )
         return index
 
     def _setup_spin_indices(self, index):
@@ -277,8 +309,11 @@ class Projectors(_util.Data):
     def to_dict(self, selection=None, projections=None):
         if selection is None:
             return {}
+        error_message = "Projector selection must be a string."
+        _util.raise_error_if_not_string(selection, error_message)
         if projections is None:
             return self._get_indices(selection)
+        projections = _Projections(projections)
         return self._read_elements(selection, projections)
 
     def _get_indices(self, selection):
@@ -299,14 +334,11 @@ class Projectors(_util.Data):
     def _merge_labels(self, labels):
         return "_".join(filter(None, labels))
 
-    def _filter_orbitals(self, orbitals, number_orbitals):
-        return filter(lambda x: x < number_orbitals, orbitals)
-
 
 class _NoProjectorsAvailable:
     def read(self, selection, projections):
         if selection is not None:
-            raise UsageException(
+            raise exception.IncorrectUsage(
                 "Projectors are not available, rerun Vasp setting LORBIT >= 10."
             )
         return {}

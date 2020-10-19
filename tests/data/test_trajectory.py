@@ -1,6 +1,7 @@
 from py4vasp.data import Trajectory, Topology, _util
 from .test_topology import raw_topology
 import py4vasp.raw as raw
+import py4vasp.exceptions as exception
 import pytest
 import numpy as np
 
@@ -66,6 +67,14 @@ def test_to_structure(raw_trajectory, Assert):
     assert structure["elements"] == ref_elements
     Assert.allclose(structure["cell"], raw_trajectory.lattice_vectors[0])
     Assert.allclose(structure["positions"], raw_trajectory.positions[0])
+
+
+def test_incorrect_step(raw_trajectory):
+    trajectory = Trajectory(raw_trajectory)
+    with pytest.raises(exception.IncorrectUsage):
+        trajectory.to_structure(100)
+    with pytest.raises(exception.IncorrectUsage):
+        trajectory.to_structure([0, 1])
 
 
 def test_print(raw_trajectory):

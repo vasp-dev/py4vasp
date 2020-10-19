@@ -27,11 +27,14 @@ from .topology import Topology
 from .viewer3d import Viewer3d
 from .structure import Structure
 from .trajectory import Trajectory
-from py4vasp.exceptions import NotImplementException
+from py4vasp.config import config
 
+import py4vasp.exceptions as exception
 import plotly.io as pio
 import cufflinks as cf
 import inspect
+import itertools
+import textwrap
 import sys
 
 pio.templates.default = "ggplot2"
@@ -47,15 +50,6 @@ for c in _classes:
         if "to_" in name:
             _functions.add(name)
 __all__ = _class_names + list(_functions)
-
-
-def _get_function_if_possible(obj, name):
-    try:
-        return getattr(obj, name)
-    except AttributeError as err:
-        class_ = obj.__class__.__name__
-        msg = "For the {} no {} function is implemented.".format(class_, name)
-        raise NotImplementException(msg) from err
 
 
 def _generate_documentation(classes, function):
@@ -96,11 +90,86 @@ to know which arguments are available and what exactly is returned, e.g.
 def _wrapper_factory(module, name, documentation):
     @_util.add_doc(documentation)
     def wrapper(cls, *args, **kwargs):
-        with cls.from_file() as obj:
-            function = _get_function_if_possible(obj, name)
-            return function(*args, **kwargs)
+        try:
+            with cls.from_file() as obj:
+                function = _get_function_if_possible(obj, name)
+                return _evaluate_if_possible(function, *args, **kwargs)
+        except Exception as err:
+            _handle_exception(err)
 
     setattr(module, name, wrapper)
+
+
+def _get_function_if_possible(obj, name):
+    try:
+        return getattr(obj, name)
+    except AttributeError as err:
+        class_ = obj.__class__.__name__
+        msg = "For the {} no {} function is implemented.".format(class_, name)
+        raise exception.NotImplemented(msg) from err
+
+
+def _evaluate_if_possible(function, *args, **kwargs):
+    try:
+        return function(*args, **kwargs)
+    except TypeError as err:
+        msg = (
+            f"Error in function call: {err.args[0]}. Please check the function "
+            f"documentation help({function.__qualname__}) to check for possible errors."
+        )
+        raise exception.IncorrectUsage(msg) from err
+
+
+def _handle_exception(err):
+    if config().catch_exceptions_in_wrappers:
+        raw_message = f"{err.__class__.__name__}: {err.args[0]}"
+        if isinstance(err, exception.Py4VaspError):
+            msg = _format(raw_message, _header_error, _footer_error)
+        else:
+            msg = _format(raw_message, _header_bug, _footer_bug)
+        sys.stderr.write(msg)
+        raise exception.StopExecution
+    else:
+        raise err
+
+
+_header_error = "\n" + (
+    "EEEEEEE  RRRRRR   RRRRRR   OOOOOOO  RRRRRR      ###     ###     ###\n"
+    "E        R     R  R     R  O     O  R     R     ###     ###     ###\n"
+    "E        R     R  R     R  O     O  R     R     ###     ###     ###\n"
+    "EEEEE    RRRRRR   RRRRRR   O     O  RRRRRR       #       #       # \n"
+    "E        R   R    R   R    O     O  R   R                          \n"
+    "E        R    R   R    R   O     O  R    R      ###     ###     ###\n"
+    "EEEEEEE  R     R  R     R  OOOOOOO  R     R     ###     ###     ###\n\n"
+)
+_footer_error = (
+    "\n\n  ---->  I REFUSE TO CONTINUE WITH THIS SICK JOB ... BYE!!! <----\n"
+)
+
+_header_bug = (
+    "                _     ____    _    _    _____     _ \n"
+    "               | |   |  _ \\  | |  | |  / ____|   | |\n"
+    "               | |   | |_) | | |  | | | |  __    | |\n"
+    "               |_|   |  _ <  | |  | | | | |_ |   |_|\n"
+    "                _    | |_) | | |__| | | |__| |    _ \n"
+    "               (_)   |____/   \\____/   \\_____|   (_)\n\n"
+)
+_footer_bug = (
+    "\n\nIf you are not a developer, you should not encounter this problem.\n"
+    "Please submit a bug report.\n"
+)
+
+
+def _format(message, header, footer):
+    width = 67
+    padding = " " * 5
+    horizontal_line = " " + "-" * (width + 2 * len(padding))
+    lines = (header + message + footer).split("\n")
+    wrap_line = lambda line: textwrap.wrap(line, width) if line.strip() else [""]
+    wrap_lines = itertools.chain.from_iterable(wrap_line(line) for line in lines)
+    pad_lines = (f"|{padding}{line:67}{padding}|" for line in wrap_lines)
+    all_lines = (horizontal_line, *pad_lines, horizontal_line)
+    return "\n".join(all_lines)
 
 
 for function in _functions:

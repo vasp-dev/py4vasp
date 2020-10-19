@@ -4,6 +4,7 @@ from .test_topology import raw_topology
 from .test_magnetism import raw_magnetism, noncollinear_magnetism, charge_only
 import py4vasp.data as data
 import py4vasp.raw as raw
+import py4vasp.exceptions as exception
 import pytest
 import numpy as np
 
@@ -41,6 +42,14 @@ def test_to_ase(raw_structure, Assert):
     Assert.allclose(structure.get_scaled_positions(), raw_structure.positions)
     assert all(structure.symbols == "Sr2TiO4")
     assert all(structure.pbc)
+
+
+def test_wrong_supercell_size(raw_structure):
+    structure = Structure(raw_structure)
+    with pytest.raises(exception.IncorrectUsage):
+        structure.to_ase("foo")
+    with pytest.raises(exception.IncorrectUsage):
+        structure.to_ase([1, 2])
 
 
 def test_tilted_unitcell(raw_structure, Assert):

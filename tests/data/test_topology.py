@@ -1,5 +1,6 @@
 from py4vasp.data import Topology, _util
 import py4vasp.raw as raw
+import py4vasp.exceptions as exception
 import pytest
 import numpy as np
 import pandas as pd
@@ -76,3 +77,11 @@ def test_print(raw_topology):
     actual, _ = _util.format_(Topology(raw_topology))
     reference = {"text/plain": "Sr2TiO4", "text/html": "Sr<sub>2</sub>TiO<sub>4</sub>"}
     assert actual == reference
+
+
+def test_to_poscar(raw_topology):
+    topology = Topology(raw_topology)
+    assert topology.to_poscar() == "Sr Ti O\n2 1 4"
+    assert topology.to_poscar(".format.") == "Sr Ti O.format.\n2 1 4"
+    with pytest.raises(exception.IncorrectUsage):
+        topology.to_poscar(None)

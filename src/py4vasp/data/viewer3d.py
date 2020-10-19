@@ -1,5 +1,5 @@
-from py4vasp.exceptions import RefinementException
 from typing import NamedTuple
+import py4vasp.exceptions as exception
 import nglview
 import numpy as np
 
@@ -104,7 +104,7 @@ class Viewer3d:
         size of the array to show arrows in the supercell, too.
         """
         if self._positions is None:
-            raise RefinementException("Positions of atoms are not known.")
+            raise exception.RefinementError("Positions of atoms are not known.")
         arrows = np.repeat(arrows, self._multiple_cells, axis=0)
         for tail, arrow in zip(self._positions, arrows):
             tip = tail + arrow

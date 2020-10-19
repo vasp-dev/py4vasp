@@ -1,5 +1,5 @@
 from py4vasp.data import Kpoints, _util
-from py4vasp.exceptions import RefinementException
+import py4vasp.exceptions as exception
 import py4vasp.raw as raw
 import pytest
 import numpy as np
@@ -46,7 +46,7 @@ def test_mode(raw_kpoints):
             test_mode = Kpoints(raw_kpoints).mode()
             assert test_mode == mode
     for unknown_mode in ["x", "y", "z", " "]:
-        with pytest.raises(RefinementException):
+        with pytest.raises(exception.RefinementError):
             raw_kpoints.mode = unknown_mode
             Kpoints(raw_kpoints).mode()
 

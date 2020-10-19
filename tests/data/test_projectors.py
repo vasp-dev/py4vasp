@@ -1,4 +1,5 @@
 from py4vasp.data import Projectors, Topology, _util
+import py4vasp.exceptions as exception
 import py4vasp.raw as raw
 import pytest
 import numpy as np
@@ -247,3 +248,37 @@ projectors:
    orbitals: s, py, pz, px, dxy, dyz, dz2, dxz, x2-y2, fy3x2, fxyz, fyz2, fz3, fxz2, fzx2, fx3
    """.strip()
     assert actual == {"text/plain": reference}
+
+
+def test_error_parsing(without_spin):
+    projectors = Projectors(without_spin)
+    with pytest.raises(exception.IncorrectUsage):
+        projectors.read(selection="XX")
+    with pytest.raises(exception.IncorrectUsage):
+        number_instead_of_string = -1
+        projectors.read(selection=number_instead_of_string)
+
+
+def test_incorrect_selection(without_spin):
+    projectors = Projectors(without_spin)
+    with pytest.raises(exception.IncorrectUsage):
+        projectors.select(atom="XX")
+    with pytest.raises(exception.IncorrectUsage):
+        projectors.select(atom="100-900")
+    with pytest.raises(exception.IncorrectUsage):
+        projectors.select(orbital="XX")
+    with pytest.raises(exception.IncorrectUsage):
+        projectors.select(spin="XX")
+
+
+def test_nonexisting_projectors():
+    with pytest.raises(exception.NoData):
+        projectors = Projectors(None)
+
+
+def test_incorrect_reading_of_projections(without_spin):
+    projectors = Projectors(without_spin)
+    with pytest.raises(exception.IncorrectUsage):
+        projectors.read("Sr", [1, 2, 3])
+    with pytest.raises(exception.IncorrectUsage):
+        projectors.read("Sr", np.zeros(3))

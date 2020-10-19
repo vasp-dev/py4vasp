@@ -1,4 +1,5 @@
 import py4vasp.raw as raw
+import py4vasp.exceptions as exception
 from py4vasp.raw import File
 import contextlib
 import pytest
@@ -54,8 +55,13 @@ def test_file_as_context():
         name = func[0]
         if name[0] == "_" or name in ["close"]:
             continue
-        with pytest.raises(AssertionError):
+        with pytest.raises(exception.FileAccessError):
             getattr(file, name)()
+
+
+def test_nonexisting_file():
+    with pytest.raises(exception.FileAccessError):
+        File()
 
 
 def generic_test(setup):
@@ -83,7 +89,7 @@ def open_vasp_file(use_default, filename):
 def test_dos(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
-        options=itertools.product((True, False), repeat=2),
+        options=itertools.product((True, False), repeat=3),
         create_reference=reference_dos,
         write_reference=write_dos,
         check_actual=check_dos,
@@ -91,17 +97,19 @@ def test_dos(tmpdir):
     generic_test(setup)
 
 
-def reference_dos(use_projectors):
+def reference_dos(use_dos, use_projectors):
     shape = (num_spins, num_energies)
     return raw.Dos(
         fermi_energy=fermi_energy,
-        energies=np.arange(num_energies),
+        energies=np.arange(num_energies) if use_dos else None,
         dos=np.arange(np.prod(shape)).reshape(shape),
         projectors=reference_projectors() if use_projectors else None,
     )
 
 
 def write_dos(h5f, dos):
+    if dos.energies is None:
+        return
     h5f["results/electron_dos/efermi"] = dos.fermi_energy
     h5f["results/electron_dos/energies"] = dos.energies
     h5f["results/electron_dos/dos"] = dos.dos
@@ -113,8 +121,11 @@ def write_dos(h5f, dos):
 
 def check_dos(file, reference):
     actual = file.dos()
-    assert actual == reference
-    assert isinstance(actual.fermi_energy, Number)
+    if reference.energies is not None:
+        assert actual == reference
+        assert isinstance(actual.fermi_energy, Number)
+    else:
+        assert actual is None
 
 
 def test_band(tmpdir):

@@ -2,6 +2,7 @@ from .topology import Topology
 from py4vasp.data import _util, Structure
 from IPython.lib.pretty import pretty
 import py4vasp.raw as raw
+import py4vasp.exceptions as exception
 import mdtraj
 import functools
 
@@ -90,9 +91,17 @@ class Trajectory(_util.Data):
         data.Structure
             The structure the trajectory assumes for the specified step.
         """
-        struct = raw.Structure(
-            topology=self._raw.topology,
-            cell=raw.Cell(lattice_vectors=self._raw.lattice_vectors[step]),
-            positions=self._raw.positions[step],
-        )
+        _util.raise_error_if_not_number(step, "You can only exctract an integer step.")
+        try:
+            struct = raw.Structure(
+                topology=self._raw.topology,
+                cell=raw.Cell(lattice_vectors=self._raw.lattice_vectors[step]),
+                positions=self._raw.positions[step],
+            )
+        except (ValueError, IndexError) as err:
+            error_message = (
+                f"Error reading step `{step}` from array, please check it is a valid "
+                "index within the boundaries of the array."
+            )
+            raise exception.IncorrectUsage(error_message) from err
         return Structure(struct)

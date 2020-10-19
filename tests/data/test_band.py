@@ -1,6 +1,7 @@
 from py4vasp.data import Band, Kpoints, Projectors, _util
 from IPython.lib.pretty import pretty
 import py4vasp.raw as raw
+import py4vasp.exceptions as exception
 import pytest
 import numpy as np
 
@@ -330,3 +331,8 @@ def set_projections(raw_band, shape):
         number_spins=shape[0],
     )
     return raw_band
+
+
+def test_incorrect_width(raw_projections):
+    with pytest.raises(exception.IncorrectUsage):
+        Band(raw_projections).plot("Si", width="not a number")

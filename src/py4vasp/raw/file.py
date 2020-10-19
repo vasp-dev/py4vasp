@@ -1,6 +1,7 @@
 from contextlib import AbstractContextManager
 import h5py
 import py4vasp.raw as raw
+import py4vasp.exceptions as exception
 
 
 class File(AbstractContextManager):
@@ -33,20 +34,32 @@ class File(AbstractContextManager):
 
     def __init__(self, filename=None):
         filename = filename or File.default_filename
-        self._h5f = h5py.File(filename, "r")
         self.closed = False
+        try:
+            self._h5f = h5py.File(filename, "r")
+        except OSError as err:
+            error_message = (
+                f"Error opening {filename} to read the data. Please check that you "
+                "already completed the Vasp calculation and that the file is indeed "
+                "in the directory. Please also check whether you are running the "
+                "Python script in the same directory or pass the appropriate filename "
+                "including the path."
+            )
+            raise exception.FileAccessError(error_message) from err
 
     def dos(self):
         """ Read the electronic density of states (Dos).
 
         Returns
         -------
-        raw.Dos
+        raw.Dos or None
             A list of energies E and the associated raw electronic Dos D(E). The
             energies need to be manually shifted to the Fermi energy. If
             available, the projections on a set of projectors are included.
         """
-        self._assert_not_closed()
+        self._raise_error_if_closed()
+        if "results/electron_dos/energies" not in self._h5f:
+            return None
         return raw.Dos(
             fermi_energy=self._h5f["results/electron_dos/efermi"][()],
             energies=self._h5f["results/electron_dos/energies"],
@@ -65,7 +78,7 @@ class File(AbstractContextManager):
             values need to be manually aligned to the Fermi energy if desired.
             If available the projections on a set of projectors are included.
         """
-        self._assert_not_closed()
+        self._raise_error_if_closed()
         return raw.Band(
             fermi_energy=self._h5f["results/electron_dos/efermi"][()],
             kpoints=self.kpoints(),
@@ -83,7 +96,7 @@ class File(AbstractContextManager):
             Contains the information which ion types were used and how many ions
             of each type there are.
         """
-        self._assert_not_closed()
+        self._raise_error_if_closed()
         return raw.Topology(
             ion_types=self._h5f["results/positions/ion_types"],
             number_ion_types=self._h5f["results/positions/number_ion_types"],
@@ -98,7 +111,7 @@ class File(AbstractContextManager):
             Contains the topology of the crystal and the position of all atoms
             and the shape of the unit cell for all ionic steps.
         """
-        self._assert_not_closed()
+        self._raise_error_if_closed()
         return raw.Trajectory(
             topology=self.topology(),
             positions=self._h5f["intermediate/history/position_ions"],
@@ -114,7 +127,7 @@ class File(AbstractContextManager):
             If Vasp was set to produce the orbital decomposition of the bands
             the associated projector information is returned.
         """
-        self._assert_not_closed()
+        self._raise_error_if_closed()
         if "results/projectors" not in self._h5f:
             return None
         return raw.Projectors(
@@ -134,7 +147,7 @@ class File(AbstractContextManager):
             about the generation and labels of the **k** points, which may be
             useful for band structures.
         """
-        self._assert_not_closed()
+        self._raise_error_if_closed()
         return raw.Kpoints(
             mode=self._h5f["input/kpoints/mode"][()],
             number=self._h5f["input/kpoints/number_kpoints"][()],
@@ -153,7 +166,7 @@ class File(AbstractContextManager):
         raw.Cell
             The lattice vectors of the unit cell scaled by a constant factor.
         """
-        self._assert_not_closed()
+        self._raise_error_if_closed()
         return raw.Cell(
             scale=self._h5f["results/positions/scale"][()],
             lattice_vectors=self._h5f["results/positions/lattice_vectors"],
@@ -168,7 +181,7 @@ class File(AbstractContextManager):
             The magnetic moments and charges on every atom in orbital resolved
             representation.
         """
-        self._assert_not_closed()
+        self._raise_error_if_closed()
         key = "intermediate/history/magnetism/moments"
         if key not in self._h5f:
             return None
@@ -181,7 +194,7 @@ class File(AbstractContextManager):
         -------
         raw.Structure
         """
-        self._assert_not_closed()
+        self._raise_error_if_closed()
         return raw.Structure(
             topology=self.topology(),
             cell=self.cell(),
@@ -198,7 +211,7 @@ class File(AbstractContextManager):
             Information about different energies for every step in the relaxation
             or MD simulation.
         """
-        self._assert_not_closed()
+        self._raise_error_if_closed()
         return raw.Energy(
             labels=self._h5f["intermediate/history/energies_tags"],
             values=self._h5f["intermediate/history/energies"],
@@ -212,8 +225,9 @@ class File(AbstractContextManager):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def _assert_not_closed(self):
-        assert not self.closed, "I/O operation on closed file."
+    def _raise_error_if_closed(self):
+        if self.closed:
+            raise exception.FileAccessError("I/O operation on closed file.")
 
     def _safe_get_key(self, key):
         if key in self._h5f:

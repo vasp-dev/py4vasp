@@ -1,6 +1,7 @@
 import plotly.graph_objects as go
 import functools
 from py4vasp.data import _util
+import py4vasp.exceptions as exception
 
 
 @_util.add_wrappers
@@ -50,10 +51,17 @@ class Energy(_util.Data):
         """
         if selection is None:
             selection = "TOTEN"
+        error_message = "Energy selection must be a string."
+        _util.raise_error_if_not_string(selection, error_message)
         for i, label in enumerate(self._raw.labels):
-            label = str(label, "utf-8").strip()
+            label = _util.decode_if_possible(label).strip()
             if selection in label:
                 return {label: self._raw.values[:, i]}
+        else:
+            raise exception.IncorrectUsage(
+                f"{selection} was not found in the list of energies. "
+                "Please make sure the spelling is correct."
+            )
 
     def to_plotly(self, selection=None):
         """ Read the energy data and generate a plotly figure.

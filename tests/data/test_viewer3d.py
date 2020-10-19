@@ -1,8 +1,8 @@
 from unittest.mock import patch
 from py4vasp.data import Structure, Viewer3d
 from py4vasp.data.viewer3d import _Arrow3d, _x_axis, _y_axis, _z_axis
-from py4vasp.exceptions import RefinementException
 from .test_structure import raw_structure, raw_topology
+import py4vasp.exceptions as exception
 import ipykernel.jsonutil as json
 import numpy as np
 import pytest
@@ -109,7 +109,7 @@ def test_supercell(raw_structure, assert_arrow_message):
 
 def test_bare_ngl_cannot_add_arrows_at_atoms(viewer3d):
     viewer = Viewer3d(viewer3d._ngl)
-    with pytest.raises(RefinementException):
+    with pytest.raises(exception.RefinementError):
         create_arrows(viewer, 1)
 
 

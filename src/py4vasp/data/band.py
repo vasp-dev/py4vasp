@@ -122,6 +122,8 @@ class Band(_util.Data):
         return [self._scatter(name, kdists, lines) for name, lines in bands.items()]
 
     def _fat_band_structure(self, bands, projections, width):
+        error_message = "Width of fat band structure must be a number."
+        _util.raise_error_if_not_number(width, error_message)
         data = (
             self._fat_band(args, width)
             for args in itertools.product(bands.items(), projections.items())

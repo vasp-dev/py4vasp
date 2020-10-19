@@ -2,8 +2,11 @@ from contextlib import contextmanager, nullcontext
 from IPython.core.formatters import DisplayFormatter
 from IPython.lib.pretty import pretty
 from typing import NamedTuple, Iterable
+import py4vasp.exceptions as exception
 import py4vasp.raw as raw
+import numpy as np
 import functools
+import numbers
 
 
 def from_file_doc(doc):
@@ -36,6 +39,21 @@ def from_file(cls, file, attr):
         context = nullcontext(file)
     with context as file:
         yield cls(getattr(file, attr)())
+
+
+def raise_error_if_data_is_none(obj, error_message):
+    if obj is None:
+        raise exception.NoData(error_message)
+
+
+def raise_error_if_not_string(test_if_string, error_message):
+    if test_if_string.__class__ != str:
+        raise exception.IncorrectUsage(error_message)
+
+
+def raise_error_if_not_number(test_if_number, error_message):
+    if not isinstance(test_if_number, numbers.Number):
+        raise exception.IncorrectUsage(error_message)
 
 
 def add_doc(doc):
@@ -107,3 +125,27 @@ class DataMeta(type):
 class Data(metaclass=DataMeta):
     def __str__(self):
         return pretty(self)
+
+
+class Reader:
+    "Helper class to deal with error handling of the array reading."
+
+    def __init__(self, array):
+        self._array = array
+        self.shape = np.shape(array)
+
+    def error_message(self, key, err):
+        "We can overload this message in a subclass to make it more specific"
+        return (
+            "Error reading from the array, please check that the shape of the "
+            "array is consistent with the access key."
+        )
+
+    def __getitem__(self, key):
+        try:
+            return self._array[key]
+        except (ValueError, IndexError, TypeError) as err:
+            raise exception.IncorrectUsage(self.error_message(key, err)) from err
+
+    def __len__(self):
+        return len(self._array)

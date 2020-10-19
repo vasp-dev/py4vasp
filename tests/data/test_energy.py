@@ -2,6 +2,7 @@ from py4vasp.data import Energy, _util
 import pytest
 import numpy as np
 import py4vasp.raw as raw
+import py4vasp.exceptions as exception
 
 
 @pytest.fixture
@@ -47,3 +48,14 @@ Energies at last step:
    temperature    TEIN   =       199.000000
     """.strip()
     assert actual == {"text/plain": reference}
+
+
+def test_incorrect_label(reference_energy):
+    energy = Energy(reference_energy)
+    with pytest.raises(exception.IncorrectUsage):
+        energy.read("not available")
+    with pytest.raises(exception.IncorrectUsage):
+        energy.plot("not available")
+    with pytest.raises(exception.IncorrectUsage):
+        number_instead_of_string = 1
+        energy.plot(number_instead_of_string)

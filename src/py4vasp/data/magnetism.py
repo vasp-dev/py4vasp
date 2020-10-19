@@ -1,4 +1,5 @@
 from py4vasp.data import _util
+import py4vasp.exceptions as exception
 import numpy as np
 import functools
 
@@ -74,6 +75,15 @@ np.ndarray
 """
 
 
+class _Magnetism(_util.Reader):
+    def error_message(self, key, err):
+        return (
+            f"Error reading the magnetic moments. Please check if the key "
+            f"`{key[0]}` is properly formatted and within the boundaries. "
+            "Additionally, you may consider the original error message:\n" + err.args[0]
+        )
+
+
 @_util.add_wrappers
 class Magnetism(_util.Data):
     """ The evolution of the magnetization over the simulation.
@@ -88,7 +98,10 @@ class Magnetism(_util.Data):
     """
 
     def __init__(self, raw_magnetism):
+        error_message = "Atom resolved magnetic information not present, please verify LORBIT tag is set."
+        _util.raise_error_if_data_is_none(raw_magnetism, error_message)
         self._raw = raw_magnetism
+        self._moments = _Magnetism(raw_magnetism.moments)
 
     @classmethod
     @_util.add_doc(_util.from_file_doc("orbital-resolved magnetic moments"))
@@ -118,17 +131,17 @@ class Magnetism(_util.Data):
     @_util.add_doc(_charges_doc)
     def charges(self, steps=None):
         steps = self._default_steps_if_none(steps)
-        return self._raw.moments[steps, 0, :, :]
+        return self._moments[steps, 0, :, :]
 
     @_util.add_doc(_moments_doc)
     def moments(self, steps=None):
         steps = self._default_steps_if_none(steps)
-        if self._raw.moments.shape[1] == 1:
+        if self._moments.shape[1] == 1:
             return None
-        elif self._raw.moments.shape[1] == 2:
-            return self._raw.moments[steps, 1, :, :]
+        elif self._moments.shape[1] == 2:
+            return self._moments[steps, 1, :, :]
         else:
-            moments = self._raw.moments[steps, 1:, :, :]
+            moments = self._moments[steps, 1:, :, :]
             direction_axis = 1 if moments.ndim == 4 else 0
             return np.moveaxis(moments, direction_axis, -1)
 
@@ -138,18 +151,18 @@ class Magnetism(_util.Data):
 
     @_util.add_doc(_total_moments_doc)
     def total_moments(self, steps=None):
-        if self._raw.moments.shape[1] == 1:
+        if self._moments.shape[1] == 1:
             return None
-        elif self._raw.moments.shape[1] == 2:
+        elif self._moments.shape[1] == 2:
             return self._sum_over_orbitals(self.moments(steps))
         else:
             steps = self._default_steps_if_none(steps)
-            total_moments = self._sum_over_orbitals(self._raw.moments[steps, 1:, :, :])
+            total_moments = self._sum_over_orbitals(self._moments[steps, 1:, :, :])
             direction_axis = 1 if total_moments.ndim == 3 else 0
             return np.moveaxis(total_moments, direction_axis, -1)
 
     def _default_steps_if_none(self, steps):
-        return steps if steps is not None else range(len(self._raw.moments))
+        return steps if steps is not None else range(len(self._moments))
 
     def _sum_over_orbitals(self, quantity):
         return np.sum(quantity, axis=-1)
