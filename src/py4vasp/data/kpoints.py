@@ -20,7 +20,7 @@ class Kpoints(_util.Data):
     """
 
     def __init__(self, raw_kpoints):
-        self._raw = raw_kpoints
+        super().__init__(raw_kpoints)
         self._distances = None
 
     def _repr_pretty_(self, p, cycle):

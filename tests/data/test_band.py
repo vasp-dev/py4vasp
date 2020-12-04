@@ -1,5 +1,6 @@
 from py4vasp.data import Band, Kpoints, Projectors, _util
 from IPython.lib.pretty import pretty
+from . import current_vasp_version
 import py4vasp.raw as raw
 import py4vasp.exceptions as exception
 import pytest
@@ -15,14 +16,18 @@ number_orbitals = 1
 @pytest.fixture
 def raw_band():
     return raw.Band(
+        version=current_vasp_version,
         fermi_energy=0.0,
         eigenvalues=np.array([np.linspace([0], [1], number_kpoints)]),
         kpoints=raw.Kpoints(
+            version=current_vasp_version,
             mode="explicit",
             number=number_kpoints,
             coordinates=np.linspace(np.zeros(3), np.ones(3), number_kpoints),
             weights=None,
-            cell=raw.Cell(scale=1.0, lattice_vectors=np.eye(3)),
+            cell=raw.Cell(
+                version=current_vasp_version, scale=1.0, lattice_vectors=np.eye(3)
+            ),
         ),
     )
 
@@ -93,7 +98,9 @@ band structure:
 
 def test_nontrivial_cell(raw_band, Assert):
     raw_band.kpoints.cell = raw.Cell(
-        scale=2.0, lattice_vectors=np.array([[3, 0, 0], [-1, 2, 0], [0, 0, 4]])
+        version=current_vasp_version,
+        scale=2.0,
+        lattice_vectors=np.array([[3, 0, 0], [-1, 2, 0], [0, 0, 4]]),
     )
     cartesian_kpoints = np.linspace(np.zeros(3), np.ones(3))
     cell = raw_band.kpoints.cell.lattice_vectors * raw_band.kpoints.cell.scale
@@ -324,8 +331,11 @@ def test_more_projections_style(raw_projections, Assert):
 def set_projections(raw_band, shape):
     raw_band.projections = np.random.uniform(low=0.2, size=shape)
     raw_band.projectors = raw.Projectors(
+        version=current_vasp_version,
         topology=raw.Topology(
-            number_ion_types=[1], ion_types=np.array(["Si"], dtype="S")
+            version=current_vasp_version,
+            number_ion_types=[1],
+            ion_types=np.array(["Si"], dtype="S"),
         ),
         orbital_types=np.array(["s"], dtype="S"),
         number_spins=shape[0],
@@ -336,3 +346,9 @@ def set_projections(raw_band, shape):
 def test_incorrect_width(raw_projections):
     with pytest.raises(exception.IncorrectUsage):
         Band(raw_projections).plot("Si", width="not a number")
+
+
+def test_version(raw_band):
+    raw_band.version = raw.Version(_util._minimal_vasp_version.major - 1)
+    with pytest.raises(exception.OutdatedVaspVersion):
+        Band(raw_band)

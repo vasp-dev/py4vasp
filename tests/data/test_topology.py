@@ -1,4 +1,5 @@
 from py4vasp.data import Topology, _util
+from . import current_vasp_version
 import py4vasp.raw as raw
 import py4vasp.exceptions as exception
 import pytest
@@ -11,6 +12,7 @@ Selection = _util.Selection
 @pytest.fixture
 def raw_topology():
     topology = raw.Topology(
+        version=current_vasp_version,
         number_ion_types=np.array((2, 1, 4)),
         ion_types=np.array(("Sr", "Ti", "O "), dtype="S"),
     )
@@ -85,3 +87,9 @@ def test_to_poscar(raw_topology):
     assert topology.to_poscar(".format.") == "Sr Ti O.format.\n2 1 4"
     with pytest.raises(exception.IncorrectUsage):
         topology.to_poscar(None)
+
+
+def test_version(raw_topology):
+    raw_topology.version = raw.Version(_util._minimal_vasp_version.major - 1)
+    with pytest.raises(exception.OutdatedVaspVersion):
+        Topology(raw_topology)

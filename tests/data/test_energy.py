@@ -1,4 +1,5 @@
 from py4vasp.data import Energy, _util
+from . import current_vasp_version
 import pytest
 import numpy as np
 import py4vasp.raw as raw
@@ -9,7 +10,11 @@ import py4vasp.exceptions as exception
 def reference_energy():
     labels = np.array(("ion-electron   TOTEN    ", "temperature    TEIN"), dtype="S")
     shape = (100, len(labels))
-    return raw.Energy(labels=labels, values=np.arange(np.prod(shape)).reshape(shape))
+    return raw.Energy(
+        version=current_vasp_version,
+        labels=labels,
+        values=np.arange(np.prod(shape)).reshape(shape),
+    )
 
 
 def test_read_energy(reference_energy, Assert):
@@ -59,3 +64,9 @@ def test_incorrect_label(reference_energy):
     with pytest.raises(exception.IncorrectUsage):
         number_instead_of_string = 1
         energy.plot(number_instead_of_string)
+
+
+def test_version(reference_energy):
+    reference_energy.version = raw.Version(_util._minimal_vasp_version.major - 1)
+    with pytest.raises(exception.OutdatedVaspVersion):
+        Energy(reference_energy)

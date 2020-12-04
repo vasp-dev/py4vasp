@@ -1,4 +1,5 @@
 from py4vasp.data import Dos, _util
+from . import current_vasp_version
 import py4vasp.exceptions as exception
 import py4vasp.raw as raw
 import pytest
@@ -12,7 +13,10 @@ def nonmagnetic_Dos():
     """ Setup a nonmagnetic Dos containing all important quantities."""
     energies = np.linspace(-1, 3, num_energies)
     raw_dos = raw.Dos(
-        fermi_energy=1.372, energies=energies, dos=np.array([energies ** 2])
+        version=current_vasp_version,
+        fermi_energy=1.372,
+        energies=energies,
+        dos=np.array([energies ** 2]),
     )
     return raw_dos
 
@@ -70,6 +74,7 @@ def magnetic_Dos():
     """ Setup a magnetic Dos containing all relevant quantities."""
     energies = np.linspace(-2, 2, num_energies)
     raw_dos = raw.Dos(
+        version=current_vasp_version,
         fermi_energy=-0.137,
         energies=energies,
         dos=np.array(((energies + 0.5) ** 2, (energies - 0.5) ** 2)),
@@ -122,8 +127,11 @@ def nonmagnetic_projections(nonmagnetic_Dos):
     atoms = ["Si", "C1", "C2"]
     lmax = 4
     raw_proj = raw.Projectors(
+        version=current_vasp_version,
         topology=raw.Topology(
-            number_ion_types=[1, 2], ion_types=np.array(["Si", "C "], dtype="S")
+            version=current_vasp_version,
+            number_ion_types=[1, 2],
+            ion_types=np.array(["Si", "C "], dtype="S"),
         ),
         orbital_types=np.array([" s", " p", " d", " f"], dtype="S"),
         number_spins=num_spins,
@@ -202,8 +210,11 @@ def magnetic_projections(magnetic_Dos):
     f_orbitals = ["fy3x2", " fxyz", " fyz2", "  fz3", " fxz2", " fzx2", "  fx3"]
     orbitals = sp_orbitals + d_orbitals + f_orbitals
     raw_proj = raw.Projectors(
+        version=current_vasp_version,
         topology=raw.Topology(
-            number_ion_types=[1], ion_types=np.array(["Fe"], dtype="S")
+            version=current_vasp_version,
+            number_ion_types=[1],
+            ion_types=np.array(["Fe"], dtype="S"),
         ),
         orbital_types=np.array(orbitals, dtype="S"),
         number_spins=num_spins,
@@ -250,3 +261,9 @@ def test_magnetic_lm_Dos_plot(magnetic_Dos, magnetic_projections, Assert):
 def test_nonexisting_dos():
     with pytest.raises(exception.NoData):
         dos = Dos(None)
+
+
+def test_version(nonmagnetic_Dos):
+    nonmagnetic_Dos.version = raw.Version(_util._minimal_vasp_version.major - 1)
+    with pytest.raises(exception.OutdatedVaspVersion):
+        Dos(nonmagnetic_Dos)

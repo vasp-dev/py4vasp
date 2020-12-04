@@ -100,7 +100,7 @@ class Magnetism(_util.Data):
     def __init__(self, raw_magnetism):
         error_message = "Atom resolved magnetic information not present, please verify LORBIT tag is set."
         _util.raise_error_if_data_is_none(raw_magnetism, error_message)
-        self._raw = raw_magnetism
+        super().__init__(raw_magnetism)
         self._moments = _Magnetism(raw_magnetism.moments)
 
     @classmethod

@@ -107,6 +107,7 @@ def _make_wrapper(cls, wrap_this_func):
 add_wrappers = add_specific_wrappers()
 
 format_ = DisplayFormatter().format
+_minimal_vasp_version = raw.Version(6, 2)
 
 
 class DataMeta(type):
@@ -123,8 +124,43 @@ class DataMeta(type):
 
 
 class Data(metaclass=DataMeta):
+    def __init__(self, raw_data):
+        if raw_data.version < _minimal_vasp_version:
+            raise exception.OutdatedVaspVersion(
+                "To use py4vasp features, you need at least Vasp version "
+                f"{_minimal_vasp_version.major}.{_minimal_vasp_version.minor}."
+                f"{_minimal_vasp_version.patch}. The used version is "
+                f"{raw_data.version.major}.{raw_data.version.minor}."
+                f"{raw_data.version.patch}. Please use a newer version of Vasp."
+            )
+        self._raw = raw_data
+
     def __str__(self):
         return pretty(self)
+
+
+def require(version, err_msg=None):
+    def decorator_require(func):
+        @functools.wraps(func)
+        def func_with_requirement_test(self, *args, **kwargs):
+            my_version = self._raw.version
+            if my_version >= version:
+                return func(self, *args, **kwargs)
+            else:
+                error_message = err_msg
+                if error_message is None:
+                    error_message = (
+                        f"You called {func.__qualname__} which is not compatible with "
+                        f"the {my_version.major}.{my_version.minor}.{my_version.patch}"
+                        " version of Vasp you are using. Please use at least version "
+                        f"{version.major}.{version.minor}.{version.patch} for this "
+                        "feature."
+                    )
+                raise exception.OutdatedVaspVersion(error_message)
+
+        return func_with_requirement_test
+
+    return decorator_require
 
 
 class Reader:

@@ -77,7 +77,7 @@ class Dos(_util.Data):
     def __init__(self, raw_dos):
         error_message = "No DOS data found, please verify that LORBIT flag is set."
         _util.raise_error_if_data_is_none(raw_dos, error_message)
-        self._raw = raw_dos
+        super().__init__(raw_dos)
         self._fermi_energy = raw_dos.fermi_energy
         self._energies = raw_dos.energies
         self._dos = raw_dos.dos

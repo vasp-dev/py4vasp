@@ -21,7 +21,7 @@ class Trajectory(_util.Data):
     """
 
     def __init__(self, raw_trajectory):
-        self._raw = raw_trajectory
+        super().__init__(raw_trajectory)
         self._topology = Topology(raw_trajectory.topology)
 
     @classmethod
@@ -94,8 +94,11 @@ class Trajectory(_util.Data):
         _util.raise_error_if_not_number(step, "You can only exctract an integer step.")
         try:
             struct = raw.Structure(
+                version=self._raw.version,
                 topology=self._raw.topology,
-                cell=raw.Cell(lattice_vectors=self._raw.lattice_vectors[step]),
+                cell=raw.Cell(
+                    self._raw.version, lattice_vectors=self._raw.lattice_vectors[step]
+                ),
                 positions=self._raw.positions[step],
             )
         except (ValueError, IndexError) as err:

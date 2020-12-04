@@ -169,7 +169,7 @@ class Projectors(_util.Data):
     def __init__(self, raw_proj):
         error_message = "No projectors found, please verify the LORBIT tag is set."
         _util.raise_error_if_data_is_none(raw_proj, error_message)
-        self._raw = raw_proj
+        super().__init__(raw_proj)
         self._atom_dict = Topology(raw_proj.topology).read()
         self._init_orbital_dict(raw_proj)
         self._init_spin_dict(raw_proj)

@@ -2,6 +2,7 @@ from unittest.mock import patch
 from py4vasp.data import Structure, Magnetism, _util
 from .test_topology import raw_topology
 from .test_magnetism import raw_magnetism, noncollinear_magnetism, charge_only
+from . import current_vasp_version
 import py4vasp.data as data
 import py4vasp.raw as raw
 import py4vasp.exceptions as exception
@@ -14,8 +15,11 @@ def raw_structure(raw_topology):
     number_atoms = len(raw_topology.elements)
     shape = (number_atoms, 3)
     structure = raw.Structure(
+        version=current_vasp_version,
         topology=raw_topology,
-        cell=raw.Cell(scale=2.0, lattice_vectors=np.eye(3)),
+        cell=raw.Cell(
+            version=current_vasp_version, scale=2.0, lattice_vectors=np.eye(3)
+        ),
         # shift the positions of 0 to avoid relative comparison between tiny numbers
         positions=(0.5 + np.arange(np.prod(shape)).reshape(shape)) / np.prod(shape),
     )
@@ -64,7 +68,9 @@ def test_tilted_unitcell(raw_structure, Assert):
         (4, 2, 2),
         (2, 2, 4),
     )
-    raw_structure.cell = raw.Cell(scale=1, lattice_vectors=cell)
+    raw_structure.cell = raw.Cell(
+        version=current_vasp_version, scale=1, lattice_vectors=cell
+    )
     raw_structure.positions = cartesian_positions @ inv_cell
     structure = Structure(raw_structure).to_ase()
     Assert.allclose(structure.positions, cartesian_positions)
@@ -198,3 +204,9 @@ Direct<br>
 <tr><td>0.8809523809523809</td><td>0.9285714285714286</td><td>0.9761904761904762</td></tr>
 </table>""".strip()
     assert actual == {"text/plain": ref_plain, "text/html": ref_html}
+
+
+def test_version(raw_structure):
+    raw_structure.version = raw.Version(_util._minimal_vasp_version.major - 1)
+    with pytest.raises(exception.OutdatedVaspVersion):
+        Structure(raw_structure)

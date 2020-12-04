@@ -19,7 +19,7 @@ class Energy(_util.Data):
     """
 
     def __init__(self, raw_energy):
-        self._raw = raw_energy
+        super().__init__(raw_energy)
 
     @classmethod
     @_util.add_doc(_util.from_file_doc("energies in an relaxation or MD simulation"))

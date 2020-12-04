@@ -24,6 +24,11 @@ class FileAccessError(Py4VaspError):
     """Exception raised when error occurs during accessing the HDF5 file."""
 
 
+class OutdatedVaspVersion(Py4VaspError):
+    """Exception raised when the py4vasp features used are not available in the
+    used version of Vasp."""
+
+
 class StopExecution(Py4VaspError):
     """Exception raised when an error occured in the user interface. This prevents
     further cells from being executed."""

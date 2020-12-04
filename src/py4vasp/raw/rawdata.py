@@ -19,9 +19,22 @@ def _only_one_None(lhs, rhs):
     return (lhs is None) != (rhs is None)
 
 
+@dataclass(order=True, frozen=True)
+class Version:
+    "The version number of Vasp."
+    major: int
+    "The major version number."
+    minor: int = 0
+    "The minor version number."
+    patch: int = 0
+    "Indicates number of bugfixes since last minor release."
+
+
 @dataclass
 class Topology:
     "The topology of the system used, i.e., which elements are contained."
+    version: Version
+    "The version number of Vasp."
     number_ion_types: np.ndarray
     "Amount of ions of a particular type."
     ion_types: np.ndarray
@@ -32,6 +45,8 @@ class Topology:
 @dataclass
 class Trajectory:
     "Describes the evolution of unit cell and atoms within over ionic steps."
+    version: Version
+    "The version number of Vasp."
     topology: Topology
     "The topology of the system used, i.e., which elements are contained."
     lattice_vectors: np.ndarray
@@ -45,6 +60,8 @@ class Trajectory:
 @dataclass
 class Projectors:
     "Projectors used for orbital projections."
+    version: Version
+    "The version number of Vasp."
     topology: Topology
     "The topology of the system used, i.e., which elements are contained."
     orbital_types: np.ndarray
@@ -57,6 +74,8 @@ class Projectors:
 @dataclass
 class Cell:
     "Unit cell of the crystal or simulation cell for molecules."
+    version: Version
+    "The version number of Vasp."
     lattice_vectors: np.ndarray
     "Lattice vectors defining the unit cell."
     scale: float = 1.0
@@ -67,6 +86,8 @@ class Cell:
 @dataclass
 class Magnetism:
     "Data about the magnetism in the system."
+    version: Version
+    "The version number of Vasp."
     moments: np.ndarray
     "Contains the charge and magnetic moments atom and orbital resolved."
     __eq__ = _dataclass_equal
@@ -75,6 +96,8 @@ class Magnetism:
 @dataclass
 class Structure:
     "Structural information of the system."
+    version: Version
+    "The version number of Vasp."
     topology: Topology
     "The topology of the system used, i.e., which elements are contained."
     cell: Cell
@@ -89,6 +112,8 @@ class Structure:
 @dataclass
 class Kpoints:
     "**k** points at which wave functions are calculated."
+    version: Version
+    "The version number of Vasp."
     mode: str
     "Mode used to generate the **k**-point list."
     number: int
@@ -109,6 +134,8 @@ class Kpoints:
 @dataclass
 class Dos:
     "Electronic density of states."
+    version: Version
+    "The version number of Vasp."
     fermi_energy: float
     "Fermi energy obtained by Vasp."
     energies: np.ndarray
@@ -125,6 +152,8 @@ class Dos:
 @dataclass
 class Band:
     "Electronic band structure"
+    version: Version
+    "The version number of Vasp."
     fermi_energy: float
     "Fermi energy obtained by Vasp."
     kpoints: Kpoints
@@ -141,6 +170,8 @@ class Band:
 @dataclass
 class Energy:
     "Various energies during ionic relaxation or MD simulation."
+    version: Version
+    "The version number of Vasp."
     labels: np.ndarray
     "Label identifying which energy is contained."
     values: np.ndarray

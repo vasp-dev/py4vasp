@@ -60,7 +60,7 @@ class Band(_util.Data):
     """
 
     def __init__(self, raw_band):
-        self._raw = raw_band
+        super().__init__(raw_band)
         self._kpoints = Kpoints(raw_band.kpoints)
         self._spin_polarized = len(raw_band.eigenvalues) == 2
         self._projectors = _projectors_or_dummy(raw_band.projectors)

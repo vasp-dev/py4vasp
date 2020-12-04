@@ -24,7 +24,7 @@ class Topology(_util.Data):
     """
 
     def __init__(self, raw_topology):
-        self._raw = raw_topology
+        super().__init__(raw_topology)
 
     @classmethod
     @_util.add_doc(_util.from_file_doc("topology"))

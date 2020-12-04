@@ -47,6 +47,21 @@ class File(AbstractContextManager):
             )
             raise exception.FileAccessError(error_message) from err
 
+    def version(self):
+        """ Read the version number of Vasp.
+
+        Returns
+        -------
+        raw.Version
+            The major, minor, and patch number of Vasp.
+        """
+        self._raise_error_if_closed()
+        return raw.Version(
+            major=self._h5f["version/major"][()],
+            minor=self._h5f["version/minor"][()],
+            patch=self._h5f["version/patch"][()],
+        )
+
     def dos(self):
         """ Read the electronic density of states (Dos).
 
@@ -61,6 +76,7 @@ class File(AbstractContextManager):
         if "results/electron_dos/energies" not in self._h5f:
             return None
         return raw.Dos(
+            version=self.version(),
             fermi_energy=self._h5f["results/electron_dos/efermi"][()],
             energies=self._h5f["results/electron_dos/energies"],
             dos=self._h5f["results/electron_dos/dos"],
@@ -80,6 +96,7 @@ class File(AbstractContextManager):
         """
         self._raise_error_if_closed()
         return raw.Band(
+            version=self.version(),
             fermi_energy=self._h5f["results/electron_dos/efermi"][()],
             kpoints=self.kpoints(),
             eigenvalues=self._h5f["results/electron_eigenvalues/eigenvalues"],
@@ -98,6 +115,7 @@ class File(AbstractContextManager):
         """
         self._raise_error_if_closed()
         return raw.Topology(
+            version=self.version(),
             ion_types=self._h5f["results/positions/ion_types"],
             number_ion_types=self._h5f["results/positions/number_ion_types"],
         )
@@ -113,6 +131,7 @@ class File(AbstractContextManager):
         """
         self._raise_error_if_closed()
         return raw.Trajectory(
+            version=self.version(),
             topology=self.topology(),
             positions=self._h5f["intermediate/history/position_ions"],
             lattice_vectors=self._h5f["intermediate/history/lattice_vectors"],
@@ -131,6 +150,7 @@ class File(AbstractContextManager):
         if "results/projectors" not in self._h5f:
             return None
         return raw.Projectors(
+            version=self.version(),
             topology=self.topology(),
             orbital_types=self._h5f["results/projectors/lchar"],
             number_spins=self._h5f["results/electron_eigenvalues/ispin"][()],
@@ -149,6 +169,7 @@ class File(AbstractContextManager):
         """
         self._raise_error_if_closed()
         return raw.Kpoints(
+            version=self.version(),
             mode=self._h5f["input/kpoints/mode"][()],
             number=self._h5f["input/kpoints/number_kpoints"][()],
             coordinates=self._h5f["results/electron_eigenvalues/kpoint_coords"],
@@ -168,6 +189,7 @@ class File(AbstractContextManager):
         """
         self._raise_error_if_closed()
         return raw.Cell(
+            version=self.version(),
             scale=self._h5f["results/positions/scale"][()],
             lattice_vectors=self._h5f["results/positions/lattice_vectors"],
         )
@@ -185,7 +207,7 @@ class File(AbstractContextManager):
         key = "intermediate/history/magnetism/moments"
         if key not in self._h5f:
             return None
-        return raw.Magnetism(moments=self._h5f[key])
+        return raw.Magnetism(version=self.version(), moments=self._h5f[key])
 
     def structure(self):
         """ Read the structure information.
@@ -193,9 +215,11 @@ class File(AbstractContextManager):
         Returns
         -------
         raw.Structure
+            The unit cell, position of the atoms and magnetic moments.
         """
         self._raise_error_if_closed()
         return raw.Structure(
+            version=self.version(),
             topology=self.topology(),
             cell=self.cell(),
             positions=self._h5f["results/positions/position_ions"],
@@ -213,6 +237,7 @@ class File(AbstractContextManager):
         """
         self._raise_error_if_closed()
         return raw.Energy(
+            version=self.version(),
             labels=self._h5f["intermediate/history/energies_tags"],
             values=self._h5f["intermediate/history/energies"],
         )

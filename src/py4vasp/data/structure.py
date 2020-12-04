@@ -34,7 +34,7 @@ class Structure(_util.Data):
     "Length in Å how a magnetic moment is displayed relative to the largest moment."
 
     def __init__(self, raw_structure):
-        self._raw = raw_structure
+        super().__init__(raw_structure)
 
     @classmethod
     @_util.add_doc(_util.from_file_doc("crystal structure"))
