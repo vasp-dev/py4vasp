@@ -9,13 +9,13 @@ import functools
 import numbers
 
 
-def from_file_doc(doc):
-    return """Read the {} from the given file.
+def from_file_doc(doc, filename=raw.File.default_filename):
+    return f"""Read the {doc} from the given file.
 
         Parameters
         ----------
         file : str or raw.File
-            Filename from which the data is extracted, using {} if not present.
+            Filename from which the data is extracted, using {filename} if not present.
             Alternatively, you can open the file yourself and pass the `File`
             object. In that case, you need to take care the file is properly
             closed again and be aware the generated instance of this class
@@ -26,9 +26,7 @@ def from_file_doc(doc):
         contextmanager
             The returned context manager handles opening and closing the file.
             If a `File` object is passed a `nullcontext` is returned.
-        """.format(
-        doc, raw.File.default_filename
-    )
+        """
 
 
 @contextmanager

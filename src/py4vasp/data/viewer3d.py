@@ -1,7 +1,10 @@
 from typing import NamedTuple
 import py4vasp.exceptions as exception
 import nglview
+import mrcfile
 import numpy as np
+import tempfile
+import os
 
 
 class _Arrow3d(NamedTuple):
@@ -30,6 +33,8 @@ class Viewer3d:
     """
 
     _positions = None
+    _lengths = None
+    _angles = None
     _multiple_cells = 1
     _axes = None
     _arrows = []
@@ -53,6 +58,8 @@ class Viewer3d:
         standard_cell, _ = ase.cell.standard_form()
         ase.set_cell(standard_cell, scale_atoms=True)
         res = cls(nglview.show_ase(ase))
+        res._lengths = tuple(ase.cell.lengths())
+        res._angles = tuple(ase.cell.angles())
         res._positions = ase.positions
         if supercell is not None:
             res._multiple_cells = np.prod(supercell)
@@ -124,3 +131,33 @@ class Viewer3d:
 
     def _make_arrow(self, arrow):
         return self._ngl.shape.add_arrow(*(arrow.to_serializable()))
+
+    def show_isosurface(self, volume_data, **kwargs):
+        """ Add an isosurface to the structure.
+
+        Parameters
+        ----------
+        volume_data : np.ndarray
+            The raw data represented on a 3d grid. Make sure the grid aligns with
+            the FFT grid used in the Vasp calculation.
+        kwargs
+            Additional parameters passed on to the visualizer. Most relevant is
+            the isolevel changing the position at which the isosurface is drawn.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            filename = os.path.join(tmp, "data.mrc")
+            self._make_mrc_file(filename, volume_data)
+            self._make_isosurface(filename, **kwargs)
+
+    def _make_mrc_file(self, filename, volume_data):
+        with mrcfile.new(filename, overwrite=True) as data_file:
+            data_file.set_data(volume_data.astype(np.float32))
+            data_file.header.cella = self._lengths
+            data_file.header.cellb = self._angles
+
+    def _make_isosurface(self, filename, **kwargs):
+        if len(kwargs) == 0:
+            self._ngl.add_component(filename)
+        else:
+            component = self._ngl.add_component(filename, defaultRepresentation=False)
+            component.add_surface(**kwargs)

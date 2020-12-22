@@ -177,3 +177,15 @@ class Energy:
     values: np.ndarray
     "Energy specified by labels for all iteration steps."
     __eq__ = _dataclass_equal
+
+
+@dataclass
+class Density:
+    "The electronic charge and magnetization density."
+    version: Version
+    "The version number of Vasp."
+    structure: Structure
+    "The atomic structure to represent the densities."
+    charge: np.ndarray
+    "The raw data of electronic charge and magnetization density."
+    __eq__ = _dataclass_equal

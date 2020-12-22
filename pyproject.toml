@@ -16,6 +16,7 @@ cufflinks = "^0.17.3"
 nglview = "^2.7.5"
 ase = "^3.19.0"
 mdtraj = "^1.9.3"
+mrcfile = "^1.2.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.0"
@@ -37,6 +38,7 @@ mdtraj = {channel = "conda-forge"}
 nglview = {channel = "conda-forge"}
 ase = {channel = "conda-forge"}
 sphinx = {channel = "anaconda"}
+mrcfile = {channel = "conda-forge"}
 
 [tool.dephell.main]
 from = {format = "poetry", path = "pyproject.toml"}

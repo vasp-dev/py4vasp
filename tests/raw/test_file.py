@@ -470,3 +470,35 @@ def write_structure(h5f, structure):
 def check_structure(file, reference):
     actual = file.structure()
     assert actual == reference
+
+
+def test_density(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=default_options,
+        create_reference=reference_density,
+        write_reference=write_density,
+        check_actual=check_density,
+    )
+    generic_test(setup)
+
+
+def reference_density():
+    shape = (2, 3, 4, 5)
+    raw_data = np.arange(np.prod(shape)).reshape(shape)
+    return raw.Density(
+        version=reference_version(),
+        structure=reference_structure(False),
+        charge=raw_data,
+    )
+
+
+def write_density(h5f, density):
+    write_version(h5f, density.version)
+    write_structure(h5f, density.structure)
+    h5f["charge/charge"] = density.charge
+
+
+def check_density(file, reference):
+    actual = file.density()
+    assert actual == reference

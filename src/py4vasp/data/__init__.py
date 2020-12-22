@@ -26,6 +26,7 @@ from .projectors import Projectors
 from .topology import Topology
 from .viewer3d import Viewer3d
 from .structure import Structure
+from .density import Density
 from .trajectory import Trajectory
 from py4vasp.config import config
 

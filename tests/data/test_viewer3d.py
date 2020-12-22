@@ -2,6 +2,7 @@ from unittest.mock import patch
 from py4vasp.data import Structure, Viewer3d
 from py4vasp.data.viewer3d import _Arrow3d, _x_axis, _y_axis, _z_axis
 from .test_structure import raw_structure, raw_topology
+from .test_density import raw_density
 import py4vasp.exceptions as exception
 import ipykernel.jsonutil as json
 import numpy as np
@@ -27,12 +28,16 @@ def count_messages(viewer, setup=False):
     return len(viewer._ngl.get_state()["_ngl_msg_archive"]) - n
 
 
-def last_messages(viewer, n=1):
+def last_messages(viewer, n=1, get_msg_kwargs=False):
     num_messages = count_messages(viewer)
     if num_messages >= n:
         index = viewer.default_messages + num_messages - n
         messages = viewer._ngl.get_state()["_ngl_msg_archive"][index:]
-        return [(msg["methodName"], msg["args"]) for msg in messages]
+        if get_msg_kwargs:
+            get_msg_tuple = lambda msg: (msg["methodName"], msg["args"], msg["kwargs"])
+        else:
+            get_msg_tuple = lambda msg: (msg["methodName"], msg["args"])
+        return [get_msg_tuple(msg) for msg in messages]
     else:
         return []
 
@@ -131,3 +136,29 @@ def test_standard_form(raw_structure, Assert):
     viewer = make_viewer(raw_structure)
     expected_positions = raw_structure.cell.scale * raw_structure.positions
     Assert.allclose(viewer._positions, expected_positions)
+
+
+def test_isosurface(raw_density):
+    viewer = make_viewer(raw_density.structure)
+    viewer.show_isosurface(raw_density.charge)
+    messages = last_messages(viewer, n=1, get_msg_kwargs=True)
+    assert_load_file(messages[0], default=True)
+    #
+    kwargs = {"isolevel": 0.1, "color": "red"}
+    viewer.show_isosurface(raw_density.charge, **kwargs)
+    messages = last_messages(viewer, n=2, get_msg_kwargs=True)
+    assert_load_file(messages[0], default=False)
+    assert_surface(messages[1], kwargs)
+
+
+def assert_load_file(message, default):
+    assert message[0] == "loadFile"
+    assert message[1][0]["binary"]
+    assert message[2]["defaultRepresentation"] == default
+
+
+def assert_surface(message, kwargs):
+    assert message[0] == "addRepresentation"
+    assert message[1][0] == "surface"
+    for key, val in kwargs.items():
+        assert message[2][key] == val

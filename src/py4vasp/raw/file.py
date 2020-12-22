@@ -242,6 +242,21 @@ class File(AbstractContextManager):
             values=self._h5f["intermediate/history/energies"],
         )
 
+    def density(self):
+        """ Read the charge and potentially magnetization density.
+
+        Returns
+        -------
+        raw.Density
+            The density is represented on the Fourier grid in the unit cell.
+        """
+        self._raise_error_if_closed()
+        return raw.Density(
+            version=self.version(),
+            structure=self.structure(),
+            charge=self._h5f["charge/charge"],
+        )
+
     def close(self):
         "Close the associated HDF5 file (automatically if used as context manager)."
         self._h5f.close()
