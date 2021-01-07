@@ -18,7 +18,7 @@ class _Format:
 
 @_util.add_specific_wrappers({"plot": "to_viewer3d"})
 class Structure(_util.Data):
-    """ The structure of the crystal.
+    """The structure of the crystal.
 
     You can use this class to process structural information from the Vasp
     calculation. Typically you want to do this to inspect the converged structure
@@ -73,7 +73,7 @@ Direct{format_.newline}
     """.strip()
 
     def to_dict(self):
-        """ Read the structual information into a dictionary.
+        """Read the structual information into a dictionary.
 
         Returns
         -------
@@ -84,7 +84,7 @@ Direct{format_.newline}
         """
         moments = self._read_magnetic_moments()
         return {
-            "cell": self._raw.cell.scale * self._raw.cell.lattice_vectors[:],
+            "lattice_vectors": self._raw.cell.scale * self._raw.cell.lattice_vectors[:],
             "positions": self._raw.positions[:],
             "elements": Topology(self._raw.topology).elements(),
             **({"magnetic_moments": moments} if moments is not None else {}),
@@ -100,7 +100,7 @@ Direct{format_.newline}
         return len(self._raw.positions)
 
     def to_ase(self, supercell=None):
-        """ Convert the structure to an ase Atoms object.
+        """Convert the structure to an ase Atoms object.
 
         Parameters
         ----------
@@ -116,7 +116,7 @@ Direct{format_.newline}
         data = self.to_dict()
         structure = ase.Atoms(
             symbols=data["elements"],
-            cell=data["cell"],
+            cell=data["lattice_vectors"],
             scaled_positions=data["positions"],
             pbc=True,
         )
@@ -134,7 +134,7 @@ Direct{format_.newline}
         return structure
 
     def to_viewer3d(self, supercell=None):
-        """ Generate a 3d representation of the structure.
+        """Generate a 3d representation of the structure.
 
         Parameters
         ----------

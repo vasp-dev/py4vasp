@@ -86,7 +86,7 @@ class _Magnetism(_util.Reader):
 
 @_util.add_wrappers
 class Magnetism(_util.Data):
-    """ The evolution of the magnetization over the simulation.
+    """The evolution of the magnetization over the simulation.
 
     This class gives access to the magnetic moments and charges projected on the
     different orbitals on every atom.

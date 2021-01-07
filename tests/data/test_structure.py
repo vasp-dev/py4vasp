@@ -34,7 +34,7 @@ def test_from_file(raw_structure, mock_file, check_read):
 
 def test_read(raw_structure, Assert):
     actual = Structure(raw_structure).read()
-    Assert.allclose(actual["cell"], raw_structure.actual_cell)
+    Assert.allclose(actual["lattice_vectors"], raw_structure.actual_cell)
     Assert.allclose(actual["positions"], raw_structure.positions)
     assert actual["elements"] == raw_structure.topology.elements
     assert "magnetic_moments" not in actual

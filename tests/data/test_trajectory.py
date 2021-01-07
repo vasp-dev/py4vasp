@@ -68,7 +68,7 @@ def test_to_structure(raw_trajectory, Assert):
     structure = Trajectory(raw_trajectory).to_structure(0).read()
     ref_elements = Topology(raw_trajectory.topology).elements()
     assert structure["elements"] == ref_elements
-    Assert.allclose(structure["cell"], raw_trajectory.lattice_vectors[0])
+    Assert.allclose(structure["lattice_vectors"], raw_trajectory.lattice_vectors[0])
     Assert.allclose(structure["positions"], raw_trajectory.positions[0])
 
 

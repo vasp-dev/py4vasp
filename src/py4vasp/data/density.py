@@ -17,7 +17,7 @@ class _ViewerWrapper:
 
 @_util.add_specific_wrappers({"plot": "to_viewer3d"})
 class Density(_util.Data):
-    """ The charge and magnetization density.
+    """The charge and magnetization density.
 
     You can use this class to extract the density data of the Vasp calculation
     and to have a quick glance at the resulting density.
@@ -42,7 +42,7 @@ class Density(_util.Data):
         p.text(f"density:\n{structure}\n{grid}{spin_polarized}")
 
     def to_dict(self):
-        """ Read the electionic density into a dictionary.
+        """Read the electionic density into a dictionary.
 
         Returns
         -------
@@ -63,7 +63,7 @@ class Density(_util.Data):
             return {}
 
     def to_viewer3d(self, quantity="charge", **user_options):
-        """ Plot the selected density as a 3d isosurface within the structure.
+        """Plot the selected density as a 3d isosurface within the structure.
 
         Parameters
         ----------

@@ -28,7 +28,8 @@ def test_from_file(raw_density, mock_file, check_read):
 
 def test_read(raw_density, Assert):
     actual = Density(raw_density).read()
-    Assert.allclose(actual["structure"]["cell"], raw_density.structure.actual_cell)
+    lattice_vectors = actual["structure"]["lattice_vectors"]
+    Assert.allclose(lattice_vectors, raw_density.structure.actual_cell)
     Assert.allclose(actual["structure"]["positions"], raw_density.structure.positions)
     assert actual["structure"]["elements"] == raw_density.structure.topology.elements
     Assert.allclose(actual["charge"], raw_density.charge[0])

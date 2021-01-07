@@ -60,7 +60,7 @@ pd.DataFrame
 
 @_util.add_wrappers
 class Dos(_util.Data):
-    """ The electronic density of states (DOS).
+    """The electronic density of states (DOS).
 
     You can use this class to extract the DOS data of a Vasp calculation.
     Typically you want to run a non self consistent calculation with a

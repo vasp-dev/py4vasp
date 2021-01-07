@@ -143,7 +143,7 @@ class _Projections(_util.Reader):
 
 @_util.add_wrappers
 class Projectors(_util.Data):
-    """ The projectors used for atom and orbital resolved quantities.
+    """The projectors used for atom and orbital resolved quantities.
 
     This is a common class used by all quantities that contains some projected
     quantity, e.g., the electronic band structure and the DOS. It provides
@@ -211,7 +211,7 @@ class Projectors(_util.Data):
         return (clean_string(orbital) for orbital in self._raw.orbital_types)
 
     def select(self, atom=_default, orbital=_default, spin=_default):
-        """ Map selection strings onto corresponding Selection objects.
+        """Map selection strings onto corresponding Selection objects.
 
         Parameters
         ----------

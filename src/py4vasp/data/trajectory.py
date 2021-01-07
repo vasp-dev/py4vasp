@@ -9,7 +9,7 @@ import functools
 
 @_util.add_wrappers
 class Trajectory(_util.Data):
-    """ The trajectory of the ionic positions during the simulation.
+    """The trajectory of the ionic positions during the simulation.
 
     This class provides the functionality to extract trajectories of MD
     simulations for visualization or analysis.
@@ -44,7 +44,7 @@ class Trajectory(_util.Data):
         return len(self._raw.positions)
 
     def to_dict(self):
-        """ Extract the trajectory as a dictionary.
+        """Extract the trajectory as a dictionary.
 
         Returns
         -------
@@ -63,7 +63,7 @@ class Trajectory(_util.Data):
     A_to_pm = 0.1
 
     def to_mdtraj(self):
-        """ Convert the trajectory to mdtraj.Trajectory
+        """Convert the trajectory to mdtraj.Trajectory
 
         Returns
         -------
@@ -79,7 +79,7 @@ class Trajectory(_util.Data):
         return trajectory
 
     def to_structure(self, step=-1):
-        """ Convert the trajectory of a particular step to a Structure
+        """Convert the trajectory of a particular step to a Structure
 
         Parameters
         ----------

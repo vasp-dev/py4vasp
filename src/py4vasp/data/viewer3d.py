@@ -44,7 +44,7 @@ class Viewer3d:
 
     @classmethod
     def from_structure(cls, structure, supercell=None):
-        """ Generate a new Viewer3d from a structure.
+        """Generate a new Viewer3d from a structure.
 
         Parameters
         ----------
@@ -95,7 +95,7 @@ class Viewer3d:
         self._axes = None
 
     def show_arrows_at_atoms(self, arrows, color=[0.1, 0.1, 0.8]):
-        """ Add arrows at all the atoms.
+        """Add arrows at all the atoms.
 
         Parameters
         ----------
@@ -119,7 +119,7 @@ class Viewer3d:
             self._arrows.append(self._make_arrow(arrow))
 
     def hide_arrows_at_atoms(self):
-        """ Remove all arrows from the atoms.
+        """Remove all arrows from the atoms.
 
         Notes
         -----
@@ -133,7 +133,7 @@ class Viewer3d:
         return self._ngl.shape.add_arrow(*(arrow.to_serializable()))
 
     def show_isosurface(self, volume_data, **kwargs):
-        """ Add an isosurface to the structure.
+        """Add an isosurface to the structure.
 
         Parameters
         ----------

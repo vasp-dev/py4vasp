@@ -44,7 +44,7 @@ plotly.graph_objects.Figure
 
 @_util.add_wrappers
 class Band(_util.Data):
-    """ The electronic band structure.
+    """The electronic band structure.
 
     The most common use case of this class is to produce the electronic band
     structure along a path in the Brillouin zone used in a non self consistent

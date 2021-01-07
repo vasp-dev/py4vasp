@@ -6,7 +6,7 @@ import py4vasp.exceptions as exception
 
 @_util.add_wrappers
 class Energy(_util.Data):
-    """ The energy data for all steps of a relaxation or MD simulation.
+    """The energy data for all steps of a relaxation or MD simulation.
 
     You can use this class to inspect how the ionic relaxation converges or
     during an MD simulation whether the total energy is conserved.
@@ -34,7 +34,7 @@ class Energy(_util.Data):
         p.text(text)
 
     def to_dict(self, selection=None):
-        """ Read the energy data and store it in a dictionary.
+        """Read the energy data and store it in a dictionary.
 
         Parameters
         ----------
@@ -64,7 +64,7 @@ class Energy(_util.Data):
             )
 
     def to_plotly(self, selection=None):
-        """ Read the energy data and generate a plotly figure.
+        """Read the energy data and generate a plotly figure.
 
         Parameters
         ----------

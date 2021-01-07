@@ -11,7 +11,7 @@ _subscript = "_"
 
 @_util.add_wrappers
 class Topology(_util.Data):
-    """ This class accesses the topology of the crystal.
+    """This class accesses the topology of the crystal.
 
     At the current stage this only provides access to the name of the atoms in
     the unit cell, but one could extend it to identify logical units like the
@@ -32,7 +32,7 @@ class Topology(_util.Data):
         return _util.from_file(cls, file, "topology")
 
     def to_dict(self):
-        """ Read the topology and convert it to a dictionary.
+        """Read the topology and convert it to a dictionary.
 
         Returns
         -------
@@ -47,7 +47,7 @@ class Topology(_util.Data):
         return {**self._default_selection(), **self._specific_selection()}
 
     def to_frame(self):
-        """ Convert the topology to a DataFrame
+        """Convert the topology to a DataFrame
 
         Returns
         -------
@@ -77,7 +77,7 @@ class Topology(_util.Data):
         return list(itertools.chain.from_iterable(repeated_types))
 
     def to_poscar(self, format_newline=""):
-        """ Generate the topology lines for the POSCAR file.
+        """Generate the topology lines for the POSCAR file.
 
         Parameters
         ----------

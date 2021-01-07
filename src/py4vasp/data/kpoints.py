@@ -6,7 +6,7 @@ import numpy as np
 
 @_util.add_wrappers
 class Kpoints(_util.Data):
-    """ The **k** points used in the Vasp calculation.
+    """The **k** points used in the Vasp calculation.
 
     This class provides utility functionality to extract information about the
     **k** points used by Vasp. As such it is mostly used as a helper class for
@@ -37,7 +37,7 @@ reciprocal"""
         return _util.from_file(cls, file, "kpoints")
 
     def to_dict(self):
-        """ Read the **k** points data into a dictionary.
+        """Read the **k** points data into a dictionary.
 
         Returns
         -------
@@ -67,7 +67,7 @@ reciprocal"""
         return len(self._raw.coordinates) // self.line_length()
 
     def distances(self):
-        """ Convert the coordinates of the **k** points into a one dimensional array
+        """Convert the coordinates of the **k** points into a one dimensional array
 
         For every line in the Brillouin zone, the distance between each **k** point
         and the start of the line is calculated. Then the distances of different
