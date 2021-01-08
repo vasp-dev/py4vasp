@@ -1,7 +1,7 @@
 from .topology import Topology
 from py4vasp.data import _util, Structure
+from py4vasp.raw import RawStructure, RawCell
 from IPython.lib.pretty import pretty
-import py4vasp.raw as raw
 import py4vasp.exceptions as exception
 import mdtraj
 import functools
@@ -16,7 +16,7 @@ class Trajectory(_util.Data):
 
     Parameters
     ----------
-    raw_trajectory : raw.Trajectory
+    raw_trajectory : RawTrajectory
         Dataclass containing the raw data of the trajectory.
     """
 
@@ -93,10 +93,10 @@ class Trajectory(_util.Data):
         """
         _util.raise_error_if_not_number(step, "You can only exctract an integer step.")
         try:
-            struct = raw.Structure(
+            struct = RawStructure(
                 version=self._raw.version,
                 topology=self._raw.topology,
-                cell=raw.Cell(
+                cell=RawCell(
                     self._raw.version, lattice_vectors=self._raw.lattice_vectors[step]
                 ),
                 positions=self._raw.positions[step],

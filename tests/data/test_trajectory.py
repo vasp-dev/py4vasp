@@ -1,7 +1,7 @@
 from py4vasp.data import Trajectory, Topology, _util
+from py4vasp.raw import RawTrajectory, RawTopology, RawVersion
 from .test_topology import raw_topology
 from . import current_vasp_version
-import py4vasp.raw as raw
 import py4vasp.exceptions as exception
 import pytest
 import numpy as np
@@ -15,7 +15,7 @@ pm_to_A = 1.0 / Trajectory.A_to_pm
 @pytest.fixture
 def raw_trajectory(raw_topology):
     shape_pos = (num_steps, num_atoms, 3)
-    return raw.Trajectory(
+    return RawTrajectory(
         version=current_vasp_version,
         topology=raw_topology,
         positions=(np.arange(np.prod(shape_pos)) + 1).reshape(shape_pos),
@@ -48,7 +48,7 @@ def test_to_mdtraj(raw_trajectory, Assert):
 def test_triclinic_cell(raw_trajectory, Assert):
     unit_cell = (np.arange(9) ** 2).reshape(3, 3)
     inv_cell = np.linalg.inv(unit_cell)
-    triclinic_cell = raw.Trajectory(
+    triclinic_cell = RawTrajectory(
         version=current_vasp_version,
         topology=raw_trajectory.topology,
         lattice_vectors=np.array(num_steps * [unit_cell]),
@@ -124,6 +124,6 @@ Direct<br>
 
 
 def test_version(raw_trajectory):
-    raw_trajectory.version = raw.Version(_util._minimal_vasp_version.major - 1)
+    raw_trajectory.version = RawVersion(_util._minimal_vasp_version.major - 1)
     with pytest.raises(exception.OutdatedVaspVersion):
         Trajectory(raw_trajectory)

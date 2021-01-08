@@ -26,7 +26,7 @@ class Structure(_util.Data):
 
     Parameters
     ----------
-    raw_structure : raw.Structure
+    raw_structure : RawStructure
         Dataclass containing the raw data defining the structure.
     """
 

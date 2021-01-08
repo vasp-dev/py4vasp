@@ -152,7 +152,7 @@ class Projectors(_util.Data):
 
     Parameters
     ----------
-    raw_proj : raw.Projectors
+    raw_proj : RawProjectors
         Dataclass containing data about the elements, the orbitals, and the spin
         for which projectors are available.
     """

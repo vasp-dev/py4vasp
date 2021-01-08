@@ -1,6 +1,6 @@
 from contextlib import AbstractContextManager
+from .rawdata import *
 import h5py
-import py4vasp.raw as raw
 import py4vasp.exceptions as exception
 
 
@@ -52,11 +52,11 @@ class File(AbstractContextManager):
 
         Returns
         -------
-        raw.Version
+        RawVersion
             The major, minor, and patch number of Vasp.
         """
         self._raise_error_if_closed()
-        return raw.Version(
+        return RawVersion(
             major=self._h5f["version/major"][()],
             minor=self._h5f["version/minor"][()],
             patch=self._h5f["version/patch"][()],
@@ -67,7 +67,7 @@ class File(AbstractContextManager):
 
         Returns
         -------
-        raw.Dos or None
+        RawDos or None
             A list of energies E and the associated raw electronic Dos D(E). The
             energies need to be manually shifted to the Fermi energy. If
             available, the projections on a set of projectors are included.
@@ -75,7 +75,7 @@ class File(AbstractContextManager):
         self._raise_error_if_closed()
         if "results/electron_dos/energies" not in self._h5f:
             return None
-        return raw.Dos(
+        return RawDos(
             version=self.version(),
             fermi_energy=self._h5f["results/electron_dos/efermi"][()],
             energies=self._h5f["results/electron_dos/energies"],
@@ -89,13 +89,13 @@ class File(AbstractContextManager):
 
         Returns
         -------
-        raw.Band
+        RawBand
             The raw electronic eigenvalues at the specific **k** points. These
             values need to be manually aligned to the Fermi energy if desired.
             If available the projections on a set of projectors are included.
         """
         self._raise_error_if_closed()
-        return raw.Band(
+        return RawBand(
             version=self.version(),
             fermi_energy=self._h5f["results/electron_dos/efermi"][()],
             kpoints=self.kpoints(),
@@ -109,12 +109,12 @@ class File(AbstractContextManager):
 
         Returns
         -------
-        raw.Topology
+        RawTopology
             Contains the information which ion types were used and how many ions
             of each type there are.
         """
         self._raise_error_if_closed()
-        return raw.Topology(
+        return RawTopology(
             version=self.version(),
             ion_types=self._h5f["results/positions/ion_types"],
             number_ion_types=self._h5f["results/positions/number_ion_types"],
@@ -125,12 +125,12 @@ class File(AbstractContextManager):
 
         Returns
         -------
-        raw.Trajectory
+        RawTrajectory
             Contains the topology of the crystal and the position of all atoms
             and the shape of the unit cell for all ionic steps.
         """
         self._raise_error_if_closed()
-        return raw.Trajectory(
+        return RawTrajectory(
             version=self.version(),
             topology=self.topology(),
             positions=self._h5f["intermediate/history/position_ions"],
@@ -142,14 +142,14 @@ class File(AbstractContextManager):
 
         Returns
         -------
-        raw.Projectors or None
+        RawProjectors or None
             If Vasp was set to produce the orbital decomposition of the bands
             the associated projector information is returned.
         """
         self._raise_error_if_closed()
         if "results/projectors" not in self._h5f:
             return None
-        return raw.Projectors(
+        return RawProjectors(
             version=self.version(),
             topology=self.topology(),
             orbital_types=self._h5f["results/projectors/lchar"],
@@ -161,14 +161,14 @@ class File(AbstractContextManager):
 
         Returns
         -------
-        raw.Kpoints
+        RawKpoints
             In addition to the coordinates of the **k** points and the cell
             information, we include some information given in the input file
             about the generation and labels of the **k** points, which may be
             useful for band structures.
         """
         self._raise_error_if_closed()
-        return raw.Kpoints(
+        return RawKpoints(
             version=self.version(),
             mode=self._h5f["input/kpoints/mode"][()],
             number=self._h5f["input/kpoints/number_kpoints"][()],
@@ -184,11 +184,11 @@ class File(AbstractContextManager):
 
         Returns
         -------
-        raw.Cell
+        RawCell
             The lattice vectors of the unit cell scaled by a constant factor.
         """
         self._raise_error_if_closed()
-        return raw.Cell(
+        return RawCell(
             version=self.version(),
             scale=self._h5f["results/positions/scale"][()],
             lattice_vectors=self._h5f["results/positions/lattice_vectors"],
@@ -199,7 +199,7 @@ class File(AbstractContextManager):
 
         Returns
         -------
-        raw.Magnetism
+        RawMagnetism
             The magnetic moments and charges on every atom in orbital resolved
             representation.
         """
@@ -207,18 +207,18 @@ class File(AbstractContextManager):
         key = "intermediate/history/magnetism/moments"
         if key not in self._h5f:
             return None
-        return raw.Magnetism(version=self.version(), moments=self._h5f[key])
+        return RawMagnetism(version=self.version(), moments=self._h5f[key])
 
     def structure(self):
         """Read the structure information.
 
         Returns
         -------
-        raw.Structure
+        RawStructure
             The unit cell, position of the atoms and magnetic moments.
         """
         self._raise_error_if_closed()
-        return raw.Structure(
+        return RawStructure(
             version=self.version(),
             topology=self.topology(),
             cell=self.cell(),
@@ -231,12 +231,12 @@ class File(AbstractContextManager):
 
         Returns
         -------
-        raw.Energy
+        RawEnergy
             Information about different energies for every step in the relaxation
             or MD simulation.
         """
         self._raise_error_if_closed()
-        return raw.Energy(
+        return RawEnergy(
             version=self.version(),
             labels=self._h5f["intermediate/history/energies_tags"],
             values=self._h5f["intermediate/history/energies"],
@@ -247,11 +247,11 @@ class File(AbstractContextManager):
 
         Returns
         -------
-        raw.Density
+        RawDensity
             The density is represented on the Fourier grid in the unit cell.
         """
         self._raise_error_if_closed()
-        return raw.Density(
+        return RawDensity(
             version=self.version(),
             structure=self.structure(),
             charge=self._h5f["charge/charge"],

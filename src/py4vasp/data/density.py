@@ -24,7 +24,7 @@ class Density(_util.Data):
 
     Parameters
     ----------
-    raw_density : raw.Density
+    raw_density : RawDensity
         Dataclass containing the raw density data as well as structural information.
     """
 

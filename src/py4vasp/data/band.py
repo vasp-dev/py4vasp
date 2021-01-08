@@ -54,7 +54,7 @@ class Band(_util.Data):
 
     Parameters
     ----------
-    raw_band : raw.Band
+    raw_band : RawBand
         Dataclass containing the raw data necessary to produce a band structure
         (eigenvalues, kpoints, ...).
     """

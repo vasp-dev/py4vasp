@@ -70,7 +70,7 @@ class Dos(_util.Data):
 
     Parameters
     ----------
-    raw_dos : raw.Dos
+    raw_dos : RawDos
         Dataclass containing the raw data necessary to produce a DOS.
     """
 

@@ -2,6 +2,7 @@ from contextlib import contextmanager, nullcontext
 from IPython.core.formatters import DisplayFormatter
 from IPython.lib.pretty import pretty
 from typing import NamedTuple, Iterable
+from py4vasp.raw import RawVersion
 import py4vasp.exceptions as exception
 import py4vasp.raw as raw
 import numpy as np
@@ -105,7 +106,7 @@ def _make_wrapper(cls, wrap_this_func):
 add_wrappers = add_specific_wrappers()
 
 format_ = DisplayFormatter().format
-_minimal_vasp_version = raw.Version(6, 2)
+_minimal_vasp_version = RawVersion(6, 2)
 
 
 class DataMeta(type):
@@ -135,6 +136,9 @@ class Data(metaclass=DataMeta):
 
     def __str__(self):
         return pretty(self)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({repr(self._raw)})"
 
 
 def require(version, err_msg=None):

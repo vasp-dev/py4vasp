@@ -1,7 +1,7 @@
 from py4vasp.data import Projectors, Topology, _util
+from py4vasp.raw import RawProjectors, RawTopology, RawVersion
 from . import current_vasp_version
 import py4vasp.exceptions as exception
-import py4vasp.raw as raw
 import pytest
 import numpy as np
 from typing import NamedTuple, Iterable
@@ -17,9 +17,9 @@ class SelectionTestCase(NamedTuple):
 
 @pytest.fixture
 def without_spin():
-    proj = raw.Projectors(
+    proj = RawProjectors(
         version=current_vasp_version,
-        topology=raw.Topology(
+        topology=RawTopology(
             version=current_vasp_version,
             number_ion_types=np.array((2, 1, 4)),
             ion_types=np.array(("Sr", "Ti", "O "), dtype="S"),
@@ -288,6 +288,6 @@ def test_incorrect_reading_of_projections(without_spin):
 
 
 def test_version(without_spin):
-    without_spin.version = raw.Version(_util._minimal_vasp_version.major - 1)
+    without_spin.version = RawVersion(_util._minimal_vasp_version.major - 1)
     with pytest.raises(exception.OutdatedVaspVersion):
         Projectors(without_spin)

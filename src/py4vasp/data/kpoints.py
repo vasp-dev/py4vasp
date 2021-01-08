@@ -15,7 +15,7 @@ class Kpoints(_util.Data):
 
     Parameters
     ----------
-    raw_kpoints : raw.Kpoints
+    raw_kpoints : RawKpoints
         Dataclass containing the raw **k**-points data used in the calculation.
     """
 

@@ -1,6 +1,5 @@
-import py4vasp.raw as raw
+from py4vasp.raw import *
 import py4vasp.exceptions as exception
-from py4vasp.raw import File
 import contextlib
 import pytest
 import h5py
@@ -98,7 +97,7 @@ def test_version(tmpdir):
 
 
 def reference_version():
-    return raw.Version(major=1, minor=2, patch=3)
+    return RawVersion(major=1, minor=2, patch=3)
 
 
 def write_version(h5f, version):
@@ -127,7 +126,7 @@ def test_dos(tmpdir):
 
 def reference_dos(use_dos, use_projectors):
     shape = (num_spins, num_energies)
-    return raw.Dos(
+    return RawDos(
         version=reference_version(),
         fermi_energy=fermi_energy,
         energies=np.arange(num_energies) if use_dos else None,
@@ -172,7 +171,7 @@ def test_band(tmpdir):
 def reference_band(use_projectors, use_labels):
     shape_eval = (num_spins, num_kpoints, num_bands)
     shape_proj = (num_spins, num_atoms, lmax, num_kpoints, num_bands)
-    band = raw.Band(
+    band = RawBand(
         version=reference_version(),
         fermi_energy=fermi_energy,
         kpoints=reference_kpoints(use_labels),
@@ -214,7 +213,7 @@ def test_projectors(tmpdir):
 
 def reference_projectors():
     shape_dos = (num_spins, num_atoms, lmax, num_energies)
-    return raw.Projectors(
+    return RawProjectors(
         version=reference_version(),
         topology=reference_topology(),
         orbital_types=np.array(["s", "p", "d", "f"], dtype="S"),
@@ -247,7 +246,7 @@ def test_topoplogy(tmpdir):
 
 
 def reference_topology():
-    return raw.Topology(
+    return RawTopology(
         version=reference_version(),
         number_ion_types=np.arange(5),
         ion_types=np.array(["B", "C", "N", "O", "F"], dtype="S"),
@@ -279,7 +278,7 @@ def test_trajectory(tmpdir):
 def reference_trajectory():
     shape_pos = (num_steps, num_atoms, 3)
     shape_vec = (num_steps, 3, 3)
-    return raw.Trajectory(
+    return RawTrajectory(
         version=reference_version(),
         topology=reference_topology(),
         positions=np.arange(np.prod(shape_pos)).reshape(shape_pos),
@@ -311,7 +310,7 @@ def test_cell(tmpdir):
 
 
 def reference_cell():
-    return raw.Cell(
+    return RawCell(
         version=reference_version(),
         scale=0.5,
         lattice_vectors=np.arange(9).reshape(3, 3),
@@ -344,7 +343,7 @@ def test_energies(tmpdir):
 def reference_energies():
     labels = np.array(["total", "kinetic", "temperature"], dtype="S")
     shape = (100, len(labels))
-    return raw.Energy(
+    return RawEnergy(
         version=reference_version(),
         labels=labels,
         values=np.arange(np.prod(shape)).reshape(shape),
@@ -373,7 +372,7 @@ def test_kpoints(tmpdir):
 
 
 def reference_kpoints(use_labels):
-    kpoints = raw.Kpoints(
+    kpoints = RawKpoints(
         version=reference_version(),
         mode="explicit",
         number=num_kpoints,
@@ -420,7 +419,7 @@ def test_magnetism(tmpdir):
 
 def reference_magnetism():
     shape = (num_steps, num_components, num_atoms, lmax)
-    magnetism = raw.Magnetism(
+    magnetism = RawMagnetism(
         version=reference_version(), moments=np.arange(np.prod(shape)).reshape(shape)
     )
     return magnetism
@@ -448,7 +447,7 @@ def test_structure(tmpdir):
 
 
 def reference_structure(use_magnetism):
-    structure = raw.Structure(
+    structure = RawStructure(
         version=reference_version(),
         topology=reference_topology(),
         cell=reference_cell(),
@@ -486,7 +485,7 @@ def test_density(tmpdir):
 def reference_density():
     shape = (2, 3, 4, 5)
     raw_data = np.arange(np.prod(shape)).reshape(shape)
-    return raw.Density(
+    return RawDensity(
         version=reference_version(),
         structure=reference_structure(False),
         charge=raw_data,

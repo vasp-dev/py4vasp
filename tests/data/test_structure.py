@@ -1,10 +1,10 @@
 from unittest.mock import patch
 from py4vasp.data import Structure, Magnetism, _util
+from py4vasp.raw import RawStructure, RawCell, RawVersion
 from .test_topology import raw_topology
 from .test_magnetism import raw_magnetism, noncollinear_magnetism, charge_only
 from . import current_vasp_version
 import py4vasp.data as data
-import py4vasp.raw as raw
 import py4vasp.exceptions as exception
 import pytest
 import numpy as np
@@ -14,10 +14,10 @@ import numpy as np
 def raw_structure(raw_topology):
     number_atoms = len(raw_topology.elements)
     shape = (number_atoms, 3)
-    structure = raw.Structure(
+    structure = RawStructure(
         version=current_vasp_version,
         topology=raw_topology,
-        cell=raw.Cell(
+        cell=RawCell(
             version=current_vasp_version, scale=2.0, lattice_vectors=np.eye(3)
         ),
         # shift the positions of 0 to avoid relative comparison between tiny numbers
@@ -68,7 +68,7 @@ def test_tilted_unitcell(raw_structure, Assert):
         (4, 2, 2),
         (2, 2, 4),
     )
-    raw_structure.cell = raw.Cell(
+    raw_structure.cell = RawCell(
         version=current_vasp_version, scale=1, lattice_vectors=cell
     )
     raw_structure.positions = cartesian_positions @ inv_cell
@@ -207,6 +207,6 @@ Direct<br>
 
 
 def test_version(raw_structure):
-    raw_structure.version = raw.Version(_util._minimal_vasp_version.major - 1)
+    raw_structure.version = RawVersion(_util._minimal_vasp_version.major - 1)
     with pytest.raises(exception.OutdatedVaspVersion):
         Structure(raw_structure)

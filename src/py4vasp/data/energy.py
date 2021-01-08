@@ -13,7 +13,7 @@ class Energy(_util.Data):
 
     Parameters
     ----------
-    raw_energy : raw.Energy
+    raw_energy : RawEnergy
         Dataclass containing the raw energy values for the ionic run and labels
         specifying which energies are stored.
     """

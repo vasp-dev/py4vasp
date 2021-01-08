@@ -1,7 +1,7 @@
 from py4vasp.data import Kpoints, _util
+from py4vasp.raw import RawKpoints, RawVersion, RawCell
 from . import current_vasp_version
 import py4vasp.exceptions as exception
-import py4vasp.raw as raw
 import pytest
 import numpy as np
 
@@ -10,13 +10,13 @@ import numpy as np
 def raw_kpoints():
     number_kpoints = 20
     shape = (number_kpoints, 3)
-    return raw.Kpoints(
+    return RawKpoints(
         version=current_vasp_version,
         mode="explicit",
         number=number_kpoints,
         coordinates=np.arange(np.prod(shape)).reshape(shape),
         weights=np.arange(number_kpoints),
-        cell=raw.Cell(
+        cell=RawCell(
             version=current_vasp_version, scale=1.0, lattice_vectors=np.eye(3)
         ),
     )
@@ -94,7 +94,7 @@ def test_labels(raw_kpoints):
 
 
 def test_distances_nontrivial_cell(raw_kpoints, Assert):
-    cell = raw.Cell(
+    cell = RawCell(
         version=current_vasp_version,
         scale=2.0,
         lattice_vectors=np.array([[3, 0, 0], [-1, 2, 0], [0, 0, 4]]),
@@ -157,6 +157,6 @@ reciprocal
 
 
 def test_version(raw_kpoints):
-    raw_kpoints.version = raw.Version(_util._minimal_vasp_version.major - 1)
+    raw_kpoints.version = RawVersion(_util._minimal_vasp_version.major - 1)
     with pytest.raises(exception.OutdatedVaspVersion):
         Kpoints(raw_kpoints)

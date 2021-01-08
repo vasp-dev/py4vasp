@@ -1,7 +1,7 @@
 from py4vasp.data import Dos, _util
+from py4vasp.raw import RawDos, RawVersion, RawTopology, RawProjectors
 from . import current_vasp_version
 import py4vasp.exceptions as exception
-import py4vasp.raw as raw
 import pytest
 import numpy as np
 
@@ -12,7 +12,7 @@ num_energies = 50
 def nonmagnetic_Dos():
     """ Setup a nonmagnetic Dos containing all important quantities."""
     energies = np.linspace(-1, 3, num_energies)
-    raw_dos = raw.Dos(
+    raw_dos = RawDos(
         version=current_vasp_version,
         fermi_energy=1.372,
         energies=energies,
@@ -73,7 +73,7 @@ Dos:
 def magnetic_Dos():
     """ Setup a magnetic Dos containing all relevant quantities."""
     energies = np.linspace(-2, 2, num_energies)
-    raw_dos = raw.Dos(
+    raw_dos = RawDos(
         version=current_vasp_version,
         fermi_energy=-0.137,
         energies=energies,
@@ -126,9 +126,9 @@ def nonmagnetic_projections(nonmagnetic_Dos):
     num_spins = 1
     atoms = ["Si", "C1", "C2"]
     lmax = 4
-    raw_proj = raw.Projectors(
+    raw_proj = RawProjectors(
         version=current_vasp_version,
-        topology=raw.Topology(
+        topology=RawTopology(
             version=current_vasp_version,
             number_ion_types=[1, 2],
             ion_types=np.array(["Si", "C "], dtype="S"),
@@ -209,9 +209,9 @@ def magnetic_projections(magnetic_Dos):
     d_orbitals = ["  dxy", "  dyz", "  dz2", "  dxz", "x2-y2"]
     f_orbitals = ["fy3x2", " fxyz", " fyz2", "  fz3", " fxz2", " fzx2", "  fx3"]
     orbitals = sp_orbitals + d_orbitals + f_orbitals
-    raw_proj = raw.Projectors(
+    raw_proj = RawProjectors(
         version=current_vasp_version,
-        topology=raw.Topology(
+        topology=RawTopology(
             version=current_vasp_version,
             number_ion_types=[1],
             ion_types=np.array(["Fe"], dtype="S"),
@@ -264,6 +264,6 @@ def test_nonexisting_dos():
 
 
 def test_version(nonmagnetic_Dos):
-    nonmagnetic_Dos.version = raw.Version(_util._minimal_vasp_version.major - 1)
+    nonmagnetic_Dos.version = RawVersion(_util._minimal_vasp_version.major - 1)
     with pytest.raises(exception.OutdatedVaspVersion):
         Dos(nonmagnetic_Dos)

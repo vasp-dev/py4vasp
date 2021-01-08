@@ -93,7 +93,7 @@ class Magnetism(_util.Data):
 
     Parameters
     ----------
-    raw_magnetism
+    raw_magnetism : RawMagnetism
         Dataclass containing the charges and magnetic moments read from Vasp.
     """
 

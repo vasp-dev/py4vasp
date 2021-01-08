@@ -19,7 +19,7 @@ class Topology(_util.Data):
 
     Parameters
     ----------
-    raw_topology : raw.Topology
+    raw_topology : RawTopology
         A dataclass containing the extracted topology information.
     """
 
