@@ -1,6 +1,8 @@
-from py4vasp.data import Magnetism
+from py4vasp.data import Magnetism, _util
+from py4vasp.raw import RawMagnetism, RawVersion
 from .test_topology import raw_topology
-import py4vasp.raw as raw
+from . import current_vasp_version
+import py4vasp.exceptions as exception
 import numpy as np
 import pytest
 
@@ -12,7 +14,9 @@ def raw_magnetism(raw_topology):
     lmax = 3
     number_components = 2
     shape = (number_steps, number_components, number_atoms, lmax)
-    magnetism = raw.Magnetism(moments=np.arange(np.prod(shape)).reshape(shape))
+    magnetism = RawMagnetism(
+        version=current_vasp_version, moments=np.arange(np.prod(shape)).reshape(shape)
+    )
     magnetism.charges = magnetism.moments[:, 0, :, :]
     magnetism.total_charges = np.sum(magnetism.charges, axis=2)
     magnetism.magnetic_moments = magnetism.moments[:, 1, :, :]
@@ -74,6 +78,12 @@ def test_total_moments(raw_magnetism, Assert):
     Assert.allclose(actual, raw_magnetism.total_moments[3])
 
 
+def test_print_magnetism(raw_magnetism):
+    actual, _ = _util.format_(Magnetism(raw_magnetism))
+    reference = "MAGMOM = 444.00 453.00 462.00 471.00 480.00 489.00 498.00"
+    assert actual == {"text/plain": reference}
+
+
 def test_noncollinear(noncollinear_magnetism, Assert):
     actual = Magnetism(noncollinear_magnetism)
     Assert.allclose(actual.charges(), noncollinear_magnetism.moments[:, 0])
@@ -91,9 +101,54 @@ def test_noncollinear(noncollinear_magnetism, Assert):
         Assert.allclose(total_moments[new_order], expected_total_moment)
 
 
+def test_print_noncollinear(noncollinear_magnetism):
+    actual, _ = _util.format_(Magnetism(noncollinear_magnetism))
+    reference = """
+MAGMOM = 318.00 381.00 444.00 \\
+         327.00 390.00 453.00 \\
+         336.00 399.00 462.00 \\
+         345.00 408.00 471.00 \\
+         354.00 417.00 480.00 \\
+         363.00 426.00 489.00 \\
+         372.00 435.00 498.00
+    """.strip()
+    assert actual == {"text/plain": reference}
+
+
 def test_charge_only(charge_only, Assert):
     actual = Magnetism(charge_only)
     Assert.allclose(actual.charges(), charge_only.moments[:, 0])
     assert actual.moments() is None
     assert actual.total_moments() is None
     assert "moments" not in actual.read()
+
+
+def test_print_charge(charge_only):
+    actual, _ = _util.format_(Magnetism(charge_only))
+    assert actual == {"text/plain": "not available"}
+
+
+def test_nonexisting_magnetism():
+    with pytest.raises(exception.NoData):
+        magnetism = Magnetism(None)
+
+
+def test_incorrect_argument(raw_magnetism, noncollinear_magnetism):
+    for magnetism in (Magnetism(raw_magnetism), Magnetism(noncollinear_magnetism)):
+        with pytest.raises(exception.IncorrectUsage):
+            magnetism.read("index not an integer")
+        out_of_bounds = 999
+        with pytest.raises(exception.IncorrectUsage):
+            magnetism.moments(out_of_bounds)
+        with pytest.raises(exception.IncorrectUsage):
+            magnetism.total_moments(out_of_bounds)
+        with pytest.raises(exception.IncorrectUsage):
+            magnetism.charges(out_of_bounds)
+        with pytest.raises(exception.IncorrectUsage):
+            magnetism.total_charges(out_of_bounds)
+
+
+def test_version(raw_magnetism):
+    raw_magnetism.version = RawVersion(_util._minimal_vasp_version.major - 1)
+    with pytest.raises(exception.OutdatedVaspVersion):
+        Magnetism(raw_magnetism)

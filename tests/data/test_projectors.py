@@ -1,5 +1,7 @@
 from py4vasp.data import Projectors, Topology, _util
-import py4vasp.raw as raw
+from py4vasp.raw import RawProjectors, RawTopology, RawVersion
+from . import current_vasp_version
+import py4vasp.exceptions as exception
 import pytest
 import numpy as np
 from typing import NamedTuple, Iterable
@@ -15,8 +17,10 @@ class SelectionTestCase(NamedTuple):
 
 @pytest.fixture
 def without_spin():
-    proj = raw.Projectors(
-        topology=raw.Topology(
+    proj = RawProjectors(
+        version=current_vasp_version,
+        topology=RawTopology(
+            version=current_vasp_version,
             number_ion_types=np.array((2, 1, 4)),
             ion_types=np.array(("Sr", "Ti", "O "), dtype="S"),
         ),
@@ -46,19 +50,19 @@ def for_selection(spin_polarized):
     index = np.cumsum(spin_polarized.topology.number_ion_types)
     ref = {
         "atom": {
-            "Sr": Selection(indices=range(index[0]), label="Sr"),
-            "Ti": Selection(indices=range(index[0], index[1]), label="Ti"),
-            "O": Selection(indices=range(index[1], index[2]), label="O"),
-            "1": Selection(indices=(0,), label="Sr_1"),
-            "2": Selection(indices=(1,), label="Sr_2"),
-            "3": Selection(indices=(2,), label="Ti_1"),
-            "4": Selection(indices=(3,), label="O_1"),
-            "5": Selection(indices=(4,), label="O_2"),
-            "6": Selection(indices=(5,), label="O_3"),
-            "7": Selection(indices=(6,), label="O_4"),
-            "1-3": Selection(indices=range(0, 3), label="1-3"),
-            "4-7": Selection(indices=range(3, 7), label="4-7"),
-            "*": Selection(indices=range(index[-1])),
+            "Sr": Selection(indices=slice(0, index[0]), label="Sr"),
+            "Ti": Selection(indices=slice(index[0], index[1]), label="Ti"),
+            "O": Selection(indices=slice(index[1], index[2]), label="O"),
+            "1": Selection(indices=slice(0, 1), label="Sr_1"),
+            "2": Selection(indices=slice(1, 2), label="Sr_2"),
+            "3": Selection(indices=slice(2, 3), label="Ti_1"),
+            "4": Selection(indices=slice(3, 4), label="O_1"),
+            "5": Selection(indices=slice(4, 5), label="O_2"),
+            "6": Selection(indices=slice(5, 6), label="O_3"),
+            "7": Selection(indices=slice(6, 7), label="O_4"),
+            "1-3": Selection(indices=slice(0, 3), label="1-3"),
+            "4-7": Selection(indices=slice(3, 7), label="4-7"),
+            "*": Selection(indices=slice(index[-1])),
         },
         "orbital": {
             "s": Selection(indices=(0,), label="s"),
@@ -77,18 +81,18 @@ def for_selection(spin_polarized):
             "fy3x2": Selection(indices=(9,), label="fy3x2"),
             "fzx2": Selection(indices=(14,), label="fzx2"),
             "fz3": Selection(indices=(12,), label="fz3"),
-            "p": Selection(indices=range(1, 4), label="p"),
-            "d": Selection(indices=range(4, 9), label="d"),
-            "f": Selection(indices=range(9, 16), label="f"),
-            "*": Selection(indices=range(len(spin_polarized.orbital_types))),
+            "p": Selection(indices=slice(1, 4), label="p"),
+            "d": Selection(indices=slice(4, 9), label="d"),
+            "f": Selection(indices=slice(9, 16), label="f"),
+            "*": Selection(indices=slice(len(spin_polarized.orbital_types))),
         },
         "spin": {
-            "up": Selection(indices=(0,), label="up"),
-            "down": Selection(indices=(1,), label="down"),
+            "up": Selection(indices=slice(1), label="up"),
+            "down": Selection(indices=slice(1, 2), label="down"),
             "total": Selection(
-                indices=range(spin_polarized.number_spins), label="total"
+                indices=slice(spin_polarized.number_spins), label="total"
             ),
-            "*": Selection(indices=range(spin_polarized.number_spins)),
+            "*": Selection(indices=slice(spin_polarized.number_spins)),
         },
     }
     return Projectors(spin_polarized), ref
@@ -217,3 +221,73 @@ def run_parse_selection(setup):
         for format in testcase.equivalent_formats:
             selections = proj.parse_selection(format)
             assert list(selections) == list(testcase.reference_selections)
+
+
+def test_read(without_spin, Assert):
+    projectors = Projectors(without_spin)
+    assert projectors.read() == {}
+    reference = {
+        "Sr_p": (slice(1), slice(0, 2), slice(1, 4)),
+        "Ti_1_dxy": (slice(1), slice(2, 3), (4,)),
+    }
+    assert projectors.read(selection="Sr(p) 3(dxy)") == reference
+    num_atoms = np.sum(without_spin.topology.number_ion_types)
+    num_orbitals = len(without_spin.orbital_types)
+    num_quantity = 25
+    shape = (without_spin.number_spins, num_atoms, num_orbitals, num_quantity)
+    projections = np.arange(np.prod(shape)).reshape(shape)
+    Sr_ref = np.sum(projections[0, 0:2, 1:4], axis=(0, 1))
+    Ti_ref = projections[0, 2, 4]
+    actual = projectors.read(selection="Sr(p) 3(dxy)", projections=projections)
+    Assert.allclose(actual["Sr_p"], Sr_ref)
+    Assert.allclose(actual["Ti_1_dxy"], Ti_ref)
+
+
+def test_print(without_spin):
+    actual, _ = _util.format_(Projectors(without_spin))
+    reference = """
+projectors:
+   atoms: Sr, Ti, O
+   orbitals: s, py, pz, px, dxy, dyz, dz2, dxz, x2-y2, fy3x2, fxyz, fyz2, fz3, fxz2, fzx2, fx3
+   """.strip()
+    assert actual == {"text/plain": reference}
+
+
+def test_error_parsing(without_spin):
+    projectors = Projectors(without_spin)
+    with pytest.raises(exception.IncorrectUsage):
+        projectors.read(selection="XX")
+    with pytest.raises(exception.IncorrectUsage):
+        number_instead_of_string = -1
+        projectors.read(selection=number_instead_of_string)
+
+
+def test_incorrect_selection(without_spin):
+    projectors = Projectors(without_spin)
+    with pytest.raises(exception.IncorrectUsage):
+        projectors.select(atom="XX")
+    with pytest.raises(exception.IncorrectUsage):
+        projectors.select(atom="100-900")
+    with pytest.raises(exception.IncorrectUsage):
+        projectors.select(orbital="XX")
+    with pytest.raises(exception.IncorrectUsage):
+        projectors.select(spin="XX")
+
+
+def test_nonexisting_projectors():
+    with pytest.raises(exception.NoData):
+        projectors = Projectors(None)
+
+
+def test_incorrect_reading_of_projections(without_spin):
+    projectors = Projectors(without_spin)
+    with pytest.raises(exception.IncorrectUsage):
+        projectors.read("Sr", [1, 2, 3])
+    with pytest.raises(exception.IncorrectUsage):
+        projectors.read("Sr", np.zeros(3))
+
+
+def test_version(without_spin):
+    without_spin.version = RawVersion(_util._minimal_vasp_version.major - 1)
+    with pytest.raises(exception.OutdatedVaspVersion):
+        Projectors(without_spin)

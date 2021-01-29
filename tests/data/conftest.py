@@ -31,10 +31,10 @@ def mock_file():
 
 @pytest.fixture
 def check_read():
-    def _check_read(cls, mocks, ref):
+    def _check_read(cls, mocks, ref, default_filename=None):
         ref = cls(ref)
         _check_read_from_open_file(cls, mocks, ref)
-        _check_read_from_default_file(cls, mocks, ref)
+        _check_read_from_default_file(cls, mocks, ref, default_filename)
         _check_read_from_filename(cls, mocks, ref)
 
     def _check_read_from_open_file(cls, mocks, ref):
@@ -46,21 +46,26 @@ def check_read():
             mocks["sut"].assert_called_once()
             mocks["close"].assert_not_called()
 
-    def _check_read_from_default_file(cls, mocks, ref):
+    def _check_read_from_default_file(cls, mocks, ref, default_filename):
         _reset_mocks(mocks)
         with cls.from_file() as actual:
             assert actual._raw == ref._raw
         mocks["init"].assert_called_once()
         mocks["sut"].assert_called_once()
         mocks["close"].assert_called_once()
+        args, _ = mocks["init"].call_args
+        assert args[1] == default_filename
 
     def _check_read_from_filename(cls, mocks, ref):
         _reset_mocks(mocks)
-        with cls.from_file("filename") as actual:
+        filename = "user_selected_file"
+        with cls.from_file(filename) as actual:
             assert actual._raw == ref._raw
         mocks["init"].assert_called_once()
         mocks["sut"].assert_called_once()
         mocks["close"].assert_called_once()
+        args, _ = mocks["init"].call_args
+        assert args[1] == filename
 
     def _reset_mocks(mocks):
         for mock in mocks.values():

@@ -1,6 +1,7 @@
-from py4vasp.data import Dos
-from py4vasp.exceptions import UsageException
-import py4vasp.raw as raw
+from py4vasp.data import Dos, _util
+from py4vasp.raw import RawDos, RawVersion, RawTopology, RawProjectors
+from . import current_vasp_version
+import py4vasp.exceptions as exception
 import pytest
 import numpy as np
 
@@ -11,8 +12,11 @@ num_energies = 50
 def nonmagnetic_Dos():
     """ Setup a nonmagnetic Dos containing all important quantities."""
     energies = np.linspace(-1, 3, num_energies)
-    raw_dos = raw.Dos(
-        fermi_energy=1.372, energies=energies, dos=np.array([energies ** 2])
+    raw_dos = RawDos(
+        version=current_vasp_version,
+        fermi_energy=1.372,
+        energies=energies,
+        dos=np.array([energies ** 2]),
     )
     return raw_dos
 
@@ -27,7 +31,7 @@ def test_nonmagnetic_Dos_read(nonmagnetic_Dos, Assert):
 
 def test_nonmagnetic_Dos_read_error(nonmagnetic_Dos):
     raw_dos = nonmagnetic_Dos
-    with pytest.raises(UsageException):
+    with pytest.raises(exception.IncorrectUsage):
         Dos(raw_dos).read("s")
 
 
@@ -56,11 +60,21 @@ def test_nonmagnetic_Dos_from_file(nonmagnetic_Dos, mock_file, check_read):
         check_read(Dos, mocks, nonmagnetic_Dos)
 
 
+def test_print_nonmagnetic_dos(nonmagnetic_Dos):
+    actual, _ = _util.format_(Dos(nonmagnetic_Dos))
+    reference = f"""
+Dos:
+   energies: [-1.00, 3.00] {num_energies} points
+    """.strip()
+    assert actual == {"text/plain": reference}
+
+
 @pytest.fixture
 def magnetic_Dos():
     """ Setup a magnetic Dos containing all relevant quantities."""
     energies = np.linspace(-2, 2, num_energies)
-    raw_dos = raw.Dos(
+    raw_dos = RawDos(
+        version=current_vasp_version,
         fermi_energy=-0.137,
         energies=energies,
         dos=np.array(((energies + 0.5) ** 2, (energies - 0.5) ** 2)),
@@ -88,6 +102,15 @@ def test_magnetic_Dos_plot(magnetic_Dos, Assert):
     Assert.allclose(fig.data[1].y, -raw_dos.dos[1])
 
 
+def test_print_magnetic_dos(magnetic_Dos):
+    actual, _ = _util.format_(Dos(magnetic_Dos))
+    reference = f"""
+spin polarized Dos:
+   energies: [-2.00, 2.00] {num_energies} points
+    """.strip()
+    assert actual == {"text/plain": reference}
+
+
 @pytest.fixture
 def nonmagnetic_projections(nonmagnetic_Dos):
     """ Setup a l resolved Dos containing all relevant quantities."""
@@ -103,9 +126,12 @@ def nonmagnetic_projections(nonmagnetic_Dos):
     num_spins = 1
     atoms = ["Si", "C1", "C2"]
     lmax = 4
-    raw_proj = raw.Projectors(
-        topology=raw.Topology(
-            number_ion_types=[1, 2], ion_types=np.array(["Si", "C "], dtype="S")
+    raw_proj = RawProjectors(
+        version=current_vasp_version,
+        topology=RawTopology(
+            version=current_vasp_version,
+            number_ion_types=[1, 2],
+            ion_types=np.array(["Si", "C "], dtype="S"),
         ),
         orbital_types=np.array([" s", " p", " d", " f"], dtype="S"),
         number_spins=num_spins,
@@ -161,6 +187,19 @@ def test_more_projections_style(nonmagnetic_projections, Assert):
     dos = Dos(raw_dos).read("Si")
 
 
+def test_print_nonmagnetic_projections(nonmagnetic_projections):
+    raw_dos, _ = nonmagnetic_projections
+    actual, _ = _util.format_(Dos(raw_dos))
+    reference = f"""
+Dos:
+   energies: [-1.00, 3.00] {num_energies} points
+projectors:
+   atoms: Si, C
+   orbitals: s, p, d, f
+    """.strip()
+    assert actual == {"text/plain": reference}
+
+
 @pytest.fixture
 def magnetic_projections(magnetic_Dos):
     """ Setup a lm resolved Dos containing all relevant quantities."""
@@ -170,9 +209,12 @@ def magnetic_projections(magnetic_Dos):
     d_orbitals = ["  dxy", "  dyz", "  dz2", "  dxz", "x2-y2"]
     f_orbitals = ["fy3x2", " fxyz", " fyz2", "  fz3", " fxz2", " fzx2", "  fx3"]
     orbitals = sp_orbitals + d_orbitals + f_orbitals
-    raw_proj = raw.Projectors(
-        topology=raw.Topology(
-            number_ion_types=[1], ion_types=np.array(["Fe"], dtype="S")
+    raw_proj = RawProjectors(
+        version=current_vasp_version,
+        topology=RawTopology(
+            version=current_vasp_version,
+            number_ion_types=[1],
+            ion_types=np.array(["Fe"], dtype="S"),
         ),
         orbital_types=np.array(orbitals, dtype="S"),
         number_spins=num_spins,
@@ -214,3 +256,14 @@ def test_magnetic_lm_Dos_plot(magnetic_Dos, magnetic_projections, Assert):
     Assert.allclose(data[dxz_up].y, ref["dxz_up"])
     p_down = names.index("p_down")
     Assert.allclose(data[p_down].y, -(ref["px_down"] + ref["py_down"] + ref["pz_down"]))
+
+
+def test_nonexisting_dos():
+    with pytest.raises(exception.NoData):
+        dos = Dos(None)
+
+
+def test_version(nonmagnetic_Dos):
+    nonmagnetic_Dos.version = RawVersion(_util._minimal_vasp_version.major - 1)
+    with pytest.raises(exception.OutdatedVaspVersion):
+        Dos(nonmagnetic_Dos)

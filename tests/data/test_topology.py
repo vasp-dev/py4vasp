@@ -1,5 +1,7 @@
 from py4vasp.data import Topology, _util
-import py4vasp.raw as raw
+from py4vasp.raw import RawTopology, RawVersion
+from . import current_vasp_version
+import py4vasp.exceptions as exception
 import pytest
 import numpy as np
 import pandas as pd
@@ -9,7 +11,8 @@ Selection = _util.Selection
 
 @pytest.fixture
 def raw_topology():
-    topology = raw.Topology(
+    topology = RawTopology(
+        version=current_vasp_version,
         number_ion_types=np.array((2, 1, 4)),
         ion_types=np.array(("Sr", "Ti", "O "), dtype="S"),
     )
@@ -21,17 +24,17 @@ def raw_topology():
 def test_raw_topology(raw_topology):
     index = np.cumsum(raw_topology.number_ion_types)
     topology = Topology(raw_topology).read()
-    assert topology["Sr"] == Selection(indices=range(index[0]), label="Sr")
-    assert topology["Ti"] == Selection(indices=range(index[0], index[1]), label="Ti")
-    assert topology["O"] == Selection(indices=range(index[1], index[2]), label="O")
-    assert topology["1"] == Selection(indices=(0,), label="Sr_1")
-    assert topology["2"] == Selection(indices=(1,), label="Sr_2")
-    assert topology["3"] == Selection(indices=(2,), label="Ti_1")
-    assert topology["4"] == Selection(indices=(3,), label="O_1")
-    assert topology["5"] == Selection(indices=(4,), label="O_2")
-    assert topology["6"] == Selection(indices=(5,), label="O_3")
-    assert topology["7"] == Selection(indices=(6,), label="O_4")
-    assert topology["*"] == Selection(indices=range(index[-1]))
+    assert topology["Sr"] == Selection(indices=slice(0, index[0]), label="Sr")
+    assert topology["Ti"] == Selection(indices=slice(index[0], index[1]), label="Ti")
+    assert topology["O"] == Selection(indices=slice(index[1], index[2]), label="O")
+    assert topology["1"] == Selection(indices=slice(0, 1), label="Sr_1")
+    assert topology["2"] == Selection(indices=slice(1, 2), label="Sr_2")
+    assert topology["3"] == Selection(indices=slice(2, 3), label="Ti_1")
+    assert topology["4"] == Selection(indices=slice(3, 4), label="O_1")
+    assert topology["5"] == Selection(indices=slice(4, 5), label="O_2")
+    assert topology["6"] == Selection(indices=slice(5, 6), label="O_3")
+    assert topology["7"] == Selection(indices=slice(6, 7), label="O_4")
+    assert topology["*"] == Selection(indices=slice(index[-1]))
 
 
 def test_atom_labels(raw_topology):
@@ -70,3 +73,23 @@ def test_to_mdtraj(raw_topology):
     }
     ref = pd.DataFrame(ref_data)
     assert ref.equals(actual)
+
+
+def test_print(raw_topology):
+    actual, _ = _util.format_(Topology(raw_topology))
+    reference = {"text/plain": "Sr2TiO4", "text/html": "Sr<sub>2</sub>TiO<sub>4</sub>"}
+    assert actual == reference
+
+
+def test_to_poscar(raw_topology):
+    topology = Topology(raw_topology)
+    assert topology.to_poscar() == "Sr Ti O\n2 1 4"
+    assert topology.to_poscar(".format.") == "Sr Ti O.format.\n2 1 4"
+    with pytest.raises(exception.IncorrectUsage):
+        topology.to_poscar(None)
+
+
+def test_version(raw_topology):
+    raw_topology.version = RawVersion(_util._minimal_vasp_version.major - 1)
+    with pytest.raises(exception.OutdatedVaspVersion):
+        Topology(raw_topology)

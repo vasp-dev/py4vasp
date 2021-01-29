@@ -1,5 +1,8 @@
-from py4vasp.data import Band, Kpoints
-import py4vasp.raw as raw
+from py4vasp.data import Band, Kpoints, Projectors, _util
+from py4vasp.raw import *
+from IPython.lib.pretty import pretty
+from . import current_vasp_version
+import py4vasp.exceptions as exception
 import pytest
 import numpy as np
 
@@ -12,15 +15,19 @@ number_orbitals = 1
 
 @pytest.fixture
 def raw_band():
-    return raw.Band(
+    return RawBand(
+        version=current_vasp_version,
         fermi_energy=0.0,
         eigenvalues=np.array([np.linspace([0], [1], number_kpoints)]),
-        kpoints=raw.Kpoints(
+        kpoints=RawKpoints(
+            version=current_vasp_version,
             mode="explicit",
             number=number_kpoints,
             coordinates=np.linspace(np.zeros(3), np.ones(3), number_kpoints),
             weights=None,
-            cell=raw.Cell(scale=1.0, lattice_vectors=np.eye(3)),
+            cell=RawCell(
+                version=current_vasp_version, scale=1.0, lattice_vectors=np.eye(3)
+            ),
         ),
     )
 
@@ -79,9 +86,21 @@ def test_multiple_bands_plot(multiple_bands, Assert):
     Assert.allclose(fig.data[0].y[mask], ref_bands)
 
 
+def test_print_multiple_bands(multiple_bands):
+    actual, _ = _util.format_(Band(multiple_bands))
+    reference = f"""
+band structure:
+   {multiple_bands.kpoints.number} k-points
+   {multiple_bands.eigenvalues.shape[2]} bands
+    """.strip()
+    assert actual == {"text/plain": reference}
+
+
 def test_nontrivial_cell(raw_band, Assert):
-    raw_band.kpoints.cell = raw.Cell(
-        scale=2.0, lattice_vectors=np.array([[3, 0, 0], [-1, 2, 0], [0, 0, 4]])
+    raw_band.kpoints.cell = RawCell(
+        version=current_vasp_version,
+        scale=2.0,
+        lattice_vectors=np.array([[3, 0, 0], [-1, 2, 0], [0, 0, 4]]),
     )
     cartesian_kpoints = np.linspace(np.zeros(3), np.ones(3))
     cell = raw_band.kpoints.cell.lattice_vectors * raw_band.kpoints.cell.scale
@@ -134,6 +153,16 @@ def test_line_without_labels_plot(line_without_labels, Assert):
     assert fig.layout.xaxis.ticktext == (" ", " ", " ", " ", " ")
 
 
+def test_print_line_without_labels(line_without_labels):
+    actual, _ = _util.format_(Band(line_without_labels))
+    reference = f"""
+band structure:
+   {line_without_labels.eigenvalues.shape[1]} k-points
+   {line_without_labels.eigenvalues.shape[2]} bands
+    """.strip()
+    assert actual == {"text/plain": reference}
+
+
 @pytest.fixture
 def line_with_labels(line_without_labels):
     labels = ["X", "Y", "G", "X"]
@@ -160,6 +189,16 @@ def check_ticks(fig, raw_band, Assert):
     xticks = (*dists[::number_kpoints], dists[-1])
     assert fig.layout.xaxis.tickmode == "array"
     Assert.allclose(fig.layout.xaxis.tickvals, np.array(xticks))
+
+
+def test_print_line_with_labels(line_with_labels):
+    actual, _ = _util.format_(Band(line_with_labels))
+    reference = f"""
+band structure (  - X|Y - G - X -  ):
+   {line_with_labels.eigenvalues.shape[1]} k-points
+   {line_with_labels.eigenvalues.shape[2]} bands
+    """.strip()
+    assert actual == {"text/plain": reference}
 
 
 @pytest.fixture
@@ -226,6 +265,18 @@ def test_spin_projections_plot(spin_projections, Assert):
             Assert.allclose(pos_upper, pos_lower)
 
 
+def test_print_line_without_labels(spin_projections):
+    actual, _ = _util.format_(Band(spin_projections))
+    projectors = pretty(Projectors(spin_projections.projectors))
+    reference = f"""
+spin polarized band structure:
+   {spin_projections.eigenvalues.shape[1]} k-points
+   {spin_projections.eigenvalues.shape[2]} bands
+{projectors}
+    """.strip()
+    assert actual == {"text/plain": reference}
+
+
 @pytest.fixture
 def raw_projections(raw_band):
     shape = (number_spins, number_atoms, number_orbitals, number_kpoints, number_bands)
@@ -240,8 +291,14 @@ def test_raw_projections_read(raw_projections, Assert):
 
 def test_raw_projections_plot(raw_projections, Assert):
     raw_band = raw_projections
+    band = Band(raw_band)
     default_width = 0.5
-    fig = Band(raw_band).plot(selection="s, 1")
+    check_figure(band.plot(selection="s, 1"), default_width, raw_band, Assert)
+    width = 0.1
+    check_figure(band.plot(selection="s, 1", width=width), width, raw_band, Assert)
+
+
+def check_figure(fig, width, raw_band, Assert):
     assert len(fig.data) == 2
     assert fig.data[0].name == "s"
     assert fig.data[1].name == "Si_1"
@@ -255,10 +312,10 @@ def test_raw_projections_plot(raw_projections, Assert):
         bands = np.nditer(raw_band.eigenvalues[0])
         weights = np.nditer(raw_band.projections[0, 0, 0])
         for band, weight in zip(bands, weights):
-            upper = band + default_width * weight
-            lower = band - default_width * weight
-            pos_upper = data.x[np.where(np.isclose(data.y, upper))]
-            pos_lower = data.x[np.where(np.isclose(data.y, lower))]
+            upper = band + width * weight
+            lower = band - width * weight
+            pos_upper = data.x[np.where(np.isclose(data.y, upper, 1e-10, 1e-10))]
+            pos_lower = data.x[np.where(np.isclose(data.y, lower, 1e-10, 1e-10))]
             assert len(pos_upper) == len(pos_lower) == 1
             Assert.allclose(pos_upper, pos_lower)
 
@@ -273,11 +330,25 @@ def test_more_projections_style(raw_projections, Assert):
 
 def set_projections(raw_band, shape):
     raw_band.projections = np.random.uniform(low=0.2, size=shape)
-    raw_band.projectors = raw.Projectors(
-        topology=raw.Topology(
-            number_ion_types=[1], ion_types=np.array(["Si"], dtype="S")
+    raw_band.projectors = RawProjectors(
+        version=current_vasp_version,
+        topology=RawTopology(
+            version=current_vasp_version,
+            number_ion_types=[1],
+            ion_types=np.array(["Si"], dtype="S"),
         ),
         orbital_types=np.array(["s"], dtype="S"),
         number_spins=shape[0],
     )
     return raw_band
+
+
+def test_incorrect_width(raw_projections):
+    with pytest.raises(exception.IncorrectUsage):
+        Band(raw_projections).plot("Si", width="not a number")
+
+
+def test_version(raw_band):
+    raw_band.version = RawVersion(_util._minimal_vasp_version.major - 1)
+    with pytest.raises(exception.OutdatedVaspVersion):
+        Band(raw_band)

@@ -1,6 +1,7 @@
-from py4vasp.data import Kpoints
-from py4vasp.exceptions import RefinementException
-import py4vasp.raw as raw
+from py4vasp.data import Kpoints, _util
+from py4vasp.raw import RawKpoints, RawVersion, RawCell
+from . import current_vasp_version
+import py4vasp.exceptions as exception
 import pytest
 import numpy as np
 
@@ -9,12 +10,15 @@ import numpy as np
 def raw_kpoints():
     number_kpoints = 20
     shape = (number_kpoints, 3)
-    return raw.Kpoints(
+    return RawKpoints(
+        version=current_vasp_version,
         mode="explicit",
         number=number_kpoints,
         coordinates=np.arange(np.prod(shape)).reshape(shape),
         weights=np.arange(number_kpoints),
-        cell=raw.Cell(scale=1.0, lattice_vectors=np.eye(3)),
+        cell=RawCell(
+            version=current_vasp_version, scale=1.0, lattice_vectors=np.eye(3)
+        ),
     )
 
 
@@ -25,6 +29,11 @@ def test_read(raw_kpoints, Assert):
     Assert.allclose(actual["coordinates"], raw_kpoints.coordinates)
     Assert.allclose(actual["weights"], raw_kpoints.weights)
     assert actual["labels"] is None
+
+
+def test_from_file(raw_kpoints, mock_file, check_read):
+    with mock_file("kpoints", raw_kpoints) as mocks:
+        check_read(Kpoints, mocks, raw_kpoints)
 
 
 def test_mode(raw_kpoints):
@@ -41,7 +50,7 @@ def test_mode(raw_kpoints):
             test_mode = Kpoints(raw_kpoints).mode()
             assert test_mode == mode
     for unknown_mode in ["x", "y", "z", " "]:
-        with pytest.raises(RefinementException):
+        with pytest.raises(exception.RefinementError):
             raw_kpoints.mode = unknown_mode
             Kpoints(raw_kpoints).mode()
 
@@ -85,8 +94,10 @@ def test_labels(raw_kpoints):
 
 
 def test_distances_nontrivial_cell(raw_kpoints, Assert):
-    cell = raw.Cell(
-        scale=2.0, lattice_vectors=np.array([[3, 0, 0], [-1, 2, 0], [0, 0, 4]])
+    cell = RawCell(
+        version=current_vasp_version,
+        scale=2.0,
+        lattice_vectors=np.array([[3, 0, 0], [-1, 2, 0], [0, 0, 4]]),
     )
     cartesian_kpoints = np.linspace(np.zeros(3), np.ones(3))
     direct_kpoints = cartesian_kpoints @ cell.lattice_vectors.T * cell.scale
@@ -113,3 +124,39 @@ def test_distances_lines(raw_kpoints, Assert):
 def set_line_mode(kpoints):
     kpoints.mode = "line"
     kpoints.number = 5
+
+
+def test_print(raw_kpoints):
+    actual, _ = _util.format_(Kpoints(raw_kpoints))
+    reference = """
+k-points
+20
+reciprocal
+0 1 2  0
+3 4 5  1
+6 7 8  2
+9 10 11  3
+12 13 14  4
+15 16 17  5
+18 19 20  6
+21 22 23  7
+24 25 26  8
+27 28 29  9
+30 31 32  10
+33 34 35  11
+36 37 38  12
+39 40 41  13
+42 43 44  14
+45 46 47  15
+48 49 50  16
+51 52 53  17
+54 55 56  18
+57 58 59  19
+    """.strip()
+    assert actual == {"text/plain": reference}
+
+
+def test_version(raw_kpoints):
+    raw_kpoints.version = RawVersion(_util._minimal_vasp_version.major - 1)
+    with pytest.raises(exception.OutdatedVaspVersion):
+        Kpoints(raw_kpoints)

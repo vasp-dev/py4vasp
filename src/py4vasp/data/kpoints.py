@@ -1,12 +1,12 @@
 from py4vasp.data import _util
-from py4vasp.exceptions import RefinementException
+import py4vasp.exceptions as exception
 import functools
 import numpy as np
 
 
 @_util.add_wrappers
-class Kpoints:
-    """ The **k** points used in the Vasp calculation.
+class Kpoints(_util.Data):
+    """The **k** points used in the Vasp calculation.
 
     This class provides utility functionality to extract information about the
     **k** points used by Vasp. As such it is mostly used as a helper class for
@@ -15,16 +15,29 @@ class Kpoints:
 
     Parameters
     ----------
-    raw_kpoints : raw.Kpoints
+    raw_kpoints : RawKpoints
         Dataclass containing the raw **k**-points data used in the calculation.
     """
 
     def __init__(self, raw_kpoints):
-        self._raw = raw_kpoints
+        super().__init__(raw_kpoints)
         self._distances = None
 
+    def _repr_pretty_(self, p, cycle):
+        text = f"""k-points
+{len(self._raw.coordinates)}
+reciprocal"""
+        for kpoint, weight in zip(self._raw.coordinates, self._raw.weights):
+            text += "\n" + f"{kpoint[0]} {kpoint[1]} {kpoint[2]}  {weight}"
+        p.text(text)
+
+    @classmethod
+    @_util.add_doc(_util.from_file_doc("**k**-points"))
+    def from_file(cls, file=None):
+        return _util.from_file(cls, file, "kpoints")
+
     def to_dict(self):
-        """ Read the **k** points data into a dictionary.
+        """Read the **k** points data into a dictionary.
 
         Returns
         -------
@@ -54,7 +67,7 @@ class Kpoints:
         return len(self._raw.coordinates) // self.line_length()
 
     def distances(self):
-        """ Convert the coordinates of the **k** points into a one dimensional array
+        """Convert the coordinates of the **k** points into a one dimensional array
 
         For every line in the Brillouin zone, the distance between each **k** point
         and the start of the line is calculated. Then the distances of different
@@ -94,7 +107,7 @@ class Kpoints:
         elif first_char == "m":
             return "monkhorst"
         else:
-            raise RefinementException(
+            raise exception.RefinementError(
                 "Could not understand the mode '{}' ".format(mode)
                 + "when refining the raw kpoints data."
             )

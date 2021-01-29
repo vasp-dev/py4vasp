@@ -19,9 +19,22 @@ def _only_one_None(lhs, rhs):
     return (lhs is None) != (rhs is None)
 
 
+@dataclass(order=True, frozen=True)
+class RawVersion:
+    "The version number of Vasp."
+    major: int
+    "The major version number."
+    minor: int = 0
+    "The minor version number."
+    patch: int = 0
+    "Indicates number of bugfixes since last minor release."
+
+
 @dataclass
-class Topology:
+class RawTopology:
     "The topology of the system used, i.e., which elements are contained."
+    version: RawVersion
+    "The version number of Vasp."
     number_ion_types: np.ndarray
     "Amount of ions of a particular type."
     ion_types: np.ndarray
@@ -30,9 +43,11 @@ class Topology:
 
 
 @dataclass
-class Trajectory:
+class RawTrajectory:
     "Describes the evolution of unit cell and atoms within over ionic steps."
-    topology: Topology
+    version: RawVersion
+    "The version number of Vasp."
+    topology: RawTopology
     "The topology of the system used, i.e., which elements are contained."
     lattice_vectors: np.ndarray
     "Lattice vectors defining the unit cell for every time step."
@@ -43,9 +58,11 @@ class Trajectory:
 
 
 @dataclass
-class Projectors:
+class RawProjectors:
     "Projectors used for orbital projections."
-    topology: Topology
+    version: RawVersion
+    "The version number of Vasp."
+    topology: RawTopology
     "The topology of the system used, i.e., which elements are contained."
     orbital_types: np.ndarray
     "Character indicating the orbital angular momentum."
@@ -55,40 +72,48 @@ class Projectors:
 
 
 @dataclass
-class Cell:
+class RawCell:
     "Unit cell of the crystal or simulation cell for molecules."
-    scale: float
-    "Global scaling factor applied to all lattice vectors."
+    version: RawVersion
+    "The version number of Vasp."
     lattice_vectors: np.ndarray
     "Lattice vectors defining the unit cell."
+    scale: float = 1.0
+    "Global scaling factor applied to all lattice vectors."
     __eq__ = _dataclass_equal
 
 
 @dataclass
-class Magnetism:
+class RawMagnetism:
     "Data about the magnetism in the system."
+    version: RawVersion
+    "The version number of Vasp."
     moments: np.ndarray
     "Contains the charge and magnetic moments atom and orbital resolved."
     __eq__ = _dataclass_equal
 
 
 @dataclass
-class Structure:
+class RawStructure:
     "Structural information of the system."
-    topology: Topology
+    version: RawVersion
+    "The version number of Vasp."
+    topology: RawTopology
     "The topology of the system used, i.e., which elements are contained."
-    cell: Cell
+    cell: RawCell
     "Unit cell of the crystal or simulation cell for molecules."
     positions: np.ndarray
     "Position of all atoms in the unit cell in units of the lattice vectors."
-    magnetism: Magnetism = None
+    magnetism: RawMagnetism = None
     "Magnetization of every atom in the unit cell."
     __eq__ = _dataclass_equal
 
 
 @dataclass
-class Kpoints:
+class RawKpoints:
     "**k** points at which wave functions are calculated."
+    version: RawVersion
+    "The version number of Vasp."
     mode: str
     "Mode used to generate the **k**-point list."
     number: int
@@ -97,7 +122,7 @@ class Kpoints:
     "Coordinates of the **k** points as fraction of the reciprocal lattice vectors."
     weights: np.ndarray
     "Weight of the **k** points used for integration."
-    cell: Cell
+    cell: RawCell
     "Unit cell of the crystal."
     labels: np.ndarray = None
     "High symmetry label for specific **k** points used in band structures."
@@ -107,8 +132,10 @@ class Kpoints:
 
 
 @dataclass
-class Dos:
+class RawDos:
     "Electronic density of states."
+    version: RawVersion
+    "The version number of Vasp."
     fermi_energy: float
     "Fermi energy obtained by Vasp."
     energies: np.ndarray
@@ -117,32 +144,48 @@ class Dos:
     "Dos at the energies D(E)."
     projections: np.ndarray = None
     "If present, orbital projections of the Dos."
-    projectors: Projectors = None
+    projectors: RawProjectors = None
     "If present, projector information (element, angular momentum, spin)."
     __eq__ = _dataclass_equal
 
 
 @dataclass
-class Band:
+class RawBand:
     "Electronic band structure"
+    version: RawVersion
+    "The version number of Vasp."
     fermi_energy: float
     "Fermi energy obtained by Vasp."
-    kpoints: Kpoints
+    kpoints: RawKpoints
     "**k** points at which the bands are calculated."
     eigenvalues: np.ndarray
     "Calculated eigenvalues at the **k** points."
     projections: np.ndarray = None
     "If present, orbital projections of the bands."
-    projectors: Projectors = None
+    projectors: RawProjectors = None
     "If present, projector information (element, angular momentum, spin)."
     __eq__ = _dataclass_equal
 
 
 @dataclass
-class Energy:
+class RawEnergy:
     "Various energies during ionic relaxation or MD simulation."
+    version: RawVersion
+    "The version number of Vasp."
     labels: np.ndarray
     "Label identifying which energy is contained."
     values: np.ndarray
     "Energy specified by labels for all iteration steps."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawDensity:
+    "The electronic charge and magnetization density."
+    version: RawVersion
+    "The version number of Vasp."
+    structure: RawStructure
+    "The atomic structure to represent the densities."
+    charge: np.ndarray
+    "The raw data of electronic charge and magnetization density."
     __eq__ = _dataclass_equal
