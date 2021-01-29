@@ -289,8 +289,8 @@ def reference_trajectory():
 def write_trajectory(h5f, trajectory):
     write_version(h5f, trajectory.version)
     write_topology(h5f, trajectory.topology)
-    h5f["intermediate/history/position_ions"] = trajectory.positions
-    h5f["intermediate/history/lattice_vectors"] = trajectory.lattice_vectors
+    h5f["intermediate/ion_dynamics/position_ions"] = trajectory.positions
+    h5f["intermediate/ion_dynamics/lattice_vectors"] = trajectory.lattice_vectors
 
 
 def check_trajectory(file, reference):
@@ -352,8 +352,8 @@ def reference_energies():
 
 def write_energies(h5f, energy):
     write_version(h5f, energy.version)
-    h5f["intermediate/history/energies_tags"] = energy.labels
-    h5f["intermediate/history/energies"] = energy.values
+    h5f["intermediate/ion_dynamics/energies_tags"] = energy.labels
+    h5f["intermediate/ion_dynamics/energies"] = energy.values
 
 
 def check_energies(file, reference):
@@ -427,7 +427,7 @@ def reference_magnetism():
 
 def write_magnetism(h5f, magnetism):
     write_version(h5f, magnetism.version)
-    h5f["intermediate/history/magnetism/moments"] = magnetism.moments
+    h5f["intermediate/ion_dynamics/magnetism/moments"] = magnetism.moments
 
 
 def check_magnetism(file, reference):

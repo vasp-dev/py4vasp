@@ -133,8 +133,8 @@ class File(AbstractContextManager):
         return RawTrajectory(
             version=self.version(),
             topology=self.topology(),
-            positions=self._h5f["intermediate/history/position_ions"],
-            lattice_vectors=self._h5f["intermediate/history/lattice_vectors"],
+            positions=self._h5f["intermediate/ion_dynamics/position_ions"],
+            lattice_vectors=self._h5f["intermediate/ion_dynamics/lattice_vectors"],
         )
 
     def projectors(self):
@@ -204,7 +204,7 @@ class File(AbstractContextManager):
             representation.
         """
         self._raise_error_if_closed()
-        key = "intermediate/history/magnetism/moments"
+        key = "intermediate/ion_dynamics/magnetism/moments"
         if key not in self._h5f:
             return None
         return RawMagnetism(version=self.version(), moments=self._h5f[key])
@@ -238,8 +238,8 @@ class File(AbstractContextManager):
         self._raise_error_if_closed()
         return RawEnergy(
             version=self.version(),
-            labels=self._h5f["intermediate/history/energies_tags"],
-            values=self._h5f["intermediate/history/energies"],
+            labels=self._h5f["intermediate/ion_dynamics/energies_tags"],
+            values=self._h5f["intermediate/ion_dynamics/energies"],
         )
 
     def density(self):
