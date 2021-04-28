@@ -64,7 +64,7 @@ def test_print_nonmagnetic_dos(nonmagnetic_Dos):
     actual, _ = _util.format_(Dos(nonmagnetic_Dos))
     reference = f"""
 Dos:
-   energies: [-1.00, 3.00] {num_energies} points
+    energies: [-1.00, 3.00] {num_energies} points
     """.strip()
     assert actual == {"text/plain": reference}
 
@@ -106,7 +106,7 @@ def test_print_magnetic_dos(magnetic_Dos):
     actual, _ = _util.format_(Dos(magnetic_Dos))
     reference = f"""
 spin polarized Dos:
-   energies: [-2.00, 2.00] {num_energies} points
+    energies: [-2.00, 2.00] {num_energies} points
     """.strip()
     assert actual == {"text/plain": reference}
 
@@ -192,10 +192,10 @@ def test_print_nonmagnetic_projections(nonmagnetic_projections):
     actual, _ = _util.format_(Dos(raw_dos))
     reference = f"""
 Dos:
-   energies: [-1.00, 3.00] {num_energies} points
+    energies: [-1.00, 3.00] {num_energies} points
 projectors:
-   atoms: Si, C
-   orbitals: s, p, d, f
+    atoms: Si, C
+    orbitals: s, p, d, f
     """.strip()
     assert actual == {"text/plain": reference}
 
@@ -260,10 +260,20 @@ def test_magnetic_lm_Dos_plot(magnetic_Dos, magnetic_projections, Assert):
 
 def test_nonexisting_dos():
     with pytest.raises(exception.NoData):
-        dos = Dos(None)
+        dos = Dos(None).read()
 
 
 def test_version(nonmagnetic_Dos):
     nonmagnetic_Dos.version = RawVersion(_util._minimal_vasp_version.major - 1)
     with pytest.raises(exception.OutdatedVaspVersion):
-        Dos(nonmagnetic_Dos)
+        Dos(nonmagnetic_Dos).read()
+
+
+def test_descriptor(nonmagnetic_Dos, check_descriptors):
+    dos = Dos(nonmagnetic_Dos)
+    descriptors = {
+        "_to_dict": ["to_dict", "read"],
+        "_to_plotly": ["to_plotly", "plot"],
+        "_to_frame": ["to_frame"],
+    }
+    check_descriptors(dos, descriptors)

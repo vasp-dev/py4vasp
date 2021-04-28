@@ -69,4 +69,10 @@ def test_incorrect_label(reference_energy):
 def test_version(reference_energy):
     reference_energy.version = RawVersion(_util._minimal_vasp_version.major - 1)
     with pytest.raises(exception.OutdatedVaspVersion):
-        Energy(reference_energy)
+        Energy(reference_energy).read()
+
+
+def test_descriptor(reference_energy, check_descriptors):
+    energy = Energy(reference_energy)
+    descriptors = {"_to_dict": ["to_dict", "read"], "_to_plotly": ["to_plotly", "plot"]}
+    check_descriptors(energy, descriptors)

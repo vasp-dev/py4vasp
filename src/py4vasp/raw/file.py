@@ -1,4 +1,5 @@
 from contextlib import AbstractContextManager
+from pathlib import Path
 from .rawdata import *
 import h5py
 import py4vasp.exceptions as exception
@@ -18,7 +19,7 @@ class File(AbstractContextManager):
 
     Parameters
     ----------
-    filename : str
+    filename : str or Path
         Name of the file from which the data is read (defaults to default_filename).
 
     Notes
@@ -33,7 +34,7 @@ class File(AbstractContextManager):
     "Name of the HDF5 file Vasp creates."
 
     def __init__(self, filename=None):
-        filename = filename or File.default_filename
+        filename = self._actual_filename(filename)
         self.closed = False
         try:
             self._h5f = h5py.File(filename, "r")
@@ -46,6 +47,14 @@ class File(AbstractContextManager):
                 "including the path."
             )
             raise exception.FileAccessError(error_message) from err
+
+    def _actual_filename(self, filename):
+        if filename is None:
+            return File.default_filename
+        elif Path(filename).is_dir():
+            return Path(filename) / File.default_filename
+        else:
+            return filename
 
     def version(self):
         """Read the version number of Vasp.

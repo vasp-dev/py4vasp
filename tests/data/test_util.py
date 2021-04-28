@@ -4,24 +4,14 @@ import py4vasp.exceptions as exception
 import pytest
 
 
-class RawData:
-    version = _util._minimal_vasp_version
-
-
-class DummyData(_util.Data):
-    def __init__(self, raw_data):
-        super().__init__(raw_data)
+def test_requirement_decorator():
+    class RawData:
+        version = _util._minimal_vasp_version
 
     @_util.require(RawVersion(_util._minimal_vasp_version.major + 1))
-    def new_function(self):
+    def function_with_requirement(raw_data):
         pass
 
-
-def test_requirement_constructor():
     raw_data = RawData()
-    data = DummyData(raw_data)
     with pytest.raises(exception.OutdatedVaspVersion):
-        data.new_function()
-    raw_data.version = RawVersion(raw_data.version.major - 1)
-    with pytest.raises(exception.OutdatedVaspVersion):
-        data = DummyData(raw_data)
+        function_with_requirement(raw_data)

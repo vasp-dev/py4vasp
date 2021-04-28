@@ -7,9 +7,9 @@ import os
 import numpy as np
 import itertools
 import inspect
-from tempfile import TemporaryFile
 from collections import namedtuple
 from numbers import Number, Integral
+from unittest.mock import patch
 
 num_spins = 2
 num_energies = 20
@@ -39,11 +39,11 @@ def working_directory(path):
         os.chdir(prev_cwd)
 
 
-def test_file_as_context():
-    tf = TemporaryFile()
-    h5f = h5py.File(tf, "w")
+def test_file_as_context(tmp_path):
+    filename = tmp_path / "test.h5"
+    h5f = h5py.File(filename, "w")
     h5f.close()
-    with File(tf) as file:
+    with File(filename) as file:
         assert not file.closed
         h5f = file._h5f
     # check that file is closed and accessing it raises ValueError
@@ -63,6 +63,17 @@ def test_nonexisting_file():
         File()
 
 
+def test_file_from_path(tmp_path):
+    with patch("h5py.File") as mock_h5:
+        with File(tmp_path) as file:
+            assert not file.closed
+        assert file.closed
+        mock_h5.assert_called_once_with(tmp_path / File.default_filename, "r")
+        mock_h5.reset_mock()
+        File(str(tmp_path))
+        mock_h5.assert_called_once_with(tmp_path / File.default_filename, "r")
+
+
 def generic_test(setup):
     with working_directory(setup.directory):
         for option in setup.options:
@@ -77,7 +88,7 @@ def generic_test(setup):
 
 
 def open_h5_file(use_default):
-    filename = "vaspout.h5" if use_default else TemporaryFile()
+    filename = "vaspout.h5" if use_default else "generic_filename.h5"
     return h5py.File(filename, "w"), filename
 
 

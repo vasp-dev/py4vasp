@@ -90,8 +90,8 @@ def test_print_multiple_bands(multiple_bands):
     actual, _ = _util.format_(Band(multiple_bands))
     reference = f"""
 band structure:
-   {multiple_bands.kpoints.number} k-points
-   {multiple_bands.eigenvalues.shape[2]} bands
+    {multiple_bands.kpoints.number} k-points
+    {multiple_bands.eigenvalues.shape[2]} bands
     """.strip()
     assert actual == {"text/plain": reference}
 
@@ -157,8 +157,8 @@ def test_print_line_without_labels(line_without_labels):
     actual, _ = _util.format_(Band(line_without_labels))
     reference = f"""
 band structure:
-   {line_without_labels.eigenvalues.shape[1]} k-points
-   {line_without_labels.eigenvalues.shape[2]} bands
+    {line_without_labels.eigenvalues.shape[1]} k-points
+    {line_without_labels.eigenvalues.shape[2]} bands
     """.strip()
     assert actual == {"text/plain": reference}
 
@@ -195,8 +195,8 @@ def test_print_line_with_labels(line_with_labels):
     actual, _ = _util.format_(Band(line_with_labels))
     reference = f"""
 band structure (  - X|Y - G - X -  ):
-   {line_with_labels.eigenvalues.shape[1]} k-points
-   {line_with_labels.eigenvalues.shape[2]} bands
+    {line_with_labels.eigenvalues.shape[1]} k-points
+    {line_with_labels.eigenvalues.shape[2]} bands
     """.strip()
     assert actual == {"text/plain": reference}
 
@@ -270,8 +270,8 @@ def test_print_line_without_labels(spin_projections):
     projectors = pretty(Projectors(spin_projections.projectors))
     reference = f"""
 spin polarized band structure:
-   {spin_projections.eigenvalues.shape[1]} k-points
-   {spin_projections.eigenvalues.shape[2]} bands
+    {spin_projections.eigenvalues.shape[1]} k-points
+    {spin_projections.eigenvalues.shape[2]} bands
 {projectors}
     """.strip()
     assert actual == {"text/plain": reference}
@@ -351,4 +351,10 @@ def test_incorrect_width(raw_projections):
 def test_version(raw_band):
     raw_band.version = RawVersion(_util._minimal_vasp_version.major - 1)
     with pytest.raises(exception.OutdatedVaspVersion):
-        Band(raw_band)
+        Band(raw_band).read()
+
+
+def test_descriptor(raw_band, check_descriptors):
+    band = Band(raw_band)
+    descriptors = {"_to_dict": ["to_dict", "read"], "_to_plotly": ["to_plotly", "plot"]}
+    check_descriptors(band, descriptors)

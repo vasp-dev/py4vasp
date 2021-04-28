@@ -159,4 +159,17 @@ reciprocal
 def test_version(raw_kpoints):
     raw_kpoints.version = RawVersion(_util._minimal_vasp_version.major - 1)
     with pytest.raises(exception.OutdatedVaspVersion):
-        Kpoints(raw_kpoints)
+        Kpoints(raw_kpoints).read()
+
+
+def test_descriptor(raw_kpoints, check_descriptors):
+    kpoints = Kpoints(raw_kpoints)
+    descriptors = {
+        "_to_dict": ["to_dict", "read"],
+        "_line_length": ["line_length"],
+        "_number_lines": ["number_lines"],
+        "_distances": ["distances"],
+        "_mode": ["mode"],
+        "_labels": ["labels"],
+    }
+    check_descriptors(kpoints, descriptors)

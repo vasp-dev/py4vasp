@@ -209,4 +209,15 @@ Direct<br>
 def test_version(raw_structure):
     raw_structure.version = RawVersion(_util._minimal_vasp_version.major - 1)
     with pytest.raises(exception.OutdatedVaspVersion):
-        Structure(raw_structure)
+        Structure(raw_structure).read()
+
+
+def test_descriptor(raw_structure, check_descriptors):
+    structure = Structure(raw_structure)
+    descriptors = {
+        "_to_dict": ["to_dict", "read"],
+        "_to_viewer3d": ["to_viewer3d", "plot"],
+        "_to_string": ["to_poscar"],
+        "_to_ase": ["to_ase"],
+    }
+    check_descriptors(structure, descriptors)

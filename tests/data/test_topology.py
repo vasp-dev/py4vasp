@@ -58,6 +58,7 @@ def test_to_frame(raw_topology):
     assert ref.equals(actual)
 
 
+@pytest.mark.skip("There is an issue with the mdtraj installation.")
 def test_to_mdtraj(raw_topology):
     topology = Topology(raw_topology).to_mdtraj()
     actual, _ = topology.to_dataframe()
@@ -92,4 +93,18 @@ def test_to_poscar(raw_topology):
 def test_version(raw_topology):
     raw_topology.version = RawVersion(_util._minimal_vasp_version.major - 1)
     with pytest.raises(exception.OutdatedVaspVersion):
-        Topology(raw_topology)
+        Topology(raw_topology).read()
+
+
+def test_descriptor(raw_topology, check_descriptors):
+    topology = Topology(raw_topology)
+    descriptors = {
+        "_to_dict": ["to_dict", "read"],
+        "_to_frame": ["to_frame"],
+        "_to_poscar": ["to_poscar"],
+        "_names": ["names"],
+        "_elements": ["elements"],
+        "_ion_types": ["ion_types"],
+        # "_to_mdtraj": ["to_mdtraj"],
+    }
+    check_descriptors(topology, descriptors)

@@ -85,17 +85,26 @@ def test_print(raw_density):
     actual, _ = _util.format_(Density(raw_density))
     reference = """
 density:
-   structure: Sr2TiO4
-   grid: 10, 12, 14
-   spin polarized
-   """.strip()
+    structure: Sr2TiO4
+    grid: 10, 12, 14
+    spin polarized
+    """.strip()
     assert actual == {"text/plain": reference}
     #
     raw_density.charge = np.reshape(raw_density.charge, (1, 16, 7, 30))
     actual, _ = _util.format_(Density(raw_density))
     reference = """
 density:
-   structure: Sr2TiO4
-   grid: 16, 7, 30
-   """.strip()
+    structure: Sr2TiO4
+    grid: 16, 7, 30
+    """.strip()
     assert actual == {"text/plain": reference}
+
+
+def test_descriptor(raw_density, check_descriptors):
+    density = Density(raw_density)
+    descriptors = {
+        "_to_dict": ["to_dict", "read"],
+        "_to_viewer3d": ["to_viewer3d", "plot"],
+    }
+    check_descriptors(density, descriptors)

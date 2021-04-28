@@ -130,7 +130,7 @@ def test_print_charge(charge_only):
 
 def test_nonexisting_magnetism():
     with pytest.raises(exception.NoData):
-        magnetism = Magnetism(None)
+        magnetism = Magnetism(None).read()
 
 
 def test_incorrect_argument(raw_magnetism, noncollinear_magnetism):
@@ -151,4 +151,16 @@ def test_incorrect_argument(raw_magnetism, noncollinear_magnetism):
 def test_version(raw_magnetism):
     raw_magnetism.version = RawVersion(_util._minimal_vasp_version.major - 1)
     with pytest.raises(exception.OutdatedVaspVersion):
-        Magnetism(raw_magnetism)
+        Magnetism(raw_magnetism).read()
+
+
+def test_descriptor(raw_magnetism, check_descriptors):
+    magnetism = Magnetism(raw_magnetism)
+    descriptors = {
+        "_to_dict": ["to_dict", "read"],
+        "_charges": ["charges"],
+        "_moments": ["moments"],
+        "_total_charges": ["total_charges"],
+        "_total_moments": ["total_moments"],
+    }
+    check_descriptors(magnetism, descriptors)

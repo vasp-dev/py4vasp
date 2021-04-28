@@ -4,62 +4,11 @@ import numpy as np
 import pandas as pd
 from IPython.lib.pretty import pretty
 from .projectors import _projectors_or_dummy, _selection_doc
+from py4vasp.data._base import DataBase, RefinementDescriptor
 from py4vasp.data import _util
 
-_to_dict_doc = (
-    """ Read the data into a dictionary.
 
-Parameters
-----------
-{}
-
-Returns
--------
-dict
-    Contains the energies at which the DOS was evaluated aligned to the
-    Fermi energy and the total DOS or the spin-resolved DOS for
-    spin-polarized calculations. If available and a selection is passed,
-    the orbital resolved DOS for the selected orbitals is included.
-"""
-).format(_selection_doc)
-
-_to_plotly_doc = (
-    """ Read the data and generate a plotly figure.
-
-Parameters
-----------
-{}
-
-Returns
--------
-plotly.graph_objects.Figure
-    plotly figure containing the total DOS. If the calculation was spin
-    polarized, the resulting DOS is spin resolved and the spin-down DOS
-    is plotted towards negative values. If a selection the orbital
-    resolved DOS is given for the specified projectors.
-"""
-).format(_selection_doc)
-
-_to_frame_doc = (
-    """ Read the data into a pandas DataFrame.
-
-Parameters
-----------
-{}
-
-Returns
--------
-pd.DataFrame
-    Contains the energies at which the DOS was evaluated aligned to the
-    Fermi energy and the total DOS or the spin-resolved DOS for
-    spin-polarized calculations. If available and a selection is passed,
-    the orbital resolved DOS for the selected orbitals is included.
-"""
-).format(_selection_doc)
-
-
-@_util.add_wrappers
-class Dos(_util.Data):
+class Dos(DataBase):
     """The electronic density of states (DOS).
 
     You can use this class to extract the DOS data of a Vasp calculation.
@@ -74,67 +23,115 @@ class Dos(_util.Data):
         Dataclass containing the raw data necessary to produce a DOS.
     """
 
-    def __init__(self, raw_dos):
-        error_message = "No DOS data found, please verify that LORBIT flag is set."
-        _util.raise_error_if_data_is_none(raw_dos, error_message)
-        super().__init__(raw_dos)
-        self._fermi_energy = raw_dos.fermi_energy
-        self._energies = raw_dos.energies
-        self._dos = raw_dos.dos
-        self._spin_polarized = self._dos.shape[0] == 2
-        self._has_partial_dos = raw_dos.projectors is not None
-        self._projectors = _projectors_or_dummy(raw_dos.projectors)
-        self._projections = raw_dos.projections
+    _missing_data_message = "No DOS data found, please verify that LORBIT flag is set."
 
-    def _repr_pretty_(self, p, cycle):
-        text = f"""
-{"spin polarized" if self._spin_polarized else ""} Dos:
-   energies: [{self._energies[0]:0.2f}, {self._energies[-1]:0.2f}] {len(self._energies)} points
-{pretty(self._projectors)}
-        """.strip()
-        p.text(text)
+    read = RefinementDescriptor("_to_dict")
+    to_dict = RefinementDescriptor("_to_dict")
+    plot = RefinementDescriptor("_to_plotly")
+    to_plotly = RefinementDescriptor("_to_plotly")
+    to_frame = RefinementDescriptor("_to_frame")
+    __str__ = RefinementDescriptor("_to_string")
 
-    @classmethod
-    @_util.add_doc(_util.from_file_doc("electronic DOS"))
-    def from_file(cls, file=None):
-        return _util.from_file(cls, file, "dos")
 
-    @_util.add_doc(_to_plotly_doc)
-    def to_plotly(self, selection=None):
-        df = self.to_frame(selection)
-        if self._spin_polarized:
-            for col in filter(lambda col: "down" in col, df):
-                df[col] = -df[col]
-        default = {
-            "x": "energies",
-            "xTitle": "Energy (eV)",
-            "yTitle": "DOS (1/eV)",
-            "asFigure": True,
-        }
-        return df.iplot(**default)
+def _to_string(raw_dos):
+    return f"""
+{"spin polarized" if _spin_polarized(raw_dos) else ""} Dos:
+    energies: [{raw_dos.energies[0]:0.2f}, {raw_dos.energies[-1]:0.2f}] {len(raw_dos.energies)} points
+{pretty(_projectors(raw_dos))}
+    """.strip()
 
-    @_util.add_doc(_to_dict_doc)
-    def to_dict(self, selection=None):
-        return {**self._read_data(selection), "fermi_energy": self._fermi_energy}
 
-    @_util.add_doc(_to_frame_doc)
-    def to_frame(self, selection=None):
-        df = pd.DataFrame(self._read_data(selection))
-        df.fermi_energy = self._fermi_energy
-        return df
+@_util.add_doc(
+    f"""Read the data into a dictionary.
 
-    def _read_data(self, selection):
-        return {
-            **self._read_energies(),
-            **self._read_total_dos(),
-            **self._projectors.read(selection, self._raw.projections),
-        }
+Parameters
+----------
+{_selection_doc}
 
-    def _read_energies(self):
-        return {"energies": self._energies[:] - self._fermi_energy}
+Returns
+-------
+dict
+    Contains the energies at which the DOS was evaluated aligned to the
+    Fermi energy and the total DOS or the spin-resolved DOS for
+    spin-polarized calculations. If available and a selection is passed,
+    the orbital resolved DOS for the selected orbitals is included."""
+)
+def _to_dict(raw_dos, selection=None):
+    return {**_read_data(raw_dos, selection), "fermi_energy": raw_dos.fermi_energy}
 
-    def _read_total_dos(self):
-        if self._spin_polarized:
-            return {"up": self._dos[0, :], "down": self._dos[1, :]}
-        else:
-            return {"total": self._dos[0, :]}
+
+@_util.add_doc(
+    f"""Read the data and generate a plotly figure.
+
+Parameters
+----------
+{_selection_doc}
+
+Returns
+-------
+plotly.graph_objects.Figure
+    plotly figure containing the total DOS. If the calculation was spin
+    polarized, the resulting DOS is spin resolved and the spin-down DOS
+    is plotted towards negative values. If a selection the orbital
+    resolved DOS is given for the specified projectors."""
+)
+def _to_plotly(raw_dos, selection=None):
+    df = _to_frame(raw_dos, selection)
+    if _spin_polarized(raw_dos):
+        for col in filter(lambda col: "down" in col, df):
+            df[col] = -df[col]
+    default = {
+        "x": "energies",
+        "xTitle": "Energy (eV)",
+        "yTitle": "DOS (1/eV)",
+        "asFigure": True,
+    }
+    return df.iplot(**default)
+
+
+@_util.add_doc(
+    f"""Read the data into a pandas DataFrame.
+
+Parameters
+----------
+{_selection_doc}
+
+Returns
+-------
+pd.DataFrame
+    Contains the energies at which the DOS was evaluated aligned to the
+    Fermi energy and the total DOS or the spin-resolved DOS for
+    spin-polarized calculations. If available and a selection is passed,
+    the orbital resolved DOS for the selected orbitals is included."""
+)
+def _to_frame(raw_dos, selection=None):
+    df = pd.DataFrame(_read_data(raw_dos, selection))
+    df.fermi_energy = raw_dos.fermi_energy
+    return df
+
+
+def _spin_polarized(raw_dos):
+    return raw_dos.dos.shape[0] == 2
+
+
+def _projectors(raw_dos):
+    return _projectors_or_dummy(raw_dos.projectors)
+
+
+def _read_data(raw_dos, selection):
+    return {
+        **_read_energies(raw_dos),
+        **_read_total_dos(raw_dos),
+        **_projectors(raw_dos).read(selection, raw_dos.projections),
+    }
+
+
+def _read_energies(raw_dos):
+    return {"energies": raw_dos.energies[:] - raw_dos.fermi_energy}
+
+
+def _read_total_dos(raw_dos):
+    if _spin_polarized(raw_dos):
+        return {"up": raw_dos.dos[0, :], "down": raw_dos.dos[1, :]}
+    else:
+        return {"total": raw_dos.dos[0, :]}
