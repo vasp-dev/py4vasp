@@ -65,6 +65,20 @@ class Viewer3d:
             res._multiple_cells = np.prod(supercell)
         return res
 
+    @classmethod
+    def from_trajectory(cls, trajectory):
+        """Generate a new Viewer3d from a trajectory.
+
+        Parameters
+        ----------
+        trajector : data.Trajectory
+            Defines the trajectory of the Vasp MD run.
+        supercell : int or np.ndarray
+            If present the cell is extended by the specified factor along each axis.
+        """
+        ngl_trajectory = nglview.MDTrajTrajectory(trajectory.to_mdtraj())
+        return cls(nglview.NGLWidget(ngl_trajectory))
+
     def _ipython_display_(self):
         self._ngl._ipython_display_()
 

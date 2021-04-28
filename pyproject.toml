@@ -15,7 +15,7 @@ pandas = "^0.25.3"
 cufflinks = "^0.17.3"
 nglview = "^2.7.5"
 ase = "^3.19.0"
-mdtraj = "^1.9.3"
+mdtraj = "^1.9.5"
 mrcfile = "^1.2.0"
 
 [tool.poetry.dev-dependencies]

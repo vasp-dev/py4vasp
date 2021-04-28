@@ -1,8 +1,9 @@
 from unittest.mock import patch
-from py4vasp.data import Structure, Viewer3d
+from py4vasp.data import Structure, Trajectory, Viewer3d
 from py4vasp.data.viewer3d import _Arrow3d, _x_axis, _y_axis, _z_axis
 from .test_structure import raw_structure, raw_topology
 from .test_density import raw_density
+from .test_trajectory import raw_trajectory
 import py4vasp.exceptions as exception
 import ipykernel.jsonutil as json
 import numpy as np
@@ -52,7 +53,7 @@ def test_ipython(viewer3d):
 
 def test_cell(viewer3d):
     viewer3d.show_cell()
-    assert last_messages(viewer3d) == [("addRepresentation", ["unitcell"])]
+    assert_add_unitcell(*last_messages(viewer3d))
     viewer3d.hide_cell()
     assert last_messages(viewer3d) == [("removeRepresentationsByName", ["unitcell", 0])]
 
@@ -142,22 +143,38 @@ def test_isosurface(raw_density):
     viewer = make_viewer(raw_density.structure)
     viewer.show_isosurface(raw_density.charge)
     messages = last_messages(viewer, n=1, get_msg_kwargs=True)
-    assert_load_file(messages[0], default=True)
+    assert_load_file(messages[0], binary=True, default=True)
     #
     kwargs = {"isolevel": 0.1, "color": "red"}
     viewer.show_isosurface(raw_density.charge, **kwargs)
     messages = last_messages(viewer, n=2, get_msg_kwargs=True)
-    assert_load_file(messages[0], default=False)
-    assert_surface(messages[1], kwargs)
+    assert_load_file(messages[0], binary=True, default=False)
+    assert_add_surface(messages[1], kwargs)
 
 
-def assert_load_file(message, default):
+def test_trajectory(raw_trajectory):
+    trajectory = Trajectory(raw_trajectory)
+    viewer = trajectory.plot()
+    viewer.default_messages = 0
+    n = count_messages(viewer)
+    assert n == 2
+    messages = last_messages(viewer, n, get_msg_kwargs=True)
+    assert_load_file(messages[0], binary=False, default=True)
+    assert_add_unitcell(messages[1])
+
+
+def assert_load_file(message, binary, default):
     assert message[0] == "loadFile"
-    assert message[1][0]["binary"]
+    assert message[1][0]["binary"] == binary
     assert message[2]["defaultRepresentation"] == default
 
 
-def assert_surface(message, kwargs):
+def assert_add_unitcell(message):
+    assert message[0] == "addRepresentation"
+    assert message[1][0] == "unitcell"
+
+
+def assert_add_surface(message, kwargs):
     assert message[0] == "addRepresentation"
     assert message[1][0] == "surface"
     for key, val in kwargs.items():

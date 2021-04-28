@@ -5,8 +5,7 @@ import numpy as np
 import pandas as pd
 import functools
 import itertools
-
-# import mdtraj
+import mdtraj
 
 
 class Topology(DataBase):
@@ -25,14 +24,13 @@ class Topology(DataBase):
     read = RefinementDescriptor("_to_dict")
     to_dict = RefinementDescriptor("_to_dict")
     to_frame = RefinementDescriptor("_to_frame")
+    to_mdtraj = RefinementDescriptor("_to_mdtraj")
     to_poscar = RefinementDescriptor("_to_poscar")
     names = RefinementDescriptor("_names")
     elements = RefinementDescriptor("_elements")
     ion_types = RefinementDescriptor("_ion_types")
     __str__ = RefinementDescriptor("_to_string")
     _repr_html_ = RefinementDescriptor("_to_html")
-
-    # to_mdtraj = RefinementDescriptor("_to_mdtraj")
 
 
 def _to_string(raw_topology):

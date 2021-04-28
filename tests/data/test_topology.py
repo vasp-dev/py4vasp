@@ -58,7 +58,6 @@ def test_to_frame(raw_topology):
     assert ref.equals(actual)
 
 
-@pytest.mark.skip("There is an issue with the mdtraj installation.")
 def test_to_mdtraj(raw_topology):
     topology = Topology(raw_topology).to_mdtraj()
     actual, _ = topology.to_dataframe()
@@ -105,6 +104,6 @@ def test_descriptor(raw_topology, check_descriptors):
         "_names": ["names"],
         "_elements": ["elements"],
         "_ion_types": ["ion_types"],
-        # "_to_mdtraj": ["to_mdtraj"],
+        "_to_mdtraj": ["to_mdtraj"],
     }
     check_descriptors(topology, descriptors)

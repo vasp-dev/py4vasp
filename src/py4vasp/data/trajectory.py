@@ -1,12 +1,11 @@
 from .topology import Topology
-from py4vasp.data import _util, Structure
+from py4vasp.data import _util, Structure, Viewer3d
 from py4vasp.data._base import DataBase, RefinementDescriptor
 from py4vasp.raw import RawStructure, RawCell
 from IPython.lib.pretty import pretty
 import py4vasp.exceptions as exception
 import functools
-
-# import mdtraj
+import mdtraj
 
 
 class Trajectory(DataBase):
@@ -25,12 +24,13 @@ class Trajectory(DataBase):
 
     read = RefinementDescriptor("_to_dict")
     to_dict = RefinementDescriptor("_to_dict")
+    plot = RefinementDescriptor("_to_viewer3d")
+    to_viewer3d = RefinementDescriptor("_to_viewer3d")
+    to_mdtraj = RefinementDescriptor("_to_mdtraj")
     to_structure = RefinementDescriptor("_to_structure")
     __str__ = RefinementDescriptor("_to_string")
     _repr_html_ = RefinementDescriptor("_to_html")
     __len__ = RefinementDescriptor("_length")
-
-    # to_mdtraj = RefinementDescriptor("_to_mdtraj")
 
 
 def _to_string(raw_traj):
@@ -65,6 +65,19 @@ def _to_dict(raw_traj):
         "positions": raw_traj.positions[:],
         "lattice_vectors": raw_traj.lattice_vectors[:],
     }
+
+
+def _to_viewer3d(raw_traj):
+    """Generate a 3d representation of the trajectory.
+
+    Returns
+    -------
+    Viewer3d
+        Visualize the trajectory as a 3d figure with controls to loop over the history.
+    """
+    viewer = Viewer3d.from_trajectory(Trajectory(raw_traj))
+    viewer.show_cell()
+    return viewer
 
 
 def _to_mdtraj(raw_traj):
