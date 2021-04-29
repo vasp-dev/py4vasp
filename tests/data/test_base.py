@@ -6,6 +6,8 @@ from pathlib import Path
 from dataclasses import dataclass
 import pytest
 import inspect
+import contextlib
+import io
 
 
 @dataclass
@@ -16,11 +18,16 @@ class RawData:
 
 class DataImpl(DataBase):
     get_raw_data = RefinementDescriptor("_get_raw_data")
+    __str__ = RefinementDescriptor("_to_string")
 
 
 def _get_raw_data(raw_data, optional=None):
     "get raw data docs"
     return raw_data
+
+
+def _to_string(raw_data):
+    return raw_data.data
 
 
 def test_base_from_raw_data():
@@ -92,6 +99,21 @@ def test_base_from_opened_file(MockFile):
     assert obj.get_raw_data() == raw_data
     assert obj.get_raw_data() == raw_data
     MockFile.assert_called_once()
+
+
+@patch("py4vasp.raw.File")
+def test_base_print(MockFile):
+    raw_data = RawData("test print function")
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        DataImpl(raw_data).print()
+    assert raw_data.data == output.getvalue().strip()
+    file = MockFile()
+    file.dataimpl.return_value = raw_data
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        DataImpl.from_file(file).print()
+    assert raw_data.data == output.getvalue().strip()
 
 
 @patch("py4vasp.raw.File")

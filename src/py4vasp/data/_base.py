@@ -48,6 +48,9 @@ class DataBase:
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
+    def print(self):
+        print(self)
+
 
 @contextlib.contextmanager
 def _from_file(file, name):
