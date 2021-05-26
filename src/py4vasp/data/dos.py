@@ -2,6 +2,7 @@ import functools
 import itertools
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 from IPython.lib.pretty import pretty
 from .projectors import _projectors_or_dummy, _selection_doc
 from py4vasp.data._base import DataBase, RefinementDescriptor
@@ -77,16 +78,12 @@ plotly.graph_objects.Figure
 )
 def _to_plotly(raw_dos, selection=None):
     df = _to_frame(raw_dos, selection)
-    if _spin_polarized(raw_dos):
-        for col in filter(lambda col: "down" in col, df):
-            df[col] = -df[col]
+    data = [_scatter_plot(df, col) for col in df if col != "energies"]
     default = {
-        "x": "energies",
-        "xTitle": "Energy (eV)",
-        "yTitle": "DOS (1/eV)",
-        "asFigure": True,
+        "xaxis": {"title": {"text": "Energy (eV)"}},
+        "yaxis": {"title": {"text": "DOS (1/eV)"}},
     }
-    return df.iplot(**default)
+    return go.Figure(data=data, layout=default)
 
 
 @_util.add_doc(
@@ -135,3 +132,8 @@ def _read_total_dos(raw_dos):
         return {"up": raw_dos.dos[0, :], "down": raw_dos.dos[1, :]}
     else:
         return {"total": raw_dos.dos[0, :]}
+
+
+def _scatter_plot(df, column):
+    spin_factor = 1 if "down" not in column else -1
+    return go.Scatter(x=df["energies"], y=spin_factor * df[column], name=column)
