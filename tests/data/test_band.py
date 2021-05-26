@@ -19,6 +19,7 @@ def raw_band():
         version=current_vasp_version,
         fermi_energy=0.0,
         eigenvalues=np.array([np.linspace([0], [1], number_kpoints)]),
+        occupations=np.array([np.linspace([1], [0], number_kpoints)]),
         kpoints=RawKpoints(
             version=current_vasp_version,
             mode="explicit",
@@ -36,6 +37,7 @@ def test_default_read(raw_band, Assert):
     band = Band(raw_band).read()
     assert band["fermi_energy"] == raw_band.fermi_energy
     Assert.allclose(band["bands"], raw_band.eigenvalues[0])
+    Assert.allclose(band["occupations"], raw_band.occupations[0])
     kpoints = Kpoints(raw_band.kpoints)
     Assert.allclose(band["kpoint_distances"], kpoints.distances())
     assert band["kpoint_labels"] == kpoints.labels()
@@ -55,6 +57,16 @@ def test_default_plot(raw_band, Assert):
     Assert.allclose(fig.data[0].y[mask], ref_bands)
 
 
+def test_default_to_frame(raw_band, Assert):
+    df = Band(raw_band).to_frame()
+    formatter = {"float": lambda x: f"{x:.2f}"}
+    kpoint_to_string = lambda vec: np.array2string(vec, formatter=formatter) + " 1"
+    expected = [kpoint_to_string(kpoint) for kpoint in raw_band.kpoints.coordinates]
+    assert all(expected == df.index)
+    Assert.allclose(raw_band.eigenvalues[0, :, 0], df.bands.to_numpy())
+    Assert.allclose(raw_band.occupations[0, :, 0], df.occupations.to_numpy())
+
+
 def test_default_from_file(raw_band, mock_file, check_read):
     with mock_file("band", raw_band) as mocks:
         check_read(Band, mocks, raw_band)
@@ -65,13 +77,14 @@ def multiple_bands(raw_band):
     number_bands_ = 3
     shape = (number_spins, number_kpoints, number_bands_)
     raw_band.eigenvalues = np.arange(np.prod(shape)).reshape(shape)
+    raw_band.occupations = np.arange(np.prod(shape)).reshape(shape)
     return raw_band
 
 
 def test_multiple_bands_read(multiple_bands, Assert):
     band = Band(multiple_bands).read()
-    ref_bands = multiple_bands.eigenvalues[0]
-    Assert.allclose(band["bands"], ref_bands)
+    Assert.allclose(band["bands"], multiple_bands.eigenvalues[0])
+    Assert.allclose(band["occupations"], multiple_bands.occupations[0])
 
 
 def test_multiple_bands_plot(multiple_bands, Assert):
@@ -94,6 +107,26 @@ band structure:
     {multiple_bands.eigenvalues.shape[2]} bands
     """.strip()
     assert actual == {"text/plain": reference}
+
+
+def test_multiple_bands_to_frame(multiple_bands, Assert):
+    df = Band(multiple_bands).to_frame()
+    eigenvalues = (
+        multiple_bands.eigenvalues[0, :, 0],
+        multiple_bands.eigenvalues[0, :, 1],
+        multiple_bands.eigenvalues[0, :, 2],
+    )
+    occupations = (
+        multiple_bands.occupations[0, :, 0],
+        multiple_bands.occupations[0, :, 1],
+        multiple_bands.occupations[0, :, 2],
+    )
+    assert df.index[0] == "[0.00 0.00 0.00] 1"
+    assert df.index[1] == "2"
+    assert df.index[2] == "3"
+    assert df.index[3] == "[0.02 0.02 0.02] 1"
+    Assert.allclose(np.concatenate(eigenvalues), df.bands.to_numpy())
+    Assert.allclose(np.concatenate(occupations), df.occupations.to_numpy())
 
 
 def test_nontrivial_cell(raw_band, Assert):
@@ -150,7 +183,8 @@ def line_without_labels(raw_band):
 def test_line_without_labels_plot(line_without_labels, Assert):
     fig = Band(line_without_labels).plot()
     check_ticks(fig, line_without_labels, Assert)
-    assert fig.layout.xaxis.ticktext == (" ", " ", " ", " ", " ")
+    default_labels = tuple(filter(None, Kpoints(line_without_labels.kpoints).labels()))
+    assert fig.layout.xaxis.ticktext == default_labels
 
 
 def test_print_line_without_labels(line_without_labels):
@@ -206,30 +240,43 @@ def spin_band(raw_band):
     number_spins_ = 2
     shape = (number_spins_, number_kpoints, number_bands)
     raw_band.eigenvalues = np.arange(np.prod(shape)).reshape(shape)
+    raw_band.occupations = np.arange(np.prod(shape)).reshape(shape)
     return raw_band
 
 
 def test_spin_band_read(spin_band, Assert):
     band = Band(spin_band).read()
-    Assert.allclose(band["up"], spin_band.eigenvalues[0])
-    Assert.allclose(band["down"], spin_band.eigenvalues[1])
+    Assert.allclose(band["bands_up"], spin_band.eigenvalues[0])
+    Assert.allclose(band["bands_down"], spin_band.eigenvalues[1])
+    Assert.allclose(band["occupations_up"], spin_band.occupations[0])
+    Assert.allclose(band["occupations_down"], spin_band.occupations[1])
 
 
 def test_spin_band_fermi_energy(spin_band, Assert):
     spin_band.fermi_energy = 0.5
     band = Band(spin_band).read()
-    Assert.allclose(band["up"], spin_band.eigenvalues[0] - spin_band.fermi_energy)
-    Assert.allclose(band["down"], spin_band.eigenvalues[1] - spin_band.fermi_energy)
+    Assert.allclose(band["bands_up"], spin_band.eigenvalues[0] - spin_band.fermi_energy)
+    Assert.allclose(
+        band["bands_down"], spin_band.eigenvalues[1] - spin_band.fermi_energy
+    )
 
 
 def test_spin_band_plot(spin_band, Assert):
     fig = Band(spin_band).plot()
     assert len(fig.data) == 2
-    spins = ["up", "down"]
+    spins = ["bands_up", "bands_down"]
     for i, (spin, data) in enumerate(zip(spins, fig.data)):
         assert data.name == spin
         mask = np.isfinite(data.x)
         Assert.allclose(data.y[mask], spin_band.eigenvalues[i].flatten("F"))
+
+
+def test_spin_band_to_frame(spin_band, Assert):
+    df = Band(spin_band).to_frame()
+    Assert.allclose(spin_band.eigenvalues[0, :, 0], df.bands_up.to_numpy())
+    Assert.allclose(spin_band.eigenvalues[1, :, 0], df.bands_down.to_numpy())
+    Assert.allclose(spin_band.occupations[0, :, 0], df.occupations_up.to_numpy())
+    Assert.allclose(spin_band.occupations[1, :, 0], df.occupations_down.to_numpy())
 
 
 @pytest.fixture
@@ -263,6 +310,12 @@ def test_spin_projections_plot(spin_projections, Assert):
             pos_lower = data.x[np.where(np.isclose(data.y, lower))]
             assert len(pos_upper) == len(pos_lower) == 1
             Assert.allclose(pos_upper, pos_lower)
+
+
+def test_spin_projections_to_frame(spin_projections, Assert):
+    df = Band(spin_projections).to_frame(selection="s")
+    Assert.allclose(spin_projections.projections[0, 0, 0, :, 0], df.s_up.to_numpy())
+    Assert.allclose(spin_projections.projections[1, 0, 0, :, 0], df.s_down.to_numpy())
 
 
 def test_print_line_without_labels(spin_projections):
@@ -320,6 +373,11 @@ def check_figure(fig, width, raw_band, Assert):
             Assert.allclose(pos_upper, pos_lower)
 
 
+def test_raw_projections_to_frame(raw_projections, Assert):
+    df = Band(raw_projections).to_frame("Si(s)")
+    Assert.allclose(raw_projections.projections[0, 0, 0, :, 0], df.Si_s.to_numpy())
+
+
 def test_more_projections_style(raw_projections, Assert):
     """Vasp 6.1 may define more orbital types then are available as projections.
     Here we check that the correct orbitals are read."""
@@ -356,5 +414,9 @@ def test_version(raw_band):
 
 def test_descriptor(raw_band, check_descriptors):
     band = Band(raw_band)
-    descriptors = {"_to_dict": ["to_dict", "read"], "_to_plotly": ["to_plotly", "plot"]}
+    descriptors = {
+        "_to_dict": ["to_dict", "read"],
+        "_to_plotly": ["to_plotly", "plot"],
+        "_to_frame": ["to_frame"],
+    }
     check_descriptors(band, descriptors)

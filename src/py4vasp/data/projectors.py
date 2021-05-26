@@ -23,7 +23,7 @@ selection : str
     For all of these options a wildcard \* exists, which selects all elements. You
     separate multiple selections by commas or whitespace and can nest them using
     parenthesis, e.g. `Sr(s, p)` or `s(up), p(down)`. The order of the selections
-    does not matter, but is is case sensitive to distinguish p (angular momentum
+    does not matter, but it is case sensitive to distinguish p (angular momentum
     l = 1) from P (phosphorus).
 """.strip()
 

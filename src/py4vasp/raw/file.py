@@ -109,6 +109,7 @@ class File(AbstractContextManager):
             fermi_energy=self._h5f["results/electron_dos/efermi"][()],
             kpoints=self.kpoints(),
             eigenvalues=self._h5f["results/electron_eigenvalues/eigenvalues"],
+            occupations=self._h5f["results/electron_eigenvalues/fermiweights"],
             projectors=self.projectors(),
             projections=self._safe_get_key("results/projectors/par"),
         )

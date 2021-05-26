@@ -187,6 +187,7 @@ def reference_band(use_projectors, use_labels):
         fermi_energy=fermi_energy,
         kpoints=reference_kpoints(use_labels),
         eigenvalues=np.arange(np.prod(shape_eval)).reshape(shape_eval),
+        occupations=np.arange(np.prod(shape_eval)).reshape(shape_eval),
     )
     if use_projectors:
         band.projectors = reference_projectors()
@@ -198,6 +199,7 @@ def write_band(h5f, band):
     write_version(h5f, band.version)
     h5f["results/electron_dos/efermi"] = band.fermi_energy
     h5f["results/electron_eigenvalues/eigenvalues"] = band.eigenvalues
+    h5f["results/electron_eigenvalues/fermiweights"] = band.occupations
     write_kpoints(h5f, band.kpoints)
     if band.projectors is not None:
         write_projectors(h5f, band.projectors)

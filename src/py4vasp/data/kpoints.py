@@ -117,14 +117,33 @@ def _mode(raw_kpoints):
 
 def _labels(raw_kpoints):
     "Get any labels given in the input file for specific **k** points."
-    if raw_kpoints.labels is None or raw_kpoints.label_indices is None:
+    fortran_indices = _raw_indices(raw_kpoints)
+    if fortran_indices is None:
         return None
+    python_indices = np.array(fortran_indices) - 1
     labels = [""] * len(raw_kpoints.coordinates)
-    use_line_mode = _mode(raw_kpoints) == "line"
-    for label, index in zip(raw_kpoints.labels, raw_kpoints.label_indices):
-        label = _util.decode_if_possible(label.strip())
-        if use_line_mode:
-            index = _line_length(raw_kpoints) * (index // 2) + index % 2
-        index -= 1  # convert from Fortran to Python
+    for label, index in zip(_raw_labels(raw_kpoints), python_indices):
         labels[index] = label
     return labels
+
+
+def _raw_labels(raw_kpoints):
+    if raw_kpoints.labels is not None:
+        return (_util.decode_if_possible(label.strip()) for label in raw_kpoints.labels)
+    else:
+        distances = [f"{distance:.2g}" for distance in _distances(raw_kpoints)]
+        return distances[:: _line_length(raw_kpoints)] + [distances[-1]]
+
+
+def _raw_indices(raw_kpoints):
+    indices = raw_kpoints.label_indices
+    line_length = _line_length(raw_kpoints)
+    if _mode(raw_kpoints) != "line":
+        return indices
+    elif indices is not None:
+        indices = np.array(indices)
+        return line_length * (indices // 2) + indices % 2
+    else:
+        indices = np.arange(len(raw_kpoints.coordinates) + 1, step=line_length)
+        indices[:-1] += 1  # convert to Fortran index
+        return indices

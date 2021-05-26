@@ -1,6 +1,7 @@
 import functools
 import itertools
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 from IPython.lib.pretty import pretty
 from .projectors import _projectors_or_dummy, _selection_doc
@@ -29,6 +30,7 @@ class Band(DataBase):
     to_dict = RefinementDescriptor("_to_dict")
     plot = RefinementDescriptor("_to_plotly")
     to_plotly = RefinementDescriptor("_to_plotly")
+    to_frame = RefinementDescriptor("_to_frame")
     __str__ = RefinementDescriptor("_to_string")
 
 
@@ -38,7 +40,7 @@ def _to_string(raw_band):
 {"spin polarized" if _spin_polarized(raw_band) else ""} band structure{path}:
     {raw_band.eigenvalues.shape[1]} k-points
     {raw_band.eigenvalues.shape[2]} bands
-{pretty(_projectors(raw_band))}
+{pretty(_projectors_or_dummy(raw_band.projectors))}
     """.strip()
 
 
@@ -64,7 +66,8 @@ def _to_dict(raw_band, selection=None):
         "kpoint_labels": kpoints.labels(),
         "fermi_energy": raw_band.fermi_energy,
         **_shift_bands_by_fermi_energy(raw_band),
-        "projections": _projectors(raw_band).read(selection, raw_band.projections),
+        **_read_occupations(raw_band),
+        "projections": _read_projections(raw_band, selection),
     }
 
 
@@ -93,6 +96,12 @@ def _to_plotly(raw_band, selection=None, width=0.5):
     return go.Figure(data=data, layout=default)
 
 
+def _to_frame(raw_band, selection=None):
+    index = _setup_dataframe_index(raw_band)
+    data = _extract_relevant_data(raw_band, selection)
+    return pd.DataFrame(data, index)
+
+
 def _spin_polarized(raw_band):
     return len(raw_band.eigenvalues) == 2
 
@@ -101,23 +110,34 @@ def _kpoints(raw_band):
     return Kpoints(raw_band.kpoints)
 
 
-def _projectors(raw_band):
-    return _projectors_or_dummy(raw_band.projectors)
+def _read_projections(raw_band, selection):
+    projectors = _projectors_or_dummy(raw_band.projectors)
+    return projectors.read(selection, raw_band.projections)
 
 
 def _shift_bands_by_fermi_energy(raw_band):
     if _spin_polarized(raw_band):
         return {
-            "up": raw_band.eigenvalues[0] - raw_band.fermi_energy,
-            "down": raw_band.eigenvalues[1] - raw_band.fermi_energy,
+            "bands_up": raw_band.eigenvalues[0] - raw_band.fermi_energy,
+            "bands_down": raw_band.eigenvalues[1] - raw_band.fermi_energy,
         }
     else:
         return {"bands": raw_band.eigenvalues[0] - raw_band.fermi_energy}
 
 
+def _read_occupations(raw_band):
+    if _spin_polarized(raw_band):
+        return {
+            "occupations_up": raw_band.occupations[0],
+            "occupations_down": raw_band.occupations[1],
+        }
+    else:
+        return {"occupations": raw_band.occupations[0]}
+
+
 def _band_structure(raw_band, selection, width):
     bands = _shift_bands_by_fermi_energy(raw_band)
-    projections = _projectors(raw_band).read(selection, raw_band.projections)
+    projections = _read_projections(raw_band, selection)
     if len(projections) == 0:
         return _regular_band_structure(raw_band, bands)
     else:
@@ -141,6 +161,7 @@ def _fat_band_structure(raw_band, bands, projections, width):
 
 def _fat_band(raw_band, args, width):
     (key, lines), (name, projection) = args
+    key = key.lstrip("bands_")
     if _spin_polarized(raw_band) and not key in name:
         return None
     kdists = _kpoints(raw_band).distances()
@@ -211,3 +232,40 @@ def _edge_of_line(raw_band):
     edge_of_line = (indices + 1) % _kpoints(raw_band).line_length() == 0
     edge_of_line[0] = True
     return edge_of_line
+
+
+def _setup_dataframe_index(raw_band):
+    return [
+        _index_string(kpoint, band)
+        for kpoint in raw_band.kpoints.coordinates
+        for band in range(raw_band.eigenvalues.shape[2])
+    ]
+
+
+def _index_string(kpoint, band):
+    if band == 0:
+        return np.array2string(kpoint, formatter={"float": lambda x: f"{x:.2f}"}) + " 1"
+    else:
+        return str(band + 1)
+
+
+def _extract_relevant_data(raw_band, selection):
+    relevant_keys = (
+        "bands",
+        "bands_up",
+        "bands_down",
+        "occupations",
+        "occupations_up",
+        "occupations_down",
+    )
+    data = {}
+    for key, value in _to_dict(raw_band).items():
+        if key in relevant_keys:
+            data[key] = _to_series(value)
+    for key, value in _read_projections(raw_band, selection).items():
+        data[key] = _to_series(value)
+    return data
+
+
+def _to_series(array):
+    return array.T.flatten()

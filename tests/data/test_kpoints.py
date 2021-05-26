@@ -93,6 +93,19 @@ def test_labels(raw_kpoints):
     assert actual == ref
 
 
+def test_labels_without_data(raw_kpoints):
+    actual = Kpoints(raw_kpoints).labels()
+    assert actual is None
+    set_line_mode(raw_kpoints)
+    actual = Kpoints(raw_kpoints).labels()
+    ref = [""] * len(raw_kpoints.coordinates)
+    dists = Kpoints(raw_kpoints).distances()
+    dist_strings = [f"{dist:.2g}" for dist in dists]
+    ref[:: raw_kpoints.number] = dist_strings[:: raw_kpoints.number]
+    ref[-1] = dist_strings[-1]
+    assert actual == ref
+
+
 def test_distances_nontrivial_cell(raw_kpoints, Assert):
     cell = RawCell(
         version=current_vasp_version,
