@@ -96,6 +96,20 @@ def _to_plotly(raw_band, selection=None, width=0.5):
     return go.Figure(data=data, layout=default)
 
 
+@_util.add_doc(
+    f"""Read the data into a DataFrame.
+
+Parameters
+----------
+{_selection_doc}
+
+Returns
+-------
+pd.DataFrame
+    Contains the eigenvalues and corresponding occupations for all k-points and
+    bands. If a selection string is given, in addition the orbital projections
+    on these bands are returned."""
+)
 def _to_frame(raw_band, selection=None):
     index = _setup_dataframe_index(raw_band)
     data = _extract_relevant_data(raw_band, selection)
