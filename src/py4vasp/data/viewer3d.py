@@ -1,5 +1,6 @@
 from typing import NamedTuple
 import py4vasp.exceptions as exception
+import collections
 import nglview
 import mrcfile
 import numpy as np
@@ -35,7 +36,7 @@ class Viewer3d:
     _positions = None
     _lengths = None
     _angles = None
-    _multiple_cells = 1
+    _number_cells = 1
     _axes = None
     _arrows = []
 
@@ -61,9 +62,17 @@ class Viewer3d:
         res._lengths = tuple(ase.cell.lengths())
         res._angles = tuple(ase.cell.angles())
         res._positions = ase.positions
-        if supercell is not None:
-            res._multiple_cells = np.prod(supercell)
+        res._number_cells = res._calculate_number_cells(supercell)
         return res
+
+    def _calculate_number_cells(self, supercell):
+        if isinstance(supercell, collections.Iterable):
+            return np.prod(supercell)
+        if isinstance(supercell, int):
+            return supercell ** 3
+        if isinstance(supercell, float) and supercell.is_integer():
+            return supercell ** 3
+        return 1
 
     @classmethod
     def from_trajectory(cls, trajectory):
@@ -126,7 +135,7 @@ class Viewer3d:
         """
         if self._positions is None:
             raise exception.RefinementError("Positions of atoms are not known.")
-        arrows = np.repeat(arrows, self._multiple_cells, axis=0)
+        arrows = np.repeat(arrows, self._number_cells, axis=0)
         for tail, arrow in zip(self._positions, arrows):
             tip = tail + arrow
             arrow = _Arrow3d(tail, tip, color)
