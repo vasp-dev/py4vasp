@@ -18,26 +18,32 @@ def reference_energy():
 
 
 def test_read_energy(reference_energy, Assert):
-    conv = Energy(reference_energy)
-    dict_ = conv.read()
+    energy = Energy(reference_energy)
+    dict_ = energy.read()
     assert len(dict_) == 1
     label, data = dict_.popitem()
     assert label == reference_energy.labels[0].decode().strip()
     Assert.allclose(data, reference_energy.values[:, 0])
-    label, data = conv.read("temperature").popitem()
+    label, data = energy.read("temperature").popitem()
     assert label == reference_energy.labels[1].decode().strip()
     Assert.allclose(data, reference_energy.values[:, 1])
 
 
 def test_plot_energy(reference_energy, Assert):
-    conv = Energy(reference_energy)
-    fig = conv.plot()
+    energy = Energy(reference_energy)
+    fig = energy.plot()
     assert fig.layout.xaxis.title.text == "Step"
     assert fig.layout.yaxis.title.text == "Energy (eV)"
     Assert.allclose(fig.data[0].y, reference_energy.values[:, 0])
-    fig = conv.plot("temperature")
+    fig = energy.plot("temperature")
     assert fig.layout.yaxis.title.text == "Temperature (K)"
     Assert.allclose(fig.data[0].y, reference_energy.values[:, 1])
+
+
+def test_final_energy(reference_energy, Assert):
+    energy = Energy(reference_energy)
+    Assert.allclose(energy.final(), reference_energy.values[-1, 0])
+    Assert.allclose(energy.final("temperature"), reference_energy.values[-1, 1])
 
 
 def test_energy_from_file(reference_energy, mock_file, check_read):
@@ -74,5 +80,9 @@ def test_version(reference_energy):
 
 def test_descriptor(reference_energy, check_descriptors):
     energy = Energy(reference_energy)
-    descriptors = {"_to_dict": ["to_dict", "read"], "_to_plotly": ["to_plotly", "plot"]}
+    descriptors = {
+        "_to_dict": ["to_dict", "read"],
+        "_to_plotly": ["to_plotly", "plot"],
+        "_final": ["final"],
+    }
     check_descriptors(energy, descriptors)
