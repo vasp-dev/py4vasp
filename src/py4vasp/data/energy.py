@@ -1,5 +1,7 @@
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import functools
+import numpy as np
 from py4vasp.data import _util
 from py4vasp.data._base import DataBase, RefinementDescriptor
 import py4vasp.exceptions as exception
@@ -40,19 +42,19 @@ def _to_dict(raw_energy, selection=None):
     Parameters
     ----------
     selection : str or None
-        String specifying the label of the energy to be read. A substring
+        String specifying the labels of the energy to be read. A substring
         of the label is sufficient. If no energy is select this will default
-        to the total energy.
+        to the total energy. Separate distinct labels by commas.
 
     Returns
     -------
     dict
-        Contains the exact label corresponding to the selection and the
-        associated energy for every ionic step.
+        Contains the exact labels corresponding to the selection and the
+        associated energies for every ionic step.
     """
-    index = _find_selection_index(raw_energy, selection)
-    label = _util.decode_if_possible(raw_energy.labels[index]).strip()
-    return {label: raw_energy.values[:, index]}
+    indices = _find_selection_indices(raw_energy, selection)
+    get_label = lambda index: _util.decode_if_possible(raw_energy.labels[index]).strip()
+    return {get_label(index): raw_energy.values[:, index] for index in indices}
 
 
 def _to_plotly(raw_energy, selection=None):
@@ -61,23 +63,25 @@ def _to_plotly(raw_energy, selection=None):
     Parameters
     ----------
     selection : str or None
-        String specifying the label of the energy to be plotted. A substring
+        String specifying the labels of the energy to be plotted. A substring
         of the label is sufficient. If no energy is select this will default
-        to the total energy.
+        to the total energy. Separate distinct labels by commas.
 
     Returns
     -------
     plotly.graph_objects.Figure
-        plotly figure containing the selected energy for every ionic step.
+        plotly figure containing the selected energies for every ionic step.
     """
-    label, data = _to_dict(raw_energy, selection).popitem()
-    label = "Temperature (K)" if "TEIN" in label else "Energy (eV)"
-    data = go.Scatter(y=data)
-    default = {
-        "xaxis": {"title": {"text": "Step"}},
-        "yaxis": {"title": {"text": label}},
-    }
-    return go.Figure(data=data, layout=default)
+    dict_ = _to_dict(raw_energy, selection)
+    figure = _create_yaxes(dict_)
+    figure.layout.xaxis.title.text = "Step"
+    use_secondary = lambda label: _is_temperature(label) and len(dict_) > 1
+    for label, data in dict_.items():
+        steps = np.arange(len(data)) + 1
+        short_label = label[:14].strip()
+        options = {"secondary_y": True} if use_secondary(label) else {}
+        figure.add_trace(go.Scatter(x=steps, y=data, name=short_label), **options)
+    return figure
 
 
 def _final(raw_energy, selection=None):
@@ -86,21 +90,38 @@ def _final(raw_energy, selection=None):
     Parameters
     ----------
     selection : str or None
-        String specifying the label of the energy to be read. A substring
+        String specifying the labels of the energy to be read. A substring
         of the label is sufficient. If no energy is select this will default
-        to the total energy.
+        to the total energy. Separate distinct labels by commas.
 
     Returns
     -------
-    float
-        Contains energy associated with the selection for the final ionic step.
+    float or np.ndarray
+        Contains energies associated with the selection for the final ionic step.
+        When only a single quantity is inquired, result is a float otherwise an array.
     """
-    index = _find_selection_index(raw_energy, selection)
-    return raw_energy.values[-1, index]
+    indices = np.array(_find_selection_indices(raw_energy, selection))
+    if len(indices) == 1:
+        return raw_energy.values[-1, indices[0]]
+    else:
+        return raw_energy.values[-1, indices]
+
+
+def _find_selection_indices(raw_energy, selection):
+    selection_parts = _actual_or_default_selection(selection)
+    return [_find_selection_index(raw_energy, part) for part in selection_parts]
+
+
+def _actual_or_default_selection(selection):
+    if selection is not None:
+        error_message = "Energy selection must be a string."
+        _util.raise_error_if_not_string(selection, error_message)
+        return (part.strip() for part in selection.split(","))
+    else:
+        return ("TOTEN",)
 
 
 def _find_selection_index(raw_energy, selection):
-    selection = _actual_or_default_selection(selection)
     for index, label in enumerate(raw_energy.labels):
         label = _util.decode_if_possible(label).strip()
         if selection in label:
@@ -111,10 +132,24 @@ def _find_selection_index(raw_energy, selection):
     )
 
 
-def _actual_or_default_selection(selection):
-    if selection is not None:
-        error_message = "Energy selection must be a string."
-        _util.raise_error_if_not_string(selection, error_message)
-        return selection
+def _create_yaxes(dict_):
+    secondary_axis = any(_is_temperature(label) for label in dict_) and len(dict_) > 1
+    if secondary_axis:
+        figure = make_subplots(specs=[[{"secondary_y": True}]])
+        _set_yaxis_text(figure.layout.yaxis, is_temperature=False)
+        _set_yaxis_text(figure.layout.yaxis2, is_temperature=True)
     else:
-        return "TOTEN"
+        figure = go.Figure()
+        _set_yaxis_text(figure.layout.yaxis, _is_temperature(list(dict_.keys())[0]))
+    return figure
+
+
+def _is_temperature(label):
+    return "temperature" in label
+
+
+def _set_yaxis_text(yaxis, is_temperature):
+    if is_temperature:
+        yaxis.title.text = "Temperature (K)"
+    else:
+        yaxis.title.text = "Energy (eV)"
