@@ -2,6 +2,7 @@ from py4vasp.data import _util
 from py4vasp.data._base import DataBase, RefinementDescriptor
 import py4vasp.exceptions as exception
 import functools
+from fractions import Fraction
 import numpy as np
 
 
@@ -117,33 +118,47 @@ def _mode(raw_kpoints):
 
 def _labels(raw_kpoints):
     "Get any labels given in the input file for specific **k** points."
-    fortran_indices = _raw_indices(raw_kpoints)
-    if fortran_indices is None:
+    if raw_kpoints.label_indices is not None:
+        return _labels_from_file(raw_kpoints)
+    elif _mode(raw_kpoints) == "line":
+        return _labels_at_band_edges(raw_kpoints)
+    else:
         return None
-    python_indices = np.array(fortran_indices) - 1
+
+
+def _labels_from_file(raw_kpoints):
     labels = [""] * len(raw_kpoints.coordinates)
-    for label, index in zip(_raw_labels(raw_kpoints), python_indices):
-        labels[index] = label
+    for label, index in zip(raw_kpoints.labels, _raw_indices(raw_kpoints)):
+        labels[index] = _util.decode_if_possible(label.strip())
     return labels
 
 
-def _raw_labels(raw_kpoints):
-    if raw_kpoints.labels is not None:
-        return (_util.decode_if_possible(label.strip()) for label in raw_kpoints.labels)
-    else:
-        distances = [f"{distance:.2g}" for distance in _distances(raw_kpoints)]
-        return distances[:: _line_length(raw_kpoints)] + [distances[-1]]
-
-
 def _raw_indices(raw_kpoints):
-    indices = raw_kpoints.label_indices
-    line_length = _line_length(raw_kpoints)
-    if _mode(raw_kpoints) != "line":
-        return indices
-    elif indices is not None:
-        indices = np.array(indices)
-        return line_length * (indices // 2) + indices % 2
+    indices = np.array(raw_kpoints.label_indices)
+    if _mode(raw_kpoints) == "line":
+        line_length = _line_length(raw_kpoints)
+        return line_length * (indices // 2) - (indices + 1) % 2
     else:
-        indices = np.arange(len(raw_kpoints.coordinates) + 1, step=line_length)
-        indices[:-1] += 1  # convert to Fortran index
-        return indices
+        return indices - 1  # convert from Fortran to Python indices
+
+
+def _labels_at_band_edges(raw_kpoints):
+    line_length = _line_length(raw_kpoints)
+    band_edge = lambda index: not (0 < index % line_length < line_length - 1)
+    return [
+        _kpoint_label(kpoint) if band_edge(index) else ""
+        for index, kpoint in enumerate(raw_kpoints.coordinates)
+    ]
+
+
+def _kpoint_label(kpoint):
+    fractions = [_to_latex(coordinate) for coordinate in kpoint]
+    return f"$[{fractions[0]} {fractions[1]} {fractions[2]}]$"
+
+
+def _to_latex(float):
+    fraction = Fraction.from_float(float).limit_denominator()
+    if fraction.denominator == 1:
+        return str(fraction.numerator)
+    else:
+        return f"\\frac{{{fraction.numerator}}}{{{fraction.denominator}}}"

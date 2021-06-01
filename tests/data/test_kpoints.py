@@ -82,14 +82,15 @@ def test_labels(raw_kpoints):
     ref[13] = "C"
     assert actual == ref
     set_line_mode(raw_kpoints)
-    raw_kpoints.labels = ["W", "X", " Y ", "Z"]
-    raw_kpoints.label_indices = [1, 2, 3, 6]
+    raw_kpoints.labels = ["K", "X", " W ", "L", r"$\Gamma$"]
+    raw_kpoints.label_indices = [1, 5, 6, 7, 8]
     actual = Kpoints(raw_kpoints).labels()
     ref = [""] * len(raw_kpoints.coordinates)
-    ref[0] = "W"
-    ref[raw_kpoints.number - 1] = "X"
-    ref[raw_kpoints.number] = "Y"
-    ref[3 * raw_kpoints.number - 1] = "Z"
+    ref[0] = "K"
+    ref[2 * raw_kpoints.number] = "X"
+    ref[3 * raw_kpoints.number - 1] = "W"
+    ref[3 * raw_kpoints.number] = "L"
+    ref[4 * raw_kpoints.number - 1] = r"$\Gamma$"
     assert actual == ref
 
 
@@ -99,10 +100,14 @@ def test_labels_without_data(raw_kpoints):
     set_line_mode(raw_kpoints)
     actual = Kpoints(raw_kpoints).labels()
     ref = [""] * len(raw_kpoints.coordinates)
-    dists = Kpoints(raw_kpoints).distances()
-    dist_strings = [f"{dist:.2g}" for dist in dists]
-    ref[:: raw_kpoints.number] = dist_strings[:: raw_kpoints.number]
-    ref[-1] = dist_strings[-1]
+    ref[0] = r"$[\frac{3}{8} \frac{3}{8} \frac{3}{4}]$"
+    ref[4] = r"$[0 0 0]$"
+    ref[5] = r"$[0 0 0]$"
+    ref[9] = r"$[\frac{1}{2} 0 \frac{1}{2}]$"
+    ref[10] = r"$[\frac{1}{2} 0 \frac{1}{2}]$"
+    ref[14] = r"$[\frac{1}{2} \frac{1}{4} \frac{3}{4}]$"
+    ref[15] = r"$[\frac{1}{2} \frac{1}{2} \frac{1}{2}]$"
+    ref[19] = r"$[0 0 0]$"
     assert actual == ref
 
 
@@ -137,6 +142,19 @@ def test_distances_lines(raw_kpoints, Assert):
 def set_line_mode(kpoints):
     kpoints.mode = "line"
     kpoints.number = 5
+    K = [0.375, 0.375, 0.75]
+    GM = [0, 0, 0]
+    X = [0.5, 0, 0.5]
+    W = [0.5, 0.25, 0.75]
+    L = [0.5, 0.5, 0.5]
+    kpoints.coordinates = np.concatenate(
+        (
+            np.linspace(K, GM, kpoints.number),
+            np.linspace(GM, X, kpoints.number),
+            np.linspace(X, W, kpoints.number),
+            np.linspace(L, GM, kpoints.number),
+        )
+    )
 
 
 def test_print(raw_kpoints):

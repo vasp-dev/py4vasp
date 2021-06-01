@@ -211,7 +211,8 @@ def _ticks_and_labels(raw_band):
         previous_tick = current[-2]
         if tick == previous_tick:
             previous_label = current[-1]
-            label = previous_label + "|" + label if previous_label else label
+            if previous_label != "" and previous_label != label:
+                label = previous_label + "|" + label
             return current[:-1] + (label,)
         else:
             return current + item

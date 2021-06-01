@@ -183,7 +183,13 @@ def line_without_labels(raw_band):
 def test_line_without_labels_plot(line_without_labels, Assert):
     fig = Band(line_without_labels).plot()
     check_ticks(fig, line_without_labels, Assert)
-    default_labels = tuple(filter(None, Kpoints(line_without_labels.kpoints).labels()))
+    default_labels = (
+        "$[\\frac{1}{2} \\frac{1}{2} \\frac{1}{2}]$",
+        "$[1 0 0]$|$[0 1 0]$",
+        "$[0 0 0]$",
+        "$[1 0 0]$",
+        "$[\\frac{1}{2} \\frac{1}{2} 0]$",
+    )
     assert fig.layout.xaxis.ticktext == default_labels
 
 
