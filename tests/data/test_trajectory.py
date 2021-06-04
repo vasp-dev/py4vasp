@@ -2,7 +2,9 @@ from py4vasp.data import Trajectory, Topology, _util
 from py4vasp.raw import RawTrajectory, RawTopology, RawVersion
 from .test_topology import raw_topology
 from . import current_vasp_version
+from unittest.mock import patch
 import py4vasp.exceptions as exception
+import py4vasp.data as data
 import pytest
 import numpy as np
 
@@ -43,6 +45,16 @@ def test_to_mdtraj(raw_trajectory, Assert):
     Assert.allclose(trajectory.xyz * pm_to_A, raw_trajectory.positions)
     test_cells = trajectory.unitcell_vectors * pm_to_A
     Assert.allclose(test_cells, raw_trajectory.lattice_vectors)
+
+
+def test_plot(raw_trajectory):
+    cm_init = patch.object(data.Viewer3d, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(data.Viewer3d, "show_cell")
+    with cm_init as init, cm_cell as cell:
+        trajectory = Trajectory(raw_trajectory)
+        trajectory.plot()
+        init.assert_called_once()
+        cell.assert_called_once()
 
 
 def test_triclinic_cell(raw_trajectory, Assert):
@@ -126,4 +138,15 @@ Direct<br>
 def test_version(raw_trajectory):
     raw_trajectory.version = RawVersion(_util._minimal_vasp_version.major - 1)
     with pytest.raises(exception.OutdatedVaspVersion):
-        Trajectory(raw_trajectory)
+        Trajectory(raw_trajectory).read()
+
+
+def test_descriptor(raw_trajectory, check_descriptors):
+    trajectory = Trajectory(raw_trajectory)
+    descriptors = {
+        "_to_dict": ["to_dict", "read"],
+        "_to_viewer3d": ["to_viewer3d", "plot"],
+        "_to_structure": ["to_structure"],
+        "_to_mdtraj": ["to_mdtraj"],
+    }
+    check_descriptors(trajectory, descriptors)

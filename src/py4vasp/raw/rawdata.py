@@ -160,6 +160,8 @@ class RawBand:
     "**k** points at which the bands are calculated."
     eigenvalues: np.ndarray
     "Calculated eigenvalues at the **k** points."
+    occupations: np.ndarray
+    "The occupations of the different bands."
     projections: np.ndarray = None
     "If present, orbital projections of the bands."
     projectors: RawProjectors = None

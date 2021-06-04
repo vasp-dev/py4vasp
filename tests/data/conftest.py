@@ -1,6 +1,7 @@
 from numpy.testing import assert_array_almost_equal_nulp
 from contextlib import contextmanager
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
+from pathlib import Path
 import pytest
 import py4vasp.raw as raw
 
@@ -32,43 +33,81 @@ def mock_file():
 @pytest.fixture
 def check_read():
     def _check_read(cls, mocks, ref, default_filename=None):
-        ref = cls(ref)
         _check_read_from_open_file(cls, mocks, ref)
         _check_read_from_default_file(cls, mocks, ref, default_filename)
         _check_read_from_filename(cls, mocks, ref)
+        _check_read_from_path(cls, mocks, ref, default_filename)
 
     def _check_read_from_open_file(cls, mocks, ref):
         with raw.File() as file:
-            _reset_mocks(mocks)
-            with cls.from_file(file) as actual:
-                assert actual._raw == ref._raw
-            mocks["init"].assert_not_called()
-            mocks["sut"].assert_called_once()
-            mocks["close"].assert_not_called()
+            obj = _create_obj(cls, file, _assert_not_called, mocks)
+            _check_raw_data(obj, ref, _assert_only_sut, mocks)
 
     def _check_read_from_default_file(cls, mocks, ref, default_filename):
-        _reset_mocks(mocks)
-        with cls.from_file() as actual:
-            assert actual._raw == ref._raw
-        mocks["init"].assert_called_once()
-        mocks["sut"].assert_called_once()
-        mocks["close"].assert_called_once()
-        args, _ = mocks["init"].call_args
-        assert args[1] == default_filename
+        obj = _create_obj(cls, None, _assert_not_called, mocks)
+        _check_raw_data(obj, ref, _assert_all_called, mocks)
+        assert _first_init_arg(mocks) == default_filename
 
     def _check_read_from_filename(cls, mocks, ref):
-        _reset_mocks(mocks)
         filename = "user_selected_file"
-        with cls.from_file(filename) as actual:
-            assert actual._raw == ref._raw
+        obj = _create_obj(cls, filename, _assert_not_called, mocks)
+        _check_raw_data(obj, ref, _assert_all_called, mocks)
+        assert _first_init_arg(mocks) == filename
+
+    def _check_read_from_path(cls, mocks, ref, default_filename):
+        path = Path.cwd()
+        obj = _create_obj(cls, path, _assert_not_called, mocks)
+        _check_raw_data(obj, ref, _assert_all_called, mocks)
+        if default_filename is None:
+            assert _first_init_arg(mocks) == path
+        else:
+            assert _first_init_arg(mocks) == path / default_filename
+
+    def _create_obj(cls, file, assertion, mocks):
+        _reset_mocks(mocks)
+        obj = cls.from_file(file)
+        assertion(mocks)
+        return obj
+
+    def _check_raw_data(obj, ref, assertion, mocks):
+        _reset_mocks(mocks)
+        with obj._raw_data_from_context() as actual:
+            assert actual == ref
+        assertion(mocks)
+
+    def _assert_not_called(mocks):
+        mocks["init"].assert_not_called()
+        mocks["sut"].assert_not_called()
+        mocks["close"].assert_not_called()
+
+    def _assert_only_sut(mocks):
+        mocks["init"].assert_not_called()
+        mocks["sut"].assert_called_once()
+        mocks["close"].assert_not_called()
+
+    def _assert_all_called(mocks):
         mocks["init"].assert_called_once()
         mocks["sut"].assert_called_once()
         mocks["close"].assert_called_once()
+
+    def _first_init_arg(mocks):
         args, _ = mocks["init"].call_args
-        assert args[1] == filename
+        return args[1]
 
     def _reset_mocks(mocks):
         for mock in mocks.values():
             mock.reset_mock()
 
     return _check_read
+
+
+@pytest.fixture
+def check_descriptors():
+    def _check_descriptors(instance, descriptors):
+        for private_name, public_names in descriptors.items():
+            fullname = f"{instance.__module__}.{private_name}"
+            with patch(fullname, return_value=private_name):
+                for public_name in public_names:
+                    assert private_name == getattr(instance, public_name)()
+
+    return _check_descriptors

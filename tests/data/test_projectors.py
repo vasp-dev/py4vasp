@@ -247,9 +247,9 @@ def test_print(without_spin):
     actual, _ = _util.format_(Projectors(without_spin))
     reference = """
 projectors:
-   atoms: Sr, Ti, O
-   orbitals: s, py, pz, px, dxy, dyz, dz2, dxz, x2-y2, fy3x2, fxyz, fyz2, fz3, fxz2, fzx2, fx3
-   """.strip()
+    atoms: Sr, Ti, O
+    orbitals: s, py, pz, px, dxy, dyz, dz2, dxz, x2-y2, fy3x2, fxyz, fyz2, fz3, fxz2, fzx2, fx3
+    """.strip()
     assert actual == {"text/plain": reference}
 
 
@@ -276,7 +276,7 @@ def test_incorrect_selection(without_spin):
 
 def test_nonexisting_projectors():
     with pytest.raises(exception.NoData):
-        projectors = Projectors(None)
+        projectors = Projectors(None).read()
 
 
 def test_incorrect_reading_of_projections(without_spin):
@@ -290,4 +290,14 @@ def test_incorrect_reading_of_projections(without_spin):
 def test_version(without_spin):
     without_spin.version = RawVersion(_util._minimal_vasp_version.major - 1)
     with pytest.raises(exception.OutdatedVaspVersion):
-        Projectors(without_spin)
+        Projectors(without_spin).read()
+
+
+def test_descriptor(without_spin, check_descriptors):
+    projectors = Projectors(without_spin)
+    descriptors = {
+        "_to_dict": ["to_dict", "read"],
+        "_select": ["select"],
+        "_parse_selection": ["parse_selection"],
+    }
+    check_descriptors(projectors, descriptors)
