@@ -1,6 +1,6 @@
 from py4vasp.data import Energy, _util
+from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import RawEnergy, RawVersion
-from . import current_vasp_version
 import pytest
 import numpy as np
 import py4vasp.exceptions as exception
@@ -96,8 +96,8 @@ def test_incorrect_label(reference_energy):
         energy.plot(number_instead_of_string)
 
 
-def test_version(reference_energy):
-    reference_energy.version = RawVersion(_util._minimal_vasp_version.major - 1)
+def test_version(reference_energy, outdated_version):
+    reference_energy.version = outdated_version
     with pytest.raises(exception.OutdatedVaspVersion):
         Energy(reference_energy).read()
 

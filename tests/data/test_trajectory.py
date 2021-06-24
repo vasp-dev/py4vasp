@@ -1,7 +1,7 @@
 from py4vasp.data import Trajectory, Topology, _util
+from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import RawTrajectory, RawTopology, RawVersion
 from .test_topology import raw_topology
-from . import current_vasp_version
 from unittest.mock import patch
 import py4vasp.exceptions as exception
 import py4vasp.data as data
@@ -135,8 +135,8 @@ Direct<br>
     assert actual == {"text/plain": ref_plain, "text/html": ref_html}
 
 
-def test_version(raw_trajectory):
-    raw_trajectory.version = RawVersion(_util._minimal_vasp_version.major - 1)
+def test_version(raw_trajectory, outdated_version):
+    raw_trajectory.version = outdated_version
     with pytest.raises(exception.OutdatedVaspVersion):
         Trajectory(raw_trajectory).read()
 

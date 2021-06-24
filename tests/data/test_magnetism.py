@@ -1,7 +1,7 @@
 from py4vasp.data import Magnetism, _util
+from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import RawMagnetism, RawVersion
 from .test_topology import raw_topology
-from . import current_vasp_version
 import py4vasp.exceptions as exception
 import numpy as np
 import pytest
@@ -148,8 +148,8 @@ def test_incorrect_argument(raw_magnetism, noncollinear_magnetism):
             magnetism.total_charges(out_of_bounds)
 
 
-def test_version(raw_magnetism):
-    raw_magnetism.version = RawVersion(_util._minimal_vasp_version.major - 1)
+def test_version(raw_magnetism, outdated_version):
+    raw_magnetism.version = outdated_version
     with pytest.raises(exception.OutdatedVaspVersion):
         Magnetism(raw_magnetism).read()
 

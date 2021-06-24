@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 import pytest
+import py4vasp.data._util as _util
 import py4vasp.raw as raw
 
 
@@ -111,3 +112,8 @@ def check_descriptors():
                     assert private_name == getattr(instance, public_name)()
 
     return _check_descriptors
+
+
+@pytest.fixture
+def outdated_version():
+    return raw.RawVersion(_util.minimal_vasp_version.major - 1)

@@ -1,7 +1,7 @@
 from py4vasp.data import Band, Kpoints, Projectors, _util
+from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import *
 from IPython.lib.pretty import pretty
-from . import current_vasp_version
 import py4vasp.exceptions as exception
 import pytest
 import numpy as np
@@ -412,8 +412,8 @@ def test_incorrect_width(raw_projections):
         Band(raw_projections).plot("Si", width="not a number")
 
 
-def test_version(raw_band):
-    raw_band.version = RawVersion(_util._minimal_vasp_version.major - 1)
+def test_version(raw_band, outdated_version):
+    raw_band.version = outdated_version
     with pytest.raises(exception.OutdatedVaspVersion):
         Band(raw_band).read()
 

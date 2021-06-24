@@ -1,6 +1,6 @@
 from py4vasp.data import Kpoints, _util
+from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import RawKpoints, RawVersion, RawCell
-from . import current_vasp_version
 import py4vasp.exceptions as exception
 import pytest
 import numpy as np
@@ -187,8 +187,8 @@ reciprocal
     assert actual == {"text/plain": reference}
 
 
-def test_version(raw_kpoints):
-    raw_kpoints.version = RawVersion(_util._minimal_vasp_version.major - 1)
+def test_version(raw_kpoints, outdated_version):
+    raw_kpoints.version = outdated_version
     with pytest.raises(exception.OutdatedVaspVersion):
         Kpoints(raw_kpoints).read()
 

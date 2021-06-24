@@ -1,0 +1,29 @@
+from py4vasp.control._base import InputBase
+from py4vasp.data import Structure
+
+
+class POSCAR(InputBase):
+    """The POSCAR file defining the structure used in the VASP calculation.
+
+    Parameters
+    ----------
+    path : str or Path
+        Defines where the POSCAR file is stored. If set to None, the file will be kept
+        in memory.
+    """
+
+    def plot(self, *args, **kwargs):
+        """Generate a 3d representation of the structure in the file.
+
+        Parameters
+        ----------
+        supercell : int or np.ndarray
+            If present the structure is replicated the specified number of times
+            along each direction.
+
+        Returns
+        -------
+        Viewer3d
+            Visualize the structure as a 3d figure.
+        """
+        return Structure.from_POSCAR(self).plot(*args, **kwargs)

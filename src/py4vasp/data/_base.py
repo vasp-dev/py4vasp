@@ -4,7 +4,7 @@ import importlib
 import pathlib
 import py4vasp.raw as raw
 import py4vasp.exceptions as exception
-from py4vasp.data._util import _minimal_vasp_version
+from py4vasp.data._util import minimal_vasp_version
 
 
 class DataBase:
@@ -86,11 +86,11 @@ def raise_error_if_data_is_missing(raw_data, error_message):
 
 
 def raise_error_if_version_is_outdated(raw_data):
-    if raw_data.version < _minimal_vasp_version:
+    if raw_data.version < minimal_vasp_version:
         raise exception.OutdatedVaspVersion(
             "To use py4vasp features, you need at least Vasp version "
-            f"{_minimal_vasp_version.major}.{_minimal_vasp_version.minor}."
-            f"{_minimal_vasp_version.patch}. The used version is "
+            f"{minimal_vasp_version.major}.{minimal_vasp_version.minor}."
+            f"{minimal_vasp_version.patch}. The used version is "
             f"{raw_data.version.major}.{raw_data.version.minor}."
             f"{raw_data.version.patch}. Please use a newer version of Vasp."
         )

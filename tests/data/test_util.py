@@ -6,9 +6,9 @@ import pytest
 
 def test_requirement_decorator():
     class RawData:
-        version = _util._minimal_vasp_version
+        version = _util.minimal_vasp_version
 
-    @_util.require(RawVersion(_util._minimal_vasp_version.major + 1))
+    @_util.require(RawVersion(_util.minimal_vasp_version.major + 1))
     def function_with_requirement(raw_data):
         pass
 

@@ -1,9 +1,12 @@
 from py4vasp.data import _util, Viewer3d, Topology, Magnetism
 from py4vasp.data._base import DataBase, RefinementDescriptor
 from IPython.lib.pretty import pretty
+from collections import Counter
 from dataclasses import dataclass
 import py4vasp.exceptions as exception
-import ase
+import py4vasp.raw as raw
+import ase.io
+import io
 import numpy as np
 import functools
 
@@ -28,10 +31,26 @@ class Structure(DataBase):
     plot = RefinementDescriptor("_to_viewer3d")
     to_viewer3d = RefinementDescriptor("_to_viewer3d")
     to_ase = RefinementDescriptor("_to_ase")
-    to_poscar = RefinementDescriptor("_to_string")
+    to_POSCAR = RefinementDescriptor("_to_string")
     __str__ = RefinementDescriptor("_to_string")
     _repr_html_ = RefinementDescriptor("_to_html")
     __len__ = RefinementDescriptor("_length")
+
+    @classmethod
+    def from_POSCAR(cls, poscar):
+        poscar = io.StringIO(str(poscar))
+        structure = ase.io.read(poscar, format="vasp")
+        return cls.from_ase(structure)
+
+    @classmethod
+    def from_ase(cls, structure):
+        structure = raw.RawStructure(
+            version=_util.current_vasp_version,
+            topology=_topology_from_ase(structure),
+            cell=_cell_from_ase(structure),
+            positions=structure.get_scaled_positions(),
+        )
+        return cls(structure)
 
 
 def _to_string(raw_struct):
@@ -187,3 +206,19 @@ def _max_length_moments(moments):
         return np.max(np.linalg.norm(moments, axis=1))
     else:
         return 0.0
+
+
+def _topology_from_ase(structure):
+    # TODO: this should be moved to Topology
+    ion_types_and_numbers = Counter(structure.get_chemical_symbols())
+    return raw.RawTopology(
+        version=_util.current_vasp_version,
+        number_ion_types=list(ion_types_and_numbers.values()),
+        ion_types=list(ion_types_and_numbers.keys()),
+    )
+
+
+def _cell_from_ase(structure):
+    return raw.RawCell(
+        version=_util.current_vasp_version, lattice_vectors=structure.get_cell()
+    )

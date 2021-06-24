@@ -1,6 +1,6 @@
 from py4vasp.data import Dos, _util
+from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import RawDos, RawVersion, RawTopology, RawProjectors
-from . import current_vasp_version
 import py4vasp.exceptions as exception
 import pytest
 import numpy as np
@@ -263,8 +263,8 @@ def test_nonexisting_dos():
         dos = Dos(None).read()
 
 
-def test_version(nonmagnetic_Dos):
-    nonmagnetic_Dos.version = RawVersion(_util._minimal_vasp_version.major - 1)
+def test_version(nonmagnetic_Dos, outdated_version):
+    nonmagnetic_Dos.version = outdated_version
     with pytest.raises(exception.OutdatedVaspVersion):
         Dos(nonmagnetic_Dos).read()
 

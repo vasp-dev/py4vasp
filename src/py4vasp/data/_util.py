@@ -48,7 +48,8 @@ class Selection(NamedTuple):
 
 
 format_ = DisplayFormatter().format
-_minimal_vasp_version = RawVersion(6, 2)
+minimal_vasp_version = RawVersion(6, 2)
+current_vasp_version = RawVersion(6, 2, 1)
 
 
 def require(version, err_msg=None):

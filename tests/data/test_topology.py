@@ -1,6 +1,6 @@
 from py4vasp.data import Topology, _util
+from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import RawTopology, RawVersion
-from . import current_vasp_version
 import py4vasp.exceptions as exception
 import pytest
 import numpy as np
@@ -89,8 +89,8 @@ def test_to_poscar(raw_topology):
         topology.to_poscar(None)
 
 
-def test_version(raw_topology):
-    raw_topology.version = RawVersion(_util._minimal_vasp_version.major - 1)
+def test_version(raw_topology, outdated_version):
+    raw_topology.version = outdated_version
     with pytest.raises(exception.OutdatedVaspVersion):
         Topology(raw_topology).read()
 

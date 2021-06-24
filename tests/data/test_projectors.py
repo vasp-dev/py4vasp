@@ -1,6 +1,6 @@
 from py4vasp.data import Projectors, Topology, _util
+from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import RawProjectors, RawTopology, RawVersion
-from . import current_vasp_version
 import py4vasp.exceptions as exception
 import pytest
 import numpy as np
@@ -287,8 +287,8 @@ def test_incorrect_reading_of_projections(without_spin):
         projectors.read("Sr", np.zeros(3))
 
 
-def test_version(without_spin):
-    without_spin.version = RawVersion(_util._minimal_vasp_version.major - 1)
+def test_version(without_spin, outdated_version):
+    without_spin.version = outdated_version
     with pytest.raises(exception.OutdatedVaspVersion):
         Projectors(without_spin).read()
 

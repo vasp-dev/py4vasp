@@ -1,5 +1,5 @@
 from py4vasp.data._base import DataBase, RefinementDescriptor
-from py4vasp.data._util import RawVersion, _minimal_vasp_version
+from py4vasp.data._util import RawVersion, minimal_vasp_version
 import py4vasp.exceptions as exception
 from unittest.mock import patch, MagicMock
 from pathlib import Path
@@ -13,7 +13,7 @@ import io
 @dataclass
 class RawData:
     data: str
-    version: RawVersion = _minimal_vasp_version
+    version: RawVersion = minimal_vasp_version
 
 
 class DataImpl(DataBase):
@@ -117,8 +117,8 @@ def test_base_print(MockFile):
 
 
 @patch("py4vasp.raw.File")
-def test_version(MockFile):
-    raw_data = RawData("version too old", RawVersion(_minimal_vasp_version.major - 1))
+def test_version(MockFile, outdated_version):
+    raw_data = RawData("version too old", outdated_version)
     with pytest.raises(exception.OutdatedVaspVersion):
         DataImpl(raw_data).get_raw_data()
     file = MockFile()

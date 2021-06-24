@@ -1,9 +1,9 @@
 from unittest.mock import patch
 from py4vasp.data import Density, _util
+from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import RawDensity
 from .test_structure import raw_structure
 from .test_topology import raw_topology
-from . import current_vasp_version
 import pytest
 import numpy as np
 import py4vasp.data as data

@@ -1,13 +1,32 @@
 from unittest.mock import patch
+from py4vasp.control import POSCAR
 from py4vasp.data import Structure, Magnetism, _util
+from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import RawStructure, RawCell, RawVersion
 from .test_topology import raw_topology
 from .test_magnetism import raw_magnetism, noncollinear_magnetism, charge_only
-from . import current_vasp_version
 import py4vasp.data as data
 import py4vasp.exceptions as exception
 import pytest
 import numpy as np
+
+REF_POSCAR = """
+Sr2TiO4
+1.0
+2.0 0.0 0.0
+0.0 2.0 0.0
+0.0 0.0 2.0
+Sr Ti O
+2 1 4
+Direct
+0.023809523809523808 0.07142857142857142 0.11904761904761904
+0.16666666666666666 0.21428571428571427 0.2619047619047619
+0.30952380952380953 0.35714285714285715 0.40476190476190477
+0.4523809523809524 0.5 0.5476190476190477
+0.5952380952380952 0.6428571428571429 0.6904761904761905
+0.7380952380952381 0.7857142857142857 0.8333333333333334
+0.8809523809523809 0.9285714285714286 0.9761904761904762
+""".strip()
 
 
 @pytest.fixture
@@ -33,11 +52,15 @@ def test_from_file(raw_structure, mock_file, check_read):
 
 
 def test_read(raw_structure, Assert):
-    actual = Structure(raw_structure).read()
-    Assert.allclose(actual["lattice_vectors"], raw_structure.actual_cell)
-    Assert.allclose(actual["positions"], raw_structure.positions)
-    assert actual["elements"] == raw_structure.topology.elements
-    assert "magnetic_moments" not in actual
+    structure = Structure(raw_structure).read()
+    check_default_structure(raw_structure, Assert, structure)
+
+
+def check_default_structure(raw_structure, Assert, structure):
+    Assert.allclose(structure["lattice_vectors"], raw_structure.actual_cell)
+    Assert.allclose(structure["positions"], raw_structure.positions)
+    assert structure["elements"] == raw_structure.topology.elements
+    assert "magnetic_moments" not in structure
 
 
 def test_to_ase(raw_structure, Assert):
@@ -166,23 +189,6 @@ def test_vanishing_moments(raw_magnetism, raw_structure, Assert):
 
 def test_print(raw_structure):
     actual, _ = _util.format_(Structure(raw_structure))
-    ref_plain = """
-Sr2TiO4
-1.0
-2.0 0.0 0.0
-0.0 2.0 0.0
-0.0 0.0 2.0
-Sr Ti O
-2 1 4
-Direct
-0.023809523809523808 0.07142857142857142 0.11904761904761904
-0.16666666666666666 0.21428571428571427 0.2619047619047619
-0.30952380952380953 0.35714285714285715 0.40476190476190477
-0.4523809523809524 0.5 0.5476190476190477
-0.5952380952380952 0.6428571428571429 0.6904761904761905
-0.7380952380952381 0.7857142857142857 0.8333333333333334
-0.8809523809523809 0.9285714285714286 0.9761904761904762
-    """.strip()
     ref_html = """
 Sr2TiO4<br>
 1.0<br>
@@ -203,13 +209,24 @@ Direct<br>
 <tr><td>0.7380952380952381</td><td>0.7857142857142857</td><td>0.8333333333333334</td></tr>
 <tr><td>0.8809523809523809</td><td>0.9285714285714286</td><td>0.9761904761904762</td></tr>
 </table>""".strip()
-    assert actual == {"text/plain": ref_plain, "text/html": ref_html}
+    assert actual == {"text/plain": REF_POSCAR, "text/html": ref_html}
 
 
-def test_version(raw_structure):
-    raw_structure.version = RawVersion(_util._minimal_vasp_version.major - 1)
+def test_version(raw_structure, outdated_version):
+    raw_structure.version = outdated_version
     with pytest.raises(exception.OutdatedVaspVersion):
         Structure(raw_structure).read()
+
+
+def test_from_poscar(raw_structure, Assert):
+    structure = Structure.from_POSCAR(REF_POSCAR).read()
+    check_default_structure(raw_structure, Assert, structure)
+
+
+def test_from_ase(raw_structure, Assert):
+    structure = Structure(raw_structure).to_ase()
+    structure = Structure.from_ase(structure).read()
+    check_default_structure(raw_structure, Assert, structure)
 
 
 def test_descriptor(raw_structure, check_descriptors):
@@ -217,7 +234,7 @@ def test_descriptor(raw_structure, check_descriptors):
     descriptors = {
         "_to_dict": ["to_dict", "read"],
         "_to_viewer3d": ["to_viewer3d", "plot"],
-        "_to_string": ["to_poscar"],
+        "_to_string": ["to_POSCAR"],
         "_to_ase": ["to_ase"],
     }
     check_descriptors(structure, descriptors)
