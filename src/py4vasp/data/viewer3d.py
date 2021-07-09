@@ -92,15 +92,15 @@ class Viewer3d:
         self._ngl._ipython_display_()
 
     def show_cell(self):
-        """ Show the unit cell of the crystal. """
+        """Show the unit cell of the crystal."""
         self._ngl.add_unitcell()
 
     def hide_cell(self):
-        """ Hide the unit cell of the crystal. """
+        """Hide the unit cell of the crystal."""
         self._ngl.remove_unitcell()
 
     def show_axes(self):
-        """ Show the cartesian axis in the corner of the figure. """
+        """Show the cartesian axis in the corner of the figure."""
         if self._axes is not None:
             return
         self._axes = (
@@ -110,7 +110,7 @@ class Viewer3d:
         )
 
     def hide_axes(self):
-        """ Hide the cartesian axis. """
+        """Hide the cartesian axis."""
         if self._axes is None:
             return
         for axis in self._axes:

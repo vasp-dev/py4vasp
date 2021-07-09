@@ -180,7 +180,7 @@ class File(AbstractContextManager):
         self._raise_error_if_closed()
         return RawKpoints(
             version=self.version(),
-            mode=self._h5f["input/kpoints/mode"][()],
+            mode=self._h5f["input/kpoints/mode"][()].decode(),
             number=self._h5f["input/kpoints/number_kpoints"][()],
             coordinates=self._h5f["results/electron_eigenvalues/kpoint_coords"],
             weights=self._h5f["results/electron_eigenvalues/kpoints_symmetry_weight"],

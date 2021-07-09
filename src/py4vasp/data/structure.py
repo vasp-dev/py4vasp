@@ -54,7 +54,7 @@ class Structure(DataBase):
 
 
 def _to_string(raw_struct):
-    " Generate a string representing this structure usable as a POSCAR file."
+    "Generate a string representing this structure usable as a POSCAR file."
     return _create_repr(raw_struct, format_=_Format())
 
 

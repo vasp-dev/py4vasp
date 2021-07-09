@@ -31,7 +31,6 @@ from .trajectory import Trajectory
 
 import plotly.io as pio
 import plotly.graph_objects as go
-import cufflinks as cf
 import inspect
 import sys
 
@@ -42,5 +41,3 @@ pio.templates["vasp"] = go.layout.Template(
     layout={"colorway": ["#4C265F", "#2FB5AB", "#2C68FC", "#A82C35", "#808080"]}
 )
 pio.templates.default = "ggplot2+vasp"
-cf.go_offline()
-cf.set_config_file(theme="ggplot")
