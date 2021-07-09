@@ -1,6 +1,7 @@
 from py4vasp.data import Energy, _util
 from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import RawEnergy, RawVersion
+from unittest.mock import patch
 import pytest
 import numpy as np
 import py4vasp.exceptions as exception
@@ -102,11 +103,22 @@ def test_version(reference_energy, outdated_version):
         Energy(reference_energy).read()
 
 
+def test_to_png(reference_energy):
+    energy = Energy(reference_energy)
+    filename = "image.png"
+    with patch("py4vasp.data.energy._to_plotly") as plot:
+        energy.to_png(filename, "args", key="word")
+        plot.assert_called_once_with(reference_energy, "args", key="word")
+        fig = plot.return_value
+        fig.write_image.assert_called_once_with(filename)
+
+
 def test_descriptor(reference_energy, check_descriptors):
     energy = Energy(reference_energy)
     descriptors = {
         "_to_dict": ["to_dict", "read"],
         "_to_plotly": ["to_plotly", "plot"],
+        "_to_png": ["to_png"],
         "_final": ["final"],
     }
     check_descriptors(energy, descriptors)

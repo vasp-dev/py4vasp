@@ -1,6 +1,7 @@
 from py4vasp.data import Dos, _util
 from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import RawDos, RawVersion, RawTopology, RawProjectors
+from unittest.mock import patch
 import py4vasp.exceptions as exception
 import pytest
 import numpy as np
@@ -269,11 +270,22 @@ def test_version(nonmagnetic_Dos, outdated_version):
         Dos(nonmagnetic_Dos).read()
 
 
+def test_to_png(nonmagnetic_Dos):
+    dos = Dos(nonmagnetic_Dos)
+    filename = "image.png"
+    with patch("py4vasp.data.dos._to_plotly") as plot:
+        dos.to_png(filename, "args", key="word")
+        plot.assert_called_once_with(nonmagnetic_Dos, "args", key="word")
+        fig = plot.return_value
+        fig.write_image.assert_called_once_with(filename)
+
+
 def test_descriptor(nonmagnetic_Dos, check_descriptors):
     dos = Dos(nonmagnetic_Dos)
     descriptors = {
         "_to_dict": ["to_dict", "read"],
         "_to_plotly": ["to_plotly", "plot"],
         "_to_frame": ["to_frame"],
+        "_to_png": ["to_png"],
     }
     check_descriptors(dos, descriptors)

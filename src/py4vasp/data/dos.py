@@ -31,6 +31,7 @@ class Dos(DataBase):
     plot = RefinementDescriptor("_to_plotly")
     to_plotly = RefinementDescriptor("_to_plotly")
     to_frame = RefinementDescriptor("_to_frame")
+    to_png = RefinementDescriptor("_to_png")
     __str__ = RefinementDescriptor("_to_string")
 
 
@@ -105,6 +106,20 @@ def _to_frame(raw_dos, selection=None):
     df = pd.DataFrame(_read_data(raw_dos, selection))
     df.fermi_energy = raw_dos.fermi_energy
     return df
+
+
+@_util.add_doc(
+    f"""Read the data and generate a png plot writing to the given filename.
+
+Parameters
+----------
+filename : str
+    Name of the file to which the plot is written
+{_selection_doc}"""
+)
+def _to_png(raw_dos, filename, *args, **kwargs):
+    fig = _to_plotly(raw_dos, *args, **kwargs)
+    fig.write_image(filename)
 
 
 def _spin_polarized(raw_dos):

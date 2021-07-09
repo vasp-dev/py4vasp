@@ -2,6 +2,7 @@ from py4vasp.data import Band, Kpoints, Projectors, _util
 from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import *
 from IPython.lib.pretty import pretty
+from unittest.mock import patch
 import py4vasp.exceptions as exception
 import pytest
 import numpy as np
@@ -418,11 +419,22 @@ def test_version(raw_band, outdated_version):
         Band(raw_band).read()
 
 
+def test_to_png(raw_band):
+    band = Band(raw_band)
+    filename = "image.png"
+    with patch("py4vasp.data.band._to_plotly") as plot:
+        band.to_png(filename, "args", key="word")
+        plot.assert_called_once_with(raw_band, "args", key="word")
+        fig = plot.return_value
+        fig.write_image.assert_called_once_with(filename)
+
+
 def test_descriptor(raw_band, check_descriptors):
     band = Band(raw_band)
     descriptors = {
         "_to_dict": ["to_dict", "read"],
         "_to_plotly": ["to_plotly", "plot"],
         "_to_frame": ["to_frame"],
+        "_to_png": ["to_png"],
     }
     check_descriptors(band, descriptors)
