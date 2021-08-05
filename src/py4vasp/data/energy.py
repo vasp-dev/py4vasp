@@ -2,9 +2,10 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import functools
 import numpy as np
-from py4vasp.data import _util
 from py4vasp.data._base import DataBase, RefinementDescriptor
 import py4vasp.exceptions as exception
+import py4vasp._util.convert as _convert
+import py4vasp._util.sanity_check as _check
 
 
 class Energy(DataBase):
@@ -32,7 +33,7 @@ class Energy(DataBase):
 def _to_string(raw_energy):
     text = "Energies at last step:"
     for label, value in zip(raw_energy.labels, raw_energy.values[-1]):
-        label = f"{_util.decode_if_possible(label):22.22}"
+        label = f"{_convert.text_to_string(label):22.22}"
         text += f"\n   {label}={value:17.6f}"
     return text
 
@@ -54,7 +55,7 @@ def _to_dict(raw_energy, selection=None):
         associated energies for every ionic step.
     """
     indices = _find_selection_indices(raw_energy, selection)
-    get_label = lambda index: _util.decode_if_possible(raw_energy.labels[index]).strip()
+    get_label = lambda index: _convert.text_to_string(raw_energy.labels[index]).strip()
     return {get_label(index): raw_energy.values[:, index] for index in indices}
 
 
@@ -121,7 +122,7 @@ def _find_selection_indices(raw_energy, selection):
 def _actual_or_default_selection(selection):
     if selection is not None:
         error_message = "Energy selection must be a string."
-        _util.raise_error_if_not_string(selection, error_message)
+        _check.raise_error_if_not_string(selection, error_message)
         return (part.strip() for part in selection.split(","))
     else:
         return ("TOTEN",)
@@ -129,7 +130,7 @@ def _actual_or_default_selection(selection):
 
 def _find_selection_index(raw_energy, selection):
     for index, label in enumerate(raw_energy.labels):
-        label = _util.decode_if_possible(label).strip()
+        label = _convert.text_to_string(label).strip()
         if selection in label:
             return index
     raise exception.IncorrectUsage(

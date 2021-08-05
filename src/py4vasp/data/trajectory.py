@@ -1,9 +1,10 @@
 from .topology import Topology
-from py4vasp.data import _util, Structure, Viewer3d
+from py4vasp.data import Structure, Viewer3d
 from py4vasp.data._base import DataBase, RefinementDescriptor
 from py4vasp.raw import RawStructure, RawCell
 from IPython.lib.pretty import pretty
 import py4vasp.exceptions as exception
+import py4vasp._util.sanity_check as _check
 import functools
 import mdtraj
 
@@ -110,7 +111,7 @@ def _to_structure(raw_traj, step=-1):
     data.Structure
         The structure the trajectory assumes for the specified step.
     """
-    _util.raise_error_if_not_number(step, "You can only exctract an integer step.")
+    _check.raise_error_if_not_number(step, "You can only exctract an integer step.")
     try:
         struct = RawStructure(
             topology=raw_traj.topology,

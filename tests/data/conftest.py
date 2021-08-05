@@ -1,5 +1,6 @@
 from numpy.testing import assert_array_almost_equal_nulp
 from contextlib import contextmanager
+from IPython.core.formatters import DisplayFormatter
 from unittest.mock import patch, MagicMock, PropertyMock
 from pathlib import Path
 import pytest
@@ -118,3 +119,8 @@ def check_descriptors():
 @pytest.fixture
 def outdated_version():
     return raw.RawVersion(version.minimal_vasp_version.major - 1)
+
+
+@pytest.fixture
+def format_():
+    return DisplayFormatter().format

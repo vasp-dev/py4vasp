@@ -1,4 +1,4 @@
-from py4vasp.data import Dos, _util
+from py4vasp.data import Dos
 from py4vasp.raw import RawDos, RawVersion, RawTopology, RawProjectors
 from unittest.mock import patch
 import py4vasp.exceptions as exception
@@ -59,8 +59,8 @@ def test_nonmagnetic_Dos_from_file(nonmagnetic_Dos, mock_file, check_read):
         check_read(Dos, mocks, nonmagnetic_Dos)
 
 
-def test_print_nonmagnetic_dos(nonmagnetic_Dos):
-    actual, _ = _util.format_(Dos(nonmagnetic_Dos))
+def test_print_nonmagnetic_dos(nonmagnetic_Dos, format_):
+    actual, _ = format_(Dos(nonmagnetic_Dos))
     reference = f"""
 Dos:
     energies: [-1.00, 3.00] {num_energies} points
@@ -100,8 +100,8 @@ def test_magnetic_Dos_plot(magnetic_Dos, Assert):
     Assert.allclose(fig.data[1].y, -raw_dos.dos[1])
 
 
-def test_print_magnetic_dos(magnetic_Dos):
-    actual, _ = _util.format_(Dos(magnetic_Dos))
+def test_print_magnetic_dos(magnetic_Dos, format_):
+    actual, _ = format_(Dos(magnetic_Dos))
     reference = f"""
 spin polarized Dos:
     energies: [-2.00, 2.00] {num_energies} points
@@ -183,9 +183,9 @@ def test_more_projections_style(nonmagnetic_projections, Assert):
     dos = Dos(raw_dos).read("Si")
 
 
-def test_print_nonmagnetic_projections(nonmagnetic_projections):
+def test_print_nonmagnetic_projections(nonmagnetic_projections, format_):
     raw_dos, _ = nonmagnetic_projections
-    actual, _ = _util.format_(Dos(raw_dos))
+    actual, _ = format_(Dos(raw_dos))
     reference = f"""
 Dos:
     energies: [-1.00, 3.00] {num_energies} points

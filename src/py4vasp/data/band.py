@@ -3,10 +3,11 @@ import itertools
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import py4vasp._util.sanity_check as _check
 from IPython.lib.pretty import pretty
 from .projectors import _projectors_or_dummy, _selection_doc
 from .kpoints import Kpoints
-from py4vasp.data import _util
+from py4vasp._util.documentation import _add_documentation
 from py4vasp.data._base import DataBase, RefinementDescriptor
 
 
@@ -45,7 +46,7 @@ def _to_string(raw_band):
     """.strip()
 
 
-@_util.add_doc(
+@_add_documentation(
     f"""Read the data into a dictionary.
 
 Parameters
@@ -72,7 +73,7 @@ def _to_dict(raw_band, selection=None):
     }
 
 
-@_util.add_doc(
+@_add_documentation(
     f"""Read the data and generate a plotly figure.
 
 Parameters
@@ -97,7 +98,7 @@ def _to_plotly(raw_band, selection=None, width=0.5):
     return go.Figure(data=data, layout=default)
 
 
-@_util.add_doc(
+@_add_documentation(
     f"""Read the data into a DataFrame.
 
 Parameters
@@ -117,7 +118,7 @@ def _to_frame(raw_band, selection=None):
     return pd.DataFrame(data, index)
 
 
-@_util.add_doc(
+@_add_documentation(
     f"""Read the data and generate a png plot writing to the given filename.
 
 Parameters
@@ -182,7 +183,7 @@ def _regular_band_structure(raw_band, bands):
 
 def _fat_band_structure(raw_band, bands, projections, width):
     error_message = "Width of fat band structure must be a number."
-    _util.raise_error_if_not_number(width, error_message)
+    _check.raise_error_if_not_number(width, error_message)
     data = (
         _fat_band(raw_band, args, width)
         for args in itertools.product(bands.items(), projections.items())

@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from IPython.lib.pretty import pretty
 from .projectors import _projectors_or_dummy, _selection_doc
 from py4vasp.data._base import DataBase, RefinementDescriptor
-from py4vasp.data import _util
+from py4vasp._util.documentation import _add_documentation
 
 
 class Dos(DataBase):
@@ -43,7 +43,7 @@ def _to_string(raw_dos):
     """.strip()
 
 
-@_util.add_doc(
+@_add_documentation(
     f"""Read the data into a dictionary.
 
 Parameters
@@ -62,7 +62,7 @@ def _to_dict(raw_dos, selection=None):
     return {**_read_data(raw_dos, selection), "fermi_energy": raw_dos.fermi_energy}
 
 
-@_util.add_doc(
+@_add_documentation(
     f"""Read the data and generate a plotly figure.
 
 Parameters
@@ -87,7 +87,7 @@ def _to_plotly(raw_dos, selection=None):
     return go.Figure(data=data, layout=default)
 
 
-@_util.add_doc(
+@_add_documentation(
     f"""Read the data into a pandas DataFrame.
 
 Parameters
@@ -108,7 +108,7 @@ def _to_frame(raw_dos, selection=None):
     return df
 
 
-@_util.add_doc(
+@_add_documentation(
     f"""Read the data and generate a png plot writing to the given filename.
 
 Parameters

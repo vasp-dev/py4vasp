@@ -1,6 +1,6 @@
 from unittest.mock import patch
 from py4vasp.control import POSCAR
-from py4vasp.data import Structure, Magnetism, _util
+from py4vasp.data import Structure, Magnetism
 from py4vasp.raw import RawStructure, RawCell, RawVersion
 from .test_topology import raw_topology
 from .test_magnetism import raw_magnetism, noncollinear_magnetism, charge_only
@@ -181,8 +181,8 @@ def test_vanishing_moments(raw_magnetism, raw_structure, Assert):
         arrows.assert_not_called()
 
 
-def test_print(raw_structure):
-    actual, _ = _util.format_(Structure(raw_structure))
+def test_print(raw_structure, format_):
+    actual, _ = format_(Structure(raw_structure))
     ref_html = """
 Sr2TiO4<br>
 1.0<br>

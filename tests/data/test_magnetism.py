@@ -1,4 +1,4 @@
-from py4vasp.data import Magnetism, _util
+from py4vasp.data import Magnetism
 from py4vasp.raw import RawMagnetism, RawVersion
 from .test_topology import raw_topology
 import py4vasp.exceptions as exception
@@ -75,8 +75,8 @@ def test_total_moments(raw_magnetism, Assert):
     Assert.allclose(actual, raw_magnetism.total_moments[3])
 
 
-def test_print_magnetism(raw_magnetism):
-    actual, _ = _util.format_(Magnetism(raw_magnetism))
+def test_print_magnetism(raw_magnetism, format_):
+    actual, _ = format_(Magnetism(raw_magnetism))
     reference = "MAGMOM = 444.00 453.00 462.00 471.00 480.00 489.00 498.00"
     assert actual == {"text/plain": reference}
 
@@ -98,8 +98,8 @@ def test_noncollinear(noncollinear_magnetism, Assert):
         Assert.allclose(total_moments[new_order], expected_total_moment)
 
 
-def test_print_noncollinear(noncollinear_magnetism):
-    actual, _ = _util.format_(Magnetism(noncollinear_magnetism))
+def test_print_noncollinear(noncollinear_magnetism, format_):
+    actual, _ = format_(Magnetism(noncollinear_magnetism))
     reference = """
 MAGMOM = 318.00 381.00 444.00 \\
          327.00 390.00 453.00 \\
@@ -120,8 +120,8 @@ def test_charge_only(charge_only, Assert):
     assert "moments" not in actual.read()
 
 
-def test_print_charge(charge_only):
-    actual, _ = _util.format_(Magnetism(charge_only))
+def test_print_charge(charge_only, format_):
+    actual, _ = format_(Magnetism(charge_only))
     assert actual == {"text/plain": "not available"}
 
 

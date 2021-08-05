@@ -1,4 +1,4 @@
-from py4vasp.data import Band, Kpoints, Projectors, _util
+from py4vasp.data import Band, Kpoints, Projectors
 from py4vasp.raw import *
 from IPython.lib.pretty import pretty
 from unittest.mock import patch
@@ -95,8 +95,8 @@ def test_multiple_bands_plot(multiple_bands, Assert):
     Assert.allclose(fig.data[0].y[mask], ref_bands)
 
 
-def test_print_multiple_bands(multiple_bands):
-    actual, _ = _util.format_(Band(multiple_bands))
+def test_print_multiple_bands(multiple_bands, format_):
+    actual, _ = format_(Band(multiple_bands))
     reference = f"""
 band structure:
     {multiple_bands.kpoints.number} k-points
@@ -188,8 +188,8 @@ def test_line_without_labels_plot(line_without_labels, Assert):
     assert fig.layout.xaxis.ticktext == default_labels
 
 
-def test_print_line_without_labels(line_without_labels):
-    actual, _ = _util.format_(Band(line_without_labels))
+def test_print_line_without_labels(line_without_labels, format_):
+    actual, _ = format_(Band(line_without_labels))
     reference = f"""
 band structure:
     {line_without_labels.eigenvalues.shape[1]} k-points
@@ -226,8 +226,8 @@ def check_ticks(fig, raw_band, Assert):
     Assert.allclose(fig.layout.xaxis.tickvals, np.array(xticks))
 
 
-def test_print_line_with_labels(line_with_labels):
-    actual, _ = _util.format_(Band(line_with_labels))
+def test_print_line_with_labels(line_with_labels, format_):
+    actual, _ = format_(Band(line_with_labels))
     reference = f"""
 band structure (  - X|Y - G - X -  ):
     {line_with_labels.eigenvalues.shape[1]} k-points
@@ -319,8 +319,8 @@ def test_spin_projections_to_frame(spin_projections, Assert):
     Assert.allclose(spin_projections.projections[1, 0, 0, :, 0], df.s_down.to_numpy())
 
 
-def test_print_line_without_labels(spin_projections):
-    actual, _ = _util.format_(Band(spin_projections))
+def test_print_line_without_labels(spin_projections, format_):
+    actual, _ = format_(Band(spin_projections))
     projectors = pretty(Projectors(spin_projections.projectors))
     reference = f"""
 spin polarized band structure:

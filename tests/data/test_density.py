@@ -1,5 +1,5 @@
 from unittest.mock import patch
-from py4vasp.data import Density, _util
+from py4vasp.data import Density
 from py4vasp.raw import RawDensity
 from .test_structure import raw_structure
 from .test_topology import raw_topology
@@ -79,8 +79,8 @@ def test_color_specified_for_magnetism(raw_density, Assert):
         Density(raw_density).plot("magnetization", color="brown")
 
 
-def test_print(raw_density):
-    actual, _ = _util.format_(Density(raw_density))
+def test_print(raw_density, format_):
+    actual, _ = format_(Density(raw_density))
     reference = """
 density:
     structure: Sr2TiO4
@@ -90,7 +90,7 @@ density:
     assert actual == {"text/plain": reference}
     #
     raw_density.charge = np.reshape(raw_density.charge, (1, 16, 7, 30))
-    actual, _ = _util.format_(Density(raw_density))
+    actual, _ = format_(Density(raw_density))
     reference = """
 density:
     structure: Sr2TiO4

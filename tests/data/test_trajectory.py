@@ -1,4 +1,4 @@
-from py4vasp.data import Trajectory, Topology, _util
+from py4vasp.data import Trajectory, Topology
 from py4vasp.raw import RawTrajectory, RawTopology, RawVersion
 from .test_topology import raw_topology
 from unittest.mock import patch
@@ -89,8 +89,8 @@ def test_incorrect_step(raw_trajectory):
         trajectory.to_structure([0, 1])
 
 
-def test_print(raw_trajectory):
-    actual, _ = _util.format_(Trajectory(raw_trajectory))
+def test_print(raw_trajectory, format_):
+    actual, _ = format_(Trajectory(raw_trajectory))
     ref_plain = """
 current structure of 2 step trajectory
 1.0

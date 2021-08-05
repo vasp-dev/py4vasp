@@ -1,5 +1,6 @@
-from py4vasp.data import _util
 from py4vasp.data._base import DataBase, RefinementDescriptor
+from py4vasp._util.documentation import _add_documentation
+import py4vasp._util.reader as _reader
 import py4vasp.exceptions as exception
 import numpy as np
 import functools
@@ -56,7 +57,7 @@ are used. This routine returns the magnetic moments as (steps, atoms, orbitals,
 directions)."""
 
 
-@_util.add_doc(
+@_add_documentation(
     f"""Read the charges and magnetization data into a dictionary.
 
 {_step_parameter}
@@ -75,7 +76,7 @@ def _to_dict(raw_magnetism, steps=None):
     return {"charges": _charges(raw_magnetism, steps), **moments}
 
 
-@_util.add_doc(
+@_add_documentation(
     f"""Read the charges of the selected steps.
 
 {_step_parameter}
@@ -91,7 +92,7 @@ def _charges(raw_magnetism, steps=None):
     return moments[steps, 0, :, :]
 
 
-@_util.add_doc(
+@_add_documentation(
     f"""Read the magnetic moments of the selected steps.
 
 {_step_parameter}
@@ -117,7 +118,7 @@ def _moments(raw_magnetism, steps=None):
         return np.moveaxis(moments, direction_axis, -1)
 
 
-@_util.add_doc(
+@_add_documentation(
     f"""Read the total charges of the selected steps.
 
 {_step_parameter}
@@ -132,7 +133,7 @@ def _total_charges(raw_magnetism, steps=None):
     return _sum_over_orbitals(_charges(raw_magnetism, steps))
 
 
-@_util.add_doc(
+@_add_documentation(
     f"""Read the total magnetic moments of the selected steps.
 
 {_step_parameter}
@@ -156,7 +157,7 @@ def _total_moments(raw_magnetism, steps=None):
         return np.moveaxis(total_moments, direction_axis, -1)
 
 
-class _Magnetism(_util.Reader):
+class _Magnetism(_reader.Reader):
     def error_message(self, key, err):
         return (
             f"Error reading the magnetic moments. Please check if the key "

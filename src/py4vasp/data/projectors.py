@@ -1,12 +1,16 @@
-from __future__ import annotations
 from typing import NamedTuple, Iterable, Union
 from dataclasses import dataclass
 import re
 import numpy as np
 from .topology import Topology
-from py4vasp.data import _util
 from py4vasp.data._base import DataBase, RefinementDescriptor
+from py4vasp._util.documentation import _add_documentation
+from py4vasp.data._selection import Selection as _Selection
 import py4vasp.exceptions as exception
+import py4vasp._util.convert as _convert
+import py4vasp._util.reader as _reader
+import py4vasp._util.sanity_check as _check
+
 
 _selection_doc = r"""
 selection : str
@@ -45,11 +49,11 @@ class Projectors(DataBase):
 
     class Index(NamedTuple):
         "Helper class specifying which atom, orbital, and spin are selected."
-        atom: Union[str, Selection]
+        atom: Union[str, _Selection]
         "Label of the atom or a Selection object to read the corresponding data."
-        orbital: Union[str, Selection]
+        orbital: Union[str, _Selection]
         "Label of the orbital or a Selection object to read the corresponding data."
-        spin: Union[str, Selection]
+        spin: Union[str, _Selection]
         "Label of the spin component or a Selection object to read the corresponding data."
 
     _missing_data_message = "No projectors found, please verify the LORBIT tag is set."
@@ -67,7 +71,7 @@ def _to_string(raw_proj):
     orbitals: {", ".join(_orbital_types(raw_proj))}"""
 
 
-@_util.add_doc(
+@_add_documentation(
     f"""Read the selected data from an array and store it in a dictionary.
 
 Parameters
@@ -88,7 +92,7 @@ def _to_dict(raw_proj, selection=None, projections=None):
     if selection is None:
         return {}
     error_message = "Projector selection must be a string."
-    _util.raise_error_if_not_string(selection, error_message)
+    _check.raise_error_if_not_string(selection, error_message)
     if projections is None:
         return _get_indices(raw_proj, selection)
     projections = _Projections(projections)
@@ -109,7 +113,7 @@ def _merge_labels(labels):
     return "_".join(filter(None, labels))
 
 
-class _Projections(_util.Reader):
+class _Projections(_reader.Reader):
     def error_message(self, key, err):
         return (
             "Error reading the projections. Please make sure the size of the array "
@@ -128,9 +132,9 @@ def _read_elements(raw_proj, selection, projections):
 
 def _select(
     raw_proj,
-    atom=_util.default_selection,
-    orbital=_util.default_selection,
-    spin=_util.default_selection,
+    atom=_Selection.default,
+    orbital=_Selection.default,
+    spin=_Selection.default,
 ):
     """Map selection strings onto corresponding Selection objects.
 
@@ -168,7 +172,7 @@ def _select(
     )
 
 
-@_util.add_doc(
+@_add_documentation(
     f"""Generate all possible indices where the projected information is stored.
 
 Given a string specifying which atoms, orbitals, and spin should be selected
@@ -188,8 +192,8 @@ Iterable[Index]
 def _parse_selection(raw_proj, selection):
     dicts = _init_dicts(raw_proj)
     default_index = Projectors.Index(
-        atom=_util.default_selection,
-        orbital=_util.default_selection,
+        atom=_Selection.default,
+        orbital=_Selection.default,
         spin=_spin_not_set,
     )
     yield from _parse_recursive(dicts, selection, default_index)
@@ -212,19 +216,19 @@ def _init_atom_dict(raw_proj):
 
 def _init_orbital_dict(raw_proj):
     num_orbitals = len(raw_proj.orbital_types)
-    all_orbitals = _util.Selection(indices=slice(num_orbitals))
-    orbital_dict = {_util.default_selection: all_orbitals}
+    all_orbitals = _Selection(indices=slice(num_orbitals))
+    orbital_dict = {_Selection.default: all_orbitals}
     for i, orbital in enumerate(_orbital_types(raw_proj)):
-        orbital_dict[orbital] = _util.Selection(indices=slice(i, i + 1), label=orbital)
+        orbital_dict[orbital] = _Selection(indices=slice(i, i + 1), label=orbital)
     if "px" in orbital_dict:
-        orbital_dict["p"] = _util.Selection(indices=slice(1, 4), label="p")
-        orbital_dict["d"] = _util.Selection(indices=slice(4, 9), label="d")
-        orbital_dict["f"] = _util.Selection(indices=slice(9, 16), label="f")
+        orbital_dict["p"] = _Selection(indices=slice(1, 4), label="p")
+        orbital_dict["d"] = _Selection(indices=slice(4, 9), label="d")
+        orbital_dict["f"] = _Selection(indices=slice(9, 16), label="f")
     return orbital_dict
 
 
 def _orbital_types(raw_proj):
-    clean_string = lambda ion_type: _util.decode_if_possible(ion_type).strip()
+    clean_string = lambda ion_type: _convert.text_to_string(ion_type).strip()
     return (clean_string(orbital) for orbital in raw_proj.orbital_types)
 
 
@@ -232,10 +236,10 @@ def _init_spin_dict(raw_proj):
     num_spins = raw_proj.number_spins
     return {
         "polarized": num_spins == 2,
-        "up": _util.Selection(indices=slice(1), label="up"),
-        "down": _util.Selection(indices=slice(1, 2), label="down"),
-        "total": _util.Selection(indices=slice(num_spins), label="total"),
-        _util.default_selection: _util.Selection(indices=slice(num_spins)),
+        "up": _Selection(indices=slice(1), label="up"),
+        "down": _Selection(indices=slice(1, 2), label="down"),
+        "total": _Selection(indices=slice(num_spins), label="total"),
+        _Selection.default: _Selection(indices=slice(num_spins)),
     }
 
 
@@ -243,7 +247,7 @@ def _select_atom(atom_dict, atom):
     match = _range.match(atom)
     if match:
         slice_ = _get_slice_from_atom_dict(atom_dict, match)
-        return _util.Selection(indices=slice_, label=atom)
+        return _Selection(indices=slice_, label=atom)
     else:
         _raise_error_if_not_found_in_dict(atom, atom_dict)
         return atom_dict[atom]
@@ -280,7 +284,7 @@ def _parse_recursive(dicts, selection, current_index):
 
 def _update_index(dicts, index, part):
     part = part.strip()
-    if part == _util.default_selection:
+    if part == _Selection.default:
         pass
     elif part in dicts["atom"] or _range.match(part):
         index = index._replace(atom=part)
@@ -301,7 +305,7 @@ def _setup_spin_indices(index, spin_polarized):
     if index.spin != _spin_not_set:
         yield index
     elif not spin_polarized:
-        yield index._replace(spin=_util.default_selection)
+        yield index._replace(spin=_Selection.default)
     else:
         for key in ("up", "down"):
             yield index._replace(spin=key)

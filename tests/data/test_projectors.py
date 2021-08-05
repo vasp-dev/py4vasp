@@ -1,11 +1,11 @@
-from py4vasp.data import Projectors, Topology, _util
+from py4vasp.data import Projectors, Topology
 from py4vasp.raw import RawProjectors, RawTopology, RawVersion
+from py4vasp.data._selection import Selection
 import py4vasp.exceptions as exception
 import pytest
 import numpy as np
 from typing import NamedTuple, Iterable
 
-Selection = _util.Selection
 Index = Projectors.Index
 
 
@@ -240,8 +240,8 @@ def test_read(without_spin, Assert):
     Assert.allclose(actual["Ti_1_dxy"], Ti_ref)
 
 
-def test_print(without_spin):
-    actual, _ = _util.format_(Projectors(without_spin))
+def test_print(without_spin, format_):
+    actual, _ = format_(Projectors(without_spin))
     reference = """
 projectors:
     atoms: Sr, Ti, O

@@ -1,4 +1,4 @@
-from py4vasp.data import Energy, _util
+from py4vasp.data import Energy
 from py4vasp.raw import RawEnergy, RawVersion
 from unittest.mock import patch
 import pytest
@@ -73,8 +73,8 @@ def test_energy_from_file(reference_energy, mock_file, check_read):
         check_read(Energy, mocks, reference_energy)
 
 
-def test_print(reference_energy):
-    actual, _ = _util.format_(Energy(reference_energy))
+def test_print(reference_energy, format_):
+    actual, _ = format_(Energy(reference_energy))
     reference = f"""
 Energies at last step:
    ion-electron   TOTEN  =       297.000000

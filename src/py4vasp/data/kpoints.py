@@ -1,6 +1,6 @@
-from py4vasp.data import _util
 from py4vasp.data._base import DataBase, RefinementDescriptor
 import py4vasp.exceptions as exception
+import py4vasp._util.convert as _convert
 import functools
 from fractions import Fraction
 import numpy as np
@@ -98,7 +98,7 @@ def _distances(raw_kpoints):
 
 def _mode(raw_kpoints):
     "Get the **k**-point generation mode specified in the Vasp input file"
-    mode = _util.decode_if_possible(raw_kpoints.mode).strip() or "# empty string"
+    mode = _convert.text_to_string(raw_kpoints.mode).strip() or "# empty string"
     first_char = mode[0].lower()
     if first_char == "a":
         return "automatic"
@@ -129,7 +129,7 @@ def _labels(raw_kpoints):
 def _labels_from_file(raw_kpoints):
     labels = [""] * len(raw_kpoints.coordinates)
     for label, index in zip(raw_kpoints.labels, _raw_indices(raw_kpoints)):
-        labels[index] = _util.decode_if_possible(label.strip())
+        labels[index] = _convert.text_to_string(label.strip())
     return labels
 
 

@@ -1,4 +1,4 @@
-from py4vasp.data import Kpoints, _util
+from py4vasp.data import Kpoints
 from py4vasp.raw import RawKpoints, RawVersion, RawCell
 import py4vasp.exceptions as exception
 import pytest
@@ -152,8 +152,8 @@ def set_line_mode(kpoints):
     )
 
 
-def test_print(raw_kpoints):
-    actual, _ = _util.format_(Kpoints(raw_kpoints))
+def test_print(raw_kpoints, format_):
+    actual, _ = format_(Kpoints(raw_kpoints))
     reference = """
 k-points
 20

@@ -1,11 +1,10 @@
-from py4vasp.data import Topology, _util
+from py4vasp.data import Topology
 from py4vasp.raw import RawTopology, RawVersion
+from py4vasp.data._selection import Selection
 import py4vasp.exceptions as exception
 import pytest
 import numpy as np
 import pandas as pd
-
-Selection = _util.Selection
 
 
 @pytest.fixture
@@ -73,8 +72,8 @@ def test_to_mdtraj(raw_topology):
     assert ref.equals(actual)
 
 
-def test_print(raw_topology):
-    actual, _ = _util.format_(Topology(raw_topology))
+def test_print(raw_topology, format_):
+    actual, _ = format_(Topology(raw_topology))
     reference = {"text/plain": "Sr2TiO4", "text/html": "Sr<sub>2</sub>TiO<sub>4</sub>"}
     assert actual == reference
 

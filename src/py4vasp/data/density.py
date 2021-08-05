@@ -1,4 +1,4 @@
-from py4vasp.data import _util, Viewer3d, Structure, Topology
+from py4vasp.data import Viewer3d, Structure, Topology
 from py4vasp.data._base import DataBase, RefinementDescriptor
 from IPython.lib.pretty import pretty
 from pathlib import Path

@@ -1,6 +1,8 @@
-from py4vasp.data import _util
 from py4vasp.data._base import DataBase, RefinementDescriptor
+from py4vasp.data._selection import Selection as _Selection
 import py4vasp.exceptions as exception
+import py4vasp._util.sanity_check as _check
+import py4vasp._util.convert as _convert
 import numpy as np
 import pandas as pd
 import functools
@@ -103,7 +105,7 @@ def _to_poscar(raw_topology, format_newline=""):
         augmented by the additional formatting string, if given.
     """
     error_message = "The formatting information must be a string."
-    _util.raise_error_if_not_string(format_newline, error_message)
+    _check.raise_error_if_not_string(format_newline, error_message)
     ion_types = " ".join(_ion_types(raw_topology))
     number_ion_types = " ".join(str(x) for x in raw_topology.number_ion_types)
     return ion_types + format_newline + "\n" + number_ion_types
@@ -126,13 +128,13 @@ def _elements(raw_topology):
 
 def _ion_types(raw_topology):
     "Return the type of all ions in the system as string."
-    clean_string = lambda ion_type: _util.decode_if_possible(ion_type).strip()
+    clean_string = lambda ion_type: _convert.text_to_string(ion_type).strip()
     return (clean_string(ion_type) for ion_type in raw_topology.ion_types)
 
 
 def _default_selection(raw_topology):
     num_atoms = np.sum(raw_topology.number_ion_types)
-    return {_util.default_selection: _util.Selection(indices=slice(num_atoms))}
+    return {_Selection.default: _Selection(indices=slice(num_atoms))}
 
 
 def _specific_selection(raw_topology):
@@ -140,11 +142,11 @@ def _specific_selection(raw_topology):
     res = {}
     for ion_type, number in _type_numbers(raw_topology):
         end = start + number
-        res[ion_type] = _util.Selection(indices=slice(start, end), label=ion_type)
+        res[ion_type] = _Selection(indices=slice(start, end), label=ion_type)
         for i in range(start, end):
             # create labels like Si_1, Si_2, Si_3 (starting at 1)
             label = ion_type + _subscript + str(i - start + 1)
-            res[str(i + 1)] = _util.Selection(indices=slice(i, i + 1), label=label)
+            res[str(i + 1)] = _Selection(indices=slice(i, i + 1), label=label)
         start += number
     return res
 
