@@ -4,19 +4,35 @@ import importlib
 import pathlib
 import py4vasp.raw as raw
 import py4vasp.exceptions as exception
-from py4vasp.data._util import minimal_vasp_version
+from py4vasp._util.version import minimal_vasp_version, current_vasp_version
 
 
 class DataBase:
     _missing_data_message = "The raw data is None, please check your setup."
 
     def __init__(self, raw_data):
-        self._from_context_generator(lambda: contextlib.nullcontext(raw_data))
+        data_dict = raw.DataDict({"default": raw_data}, current_vasp_version)
+        self._from_context_generator(lambda: contextlib.nullcontext(data_dict))
         self._repr = f"({repr(raw_data)})"
 
     @classmethod
+    def from_dict(cls, dict_):
+        """Initialize refinement class from data dictionary
+
+        Parameters
+        ----------
+        data_dict : dict
+            Data dictionary that contains one or more different raw data sources.
+        """
+        obj = cls.__new__(cls)
+        data_dict = raw.DataDict(dict_, current_vasp_version)
+        obj._from_context_generator(lambda: contextlib.nullcontext(data_dict))
+        obj._repr = f".from_dict({repr(data_dict)})"
+        return obj
+
+    @classmethod
     def from_file(cls, file=None):
-        """Read the raw data from the given file.
+        """Read the data dictionary from the given file.
 
         Parameters
         ----------
@@ -40,7 +56,7 @@ class DataBase:
         return obj
 
     def _from_context_generator(self, context_generator):
-        self._raw_data_from_context = context_generator
+        self._data_dict_from_context = context_generator
 
     def __repr__(self):
         return f"{self.__class__.__name__}{self._repr}"
@@ -59,7 +75,7 @@ def _from_file(file, name):
     else:
         context = contextlib.nullcontext(file)
     with context as file:
-        yield getattr(file, name)()
+        yield getattr(file, name)
 
 
 class RefinementDescriptor:
@@ -71,10 +87,11 @@ class RefinementDescriptor:
         function = getattr(module, self._name)
 
         @functools.wraps(function)
-        def wrapper(*args, **kwargs):
-            with instance._raw_data_from_context() as raw_data:
+        def wrapper(*args, source="default", **kwargs):
+            with instance._data_dict_from_context() as data_dict:
+                raise_error_if_version_is_outdated(data_dict.version)
+                raw_data = read_raw_data_from_source(data_dict, source)
                 raise_error_if_data_is_missing(raw_data, instance._missing_data_message)
-                raise_error_if_version_is_outdated(raw_data)
                 return function(raw_data, *args, **kwargs)
 
         return wrapper
@@ -85,12 +102,21 @@ def raise_error_if_data_is_missing(raw_data, error_message):
         raise exception.NoData(error_message)
 
 
-def raise_error_if_version_is_outdated(raw_data):
-    if raw_data.version < minimal_vasp_version:
+def read_raw_data_from_source(data_dict, source):
+    try:
+        return data_dict[source]
+    except KeyError as err:
+        message = f"""The source {source} could not be found in the data. Please check the spelling.
+The following sources are available: {", ".join(data_dict.keys())}."""
+        raise exception.IncorrectUsage(message) from err
+
+
+def raise_error_if_version_is_outdated(version_data):
+    if version_data < minimal_vasp_version:
         raise exception.OutdatedVaspVersion(
             "To use py4vasp features, you need at least Vasp version "
             f"{minimal_vasp_version.major}.{minimal_vasp_version.minor}."
             f"{minimal_vasp_version.patch}. The used version is "
-            f"{raw_data.version.major}.{raw_data.version.minor}."
-            f"{raw_data.version.patch}. Please use a newer version of Vasp."
+            f"{version_data.major}.{version_data.minor}."
+            f"{version_data.patch}. Please use a newer version of Vasp."
         )

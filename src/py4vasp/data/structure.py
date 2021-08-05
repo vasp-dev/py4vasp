@@ -1,4 +1,4 @@
-from py4vasp.data import _util, Viewer3d, Topology, Magnetism
+from py4vasp.data import Viewer3d, Topology, Magnetism
 from py4vasp.data._base import DataBase, RefinementDescriptor
 from IPython.lib.pretty import pretty
 from collections import Counter
@@ -45,7 +45,6 @@ class Structure(DataBase):
     @classmethod
     def from_ase(cls, structure):
         structure = raw.RawStructure(
-            version=_util.current_vasp_version,
             topology=_topology_from_ase(structure),
             cell=_cell_from_ase(structure),
             positions=structure.get_scaled_positions(),
@@ -212,13 +211,10 @@ def _topology_from_ase(structure):
     # TODO: this should be moved to Topology
     ion_types_and_numbers = Counter(structure.get_chemical_symbols())
     return raw.RawTopology(
-        version=_util.current_vasp_version,
         number_ion_types=list(ion_types_and_numbers.values()),
         ion_types=list(ion_types_and_numbers.keys()),
     )
 
 
 def _cell_from_ase(structure):
-    return raw.RawCell(
-        version=_util.current_vasp_version, lattice_vectors=structure.get_cell()
-    )
+    return raw.RawCell(lattice_vectors=structure.get_cell())

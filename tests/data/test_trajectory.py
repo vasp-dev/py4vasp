@@ -1,5 +1,4 @@
 from py4vasp.data import Trajectory, Topology, _util
-from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import RawTrajectory, RawTopology, RawVersion
 from .test_topology import raw_topology
 from unittest.mock import patch
@@ -18,7 +17,6 @@ pm_to_A = 1.0 / Trajectory.A_to_pm
 def raw_trajectory(raw_topology):
     shape_pos = (num_steps, num_atoms, 3)
     return RawTrajectory(
-        version=current_vasp_version,
         topology=raw_topology,
         positions=(np.arange(np.prod(shape_pos)) + 1).reshape(shape_pos),
         lattice_vectors=np.array(num_steps * [np.eye(3)]),
@@ -61,7 +59,6 @@ def test_triclinic_cell(raw_trajectory, Assert):
     unit_cell = (np.arange(9) ** 2).reshape(3, 3)
     inv_cell = np.linalg.inv(unit_cell)
     triclinic_cell = RawTrajectory(
-        version=current_vasp_version,
         topology=raw_trajectory.topology,
         lattice_vectors=np.array(num_steps * [unit_cell]),
         positions=raw_trajectory.positions @ inv_cell,
@@ -133,12 +130,6 @@ Direct<br>
 </table>
     """.strip()
     assert actual == {"text/plain": ref_plain, "text/html": ref_html}
-
-
-def test_version(raw_trajectory, outdated_version):
-    raw_trajectory.version = outdated_version
-    with pytest.raises(exception.OutdatedVaspVersion):
-        Trajectory(raw_trajectory).read()
 
 
 def test_descriptor(raw_trajectory, check_descriptors):

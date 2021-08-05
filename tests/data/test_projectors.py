@@ -1,5 +1,4 @@
 from py4vasp.data import Projectors, Topology, _util
-from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import RawProjectors, RawTopology, RawVersion
 import py4vasp.exceptions as exception
 import pytest
@@ -18,9 +17,7 @@ class SelectionTestCase(NamedTuple):
 @pytest.fixture
 def without_spin():
     proj = RawProjectors(
-        version=current_vasp_version,
         topology=RawTopology(
-            version=current_vasp_version,
             number_ion_types=np.array((2, 1, 4)),
             ion_types=np.array(("Sr", "Ti", "O "), dtype="S"),
         ),
@@ -65,22 +62,22 @@ def for_selection(spin_polarized):
             "*": Selection(indices=slice(index[-1])),
         },
         "orbital": {
-            "s": Selection(indices=(0,), label="s"),
-            "px": Selection(indices=(3,), label="px"),
-            "py": Selection(indices=(1,), label="py"),
-            "pz": Selection(indices=(2,), label="pz"),
-            "dxy": Selection(indices=(4,), label="dxy"),
-            "dxz": Selection(indices=(7,), label="dxz"),
-            "dyz": Selection(indices=(5,), label="dyz"),
-            "dz2": Selection(indices=(6,), label="dz2"),
-            "x2-y2": Selection(indices=(8,), label="x2-y2"),
-            "fxyz": Selection(indices=(10,), label="fxyz"),
-            "fxz2": Selection(indices=(13,), label="fxz2"),
-            "fx3": Selection(indices=(15,), label="fx3"),
-            "fyz2": Selection(indices=(11,), label="fyz2"),
-            "fy3x2": Selection(indices=(9,), label="fy3x2"),
-            "fzx2": Selection(indices=(14,), label="fzx2"),
-            "fz3": Selection(indices=(12,), label="fz3"),
+            "s": Selection(indices=slice(0, 1), label="s"),
+            "px": Selection(indices=slice(3, 4), label="px"),
+            "py": Selection(indices=slice(1, 2), label="py"),
+            "pz": Selection(indices=slice(2, 3), label="pz"),
+            "dxy": Selection(indices=slice(4, 5), label="dxy"),
+            "dxz": Selection(indices=slice(7, 8), label="dxz"),
+            "dyz": Selection(indices=slice(5, 6), label="dyz"),
+            "dz2": Selection(indices=slice(6, 7), label="dz2"),
+            "x2-y2": Selection(indices=slice(8, 9), label="x2-y2"),
+            "fxyz": Selection(indices=slice(10, 11), label="fxyz"),
+            "fxz2": Selection(indices=slice(13, 14), label="fxz2"),
+            "fx3": Selection(indices=slice(15, 16), label="fx3"),
+            "fyz2": Selection(indices=slice(11, 12), label="fyz2"),
+            "fy3x2": Selection(indices=slice(9, 10), label="fy3x2"),
+            "fzx2": Selection(indices=slice(14, 15), label="fzx2"),
+            "fz3": Selection(indices=slice(12, 13), label="fz3"),
             "p": Selection(indices=slice(1, 4), label="p"),
             "d": Selection(indices=slice(4, 9), label="d"),
             "f": Selection(indices=slice(9, 16), label="f"),
@@ -228,7 +225,7 @@ def test_read(without_spin, Assert):
     assert projectors.read() == {}
     reference = {
         "Sr_p": (slice(1), slice(0, 2), slice(1, 4)),
-        "Ti_1_dxy": (slice(1), slice(2, 3), (4,)),
+        "Ti_1_dxy": (slice(1), slice(2, 3), slice(4, 5)),
     }
     assert projectors.read(selection="Sr(p) 3(dxy)") == reference
     num_atoms = np.sum(without_spin.topology.number_ion_types)
@@ -285,12 +282,6 @@ def test_incorrect_reading_of_projections(without_spin):
         projectors.read("Sr", [1, 2, 3])
     with pytest.raises(exception.IncorrectUsage):
         projectors.read("Sr", np.zeros(3))
-
-
-def test_version(without_spin, outdated_version):
-    without_spin.version = outdated_version
-    with pytest.raises(exception.OutdatedVaspVersion):
-        Projectors(without_spin).read()
 
 
 def test_descriptor(without_spin, check_descriptors):

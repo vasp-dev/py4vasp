@@ -1,9 +1,9 @@
 from numpy.testing import assert_array_almost_equal_nulp
 from contextlib import contextmanager
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, PropertyMock
 from pathlib import Path
 import pytest
-import py4vasp.data._util as _util
+import py4vasp._util.version as version
 import py4vasp.raw as raw
 
 
@@ -23,9 +23,10 @@ def mock_file():
     @contextmanager
     def _mock_file(name, ref):
         cm_init = patch.object(raw.File, "__init__", autospec=True, return_value=None)
-        cm_sut = patch.object(raw.File, name, autospec=True, return_value=ref)
+        cm_sut = patch.object(raw.File, name, new_callable=PropertyMock)
         cm_close = patch.object(raw.File, "close", autospec=True)
         with cm_init as init, cm_sut as sut, cm_close as close:
+            sut.return_value = {"default": ref}
             yield {"init": init, "sut": sut, "close": close}
 
     return _mock_file
@@ -72,8 +73,8 @@ def check_read():
 
     def _check_raw_data(obj, ref, assertion, mocks):
         _reset_mocks(mocks)
-        with obj._raw_data_from_context() as actual:
-            assert actual == ref
+        with obj._data_dict_from_context() as actual:
+            assert actual["default"] == ref
         assertion(mocks)
 
     def _assert_not_called(mocks):
@@ -116,4 +117,4 @@ def check_descriptors():
 
 @pytest.fixture
 def outdated_version():
-    return raw.RawVersion(_util.minimal_vasp_version.major - 1)
+    return raw.RawVersion(version.minimal_vasp_version.major - 1)

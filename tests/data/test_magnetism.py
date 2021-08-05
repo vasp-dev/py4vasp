@@ -1,5 +1,4 @@
 from py4vasp.data import Magnetism, _util
-from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import RawMagnetism, RawVersion
 from .test_topology import raw_topology
 import py4vasp.exceptions as exception
@@ -14,9 +13,7 @@ def raw_magnetism(raw_topology):
     lmax = 3
     number_components = 2
     shape = (number_steps, number_components, number_atoms, lmax)
-    magnetism = RawMagnetism(
-        version=current_vasp_version, moments=np.arange(np.prod(shape)).reshape(shape)
-    )
+    magnetism = RawMagnetism(moments=np.arange(np.prod(shape)).reshape(shape))
     magnetism.charges = magnetism.moments[:, 0, :, :]
     magnetism.total_charges = np.sum(magnetism.charges, axis=2)
     magnetism.magnetic_moments = magnetism.moments[:, 1, :, :]
@@ -146,12 +143,6 @@ def test_incorrect_argument(raw_magnetism, noncollinear_magnetism):
             magnetism.charges(out_of_bounds)
         with pytest.raises(exception.IncorrectUsage):
             magnetism.total_charges(out_of_bounds)
-
-
-def test_version(raw_magnetism, outdated_version):
-    raw_magnetism.version = outdated_version
-    with pytest.raises(exception.OutdatedVaspVersion):
-        Magnetism(raw_magnetism).read()
 
 
 def test_descriptor(raw_magnetism, check_descriptors):

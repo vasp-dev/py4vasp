@@ -1,5 +1,4 @@
 from py4vasp.data import Band, Kpoints, Projectors, _util
-from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import *
 from IPython.lib.pretty import pretty
 from unittest.mock import patch
@@ -17,19 +16,15 @@ number_orbitals = 1
 @pytest.fixture
 def raw_band():
     return RawBand(
-        version=current_vasp_version,
         fermi_energy=0.0,
         eigenvalues=np.array([np.linspace([0], [1], number_kpoints)]),
         occupations=np.array([np.linspace([1], [0], number_kpoints)]),
         kpoints=RawKpoints(
-            version=current_vasp_version,
             mode="explicit",
             number=number_kpoints,
             coordinates=np.linspace(np.zeros(3), np.ones(3), number_kpoints),
             weights=None,
-            cell=RawCell(
-                version=current_vasp_version, scale=1.0, lattice_vectors=np.eye(3)
-            ),
+            cell=RawCell(scale=1.0, lattice_vectors=np.eye(3)),
         ),
     )
 
@@ -132,7 +127,6 @@ def test_multiple_bands_to_frame(multiple_bands, Assert):
 
 def test_nontrivial_cell(raw_band, Assert):
     raw_band.kpoints.cell = RawCell(
-        version=current_vasp_version,
         scale=2.0,
         lattice_vectors=np.array([[3, 0, 0], [-1, 2, 0], [0, 0, 4]]),
     )
@@ -396,9 +390,7 @@ def test_more_projections_style(raw_projections, Assert):
 def set_projections(raw_band, shape):
     raw_band.projections = np.random.uniform(low=0.2, size=shape)
     raw_band.projectors = RawProjectors(
-        version=current_vasp_version,
         topology=RawTopology(
-            version=current_vasp_version,
             number_ion_types=[1],
             ion_types=np.array(["Si"], dtype="S"),
         ),
@@ -411,12 +403,6 @@ def set_projections(raw_band, shape):
 def test_incorrect_width(raw_projections):
     with pytest.raises(exception.IncorrectUsage):
         Band(raw_projections).plot("Si", width="not a number")
-
-
-def test_version(raw_band, outdated_version):
-    raw_band.version = outdated_version
-    with pytest.raises(exception.OutdatedVaspVersion):
-        Band(raw_band).read()
 
 
 def test_to_png(raw_band):

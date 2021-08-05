@@ -21,9 +21,12 @@ num_components = 2  # charge and magnetization
 lmax = 3
 fermi_energy = 0.123
 default_options = ((True,), (False,))
+default_sources = ("default",)
+reference_version = RawVersion(major=99, minor=98, patch=97)
 
 SetupTest = namedtuple(
-    "SetupTest", "directory, options, create_reference, write_reference, check_actual"
+    "SetupTest",
+    "directory, options, sources, create_reference, write_reference, check_actual",
 )
 
 
@@ -50,12 +53,8 @@ def test_file_as_context(tmp_path):
     assert file.closed
     with pytest.raises(ValueError):
         h5f.file
-    for func in inspect.getmembers(file, predicate=inspect.isroutine):
-        name = func[0]
-        if name[0] == "_" or name in ["close"]:
-            continue
-        with pytest.raises(exception.FileAccessError):
-            getattr(file, name)()
+    with pytest.raises(exception.FileAccessError):
+        file.version
 
 
 def test_nonexisting_file():
@@ -76,15 +75,21 @@ def test_file_from_path(tmp_path):
 
 def generic_test(setup):
     with working_directory(setup.directory):
-        for option in setup.options:
-            use_default, *additional_tags = option
-            reference = setup.create_reference(*additional_tags)
-            h5f, filename = open_h5_file(use_default)
-            setup.write_reference(h5f, reference)
-            h5f.close()
-            file = open_vasp_file(use_default, filename)
-            setup.check_actual(file, reference)
-            file.close()  # must be after comparison, because file is read lazily
+        for options in setup.options:
+            for source in setup.sources:
+                run_test(setup, options, source)
+
+
+def run_test(setup, options, source):
+    use_default, *additional_tags = options
+    reference = setup.create_reference(*additional_tags)
+    h5f, filename = open_h5_file(use_default)
+    write_version(h5f, reference_version)
+    setup.write_reference(h5f, reference, source)
+    h5f.close()
+    file = open_vasp_file(use_default, filename)
+    setup.check_actual(file, reference, source)
+    file.close()  # must be after comparison, because file is read lazily
 
 
 def open_h5_file(use_default):
@@ -97,37 +102,39 @@ def open_vasp_file(use_default, filename):
 
 
 def test_version(tmpdir):
+    do_nothing = lambda *_: None
     setup = SetupTest(
         directory=tmpdir,
         options=default_options,
-        create_reference=reference_version,
-        write_reference=write_version,
+        sources=default_sources,
+        create_reference=do_nothing,
+        write_reference=do_nothing,
         check_actual=check_version,
     )
     generic_test(setup)
 
 
-def reference_version():
-    return RawVersion(major=1, minor=2, patch=3)
-
-
 def write_version(h5f, version):
-    if "version/major" not in h5f:
-        h5f["version/major"] = version.major
-    if "version/minor" not in h5f:
-        h5f["version/minor"] = version.minor
-    if "version/patch" not in h5f:
-        h5f["version/patch"] = version.patch
+    h5f["version/major"] = version.major
+    h5f["version/minor"] = version.minor
+    h5f["version/patch"] = version.patch
 
 
-def check_version(file, reference):
-    assert file.version() == reference
+def check_version(object, *_):
+    assert object.version == reference_version
+
+
+def get_actual_and_check_version(file, attribute, source):
+    data_dict = getattr(file, attribute)
+    check_version(data_dict)
+    return data_dict[source]
 
 
 def test_dos(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
         options=itertools.product((True, False), repeat=3),
+        sources=default_sources + ("kpoints_opt",),
         create_reference=reference_dos,
         write_reference=write_dos,
         check_actual=check_dos,
@@ -138,7 +145,6 @@ def test_dos(tmpdir):
 def reference_dos(use_dos, use_projectors):
     shape = (num_spins, num_energies)
     return RawDos(
-        version=reference_version(),
         fermi_energy=fermi_energy,
         energies=np.arange(num_energies) if use_dos else None,
         dos=np.arange(np.prod(shape)).reshape(shape),
@@ -146,21 +152,21 @@ def reference_dos(use_dos, use_projectors):
     )
 
 
-def write_dos(h5f, dos):
+def write_dos(h5f, dos, source):
+    suffix = source_suffix(source)
     if dos.energies is None:
         return
-    write_version(h5f, dos.version)
-    h5f["results/electron_dos/efermi"] = dos.fermi_energy
-    h5f["results/electron_dos/energies"] = dos.energies
-    h5f["results/electron_dos/dos"] = dos.dos
+    h5f[f"results/electron_dos{suffix}/efermi"] = dos.fermi_energy
+    h5f[f"results/electron_dos{suffix}/energies"] = dos.energies
+    h5f[f"results/electron_dos{suffix}/dos"] = dos.dos
     if dos.projectors is not None:
-        write_projectors(h5f, dos.projectors)
+        write_projectors(h5f, dos.projectors, source)
     if dos.projections is not None:
-        h5f["results/electron_dos/dospar"] = proj.dos
+        h5f[f"results/electron_dos{suffix}/dospar"] = proj.dos
 
 
-def check_dos(file, reference):
-    actual = file.dos()
+def check_dos(file, reference, source):
+    actual = get_actual_and_check_version(file, "dos", source)
     if reference.energies is not None:
         assert actual == reference
         assert isinstance(actual.fermi_energy, Number)
@@ -172,6 +178,7 @@ def test_band(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
         options=itertools.product((True, False), repeat=3),
+        sources=default_sources + ("kpoints_opt",),
         create_reference=reference_band,
         write_reference=write_band,
         check_actual=check_band,
@@ -183,7 +190,6 @@ def reference_band(use_projectors, use_labels):
     shape_eval = (num_spins, num_kpoints, num_bands)
     shape_proj = (num_spins, num_atoms, lmax, num_kpoints, num_bands)
     band = RawBand(
-        version=reference_version(),
         fermi_energy=fermi_energy,
         kpoints=reference_kpoints(use_labels),
         eigenvalues=np.arange(np.prod(shape_eval)).reshape(shape_eval),
@@ -195,20 +201,20 @@ def reference_band(use_projectors, use_labels):
     return band
 
 
-def write_band(h5f, band):
-    write_version(h5f, band.version)
-    h5f["results/electron_dos/efermi"] = band.fermi_energy
-    h5f["results/electron_eigenvalues/eigenvalues"] = band.eigenvalues
-    h5f["results/electron_eigenvalues/fermiweights"] = band.occupations
-    write_kpoints(h5f, band.kpoints)
+def write_band(h5f, band, source):
+    suffix = source_suffix(source)
+    h5f[f"results/electron_dos{suffix}/efermi"] = band.fermi_energy
+    h5f[f"results/electron_eigenvalues{suffix}/eigenvalues"] = band.eigenvalues
+    h5f[f"results/electron_eigenvalues{suffix}/fermiweights"] = band.occupations
+    write_kpoints(h5f, band.kpoints, source)
     if band.projectors is not None:
-        write_projectors(h5f, band.projectors)
+        write_projectors(h5f, band.projectors, source)
     if band.projections is not None:
-        h5f["results/projectors/par"] = band.projections
+        h5f[f"results/projectors{suffix}/par"] = band.projections
 
 
-def check_band(file, reference):
-    actual = file.band()
+def check_band(file, reference, source):
+    actual = get_actual_and_check_version(file, "band", source)
     assert actual == reference
     assert isinstance(actual.fermi_energy, Number)
 
@@ -217,6 +223,7 @@ def test_projectors(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
         options=default_options,
+        sources=default_sources + ("kpoints_opt",),
         create_reference=reference_projectors,
         write_reference=write_projectors,
         check_actual=check_projectors,
@@ -227,22 +234,23 @@ def test_projectors(tmpdir):
 def reference_projectors():
     shape_dos = (num_spins, num_atoms, lmax, num_energies)
     return RawProjectors(
-        version=reference_version(),
         topology=reference_topology(),
         orbital_types=np.array(["s", "p", "d", "f"], dtype="S"),
         number_spins=num_spins,
     )
 
 
-def write_projectors(h5f, proj):
-    write_version(h5f, proj.version)
-    write_topology(h5f, proj.topology)
-    h5f["results/projectors/lchar"] = proj.orbital_types
-    h5f["results/electron_eigenvalues/ispin"] = proj.number_spins
+def write_projectors(h5f, proj, source):
+    suffix = source_suffix(source)
+    write_topology(h5f, proj.topology, source)
+    h5f[f"results/projectors{suffix}/lchar"] = proj.orbital_types
+    key = f"results/electron_eigenvalues{suffix}/eigenvalues"
+    if key not in h5f:
+        h5f[key] = np.arange(proj.number_spins)
 
 
-def check_projectors(file, reference):
-    actual = file.projectors()
+def check_projectors(file, reference, source):
+    actual = get_actual_and_check_version(file, "projectors", source)
     assert actual == reference
     assert isinstance(actual.number_spins, Integral)
 
@@ -251,6 +259,7 @@ def test_topoplogy(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
         options=default_options,
+        sources=default_sources,
         create_reference=reference_topology,
         write_reference=write_topology,
         check_actual=check_topology,
@@ -260,20 +269,18 @@ def test_topoplogy(tmpdir):
 
 def reference_topology():
     return RawTopology(
-        version=reference_version(),
         number_ion_types=np.arange(5),
         ion_types=np.array(["B", "C", "N", "O", "F"], dtype="S"),
     )
 
 
-def write_topology(h5f, topology):
-    write_version(h5f, topology.version)
+def write_topology(h5f, topology, source):
     h5f["results/positions/number_ion_types"] = topology.number_ion_types
     h5f["results/positions/ion_types"] = topology.ion_types
 
 
-def check_topology(file, reference):
-    actual = file.topology()
+def check_topology(file, reference, source):
+    actual = get_actual_and_check_version(file, "topology", source)
     assert actual == reference
 
 
@@ -281,6 +288,7 @@ def test_trajectory(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
         options=default_options,
+        sources=default_sources,
         create_reference=reference_trajectory,
         write_reference=write_trajectory,
         check_actual=check_trajectory,
@@ -292,22 +300,20 @@ def reference_trajectory():
     shape_pos = (num_steps, num_atoms, 3)
     shape_vec = (num_steps, 3, 3)
     return RawTrajectory(
-        version=reference_version(),
         topology=reference_topology(),
         positions=np.arange(np.prod(shape_pos)).reshape(shape_pos),
         lattice_vectors=np.arange(np.prod(shape_vec)).reshape(shape_vec),
     )
 
 
-def write_trajectory(h5f, trajectory):
-    write_version(h5f, trajectory.version)
-    write_topology(h5f, trajectory.topology)
+def write_trajectory(h5f, trajectory, source):
+    write_topology(h5f, trajectory.topology, source)
     h5f["intermediate/ion_dynamics/position_ions"] = trajectory.positions
     h5f["intermediate/ion_dynamics/lattice_vectors"] = trajectory.lattice_vectors
 
 
-def check_trajectory(file, reference):
-    actual = file.trajectory()
+def check_trajectory(file, reference, source):
+    actual = get_actual_and_check_version(file, "trajectory", source)
     assert actual == reference
 
 
@@ -315,6 +321,7 @@ def test_cell(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
         options=default_options,
+        sources=default_sources,
         create_reference=reference_cell,
         write_reference=write_cell,
         check_actual=check_cell,
@@ -324,20 +331,18 @@ def test_cell(tmpdir):
 
 def reference_cell():
     return RawCell(
-        version=reference_version(),
         scale=0.5,
         lattice_vectors=np.arange(9).reshape(3, 3),
     )
 
 
-def write_cell(h5f, cell):
-    write_version(h5f, cell.version)
+def write_cell(h5f, cell, source):
     h5f["results/positions/scale"] = cell.scale
     h5f["results/positions/lattice_vectors"] = cell.lattice_vectors
 
 
-def check_cell(file, reference):
-    actual = file.cell()
+def check_cell(file, reference, source):
+    actual = get_actual_and_check_version(file, "cell", source)
     assert actual == reference
     assert isinstance(actual.scale, Number)
 
@@ -346,6 +351,7 @@ def test_energies(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
         options=default_options,
+        sources=default_sources,
         create_reference=reference_energies,
         write_reference=write_energies,
         check_actual=check_energies,
@@ -357,26 +363,25 @@ def reference_energies():
     labels = np.array(["total", "kinetic", "temperature"], dtype="S")
     shape = (100, len(labels))
     return RawEnergy(
-        version=reference_version(),
         labels=labels,
         values=np.arange(np.prod(shape)).reshape(shape),
     )
 
 
-def write_energies(h5f, energy):
-    write_version(h5f, energy.version)
+def write_energies(h5f, energy, source):
     h5f["intermediate/ion_dynamics/energies_tags"] = energy.labels
     h5f["intermediate/ion_dynamics/energies"] = energy.values
 
 
-def check_energies(file, reference):
-    assert file.energy() == reference
+def check_energies(file, reference, source):
+    assert get_actual_and_check_version(file, "energy", source) == reference
 
 
 def test_kpoints(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
         options=itertools.product((True, False), repeat=2),
+        sources=default_sources + ("kpoints_opt",),
         create_reference=reference_kpoints,
         write_reference=write_kpoints,
         check_actual=check_kpoints,
@@ -386,7 +391,6 @@ def test_kpoints(tmpdir):
 
 def reference_kpoints(use_labels):
     kpoints = RawKpoints(
-        version=reference_version(),
         mode="explicit",
         number=num_kpoints,
         coordinates=np.linspace(np.zeros(3), np.ones(3), num_kpoints),
@@ -399,21 +403,23 @@ def reference_kpoints(use_labels):
     return kpoints
 
 
-def write_kpoints(h5f, kpoints):
-    write_version(h5f, kpoints.version)
-    h5f["input/kpoints/mode"] = kpoints.mode
-    h5f["input/kpoints/number_kpoints"] = kpoints.number
-    h5f["results/electron_eigenvalues/kpoint_coords"] = kpoints.coordinates
-    h5f["results/electron_eigenvalues/kpoints_symmetry_weight"] = kpoints.weights
-    write_cell(h5f, kpoints.cell)
+def write_kpoints(h5f, kpoints, source):
+    suffix = source_suffix(source)
+    input = "input/kpoints" if suffix == "" else "input/kpoints_opt"
+    h5f[f"{input}/mode"] = kpoints.mode
+    h5f[f"{input}/number_kpoints"] = kpoints.number
+    h5f[f"results/electron_eigenvalues{suffix}/kpoint_coords"] = kpoints.coordinates
+    key = f"results/electron_eigenvalues{suffix}/kpoints_symmetry_weight"
+    h5f[key] = kpoints.weights
+    write_cell(h5f, kpoints.cell, source)
     if kpoints.label_indices is not None:
-        h5f["input/kpoints/positions_labels_kpoints"] = kpoints.label_indices
+        h5f[f"{input}/positions_labels_kpoints"] = kpoints.label_indices
     if kpoints.labels is not None:
-        h5f["input/kpoints/labels_kpoints"] = kpoints.labels
+        h5f[f"{input}/labels_kpoints"] = kpoints.labels
 
 
-def check_kpoints(file, reference):
-    actual = file.kpoints()
+def check_kpoints(file, reference, source):
+    actual = get_actual_and_check_version(file, "kpoints", source)
     assert actual == reference
     assert isinstance(actual.number, Integral)
     assert isinstance(actual.mode, str)
@@ -423,6 +429,7 @@ def test_magnetism(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
         options=default_options,
+        sources=default_sources,
         create_reference=reference_magnetism,
         write_reference=write_magnetism,
         check_actual=check_magnetism,
@@ -432,26 +439,23 @@ def test_magnetism(tmpdir):
 
 def reference_magnetism():
     shape = (num_steps, num_components, num_atoms, lmax)
-    magnetism = RawMagnetism(
-        version=reference_version(), moments=np.arange(np.prod(shape)).reshape(shape)
-    )
+    magnetism = RawMagnetism(moments=np.arange(np.prod(shape)).reshape(shape))
     return magnetism
 
 
-def write_magnetism(h5f, magnetism):
-    write_version(h5f, magnetism.version)
+def write_magnetism(h5f, magnetism, source):
     h5f["intermediate/ion_dynamics/magnetism/moments"] = magnetism.moments
 
 
-def check_magnetism(file, reference):
-    actual = file.magnetism()
-    assert actual == reference
+def check_magnetism(file, reference, source):
+    assert get_actual_and_check_version(file, "magnetism", source) == reference
 
 
 def test_structure(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
         options=itertools.product((True, False), repeat=2),
+        sources=default_sources,
         create_reference=reference_structure,
         write_reference=write_structure,
         check_actual=check_structure,
@@ -461,7 +465,6 @@ def test_structure(tmpdir):
 
 def reference_structure(use_magnetism):
     structure = RawStructure(
-        version=reference_version(),
         topology=reference_topology(),
         cell=reference_cell(),
         positions=np.linspace(np.zeros(3), np.ones(3), num_atoms),
@@ -470,24 +473,23 @@ def reference_structure(use_magnetism):
     return structure
 
 
-def write_structure(h5f, structure):
-    write_version(h5f, structure.version)
-    write_topology(h5f, structure.topology)
-    write_cell(h5f, structure.cell)
+def write_structure(h5f, structure, source):
+    write_topology(h5f, structure.topology, source)
+    write_cell(h5f, structure.cell, source)
     h5f["results/positions/position_ions"] = structure.positions
     if structure.magnetism is not None:
-        write_magnetism(h5f, structure.magnetism)
+        write_magnetism(h5f, structure.magnetism, source)
 
 
-def check_structure(file, reference):
-    actual = file.structure()
-    assert actual == reference
+def check_structure(file, reference, source):
+    assert get_actual_and_check_version(file, "structure", source) == reference
 
 
 def test_density(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
         options=default_options,
+        sources=default_sources,
         create_reference=reference_density,
         write_reference=write_density,
         check_actual=check_density,
@@ -499,18 +501,19 @@ def reference_density():
     shape = (2, 3, 4, 5)
     raw_data = np.arange(np.prod(shape)).reshape(shape)
     return RawDensity(
-        version=reference_version(),
         structure=reference_structure(False),
         charge=raw_data,
     )
 
 
-def write_density(h5f, density):
-    write_version(h5f, density.version)
-    write_structure(h5f, density.structure)
+def write_density(h5f, density, source):
+    write_structure(h5f, density.structure, source)
     h5f["charge/charge"] = density.charge
 
 
-def check_density(file, reference):
-    actual = file.density()
-    assert actual == reference
+def check_density(file, reference, source):
+    assert get_actual_and_check_version(file, "density", source) == reference
+
+
+def source_suffix(source):
+    return "" if source == "default" else f"_{source}"

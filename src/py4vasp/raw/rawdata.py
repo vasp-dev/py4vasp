@@ -2,6 +2,22 @@ from dataclasses import dataclass
 import numpy as np
 
 
+class DataDict(dict):
+    """Provides an extension to a dictionary storing also the version of the data.
+
+    Parameters
+    ----------
+    dict_: dict
+        A dictionary containing raw data and descriptive keys.
+    version: RawVersion
+        The version of Vasp with which the data was generated.
+    """
+
+    def __init__(self, dict_, version):
+        super().__init__(dict_)
+        self.version = version
+
+
 def _dataclass_equal(lhs, rhs):
     lhs, rhs = vars(lhs), vars(rhs)
     compare = (_element_equal(lhs[key], rhs[key]) for key in lhs)
@@ -33,8 +49,6 @@ class RawVersion:
 @dataclass
 class RawTopology:
     "The topology of the system used, i.e., which elements are contained."
-    version: RawVersion
-    "The version number of Vasp."
     number_ion_types: np.ndarray
     "Amount of ions of a particular type."
     ion_types: np.ndarray
@@ -45,8 +59,6 @@ class RawTopology:
 @dataclass
 class RawTrajectory:
     "Describes the evolution of unit cell and atoms within over ionic steps."
-    version: RawVersion
-    "The version number of Vasp."
     topology: RawTopology
     "The topology of the system used, i.e., which elements are contained."
     lattice_vectors: np.ndarray
@@ -60,8 +72,6 @@ class RawTrajectory:
 @dataclass
 class RawProjectors:
     "Projectors used for orbital projections."
-    version: RawVersion
-    "The version number of Vasp."
     topology: RawTopology
     "The topology of the system used, i.e., which elements are contained."
     orbital_types: np.ndarray
@@ -74,8 +84,6 @@ class RawProjectors:
 @dataclass
 class RawCell:
     "Unit cell of the crystal or simulation cell for molecules."
-    version: RawVersion
-    "The version number of Vasp."
     lattice_vectors: np.ndarray
     "Lattice vectors defining the unit cell."
     scale: float = 1.0
@@ -86,8 +94,6 @@ class RawCell:
 @dataclass
 class RawMagnetism:
     "Data about the magnetism in the system."
-    version: RawVersion
-    "The version number of Vasp."
     moments: np.ndarray
     "Contains the charge and magnetic moments atom and orbital resolved."
     __eq__ = _dataclass_equal
@@ -96,8 +102,6 @@ class RawMagnetism:
 @dataclass
 class RawStructure:
     "Structural information of the system."
-    version: RawVersion
-    "The version number of Vasp."
     topology: RawTopology
     "The topology of the system used, i.e., which elements are contained."
     cell: RawCell
@@ -112,8 +116,6 @@ class RawStructure:
 @dataclass
 class RawKpoints:
     "**k** points at which wave functions are calculated."
-    version: RawVersion
-    "The version number of Vasp."
     mode: str
     "Mode used to generate the **k**-point list."
     number: int
@@ -134,8 +136,6 @@ class RawKpoints:
 @dataclass
 class RawDos:
     "Electronic density of states."
-    version: RawVersion
-    "The version number of Vasp."
     fermi_energy: float
     "Fermi energy obtained by Vasp."
     energies: np.ndarray
@@ -152,8 +152,6 @@ class RawDos:
 @dataclass
 class RawBand:
     "Electronic band structure"
-    version: RawVersion
-    "The version number of Vasp."
     fermi_energy: float
     "Fermi energy obtained by Vasp."
     kpoints: RawKpoints
@@ -172,8 +170,6 @@ class RawBand:
 @dataclass
 class RawEnergy:
     "Various energies during ionic relaxation or MD simulation."
-    version: RawVersion
-    "The version number of Vasp."
     labels: np.ndarray
     "Label identifying which energy is contained."
     values: np.ndarray
@@ -184,8 +180,6 @@ class RawEnergy:
 @dataclass
 class RawDensity:
     "The electronic charge and magnetization density."
-    version: RawVersion
-    "The version number of Vasp."
     structure: RawStructure
     "The atomic structure to represent the densities."
     charge: np.ndarray

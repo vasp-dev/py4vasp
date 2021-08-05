@@ -1,5 +1,4 @@
 from py4vasp.data import Energy, _util
-from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import RawEnergy, RawVersion
 from unittest.mock import patch
 import pytest
@@ -16,7 +15,6 @@ def reference_energy():
     labels = np.array(labels, dtype="S")
     shape = (number_time_step, len(labels))
     return RawEnergy(
-        version=current_vasp_version,
         labels=labels,
         values=np.arange(np.prod(shape)).reshape(shape),
     )
@@ -95,12 +93,6 @@ def test_incorrect_label(reference_energy):
     with pytest.raises(exception.IncorrectUsage):
         number_instead_of_string = 1
         energy.plot(number_instead_of_string)
-
-
-def test_version(reference_energy, outdated_version):
-    reference_energy.version = outdated_version
-    with pytest.raises(exception.OutdatedVaspVersion):
-        Energy(reference_energy).read()
 
 
 def test_to_png(reference_energy):

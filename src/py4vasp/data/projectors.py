@@ -215,7 +215,7 @@ def _init_orbital_dict(raw_proj):
     all_orbitals = _util.Selection(indices=slice(num_orbitals))
     orbital_dict = {_util.default_selection: all_orbitals}
     for i, orbital in enumerate(_orbital_types(raw_proj)):
-        orbital_dict[orbital] = _util.Selection(indices=(i,), label=orbital)
+        orbital_dict[orbital] = _util.Selection(indices=slice(i, i + 1), label=orbital)
     if "px" in orbital_dict:
         orbital_dict["p"] = _util.Selection(indices=slice(1, 4), label="p")
         orbital_dict["d"] = _util.Selection(indices=slice(4, 9), label="d")

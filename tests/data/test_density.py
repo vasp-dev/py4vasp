@@ -1,6 +1,5 @@
 from unittest.mock import patch
 from py4vasp.data import Density, _util
-from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import RawDensity
 from .test_structure import raw_structure
 from .test_topology import raw_topology
@@ -14,7 +13,6 @@ import py4vasp.exceptions as exceptions
 def raw_density(raw_structure):
     grid = (2, 10, 12, 14)
     density = RawDensity(
-        version=current_vasp_version,
         structure=raw_structure,
         charge=np.arange(np.prod(grid)).reshape(grid),
     )

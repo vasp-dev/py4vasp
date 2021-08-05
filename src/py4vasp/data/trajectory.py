@@ -113,11 +113,8 @@ def _to_structure(raw_traj, step=-1):
     _util.raise_error_if_not_number(step, "You can only exctract an integer step.")
     try:
         struct = RawStructure(
-            version=raw_traj.version,
             topology=raw_traj.topology,
-            cell=RawCell(
-                raw_traj.version, lattice_vectors=raw_traj.lattice_vectors[step]
-            ),
+            cell=RawCell(lattice_vectors=raw_traj.lattice_vectors[step]),
             positions=raw_traj.positions[step],
         )
     except (ValueError, IndexError) as err:

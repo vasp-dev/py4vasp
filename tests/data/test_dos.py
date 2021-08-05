@@ -1,5 +1,4 @@
 from py4vasp.data import Dos, _util
-from py4vasp.data._util import current_vasp_version
 from py4vasp.raw import RawDos, RawVersion, RawTopology, RawProjectors
 from unittest.mock import patch
 import py4vasp.exceptions as exception
@@ -14,7 +13,6 @@ def nonmagnetic_Dos():
     """Setup a nonmagnetic Dos containing all important quantities."""
     energies = np.linspace(-1, 3, num_energies)
     raw_dos = RawDos(
-        version=current_vasp_version,
         fermi_energy=1.372,
         energies=energies,
         dos=np.array([energies ** 2]),
@@ -75,7 +73,6 @@ def magnetic_Dos():
     """Setup a magnetic Dos containing all relevant quantities."""
     energies = np.linspace(-2, 2, num_energies)
     raw_dos = RawDos(
-        version=current_vasp_version,
         fermi_energy=-0.137,
         energies=energies,
         dos=np.array(((energies + 0.5) ** 2, (energies - 0.5) ** 2)),
@@ -128,9 +125,7 @@ def nonmagnetic_projections(nonmagnetic_Dos):
     atoms = ["Si", "C1", "C2"]
     lmax = 4
     raw_proj = RawProjectors(
-        version=current_vasp_version,
         topology=RawTopology(
-            version=current_vasp_version,
             number_ion_types=[1, 2],
             ion_types=np.array(["Si", "C "], dtype="S"),
         ),
@@ -211,9 +206,7 @@ def magnetic_projections(magnetic_Dos):
     f_orbitals = ["fy3x2", " fxyz", " fyz2", "  fz3", " fxz2", " fzx2", "  fx3"]
     orbitals = sp_orbitals + d_orbitals + f_orbitals
     raw_proj = RawProjectors(
-        version=current_vasp_version,
         topology=RawTopology(
-            version=current_vasp_version,
             number_ion_types=[1],
             ion_types=np.array(["Fe"], dtype="S"),
         ),
@@ -262,12 +255,6 @@ def test_magnetic_lm_Dos_plot(magnetic_Dos, magnetic_projections, Assert):
 def test_nonexisting_dos():
     with pytest.raises(exception.NoData):
         dos = Dos(None).read()
-
-
-def test_version(nonmagnetic_Dos, outdated_version):
-    nonmagnetic_Dos.version = outdated_version
-    with pytest.raises(exception.OutdatedVaspVersion):
-        Dos(nonmagnetic_Dos).read()
 
 
 def test_to_png(nonmagnetic_Dos):
