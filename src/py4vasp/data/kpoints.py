@@ -89,7 +89,7 @@ def _distances(raw_kpoints):
     cell = raw_kpoints.cell.lattice_vectors * raw_kpoints.cell.scale
     cartesian_kpoints = np.linalg.solve(cell, raw_kpoints.coordinates[:].T).T
     kpoint_lines = np.split(cartesian_kpoints, _number_lines(raw_kpoints))
-    kpoint_norms = [np.linalg.norm(line - line[0], axis=1) for line in kpoint_lines]
+    kpoint_norms = [_line_distances(line) for line in kpoint_lines]
     concatenate_distances = lambda current, addition: (
         np.concatenate((current, addition + current[-1]))
     )
@@ -124,6 +124,13 @@ def _labels(raw_kpoints):
         return _labels_at_band_edges(raw_kpoints)
     else:
         return None
+
+
+def _line_distances(coordinates):
+    distances = np.zeros(len(coordinates))
+    norms = np.linalg.norm(coordinates[1:] - coordinates[:-1], axis=1)
+    distances[1:] = np.cumsum(norms)
+    return distances
 
 
 def _labels_from_file(raw_kpoints):

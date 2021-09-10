@@ -1,5 +1,4 @@
 from py4vasp.data import Projectors, Topology
-from py4vasp.raw import RawProjectors, RawTopology, RawVersion
 from py4vasp.data._selection import Selection
 import py4vasp.exceptions as exception
 import pytest
@@ -15,41 +14,41 @@ class SelectionTestCase(NamedTuple):
 
 
 @pytest.fixture
-def without_spin():
-    proj = RawProjectors(
-        topology=RawTopology(
-            number_ion_types=np.array((2, 1, 4)),
-            ion_types=np.array(("Sr", "Ti", "O "), dtype="S"),
-        ),
-        orbital_types=np.array(
-            (" s", "py", "pz", "px", "dxy", "dyz", "dz2", "dxz", "x2-y2")
-            + ("fy3x2", "fxyz", "fyz2", "fz3", "fxz2", "fzx2", "fx3"),
-            dtype="S",
-        ),
-        number_spins=1,
-    )
-    return proj
-
-
-def test_from_file(without_spin, mock_file, check_read):
-    with mock_file("projectors", without_spin) as mocks:
-        check_read(Projectors, mocks, without_spin)
+def Sr2TiO4(raw_data):
+    return Projectors(raw_data.projectors("Sr2TiO4"))
 
 
 @pytest.fixture
-def spin_polarized(without_spin):
-    without_spin.number_spins = 2
-    return without_spin
+def Fe3O4(raw_data):
+    return Projectors(raw_data.projectors("Fe3O4"))
 
 
-@pytest.fixture
-def for_selection(spin_polarized):
-    index = np.cumsum(spin_polarized.topology.number_ion_types)
-    ref = {
+def test_Sr2TiO4_selection(Sr2TiO4):
+    ref = Sr2TiO4_selection()
+    check_projector_selection(Sr2TiO4, ref)
+
+
+def test_Fe3O4_selection(Fe3O4):
+    ref = Fe3O4_selection()
+    check_projector_selection(Fe3O4, ref)
+
+
+def check_projector_selection(proj, ref):
+    default = Index(ref["atom"]["*"], ref["orbital"]["*"], ref["spin"]["*"])
+    for atom, ref_atom in ref["atom"].items():
+        assert proj.select(atom=atom) == default._replace(atom=ref_atom)
+    for orbital, ref_orbital in ref["orbital"].items():
+        assert proj.select(orbital=orbital) == default._replace(orbital=ref_orbital)
+    for spin, ref_spin in ref["spin"].items():
+        assert proj.select(spin=spin) == default._replace(spin=ref_spin)
+
+
+def Sr2TiO4_selection():
+    return {
         "atom": {
-            "Sr": Selection(indices=slice(0, index[0]), label="Sr"),
-            "Ti": Selection(indices=slice(index[0], index[1]), label="Ti"),
-            "O": Selection(indices=slice(index[1], index[2]), label="O"),
+            "Sr": Selection(indices=slice(0, 2), label="Sr"),
+            "Ti": Selection(indices=slice(2, 3), label="Ti"),
+            "O": Selection(indices=slice(3, 7), label="O"),
             "1": Selection(indices=slice(0, 1), label="Sr_1"),
             "2": Selection(indices=slice(1, 2), label="Sr_2"),
             "3": Selection(indices=slice(2, 3), label="Ti_1"),
@@ -59,7 +58,7 @@ def for_selection(spin_polarized):
             "7": Selection(indices=slice(6, 7), label="O_4"),
             "1-3": Selection(indices=slice(0, 3), label="1-3"),
             "4-7": Selection(indices=slice(3, 7), label="4-7"),
-            "*": Selection(indices=slice(index[-1])),
+            "*": Selection(indices=slice(7)),
         },
         "orbital": {
             "s": Selection(indices=slice(0, 1), label="s"),
@@ -81,34 +80,66 @@ def for_selection(spin_polarized):
             "p": Selection(indices=slice(1, 4), label="p"),
             "d": Selection(indices=slice(4, 9), label="d"),
             "f": Selection(indices=slice(9, 16), label="f"),
-            "*": Selection(indices=slice(len(spin_polarized.orbital_types))),
+            "*": Selection(indices=slice(16)),
         },
         "spin": {
-            "up": Selection(indices=slice(1), label="up"),
-            "down": Selection(indices=slice(1, 2), label="down"),
-            "total": Selection(
-                indices=slice(spin_polarized.number_spins), label="total"
-            ),
-            "*": Selection(indices=slice(spin_polarized.number_spins)),
+            "total": Selection(indices=slice(1), label="total"),
+            "*": Selection(indices=slice(1)),
         },
     }
-    return Projectors(spin_polarized), ref
 
 
-def test_selection(for_selection):
-    proj, ref = for_selection
-    default = Index(ref["atom"]["*"], ref["orbital"]["*"], ref["spin"]["*"])
-    for atom, ref_atom in ref["atom"].items():
-        assert proj.select(atom=atom) == default._replace(atom=ref_atom)
-    for orbital, ref_orbital in ref["orbital"].items():
-        assert proj.select(orbital=orbital) == default._replace(orbital=ref_orbital)
-    for spin, ref_spin in ref["spin"].items():
-        assert proj.select(spin=spin) == default._replace(spin=ref_spin)
+def Fe3O4_selection():
+    return {
+        "atom": {
+            "Fe": Selection(indices=slice(0, 3), label="Fe"),
+            "O": Selection(indices=slice(3, 7), label="O"),
+            "1": Selection(indices=slice(0, 1), label="Fe_1"),
+            "2": Selection(indices=slice(1, 2), label="Fe_2"),
+            "3": Selection(indices=slice(2, 3), label="Fe_3"),
+            "4": Selection(indices=slice(3, 4), label="O_1"),
+            "5": Selection(indices=slice(4, 5), label="O_2"),
+            "6": Selection(indices=slice(5, 6), label="O_3"),
+            "7": Selection(indices=slice(6, 7), label="O_4"),
+            "1-2": Selection(indices=slice(0, 2), label="1-2"),
+            "4-5": Selection(indices=slice(3, 5), label="4-5"),
+            "*": Selection(indices=slice(7)),
+        },
+        "orbital": {
+            "s": Selection(indices=slice(0, 1), label="s"),
+            "p": Selection(indices=slice(1, 2), label="p"),
+            "d": Selection(indices=slice(2, 3), label="d"),
+            "f": Selection(indices=slice(3, 4), label="f"),
+            "*": Selection(indices=slice(4)),
+        },
+        "spin": {
+            "total": Selection(indices=slice(2), label="total"),
+            "up": Selection(indices=slice(1), label="up"),
+            "down": Selection(indices=slice(1, 2), label="down"),
+            "*": Selection(indices=slice(2)),
+        },
+    }
 
 
-@pytest.fixture
-def for_parse_selection(without_spin):
-    testcases = (
+def test_Sr2TiO4_parse_selection(Sr2TiO4):
+    testcases = Sr2TiO4_testcases()
+    check_parse_selection(Sr2TiO4, testcases)
+
+
+def test_Fe3O4_parse_selection(Fe3O4):
+    testcases = Fe3O4_testcases()
+    check_parse_selection(Fe3O4, testcases)
+
+
+def check_parse_selection(projectors, testcases):
+    for testcase in testcases:
+        for format in testcase.equivalent_formats:
+            selections = projectors.parse_selection(format)
+            assert list(selections) == list(testcase.reference_selections)
+
+
+def Sr2TiO4_testcases():
+    return (
         SelectionTestCase(
             equivalent_formats=("Sr", "Sr(*)"),
             reference_selections=(Index(atom="Sr", orbital="*", spin="*"),),
@@ -155,24 +186,22 @@ def for_parse_selection(without_spin):
             reference_selections=(Index(atom="1-4", orbital="*", spin="*"),),
         ),
     )
-    return Projectors(without_spin), testcases
 
 
-@pytest.fixture
-def for_spin_polarized_parse_selection(spin_polarized):
-    testcases = (
+def Fe3O4_testcases():
+    return (
         SelectionTestCase(
-            equivalent_formats=("Sr", "Sr(up,down)", "Sr(*(up)), Sr(down)"),
+            equivalent_formats=("Fe", "Fe(up,down)", "Fe(*(up)), Fe(down)"),
             reference_selections=(
-                Index(atom="Sr", orbital="*", spin="up"),
-                Index(atom="Sr", orbital="*", spin="down"),
+                Index(atom="Fe", orbital="*", spin="up"),
+                Index(atom="Fe", orbital="*", spin="down"),
             ),
         ),
         SelectionTestCase(
-            equivalent_formats=("Ti( s(up) p(down) )", "Ti(s(up))Ti(p(down))"),
+            equivalent_formats=("O( s(up) p(down) )", "O(s(up))O(p(down))"),
             reference_selections=(
-                Index(atom="Ti", orbital="s", spin="up"),
-                Index(atom="Ti", orbital="p", spin="down"),
+                Index(atom="O", orbital="s", spin="up"),
+                Index(atom="O", orbital="p", spin="down"),
             ),
         ),
         SelectionTestCase(
@@ -193,55 +222,75 @@ def for_spin_polarized_parse_selection(spin_polarized):
             ),
         ),
         SelectionTestCase(
-            equivalent_formats=("2( px(up) )", "px(2(up))", "up(2(px))"),
-            reference_selections=(Index(atom="2", orbital="px", spin="up"),),
+            equivalent_formats=("2( p(up) )", "p(2(up))", "up(2(p))"),
+            reference_selections=(Index(atom="2", orbital="p", spin="up"),),
         ),
         SelectionTestCase(
             equivalent_formats=("3-4(up)", "up (3 - 4)"),
             reference_selections=(Index(atom="3-4", orbital="*", spin="up"),),
         ),
     )
-    return Projectors(spin_polarized), testcases
 
 
-def test_parse_selection(for_parse_selection):
-    run_parse_selection(for_parse_selection)
+def test_read_empty(Sr2TiO4):
+    assert Sr2TiO4.read() == {}
 
 
-def test_spin_polarized_parse_selection(for_spin_polarized_parse_selection):
-    run_parse_selection(for_spin_polarized_parse_selection)
-
-
-def run_parse_selection(setup):
-    proj, testcases = setup
-    for testcase in testcases:
-        for format in testcase.equivalent_formats:
-            selections = proj.parse_selection(format)
-            assert list(selections) == list(testcase.reference_selections)
-
-
-def test_read(without_spin, Assert):
-    projectors = Projectors(without_spin)
-    assert projectors.read() == {}
+def test_read_only_indices(Sr2TiO4):
     reference = {
         "Sr_p": (slice(1), slice(0, 2), slice(1, 4)),
         "Ti_1_dxy": (slice(1), slice(2, 3), slice(4, 5)),
     }
-    assert projectors.read(selection="Sr(p) 3(dxy)") == reference
-    num_atoms = np.sum(without_spin.topology.number_ion_types)
-    num_orbitals = len(without_spin.orbital_types)
+    assert Sr2TiO4.read(selection="Sr(p) 3(dxy)") == reference
+
+
+def test_read_projections(Sr2TiO4, Assert):
+    num_spins = 1
+    num_atoms = 7
+    num_orbitals = 10
     num_quantity = 25
-    shape = (without_spin.number_spins, num_atoms, num_orbitals, num_quantity)
+    shape = (num_spins, num_atoms, num_orbitals, num_quantity)
     projections = np.arange(np.prod(shape)).reshape(shape)
     Sr_ref = np.sum(projections[0, 0:2, 1:4], axis=(0, 1))
     Ti_ref = projections[0, 2, 4]
-    actual = projectors.read(selection="Sr(p) 3(dxy)", projections=projections)
+    actual = Sr2TiO4.read(selection="Sr(p) 3(dxy)", projections=projections)
     Assert.allclose(actual["Sr_p"], Sr_ref)
     Assert.allclose(actual["Ti_1_dxy"], Ti_ref)
 
 
-def test_print(without_spin, format_):
-    actual, _ = format_(Projectors(without_spin))
+def test_error_parsing(Sr2TiO4):
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4.read(selection="XX")
+    with pytest.raises(exception.IncorrectUsage):
+        number_instead_of_string = -1
+        Sr2TiO4.read(selection=number_instead_of_string)
+
+
+def test_incorrect_selection(Sr2TiO4):
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4.select(atom="XX")
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4.select(atom="100-900")
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4.select(orbital="XX")
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4.select(spin="XX")
+
+
+def test_nonexisting_projectors():
+    with pytest.raises(exception.NoData):
+        projectors = Projectors(None).read()
+
+
+def test_incorrect_reading_of_projections(Sr2TiO4):
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4.read("Sr", [1, 2, 3])
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4.read("Sr", np.zeros(3))
+
+
+def test_print(Sr2TiO4, format_):
+    actual, _ = format_(Sr2TiO4)
     reference = """
 projectors:
     atoms: Sr, Ti, O
@@ -250,45 +299,15 @@ projectors:
     assert actual == {"text/plain": reference}
 
 
-def test_error_parsing(without_spin):
-    projectors = Projectors(without_spin)
-    with pytest.raises(exception.IncorrectUsage):
-        projectors.read(selection="XX")
-    with pytest.raises(exception.IncorrectUsage):
-        number_instead_of_string = -1
-        projectors.read(selection=number_instead_of_string)
-
-
-def test_incorrect_selection(without_spin):
-    projectors = Projectors(without_spin)
-    with pytest.raises(exception.IncorrectUsage):
-        projectors.select(atom="XX")
-    with pytest.raises(exception.IncorrectUsage):
-        projectors.select(atom="100-900")
-    with pytest.raises(exception.IncorrectUsage):
-        projectors.select(orbital="XX")
-    with pytest.raises(exception.IncorrectUsage):
-        projectors.select(spin="XX")
-
-
-def test_nonexisting_projectors():
-    with pytest.raises(exception.NoData):
-        projectors = Projectors(None).read()
-
-
-def test_incorrect_reading_of_projections(without_spin):
-    projectors = Projectors(without_spin)
-    with pytest.raises(exception.IncorrectUsage):
-        projectors.read("Sr", [1, 2, 3])
-    with pytest.raises(exception.IncorrectUsage):
-        projectors.read("Sr", np.zeros(3))
-
-
-def test_descriptor(without_spin, check_descriptors):
-    projectors = Projectors(without_spin)
+def test_descriptor(Sr2TiO4, check_descriptors):
     descriptors = {
         "_to_dict": ["to_dict", "read"],
         "_select": ["select"],
         "_parse_selection": ["parse_selection"],
     }
-    check_descriptors(projectors, descriptors)
+    check_descriptors(Sr2TiO4, descriptors)
+
+
+# def test_from_file(without_spin, mock_file, check_read):
+#     with mock_file("projectors", without_spin) as mocks:
+#         check_read(Projectors, mocks, without_spin)

@@ -28,9 +28,10 @@ class Topology(DataBase):
     to_frame = RefinementDescriptor("_to_frame")
     to_mdtraj = RefinementDescriptor("_to_mdtraj")
     to_poscar = RefinementDescriptor("_to_poscar")
-    names = RefinementDescriptor("_names")
     elements = RefinementDescriptor("_elements")
     ion_types = RefinementDescriptor("_ion_types")
+    names = RefinementDescriptor("_names")
+    number_atoms = RefinementDescriptor("_number_atoms")
     __str__ = RefinementDescriptor("_to_string")
     _repr_html_ = RefinementDescriptor("_to_html")
 
@@ -129,11 +130,16 @@ def _elements(raw_topology):
 def _ion_types(raw_topology):
     "Return the type of all ions in the system as string."
     clean_string = lambda ion_type: _convert.text_to_string(ion_type).strip()
-    return (clean_string(ion_type) for ion_type in raw_topology.ion_types)
+    return [clean_string(ion_type) for ion_type in raw_topology.ion_types]
+
+
+def _number_atoms(raw_topology):
+    "Return the number of atoms in the system."
+    return np.sum(raw_topology.number_ion_types)
 
 
 def _default_selection(raw_topology):
-    num_atoms = np.sum(raw_topology.number_ion_types)
+    num_atoms = _number_atoms(raw_topology)
     return {_Selection.default: _Selection(indices=slice(num_atoms))}
 
 

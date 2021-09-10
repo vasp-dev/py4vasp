@@ -11,7 +11,10 @@ import py4vasp.raw as raw
 class _Assert:
     @staticmethod
     def allclose(actual, desired):
-        assert_array_almost_equal_nulp(actual, desired, 10)
+        if actual is None:
+            assert desired is None
+        else:
+            assert_array_almost_equal_nulp(actual, desired, 10)
 
 
 @pytest.fixture

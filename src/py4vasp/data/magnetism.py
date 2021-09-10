@@ -34,7 +34,7 @@ def _to_string(raw_magnetism):
     moments_last_step = _total_moments(raw_magnetism, -1)
     moments_to_string = lambda vec: " ".join(f"{moment:.2f}" for moment in vec)
     if moments_last_step is None:
-        return "not available"
+        return "not spin polarized"
     elif moments_last_step.ndim == 1:
         return magmom + moments_to_string(moments_last_step)
     else:
@@ -71,9 +71,10 @@ dict
 {_index_note}"""
 )
 def _to_dict(raw_magnetism, steps=None):
-    moments = _moments(raw_magnetism, steps)
-    moments = {"moments": moments} if moments is not None else {}
-    return {"charges": _charges(raw_magnetism, steps), **moments}
+    return {
+        "charges": _charges(raw_magnetism, steps),
+        "moments": _moments(raw_magnetism, steps),
+    }
 
 
 @_add_documentation(
@@ -108,6 +109,7 @@ np.ndarray
 def _moments(raw_magnetism, steps=None):
     moments = _Magnetism(raw_magnetism.moments)
     steps = _default_steps_if_none(moments, steps)
+    _fail_if_steps_out_of_bounds(moments, steps)
     if moments.shape[1] == 1:
         return None
     elif moments.shape[1] == 2:
@@ -146,6 +148,7 @@ np.ndarray
 )
 def _total_moments(raw_magnetism, steps=None):
     moments = _Magnetism(raw_magnetism.moments)
+    _fail_if_steps_out_of_bounds(moments, steps)
     if moments.shape[1] == 1:
         return None
     elif moments.shape[1] == 2:
@@ -159,15 +162,21 @@ def _total_moments(raw_magnetism, steps=None):
 
 class _Magnetism(_reader.Reader):
     def error_message(self, key, err):
+        key = np.array(key)
+        steps = key if key.ndim == 0 else key[0]
         return (
-            f"Error reading the magnetic moments. Please check if the key "
-            f"`{key[0]}` is properly formatted and within the boundaries. "
+            f"Error reading the magnetic moments. Please check if the steps "
+            f"`{steps}` are properly formatted and within the boundaries. "
             "Additionally, you may consider the original error message:\n" + err.args[0]
         )
 
 
 def _default_steps_if_none(moments, steps):
     return steps if steps is not None else range(len(moments))
+
+
+def _fail_if_steps_out_of_bounds(moments, steps):
+    moments[steps]  # try to access requested step raising an error if out of bounds
 
 
 def _sum_over_orbitals(quantity):

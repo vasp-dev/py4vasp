@@ -32,6 +32,7 @@ class Structure(DataBase):
     to_viewer3d = RefinementDescriptor("_to_viewer3d")
     to_ase = RefinementDescriptor("_to_ase")
     to_POSCAR = RefinementDescriptor("_to_string")
+    cartesian_positions = RefinementDescriptor("_cartesian_positions")
     __str__ = RefinementDescriptor("_to_string")
     _repr_html_ = RefinementDescriptor("_to_html")
     __len__ = RefinementDescriptor("_length")
@@ -102,12 +103,11 @@ def _to_dict(raw_struct):
         all the atoms in units of the lattice vectors and the elements of
         the atoms.
     """
-    moments = _read_magnetic_moments(raw_struct.magnetism)
     return {
-        "lattice_vectors": raw_struct.cell.scale * raw_struct.cell.lattice_vectors[:],
+        "lattice_vectors": _lattice_vectors(raw_struct),
         "positions": raw_struct.positions[:],
         "elements": Topology(raw_struct.topology).elements(),
-        **({"magnetic_moments": moments} if moments is not None else {}),
+        "moments": _read_magnetic_moments(raw_struct.magnetism),
     }
 
 
@@ -155,8 +155,8 @@ def _to_ase(raw_struct, supercell=None):
         scaled_positions=data["positions"],
         pbc=True,
     )
-    if "magnetic_moments" in data:
-        structure.set_initial_magnetic_moments(data["magnetic_moments"])
+    if data["moments"] is not None:
+        structure.set_initial_magnetic_moments(data["moments"])
     if supercell is not None:
         try:
             structure *= supercell
@@ -169,8 +169,23 @@ def _to_ase(raw_struct, supercell=None):
     return structure
 
 
+def _cartesian_positions(raw_struct):
+    """Convert the positions from direct coordinates to cartesian ones.
+
+    Returns
+    -------
+    np.ndarray
+        Position of all atoms in cartesian coordinates in Å
+    """
+    return raw_struct.positions @ _lattice_vectors(raw_struct)
+
+
 def _length(raw_struct):
     return len(raw_struct.positions)
+
+
+def _lattice_vectors(raw_struct):
+    return raw_struct.cell.scale * raw_struct.cell.lattice_vectors[:]
 
 
 def _read_magnetic_moments(magnetism):

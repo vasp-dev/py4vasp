@@ -37,9 +37,8 @@ class Band(DataBase):
 
 
 def _to_string(raw_band):
-    path = _create_path_if_available(raw_band)
     return f"""
-{"spin polarized" if _spin_polarized(raw_band) else ""} band structure{path}:
+{"spin polarized" if _spin_polarized(raw_band) else ""} band data:
     {raw_band.eigenvalues.shape[1]} k-points
     {raw_band.eigenvalues.shape[2]} bands
 {pretty(_projectors_or_dummy(raw_band.projectors))}
@@ -213,14 +212,6 @@ def _scatter(name, kdists, lines):
     kdists = np.tile([*kdists, np.NaN], num_bands)
     lines = np.append(lines, [np.repeat(np.NaN, num_bands)], axis=0)
     return go.Scatter(x=kdists, y=lines.flatten(order="F"), name=name)
-
-
-def _create_path_if_available(raw_band):
-    _, labels = _ticks_and_labels(raw_band)
-    if any(len(label.strip()) > 0 for label in labels):
-        return " (" + " - ".join(labels) + ")"
-    else:
-        return ""
 
 
 def _ticks_and_labels(raw_band):

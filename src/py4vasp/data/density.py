@@ -65,16 +65,16 @@ def _to_dict(raw_density):
     return {
         "structure": Structure(raw_density.structure).read(),
         "charge": raw_density.charge[0],
-        **_magnetization_if_present(raw_density.charge),
+        "magnetization": _magnetization_if_present(raw_density.charge),
     }
 
 
-def _to_viewer3d(raw_density, quantity="charge", **user_options):
+def _to_viewer3d(raw_density, selection="charge", **user_options):
     """Plot the selected density as a 3d isosurface within the structure.
 
     Parameters
     ----------
-    quantity : str
+    selection : str
         Can be either *charge* or *magnetization*, dependending on which quantity
         should be visualized.
     user_options
@@ -88,21 +88,21 @@ def _to_viewer3d(raw_density, quantity="charge", **user_options):
         Visualize an isosurface of the density within the 3d structure.
     """
     viewer = Structure(raw_density.structure).plot()
-    if quantity == "charge":
+    if selection == "charge":
         _plot_charge(raw_density.charge, _ViewerWrapper(viewer), **user_options)
-    elif quantity == "magnetization":
+    elif selection == "magnetization":
         _plot_magnetism(raw_density.charge, _ViewerWrapper(viewer), **user_options)
     else:
-        msg = f"'{quantity}' is an unknown option, please use 'charge' or 'magnetization' instead."
+        msg = f"'{selection}' is an unknown option, please use 'charge' or 'magnetization' instead."
         raise exceptions.IncorrectUsage(msg)
     return viewer
 
 
 def _magnetization_if_present(charge):
     if len(charge) > 1:
-        return {"magnetization": charge[1]}
+        return charge[1]
     else:
-        return {}
+        return None
 
 
 def _plot_charge(charge, viewer, **user_options):

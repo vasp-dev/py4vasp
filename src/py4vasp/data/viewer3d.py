@@ -38,10 +38,10 @@ class Viewer3d:
     _angles = None
     _number_cells = 1
     _axes = None
-    _arrows = []
 
     def __init__(self, viewer):
         self._ngl = viewer
+        self._arrows = []
 
     @classmethod
     def from_structure(cls, structure, supercell=None):

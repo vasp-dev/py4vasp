@@ -1,42 +1,23 @@
-from py4vasp.raw import *
 from py4vasp.data import *
-from .test_band import raw_band
-from .test_density import raw_density
-from .test_dos import nonmagnetic_Dos
-from .test_energy import reference_energy
-from .test_kpoints import raw_kpoints
-from .test_magnetism import raw_magnetism
-from .test_projectors import without_spin
-from .test_structure import raw_structure
-from .test_topology import raw_topology
-from .test_trajectory import raw_trajectory
+from py4vasp.raw import *
 from numpy import array
 
 
-def test_repr(
-    raw_band,
-    raw_density,
-    nonmagnetic_Dos,
-    reference_energy,
-    raw_kpoints,
-    raw_magnetism,
-    without_spin,
-    raw_structure,
-    raw_topology,
-    raw_trajectory,
-):
-    tests = (
-        Band(raw_band),
-        Density(raw_density),
-        Dos(nonmagnetic_Dos),
-        Energy(reference_energy),
-        Kpoints(raw_kpoints),
-        Magnetism(raw_magnetism),
-        Projectors(without_spin),
-        Structure(raw_structure),
-        Topology(raw_topology),
-        Trajectory(raw_trajectory),
-    )
-    for test in tests:
-        copy = eval(repr(test))
-        assert copy.__class__ == test.__class__
+def test_repr(raw_data):
+    tests = {
+        Band: "multiple",
+        Density: "Fe3O4 collinear",
+        Dos: "Fe3O4",
+        Energy: None,
+        Kpoints: "line",
+        Magnetism: "collinear",
+        Projectors: "Fe3O4",
+        Structure: "Fe3O4 collinear",
+        Topology: "Fe3O4",
+        Trajectory: "Sr2TiO4",
+    }
+    for class_, parameter in tests.items():
+        raw = getattr(raw_data, class_.__name__.lower())(parameter)
+        instance = class_(raw)
+        copy = eval(repr(instance))
+        assert copy.__class__ == class_
