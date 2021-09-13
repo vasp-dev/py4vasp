@@ -368,7 +368,7 @@ def test_descriptor(single_band, check_descriptors):
     check_descriptors(single_band, descriptors)
 
 
-#
-# def test_default_from_file(raw_band, mock_file, check_read):
-#     with mock_file("band", raw_band) as mocks:
-#         check_read(Band, mocks, raw_band)
+def test_from_file(raw_data, mock_file, check_read):
+    raw_band = raw_data.band("single")
+    with mock_file("band", raw_band) as mocks:
+        check_read(Band, mocks, raw_band)

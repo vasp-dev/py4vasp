@@ -115,7 +115,7 @@ def test_descriptor(Sr2TiO4, check_descriptors):
     check_descriptors(Sr2TiO4, descriptors)
 
 
-#
-# def test_from_file(raw_trajectory, mock_file, check_read):
-#     with mock_file("trajectory", raw_trajectory) as mocks:
-#         check_read(Trajectory, mocks, raw_trajectory)
+def test_from_file(raw_data, mock_file, check_read):
+    raw_trajectory = raw_data.trajectory("Sr2TiO4")
+    with mock_file("trajectory", raw_trajectory) as mocks:
+        check_read(Trajectory, mocks, raw_trajectory)

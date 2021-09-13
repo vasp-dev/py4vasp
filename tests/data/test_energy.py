@@ -123,6 +123,7 @@ def test_descriptor(energy, check_descriptors):
     check_descriptors(energy, descriptors)
 
 
-# def test_energy_from_file(reference_energy, mock_file, check_read):
-#     with mock_file("energy", reference_energy) as mocks:
-#         check_read(Energy, mocks, reference_energy)
+def test_from_file(raw_data, mock_file, check_read):
+    raw_energy = raw_data.energy("default")
+    with mock_file("energy", raw_energy) as mocks:
+        check_read(Energy, mocks, raw_energy)

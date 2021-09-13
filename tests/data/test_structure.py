@@ -236,6 +236,7 @@ def test_descriptor(Sr2TiO4, check_descriptors):
     check_descriptors(Sr2TiO4, descriptors)
 
 
-# def test_from_file(raw_structure, mock_file, check_read):
-#     with mock_file("structure", raw_structure) as mocks:
-#         check_read(Structure, mocks, raw_structure)
+def test_from_file(raw_data, mock_file, check_read):
+    raw_structure = raw_data.structure("Sr2TiO4")
+    with mock_file("structure", raw_structure) as mocks:
+        check_read(Structure, mocks, raw_structure)

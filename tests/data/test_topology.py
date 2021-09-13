@@ -95,6 +95,7 @@ def test_descriptor(Sr2TiO4, check_descriptors):
     check_descriptors(Sr2TiO4, descriptors)
 
 
-# def test_from_file(raw_topology, mock_file, check_read):
-#     with mock_file("topology", raw_topology) as mocks:
-#         check_read(Topology, mocks, raw_topology)
+def test_from_file(raw_data, mock_file, check_read):
+    raw_topology = raw_data.topology("Sr2TiO4")
+    with mock_file("topology", raw_topology) as mocks:
+        check_read(Topology, mocks, raw_topology)

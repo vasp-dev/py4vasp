@@ -171,8 +171,7 @@ def test_descriptor(collinear_magnetism, check_descriptors):
     check_descriptors(collinear_magnetism, descriptors)
 
 
-#
-#
-# def test_from_file(raw_magnetism, mock_file, check_read):
-#     with mock_file("magnetism", raw_magnetism) as mocks:
-#         check_read(Magnetism, mocks, raw_magnetism)
+def test_from_file(raw_data, mock_file, check_read):
+    raw_magnetism = raw_data.magnetism("collinear")
+    with mock_file("magnetism", raw_magnetism) as mocks:
+        check_read(Magnetism, mocks, raw_magnetism)

@@ -308,6 +308,7 @@ def test_descriptor(Sr2TiO4, check_descriptors):
     check_descriptors(Sr2TiO4, descriptors)
 
 
-# def test_from_file(without_spin, mock_file, check_read):
-#     with mock_file("projectors", without_spin) as mocks:
-#         check_read(Projectors, mocks, without_spin)
+def test_from_file(raw_data, mock_file, check_read):
+    raw_proj = raw_data.projectors("Sr2TiO4")
+    with mock_file("projectors", raw_proj) as mocks:
+        check_read(Projectors, mocks, raw_proj)

@@ -228,6 +228,7 @@ def test_descriptor(explicit_kpoints, check_descriptors):
     check_descriptors(explicit_kpoints, descriptors)
 
 
-# def test_from_file(raw_kpoints, mock_file, check_read):
-#     with mock_file("kpoints", raw_kpoints) as mocks:
-#         check_read(Kpoints, mocks, raw_kpoints)
+def test_from_file(raw_data, mock_file, check_read):
+    raw_kpoints = raw_data.kpoints("explicit")
+    with mock_file("kpoints", raw_kpoints) as mocks:
+        check_read(Kpoints, mocks, raw_kpoints)

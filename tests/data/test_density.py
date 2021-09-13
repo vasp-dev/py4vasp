@@ -117,6 +117,7 @@ def test_descriptor(collinear_density, check_descriptors):
     check_descriptors(collinear_density, descriptors)
 
 
-# def test_from_file(raw_density, mock_file, check_read):
-#     with mock_file("density", raw_density) as mocks:
-#         check_read(Density, mocks, raw_density, default_filename="vaspwave.h5")
+def test_from_file(raw_data, mock_file, check_read):
+    raw_density = raw_data.density("Fe3O4 collinear")
+    with mock_file("density", raw_density) as mocks:
+        check_read(Density, mocks, raw_density, default_filename="vaspwave.h5")

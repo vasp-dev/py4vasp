@@ -234,6 +234,7 @@ def test_descriptor(Sr2TiO4, check_descriptors):
     check_descriptors(Sr2TiO4, descriptors)
 
 
-# def test_nonmagnetic_Dos_from_file(nonmagnetic_Dos, mock_file, check_read):
-#     with mock_file("dos", nonmagnetic_Dos) as mocks:
-#         check_read(Dos, mocks, nonmagnetic_Dos)
+def test_from_file(raw_data, mock_file, check_read):
+    raw_dos = raw_data.dos("Sr2TiO4")
+    with mock_file("dos", raw_dos) as mocks:
+        check_read(Dos, mocks, raw_dos)
