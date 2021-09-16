@@ -334,6 +334,29 @@ class File(AbstractContextManager):
             charge=self._h5f["charge/charge"],
         )
 
+    @property
+    def dielectric(self):
+        """Read the dielectric functions.
+
+        Returns
+        -------
+        DataDict[str, RawDielectric]
+            The key specifies, which dielectric function is contained. The value
+            represents the energy-resolved dielectric tensor.
+        """
+        electron = self._read_dielectric("electron")
+        ion = self._read_dielectric("ion")
+        return self._make_data_dict(default=electron, electron=electron, ion=ion)
+
+    def _read_dielectric(self, prefix):
+        group = f"results/{prefix}_dielectric"
+        if group not in self._h5f:
+            return None
+        return RawDielectric(
+            energies=self._h5f[f"{group}/energies"],
+            function=self._h5f[f"{group}/function"],
+        )
+
     def close(self):
         "Close the associated HDF5 file (automatically if used as context manager)."
         self._h5f.close()

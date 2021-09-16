@@ -19,6 +19,7 @@ the documentation of the individual classes.
 
 from .band import Band
 from .dos import Dos
+from .dielectric import Dielectric
 from .energy import Energy
 from .kpoints import Kpoints
 from .magnetism import Magnetism

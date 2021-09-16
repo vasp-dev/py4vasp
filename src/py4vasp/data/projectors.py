@@ -1,7 +1,6 @@
 from typing import NamedTuple, Iterable, Union
-from dataclasses import dataclass
-import re
 import numpy as np
+import re
 from .topology import Topology
 from py4vasp.data._base import DataBase, RefinementDescriptor
 from py4vasp._util.documentation import _add_documentation
@@ -10,6 +9,7 @@ import py4vasp.exceptions as exception
 import py4vasp._util.convert as _convert
 import py4vasp._util.reader as _reader
 import py4vasp._util.sanity_check as _check
+import py4vasp._util.selection as _selection
 
 
 _selection_doc = r"""
@@ -196,7 +196,8 @@ def _parse_selection(raw_proj, selection):
         orbital=_Selection.default,
         spin=_spin_not_set,
     )
-    yield from _parse_recursive(dicts, selection, default_index)
+    tree = _selection.SelectionTree.from_selection(selection)
+    yield from _parse_recursive(dicts, tree, default_index)
 
 
 _spin_not_set = "not set"
@@ -273,13 +274,13 @@ def _raise_error_if_not_found_in_dict(selection, dict_):
         )
 
 
-def _parse_recursive(dicts, selection, current_index):
-    for part, specification in _split_into_parts(selection):
-        new_index = _update_index(dicts, current_index, part)
-        if specification == "":
+def _parse_recursive(dicts, tree, current_index):
+    for node in tree.nodes:
+        new_index = _update_index(dicts, current_index, str(node))
+        if len(node.nodes) == 0:
             yield from _setup_spin_indices(new_index, dicts["spin"]["polarized"])
         else:
-            yield from _parse_recursive(dicts, specification, new_index)
+            yield from _parse_recursive(dicts, node, new_index)
 
 
 def _update_index(dicts, index, part):
@@ -328,67 +329,3 @@ def _projectors_or_dummy(projectors):
         return _NoProjectorsAvailable()
     else:
         return Projectors(projectors)
-
-
-def _split_into_parts(selection):
-    selection = _cleanup_whitespace(selection)
-    state = _State()
-    for char in selection + _seperators[0]:  # make sure selection contains termination
-        state = _update_state(state, char)
-        if state.complete:
-            yield state.part, state.specification
-
-
-_seperators = (" ", ",")
-
-
-def _cleanup_whitespace(selection):
-    selection = _whitespace_begin_spec.sub(_begin_spec, selection)
-    selection = _whitespace_end_spec.sub(_end_spec + _seperators[0], selection)
-    return _whitespace_range.sub(_range_separator, selection)
-
-
-_begin_spec = "("
-_end_spec = ")"
-_whitespace_begin_spec = re.compile(r"\s*" + re.escape(_begin_spec) + r"\s*")
-_whitespace_end_spec = re.compile(r"\s*" + re.escape(_end_spec) + r"\s*")
-_whitespace_range = re.compile(r"\s*" + re.escape(_range_separator) + r"\s*")
-
-
-@dataclass
-class _State:
-    level: int = 0
-    part: str = ""
-    specification: str = ""
-    complete: bool = False
-
-
-def _update_state(state, char):
-    state.level = _update_level(state, char)
-    state.part = _update_part(state, char)
-    state.specification = _update_specification(state, char)
-    state.complete = _is_state_complete(state, char)
-    return state
-
-
-def _update_level(state, char):
-    return state.level + (char == _begin_spec) - (char == _end_spec)
-
-
-def _update_part(state, char):
-    part = state.part if not state.complete else ""
-    char_used = char not in (_end_spec, *_seperators) and state.level == 0
-    char = char if char_used else ""
-    return part + char
-
-
-def _update_specification(state, char):
-    spec_used = not state.complete and (state.level != 1 or char != _begin_spec)
-    spec = state.specification if spec_used else ""
-    char_used = spec_used and state.level > 0
-    char = char if char_used else ""
-    return spec + char
-
-
-def _is_state_complete(state, char):
-    return state.level == 0 and char in _seperators and state.part != ""

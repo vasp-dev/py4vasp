@@ -185,3 +185,13 @@ class RawDensity:
     charge: np.ndarray
     "The raw data of electronic charge and magnetization density."
     __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawDielectric:
+    "The electronic or ionic dielectric function."
+    energies: np.ndarray
+    "The energies at which the dielectric function is evaluated."
+    function: np.ndarray
+    "The values of the dielectric tensor at these energies."
+    __eq__ = _dataclass_equal

@@ -1,4 +1,3 @@
-from numpy.testing import assert_array_almost_equal_nulp
 from contextlib import contextmanager
 from IPython.core.formatters import DisplayFormatter
 from unittest.mock import patch, MagicMock, PropertyMock
@@ -6,20 +5,6 @@ from pathlib import Path
 import pytest
 import py4vasp._util.version as version
 import py4vasp.raw as raw
-
-
-class _Assert:
-    @staticmethod
-    def allclose(actual, desired):
-        if actual is None:
-            assert desired is None
-        else:
-            assert_array_almost_equal_nulp(actual, desired, 10)
-
-
-@pytest.fixture
-def Assert():
-    return _Assert
 
 
 @pytest.fixture

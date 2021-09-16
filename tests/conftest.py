@@ -1,5 +1,6 @@
 import itertools
 import numpy as np
+from numpy.testing import assert_array_almost_equal_nulp
 import pytest
 import py4vasp.exceptions as exception
 import py4vasp.raw as raw
@@ -11,6 +12,22 @@ number_points = 50
 number_bands = 3
 single_spin = 1
 two_spins = 2
+axes = 3
+complex_ = 2
+
+
+class _Assert:
+    @staticmethod
+    def allclose(actual, desired):
+        if actual is None:
+            assert desired is None
+        else:
+            assert_array_almost_equal_nulp(actual, desired, 10)
+
+
+@pytest.fixture
+def Assert():
+    return _Assert
 
 
 class RawDataFactory:
@@ -32,6 +49,10 @@ class RawDataFactory:
     @staticmethod
     def density(selection):
         return _Fe3O4_density(selection)
+
+    @staticmethod
+    def dielectric(selection):
+        return _dielectric()
 
     @staticmethod
     def dos(selection):
@@ -111,6 +132,14 @@ class RawDataFactory:
 @pytest.fixture
 def raw_data():
     return RawDataFactory
+
+
+def _dielectric():
+    shape = (axes, axes, number_points, complex_)
+    return raw.RawDielectric(
+        energies=np.linspace(0, 1, number_points),
+        function=np.linspace(0, 1, np.prod(shape)).reshape(shape),
+    )
 
 
 def _energy():

@@ -18,6 +18,8 @@ num_bands = 3
 num_atoms = 10  # sum(range(5))
 num_steps = 15
 num_components = 2  # charge and magnetization
+complex = 2
+axes = 3
 lmax = 3
 fermi_energy = 0.123
 default_options = ((True,), (False,))
@@ -513,6 +515,40 @@ def write_density(h5f, density, source):
 
 def check_density(file, reference, source):
     assert get_actual_and_check_version(file, "density", source) == reference
+
+
+def test_dielectric(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=default_options,
+        sources=default_sources + ("electron", "ion"),
+        create_reference=reference_dielectric,
+        write_reference=write_dielectric,
+        check_actual=check_dielectric,
+    )
+    generic_test(setup)
+
+
+def reference_dielectric():
+    shape = (axes, axes, num_energies, complex)
+    return RawDielectric(
+        energies=np.arange(num_energies),
+        function=np.arange(np.prod(shape)).reshape(shape),
+    )
+
+
+def write_dielectric(h5f, dielectric, source):
+    group = source_prefix(source) + "dielectric"
+    h5f[f"results/{group}/energies"] = dielectric.energies
+    h5f[f"results/{group}/function"] = dielectric.function
+
+
+def check_dielectric(file, reference, source):
+    assert get_actual_and_check_version(file, "dielectric", source) == reference
+
+
+def source_prefix(source):
+    return "electron_" if source == "default" else f"{source}_"
 
 
 def source_suffix(source):
