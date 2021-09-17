@@ -90,16 +90,21 @@ def test_incorrect_label(energy):
         energy.plot(number_instead_of_string)
 
 
-def test_to_png(energy):
-    filename = "image.png"
+def test_to_image(energy):
+    check_to_image(energy, None, "energy.png")
+    custom_filename = "custom.jpg"
+    check_to_image(energy, custom_filename, custom_filename)
+
+
+def check_to_image(energy, filename_argument, expected_filename):
     with patch("py4vasp.data.energy._to_plotly") as plot:
-        energy.to_png(filename, "args", key="word")
+        energy.to_image(filename_argument, "args", key="word")
         plot.assert_called_once()
         # note: call_args.args[0] is the raw data
         assert plot.call_args.args[1] == "args"
         assert plot.call_args.kwargs == {"key": "word"}
         fig = plot.return_value
-        fig.write_image.assert_called_once_with(filename)
+        fig.write_image.assert_called_once_with(energy._path / expected_filename)
 
 
 def test_print(energy, format_):
@@ -117,7 +122,6 @@ def test_descriptor(energy, check_descriptors):
     descriptors = {
         "_to_dict": ["to_dict", "read"],
         "_to_plotly": ["to_plotly", "plot"],
-        "_to_png": ["to_png"],
         "_final": ["final"],
     }
     check_descriptors(energy, descriptors)

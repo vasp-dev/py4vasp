@@ -14,6 +14,7 @@ class DataBase:
         data_dict = raw.DataDict({"default": raw_data}, current_vasp_version)
         self._from_context_generator(lambda: contextlib.nullcontext(data_dict))
         self._repr = f"({repr(raw_data)})"
+        self._path = pathlib.Path.cwd()
 
     @classmethod
     def from_dict(cls, dict_):
@@ -28,6 +29,7 @@ class DataBase:
         data_dict = raw.DataDict(dict_, current_vasp_version)
         obj._from_context_generator(lambda: contextlib.nullcontext(data_dict))
         obj._repr = f".from_dict({repr(data_dict)})"
+        obj._path = pathlib.Path.cwd()
         return obj
 
     @classmethod
@@ -53,6 +55,7 @@ class DataBase:
         obj = cls.__new__(cls)
         obj._from_context_generator(lambda: _from_file(file, cls.__name__.lower()))
         obj._repr = f".from_file({repr(file)})"
+        obj._path = _get_absolute_path(file)
         return obj
 
     def _from_context_generator(self, context_generator):
@@ -76,6 +79,16 @@ def _from_file(file, name):
         context = contextlib.nullcontext(file)
     with context as file:
         yield getattr(file, name)
+
+
+def _get_absolute_path(file):
+    if file is None:
+        return pathlib.Path.cwd()
+    elif isinstance(file, str) or isinstance(file, pathlib.Path):
+        absolute_path = pathlib.Path(file).resolve()
+        return absolute_path if absolute_path.is_dir() else absolute_path.parent
+    else:
+        return file.path
 
 
 class RefinementDescriptor:

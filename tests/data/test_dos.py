@@ -179,14 +179,19 @@ def test_Fe3O4_projectors_plot(Fe3O4_projectors, Assert):
 
 
 def test_Sr2TiO4_to_png(Sr2TiO4):
-    filename = "image.png"
+    check_to_image(Sr2TiO4, None, "dos.png")
+    custom_filename = "custom.jpg"
+    check_to_image(Sr2TiO4, custom_filename, custom_filename)
+
+
+def check_to_image(Sr2TiO4, filename_argument, expected_filename):
     with patch("py4vasp.data.dos._to_plotly") as plot:
-        Sr2TiO4.to_png(filename, "args", key="word")
+        Sr2TiO4.to_image(filename_argument, "args", key="word")
         plot.assert_called_once()
         assert plot.call_args.args[1] == "args"
         assert plot.call_args.kwargs == {"key": "word"}
         fig = plot.return_value
-        fig.write_image.assert_called_once_with(filename)
+        fig.write_image.assert_called_once_with(Sr2TiO4._path / expected_filename)
 
 
 def test_nonexisting_dos():
@@ -229,7 +234,6 @@ def test_descriptor(Sr2TiO4, check_descriptors):
         "_to_dict": ["to_dict", "read"],
         "_to_plotly": ["to_plotly", "plot"],
         "_to_frame": ["to_frame"],
-        "_to_png": ["to_png"],
     }
     check_descriptors(Sr2TiO4, descriptors)
 

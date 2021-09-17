@@ -139,15 +139,20 @@ def check_figure_contains_plots(fig, references, Assert):
         assert data.name == ref.name
 
 
-def test_dielectric_to_png(dielectric):
-    filename = "image.png"
+def test_dielectric_to_image(dielectric):
+    check_to_image(dielectric, None, "dielectric.png")
+    custom_filename = "custom.jpg"
+    check_to_image(dielectric, custom_filename, custom_filename)
+
+
+def check_to_image(dielectric, filename_argument, expected_filename):
     with patch("py4vasp.data.dielectric._to_plotly") as plot:
-        dielectric.to_png(filename, "args", key="word")
+        dielectric.to_image(filename_argument, "args", key="word")
         plot.assert_called_once()
         assert plot.call_args.args[1] == "args"
         assert plot.call_args.kwargs == {"key": "word"}
         fig = plot.return_value
-        fig.write_image.assert_called_once_with(filename)
+        fig.write_image.assert_called_once_with(dielectric._path / expected_filename)
 
 
 def test_dielectric_print(dielectric, format_):
@@ -164,7 +169,6 @@ def test_descriptor(dielectric, check_descriptors):
     descriptors = {
         "_to_dict": ["to_dict", "read"],
         "_to_plotly": ["to_plotly", "plot"],
-        "_to_png": ["to_png"],
     }
     check_descriptors(dielectric, descriptors)
 

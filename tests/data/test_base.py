@@ -162,3 +162,24 @@ def test_docs():
     assert inspect.getdoc(_get_raw_data) == inspect.getdoc(DataImpl.get_raw_data)
     assert inspect.getdoc(DataImpl.from_dict) is not None
     assert inspect.getdoc(DataImpl.from_file) is not None
+
+
+def test_path_constructor():
+    assert DataImpl("placeholder")._path == Path.cwd()
+
+
+def test_path_from_dict():
+    assert DataImpl.from_dict({"key": "value"})._path == Path.cwd()
+
+
+def test_path_from_file(MockRawFile):
+    absolute_dir = Path(__file__).parent
+    relative_dir = absolute_dir.relative_to(Path.cwd())
+    absolute_file = Path(__file__)
+    relative_file = absolute_file.relative_to(Path.cwd())
+    #
+    assert DataImpl.from_file()._path == Path.cwd()
+    for file in (absolute_dir, relative_dir, absolute_file, relative_file):
+        assert DataImpl.from_file(file)._path == absolute_dir
+    file = MagicMock()
+    assert DataImpl.from_file(file)._path == file.path

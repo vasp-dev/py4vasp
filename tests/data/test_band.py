@@ -306,15 +306,20 @@ def test_plot_incorrect_width(with_projectors):
         with_projectors.plot("Sr", width="not a number")
 
 
-def test_to_png(single_band):
-    filename = "image.png"
+def test_to_image(single_band):
+    check_to_image(single_band, None, "band.png")
+    custom_filename = "custom.jpg"
+    check_to_image(single_band, custom_filename, custom_filename)
+
+
+def check_to_image(single_band, filename_argument, expected_filename):
     with patch("py4vasp.data.band._to_plotly") as plot:
-        single_band.to_png(filename, "args", key="word")
+        single_band.to_image(filename_argument, "args", key="word")
         plot.assert_called_once()
         assert plot.call_args.args[1] == "args"
         assert plot.call_args.kwargs == {"key": "word"}
         fig = plot.return_value
-        fig.write_image.assert_called_once_with(filename)
+        fig.write_image.assert_called_once_with(single_band._path / expected_filename)
 
 
 def test_multiple_bands_print(multiple_bands, format_):
@@ -363,7 +368,6 @@ def test_descriptor(single_band, check_descriptors):
         "_to_dict": ["to_dict", "read"],
         "_to_plotly": ["to_plotly", "plot"],
         "_to_frame": ["to_frame"],
-        "_to_png": ["to_png"],
     }
     check_descriptors(single_band, descriptors)
 

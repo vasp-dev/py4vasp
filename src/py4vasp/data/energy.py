@@ -3,12 +3,13 @@ from plotly.subplots import make_subplots
 import functools
 import numpy as np
 from py4vasp.data._base import DataBase, RefinementDescriptor
+import py4vasp.data._export as _export
 import py4vasp.exceptions as exception
 import py4vasp._util.convert as _convert
 import py4vasp._util.sanity_check as _check
 
 
-class Energy(DataBase):
+class Energy(DataBase, _export.Image):
     """The energy data for all steps of a relaxation or MD simulation.
 
     You can use this class to inspect how the ionic relaxation converges or
@@ -25,7 +26,6 @@ class Energy(DataBase):
     to_dict = RefinementDescriptor("_to_dict")
     plot = RefinementDescriptor("_to_plotly")
     to_plotly = RefinementDescriptor("_to_plotly")
-    to_png = RefinementDescriptor("_to_png")
     final = RefinementDescriptor("_final")
     __str__ = RefinementDescriptor("_to_string")
 
@@ -84,11 +84,6 @@ def _to_plotly(raw_energy, selection=None):
         options = {"secondary_y": True} if use_secondary(label) else {}
         figure.add_trace(go.Scatter(x=steps, y=data, name=short_label), **options)
     return figure
-
-
-def _to_png(raw_energy, filename, *args, **kwargs):
-    fig = _to_plotly(raw_energy, *args, **kwargs)
-    fig.write_image(filename)
 
 
 def _final(raw_energy, selection=None):

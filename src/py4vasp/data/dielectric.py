@@ -4,11 +4,12 @@ import typing
 
 from py4vasp.data._base import DataBase, RefinementDescriptor
 from py4vasp.data._selection import Selection as _Selection
+import py4vasp.data._export as _export
 import py4vasp._util.convert as _convert
 import py4vasp._util.selection as _selection
 
 
-class Dielectric(DataBase):
+class Dielectric(DataBase, _export.Image):
     """The dielectric function resulting from electrons and ions.
 
     You can use this class to extract the dielectric function of a Vasp calculation.
@@ -26,7 +27,6 @@ class Dielectric(DataBase):
     to_dict = RefinementDescriptor("_to_dict")
     plot = RefinementDescriptor("_to_plotly")
     to_plotly = RefinementDescriptor("_to_plotly")
-    to_png = RefinementDescriptor("_to_png")
     __str__ = RefinementDescriptor("_to_string")
 
 
@@ -76,22 +76,6 @@ def _to_plotly(raw_dielectric, selection=None):
         "yaxis": {"title": {"text": r"$\epsilon$"}},
     }
     return go.Figure(data=plots, layout=default)
-
-
-def _to_png(raw_dielectric, filename, *args, **kwargs):
-
-    f"""Read the data and generate a png plot writing to the given filename.
-
-    Parameters
-    ----------
-    filename : str
-        Name of the file to which the plot is written
-    selection : str
-        Specify along which directions and which components of the dielectric
-        function you want to plot. Defaults to *isotropic* and both the real
-        and the complex part."""
-    fig = _to_plotly(raw_dielectric, *args, **kwargs)
-    fig.write_image(filename)
 
 
 def _default_selection_if_none(selection):

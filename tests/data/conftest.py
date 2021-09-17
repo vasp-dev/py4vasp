@@ -31,6 +31,7 @@ def check_read():
 
     def _check_read_from_open_file(cls, mocks, ref):
         with raw.File() as file:
+            file._path = Path.cwd()
             obj = _create_obj(cls, file, _assert_not_called, mocks)
             _check_raw_data(obj, ref, _assert_only_sut, mocks)
 

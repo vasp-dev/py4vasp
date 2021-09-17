@@ -35,6 +35,7 @@ class File(AbstractContextManager):
 
     def __init__(self, filename=None):
         filename = self._actual_filename(filename)
+        self._path = Path(filename).resolve().parent
         self.closed = False
         try:
             self._h5f = h5py.File(filename, "r")
@@ -55,6 +56,10 @@ class File(AbstractContextManager):
             return Path(filename) / File.default_filename
         else:
             return filename
+
+    @property
+    def path(self):
+        return self._path
 
     @property
     def version(self):

@@ -9,9 +9,10 @@ from .projectors import _projectors_or_dummy, _selection_doc
 from .kpoints import Kpoints
 from py4vasp._util.documentation import _add_documentation
 from py4vasp.data._base import DataBase, RefinementDescriptor
+import py4vasp.data._export as _export
 
 
-class Band(DataBase):
+class Band(DataBase, _export.Image):
     """The electronic band structure.
 
     The most common use case of this class is to produce the electronic band
@@ -32,7 +33,6 @@ class Band(DataBase):
     plot = RefinementDescriptor("_to_plotly")
     to_plotly = RefinementDescriptor("_to_plotly")
     to_frame = RefinementDescriptor("_to_frame")
-    to_png = RefinementDescriptor("_to_png")
     __str__ = RefinementDescriptor("_to_string")
 
 
@@ -115,22 +115,6 @@ def _to_frame(raw_band, selection=None):
     index = _setup_dataframe_index(raw_band)
     data = _extract_relevant_data(raw_band, selection)
     return pd.DataFrame(data, index)
-
-
-@_add_documentation(
-    f"""Read the data and generate a png plot writing to the given filename.
-
-Parameters
-----------
-filename : str
-    Name of the file to which the plot is written.
-{_selection_doc}
-width : float
-    Specifies the width of the flatbands if a selection of projections is specified."""
-)
-def _to_png(raw_band, filename, *args, **kwargs):
-    fig = _to_plotly(raw_band, *args, **kwargs)
-    fig.write_image(filename)
 
 
 def _spin_polarized(raw_band):
