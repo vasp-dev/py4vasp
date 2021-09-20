@@ -98,7 +98,7 @@ def test_to_image(energy):
 
 def check_to_image(energy, filename_argument, expected_filename):
     with patch("py4vasp.data.energy._to_plotly") as plot:
-        energy.to_image(filename_argument, "args", key="word")
+        energy.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once()
         # note: call_args.args[0] is the raw data
         assert plot.call_args.args[1] == "args"
