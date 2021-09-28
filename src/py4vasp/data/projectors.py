@@ -3,14 +3,18 @@ import numpy as np
 import re
 from .topology import Topology
 from py4vasp.data._base import DataBase, RefinementDescriptor
-from py4vasp._util.documentation import _add_documentation
 from py4vasp.data._selection import Selection as _Selection
 import py4vasp.exceptions as exception
 import py4vasp._util.convert as _convert
+import py4vasp._util.documentation as _documentation
 import py4vasp._util.reader as _reader
 import py4vasp._util.sanity_check as _check
 import py4vasp._util.selection as _selection
 
+
+_spin_not_set = "not set"
+_range_separator = "-"
+_range = re.compile(r"^(\d+)" + re.escape(_range_separator) + r"(\d+)$")
 
 _selection_doc = r"""
 selection : str
@@ -64,15 +68,13 @@ class Projectors(DataBase):
     parse_selection = RefinementDescriptor("_parse_selection")
     __str__ = RefinementDescriptor("_to_string")
 
+    def _to_string(self):
+        return f"""projectors:
+    atoms: {", ".join(self._topology().ion_types())}
+    orbitals: {", ".join(self._orbital_types())}"""
 
-def _to_string(raw_proj):
-    return f"""projectors:
-    atoms: {", ".join(Topology(raw_proj.topology).ion_types())}
-    orbitals: {", ".join(_orbital_types(raw_proj))}"""
-
-
-@_add_documentation(
-    f"""Read the selected data from an array and store it in a dictionary.
+    @_documentation.add(
+        f"""Read the selected data from an array and store it in a dictionary.
 
 Parameters
 ----------
@@ -87,26 +89,138 @@ dict
     column of the array. If a particular selection includes multiple indices
     these elements are added. If the projections are not present, the relevant
     indices are returned."""
-)
-def _to_dict(raw_proj, selection=None, projections=None):
-    if selection is None:
-        return {}
-    error_message = "Projector selection must be a string."
-    _check.raise_error_if_not_string(selection, error_message)
-    if projections is None:
-        return _get_indices(raw_proj, selection)
-    projections = _Projections(projections)
-    return _read_elements(raw_proj, selection, projections)
+    )
+    def _to_dict(self, selection=None, projections=None):
+        if selection is None:
+            return {}
+        error_message = "Projector selection must be a string."
+        _check.raise_error_if_not_string(selection, error_message)
+        if projections is None:
+            return self._get_indices(selection)
+        projections = _Projections(projections)
+        return self._read_elements(selection, projections)
+
+    def _select(
+        self,
+        atom=_Selection.default,
+        orbital=_Selection.default,
+        spin=_Selection.default,
+    ):
+        """Map selection strings onto corresponding Selection objects.
+
+        With the selection strings, you specify which atom, orbital, and spin component
+        you are interested in. *Note* that for all parameters you can pass "*" to
+        default to all (atoms, orbitals, or spins).
+
+        Parameters
+        ----------
+        atom : str
+            Element name or index of the atom in the input file of Vasp. If a
+            range is specified (e.g. 1-3) a pointer to multiple indices will be
+            created.
+        orbital : str
+            Character identifying the angular momentum of the orbital. You may
+            select a specific one (e.g. px) or all of the same character (e.g. d).
+        spin : str
+            Select "up" or "down" for a specific spin component or "total" for
+            the sum of both.
 
 
-def _get_indices(raw_proj, selection):
-    res = {}
-    for select in _parse_selection(raw_proj, selection):
-        atom, orbital, spin = _select(raw_proj, *select)
-        label = _merge_labels([atom.label, orbital.label, spin.label])
-        indices = (spin.indices, atom.indices, orbital.indices)
-        res[label] = indices
-    return res
+        Returns
+        -------
+        Index
+            Indices to access the selected projection from an array and an
+            associated label.
+        """
+        dicts = self._init_dicts()
+        _raise_error_if_not_found_in_dict(orbital, dicts["orbital"])
+        _raise_error_if_not_found_in_dict(spin, dicts["spin"])
+        return Projectors.Index(
+            atom=_select_atom(dicts["atom"], atom),
+            orbital=dicts["orbital"][orbital],
+            spin=dicts["spin"][spin],
+        )
+
+    @_documentation.add(
+        f"""Generate all possible indices where the projected information is stored.
+
+Given a string specifying which atoms, orbitals, and spin should be selected
+an iterable object is created that contains the indices compatible with the
+selection.
+
+Parameters
+----------
+{_selection_doc}
+
+Yields
+------
+Iterable[Index]
+    Indices of the atom, the orbital and the spin compatible with a specific
+    selection."""
+    )
+    def _parse_selection(self, selection):
+        dicts = self._init_dicts()
+        default_index = Projectors.Index(
+            atom=_Selection.default,
+            orbital=_Selection.default,
+            spin=_spin_not_set,
+        )
+        tree = _selection.SelectionTree.from_selection(selection)
+        yield from _parse_recursive(dicts, tree, default_index)
+
+    def _topology(self):
+        return Topology(self._raw_data.topology)
+
+    def _init_dicts(self):
+        return {
+            "atom": self._init_atom_dict(),
+            "orbital": self._init_orbital_dict(),
+            "spin": self._init_spin_dict(),
+        }
+
+    def _init_atom_dict(self):
+        return self._topology().read()
+
+    def _init_orbital_dict(self):
+        num_orbitals = len(self._raw_data.orbital_types)
+        all_orbitals = _Selection(indices=slice(num_orbitals))
+        orbital_dict = {_Selection.default: all_orbitals}
+        for i, orbital in enumerate(self._orbital_types()):
+            orbital_dict[orbital] = _Selection(indices=slice(i, i + 1), label=orbital)
+        if "px" in orbital_dict:
+            orbital_dict["p"] = _Selection(indices=slice(1, 4), label="p")
+            orbital_dict["d"] = _Selection(indices=slice(4, 9), label="d")
+            orbital_dict["f"] = _Selection(indices=slice(9, 16), label="f")
+        return orbital_dict
+
+    def _orbital_types(self):
+        clean_string = lambda ion_type: _convert.text_to_string(ion_type).strip()
+        return (clean_string(orbital) for orbital in self._raw_data.orbital_types)
+
+    def _init_spin_dict(self):
+        num_spins = self._raw_data.number_spins
+        return {
+            "polarized": num_spins == 2,
+            "up": _Selection(indices=slice(1), label="up"),
+            "down": _Selection(indices=slice(1, 2), label="down"),
+            "total": _Selection(indices=slice(num_spins), label="total"),
+            _Selection.default: _Selection(indices=slice(num_spins)),
+        }
+
+    def _get_indices(self, selection):
+        res = {}
+        for select in self._parse_selection(selection):
+            atom, orbital, spin = self._select(*select)
+            label = _merge_labels([atom.label, orbital.label, spin.label])
+            indices = (spin.indices, atom.indices, orbital.indices)
+            res[label] = indices
+        return res
+
+    def _read_elements(self, selection, projections):
+        return {
+            label: np.sum(projections[indices], axis=(0, 1, 2))
+            for label, indices in self._get_indices(selection).items()
+        }
 
 
 def _merge_labels(labels):
@@ -123,127 +237,6 @@ class _Projections(_reader.Reader):
         )
 
 
-def _read_elements(raw_proj, selection, projections):
-    return {
-        label: np.sum(projections[indices], axis=(0, 1, 2))
-        for label, indices in _get_indices(raw_proj, selection).items()
-    }
-
-
-def _select(
-    raw_proj,
-    atom=_Selection.default,
-    orbital=_Selection.default,
-    spin=_Selection.default,
-):
-    """Map selection strings onto corresponding Selection objects.
-
-    With the selection strings, you specify which atom, orbital, and spin component
-    you are interested in. *Note* that for all parameters you can pass "*" to
-    default to all (atoms, orbitals, or spins).
-
-    Parameters
-    ----------
-    atom : str
-        Element name or index of the atom in the input file of Vasp. If a
-        range is specified (e.g. 1-3) a pointer to multiple indices will be
-        created.
-    orbital : str
-        Character identifying the angular momentum of the orbital. You may
-        select a specific one (e.g. px) or all of the same character (e.g. d).
-    spin : str
-        Select "up" or "down" for a specific spin component or "total" for
-        the sum of both.
-
-
-    Returns
-    -------
-    Index
-        Indices to access the selected projection from an array and an
-        associated label.
-    """
-    dicts = _init_dicts(raw_proj)
-    _raise_error_if_not_found_in_dict(orbital, dicts["orbital"])
-    _raise_error_if_not_found_in_dict(spin, dicts["spin"])
-    return Projectors.Index(
-        atom=_select_atom(dicts["atom"], atom),
-        orbital=dicts["orbital"][orbital],
-        spin=dicts["spin"][spin],
-    )
-
-
-@_add_documentation(
-    f"""Generate all possible indices where the projected information is stored.
-
-Given a string specifying which atoms, orbitals, and spin should be selected
-an iterable object is created that contains the indices compatible with the
-selection.
-
-Parameters
-----------
-{_selection_doc}
-
-Yields
-------
-Iterable[Index]
-    Indices of the atom, the orbital and the spin compatible with a specific
-    selection."""
-)
-def _parse_selection(raw_proj, selection):
-    dicts = _init_dicts(raw_proj)
-    default_index = Projectors.Index(
-        atom=_Selection.default,
-        orbital=_Selection.default,
-        spin=_spin_not_set,
-    )
-    tree = _selection.SelectionTree.from_selection(selection)
-    yield from _parse_recursive(dicts, tree, default_index)
-
-
-_spin_not_set = "not set"
-
-
-def _init_dicts(raw_proj):
-    return {
-        "atom": _init_atom_dict(raw_proj),
-        "orbital": _init_orbital_dict(raw_proj),
-        "spin": _init_spin_dict(raw_proj),
-    }
-
-
-def _init_atom_dict(raw_proj):
-    return Topology(raw_proj.topology).read()
-
-
-def _init_orbital_dict(raw_proj):
-    num_orbitals = len(raw_proj.orbital_types)
-    all_orbitals = _Selection(indices=slice(num_orbitals))
-    orbital_dict = {_Selection.default: all_orbitals}
-    for i, orbital in enumerate(_orbital_types(raw_proj)):
-        orbital_dict[orbital] = _Selection(indices=slice(i, i + 1), label=orbital)
-    if "px" in orbital_dict:
-        orbital_dict["p"] = _Selection(indices=slice(1, 4), label="p")
-        orbital_dict["d"] = _Selection(indices=slice(4, 9), label="d")
-        orbital_dict["f"] = _Selection(indices=slice(9, 16), label="f")
-    return orbital_dict
-
-
-def _orbital_types(raw_proj):
-    clean_string = lambda ion_type: _convert.text_to_string(ion_type).strip()
-    return (clean_string(orbital) for orbital in raw_proj.orbital_types)
-
-
-def _init_spin_dict(raw_proj):
-    num_spins = raw_proj.number_spins
-    return {
-        "polarized": num_spins == 2,
-        "up": _Selection(indices=slice(1), label="up"),
-        "down": _Selection(indices=slice(1, 2), label="down"),
-        "total": _Selection(indices=slice(num_spins), label="total"),
-        _Selection.default: _Selection(indices=slice(num_spins)),
-    }
-
-
 def _select_atom(atom_dict, atom):
     match = _range.match(atom)
     if match:
@@ -252,10 +245,6 @@ def _select_atom(atom_dict, atom):
     else:
         _raise_error_if_not_found_in_dict(atom, atom_dict)
         return atom_dict[atom]
-
-
-_range_separator = "-"
-_range = re.compile(r"^(\d+)" + re.escape(_range_separator) + r"(\d+)$")
 
 
 def _get_slice_from_atom_dict(atom_dict, match):

@@ -32,7 +32,7 @@ def test_read(collinear_density, Assert):
     actual_structure = actual["structure"]
     reference_structure = collinear_density.ref.structure
     for key in actual_structure:
-        if key == "elements":
+        if key in ("elements", "names"):
             assert actual_structure[key] == reference_structure[key]
         else:
             Assert.allclose(actual_structure[key], reference_structure[key])

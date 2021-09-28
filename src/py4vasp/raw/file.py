@@ -156,27 +156,6 @@ class File(AbstractContextManager):
         )
 
     @property
-    def trajectory(self):
-        """Read all the trajectory data of an ionic relaxation or MD simulation.
-
-        Returns
-        -------
-        DataDict[str, RawTrajectory]
-            The key of the dictionary specifies which trajectory is contained.
-            The value contains the topology of the crystal, the position of all
-            atoms and the shape of the unit cell for all ionic steps.
-        """
-        return self._make_data_dict(self._read_trajectory())
-
-    def _read_trajectory(self):
-        self._raise_error_if_closed()
-        return RawTrajectory(
-            topology=self._read_topology(),
-            positions=self._h5f["intermediate/ion_dynamics/position_ions"],
-            lattice_vectors=self._h5f["intermediate/ion_dynamics/lattice_vectors"],
-        )
-
-    @property
     def projectors(self):
         """Read all the information about projectors if present.
 
@@ -254,7 +233,7 @@ class File(AbstractContextManager):
         self._raise_error_if_closed()
         return RawCell(
             scale=self._h5f["results/positions/scale"][()],
-            lattice_vectors=self._h5f["results/positions/lattice_vectors"],
+            lattice_vectors=self._h5f["/intermediate/ion_dynamics/lattice_vectors"],
         )
 
     @property
@@ -295,7 +274,7 @@ class File(AbstractContextManager):
         return RawStructure(
             topology=self._read_topology(),
             cell=self._read_cell(),
-            positions=self._h5f["results/positions/position_ions"],
+            positions=self._h5f["intermediate/ion_dynamics/position_ions"],
             magnetism=self._read_magnetism(),
         )
 

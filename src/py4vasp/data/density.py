@@ -43,83 +43,82 @@ class Density(DataBase):
             file = file / _filename
         return super().from_file(file)
 
-
-def _to_string(raw_density):
-    grid = raw_density.charge.shape[1:]
-    return f"""density:
-    structure: {pretty(Topology(raw_density.structure.topology))}
+    def _to_string(self):
+        grid = self._raw_data.charge.shape[1:]
+        return f"""density:
+    structure: {pretty(Topology(self._raw_data.structure.topology))}
     grid: {grid[0]}, {grid[1]}, {grid[2]}
-    {"spin polarized" if len(raw_density.charge) > 1 else ""}
-    """.strip()
+    {"spin polarized" if self._spin_polarized() else ""}
+        """.strip()
 
+    def _to_dict(self):
+        """Read the electionic density into a dictionary.
 
-def _to_dict(raw_density):
-    """Read the electionic density into a dictionary.
+        Returns
+        -------
+        dict
+            Contains the structure information as well as the density represented
+            of a grid in the unit cell.
+        """
+        return {
+            "structure": self._structure().read(),
+            "charge": self._raw_data.charge[0],
+            "magnetization": self._magnetization_if_present(),
+        }
 
-    Returns
-    -------
-    dict
-        Contains the structure information as well as the density represented
-        of a grid in the unit cell.
-    """
-    return {
-        "structure": Structure(raw_density.structure).read(),
-        "charge": raw_density.charge[0],
-        "magnetization": _magnetization_if_present(raw_density.charge),
-    }
+    def _to_viewer3d(self, selection="charge", **user_options):
+        """Plot the selected density as a 3d isosurface within the structure.
 
+        Parameters
+        ----------
+        selection : str
+            Can be either *charge* or *magnetization*, dependending on which quantity
+            should be visualized.
+        user_options
+            Further arguments with keyword that get directly passed on to the
+            visualizer. Most importantly, you can set isolevel to adjust the
+            value at which the isosurface is drawn.
 
-def _to_viewer3d(raw_density, selection="charge", **user_options):
-    """Plot the selected density as a 3d isosurface within the structure.
+        Returns
+        -------
+        Viewer3d
+            Visualize an isosurface of the density within the 3d structure.
+        """
+        viewer = self._structure().plot()
+        if selection == "charge":
+            self._plot_charge(_ViewerWrapper(viewer), **user_options)
+        elif selection == "magnetization":
+            self._plot_magnetism(_ViewerWrapper(viewer), **user_options)
+        else:
+            msg = f"'{selection}' is an unknown option, please use 'charge' or 'magnetization' instead."
+            raise exceptions.IncorrectUsage(msg)
+        return viewer
 
-    Parameters
-    ----------
-    selection : str
-        Can be either *charge* or *magnetization*, dependending on which quantity
-        should be visualized.
-    user_options
-        Further arguments with keyword that get directly passed on to the
-        visualizer. Most importantly, you can set isolevel to adjust the
-        value at which the isosurface is drawn.
+    def _structure(self):
+        return Structure(self._raw_data.structure)
 
-    Returns
-    -------
-    Viewer3d
-        Visualize an isosurface of the density within the 3d structure.
-    """
-    viewer = Structure(raw_density.structure).plot()
-    if selection == "charge":
-        _plot_charge(raw_density.charge, _ViewerWrapper(viewer), **user_options)
-    elif selection == "magnetization":
-        _plot_magnetism(raw_density.charge, _ViewerWrapper(viewer), **user_options)
-    else:
-        msg = f"'{selection}' is an unknown option, please use 'charge' or 'magnetization' instead."
-        raise exceptions.IncorrectUsage(msg)
-    return viewer
+    def _magnetization_if_present(self):
+        if self._spin_polarized():
+            return self._raw_data.charge[1]
+        else:
+            return None
 
+    def _spin_polarized(self):
+        return len(self._raw_data.charge) > 1
 
-def _magnetization_if_present(charge):
-    if len(charge) > 1:
-        return charge[1]
-    else:
-        return None
+    def _plot_charge(self, viewer, **user_options):
+        viewer.show_isosurface(self._raw_data.charge[0], **user_options)
 
+    def _plot_magnetism(self, viewer, **user_options):
+        self._raise_error_if_not_spin_polarized()
+        _raise_error_if_color_is_specified(**user_options)
+        viewer.show_isosurface(self._raw_data.charge[1], color="blue", **user_options)
+        viewer.show_isosurface(-self._raw_data.charge[1], color="red", **user_options)
 
-def _plot_charge(charge, viewer, **user_options):
-    viewer.show_isosurface(charge[0], **user_options)
-
-
-def _plot_magnetism(charge, viewer, **user_options):
-    _raise_error_if_magnetization_not_present(charge)
-    _raise_error_if_color_is_specified(**user_options)
-    viewer.show_isosurface(charge[1], color="blue", **user_options)
-    viewer.show_isosurface(-charge[1], color="red", **user_options)
-
-
-def _raise_error_if_magnetization_not_present(charge):
-    if len(charge) < 2:
-        msg = "Density does not contain magnetization. Please rerun Vasp with ISPIN = 2 to obtain it."
-        raise exceptions.NoData(msg)
+    def _raise_error_if_not_spin_polarized(self):
+        if not self._spin_polarized():
+            msg = "Density does not contain magnetization. Please rerun Vasp with ISPIN = 2 to obtain it."
+            raise exceptions.NoData(msg)
 
 
 def _raise_error_if_color_is_specified(**user_options):

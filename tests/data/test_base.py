@@ -17,17 +17,19 @@ class RawData:
 
 
 class DataImpl(DataBase):
-    get_raw_data = RefinementDescriptor("_get_raw_data")
+    get_raw_data = RefinementDescriptor("_get_data")
     __str__ = RefinementDescriptor("_to_string")
 
+    def _get_data(self, optional=None):
+        "get raw data docs"
+        return self._raw_data
 
-def _get_raw_data(raw_data, optional=None):
-    "get raw data docs"
-    return raw_data
+    def _to_string(self):
+        return self._raw_data.data
 
-
-def _to_string(raw_data):
-    return raw_data.data
+    def _initialize(self):
+        self.initialize_hook_called = True
+        return self
 
 
 @pytest.fixture
@@ -55,12 +57,14 @@ def test_base_constructor(data_dict):
     # test twice to check generator is regenerated
     assert obj.get_raw_data() == data_dict["default"]
     assert obj.get_raw_data() == data_dict["default"]
+    assert obj.initialize_hook_called
 
 
 def test_base_from_dict(data_dict):
     obj = DataImpl.from_dict(data_dict)
     assert obj.get_raw_data() == data_dict["default"]
     assert obj.get_raw_data(source="alternative") == data_dict["alternative"]
+    assert obj.initialize_hook_called
 
 
 def test_base_from_none(MockRawFile, data_dict):
@@ -72,6 +76,7 @@ def test_base_from_none(MockRawFile, data_dict):
     MockRawFile.property.assert_called_once()
     # second test to make sure context manager is regenerated
     assert obj.get_raw_data(source="alternative") == data_dict["alternative"]
+    assert obj.initialize_hook_called
 
 
 def test_base_from_filename(MockRawFile, data_dict):
@@ -83,6 +88,7 @@ def test_base_from_filename(MockRawFile, data_dict):
     MockRawFile.property.assert_called_once()
     # second test to make sure context manager is regenerated
     assert obj.get_raw_data(source="alternative") == data_dict["alternative"]
+    assert obj.initialize_hook_called
 
 
 def test_base_from_path(MockRawFile, data_dict):
@@ -95,6 +101,7 @@ def test_base_from_path(MockRawFile, data_dict):
     MockRawFile.property.assert_called_once()
     # second test to make sure context manager is regenerated
     assert obj.get_raw_data(source="alternative") == data_dict["alternative"]
+    assert obj.initialize_hook_called
 
 
 @patch("py4vasp.raw.File")
@@ -108,6 +115,7 @@ def test_base_from_opened_file(MockFile, data_dict):
     assert obj.get_raw_data() == data_dict["default"]
     assert obj.get_raw_data(source="alternative") == data_dict["alternative"]
     MockFile.assert_called_once()
+    assert obj.initialize_hook_called
 
 
 def test_base_print(MockRawFile, data_dict):
@@ -159,7 +167,7 @@ def test_repr(data_dict):
 
 
 def test_docs():
-    assert inspect.getdoc(_get_raw_data) == inspect.getdoc(DataImpl.get_raw_data)
+    assert inspect.getdoc(DataImpl._get_data) == inspect.getdoc(DataImpl.get_raw_data)
     assert inspect.getdoc(DataImpl.from_dict) is not None
     assert inspect.getdoc(DataImpl.from_file) is not None
 

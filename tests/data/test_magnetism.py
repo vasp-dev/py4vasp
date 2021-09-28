@@ -27,11 +27,15 @@ def noncollinear_magnetism(raw_data):
 
 @pytest.fixture
 def charge_only(raw_data):
+    class GetItemNone:
+        def __getitem__(self, step):
+            return None
+
     raw_magnetism = raw_data.magnetism("charge_only")
     magnetism = Magnetism(raw_magnetism)
     magnetism.ref = types.SimpleNamespace()
     magnetism.ref.charges = raw_magnetism.moments[:, 0, :, :]
-    magnetism.ref.moments = None
+    magnetism.ref.moments = GetItemNone()
     return magnetism
 
 
@@ -51,14 +55,35 @@ def test_read(all_magnetism, Assert):
 
 
 def check_read(magnetism, Assert):
+    check_read_all_steps(magnetism, Assert)
+    check_read_subset_of_steps(magnetism, Assert)
+    check_read_specific_step(magnetism, Assert)
+    check_read_last_step(magnetism, Assert)
+
+
+def check_read_all_steps(magnetism, Assert):
+    actual = magnetism[:].read()
+    Assert.allclose(actual["charges"], magnetism.ref.charges[:])
+    Assert.allclose(actual["moments"], magnetism.ref.moments[:])
+
+
+def check_read_subset_of_steps(magnetism, Assert):
+    subset = slice(1, 3)
+    actual = magnetism[subset].read()
+    Assert.allclose(actual["charges"], magnetism.ref.charges[subset])
+    Assert.allclose(actual["moments"], magnetism.ref.moments[subset])
+
+
+def check_read_specific_step(magnetism, Assert):
+    actual = magnetism[0].read()
+    Assert.allclose(actual["charges"], magnetism.ref.charges[0])
+    Assert.allclose(actual["moments"], magnetism.ref.moments[0])
+
+
+def check_read_last_step(magnetism, Assert):
     actual = magnetism.read()
-    print(actual["charges"])
-    Assert.allclose(actual["charges"], magnetism.ref.charges)
-    Assert.allclose(actual["moments"], magnetism.ref.moments)
-    actual = magnetism.read(-1)
     Assert.allclose(actual["charges"], magnetism.ref.charges[-1])
-    if magnetism.ref.moments is not None:
-        Assert.allclose(actual["moments"], magnetism.ref.moments[-1])
+    Assert.allclose(actual["moments"], magnetism.ref.moments[-1])
 
 
 def test_charges(all_magnetism, Assert):
@@ -68,7 +93,10 @@ def test_charges(all_magnetism, Assert):
 
 
 def check_charges(magnetism, Assert):
-    Assert.allclose(magnetism.charges(), magnetism.ref.charges)
+    Assert.allclose(magnetism[:].charges(), magnetism.ref.charges[:])
+    Assert.allclose(magnetism[1:3].charges(), magnetism.ref.charges[1:3])
+    Assert.allclose(magnetism[0].charges(), magnetism.ref.charges[0])
+    Assert.allclose(magnetism.charges(), magnetism.ref.charges[-1])
 
 
 def test_moments(all_magnetism, Assert):
@@ -78,7 +106,10 @@ def test_moments(all_magnetism, Assert):
 
 
 def check_moments(magnetism, Assert):
-    Assert.allclose(magnetism.moments(), magnetism.ref.moments)
+    Assert.allclose(magnetism[:].moments(), magnetism.ref.moments[:])
+    Assert.allclose(magnetism[1:3].moments(), magnetism.ref.moments[1:3])
+    Assert.allclose(magnetism[0].moments(), magnetism.ref.moments[0])
+    Assert.allclose(magnetism.moments(), magnetism.ref.moments[-1])
 
 
 def test_total_charges(all_magnetism, Assert):
@@ -89,8 +120,10 @@ def test_total_charges(all_magnetism, Assert):
 
 def check_total_charges(magnetism, Assert):
     total_charges = np.sum(magnetism.ref.charges, axis=2)
-    Assert.allclose(magnetism.total_charges(), total_charges)
-    Assert.allclose(magnetism.total_charges(range(1, 3)), total_charges[1:3])
+    Assert.allclose(magnetism[:].total_charges(), total_charges[:])
+    Assert.allclose(magnetism[1:3].total_charges(), total_charges[1:3])
+    Assert.allclose(magnetism[0].total_charges(), total_charges[0])
+    Assert.allclose(magnetism.total_charges(), total_charges[-1])
 
 
 def test_total_moments(collinear_magnetism, noncollinear_magnetism, Assert):
@@ -100,13 +133,17 @@ def test_total_moments(collinear_magnetism, noncollinear_magnetism, Assert):
 
 def check_total_moments(magnetism, Assert):
     total_moments = np.sum(magnetism.ref.moments, axis=2)
-    Assert.allclose(magnetism.total_moments(), total_moments)
-    Assert.allclose(magnetism.total_moments(3), total_moments[3])
+    Assert.allclose(magnetism[:].total_moments(), total_moments[:])
+    Assert.allclose(magnetism[1:3].total_moments(), total_moments[1:3])
+    Assert.allclose(magnetism[0].total_moments(), total_moments[0])
+    Assert.allclose(magnetism.total_moments(), total_moments[-1])
 
 
 def test_charge_only_total_moments(charge_only):
+    assert charge_only[:].total_moments() is None
+    assert charge_only[1:3].total_moments() is None
+    assert charge_only[0].total_moments() is None
     assert charge_only.total_moments() is None
-    assert charge_only.total_moments(3) is None
 
 
 def test_collinear_print(collinear_magnetism, format_):
@@ -117,7 +154,6 @@ def test_collinear_print(collinear_magnetism, format_):
 
 def test_noncollinear_print(noncollinear_magnetism, format_):
     actual, _ = format_(noncollinear_magnetism)
-    print(actual["text/plain"])
     reference = """
 MAGMOM = 822.00 885.00 948.00 \\
          831.00 894.00 957.00 \\
@@ -138,6 +174,8 @@ def test_charge_only_print(charge_only, format_):
 def test_nonexisting_magnetism():
     with pytest.raises(exception.NoData):
         magnetism = Magnetism(None).read()
+    with pytest.raises(exception.NoData):
+        magnetism = Magnetism(None)[:].read()
 
 
 def test_incorrect_argument(all_magnetism):
@@ -148,19 +186,20 @@ def test_incorrect_argument(all_magnetism):
 
 def check_incorrect_argument(magnetism):
     with pytest.raises(exception.IncorrectUsage):
-        magnetism.read("index not an integer")
+        magnetism["step not an integer"].read()
     out_of_bounds = 999
     with pytest.raises(exception.IncorrectUsage):
-        magnetism.moments(out_of_bounds)
+        magnetism[out_of_bounds].moments()
     with pytest.raises(exception.IncorrectUsage):
-        magnetism.total_moments(out_of_bounds)
+        magnetism[out_of_bounds].total_moments()
     with pytest.raises(exception.IncorrectUsage):
-        magnetism.charges(out_of_bounds)
+        magnetism[out_of_bounds].charges()
     with pytest.raises(exception.IncorrectUsage):
-        magnetism.total_charges(out_of_bounds)
+        magnetism[out_of_bounds].total_charges()
 
 
 def test_descriptor(collinear_magnetism, check_descriptors):
+    last_step = collinear_magnetism[-1]
     descriptors = {
         "_to_dict": ["to_dict", "read"],
         "_charges": ["charges"],
@@ -168,7 +207,7 @@ def test_descriptor(collinear_magnetism, check_descriptors):
         "_total_charges": ["total_charges"],
         "_total_moments": ["total_moments"],
     }
-    check_descriptors(collinear_magnetism, descriptors)
+    check_descriptors(last_step, descriptors)
 
 
 def test_from_file(raw_data, mock_file, check_read):

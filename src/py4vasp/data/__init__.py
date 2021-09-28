@@ -28,7 +28,6 @@ from .topology import Topology
 from .viewer3d import Viewer3d
 from .structure import Structure
 from .density import Density
-from .trajectory import Trajectory
 
 import plotly.io as pio
 import plotly.graph_objects as go

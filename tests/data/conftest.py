@@ -96,8 +96,9 @@ def check_read():
 @pytest.fixture
 def check_descriptors():
     def _check_descriptors(instance, descriptors):
+        classname = f"{instance.__module__}.{instance.__class__.__name__}"
         for private_name, public_names in descriptors.items():
-            fullname = f"{instance.__module__}.{private_name}"
+            fullname = f"{classname}.{private_name}"
             with patch(fullname, return_value=private_name):
                 for public_name in public_names:
                     assert private_name == getattr(instance, public_name)()

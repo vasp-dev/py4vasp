@@ -1,6 +1,5 @@
 import contextlib
 import functools
-import importlib
 import pathlib
 import py4vasp.raw as raw
 import py4vasp.exceptions as exception
@@ -15,6 +14,7 @@ class DataBase:
         self._from_context_generator(lambda: contextlib.nullcontext(data_dict))
         self._repr = f"({repr(raw_data)})"
         self._path = pathlib.Path.cwd()
+        self._initialize()
 
     @classmethod
     def from_dict(cls, dict_):
@@ -30,7 +30,7 @@ class DataBase:
         obj._from_context_generator(lambda: contextlib.nullcontext(data_dict))
         obj._repr = f".from_dict({repr(data_dict)})"
         obj._path = pathlib.Path.cwd()
-        return obj
+        return obj._initialize()
 
     @classmethod
     def from_file(cls, file=None):
@@ -56,10 +56,14 @@ class DataBase:
         obj._from_context_generator(lambda: _from_file(file, cls.__name__.lower()))
         obj._repr = f".from_file({repr(file)})"
         obj._path = _get_absolute_path(file)
-        return obj
+        return obj._initialize()
 
     def _from_context_generator(self, context_generator):
         self._data_dict_from_context = context_generator
+
+    def _initialize(self):
+        # overload this to do extra initialization
+        return self
 
     def __repr__(self):
         return f"{self.__class__.__name__}{self._repr}"
@@ -69,6 +73,12 @@ class DataBase:
 
     def print(self):
         print(self)
+
+    def _set_data_or_raise_error_if_data_is_missing(self, raw_data):
+        if raw_data is not None:
+            self._raw_data = raw_data
+        else:
+            raise exception.NoData(self._missing_data_message)
 
 
 @contextlib.contextmanager
@@ -96,23 +106,17 @@ class RefinementDescriptor:
         self._name = name
 
     def __get__(self, instance, type_):
-        module = importlib.import_module(type_.__module__)
-        function = getattr(module, self._name)
+        function = getattr(type_, self._name)
 
         @functools.wraps(function)
         def wrapper(*args, source="default", **kwargs):
             with instance._data_dict_from_context() as data_dict:
                 raise_error_if_version_is_outdated(data_dict.version)
                 raw_data = read_raw_data_from_source(data_dict, source)
-                raise_error_if_data_is_missing(raw_data, instance._missing_data_message)
-                return function(raw_data, *args, **kwargs)
+                instance._set_data_or_raise_error_if_data_is_missing(raw_data)
+                return function(instance, *args, **kwargs)
 
         return wrapper
-
-
-def raise_error_if_data_is_missing(raw_data, error_message):
-    if raw_data is None:
-        raise exception.NoData(error_message)
 
 
 def read_raw_data_from_source(data_dict, source):

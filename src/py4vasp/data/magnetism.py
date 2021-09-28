@@ -1,23 +1,36 @@
-from py4vasp.data._base import DataBase, RefinementDescriptor
-from py4vasp._util.documentation import _add_documentation
+from py4vasp.data._base import RefinementDescriptor
+import py4vasp.data._trajectory as _trajectory
+import py4vasp._util.documentation as _documentation
 import py4vasp._util.reader as _reader
 import py4vasp.exceptions as exception
 import numpy as np
 import functools
 
 
-class Magnetism(DataBase):
-    """The evolution of the magnetization over the simulation.
+_index_note = """Notes
+-----
+The index order is different compared to the raw data when noncollinear calculations
+are used. This routine returns the magnetic moments as (steps, atoms, orbitals,
+directions)."""
 
-    This class gives access to the magnetic moments and charges projected on the
-    different orbitals on every atom.
 
-    Parameters
-    ----------
-    raw_magnetism : RawMagnetism
-        Dataclass containing the charges and magnetic moments read from Vasp.
-    """
+_magnetism_docs = f"""
+The magnetic moments and localized charges for selected ionic steps.
 
+This class gives access to the magnetic moments and charges projected on the
+different orbitals on every atom.
+
+Parameters
+----------
+raw_magnetism : RawMagnetism
+    Dataclass containing the charges and magnetic moments read from Vasp.
+
+{_trajectory.trajectory_examples("magnetism")}
+""".strip()
+
+
+@_documentation.add(_magnetism_docs)
+class Magnetism(_trajectory.DataTrajectory):
     _missing_data_message = "Atom resolved magnetic information not present, please verify LORBIT tag is set."
 
     to_dict = RefinementDescriptor("_to_dict")
@@ -28,39 +41,21 @@ class Magnetism(DataBase):
     total_moments = RefinementDescriptor("_total_moments")
     __str__ = RefinementDescriptor("_to_string")
 
+    def _to_string(self):
+        magmom = "MAGMOM = "
+        moments_last_step = self._total_moments()
+        moments_to_string = lambda vec: " ".join(f"{moment:.2f}" for moment in vec)
+        if moments_last_step is None:
+            return "not spin polarized"
+        elif moments_last_step.ndim == 1:
+            return magmom + moments_to_string(moments_last_step)
+        else:
+            separator = " \\\n         "
+            generator = (moments_to_string(vec) for vec in moments_last_step)
+            return magmom + separator.join(generator)
 
-def _to_string(raw_magnetism):
-    magmom = "MAGMOM = "
-    moments_last_step = _total_moments(raw_magnetism, -1)
-    moments_to_string = lambda vec: " ".join(f"{moment:.2f}" for moment in vec)
-    if moments_last_step is None:
-        return "not spin polarized"
-    elif moments_last_step.ndim == 1:
-        return magmom + moments_to_string(moments_last_step)
-    else:
-        separator = " \\\n         "
-        generator = (moments_to_string(vec) for vec in moments_last_step)
-        return magmom + separator.join(generator)
-
-
-_step_parameter = """Parameters
-----------
-steps : int or range
-    If present specifies which steps of the simulation should be extracted.
-    By default the data of all steps is read.
-"""
-
-_index_note = """Notes
------
-The index order is different compared to the raw data when noncollinear calculations
-are used. This routine returns the magnetic moments as (steps, atoms, orbitals,
-directions)."""
-
-
-@_add_documentation(
-    f"""Read the charges and magnetization data into a dictionary.
-
-{_step_parameter}
+    @_documentation.add(
+        f"""Read the charges and magnetization data into a dictionary.
 
 Returns
 -------
@@ -69,34 +64,25 @@ dict
     on atoms and orbitals.
 
 {_index_note}"""
-)
-def _to_dict(raw_magnetism, steps=None):
-    return {
-        "charges": _charges(raw_magnetism, steps),
-        "moments": _moments(raw_magnetism, steps),
-    }
+    )
+    def _to_dict(self):
+        return {
+            "charges": self._charges(),
+            "moments": self._moments(),
+        }
 
+    def _charges(self):
+        """Read the charges of the selected steps.
 
-@_add_documentation(
-    f"""Read the charges of the selected steps.
+        Returns
+        -------
+        np.ndarray
+            Contains the charges for the selected steps projected on atoms and orbitals."""
+        moments = _Moments(self._raw_data.moments)
+        return moments[self._steps, 0, :, :]
 
-{_step_parameter}
-
-Returns
--------
-np.ndarray
-    Contains the charges for the selected steps projected on atoms and orbitals."""
-)
-def _charges(raw_magnetism, steps=None):
-    moments = _Magnetism(raw_magnetism.moments)
-    steps = _default_steps_if_none(moments, steps)
-    return moments[steps, 0, :, :]
-
-
-@_add_documentation(
-    f"""Read the magnetic moments of the selected steps.
-
-{_step_parameter}
+    @_documentation.add(
+        f"""Read the magnetic moments of the selected steps.
 
 Returns
 -------
@@ -105,62 +91,54 @@ np.ndarray
     orbitals.
 
 {_index_note}"""
-)
-def _moments(raw_magnetism, steps=None):
-    moments = _Magnetism(raw_magnetism.moments)
-    steps = _default_steps_if_none(moments, steps)
-    _fail_if_steps_out_of_bounds(moments, steps)
-    if moments.shape[1] == 1:
-        return None
-    elif moments.shape[1] == 2:
-        return moments[steps, 1, :, :]
-    else:
-        moments = moments[steps, 1:, :, :]
-        direction_axis = 1 if moments.ndim == 4 else 0
-        return np.moveaxis(moments, direction_axis, -1)
+    )
+    def _moments(self):
+        moments = _Moments(self._raw_data.moments)
+        _fail_if_steps_out_of_bounds(moments, self._steps)
+        if moments.shape[1] == 1:
+            return None
+        elif moments.shape[1] == 2:
+            return moments[self._steps, 1, :, :]
+        else:
+            moments = moments[self._steps, 1:, :, :]
+            direction_axis = 1 if moments.ndim == 4 else 0
+            return np.moveaxis(moments, direction_axis, -1)
 
+    def _total_charges(self):
+        """Read the total charges of the selected steps.
 
-@_add_documentation(
-    f"""Read the total charges of the selected steps.
+        Returns
+        -------
+        np.ndarray
+            Contains the total charges for the selected steps projected on atoms. This
+            corresponds to the charges summed over the orbitals."""
+        return _sum_over_orbitals(self._charges())
 
-{_step_parameter}
-
-Returns
--------
-np.ndarray
-    Contains the total charges for the selected steps projected on atoms. This
-    corresponds to the charges summed over the orbitals."""
-)
-def _total_charges(raw_magnetism, steps=None):
-    return _sum_over_orbitals(_charges(raw_magnetism, steps))
-
-
-@_add_documentation(
-    f"""Read the total magnetic moments of the selected steps.
-
-{_step_parameter}
+    @_documentation.add(
+        f"""Read the total magnetic moments of the selected steps.
 
 Returns
 -------
 np.ndarray
     Contains the total magnetic moments for the selected steps projected on atoms.
-    This corresponds to the magnetic moments summed over the orbitals."""
-)
-def _total_moments(raw_magnetism, steps=None):
-    moments = _Magnetism(raw_magnetism.moments)
-    _fail_if_steps_out_of_bounds(moments, steps)
-    if moments.shape[1] == 1:
-        return None
-    elif moments.shape[1] == 2:
-        return _sum_over_orbitals(_moments(raw_magnetism, steps))
-    else:
-        steps = _default_steps_if_none(moments, steps)
-        total_moments = _sum_over_orbitals(moments[steps, 1:, :, :])
-        direction_axis = 1 if total_moments.ndim == 3 else 0
-        return np.moveaxis(total_moments, direction_axis, -1)
+    This corresponds to the magnetic moments summed over the orbitals.
+
+{_index_note}"""
+    )
+    def _total_moments(self):
+        moments = _Moments(self._raw_data.moments)
+        _fail_if_steps_out_of_bounds(moments, self._steps)
+        if moments.shape[1] == 1:
+            return None
+        elif moments.shape[1] == 2:
+            return _sum_over_orbitals(self._moments())
+        else:
+            total_moments = _sum_over_orbitals(moments[self._steps, 1:, :, :])
+            direction_axis = 1 if total_moments.ndim == 3 else 0
+            return np.moveaxis(total_moments, direction_axis, -1)
 
 
-class _Magnetism(_reader.Reader):
+class _Moments(_reader.Reader):
     def error_message(self, key, err):
         key = np.array(key)
         steps = key if key.ndim == 0 else key[0]
@@ -169,10 +147,6 @@ class _Magnetism(_reader.Reader):
             f"`{steps}` are properly formatted and within the boundaries. "
             "Additionally, you may consider the original error message:\n" + err.args[0]
         )
-
-
-def _default_steps_if_none(moments, steps):
-    return steps if steps is not None else range(len(moments))
 
 
 def _fail_if_steps_out_of_bounds(moments, steps):

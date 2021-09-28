@@ -12,6 +12,6 @@ class Image:
         on to the plot function. Please check the documentation of that function
         to learn which arguments are allowed."""
         fig = self.to_plotly(*args, **kwargs)
-        default = f"{self.__class__.__name__.lower()}.png"
-        filename = filename if filename is not None else default
+        classname = self.__class__.__name__.lower().strip("_")
+        filename = filename if filename is not None else f"{classname}.png"
         fig.write_image(self._path / filename)

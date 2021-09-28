@@ -313,7 +313,7 @@ def test_to_image(single_band):
 
 
 def check_to_image(single_band, filename_argument, expected_filename):
-    with patch("py4vasp.data.band._to_plotly") as plot:
+    with patch("py4vasp.data.band.Band._to_plotly") as plot:
         single_band.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once()
         assert plot.call_args.args[1] == "args"

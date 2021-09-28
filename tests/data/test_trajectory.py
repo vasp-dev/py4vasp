@@ -1,121 +1,120 @@
-from py4vasp.data import Trajectory, Topology
-from unittest.mock import patch
+from py4vasp.data._base import RefinementDescriptor
+from py4vasp.data._trajectory import DataTrajectory, trajectory_examples
 import py4vasp.exceptions as exception
-import py4vasp.data as data
+import py4vasp._util.documentation as _documentation
+import inspect
 import pytest
-import types
-import numpy as np
+
+
+@_documentation.add(trajectory_examples("dataimpl"))
+class DataImpl(DataTrajectory):
+    def steps(self):
+        return self._steps
+
+    def slice(self):
+        return self._slice
+
+    range_steps = RefinementDescriptor("_range_steps")
+    range_slice = RefinementDescriptor("_range_slice")
+
+    def _range_steps(self):
+        return self._raw_data[self._steps]
+
+    def _range_slice(self):
+        return self._raw_data[self._slice]
 
 
 @pytest.fixture
-def Sr2TiO4(raw_data):
-    raw_trajectory = raw_data.trajectory("Sr2TiO4")
-    trajectory = Trajectory(raw_trajectory)
-    trajectory.ref = types.SimpleNamespace()
-    trajectory.ref.names = Topology(raw_trajectory.topology).names()
-    trajectory.ref.elements = Topology(raw_trajectory.topology).elements()
-    trajectory.ref.positions = raw_trajectory.positions
-    trajectory.ref.lattice_vectors = raw_trajectory.lattice_vectors
-    return trajectory
+def single_step():
+    return DataImpl(range(10))[0]
 
 
-def test_read_trajectory(Sr2TiO4, Assert):
-    trajectory = Sr2TiO4.read()
-    assert trajectory["names"] == Sr2TiO4.ref.names
-    assert trajectory["elements"] == Sr2TiO4.ref.elements
-    Assert.allclose(trajectory["positions"], Sr2TiO4.ref.positions)
-    Assert.allclose(trajectory["lattice_vectors"], Sr2TiO4.ref.lattice_vectors)
+@pytest.fixture
+def last_step():
+    return DataImpl(range(10))
 
 
-def test_to_mdtraj(Sr2TiO4, Assert):
-    trajectory = Sr2TiO4.to_mdtraj()
-    assert trajectory.n_frames == len(Sr2TiO4.ref.positions)
-    assert trajectory.n_atoms == len(Sr2TiO4.ref.elements)
-    unitcell_vectors = Trajectory.A_to_pm * Sr2TiO4.ref.lattice_vectors
-    cartesian_positions = [
-        pos @ cell for pos, cell in zip(Sr2TiO4.ref.positions, unitcell_vectors)
-    ]
-    Assert.allclose(trajectory.xyz, np.array(cartesian_positions).astype(np.float32))
-    Assert.allclose(trajectory.unitcell_vectors, unitcell_vectors)
+@pytest.fixture
+def all_steps():
+    return DataImpl(range(10))[:]
 
 
-def test_plot(Sr2TiO4):
-    cm_init = patch.object(data.Viewer3d, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(data.Viewer3d, "show_cell")
-    with cm_init as init, cm_cell as cell:
-        Sr2TiO4.plot()
-        init.assert_called_once()
-        cell.assert_called_once()
+@pytest.fixture
+def subset_of_steps():
+    return DataImpl(range(10))[1:4]
 
 
-def test_to_structure(Sr2TiO4, Assert):
-    structure = Sr2TiO4.to_structure(0).read()
-    assert structure["elements"] == Sr2TiO4.ref.elements
-    Assert.allclose(structure["lattice_vectors"], Sr2TiO4.ref.lattice_vectors[0])
-    Assert.allclose(structure["positions"], Sr2TiO4.ref.positions[0])
+def test_access_single_step(single_step):
+    assert single_step.steps() == 0
+    assert single_step.slice() == slice(0, 1)
 
 
-def test_incorrect_step(Sr2TiO4):
+def test_access_last_step(last_step):
+    assert last_step.steps() == -1
+    assert last_step.slice() == slice(-1, None)
+
+
+def test_access_all_steps(all_steps):
+    assert all_steps.steps() == slice(None)
+    assert all_steps.slice() == slice(None)
+
+
+def test_access_subset_of_steps(subset_of_steps):
+    assert subset_of_steps.steps() == slice(1, 4)
+    assert subset_of_steps.slice() == slice(1, 4)
+
+
+def test_range_single_step(single_step):
+    assert single_step.range_steps() == 0
+    assert single_step.range_slice() == range(0, 1)
+
+
+def test_range_last_step(last_step):
+    assert last_step.range_steps() == 9
+    assert last_step.range_slice() == range(9, 10)
+
+
+def test_range_all_steps(all_steps):
+    assert all_steps.range_steps() == range(0, 10)
+    assert all_steps.range_slice() == range(0, 10)
+
+
+def test_range_subset_of_steps(subset_of_steps):
+    assert subset_of_steps.range_steps() == range(1, 4)
+    assert subset_of_steps.range_slice() == range(1, 4)
+
+
+def test_copy_created():
+    trajectory = DataImpl(range(10))
+    assert trajectory.steps() == -1
+    first_step = trajectory[0]
+    assert first_step.steps() == 0
+    assert trajectory.steps() == -1
+    assert first_step.steps() == 0
+
+
+def test_is_slice_single_step(single_step):
+    assert not single_step._is_slice
+
+
+def test_is_slice_last_step(last_step):
+    assert not last_step._is_slice
+
+
+def test_is_slice_all_steps(all_steps):
+    assert all_steps._is_slice
+
+
+def test_is_slice_subset_of_steps(subset_of_steps):
+    assert subset_of_steps._is_slice
+
+
+def test_incorrect_argument(all_steps):
     with pytest.raises(exception.IncorrectUsage):
-        Sr2TiO4.to_structure(100)
-    with pytest.raises(exception.IncorrectUsage):
-        Sr2TiO4.to_structure([0, 1])
+        all_steps["step not an integer"]
 
 
-def test_print(Sr2TiO4, format_):
-    actual, _ = format_(Sr2TiO4)
-    ref_plain = """
-current structure of 4 step trajectory
-1.0
-6.9229 0.0 0.0
-4.694503016799998 5.0880434191000035 0.0
--5.808696220500002 -2.544019393599997 2.7773292841999986
-Sr Ti O
-2 1 4
-Direct
-0.64529 0.64529 0.0
-0.35471 0.35471 0.0
-0.0 0.0 0.0
-0.84178 0.84178 0.0
-0.15823 0.15823 0.0
-0.5 0.0 0.5
-0.0 0.5 0.5
-    """.strip()
-    ref_html = """
-current structure of 4 step trajectory<br>
-1.0<br>
-<table>
-<tr><td>6.9229</td><td>0.0</td><td>0.0</td></tr>
-<tr><td>4.694503016799998</td><td>5.0880434191000035</td><td>0.0</td></tr>
-<tr><td>-5.808696220500002</td><td>-2.544019393599997</td><td>2.7773292841999986</td></tr>
-</table>
-Sr Ti O<br>
-2 1 4<br>
-Direct<br>
-<table>
-<tr><td>0.64529</td><td>0.64529</td><td>0.0</td></tr>
-<tr><td>0.35471</td><td>0.35471</td><td>0.0</td></tr>
-<tr><td>0.0</td><td>0.0</td><td>0.0</td></tr>
-<tr><td>0.84178</td><td>0.84178</td><td>0.0</td></tr>
-<tr><td>0.15823</td><td>0.15823</td><td>0.0</td></tr>
-<tr><td>0.5</td><td>0.0</td><td>0.5</td></tr>
-<tr><td>0.0</td><td>0.5</td><td>0.5</td></tr>
-</table>
-    """.strip()
-    assert actual == {"text/plain": ref_plain, "text/html": ref_html}
-
-
-def test_descriptor(Sr2TiO4, check_descriptors):
-    descriptors = {
-        "_to_dict": ["to_dict", "read"],
-        "_to_viewer3d": ["to_viewer3d", "plot"],
-        "_to_structure": ["to_structure"],
-        "_to_mdtraj": ["to_mdtraj"],
-    }
-    check_descriptors(Sr2TiO4, descriptors)
-
-
-def test_from_file(raw_data, mock_file, check_read):
-    raw_trajectory = raw_data.trajectory("Sr2TiO4")
-    with mock_file("trajectory", raw_trajectory) as mocks:
-        check_read(Trajectory, mocks, raw_trajectory)
+def test_documentation(single_step, last_step):
+    reference = trajectory_examples("dataimpl")
+    assert inspect.getdoc(single_step) == reference
+    assert inspect.getdoc(last_step) == reference

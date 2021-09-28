@@ -14,7 +14,6 @@ def test_repr(raw_data):
         Projectors: "Fe3O4",
         Structure: "Fe3O4 collinear",
         Topology: "Fe3O4",
-        Trajectory: "Sr2TiO4",
     }
     for class_, parameter in tests.items():
         raw = getattr(raw_data, class_.__name__.lower())(parameter)

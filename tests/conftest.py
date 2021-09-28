@@ -121,13 +121,6 @@ class RawDataFactory:
         else:
             raise exception.NotImplemented()
 
-    @staticmethod
-    def trajectory(selection):
-        if selection == "Sr2TiO4":
-            return _Sr2TiO4_trajectory()
-        else:
-            raise exception.NotImplemented()
-
 
 @pytest.fixture
 def raw_data():
@@ -264,14 +257,15 @@ def _spin_polarized_bands(projectors):
 
 
 def _Sr2TiO4_cell():
+    scale = 6.9229
     lattice_vectors = [
         [1.0, 0.0, 0.0],
         [0.678112209738693, 0.734958387251008, 0.0],
         [-0.839055341042049, -0.367478859090843, 0.401180037874301],
     ]
     return raw.RawCell(
-        lattice_vectors=np.array(lattice_vectors),
-        scale=6.9229,
+        lattice_vectors=scale * np.array(number_steps * [lattice_vectors]),
+        scale=scale,
     )
 
 
@@ -300,6 +294,7 @@ def _Sr2TiO4_projectors():
 
 
 def _Sr2TiO4_structure():
+    repetitions = (number_steps, 1, 1)
     positions = [
         [0.64529, 0.64529, 0.0],
         [0.35471, 0.35471, 0.0],
@@ -312,7 +307,7 @@ def _Sr2TiO4_structure():
     return raw.RawStructure(
         topology=_Sr2TiO4_topology(),
         cell=_Sr2TiO4_cell(),
-        positions=np.array(positions),
+        positions=np.tile(positions, repetitions),
     )
 
 
@@ -323,24 +318,14 @@ def _Sr2TiO4_topology():
     )
 
 
-def _Sr2TiO4_trajectory():
-    structure = _Sr2TiO4_structure()
-    repetitions = (number_steps, 1, 1)
-    lattice_vectors = structure.cell.scale * structure.cell.lattice_vectors
-    return raw.RawTrajectory(
-        topology=structure.topology,
-        positions=np.tile(structure.positions, repetitions),
-        lattice_vectors=np.tile(lattice_vectors, repetitions),
-    )
-
-
 def _Fe3O4_cell():
     lattice_vectors = [
         [5.1427, 0.0, 0.0],
         [0.0, 3.0588, 0.0],
         [-1.3633791448, 0.0, 5.0446102592],
     ]
-    return raw.RawCell(lattice_vectors=np.array(lattice_vectors))
+    scaling = np.linspace(0.98, 1.01, number_steps)
+    return raw.RawCell(lattice_vectors=np.multiply.outer(scaling, lattice_vectors))
 
 
 def _Fe3O4_density(selection):
@@ -390,10 +375,11 @@ def _Fe3O4_structure(selection):
         [0.21255, 0.0, 0.71848],
         [0.73690, 0.5, 0.72389],
     ]
+    shift = np.linspace(-0.02, 0.01, number_steps)
     return raw.RawStructure(
         topology=_Fe3O4_topology(),
         cell=_Fe3O4_cell(),
-        positions=np.array(positions),
+        positions=np.add.outer(shift, positions),
         magnetism=RawDataFactory.magnetism(selection),
     )
 

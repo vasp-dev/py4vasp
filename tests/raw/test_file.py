@@ -300,39 +300,6 @@ def check_topology(file, reference, source):
     assert actual == reference
 
 
-def test_trajectory(tmpdir):
-    setup = SetupTest(
-        directory=tmpdir,
-        options=default_options,
-        sources=default_sources,
-        create_reference=reference_trajectory,
-        write_reference=write_trajectory,
-        check_actual=check_trajectory,
-    )
-    generic_test(setup)
-
-
-def reference_trajectory():
-    shape_pos = (num_steps, num_atoms, 3)
-    shape_vec = (num_steps, 3, 3)
-    return RawTrajectory(
-        topology=reference_topology(),
-        positions=np.arange(np.prod(shape_pos)).reshape(shape_pos),
-        lattice_vectors=np.arange(np.prod(shape_vec)).reshape(shape_vec),
-    )
-
-
-def write_trajectory(h5f, trajectory, source):
-    write_topology(h5f, trajectory.topology, source)
-    h5f["intermediate/ion_dynamics/position_ions"] = trajectory.positions
-    h5f["intermediate/ion_dynamics/lattice_vectors"] = trajectory.lattice_vectors
-
-
-def check_trajectory(file, reference, source):
-    actual = get_actual_and_check_version(file, "trajectory", source)
-    assert actual == reference
-
-
 def test_cell(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
@@ -346,15 +313,16 @@ def test_cell(tmpdir):
 
 
 def reference_cell():
+    shape = (num_steps, 3, 3)
     return RawCell(
         scale=0.5,
-        lattice_vectors=np.arange(9).reshape(3, 3),
+        lattice_vectors=np.arange(np.prod(shape)).reshape(shape),
     )
 
 
 def write_cell(h5f, cell, source):
     h5f["results/positions/scale"] = cell.scale
-    h5f["results/positions/lattice_vectors"] = cell.lattice_vectors
+    h5f["/intermediate/ion_dynamics/lattice_vectors"] = cell.lattice_vectors
 
 
 def check_cell(file, reference, source):
@@ -480,10 +448,11 @@ def test_structure(tmpdir):
 
 
 def reference_structure(use_magnetism):
+    shape_pos = (num_steps, num_atoms, 3)
     structure = RawStructure(
         topology=reference_topology(),
         cell=reference_cell(),
-        positions=np.linspace(np.zeros(3), np.ones(3), num_atoms),
+        positions=np.arange(np.prod(shape_pos)).reshape(shape_pos),
         magnetism=reference_magnetism() if use_magnetism else None,
     )
     return structure
@@ -492,7 +461,7 @@ def reference_structure(use_magnetism):
 def write_structure(h5f, structure, source):
     write_topology(h5f, structure.topology, source)
     write_cell(h5f, structure.cell, source)
-    h5f["results/positions/position_ions"] = structure.positions
+    h5f["intermediate/ion_dynamics/position_ions"] = structure.positions
     if structure.magnetism is not None:
         write_magnetism(h5f, structure.magnetism, source)
 

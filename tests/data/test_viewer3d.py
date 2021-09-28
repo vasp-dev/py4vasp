@@ -1,5 +1,5 @@
 from unittest.mock import patch
-from py4vasp.data import Structure, Trajectory, Viewer3d
+from py4vasp.data import Structure, Viewer3d
 from py4vasp.data.viewer3d import _Arrow3d, _x_axis, _y_axis, _z_axis
 import py4vasp.exceptions as exception
 import ipykernel.jsonutil as json
@@ -105,7 +105,7 @@ def test_arrows(viewer3d, assert_arrow_message):
 
 def test_supercell(raw_data, assert_arrow_message):
     structure = Structure(raw_data.structure("Sr2TiO4"))
-    number_atoms = len(structure)
+    number_atoms = structure.number_atoms()
     supercell = (1, 2, 3)
     viewer = make_viewer(structure, supercell)
     create_arrows(viewer, number_atoms)
@@ -140,11 +140,10 @@ def test_standard_form(raw_data, Assert):
     # which has not been transformed to standard form.
     raw_structure = raw_data.structure("Sr2TiO4")
     x = np.sqrt(0.5)
-    raw_structure.cell.lattice_vectors = np.array([[x, x, 0], [-x, x, 0], [0, 0, 1]])
+    raw_structure.cell.lattice_vectors = np.array([[[x, x, 0], [-x, x, 0], [0, 0, 1]]])
     raw_structure.positions += 0.1  # shift to avoid small comparisons
     viewer = make_viewer(Structure(raw_structure))
-    expected_positions = raw_structure.cell.scale * raw_structure.positions
-    Assert.allclose(viewer._positions, expected_positions)
+    Assert.allclose(viewer._positions, raw_structure.positions)
 
 
 def test_isosurface(raw_data):
@@ -162,8 +161,8 @@ def test_isosurface(raw_data):
 
 
 def test_trajectory(raw_data):
-    trajectory = Trajectory(raw_data.trajectory("Sr2TiO4"))
-    viewer = trajectory.plot()
+    structure = Structure(raw_data.structure("Sr2TiO4"))
+    viewer = structure[:].plot()
     viewer.default_messages = 0
     n = count_messages(viewer)
     assert n == 2

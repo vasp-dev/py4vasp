@@ -29,53 +29,51 @@ class Dielectric(DataBase, _export.Image):
     to_plotly = RefinementDescriptor("_to_plotly")
     __str__ = RefinementDescriptor("_to_string")
 
-
-def _to_string(raw_dielectric):
-    return f"""
+    def _to_string(self):
+        energies = self._raw_data.energies
+        return f"""
 dielectric function:
-    energies: [{raw_dielectric.energies[0]:0.2f}, {raw_dielectric.energies[-1]:0.2f}] {len(raw_dielectric.energies)} points
+    energies: [{energies[0]:0.2f}, {energies[-1]:0.2f}] {len(energies)} points
     directions: isotropic, xx, yy, zz, xy, yz, xz
         """.strip()
 
+    def _to_dict(self):
+        f"""Read the data into a dictionary.
 
-def _to_dict(raw_dielectric):
-    f"""Read the data into a dictionary.
+        Returns
+        -------
+        dict
+            Contains the energies at which the dielectric function was evaluated
+            and the dielectric tensor (3x3 matrix) at these energies."""
+        return {
+            "energies": self._raw_data.energies[:],
+            "function": _convert.to_complex(self._raw_data.function[:]),
+        }
 
-    Returns
-    -------
-    dict
-        Contains the energies at which the dielectric function was evaluated
-        and the dielectric tensor (3x3 matrix) at these energies."""
-    return {
-        "energies": raw_dielectric.energies[:],
-        "function": _convert.to_complex(raw_dielectric.function[:]),
-    }
+    def _to_plotly(self, selection=None):
+        f"""Read the data and generate a plotly figure.
 
+        Parameters
+        ----------
+        selection : str
+            Specify along which directions and which components of the dielectric
+            function you want to plot. Defaults to *isotropic* and both the real
+            and the complex part.
 
-def _to_plotly(raw_dielectric, selection=None):
-    f"""Read the data and generate a plotly figure.
-
-    Parameters
-    ----------
-    selection : str
-        Specify along which directions and which components of the dielectric
-        function you want to plot. Defaults to *isotropic* and both the real
-        and the complex part.
-
-    Returns
-    -------
-    plotly.graph_objects.Figure
-        plotly figure containing the dielectric function for the selected
-        directions and components."""
-    selection = _default_selection_if_none(selection)
-    choices = _parse_selection(selection)
-    data = _to_dict(raw_dielectric)
-    plots = [_make_plot(data, *choice) for choice in choices]
-    default = {
-        "xaxis": {"title": {"text": "Energy (eV)"}},
-        "yaxis": {"title": {"text": r"$\epsilon$"}},
-    }
-    return go.Figure(data=plots, layout=default)
+        Returns
+        -------
+        plotly.graph_objects.Figure
+            plotly figure containing the dielectric function for the selected
+            directions and components."""
+        selection = _default_selection_if_none(selection)
+        choices = _parse_selection(selection)
+        data = self._to_dict()
+        plots = [_make_plot(data, *choice) for choice in choices]
+        default = {
+            "xaxis": {"title": {"text": "Energy (eV)"}},
+            "yaxis": {"title": {"text": r"$\epsilon$"}},
+        }
+        return go.Figure(data=plots, layout=default)
 
 
 def _default_selection_if_none(selection):

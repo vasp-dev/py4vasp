@@ -57,7 +57,7 @@ def line_kpoints(raw_data):
 
 
 def to_cartesian(direct_coordinates, cell):
-    lattice_vectors = cell.lattice_vectors * cell.scale
+    lattice_vectors = cell.lattice_vectors[-1]
     direct_to_cartesian = np.linalg.inv(lattice_vectors)
     return direct_coordinates @ direct_to_cartesian.T
 

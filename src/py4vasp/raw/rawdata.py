@@ -57,15 +57,12 @@ class RawTopology:
 
 
 @dataclass
-class RawTrajectory:
-    "Describes the evolution of unit cell and atoms within over ionic steps."
-    topology: RawTopology
-    "The topology of the system used, i.e., which elements are contained."
+class RawCell:
+    "Unit cell of the crystal or simulation cell for molecules."
     lattice_vectors: np.ndarray
-    "Lattice vectors defining the unit cell for every time step."
-    positions: np.ndarray
-    """Position of all atoms in the unit cell in units of the lattice vectors
-    for every timestep."""
+    "Lattice vectors defining the unit cell."
+    scale: float = 1.0
+    "Global scaling factor applied to all lattice vectors."
     __eq__ = _dataclass_equal
 
 
@@ -78,16 +75,6 @@ class RawProjectors:
     "Character indicating the orbital angular momentum."
     number_spins: int
     "Indicates whether the calculation is spin polarized or not."
-    __eq__ = _dataclass_equal
-
-
-@dataclass
-class RawCell:
-    "Unit cell of the crystal or simulation cell for molecules."
-    lattice_vectors: np.ndarray
-    "Lattice vectors defining the unit cell."
-    scale: float = 1.0
-    "Global scaling factor applied to all lattice vectors."
     __eq__ = _dataclass_equal
 
 
