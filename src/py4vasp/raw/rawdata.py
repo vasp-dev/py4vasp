@@ -47,6 +47,12 @@ class RawVersion:
 
 
 @dataclass
+class RawSystem:
+    "The name of the system set in the input."
+    system: str
+
+
+@dataclass
 class RawTopology:
     "The topology of the system used, i.e., which elements are contained."
     number_ion_types: np.ndarray

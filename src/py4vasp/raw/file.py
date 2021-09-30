@@ -78,6 +78,21 @@ class File(AbstractContextManager):
         )
 
     @property
+    def system(self):
+        """Read the system tag provided in the INCAR file.
+
+        Returns
+        -------
+        DataDict[str, RawSystem]
+            Contains the name of the system.
+        """
+        return self._make_data_dict(self._read_system())
+
+    def _read_system(self):
+        self._raise_error_if_closed()
+        return RawSystem(self._h5f["results/positions/system"][()])
+
+    @property
     def dos(self):
         """Read all the electronic density of states (Dos) information.
 
@@ -333,6 +348,7 @@ class File(AbstractContextManager):
         return self._make_data_dict(default=electron, electron=electron, ion=ion)
 
     def _read_dielectric(self, prefix):
+        self._raise_error_if_closed()
         group = f"results/{prefix}_dielectric"
         if group not in self._h5f:
             return None
@@ -354,6 +370,7 @@ class File(AbstractContextManager):
         return self._make_data_dict(default=self._read_forces())
 
     def _read_forces(self):
+        self._raise_error_if_closed()
         return RawForces(
             structure=self._read_structure(),
             forces=self._h5f["intermediate/ion_dynamics/forces"],
@@ -372,6 +389,7 @@ class File(AbstractContextManager):
         return self._make_data_dict(default=self._read_stress())
 
     def _read_stress(self):
+        self._raise_error_if_closed()
         return RawStress(
             structure=self._read_structure(),
             stress=self._h5f["intermediate/ion_dynamics/stress"],

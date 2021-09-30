@@ -146,6 +146,32 @@ def get_actual_and_check_version(file, attribute, source):
     return data_dict[source]
 
 
+def test_system(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=default_options,
+        sources=default_sources,
+        create_reference=reference_system,
+        write_reference=write_system,
+        check_actual=check_system,
+    )
+    generic_test(setup)
+
+
+def reference_system():
+    return RawSystem(system="Vasp calculation".encode())
+
+
+def write_system(h5f, system, source):
+    h5f[f"results/positions/system"] = system.system
+
+
+def check_system(file, reference, source):
+    actual = get_actual_and_check_version(file, "system", source)
+    assert actual == reference
+    assert isinstance(actual.system, bytes)
+
+
 def test_dos(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
