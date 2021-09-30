@@ -109,6 +109,22 @@ def test_is_slice_subset_of_steps(subset_of_steps):
     assert subset_of_steps._is_slice
 
 
+def test_last_step_in_slice_single_step(single_step):
+    assert single_step._last_step_in_slice == 0
+
+
+def test_last_step_in_slice_last_step(last_step):
+    assert last_step._last_step_in_slice == -1
+
+
+def test_last_step_in_slice_all_steps(all_steps):
+    assert all_steps._last_step_in_slice == -1
+
+
+def test_last_step_in_slice_subset_of_steps(subset_of_steps):
+    assert subset_of_steps._last_step_in_slice == 3
+
+
 def test_incorrect_argument(all_steps):
     with pytest.raises(exception.IncorrectUsage):
         all_steps["step not an integer"]

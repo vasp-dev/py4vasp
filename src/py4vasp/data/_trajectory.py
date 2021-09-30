@@ -39,6 +39,10 @@ class DataTrajectory(DataBase):
             self._slice = _create_slice_for_current_step_if_possible(steps)
         return self
 
+    @property
+    def _last_step_in_slice(self):
+        return (self._slice.stop or 0) - 1
+
 
 def _create_slice_for_current_step_if_possible(steps):
     try:

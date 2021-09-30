@@ -530,6 +530,64 @@ def check_dielectric(file, reference, source):
     assert get_actual_and_check_version(file, "dielectric", source) == reference
 
 
+def test_forces(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=default_options,
+        sources=default_sources,
+        create_reference=reference_forces,
+        write_reference=write_forces,
+        check_actual=check_forces,
+    )
+    generic_test(setup)
+
+
+def reference_forces():
+    shape = (num_steps, num_atoms, axes)
+    return RawForces(
+        structure=reference_structure(use_magnetism=False),
+        forces=np.arange(np.prod(shape)).reshape(shape),
+    )
+
+
+def write_forces(h5f, forces, source):
+    write_structure(h5f, forces.structure, source)
+    h5f[f"intermediate/ion_dynamics/forces"] = forces.forces
+
+
+def check_forces(file, reference, source):
+    assert get_actual_and_check_version(file, "forces", source) == reference
+
+
+def test_stress(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=default_options,
+        sources=default_sources,
+        create_reference=reference_stress,
+        write_reference=write_stress,
+        check_actual=check_stress,
+    )
+    generic_test(setup)
+
+
+def reference_stress():
+    shape = (num_steps, axes, axes)
+    return RawStress(
+        structure=reference_structure(use_magnetism=False),
+        stress=np.arange(np.prod(shape)).reshape(shape),
+    )
+
+
+def write_stress(h5f, stress, source):
+    write_structure(h5f, stress.structure, source)
+    h5f[f"intermediate/ion_dynamics/stress"] = stress.stress
+
+
+def check_stress(file, reference, source):
+    assert get_actual_and_check_version(file, "stress", source) == reference
+
+
 def source_prefix(source):
     return "electron_" if source == "default" else f"{source}_"
 

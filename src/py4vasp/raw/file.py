@@ -341,6 +341,42 @@ class File(AbstractContextManager):
             function=self._h5f[f"{group}/function"],
         )
 
+    @property
+    def forces(self):
+        """Read the forces for all ionic steps.
+
+        Returns
+        -------
+        DataDict[str, RawForces]
+            The key specifies how the forces are obtained. The value represents the
+            information about structure and forces.
+        """
+        return self._make_data_dict(default=self._read_forces())
+
+    def _read_forces(self):
+        return RawForces(
+            structure=self._read_structure(),
+            forces=self._h5f["intermediate/ion_dynamics/forces"],
+        )
+
+    @property
+    def stress(self):
+        """Read the stress for all ionic steps.
+
+        Returns
+        -------
+        DataDict[str, RawStress]
+            The key specifies how the stress is obtained. The value represents the
+            information about structure and stress.
+        """
+        return self._make_data_dict(default=self._read_stress())
+
+    def _read_stress(self):
+        return RawStress(
+            structure=self._read_structure(),
+            stress=self._h5f["intermediate/ion_dynamics/stress"],
+        )
+
     def close(self):
         "Close the associated HDF5 file (automatically if used as context manager)."
         self._h5f.close()

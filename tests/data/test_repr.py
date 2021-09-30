@@ -9,9 +9,11 @@ def test_repr(raw_data):
         Density: "Fe3O4 collinear",
         Dos: "Fe3O4",
         Energy: None,
+        Forces: "Sr2TiO4",
         Kpoints: "line",
         Magnetism: "collinear",
         Projectors: "Fe3O4",
+        Stress: "Sr2TiO4",
         Structure: "Fe3O4 collinear",
         Topology: "Fe3O4",
     }

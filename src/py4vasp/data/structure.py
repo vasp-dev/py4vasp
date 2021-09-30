@@ -60,6 +60,7 @@ class Structure(_trajectory.DataTrajectory):
     to_mdtraj = RefinementDescriptor("_to_mdtraj")
     to_POSCAR = RefinementDescriptor("_to_poscar")
     cartesian_positions = RefinementDescriptor("_cartesian_positions")
+    volume = RefinementDescriptor("_volume")
     __str__ = RefinementDescriptor("_to_string")
     _repr_html_ = RefinementDescriptor("_to_html")
     number_atoms = RefinementDescriptor("_number_atoms")
@@ -97,7 +98,7 @@ class Structure(_trajectory.DataTrajectory):
         return self._create_repr(format_)
 
     def _create_repr(self, format_=_Format()):
-        step = self._last_step_in_slice()
+        step = self._last_step_in_slice
         vec_to_string = lambda vec: format_.separator.join(str(v) for v in vec)
         vecs_to_string = lambda vecs: format_.row.join(vec_to_string(v) for v in vecs)
         vecs_to_table = lambda vecs: format_.begin + vecs_to_string(vecs) + format_.end
@@ -225,9 +226,19 @@ Direct{format_.newline}
         Returns
         -------
         np.ndarray
-            Position of all atoms in cartesian coordinates in Å
+            Position of all atoms in cartesian coordinates in Å.
         """
         return self._raw_data.positions[self._steps] @ self._lattice_vectors()
+
+    def _volume(self):
+        """Return the volume of the unit cell for the selected steps.
+
+        Returns
+        -------
+        float or np.ndarray
+            The volume(s) of the selected step(s) in Å³.
+        """
+        return np.abs(np.linalg.det(self._lattice_vectors()))
 
     def _number_atoms(self):
         """Return the total number of atoms in the structure."""
@@ -273,9 +284,6 @@ Direct{format_.newline}
             return rescale_moments * moments
         else:
             return None
-
-    def _last_step_in_slice(self):
-        return self._slice.stop or -1
 
     def _step_string(self):
         if self._is_slice:

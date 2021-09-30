@@ -182,3 +182,23 @@ class RawDielectric:
     function: np.ndarray
     "The values of the dielectric tensor at these energies."
     __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawForces:
+    "The forces acting on the atoms at all steps."
+    structure: RawStructure
+    "Structural information about the system to inform about the forces."
+    forces: np.ndarray
+    "The values of the forces at the atoms."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawStress:
+    "The stress acting on the unit cell at all steps."
+    structure: RawStructure
+    "Structural information about the system to inform about the unit cell."
+    stress: np.ndarray
+    "The values of the stress on the cell."
+    __eq__ = _dataclass_equal

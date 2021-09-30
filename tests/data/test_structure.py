@@ -210,6 +210,19 @@ def check_cartesian_positions(structure, Assert):
     Assert.allclose(structure.cartesian_positions(), structure.to_ase().get_positions())
 
 
+def test_volume_Fe3O4(Fe3O4_collinear, Assert):
+    reference_volumes = determine_reference_volumes(Fe3O4_collinear.ref.lattice_vectors)
+    Assert.allclose(Fe3O4_collinear.volume(), reference_volumes[-1])
+    Assert.allclose(Fe3O4_collinear[0].volume(), reference_volumes[0])
+    Assert.allclose(Fe3O4_collinear[:].volume(), reference_volumes)
+    Assert.allclose(Fe3O4_collinear[1:3].volume(), reference_volumes[1:3])
+
+
+def determine_reference_volumes(lattice_vectors):
+    cross_product = np.cross(lattice_vectors[:, 0], lattice_vectors[:, 1])
+    return np.abs(np.einsum("ij,ij -> i", cross_product, lattice_vectors[:, 2]))
+
+
 def test_number_atoms(Sr2TiO4):
     assert Sr2TiO4.number_atoms() == 7
 

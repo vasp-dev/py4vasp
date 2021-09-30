@@ -70,6 +70,15 @@ class RawDataFactory:
         return _energy()
 
     @staticmethod
+    def forces(selection):
+        if selection == "Sr2TiO4":
+            return _Sr2TiO4_forces()
+        elif selection == "Fe3O4":
+            return _Fe3O4_forces()
+        else:
+            raise exception.NotImplemented()
+
+    @staticmethod
     def kpoints(selection):
         mode, *labels = selection.split()
         labels = labels[0] if len(labels) > 0 else "no_labels"
@@ -99,6 +108,15 @@ class RawDataFactory:
             return _Sr2TiO4_projectors()
         elif selection == "Fe3O4":
             return _Fe3O4_projectors()
+        else:
+            raise exception.NotImplemented()
+
+    @staticmethod
+    def stress(selection):
+        if selection == "Sr2TiO4":
+            return _Sr2TiO4_stress()
+        elif selection == "Fe3O4":
+            return _Fe3O4_stress()
         else:
             raise exception.NotImplemented()
 
@@ -284,12 +302,28 @@ def _Sr2TiO4_dos(projectors):
     return raw_dos
 
 
+def _Sr2TiO4_forces():
+    shape = (number_steps, number_atoms, axes)
+    return raw.RawForces(
+        structure=_Sr2TiO4_structure(),
+        forces=np.arange(np.prod(shape)).reshape(shape),
+    )
+
+
 def _Sr2TiO4_projectors():
     orbital_types = "s py pz px dxy dyz dz2 dxz x2-y2 fy3x2 fxyz fyz2 fz3 fxz2 fzx2 fx3"
     return raw.RawProjectors(
         topology=_Sr2TiO4_topology(),
         orbital_types=np.array(orbital_types.split(), dtype="S"),
         number_spins=1,
+    )
+
+
+def _Sr2TiO4_stress():
+    shape = (number_steps, axes, axes)
+    return raw.RawStress(
+        structure=_Sr2TiO4_structure(),
+        stress=np.arange(np.prod(shape)).reshape(shape),
     )
 
 
@@ -357,11 +391,27 @@ def _Fe3O4_dos(projectors):
     return raw_dos
 
 
+def _Fe3O4_forces():
+    shape = (number_steps, number_atoms, axes)
+    return raw.RawForces(
+        structure=_Fe3O4_structure("collinear"),
+        forces=np.arange(np.prod(shape)).reshape(shape),
+    )
+
+
 def _Fe3O4_projectors():
     return raw.RawProjectors(
         topology=_Fe3O4_topology(),
         orbital_types=np.array(("s", "p", "d", "f"), dtype="S"),
         number_spins=2,
+    )
+
+
+def _Fe3O4_stress():
+    shape = (number_steps, axes, axes)
+    return raw.RawStress(
+        structure=_Fe3O4_structure("collinear"),
+        stress=np.arange(np.prod(shape)).reshape(shape),
     )
 
 

@@ -28,6 +28,8 @@ from .topology import Topology
 from .viewer3d import Viewer3d
 from .structure import Structure
 from .density import Density
+from .forces import Forces
+from .stress import Stress
 
 import plotly.io as pio
 import plotly.graph_objects as go
