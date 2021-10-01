@@ -316,8 +316,8 @@ def check_to_image(single_band, filename_argument, expected_filename):
     with patch("py4vasp.data.band.Band._to_plotly") as plot:
         single_band.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once()
-        assert plot.call_args.args[1] == "args"
-        assert plot.call_args.kwargs == {"key": "word"}
+        assert plot.call_args[0][1] == "args"
+        assert plot.call_args[1] == {"key": "word"}
         fig = plot.return_value
         fig.write_image.assert_called_once_with(single_band._path / expected_filename)
 

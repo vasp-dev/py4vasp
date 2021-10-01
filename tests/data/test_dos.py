@@ -188,8 +188,8 @@ def check_to_image(Sr2TiO4, filename_argument, expected_filename):
     with patch("py4vasp.data.dos.Dos._to_plotly") as plot:
         Sr2TiO4.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once()
-        assert plot.call_args.args[1] == "args"
-        assert plot.call_args.kwargs == {"key": "word"}
+        assert plot.call_args[0][1] == "args"
+        assert plot.call_args[1] == {"key": "word"}
         fig = plot.return_value
         fig.write_image.assert_called_once_with(Sr2TiO4._path / expected_filename)
 

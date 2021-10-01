@@ -149,8 +149,8 @@ def check_to_image(dielectric, filename_argument, expected_filename):
     with patch("py4vasp.data.dielectric.Dielectric._to_plotly") as plot:
         dielectric.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once()
-        assert plot.call_args.args[1] == "args"
-        assert plot.call_args.kwargs == {"key": "word"}
+        assert plot.call_args[0][1] == "args"
+        assert plot.call_args[1] == {"key": "word"}
         fig = plot.return_value
         fig.write_image.assert_called_once_with(dielectric._path / expected_filename)
 

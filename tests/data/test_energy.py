@@ -143,9 +143,9 @@ def check_to_image(energy, filename_argument, expected_filename):
     with patch("py4vasp.data.energy.Energy._to_plotly") as plot:
         energy.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once()
-        # note: call_args.args[0] is self
-        assert plot.call_args.args[1] == "args"
-        assert plot.call_args.kwargs == {"key": "word"}
+        # note: call_args[0][0] is self
+        assert plot.call_args[0][1] == "args"
+        assert plot.call_args[1] == {"key": "word"}
         fig = plot.return_value
         fig.write_image.assert_called_once_with(energy._path / expected_filename)
 
