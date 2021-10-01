@@ -120,6 +120,7 @@ class RefinementDescriptor:
 
 
 def read_raw_data_from_source(data_dict, source):
+    source = source.strip().lower()
     try:
         return data_dict[source]
     except KeyError as err:

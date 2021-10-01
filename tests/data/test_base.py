@@ -104,6 +104,12 @@ def test_base_from_path(MockRawFile, data_dict):
     assert obj.initialize_hook_called
 
 
+def test_base_source_ignore_whitespace_and_capitalization(data_dict):
+    obj = DataImpl.from_dict(data_dict)
+    assert obj.get_raw_data(source="  DeFaUlT   ") == data_dict["default"]
+    assert obj.get_raw_data(source="  ALteRnAtiVe   ") == data_dict["alternative"]
+
+
 @patch("py4vasp.raw.File")
 def test_base_from_opened_file(MockFile, data_dict):
     file = MockFile()
