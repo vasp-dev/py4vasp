@@ -26,6 +26,7 @@ raw_stress : RawStres
 @_documentation.add(_stress_docstring)
 class Stress(_trajectory.DataTrajectory):
     read = _base.RefinementDescriptor("_to_dict")
+    to_dict = _base.RefinementDescriptor("_to_dict")
     __str__ = _base.RefinementDescriptor("_to_string")
 
     def _to_string(self):

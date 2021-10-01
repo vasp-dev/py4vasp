@@ -86,3 +86,17 @@ Total       1.09908     1.34332     1.58756     1.22120     1.46544     1.34332
 in kB      18.00000    22.00000    26.00000    20.00000    24.00000    22.00000
 """.strip()
     assert actual == {"text/plain": ref_plain}
+
+
+def test_descriptor(Sr2TiO4, check_descriptors):
+    descriptors = {
+        "_to_dict": ["to_dict", "read"],
+        "_to_string": ["__str__"],
+    }
+    check_descriptors(Sr2TiO4, descriptors)
+
+
+def test_from_file(raw_data, mock_file, check_read):
+    raw_stress = raw_data.stress("Sr2TiO4")
+    with mock_file("stress", raw_stress) as mocks:
+        check_read(Stress, mocks, raw_stress)
