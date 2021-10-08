@@ -118,7 +118,7 @@ def open_vasp_file(use_default, filename):
 
 
 def test_version(tmpdir):
-    do_nothing = lambda *_: None
+    do_nothing = lambda *_, **__: None
     setup = SetupTest(
         directory=tmpdir,
         options=default_options,
@@ -184,7 +184,10 @@ def test_dos(tmpdir):
     generic_test(setup)
 
 
-def reference_dos(use_dos, use_projectors):
+def reference_dos(
+    use_dos,
+    use_projectors,
+):
     shape = (num_spins, num_energies)
     return RawDos(
         fermi_energy=fermi_energy,
@@ -228,7 +231,10 @@ def test_band(tmpdir):
     generic_test(setup)
 
 
-def reference_band(use_projectors, use_labels):
+def reference_band(
+    use_projectors,
+    use_labels,
+):
     shape_eval = (num_spins, num_kpoints, num_bands)
     shape_proj = (num_spins, num_atoms, lmax, num_kpoints, num_bands)
     band = RawBand(
@@ -399,7 +405,9 @@ def test_kpoints(tmpdir):
     generic_test(setup)
 
 
-def reference_kpoints(use_labels):
+def reference_kpoints(
+    use_labels,
+):
     kpoints = RawKpoints(
         mode="explicit",
         number=num_kpoints,
@@ -473,7 +481,9 @@ def test_structure(tmpdir):
     generic_test(setup)
 
 
-def reference_structure(use_magnetism):
+def reference_structure(
+    use_magnetism,
+):
     shape_pos = (num_steps, num_atoms, 3)
     structure = RawStructure(
         topology=reference_topology(),
@@ -526,34 +536,41 @@ def check_density(file, reference, source):
     assert get_actual_and_check_version(file, "density", source) == reference
 
 
-def test_dielectric(tmpdir):
+def test_dielectric_function(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
         options=default_options,
-        sources=default_sources + ("electron", "ion"),
-        create_reference=reference_dielectric,
-        write_reference=write_dielectric,
-        check_actual=check_dielectric,
+        sources=default_sources,
+        create_reference=reference_dielectric_function,
+        write_reference=write_dielectric_function,
+        check_actual=check_dielectric_function,
     )
     generic_test(setup)
 
 
-def reference_dielectric():
-    shape = (axes, axes, num_energies, complex)
-    return RawDielectric(
+def reference_dielectric_function():
+    shape = (3, axes, axes, num_energies, complex)
+    data = np.arange(np.prod(shape)).reshape(shape)
+    return RawDielectricFunction(
         energies=np.arange(num_energies),
-        function=np.arange(np.prod(shape)).reshape(shape),
+        density_density=data[0],
+        current_current=data[1],
+        ion=data[2],
     )
 
 
-def write_dielectric(h5f, dielectric, source):
-    group = source_prefix(source) + "dielectric"
-    h5f[f"results/{group}/energies"] = dielectric.energies
-    h5f[f"results/{group}/function"] = dielectric.function
+def write_dielectric_function(h5f, dielectric_function, source):
+    group = "results/linear_response"
+    suffix = "_dielectric_function"
+    h5f[f"{group}/energies{suffix}"] = dielectric_function.energies
+    h5f[f"{group}/density_density{suffix}"] = dielectric_function.density_density
+    h5f[f"{group}/current_current{suffix}"] = dielectric_function.current_current
+    h5f[f"{group}/ion{suffix}"] = dielectric_function.ion
 
 
-def check_dielectric(file, reference, source):
-    assert get_actual_and_check_version(file, "dielectric", source) == reference
+def check_dielectric_function(file, reference, source):
+    actual = get_actual_and_check_version(file, "dielectric_function", source)
+    assert actual == reference
 
 
 def test_forces(tmpdir):
@@ -614,8 +631,226 @@ def check_stress(file, reference, source):
     assert get_actual_and_check_version(file, "stress", source) == reference
 
 
-def source_prefix(source):
-    return "electron_" if source == "default" else f"{source}_"
+def test_force_constants(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=default_options,
+        sources=default_sources,
+        create_reference=reference_force_constants,
+        write_reference=write_force_constants,
+        check_actual=check_force_constants,
+    )
+    generic_test(setup)
+
+
+def reference_force_constants():
+    shape = (num_atoms * axes, num_atoms * axes)
+    return RawForceConstants(
+        structure=reference_structure(use_magnetism=False),
+        force_constants=np.arange(np.prod(shape)).reshape(shape),
+    )
+
+
+def write_force_constants(h5f, force_constants, source):
+    write_structure(h5f, force_constants.structure, source)
+    h5f[f"results/linear_response/force_constants"] = force_constants.force_constants
+
+
+def check_force_constants(file, reference, source):
+    assert get_actual_and_check_version(file, "force_constants", source) == reference
+
+
+def test_dielectric_tensor(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=itertools.product((True, False), repeat=2),
+        sources=default_sources,
+        create_reference=reference_dielectric_tensor,
+        write_reference=write_dielectric_tensor,
+        check_actual=check_dielectric_tensor,
+    )
+    generic_test(setup)
+
+
+def reference_dielectric_tensor(use_independent_particle):
+    shape = (3, axes, axes)
+    data = np.arange(np.prod(shape)).reshape(shape)
+    return RawDielectricTensor(
+        electron=data[0],
+        ion=data[1],
+        independent_particle=data[2] if use_independent_particle else None,
+        method=b"method",
+    )
+
+
+def write_dielectric_tensor(h5f, dielectric_tensor, source):
+    group = f"results/linear_response"
+    h5f[f"{group}/electron_dielectric_tensor"] = dielectric_tensor.electron
+    h5f[f"{group}/ion_dielectric_tensor"] = dielectric_tensor.ion
+    h5f[f"{group}/method_dielectric_tensor"] = dielectric_tensor.method
+    if dielectric_tensor.independent_particle is not None:
+        key_independent_particle = f"{group}/independent_particle_dielectric_tensor"
+        h5f[key_independent_particle] = dielectric_tensor.independent_particle
+
+
+def check_dielectric_tensor(file, reference, source):
+    actual = get_actual_and_check_version(file, "dielectric_tensor", source)
+    assert actual == reference
+    assert isinstance(actual.method, bytes)
+
+
+def test_born_effective_charges(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=default_options,
+        sources=default_sources,
+        create_reference=reference_born_effective_charges,
+        write_reference=write_born_effective_charges,
+        check_actual=check_born_effective_charges,
+    )
+    generic_test(setup)
+
+
+def reference_born_effective_charges():
+    shape = (num_atoms, axes, axes)
+    return RawBornEffectiveCharges(
+        structure=reference_structure(use_magnetism=False),
+        charge_tensors=np.arange(np.prod(shape)).reshape(shape),
+    )
+
+
+def write_born_effective_charges(h5f, born_effective_charges, source):
+    write_structure(h5f, born_effective_charges.structure, source)
+    h5f["results/linear_response/born_charges"] = born_effective_charges.charge_tensors
+
+
+def check_born_effective_charges(file, reference, source):
+    actual = get_actual_and_check_version(file, "born_effective_charges", source)
+    assert actual == reference
+
+
+def test_internal_strain(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=default_options,
+        sources=default_sources,
+        create_reference=reference_internal_strain,
+        write_reference=write_internal_strain,
+        check_actual=check_internal_strain,
+    )
+    generic_test(setup)
+
+
+def reference_internal_strain():
+    shape = (num_atoms, axes, axes, axes)
+    return RawInternalStrain(
+        structure=reference_structure(use_magnetism=False),
+        internal_strain=np.arange(np.prod(shape)).reshape(shape),
+    )
+
+
+def write_internal_strain(h5f, internal_strain, source):
+    write_structure(h5f, internal_strain.structure, source)
+    h5f["results/linear_response/internal_strain"] = internal_strain.internal_strain
+
+
+def check_internal_strain(file, reference, source):
+    actual = get_actual_and_check_version(file, "internal_strain", source)
+    assert actual == reference
+
+
+def test_elastic_modulus(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=default_options,
+        sources=default_sources,
+        create_reference=reference_elastic_modulus,
+        write_reference=write_elastic_modulus,
+        check_actual=check_elastic_modulus,
+    )
+    generic_test(setup)
+
+
+def reference_elastic_modulus():
+    shape = (2, axes, axes, axes, axes)
+    data = np.arange(np.prod(shape)).reshape(shape)
+    return RawElasticModulus(
+        clamped_ion=data[0],
+        relaxed_ion=data[1],
+    )
+
+
+def write_elastic_modulus(h5f, elastic_modulus, source):
+    group = "results/linear_response"
+    h5f[f"{group}/clamped_ion_elastic_modulus"] = elastic_modulus.clamped_ion
+    h5f[f"{group}/relaxed_ion_elastic_modulus"] = elastic_modulus.relaxed_ion
+
+
+def check_elastic_modulus(file, reference, source):
+    actual = get_actual_and_check_version(file, "elastic_modulus", source)
+    assert actual == reference
+
+
+def test_piezoelectric_tensor(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=default_options,
+        sources=default_sources,
+        create_reference=reference_piezoelectric_tensor,
+        write_reference=write_piezoelectric_tensor,
+        check_actual=check_piezoelectric_tensor,
+    )
+    generic_test(setup)
+
+
+def reference_piezoelectric_tensor():
+    shape = (2, axes, axes, axes)
+    data = np.arange(np.prod(shape)).reshape(shape)
+    return RawPiezoelectricTensor(
+        electron=data[0],
+        ion=data[1],
+    )
+
+
+def write_piezoelectric_tensor(h5f, piezoelectric_tensor, source):
+    group = "results/linear_response"
+    h5f[f"{group}/electron_piezoelectric_tensor"] = piezoelectric_tensor.electron
+    h5f[f"{group}/ion_piezoelectric_tensor"] = piezoelectric_tensor.ion
+
+
+def check_piezoelectric_tensor(file, reference, source):
+    actual = get_actual_and_check_version(file, "piezoelectric_tensor", source)
+    assert actual == reference
+
+
+def test_polarization(tmpdir):
+    setup = SetupTest(
+        directory=tmpdir,
+        options=default_options,
+        sources=default_sources,
+        create_reference=reference_polarization,
+        write_reference=write_polarization,
+        check_actual=check_polarization,
+    )
+    generic_test(setup)
+
+
+def reference_polarization():
+    return RawPolarization(
+        electron=np.array((1, 2, 3)),
+        ion=np.array((4, 5, 6)),
+    )
+
+
+def write_polarization(h5f, polarization, source):
+    group = "results/linear_response"
+    h5f[f"{group}/electron_dipole_moment"] = polarization.electron
+    h5f[f"{group}/ion_dipole_moment"] = polarization.ion
+
+
+def check_polarization(file, reference, source):
+    actual = get_actual_and_check_version(file, "polarization", source)
+    assert actual == reference
 
 
 def source_suffix(source):

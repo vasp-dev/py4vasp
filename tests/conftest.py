@@ -47,12 +47,23 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
+    def born_effective_charges(selection):
+        if selection == "Sr2TiO4":
+            return _Sr2TiO4_born_effective_charges()
+        else:
+            raise exception.NotImplemented()
+
+    @staticmethod
     def density(selection):
         return _Fe3O4_density(selection)
 
     @staticmethod
-    def dielectric(selection):
-        return _dielectric()
+    def dielectric_function(selection):
+        return _dielectric_function()
+
+    @staticmethod
+    def dielectric_tensor(selection):
+        return _dielectric_tensor(selection)
 
     @staticmethod
     def dos(selection):
@@ -66,8 +77,19 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
+    def elastic_modulus(selection):
+        return _elastic_modulus()
+
+    @staticmethod
     def energy(selection):
         return _energy()
+
+    @staticmethod
+    def force_constants(selection):
+        if selection == "Sr2TiO4":
+            return _Sr2TiO4_force_constants()
+        else:
+            raise exception.NotImplemented()
 
     @staticmethod
     def forces(selection):
@@ -75,6 +97,13 @@ class RawDataFactory:
             return _Sr2TiO4_forces()
         elif selection == "Fe3O4":
             return _Fe3O4_forces()
+        else:
+            raise exception.NotImplemented()
+
+    @staticmethod
+    def internal_strain(selection):
+        if selection == "Sr2TiO4":
+            return _Sr2TiO4_internal_strain()
         else:
             raise exception.NotImplemented()
 
@@ -101,6 +130,14 @@ class RawDataFactory:
             return magnetism
         else:
             raise exception.NotImplemented()
+
+    @staticmethod
+    def piezoelectric_tensor(selection):
+        return _piezoelectric_tensor()
+
+    @staticmethod
+    def polarization(selection):
+        return _polarization()
 
     @staticmethod
     def projectors(selection):
@@ -145,12 +182,48 @@ def raw_data():
     return RawDataFactory
 
 
-def _dielectric():
-    shape = (axes, axes, number_points, complex_)
-    return raw.RawDielectric(
+def _dielectric_function():
+    shape = (3, axes, axes, number_points, complex_)
+    data = np.linspace(0, 1, np.prod(shape)).reshape(shape)
+    return raw.RawDielectricFunction(
         energies=np.linspace(0, 1, number_points),
-        function=np.linspace(0, 1, np.prod(shape)).reshape(shape),
+        density_density=data[0],
+        current_current=data[1],
+        ion=data[2],
     )
+
+
+def _dielectric_tensor(method):
+    shape = (3, axes, axes)
+    data = np.arange(np.prod(shape)).reshape(shape)
+    return raw.RawDielectricTensor(
+        electron=data[0],
+        ion=data[1],
+        independent_particle=data[2] if method in ("dft", "rpa") else None,
+        method=method.encode(),
+    )
+
+
+def _elastic_modulus():
+    shape = (2, axes, axes, axes, axes)
+    data = np.arange(np.prod(shape)).reshape(shape)
+    return raw.RawElasticModulus(
+        clamped_ion=data[0],
+        relaxed_ion=data[1],
+    )
+
+
+def _piezoelectric_tensor():
+    shape = (2, axes, axes, axes)
+    data = np.arange(np.prod(shape)).reshape(shape)
+    return raw.RawPiezoelectricTensor(
+        electron=data[0],
+        ion=data[1],
+    )
+
+
+def _polarization():
+    return raw.RawPolarization(electron=np.array((1, 2, 3)), ion=np.array((4, 5, 6)))
 
 
 def _energy():
@@ -274,6 +347,14 @@ def _spin_polarized_bands(projectors):
     return raw_band
 
 
+def _Sr2TiO4_born_effective_charges():
+    shape = (number_atoms, axes, axes)
+    return raw.RawBornEffectiveCharges(
+        structure=_Sr2TiO4_structure(),
+        charge_tensors=np.arange(np.prod(shape)).reshape(shape),
+    )
+
+
 def _Sr2TiO4_cell():
     scale = 6.9229
     lattice_vectors = [
@@ -302,11 +383,27 @@ def _Sr2TiO4_dos(projectors):
     return raw_dos
 
 
+def _Sr2TiO4_force_constants():
+    shape = (axes * number_atoms, axes * number_atoms)
+    return raw.RawForceConstants(
+        structure=_Sr2TiO4_structure(),
+        force_constants=np.arange(np.prod(shape)).reshape(shape),
+    )
+
+
 def _Sr2TiO4_forces():
     shape = (number_steps, number_atoms, axes)
     return raw.RawForces(
         structure=_Sr2TiO4_structure(),
         forces=np.arange(np.prod(shape)).reshape(shape),
+    )
+
+
+def _Sr2TiO4_internal_strain():
+    shape = (number_atoms, axes, axes, axes)
+    return raw.RawInternalStrain(
+        structure=_Sr2TiO4_structure(),
+        internal_strain=np.arange(np.prod(shape)).reshape(shape),
     )
 
 

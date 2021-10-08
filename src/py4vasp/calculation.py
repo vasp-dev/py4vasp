@@ -15,6 +15,7 @@ object. For example you may use
 import inspect
 import py4vasp.data
 import py4vasp.control
+import py4vasp._util.convert as _convert
 from pathlib import Path
 
 
@@ -86,7 +87,7 @@ def _add_all_refinement_classes(calc):
 
 def _add_refinement_class(calc, name, class_):
     instance = class_.from_file(calc.path())
-    setattr(calc, name.lower(), instance)
+    setattr(calc, _convert.to_snakecase(name), instance)
     return calc
 
 

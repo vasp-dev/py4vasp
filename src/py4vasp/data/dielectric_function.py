@@ -9,7 +9,7 @@ import py4vasp._util.convert as _convert
 import py4vasp._util.selection as _selection
 
 
-class Dielectric(DataBase, _export.Image):
+class DielectricFunction(DataBase, _export.Image):
     """The dielectric function resulting from electrons and ions.
 
     You can use this class to extract the dielectric function of a Vasp calculation.
@@ -19,7 +19,7 @@ class Dielectric(DataBase, _export.Image):
 
     Parameters
     ----------
-    raw_dielectric : RawDielectric
+    raw_dielectric_function : RawDielectricFunction
         Dataclass containing the raw data necessary to produce a dielectric function.
     """
 
@@ -47,7 +47,9 @@ dielectric function:
             and the dielectric tensor (3x3 matrix) at these energies."""
         return {
             "energies": self._raw_data.energies[:],
-            "function": _convert.to_complex(self._raw_data.function[:]),
+            "density_density": _convert.to_complex(self._raw_data.density_density[:]),
+            "current_current": _convert.to_complex(self._raw_data.current_current[:]),
+            "ion": _convert.to_complex(self._raw_data.ion[:]),
         }
 
     def _to_plotly(self, selection=None):
@@ -81,8 +83,9 @@ def _default_selection_if_none(selection):
 
 
 class _Choice(typing.NamedTuple):
+    component: str = "density"
     direction: str = "isotropic"
-    component: str = _Selection.default
+    real_or_imag: str = _Selection.default
 
 
 def _parse_selection(selection):
@@ -101,48 +104,75 @@ def _parse_recursive(tree, current_choice):
 
 
 def _update_choice(current_choice, part):
-    if part in ("isotropic", "xx", "yy", "zz", "xy", "xz", "yz"):
+    if part in ("density", "current", "ion"):
+        return current_choice._replace(component=part)
+    elif part in ("isotropic", "xx", "yy", "zz", "xy", "xz", "yz"):
         return current_choice._replace(direction=part)
     elif part in ("Re", "real"):
-        return current_choice._replace(component="real")
+        return current_choice._replace(real_or_imag="real")
     elif part in ("Im", "imag", "imaginary"):
-        return current_choice._replace(component="imag")
+        return current_choice._replace(real_or_imag="imag")
     else:
         assert False
 
 
 def _setup_component_choices(choice):
-    if choice.component == _Selection.default:
-        yield choice._replace(component="real")
-        yield choice._replace(component="imag")
+    if choice.real_or_imag == _Selection.default:
+        yield choice._replace(real_or_imag="real")
+        yield choice._replace(real_or_imag="imag")
     else:
         yield choice
 
 
-def _make_plot(data, selection, component):
+def _make_plot(data, *choice):
     x = data["energies"]
-    y = getattr(_select_data(data["function"], selection), component)
-    subscript = "" if selection == "isotropic" else f"_{{{selection}}}"
-    name = f"{component[:2].capitalize()}($\\epsilon{subscript}$)"
+    y = _select_data(data, *choice)
+    name = _build_name(*choice)
     return _scatter_plot(x, y, name)
 
 
-def _select_data(tensor, selection):
+def _select_data(data, component, direction, real_or_imag):
+    data_component = _select_data_component(data, component)
+    data_direction = _select_data_direction(data_component, direction)
+    return getattr(data_direction, real_or_imag)
+
+
+def _select_data_component(data, component):
+    if component == "density":
+        return data["density_density"]
+    elif component == "current":
+        return data["current_current"]
+    else:
+        return data["ion"]
+
+
+def _select_data_direction(tensor, direction):
     x, y, z = range(3)
-    if selection == "isotropic":
+    if direction == "isotropic":
         return np.trace(tensor) / 3
-    elif selection == "xx":
+    elif direction == "xx":
         return tensor[x, x]
-    elif selection == "yy":
+    elif direction == "yy":
         return tensor[y, y]
-    elif selection == "zz":
+    elif direction == "zz":
         return tensor[z, z]
-    elif selection == "xy":
+    elif direction == "xy":
         return 0.5 * (tensor[x, y] + tensor[y, x])
-    elif selection == "yz":
+    elif direction == "yz":
         return 0.5 * (tensor[y, z] + tensor[z, y])
-    elif selection == "xz":
+    elif direction == "xz":
         return 0.5 * (tensor[x, z] + tensor[z, x])
+
+
+def _build_name(component, direction, real_or_imag):
+    subscript = "" if direction == "isotropic" else f"_{{{direction}}}"
+    if component == "density":
+        superscript = "^{dd}"
+    elif component == "current":
+        superscript = "^{jj}"
+    else:
+        superscript = "^{ion}"
+    return f"{real_or_imag[:2].capitalize()}($\\epsilon{superscript}{subscript}$)"
 
 
 def _scatter_plot(x, y, name):

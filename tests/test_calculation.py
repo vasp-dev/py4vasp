@@ -23,11 +23,22 @@ def test_creation(MockFile):
 @patch("py4vasp.raw.File", autospec=True)
 def test_all_attributes(MockFile):
     calculation = py4vasp.Calculation.from_path("test_path")
+    camel_cases = {
+        "BornEffectiveCharges": "born_effective_charges",
+        "DielectricFunction": "dielectric_function",
+        "DielectricTensor": "dielectric_tensor",
+        "ElasticModulus": "elastic_modulus",
+        "ForceConstants": "force_constants",
+        "InternalStrain": "internal_strain",
+        "PiezoelectricTensor": "piezoelectric_tensor",
+    }
     skipped = ["Viewer3d"]
     for name, _ in inspect.getmembers(py4vasp.data, inspect.isclass):
-        if name in skipped:
+        if name in skipped or name in camel_cases:
             continue
         assert hasattr(calculation, name.lower())
+    for name in camel_cases.values():
+        assert hasattr(calculation, name)
     MockFile.assert_not_called()
     MockFile.__enter__.assert_not_called()
 

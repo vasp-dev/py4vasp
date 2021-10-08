@@ -181,12 +181,16 @@ class RawDensity:
 
 
 @dataclass
-class RawDielectric:
+class RawDielectricFunction:
     "The electronic or ionic dielectric function."
     energies: np.ndarray
     "The energies at which the dielectric function is evaluated."
-    function: np.ndarray
-    "The values of the dielectric tensor at these energies."
+    density_density: np.ndarray
+    "The values of the electronic dielectric function using the density-density response."
+    current_current: np.ndarray
+    "The values of the electronic dielectric function using the current-current response."
+    ion: np.ndarray
+    "The values of the ionic dielectrion function."
     __eq__ = _dataclass_equal
 
 
@@ -207,4 +211,78 @@ class RawStress:
     "Structural information about the system to inform about the unit cell."
     stress: np.ndarray
     "The values of the stress on the cell."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawForceConstants:
+    "The force constants of the material."
+    structure: RawStructure
+    "Structural information about the system to inform about the atoms the force constants relate to."
+    force_constants: np.ndarray
+    "The values of the force constants."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawDielectricTensor:
+    "The dielectric tensor resulting from ionic and electronic contributions."
+    electron: np.ndarray
+    "The electronic contribution to the dielectric tensor."
+    ion: np.ndarray
+    "The ionic contribution to the dielectric tensor."
+    independent_particle: np.ndarray
+    "The dielectric tensor in the independent particle approximation."
+    method: str
+    "The method used to generate the dielectric tensor."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawBornEffectiveCharges:
+    "The Born effective charges resulting form a linear response calculation."
+    structure: RawStructure
+    "Structural information about the system to identify specific atoms."
+    charge_tensors: np.ndarray
+    "The raw data of the Born effective charges."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawInternalStrain:
+    "The internal strain calculated in a linear response calculation."
+    structure: RawStructure
+    "Structural information about the system to inform about the unit cell."
+    internal_strain: np.ndarray
+    "The raw data of the internal strain."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawElasticModulus:
+    "The elastic module calculated in a linear response calculation."
+    clamped_ion: np.ndarray
+    "Elastic modulus when the ions are clamped into their positions."
+    relaxed_ion: np.ndarray
+    "Elastic modulus when the position of the ions is relaxed."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawPiezoelectricTensor:
+    "The piezoelectric tensor calculated in a linear response calculation."
+    electron: np.ndarray
+    "The electronic contribution to the piezoelectric tensor"
+    ion: np.ndarray
+    "The ionic contribution to the piezoelectric tensor"
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawPolarization:
+    "The electronic and ionic dipole moments."
+    electron: np.ndarray
+    "The electronic dipole moment resulting from the charge."
+    ion: np.ndarray
+    "The ionic dipole moment resulting from the position of the atoms."
     __eq__ = _dataclass_equal

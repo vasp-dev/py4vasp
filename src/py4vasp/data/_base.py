@@ -4,6 +4,7 @@ import pathlib
 import py4vasp.raw as raw
 import py4vasp.exceptions as exception
 from py4vasp._util.version import minimal_vasp_version, current_vasp_version
+import py4vasp._util.convert as _convert
 
 
 class DataBase:
@@ -53,7 +54,8 @@ class DataBase:
             the user.
         """
         obj = cls.__new__(cls)
-        obj._from_context_generator(lambda: _from_file(file, cls.__name__.lower()))
+        name = _convert.to_snakecase(cls.__name__)
+        obj._from_context_generator(lambda: _from_file(file, name))
         obj._repr = f".from_file({repr(file)})"
         obj._path = _get_absolute_path(file)
         return obj._initialize()

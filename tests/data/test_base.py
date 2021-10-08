@@ -47,7 +47,7 @@ def MockRawFile(data_dict):
         context = MockFile.return_value
         file = context.__enter__.return_value
         prop = PropertyMock(return_value=data_dict)
-        type(file).dataimpl = prop
+        type(file).data_impl = prop
         MockFile.property = prop
         yield MockFile
 
@@ -113,7 +113,7 @@ def test_base_source_ignore_whitespace_and_capitalization(data_dict):
 @patch("py4vasp.raw.File")
 def test_base_from_opened_file(MockFile, data_dict):
     file = MockFile()
-    type(file).dataimpl = PropertyMock(return_value=data_dict)
+    type(file).data_impl = PropertyMock(return_value=data_dict)
     # check that file is not opened during initialization
     obj = DataImpl.from_file(file)
     MockFile.assert_called_once()

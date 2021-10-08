@@ -19,17 +19,24 @@ the documentation of the individual classes.
 
 from .band import Band
 from .dos import Dos
-from .dielectric import Dielectric
+from .dielectric_function import DielectricFunction
+from .dielectric_tensor import DielectricTensor
+from .elastic_modulus import ElasticModulus
 from .energy import Energy
 from .kpoints import Kpoints
 from .magnetism import Magnetism
+from .piezoelectric_tensor import PiezoelectricTensor
+from .polarization import Polarization
 from .projectors import Projectors
 from .topology import Topology
 from .viewer3d import Viewer3d
 from .structure import Structure
 from .system import System
+from .born_effective_charges import BornEffectiveCharges
 from .density import Density
 from .forces import Forces
+from .force_constants import ForceConstants
+from .internal_strain import InternalStrain
 from .stress import Stress
 
 import plotly.io as pio

@@ -3,6 +3,7 @@ from pathlib import Path
 from .rawdata import *
 import h5py
 import py4vasp.exceptions as exception
+import py4vasp._util.version as _version
 
 
 class File(AbstractContextManager):
@@ -334,27 +335,28 @@ class File(AbstractContextManager):
         )
 
     @property
-    def dielectric(self):
+    @_version.require(RawVersion(6, 3))
+    def dielectric_function(self):
         """Read the dielectric functions.
 
         Returns
         -------
-        DataDict[str, RawDielectric]
+        DataDict[str, RawDielectricFunction]
             The key specifies, which dielectric function is contained. The value
             represents the energy-resolved dielectric tensor.
         """
-        electron = self._read_dielectric("electron")
-        ion = self._read_dielectric("ion")
-        return self._make_data_dict(default=electron, electron=electron, ion=ion)
+        return self._make_data_dict(self._read_dielectric_function())
 
-    def _read_dielectric(self, prefix):
+    def _read_dielectric_function(self):
         self._raise_error_if_closed()
-        group = f"results/{prefix}_dielectric"
+        group = f"results/linear_response"
         if group not in self._h5f:
             return None
-        return RawDielectric(
-            energies=self._h5f[f"{group}/energies"],
-            function=self._h5f[f"{group}/function"],
+        return RawDielectricFunction(
+            energies=self._h5f[f"{group}/energies_dielectric_function"],
+            density_density=self._h5f[f"{group}/density_density_dielectric_function"],
+            current_current=self._h5f[f"{group}/current_current_dielectric_function"],
+            ion=self._h5f[f"{group}/ion_dielectric_function"],
         )
 
     @property
@@ -393,6 +395,160 @@ class File(AbstractContextManager):
         return RawStress(
             structure=self._read_structure(),
             stress=self._h5f["intermediate/ion_dynamics/stress"],
+        )
+
+    @property
+    @_version.require(RawVersion(6, 3))
+    def force_constants(self):
+        """Read the force constants from a linear response calculation.
+
+        Returns
+        -------
+        DataDict[str, RawForceConstants]
+            The key specifies how the force constants are obtained. The value represents
+            information about the structure and the force constants matrix.
+        """
+        return self._make_data_dict(default=self._read_force_constants())
+
+    def _read_force_constants(self):
+        self._raise_error_if_closed()
+        return RawForceConstants(
+            structure=self._read_structure(),
+            force_constants=self._h5f["results/linear_response/force_constants"],
+        )
+
+    @property
+    @_version.require(RawVersion(6, 3))
+    def dielectric_tensor(self):
+        """Read the dielectric tensor from a linear response calculation.
+
+        Returns
+        -------
+        DataDict[str, RawDielectricTensor]
+            The key specifies which dielectric tensor is contained. The value describes
+            the contributions to the dielectric tensor and the generating methodology.
+        """
+        return self._make_data_dict(self._read_dielectric_tensor())
+
+    def _read_dielectric_tensor(self):
+        self._raise_error_if_closed()
+        group = "results/linear_response"
+        key_independent_particle = f"{group}/independent_particle_dielectric_tensor"
+        if key_independent_particle in self._h5f:
+            independent_particle = self._h5f[key_independent_particle]
+        else:
+            independent_particle = None
+        return RawDielectricTensor(
+            electron=self._h5f[f"{group}/electron_dielectric_tensor"],
+            ion=self._h5f[f"{group}/ion_dielectric_tensor"],
+            independent_particle=independent_particle,
+            method=self._h5f[f"{group}/method_dielectric_tensor"][()],
+        )
+
+    @property
+    @_version.require(RawVersion(6, 3))
+    def born_effective_charges(self):
+        """Read the Born effective charges from a linear response calculation.
+
+        Returns
+        -------
+        DataDict[str, RawBornEffectiveCharges]
+            The key identifies the nature of the Born effective charges, the value
+            provides the raw data and structural information.
+        """
+        return self._make_data_dict(self._read_born_effective_charges())
+
+    def _read_born_effective_charges(self):
+        self._raise_error_if_closed()
+        return RawBornEffectiveCharges(
+            structure=self._read_structure(),
+            charge_tensors=self._h5f["results/linear_response/born_charges"],
+        )
+
+    @property
+    @_version.require(RawVersion(6, 3))
+    def internal_strain(self):
+        """Read the internal strain from a linear response calculation.
+
+        Returns
+        -------
+        DataDict[str, RawInternalStrain]
+            The key identifies the source of the internal strain, the value provides
+            the raw data and structural information.
+        """
+        return self._make_data_dict(self._read_internal_strain())
+
+    def _read_internal_strain(self):
+        self._raise_error_if_closed()
+        return RawInternalStrain(
+            structure=self._read_structure(),
+            internal_strain=self._h5f["results/linear_response/internal_strain"],
+        )
+
+    @property
+    @_version.require(RawVersion(6, 3))
+    def elastic_modulus(self):
+        """Read the elastic modulus from a linear response calculation.
+
+        Returns
+        -------
+        DataDict[str, RawElasticModulus]
+            The key identifies the source of the elastic modulus, the value provides
+            the raw data for relaxed ion and clamped ion elastic modulus.
+        """
+        return self._make_data_dict(self._read_elastic_modulus())
+
+    def _read_elastic_modulus(self):
+        self._raise_error_if_closed()
+        group = "results/linear_response"
+        return RawElasticModulus(
+            clamped_ion=self._h5f[f"{group}/clamped_ion_elastic_modulus"],
+            relaxed_ion=self._h5f[f"{group}/relaxed_ion_elastic_modulus"],
+        )
+
+    @property
+    @_version.require(RawVersion(6, 3))
+    def piezoelectric_tensor(self):
+        """Read the piezoelectric tensor from a linear response calculation.
+
+        Returns
+        -------
+        DataDict[str, RawPiezoelectricTensor]
+            The key identifies the source of the piezoelectric tensor, the value
+            provides the raw data for electronic and ionic contribution to the
+            piezoelectric tensor.
+        """
+        return self._make_data_dict(self._read_piezoelectric_tensor())
+
+    def _read_piezoelectric_tensor(self):
+        self._raise_error_if_closed()
+        group = "results/linear_response"
+        return RawPiezoelectricTensor(
+            electron=self._h5f[f"{group}/electron_piezoelectric_tensor"],
+            ion=self._h5f[f"{group}/ion_piezoelectric_tensor"],
+        )
+
+    @property
+    @_version.require(RawVersion(6, 3))
+    def polarization(self):
+        """Read the electronic and ionic dipole moments from a linear response
+        calculation.
+
+        Returns
+        -------
+        DataDict[str, RawPolarization]
+            The key identifies the source of the polarization, the value provides
+            the raw data for electronic and ionic contribution to the dipole
+            moment.
+        """
+        return self._make_data_dict(self._read_polarization())
+
+    def _read_polarization(self):
+        self._raise_error_if_closed()
+        group = "results/linear_response"
+        return RawPolarization(
+            electron=self._h5f[f"{group}/electron_dipole_moment"],
+            ion=self._h5f[f"{group}/ion_dipole_moment"],
         )
 
     def close(self):

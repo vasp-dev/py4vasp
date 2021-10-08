@@ -1,0 +1,67 @@
+import numpy as np
+import py4vasp.data._base as _base
+
+
+class PiezoelectricTensor(_base.DataBase):
+    """The piezoelectric tensor (second derivatives w.r.t. strain and field)
+
+    You can use this class to extract the piezoelectric tensor of a linear
+    response calculation.
+
+    Parameters
+    ----------
+    raw_piezoelectric_tensor : RawPiezoelectricTensor
+        Dataclass containing the raw piezoelectric tensor data.
+    """
+
+    read = _base.RefinementDescriptor("_to_dict")
+    to_dict = _base.RefinementDescriptor("_to_dict")
+    __str__ = _base.RefinementDescriptor("_to_string")
+
+    def _to_string(self):
+        data = self._to_dict()
+        return f"""Piezoelectric tensor (C/m²)
+         XX          YY          ZZ          XY          YZ          ZX
+---------------------------------------------------------------------------
+{_tensor_to_string(data["clamped_ion"], "clamped-ion")}
+{_tensor_to_string(data["relaxed_ion"], "relaxed-ion")}"""
+
+    def _to_dict(self):
+        """Read the ionic and electronic contribution to the piezoelectric tensor
+        into a dictionary.
+
+        It will combine both terms as the total piezoelectric tensor (relaxed_ion)
+        but also give the pure electronic contribution, so that you can separate the
+        parts.
+
+        Returns
+        -------
+        dict
+            The clamped ion and relaxed ion data for the piezoelectric tensor.
+        """
+        electron_data = self._raw_data.electron[:]
+        return {
+            "clamped_ion": electron_data,
+            "relaxed_ion": electron_data + self._raw_data.ion[:],
+        }
+
+
+def _tensor_to_string(tensor, label):
+    compact_tensor = _compact(tensor.T).T
+    line = lambda dir_, vec: dir_ + " " + " ".join(f"{x:11.5f}" for x in vec)
+    directions = (" x", " y", " z")
+    lines = (line(dir_, vec) for dir_, vec in zip(directions, compact_tensor))
+    return f"{label:^75}".rstrip() + "\n" + "\n".join(lines)
+
+
+def _compact(tensor):
+    x, y, z = range(3)
+    symmetrized = (
+        tensor[x, x],
+        tensor[y, y],
+        tensor[z, z],
+        0.5 * (tensor[x, y] + tensor[y, x]),
+        0.5 * (tensor[y, z] + tensor[z, y]),
+        0.5 * (tensor[z, x] + tensor[x, z]),
+    )
+    return np.array(symmetrized)
