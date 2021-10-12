@@ -1,3 +1,4 @@
+from py4vasp.data import Structure
 from py4vasp.data._base import RefinementDescriptor
 import py4vasp.data._trajectory as _trajectory
 import py4vasp._util.documentation as _documentation
@@ -33,8 +34,13 @@ raw_magnetism : RawMagnetism
 class Magnetism(_trajectory.DataTrajectory):
     _missing_data_message = "Atom resolved magnetic information not present, please verify LORBIT tag is set."
 
+    length_moments = 1.5
+    "Length in Å how a magnetic moment is displayed relative to the largest moment."
+
     to_dict = RefinementDescriptor("_to_dict")
     read = RefinementDescriptor("_to_dict")
+    to_viewer3d = RefinementDescriptor("_to_viewer3d")
+    plot = RefinementDescriptor("_to_viewer3d")
     charges = RefinementDescriptor("_charges")
     moments = RefinementDescriptor("_moments")
     total_charges = RefinementDescriptor("_total_charges")
@@ -70,6 +76,28 @@ dict
             "charges": self._charges(),
             "moments": self._moments(),
         }
+
+    def _to_viewer3d(self):
+        f"""Visualize the magnetic moments as arrows inside the structure.
+
+        Returns
+        -------
+        Viewer3d
+            Contains the atoms and the unit cell as well as an arrow indicating the
+            strength of the magnetic moment. If noncollinear magnetism is used
+            the moment points in the actual direction; for collinear magnetism
+            the moments are aligned along the z axis by convention.
+        """
+        if self._is_slice:
+            message = (
+                "Visualizing magnetic moments for more than one step is not implemented"
+            )
+            raise exception.NotImplemented(message)
+        viewer = Structure(self._raw_data.structure)[self._steps].plot()
+        moments = self._prepare_magnetic_moments_for_plotting()
+        if moments is not None:
+            viewer.show_arrows_at_atoms(moments)
+        return viewer
 
     def _charges(self):
         """Read the charges of the selected steps.
@@ -137,6 +165,16 @@ np.ndarray
             direction_axis = 1 if total_moments.ndim == 3 else 0
             return np.moveaxis(total_moments, direction_axis, -1)
 
+    def _prepare_magnetic_moments_for_plotting(self):
+        moments = self._total_moments()
+        moments = _convert_moment_to_3d_vector(moments)
+        max_length_moments = _max_length_moments(moments)
+        if max_length_moments > 1e-15:
+            rescale_moments = Magnetism.length_moments / max_length_moments
+            return rescale_moments * moments
+        else:
+            return None
+
 
 class _Moments(_reader.Reader):
     def error_message(self, key, err):
@@ -155,3 +193,19 @@ def _fail_if_steps_out_of_bounds(moments, steps):
 
 def _sum_over_orbitals(quantity):
     return np.sum(quantity, axis=-1)
+
+
+def _convert_moment_to_3d_vector(moments):
+    if moments is not None and moments.ndim == 1:
+        moments = moments.reshape((len(moments), 1))
+        no_new_moments = (0, 0)
+        add_zero_for_xy_axis = (2, 0)
+        moments = np.pad(moments, (no_new_moments, add_zero_for_xy_axis))
+    return moments
+
+
+def _max_length_moments(moments):
+    if moments is not None:
+        return np.max(np.linalg.norm(moments, axis=1))
+    else:
+        return 0.0

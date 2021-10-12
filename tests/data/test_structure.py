@@ -49,7 +49,15 @@ Direct<br>
 
 @pytest.fixture
 def Sr2TiO4(raw_data):
-    raw_structure = raw_data.structure("Sr2TiO4")
+    return make_structure(raw_data.structure("Sr2TiO4"))
+
+
+@pytest.fixture
+def Fe3O4(raw_data):
+    return make_structure(raw_data.structure("Fe3O4"))
+
+
+def make_structure(raw_structure):
     structure = Structure(raw_structure)
     structure.ref = types.SimpleNamespace()
     structure.ref.lattice_vectors = raw_structure.cell.lattice_vectors
@@ -57,34 +65,34 @@ def Sr2TiO4(raw_data):
     return structure
 
 
-@pytest.fixture
-def Fe3O4_collinear(raw_data):
-    raw_structure = raw_data.structure("Fe3O4 collinear")
-    structure = Structure(raw_structure)
-    structure.ref = types.SimpleNamespace()
-    structure.ref.moments = np.sum(raw_structure.magnetism.moments[:, 1], axis=2)
-    structure.ref.lattice_vectors = raw_structure.cell.lattice_vectors
-    structure.ref.positions = np.mod(raw_structure.positions, 1)
-    return structure
+# @pytest.fixture
+# def Fe3O4_collinear(raw_data):
+#     raw_structure = raw_data.structure("Fe3O4 collinear")
+#     structure = Structure(raw_structure)
+#     structure.ref = types.SimpleNamespace()
+#     structure.ref.moments = np.sum(raw_structure.magnetism.moments[:, 1], axis=2)
+#     structure.ref.lattice_vectors = raw_structure.cell.lattice_vectors
+#     structure.ref.positions = np.mod(raw_structure.positions, 1)
+#     return structure
+#
+#
+# @pytest.fixture
+# def Fe3O4_noncollinear(raw_data):
+#     raw_structure = raw_data.structure("Fe3O4 noncollinear")
+#     structure = Structure(raw_structure)
+#     structure.ref = types.SimpleNamespace()
+#     structure.ref.moments = Magnetism(raw_structure.magnetism)[:].total_moments()
+#     return structure
+#
+#
+# @pytest.fixture
+# def Fe3O4_charge_only(raw_data):
+#     return Structure(raw_data.structure("Fe3O4 charge_only"))
 
 
-@pytest.fixture
-def Fe3O4_noncollinear(raw_data):
-    raw_structure = raw_data.structure("Fe3O4 noncollinear")
-    structure = Structure(raw_structure)
-    structure.ref = types.SimpleNamespace()
-    structure.ref.moments = Magnetism(raw_structure.magnetism)[:].total_moments()
-    return structure
-
-
-@pytest.fixture
-def Fe3O4_charge_only(raw_data):
-    return Structure(raw_data.structure("Fe3O4 charge_only"))
-
-
-@pytest.fixture
-def Fe3O4_zero_moments(raw_data):
-    return Structure(raw_data.structure("Fe3O4 zero_moments"))
+# @pytest.fixture
+# def Fe3O4_zero_moments(raw_data):
+#     return Structure(raw_data.structure("Fe3O4 zero_moments"))
 
 
 def test_read_Sr2TiO4(Sr2TiO4, Assert):
@@ -98,20 +106,19 @@ def check_Sr2TiO4_structure(actual, reference, steps, Assert):
     Assert.allclose(actual["positions"], reference.positions[steps])
     assert actual["elements"] == ["Sr", "Sr", "Ti", "O", "O", "O", "O"]
     assert actual["names"] == ["Sr_1", "Sr_2", "Ti_1", "O_1", "O_2", "O_3", "O_4"]
-    assert actual["moments"] is None
 
 
-def test_read_collinear(Fe3O4_collinear, Assert):
+def test_read_Fe3O4(Fe3O4, Assert):
+    check_Fe3O4_structure(Fe3O4.read(), Fe3O4.ref, -1, Assert)
     for steps in (slice(None), slice(1, 3), 0):
-        moments = Fe3O4_collinear[steps].read()["moments"]
-        Assert.allclose(moments, Fe3O4_collinear.ref.moments[steps])
-    Assert.allclose(Fe3O4_collinear.read()["moments"], Fe3O4_collinear.ref.moments[-1])
+        check_Fe3O4_structure(Fe3O4[steps].read(), Fe3O4.ref, steps, Assert)
 
 
-def test_read_charge_only(Fe3O4_charge_only):
-    for steps in (slice(None), slice(1, 3), 0):
-        assert Fe3O4_charge_only[steps].read()["moments"] is None
-    assert Fe3O4_charge_only.read()["moments"] is None
+def check_Fe3O4_structure(actual, reference, steps, Assert):
+    Assert.allclose(actual["lattice_vectors"], reference.lattice_vectors[steps])
+    Assert.allclose(actual["positions"], reference.positions[steps])
+    assert actual["elements"] == ["Fe", "Fe", "Fe", "O", "O", "O", "O"]
+    assert actual["names"] == ["Fe_1", "Fe_2", "Fe_3", "O_1", "O_2", "O_3", "O_4"]
 
 
 def test_to_poscar(Sr2TiO4, Assert):
@@ -142,16 +149,15 @@ def check_Sr2TiO4_ase(structure, reference, steps, Assert):
     assert all(structure.pbc)
 
 
-def test_to_ase_collinear(Fe3O4_collinear, Assert):
-    check_Fe3O4_ase(Fe3O4_collinear.to_ase(), Fe3O4_collinear.ref, -1, Assert)
-    check_Fe3O4_ase(Fe3O4_collinear[0].to_ase(), Fe3O4_collinear.ref, 0, Assert)
+def test_to_ase_Fe3O4(Fe3O4, Assert):
+    check_Fe3O4_ase(Fe3O4.to_ase(), Fe3O4.ref, -1, Assert)
+    check_Fe3O4_ase(Fe3O4[0].to_ase(), Fe3O4.ref, 0, Assert)
 
 
 def check_Fe3O4_ase(structure, reference, steps, Assert):
     Assert.allclose(structure.cell.array, reference.lattice_vectors[steps])
-    Assert.allclose(structure.get_scaled_positions(), reference.positions[steps])
-    moments = structure.get_initial_magnetic_moments()
-    Assert.allclose(moments, reference.moments[steps])
+    ref_positions = np.mod(reference.positions[steps], 1)
+    Assert.allclose(structure.get_scaled_positions(), ref_positions)
     assert all(structure.symbols == "Fe3O4")
     assert all(structure.pbc)
 
@@ -164,6 +170,10 @@ def test_from_ase(Sr2TiO4, Assert):
 def test_to_mdtraj(Sr2TiO4, Assert):
     for steps in (slice(None), slice(1, 3)):
         trajectory = Sr2TiO4[steps].to_mdtraj()
+    with pytest.raises(exception.NotImplemented):
+        Sr2TiO4[0].to_mdtraj()
+    with pytest.raises(exception.NotImplemented):
+        Sr2TiO4.to_mdtraj()
 
 
 def check_Sr2TiO4_mdtraj(trajectory, reference, steps, Assert):
@@ -200,22 +210,22 @@ def test_supercell_wrong_size(Sr2TiO4):
         Sr2TiO4.to_ase([1, 2])
 
 
-def test_cartesian_positions(Sr2TiO4, Fe3O4_collinear, Assert):
+def test_cartesian_positions(Sr2TiO4, Fe3O4, Assert):
     check_cartesian_positions(Sr2TiO4, Assert)
-    check_cartesian_positions(Fe3O4_collinear, Assert)
-    check_cartesian_positions(Fe3O4_collinear[0], Assert)
+    check_cartesian_positions(Fe3O4, Assert)
+    check_cartesian_positions(Fe3O4[0], Assert)
 
 
 def check_cartesian_positions(structure, Assert):
     Assert.allclose(structure.cartesian_positions(), structure.to_ase().get_positions())
 
 
-def test_volume_Fe3O4(Fe3O4_collinear, Assert):
-    reference_volumes = determine_reference_volumes(Fe3O4_collinear.ref.lattice_vectors)
-    Assert.allclose(Fe3O4_collinear.volume(), reference_volumes[-1])
-    Assert.allclose(Fe3O4_collinear[0].volume(), reference_volumes[0])
-    Assert.allclose(Fe3O4_collinear[:].volume(), reference_volumes)
-    Assert.allclose(Fe3O4_collinear[1:3].volume(), reference_volumes[1:3])
+def test_volume_Fe3O4(Fe3O4, Assert):
+    reference_volumes = determine_reference_volumes(Fe3O4.ref.lattice_vectors)
+    Assert.allclose(Fe3O4.volume(), reference_volumes[-1])
+    Assert.allclose(Fe3O4[0].volume(), reference_volumes[0])
+    Assert.allclose(Fe3O4[:].volume(), reference_volumes)
+    Assert.allclose(Fe3O4[1:3].volume(), reference_volumes[1:3])
 
 
 def determine_reference_volumes(lattice_vectors):
@@ -235,65 +245,24 @@ def test_number_steps(Sr2TiO4):
 
 
 def test_plot_Sr2TiO4(Sr2TiO4):
-    check_plot_Sr2TiO4(Sr2TiO4)
+    check_plot_structure(Sr2TiO4)
     for steps in (slice(None), slice(1, 3), 0):
-        check_plot_Sr2TiO4(Sr2TiO4[steps])
+        check_plot_structure(Sr2TiO4[steps])
 
 
-def check_plot_Sr2TiO4(structure):
+def test_plot_Fe3O4(Fe3O4):
+    check_plot_structure(Fe3O4)
+    for steps in (slice(None), slice(1, 3), 0):
+        check_plot_structure(Fe3O4[steps])
+
+
+def check_plot_structure(structure):
     cm_init = patch.object(data.Viewer3d, "__init__", autospec=True, return_value=None)
     cm_cell = patch.object(data.Viewer3d, "show_cell")
     with cm_init as init, cm_cell as cell:
         structure.plot()
         init.assert_called_once()
         cell.assert_called_once()
-
-
-def test_plot_collinear(Fe3O4_collinear, Assert):
-    cm_init = patch.object(data.Viewer3d, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(data.Viewer3d, "show_cell")
-    cm_arrows = patch.object(data.Viewer3d, "show_arrows_at_atoms")
-    with cm_init, cm_cell, cm_arrows as arrows:
-        Fe3O4_collinear.plot()
-        arrows.assert_called_once()
-        args, kwargs = arrows.call_args
-    actual_moments = args[0]
-    rescale_moments = Structure.length_moments / np.max(Fe3O4_collinear.ref.moments[-1])
-    for actual, reference in zip(actual_moments, Fe3O4_collinear.ref.moments[-1]):
-        Assert.allclose(actual, [0, 0, reference * rescale_moments])
-
-
-def test_plot_noncollinear(Fe3O4_noncollinear, Assert):
-    cm_init = patch.object(data.Viewer3d, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(data.Viewer3d, "show_cell")
-    cm_arrows = patch.object(data.Viewer3d, "show_arrows_at_atoms")
-    with cm_init, cm_cell, cm_arrows as arrows:
-        Fe3O4_noncollinear.plot()
-        arrows.assert_called_once()
-        args, kwargs = arrows.call_args
-    actual_moments = args[0]
-    largest_moment = np.max(np.linalg.norm(Fe3O4_noncollinear.ref.moments[-1], axis=1))
-    rescale_moments = Structure.length_moments / largest_moment
-    for actual, reference in zip(actual_moments, Fe3O4_noncollinear.ref.moments[-1]):
-        Assert.allclose(actual, reference * rescale_moments)
-
-
-def test_plot_charge_only(Fe3O4_charge_only):
-    cm_init = patch.object(data.Viewer3d, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(data.Viewer3d, "show_cell")
-    cm_arrows = patch.object(data.Viewer3d, "show_arrows_at_atoms")
-    with cm_init, cm_cell, cm_arrows as arrows:
-        Fe3O4_charge_only.plot()
-        arrows.assert_not_called()
-
-
-def test_plot_zero_moments(Fe3O4_zero_moments):
-    cm_init = patch.object(data.Viewer3d, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(data.Viewer3d, "show_cell")
-    cm_arrows = patch.object(data.Viewer3d, "show_arrows_at_atoms")
-    with cm_init, cm_cell, cm_arrows as arrows:
-        Fe3O4_zero_moments.plot()
-        arrows.assert_not_called()
 
 
 def test_incorrect_step(Sr2TiO4):

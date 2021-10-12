@@ -1,4 +1,4 @@
-from py4vasp.data import Viewer3d, Topology, Magnetism
+from py4vasp.data import Viewer3d, Topology
 from py4vasp.data._base import RefinementDescriptor
 from IPython.lib.pretty import pretty
 from collections import Counter
@@ -45,9 +45,6 @@ raw_structure : RawStructure
 
 @_documentation.add(_structure_docs)
 class Structure(_trajectory.DataTrajectory):
-
-    length_moments = 1.5
-    "Length in Å how a magnetic moment is displayed relative to the largest moment."
 
     A_to_nm = 0.1
     "Converting Å to nm used for mdtraj trajectories."
@@ -126,7 +123,6 @@ Direct{format_.newline}
             "positions": self._raw_data.positions[self._steps],
             "elements": self._topology().elements(),
             "names": self._topology().names(),
-            "moments": self._read_magnetic_moments(),
         }
 
     def _to_viewer3d(self, supercell=None):
@@ -141,8 +137,7 @@ Direct{format_.newline}
         Returns
         -------
         Viewer3d
-            Visualize the structure(s) as a 3d figure, adding the magnetic momements
-            of the atoms if present.
+            Visualize the structure(s) as a 3d figure.
         """
         if self._is_slice:
             return self._viewer_from_trajectory()
@@ -175,8 +170,6 @@ Direct{format_.newline}
             scaled_positions=data["positions"],
             pbc=True,
         )
-        if data["moments"] is not None:
-            structure.set_initial_magnetic_moments(data["moments"])
         if supercell is not None:
             try:
                 structure *= supercell
@@ -198,6 +191,9 @@ Direct{format_.newline}
             trajectory. By converting the Vasp data to their format, we facilitate
             using all functions of that package.
         """
+        if not self._is_slice:
+            message = "Converting a single structure to mdtraj is not implemented."
+            raise exception.NotImplemented(message)
         data = self._to_dict()
         xyz = data["positions"] @ data["lattice_vectors"] * self.A_to_nm
         trajectory = mdtraj.Trajectory(
@@ -258,32 +254,12 @@ Direct{format_.newline}
     def _viewer_from_structure(self, supercell):
         viewer = Viewer3d.from_structure(self, supercell=supercell)
         viewer.show_cell()
-        moments = self._prepare_magnetic_moments_for_plotting()
-        if moments is not None:
-            viewer.show_arrows_at_atoms(moments)
         return viewer
 
     def _viewer_from_trajectory(self):
         viewer = Viewer3d.from_trajectory(self)
         viewer.show_cell()
         return viewer
-
-    def _read_magnetic_moments(self):
-        magnetism = self._raw_data.magnetism
-        if magnetism is not None:
-            return Magnetism(magnetism)[self._steps].total_moments()
-        else:
-            return None
-
-    def _prepare_magnetic_moments_for_plotting(self):
-        moments = self._read_magnetic_moments()
-        moments = _convert_to_moment_to_3d_vector(moments)
-        max_length_moments = _max_length_moments(moments)
-        if max_length_moments > 1e-15:
-            rescale_moments = Structure.length_moments / max_length_moments
-            return rescale_moments * moments
-        else:
-            return None
 
     def _step_string(self):
         if self._is_slice:
@@ -304,22 +280,6 @@ class _LatticeVectors(_reader.Reader):
             f"`{steps}` are properly formatted and within the boundaries. "
             "Additionally, you may consider the original error message:\n" + err.args[0]
         )
-
-
-def _convert_to_moment_to_3d_vector(moments):
-    if moments is not None and moments.ndim == 1:
-        moments = moments.reshape((len(moments), 1))
-        no_new_moments = (0, 0)
-        add_zero_for_xy_axis = (2, 0)
-        moments = np.pad(moments, (no_new_moments, add_zero_for_xy_axis))
-    return moments
-
-
-def _max_length_moments(moments):
-    if moments is not None:
-        return np.max(np.linalg.norm(moments, axis=1))
-    else:
-        return 0.0
 
 
 def _topology_from_ase(structure):

@@ -3,6 +3,7 @@ import py4vasp.exceptions as exception
 import numpy as np
 import pytest
 import types
+from unittest.mock import patch
 
 
 @pytest.fixture
@@ -146,6 +147,64 @@ def test_charge_only_total_moments(charge_only):
     assert charge_only.total_moments() is None
 
 
+def test_plot_collinear_magnetism(collinear_magnetism, Assert):
+    total_moments = np.sum(collinear_magnetism.ref.moments, axis=2)
+    for step in (0, -1):
+        actual_moments = get_show_arrow_args(collinear_magnetism, step)
+        reference_moments = total_moments[step]
+        check_plot_collinear_magnetism(actual_moments, reference_moments, Assert)
+    check_slices_not_implemented(collinear_magnetism)
+
+
+def test_plot_noncollinear_magnetism(noncollinear_magnetism, Assert):
+    total_moments = np.sum(noncollinear_magnetism.ref.moments, axis=2)
+    for step in (0, -1):
+        actual_moments = get_show_arrow_args(noncollinear_magnetism, step)
+        reference_moments = total_moments[step]
+        check_plot_noncollinear_magnetism(actual_moments, reference_moments, Assert)
+    check_slices_not_implemented(noncollinear_magnetism)
+
+
+def get_show_arrow_args(magnetism, step):
+    with patch("py4vasp.data.Structure._to_viewer3d") as plot:
+        if step == -1:
+            magnetism.plot()
+        else:
+            magnetism[step].plot()
+        plot.assert_called_once()
+        viewer = plot.return_value
+        viewer.show_arrows_at_atoms.assert_called_once()
+        args, _ = viewer.show_arrows_at_atoms.call_args
+    return args[0]
+
+
+def check_plot_collinear_magnetism(actual_moments, reference_moments, Assert):
+    rescale_moments = Magnetism.length_moments / np.max(reference_moments)
+    for actual, reference in zip(actual_moments, reference_moments):
+        Assert.allclose(actual, rescale_moments * np.array([0.0, 0.0, reference]))
+
+
+def check_plot_noncollinear_magnetism(actual_moments, reference_moments, Assert):
+    largest_moment = np.max(np.linalg.norm(reference_moments, axis=1))
+    rescale_moments = Magnetism.length_moments / largest_moment
+    Assert.allclose(actual_moments, rescale_moments * reference_moments)
+
+
+def check_slices_not_implemented(magnetism):
+    for steps in (slice(None), slice(1, 3)):
+        with pytest.raises(exception.NotImplemented):
+            magnetism[steps].plot()
+
+
+def test_plot_charge_only(charge_only):
+    with patch("py4vasp.data.Structure._to_viewer3d") as plot:
+        charge_only.plot()
+        plot.assert_called_once()
+        viewer = plot.return_value
+        viewer.show_arrows_at_atoms.assert_not_called()
+    check_slices_not_implemented(charge_only)
+
+
 def test_collinear_print(collinear_magnetism, format_):
     actual, _ = format_(collinear_magnetism)
     reference = "MAGMOM = 444.00 453.00 462.00 471.00 480.00 489.00 498.00"
@@ -202,6 +261,7 @@ def test_descriptor(collinear_magnetism, check_descriptors):
     last_step = collinear_magnetism[-1]
     descriptors = {
         "_to_dict": ["to_dict", "read"],
+        "_to_viewer3d": ["to_viewer3d", "plot"],
         "_charges": ["charges"],
         "_moments": ["moments"],
         "_total_charges": ["total_charges"],

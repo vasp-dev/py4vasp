@@ -184,10 +184,7 @@ def test_dos(tmpdir):
     generic_test(setup)
 
 
-def reference_dos(
-    use_dos,
-    use_projectors,
-):
+def reference_dos(use_dos, use_projectors):
     shape = (num_spins, num_energies)
     return RawDos(
         fermi_energy=fermi_energy,
@@ -231,10 +228,7 @@ def test_band(tmpdir):
     generic_test(setup)
 
 
-def reference_band(
-    use_projectors,
-    use_labels,
-):
+def reference_band(use_projectors, use_labels):
     shape_eval = (num_spins, num_kpoints, num_bands)
     shape_proj = (num_spins, num_atoms, lmax, num_kpoints, num_bands)
     band = RawBand(
@@ -405,9 +399,7 @@ def test_kpoints(tmpdir):
     generic_test(setup)
 
 
-def reference_kpoints(
-    use_labels,
-):
+def reference_kpoints(use_labels):
     kpoints = RawKpoints(
         mode="explicit",
         number=num_kpoints,
@@ -457,11 +449,15 @@ def test_magnetism(tmpdir):
 
 def reference_magnetism():
     shape = (num_steps, num_components, num_atoms, lmax)
-    magnetism = RawMagnetism(moments=np.arange(np.prod(shape)).reshape(shape))
+    magnetism = RawMagnetism(
+        structure=reference_structure(),
+        moments=np.arange(np.prod(shape)).reshape(shape),
+    )
     return magnetism
 
 
 def write_magnetism(h5f, magnetism, source):
+    write_structure(h5f, magnetism.structure, source)
     h5f["intermediate/ion_dynamics/magnetism/moments"] = magnetism.moments
 
 
@@ -472,7 +468,7 @@ def check_magnetism(file, reference, source):
 def test_structure(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
-        options=itertools.product((True, False), repeat=2),
+        options=default_options,
         sources=default_sources,
         create_reference=reference_structure,
         write_reference=write_structure,
@@ -481,15 +477,12 @@ def test_structure(tmpdir):
     generic_test(setup)
 
 
-def reference_structure(
-    use_magnetism,
-):
+def reference_structure():
     shape_pos = (num_steps, num_atoms, 3)
     structure = RawStructure(
         topology=reference_topology(),
         cell=reference_cell(),
         positions=np.arange(np.prod(shape_pos)).reshape(shape_pos),
-        magnetism=reference_magnetism() if use_magnetism else None,
     )
     return structure
 
@@ -498,8 +491,6 @@ def write_structure(h5f, structure, source):
     write_topology(h5f, structure.topology, source)
     write_cell(h5f, structure.cell, source)
     h5f["intermediate/ion_dynamics/position_ions"] = structure.positions
-    if structure.magnetism is not None:
-        write_magnetism(h5f, structure.magnetism, source)
 
 
 def check_structure(file, reference, source):
@@ -522,7 +513,7 @@ def reference_density():
     shape = (2, 3, 4, 5)
     raw_data = np.arange(np.prod(shape)).reshape(shape)
     return RawDensity(
-        structure=reference_structure(False),
+        structure=reference_structure(),
         charge=raw_data,
     )
 
@@ -588,7 +579,7 @@ def test_forces(tmpdir):
 def reference_forces():
     shape = (num_steps, num_atoms, axes)
     return RawForces(
-        structure=reference_structure(use_magnetism=False),
+        structure=reference_structure(),
         forces=np.arange(np.prod(shape)).reshape(shape),
     )
 
@@ -617,7 +608,7 @@ def test_stress(tmpdir):
 def reference_stress():
     shape = (num_steps, axes, axes)
     return RawStress(
-        structure=reference_structure(use_magnetism=False),
+        structure=reference_structure(),
         stress=np.arange(np.prod(shape)).reshape(shape),
     )
 
@@ -646,7 +637,7 @@ def test_force_constants(tmpdir):
 def reference_force_constants():
     shape = (num_atoms * axes, num_atoms * axes)
     return RawForceConstants(
-        structure=reference_structure(use_magnetism=False),
+        structure=reference_structure(),
         force_constants=np.arange(np.prod(shape)).reshape(shape),
     )
 
@@ -714,7 +705,7 @@ def test_born_effective_charges(tmpdir):
 def reference_born_effective_charges():
     shape = (num_atoms, axes, axes)
     return RawBornEffectiveCharges(
-        structure=reference_structure(use_magnetism=False),
+        structure=reference_structure(),
         charge_tensors=np.arange(np.prod(shape)).reshape(shape),
     )
 
@@ -744,7 +735,7 @@ def test_internal_strain(tmpdir):
 def reference_internal_strain():
     shape = (num_atoms, axes, axes, axes)
     return RawInternalStrain(
-        structure=reference_structure(use_magnetism=False),
+        structure=reference_structure(),
         internal_strain=np.arange(np.prod(shape)).reshape(shape),
     )
 

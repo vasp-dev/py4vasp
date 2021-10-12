@@ -85,14 +85,6 @@ class RawProjectors:
 
 
 @dataclass
-class RawMagnetism:
-    "Data about the magnetism in the system."
-    moments: np.ndarray
-    "Contains the charge and magnetic moments atom and orbital resolved."
-    __eq__ = _dataclass_equal
-
-
-@dataclass
 class RawStructure:
     "Structural information of the system."
     topology: RawTopology
@@ -101,8 +93,6 @@ class RawStructure:
     "Unit cell of the crystal or simulation cell for molecules."
     positions: np.ndarray
     "Position of all atoms in the unit cell in units of the lattice vectors."
-    magnetism: RawMagnetism = None
-    "Magnetization of every atom in the unit cell."
     __eq__ = _dataclass_equal
 
 
@@ -191,6 +181,16 @@ class RawDielectricFunction:
     "The values of the electronic dielectric function using the current-current response."
     ion: np.ndarray
     "The values of the ionic dielectrion function."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawMagnetism:
+    "Data about the magnetism in the system."
+    structure: RawStructure
+    "Structural information about the system."
+    moments: np.ndarray
+    "Contains the charge and magnetic moments atom and orbital resolved."
     __eq__ = _dataclass_equal
 
 

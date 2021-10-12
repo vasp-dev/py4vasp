@@ -118,18 +118,7 @@ class RawDataFactory:
 
     @staticmethod
     def magnetism(selection):
-        if selection == "collinear":
-            return _magnetism(number_components=2)
-        elif selection == "noncollinear":
-            return _magnetism(number_components=4)
-        elif selection == "charge_only":
-            return _magnetism(number_components=1)
-        elif selection == "zero_moments":
-            magnetism = _magnetism(number_components=2)
-            magnetism.moments *= 0
-            return magnetism
-        else:
-            raise exception.NotImplemented()
+        return _magnetism(_number_components(selection))
 
     @staticmethod
     def piezoelectric_tensor(selection):
@@ -159,11 +148,10 @@ class RawDataFactory:
 
     @staticmethod
     def structure(selection):
-        parts = selection.split()
-        if parts[0] == "Sr2TiO4":
+        if selection == "Sr2TiO4":
             return _Sr2TiO4_structure()
-        elif parts[0] == "Fe3O4":
-            return _Fe3O4_structure(parts[1])
+        elif selection == "Fe3O4":
+            return _Fe3O4_structure()
         else:
             raise exception.NotImplemented()
 
@@ -180,6 +168,17 @@ class RawDataFactory:
 @pytest.fixture
 def raw_data():
     return RawDataFactory
+
+
+def _number_components(selection):
+    if selection == "collinear":
+        return 2
+    elif selection == "noncollinear":
+        return 4
+    elif selection == "charge_only":
+        return 1
+    else:
+        raise exception.NotImplemented()
 
 
 def _dielectric_function():
@@ -283,7 +282,9 @@ def _grid_kpoints(mode, labels):
 def _magnetism(number_components):
     lmax = 3
     shape = (number_steps, number_components, number_atoms, lmax)
-    return raw.RawMagnetism(moments=np.arange(np.prod(shape)).reshape(shape))
+    return raw.RawMagnetism(
+        structure=_Fe3O4_structure(), moments=np.arange(np.prod(shape)).reshape(shape)
+    )
 
 
 def _single_band(projectors):
@@ -460,8 +461,9 @@ def _Fe3O4_cell():
 
 
 def _Fe3O4_density(selection):
-    structure = RawDataFactory.structure(selection)
-    grid = (structure.magnetism.moments.shape[1], 10, 12, 14)
+    parts = selection.split()
+    structure = RawDataFactory.structure(parts[0])
+    grid = (_number_components(parts[1]), 10, 12, 14)
     return raw.RawDensity(
         structure=structure,
         charge=np.arange(np.prod(grid)).reshape(grid),
@@ -491,7 +493,7 @@ def _Fe3O4_dos(projectors):
 def _Fe3O4_forces():
     shape = (number_steps, number_atoms, axes)
     return raw.RawForces(
-        structure=_Fe3O4_structure("collinear"),
+        structure=_Fe3O4_structure(),
         forces=np.arange(np.prod(shape)).reshape(shape),
     )
 
@@ -507,12 +509,12 @@ def _Fe3O4_projectors():
 def _Fe3O4_stress():
     shape = (number_steps, axes, axes)
     return raw.RawStress(
-        structure=_Fe3O4_structure("collinear"),
+        structure=_Fe3O4_structure(),
         stress=np.arange(np.prod(shape)).reshape(shape),
     )
 
 
-def _Fe3O4_structure(selection):
+def _Fe3O4_structure():
     positions = [
         [0.00000, 0.0, 0.00000],
         [0.50000, 0.0, 0.50000],
@@ -527,7 +529,6 @@ def _Fe3O4_structure(selection):
         topology=_Fe3O4_topology(),
         cell=_Fe3O4_cell(),
         positions=np.add.outer(shift, positions),
-        magnetism=RawDataFactory.magnetism(selection),
     )
 
 

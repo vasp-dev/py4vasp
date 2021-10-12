@@ -261,7 +261,8 @@ class File(AbstractContextManager):
         DataDict[str, RawMagnetism]
             The key specifies the kind of magnetization data and the value
             containes the magnetic moments and charges on every atom in orbital
-            resolved representation.
+            resolved representation. Structural information is added for
+            convenient plotting.
         """
         return self._make_data_dict(self._read_magnetism())
 
@@ -270,7 +271,7 @@ class File(AbstractContextManager):
         key = "intermediate/ion_dynamics/magnetism/moments"
         if key not in self._h5f:
             return None
-        return RawMagnetism(moments=self._h5f[key])
+        return RawMagnetism(structure=self._read_structure(), moments=self._h5f[key])
 
     @property
     def structure(self):
@@ -280,8 +281,7 @@ class File(AbstractContextManager):
         -------
         DataDict[str, RawStructure]
             The key of the dictionary specifies the kind of the structure.
-            The value contains the unit cell, the position of all the atoms
-            and the magnetic moments.
+            The value contains the unit cell and the position of all the atoms.
         """
         return self._make_data_dict(self._read_structure())
 
@@ -291,7 +291,6 @@ class File(AbstractContextManager):
             topology=self._read_topology(),
             cell=self._read_cell(),
             positions=self._h5f["intermediate/ion_dynamics/position_ions"],
-            magnetism=self._read_magnetism(),
         )
 
     @property
