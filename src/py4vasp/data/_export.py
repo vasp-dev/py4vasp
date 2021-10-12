@@ -1,3 +1,6 @@
+import py4vasp._util.convert as _convert
+
+
 class Image:
     def to_image(self, *args, filename=None, **kwargs):
         """Read the data and generate an image writing to the given filename.
@@ -12,6 +15,6 @@ class Image:
         on to the plot function. Please check the documentation of that function
         to learn which arguments are allowed."""
         fig = self.to_plotly(*args, **kwargs)
-        classname = self.__class__.__name__.lower().strip("_")
+        classname = _convert.to_snakecase(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.png"
         fig.write_image(self._path / filename)

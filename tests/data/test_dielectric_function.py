@@ -211,33 +211,34 @@ def check_figure_contains_plots(fig, references, Assert):
         assert data.name == ref.name
 
 
-#
-# def test_dielectric_to_image(dielectric):
-#     check_to_image(dielectric, None, "dielectric.png")
-#     custom_filename = "custom.jpg"
-#     check_to_image(dielectric, custom_filename, custom_filename)
-#
-#
-# def check_to_image(dielectric, filename_argument, expected_filename):
-#     with patch("py4vasp.data.dielectric.Dielectric._to_plotly") as plot:
-#         dielectric.to_image("args", filename=filename_argument, key="word")
-#         plot.assert_called_once()
-#         assert plot.call_args[0][1] == "args"
-#         assert plot.call_args[1] == {"key": "word"}
-#         fig = plot.return_value
-#         fig.write_image.assert_called_once_with(dielectric._path / expected_filename)
-#
-#
-# def test_dielectric_print(dielectric, format_):
-#     actual, _ = format_(dielectric)
-#     reference = f"""
-# dielectric function:
-#     energies: [0.00, 1.00] 50 points
-#     directions: isotropic, xx, yy, zz, xy, yz, xz
-#     """.strip()
-#     assert actual == {"text/plain": reference}
-#
-#
+def test_dielectric_to_image(dielectric_function):
+    check_to_image(dielectric_function, None, "dielectric_function.png")
+    custom_filename = "custom.jpg"
+    check_to_image(dielectric_function, custom_filename, custom_filename)
+
+
+def check_to_image(dielectric_function, filename_argument, expected_filename):
+    plot_function = "py4vasp.data.dielectric_function.DielectricFunction._to_plotly"
+    with patch(plot_function) as plot:
+        dielectric_function.to_image("args", filename=filename_argument, key="word")
+        plot.assert_called_once()
+        assert plot.call_args[0][1] == "args"
+        assert plot.call_args[1] == {"key": "word"}
+        fig = plot.return_value
+        expected_path = dielectric_function._path / expected_filename
+        fig.write_image.assert_called_once_with(expected_path)
+
+
+def test_dielectric_print(dielectric_function, format_):
+    actual, _ = format_(dielectric_function)
+    reference = f"""
+dielectric function:
+    energies: [0.00, 1.00] 50 points
+    directions: isotropic, xx, yy, zz, xy, yz, xz
+    """.strip()
+    assert actual == {"text/plain": reference}
+
+
 def test_descriptor(dielectric_function, check_descriptors):
     descriptors = {
         "_to_dict": ["to_dict", "read"],

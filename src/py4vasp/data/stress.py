@@ -16,7 +16,7 @@ calculation.
 
 Parameters
 ----------
-raw_stress : RawStres
+raw_stress : RawStress
     Dataclass containing the raw stress tensor and associated structure data.
 
 {_trajectory.trajectory_examples("stress")}
