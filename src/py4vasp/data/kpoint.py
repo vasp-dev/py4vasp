@@ -6,7 +6,7 @@ from fractions import Fraction
 import numpy as np
 
 
-class Kpoints(DataBase):
+class Kpoint(DataBase):
     """The **k** points used in the Vasp calculation.
 
     This class provides utility functionality to extract information about the
@@ -16,7 +16,7 @@ class Kpoints(DataBase):
 
     Parameters
     ----------
-    raw_kpoints : RawKpoints
+    raw_kpoint : RawKpoint
         Dataclass containing the raw **k**-points data used in the calculation.
     """
 

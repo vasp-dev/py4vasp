@@ -2,7 +2,18 @@ import py4vasp.data._base as _base
 from py4vasp.data import Structure
 
 
-class BornEffectiveCharges(_base.DataBase):
+class BornEffectiveCharge(_base.DataBase):
+    """The Born effective charge tensors coupling electric field and atomic displacement.
+
+    You can use this class to extract the Born effective charges of a linear
+    response calculation.
+
+    Parameters
+    ----------
+    raw_born_effective_charge : RawBornEffectiveCharge
+        Dataclass containing the raw Born effective charge data.
+    """
+
     read = _base.RefinementDescriptor("_to_dict")
     to_dict = _base.RefinementDescriptor("_to_dict")
     __str__ = _base.RefinementDescriptor("_to_string")
@@ -24,6 +35,18 @@ ion {ion + 1:4d}   {element}
         return result
 
     def _to_dict(self):
+        """Read structure information and Born effective charges into a dictionary.
+
+        The structural information is added to inform about which atoms are included
+        in the array. The Born effective charges array contains the mixed second
+        derivative with respect to an electric field and an atomic displacement for
+        all atoms and possible directions.
+
+        Returns
+        -------
+        dict
+            Contains structural information as well as the Born effective charges.
+        """
         return {
             "structure": self._structure.read(),
             "charge_tensors": self._raw_data.charge_tensors[:],

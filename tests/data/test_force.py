@@ -4,14 +4,14 @@ import types
 from unittest.mock import patch
 
 import py4vasp.data as data
-from py4vasp.data import Forces, Structure
+from py4vasp.data import Force, Structure
 import py4vasp.exceptions as exception
 
 
 @pytest.fixture
 def Sr2TiO4(raw_data):
-    raw_forces = raw_data.forces("Sr2TiO4")
-    forces = Forces(raw_forces)
+    raw_forces = raw_data.force("Sr2TiO4")
+    forces = Force(raw_forces)
     forces.ref = types.SimpleNamespace()
     forces.ref.structure = Structure(raw_forces.structure)
     forces.ref.forces = raw_forces.forces
@@ -20,8 +20,8 @@ def Sr2TiO4(raw_data):
 
 @pytest.fixture
 def Fe3O4(raw_data):
-    raw_forces = raw_data.forces("Fe3O4")
-    forces = Forces(raw_forces)
+    raw_forces = raw_data.force("Fe3O4")
+    forces = Force(raw_forces)
     forces.ref = types.SimpleNamespace()
     forces.ref.structure = Structure(raw_forces.structure)
     forces.ref.forces = raw_forces.forces
@@ -143,6 +143,6 @@ def test_descriptor(Sr2TiO4, check_descriptors):
 
 
 def test_from_file(raw_data, mock_file, check_read):
-    raw_forces = raw_data.forces("Sr2TiO4")
-    with mock_file("forces", raw_forces) as mocks:
-        check_read(Forces, mocks, raw_forces)
+    raw_forces = raw_data.force("Sr2TiO4")
+    with mock_file("force", raw_forces) as mocks:
+        check_read(Force, mocks, raw_forces)

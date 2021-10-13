@@ -24,11 +24,11 @@ def test_creation(MockFile):
 def test_all_attributes(MockFile):
     calculation = py4vasp.Calculation.from_path("test_path")
     camel_cases = {
-        "BornEffectiveCharges": "born_effective_charges",
+        "BornEffectiveCharge": "born_effective_charge",
         "DielectricFunction": "dielectric_function",
         "DielectricTensor": "dielectric_tensor",
         "ElasticModulus": "elastic_modulus",
-        "ForceConstants": "force_constants",
+        "ForceConstant": "force_constant",
         "InternalStrain": "internal_strain",
         "PiezoelectricTensor": "piezoelectric_tensor",
     }

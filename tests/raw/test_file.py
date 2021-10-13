@@ -275,7 +275,7 @@ def test_projectors(tmpdir):
 
 def reference_projectors():
     shape_dos = (num_spins, num_atoms, lmax, num_energies)
-    return RawProjectors(
+    return RawProjector(
         topology=reference_topology(),
         orbital_types=np.array(["s", "p", "d", "f"], dtype="S"),
         number_spins=num_spins,
@@ -292,7 +292,7 @@ def write_projectors(h5f, proj, source):
 
 
 def check_projectors(file, reference, source):
-    actual = get_actual_and_check_version(file, "projectors", source)
+    actual = get_actual_and_check_version(file, "projector", source)
     assert actual == reference
     assert isinstance(actual.number_spins, Integral)
 
@@ -400,7 +400,7 @@ def test_kpoints(tmpdir):
 
 
 def reference_kpoints(use_labels):
-    kpoints = RawKpoints(
+    kpoints = RawKpoint(
         mode="explicit",
         number=num_kpoints,
         coordinates=np.linspace(np.zeros(3), np.ones(3), num_kpoints),
@@ -429,7 +429,7 @@ def write_kpoints(h5f, kpoints, source):
 
 
 def check_kpoints(file, reference, source):
-    actual = get_actual_and_check_version(file, "kpoints", source)
+    actual = get_actual_and_check_version(file, "kpoint", source)
     assert actual == reference
     assert isinstance(actual.number, Integral)
     assert isinstance(actual.mode, str)
@@ -578,7 +578,7 @@ def test_forces(tmpdir):
 
 def reference_forces():
     shape = (num_steps, num_atoms, axes)
-    return RawForces(
+    return RawForce(
         structure=reference_structure(),
         forces=np.arange(np.prod(shape)).reshape(shape),
     )
@@ -590,7 +590,7 @@ def write_forces(h5f, forces, source):
 
 
 def check_forces(file, reference, source):
-    assert get_actual_and_check_version(file, "forces", source) == reference
+    assert get_actual_and_check_version(file, "force", source) == reference
 
 
 def test_stress(tmpdir):
@@ -636,7 +636,7 @@ def test_force_constants(tmpdir):
 
 def reference_force_constants():
     shape = (num_atoms * axes, num_atoms * axes)
-    return RawForceConstants(
+    return RawForceConstant(
         structure=reference_structure(),
         force_constants=np.arange(np.prod(shape)).reshape(shape),
     )
@@ -648,7 +648,7 @@ def write_force_constants(h5f, force_constants, source):
 
 
 def check_force_constants(file, reference, source):
-    assert get_actual_and_check_version(file, "force_constants", source) == reference
+    assert get_actual_and_check_version(file, "force_constant", source) == reference
 
 
 def test_dielectric_tensor(tmpdir):
@@ -704,7 +704,7 @@ def test_born_effective_charges(tmpdir):
 
 def reference_born_effective_charges():
     shape = (num_atoms, axes, axes)
-    return RawBornEffectiveCharges(
+    return RawBornEffectiveCharge(
         structure=reference_structure(),
         charge_tensors=np.arange(np.prod(shape)).reshape(shape),
     )
@@ -716,7 +716,7 @@ def write_born_effective_charges(h5f, born_effective_charges, source):
 
 
 def check_born_effective_charges(file, reference, source):
-    actual = get_actual_and_check_version(file, "born_effective_charges", source)
+    actual = get_actual_and_check_version(file, "born_effective_charge", source)
     assert actual == reference
 
 

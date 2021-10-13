@@ -3,7 +3,7 @@ import py4vasp.data._base as _base
 from py4vasp.data import Structure
 
 
-class ForceConstants(_base.DataBase):
+class ForceConstant(_base.DataBase):
     """The force constants (second derivatives of atomic displacement).
 
     You can use this class to extract the force constants of a linear
@@ -11,7 +11,7 @@ class ForceConstants(_base.DataBase):
 
     Parameters
     ----------
-    raw_force_constants : RawForceConstants
+    raw_force_constant : RawForceConstant
         Dataclass containing the raw force constants data.
     """
 

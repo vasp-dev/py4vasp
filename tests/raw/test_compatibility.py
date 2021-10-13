@@ -7,11 +7,11 @@ import py4vasp.exceptions as exception
 
 def test_vasp_6_3_features():
     new_properties = (
-        "born_effective_charges",
+        "born_effective_charge",
         "dielectric_function",
         "dielectric_tensor",
         "elastic_modulus",
-        "force_constants",
+        "force_constant",
         "internal_strain",
         "piezoelectric_tensor",
         "polarization",

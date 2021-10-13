@@ -1,12 +1,12 @@
 import pytest
 import types
-from py4vasp.data import ForceConstants, Structure
+from py4vasp.data import ForceConstant, Structure
 
 
 @pytest.fixture
 def Sr2TiO4(raw_data):
-    raw_force_constants = raw_data.force_constants("Sr2TiO4")
-    force_constants = ForceConstants(raw_force_constants)
+    raw_force_constants = raw_data.force_constant("Sr2TiO4")
+    force_constants = ForceConstant(raw_force_constants)
     force_constants.ref = types.SimpleNamespace()
     force_constants.ref.structure = Structure(raw_force_constants.structure)
     force_constants.ref.force_constants = raw_force_constants.force_constants
@@ -71,6 +71,6 @@ def test_descriptor(Sr2TiO4, check_descriptors):
 
 
 def test_from_file(raw_data, mock_file, check_read):
-    raw_force_constants = raw_data.force_constants("Sr2TiO4")
-    with mock_file("force_constants", raw_force_constants) as mocks:
-        check_read(ForceConstants, mocks, raw_force_constants)
+    raw_force_constants = raw_data.force_constant("Sr2TiO4")
+    with mock_file("force_constant", raw_force_constants) as mocks:
+        check_read(ForceConstant, mocks, raw_force_constants)

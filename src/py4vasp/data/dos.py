@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from IPython.lib.pretty import pretty
-from .projectors import _projectors_or_dummy, _selection_doc
+from .projector import _projectors_or_dummy, _selection_doc
 from py4vasp.data._base import DataBase, RefinementDescriptor
 import py4vasp.data._export as _export
 import py4vasp._util.documentation as _documentation

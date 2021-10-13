@@ -117,7 +117,7 @@ class File(AbstractContextManager):
             fermi_energy=self._h5f[f"results/electron_dos{suffix}/efermi"][()],
             energies=self._h5f[f"results/electron_dos{suffix}/energies"],
             dos=self._h5f[f"results/electron_dos{suffix}/dos"],
-            projectors=self._read_projectors(suffix),
+            projectors=self._read_projector(suffix),
             projections=self._safe_get_key(f"results/electron_dos{suffix}/dospar"),
         )
 
@@ -144,10 +144,10 @@ class File(AbstractContextManager):
             return None
         return RawBand(
             fermi_energy=self._h5f[f"results/electron_dos{suffix}/efermi"][()],
-            kpoints=self._read_kpoints(suffix),
+            kpoints=self._read_kpoint(suffix),
             eigenvalues=self._h5f[f"results/electron_eigenvalues{suffix}/eigenvalues"],
             occupations=self._h5f[f"results/electron_eigenvalues{suffix}/fermiweights"],
-            projectors=self._read_projectors(suffix),
+            projectors=self._read_projector(suffix),
             projections=self._safe_get_key(f"results/projectors{suffix}/par"),
         )
 
@@ -172,40 +172,40 @@ class File(AbstractContextManager):
         )
 
     @property
-    def projectors(self):
+    def projector(self):
         """Read all the information about projectors if present.
 
         Returns
         -------
-        DataDict[str, RawProjectors or None]
+        DataDict[str, RawProjector or None]
             If Vasp was set to produce the orbital decomposition of the bands
             the associated projector information is returned. The key specifies
             which kind of projectors are returned, the value lists the topology,
             the orbital types and the number of spins.
         """
         return self._make_data_dict(
-            self._read_projectors(), kpoints_opt=self._read_projectors("_kpoints_opt")
+            self._read_projector(), kpoints_opt=self._read_projector("_kpoints_opt")
         )
 
-    def _read_projectors(self, suffix=""):
+    def _read_projector(self, suffix=""):
         self._raise_error_if_closed()
         if f"results/projectors{suffix}" not in self._h5f:
             return None
         eigenvalues_key = f"results/electron_eigenvalues{suffix}/eigenvalues"
-        return RawProjectors(
+        return RawProjector(
             topology=self._read_topology(),
             orbital_types=self._h5f[f"results/projectors{suffix}/lchar"],
             number_spins=len(self._h5f[eigenvalues_key]),
         )
 
     @property
-    def kpoints(self):
+    def kpoint(self):
         """Read all the **k** points at which Vasp evaluated the orbitals
         and eigenvalues.
 
         Returns
         -------
-        DataDict[str, RawKpoints or None]
+        DataDict[str, RawKpoint or None]
             The key of the dictionary specifies the kind of the **k** point
             grid. For the value, the coordinates of the **k** points and the
             cell information is returned. Added is some information given in
@@ -213,16 +213,16 @@ class File(AbstractContextManager):
             which may be useful for band structures.
         """
         return self._make_data_dict(
-            self._read_kpoints(), kpoints_opt=self._read_kpoints("_kpoints_opt")
+            self._read_kpoint(), kpoints_opt=self._read_kpoint("_kpoints_opt")
         )
 
-    def _read_kpoints(self, suffix=""):
+    def _read_kpoint(self, suffix=""):
         self._raise_error_if_closed()
         input = f"input/kpoints_opt" if suffix == "_kpoints_opt" else "input/kpoints"
         result = f"results/electron_eigenvalues{suffix}"
         if input not in self._h5f or result not in self._h5f:
             return None
-        return RawKpoints(
+        return RawKpoint(
             mode=self._h5f[f"{input}/mode"][()].decode(),
             number=self._h5f[f"{input}/number_kpoints"][()],
             coordinates=self._h5f[f"{result}/kpoint_coords"],
@@ -359,20 +359,20 @@ class File(AbstractContextManager):
         )
 
     @property
-    def forces(self):
+    def force(self):
         """Read the forces for all ionic steps.
 
         Returns
         -------
-        DataDict[str, RawForces]
+        DataDict[str, RawForce]
             The key specifies how the forces are obtained. The value represents the
             information about structure and forces.
         """
-        return self._make_data_dict(default=self._read_forces())
+        return self._make_data_dict(default=self._read_force())
 
-    def _read_forces(self):
+    def _read_force(self):
         self._raise_error_if_closed()
-        return RawForces(
+        return RawForce(
             structure=self._read_structure(),
             forces=self._h5f["intermediate/ion_dynamics/forces"],
         )
@@ -398,20 +398,20 @@ class File(AbstractContextManager):
 
     @property
     @_version.require(RawVersion(6, 3))
-    def force_constants(self):
+    def force_constant(self):
         """Read the force constants from a linear response calculation.
 
         Returns
         -------
-        DataDict[str, RawForceConstants]
+        DataDict[str, RawForceConstant]
             The key specifies how the force constants are obtained. The value represents
             information about the structure and the force constants matrix.
         """
-        return self._make_data_dict(default=self._read_force_constants())
+        return self._make_data_dict(default=self._read_force_constant())
 
-    def _read_force_constants(self):
+    def _read_force_constant(self):
         self._raise_error_if_closed()
-        return RawForceConstants(
+        return RawForceConstant(
             structure=self._read_structure(),
             force_constants=self._h5f["results/linear_response/force_constants"],
         )
@@ -446,7 +446,7 @@ class File(AbstractContextManager):
 
     @property
     @_version.require(RawVersion(6, 3))
-    def born_effective_charges(self):
+    def born_effective_charge(self):
         """Read the Born effective charges from a linear response calculation.
 
         Returns
@@ -455,11 +455,11 @@ class File(AbstractContextManager):
             The key identifies the nature of the Born effective charges, the value
             provides the raw data and structural information.
         """
-        return self._make_data_dict(self._read_born_effective_charges())
+        return self._make_data_dict(self._read_born_effective_charge())
 
-    def _read_born_effective_charges(self):
+    def _read_born_effective_charge(self):
         self._raise_error_if_closed()
-        return RawBornEffectiveCharges(
+        return RawBornEffectiveCharge(
             structure=self._read_structure(),
             charge_tensors=self._h5f["results/linear_response/born_charges"],
         )

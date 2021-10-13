@@ -36,7 +36,7 @@ selection : str
 """.strip()
 
 
-class Projectors(DataBase):
+class Projector(DataBase):
     """The projectors used for atom and orbital resolved quantities.
 
     This is a common class used by all quantities that contains some projected
@@ -46,7 +46,7 @@ class Projectors(DataBase):
 
     Parameters
     ----------
-    raw_proj : RawProjectors
+    raw_proj : RawProjector
         Dataclass containing data about the elements, the orbitals, and the spin
         for which projectors are available.
     """
@@ -135,7 +135,7 @@ dict
         dicts = self._init_dicts()
         _raise_error_if_not_found_in_dict(orbital, dicts["orbital"])
         _raise_error_if_not_found_in_dict(spin, dicts["spin"])
-        return Projectors.Index(
+        return Projector.Index(
             atom=_select_atom(dicts["atom"], atom),
             orbital=dicts["orbital"][orbital],
             spin=dicts["spin"][spin],
@@ -160,7 +160,7 @@ Iterable[Index]
     )
     def _parse_selection(self, selection):
         dicts = self._init_dicts()
-        default_index = Projectors.Index(
+        default_index = Projector.Index(
             atom=_Selection.default,
             orbital=_Selection.default,
             spin=_spin_not_set,
@@ -301,7 +301,7 @@ def _setup_spin_indices(index, spin_polarized):
             yield index._replace(spin=key)
 
 
-class _NoProjectorsAvailable:
+class _NoProjectorAvailable:
     def read(self, selection, projections):
         if selection is not None:
             raise exception.IncorrectUsage(
@@ -315,6 +315,6 @@ class _NoProjectorsAvailable:
 
 def _projectors_or_dummy(projectors):
     if projectors is None:
-        return _NoProjectorsAvailable()
+        return _NoProjectorAvailable()
     else:
-        return Projectors(projectors)
+        return Projector(projectors)

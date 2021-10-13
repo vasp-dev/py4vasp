@@ -16,15 +16,15 @@ calculation.
 
 Parameters
 ----------
-raw_forces : RawForces
+raw_force : RawForce
     Dataclass containing the raw forces and associated structure data.
 
-{_trajectory.trajectory_examples("forces")}
+{_trajectory.trajectory_examples("force")}
 """.strip()
 
 
 @_documentation.add(forces_docstring)
-class Forces(_trajectory.DataTrajectory):
+class Force(_trajectory.DataTrajectory):
     force_rescale = 1.5
     "Scaling constant to convert forces to Å."
 
@@ -44,7 +44,7 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         position_to_string = lambda position: " ".join(f"{x:12.5f}" for x in position)
         positions = self._structure[step].cartesian_positions()
         force_to_string = lambda force: " ".join(f"{x:13.6f}" for x in force)
-        for position, force in zip(positions, self._forces[step]):
+        for position, force in zip(positions, self._force[step]):
             result += f"\n{position_to_string(position)}    {force_to_string(force)}"
         return result
 
@@ -60,7 +60,7 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         """
         return {
             "structure": self._structure[self._steps].read(),
-            "forces": self._forces[self._steps],
+            "forces": self._force[self._steps],
         }
 
     def _to_viewer3d(self):
@@ -73,7 +73,7 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
             sized according to the strength of the force.
         """
         self._raise_error_if_slice()
-        forces = self.force_rescale * self._forces[self._steps]
+        forces = self.force_rescale * self._force[self._steps]
         color = [0.3, 0.15, 0.35]
         fig = self._structure.plot()
         fig.show_arrows_at_atoms(forces, color)
@@ -84,8 +84,8 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         return Structure(self._raw_data.structure)
 
     @property
-    def _forces(self):
-        return _ForcesReader(self._raw_data.forces)
+    def _force(self):
+        return _ForceReader(self._raw_data.forces)
 
     def _raise_error_if_slice(self):
         if self._is_slice:
@@ -93,7 +93,7 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
             raise exception.NotImplemented(message)
 
 
-class _ForcesReader(_reader.Reader):
+class _ForceReader(_reader.Reader):
     def error_message(self, key, err):
         key = np.array(key)
         steps = key if key.ndim == 0 else key[0]

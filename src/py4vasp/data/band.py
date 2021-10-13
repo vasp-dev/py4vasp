@@ -6,8 +6,8 @@ import plotly.graph_objects as go
 import py4vasp._util.sanity_check as _check
 import py4vasp._util.documentation as _documentation
 from IPython.lib.pretty import pretty
-from .projectors import _projectors_or_dummy, _selection_doc
-from .kpoints import Kpoints
+from .projector import _projectors_or_dummy, _selection_doc
+from .kpoint import Kpoint
 from py4vasp.data._base import DataBase, RefinementDescriptor
 import py4vasp.data._export as _export
 
@@ -116,7 +116,7 @@ pd.DataFrame
         return len(self._raw_data.eigenvalues) == 2
 
     def _kpoints(self):
-        return Kpoints(self._raw_data.kpoints)
+        return Kpoint(self._raw_data.kpoints)
 
     def _read_projections(self, selection):
         projectors = _projectors_or_dummy(self._raw_data.projectors)

@@ -1,11 +1,11 @@
-from py4vasp.data import Projectors, Topology
+from py4vasp.data import Projector, Topology
 from py4vasp.data._selection import Selection
 import py4vasp.exceptions as exception
 import pytest
 import numpy as np
 from typing import NamedTuple, Iterable
 
-Index = Projectors.Index
+Index = Projector.Index
 
 
 class SelectionTestCase(NamedTuple):
@@ -15,12 +15,12 @@ class SelectionTestCase(NamedTuple):
 
 @pytest.fixture
 def Sr2TiO4(raw_data):
-    return Projectors(raw_data.projectors("Sr2TiO4"))
+    return Projector(raw_data.projector("Sr2TiO4"))
 
 
 @pytest.fixture
 def Fe3O4(raw_data):
-    return Projectors(raw_data.projectors("Fe3O4"))
+    return Projector(raw_data.projector("Fe3O4"))
 
 
 def test_Sr2TiO4_selection(Sr2TiO4):
@@ -279,7 +279,7 @@ def test_incorrect_selection(Sr2TiO4):
 
 def test_nonexisting_projectors():
     with pytest.raises(exception.NoData):
-        projectors = Projectors(None).read()
+        projectors = Projector(None).read()
 
 
 def test_incorrect_reading_of_projections(Sr2TiO4):
@@ -309,6 +309,6 @@ def test_descriptor(Sr2TiO4, check_descriptors):
 
 
 def test_from_file(raw_data, mock_file, check_read):
-    raw_proj = raw_data.projectors("Sr2TiO4")
-    with mock_file("projectors", raw_proj) as mocks:
-        check_read(Projectors, mocks, raw_proj)
+    raw_proj = raw_data.projector("Sr2TiO4")
+    with mock_file("projector", raw_proj) as mocks:
+        check_read(Projector, mocks, raw_proj)

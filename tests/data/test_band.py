@@ -1,4 +1,4 @@
-from py4vasp.data import Band, Kpoints, Projectors
+from py4vasp.data import Band, Kpoint, Projector
 from IPython.lib.pretty import pretty
 from unittest.mock import patch
 import py4vasp.exceptions as exception
@@ -16,7 +16,7 @@ def single_band(raw_data):
     band.ref.bands = raw_band.eigenvalues[0]
     band.ref.occupations = raw_band.occupations[0]
     raw_kpoints = raw_band.kpoints
-    band.ref.kpoints = Kpoints(raw_kpoints)
+    band.ref.kpoints = Kpoint(raw_kpoints)
     formatter = {"float": lambda x: f"{x:.2f}"}
     kpoint_to_string = lambda vec: np.array2string(vec, formatter=formatter) + " 1"
     band.ref.index = [kpoint_to_string(kpoint) for kpoint in raw_kpoints.coordinates]
@@ -50,7 +50,7 @@ def line_no_labels(raw_data):
     raw_band = raw_data.band("line no_labels")
     band = Band(raw_band)
     band.ref = types.SimpleNamespace()
-    band.ref.kpoints = Kpoints(raw_band.kpoints)
+    band.ref.kpoints = Kpoint(raw_band.kpoints)
     return band
 
 
@@ -59,7 +59,7 @@ def line_with_labels(raw_data):
     raw_band = raw_data.band("line with_labels")
     band = Band(raw_band)
     band.ref = types.SimpleNamespace()
-    band.ref.kpoints = Kpoints(raw_band.kpoints)
+    band.ref.kpoints = Kpoint(raw_band.kpoints)
     return band
 
 
@@ -89,7 +89,7 @@ def spin_projectors(raw_data):
     band.ref.Fe_d_down = np.sum(raw_band.projections[1, 0:3, 2, :, :], axis=0)
     band.ref.O_up = np.sum(raw_band.projections[0, 3:7, :, :, :], axis=(0, 1))
     band.ref.O_down = np.sum(raw_band.projections[1, 3:7, :, :, :], axis=(0, 1))
-    band.ref.projectors_string = pretty(Projectors(raw_band.projectors))
+    band.ref.projectors_string = pretty(Projector(raw_band.projectors))
     return band
 
 

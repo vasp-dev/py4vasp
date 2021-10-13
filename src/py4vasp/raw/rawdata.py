@@ -73,7 +73,7 @@ class RawCell:
 
 
 @dataclass
-class RawProjectors:
+class RawProjector:
     "Projectors used for orbital projections."
     topology: RawTopology
     "The topology of the system used, i.e., which elements are contained."
@@ -97,7 +97,7 @@ class RawStructure:
 
 
 @dataclass
-class RawKpoints:
+class RawKpoint:
     "**k** points at which wave functions are calculated."
     mode: str
     "Mode used to generate the **k**-point list."
@@ -127,7 +127,7 @@ class RawDos:
     "Dos at the energies D(E)."
     projections: np.ndarray = None
     "If present, orbital projections of the Dos."
-    projectors: RawProjectors = None
+    projectors: RawProjector = None
     "If present, projector information (element, angular momentum, spin)."
     __eq__ = _dataclass_equal
 
@@ -137,7 +137,7 @@ class RawBand:
     "Electronic band structure"
     fermi_energy: float
     "Fermi energy obtained by Vasp."
-    kpoints: RawKpoints
+    kpoints: RawKpoint
     "**k** points at which the bands are calculated."
     eigenvalues: np.ndarray
     "Calculated eigenvalues at the **k** points."
@@ -145,7 +145,7 @@ class RawBand:
     "The occupations of the different bands."
     projections: np.ndarray = None
     "If present, orbital projections of the bands."
-    projectors: RawProjectors = None
+    projectors: RawProjector = None
     "If present, projector information (element, angular momentum, spin)."
     __eq__ = _dataclass_equal
 
@@ -195,7 +195,7 @@ class RawMagnetism:
 
 
 @dataclass
-class RawForces:
+class RawForce:
     "The forces acting on the atoms at all steps."
     structure: RawStructure
     "Structural information about the system to inform about the forces."
@@ -215,7 +215,7 @@ class RawStress:
 
 
 @dataclass
-class RawForceConstants:
+class RawForceConstant:
     "The force constants of the material."
     structure: RawStructure
     "Structural information about the system to inform about the atoms the force constants relate to."
@@ -239,7 +239,7 @@ class RawDielectricTensor:
 
 
 @dataclass
-class RawBornEffectiveCharges:
+class RawBornEffectiveCharge:
     "The Born effective charges resulting form a linear response calculation."
     structure: RawStructure
     "Structural information about the system to identify specific atoms."

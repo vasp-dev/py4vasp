@@ -1,4 +1,4 @@
-from py4vasp.data import Kpoints
+from py4vasp.data import Kpoint
 import py4vasp.exceptions as exception
 import pytest
 import numpy as np
@@ -7,8 +7,8 @@ import types
 
 @pytest.fixture
 def explicit_kpoints(raw_data):
-    raw_kpoints = raw_data.kpoints("explicit with_labels")
-    kpoints = Kpoints(raw_kpoints)
+    raw_kpoints = raw_data.kpoint("explicit with_labels")
+    kpoints = Kpoint(raw_kpoints)
     kpoints.ref = types.SimpleNamespace()
     kpoints.ref.mode = "explicit"
     kpoints.ref.line_length = len(raw_kpoints.coordinates)
@@ -26,8 +26,8 @@ def explicit_kpoints(raw_data):
 
 @pytest.fixture
 def grid_kpoints(raw_data):
-    raw_kpoints = raw_data.kpoints("automatic")
-    kpoints = Kpoints(raw_kpoints)
+    raw_kpoints = raw_data.kpoint("automatic")
+    kpoints = Kpoint(raw_kpoints)
     kpoints.ref = types.SimpleNamespace()
     kpoints.ref.line_length = len(raw_kpoints.coordinates)
     return kpoints
@@ -35,8 +35,8 @@ def grid_kpoints(raw_data):
 
 @pytest.fixture
 def line_kpoints(raw_data):
-    raw_kpoints = raw_data.kpoints("line with_labels")
-    kpoints = Kpoints(raw_kpoints)
+    raw_kpoints = raw_data.kpoint("line with_labels")
+    kpoints = Kpoint(raw_kpoints)
     kpoints.ref = types.SimpleNamespace()
     kpoints.ref.line_length = raw_kpoints.number
     kpoints.ref.number_lines = len(raw_kpoints.coordinates) // raw_kpoints.number
@@ -91,13 +91,13 @@ def test_mode(raw_data):
     }
     for ref_mode, formats in allowed_mode_formats.items():
         for format in formats:
-            raw_kpoints = raw_data.kpoints(format)
-            actual_mode = Kpoints(raw_kpoints).mode()
+            raw_kpoints = raw_data.kpoint(format)
+            actual_mode = Kpoint(raw_kpoints).mode()
             assert actual_mode == ref_mode
     for unknown_mode in ["x", "y", "z"]:
         with pytest.raises(exception.RefinementError):
-            raw_kpoints = raw_data.kpoints(unknown_mode)
-            Kpoints(raw_kpoints).mode()
+            raw_kpoints = raw_data.kpoint(unknown_mode)
+            Kpoint(raw_kpoints).mode()
 
 
 def test_explicit_kpoints_line_length(explicit_kpoints):
@@ -134,8 +134,8 @@ def test_grid_kpoints_labels_without_data(grid_kpoints):
 
 
 def test_line_kpoints_labels_without_data(raw_data):
-    raw_kpoints = raw_data.kpoints("line")
-    actual = Kpoints(raw_kpoints).labels()
+    raw_kpoints = raw_data.kpoint("line")
+    actual = Kpoint(raw_kpoints).labels()
     ref = [""] * len(raw_kpoints.coordinates)
     ref[0] = r"$[0 0 0]$"
     ref[4] = r"$[0 0 \frac{1}{2}]$"
@@ -229,6 +229,6 @@ def test_descriptor(explicit_kpoints, check_descriptors):
 
 
 def test_from_file(raw_data, mock_file, check_read):
-    raw_kpoints = raw_data.kpoints("explicit")
-    with mock_file("kpoints", raw_kpoints) as mocks:
-        check_read(Kpoints, mocks, raw_kpoints)
+    raw_kpoints = raw_data.kpoint("explicit")
+    with mock_file("kpoint", raw_kpoints) as mocks:
+        check_read(Kpoint, mocks, raw_kpoints)
