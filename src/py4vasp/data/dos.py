@@ -4,9 +4,10 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from IPython.lib.pretty import pretty
-from .projector import _projectors_or_dummy, _selection_doc
+from .projector import _projectors_or_dummy, _selection_doc, _selection_examples
 from py4vasp.data._base import DataBase, RefinementDescriptor
 import py4vasp.data._export as _export
+from py4vasp.data.kpoint import _kpoints_opt_source
 import py4vasp._util.documentation as _documentation
 
 
@@ -48,6 +49,7 @@ class Dos(DataBase, _export.Image):
 Parameters
 ----------
 {_selection_doc}
+{_kpoints_opt_source}
 
 Returns
 -------
@@ -55,7 +57,9 @@ dict
     Contains the energies at which the DOS was evaluated aligned to the
     Fermi energy and the total DOS or the spin-resolved DOS for
     spin-polarized calculations. If available and a selection is passed,
-    the orbital resolved DOS for the selected orbitals is included."""
+    the orbital resolved DOS for the selected orbitals is included.
+
+{_selection_examples("dos", "read")}"""
     )
     def _to_dict(self, selection=None):
         return {
@@ -69,6 +73,7 @@ dict
 Parameters
 ----------
 {_selection_doc}
+{_kpoints_opt_source}
 
 Returns
 -------
@@ -76,7 +81,9 @@ plotly.graph_objects.Figure
     plotly figure containing the total DOS. If the calculation was spin
     polarized, the resulting DOS is spin resolved and the spin-down DOS
     is plotted towards negative values. If a selection the orbital
-    resolved DOS is given for the specified projectors."""
+    resolved DOS is given for the specified projectors.
+
+{_selection_examples("dos", "plot")}"""
     )
     def _to_plotly(self, selection=None):
         df = self._to_frame(selection)
@@ -93,6 +100,7 @@ plotly.graph_objects.Figure
 Parameters
 ----------
 {_selection_doc}
+{_kpoints_opt_source}
 
 Returns
 -------
@@ -100,7 +108,9 @@ pd.DataFrame
     Contains the energies at which the DOS was evaluated aligned to the
     Fermi energy and the total DOS or the spin-resolved DOS for
     spin-polarized calculations. If available and a selection is passed,
-    the orbital resolved DOS for the selected orbitals is included."""
+    the orbital resolved DOS for the selected orbitals is included.
+
+{_selection_examples("dos", "to_frame")}"""
     )
     def _to_frame(self, selection=None):
         df = pd.DataFrame(self._read_data(selection))

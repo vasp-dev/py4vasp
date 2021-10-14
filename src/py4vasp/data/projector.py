@@ -4,6 +4,7 @@ import re
 from .topology import Topology
 from py4vasp.data._base import DataBase, RefinementDescriptor
 from py4vasp.data._selection import Selection as _Selection
+from py4vasp.data.kpoint import _kpoints_opt_source
 import py4vasp.exceptions as exception
 import py4vasp._util.convert as _convert
 import py4vasp._util.documentation as _documentation
@@ -34,6 +35,20 @@ selection : str
     does not matter, but it is case sensitive to distinguish p (angular momentum
     l = 1) from P (phosphorus).
 """.strip()
+
+
+def _selection_examples(instance_name, function_name):
+    return f"""Examples
+--------
+Select the p orbitals of the first atom in the POSCAR file:
+>>> calc.{instance_name}.{function_name}(selection="1(p)")
+
+Select the d orbitals of Mn, Co, and Fe:
+>>> calc.{instance_name}.{function_name}("d(Mn, Co, Fe)")
+
+Select the spin-up contribution of the first three atoms combined
+>>> calc.{instance_name}.{function_name}("up(1-3)")
+"""
 
 
 class Projector(DataBase):
@@ -81,6 +96,7 @@ Parameters
 {_selection_doc}
 projections : np.ndarray or None
     Array containing projected data.
+{_kpoints_opt_source}
 
 Returns
 -------
@@ -100,38 +116,40 @@ dict
         projections = _Projections(projections)
         return self._read_elements(selection, projections)
 
+    @_documentation.add(
+        f"""Map selection strings onto corresponding Selection objects.
+
+With the selection strings, you specify which atom, orbital, and spin component
+you are interested in. *Note* that for all parameters you can pass "*" to
+default to all (atoms, orbitals, or spins).
+
+Parameters
+----------
+atom : str
+    Element name or index of the atom in the input file of Vasp. If a
+    range is specified (e.g. 1-3) a pointer to multiple indices will be
+    created.
+orbital : str
+    Character identifying the angular momentum of the orbital. You may
+    select a specific one (e.g. px) or all of the same character (e.g. d).
+spin : str
+    Select "up" or "down" for a specific spin component or "total" for
+    the sum of both.
+{_kpoints_opt_source}
+
+
+Returns
+-------
+Index
+    Indices to access the selected projection from an array and an
+    associated label."""
+    )
     def _select(
         self,
         atom=_Selection.default,
         orbital=_Selection.default,
         spin=_Selection.default,
     ):
-        """Map selection strings onto corresponding Selection objects.
-
-        With the selection strings, you specify which atom, orbital, and spin component
-        you are interested in. *Note* that for all parameters you can pass "*" to
-        default to all (atoms, orbitals, or spins).
-
-        Parameters
-        ----------
-        atom : str
-            Element name or index of the atom in the input file of Vasp. If a
-            range is specified (e.g. 1-3) a pointer to multiple indices will be
-            created.
-        orbital : str
-            Character identifying the angular momentum of the orbital. You may
-            select a specific one (e.g. px) or all of the same character (e.g. d).
-        spin : str
-            Select "up" or "down" for a specific spin component or "total" for
-            the sum of both.
-
-
-        Returns
-        -------
-        Index
-            Indices to access the selected projection from an array and an
-            associated label.
-        """
         dicts = self._init_dicts()
         _raise_error_if_not_found_in_dict(orbital, dicts["orbital"])
         _raise_error_if_not_found_in_dict(spin, dicts["spin"])
@@ -151,6 +169,7 @@ selection.
 Parameters
 ----------
 {_selection_doc}
+{_kpoints_opt_source}
 
 Yields
 ------

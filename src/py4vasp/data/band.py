@@ -6,8 +6,8 @@ import plotly.graph_objects as go
 import py4vasp._util.sanity_check as _check
 import py4vasp._util.documentation as _documentation
 from IPython.lib.pretty import pretty
-from .projector import _projectors_or_dummy, _selection_doc
-from .kpoint import Kpoint
+from .projector import _projectors_or_dummy, _selection_doc, _selection_examples
+from .kpoint import Kpoint, _kpoints_opt_source
 from py4vasp.data._base import DataBase, RefinementDescriptor
 import py4vasp.data._export as _export
 
@@ -49,6 +49,7 @@ class Band(DataBase, _export.Image):
 Parameters
 ----------
 {_selection_doc}
+{_kpoints_opt_source}
 
 Returns
 -------
@@ -56,7 +57,9 @@ dict
     Contains the **k**-point path for plotting band structures with the
     eigenvalues shifted to bring the Fermi energy to 0. If available
     and a selection is passed, the projections of these bands on the
-    selected projectors are included."""
+    selected projectors are included.
+
+{_selection_examples("band", "read")}"""
     )
     def _to_dict(self, selection=None):
         kpoints = self._kpoints()
@@ -77,12 +80,16 @@ Parameters
 {_selection_doc}
 width : float
     Specifies the width of the flatbands if a selection of projections is specified.
+{_kpoints_opt_source}
+
 Returns
 -------
 plotly.graph_objects.Figure
     plotly figure containing the spin-up and spin-down bands. If a selection
     is provided the width of the bands represents the projections of the
-    bands onto the specified projectors."""
+    bands onto the specified projectors.
+
+{_selection_examples("band", "plot")}"""
     )
     def _to_plotly(self, selection=None, width=0.5):
         ticks, labels = self._ticks_and_labels()
@@ -99,13 +106,16 @@ plotly.graph_objects.Figure
 Parameters
 ----------
 {_selection_doc}
+{_kpoints_opt_source}
 
 Returns
 -------
 pd.DataFrame
     Contains the eigenvalues and corresponding occupations for all k-points and
     bands. If a selection string is given, in addition the orbital projections
-    on these bands are returned."""
+    on these bands are returned.
+
+{_selection_examples("band", "to_frame")}"""
     )
     def _to_frame(self, selection=None):
         index = self._setup_dataframe_index()
