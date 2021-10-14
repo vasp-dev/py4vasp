@@ -12,7 +12,7 @@ def energy(raw_data):
     raw_energy = raw_data.energy("default")
     energy = Energy(raw_energy)
     energy.ref = types.SimpleNamespace()
-    energy.ref.default_label = "ion-electron   TOTEN"
+    energy.ref.total_label = "ion-electron   TOTEN"
     energy.ref.total_energy = raw_energy.values[:, 0]
     energy.ref.kinetic_label = "kinetic energy EKIN"
     energy.ref.kinetic_energy = raw_energy.values[:, 1]
@@ -28,8 +28,10 @@ def test_read_default(energy, Assert):
 
 
 def check_read_default(energy, dict_, steps, Assert):
-    assert len(dict_) == 1
-    Assert.allclose(dict_[energy.ref.default_label], energy.ref.total_energy[steps])
+    assert len(dict_) == 3
+    Assert.allclose(dict_[energy.ref.total_label], energy.ref.total_energy[steps])
+    Assert.allclose(dict_[energy.ref.kinetic_label], energy.ref.kinetic_energy[steps])
+    Assert.allclose(dict_[energy.ref.temperature_label], energy.ref.temperature[steps])
 
 
 def test_read_temperature(energy, Assert):
@@ -51,7 +53,7 @@ def test_read_two(energy, Assert):
 
 def check_read_two(energy, dict_, steps, Assert):
     assert len(dict_) == 2
-    Assert.allclose(dict_[energy.ref.default_label], energy.ref.total_energy[steps])
+    Assert.allclose(dict_[energy.ref.total_label], energy.ref.total_energy[steps])
     Assert.allclose(dict_[energy.ref.kinetic_label], energy.ref.kinetic_energy[steps])
 
 
@@ -93,6 +95,23 @@ def check_plot_energy_and_temperature(energy, steps, Assert):
     assert fig.data[0].name == "temperature"
     Assert.allclose(fig.data[1].y, energy.ref.kinetic_energy[steps])
     assert fig.data[1].name == "kinetic energy"
+
+
+def test_plot_all(energy, Assert):
+    for steps in (slice(None), slice(1, 3)):
+        check_plot_all(energy, steps, Assert)
+
+
+def check_plot_all(energy, steps, Assert):
+    fig = energy[steps].plot("*")
+    assert fig.layout.yaxis.title.text == "Energy (eV)"
+    assert fig.layout.yaxis2.title.text == "Temperature (K)"
+    Assert.allclose(fig.data[0].y, energy.ref.total_energy[steps])
+    assert fig.data[0].name == "ion-electron"
+    Assert.allclose(fig.data[1].y, energy.ref.kinetic_energy[steps])
+    assert fig.data[1].name == "kinetic energy"
+    Assert.allclose(fig.data[2].y, energy.ref.temperature[steps])
+    assert fig.data[2].name == "temperature"
 
 
 def test_to_numpy_default(energy, Assert):
@@ -150,13 +169,32 @@ def check_to_image(energy, filename_argument, expected_filename):
         fig.write_image.assert_called_once_with(energy._path / expected_filename)
 
 
+def test_labels(energy):
+    total_energy = energy.ref.total_label
+    kinetic_energy = energy.ref.kinetic_label
+    temperature = energy.ref.temperature_label
+    assert energy.labels() == [total_energy, kinetic_energy, temperature]
+    assert energy.labels("temperature") == [temperature]
+    assert energy.labels("TOTEN, EKIN") == [total_energy, kinetic_energy]
+
+
 def test_print(energy, format_):
     actual, _ = format_(energy)
+    check_print(actual, "final step", " 9.000000", "10.000000", "11.000000")
+    actual, _ = format_(energy[0])
+    check_print(actual, "step 1", " 0.000000", " 1.000000", " 2.000000")
+    actual, _ = format_(energy[:])
+    check_print(actual, "step 4 of range 1-4", " 9.000000", "10.000000", "11.000000")
+    actual, _ = format_(energy[1:3])
+    check_print(actual, "step 3 of range 2-3", " 6.000000", " 7.000000", " 8.000000")
+
+
+def check_print(actual, step, toten, ekin, tein):
     reference = f"""
-Energies at last step:
-   ion-electron   TOTEN  =         9.000000
-   kinetic energy EKIN   =        10.000000
-   temperature    TEIN   =        11.000000
+Energies at {step}:
+   ion-electron   TOTEN  =        {toten}
+   kinetic energy EKIN   =        {ekin}
+   temperature    TEIN   =        {tein}
     """.strip()
     assert actual == {"text/plain": reference}
 

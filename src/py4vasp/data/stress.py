@@ -43,16 +43,19 @@ Total   {stress_to_string(stress / eV_to_kB)}
 in kB   {stress_to_string(stress)}
 """.strip()
 
-    def _to_dict(self):
-        """Read the stress and associated structural information for one or more
-        selected steps of the trajectory.
+    @_documentation.add(
+        f"""Read the stress and associated structural information for one or more
+selected steps of the trajectory.
 
-        Returns
-        -------
-        dict
-            Contains the stress for all selected steps and the structural information
-            to know on which cell the stress acts.
-        """
+Returns
+-------
+dict
+    Contains the stress for all selected steps and the structural information
+    to know on which cell the stress acts.
+
+{_trajectory.trajectory_examples("stress", "read")}"""
+    )
+    def _to_dict(self):
         return {
             "structure": self._structure[self._steps].read(),
             "stress": self._stress[self._steps],

@@ -108,16 +108,19 @@ Direct{format_.newline}
 {vecs_to_table(self._raw_data.positions[step])}
         """.strip()
 
-    def _to_dict(self):
-        """Read the structual information into a dictionary.
+    @_documentation.add(
+        f"""Read the structual information into a dictionary.
 
-        Returns
-        -------
-        dict
-            Contains the unit cell of the crystal, as well as the position of
-            all the atoms in units of the lattice vectors and the elements of
-            the atoms for all selected steps.
-        """
+Returns
+-------
+dict
+    Contains the unit cell of the crystal, as well as the position of
+    all the atoms in units of the lattice vectors and the elements of
+    the atoms for all selected steps.
+
+{_trajectory.trajectory_examples("structure", "read")}"""
+    )
+    def _to_dict(self):
         return {
             "lattice_vectors": self._lattice_vectors(),
             "positions": self._raw_data.positions[self._steps],
@@ -125,39 +128,45 @@ Direct{format_.newline}
             "names": self._topology().names(),
         }
 
+    @_documentation.add(
+        f"""Generate a 3d representation of the structure(s).
+
+Parameters
+----------
+supercell : int or np.ndarray
+    If present the structure is replicated the specified number of times
+    along each direction.
+
+Returns
+-------
+Viewer3d
+    Visualize the structure(s) as a 3d figure.
+
+{_trajectory.trajectory_examples("structure", "plot")}"""
+    )
     def _to_viewer3d(self, supercell=None):
-        """Generate a 3d representation of the structure(s).
-
-        Parameters
-        ----------
-        supercell : int or np.ndarray
-            If present the structure is replicated the specified number of times
-            along each direction.
-
-        Returns
-        -------
-        Viewer3d
-            Visualize the structure(s) as a 3d figure.
-        """
         if self._is_slice:
             return self._viewer_from_trajectory()
         else:
             return self._viewer_from_structure(supercell)
 
+    @_documentation.add(
+        f"""Convert the structure to an ase Atoms object.
+
+Parameters
+----------
+supercell : int or np.ndarray
+    If present the structure is replicated the specified number of times
+    along each direction.
+
+Returns
+-------
+ase.Atoms
+    Structural information for ase package.
+
+{_trajectory.trajectory_examples("structure", "to_ase")}"""
+    )
     def _to_ase(self, supercell=None):
-        """Convert the structure to an ase Atoms object.
-
-        Parameters
-        ----------
-        supercell : int or np.ndarray
-            If present the structure is replicated the specified number of times
-            along each direction.
-
-        Returns
-        -------
-        ase.Atoms
-            Structural information for ase package.
-        """
         if self._is_slice:
             message = (
                 "Converting multiple structures to ASE trajectories is not implemented."
@@ -181,16 +190,19 @@ Direct{format_.newline}
                 raise exception.IncorrectUsage(error_message) from err
         return structure
 
-    def _to_mdtraj(self):
-        """Convert the trajectory to mdtraj.Trajectory
+    @_documentation.add(
+        f"""Convert the trajectory to mdtraj.Trajectory
 
-        Returns
-        -------
-        mdtraj.Trajectory
-            The mdtraj package offers many functionalities to analyze a MD
-            trajectory. By converting the Vasp data to their format, we facilitate
-            using all functions of that package.
-        """
+Returns
+-------
+mdtraj.Trajectory
+    The mdtraj package offers many functionalities to analyze a MD
+    trajectory. By converting the Vasp data to their format, we facilitate
+    using all functions of that package.
+
+{_trajectory.trajectory_examples("structure", "to_mdtraj")}"""
+    )
+    def _to_mdtraj(self):
         if not self._is_slice:
             message = "Converting a single structure to mdtraj is not implemented."
             raise exception.NotImplemented(message)
@@ -202,38 +214,47 @@ Direct{format_.newline}
         trajectory.unitcell_vectors = data["lattice_vectors"] * Structure.A_to_nm
         return trajectory
 
-    def _to_poscar(self):
-        """Convert the structure(s) to a POSCAR format
+    @_documentation.add(
+        f"""Convert the structure(s) to a POSCAR format
 
-        Returns
-        -------
-        str or list[str]
-            Returns the POSCAR of the current or all selected steps.
-        """
+Returns
+-------
+str or list[str]
+    Returns the POSCAR of the current or all selected steps.
+
+{_trajectory.trajectory_examples("structure", "to_POSCAR")}"""
+    )
+    def _to_poscar(self):
         if not self._is_slice:
             return self._create_repr()
         else:
             message = "Converting multiple structures to a POSCAR is currently not implemented."
             raise exception.NotImplemented(message)
 
-    def _cartesian_positions(self):
-        """Convert the positions from direct coordinates to cartesian ones.
+    @_documentation.add(
+        f"""Convert the positions from direct coordinates to cartesian ones.
 
-        Returns
-        -------
-        np.ndarray
-            Position of all atoms in cartesian coordinates in Å.
-        """
+Returns
+-------
+np.ndarray
+    Position of all atoms in cartesian coordinates in Å.
+
+{_trajectory.trajectory_examples("structure", "cartesian_positions")}"""
+    )
+    def _cartesian_positions(self):
         return self._raw_data.positions[self._steps] @ self._lattice_vectors()
 
-    def _volume(self):
-        """Return the volume of the unit cell for the selected steps.
+    @_documentation.add(
+        f"""Return the volume of the unit cell for the selected steps.
 
-        Returns
-        -------
-        float or np.ndarray
-            The volume(s) of the selected step(s) in Å³.
-        """
+Returns
+-------
+float or np.ndarray
+    The volume(s) of the selected step(s) in Å³.
+
+{_trajectory.trajectory_examples("structure", "volume")}"""
+    )
+    def _volume(self):
         return np.abs(np.linalg.det(self._lattice_vectors()))
 
     def _number_atoms(self):

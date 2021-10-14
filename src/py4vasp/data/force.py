@@ -48,30 +48,36 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
             result += f"\n{position_to_string(position)}    {force_to_string(force)}"
         return result
 
-    def _to_dict(self):
-        """Read the forces and associated structural information for one or more
-        selected steps of the trajectory.
+    @_documentation.add(
+        f"""Read the forces and associated structural information for one or more
+selected steps of the trajectory.
 
-        Returns
-        -------
-        dict
-            Contains the forces for all selected steps and the structural information
-            to know on which atoms the forces act.
-        """
+Returns
+-------
+dict
+    Contains the forces for all selected steps and the structural information
+    to know on which atoms the forces act.
+
+{_trajectory.trajectory_examples("force", "read")}"""
+    )
+    def _to_dict(self):
         return {
             "structure": self._structure[self._steps].read(),
             "forces": self._force[self._steps],
         }
 
-    def _to_viewer3d(self):
-        """Visualize the forces showing arrows at the atoms.
+    @_documentation.add(
+        f"""Visualize the forces showing arrows at the atoms.
 
-        Returns
-        -------
-        Viewer3d
-            Shows the structure with cell and all atoms adding arrows to the atoms
-            sized according to the strength of the force.
-        """
+Returns
+-------
+Viewer3d
+    Shows the structure with cell and all atoms adding arrows to the atoms
+    sized according to the strength of the force.
+
+{_trajectory.trajectory_examples("force", "plot")}"""
+    )
+    def _to_viewer3d(self):
         self._raise_error_if_slice()
         forces = self.force_rescale * self._force[self._steps]
         color = [0.3, 0.15, 0.35]

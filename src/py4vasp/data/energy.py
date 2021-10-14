@@ -4,6 +4,7 @@ import functools
 import numpy as np
 from py4vasp.data._base import RefinementDescriptor
 import py4vasp.data._export as _export
+from py4vasp.data._selection import Selection as _Selection
 import py4vasp.data._trajectory as _trajectory
 import py4vasp.exceptions as exception
 import py4vasp._util.documentation as _documentation
@@ -26,6 +27,16 @@ raw_energy : RawEnergy
 {_trajectory.trajectory_examples("energy")}
 """.strip()
 
+_selection_string = (
+    lambda default: f"""selection : str or None
+    String specifying the labels of the energy to be read. A substring
+    of the label is sufficient. If no energy is select this will default
+    to selecting {default}. Separate distinct labels by commas. For a
+    complete list of all possible selections, please use
+    >>> calc.energy.labels()
+"""
+)
+
 
 @_documentation.add(_energy_docs)
 class Energy(_trajectory.DataTrajectory, _export.Image):
@@ -34,51 +45,64 @@ class Energy(_trajectory.DataTrajectory, _export.Image):
     plot = RefinementDescriptor("_to_plotly")
     to_plotly = RefinementDescriptor("_to_plotly")
     to_numpy = RefinementDescriptor("_to_numpy")
+    labels = RefinementDescriptor("_labels")
     __str__ = RefinementDescriptor("_to_string")
 
     def _to_string(self):
-        text = "Energies at last step:"
-        for label, value in zip(self._raw_data.labels, self._raw_data.values[-1]):
+        text = f"Energies at {self._step_string()}:"
+        values = self._raw_data.values[self._last_step_in_slice]
+        for label, value in zip(self._raw_data.labels, values):
             label = f"{_convert.text_to_string(label):22.22}"
             text += f"\n   {label}={value:17.6f}"
         return text
 
-    def _to_dict(self, selection=None):
-        """Read the energy data and store it in a dictionary.
+    def _step_string(self):
+        if self._is_slice:
+            range_ = range(len(self._raw_data.values))[self._slice]
+            start = range_.start + 1  # convert to Fortran index
+            stop = range_.stop
+            return f"step {stop} of range {start}-{stop}"
+        elif self._steps == -1:
+            return "final step"
+        else:
+            return f"step {self._steps + 1}"
 
-        Parameters
-        ----------
-        selection : str or None
-            String specifying the labels of the energy to be read. A substring
-            of the label is sufficient. If no energy is select this will default
-            to the total energy. Separate distinct labels by commas.
+    @_documentation.add(
+        f"""Read the energy data and store it in a dictionary.
 
-        Returns
-        -------
-        dict
-            Contains the exact labels corresponding to the selection and the
-            associated energies for every selected ionic step.
-        """
+Parameters
+----------
+{_selection_string("all energies")}
+
+Returns
+-------
+dict
+    Contains the exact labels corresponding to the selection and the
+    associated energies for every selected ionic step.
+
+{_trajectory.trajectory_examples("energy", "read")}"""
+    )
+    def _to_dict(self, selection=_Selection.default):
         return {
             label: self._raw_data.values[self._steps, index]
             for label, index in self._parse_selection(selection)
         }
 
-    def _to_plotly(self, selection=None):
-        """Read the energy data and generate a plotly figure.
+    @_documentation.add(
+        f"""Read the energy data and generate a plotly figure.
 
-        Parameters
-        ----------
-        selection : str or None
-            String specifying the labels of the energy to be plotted. A substring
-            of the label is sufficient. If no energy is select this will default
-            to the total energy. Separate distinct labels by commas.
+Parameters
+----------
+{_selection_string("the total energy")}
 
-        Returns
-        -------
-        plotly.graph_objects.Figure
-            plotly figure containing the selected energies for every selected ionic step.
-        """
+Returns
+-------
+plotly.graph_objects.Figure
+    plotly figure containing the selected energies for every selected ionic step.
+
+{_trajectory.trajectory_examples("energy", "plot")}"""
+    )
+    def _to_plotly(self, selection="TOTEN"):
         figure, use_secondary = self._create_figure_with_yaxes(selection)
         figure.layout.xaxis.title.text = "Step"
         steps = np.arange(len(self._raw_data.values))[self._slice] + 1
@@ -89,39 +113,47 @@ class Energy(_trajectory.DataTrajectory, _export.Image):
             figure.add_trace(go.Scatter(x=steps, y=data, name=short_label), **options)
         return figure
 
-    def _to_numpy(self, selection=None):
-        """Read the energy of the selected steps.
+    @_documentation.add(
+        f"""Read the energy of the selected steps.
 
-        Parameters
-        ----------
-        selection : str or None
-            String specifying the labels of the energy to be read. A substring
-            of the label is sufficient. If no energy is select this will default
-            to the total energy. Separate distinct labels by commas.
+Parameters
+----------
+{_selection_string("the total energy")}
 
-        Returns
-        -------
-        float or np.ndarray or tuple
-            Contains energies associated with the selection for the selected ionic step(s).
-            When only a single step is inquired, result is a float otherwise an array.
-            If you select multiple quantities a tuple of them is returned.
-        """
+Returns
+-------
+float or np.ndarray or tuple
+    Contains energies associated with the selection for the selected ionic step(s).
+    When only a single step is inquired, result is a float otherwise an array.
+    If you select multiple quantities a tuple of them is returned.
+
+{_trajectory.trajectory_examples("energy", "to_numpy")}"""
+    )
+    def _to_numpy(self, selection="TOTEN"):
         result = tuple(
             self._raw_data.values[self._steps, index]
             for _, index in self._parse_selection(selection)
         )
         return _unpack_if_only_one_element(result)
 
+    def _labels(self, selection=_Selection.default):
+        "Return the labels corresponding to a particular selection defaulting to all labels."
+        return [label for label, _ in self._parse_selection(selection)]
+
     def _parse_selection(self, selection):
-        # TODO check if SelectionTree can be used instead
+        # NOTE it would be nice to use SelectionTree instead, however that requires
+        # the labels may have spaces so it might lead to redunandancies
         indices = self._find_selection_indices(selection)
         get_label = lambda index: _convert.text_to_string(self._raw_data.labels[index])
         for index in indices:
             yield get_label(index).strip(), index
 
     def _find_selection_indices(self, selection):
-        selection_parts = _actual_or_default_selection(selection)
-        return [self._find_selection_index(part) for part in selection_parts]
+        if selection == _Selection.default:
+            return range(len(self._raw_data.labels))
+        else:
+            selection_parts = _split_selection_in_parts(selection)
+            return [self._find_selection_index(part) for part in selection_parts]
 
     def _find_selection_index(self, selection):
         for index, label in enumerate(self._raw_data.labels):
@@ -168,13 +200,10 @@ def _set_yaxis_text(yaxis, use_temperature):
         yaxis.title.text = "Energy (eV)"
 
 
-def _actual_or_default_selection(selection):
-    if selection is not None:
-        error_message = "Energy selection must be a string."
-        _check.raise_error_if_not_string(selection, error_message)
-        return (part.strip() for part in selection.split(","))
-    else:
-        return ("TOTEN",)
+def _split_selection_in_parts(selection):
+    error_message = "Energy selection must be a string."
+    _check.raise_error_if_not_string(selection, error_message)
+    return (part.strip() for part in selection.split(","))
 
 
 def _unpack_if_only_one_element(tuple_):
