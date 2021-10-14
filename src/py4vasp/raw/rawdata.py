@@ -2,6 +2,22 @@ from dataclasses import dataclass
 import numpy as np
 
 
+class DataDict(dict):
+    """Provides an extension to a dictionary storing also the version of the data.
+
+    Parameters
+    ----------
+    dict_: dict
+        A dictionary containing raw data and descriptive keys.
+    version: RawVersion
+        The version of Vasp with which the data was generated.
+    """
+
+    def __init__(self, dict_, version):
+        super().__init__(dict_)
+        self.version = version
+
+
 def _dataclass_equal(lhs, rhs):
     lhs, rhs = vars(lhs), vars(rhs)
     compare = (_element_equal(lhs[key], rhs[key]) for key in lhs)
@@ -31,10 +47,14 @@ class RawVersion:
 
 
 @dataclass
+class RawSystem:
+    "The name of the system set in the input."
+    system: str
+
+
+@dataclass
 class RawTopology:
     "The topology of the system used, i.e., which elements are contained."
-    version: RawVersion
-    "The version number of Vasp."
     number_ion_types: np.ndarray
     "Amount of ions of a particular type."
     ion_types: np.ndarray
@@ -43,25 +63,18 @@ class RawTopology:
 
 
 @dataclass
-class RawTrajectory:
-    "Describes the evolution of unit cell and atoms within over ionic steps."
-    version: RawVersion
-    "The version number of Vasp."
-    topology: RawTopology
-    "The topology of the system used, i.e., which elements are contained."
+class RawCell:
+    "Unit cell of the crystal or simulation cell for molecules."
     lattice_vectors: np.ndarray
-    "Lattice vectors defining the unit cell for every time step."
-    positions: np.ndarray
-    """Position of all atoms in the unit cell in units of the lattice vectors
-    for every timestep."""
+    "Lattice vectors defining the unit cell."
+    scale: float = 1.0
+    "Global scaling factor applied to all lattice vectors."
     __eq__ = _dataclass_equal
 
 
 @dataclass
-class RawProjectors:
+class RawProjector:
     "Projectors used for orbital projections."
-    version: RawVersion
-    "The version number of Vasp."
     topology: RawTopology
     "The topology of the system used, i.e., which elements are contained."
     orbital_types: np.ndarray
@@ -72,48 +85,20 @@ class RawProjectors:
 
 
 @dataclass
-class RawCell:
-    "Unit cell of the crystal or simulation cell for molecules."
-    version: RawVersion
-    "The version number of Vasp."
-    lattice_vectors: np.ndarray
-    "Lattice vectors defining the unit cell."
-    scale: float = 1.0
-    "Global scaling factor applied to all lattice vectors."
-    __eq__ = _dataclass_equal
-
-
-@dataclass
-class RawMagnetism:
-    "Data about the magnetism in the system."
-    version: RawVersion
-    "The version number of Vasp."
-    moments: np.ndarray
-    "Contains the charge and magnetic moments atom and orbital resolved."
-    __eq__ = _dataclass_equal
-
-
-@dataclass
 class RawStructure:
     "Structural information of the system."
-    version: RawVersion
-    "The version number of Vasp."
     topology: RawTopology
     "The topology of the system used, i.e., which elements are contained."
     cell: RawCell
     "Unit cell of the crystal or simulation cell for molecules."
     positions: np.ndarray
     "Position of all atoms in the unit cell in units of the lattice vectors."
-    magnetism: RawMagnetism = None
-    "Magnetization of every atom in the unit cell."
     __eq__ = _dataclass_equal
 
 
 @dataclass
-class RawKpoints:
+class RawKpoint:
     "**k** points at which wave functions are calculated."
-    version: RawVersion
-    "The version number of Vasp."
     mode: str
     "Mode used to generate the **k**-point list."
     number: int
@@ -134,8 +119,6 @@ class RawKpoints:
 @dataclass
 class RawDos:
     "Electronic density of states."
-    version: RawVersion
-    "The version number of Vasp."
     fermi_energy: float
     "Fermi energy obtained by Vasp."
     energies: np.ndarray
@@ -144,7 +127,7 @@ class RawDos:
     "Dos at the energies D(E)."
     projections: np.ndarray = None
     "If present, orbital projections of the Dos."
-    projectors: RawProjectors = None
+    projectors: RawProjector = None
     "If present, projector information (element, angular momentum, spin)."
     __eq__ = _dataclass_equal
 
@@ -152,11 +135,9 @@ class RawDos:
 @dataclass
 class RawBand:
     "Electronic band structure"
-    version: RawVersion
-    "The version number of Vasp."
     fermi_energy: float
     "Fermi energy obtained by Vasp."
-    kpoints: RawKpoints
+    kpoints: RawKpoint
     "**k** points at which the bands are calculated."
     eigenvalues: np.ndarray
     "Calculated eigenvalues at the **k** points."
@@ -164,7 +145,7 @@ class RawBand:
     "The occupations of the different bands."
     projections: np.ndarray = None
     "If present, orbital projections of the bands."
-    projectors: RawProjectors = None
+    projectors: RawProjector = None
     "If present, projector information (element, angular momentum, spin)."
     __eq__ = _dataclass_equal
 
@@ -172,8 +153,6 @@ class RawBand:
 @dataclass
 class RawEnergy:
     "Various energies during ionic relaxation or MD simulation."
-    version: RawVersion
-    "The version number of Vasp."
     labels: np.ndarray
     "Label identifying which energy is contained."
     values: np.ndarray
@@ -184,10 +163,126 @@ class RawEnergy:
 @dataclass
 class RawDensity:
     "The electronic charge and magnetization density."
-    version: RawVersion
-    "The version number of Vasp."
     structure: RawStructure
     "The atomic structure to represent the densities."
     charge: np.ndarray
     "The raw data of electronic charge and magnetization density."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawDielectricFunction:
+    "The electronic or ionic dielectric function."
+    energies: np.ndarray
+    "The energies at which the dielectric function is evaluated."
+    density_density: np.ndarray
+    "The values of the electronic dielectric function using the density-density response."
+    current_current: np.ndarray
+    "The values of the electronic dielectric function using the current-current response."
+    ion: np.ndarray
+    "The values of the ionic dielectrion function."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawMagnetism:
+    "Data about the magnetism in the system."
+    structure: RawStructure
+    "Structural information about the system."
+    moments: np.ndarray
+    "Contains the charge and magnetic moments atom and orbital resolved."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawForce:
+    "The forces acting on the atoms at all steps."
+    structure: RawStructure
+    "Structural information about the system to inform about the forces."
+    forces: np.ndarray
+    "The values of the forces at the atoms."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawStress:
+    "The stress acting on the unit cell at all steps."
+    structure: RawStructure
+    "Structural information about the system to inform about the unit cell."
+    stress: np.ndarray
+    "The values of the stress on the cell."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawForceConstant:
+    "The force constants of the material."
+    structure: RawStructure
+    "Structural information about the system to inform about the atoms the force constants relate to."
+    force_constants: np.ndarray
+    "The values of the force constants."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawDielectricTensor:
+    "The dielectric tensor resulting from ionic and electronic contributions."
+    electron: np.ndarray
+    "The electronic contribution to the dielectric tensor."
+    ion: np.ndarray
+    "The ionic contribution to the dielectric tensor."
+    independent_particle: np.ndarray
+    "The dielectric tensor in the independent particle approximation."
+    method: str
+    "The method used to generate the dielectric tensor."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawBornEffectiveCharge:
+    "The Born effective charges resulting form a linear response calculation."
+    structure: RawStructure
+    "Structural information about the system to identify specific atoms."
+    charge_tensors: np.ndarray
+    "The raw data of the Born effective charges."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawInternalStrain:
+    "The internal strain calculated in a linear response calculation."
+    structure: RawStructure
+    "Structural information about the system to inform about the unit cell."
+    internal_strain: np.ndarray
+    "The raw data of the internal strain."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawElasticModulus:
+    "The elastic module calculated in a linear response calculation."
+    clamped_ion: np.ndarray
+    "Elastic modulus when the ions are clamped into their positions."
+    relaxed_ion: np.ndarray
+    "Elastic modulus when the position of the ions is relaxed."
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawPiezoelectricTensor:
+    "The piezoelectric tensor calculated in a linear response calculation."
+    electron: np.ndarray
+    "The electronic contribution to the piezoelectric tensor"
+    ion: np.ndarray
+    "The ionic contribution to the piezoelectric tensor"
+    __eq__ = _dataclass_equal
+
+
+@dataclass
+class RawPolarization:
+    "The electronic and ionic dipole moments."
+    electron: np.ndarray
+    "The electronic dipole moment resulting from the charge."
+    ion: np.ndarray
+    "The ionic dipole moment resulting from the position of the atoms."
     __eq__ = _dataclass_equal

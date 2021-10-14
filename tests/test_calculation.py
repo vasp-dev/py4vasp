@@ -1,6 +1,7 @@
-from unittest.mock import patch
+from unittest.mock import patch, mock_open
 from pathlib import Path
 import py4vasp.data
+import py4vasp.control as ctrl
 import inspect
 
 
@@ -22,10 +23,40 @@ def test_creation(MockFile):
 @patch("py4vasp.raw.File", autospec=True)
 def test_all_attributes(MockFile):
     calculation = py4vasp.Calculation.from_path("test_path")
+    camel_cases = {
+        "BornEffectiveCharge": "born_effective_charge",
+        "DielectricFunction": "dielectric_function",
+        "DielectricTensor": "dielectric_tensor",
+        "ElasticModulus": "elastic_modulus",
+        "ForceConstant": "force_constant",
+        "InternalStrain": "internal_strain",
+        "PiezoelectricTensor": "piezoelectric_tensor",
+    }
     skipped = ["Viewer3d"]
     for name, _ in inspect.getmembers(py4vasp.data, inspect.isclass):
-        if name in skipped:
+        if name in skipped or name in camel_cases:
             continue
         assert hasattr(calculation, name.lower())
+    for name in camel_cases.values():
+        assert hasattr(calculation, name)
     MockFile.assert_not_called()
     MockFile.__enter__.assert_not_called()
+
+
+def test_input_files():
+    text = "! comment line"
+    calculation = py4vasp.Calculation.from_path("test_path")
+    assert isinstance(calculation.INCAR, ctrl.INCAR)
+    with patch("py4vasp.control._base.open", mock_open(read_data=text)) as mock:
+        calculation.INCAR = text
+        assert calculation.INCAR.read() == text
+    #
+    assert isinstance(calculation.KPOINTS, ctrl.KPOINTS)
+    with patch("py4vasp.control._base.open", mock_open(read_data=text)) as mock:
+        calculation.KPOINTS = text
+        assert calculation.KPOINTS.read() == text
+    #
+    assert isinstance(calculation.POSCAR, ctrl.POSCAR)
+    with patch("py4vasp.control._base.open", mock_open(read_data=text)) as mock:
+        calculation.POSCAR = text
+        assert calculation.POSCAR.read() == text

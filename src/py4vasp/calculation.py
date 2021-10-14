@@ -14,6 +14,8 @@ object. For example you may use
 """
 import inspect
 import py4vasp.data
+import py4vasp.control
+import py4vasp._util.convert as _convert
 from pathlib import Path
 
 
@@ -41,11 +43,39 @@ class Calculation:
         """
         calc = cls()
         calc._path = Path(path_name).expanduser().resolve()
-        return _add_all_refinement_classes(calc)
+        calc = _add_all_refinement_classes(calc)
+        return _add_input_files(calc)
 
     def path(self):
         "Return the path in which the calculation is run."
         return self._path
+
+    @property
+    def INCAR(self):
+        "The INCAR file of the VASP calculation."
+        return self._INCAR
+
+    @INCAR.setter
+    def INCAR(self, incar):
+        self._INCAR.write(str(incar))
+
+    @property
+    def KPOINTS(self):
+        "The KPOINTS file of the VASP calculation."
+        return self._KPOINTS
+
+    @KPOINTS.setter
+    def KPOINTS(self, kpoints):
+        self._KPOINTS.write(str(kpoints))
+
+    @property
+    def POSCAR(self):
+        "The POSCAR file of the VASP calculation."
+        return self._POSCAR
+
+    @POSCAR.setter
+    def POSCAR(self, poscar):
+        self._POSCAR.write(str(poscar))
 
 
 def _add_all_refinement_classes(calc):
@@ -57,5 +87,12 @@ def _add_all_refinement_classes(calc):
 
 def _add_refinement_class(calc, name, class_):
     instance = class_.from_file(calc.path())
-    setattr(calc, name.lower(), instance)
+    setattr(calc, _convert.to_snakecase(name), instance)
+    return calc
+
+
+def _add_input_files(calc):
+    calc._INCAR = py4vasp.control.INCAR(calc._path)
+    calc._KPOINTS = py4vasp.control.KPOINTS(calc._path)
+    calc._POSCAR = py4vasp.control.POSCAR(calc._path)
     return calc

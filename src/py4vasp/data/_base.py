@@ -1,22 +1,41 @@
 import contextlib
 import functools
-import importlib
 import pathlib
 import py4vasp.raw as raw
 import py4vasp.exceptions as exception
-from py4vasp.data._util import _minimal_vasp_version
+from py4vasp._util.version import minimal_vasp_version, current_vasp_version
+import py4vasp._util.convert as _convert
 
 
 class DataBase:
     _missing_data_message = "The raw data is None, please check your setup."
 
     def __init__(self, raw_data):
-        self._from_context_generator(lambda: contextlib.nullcontext(raw_data))
+        data_dict = raw.DataDict({"default": raw_data}, current_vasp_version)
+        self._from_context_generator(lambda: contextlib.nullcontext(data_dict))
         self._repr = f"({repr(raw_data)})"
+        self._path = pathlib.Path.cwd()
+        self._initialize()
+
+    @classmethod
+    def from_dict(cls, dict_):
+        """Initialize refinement class from data dictionary
+
+        Parameters
+        ----------
+        data_dict : dict
+            Data dictionary that contains one or more different raw data sources.
+        """
+        obj = cls.__new__(cls)
+        data_dict = raw.DataDict(dict_, current_vasp_version)
+        obj._from_context_generator(lambda: contextlib.nullcontext(data_dict))
+        obj._repr = f".from_dict({repr(data_dict)})"
+        obj._path = pathlib.Path.cwd()
+        return obj._initialize()
 
     @classmethod
     def from_file(cls, file=None):
-        """Read the raw data from the given file.
+        """Read the data dictionary from the given file.
 
         Parameters
         ----------
@@ -35,12 +54,18 @@ class DataBase:
             the user.
         """
         obj = cls.__new__(cls)
-        obj._from_context_generator(lambda: _from_file(file, cls.__name__.lower()))
+        name = _convert.to_snakecase(cls.__name__)
+        obj._from_context_generator(lambda: _from_file(file, name))
         obj._repr = f".from_file({repr(file)})"
-        return obj
+        obj._path = _get_absolute_path(file)
+        return obj._initialize()
 
     def _from_context_generator(self, context_generator):
-        self._raw_data_from_context = context_generator
+        self._data_dict_from_context = context_generator
+
+    def _initialize(self):
+        # overload this to do extra initialization
+        return self
 
     def __repr__(self):
         return f"{self.__class__.__name__}{self._repr}"
@@ -51,6 +76,12 @@ class DataBase:
     def print(self):
         print(self)
 
+    def _set_data_or_raise_error_if_data_is_missing(self, raw_data):
+        if raw_data is not None:
+            self._raw_data = raw_data
+        else:
+            raise exception.NoData(self._missing_data_message)
+
 
 @contextlib.contextmanager
 def _from_file(file, name):
@@ -59,7 +90,17 @@ def _from_file(file, name):
     else:
         context = contextlib.nullcontext(file)
     with context as file:
-        yield getattr(file, name)()
+        yield getattr(file, name)
+
+
+def _get_absolute_path(file):
+    if file is None:
+        return pathlib.Path.cwd()
+    elif isinstance(file, str) or isinstance(file, pathlib.Path):
+        absolute_path = pathlib.Path(file).resolve()
+        return absolute_path if absolute_path.is_dir() else absolute_path.parent
+    else:
+        return file.path
 
 
 class RefinementDescriptor:
@@ -67,30 +108,35 @@ class RefinementDescriptor:
         self._name = name
 
     def __get__(self, instance, type_):
-        module = importlib.import_module(type_.__module__)
-        function = getattr(module, self._name)
+        function = getattr(type_, self._name)
 
         @functools.wraps(function)
-        def wrapper(*args, **kwargs):
-            with instance._raw_data_from_context() as raw_data:
-                raise_error_if_data_is_missing(raw_data, instance._missing_data_message)
-                raise_error_if_version_is_outdated(raw_data)
-                return function(raw_data, *args, **kwargs)
+        def wrapper(*args, source="default", **kwargs):
+            with instance._data_dict_from_context() as data_dict:
+                raise_error_if_version_is_outdated(data_dict.version)
+                raw_data = read_raw_data_from_source(data_dict, source)
+                instance._set_data_or_raise_error_if_data_is_missing(raw_data)
+                return function(instance, *args, **kwargs)
 
         return wrapper
 
 
-def raise_error_if_data_is_missing(raw_data, error_message):
-    if raw_data is None:
-        raise exception.NoData(error_message)
+def read_raw_data_from_source(data_dict, source):
+    source = source.strip().lower()
+    try:
+        return data_dict[source]
+    except KeyError as err:
+        message = f"""The source {source} could not be found in the data. Please check the spelling.
+The following sources are available: {", ".join(data_dict.keys())}."""
+        raise exception.IncorrectUsage(message) from err
 
 
-def raise_error_if_version_is_outdated(raw_data):
-    if raw_data.version < _minimal_vasp_version:
+def raise_error_if_version_is_outdated(version_data):
+    if version_data < minimal_vasp_version:
         raise exception.OutdatedVaspVersion(
             "To use py4vasp features, you need at least Vasp version "
-            f"{_minimal_vasp_version.major}.{_minimal_vasp_version.minor}."
-            f"{_minimal_vasp_version.patch}. The used version is "
-            f"{raw_data.version.major}.{raw_data.version.minor}."
-            f"{raw_data.version.patch}. Please use a newer version of Vasp."
+            f"{minimal_vasp_version.major}.{minimal_vasp_version.minor}."
+            f"{minimal_vasp_version.patch}. The used version is "
+            f"{version_data.major}.{version_data.minor}."
+            f"{version_data.patch}. Please use a newer version of Vasp."
         )

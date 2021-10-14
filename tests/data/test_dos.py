@@ -1,261 +1,197 @@
-from py4vasp.data import Dos, _util
-from py4vasp.raw import RawDos, RawVersion, RawTopology, RawProjectors
-from . import current_vasp_version
+from py4vasp.data import Dos
+from unittest.mock import patch
 import py4vasp.exceptions as exception
 import pytest
 import numpy as np
-
-num_energies = 50
+import types
 
 
 @pytest.fixture
-def nonmagnetic_Dos():
-    """ Setup a nonmagnetic Dos containing all important quantities."""
-    energies = np.linspace(-1, 3, num_energies)
-    raw_dos = RawDos(
-        version=current_vasp_version,
-        fermi_energy=1.372,
-        energies=energies,
-        dos=np.array([energies ** 2]),
-    )
-    return raw_dos
+def Sr2TiO4(raw_data):
+    raw_dos = raw_data.dos("Sr2TiO4")
+    dos = Dos(raw_dos)
+    dos.ref = types.SimpleNamespace()
+    dos.ref.energies = raw_dos.energies - raw_dos.fermi_energy
+    dos.ref.dos = raw_dos.dos[0]
+    dos.ref.fermi_energy = raw_dos.fermi_energy
+    return dos
 
 
-def test_nonmagnetic_Dos_read(nonmagnetic_Dos, Assert):
-    raw_dos = nonmagnetic_Dos
-    dos = Dos(raw_dos).read()
-    Assert.allclose(dos["energies"], raw_dos.energies - raw_dos.fermi_energy)
-    Assert.allclose(dos["total"], raw_dos.dos[0])
-    assert dos["fermi_energy"] == raw_dos.fermi_energy
+@pytest.fixture
+def Fe3O4(raw_data):
+    raw_dos = raw_data.dos("Fe3O4")
+    dos = Dos(raw_dos)
+    dos.ref = types.SimpleNamespace()
+    dos.ref.energies = raw_dos.energies - raw_dos.fermi_energy
+    dos.ref.dos_up = raw_dos.dos[0]
+    dos.ref.dos_down = raw_dos.dos[1]
+    dos.ref.fermi_energy = raw_dos.fermi_energy
+    return dos
 
 
-def test_nonmagnetic_Dos_read_error(nonmagnetic_Dos):
-    raw_dos = nonmagnetic_Dos
+@pytest.fixture
+def Sr2TiO4_projectors(raw_data):
+    raw_dos = raw_data.dos("Sr2TiO4 with_projectors")
+    dos = Dos(raw_dos)
+    dos.ref = types.SimpleNamespace()
+    dos.ref.s = np.sum(raw_dos.projections[0, :, 0, :], axis=0)
+    dos.ref.Sr_p = np.sum(raw_dos.projections[0, 0:2, 1:4, :], axis=(0, 1))
+    dos.ref.Sr_d = np.sum(raw_dos.projections[0, 0:2, 4:9, :], axis=(0, 1))
+    dos.ref.Sr_2_p = np.sum(raw_dos.projections[0, 1, 1:4, :], axis=0)
+    dos.ref.Ti = np.sum(raw_dos.projections[0, 2, :, :], axis=0)
+    dos.ref.Ti_dz2 = raw_dos.projections[0, 2, 6, :]
+    dos.ref.O_px = np.sum(raw_dos.projections[0, 3:7, 3, :], axis=0)
+    dos.ref.O_dxy = np.sum(raw_dos.projections[0, 3:7, 4, :], axis=0)
+    dos.ref.O_1 = np.sum(raw_dos.projections[0, 3, :, :], axis=0)
+    return dos
+
+
+@pytest.fixture
+def Fe3O4_projectors(raw_data):
+    raw_dos = raw_data.dos("Fe3O4 with_projectors")
+    dos = Dos(raw_dos)
+    dos.ref = types.SimpleNamespace()
+    dos.ref.Fe_up = np.sum(raw_dos.projections[0, 0:3, :, :], axis=(0, 1))
+    dos.ref.Fe_down = np.sum(raw_dos.projections[1, 0:3, :, :], axis=(0, 1))
+    dos.ref.p_up = np.sum(raw_dos.projections[0, :, 1, :], axis=0)
+    dos.ref.p_down = np.sum(raw_dos.projections[1, :, 1, :], axis=0)
+    dos.ref.O_d_up = np.sum(raw_dos.projections[0, 3:7, 2, :], axis=0)
+    dos.ref.O_d_down = np.sum(raw_dos.projections[1, 3:7, 2, :], axis=0)
+    return dos
+
+
+def test_Sr2TiO4_read(Sr2TiO4, Assert):
+    actual = Sr2TiO4.read()
+    Assert.allclose(actual["energies"], Sr2TiO4.ref.energies)
+    Assert.allclose(actual["total"], Sr2TiO4.ref.dos)
+    assert actual["fermi_energy"] == Sr2TiO4.ref.fermi_energy
+
+
+def test_Fe3O4_read(Fe3O4, Assert):
+    actual = Fe3O4.read()
+    Assert.allclose(actual["energies"], Fe3O4.ref.energies)
+    Assert.allclose(actual["up"], Fe3O4.ref.dos_up)
+    Assert.allclose(actual["down"], Fe3O4.ref.dos_down)
+    assert actual["fermi_energy"] == Fe3O4.ref.fermi_energy
+
+
+def test_Fe3O4_projectors_read(Fe3O4_projectors, Assert):
+    actual = Fe3O4_projectors.read("Fe p O(d)")
+    Assert.allclose(actual["Fe_up"], Fe3O4_projectors.ref.Fe_up)
+    Assert.allclose(actual["Fe_down"], Fe3O4_projectors.ref.Fe_down)
+    Assert.allclose(actual["p_up"], Fe3O4_projectors.ref.p_up)
+    Assert.allclose(actual["p_down"], Fe3O4_projectors.ref.p_down)
+    Assert.allclose(actual["O_d_up"], Fe3O4_projectors.ref.O_d_up)
+    Assert.allclose(actual["O_d_down"], Fe3O4_projectors.ref.O_d_down)
+
+
+def test_read_missing_projectors(Sr2TiO4):
     with pytest.raises(exception.IncorrectUsage):
-        Dos(raw_dos).read("s")
+        Sr2TiO4.read("s")
 
 
-def test_nonmagnetic_Dos_to_frame(nonmagnetic_Dos, Assert):
-    """ Test whether reading the nonmagnetic Dos yields the expected results."""
-    raw_dos = nonmagnetic_Dos
-    dos = Dos(raw_dos).to_frame()
-    Assert.allclose(dos.energies, raw_dos.energies - raw_dos.fermi_energy)
-    Assert.allclose(dos.total, raw_dos.dos[0])
-    assert dos.fermi_energy == raw_dos.fermi_energy
+def test_read_excess_orbital_types(raw_data, Assert):
+    """Vasp 6.1 may store more orbital types then projections available. This
+    test checks that this does not lead to any issues when an available element
+    is used."""
+    dos = Dos(raw_data.dos("Fe3O4 excess_orbitals"))
+    actual = dos.read("s p g")
+    zero = np.zeros_like(actual["energies"])
+    Assert.allclose(actual["g_up"], zero)
+    Assert.allclose(actual["g_down"], zero)
 
 
-def test_nonmagnetic_Dos_plot(nonmagnetic_Dos, Assert):
-    """ Test whether plotting the nonmagnetic Dos yields the expected results."""
-    raw_dos = nonmagnetic_Dos
-    fig = Dos(raw_dos).plot()
+def test_Sr2TiO4_to_frame(Sr2TiO4, Assert):
+    actual = Sr2TiO4.to_frame()
+    Assert.allclose(actual.energies, Sr2TiO4.ref.energies)
+    Assert.allclose(actual.total, Sr2TiO4.ref.dos)
+    assert actual.fermi_energy == Sr2TiO4.ref.fermi_energy
+
+
+def test_Fe3O4_to_frame(Fe3O4, Assert):
+    actual = Fe3O4.to_frame()
+    Assert.allclose(actual.energies, Fe3O4.ref.energies)
+    Assert.allclose(actual.up, Fe3O4.ref.dos_up)
+    Assert.allclose(actual.down, Fe3O4.ref.dos_down)
+    assert actual.fermi_energy == Fe3O4.ref.fermi_energy
+
+
+def test_Sr2TiO4_projectors_to_frame(Sr2TiO4_projectors, Assert):
+    equivalent_selections = [
+        "s Sr(d) Ti O(px,dxy) 2(p) 4 3(dz2) 1-2(p)",
+        "2( p), dz2(3) Sr(d) p(1-2), *(s), 4 Ti(*) px(O) O(dxy)",
+    ]
+    for selection in equivalent_selections:
+        actual = Sr2TiO4_projectors.to_frame(selection)
+        Assert.allclose(actual.s, Sr2TiO4_projectors.ref.s)
+        Assert.allclose(actual["1-2_p"], Sr2TiO4_projectors.ref.Sr_p)
+        Assert.allclose(actual.Sr_d, Sr2TiO4_projectors.ref.Sr_d)
+        Assert.allclose(actual.Sr_2_p, Sr2TiO4_projectors.ref.Sr_2_p)
+        Assert.allclose(actual.Ti, Sr2TiO4_projectors.ref.Ti)
+        Assert.allclose(actual.Ti_1_dz2, Sr2TiO4_projectors.ref.Ti_dz2)
+        Assert.allclose(actual.O_px, Sr2TiO4_projectors.ref.O_px)
+        Assert.allclose(actual.O_dxy, Sr2TiO4_projectors.ref.O_dxy)
+        Assert.allclose(actual.O_1, Sr2TiO4_projectors.ref.O_1)
+
+
+def test_Sr2TiO4_plot(Sr2TiO4, Assert):
+    fig = Sr2TiO4.plot()
     assert fig.layout.xaxis.title.text == "Energy (eV)"
     assert fig.layout.yaxis.title.text == "DOS (1/eV)"
     assert len(fig.data) == 1
-    Assert.allclose(fig.data[0].x, raw_dos.energies - raw_dos.fermi_energy)
-    Assert.allclose(fig.data[0].y, raw_dos.dos[0])
+    Assert.allclose(fig.data[0].x, Sr2TiO4.ref.energies)
+    Assert.allclose(fig.data[0].y, Sr2TiO4.ref.dos)
 
 
-def test_nonmagnetic_Dos_from_file(nonmagnetic_Dos, mock_file, check_read):
-    with mock_file("dos", nonmagnetic_Dos) as mocks:
-        check_read(Dos, mocks, nonmagnetic_Dos)
-
-
-def test_print_nonmagnetic_dos(nonmagnetic_Dos):
-    actual, _ = _util.format_(Dos(nonmagnetic_Dos))
-    reference = f"""
-Dos:
-    energies: [-1.00, 3.00] {num_energies} points
-    """.strip()
-    assert actual == {"text/plain": reference}
-
-
-@pytest.fixture
-def magnetic_Dos():
-    """ Setup a magnetic Dos containing all relevant quantities."""
-    energies = np.linspace(-2, 2, num_energies)
-    raw_dos = RawDos(
-        version=current_vasp_version,
-        fermi_energy=-0.137,
-        energies=energies,
-        dos=np.array(((energies + 0.5) ** 2, (energies - 0.5) ** 2)),
-    )
-    return raw_dos
-
-
-def test_magnetic_Dos_to_frame(magnetic_Dos, Assert):
-    """ Test whether reading the magnetic Dos yields the expected results."""
-    raw_dos = magnetic_Dos
-    dos = Dos(raw_dos).to_frame()
-    Assert.allclose(dos.energies, raw_dos.energies - raw_dos.fermi_energy)
-    Assert.allclose(dos.up, raw_dos.dos[0])
-    Assert.allclose(dos.down, raw_dos.dos[1])
-    assert dos.fermi_energy == raw_dos.fermi_energy
-
-
-def test_magnetic_Dos_plot(magnetic_Dos, Assert):
-    """ Test whether plotting the magnetic Dos yields the expected results."""
-    raw_dos = magnetic_Dos
-    fig = Dos(raw_dos).plot()
+def test_Fe3O4_plot(Fe3O4, Assert):
+    fig = Fe3O4.plot()
     assert len(fig.data) == 2
     Assert.allclose(fig.data[0].x, fig.data[1].x)
-    Assert.allclose(fig.data[0].y, raw_dos.dos[0])
-    Assert.allclose(fig.data[1].y, -raw_dos.dos[1])
+    Assert.allclose(fig.data[0].y, Fe3O4.ref.dos_up)
+    Assert.allclose(fig.data[1].y, -Fe3O4.ref.dos_down)
 
 
-def test_print_magnetic_dos(magnetic_Dos):
-    actual, _ = _util.format_(Dos(magnetic_Dos))
-    reference = f"""
-spin polarized Dos:
-    energies: [-2.00, 2.00] {num_energies} points
-    """.strip()
-    assert actual == {"text/plain": reference}
-
-
-@pytest.fixture
-def nonmagnetic_projections(nonmagnetic_Dos):
-    """ Setup a l resolved Dos containing all relevant quantities."""
-    ref = {
-        "Si_s": np.random.random(num_energies),
-        "Si_p": np.random.random(num_energies),
-        "Si_d": np.random.random(num_energies),
-        "C1_s": np.random.random(num_energies),
-        "C1_p": np.random.random(num_energies),
-        "C2_s": np.random.random(num_energies),
-        "C2_p": np.random.random(num_energies),
-    }
-    num_spins = 1
-    atoms = ["Si", "C1", "C2"]
-    lmax = 4
-    raw_proj = RawProjectors(
-        version=current_vasp_version,
-        topology=RawTopology(
-            version=current_vasp_version,
-            number_ion_types=[1, 2],
-            ion_types=np.array(["Si", "C "], dtype="S"),
-        ),
-        orbital_types=np.array([" s", " p", " d", " f"], dtype="S"),
-        number_spins=num_spins,
-    )
-    nonmagnetic_Dos.projectors = raw_proj
-    nonmagnetic_Dos.projections = np.zeros((num_spins, len(atoms), lmax, num_energies))
-    orbitals = ["s", "p", "d"]
-    for iatom, atom in enumerate(atoms):
-        for l, orbital in enumerate(orbitals):
-            key = atom + "_" + orbital
-            if key in ref:
-                nonmagnetic_Dos.projections[:, iatom, l] = ref[key]
-    return nonmagnetic_Dos, ref
-
-
-def test_nonmagnetic_l_Dos_to_frame(nonmagnetic_projections, Assert):
-    """ Test whether reading the nonmagnetic l resolved Dos yields the expected results."""
-    raw_dos, ref = nonmagnetic_projections
-    equivalent_selections = [
-        "s Si(d) Si C(s,p) 1(p) 2 3(s)",
-        "1( p), C(s) Si(d), *(s), 2 Si(*) p(C) s(3)",
-    ]
-    for selection in equivalent_selections:
-        dos = Dos(raw_dos).to_frame(selection)
-        Assert.allclose(dos.s, ref["Si_s"] + ref["C1_s"] + ref["C2_s"])
-        Assert.allclose(dos.Si, ref["Si_s"] + ref["Si_p"] + ref["Si_d"])
-        Assert.allclose(dos.Si_d, ref["Si_d"])
-        Assert.allclose(dos.Si_1_p, ref["Si_p"])
-        Assert.allclose(dos.C_s, ref["C1_s"] + ref["C2_s"])
-        Assert.allclose(dos.C_p, ref["C1_p"] + ref["C2_p"])
-        Assert.allclose(dos.C_1, ref["C1_s"] + ref["C1_p"])
-        Assert.allclose(dos.C_2_s, ref["C2_s"])
-
-
-def test_nonmagnetic_l_Dos_plot(nonmagnetic_projections, Assert):
-    """ Test whether plotting the nonmagnetic l resolved Dos yields the expected results."""
-    raw_dos, ref = nonmagnetic_projections
-    selection = "p 3 Si(d)"
-    fig = Dos(raw_dos).plot(selection)
+def test_Sr2TiO4_projectors_plot(Sr2TiO4_projectors, Assert):
+    fig = Sr2TiO4_projectors.plot("s O(px) dz2(3)")
     assert len(fig.data) == 4  # total Dos + 3 selections
-    Assert.allclose(fig.data[1].y, ref["Si_p"] + ref["C1_p"] + ref["C2_p"])
-    Assert.allclose(fig.data[2].y, ref["C2_s"] + ref["C2_p"])
-    Assert.allclose(fig.data[3].y, ref["Si_d"])
+    Assert.allclose(fig.data[1].y, Sr2TiO4_projectors.ref.s)
+    Assert.allclose(fig.data[2].y, Sr2TiO4_projectors.ref.O_px)
+    Assert.allclose(fig.data[3].y, Sr2TiO4_projectors.ref.Ti_dz2)
 
 
-def test_more_projections_style(nonmagnetic_projections, Assert):
-    """Vasp 6.1 may store more orbital types then projections available. This
-    test checks whether that leads to any issues"""
-    raw_dos, ref = nonmagnetic_projections
-    shape = raw_dos.projections.shape
-    shape = (shape[0], shape[1], shape[2] - 1, shape[3])
-    raw_dos.projections = np.random.uniform(low=0.2, size=shape)
-    dos = Dos(raw_dos).read("Si")
-
-
-def test_print_nonmagnetic_projections(nonmagnetic_projections):
-    raw_dos, _ = nonmagnetic_projections
-    actual, _ = _util.format_(Dos(raw_dos))
-    reference = f"""
-Dos:
-    energies: [-1.00, 3.00] {num_energies} points
-projectors:
-    atoms: Si, C
-    orbitals: s, p, d, f
-    """.strip()
-    assert actual == {"text/plain": reference}
-
-
-@pytest.fixture
-def magnetic_projections(magnetic_Dos):
-    """ Setup a lm resolved Dos containing all relevant quantities."""
-    num_spins = 2
-    lm_size = 16
-    sp_orbitals = ["    s", "   py", "   pz", "   px"]
-    d_orbitals = ["  dxy", "  dyz", "  dz2", "  dxz", "x2-y2"]
-    f_orbitals = ["fy3x2", " fxyz", " fyz2", "  fz3", " fxz2", " fzx2", "  fx3"]
-    orbitals = sp_orbitals + d_orbitals + f_orbitals
-    raw_proj = RawProjectors(
-        version=current_vasp_version,
-        topology=RawTopology(
-            version=current_vasp_version,
-            number_ion_types=[1],
-            ion_types=np.array(["Fe"], dtype="S"),
-        ),
-        orbital_types=np.array(orbitals, dtype="S"),
-        number_spins=num_spins,
-    )
-    magnetic_Dos.projectors = raw_proj
-    magnetic_Dos.projections = np.zeros((num_spins, 1, lm_size, num_energies))
-    ref = {}
-    for ispin, spin in enumerate(["up", "down"]):
-        for lm, orbital in enumerate(orbitals):
-            key = orbital.strip() + "_" + spin
-            ref[key] = np.random.random(num_energies)
-            magnetic_Dos.projections[ispin, :, lm] = ref[key]
-    return magnetic_Dos, ref
-
-
-def test_magnetic_lm_Dos_read(magnetic_projections, Assert):
-    """ Test whether reading lm resolved Dos works as expected."""
-    raw_dos, ref = magnetic_projections
-    dos = Dos(raw_dos).read("px p d f")
-    Assert.allclose(dos["px_up"], ref["px_up"])
-    Assert.allclose(dos["px_down"], ref["px_down"])
-    Assert.allclose(dos["p_up"], ref["px_up"] + ref["py_up"] + ref["pz_up"])
-    d_down = ref["dxy_down"] + ref["dyz_down"] + ref["dz2_down"]
-    d_down += ref["dxz_down"] + ref["x2-y2_down"]
-    Assert.allclose(dos["d_down"], d_down)
-    f_up = ref["fy3x2_up"] + ref["fxyz_up"] + ref["fyz2_up"] + ref["fz3_up"]
-    f_up += ref["fxz2_up"] + ref["fzx2_up"] + ref["fx3_up"]
-    Assert.allclose(dos["f_up"], f_up)
-
-
-def test_magnetic_lm_Dos_plot(magnetic_Dos, magnetic_projections, Assert):
-    """ Test whether plotting lm resolved Dos works as expected."""
-    raw_dos, ref = magnetic_projections
-    fig = Dos(raw_dos).plot("dxz p")
+def test_Fe3O4_projectors_plot(Fe3O4_projectors, Assert):
+    fig = Fe3O4_projectors.plot("Fe p O(d)")
     data = fig.data
-    assert len(data) == 6  # spin resolved total + 2 selections
+    assert len(data) == 8  # spin resolved total + 3 selections
     names = [d.name for d in data]
-    dxz_up = names.index("dxz_up")
-    Assert.allclose(data[dxz_up].y, ref["dxz_up"])
+    Fe_up = names.index("Fe_up")
+    Assert.allclose(data[Fe_up].y, Fe3O4_projectors.ref.Fe_up)
+    Fe_down = names.index("Fe_down")
+    Assert.allclose(data[Fe_down].y, -Fe3O4_projectors.ref.Fe_down)
+    p_up = names.index("p_up")
+    Assert.allclose(data[p_up].y, Fe3O4_projectors.ref.p_up)
     p_down = names.index("p_down")
-    Assert.allclose(data[p_down].y, -(ref["px_down"] + ref["py_down"] + ref["pz_down"]))
+    Assert.allclose(data[p_down].y, -Fe3O4_projectors.ref.p_down)
+    O_d_up = names.index("O_d_up")
+    Assert.allclose(data[O_d_up].y, Fe3O4_projectors.ref.O_d_up)
+    O_d_down = names.index("O_d_down")
+    Assert.allclose(data[O_d_down].y, -Fe3O4_projectors.ref.O_d_down)
+
+
+def test_Sr2TiO4_to_png(Sr2TiO4):
+    check_to_image(Sr2TiO4, None, "dos.png")
+    custom_filename = "custom.jpg"
+    check_to_image(Sr2TiO4, custom_filename, custom_filename)
+
+
+def check_to_image(Sr2TiO4, filename_argument, expected_filename):
+    with patch("py4vasp.data.dos.Dos._to_plotly") as plot:
+        Sr2TiO4.to_image("args", filename=filename_argument, key="word")
+        plot.assert_called_once()
+        assert plot.call_args[0][1] == "args"
+        assert plot.call_args[1] == {"key": "word"}
+        fig = plot.return_value
+        fig.write_image.assert_called_once_with(Sr2TiO4._path / expected_filename)
 
 
 def test_nonexisting_dos():
@@ -263,17 +199,46 @@ def test_nonexisting_dos():
         dos = Dos(None).read()
 
 
-def test_version(nonmagnetic_Dos):
-    nonmagnetic_Dos.version = RawVersion(_util._minimal_vasp_version.major - 1)
-    with pytest.raises(exception.OutdatedVaspVersion):
-        Dos(nonmagnetic_Dos).read()
+def test_Sr2TiO4_print(Sr2TiO4, format_):
+    actual, _ = format_(Sr2TiO4)
+    reference = f"""
+Dos:
+    energies: [-1.00, 3.00] 50 points
+    """.strip()
+    assert actual == {"text/plain": reference}
 
 
-def test_descriptor(nonmagnetic_Dos, check_descriptors):
-    dos = Dos(nonmagnetic_Dos)
+def test_Fe3O4_print(Fe3O4, format_):
+    actual, _ = format_(Fe3O4)
+    reference = f"""
+spin polarized Dos:
+    energies: [-2.00, 2.00] 50 points
+    """.strip()
+    assert actual == {"text/plain": reference}
+
+
+def test_Sr2TiO4_projectors_print(Sr2TiO4_projectors, format_):
+    actual, _ = format_(Sr2TiO4_projectors)
+    reference = f"""
+Dos:
+    energies: [-1.00, 3.00] 50 points
+projectors:
+    atoms: Sr, Ti, O
+    orbitals: s, py, pz, px, dxy, dyz, dz2, dxz, x2-y2, fy3x2, fxyz, fyz2, fz3, fxz2, fzx2, fx3
+    """.strip()
+    assert actual == {"text/plain": reference}
+
+
+def test_descriptor(Sr2TiO4, check_descriptors):
     descriptors = {
         "_to_dict": ["to_dict", "read"],
         "_to_plotly": ["to_plotly", "plot"],
         "_to_frame": ["to_frame"],
     }
-    check_descriptors(dos, descriptors)
+    check_descriptors(Sr2TiO4, descriptors)
+
+
+def test_from_file(raw_data, mock_file, check_read):
+    raw_dos = raw_data.dos("Sr2TiO4")
+    with mock_file("dos", raw_dos) as mocks:
+        check_read(Dos, mocks, raw_dos)

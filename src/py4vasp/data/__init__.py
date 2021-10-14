@@ -19,19 +19,28 @@ the documentation of the individual classes.
 
 from .band import Band
 from .dos import Dos
+from .dielectric_function import DielectricFunction
+from .dielectric_tensor import DielectricTensor
+from .elastic_modulus import ElasticModulus
 from .energy import Energy
-from .kpoints import Kpoints
-from .magnetism import Magnetism
-from .projectors import Projectors
+from .kpoint import Kpoint
+from .piezoelectric_tensor import PiezoelectricTensor
+from .polarization import Polarization
+from .projector import Projector
 from .topology import Topology
 from .viewer3d import Viewer3d
 from .structure import Structure
+from .system import System
+from .born_effective_charge import BornEffectiveCharge
 from .density import Density
-from .trajectory import Trajectory
+from .force import Force
+from .force_constant import ForceConstant
+from .internal_strain import InternalStrain
+from .magnetism import Magnetism
+from .stress import Stress
 
 import plotly.io as pio
 import plotly.graph_objects as go
-import cufflinks as cf
 import inspect
 import sys
 
@@ -42,5 +51,3 @@ pio.templates["vasp"] = go.layout.Template(
     layout={"colorway": ["#4C265F", "#2FB5AB", "#2C68FC", "#A82C35", "#808080"]}
 )
 pio.templates.default = "ggplot2+vasp"
-cf.go_offline()
-cf.set_config_file(theme="ggplot")

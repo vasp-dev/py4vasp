@@ -38,10 +38,10 @@ class Viewer3d:
     _angles = None
     _number_cells = 1
     _axes = None
-    _arrows = []
 
     def __init__(self, viewer):
         self._ngl = viewer
+        self._arrows = []
 
     @classmethod
     def from_structure(cls, structure, supercell=None):
@@ -54,7 +54,7 @@ class Viewer3d:
         supercell : int or np.ndarray
             If present the cell is extended by the specified factor along each axis.
         """
-        ase = structure.to_ase(supercell)
+        ase = structure._to_ase(supercell)
         # ngl works with the standard form, so we need to store the positions in the same format
         standard_cell, _ = ase.cell.standard_form()
         ase.set_cell(standard_cell, scale_atoms=True)
@@ -80,27 +80,27 @@ class Viewer3d:
 
         Parameters
         ----------
-        trajector : data.Trajectory
+        trajectory : data.Structure
             Defines the trajectory of the Vasp MD run.
         supercell : int or np.ndarray
             If present the cell is extended by the specified factor along each axis.
         """
-        ngl_trajectory = nglview.MDTrajTrajectory(trajectory.to_mdtraj())
+        ngl_trajectory = nglview.MDTrajTrajectory(trajectory._to_mdtraj())
         return cls(nglview.NGLWidget(ngl_trajectory))
 
     def _ipython_display_(self):
         self._ngl._ipython_display_()
 
     def show_cell(self):
-        """ Show the unit cell of the crystal. """
+        """Show the unit cell of the crystal."""
         self._ngl.add_unitcell()
 
     def hide_cell(self):
-        """ Hide the unit cell of the crystal. """
+        """Hide the unit cell of the crystal."""
         self._ngl.remove_unitcell()
 
     def show_axes(self):
-        """ Show the cartesian axis in the corner of the figure. """
+        """Show the cartesian axis in the corner of the figure."""
         if self._axes is not None:
             return
         self._axes = (
@@ -110,7 +110,7 @@ class Viewer3d:
         )
 
     def hide_axes(self):
-        """ Hide the cartesian axis. """
+        """Hide the cartesian axis."""
         if self._axes is None:
             return
         for axis in self._axes:

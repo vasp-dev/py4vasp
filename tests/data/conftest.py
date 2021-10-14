@@ -1,20 +1,10 @@
-from numpy.testing import assert_array_almost_equal_nulp
 from contextlib import contextmanager
-from unittest.mock import patch, MagicMock
+from IPython.core.formatters import DisplayFormatter
+from unittest.mock import patch, MagicMock, PropertyMock
 from pathlib import Path
 import pytest
+import py4vasp._util.version as version
 import py4vasp.raw as raw
-
-
-class _Assert:
-    @staticmethod
-    def allclose(actual, desired):
-        assert_array_almost_equal_nulp(actual, desired, 10)
-
-
-@pytest.fixture
-def Assert():
-    return _Assert
 
 
 @pytest.fixture
@@ -22,9 +12,10 @@ def mock_file():
     @contextmanager
     def _mock_file(name, ref):
         cm_init = patch.object(raw.File, "__init__", autospec=True, return_value=None)
-        cm_sut = patch.object(raw.File, name, autospec=True, return_value=ref)
+        cm_sut = patch.object(raw.File, name, new_callable=PropertyMock)
         cm_close = patch.object(raw.File, "close", autospec=True)
         with cm_init as init, cm_sut as sut, cm_close as close:
+            sut.return_value = {"default": ref}
             yield {"init": init, "sut": sut, "close": close}
 
     return _mock_file
@@ -40,6 +31,7 @@ def check_read():
 
     def _check_read_from_open_file(cls, mocks, ref):
         with raw.File() as file:
+            file._path = Path.cwd()
             obj = _create_obj(cls, file, _assert_not_called, mocks)
             _check_raw_data(obj, ref, _assert_only_sut, mocks)
 
@@ -71,8 +63,8 @@ def check_read():
 
     def _check_raw_data(obj, ref, assertion, mocks):
         _reset_mocks(mocks)
-        with obj._raw_data_from_context() as actual:
-            assert actual == ref
+        with obj._data_dict_from_context() as actual:
+            assert actual["default"] == ref
         assertion(mocks)
 
     def _assert_not_called(mocks):
@@ -104,10 +96,21 @@ def check_read():
 @pytest.fixture
 def check_descriptors():
     def _check_descriptors(instance, descriptors):
+        classname = f"{instance.__module__}.{instance.__class__.__name__}"
         for private_name, public_names in descriptors.items():
-            fullname = f"{instance.__module__}.{private_name}"
+            fullname = f"{classname}.{private_name}"
             with patch(fullname, return_value=private_name):
                 for public_name in public_names:
                     assert private_name == getattr(instance, public_name)()
 
     return _check_descriptors
+
+
+@pytest.fixture
+def outdated_version():
+    return raw.RawVersion(version.minimal_vasp_version.major - 1)
+
+
+@pytest.fixture
+def format_():
+    return DisplayFormatter().format

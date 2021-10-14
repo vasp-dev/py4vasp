@@ -1,25 +1,40 @@
 from unittest.mock import patch
-from py4vasp.data import Structure, Trajectory, Viewer3d
+from py4vasp.data import Structure, Viewer3d
 from py4vasp.data.viewer3d import _Arrow3d, _x_axis, _y_axis, _z_axis
-from .test_structure import raw_structure, raw_topology
-from .test_density import raw_density
-from .test_trajectory import raw_trajectory
 import py4vasp.exceptions as exception
 import ipykernel.jsonutil as json
 import numpy as np
 import pytest
 import nglview
+import types
 
 
 @pytest.fixture
-def viewer3d(raw_structure):
-    return make_viewer(raw_structure)
+def assert_arrow_message(Assert):
+    def _assert_arrow_message(message, arrow):
+        assert message[0] == "addShape"
+        args = message[1]
+        assert args[0] == "shape"
+        params = args[1][0]
+        assert params[0] == "arrow"
+        Assert.allclose(params[1], arrow.tail)
+        Assert.allclose(params[2], arrow.tip)
+        assert params[3] == arrow.color
+        assert params[4] == arrow.radius
+
+    return _assert_arrow_message
 
 
-def make_viewer(raw_structure, supercell=None):
-    structure = Structure(raw_structure)
+@pytest.fixture
+def viewer3d(raw_data):
+    structure = Structure(raw_data.structure("Sr2TiO4"))
+    return make_viewer(structure)
+
+
+def make_viewer(structure, supercell=None):
     viewer = structure.plot(supercell)
-    viewer.raw_structure = raw_structure
+    viewer.ref = types.SimpleNamespace()
+    viewer.ref.positions = structure.cartesian_positions()
     viewer.default_messages = count_messages(viewer, setup=True)
     return viewer
 
@@ -71,30 +86,13 @@ def test_axes(viewer3d, assert_arrow_message):
     viewer3d.hide_axes()
 
 
-@pytest.fixture
-def assert_arrow_message(Assert):
-    def _assert_arrow_message(message, arrow):
-        assert message[0] == "addShape"
-        args = message[1]
-        assert args[0] == "shape"
-        params = args[1][0]
-        assert params[0] == "arrow"
-        Assert.allclose(params[1], arrow.tail)
-        Assert.allclose(params[2], arrow.tip)
-        assert params[3] == arrow.color
-        assert params[4] == arrow.radius
-
-    return _assert_arrow_message
-
-
 def test_arrows(viewer3d, assert_arrow_message):
-    positions = viewer3d.raw_structure.positions @ viewer3d.raw_structure.actual_cell
-    number_atoms = len(positions)
+    number_atoms = len(viewer3d.ref.positions)
     color = [0.1, 0.1, 0.8]
     arrows = create_arrows(viewer3d, number_atoms)
     messages = last_messages(viewer3d, number_atoms)
     assert len(messages) == number_atoms
-    for message, tail, arrow in zip(messages, positions, arrows):
+    for message, tail, arrow in zip(messages, viewer3d.ref.positions, arrows):
         tip = tail + arrow
         assert_arrow_message(message, _Arrow3d(tail, tip, color))
     viewer3d.show_arrows_at_atoms(arrows)
@@ -105,14 +103,15 @@ def test_arrows(viewer3d, assert_arrow_message):
     viewer3d.hide_arrows_at_atoms()
 
 
-def test_supercell(raw_structure, assert_arrow_message):
-    number_atoms = len(raw_structure.positions)
+def test_supercell(raw_data, assert_arrow_message):
+    structure = Structure(raw_data.structure("Sr2TiO4"))
+    number_atoms = structure.number_atoms()
     supercell = (1, 2, 3)
-    viewer = make_viewer(raw_structure, supercell)
+    viewer = make_viewer(structure, supercell)
     create_arrows(viewer, number_atoms)
     assert count_messages(viewer) == np.prod(supercell) * number_atoms
     supercell = 2  # meaning 2 along every direction
-    viewer = make_viewer(raw_structure, supercell)
+    viewer = make_viewer(structure, supercell)
     create_arrows(viewer, number_atoms)
     assert count_messages(viewer) == supercell ** 3 * number_atoms
 
@@ -135,16 +134,21 @@ def test_serializable():
         json.json_clean(element)
 
 
-def test_standard_form(raw_structure, Assert):
+def test_standard_form(raw_data, Assert):
+    # TODO: this test should be changed to make the intention clearer
+    # The issue is that the positions of the arrows are incorrect if we pass a structure
+    # which has not been transformed to standard form.
+    raw_structure = raw_data.structure("Sr2TiO4")
     x = np.sqrt(0.5)
-    raw_structure.cell.lattice_vectors = np.array([[x, x, 0], [-x, x, 0], [0, 0, 1]])
-    viewer = make_viewer(raw_structure)
-    expected_positions = raw_structure.cell.scale * raw_structure.positions
-    Assert.allclose(viewer._positions, expected_positions)
+    raw_structure.cell.lattice_vectors = np.array([[[x, x, 0], [-x, x, 0], [0, 0, 1]]])
+    raw_structure.positions += 0.1  # shift to avoid small comparisons
+    viewer = make_viewer(Structure(raw_structure))
+    Assert.allclose(viewer._positions, raw_structure.positions)
 
 
-def test_isosurface(raw_density):
-    viewer = make_viewer(raw_density.structure)
+def test_isosurface(raw_data):
+    raw_density = raw_data.density("Fe3O4 collinear")
+    viewer = make_viewer(Structure(raw_density.structure))
     viewer.show_isosurface(raw_density.charge)
     messages = last_messages(viewer, n=1, get_msg_kwargs=True)
     assert_load_file(messages[0], binary=True, default=True)
@@ -156,9 +160,9 @@ def test_isosurface(raw_density):
     assert_add_surface(messages[1], kwargs)
 
 
-def test_trajectory(raw_trajectory):
-    trajectory = Trajectory(raw_trajectory)
-    viewer = trajectory.plot()
+def test_trajectory(raw_data):
+    structure = Structure(raw_data.structure("Sr2TiO4"))
+    viewer = structure[:].plot()
     viewer.default_messages = 0
     n = count_messages(viewer)
     assert n == 2
