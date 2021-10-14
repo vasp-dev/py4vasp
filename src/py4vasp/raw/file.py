@@ -91,7 +91,7 @@ class File(AbstractContextManager):
 
     def _read_system(self):
         self._raise_error_if_closed()
-        return RawSystem(self._h5f["results/positions/system"][()])
+        return RawSystem(self._h5f["input/incar/SYSTEM"][()])
 
     @property
     def dos(self):

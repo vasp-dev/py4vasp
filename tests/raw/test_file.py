@@ -163,7 +163,7 @@ def reference_system():
 
 
 def write_system(h5f, system, source):
-    h5f[f"results/positions/system"] = system.system
+    h5f[f"input/incar/SYSTEM"] = system.system
 
 
 def check_system(file, reference, source):
