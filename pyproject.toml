@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "py4vasp"
-version = "0.3.0"
+version = "0.3.1"
 description = ""
 authors = [
     "Martin Schlipf <martin.schlipf@gmail.com>",

@@ -86,7 +86,8 @@ def test_print_dft_tensor(nscf_tensor, format_):
 
 def check_print_dielectric_tensor(actual, expected_description):
     reference = f"""
-MACROSCOPIC STATIC DIELECTRIC TENSOR ({expected_description})
+Macroscopic static dielectric tensor (dimensionless)
+  {expected_description}
 ------------------------------------------------------
                       clamped-ion
           0.000000     1.000000     2.000000

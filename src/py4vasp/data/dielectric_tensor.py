@@ -34,7 +34,8 @@ class DielectricTensor(_base.DataBase):
     def _to_string(self):
         data = self._to_dict()
         return f"""
-MACROSCOPIC STATIC DIELECTRIC TENSOR {_description(data["method"])}
+Macroscopic static dielectric tensor (dimensionless)
+  {_description(data["method"])}
 ------------------------------------------------------
 {_dielectric_tensor_string(data["clamped_ion"], "clamped-ion")}
 {_dielectric_tensor_string(data["relaxed_ion"], "relaxed-ion")}
@@ -55,11 +56,11 @@ def _dielectric_tensor_string(tensor, label):
 
 def _description(method):
     if method == "dft":
-        return "(including local field effects in DFT)"
+        return "including local field effects in DFT"
     elif method == "rpa":
-        return "(including local field effects in RPA (Hartree))"
+        return "including local field effects in RPA (Hartree)"
     elif method == "scf":
-        return "(including local field effects)"
+        return "including local field effects"
     elif method == "nscf":
-        return "(excluding local field effects)"
+        return "excluding local field effects"
     assert False  # unknown method

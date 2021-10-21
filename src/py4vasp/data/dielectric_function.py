@@ -34,8 +34,19 @@ class DielectricFunction(DataBase, _export.Image):
         return f"""
 dielectric function:
     energies: [{energies[0]:0.2f}, {energies[-1]:0.2f}] {len(energies)} points
+    components: {", ".join(self._components())}
     directions: isotropic, xx, yy, zz, xy, yz, xz
         """.strip()
+
+    def _components(self):
+        components = ()
+        if self._raw_data.density_density is not None:
+            components += ("density",)
+        if self._raw_data.current_current is not None:
+            components += ("current",)
+        if self._raw_data.ion is not None:
+            components += ("ion",)
+        return components
 
     def _to_dict(self):
         f"""Read the data into a dictionary.
@@ -45,11 +56,12 @@ dielectric function:
         dict
             Contains the energies at which the dielectric function was evaluated
             and the dielectric tensor (3x3 matrix) at these energies."""
+        data = self._raw_data
         return {
-            "energies": self._raw_data.energies[:],
-            "density_density": _convert.to_complex(self._raw_data.density_density[:]),
-            "current_current": _convert.to_complex(self._raw_data.current_current[:]),
-            "ion": _convert.to_complex(self._raw_data.ion[:]),
+            "energies": data.energies[:],
+            "density_density": _convert_to_complex_if_not_none(data.density_density),
+            "current_current": _convert_to_complex_if_not_none(data.current_current),
+            "ion": _convert_to_complex_if_not_none(data.ion),
         }
 
     def _to_plotly(self, selection=None):
@@ -68,30 +80,43 @@ dielectric function:
             plotly figure containing the dielectric function for the selected
             directions and components."""
         selection = _default_selection_if_none(selection)
-        choices = _parse_selection(selection)
         data = self._to_dict()
+        choices = _parse_selection(selection, data)
         plots = [_make_plot(data, *choice) for choice in choices]
         default = {
             "xaxis": {"title": {"text": "Energy (eV)"}},
-            "yaxis": {"title": {"text": r"$\epsilon$"}},
+            "yaxis": {"title": {"text": "dielectric function ϵ"}},
         }
         return go.Figure(data=plots, layout=default)
+
+
+def _convert_to_complex_if_not_none(array):
+    if array is None:
+        return None
+    else:
+        return _convert.to_complex(array[:])
 
 
 def _default_selection_if_none(selection):
     return "isotropic" if selection is None else selection
 
 
+def _parse_selection(selection, data):
+    tree = _selection.SelectionTree.from_selection(selection)
+    yield from _parse_recursive(tree, _default_choice(data))
+
+
 class _Choice(typing.NamedTuple):
-    component: str = "density"
+    component: str
     direction: str = "isotropic"
     real_or_imag: str = _Selection.default
 
 
-def _parse_selection(selection):
-    tree = _selection.SelectionTree.from_selection(selection)
-    default_choice = _Choice()
-    yield from _parse_recursive(tree, default_choice)
+def _default_choice(data):
+    if data["density_density"] is not None:
+        return _Choice("density")
+    else:
+        return _Choice("ion")
 
 
 def _parse_recursive(tree, current_choice):
@@ -165,14 +190,10 @@ def _select_data_direction(tensor, direction):
 
 
 def _build_name(component, direction, real_or_imag):
-    subscript = "" if direction == "isotropic" else f"_{{{direction}}}"
-    if component == "density":
-        superscript = "^{dd}"
-    elif component == "current":
-        superscript = "^{jj}"
-    else:
-        superscript = "^{ion}"
-    return f"{real_or_imag[:2].capitalize()}($\\epsilon{superscript}{subscript}$)"
+    name = f"{real_or_imag[:2].capitalize()},{component}"
+    if direction != "isotropic":
+        name += f",{direction}"
+    return name
 
 
 def _scatter_plot(x, y, name):
