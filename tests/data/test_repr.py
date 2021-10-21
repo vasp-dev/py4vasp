@@ -8,7 +8,7 @@ def test_repr(raw_data):
     tests = {
         Band: "multiple",
         Density: "Fe3O4 collinear",
-        DielectricFunction: None,
+        DielectricFunction: "electron",
         DielectricTensor: "dft",
         Dos: "Fe3O4",
         ElasticModulus: None,

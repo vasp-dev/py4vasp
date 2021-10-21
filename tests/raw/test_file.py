@@ -530,7 +530,7 @@ def check_density(file, reference, source):
 def test_dielectric_function(tmpdir):
     setup = SetupTest(
         directory=tmpdir,
-        options=default_options,
+        options=itertools.product((True, False), repeat=2),
         sources=default_sources,
         create_reference=reference_dielectric_function,
         write_reference=write_dielectric_function,
@@ -539,24 +539,35 @@ def test_dielectric_function(tmpdir):
     generic_test(setup)
 
 
-def reference_dielectric_function():
-    shape = (3, axes, axes, num_energies, complex)
+def reference_dielectric_function(use_ion):
+    shape = (2, axes, axes, num_energies, complex)
     data = np.arange(np.prod(shape)).reshape(shape)
-    return RawDielectricFunction(
-        energies=np.arange(num_energies),
-        density_density=data[0],
-        current_current=data[1],
-        ion=data[2],
-    )
+    if use_ion:
+        return RawDielectricFunction(
+            energies=np.arange(num_energies),
+            density_density=None,
+            current_current=None,
+            ion=data[0],
+        )
+    else:
+        return RawDielectricFunction(
+            energies=np.arange(num_energies),
+            density_density=data[0],
+            current_current=data[1],
+            ion=None,
+        )
 
 
 def write_dielectric_function(h5f, dielectric_function, source):
     group = "results/linear_response"
     suffix = "_dielectric_function"
     h5f[f"{group}/energies{suffix}"] = dielectric_function.energies
-    h5f[f"{group}/density_density{suffix}"] = dielectric_function.density_density
-    h5f[f"{group}/current_current{suffix}"] = dielectric_function.current_current
-    h5f[f"{group}/ion{suffix}"] = dielectric_function.ion
+    if dielectric_function.density_density is not None:
+        h5f[f"{group}/density_density{suffix}"] = dielectric_function.density_density
+    if dielectric_function.current_current is not None:
+        h5f[f"{group}/current_current{suffix}"] = dielectric_function.current_current
+    if dielectric_function.ion is not None:
+        h5f[f"{group}/ion{suffix}"] = dielectric_function.ion
 
 
 def check_dielectric_function(file, reference, source):

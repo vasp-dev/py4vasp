@@ -348,14 +348,15 @@ class File(AbstractContextManager):
 
     def _read_dielectric_function(self):
         self._raise_error_if_closed()
-        group = f"results/linear_response"
+        group = "results/linear_response"
+        suffix = "_dielectric_function"
         if group not in self._h5f:
             return None
         return RawDielectricFunction(
-            energies=self._h5f[f"{group}/energies_dielectric_function"],
-            density_density=self._h5f[f"{group}/density_density_dielectric_function"],
-            current_current=self._h5f[f"{group}/current_current_dielectric_function"],
-            ion=self._h5f[f"{group}/ion_dielectric_function"],
+            energies=self._h5f[f"{group}/energies{suffix}"],
+            density_density=self._safe_get_key(f"{group}/density_density{suffix}"),
+            current_current=self._safe_get_key(f"{group}/current_current{suffix}"),
+            ion=self._safe_get_key(f"{group}/ion{suffix}"),
         )
 
     @property

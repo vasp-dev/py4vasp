@@ -7,20 +7,40 @@ from unittest.mock import patch
 
 
 @pytest.fixture
-def dielectric_function(raw_data):
-    raw_dielectric = raw_data.dielectric_function("default")
-    dielectric = DielectricFunction(raw_dielectric)
-    dielectric.ref = types.SimpleNamespace()
-    dielectric.ref.energies = raw_dielectric.energies
+def electronic(raw_data):
+    raw_electronic = raw_data.dielectric_function("electron")
+    electronic = DielectricFunction(raw_electronic)
+    electronic.ref = types.SimpleNamespace()
+    electronic.ref.energies = raw_electronic.energies
     to_complex = lambda data: data[..., 0] + 1j * data[..., 1]
-    dielectric.ref.density_density = to_complex(raw_dielectric.density_density)
-    dielectric.ref.current_current = to_complex(raw_dielectric.current_current)
-    dielectric.ref.ion = to_complex(raw_dielectric.ion)
-    dielectric.ref.isotropic = np.trace(dielectric.ref.density_density) / 3
-    return dielectric
+    electronic.ref.density_density = to_complex(raw_electronic.density_density)
+    electronic.ref.current_current = to_complex(raw_electronic.current_current)
+    electronic.ref.ion = None
+    return electronic
 
 
-def test_dielectric_read(dielectric_function, Assert):
+@pytest.fixture
+def ionic(raw_data):
+    raw_ionic = raw_data.dielectric_function("ion")
+    ionic = DielectricFunction(raw_ionic)
+    ionic.ref = types.SimpleNamespace()
+    ionic.ref.energies = raw_ionic.energies
+    to_complex = lambda data: data[..., 0] + 1j * data[..., 1]
+    ionic.ref.density_density = None
+    ionic.ref.current_current = None
+    ionic.ref.ion = to_complex(raw_ionic.ion)
+    return ionic
+
+
+def test_electronic_read(electronic, Assert):
+    check_dielectric_read(electronic, Assert)
+
+
+def test_ionic_read(ionic, Assert):
+    check_dielectric_read(ionic, Assert)
+
+
+def check_dielectric_read(dielectric_function, Assert):
     actual = dielectric_function.read()
     Assert.allclose(actual["energies"], dielectric_function.ref.energies)
     Assert.allclose(actual["density_density"], dielectric_function.ref.density_density)
@@ -35,147 +55,224 @@ class Plot:
     name: str
 
 
-def test_dielectric_plot_default(dielectric_function, Assert):
+def test_electronic_plot_default(electronic, Assert):
     plots = [
         Plot(
-            x=dielectric_function.ref.energies,
-            y=isotropic(dielectric_function.ref.density_density).real,
+            x=electronic.ref.energies,
+            y=isotropic(electronic.ref.density_density).real,
             name=expected_plot_name("density", "Re", "isotropic"),
         ),
         Plot(
-            x=dielectric_function.ref.energies,
-            y=isotropic(dielectric_function.ref.density_density).imag,
+            x=electronic.ref.energies,
+            y=isotropic(electronic.ref.density_density).imag,
             name=expected_plot_name("density", "Im", "isotropic"),
         ),
     ]
-    fig = dielectric_function.plot()
+    fig = electronic.plot()
     check_figure_contains_plots(fig, plots, Assert)
 
 
-def test_dielectric_plot_component(dielectric_function, Assert):
+def test_ionic_plot_default(ionic, Assert):
+    plots = [
+        Plot(
+            x=ionic.ref.energies,
+            y=isotropic(ionic.ref.ion).real,
+            name=expected_plot_name("ion", "Re", "isotropic"),
+        ),
+        Plot(
+            x=ionic.ref.energies,
+            y=isotropic(ionic.ref.ion).imag,
+            name=expected_plot_name("ion", "Im", "isotropic"),
+        ),
+    ]
+    fig = ionic.plot()
+    check_figure_contains_plots(fig, plots, Assert)
+
+
+def test_electronic_plot_component(electronic, Assert):
     density_plots = [
         Plot(
-            x=dielectric_function.ref.energies,
-            y=isotropic(dielectric_function.ref.density_density).real,
+            x=electronic.ref.energies,
+            y=isotropic(electronic.ref.density_density).real,
             name=expected_plot_name("density", "Re", "isotropic"),
         ),
         Plot(
-            x=dielectric_function.ref.energies,
-            y=isotropic(dielectric_function.ref.density_density).imag,
+            x=electronic.ref.energies,
+            y=isotropic(electronic.ref.density_density).imag,
             name=expected_plot_name("density", "Im", "isotropic"),
         ),
     ]
     current_plots = [
         Plot(
-            x=dielectric_function.ref.energies,
-            y=isotropic(dielectric_function.ref.current_current).real,
+            x=electronic.ref.energies,
+            y=isotropic(electronic.ref.current_current).real,
             name=expected_plot_name("current", "Re", "isotropic"),
         ),
         Plot(
-            x=dielectric_function.ref.energies,
-            y=isotropic(dielectric_function.ref.current_current).imag,
+            x=electronic.ref.energies,
+            y=isotropic(electronic.ref.current_current).imag,
             name=expected_plot_name("current", "Im", "isotropic"),
         ),
     ]
+    fig = electronic.plot("density")
+    check_figure_contains_plots(fig, density_plots, Assert)
+    fig = electronic.plot("current")
+    check_figure_contains_plots(fig, current_plots, Assert)
+
+
+def test_ionic_plot_component(ionic, Assert):
     ion_plots = [
         Plot(
-            x=dielectric_function.ref.energies,
-            y=isotropic(dielectric_function.ref.ion).real,
+            x=ionic.ref.energies,
+            y=isotropic(ionic.ref.ion).real,
             name=expected_plot_name("ion", "Re", "isotropic"),
         ),
         Plot(
-            x=dielectric_function.ref.energies,
-            y=isotropic(dielectric_function.ref.ion).imag,
+            x=ionic.ref.energies,
+            y=isotropic(ionic.ref.ion).imag,
             name=expected_plot_name("ion", "Im", "isotropic"),
         ),
     ]
-    fig = dielectric_function.plot("density")
-    check_figure_contains_plots(fig, density_plots, Assert)
-    fig = dielectric_function.plot("current")
-    check_figure_contains_plots(fig, current_plots, Assert)
-    fig = dielectric_function.plot("ion")
+    fig = ionic.plot("ion")
     check_figure_contains_plots(fig, ion_plots, Assert)
 
 
-def test_dielectric_plot_direction(dielectric_function, Assert):
+def test_electronic_plot_direction(electronic, Assert):
     directions = ("xx", "yy", "zz", "xy", "yz", "xz")
     for direction in directions:
-        reference = get_direction(dielectric_function.ref.density_density, direction)
+        reference = get_direction(electronic.ref.density_density, direction)
         plots = [
             Plot(
-                x=dielectric_function.ref.energies,
+                x=electronic.ref.energies,
                 y=reference.real,
                 name=expected_plot_name("density", "Re", direction),
             ),
             Plot(
-                x=dielectric_function.ref.energies,
+                x=electronic.ref.energies,
                 y=reference.imag,
                 name=expected_plot_name("density", "Im", direction),
             ),
         ]
-        fig = dielectric_function.plot(direction)
+        fig = electronic.plot(direction)
         check_figure_contains_plots(fig, plots, Assert)
 
 
-def test_dielectric_plot_real_or_imag(dielectric_function, Assert):
+def test_ionic_plot_direction(ionic, Assert):
+    directions = ("xx", "yy", "zz", "xy", "yz", "xz")
+    for direction in directions:
+        reference = get_direction(ionic.ref.ion, direction)
+        plots = [
+            Plot(
+                x=ionic.ref.energies,
+                y=reference.real,
+                name=expected_plot_name("ion", "Re", direction),
+            ),
+            Plot(
+                x=ionic.ref.energies,
+                y=reference.imag,
+                name=expected_plot_name("ion", "Im", direction),
+            ),
+        ]
+        fig = ionic.plot(direction)
+        check_figure_contains_plots(fig, plots, Assert)
+
+
+def test_electronic_plot_real_or_imag(electronic, Assert):
     real_plot = Plot(
-        x=dielectric_function.ref.energies,
-        y=isotropic(dielectric_function.ref.density_density).real,
+        x=electronic.ref.energies,
+        y=isotropic(electronic.ref.density_density).real,
         name=expected_plot_name("density", "Re", "isotropic"),
     )
     imag_plot = Plot(
-        x=dielectric_function.ref.energies,
-        y=isotropic(dielectric_function.ref.density_density).imag,
+        x=electronic.ref.energies,
+        y=isotropic(electronic.ref.density_density).imag,
         name=expected_plot_name("density", "Im", "isotropic"),
     )
     for real in ("real", "Re"):
-        fig = dielectric_function.plot(real)
+        fig = electronic.plot(real)
         check_figure_contains_plots(fig, [real_plot], Assert)
     for imag in ("imaginary", "imag", "Im"):
-        fig = dielectric_function.plot(imag)
+        fig = electronic.plot(imag)
         check_figure_contains_plots(fig, [imag_plot], Assert)
 
 
-def test_dielectric_plot_nested(dielectric_function, Assert):
+def test_ionic_plot_real_or_imag(ionic, Assert):
+    real_plot = Plot(
+        x=ionic.ref.energies,
+        y=isotropic(ionic.ref.ion).real,
+        name=expected_plot_name("ion", "Re", "isotropic"),
+    )
+    imag_plot = Plot(
+        x=ionic.ref.energies,
+        y=isotropic(ionic.ref.ion).imag,
+        name=expected_plot_name("ion", "Im", "isotropic"),
+    )
+    for real in ("real", "Re"):
+        fig = ionic.plot(real)
+        check_figure_contains_plots(fig, [real_plot], Assert)
+    for imag in ("imaginary", "imag", "Im"):
+        fig = ionic.plot(imag)
+        check_figure_contains_plots(fig, [imag_plot], Assert)
+
+
+def test_electronic_plot_nested(electronic, Assert):
     plots = [
         Plot(
-            x=dielectric_function.ref.energies,
-            y=get_direction(dielectric_function.ref.density_density, "xx").real,
+            x=electronic.ref.energies,
+            y=get_direction(electronic.ref.density_density, "xx").real,
             name=expected_plot_name("density", "Re", "xx"),
         ),
         Plot(
-            x=dielectric_function.ref.energies,
-            y=get_direction(dielectric_function.ref.current_current, "xy").imag,
+            x=electronic.ref.energies,
+            y=get_direction(electronic.ref.current_current, "xy").imag,
             name=expected_plot_name("current", "Im", "xy"),
         ),
         Plot(
-            x=dielectric_function.ref.energies,
-            y=get_direction(dielectric_function.ref.current_current, "yz").imag,
+            x=electronic.ref.energies,
+            y=get_direction(electronic.ref.current_current, "yz").imag,
             name=expected_plot_name("current", "Im", "yz"),
         ),
         Plot(
-            x=dielectric_function.ref.energies,
-            y=get_direction(dielectric_function.ref.ion, "zz").real,
-            name=expected_plot_name("ion", "Re", "zz"),
-        ),
-        Plot(
-            x=dielectric_function.ref.energies,
-            y=get_direction(dielectric_function.ref.ion, "zz").imag,
-            name=expected_plot_name("ion", "Im", "zz"),
-        ),
-        Plot(
-            x=dielectric_function.ref.energies,
-            y=isotropic(dielectric_function.ref.density_density).real,
+            x=electronic.ref.energies,
+            y=isotropic(electronic.ref.density_density).real,
             name=expected_plot_name("density", "Re", "isotropic"),
         ),
         Plot(
-            x=dielectric_function.ref.energies,
-            y=isotropic(dielectric_function.ref.current_current).real,
+            x=electronic.ref.energies,
+            y=isotropic(electronic.ref.current_current).real,
             name=expected_plot_name("current", "Re", "isotropic"),
         ),
     ]
-    selection = "density(Re(xx)) Im(current(xy,yz)) ion(zz(Re,Im)) Re(density,current)"
-    fig = dielectric_function.plot(selection)
+    selection = "density(Re(xx)) Im(current(xy,yz)) Re(density,current)"
+    fig = electronic.plot(selection)
+    check_figure_contains_plots(fig, plots, Assert)
+
+
+def test_ionic_plot_nested(ionic, Assert):
+    plots = [
+        Plot(
+            x=ionic.ref.energies,
+            y=get_direction(ionic.ref.ion, "xx").real,
+            name=expected_plot_name("ion", "Re", "xx"),
+        ),
+        Plot(
+            x=ionic.ref.energies,
+            y=get_direction(ionic.ref.ion, "xx").imag,
+            name=expected_plot_name("ion", "Im", "xx"),
+        ),
+        Plot(
+            x=ionic.ref.energies,
+            y=get_direction(ionic.ref.ion, "zz").real,
+            name=expected_plot_name("ion", "Re", "zz"),
+        ),
+        Plot(
+            x=ionic.ref.energies,
+            y=get_direction(ionic.ref.ion, "zz").imag,
+            name=expected_plot_name("ion", "Im", "zz"),
+        ),
+    ]
+    selection = "ion(xx zz(Re,Im))"
+    fig = ionic.plot(selection)
     check_figure_contains_plots(fig, plots, Assert)
 
 
@@ -191,19 +288,15 @@ def get_direction(tensor, direction):
 
 
 def expected_plot_name(component, real_or_imag, direction):
-    subscript = "" if direction == "isotropic" else f"_{{{direction}}}"
-    if component == "density":
-        superscript = "^{dd}"
-    elif component == "current":
-        superscript = "^{jj}"
-    else:
-        superscript = "^{ion}"
-    return f"{real_or_imag}($\\epsilon{superscript}{subscript}$)"
+    parts = (real_or_imag, component)
+    if direction != "isotropic":
+        parts += (direction,)
+    return ",".join(parts)
 
 
 def check_figure_contains_plots(fig, references, Assert):
     assert fig.layout.xaxis.title.text == "Energy (eV)"
-    assert fig.layout.yaxis.title.text == r"$\epsilon$"
+    assert fig.layout.yaxis.title.text == "dielectric function ϵ"
     assert len(fig.data) == len(references)
     for data, ref in zip(fig.data, references):
         Assert.allclose(data.x, ref.x)
@@ -211,10 +304,16 @@ def check_figure_contains_plots(fig, references, Assert):
         assert data.name == ref.name
 
 
-def test_dielectric_to_image(dielectric_function):
-    check_to_image(dielectric_function, None, "dielectric_function.png")
+def test_electronic_to_image(electronic):
+    check_to_image(electronic, None, "dielectric_function.png")
     custom_filename = "custom.jpg"
-    check_to_image(dielectric_function, custom_filename, custom_filename)
+    check_to_image(electronic, custom_filename, custom_filename)
+
+
+def test_ionic_to_image(ionic):
+    check_to_image(ionic, None, "dielectric_function.png")
+    custom_filename = "custom.jpg"
+    check_to_image(ionic, custom_filename, custom_filename)
 
 
 def check_to_image(dielectric_function, filename_argument, expected_filename):
@@ -229,25 +328,37 @@ def check_to_image(dielectric_function, filename_argument, expected_filename):
         fig.write_image.assert_called_once_with(expected_path)
 
 
-def test_dielectric_print(dielectric_function, format_):
-    actual, _ = format_(dielectric_function)
+def test_electronic_print(electronic, format_):
+    actual, _ = format_(electronic)
     reference = f"""
 dielectric function:
     energies: [0.00, 1.00] 50 points
+    components: density, current
     directions: isotropic, xx, yy, zz, xy, yz, xz
     """.strip()
     assert actual == {"text/plain": reference}
 
 
-def test_descriptor(dielectric_function, check_descriptors):
+def test_ionic_print(ionic, format_):
+    actual, _ = format_(ionic)
+    reference = f"""
+dielectric function:
+    energies: [0.00, 1.00] 50 points
+    components: ion
+    directions: isotropic, xx, yy, zz, xy, yz, xz
+    """.strip()
+    assert actual == {"text/plain": reference}
+
+
+def test_descriptor(electronic, check_descriptors):
     descriptors = {
         "_to_dict": ["to_dict", "read"],
         "_to_plotly": ["to_plotly", "plot"],
     }
-    check_descriptors(dielectric_function, descriptors)
+    check_descriptors(electronic, descriptors)
 
 
 def test_from_file(raw_data, mock_file, check_read):
-    raw_dielectric = raw_data.dielectric_function("default")
-    with mock_file("dielectric_function", raw_dielectric) as mocks:
-        check_read(DielectricFunction, mocks, raw_dielectric)
+    raw_electronic = raw_data.dielectric_function("electron")
+    with mock_file("dielectric_function", raw_electronic) as mocks:
+        check_read(DielectricFunction, mocks, raw_electronic)

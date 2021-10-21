@@ -59,7 +59,12 @@ class RawDataFactory:
 
     @staticmethod
     def dielectric_function(selection):
-        return _dielectric_function()
+        if selection == "electron":
+            return _electron_dielectric_function()
+        elif selection == "ion":
+            return _ion_dielectric_function()
+        else:
+            raise exception.NotImplemented()
 
     @staticmethod
     def dielectric_tensor(selection):
@@ -181,14 +186,24 @@ def _number_components(selection):
         raise exception.NotImplemented()
 
 
-def _dielectric_function():
-    shape = (3, axes, axes, number_points, complex_)
+def _electron_dielectric_function():
+    shape = (2, axes, axes, number_points, complex_)
     data = np.linspace(0, 1, np.prod(shape)).reshape(shape)
     return raw.RawDielectricFunction(
         energies=np.linspace(0, 1, number_points),
         density_density=data[0],
         current_current=data[1],
-        ion=data[2],
+        ion=None,
+    )
+
+
+def _ion_dielectric_function():
+    shape = (axes, axes, number_points, complex_)
+    return raw.RawDielectricFunction(
+        energies=np.linspace(0, 1, number_points),
+        density_density=None,
+        current_current=None,
+        ion=np.linspace(0, 1, np.prod(shape)).reshape(shape),
     )
 
 
