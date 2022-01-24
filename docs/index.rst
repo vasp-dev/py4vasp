@@ -19,7 +19,7 @@ flexibility when the data file is opened and closed.
    :maxdepth: 2
    :caption: Contents:
 
-   modules
+   modules/index
 
 Indices and tables
 ------------------

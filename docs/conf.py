@@ -22,7 +22,7 @@ copyright = "2020, Vasp Software GmbH"
 author = "Vasp Software GmbH"
 
 # The full version, including alpha/beta/rc tags
-release = "0.2"
+release = "0.3.1"
 
 
 # -- General configuration ---------------------------------------------------
@@ -45,8 +45,16 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-#
-html_theme = "nature"
+
+# default theme
+# html_theme = "nature"
+
+# a minimal theme for the website
+html_theme = 'basic'
+html_show_sphinx = False
+html_show_copyright = False
+html_domain_indices = False
+html_use_index = False
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
