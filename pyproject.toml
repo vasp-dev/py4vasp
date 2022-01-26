@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "py4vasp"
 version = "0.3.1"
-description = ""
+description = "Tool for assisting with the analysis and setup of VASP calculations."
 authors = [
     "Martin Schlipf <martin.schlipf@gmail.com>",
     "Orest Dubay <orest-d@users.noreply.github.com>"
@@ -17,10 +17,10 @@ ase = "^3.19.0"
 mdtraj = "^1.9.5"
 mrcfile = "^1.2.0"
 plotly = "^5.1.0"
-kaleido = "^0.2.1"
+kaleido = "^0.2.1, !=0.2.1.post1"
 
 [tool.poetry.dev-dependencies]
-pytest = "^3.0"
+pytest = "^6.2.5"
 pytest-cov = "^2.8.1"
 pylint = "^2.5.0"
 sphinx = "^4.0.3"
@@ -49,5 +49,5 @@ from = {format = "poetry", path = "pyproject.toml"}
 to = {format = "setuppy", path = "setup.py"}
 
 [build-system]
-requires = ["poetry>=1.0"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry-core>=1.0"]
+build-backend = "poetry.core.masonry.api"

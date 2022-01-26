@@ -66,7 +66,7 @@ class Viewer3d:
         return res
 
     def _calculate_number_cells(self, supercell):
-        if isinstance(supercell, collections.Iterable):
+        if isinstance(supercell, collections.abc.Iterable):
             return np.prod(supercell)
         if isinstance(supercell, int):
             return supercell ** 3

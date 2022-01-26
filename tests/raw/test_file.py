@@ -5,6 +5,7 @@ import pytest
 import h5py
 import os
 import pathlib
+import filecmp
 import numpy as np
 import itertools
 import inspect
@@ -79,14 +80,18 @@ def test_file_from_path(tmp_path):
 def test_file_path(tmp_path):
     with patch("h5py.File") as mock_h5, working_directory(tmp_path):
         pathlib.Path(File.default_filename).touch()
-        assert File().path == tmp_path
+        assert dirs_are_same(File().path, tmp_path)
         directory = tmp_path / "subdirectory"
         pathlib.Path(directory).mkdir()
         pathlib.Path(directory / File.default_filename).touch()
-        assert File(directory).path == directory
+        assert dirs_are_same(File(directory).path, directory)
         filename = directory / "custom.h5"
         pathlib.Path(filename).touch()
-        assert File(filename).path == directory
+        assert dirs_are_same(File(filename).path, directory)
+
+
+def dirs_are_same(left, right):
+    return len(filecmp.dircmp(left, right).diff_files) == 0
 
 
 def generic_test(setup):
