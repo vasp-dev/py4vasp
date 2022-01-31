@@ -59,9 +59,9 @@ def test_no_whitespace():
 
 
 def test_ranges():
-    selection = "foo(1 - 3) 2 - 6"
+    selection = "foo(1 : 3) 2 : 6"
     tree = SelectionTree.from_selection(selection)
     level1 = tree.nodes[0]
     assert str(level1) == "foo"
-    assert str(level1.nodes[0]) == "1-3"
-    assert str(tree.nodes[1]) == "2-6"
+    assert str(level1.nodes[0]) == "1:3"
+    assert str(tree.nodes[1]) == "2:6"

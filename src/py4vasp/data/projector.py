@@ -14,8 +14,7 @@ import py4vasp._util.selection as _selection
 
 
 _spin_not_set = "not set"
-_range_separator = "-"
-_range = re.compile(r"^(\d+)" + re.escape(_range_separator) + r"(\d+)$")
+_range = re.compile(r"^(\d+)" + re.escape(_selection.range_separator) + r"(\d+)$")
 
 _selection_doc = r"""
 selection : str
@@ -24,13 +23,12 @@ selection : str
 
     -   To specify the **atom**, you can either use its element name (Si, Al, ...)
         or its index as given in the input file (1, 2, ...). For the latter
-        option it is also possible to specify ranges (e.g. 1-4).
+        option it is also possible to specify ranges (e.g. 1:4).
     -   To select a particular **orbital** you can give a string (s, px, dxz, ...)
         or select multiple orbitals by their angular momentum (s, p, d, f).
     -   For the **spin**, you have the options up, down, or total.
 
-    For all of these options a wildcard \* exists, which selects all elements. You
-    separate multiple selections by commas or whitespace and can nest them using
+    You separate multiple selections by commas or whitespace and can nest them using
     parenthesis, e.g. `Sr(s, p)` or `s(up), p(down)`. The order of the selections
     does not matter, but it is case sensitive to distinguish p (angular momentum
     l = 1) from P (phosphorus).
@@ -47,7 +45,7 @@ Select the d orbitals of Mn, Co, and Fe:
 >>> calc.{instance_name}.{function_name}("d(Mn, Co, Fe)")
 
 Select the spin-up contribution of the first three atoms combined
->>> calc.{instance_name}.{function_name}("up(1-3)")
+>>> calc.{instance_name}.{function_name}("up(1{_selection.range_separator}3)")
 """
 
 
@@ -120,15 +118,14 @@ dict
         f"""Map selection strings onto corresponding Selection objects.
 
 With the selection strings, you specify which atom, orbital, and spin component
-you are interested in. *Note* that for all parameters you can pass "*" to
-default to all (atoms, orbitals, or spins).
+you are interested in.
 
 Parameters
 ----------
 atom : str
     Element name or index of the atom in the input file of Vasp. If a
-    range is specified (e.g. 1-3) a pointer to multiple indices will be
-    created.
+    range is specified (e.g. 1{_selection.range_separator}3) a pointer to
+    multiple indices will be created.
 orbital : str
     Character identifying the angular momentum of the orbital. You may
     select a specific one (e.g. px) or all of the same character (e.g. d).
@@ -146,9 +143,9 @@ Index
     )
     def _select(
         self,
-        atom=_Selection.default,
-        orbital=_Selection.default,
-        spin=_Selection.default,
+        atom=_selection.all,
+        orbital=_selection.all,
+        spin=_selection.all,
     ):
         dicts = self._init_dicts()
         _raise_error_if_not_found_in_dict(orbital, dicts["orbital"])
@@ -180,8 +177,8 @@ Iterable[Index]
     def _parse_selection(self, selection):
         dicts = self._init_dicts()
         default_index = Projector.Index(
-            atom=_Selection.default,
-            orbital=_Selection.default,
+            atom=_selection.all,
+            orbital=_selection.all,
             spin=_spin_not_set,
         )
         tree = _selection.SelectionTree.from_selection(selection)
@@ -203,7 +200,7 @@ Iterable[Index]
     def _init_orbital_dict(self):
         num_orbitals = len(self._raw_data.orbital_types)
         all_orbitals = _Selection(indices=slice(num_orbitals))
-        orbital_dict = {_Selection.default: all_orbitals}
+        orbital_dict = {_selection.all: all_orbitals}
         for i, orbital in enumerate(self._orbital_types()):
             orbital_dict[orbital] = _Selection(indices=slice(i, i + 1), label=orbital)
         if "px" in orbital_dict:
@@ -213,8 +210,13 @@ Iterable[Index]
         return orbital_dict
 
     def _orbital_types(self):
-        clean_string = lambda ion_type: _convert.text_to_string(ion_type).strip()
-        return (clean_string(orbital) for orbital in self._raw_data.orbital_types)
+        clean_string = lambda orbital: _convert.text_to_string(orbital).strip()
+        for orbital in self._raw_data.orbital_types:
+            orbital = clean_string(orbital)
+            if orbital == "x2-y2":
+                yield "dx2y2"
+            else:
+                yield orbital
 
     def _init_spin_dict(self):
         num_spins = self._raw_data.number_spins
@@ -223,7 +225,7 @@ Iterable[Index]
             "up": _Selection(indices=slice(1), label="up"),
             "down": _Selection(indices=slice(1, 2), label="down"),
             "total": _Selection(indices=slice(num_spins), label="total"),
-            _Selection.default: _Selection(indices=slice(num_spins)),
+            _selection.all: _Selection(indices=slice(num_spins)),
         }
 
     def _get_indices(self, selection):
@@ -293,7 +295,7 @@ def _parse_recursive(dicts, tree, current_index):
 
 def _update_index(dicts, index, part):
     part = part.strip()
-    if part == _Selection.default:
+    if part == _selection.all:
         pass
     elif part in dicts["atom"] or _range.match(part):
         index = index._replace(atom=part)
@@ -314,7 +316,7 @@ def _setup_spin_indices(index, spin_polarized):
     if index.spin != _spin_not_set:
         yield index
     elif not spin_polarized:
-        yield index._replace(spin=_Selection.default)
+        yield index._replace(spin=_selection.all)
     else:
         for key in ("up", "down"):
             yield index._replace(spin=key)

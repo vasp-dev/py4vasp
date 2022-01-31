@@ -3,6 +3,7 @@ from py4vasp.data._selection import Selection as _Selection
 import py4vasp.exceptions as exception
 import py4vasp._util.sanity_check as _check
 import py4vasp._util.convert as _convert
+import py4vasp._util.selection as _selection
 import numpy as np
 import pandas as pd
 import functools
@@ -126,7 +127,7 @@ class Topology(DataBase):
 
     def _default_selection(self):
         num_atoms = self._number_atoms()
-        return {_Selection.default: _Selection(indices=slice(num_atoms))}
+        return {_selection.all: _Selection(indices=slice(num_atoms))}
 
     def _specific_selection(self):
         start = 0

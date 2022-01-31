@@ -1,6 +1,7 @@
 from py4vasp.data import Topology
 from py4vasp.data._selection import Selection
 import py4vasp.exceptions as exception
+import py4vasp._util.selection as selection
 import pytest
 import numpy as np
 import pandas as pd
@@ -23,7 +24,7 @@ def test_read(Sr2TiO4):
     assert topology["5"] == Selection(indices=slice(4, 5), label="O_2")
     assert topology["6"] == Selection(indices=slice(5, 6), label="O_3")
     assert topology["7"] == Selection(indices=slice(6, 7), label="O_4")
-    assert topology["*"] == Selection(indices=slice(7))
+    assert topology[selection.all] == Selection(indices=slice(7))
 
 
 def test_to_frame(Sr2TiO4):

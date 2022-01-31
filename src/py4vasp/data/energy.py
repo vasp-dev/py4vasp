@@ -10,6 +10,7 @@ import py4vasp.exceptions as exception
 import py4vasp._util.documentation as _documentation
 import py4vasp._util.convert as _convert
 import py4vasp._util.sanity_check as _check
+import py4vasp._util.selection as _selection
 
 
 _energy_docs = f"""
@@ -82,7 +83,7 @@ dict
 
 {_trajectory.trajectory_examples("energy", "read")}"""
     )
-    def _to_dict(self, selection=_Selection.default):
+    def _to_dict(self, selection=_selection.all):
         return {
             label: self._raw_data.values[self._steps, index]
             for label, index in self._parse_selection(selection)
@@ -136,7 +137,7 @@ float or np.ndarray or tuple
         )
         return _unpack_if_only_one_element(result)
 
-    def _labels(self, selection=_Selection.default):
+    def _labels(self, selection=_selection.all):
         "Return the labels corresponding to a particular selection defaulting to all labels."
         return [label for label, _ in self._parse_selection(selection)]
 
@@ -149,7 +150,7 @@ float or np.ndarray or tuple
             yield get_label(index).strip(), index
 
     def _find_selection_indices(self, selection):
-        if selection == _Selection.default:
+        if selection == _selection.all:
             return range(len(self._raw_data.labels))
         else:
             selection_parts = _split_selection_in_parts(selection)

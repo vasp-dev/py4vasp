@@ -1,3 +1,7 @@
+range_separator = ":"
+all = "__all__"
+
+
 class SelectionTree:
     def __init__(self, parent=None):
         self._new_child = True
@@ -21,7 +25,7 @@ class SelectionTree:
     def parse_character(self, character):
         if character in (" ", ","):
             return self._parse_separator()
-        elif character == "-":
+        elif character == range_separator:
             return self._parse_range(character)
         elif character == "(":
             return self._children[-1]

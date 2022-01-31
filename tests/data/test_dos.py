@@ -1,6 +1,7 @@
 from py4vasp.data import Dos
 from unittest.mock import patch
 import py4vasp.exceptions as exception
+import py4vasp._util.selection as _selection
 import pytest
 import numpy as np
 import types
@@ -117,14 +118,15 @@ def test_Fe3O4_to_frame(Fe3O4, Assert):
 
 
 def test_Sr2TiO4_projectors_to_frame(Sr2TiO4_projectors, Assert):
+    all = _selection.all
     equivalent_selections = [
-        "s Sr(d) Ti O(px,dxy) 2(p) 4 3(dz2) 1-2(p)",
-        "2( p), dz2(3) Sr(d) p(1-2), *(s), 4 Ti(*) px(O) O(dxy)",
+        "s Sr(d) Ti O(px,dxy) 2(p) 4 3(dz2) 1:2(p)",
+        f"2( p), dz2(3) Sr(d) p(1:2), {all}(s), 4 Ti({all}) px(O) O(dxy)",
     ]
     for selection in equivalent_selections:
         actual = Sr2TiO4_projectors.to_frame(selection)
         Assert.allclose(actual.s, Sr2TiO4_projectors.ref.s)
-        Assert.allclose(actual["1-2_p"], Sr2TiO4_projectors.ref.Sr_p)
+        Assert.allclose(actual["1:2_p"], Sr2TiO4_projectors.ref.Sr_p)
         Assert.allclose(actual.Sr_d, Sr2TiO4_projectors.ref.Sr_d)
         Assert.allclose(actual.Sr_2_p, Sr2TiO4_projectors.ref.Sr_2_p)
         Assert.allclose(actual.Ti, Sr2TiO4_projectors.ref.Ti)
@@ -224,7 +226,7 @@ Dos:
     energies: [-1.00, 3.00] 50 points
 projectors:
     atoms: Sr, Ti, O
-    orbitals: s, py, pz, px, dxy, dyz, dz2, dxz, x2-y2, fy3x2, fxyz, fyz2, fz3, fxz2, fzx2, fx3
+    orbitals: s, py, pz, px, dxy, dyz, dz2, dxz, dx2y2, fy3x2, fxyz, fyz2, fz3, fxz2, fzx2, fx3
     """.strip()
     assert actual == {"text/plain": reference}
 

@@ -7,5 +7,3 @@ class Selection(NamedTuple):
     "Indices from which the specified quantity is read."
     label: str = ""
     "Label identifying the quantity."
-    default = "*"
-    "Character identifying the default selection"

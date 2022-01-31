@@ -5,6 +5,7 @@ import numbers
 import numpy as np
 import types
 import py4vasp.exceptions as exception
+import py4vasp._util.selection as selection
 
 
 @pytest.fixture
@@ -103,7 +104,7 @@ def test_plot_all(energy, Assert):
 
 
 def check_plot_all(energy, steps, Assert):
-    fig = energy[steps].plot("*")
+    fig = energy[steps].plot(selection.all)
     assert fig.layout.yaxis.title.text == "Energy (eV)"
     assert fig.layout.yaxis2.title.text == "Temperature (K)"
     Assert.allclose(fig.data[0].y, energy.ref.total_energy[steps])

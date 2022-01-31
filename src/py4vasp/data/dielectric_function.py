@@ -109,7 +109,7 @@ def _parse_selection(selection, data):
 class _Choice(typing.NamedTuple):
     component: str
     direction: str = "isotropic"
-    real_or_imag: str = _Selection.default
+    real_or_imag: str = _selection.all
 
 
 def _default_choice(data):
@@ -142,7 +142,7 @@ def _update_choice(current_choice, part):
 
 
 def _setup_component_choices(choice):
-    if choice.real_or_imag == _Selection.default:
+    if choice.real_or_imag == _selection.all:
         yield choice._replace(real_or_imag="real")
         yield choice._replace(real_or_imag="imag")
     else:

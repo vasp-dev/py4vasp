@@ -1,5 +1,6 @@
 from py4vasp.data import Projector, Topology
 from py4vasp.data._selection import Selection
+import py4vasp._util.selection as selection
 import py4vasp.exceptions as exception
 import pytest
 import numpy as np
@@ -34,7 +35,8 @@ def test_Fe3O4_selection(Fe3O4):
 
 
 def check_projector_selection(proj, ref):
-    default = Index(ref["atom"]["*"], ref["orbital"]["*"], ref["spin"]["*"])
+    all = selection.all
+    default = Index(ref["atom"][all], ref["orbital"][all], ref["spin"][all])
     for atom, ref_atom in ref["atom"].items():
         assert proj.select(atom=atom) == default._replace(atom=ref_atom)
     for orbital, ref_orbital in ref["orbital"].items():
@@ -56,9 +58,9 @@ def Sr2TiO4_selection():
             "5": Selection(indices=slice(4, 5), label="O_2"),
             "6": Selection(indices=slice(5, 6), label="O_3"),
             "7": Selection(indices=slice(6, 7), label="O_4"),
-            "1-3": Selection(indices=slice(0, 3), label="1-3"),
-            "4-7": Selection(indices=slice(3, 7), label="4-7"),
-            "*": Selection(indices=slice(7)),
+            "1:3": Selection(indices=slice(0, 3), label="1:3"),
+            "4:7": Selection(indices=slice(3, 7), label="4:7"),
+            selection.all: Selection(indices=slice(7)),
         },
         "orbital": {
             "s": Selection(indices=slice(0, 1), label="s"),
@@ -69,7 +71,7 @@ def Sr2TiO4_selection():
             "dxz": Selection(indices=slice(7, 8), label="dxz"),
             "dyz": Selection(indices=slice(5, 6), label="dyz"),
             "dz2": Selection(indices=slice(6, 7), label="dz2"),
-            "x2-y2": Selection(indices=slice(8, 9), label="x2-y2"),
+            "dx2y2": Selection(indices=slice(8, 9), label="dx2y2"),
             "fxyz": Selection(indices=slice(10, 11), label="fxyz"),
             "fxz2": Selection(indices=slice(13, 14), label="fxz2"),
             "fx3": Selection(indices=slice(15, 16), label="fx3"),
@@ -80,11 +82,11 @@ def Sr2TiO4_selection():
             "p": Selection(indices=slice(1, 4), label="p"),
             "d": Selection(indices=slice(4, 9), label="d"),
             "f": Selection(indices=slice(9, 16), label="f"),
-            "*": Selection(indices=slice(16)),
+            selection.all: Selection(indices=slice(16)),
         },
         "spin": {
             "total": Selection(indices=slice(1), label="total"),
-            "*": Selection(indices=slice(1)),
+            selection.all: Selection(indices=slice(1)),
         },
     }
 
@@ -101,22 +103,22 @@ def Fe3O4_selection():
             "5": Selection(indices=slice(4, 5), label="O_2"),
             "6": Selection(indices=slice(5, 6), label="O_3"),
             "7": Selection(indices=slice(6, 7), label="O_4"),
-            "1-2": Selection(indices=slice(0, 2), label="1-2"),
-            "4-5": Selection(indices=slice(3, 5), label="4-5"),
-            "*": Selection(indices=slice(7)),
+            "1:2": Selection(indices=slice(0, 2), label="1:2"),
+            "4:5": Selection(indices=slice(3, 5), label="4:5"),
+            selection.all: Selection(indices=slice(7)),
         },
         "orbital": {
             "s": Selection(indices=slice(0, 1), label="s"),
             "p": Selection(indices=slice(1, 2), label="p"),
             "d": Selection(indices=slice(2, 3), label="d"),
             "f": Selection(indices=slice(3, 4), label="f"),
-            "*": Selection(indices=slice(4)),
+            selection.all: Selection(indices=slice(4)),
         },
         "spin": {
             "total": Selection(indices=slice(2), label="total"),
             "up": Selection(indices=slice(1), label="up"),
             "down": Selection(indices=slice(1, 2), label="down"),
-            "*": Selection(indices=slice(2)),
+            selection.all: Selection(indices=slice(2)),
         },
     }
 
@@ -139,62 +141,64 @@ def check_parse_selection(projectors, testcases):
 
 
 def Sr2TiO4_testcases():
+    all = selection.all
     return (
         SelectionTestCase(
-            equivalent_formats=("Sr", "Sr(*)"),
-            reference_selections=(Index(atom="Sr", orbital="*", spin="*"),),
+            equivalent_formats=("Sr", f"Sr({all})"),
+            reference_selections=(Index(atom="Sr", orbital=all, spin=all),),
         ),
         SelectionTestCase(
             equivalent_formats=("Ti(s,p)", "Ti (s)  Ti (p)"),
             reference_selections=(
-                Index(atom="Ti", orbital="s", spin="*"),
-                Index(atom="Ti", orbital="p", spin="*"),
+                Index(atom="Ti", orbital="s", spin=all),
+                Index(atom="Ti", orbital="p", spin=all),
             ),
         ),
         SelectionTestCase(
-            equivalent_formats=("Ti 5", "Ti( * ), 5( * )"),
+            equivalent_formats=("Ti 5", f"Ti( {all} ), 5( {all} )"),
             reference_selections=(
-                Index(atom="Ti", orbital="*", spin="*"),
-                Index(atom="5", orbital="*", spin="*"),
+                Index(atom="Ti", orbital=all, spin=all),
+                Index(atom="5", orbital=all, spin=all),
             ),
         ),
         SelectionTestCase(
-            equivalent_formats=("p, d", "*(p) *(d)"),
+            equivalent_formats=("p, d", f"{all}(p) {all}(d)"),
             reference_selections=(
-                Index(atom="*", orbital="p", spin="*"),
-                Index(atom="*", orbital="d", spin="*"),
+                Index(atom=all, orbital="p", spin=all),
+                Index(atom=all, orbital="d", spin=all),
             ),
         ),
         SelectionTestCase(
-            equivalent_formats=("O(d), 1 s", "O(d), 1(*), *(s)"),
+            equivalent_formats=("O(d), 1 s", f"O(d), 1({all}), {all}(s)"),
             reference_selections=(
-                Index(atom="O", orbital="d", spin="*"),
-                Index(atom="1", orbital="*", spin="*"),
-                Index(atom="*", orbital="s", spin="*"),
+                Index(atom="O", orbital="d", spin=all),
+                Index(atom="1", orbital=all, spin=all),
+                Index(atom=all, orbital="s", spin=all),
             ),
         ),
         SelectionTestCase(
             equivalent_formats=("Sr(p)Ti(s)O(s)", "p(Sr) s(Ti, O)"),
             reference_selections=(
-                Index(atom="Sr", orbital="p", spin="*"),
-                Index(atom="Ti", orbital="s", spin="*"),
-                Index(atom="O", orbital="s", spin="*"),
+                Index(atom="Sr", orbital="p", spin=all),
+                Index(atom="Ti", orbital="s", spin=all),
+                Index(atom="O", orbital="s", spin=all),
             ),
         ),
         SelectionTestCase(
-            equivalent_formats=("1 - 4", "1-4", "  1  -  4 "),
-            reference_selections=(Index(atom="1-4", orbital="*", spin="*"),),
+            equivalent_formats=("1 : 4", "1:4", "  1  :  4 "),
+            reference_selections=(Index(atom="1:4", orbital=all, spin=all),),
         ),
     )
 
 
 def Fe3O4_testcases():
+    all = selection.all
     return (
         SelectionTestCase(
-            equivalent_formats=("Fe", "Fe(up,down)", "Fe(*(up)), Fe(down)"),
+            equivalent_formats=("Fe", "Fe(up,down)", f"Fe({all}(up)), Fe(down)"),
             reference_selections=(
-                Index(atom="Fe", orbital="*", spin="up"),
-                Index(atom="Fe", orbital="*", spin="down"),
+                Index(atom="Fe", orbital=all, spin="up"),
+                Index(atom="Fe", orbital=all, spin="down"),
             ),
         ),
         SelectionTestCase(
@@ -205,20 +209,20 @@ def Fe3O4_testcases():
             ),
         ),
         SelectionTestCase(
-            equivalent_formats=("s p(up) d(total)", "s(up, down), *(p(up)), d(total)"),
+            equivalent_formats=("s p(up)d(total)", f"s(up,down),{all}(p(up)),d(total)"),
             reference_selections=(
-                Index(atom="*", orbital="s", spin="up"),
-                Index(atom="*", orbital="s", spin="down"),
-                Index(atom="*", orbital="p", spin="up"),
-                Index(atom="*", orbital="d", spin="total"),
+                Index(atom=all, orbital="s", spin="up"),
+                Index(atom=all, orbital="s", spin="down"),
+                Index(atom=all, orbital="p", spin="up"),
+                Index(atom=all, orbital="d", spin="total"),
             ),
         ),
         SelectionTestCase(
             equivalent_formats=("up (s)  down (p, d)", "s(up) p(down) d(down)"),
             reference_selections=(
-                Index(atom="*", orbital="s", spin="up"),
-                Index(atom="*", orbital="p", spin="down"),
-                Index(atom="*", orbital="d", spin="down"),
+                Index(atom=all, orbital="s", spin="up"),
+                Index(atom=all, orbital="p", spin="down"),
+                Index(atom=all, orbital="d", spin="down"),
             ),
         ),
         SelectionTestCase(
@@ -226,8 +230,8 @@ def Fe3O4_testcases():
             reference_selections=(Index(atom="2", orbital="p", spin="up"),),
         ),
         SelectionTestCase(
-            equivalent_formats=("3-4(up)", "up (3 - 4)"),
-            reference_selections=(Index(atom="3-4", orbital="*", spin="up"),),
+            equivalent_formats=("3:4(up)", "up (3 : 4)"),
+            reference_selections=(Index(atom="3:4", orbital=all, spin="up"),),
         ),
     )
 
@@ -294,7 +298,7 @@ def test_print(Sr2TiO4, format_):
     reference = """
 projectors:
     atoms: Sr, Ti, O
-    orbitals: s, py, pz, px, dxy, dyz, dz2, dxz, x2-y2, fy3x2, fxyz, fyz2, fz3, fxz2, fzx2, fx3
+    orbitals: s, py, pz, px, dxy, dyz, dz2, dxz, dx2y2, fy3x2, fxyz, fyz2, fz3, fxz2, fzx2, fx3
     """.strip()
     assert actual == {"text/plain": reference}
 
