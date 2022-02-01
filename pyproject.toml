@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "py4vasp"
-version = "0.3.1"
+version = "0.4.0-alpha.0"
 description = "Tool for assisting with the analysis and setup of VASP calculations."
 authors = [
     "Martin Schlipf <martin.schlipf@gmail.com>",
