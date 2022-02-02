@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp.data._base import RefinementDescriptor
 from py4vasp.data._trajectory import DataTrajectory, trajectory_examples
 import py4vasp.exceptions as exception

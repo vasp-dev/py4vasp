@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """Provide the tools to manage VASP calculations.
 
 This is the main user interface if you want to simply investigate the results of VASP

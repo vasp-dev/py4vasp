@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from dataclasses import FrozenInstanceError
 from py4vasp.raw import RawVersion, DataDict
 from py4vasp._util.version import current_vasp_version

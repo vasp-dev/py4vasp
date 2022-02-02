@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """ Refine the raw data produced by Vasp for plotting or analysis.
 
 Usually one is not directly interested in the raw data that is produced, but

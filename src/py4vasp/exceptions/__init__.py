@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """ Deals with the possible exceptions in py4vasp.
 
 The design goal is that all forseeable exceptions in py4vasp issue an exception

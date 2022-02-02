@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp.raw import DataDict
 from py4vasp.data._base import DataBase, RefinementDescriptor
 from py4vasp._util.version import RawVersion, minimal_vasp_version
