@@ -5,7 +5,7 @@ import py4vasp.exceptions as exception
 import functools
 
 minimal_vasp_version = RawVersion(6, 2)
-current_vasp_version = RawVersion(6, 2, 1)
+current_vasp_version = RawVersion(6, 3, 0)
 
 
 def require(version, err_msg=None):
