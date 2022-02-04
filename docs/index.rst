@@ -21,7 +21,7 @@ Installation
 
 While this is not required to be able to run *py4vasp*, you may want to consider
 creating a separate a environment for installation to avoid interference with other
-installed packages.[#environment]_
+installed packages. [#environment]_
 You can then install *py4vasp* from PyPI_ using the pip package installer
 
 .. code-block:: bash
@@ -67,10 +67,8 @@ as well. To give you an illustrative example of what *py4vasp* can do, we assume
 that you created a Jupyter notebook inside the directory of your VASP calculation.
 Then you access all the results of this calculation with
 
-.. code-block:: python
-
-  from py4vasp import Calculation
-  calc = Calculation.from_path(".")
+>>> from py4vasp import Calculation
+>>> calc = Calculation.from_path(".")
 
 Naturally, if you created the notebook outside of the calculation directory, you
 would replace the path ``.`` with the directory of the calculation.
@@ -88,9 +86,7 @@ orbital projections (LORBIT_ = 11). You may now want to read the data from your
 VASP calculation to postprocess it further with a script. This can be achieved in
 a single line of code
 
-.. code-block:: python
-
-  dos = calc.dos.read()
+>>> dos = calc.dos.read()
 
 Under the hood, this will access the *vaspout.h5* file, because *py4vasp* knows that
 the output is stored there after you ran VASP. It will read the relevant tags from
@@ -98,17 +94,13 @@ the file and store it all in a Python dictionary. If you want to access particul
 orbital projections, let's say the *p* orbitals, you can pass a ``select = "p"`` as
 argument to the routine. More generally, you can check how to use a function with
 
-.. code-block:: python
-
-  help(calc.dos.read)
+>>> help(calc.dos.read)
 
 The most common use case for the DOS data may be to prepare a plot to get some
 insight into the system of interest. Because of this, we provide an easy wrapper
 for this particular functionality
 
-.. code-block:: python
-
-  calc.dos.plot()
+>>> calc.dos.plot()
 
 This will return an interactive figure that you can use to investigate the DOS.
 Note that this requires a browser to work, which means it will open one if you

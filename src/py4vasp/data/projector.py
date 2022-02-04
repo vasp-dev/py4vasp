@@ -41,12 +41,15 @@ def _selection_examples(instance_name, function_name):
     return f"""Examples
 --------
 Select the p orbitals of the first atom in the POSCAR file:
+
 >>> calc.{instance_name}.{function_name}(selection="1(p)")
 
 Select the d orbitals of Mn, Co, and Fe:
+
 >>> calc.{instance_name}.{function_name}("d(Mn, Co, Fe)")
 
 Select the spin-up contribution of the first three atoms combined
+
 >>> calc.{instance_name}.{function_name}("up(1{_selection.range_separator}3)")
 """
 

@@ -39,6 +39,9 @@ class DataBase:
     def from_file(cls, file=None):
         """Read the data dictionary from the given file.
 
+        You want to use this method if you want to avoid using the Calculation
+        wrapper, for example because you renamed the output of the VASP calculation.
+
         Parameters
         ----------
         file : str or Path or raw.File

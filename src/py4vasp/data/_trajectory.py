@@ -19,12 +19,15 @@ Examples
 If you access {access}, the result will depend on {depend_on} that
 you selected with the [] operator. Without any selection the results from the
 final step will be used.
+
 >>> calc.{instance_name}.{function_name}()
 
 To select the results for all steps, you don't specify the array boundaries.
+
 >>> calc.{instance_name}[:].{function_name}()
 
 You can also select specific steps or a subset of steps as follows
+
 >>> calc.{instance_name}[5].{function_name}()
 >>> calc.{instance_name}[1:6].{function_name}()""".strip()
 
