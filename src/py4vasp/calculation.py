@@ -7,12 +7,10 @@ calculations. Create a Calculation object associated with the VASP calculation t
 run. Then you can access the properties of that calculation via the attributes of the
 object. For example you may use
 
-.. code-block:: python
-
-   calc = Calculation.from_path("path_to_your_calculation")
-   calc.dos.plot()         # to plot the density of states
-   calc.magnetism.read()   # to read the magnetic moments
-   calc.structure.print()  # to print the structure in a POSCAR format
+>>> calc = Calculation.from_path("path_to_your_calculation")
+>>> calc.dos.plot()         # to plot the density of states
+>>> calc.magnetism.read()   # to read the magnetic moments
+>>> calc.structure.print()  # to print the structure in a POSCAR format
 """
 import inspect
 import py4vasp.data
