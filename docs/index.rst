@@ -112,7 +112,7 @@ a *read* function to get the raw data into Python and where it makes sense a
 *plot* function visualizes the data. However, note that in particular, all data
 visualized inside the structure require a Jupyter notebook to work.
 
-.. _tutorials: https://www.vasp.at/tutorials
+.. _tutorials: https://www.vasp.at/tutorials/latest
 
 If you want to experience more features of *py4vasp*, we highly recommend taking
 a look at the tutorials_ for VASP. Many of them use *py4vasp* to plot or analyze
