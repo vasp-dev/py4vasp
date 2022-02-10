@@ -123,7 +123,11 @@ how you can apply *py4vasp* in your research.
    :maxdepth: 2
    :caption: Contents:
 
-   modules/index
+   calculation
+   control
+   raw
+   data
+   exceptions
 
 ----------------------------------------------------------------------------------------
 
