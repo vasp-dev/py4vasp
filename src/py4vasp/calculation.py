@@ -28,6 +28,14 @@ class Calculation:
 
     Attributes
     ----------
+    INCAR
+        The INCAR file of the VASP calculation.
+
+    KPOINTS
+        The KPOINTS file of the VASP calculation.
+
+    POSCAR
+        The POSCAR file of the VASP calculation.
     """
 
     @classmethod
@@ -55,7 +63,6 @@ class Calculation:
 
     @property
     def INCAR(self):
-        "The INCAR file of the VASP calculation."
         return self._INCAR
 
     @INCAR.setter
@@ -64,7 +71,6 @@ class Calculation:
 
     @property
     def KPOINTS(self):
-        "The KPOINTS file of the VASP calculation."
         return self._KPOINTS
 
     @KPOINTS.setter
@@ -73,7 +79,6 @@ class Calculation:
 
     @property
     def POSCAR(self):
-        "The POSCAR file of the VASP calculation."
         return self._POSCAR
 
     @POSCAR.setter
@@ -99,7 +104,7 @@ def _add_to_documentation(calc, name, class_):
     functions = inspect.getmembers(class_, inspect.isfunction)
     names = [name for name, _ in functions if not name.startswith("_")]
     calc.__doc__ += f"""
-    {_convert.to_snakecase(name)} : py4vasp.data.{name}
+    {_convert.to_snakecase(name)}
         {first_line}
 
 """
@@ -109,7 +114,6 @@ def _add_to_documentation(calc, name, class_):
 
 
 Calculation = _add_all_refinement_classes(Calculation, _add_to_documentation)
-print(Calculation.__doc__)
 
 
 def _add_input_files(calc):
