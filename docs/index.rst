@@ -120,7 +120,7 @@ the data produced by VASP, so this may give you an excellent starting point to l
 how you can apply *py4vasp* in your research.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
    calculation
