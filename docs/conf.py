@@ -51,7 +51,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # html_theme = "nature"
 
 # a minimal theme for the website
-html_theme = 'basic'
+html_theme = "basic"
 html_show_sphinx = False
 html_show_copyright = False
 html_domain_indices = False

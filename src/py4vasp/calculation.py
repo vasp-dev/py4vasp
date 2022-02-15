@@ -25,6 +25,9 @@ class Calculation:
     .. warning::
        Create new instances using the class method :meth:`from_path` and not the
        constructor. Otherwise some functionality will not work as intended.
+
+    Attributes
+    ----------
     """
 
     @classmethod
@@ -43,7 +46,7 @@ class Calculation:
         """
         calc = cls()
         calc._path = Path(path_name).expanduser().resolve()
-        calc = _add_all_refinement_classes(calc)
+        calc = _add_all_refinement_classes(calc, _add_to_instance)
         return _add_input_files(calc)
 
     def path(self):
@@ -78,17 +81,30 @@ class Calculation:
         self._POSCAR.write(str(poscar))
 
 
-def _add_all_refinement_classes(calc):
+def _add_all_refinement_classes(calc, add_single_class):
     for name, class_ in inspect.getmembers(py4vasp.data, inspect.isclass):
         if issubclass(class_, py4vasp.data._base.DataBase):
-            calc = _add_refinement_class(calc, name, class_)
+            calc = add_single_class(calc, name, class_)
     return calc
 
 
-def _add_refinement_class(calc, name, class_):
+def _add_to_instance(calc, name, class_):
     instance = class_.from_file(calc.path())
     setattr(calc, _convert.to_snakecase(name), instance)
     return calc
+
+
+def _add_to_documentation(calc, name, class_):
+    first_line = class_.__doc__.split("\n")[0]
+    calc.__doc__ += f"""
+    {_convert.to_snakecase(name)} : py4vasp.data.{name}
+        {first_line}
+    """
+    return calc
+
+
+Calculation = _add_all_refinement_classes(Calculation, _add_to_documentation)
+print(Calculation.__doc__)
 
 
 def _add_input_files(calc):
