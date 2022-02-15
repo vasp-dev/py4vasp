@@ -56,8 +56,8 @@ This should print the version of *py4vasp* that you installed.
   recommend that you use versions of these two codes released about at the same
   time for maximum compatibility.
 
-Quickstart
-----------
+Quick start
+-----------
 
 .. _Jupyter: https://jupyter.org/
 
