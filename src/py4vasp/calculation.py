@@ -96,10 +96,15 @@ def _add_to_instance(calc, name, class_):
 
 def _add_to_documentation(calc, name, class_):
     first_line = class_.__doc__.split("\n")[0]
+    functions = inspect.getmembers(class_, inspect.isfunction)
+    names = [name for name, _ in functions if not name.startswith("_")]
     calc.__doc__ += f"""
     {_convert.to_snakecase(name)} : py4vasp.data.{name}
         {first_line}
-    """
+
+"""
+    for name in names:
+        calc.__doc__ += f"        * :py:meth:`py4vasp.data.{class_.__name__}.{name}`\n"
     return calc
 
 
