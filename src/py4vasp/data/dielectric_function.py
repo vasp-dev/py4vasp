@@ -51,7 +51,7 @@ dielectric function:
         return components
 
     def _to_dict(self):
-        f"""Read the data into a dictionary.
+        """Read the data into a dictionary.
 
         Returns
         -------
@@ -67,7 +67,7 @@ dielectric function:
         }
 
     def _to_plotly(self, selection=None):
-        f"""Read the data and generate a plotly figure.
+        """Read the data and generate a plotly figure.
 
         Parameters
         ----------

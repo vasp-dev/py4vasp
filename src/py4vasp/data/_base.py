@@ -79,6 +79,7 @@ class DataBase:
         p.text(str(self))
 
     def print(self):
+        "Print a string representation of this class to standard output."
         print(self)
 
     def _set_data_or_raise_error_if_data_is_missing(self, raw_data):

@@ -28,14 +28,6 @@ class Calculation:
 
     Attributes
     ----------
-    INCAR
-        The INCAR file of the VASP calculation.
-
-    KPOINTS
-        The KPOINTS file of the VASP calculation.
-
-    POSCAR
-        The POSCAR file of the VASP calculation.
     """
 
     @classmethod
@@ -63,6 +55,7 @@ class Calculation:
 
     @property
     def INCAR(self):
+        "The INCAR file of the VASP calculation."
         return self._INCAR
 
     @INCAR.setter
@@ -71,6 +64,7 @@ class Calculation:
 
     @property
     def KPOINTS(self):
+        "The KPOINTS file of the VASP calculation."
         return self._KPOINTS
 
     @KPOINTS.setter
@@ -79,6 +73,7 @@ class Calculation:
 
     @property
     def POSCAR(self):
+        "The POSCAR file of the VASP calculation."
         return self._POSCAR
 
     @POSCAR.setter
