@@ -14,6 +14,7 @@ object. For example you may use
 """
 import inspect
 import py4vasp.data
+import py4vasp.exceptions as exception
 import py4vasp.control
 import py4vasp._util.convert as _convert
 from pathlib import Path
@@ -22,13 +23,22 @@ from pathlib import Path
 class Calculation:
     """Manage access to input and output of VASP calculations.
 
-    .. warning::
-       Create new instances using the class method :meth:`from_path` and not the
-       constructor. Otherwise some functionality will not work as intended.
+    Notes
+    -----
+    To create new instances, you should use the classmethod :meth:`from_path`. This
+    will ensure that the path to your VASP calculation is properly set and all features
+    work as intended.
 
     Attributes
     ----------
     """
+
+    def __init__(self, *args, **kwargs):
+        if not kwargs.get("_internal"):
+            message = """\
+Please setup new Calculation instances using the classmethod Calculation.from_path()
+instead of the constructor Calculation()."""
+            raise exception.IncorrectUsage(message)
 
     @classmethod
     def from_path(cls, path_name):
@@ -44,7 +54,7 @@ class Calculation:
         Calculation
             A calculation associated with the given path.
         """
-        calc = cls()
+        calc = cls(_internal=True)
         calc._path = Path(path_name).expanduser().resolve()
         calc = _add_all_refinement_classes(calc, _add_to_instance)
         return _add_input_files(calc)
