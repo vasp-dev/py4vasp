@@ -1,19 +1,21 @@
-""" Refine the raw data produced by Vasp for plotting or analysis.
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+""" Refine the raw data produced by VASP for plotting or analysis.
 
-Usually one is not directly interested in the raw data that is produced, but
-wants to produce either a figure for a publication or some post processing of
-the data. This module contains multiple classes that enable these kind of
+Usually one is not directly interested in the raw data that is produced but
+wants to produce either a figure for a publication or some post-processing of
+the data. This module contains multiple classes that enable these kinds of
 workflows by extracting the relevant data from the HDF5 file and transforming
 them into an accessible format. The classes also provide plotting functionality
 to get a quick insight about the data, which can then be refined either within
-python or a different tool to obtain publication quality figures.
+python or a different tool to obtain publication-quality figures.
 
 Generally, all classes provide a `read` function that extracts the data from the
-HDF5 file and puts it into a python dictionary. Where it makes sense in addition
+HDF5 file and puts it into a Python dictionary. Where it makes sense in addition
 a `plot` function is available that converts the data into a figure for Jupyter
 notebooks. In addition, data conversion routines `to_X` may be available
 transforming the data into another format or file, which may be useful to
-generate plots with tools other than python. For the specifics, please refer to
+generate plots with tools other than Python. For the specifics, please refer to
 the documentation of the individual classes.
 """
 

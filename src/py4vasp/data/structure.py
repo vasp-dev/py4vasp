@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp.data import Viewer3d, Topology
 from py4vasp.data._base import RefinementDescriptor
 from IPython.lib.pretty import pretty

@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import py4vasp._util.convert as _convert
 
 
@@ -12,7 +14,7 @@ class Image:
 
         Note that the filename must be a keyword argument, i.e., you explicitly
         need to write *filename="name_of_file"* because the arguments are passed
-        on to the plot function. Please check the documentation of that function
+        on to the :py:meth:`plot` function. Please check the documentation of that function
         to learn which arguments are allowed."""
         fig = self.to_plotly(*args, **kwargs)
         classname = _convert.to_snakecase(self.__class__.__name__).strip("_")

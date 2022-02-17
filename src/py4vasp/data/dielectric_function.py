@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 import plotly.graph_objects as go
 import typing
@@ -49,7 +51,7 @@ dielectric function:
         return components
 
     def _to_dict(self):
-        f"""Read the data into a dictionary.
+        """Read the data into a dictionary.
 
         Returns
         -------
@@ -65,7 +67,7 @@ dielectric function:
         }
 
     def _to_plotly(self, selection=None):
-        f"""Read the data and generate a plotly figure.
+        """Read the data and generate a plotly figure.
 
         Parameters
         ----------

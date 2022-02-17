@@ -1,8 +1,21 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import py4vasp.data._base as _base
 from py4vasp.data import Structure
 
 
 class InternalStrain(_base.DataBase):
+    """The internal strain
+
+    You can use this class to extract the internal strain of a linear
+    response calculation.
+
+    Parameters
+    ----------
+    raw_internal_strain : RawInternalStrain
+        Dataclass containing the raw internal strain data.
+    """
+
     read = _base.RefinementDescriptor("_to_dict")
     to_dict = _base.RefinementDescriptor("_to_dict")
     __str__ = _base.RefinementDescriptor("_to_string")

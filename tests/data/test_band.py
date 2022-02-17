@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp.data import Band, Kpoint, Projector
 from IPython.lib.pretty import pretty
 from unittest.mock import patch

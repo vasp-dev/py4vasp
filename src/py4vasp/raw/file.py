@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from contextlib import AbstractContextManager
 from pathlib import Path
 from .rawdata import *
@@ -135,7 +137,9 @@ class File(AbstractContextManager):
             projectors are included.
         """
         return self._make_data_dict(
-            self._read_band(), kpoints_opt=self._read_band("_kpoints_opt")
+            self._read_band(),
+            kpoints_opt=self._read_band("_kpoints_opt"),
+            kpoints_wan=self._read_band("_kpoints_wan"),
         )
 
     def _read_band(self, suffix=""):
@@ -213,12 +217,18 @@ class File(AbstractContextManager):
             which may be useful for band structures.
         """
         return self._make_data_dict(
-            self._read_kpoint(), kpoints_opt=self._read_kpoint("_kpoints_opt")
+            self._read_kpoint(),
+            kpoints_opt=self._read_kpoint("_kpoints_opt"),
+            kpoints_wan=self._read_kpoint("_kpoints_wan"),
         )
 
     def _read_kpoint(self, suffix=""):
         self._raise_error_if_closed()
-        input = f"input/kpoints_opt" if suffix == "_kpoints_opt" else "input/kpoints"
+        input = {
+            "_kpoints_opt": f"input/kpoints_opt",
+            "_kpoints_wan": f"input/kpoints_wan",
+            "": f"input/kpoints",
+        }[suffix]
         result = f"results/electron_eigenvalues{suffix}"
         if input not in self._h5f or result not in self._h5f:
             return None

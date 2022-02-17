@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import pytest
 from py4vasp.data import System
 from py4vasp.raw import RawSystem

@@ -1,7 +1,11 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from unittest.mock import patch, mock_open
 from pathlib import Path
+import pytest
 import py4vasp.data
 import py4vasp.control as ctrl
+import py4vasp.exceptions as exception
 import inspect
 
 
@@ -60,3 +64,12 @@ def test_input_files():
     with patch("py4vasp.control._base.open", mock_open(read_data=text)) as mock:
         calculation.POSCAR = text
         assert calculation.POSCAR.read() == text
+
+
+def test_using_constructor_raises_exception():
+    with pytest.raises(exception.IncorrectUsage):
+        py4vasp.Calculation()
+    with pytest.raises(exception.IncorrectUsage):
+        py4vasp.Calculation("path")
+    with pytest.raises(exception.IncorrectUsage):
+        py4vasp.Calculation(key="value")
