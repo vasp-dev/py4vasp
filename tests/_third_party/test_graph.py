@@ -34,3 +34,12 @@ def compare_series(converted, original, Assert):
     Assert.allclose(converted.x, original.x)
     Assert.allclose(converted.y, original.y)
     assert converted.name == original.name
+
+
+def test_axis_label(parabola, Assert):
+    graph = Graph(parabola)
+    graph.xlabel = "xaxis label"
+    graph.ylabel = "yaxis label"
+    fig = graph.to_plotly()
+    assert fig.layout.xaxis.title.text == graph.xlabel
+    assert fig.layout.yaxis.title.text == graph.ylabel
