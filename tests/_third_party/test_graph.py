@@ -43,3 +43,13 @@ def test_axis_label(parabola, Assert):
     fig = graph.to_plotly()
     assert fig.layout.xaxis.title.text == graph.xlabel
     assert fig.layout.yaxis.title.text == graph.ylabel
+
+
+def test_secondary_yaxis(parabola, sine, Assert):
+    sine.y2 = True
+    graph = Graph([parabola, sine])
+    graph.y2label = "secondary yaxis label"
+    fig = graph.to_plotly()
+    assert fig.layout.yaxis2.title.text == graph.y2label
+    assert len(fig.data) == 2
+    assert fig.data[1].yaxis == "y2"
