@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """Setup input data for VASP calculations.
 
 VASP requires several input files to execute. We provide some simple helper classes and

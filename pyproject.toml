@@ -1,11 +1,20 @@
 [tool.poetry]
 name = "py4vasp"
-version = "0.3.1"
+version = "0.4.0"
 description = "Tool for assisting with the analysis and setup of VASP calculations."
 authors = [
+    "VASP Software GmbH <py4vasp@vasp.at>",
     "Martin Schlipf <martin.schlipf@gmail.com>",
+    "Henrique Miranda <miranda.henrique@gmail.com>",
     "Orest Dubay <orest-d@users.noreply.github.com>"
 ]
+license = "Apache-2.0"
+readme = "README.md"
+homepage = "https://vasp.at/py4vasp"
+repository = "https://github.com/vasp-dev/py4vasp"
+
+[tool.poetry.urls]
+"Support Forum" = "https://vasp.at/forum/"
 
 [tool.poetry.dependencies]
 python = "^3.7.1"

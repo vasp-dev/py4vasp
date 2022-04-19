@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp.data import Topology
 from py4vasp.data._selection import Selection
 import py4vasp.exceptions as exception
