@@ -22,6 +22,12 @@ def two_lines():
     return Series(x=x, y=y, name="two lines")
 
 
+@pytest.fixture
+def fatband():
+    x = np.linspace(-1, 1, 40)
+    return Series(x=x, y=np.abs(x), width=x ** 2, name="fatband")
+
+
 def test_basic_graph(parabola, Assert):
     graph = Graph(parabola)
     fig = graph.to_plotly()
@@ -77,3 +83,21 @@ def test_two_lines(two_lines, Assert):
             color = converted.line.color
         assert converted.line.color == color
         first_trace = False
+
+
+def test_fatband(fatband, Assert):
+    graph = Graph(fatband)
+    fig = graph.to_plotly()
+    upper = fatband.y + fatband.width
+    lower = fatband.y - fatband.width
+    expected = Series(
+        x=np.concatenate((fatband.x, fatband.x[::-1])),
+        y=np.concatenate((lower, upper[::-1])),
+        name=fatband.name,
+    )
+    assert len(fig.data) == 1
+    compare_series(fig.data[0], expected, Assert)
+    assert fig.data[0].mode == "none"
+    assert fig.data[0].fill == "toself"
+    assert fig.data[0].fillcolor is not None
+    assert fig.data[0].opacity == 0.5

@@ -13,6 +13,7 @@ class Series:
     x: np.ndarray
     y: np.ndarray
     name: str
+    width: np.ndarray = None
     y2: bool = False
 
     def to_plotly(self):
@@ -44,16 +45,34 @@ class Graph:
                 trace = self._convert_series_to_trace(series)
                 trace.showlegend = i == 0
                 trace.line.color = color
+                trace.fillcolor = color
                 yield trace
 
     def _convert_series_to_trace(self, series):
+        if series.width is not None:
+            upper = series.y + series.width
+            lower = series.y - series.width
+            x = np.concatenate((series.x, series.x[::-1]))
+            y = np.concatenate((lower, upper[::-1]))
+            mode = "none"
+            fill = "toself"
+            opacity = 0.5
+        else:
+            x = series.x
+            y = series.y
+            mode = None
+            fill = None
+            opacity = None
         yaxis = "y2" if series.y2 else "y"
         return go.Scatter(
-            x=series.x,
-            y=series.y,
+            x=x,
+            y=y,
             yaxis=yaxis,
             name=series.name,
             legendgroup=series.name,
+            mode=mode,
+            fill=fill,
+            opacity=opacity,
         )
 
     def _figure_with_one_or_two_y_axes(self):
