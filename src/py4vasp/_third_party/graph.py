@@ -37,6 +37,12 @@ class Graph:
             figure.add_trace(trace)
         return figure
 
+    def _figure_with_one_or_two_y_axes(self):
+        if any(series.y2 for series in np.atleast_1d(self.series)):
+            return make_subplots(specs=[[{"secondary_y": True}]])
+        else:
+            return go.Figure()
+
     def _trace_generator(self):
         colors = itertools.cycle(_vasp_colors)
         for series, color in zip(np.atleast_1d(self.series), colors):
@@ -74,15 +80,3 @@ class Graph:
             fill=fill,
             opacity=opacity,
         )
-
-    def _figure_with_one_or_two_y_axes(self):
-        if any(series.y2 for series in np.atleast_1d(self.series)):
-            return make_subplots(specs=[[{"secondary_y": True}]])
-        else:
-            return go.Figure()
-
-    def _figure_options(self, series):
-        options = {}
-        if series.y2:
-            options["secondary_y"] = True
-        return options
