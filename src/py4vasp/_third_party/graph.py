@@ -22,7 +22,7 @@ class Series:
 
 @dataclass
 class Graph:
-    data: Series or Sequence[Series]
+    series: Series or Sequence[Series]
     xlabel: str = None
     ylabel: str = None
     y2label: str = None
@@ -39,7 +39,7 @@ class Graph:
 
     def _trace_generator(self):
         colors = itertools.cycle(_vasp_colors)
-        for series, color in zip(np.atleast_1d(self.data), colors):
+        for series, color in zip(np.atleast_1d(self.series), colors):
             for i, y in enumerate(np.atleast_2d(series.y.T)):
                 series = replace(series, y=y)
                 trace = self._convert_series_to_trace(series)
@@ -76,7 +76,7 @@ class Graph:
         )
 
     def _figure_with_one_or_two_y_axes(self):
-        if any(series.y2 for series in np.atleast_1d(self.data)):
+        if any(series.y2 for series in np.atleast_1d(self.series)):
             return make_subplots(specs=[[{"secondary_y": True}]])
         else:
             return go.Figure()
