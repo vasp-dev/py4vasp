@@ -29,32 +29,47 @@ class Graph:
     y2label: str = None
 
     def to_plotly(self):
-        figure = self._figure_with_one_or_two_y_axes()
-        figure.layout.xaxis.title.text = self.xlabel
-        if self.xticks:
-            figure.layout.xaxis.tickmode = "array"
-            figure.layout.xaxis.tickvals = tuple(self.xticks.keys())
-            figure.layout.xaxis.ticktext = tuple(self.xticks.values())
-        figure.layout.yaxis.title.text = self.ylabel
-        if self.y2label:
-            figure.layout.yaxis2.title.text = self.y2label
-        for trace in self._trace_generator():
+        figure = _make_plotly_figure(self)
+        for trace in _generate_plotly_traces(self.series):
             figure.add_trace(trace)
         return figure
 
-    def _figure_with_one_or_two_y_axes(self):
-        if any(series.y2 for series in np.atleast_1d(self.series)):
-            return make_subplots(specs=[[{"secondary_y": True}]])
-        else:
-            return go.Figure()
 
-    def _trace_generator(self):
-        colors = itertools.cycle(_vasp_colors)
-        for series in np.atleast_1d(self.series):
-            factory = _PlotlyTraceFactory(color=next(colors))
-            for y in np.atleast_2d(series.y.T):
-                yield factory.make_trace(replace(series, y=y))
-                factory.first_trace = False
+def _make_plotly_figure(graph):
+    figure = _figure_with_one_or_two_y_axes(graph)
+    _set_xaxis_options(graph, figure)
+    _set_yaxis_options(graph, figure)
+    return figure
+
+
+def _figure_with_one_or_two_y_axes(graph):
+    if any(series.y2 for series in np.atleast_1d(graph.series)):
+        return make_subplots(specs=[[{"secondary_y": True}]])
+    else:
+        return go.Figure()
+
+
+def _set_xaxis_options(graph, figure):
+    figure.layout.xaxis.title.text = graph.xlabel
+    if graph.xticks:
+        figure.layout.xaxis.tickmode = "array"
+        figure.layout.xaxis.tickvals = tuple(graph.xticks.keys())
+        figure.layout.xaxis.ticktext = tuple(graph.xticks.values())
+
+
+def _set_yaxis_options(graph, figure):
+    figure.layout.yaxis.title.text = graph.ylabel
+    if graph.y2label:
+        figure.layout.yaxis2.title.text = graph.y2label
+
+
+def _generate_plotly_traces(series):
+    colors = itertools.cycle(_vasp_colors)
+    for series in np.atleast_1d(series):
+        factory = _PlotlyTraceFactory(color=next(colors))
+        for y in np.atleast_2d(series.y.T):
+            yield factory.make_trace(replace(series, y=y))
+            factory.first_trace = False
 
 
 @dataclass
