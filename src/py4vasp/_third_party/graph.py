@@ -45,38 +45,50 @@ class Graph:
 
     def _trace_generator(self):
         colors = itertools.cycle(_vasp_colors)
-        for series, color in zip(np.atleast_1d(self.series), colors):
-            for i, y in enumerate(np.atleast_2d(series.y.T)):
-                series = replace(series, y=y)
-                trace = self._convert_series_to_trace(series)
-                trace.showlegend = i == 0
-                trace.line.color = color
-                trace.fillcolor = color
-                yield trace
+        for series in np.atleast_1d(self.series):
+            factory = _PlotlyTraceFactory(color=next(colors))
+            for y in np.atleast_2d(series.y.T):
+                yield factory.make_trace(replace(series, y=y))
+                factory.first_trace = False
 
-    def _convert_series_to_trace(self, series):
-        if series.width is not None:
-            upper = series.y + series.width
-            lower = series.y - series.width
-            x = np.concatenate((series.x, series.x[::-1]))
-            y = np.concatenate((lower, upper[::-1]))
-            mode = "none"
-            fill = "toself"
-            opacity = 0.5
+
+@dataclass
+class _PlotlyTraceFactory:
+    color: str
+    first_trace: bool = True
+
+    def make_trace(self, series):
+        if series.width is None:
+            options = self._options_line(series)
         else:
-            x = series.x
-            y = series.y
-            mode = None
-            fill = None
-            opacity = None
-        yaxis = "y2" if series.y2 else "y"
-        return go.Scatter(
-            x=x,
-            y=y,
-            yaxis=yaxis,
-            name=series.name,
-            legendgroup=series.name,
-            mode=mode,
-            fill=fill,
-            opacity=opacity,
-        )
+            options = self._options_area(series)
+        return go.Scatter(**options)
+
+    def _options_line(self, series):
+        return {
+            **self._common_options(series),
+            "x": series.x,
+            "y": series.y,
+            "line": {"color": self.color},
+        }
+
+    def _options_area(self, series):
+        upper = series.y + series.width
+        lower = series.y - series.width
+        return {
+            **self._common_options(series),
+            "x": np.concatenate((series.x, series.x[::-1])),
+            "y": np.concatenate((lower, upper[::-1])),
+            "mode": "none",
+            "fill": "toself",
+            "fillcolor": self.color,
+            "opacity": 0.5,
+        }
+
+    def _common_options(self, series):
+        return {
+            "name": series.name,
+            "legendgroup": series.name,
+            "showlegend": self.first_trace,
+            "yaxis": "y2" if series.y2 else "y",
+        }
