@@ -49,7 +49,7 @@ def compare_series(converted, original, Assert):
     assert converted.name == original.name
 
 
-def test_axis_label(parabola, Assert):
+def test_axis_label(parabola):
     graph = Graph(parabola)
     graph.xlabel = "xaxis label"
     graph.ylabel = "yaxis label"
@@ -101,3 +101,12 @@ def test_fatband(fatband, Assert):
     assert fig.data[0].fill == "toself"
     assert fig.data[0].fillcolor is not None
     assert fig.data[0].opacity == 0.5
+
+
+def test_custom_xticks(parabola):
+    graph = Graph(parabola)
+    graph.xticks = {0.1: "X", 0.3: "Y", 0.8: "Z"}
+    fig = graph.to_plotly()
+    assert fig.layout.xaxis.tickmode == "array"
+    assert fig.layout.xaxis.tickvals == (0.1, 0.3, 0.8)
+    assert fig.layout.xaxis.ticktext == ("X", "Y", "Z")

@@ -24,12 +24,17 @@ class Series:
 class Graph:
     series: Series or Sequence[Series]
     xlabel: str = None
+    xticks: dict = None
     ylabel: str = None
     y2label: str = None
 
     def to_plotly(self):
         figure = self._figure_with_one_or_two_y_axes()
         figure.layout.xaxis.title.text = self.xlabel
+        if self.xticks:
+            figure.layout.xaxis.tickmode = "array"
+            figure.layout.xaxis.tickvals = tuple(self.xticks.keys())
+            figure.layout.xaxis.ticktext = tuple(self.xticks.values())
         figure.layout.yaxis.title.text = self.ylabel
         if self.y2label:
             figure.layout.yaxis2.title.text = self.y2label
