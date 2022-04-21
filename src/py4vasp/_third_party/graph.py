@@ -27,6 +27,7 @@ class Graph:
     xticks: dict = None
     ylabel: str = None
     y2label: str = None
+    title: str = None
 
     def to_plotly(self):
         figure = _make_plotly_figure(self)
@@ -42,6 +43,7 @@ def _make_plotly_figure(graph):
     figure = _figure_with_one_or_two_y_axes(graph)
     _set_xaxis_options(graph, figure)
     _set_yaxis_options(graph, figure)
+    figure.layout.title.text = graph.title
     return figure
 
 

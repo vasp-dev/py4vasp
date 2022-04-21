@@ -113,6 +113,13 @@ def test_custom_xticks(parabola):
     assert fig.layout.xaxis.ticktext == ("X", "Y", "Z")
 
 
+def test_title(parabola):
+    graph = Graph(parabola)
+    graph.title = "title"
+    fig = graph.to_plotly()
+    assert fig.layout.title.text == graph.title
+
+
 @patch("plotly.graph_objs.Figure._ipython_display_")
 def test_ipython_display(mock_display, parabola):
     graph = Graph(parabola)
