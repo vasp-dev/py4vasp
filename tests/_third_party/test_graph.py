@@ -1,6 +1,7 @@
 from py4vasp._third_party.graph import Graph, Series
 import numpy as np
 import pytest
+from unittest.mock import patch
 
 
 @pytest.fixture
@@ -110,3 +111,10 @@ def test_custom_xticks(parabola):
     assert fig.layout.xaxis.tickmode == "array"
     assert fig.layout.xaxis.tickvals == (0.1, 0.3, 0.8)
     assert fig.layout.xaxis.ticktext == ("X", "Y", "Z")
+
+
+@patch("plotly.graph_objs.Figure._ipython_display_")
+def test_ipython_display(mock_display, parabola):
+    graph = Graph(parabola)
+    graph._ipython_display_()
+    mock_display.assert_called_once()

@@ -34,6 +34,9 @@ class Graph:
             figure.add_trace(trace)
         return figure
 
+    def _ipython_display_(self):
+        self.to_plotly()._ipython_display_()
+
 
 def _make_plotly_figure(graph):
     figure = _figure_with_one_or_two_y_axes(graph)
