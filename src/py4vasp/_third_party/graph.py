@@ -10,12 +10,26 @@ _vasp_colors = ["#4C265F", "#2FB5AB", "#2C68FC", "#A82C35", "#808080"]
 
 @dataclass
 class Series:
+    """Represents a single series in a graph.
+
+    Typically this corresponds to a single line of x-y data with an optional name used
+    in the legend of the figure. The look of the series is modified by some of the other
+    optional arguments.
+    """
+
     x: np.ndarray
+    "The x coordinates of the series."
     y: np.ndarray
-    name: str
+    """The y coordinates of the series. If the data is 2-dimensional multiple lines are
+    generated with a common entry in the legend."""
+    name: str = None
+    "A label for the series used in the legend."
     width: np.ndarray = None
+    "When a width is set, the series will be visualized as an area instead of a line."
     y2: bool = False
+    "Use a secondary y axis to show this series."
     color: str = None
+    "The color used for this series."
 
     def _generate_traces(self):
         first_trace = True
@@ -62,14 +76,27 @@ class Series:
 
 @dataclass
 class Graph:
+    """Wraps the functionality to generate graphs of series.
+
+    From a single or multiple series a graph is generated based on the optional
+    parameters set in this class.
+    """
+
     series: Series or Sequence[Series]
+    "One or more series shown in the graph."
     xlabel: str = None
+    "Label for the x axis."
     xticks: dict = None
+    "A dictionary specifying positions and labels where ticks are placed on the x axis."
     ylabel: str = None
+    "Label for the y axis."
     y2label: str = None
+    "Label for the secondary y axis."
     title: str = None
+    "Title of the graph."
 
     def to_plotly(self):
+        "Convert the graph to a plotly figure."
         figure = self._make_plotly_figure()
         for trace in self._generate_plotly_traces():
             figure.add_trace(trace)
