@@ -140,32 +140,32 @@ def test_Sr2TiO4_projectors_to_frame(Sr2TiO4_projectors, Assert):
 
 def test_Sr2TiO4_plot(Sr2TiO4, Assert):
     fig = Sr2TiO4.plot()
-    assert fig.layout.xaxis.title.text == "Energy (eV)"
-    assert fig.layout.yaxis.title.text == "DOS (1/eV)"
-    assert len(fig.data) == 1
-    Assert.allclose(fig.data[0].x, Sr2TiO4.ref.energies)
-    Assert.allclose(fig.data[0].y, Sr2TiO4.ref.dos)
+    assert fig.xlabel == "Energy (eV)"
+    assert fig.ylabel == "DOS (1/eV)"
+    assert len(fig.series) == 1
+    Assert.allclose(fig.series[0].x, Sr2TiO4.ref.energies)
+    Assert.allclose(fig.series[0].y, Sr2TiO4.ref.dos)
 
 
 def test_Fe3O4_plot(Fe3O4, Assert):
     fig = Fe3O4.plot()
-    assert len(fig.data) == 2
-    Assert.allclose(fig.data[0].x, fig.data[1].x)
-    Assert.allclose(fig.data[0].y, Fe3O4.ref.dos_up)
-    Assert.allclose(fig.data[1].y, -Fe3O4.ref.dos_down)
+    assert len(fig.series) == 2
+    Assert.allclose(fig.series[0].x, fig.series[1].x)
+    Assert.allclose(fig.series[0].y, Fe3O4.ref.dos_up)
+    Assert.allclose(fig.series[1].y, -Fe3O4.ref.dos_down)
 
 
 def test_Sr2TiO4_projectors_plot(Sr2TiO4_projectors, Assert):
     fig = Sr2TiO4_projectors.plot("s O(px) dz2(3)")
-    assert len(fig.data) == 4  # total Dos + 3 selections
-    Assert.allclose(fig.data[1].y, Sr2TiO4_projectors.ref.s)
-    Assert.allclose(fig.data[2].y, Sr2TiO4_projectors.ref.O_px)
-    Assert.allclose(fig.data[3].y, Sr2TiO4_projectors.ref.Ti_dz2)
+    assert len(fig.series) == 4  # total Dos + 3 selections
+    Assert.allclose(fig.series[1].y, Sr2TiO4_projectors.ref.s)
+    Assert.allclose(fig.series[2].y, Sr2TiO4_projectors.ref.O_px)
+    Assert.allclose(fig.series[3].y, Sr2TiO4_projectors.ref.Ti_dz2)
 
 
 def test_Fe3O4_projectors_plot(Fe3O4_projectors, Assert):
     fig = Fe3O4_projectors.plot("Fe p O(d)")
-    data = fig.data
+    data = fig.series
     assert len(data) == 8  # spin resolved total + 3 selections
     names = [d.name for d in data]
     Fe_up = names.index("Fe_up")
@@ -180,6 +180,14 @@ def test_Fe3O4_projectors_plot(Fe3O4_projectors, Assert):
     Assert.allclose(data[O_d_up].y, Fe3O4_projectors.ref.O_d_up)
     O_d_down = names.index("O_d_down")
     Assert.allclose(data[O_d_down].y, -Fe3O4_projectors.ref.O_d_down)
+
+
+@patch("py4vasp.data.dos.Dos._plot")
+def test_Sr2TiO4_to_plotly(mock_plot, Sr2TiO4):
+    fig = Sr2TiO4.to_plotly("selection")
+    mock_plot.assert_called_once_with("selection")
+    graph = mock_plot.return_value
+    graph.to_plotly.assert_called_once()
 
 
 def test_Sr2TiO4_to_png(Sr2TiO4):
@@ -236,7 +244,8 @@ projectors:
 def test_descriptor(Sr2TiO4, check_descriptors):
     descriptors = {
         "_to_dict": ["to_dict", "read"],
-        "_to_plotly": ["to_plotly", "plot"],
+        "_plot": ["plot"],
+        "_to_plotly": ["to_plotly"],
         "_to_frame": ["to_frame"],
     }
     check_descriptors(Sr2TiO4, descriptors)
