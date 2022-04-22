@@ -312,6 +312,7 @@ def test_electronic_to_plotly(mock_plot, electronic):
     mock_plot.assert_called_once_with("selection")
     graph = mock_plot.return_value
     graph.to_plotly.assert_called_once()
+    assert fig == graph.to_plotly.return_value
 
 
 def test_electronic_to_image(electronic):

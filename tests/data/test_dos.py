@@ -188,9 +188,10 @@ def test_Sr2TiO4_to_plotly(mock_plot, Sr2TiO4):
     mock_plot.assert_called_once_with("selection")
     graph = mock_plot.return_value
     graph.to_plotly.assert_called_once()
+    assert fig == graph.to_plotly.return_value
 
 
-def test_Sr2TiO4_to_png(Sr2TiO4):
+def test_Sr2TiO4_to_image(Sr2TiO4):
     check_to_image(Sr2TiO4, None, "dos.png")
     custom_filename = "custom.jpg"
     check_to_image(Sr2TiO4, custom_filename, custom_filename)
