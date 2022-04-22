@@ -130,7 +130,11 @@ class Graph:
         if self.xticks:
             figure.layout.xaxis.tickmode = "array"
             figure.layout.xaxis.tickvals = tuple(self.xticks.keys())
-            figure.layout.xaxis.ticktext = tuple(self.xticks.values())
+            figure.layout.xaxis.ticktext = self._xtick_labels()
+
+    def _xtick_labels(self):
+        # empty labels will be overwritten by plotly so we put a single space in them
+        return tuple(label or " " for label in self.xticks.values())
 
     def _set_yaxis_options(self, figure):
         figure.layout.yaxis.title.text = self.ylabel

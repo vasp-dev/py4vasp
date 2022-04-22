@@ -106,11 +106,12 @@ def test_fatband(fatband, Assert):
 
 def test_custom_xticks(parabola):
     graph = Graph(parabola)
-    graph.xticks = {0.1: "X", 0.3: "Y", 0.8: "Z"}
+    graph.xticks = {0.1: "X", 0.3: "Y", 0.4: "", 0.8: "Z"}
     fig = graph.to_plotly()
     assert fig.layout.xaxis.tickmode == "array"
-    assert fig.layout.xaxis.tickvals == (0.1, 0.3, 0.8)
-    assert fig.layout.xaxis.ticktext == ("X", "Y", "Z")
+    assert fig.layout.xaxis.tickvals == (0.1, 0.3, 0.4, 0.8)
+    assert fig.layout.xaxis.ticktext == ("X", "Y", " ", "Z")
+    # empty ticks should be replace by " " because otherwise plotly will replace them
 
 
 def test_title(parabola):
