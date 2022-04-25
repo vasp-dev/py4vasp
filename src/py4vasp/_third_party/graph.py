@@ -145,6 +145,10 @@ class Graph:
             figure.add_trace(trace)
         return figure
 
+    def show(self):
+        "Show the graph with the default look."
+        self.to_plotly().show()
+
     def _ipython_display_(self):
         self.to_plotly()._ipython_display_()
 

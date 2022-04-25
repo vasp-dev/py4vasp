@@ -128,6 +128,13 @@ def test_ipython_display(mock_display, parabola):
     mock_display.assert_called_once()
 
 
+@patch("plotly.graph_objs.Figure.show")
+def test_show(mock_show, parabola):
+    graph = Graph(parabola)
+    graph.show()
+    mock_show.assert_called_once()
+
+
 def test_plot():
     x1, x2, y1, y2 = np.random.random((4, 50))
     series0 = Series(x1, y1)
