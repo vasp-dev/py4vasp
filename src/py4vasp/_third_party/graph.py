@@ -3,9 +3,12 @@ import itertools
 import numpy as np
 from typing import Sequence, NamedTuple
 import plotly.graph_objects as go
+import plotly.io as pio
 from plotly.subplots import make_subplots
 
-_vasp_colors = ["#4C265F", "#2FB5AB", "#2C68FC", "#A82C35", "#808080"]
+_vasp_colors = ("#4C265F", "#2FB5AB", "#2C68FC", "#A82C35", "#808080")
+pio.templates["vasp"] = go.layout.Template(layout={"colorway": _vasp_colors})
+pio.templates.default = "ggplot2+vasp"
 
 
 @dataclass
