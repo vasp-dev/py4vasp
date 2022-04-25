@@ -5,6 +5,7 @@ from typing import Sequence
 import plotly.graph_objects as go
 import plotly.io as pio
 from plotly.subplots import make_subplots
+import py4vasp.exceptions as exception
 
 _vasp_colors = ("#4C265F", "#2FB5AB", "#2C68FC", "#A82C35", "#808080")
 pio.templates["vasp"] = go.layout.Template(layout={"colorway": _vasp_colors})
@@ -71,9 +72,14 @@ class Series:
     color: str = None
     "The color used for this series."
 
+    def __post_init__(self):
+        if len(self.x) != len(self.y):
+            message = "The length of the two plotted components is inconsistent."
+            raise exception.IncorrectUsage(message)
+
     def _generate_traces(self):
         first_trace = True
-        for y in np.atleast_2d(self.y.T):
+        for y in np.atleast_2d(np.array(self.y).T):
             yield self._make_trace(y, first_trace)
             first_trace = False
 

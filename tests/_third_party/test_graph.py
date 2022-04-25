@@ -1,4 +1,5 @@
 from py4vasp._third_party.graph import Graph, Series, plot
+import py4vasp.exceptions as exception
 import numpy as np
 import pytest
 from unittest.mock import patch
@@ -27,6 +28,13 @@ def two_lines():
 def fatband():
     x = np.linspace(-1, 1, 40)
     return Series(x=x, y=np.abs(x), width=x ** 2, name="fatband")
+
+
+@pytest.fixture
+def non_numpy():
+    x = (1, 2, 3)
+    y = (4, 5, 6)
+    return Series(x, y), Series(list(x), list(y))
 
 
 def test_basic_graph(parabola, Assert):
@@ -121,6 +129,15 @@ def test_title(parabola):
     assert fig.layout.title.text == graph.title
 
 
+def test_non_numpy_data(non_numpy, Assert):
+    graph = Graph(non_numpy)
+    fig = graph.to_plotly()
+    assert len(fig.data) == len(non_numpy)
+    for converted, original in zip(fig.data, non_numpy):
+        Assert.allclose(converted.x, np.array(original.x))
+        Assert.allclose(converted.y, np.array(original.y))
+
+
 @patch("plotly.graph_objs.Figure._ipython_display_")
 def test_ipython_display(mock_display, parabola):
     graph = Graph(parabola)
@@ -147,3 +164,20 @@ def test_plot():
     assert plot((x1, y1)) == Graph([series0])
     assert plot((x1, y1), (x2, y2, "label2")) == Graph([series0, series2])
     assert plot((x1, y1), xlabel="xaxis") == Graph([series0], xlabel="xaxis")
+
+
+def test_plot_small_dataset():
+    for length in range(10):
+        x = np.linspace(0, 1, length)
+        y = x ** 2
+        series = Series(x, y)
+        assert plot(x, y) == Graph(series)
+
+
+def test_plot_inconsistent_length():
+    x = np.zeros(10)
+    y = np.zeros(20)
+    with pytest.raises(exception.IncorrectUsage):
+        plot(x, y)
+    with pytest.raises(exception.IncorrectUsage):
+        plot((x, y))
