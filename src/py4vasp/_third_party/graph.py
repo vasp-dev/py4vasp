@@ -1,7 +1,7 @@
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, replace, fields
 import itertools
 import numpy as np
-from typing import Sequence, NamedTuple
+from typing import Sequence
 import plotly.graph_objects as go
 import plotly.io as pio
 from plotly.subplots import make_subplots
@@ -9,6 +9,43 @@ from plotly.subplots import make_subplots
 _vasp_colors = ("#4C265F", "#2FB5AB", "#2C68FC", "#A82C35", "#808080")
 pio.templates["vasp"] = go.layout.Template(layout={"colorway": _vasp_colors})
 pio.templates.default = "ggplot2+vasp"
+
+
+def plot(*args, **kwargs):
+    """Plot the given data, modifying the look with some optional arguments.
+
+    The intent of this function is not to provide a full fledged plotting functionality
+    but as a convenient wrapper around the objects used by py4vasp. This gives a
+    similar look and feel for the tutorials and facilitates simple plots with a very
+    minimal interface. Use a proper plotting library (e.g. matplotlib or plotly) to
+    realize more advanced plots.
+
+    Returns
+    -------
+    Graph
+        A graph containing all given series and optional styles.
+
+    Examples
+    --------
+    Plot simple x-y data with an optional label
+
+    >>> plot(x, y, "label")
+
+    Plot two series in the same graph
+
+    >>> plot((x1, y1), (x2, y2))
+
+    Attributes of the graph are modified by keyword arguments
+
+    >>> plot(x, y, xlabel="xaxis", ylabel="yaxis")
+    """
+    try:
+        series = [Series(*arg) for arg in args]
+    except TypeError:
+        for_series = {key: val for key, val in kwargs.items() if key in Series._fields}
+        series = Series(*args, **for_series)
+    for_graph = {key: val for key, val in kwargs.items() if key in Graph._fields}
+    return Graph(series, **for_graph)
 
 
 @dataclass
@@ -77,6 +114,9 @@ class Series:
         }
 
 
+Series._fields = tuple(field.name for field in fields(Series))
+
+
 @dataclass
 class Graph:
     """Wraps the functionality to generate graphs of series.
@@ -143,3 +183,6 @@ class Graph:
         figure.layout.yaxis.title.text = self.ylabel
         if self.y2label:
             figure.layout.yaxis2.title.text = self.y2label
+
+
+Graph._fields = tuple(field.name for field in fields(Graph))

@@ -1,4 +1,4 @@
-from py4vasp._third_party.graph import Graph, Series
+from py4vasp._third_party.graph import Graph, Series, plot
 import numpy as np
 import pytest
 from unittest.mock import patch
@@ -126,3 +126,17 @@ def test_ipython_display(mock_display, parabola):
     graph = Graph(parabola)
     graph._ipython_display_()
     mock_display.assert_called_once()
+
+
+def test_plot():
+    x1, x2, y1, y2 = np.random.random((4, 50))
+    series0 = Series(x1, y1)
+    series1 = Series(x1, y1, "label1")
+    series2 = Series(x2, y2, "label2")
+    assert plot(x1, y1) == Graph(series0)
+    assert plot(x1, y1, "label1") == Graph(series1)
+    assert plot(x1, y1, name="label1") == Graph(series1)
+    assert plot(x1, y1, xlabel="xaxis") == Graph(series0, xlabel="xaxis")
+    assert plot((x1, y1)) == Graph([series0])
+    assert plot((x1, y1), (x2, y2, "label2")) == Graph([series0, series2])
+    assert plot((x1, y1), xlabel="xaxis") == Graph([series0], xlabel="xaxis")
