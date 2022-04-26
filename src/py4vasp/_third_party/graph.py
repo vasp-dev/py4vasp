@@ -40,13 +40,20 @@ def plot(*args, **kwargs):
 
     >>> plot(x, y, xlabel="xaxis", ylabel="yaxis")
     """
-    try:
-        series = [Series(*arg) for arg in args]
-    except TypeError:
-        for_series = {key: val for key, val in kwargs.items() if key in Series._fields}
-        series = Series(*args, **for_series)
     for_graph = {key: val for key, val in kwargs.items() if key in Graph._fields}
-    return Graph(series, **for_graph)
+    return Graph(_parse_series(*args, **kwargs), **for_graph)
+
+
+def _parse_series(*args, **kwargs):
+    try:
+        return [Series(*arg) for arg in args]
+    except TypeError:
+        # A TypeError is raised, if plot(x, y) is called instead of plot((x, y)).
+        # Because we creating the Series may raise another error, we leave the
+        # exception handling first to avoid reraising the TypeError.
+        pass
+    for_series = {key: val for key, val in kwargs.items() if key in Series._fields}
+    return Series(*args, **for_series)
 
 
 @dataclass
