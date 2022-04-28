@@ -744,11 +744,11 @@ simpletraj = ["simpletraj"]
 
 [[package]]
 name = "notebook"
-version = "6.4.8"
+version = "6.4.11"
 description = "A web-based notebook environment for interactive computing"
 category = "main"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 
 [package.dependencies]
 argon2-cffi = "*"
@@ -757,7 +757,7 @@ ipython-genutils = "*"
 jinja2 = "*"
 jupyter-client = ">=5.3.4"
 jupyter-core = ">=4.6.1"
-nbconvert = "*"
+nbconvert = ">=5"
 nbformat = "*"
 nest-asyncio = ">=1.5"
 prometheus-client = "*"
@@ -770,7 +770,7 @@ traitlets = ">=4.2.1"
 [package.extras]
 docs = ["sphinx", "nbsphinx", "sphinxcontrib-github-alt", "sphinx-rtd-theme", "myst-parser"]
 json-logging = ["json-logging"]
-test = ["pytest", "coverage", "requests", "nbval", "selenium", "pytest-cov", "requests-unixsocket"]
+test = ["pytest", "coverage", "requests", "testpath", "nbval", "selenium", "pytest-cov", "requests-unixsocket"]
 
 [[package]]
 name = "numpy"
@@ -1163,20 +1163,6 @@ lint = ["flake8 (>=3.5.0)", "isort", "mypy (>=0.900)", "docutils-stubs", "types-
 test = ["pytest", "pytest-cov", "html5lib", "cython", "typed-ast"]
 
 [[package]]
-name = "sphinx-automodapi"
-version = "0.14.1"
-description = "Sphinx extension for auto-generating API documentation for entire modules"
-category = "dev"
-optional = false
-python-versions = ">=3.7"
-
-[package.dependencies]
-sphinx = ">=2"
-
-[package.extras]
-test = ["pytest", "pytest-cov", "cython", "codecov", "coverage"]
-
-[[package]]
 name = "sphinxcontrib-applehelp"
 version = "1.0.2"
 description = "sphinxcontrib-applehelp is a sphinx extension which outputs Apple help books"
@@ -1394,7 +1380,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "3eaf699092bd1ee567af27e1a16da424a253f603001baaf2e2beea00bbec2ca9"
+content-hash = "caf4692b5bb6adaee9c942c93ee54f8bc96fdae4c776201ec95122e44867fc6a"
 
 [metadata.files]
 alabaster = [
@@ -1915,8 +1901,8 @@ nglview = [
     {file = "nglview-3.0.3.tar.gz", hash = "sha256:3253c44bd071e4701c288de44997471608487d5191ab3d3b7736c8651335c1af"},
 ]
 notebook = [
-    {file = "notebook-6.4.8-py3-none-any.whl", hash = "sha256:3e702fcc54b8ae597533c3864793b7a1e971dec9e112f67235828d8a798fd654"},
-    {file = "notebook-6.4.8.tar.gz", hash = "sha256:1e985c9dc6f678bdfffb9dc657306b5469bfa62d73e03f74e8defbf76d284312"},
+    {file = "notebook-6.4.11-py3-none-any.whl", hash = "sha256:b4a6baf2eba21ce67a0ca11a793d1781b06b8078f34d06c710742e55f3eee505"},
+    {file = "notebook-6.4.11.tar.gz", hash = "sha256:709b1856a564fe53054796c80e17a67262071c86bfbdfa6b96aaa346113c555a"},
 ]
 numpy = [
     {file = "numpy-1.21.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:38e8648f9449a549a7dfe8d8755a5979b45b3538520d1e735637ef28e8c2dc50"},
@@ -2250,10 +2236,6 @@ snowballstemmer = [
 sphinx = [
     {file = "Sphinx-4.0.3-py3-none-any.whl", hash = "sha256:5747f3c855028076fcff1e4df5e75e07c836f0ac11f7df886747231092cfe4ad"},
     {file = "Sphinx-4.0.3.tar.gz", hash = "sha256:dff357e6a208eb7edb2002714733ac21a9fe597e73609ff417ab8cf0c6b4fbb8"},
-]
-sphinx-automodapi = [
-    {file = "sphinx-automodapi-0.14.1.tar.gz", hash = "sha256:a2f9c0f9e2901875e6db75df6c01412875eb15f25e7db1206e1b69fedf75bbc9"},
-    {file = "sphinx_automodapi-0.14.1-py3-none-any.whl", hash = "sha256:4238e131d7abc47226449661bb3cfa2bb1b5b190184ffa69d9b924b984a22753"},
 ]
 sphinxcontrib-applehelp = [
     {file = "sphinxcontrib-applehelp-1.0.2.tar.gz", hash = "sha256:a072735ec80e7675e3f432fcae8610ecf509c5f1869d17e2eecff44389cdbc58"},
