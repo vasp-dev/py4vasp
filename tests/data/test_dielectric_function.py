@@ -297,13 +297,22 @@ def expected_plot_name(component, real_or_imag, direction):
 
 
 def check_figure_contains_plots(fig, references, Assert):
-    assert fig.layout.xaxis.title.text == "Energy (eV)"
-    assert fig.layout.yaxis.title.text == "dielectric function ϵ"
-    assert len(fig.data) == len(references)
-    for data, ref in zip(fig.data, references):
+    assert fig.xlabel == "Energy (eV)"
+    assert fig.ylabel == "dielectric function ϵ"
+    assert len(fig.series) == len(references)
+    for data, ref in zip(fig.series, references):
         Assert.allclose(data.x, ref.x)
         Assert.allclose(data.y, ref.y)
         assert data.name == ref.name
+
+
+@patch("py4vasp.data.dielectric_function.DielectricFunction._plot")
+def test_electronic_to_plotly(mock_plot, electronic):
+    fig = electronic.to_plotly("selection")
+    mock_plot.assert_called_once_with("selection")
+    graph = mock_plot.return_value
+    graph.to_plotly.assert_called_once()
+    assert fig == graph.to_plotly.return_value
 
 
 def test_electronic_to_image(electronic):
@@ -355,7 +364,8 @@ dielectric function:
 def test_descriptor(electronic, check_descriptors):
     descriptors = {
         "_to_dict": ["to_dict", "read"],
-        "_to_plotly": ["to_plotly", "plot"],
+        "_plot": ["plot"],
+        "_to_plotly": ["to_plotly"],
     }
     check_descriptors(electronic, descriptors)
 

@@ -67,10 +67,10 @@ def test_plot_default(energy, Assert):
 
 def check_plot_default(energy, steps, Assert):
     fig = energy[steps].plot()
-    assert fig.layout.xaxis.title.text == "Step"
-    assert fig.layout.yaxis.title.text == "Energy (eV)"
-    Assert.allclose(fig.data[0].x, np.arange(len(energy.ref.total_energy))[steps] + 1)
-    Assert.allclose(fig.data[0].y, energy.ref.total_energy[steps])
+    assert fig.xlabel == "Step"
+    assert fig.ylabel == "Energy (eV)"
+    Assert.allclose(fig.series[0].x, np.arange(len(energy.ref.total_energy))[steps] + 1)
+    Assert.allclose(fig.series[0].y, energy.ref.total_energy[steps])
 
 
 def test_plot_temperature(energy, Assert):
@@ -80,9 +80,9 @@ def test_plot_temperature(energy, Assert):
 
 def check_plot_temperature(energy, steps, Assert):
     fig = energy[steps].plot("temperature")
-    assert fig.layout.yaxis.title.text == "Temperature (K)"
-    assert "yaxis2" not in fig.layout
-    Assert.allclose(fig.data[0].y, energy.ref.temperature[steps])
+    assert fig.ylabel == "Temperature (K)"
+    assert fig.y2label is None
+    Assert.allclose(fig.series[0].y, energy.ref.temperature[steps])
 
 
 def test_plot_energy_and_temperature(energy, Assert):
@@ -92,12 +92,12 @@ def test_plot_energy_and_temperature(energy, Assert):
 
 def check_plot_energy_and_temperature(energy, steps, Assert):
     fig = energy[steps].plot("temperature, EKIN")
-    assert fig.layout.yaxis.title.text == "Energy (eV)"
-    assert fig.layout.yaxis2.title.text == "Temperature (K)"
-    Assert.allclose(fig.data[0].y, energy.ref.temperature[steps])
-    assert fig.data[0].name == "temperature"
-    Assert.allclose(fig.data[1].y, energy.ref.kinetic_energy[steps])
-    assert fig.data[1].name == "kinetic energy"
+    assert fig.ylabel == "Energy (eV)"
+    assert fig.y2label == "Temperature (K)"
+    Assert.allclose(fig.series[0].y, energy.ref.temperature[steps])
+    assert fig.series[0].name == "temperature"
+    Assert.allclose(fig.series[1].y, energy.ref.kinetic_energy[steps])
+    assert fig.series[1].name == "kinetic energy"
 
 
 def test_plot_all(energy, Assert):
@@ -107,14 +107,14 @@ def test_plot_all(energy, Assert):
 
 def check_plot_all(energy, steps, Assert):
     fig = energy[steps].plot(selection.all)
-    assert fig.layout.yaxis.title.text == "Energy (eV)"
-    assert fig.layout.yaxis2.title.text == "Temperature (K)"
-    Assert.allclose(fig.data[0].y, energy.ref.total_energy[steps])
-    assert fig.data[0].name == "ion-electron"
-    Assert.allclose(fig.data[1].y, energy.ref.kinetic_energy[steps])
-    assert fig.data[1].name == "kinetic energy"
-    Assert.allclose(fig.data[2].y, energy.ref.temperature[steps])
-    assert fig.data[2].name == "temperature"
+    assert fig.ylabel == "Energy (eV)"
+    assert fig.y2label == "Temperature (K)"
+    Assert.allclose(fig.series[0].y, energy.ref.total_energy[steps])
+    assert fig.series[0].name == "ion-electron"
+    Assert.allclose(fig.series[1].y, energy.ref.kinetic_energy[steps])
+    assert fig.series[1].name == "kinetic energy"
+    Assert.allclose(fig.series[2].y, energy.ref.temperature[steps])
+    assert fig.series[2].name == "temperature"
 
 
 def test_to_numpy_default(energy, Assert):
@@ -153,6 +153,15 @@ def test_incorrect_label(energy):
     with pytest.raises(exception.IncorrectUsage):
         number_instead_of_string = 1
         energy.plot(number_instead_of_string)
+
+
+@patch("py4vasp.data.energy.Energy._plot")
+def test_energy_to_plotly(mock_plot, energy):
+    fig = energy.to_plotly("selection")
+    mock_plot.assert_called_once_with("selection")
+    graph = mock_plot.return_value
+    graph.to_plotly.assert_called_once()
+    assert fig == graph.to_plotly.return_value
 
 
 def test_to_image(energy):
@@ -205,7 +214,8 @@ Energies at {step}:
 def test_descriptor(energy, check_descriptors):
     descriptors = {
         "_to_dict": ["to_dict", "read"],
-        "_to_plotly": ["to_plotly", "plot"],
+        "_plot": ["plot"],
+        "_to_plotly": ["to_plotly"],
         "_to_numpy": ["to_numpy"],
     }
     check_descriptors(energy[-1], descriptors)

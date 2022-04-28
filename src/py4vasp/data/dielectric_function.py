@@ -1,12 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
-import plotly.graph_objects as go
 import typing
 
 from py4vasp.data._base import DataBase, RefinementDescriptor
 from py4vasp.data._selection import Selection as _Selection
 import py4vasp.data._export as _export
+import py4vasp._third_party.graph as _graph
 import py4vasp._util.convert as _convert
 import py4vasp._util.selection as _selection
 
@@ -27,7 +27,7 @@ class DielectricFunction(DataBase, _export.Image):
 
     read = RefinementDescriptor("_to_dict")
     to_dict = RefinementDescriptor("_to_dict")
-    plot = RefinementDescriptor("_to_plotly")
+    plot = RefinementDescriptor("_plot")
     to_plotly = RefinementDescriptor("_to_plotly")
     __str__ = RefinementDescriptor("_to_string")
 
@@ -66,6 +66,30 @@ dielectric function:
             "ion": _convert_to_complex_if_not_none(data.ion),
         }
 
+    def _plot(self, selection=None):
+        """Read the data and generate a figure with the selected directions.
+
+        Parameters
+        ----------
+        selection : str
+            Specify along which directions and which components of the dielectric
+            function you want to plot. Defaults to *isotropic* and both the real
+            and the complex part.
+
+        Returns
+        -------
+        Graph
+            figure containing the dielectric function for the selected
+            directions and components."""
+        selection = _default_selection_if_none(selection)
+        data = self._to_dict()
+        choices = _parse_selection(selection, data)
+        return _graph.Graph(
+            series=[_make_plot(data, *choice) for choice in choices],
+            xlabel="Energy (eV)",
+            ylabel="dielectric function ϵ",
+        )
+
     def _to_plotly(self, selection=None):
         """Read the data and generate a plotly figure.
 
@@ -81,15 +105,7 @@ dielectric function:
         plotly.graph_objects.Figure
             plotly figure containing the dielectric function for the selected
             directions and components."""
-        selection = _default_selection_if_none(selection)
-        data = self._to_dict()
-        choices = _parse_selection(selection, data)
-        plots = [_make_plot(data, *choice) for choice in choices]
-        default = {
-            "xaxis": {"title": {"text": "Energy (eV)"}},
-            "yaxis": {"title": {"text": "dielectric function ϵ"}},
-        }
-        return go.Figure(data=plots, layout=default)
+        return self._plot(selection).to_plotly()
 
 
 def _convert_to_complex_if_not_none(array):
@@ -152,10 +168,9 @@ def _setup_component_choices(choice):
 
 
 def _make_plot(data, *choice):
-    x = data["energies"]
-    y = _select_data(data, *choice)
-    name = _build_name(*choice)
-    return _scatter_plot(x, y, name)
+    return _graph.Series(
+        x=data["energies"], y=_select_data(data, *choice), name=_build_name(*choice)
+    )
 
 
 def _select_data(data, component, direction, real_or_imag):
@@ -196,7 +211,3 @@ def _build_name(component, direction, real_or_imag):
     if direction != "isotropic":
         name += f",{direction}"
     return name
-
-
-def _scatter_plot(x, y, name):
-    return go.Scatter(x=x, y=y, name=name)

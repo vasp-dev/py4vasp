@@ -4,12 +4,12 @@ import functools
 import itertools
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 from IPython.lib.pretty import pretty
 from .projector import _projectors_or_dummy, _selection_doc, _selection_examples
 from py4vasp.data._base import DataBase, RefinementDescriptor
 import py4vasp.data._export as _export
 from py4vasp.data.kpoint import _kpoints_opt_source
+import py4vasp._third_party.graph as _graph
 import py4vasp._util.documentation as _documentation
 
 
@@ -32,7 +32,7 @@ class Dos(DataBase, _export.Image):
 
     read = RefinementDescriptor("_to_dict")
     to_dict = RefinementDescriptor("_to_dict")
-    plot = RefinementDescriptor("_to_plotly")
+    plot = RefinementDescriptor("_plot")
     to_plotly = RefinementDescriptor("_to_plotly")
     to_frame = RefinementDescriptor("_to_frame")
     __str__ = RefinementDescriptor("_to_string")
@@ -70,6 +70,32 @@ dict
         }
 
     @_documentation.add(
+        f"""Generate a graph of the selected data reading it from the VASP output.
+
+Parameters
+----------
+{_selection_doc}
+{_kpoints_opt_source}
+
+Returns
+-------
+Graph
+    Graph containing the total DOS. If the calculation was spin polarized,
+    the resulting DOS is spin resolved and the spin-down DOS is plotted
+    towards negative values. If a selection is given the orbital-resolved
+    DOS is given for the specified projectors.
+
+{_selection_examples("dos", "to_plotly")}"""
+    )
+    def _plot(self, selection=None):
+        data = self._read_data(selection)
+        return _graph.Graph(
+            series=list(_series(data)),
+            xlabel="Energy (eV)",
+            ylabel="DOS (1/eV)",
+        )
+
+    @_documentation.add(
         f"""Read the data and generate a plotly figure.
 
 Parameters
@@ -82,19 +108,13 @@ Returns
 plotly.graph_objects.Figure
     plotly figure containing the total DOS. If the calculation was spin
     polarized, the resulting DOS is spin resolved and the spin-down DOS
-    is plotted towards negative values. If a selection the orbital
+    is plotted towards negative values. If a selection is passed the orbital
     resolved DOS is given for the specified projectors.
 
-{_selection_examples("dos", "plot")}"""
+{_selection_examples("dos", "to_plotly")}"""
     )
     def _to_plotly(self, selection=None):
-        df = self._to_frame(selection)
-        data = [_scatter_plot(df, col) for col in df if col != "energies"]
-        default = {
-            "xaxis": {"title": {"text": "Energy (eV)"}},
-            "yaxis": {"title": {"text": "DOS (1/eV)"}},
-        }
-        return go.Figure(data=data, layout=default)
+        return self._plot(selection).to_plotly()
 
     @_documentation.add(
         f"""Read the data into a pandas DataFrame.
@@ -142,6 +162,10 @@ pd.DataFrame
             return {"total": self._raw_data.dos[0, :]}
 
 
-def _scatter_plot(df, column):
-    spin_factor = 1 if "down" not in column else -1
-    return go.Scatter(x=df["energies"], y=spin_factor * df[column], name=column)
+def _series(data):
+    energies = data["energies"]
+    for name, dos in data.items():
+        if name == "energies":
+            continue
+        spin_factor = 1 if "down" not in name else -1
+        yield _graph.Series(energies, spin_factor * dos, name)
