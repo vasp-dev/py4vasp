@@ -41,15 +41,8 @@ from .internal_strain import InternalStrain
 from .magnetism import Magnetism
 from .stress import Stress
 
-import plotly.io as pio
-import plotly.graph_objects as go
 import inspect
 import sys
 
 _this_mod = sys.modules[__name__]
 __all__ = [name for name, _ in inspect.getmembers(_this_mod, inspect.isclass)]
-
-pio.templates["vasp"] = go.layout.Template(
-    layout={"colorway": ["#4C265F", "#2FB5AB", "#2C68FC", "#A82C35", "#808080"]}
-)
-pio.templates.default = "ggplot2+vasp"

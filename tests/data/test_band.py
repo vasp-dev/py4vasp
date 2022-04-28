@@ -192,24 +192,18 @@ def test_spin_projectors_to_frame(spin_projectors, Assert):
 
 def test_single_band_plot(single_band, Assert):
     fig = single_band.plot()
-    assert fig.layout.yaxis.title.text == "Energy (eV)"
-    assert len(fig.data) == 1
-    assert fig.data[0].fill is None
-    assert fig.data[0].mode is None
-    mask = np.isfinite(fig.data[0].x)  # Band may insert NaN to split plot
-    Assert.allclose(fig.data[0].x[mask], single_band.ref.kpoints.distances())
-    Assert.allclose(fig.data[0].y[mask], single_band.ref.bands.flatten())
+    assert fig.ylabel == "Energy (eV)"
+    assert len(fig.series) == 1
+    assert fig.series[0].width is None
+    Assert.allclose(fig.series[0].x, single_band.ref.kpoints.distances())
+    Assert.allclose(fig.series[0].y, single_band.ref.bands)
 
 
 def test_multiple_bands_plot(multiple_bands, Assert):
     fig = multiple_bands.plot()
-    assert len(fig.data) == 1  # all bands in one plot
-    assert len(fig.data[0].x) == len(fig.data[0].y)
-    num_NaN_x = np.count_nonzero(np.isnan(fig.data[0].x))
-    num_NaN_y = np.count_nonzero(np.isnan(fig.data[0].y))
-    assert num_NaN_x == num_NaN_y > 0
-    mask = np.isfinite(fig.data[0].x)
-    Assert.allclose(fig.data[0].y[mask], multiple_bands.ref.bands.T.flatten())
+    assert len(fig.series) == 1  # all bands in one plot
+    assert len(fig.series[0].x) == len(fig.series[0].y)
+    Assert.allclose(fig.series[0].y, multiple_bands.ref.bands)
 
 
 def test_with_projectors_plot_default_width(with_projectors, Assert):
@@ -228,35 +222,25 @@ def test_spin_projectors_plot(spin_projectors, Assert):
     reference = spin_projectors.ref
     width = 0.05
     fig = spin_projectors.plot("O", width)
-    assert len(fig.data) == 2
-    assert fig.data[0].name == "O_up"
-    check_data(fig.data[0], width, reference.bands_up, reference.O_up, Assert)
-    assert fig.data[1].name == "O_down"
-    check_data(fig.data[1], width, reference.bands_down, reference.O_down, Assert)
+    assert len(fig.series) == 2
+    assert fig.series[0].name == "O_up"
+    check_data(fig.series[0], width, reference.bands_up, reference.O_up, Assert)
+    assert fig.series[1].name == "O_down"
+    check_data(fig.series[1], width, reference.bands_down, reference.O_down, Assert)
 
 
 def check_figure(fig, width, reference, Assert):
-    assert len(fig.data) == 2
-    assert fig.data[0].name == "Sr"
-    assert fig.data[1].name == "p"
-    check_data(fig.data[0], width, reference.bands, reference.Sr, Assert)
-    check_data(fig.data[1], width, reference.bands, reference.p, Assert)
+    assert len(fig.series) == 2
+    assert fig.series[0].name == "Sr"
+    assert fig.series[1].name == "p"
+    check_data(fig.series[0], width, reference.bands, reference.Sr, Assert)
+    check_data(fig.series[1], width, reference.bands, reference.p, Assert)
 
 
 def check_data(data, width, band, projection, Assert):
-    check_data_internal_consistency(data)
-    for band, weight in zip(np.nditer(band), np.nditer(projection)):
-        upper, lower = band + width * weight, band - width * weight
-        check_data_vs_reference(data, upper, lower, Assert)
-
-
-def check_data_internal_consistency(data):
-    assert len(data.x) == len(data.y)
-    assert data.fill == "toself"
-    assert data.mode == "none"
-    num_NaN_x = np.count_nonzero(np.isnan(data.x))
-    num_NaN_y = np.count_nonzero(np.isnan(data.y))
-    assert num_NaN_x == num_NaN_y > 0
+    assert len(data.x) == len(data.y) == len(data.width)
+    Assert.allclose(data.y, band)
+    Assert.allclose(data.width, width * projection)
 
 
 def check_data_vs_reference(data, upper, lower, Assert):
@@ -268,13 +252,11 @@ def check_data_vs_reference(data, upper, lower, Assert):
 
 def test_spin_polarized_plot(spin_polarized, Assert):
     fig = spin_polarized.plot()
-    assert len(fig.data) == 2
-    assert fig.data[0].name == "bands_up"
-    mask = np.isfinite(fig.data[0].x)
-    Assert.allclose(fig.data[0].y[mask], spin_polarized.ref.bands_up.T.flatten())
-    assert fig.data[1].name == "bands_down"
-    mask = np.isfinite(fig.data[1].x)
-    Assert.allclose(fig.data[1].y[mask], spin_polarized.ref.bands_down.T.flatten())
+    assert len(fig.series) == 2
+    assert fig.series[0].name == "bands_up"
+    Assert.allclose(fig.series[0].y, spin_polarized.ref.bands_up)
+    assert fig.series[1].name == "bands_down"
+    Assert.allclose(fig.series[1].y, spin_polarized.ref.bands_down)
 
 
 def test_line_no_labels_plot(line_no_labels, Assert):
@@ -287,25 +269,33 @@ def test_line_no_labels_plot(line_no_labels, Assert):
         "$[\\frac{1}{2} \\frac{1}{2} 0]$",
         "$[\\frac{1}{2} \\frac{1}{2} \\frac{1}{2}]$",
     )
-    assert fig.layout.xaxis.ticktext == reference_labels
+    assert tuple(fig.xticks.values()) == reference_labels
 
 
 def test_line_with_labels_plot(line_with_labels, Assert):
     fig = line_with_labels.plot()
     check_ticks(fig, line_with_labels.ref.kpoints, Assert)
-    assert fig.layout.xaxis.ticktext == (r"$\Gamma$", " ", r"M|$\Gamma$", "Y", "M")
+    assert tuple(fig.xticks.values()) == (r"$\Gamma$", "", r"M|$\Gamma$", "Y", "M")
 
 
 def check_ticks(fig, kpoints, Assert):
     dists = kpoints.distances()
     xticks = (*dists[:: kpoints.line_length()], dists[-1])
-    assert fig.layout.xaxis.tickmode == "array"
-    Assert.allclose(fig.layout.xaxis.tickvals, np.array(xticks))
+    Assert.allclose(list(fig.xticks.keys()), np.array(xticks))
 
 
 def test_plot_incorrect_width(with_projectors):
     with pytest.raises(exception.IncorrectUsage):
         with_projectors.plot("Sr", width="not a number")
+
+
+@patch("py4vasp.data.band.Band._plot")
+def test_energy_to_plotly(mock_plot, single_band):
+    fig = single_band.to_plotly("selection", width=0.2)
+    mock_plot.assert_called_once_with("selection", 0.2)
+    graph = mock_plot.return_value
+    graph.to_plotly.assert_called_once()
+    assert fig == graph.to_plotly.return_value
 
 
 def test_to_image(single_band):
@@ -368,7 +358,8 @@ spin polarized band data:
 def test_descriptor(single_band, check_descriptors):
     descriptors = {
         "_to_dict": ["to_dict", "read"],
-        "_to_plotly": ["to_plotly", "plot"],
+        "_plot": ["plot"],
+        "_to_plotly": ["to_plotly"],
         "_to_frame": ["to_frame"],
     }
     check_descriptors(single_band, descriptors)

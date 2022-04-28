@@ -1,10 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import functools
 import itertools
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 import py4vasp._util.sanity_check as _check
 import py4vasp._util.documentation as _documentation
 from IPython.lib.pretty import pretty
@@ -12,6 +10,7 @@ from .projector import _projectors_or_dummy, _selection_doc, _selection_examples
 from .kpoint import Kpoint, _kpoints_opt_source
 from py4vasp.data._base import DataBase, RefinementDescriptor
 import py4vasp.data._export as _export
+import py4vasp._third_party.graph as _graph
 
 
 class Band(DataBase, _export.Image):
@@ -32,7 +31,7 @@ class Band(DataBase, _export.Image):
 
     read = RefinementDescriptor("_to_dict")
     to_dict = RefinementDescriptor("_to_dict")
-    plot = RefinementDescriptor("_to_plotly")
+    plot = RefinementDescriptor("_plot")
     to_plotly = RefinementDescriptor("_to_plotly")
     to_frame = RefinementDescriptor("_to_frame")
     __str__ = RefinementDescriptor("_to_string")
@@ -81,6 +80,38 @@ Parameters
 ----------
 {_selection_doc}
 width : float
+Specifies the width of the flatbands if a selection of projections is specified.
+{_kpoints_opt_source}
+
+Returns
+-------
+plotly.graph_objects.Figure
+plotly figure containing the spin-up and spin-down bands. If a selection
+is provided the width of the bands represents the projections of the
+bands onto the specified projectors.
+
+{_selection_examples("band", "plot")}"""
+    )
+    def _plot(self, selection=None, width=0.5):
+        return _graph.Graph(
+            series=self._band_structure(selection, width),
+            xticks=self._xticks(),
+            ylabel="Energy (eV)",
+        )
+        # data = self._band_structure(selection, width)
+        # default = {
+        #     "xaxis": {"tickmode": "array", "tickvals": ticks, "ticktext": labels},
+        #     "yaxis": {"title": {"text": "Energy (eV)"}},
+        # }
+        # return go.Figure(data=data, layout=default)
+
+    @_documentation.add(
+        f"""Read the data and generate a plotly figure.
+
+Parameters
+----------
+{_selection_doc}
+width : float
     Specifies the width of the flatbands if a selection of projections is specified.
 {_kpoints_opt_source}
 
@@ -91,16 +122,10 @@ plotly.graph_objects.Figure
     is provided the width of the bands represents the projections of the
     bands onto the specified projectors.
 
-{_selection_examples("band", "plot")}"""
+{_selection_examples("band", "to_plotly")}"""
     )
     def _to_plotly(self, selection=None, width=0.5):
-        ticks, labels = self._ticks_and_labels()
-        data = self._band_structure(selection, width)
-        default = {
-            "xaxis": {"tickmode": "array", "tickvals": ticks, "ticktext": labels},
-            "yaxis": {"title": {"text": "Energy (eV)"}},
-        }
-        return go.Figure(data=data, layout=default)
+        return self._plot(selection, width).to_plotly()
 
     @_documentation.add(
         f"""Read the data into a DataFrame.
@@ -165,7 +190,7 @@ pd.DataFrame
 
     def _regular_band_structure(self, bands):
         kdists = self._kpoints().distances()
-        return [_scatter(name, kdists, lines) for name, lines in bands.items()]
+        return [_graph.Series(kdists, lines, name) for name, lines in bands.items()]
 
     def _fat_band_structure(self, bands, projections, width):
         error_message = "Width of fat band structure must be a number."
@@ -182,35 +207,26 @@ pd.DataFrame
         if self._spin_polarized() and not key in name:
             return None
         kdists = self._kpoints().distances()
-        fatband_kdists = np.concatenate((kdists, np.flip(kdists)))
-        upper = lines + width * projection
-        lower = lines - width * projection
-        fatband_lines = np.concatenate((lower, np.flip(upper, axis=0)), axis=0)
-        plot = _scatter(name, fatband_kdists, fatband_lines)
-        plot.fill = "toself"
-        plot.mode = "none"
-        return plot
+        return _graph.Series(kdists, lines, name, width=width * projection)
 
-    def _ticks_and_labels(self):
-        def filter_unique(current, item):
-            tick, label = item
-            previous_tick = current[-2]
-            if tick == previous_tick:
-                previous_label = current[-1]
-                if previous_label != "" and previous_label != label:
-                    label = previous_label + "|" + label
-                return current[:-1] + (label,)
-            else:
-                return current + item
-
-        ticks_and_labels = self._degenerate_ticks_and_labels()
-        ticks_and_labels = functools.reduce(filter_unique, ticks_and_labels)
-        return _split_and_replace_empty_labels(ticks_and_labels)
+    def _xticks(self):
+        ticks, labels = self._degenerate_ticks_and_labels()
+        return self._filter_unique(ticks, labels)
 
     def _degenerate_ticks_and_labels(self):
         labels = self._kpoint_labels()
         mask = np.logical_or(self._edge_of_line(), labels != "")
-        return zip(self._kpoints().distances()[mask], labels[mask])
+        return self._kpoints().distances()[mask], labels[mask]
+
+    def _filter_unique(self, ticks, labels):
+        result = {}
+        for tick, label in zip(ticks, labels):
+            if tick in result:
+                previous_label = result[tick]
+                if previous_label != "" and previous_label != label:
+                    label = previous_label + "|" + label
+            result[tick] = label
+        return result
 
     def _kpoint_labels(self):
         labels = self._kpoints().labels()
@@ -247,21 +263,6 @@ pd.DataFrame
         for key, value in self._read_projections(selection).items():
             data[key] = _to_series(value)
         return data
-
-
-def _scatter(name, kdists, lines):
-    # insert NaN to split separate lines
-    num_bands = lines.shape[-1]
-    kdists = np.tile([*kdists, np.NaN], num_bands)
-    lines = np.append(lines, [np.repeat(np.NaN, num_bands)], axis=0)
-    return go.Scatter(x=kdists, y=lines.flatten(order="F"), name=name)
-
-
-def _split_and_replace_empty_labels(ticks_and_labels):
-    ticks = [tick for tick in ticks_and_labels[::2]]
-    labels = [label or " " for label in ticks_and_labels[1::2]]
-    # plotly replaces empty labels with tick position, so we replace them
-    return ticks, labels
 
 
 def _index_string(kpoint, band):

@@ -1,7 +1,5 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import functools
 import numpy as np
 from py4vasp.data._base import RefinementDescriptor
@@ -9,6 +7,7 @@ import py4vasp.data._export as _export
 from py4vasp.data._selection import Selection as _Selection
 import py4vasp.data._trajectory as _trajectory
 import py4vasp.exceptions as exception
+import py4vasp._third_party.graph as _graph
 import py4vasp._util.documentation as _documentation
 import py4vasp._util.convert as _convert
 import py4vasp._util.sanity_check as _check
@@ -45,7 +44,7 @@ _selection_string = (
 class Energy(_trajectory.DataTrajectory, _export.Image):
     read = RefinementDescriptor("_to_dict")
     to_dict = RefinementDescriptor("_to_dict")
-    plot = RefinementDescriptor("_to_plotly")
+    plot = RefinementDescriptor("_plot")
     to_plotly = RefinementDescriptor("_to_plotly")
     to_numpy = RefinementDescriptor("_to_numpy")
     labels = RefinementDescriptor("_labels")
@@ -92,6 +91,31 @@ dict
         }
 
     @_documentation.add(
+        f"""Read the energy data and generate a figure of the selected components.
+
+Parameters
+----------
+{_selection_string("the total energy")}
+
+Returns
+-------
+Graph
+     figure containing the selected energies for every selected ionic step.
+
+{_trajectory.trajectory_examples("energy", "plot")}"""
+    )
+    def _plot(self, selection="TOTEN"):
+        yaxes = self._create_yaxes(selection)
+        return _graph.Graph(
+            series=self._make_series(yaxes, selection),
+            xlabel="Step",
+            ylabel=yaxes.ylabel,
+            y2label=yaxes.y2label,
+        )
+        figure.layout.xaxis.title.text = "Step"
+        return figure
+
+    @_documentation.add(
         f"""Read the energy data and generate a plotly figure.
 
 Parameters
@@ -101,20 +125,12 @@ Parameters
 Returns
 -------
 plotly.graph_objects.Figure
-    plotly figure containing the selected energies for every selected ionic step.
+plotly figure containing the selected energies for every selected ionic step.
 
 {_trajectory.trajectory_examples("energy", "plot")}"""
     )
     def _to_plotly(self, selection="TOTEN"):
-        figure, use_secondary = self._create_figure_with_yaxes(selection)
-        figure.layout.xaxis.title.text = "Step"
-        steps = np.arange(len(self._raw_data.values))[self._slice] + 1
-        for label, index in self._parse_selection(selection):
-            short_label = label[:14].strip()
-            data = self._raw_data.values[self._slice, index]
-            options = {"secondary_y": True} if use_secondary(label) else {}
-            figure.add_trace(go.Scatter(x=steps, y=data, name=short_label), **options)
-        return figure
+        return self._plot(selection).to_plotly()
 
     @_documentation.add(
         f"""Read the energy of the selected steps.
@@ -168,39 +184,35 @@ float or np.ndarray or tuple
             "Please make sure the spelling is correct."
         )
 
-    def _create_figure_with_yaxes(self, selection):
-        use_temperature, use_energy = self._select_yaxes(selection)
-        if use_temperature and use_energy:
-            figure = make_subplots(specs=[[{"secondary_y": True}]])
-            _set_yaxis_text(figure.layout.yaxis, use_temperature=False)
-            _set_yaxis_text(figure.layout.yaxis2, use_temperature=True)
-            use_secondary = lambda label: _is_temperature(label)
-        else:
-            figure = go.Figure()
-            _set_yaxis_text(figure.layout.yaxis, use_temperature)
-            use_secondary = lambda label: False
-        return figure, use_secondary
+    def _create_yaxes(self, selection):
+        return _YAxes(self._parse_selection(selection))
 
-    def _select_yaxes(self, selection):
-        use_temperature = False
-        use_energy = False
-        for label, _ in self._parse_selection(selection):
-            if _is_temperature(label):
-                use_temperature = True
-            else:
-                use_energy = True
-        return use_temperature, use_energy
+    def _make_series(self, yaxes, selection):
+        steps = np.arange(len(self._raw_data.values))[self._slice] + 1
+        return [
+            _graph.Series(
+                x=steps,
+                y=self._raw_data.values[self._slice, index],
+                name=label[:14].strip(),
+                y2=yaxes.y2(label),
+            )
+            for label, index in self._parse_selection(selection)
+        ]
 
 
-def _is_temperature(label):
-    return "temperature" in label
+class _YAxes:
+    def __init__(self, selections):
+        selections = set(self._is_temperature(s) for s, _ in selections)
+        use_energy = False in selections
+        self.use_both = len(selections) == 2
+        self.ylabel = "Energy (eV)" if use_energy else "Temperature (K)"
+        self.y2label = "Temperature (K)" if self.use_both else None
 
+    def y2(self, label):
+        return self.use_both and self._is_temperature(label)
 
-def _set_yaxis_text(yaxis, use_temperature):
-    if use_temperature:
-        yaxis.title.text = "Temperature (K)"
-    else:
-        yaxis.title.text = "Energy (eV)"
+    def _is_temperature(self, label):
+        return "temperature" in label
 
 
 def _split_selection_in_parts(selection):
