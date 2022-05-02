@@ -15,6 +15,7 @@ needed is read. However, this has the consequence that you need to
 enforce the read operation before the file is closed.
 """
 
+from .data import VaspData
 from .rawdata import *
 from .file import File
 import inspect
