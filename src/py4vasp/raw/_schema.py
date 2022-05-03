@@ -6,10 +6,10 @@ class Schema:
     def __init__(self):
         self._sources = {}
 
-    def add(self, cls, **kwargs):
+    def add(self, cls, name="default", **kwargs):
         class_name = cls.__name__.lower()
-        self._sources[class_name] = {}
-        self._sources[class_name]["default"] = Source(cls(**kwargs))
+        self._sources.setdefault(class_name, {})
+        self._sources[class_name][name] = Source(cls(**kwargs))
 
     @property
     def sources(self):

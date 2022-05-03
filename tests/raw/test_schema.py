@@ -14,3 +14,14 @@ def test_simple_schema():
     schema.add(Simple, foo=source.foo, bar=source.bar)
     reference = {"simple": {"default": Source(source)}}
     assert schema.sources == reference
+
+
+def test_two_sources():
+    schema = Schema()
+    first = Simple("foo1", "bar1")
+    second = Simple("foo2", "bar2")
+    name = "second_source"
+    schema.add(Simple, foo=first.foo, bar=first.bar)
+    schema.add(Simple, name=name, foo=second.foo, bar=second.bar)
+    reference = {"simple": {"default": Source(first), name: Source(second)}}
+    assert schema.sources == reference
