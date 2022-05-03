@@ -9,6 +9,12 @@ class Simple:
     bar: str
 
 
+@dataclasses.dataclass
+class OptionalArgument:
+    mandatory: str
+    optional: str = None
+
+
 def test_simple_schema():
     schema = Schema()
     source = Simple("foo_dataset", "bar_dataset")
@@ -43,4 +49,17 @@ def test_required_argument():
     version = RawVersion(1, 2, 3)
     schema.add(Simple, foo=source.foo, bar=source.bar, required=version)
     reference = {"simple": {"default": Source(source, required=version)}}
+    assert schema.sources == reference
+
+
+def test_optional_argument():
+    schema = Schema()
+    only_mandatory = OptionalArgument("mandatory1")
+    name = "mandatory"
+    both = OptionalArgument("mandatory2", "optional")
+    schema.add(OptionalArgument, name=name, mandatory=only_mandatory.mandatory)
+    schema.add(OptionalArgument, mandatory=both.mandatory, optional=both.optional)
+    reference = {
+        "optional_argument": {name: Source(only_mandatory), "default": Source(both)}
+    }
     assert schema.sources == reference

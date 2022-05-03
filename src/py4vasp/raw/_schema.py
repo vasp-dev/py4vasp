@@ -1,6 +1,7 @@
 import dataclasses
 from typing import Any
 from py4vasp.raw import RawVersion
+import py4vasp._util.convert as convert
 
 
 class Schema:
@@ -8,7 +9,7 @@ class Schema:
         self._sources = {}
 
     def add(self, cls, name="default", file=None, required=None, **kwargs):
-        class_name = cls.__name__.lower()
+        class_name = convert.to_snakecase(cls.__name__)
         self._sources.setdefault(class_name, {})
         self._sources[class_name][name] = Source(cls(**kwargs), file, required)
 
