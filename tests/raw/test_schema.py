@@ -25,3 +25,12 @@ def test_two_sources():
     schema.add(Simple, name=name, foo=second.foo, bar=second.bar)
     reference = {"simple": {"default": Source(first), name: Source(second)}}
     assert schema.sources == reference
+
+
+def test_file_argument():
+    schema = Schema()
+    source = Simple("foo_dataset", "bar_dataset")
+    filename = "other_file"
+    schema.add(Simple, file=filename, foo=source.foo, bar=source.bar)
+    reference = {"simple": {"default": Source(source, file=filename)}}
+    assert schema.sources == reference
