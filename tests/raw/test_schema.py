@@ -1,3 +1,4 @@
+from py4vasp.raw import RawVersion
 from py4vasp.raw._schema import Schema, Source
 import dataclasses
 
@@ -33,4 +34,13 @@ def test_file_argument():
     filename = "other_file"
     schema.add(Simple, file=filename, foo=source.foo, bar=source.bar)
     reference = {"simple": {"default": Source(source, file=filename)}}
+    assert schema.sources == reference
+
+
+def test_required_argument():
+    schema = Schema()
+    source = Simple("foo_dataset", "bar_dataset")
+    version = RawVersion(1, 2, 3)
+    schema.add(Simple, foo=source.foo, bar=source.bar, required=version)
+    reference = {"simple": {"default": Source(source, required=version)}}
     assert schema.sources == reference
