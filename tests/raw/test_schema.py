@@ -1,6 +1,7 @@
 from py4vasp.raw import RawVersion
 from py4vasp.raw._schema import Schema, Source, Link
 import dataclasses
+import pytest
 
 
 @dataclasses.dataclass
@@ -89,7 +90,8 @@ def test_links():
     }
 
 
-def test_complex():
+@pytest.fixture
+def complex_schema():
     simple = Simple("foo_dataset", "bar_dataset")
     filename = "other_file"
     only_mandatory = OptionalArgument("mandatory1")
@@ -118,4 +120,40 @@ def test_complex():
         "with_link": {"default": Source(pointer, required=version)},
         "complex": {"default": Source(first_complex), name: Source(second_complex)},
     }
+    return schema, reference
+
+
+def test_complex(complex_schema):
+    schema, reference = complex_schema
     assert schema.sources == reference
+
+
+def test_complex_str(complex_schema):
+    schema, _ = complex_schema
+    reference = """\
+---  # schema
+simple:
+    default:  &simple-default
+        file: other_file
+        foo: foo_dataset
+        bar: bar_dataset
+optional_argument:
+    mandatory:  &optional_argument-mandatory
+        mandatory: mandatory1
+    default:  &optional_argument-default
+        mandatory: mandatory2
+        optional: optional
+with_link:
+    default:  &with_link-default
+        required: 1.2.3
+        baz: baz_dataset
+        simple: *simple-default
+complex:
+    default:  &complex-default
+        opt: *optional_argument-default
+        link: *with_link-default
+    mandatory:  &complex-mandatory
+        opt: *optional_argument-mandatory
+        link: *with_link-default\
+"""
+    assert str(schema) == reference
