@@ -1,5 +1,5 @@
 from py4vasp.raw import RawVersion
-from py4vasp.raw._schema import Schema, Source
+from py4vasp.raw._schema import Schema, Source, Link
 import dataclasses
 
 
@@ -13,6 +13,12 @@ class Simple:
 class OptionalArgument:
     mandatory: str
     optional: str = None
+
+
+@dataclasses.dataclass
+class WithLink:
+    baz: str
+    simple: Simple
 
 
 def test_simple_schema():
@@ -63,3 +69,15 @@ def test_optional_argument():
         "optional_argument": {name: Source(only_mandatory), "default": Source(both)}
     }
     assert schema.sources == reference
+
+
+def test_links():
+    schema = Schema()
+    target = Simple("foo_dataset", "bar_dataset")
+    pointer = WithLink("baz_dataset", Link("simple", "default"))
+    schema.add(Simple, foo=target.foo, bar=target.bar)
+    schema.add(WithLink, baz=pointer.baz, simple=pointer.simple)
+    reference = {
+        "simple": {"default": Source(target)},
+        "with_link": {"default": Source(pointer)},
+    }

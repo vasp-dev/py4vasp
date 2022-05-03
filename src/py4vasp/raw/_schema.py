@@ -23,3 +23,9 @@ class Source:
     source: Any
     file: str = None
     required: RawVersion = None
+
+
+@dataclasses.dataclass
+class Link:
+    quantity: str
+    source: str
