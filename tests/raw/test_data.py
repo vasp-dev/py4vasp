@@ -1,7 +1,7 @@
 from py4vasp.raw import VaspData
 from hypothesis import given, assume
 import hypothesis.strategies as strategy
-from hypothesis.extra.numpy import mutually_broadcastable_shapes, arrays
+import hypothesis.extra.numpy as np_strat
 import numpy as np
 
 
@@ -10,7 +10,7 @@ threshold = 100.0
 
 @strategy.composite
 def operands(draw):
-    (shape_x, shape_y), _ = draw(mutually_broadcastable_shapes(num_shapes=2))
+    (shape_x, shape_y), _ = draw(np_strat.mutually_broadcastable_shapes(num_shapes=2))
     x = draw_test_data(draw, shape_x)
     y = draw_test_data(draw, shape_y)
     return x, y
@@ -18,8 +18,16 @@ def operands(draw):
 
 @strategy.composite
 def array_or_scalar(draw):
-    (shape,), _ = draw(mutually_broadcastable_shapes(num_shapes=1))
+    (shape,), _ = draw(np_strat.mutually_broadcastable_shapes(num_shapes=1))
     return draw_test_data(draw, shape)
+
+
+@strategy.composite
+def array_and_slice(draw):
+    shape = draw(np_strat.array_shapes())
+    array = draw_test_data(draw, shape)
+    slice = draw(np_strat.basic_indices(shape))
+    return array, slice
 
 
 def draw_test_data(draw, shape):
@@ -27,7 +35,7 @@ def draw_test_data(draw, shape):
     if len(shape) == 0:
         result = draw(elements)
     else:
-        result = draw(arrays(np.float, shape, elements=elements))
+        result = draw(np_strat.arrays(np.float, shape, elements=elements))
     return np.sign(result) * np.maximum(np.abs(result), 1 / threshold)
 
 
@@ -69,10 +77,17 @@ def test_functions(ops, Assert):
 
 
 @given(data=array_or_scalar())
-def test_attributes(data, Assert):
+def test_attributes(data):
     # wrap a small amount of properties common to hdf5 and ndarray
     vasp = VaspData(data)
     assert vasp.ndim == data.ndim
     assert vasp.size == data.size
     assert vasp.shape == data.shape
     assert vasp.dtype == data.dtype
+
+
+@given(array_slice=array_and_slice())
+def test_slices(array_slice, Assert):
+    array, slice = array_slice
+    vasp = VaspData(array)
+    Assert.allclose(vasp[slice], array[slice])
