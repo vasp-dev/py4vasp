@@ -4,6 +4,8 @@ from dataclasses import fields
 import pytest
 from unittest.mock import patch, call
 
+# TODO: make sure files are only opened once
+
 
 @pytest.fixture
 def mock_access(complex_schema):
@@ -55,6 +57,32 @@ def check_file_access(mock_file, source, filename):
     h5f.get.assert_has_calls(expected_calls(source), any_order=True)
 
 
+def test_access_with_link(mock_access):
+    reference, file_calls, get_calls = linked_quantity_reference(mock_access)
+    quantity = "with_link"
+    mock_file, sources = mock_access
+    source = sources[quantity]["default"]
+    with raw.access(quantity) as with_link:
+        file_calls.append(call(DEFAULT_FILE, "r"))
+        mock_file.assert_has_calls(file_calls, any_order=True)
+        get_calls += list(expected_calls(source))
+        h5f = mock_file.return_value.__enter__.return_value
+        h5f.get.assert_has_calls(expected_calls(source), any_order=True)
+        assert with_link.baz == mock_read_result(source.data.baz)
+        assert with_link.simple == reference
+
+
+def linked_quantity_reference(mock_access):
+    quantity = "simple"
+    mock_file, sources = mock_access
+    source = sources[quantity]["default"]
+    with raw.access(quantity) as simple:
+        h5f = mock_file.return_value.__enter__.return_value
+        result = simple, mock_file.call_args_list, h5f.get.call_args_list
+    mock_file.reset_mock()
+    return result
+
+
 def expected_calls(source):
     for field in fields(source.data):
         yield from expected_call(source.data, field)
@@ -62,5 +90,5 @@ def expected_calls(source):
 
 def expected_call(data, field):
     key = getattr(data, field.name)
-    if key is not None:
+    if isinstance(key, str):
         yield call(key)
