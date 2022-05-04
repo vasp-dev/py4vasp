@@ -1,5 +1,5 @@
 import contextlib
-from dataclasses import fields, replace
+import dataclasses
 import h5py
 from py4vasp.raw._schema import Link
 
@@ -8,34 +8,42 @@ schema = "TODO"
 
 
 @contextlib.contextmanager
-def access(quantity, source="default", exit_stack=None):
-    source = schema.sources[quantity][source]
-    filename = source.file or DEFAULT_FILE
-    with _get_exit_stack(exit_stack) as stack:
-        h5f = stack.enter_context(h5py.File(filename, "r"))
-        datasets = _get_datasets(h5f, source.data, stack)
-        yield replace(source.data, **datasets)
+def access(quantity, source="default"):
+    state = _State()
+    with state.exit_stack:
+        yield state.access(quantity, source)
 
 
-def _get_exit_stack(stack):
-    if stack is None:
-        return contextlib.ExitStack()
-    else:
-        return contextlib.nullcontext(stack)
+class _State:
+    def __init__(self):
+        self.exit_stack = contextlib.ExitStack()
+        self._files = {}
 
+    def access(self, quantity, source):
+        source = schema.sources[quantity][source]
+        filename = source.file or DEFAULT_FILE
+        h5f = self._open_file(filename)
+        datasets = self._get_datasets(h5f, source.data)
+        return dataclasses.replace(source.data, **datasets)
 
-def _get_datasets(h5f, data, stack):
-    return {
-        field.name: _get_dataset(h5f, getattr(data, field.name), stack)
-        for field in fields(data)
-    }
+    def _open_file(self, filename):
+        if filename in self._files:
+            return self._files[filename]
+        else:
+            file = self.exit_stack.enter_context(h5py.File(filename, "r"))
+            self._files[filename] = file
+            return file
 
+    def _get_datasets(self, h5f, data):
+        return {
+            field.name: self._get_dataset(h5f, getattr(data, field.name))
+            for field in dataclasses.fields(data)
+        }
 
-def _get_dataset(h5f, key, stack):
-    if key is None:
-        return None
-    elif isinstance(key, Link):
-        context = access(key.quantity, source=key.source, exit_stack=stack)
-        return stack.enter_context(context)
-    else:
-        return h5f.get(key)
+    def _get_dataset(self, h5f, key):
+        if key is None:
+            return None
+        elif isinstance(key, Link):
+            return self.access(key.quantity, source=key.source)
+        else:
+            return h5f.get(key)

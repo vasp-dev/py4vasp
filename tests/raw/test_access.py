@@ -4,7 +4,7 @@ from dataclasses import fields
 import pytest
 from unittest.mock import patch, call
 
-# TODO: make sure files are only opened once
+# TODO: path option
 
 
 @pytest.fixture
@@ -64,13 +64,23 @@ def test_access_with_link(mock_access):
         assert with_link.simple == reference
 
 
+def test_access_open_once(mock_access):
+    mock_file, sources = mock_access
+    with raw.access("complex", source="mandatory") as complex:
+        # open two different files
+        assert mock_file.call_count == 2
+
+
 def check_single_file_access(mock_file, filename, source):
     check_file_access(mock_file, (call(filename, "r"),), expected_calls(source))
 
 
 def check_file_access(mock_file, file_calls, get_calls):
+    assert mock_file.call_count == len(file_calls)
     mock_file.assert_has_calls(file_calls, any_order=True)
     h5f = mock_file.return_value.__enter__.return_value
+    get_calls = list(get_calls)
+    assert h5f.get.call_count == len(get_calls)
     h5f.get.assert_has_calls(get_calls, any_order=True)
 
 
