@@ -24,7 +24,7 @@ class Schema:
 
 @dataclasses.dataclass
 class Source:
-    source: Any
+    data: Any
     file: str = None
     required: RawVersion = None
 
@@ -50,7 +50,7 @@ def _parse_specification(specification):
         yield 8 * " " + f"file: {specification.file}"
     if specification.required:
         yield 8 * " " + f"required: {_parse_version(specification.required)}"
-    for key, value in dataclasses.asdict(specification.source).items():
+    for key, value in dataclasses.asdict(specification.data).items():
         if value:
             yield _parse_field(key, value)
 
