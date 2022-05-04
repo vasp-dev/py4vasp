@@ -10,21 +10,37 @@ def mock_access(complex_schema):
     schema, sources = complex_schema
     with patch("h5py.File") as mock_file:
         h5f = mock_file.return_value.__enter__.return_value
-        h5f.get.side_effect = lambda key: f"read {key}"
+        h5f.get.side_effect = mock_read_result
         with patch("py4vasp.raw._access.schema", schema):
             yield mock_file, sources
 
 
+def mock_read_result(key):
+    return f"read {key}"
+
+
 def test_access_quantity(mock_access):
-    key = "optional_argument"
+    quantity = "optional_argument"
     mock_file, sources = mock_access
-    with raw.access(key) as opt_arg:
+    source = sources[quantity]["default"]
+    with raw.access(quantity) as opt_arg:
         mock_file.assert_called_once_with(DEFAULT_FILE, "r")
         h5f = mock_file.return_value.__enter__.return_value
-        source = sources[key]["default"]
         h5f.get.assert_has_calls(expected_calls(source), any_order=True)
-        assert opt_arg.mandatory == f"read {source.data.mandatory}"
-        assert opt_arg.optional == f"read {source.data.optional}"
+        assert opt_arg.mandatory == mock_read_result(source.data.mandatory)
+        assert opt_arg.optional == mock_read_result(source.data.optional)
+
+
+def test_access_other_file(mock_access):
+    quantity = "simple"
+    mock_file, sources = mock_access
+    source = sources[quantity]["default"]
+    with raw.access(quantity) as simple:
+        mock_file.assert_called_once_with(source.file, "r")
+        h5f = mock_file.return_value.__enter__.return_value
+        h5f.get.assert_has_calls(expected_calls(source), any_order=True)
+        assert simple.foo == mock_read_result(source.data.foo)
+        assert simple.bar == mock_read_result(source.data.bar)
 
 
 def expected_calls(source):
