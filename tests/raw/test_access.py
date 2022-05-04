@@ -43,9 +43,24 @@ def test_access_other_file(mock_access):
         assert simple.bar == mock_read_result(source.data.bar)
 
 
+def test_access_optional_argument(mock_access):
+    quantity = "optional_argument"
+    mock_file, sources = mock_access
+    source = sources[quantity]["mandatory"]
+    with raw.access(quantity, source="mandatory") as opt_arg:
+        mock_file.assert_called_once_with(DEFAULT_FILE, "r")
+        h5f = mock_file.return_value.__enter__.return_value
+        h5f.get.assert_has_calls(expected_calls(source), any_order=True)
+        assert opt_arg.mandatory == mock_read_result(source.data.mandatory)
+        assert opt_arg.optional == None
+
+
 def expected_calls(source):
-    return (expected_call(source.data, field) for field in fields(source.data))
+    for field in fields(source.data):
+        yield from expected_call(source.data, field)
 
 
 def expected_call(data, field):
-    return call(getattr(data, field.name))
+    key = getattr(data, field.name)
+    if key is not None:
+        yield call(key)
