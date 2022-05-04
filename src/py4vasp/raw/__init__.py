@@ -17,6 +17,7 @@ enforce the read operation before the file is closed.
 
 from .data import VaspData
 from .rawdata import *
+from ._access import access
 from .file import File
 import inspect
 import sys
