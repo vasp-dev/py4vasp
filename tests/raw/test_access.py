@@ -24,9 +24,7 @@ def test_access_quantity(mock_access):
     mock_file, sources = mock_access
     source = sources[quantity]["default"]
     with raw.access(quantity) as opt_arg:
-        mock_file.assert_called_once_with(DEFAULT_FILE, "r")
-        h5f = mock_file.return_value.__enter__.return_value
-        h5f.get.assert_has_calls(expected_calls(source), any_order=True)
+        check_file_access(mock_file, source, DEFAULT_FILE)
         assert opt_arg.mandatory == mock_read_result(source.data.mandatory)
         assert opt_arg.optional == mock_read_result(source.data.optional)
 
@@ -36,9 +34,7 @@ def test_access_other_file(mock_access):
     mock_file, sources = mock_access
     source = sources[quantity]["default"]
     with raw.access(quantity) as simple:
-        mock_file.assert_called_once_with(source.file, "r")
-        h5f = mock_file.return_value.__enter__.return_value
-        h5f.get.assert_has_calls(expected_calls(source), any_order=True)
+        check_file_access(mock_file, source, source.file)
         assert simple.foo == mock_read_result(source.data.foo)
         assert simple.bar == mock_read_result(source.data.bar)
 
@@ -48,11 +44,15 @@ def test_access_optional_argument(mock_access):
     mock_file, sources = mock_access
     source = sources[quantity]["mandatory"]
     with raw.access(quantity, source="mandatory") as opt_arg:
-        mock_file.assert_called_once_with(DEFAULT_FILE, "r")
-        h5f = mock_file.return_value.__enter__.return_value
-        h5f.get.assert_has_calls(expected_calls(source), any_order=True)
+        check_file_access(mock_file, source, DEFAULT_FILE)
         assert opt_arg.mandatory == mock_read_result(source.data.mandatory)
         assert opt_arg.optional == None
+
+
+def check_file_access(mock_file, source, filename):
+    mock_file.assert_called_once_with(filename, "r")
+    h5f = mock_file.return_value.__enter__.return_value
+    h5f.get.assert_has_calls(expected_calls(source), any_order=True)
 
 
 def expected_calls(source):
