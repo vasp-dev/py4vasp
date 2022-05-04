@@ -1,6 +1,7 @@
 import contextlib
 import dataclasses
 import h5py
+import pathlib
 from py4vasp.raw._schema import Link
 
 DEFAULT_FILE = "vaspout.h5"
@@ -8,21 +9,23 @@ schema = "TODO"
 
 
 @contextlib.contextmanager
-def access(quantity, source="default"):
-    state = _State()
+def access(quantity, source="default", path=None):
+    state = _State(path)
     with state.exit_stack:
         yield state.access(quantity, source)
 
 
 class _State:
-    def __init__(self):
+    def __init__(self, path):
         self.exit_stack = contextlib.ExitStack()
         self._files = {}
+        self._path = path or pathlib.Path(".")
 
     def access(self, quantity, source):
         source = schema.sources[quantity][source]
         filename = source.file or DEFAULT_FILE
-        h5f = self._open_file(filename)
+        path = self._path / pathlib.Path(filename)
+        h5f = self._open_file(path)
         datasets = self._get_datasets(h5f, source.data)
         return dataclasses.replace(source.data, **datasets)
 

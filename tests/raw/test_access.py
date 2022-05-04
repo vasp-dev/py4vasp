@@ -1,10 +1,9 @@
 import py4vasp.raw as raw
 from py4vasp.raw._access import DEFAULT_FILE
 from dataclasses import fields
+import pathlib
 import pytest
 from unittest.mock import patch, call
-
-# TODO: path option
 
 
 @pytest.fixture
@@ -57,31 +56,11 @@ def test_access_with_link(mock_access):
     mock_file, sources = mock_access
     source = sources[quantity]["default"]
     with raw.access(quantity) as with_link:
-        file_calls += [call(DEFAULT_FILE, "r")]
+        file_calls += [call(pathlib.Path(DEFAULT_FILE), "r")]
         get_calls += list(expected_calls(source))
         check_file_access(mock_file, file_calls, get_calls)
         assert with_link.baz == mock_read_result(source.data.baz)
         assert with_link.simple == reference
-
-
-def test_access_open_once(mock_access):
-    mock_file, sources = mock_access
-    with raw.access("complex", source="mandatory") as complex:
-        # open two different files
-        assert mock_file.call_count == 2
-
-
-def check_single_file_access(mock_file, filename, source):
-    check_file_access(mock_file, (call(filename, "r"),), expected_calls(source))
-
-
-def check_file_access(mock_file, file_calls, get_calls):
-    assert mock_file.call_count == len(file_calls)
-    mock_file.assert_has_calls(file_calls, any_order=True)
-    h5f = mock_file.return_value.__enter__.return_value
-    get_calls = list(get_calls)
-    assert h5f.get.call_count == len(get_calls)
-    h5f.get.assert_has_calls(get_calls, any_order=True)
 
 
 def linked_quantity_reference(mock_access):
@@ -93,6 +72,38 @@ def linked_quantity_reference(mock_access):
         result = simple, mock_file.call_args_list, h5f.get.call_args_list
     mock_file.reset_mock()
     return result
+
+
+def test_access_open_once(mock_access):
+    mock_file, sources = mock_access
+    with raw.access("complex", source="mandatory") as complex:
+        # open two different files
+        assert mock_file.call_count == 2
+
+
+def test_access_from_path(mock_access):
+    quantity = "optional_argument"
+    path = "pathname"
+    mock_file, sources = mock_access
+    source = sources[quantity]["default"]
+    with raw.access(quantity, path=path) as opt_arg:
+        check_single_file_access(mock_file, f"{path}/{DEFAULT_FILE}", source)
+        assert opt_arg.mandatory == mock_read_result(source.data.mandatory)
+        assert opt_arg.optional == mock_read_result(source.data.optional)
+
+
+def check_single_file_access(mock_file, filename, source):
+    file_calls = (call(pathlib.Path(filename), "r"),)
+    check_file_access(mock_file, file_calls, expected_calls(source))
+
+
+def check_file_access(mock_file, file_calls, get_calls):
+    assert mock_file.call_count == len(file_calls)
+    mock_file.assert_has_calls(file_calls, any_order=True)
+    h5f = mock_file.return_value.__enter__.return_value
+    get_calls = list(get_calls)
+    assert h5f.get.call_count == len(get_calls)
+    h5f.get.assert_has_calls(get_calls, any_order=True)
 
 
 def expected_calls(source):
