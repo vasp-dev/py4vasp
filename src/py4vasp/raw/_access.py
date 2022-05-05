@@ -49,4 +49,8 @@ class _State:
         elif isinstance(key, Link):
             return self.access(key.quantity, source=key.source)
         else:
-            return h5f.get(key)
+            dataset = h5f.get(key)
+            if dataset.ndim == 0:
+                return dataset[()]
+            else:
+                return raw.VaspData(dataset)

@@ -3,7 +3,7 @@ from py4vasp.raw._access import DEFAULT_FILE
 from dataclasses import fields
 import pathlib
 import pytest
-from unittest.mock import patch, call
+from unittest.mock import patch, call, MagicMock
 
 
 @pytest.fixture
@@ -16,8 +16,26 @@ def mock_access(complex_schema):
             yield mock_file, sources
 
 
+_mock_results = {}
+
+
 def mock_read_result(key):
-    return f"read {key}"
+    if key not in _mock_results:
+        mock = MagicMock()
+        mock.ndim = 0 if "foo" in key else len(key)
+        mock.myname = key
+        _mock_results[key] = mock
+    return _mock_results[key]
+
+
+def check_data(actual, key):
+    mock = mock_read_result(key)
+    if mock.ndim == 0:
+        mock.__getitem__.assert_called_once_with(())
+        assert actual == mock.__getitem__.return_value
+    else:
+        assert isinstance(actual, raw.VaspData)
+        assert actual[:] == mock.__getitem__.return_value
 
 
 def test_access_quantity(mock_access):
@@ -26,8 +44,8 @@ def test_access_quantity(mock_access):
     source = sources[quantity]["default"]
     with raw.access(quantity) as opt_arg:
         check_single_file_access(mock_file, DEFAULT_FILE, source)
-        assert opt_arg.mandatory == mock_read_result(source.data.mandatory)
-        assert opt_arg.optional == mock_read_result(source.data.optional)
+        check_data(opt_arg.mandatory, source.data.mandatory)
+        check_data(opt_arg.optional, source.data.optional)
 
 
 def test_access_other_file(mock_access):
@@ -36,8 +54,8 @@ def test_access_other_file(mock_access):
     source = sources[quantity]["default"]
     with raw.access(quantity) as simple:
         check_single_file_access(mock_file, source.file, source)
-        assert simple.foo == mock_read_result(source.data.foo)
-        assert simple.bar == mock_read_result(source.data.bar)
+        check_data(simple.foo, source.data.foo)
+        check_data(simple.bar, source.data.bar)
 
 
 def test_access_optional_argument(mock_access):
@@ -46,7 +64,7 @@ def test_access_optional_argument(mock_access):
     source = sources[quantity]["mandatory"]
     with raw.access(quantity, source="mandatory") as opt_arg:
         check_single_file_access(mock_file, DEFAULT_FILE, source)
-        assert opt_arg.mandatory == mock_read_result(source.data.mandatory)
+        check_data(opt_arg.mandatory, source.data.mandatory)
         assert opt_arg.optional == None
 
 
@@ -59,8 +77,9 @@ def test_access_with_link(mock_access):
         file_calls += [call(pathlib.Path(DEFAULT_FILE), "r")]
         get_calls += list(expected_calls(source))
         check_file_access(mock_file, file_calls, get_calls)
-        assert with_link.baz == mock_read_result(source.data.baz)
-        assert with_link.simple == reference
+        check_data(with_link.baz, source.data.baz)
+        assert with_link.simple.foo[:] == reference.foo[:]
+        assert with_link.simple.bar[:] == reference.bar[:]
 
 
 def linked_quantity_reference(mock_access):
@@ -88,8 +107,8 @@ def test_access_from_path(mock_access):
     source = sources[quantity]["default"]
     with raw.access(quantity, path=path) as opt_arg:
         check_single_file_access(mock_file, f"{path}/{DEFAULT_FILE}", source)
-        assert opt_arg.mandatory == mock_read_result(source.data.mandatory)
-        assert opt_arg.optional == mock_read_result(source.data.optional)
+        check_data(opt_arg.mandatory, source.data.mandatory)
+        check_data(opt_arg.optional, source.data.optional)
 
 
 def check_single_file_access(mock_file, filename, source):
