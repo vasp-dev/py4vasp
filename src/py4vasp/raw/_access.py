@@ -2,6 +2,8 @@ import contextlib
 import dataclasses
 import h5py
 import pathlib
+import py4vasp.exceptions as exception
+import py4vasp.raw as raw
 from py4vasp.raw._schema import Link
 
 DEFAULT_FILE = "vaspout.h5"
@@ -26,6 +28,7 @@ class _State:
         filename = source.file or DEFAULT_FILE
         path = self._path / pathlib.Path(filename)
         h5f = self._open_file(path)
+        self._check_version(h5f, source.required, quantity)
         datasets = self._get_datasets(h5f, source.data)
         return dataclasses.replace(source.data, **datasets)
 
@@ -36,6 +39,14 @@ class _State:
             file = self.exit_stack.enter_context(h5py.File(filename, "r"))
             self._files[filename] = file
             return file
+
+    def _check_version(self, h5f, required, quantity):
+        if not required:
+            return
+        version = raw.RawVersion(h5f["major"], h5f["minor"], h5f["patch"])
+        if version < required:
+            message = f"The {quantity} is not available in VASP {version}. It requires at least {required}."
+            raise exception.OutdatedVaspVersion(message)
 
     def _get_datasets(self, h5f, data):
         return {

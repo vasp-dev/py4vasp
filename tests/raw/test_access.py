@@ -12,6 +12,7 @@ def mock_access(complex_schema):
     with patch("h5py.File") as mock_file:
         h5f = mock_file.return_value.__enter__.return_value
         h5f.get.side_effect = mock_read_result
+        h5f.__getitem__.side_effect = lambda _: 999
         with patch("py4vasp.raw._access.schema", schema):
             yield mock_file, sources
 
@@ -109,6 +110,21 @@ def test_access_from_path(mock_access):
         check_single_file_access(mock_file, f"{path}/{DEFAULT_FILE}", source)
         check_data(opt_arg.mandatory, source.data.mandatory)
         check_data(opt_arg.optional, source.data.optional)
+
+
+def test_required_version(mock_access):
+    mock_file, sources = mock_access
+    mock_get_version = mock_file.return_value.__enter__.return_value.__getitem__
+    version = {"major": 1, "minor": 0, "patch": 2}
+    mock_get_version.side_effect = lambda key: version[key]
+    with raw.access("simple"):
+        mock_get_version.assert_not_called()
+    with pytest.raises(exception.OutdatedVaspVersion):
+        with raw.access("with_link"):
+            pass
+    assert mock_get_version.call_count == 3
+    expected_calls = call("major"), call("minor"), call("patch")
+    mock_get_version.assert_has_calls(expected_calls, any_order=True)
 
 
 def check_single_file_access(mock_file, filename, source):
