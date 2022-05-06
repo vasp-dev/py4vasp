@@ -1,7 +1,7 @@
 import pytest
-from util import Simple, OptionalArgument, WithLink, WithLength, Complex
+from util import Simple, OptionalArgument, WithLink, WithLength, Complex, VERSION
 from py4vasp.raw._schema import Schema, Source, Link, Length
-from py4vasp.raw import RawVersion
+from py4vasp import raw
 
 
 @pytest.fixture
@@ -12,7 +12,7 @@ def complex_schema():
     name = "mandatory"
     both = OptionalArgument("mandatory2", "optional")
     pointer = WithLink("baz_dataset", Link("simple", "default"))
-    version = RawVersion(1, 2, 3)
+    version = raw.Version(1, 2, 3)
     length = WithLength(Length("dataset"))
     first = Complex(
         Link("optional_argument", "default"),
@@ -23,7 +23,7 @@ def complex_schema():
         Link("optional_argument", name),
         Link("with_link", "default"),
     )
-    schema = Schema()
+    schema = Schema(VERSION)
     schema.add(Simple, file=filename, foo=simple.foo, bar=simple.bar)
     schema.add(OptionalArgument, name=name, mandatory=only_mandatory.mandatory)
     schema.add(OptionalArgument, mandatory=both.mandatory, optional=both.optional)

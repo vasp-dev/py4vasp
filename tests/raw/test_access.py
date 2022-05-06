@@ -1,6 +1,7 @@
 import py4vasp.raw as raw
 from py4vasp.raw._access import DEFAULT_FILE
 import py4vasp.exceptions as exception
+from util import VERSION
 from dataclasses import fields
 import numpy as np
 import pathlib
@@ -116,7 +117,7 @@ def test_access_from_path(mock_access):
 def test_required_version(mock_access):
     mock_file, sources = mock_access
     mock_get_version = mock_file.return_value.__enter__.return_value.__getitem__
-    version = {"major": 1, "minor": 0, "patch": 2}
+    version = {VERSION.major: 1, VERSION.minor: 0, VERSION.patch: 2}
     mock_get_version.side_effect = lambda key: version[key]
     with raw.access("simple"):
         mock_get_version.assert_not_called()
@@ -124,7 +125,7 @@ def test_required_version(mock_access):
         with raw.access("with_link"):
             pass
     assert mock_get_version.call_count == 3
-    expected_calls = call("major"), call("minor"), call("patch")
+    expected_calls = call(VERSION.major), call(VERSION.minor), call(VERSION.patch)
     mock_get_version.assert_has_calls(expected_calls, any_order=True)
 
 

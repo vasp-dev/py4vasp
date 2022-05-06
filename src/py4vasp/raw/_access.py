@@ -44,7 +44,11 @@ class _State:
     def _check_version(self, h5f, required, quantity):
         if not required:
             return
-        version = raw.RawVersion(h5f["major"], h5f["minor"], h5f["patch"])
+        version = raw.Version(
+            major=h5f[schema.version.major],
+            minor=h5f[schema.version.minor],
+            patch=h5f[schema.version.patch],
+        )
         if version < required:
             message = f"The {quantity} is not available in VASP {version}. It requires at least {required}."
             raise exception.OutdatedVaspVersion(message)

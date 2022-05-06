@@ -5,8 +5,9 @@ import py4vasp._util.convert as convert
 
 
 class Schema:
-    def __init__(self):
+    def __init__(self, version):
         self._sources = {}
+        self.version = version
 
     def add(self, cls, name="default", file=None, required=None, **kwargs):
         class_name = convert.to_snakecase(cls.__name__)
@@ -18,8 +19,12 @@ class Schema:
         return self._sources
 
     def __str__(self):
+        version = _parse_version(self.version)
         quantities = (_parse_quantity(*quantity) for quantity in self._sources.items())
-        return "---  # schema\n" + "\n".join(quantities)
+        quantities = "\n".join(quantities)
+        return f"""---  # schema
+{version}
+{quantities}"""
 
 
 @dataclasses.dataclass
@@ -42,6 +47,13 @@ class Length:
     __str__ = lambda self: f"length({self.dataset})"
 
 
+def _parse_version(version):
+    return f"""version:
+    major: {version.major}
+    minor: {version.minor}
+    patch: {version.patch}"""
+
+
 def _parse_quantity(name, sources):
     sources = (_parse_source(name, *source) for source in sources.items())
     return f"{name}:\n" + "\n".join(sources)
@@ -56,7 +68,7 @@ def _parse_specification(specification):
     if specification.file:
         yield 8 * " " + f"file: {specification.file}"
     if specification.required:
-        yield 8 * " " + f"required: {_parse_version(specification.required)}"
+        yield 8 * " " + f"required: {_parse_requirement(specification.required)}"
     for field in dataclasses.fields(specification.data):
         key = field.name
         value = getattr(specification.data, key)
@@ -70,5 +82,5 @@ def _parse_field(key, value):
     return 8 * " " + f"{key}: {value}"
 
 
-def _parse_version(version):
+def _parse_requirement(version):
     return f"{version.major}.{version.minor}.{version.patch}"
