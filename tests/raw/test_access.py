@@ -1,5 +1,6 @@
 import py4vasp.raw as raw
 from py4vasp.raw._access import DEFAULT_FILE
+import py4vasp.exceptions as exception
 from dataclasses import fields
 import pathlib
 import pytest
@@ -125,6 +126,15 @@ def test_required_version(mock_access):
     assert mock_get_version.call_count == 3
     expected_calls = call("major"), call("minor"), call("patch")
     mock_get_version.assert_has_calls(expected_calls, any_order=True)
+
+
+def test_access_none(mock_access):
+    mock_file, sources = mock_access
+    mock_get = mock_file.return_value.__enter__.return_value.get
+    mock_get.side_effect = lambda _: None
+    with raw.access("simple") as simple:
+        assert simple.foo is None
+        assert simple.bar is None
 
 
 def check_single_file_access(mock_file, filename, source):

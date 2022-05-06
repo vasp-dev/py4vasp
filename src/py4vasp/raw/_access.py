@@ -57,11 +57,11 @@ class _State:
     def _get_dataset(self, h5f, key):
         if key is None:
             return None
-        elif isinstance(key, Link):
+        if isinstance(key, Link):
             return self.access(key.quantity, source=key.source)
-        else:
-            dataset = h5f.get(key)
-            if dataset.ndim == 0:
-                return dataset[()]
-            else:
-                return raw.VaspData(dataset)
+        dataset = h5f.get(key)
+        if dataset is None:
+            return dataset
+        if dataset.ndim == 0:
+            return dataset[()]
+        return raw.VaspData(dataset)
