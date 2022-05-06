@@ -85,6 +85,8 @@ def test_attributes(data):
     assert vasp.shape == data.shape
     assert vasp.dtype == data.dtype
     assert repr(vasp) == f"VaspData({repr(data)})"
+    assume(data.ndim > 0)
+    assert len(vasp) == len(data)
 
 
 @given(array_slice=array_and_slice())

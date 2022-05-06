@@ -33,6 +33,9 @@ class VaspData(np.lib.mixins.NDArrayOperatorsMixin):
     def __repr__(self):
         return f"{self.__class__.__name__}({repr(self._data)})"
 
+    def __len__(self):
+        return len(self._data)
+
     @property
     def ndim(self):
         "The number of dimensions of the data."
