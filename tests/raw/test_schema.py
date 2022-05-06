@@ -87,7 +87,7 @@ def test_file_version():
 
 def test_complex(complex_schema):
     schema, reference = complex_schema
-    assert remove_version(schema.sources) == reference
+    assert schema.sources == reference
 
 
 def test_complex_str(complex_schema):

@@ -165,6 +165,17 @@ def test_access_length(mock_access):
         assert with_length.num_data is None
 
 
+def test_access_version(mock_access):
+    quantity = "version"
+    mock_file, sources = mock_access
+    source = sources[quantity]["default"]
+    with raw.access(quantity) as version:
+        check_single_file_access(mock_file, DEFAULT_FILE, source)
+        check_data(version.major, source.data.major)
+        check_data(version.minor, source.data.minor)
+        check_data(version.patch, source.data.patch)
+
+
 def check_single_file_access(mock_file, filename, source):
     file_calls = (call(pathlib.Path(filename), "r"),)
     check_file_access(mock_file, file_calls, expected_calls(source))

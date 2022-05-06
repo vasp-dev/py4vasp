@@ -32,6 +32,7 @@ def complex_schema():
     schema.add(Complex, opt=first.opt, link=first.link, length=first.length)
     schema.add(Complex, name=name, opt=second.opt, link=second.link)
     reference = {
+        "version": {"default": Source(VERSION)},
         "simple": {"default": Source(simple, file=filename)},
         "optional_argument": {"default": Source(both), name: Source(only_mandatory)},
         "with_link": {"default": Source(pointer, required=version)},
