@@ -4,10 +4,7 @@ import h5py
 import pathlib
 import py4vasp.exceptions as exception
 import py4vasp.raw as raw
-from py4vasp.raw._schema import Link
-
-DEFAULT_FILE = "vaspout.h5"
-schema = "TODO"
+from py4vasp.raw._definition import schema, DEFAULT_FILE
 from py4vasp.raw._schema import Link, Length
 
 

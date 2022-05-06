@@ -1,6 +1,8 @@
 from py4vasp import raw
 from py4vasp.raw._schema import Schema, Source, Link, Length
+import py4vasp.exceptions as exception
 from util import Simple, OptionalArgument, WithLink, WithLength, Complex, VERSION
+import pytest
 
 
 def test_simple_schema():
@@ -127,3 +129,10 @@ complex:
         link: *with_link-default\
 """
     assert str(schema) == reference
+
+
+def test_adding_twice_error():
+    schema = Schema(VERSION)
+    schema.add(Simple, foo="foo1", bar="bar1")
+    with pytest.raises(exception.IncorrectUsage):
+        schema.add(Simple, foo="foo2", bar="bar2")

@@ -1,6 +1,7 @@
 import dataclasses
 from typing import Any
-from py4vasp.raw import RawVersion
+from py4vasp import exceptions as exception
+from py4vasp import raw
 import py4vasp._util.convert as convert
 
 
@@ -12,6 +13,9 @@ class Schema:
     def add(self, cls, name="default", file=None, required=None, **kwargs):
         class_name = convert.to_snakecase(cls.__name__)
         self._sources.setdefault(class_name, {})
+        if name in self._sources[class_name]:
+            message = f"{class_name}/{name} already in the schema. Please choose a different name."
+            raise exception.IncorrectUsage(message)
         self._sources[class_name][name] = Source(cls(**kwargs), file, required)
 
     @property
@@ -35,7 +39,7 @@ class Schema:
 class Source:
     data: Any
     file: str = None
-    required: RawVersion = None
+    required: raw.Version = None
 
 
 @dataclasses.dataclass

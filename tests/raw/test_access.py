@@ -1,5 +1,5 @@
 import py4vasp.raw as raw
-from py4vasp.raw._access import DEFAULT_FILE
+from py4vasp.raw._definition import DEFAULT_FILE
 import py4vasp.exceptions as exception
 from util import VERSION
 from dataclasses import fields
