@@ -59,9 +59,17 @@ class _State:
             return None
         if isinstance(key, Link):
             return self.access(key.quantity, source=key.source)
-        dataset = h5f.get(key)
+        return self._parse_dataset(h5f.get(key))
+
+    def _parse_dataset(self, dataset):
         if dataset is None:
-            return dataset
-        if dataset.ndim == 0:
-            return dataset[()]
-        return raw.VaspData(dataset)
+            return None
+        if dataset.ndim > 0:
+            return raw.VaspData(dataset)
+        return self._parse_scalar(dataset[()])
+
+    def _parse_scalar(self, scalar):
+        if isinstance(scalar, bytes):
+            return scalar.decode()
+        else:
+            return scalar
