@@ -1,4 +1,7 @@
 import dataclasses
+from py4vasp import raw
+
+VERSION = raw.Version("major_dataset", "minor_dataset", "patch_dataset")
 
 
 @dataclasses.dataclass

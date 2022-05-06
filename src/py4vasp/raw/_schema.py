@@ -6,8 +6,8 @@ import py4vasp._util.convert as convert
 
 class Schema:
     def __init__(self, version):
-        self._sources = {}
-        self.version = version
+        self._sources = {"version": {"default": Source(version)}}
+        self._version = version
 
     def add(self, cls, name="default", file=None, required=None, **kwargs):
         class_name = convert.to_snakecase(cls.__name__)
@@ -18,9 +18,13 @@ class Schema:
     def sources(self):
         return self._sources
 
+    @property
+    def version(self):
+        return self._version
+
     def __str__(self):
         version = _parse_version(self.version)
-        quantities = (_parse_quantity(*quantity) for quantity in self._sources.items())
+        quantities = _parse_quantities(self._sources)
         quantities = "\n".join(quantities)
         return f"""---  # schema
 {version}
@@ -54,9 +58,12 @@ def _parse_version(version):
     patch: {version.patch}"""
 
 
-def _parse_quantity(name, sources):
-    sources = (_parse_source(name, *source) for source in sources.items())
-    return f"{name}:\n" + "\n".join(sources)
+def _parse_quantities(quantities):
+    for name, sources in quantities.items():
+        if name == "version":
+            continue
+        sources = (_parse_source(name, *source) for source in sources.items())
+        yield f"{name}:\n" + "\n".join(sources)
 
 
 def _parse_source(quantity, source, specification):

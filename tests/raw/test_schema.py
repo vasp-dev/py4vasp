@@ -1,88 +1,103 @@
-from py4vasp.raw import RawVersion
+from py4vasp import raw
 from py4vasp.raw._schema import Schema, Source, Link, Length
-from util import Simple, OptionalArgument, WithLink, WithLength, Complex
+from util import Simple, OptionalArgument, WithLink, WithLength, Complex, VERSION
 
 
 def test_simple_schema():
     source = Simple("foo_dataset", "bar_dataset")
-    schema = Schema()
+    schema = Schema(VERSION)
     schema.add(Simple, foo=source.foo, bar=source.bar)
     reference = {"simple": {"default": Source(source)}}
-    assert schema.sources == reference
+    assert remove_version(schema.sources) == reference
 
 
 def test_two_sources():
     first = Simple("foo1", "bar1")
     second = Simple("foo2", "bar2")
     name = "second_source"
-    schema = Schema()
+    schema = Schema(VERSION)
     schema.add(Simple, foo=first.foo, bar=first.bar)
     schema.add(Simple, name=name, foo=second.foo, bar=second.bar)
     reference = {"simple": {"default": Source(first), name: Source(second)}}
-    assert schema.sources == reference
+    assert remove_version(schema.sources) == reference
 
 
 def test_file_argument():
     source = Simple("foo_dataset", "bar_dataset")
     filename = "other_file"
-    schema = Schema()
+    schema = Schema(VERSION)
     schema.add(Simple, file=filename, foo=source.foo, bar=source.bar)
     reference = {"simple": {"default": Source(source, file=filename)}}
-    assert schema.sources == reference
+    assert remove_version(schema.sources) == reference
 
 
 def test_required_argument():
     source = Simple("foo_dataset", "bar_dataset")
-    version = RawVersion(1, 2, 3)
-    schema = Schema()
+    version = raw.Version(1, 2, 3)
+    schema = Schema(VERSION)
     schema.add(Simple, foo=source.foo, bar=source.bar, required=version)
     reference = {"simple": {"default": Source(source, required=version)}}
-    assert schema.sources == reference
+    assert remove_version(schema.sources) == reference
 
 
 def test_optional_argument():
     only_mandatory = OptionalArgument("mandatory1")
     name = "mandatory"
     both = OptionalArgument("mandatory2", "optional")
-    schema = Schema()
+    schema = Schema(VERSION)
     schema.add(OptionalArgument, name=name, mandatory=only_mandatory.mandatory)
     schema.add(OptionalArgument, mandatory=both.mandatory, optional=both.optional)
     reference = {
         "optional_argument": {name: Source(only_mandatory), "default": Source(both)}
     }
-    assert schema.sources == reference
+    assert remove_version(schema.sources) == reference
 
 
 def test_links():
     target = Simple("foo_dataset", "bar_dataset")
     pointer = WithLink("baz_dataset", Link("simple", "default"))
-    schema = Schema()
+    schema = Schema(VERSION)
     schema.add(Simple, foo=target.foo, bar=target.bar)
     schema.add(WithLink, baz=pointer.baz, simple=pointer.simple)
     reference = {
         "simple": {"default": Source(target)},
         "with_link": {"default": Source(pointer)},
     }
-    assert schema.sources == reference
+    assert remove_version(schema.sources) == reference
 
 
 def test_length():
     with_length = WithLength(Length("dataset"))
-    schema = Schema()
+    schema = Schema(VERSION)
     schema.add(WithLength, num_data=with_length.num_data)
     reference = {"with_length": {"default": Source(with_length)}}
-    assert schema.sources == reference
+    assert remove_version(schema.sources) == reference
+
+
+def remove_version(sources):
+    version = sources.pop("version")
+    assert version == {"default": Source(VERSION)}
+    return sources
+
+
+def test_file_version():
+    schema = Schema(VERSION)
+    assert schema.version == VERSION
 
 
 def test_complex(complex_schema):
     schema, reference = complex_schema
-    assert schema.sources == reference
+    assert remove_version(schema.sources) == reference
 
 
 def test_complex_str(complex_schema):
     schema, _ = complex_schema
     reference = """\
 ---  # schema
+version:
+    major: major_dataset
+    minor: minor_dataset
+    patch: patch_dataset
 simple:
     default:  &simple-default
         file: other_file
