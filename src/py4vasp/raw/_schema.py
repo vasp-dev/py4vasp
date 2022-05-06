@@ -33,6 +33,13 @@ class Source:
 class Link:
     quantity: str
     source: str
+    __str__ = lambda self: f"*{self.quantity}-{self.source}"
+
+
+@dataclasses.dataclass
+class Length:
+    dataset: str
+    __str__ = lambda self: f"length({self.dataset})"
 
 
 def _parse_quantity(name, sources):
@@ -50,7 +57,9 @@ def _parse_specification(specification):
         yield 8 * " " + f"file: {specification.file}"
     if specification.required:
         yield 8 * " " + f"required: {_parse_version(specification.required)}"
-    for key, value in dataclasses.asdict(specification.data).items():
+    for field in dataclasses.fields(specification.data):
+        key = field.name
+        value = getattr(specification.data, key)
         if value:
             yield _parse_field(key, value)
 

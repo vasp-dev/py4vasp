@@ -20,6 +20,12 @@ class WithLink:
 
 
 @dataclasses.dataclass
+class WithLength:
+    num_data: int
+
+
+@dataclasses.dataclass
 class Complex:
     opt: OptionalArgument
     link: WithLink
+    length: WithLength = None

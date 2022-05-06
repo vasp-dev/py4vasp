@@ -1,6 +1,6 @@
 from py4vasp.raw import RawVersion
-from py4vasp.raw._schema import Schema, Source, Link
-from util import Simple, OptionalArgument, WithLink, Complex
+from py4vasp.raw._schema import Schema, Source, Link, Length
+from util import Simple, OptionalArgument, WithLink, WithLength, Complex
 
 
 def test_simple_schema():
@@ -63,6 +63,15 @@ def test_links():
         "simple": {"default": Source(target)},
         "with_link": {"default": Source(pointer)},
     }
+    assert schema.sources == reference
+
+
+def test_length():
+    with_length = WithLength(Length("dataset"))
+    schema = Schema()
+    schema.add(WithLength, num_data=with_length.num_data)
+    reference = {"with_length": {"default": Source(with_length)}}
+    assert schema.sources == reference
 
 
 def test_complex(complex_schema):
@@ -90,10 +99,14 @@ with_link:
         required: 1.2.3
         baz: baz_dataset
         simple: *simple-default
+with_length:
+    default:  &with_length-default
+        num_data: length(dataset)
 complex:
     default:  &complex-default
         opt: *optional_argument-default
         link: *with_link-default
+        length: *with_length-default
     mandatory:  &complex-mandatory
         opt: *optional_argument-mandatory
         link: *with_link-default\
