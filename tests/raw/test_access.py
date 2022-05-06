@@ -26,7 +26,6 @@ def mock_read_result(key):
     if key not in _mock_results:
         mock = MagicMock()
         mock.ndim = 0 if "foo" in key else len(key)
-        mock.myname = key
         _mock_results[key] = mock
     return _mock_results[key]
 
@@ -146,6 +145,23 @@ def test_access_bytes(mock_access):
     source = sources[quantity]["default"]
     with raw.access(quantity) as simple:
         assert simple == source.data
+
+
+def test_access_length(mock_access):
+    quantity = "with_length"
+    num_data = 11
+    mock_file, sources = mock_access
+    mock_get = mock_file.return_value.__enter__.return_value.get
+    source = sources[quantity]["default"]
+    mock_data = mock_read_result(source.data.num_data.dataset)
+    mock_data.__len__.side_effect = (num_data,)
+    with raw.access(quantity) as with_length:
+        mock_get.assert_called_once_with(source.data.num_data.dataset)
+        mock_data.__len__.assert_called_once_with()
+        assert with_length.num_data == num_data
+    mock_get.side_effect = (None,)
+    with raw.access(quantity) as with_length:
+        assert with_length.num_data is None
 
 
 def check_single_file_access(mock_file, filename, source):

@@ -8,6 +8,7 @@ from py4vasp.raw._schema import Link
 
 DEFAULT_FILE = "vaspout.h5"
 schema = "TODO"
+from py4vasp.raw._schema import Link, Length
 
 
 @contextlib.contextmanager
@@ -59,6 +60,9 @@ class _State:
             return None
         if isinstance(key, Link):
             return self.access(key.quantity, source=key.source)
+        if isinstance(key, Length):
+            dataset = h5f.get(key.dataset)
+            return len(dataset) if dataset else None
         return self._parse_dataset(h5f.get(key))
 
     def _parse_dataset(self, dataset):
