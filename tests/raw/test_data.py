@@ -35,7 +35,7 @@ def draw_test_data(draw, shape):
     if len(shape) == 0:
         result = draw(elements)
     else:
-        result = draw(np_strat.arrays(np.float, shape, elements=elements))
+        result = draw(np_strat.arrays(float, shape, elements=elements))
     return np.sign(result) * np.maximum(np.abs(result), 1 / threshold)
 
 
