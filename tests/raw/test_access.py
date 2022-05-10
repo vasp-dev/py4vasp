@@ -85,11 +85,11 @@ def test_access_with_link(mock_access):
         assert with_link.simple.bar[:] == reference.bar[:]
 
 
-def linked_quantity_reference(mock_access):
+def linked_quantity_reference(mock_access, file=None):
     quantity = "simple"
     mock_file, sources = mock_access
     source = sources[quantity]["default"]
-    with raw.access(quantity) as simple:
+    with raw.access(quantity, file=file) as simple:
         h5f = mock_file.return_value.__enter__.return_value
         result = simple, mock_file.call_args_list, h5f.get.call_args_list
     mock_file.reset_mock()
@@ -112,6 +112,20 @@ def test_access_from_path(mock_access):
         check_single_file_access(mock_file, f"{path}/{DEFAULT_FILE}", source)
         check_data(opt_arg.mandatory, source.data.mandatory)
         check_data(opt_arg.optional, source.data.optional)
+
+
+def test_access_from_file(mock_access):
+    file = "filename"
+    reference, file_calls, get_calls = linked_quantity_reference(mock_access, file=file)
+    quantity = "with_link"
+    mock_file, sources = mock_access
+    source = sources[quantity]["default"]
+    with raw.access(quantity, file=file) as with_link:
+        get_calls += list(expected_calls(source))
+        check_file_access(mock_file, file_calls, get_calls)
+        check_data(with_link.baz, source.data.baz)
+        assert with_link.simple.foo[:] == reference.foo[:]
+        assert with_link.simple.bar[:] == reference.bar[:]
 
 
 def test_required_version(mock_access):

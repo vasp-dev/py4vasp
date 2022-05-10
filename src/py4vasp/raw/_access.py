@@ -9,21 +9,22 @@ from py4vasp.raw._schema import Link, Length
 
 
 @contextlib.contextmanager
-def access(quantity, source="default", path=None):
-    state = _State(path)
+def access(quantity, source="default", path=None, file=None):
+    state = _State(path, file)
     with state.exit_stack:
         yield state.access(quantity, source)
 
 
 class _State:
-    def __init__(self, path):
+    def __init__(self, path, file):
         self.exit_stack = contextlib.ExitStack()
         self._files = {}
         self._path = path or pathlib.Path(".")
+        self._file = file
 
     def access(self, quantity, source):
         source = schema.sources[quantity][source]
-        filename = source.file or DEFAULT_FILE
+        filename = self._file or source.file or DEFAULT_FILE
         path = self._path / pathlib.Path(filename)
         h5f = self._open_file(path)
         self._check_version(h5f, source.required, quantity)
