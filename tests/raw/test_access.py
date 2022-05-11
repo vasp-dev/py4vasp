@@ -213,3 +213,11 @@ def expected_call(data, field):
     key = getattr(data, field.name)
     if isinstance(key, str):
         yield call(key)
+
+
+def test_nonexisting_file(mock_access):
+    mock_file, _ = mock_access
+    mock_file.side_effect = FileNotFoundError()
+    with pytest.raises(exception.FileAccessError):
+        with raw.access("simple"):
+            pass

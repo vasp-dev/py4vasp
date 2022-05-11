@@ -35,9 +35,19 @@ class _State:
         if filename in self._files:
             return self._files[filename]
         else:
-            file = self.exit_stack.enter_context(h5py.File(filename, "r"))
+            file = self._create_and_enter_context(filename)
             self._files[filename] = file
             return file
+
+    def _create_and_enter_context(self, filename):
+        try:
+            h5f = h5py.File(filename, "r")
+        except FileNotFoundError as error:
+            message = (
+                f"{filename} could not be opened. Please make sure the file exists."
+            )
+            raise exception.FileAccessError(message) from error
+        return self.exit_stack.enter_context(h5f)
 
     def _check_version(self, h5f, required, quantity):
         if not required:
