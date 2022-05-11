@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.data import *
 from py4vasp.raw import *
+from py4vasp.data import *
 from py4vasp._util.convert import to_snakecase
 from numpy import array
 

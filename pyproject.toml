@@ -34,6 +34,7 @@ pytest-cov = "^2.8.1"
 pylint = "^2.5.0"
 sphinx = "^4.0.3"
 black = "^21.6b0"
+hypothesis = "^6.46.2"
 
 [tool.poetry2conda]
 name = "py4vasp-env"

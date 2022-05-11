@@ -24,10 +24,20 @@ class _Assert:
         if actual is None:
             assert desired is None
         else:
+            actual, desired = np.broadcast_arrays(actual, desired)
+            actual, mask_actual = _finite_subset(actual)
+            desired, mask_desired = _finite_subset(desired)
+            assert np.all(mask_actual == mask_desired)
             assert_array_almost_equal_nulp(actual, desired, 10)
 
 
-@pytest.fixture
+def _finite_subset(array):
+    array = np.atleast_1d(array)
+    mask = np.isfinite(array)
+    return array[mask], mask
+
+
+@pytest.fixture(scope="session")
 def Assert():
     return _Assert
 
