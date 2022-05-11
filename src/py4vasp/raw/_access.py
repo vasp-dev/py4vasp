@@ -1,5 +1,6 @@
 import contextlib
 import dataclasses
+import functools
 import h5py
 import pathlib
 import py4vasp
@@ -10,10 +11,41 @@ from py4vasp.raw._schema import Link, Length
 
 
 @contextlib.contextmanager
-def access(quantity, source="default", path=None, file=None):
+def _access(quantity, *, source="default", path=None, file=None):
+    """Create access to a particular quantity from the VASP output.
+
+    Parameters
+    ----------
+    quantity : str
+        Select which particular quantity to access.
+    source : str, optional
+        Keyword-only argument to select different sources of the quantity.
+    path : str, optional
+        Keyword-only argument to set the path from which VASP output is read. Defaults
+        to the current directory.
+    file : str, optional
+        Keyword-only argument to set the file from which VASP output is read. Defaults
+        are set in the schema.
+
+    Returns
+    -------
+    ContextManager
+        Entering the context manager results in access to the desired quantity. Note
+        that the access terminates at the end of the context to ensure all VASP files
+        are properly closed.
+    """
     state = _State(path, file)
     with state.exit_stack:
         yield state.access(quantity, source)
+
+
+@functools.wraps(_access)
+def access(*args, **kwargs):
+    try:
+        return _access(*args, **kwargs)
+    except TypeError as error:
+        message = "The arguments to the function are incorrect. Please use keywords for all arguments except for the first."
+        raise exception.IncorrectUsage(message) from error
 
 
 class _State:

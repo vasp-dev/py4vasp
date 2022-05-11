@@ -224,10 +224,15 @@ def test_access_nonexisting_file(mock_access):
 
 
 def test_access_missing_quantity_or_source(mock_access):
-    mock_file, _ = mock_access
     with pytest.raises(exception.FileAccessError):
         with raw.access("quantity not available in the schema"):
             pass
     with pytest.raises(exception.FileAccessError):
         with raw.access("simple", source="source not available in the schema"):
+            pass
+
+
+def test_access_without_keyword(mock_access):
+    with pytest.raises(exception.IncorrectUsage):
+        with raw.access("simple", "further arguments are keyword only"):
             pass
