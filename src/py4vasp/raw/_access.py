@@ -2,6 +2,7 @@ import contextlib
 import dataclasses
 import h5py
 import pathlib
+import py4vasp
 import py4vasp.exceptions as exception
 import py4vasp.raw as raw
 from py4vasp.raw._definition import schema, DEFAULT_FILE
@@ -23,13 +24,24 @@ class _State:
         self._file = file
 
     def access(self, quantity, source):
-        source = schema.sources[quantity][source]
+        source = self._get_source(quantity, source)
         filename = self._file or source.file or DEFAULT_FILE
         path = self._path / pathlib.Path(filename)
         h5f = self._open_file(path)
         self._check_version(h5f, source.required, quantity)
         datasets = self._get_datasets(h5f, source.data)
         return dataclasses.replace(source.data, **datasets)
+
+    def _get_source(self, quantity, source):
+        try:
+            return schema.sources[quantity][source]
+        except KeyError as error:
+            message = (
+                f"{quantity}/{source} is not available in the HDF5 file. Please check "
+                + "the spelling of the arguments. Perhaps the version of py4vasp "
+                + f"({py4vasp.__version__}) is not up to date with the documentation."
+            )
+            raise exception.FileAccessError(message)
 
     def _open_file(self, filename):
         if filename in self._files:
