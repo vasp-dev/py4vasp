@@ -44,7 +44,10 @@ def access(*args, **kwargs):
     try:
         return _access(*args, **kwargs)
     except TypeError as error:
-        message = "The arguments to the function are incorrect. Please use keywords for all arguments except for the first."
+        message = (
+            "The arguments to the function are incorrect. Please use keywords for all "
+            "arguments except for the first."
+        )
         raise exception.IncorrectUsage(message) from error
 
 
@@ -70,8 +73,8 @@ class _State:
         except KeyError as error:
             message = (
                 f"{quantity}/{source} is not available in the HDF5 file. Please check "
-                + "the spelling of the arguments. Perhaps the version of py4vasp "
-                + f"({py4vasp.__version__}) is not up to date with the documentation."
+                "the spelling of the arguments. Perhaps the version of py4vasp "
+                f"({py4vasp.__version__}) is not up to date with the documentation."
             )
             raise exception.FileAccessError(message)
 
@@ -91,6 +94,12 @@ class _State:
                 f"{filename} could not be opened. Please make sure the file exists."
             )
             raise exception.FileAccessError(message) from error
+        except OSError as error:
+            message = (
+                f"Error when reading from {filename}. Please check whether the file "
+                "format is correct and you have the permissions to read it."
+            )
+            raise exception.FileAccessError(message)
         return self.exit_stack.enter_context(h5f)
 
     def _check_version(self, h5f, required, quantity):

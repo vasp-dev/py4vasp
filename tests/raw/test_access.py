@@ -223,6 +223,14 @@ def test_access_nonexisting_file(mock_access):
             pass
 
 
+def test_access_broken_file(mock_access):
+    mock_file, _ = mock_access
+    mock_file.side_effect = OSError()
+    with pytest.raises(exception.FileAccessError):
+        with raw.access("simple"):
+            pass
+
+
 def test_access_missing_quantity_or_source(mock_access):
     with pytest.raises(exception.FileAccessError):
         with raw.access("quantity not available in the schema"):
