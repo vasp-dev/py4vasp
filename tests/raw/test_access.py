@@ -15,7 +15,7 @@ def mock_access(complex_schema):
     with patch("h5py.File") as mock_file:
         h5f = mock_file.return_value.__enter__.return_value
         h5f.get.side_effect = mock_read_result
-        h5f.__getitem__.side_effect = lambda _: 999
+        h5f.__getitem__.side_effect = lambda _: mock_version_dataset(999)
         with patch("py4vasp.raw._access.schema", schema):
             yield mock_file, sources
 
@@ -131,7 +131,11 @@ def test_access_from_file(mock_access):
 def test_required_version(mock_access):
     mock_file, sources = mock_access
     mock_get_version = mock_file.return_value.__enter__.return_value.__getitem__
-    version = {VERSION.major: 1, VERSION.minor: 0, VERSION.patch: 2}
+    version = {
+        VERSION.major: mock_version_dataset(1),
+        VERSION.minor: mock_version_dataset(0),
+        VERSION.patch: mock_version_dataset(2),
+    }
     mock_get_version.side_effect = lambda key: version[key]
     with raw.access("simple"):
         mock_get_version.assert_not_called()
@@ -141,6 +145,12 @@ def test_required_version(mock_access):
     assert mock_get_version.call_count == 3
     expected_calls = call(VERSION.major), call(VERSION.minor), call(VERSION.patch)
     mock_get_version.assert_has_calls(expected_calls, any_order=True)
+
+
+def mock_version_dataset(number):
+    mock = MagicMock()
+    mock.__getitem__.side_effect = lambda _: number
+    return mock
 
 
 def test_access_none(mock_access):

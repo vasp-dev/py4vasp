@@ -106,9 +106,9 @@ class _State:
         if not required:
             return
         version = raw.Version(
-            major=h5f[schema.version.major],
-            minor=h5f[schema.version.minor],
-            patch=h5f[schema.version.patch],
+            major=h5f[schema.version.major][()],
+            minor=h5f[schema.version.minor][()],
+            patch=h5f[schema.version.patch][()],
         )
         if version < required:
             message = f"The {quantity} is not available in VASP {version}. It requires at least {required}."
