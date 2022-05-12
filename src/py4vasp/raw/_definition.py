@@ -178,12 +178,13 @@ schema.add(
     moments="intermediate/ion_dynamics/magnetism/moments",
 )
 #
-group = "results/linear_response"
+group = "intermediate/pair_correlation"
 schema.add(
-    raw.Polarization,
-    required=raw.Version(6, 3),
-    electron=f"{group}/electron_dipole_moment",
-    ion=f"{group}/ion_dipole_moment",
+    raw.PairCorrelation,
+    required=raw.Version(6, 4),
+    distances=f"{group}/distances",
+    function=f"{group}/function",
+    labels=f"{group}/labels",
 )
 #
 group = "results/linear_response"
@@ -192,6 +193,14 @@ schema.add(
     required=raw.Version(6, 3),
     electron=f"{group}/electron_piezoelectric_tensor",
     ion=f"{group}/ion_piezoelectric_tensor",
+)
+#
+group = "results/linear_response"
+schema.add(
+    raw.Polarization,
+    required=raw.Version(6, 3),
+    electron=f"{group}/electron_dipole_moment",
+    ion=f"{group}/ion_dipole_moment",
 )
 #
 schema.add(

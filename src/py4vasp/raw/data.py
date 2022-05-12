@@ -244,6 +244,21 @@ class Magnetism:
 
 
 @dataclasses.dataclass
+class PairCorrelation:
+    """The pair-correlation function calculated during a MD simulation.
+
+    The pair-correlation function describes how other ions are distributed around a
+    given ion. VASP evaluates the total pair-function and the element-resolved ones."""
+
+    distances: VaspData
+    "The distances at which the pair-correlation function is evaluated."
+    function: VaspData
+    "The total and the element-resolved pair-correlation functions."
+    labels: VaspData
+    "Describes which indices correspond to which element pair."
+
+
+@dataclasses.dataclass
 class PiezoelectricTensor:
     """The piezoelectric tensor calculated in a linear response calculation.
 
