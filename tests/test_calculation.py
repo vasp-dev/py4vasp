@@ -34,6 +34,7 @@ def test_all_attributes(MockFile):
         "ElasticModulus": "elastic_modulus",
         "ForceConstant": "force_constant",
         "InternalStrain": "internal_strain",
+        "PairCorrelation": "pair_correlation",
         "PiezoelectricTensor": "piezoelectric_tensor",
     }
     skipped = ["Viewer3d"]
