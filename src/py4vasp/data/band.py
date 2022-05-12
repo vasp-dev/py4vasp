@@ -190,7 +190,7 @@ pd.DataFrame
 
     def _regular_band_structure(self, bands):
         kdists = self._kpoints().distances()
-        return [_graph.Series(kdists, lines, name) for name, lines in bands.items()]
+        return [_graph.Series(kdists, lines.T, name) for name, lines in bands.items()]
 
     def _fat_band_structure(self, bands, projections, width):
         error_message = "Width of fat band structure must be a number."
@@ -207,7 +207,7 @@ pd.DataFrame
         if self._spin_polarized() and not key in name:
             return None
         kdists = self._kpoints().distances()
-        return _graph.Series(kdists, lines, name, width=width * projection)
+        return _graph.Series(kdists, lines.T, name, width=width * projection)
 
     def _xticks(self):
         ticks, labels = self._degenerate_ticks_and_labels()

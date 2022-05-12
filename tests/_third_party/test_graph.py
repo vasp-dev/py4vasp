@@ -20,7 +20,7 @@ def sine():
 @pytest.fixture
 def two_lines():
     x = np.linspace(0, 3, 30)
-    y = np.linspace((0, 4), (1, 3), 30)
+    y = np.linspace((0, 4), (1, 3), 30).T
     return Series(x=x, y=y, name="two lines")
 
 
@@ -82,7 +82,7 @@ def test_two_lines(two_lines, Assert):
     fig = graph.to_plotly()
     assert len(fig.data) == 2
     first_trace = True
-    for converted, y in zip(fig.data, two_lines.y.T):
+    for converted, y in zip(fig.data, two_lines.y):
         original = Series(x=two_lines.x, y=y, name=two_lines.name)
         compare_series(converted, original, Assert)
         assert converted.legendgroup == original.name
