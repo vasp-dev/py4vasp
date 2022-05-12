@@ -138,6 +138,10 @@ class RawDataFactory:
         return _magnetism(_number_components(selection))
 
     @staticmethod
+    def pair_correlation(selection):
+        return _Sr2TiO4_pair_correlation()
+
+    @staticmethod
     def piezoelectric_tensor(selection):
         return _piezoelectric_tensor()
 
@@ -236,6 +240,17 @@ def _elastic_modulus():
     return raw.RawElasticModulus(
         clamped_ion=data[0],
         relaxed_ion=data[1],
+    )
+
+
+def _Sr2TiO4_pair_correlation():
+    labels = ("total", "Sr-Sr", "Sr-Ti", "Sr-O", "Ti-Ti", "Ti-O", "O-O")
+    shape = (number_steps, len(labels), number_points)
+    data = np.arange(np.prod(shape)).reshape(shape)
+    return raw.PairCorrelation(
+        distances=np.arange(number_points),
+        function=data,
+        labels=labels,
     )
 
 
