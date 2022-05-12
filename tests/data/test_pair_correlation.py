@@ -22,3 +22,18 @@ def check_read_default(pair_correlation, dict_, steps, Assert):
     Assert.allclose(dict_["distances"], pair_correlation.ref.distances)
     for i, label in enumerate(pair_correlation.ref.labels):
         Assert.allclose(dict_[label], pair_correlation.ref.function[steps, i])
+
+
+def test_plot_default(pair_correlation, Assert):
+    for steps in (0, slice(None), slice(1, 3)):
+        actual = pair_correlation[steps].plot()
+        check_plot_default(pair_correlation, actual, steps, Assert)
+    check_plot_default(pair_correlation, pair_correlation.plot(), -1, Assert)
+
+
+def check_plot_default(pair_correlation, fig, steps, Assert):
+    assert fig.xlabel == "Distance (Å)"
+    assert fig.ylabel == "Pair correlation"
+    assert fig.series.name == "total"
+    Assert.allclose(fig.series.x, pair_correlation.ref.distances)
+    Assert.allclose(fig.series.y, pair_correlation.ref.function[steps, 0])
