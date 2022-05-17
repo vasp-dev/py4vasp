@@ -1,4 +1,5 @@
 from py4vasp.data import PairCorrelation
+import py4vasp.exceptions as exception
 import pytest
 
 
@@ -55,3 +56,8 @@ def check_plot_selection(pair_correlation, fig, steps, Assert):
         assert series.name == name
         Assert.allclose(series.x, pair_correlation.ref.distances)
         Assert.allclose(series.y, pair_correlation.ref.function[steps, index])
+
+
+def test_plot_nonexisting_label(pair_correlation):
+    with pytest.raises(exception.IncorrectUsage):
+        pair_correlation.plot("label does exist")

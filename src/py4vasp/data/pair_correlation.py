@@ -1,4 +1,5 @@
 from py4vasp.data import _base, _trajectory
+import py4vasp.exceptions as exception
 import py4vasp._third_party.graph as _graph
 import py4vasp._util.convert as _convert
 import py4vasp._util.selection as _selection
@@ -45,6 +46,12 @@ class PairCorrelation(_trajectory.DataTrajectory):
         for index, label in enumerate(labels):
             if self._content_matches_label(content, label):
                 return label, index
+        labels = ", ".join(labels)
+        message = (
+            f"{content} is not a valid label. Please check for possible spelling errors. "
+            f"The following labels are possible: {labels}."
+        )
+        raise exception.IncorrectUsage(message)
 
     def _content_matches_label(self, content, label):
         if isinstance(content, str):
