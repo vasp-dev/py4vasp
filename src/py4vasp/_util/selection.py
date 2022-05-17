@@ -3,13 +3,15 @@
 
 
 range_separator = ":"
+pair_separator = "~"
+groups = (range_separator, pair_separator)
 all = "__all__"
 
 
 class SelectionTree:
     def __init__(self, parent=None):
         self._new_child = True
-        self._is_range = False
+        self._is_group = False
         self._parent = parent
         self._children = []
         self._content = ""
@@ -29,21 +31,22 @@ class SelectionTree:
     def parse_character(self, character):
         if character in (" ", ","):
             return self._parse_separator()
-        elif character == range_separator:
-            return self._parse_range(character)
+        elif character in groups:
+            return self._parse_group(character)
         elif character == "(":
             return self._children[-1]
         elif character == ")":
             return self._parent._parse_separator()
         else:
+            self._is_group = False
             return self._store_content_in_child(character)
 
     def _parse_separator(self):
-        self._new_child = not self._is_range
+        self._new_child = not self._is_group
         return self
 
-    def _parse_range(self, character):
-        self._is_range = True
+    def _parse_group(self, character):
+        self._is_group = True
         self._new_child = False
         return self._store_content_in_child(character)
 
