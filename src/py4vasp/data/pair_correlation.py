@@ -74,6 +74,7 @@ Graph
 class PairCorrelation(_trajectory.DataTrajectory):
     read = _base.RefinementDescriptor("_to_dict")
     plot = _base.RefinementDescriptor("_to_plotly")
+    labels = _base.RefinementDescriptor("_labels")
 
     @_documentation.add(_read_docs)
     def _to_dict(self, selection=_selection.all):
@@ -87,6 +88,10 @@ class PairCorrelation(_trajectory.DataTrajectory):
         series = self._make_series(self._to_dict(selection))
         return _graph.Graph(series, xlabel="Distance (Å)", ylabel="Pair correlation")
 
+    def _labels(self):
+        "Return all possible labels for the selection string."
+        return tuple(_convert.text_to_string(label) for label in self._raw_data.labels)
+
     def _read_data(self, selection):
         return {
             label: self._raw_data.function[self._steps, index]
@@ -94,18 +99,18 @@ class PairCorrelation(_trajectory.DataTrajectory):
         }
 
     def _parse_selection(self, selection):
-        labels = [_convert.text_to_string(label) for label in self._raw_data.labels]
         if selection == _selection.all:
-            return self._select_all(labels)
+            return self._select_all()
         else:
-            return self._select_specified_subset(selection, labels)
+            return self._select_specified_subset(selection)
 
-    def _select_all(self, labels):
-        for index, label in enumerate(labels):
+    def _select_all(self):
+        for index, label in enumerate(self._labels()):
             yield label, index
 
-    def _select_specified_subset(self, selection, labels):
+    def _select_specified_subset(self, selection):
         tree = _selection.Tree.from_selection(selection)
+        labels = self._labels()
         for node in tree.nodes:
             yield self._find_matching_label(node.content, labels)
 

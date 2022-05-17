@@ -58,6 +58,10 @@ def check_plot_selection(pair_correlation, fig, steps, Assert):
         Assert.allclose(series.y, pair_correlation.ref.function[steps, index])
 
 
+def test_labels(pair_correlation):
+    assert pair_correlation.labels() == pair_correlation.ref.labels
+
+
 def test_plot_nonexisting_label(pair_correlation):
     with pytest.raises(exception.IncorrectUsage):
         pair_correlation.plot("label does exist")
