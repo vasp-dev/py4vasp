@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp._util.selection import SelectionTree
+from py4vasp._util.selection import SelectionTree, SelectionGroup
 
 
 def test_one_level():
@@ -66,7 +66,9 @@ def test_ranges():
     level1 = tree.nodes[0]
     assert str(level1) == "foo"
     assert str(level1.nodes[0]) == "1:3"
+    assert level1.nodes[0].content == SelectionGroup(["1", "3"], separator=":")
     assert str(tree.nodes[1]) == "2:6"
+    assert tree.nodes[1].content == SelectionGroup(["2", "6"], separator=":")
     assert str(tree.nodes[2]) == "baz"
 
 
@@ -74,4 +76,6 @@ def test_pair_selection():
     selection = "foo  ~  bar, baz~foo"
     tree = SelectionTree.from_selection(selection)
     assert str(tree.nodes[0]) == "foo~bar"
+    assert tree.nodes[0].content == SelectionGroup(["foo", "bar"], separator="~")
     assert str(tree.nodes[1]) == "baz~foo"
+    assert tree.nodes[1].content == SelectionGroup(["baz", "foo"], separator="~")
