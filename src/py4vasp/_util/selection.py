@@ -10,7 +10,7 @@ all = "__all__"
 
 
 @dataclasses.dataclass
-class SelectionGroup:
+class Group:
     group: list
     separator: str
     __str__ = lambda self: self.separator.join(self.group)
@@ -20,7 +20,7 @@ class SelectionGroup:
         return self
 
 
-class SelectionTree:
+class Tree:
     def __init__(self, parent=None):
         self._new_child = True
         self._ignore_separator = True
@@ -69,7 +69,7 @@ class SelectionTree:
         return self
 
     def _transform_to_group(self, separator):
-        self._content = SelectionGroup([self._content, ""], separator)
+        self._content = Group([self._content, ""], separator)
 
     def _store_content_in_child(self, character):
         self._ignore_separator = False
@@ -79,7 +79,7 @@ class SelectionTree:
 
     def _add_child_if_necessary(self):
         if self._new_child:
-            self._children.append(SelectionTree(self))
+            self._children.append(Tree(self))
             self._new_child = False
 
     def __str__(self):
