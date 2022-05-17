@@ -244,7 +244,7 @@ def _elastic_modulus():
 
 
 def _Sr2TiO4_pair_correlation():
-    labels = ("total", "Sr-Sr", "Sr-Ti", "Sr-O", "Ti-Ti", "Ti-O", "O-O")
+    labels = ("total", "Sr~Sr", "Sr~Ti", "Sr~O", "Ti~Ti", "Ti~O", "O~O")
     shape = (number_steps, len(labels), number_points)
     data = np.arange(np.prod(shape)).reshape(shape)
     return raw.PairCorrelation(

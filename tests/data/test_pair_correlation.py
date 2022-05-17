@@ -34,6 +34,24 @@ def test_plot_default(pair_correlation, Assert):
 def check_plot_default(pair_correlation, fig, steps, Assert):
     assert fig.xlabel == "Distance (Å)"
     assert fig.ylabel == "Pair correlation"
-    assert fig.series.name == "total"
-    Assert.allclose(fig.series.x, pair_correlation.ref.distances)
-    Assert.allclose(fig.series.y, pair_correlation.ref.function[steps, 0])
+    assert fig.series[0].name == "total"
+    Assert.allclose(fig.series[0].x, pair_correlation.ref.distances)
+    Assert.allclose(fig.series[0].y, pair_correlation.ref.function[steps, 0])
+
+
+def test_plot_selection(pair_correlation, Assert):
+    selection = "Sr~Ti O~Ti"
+    for steps in (0, slice(None), slice(1, 3)):
+        actual = pair_correlation[steps].plot(selection)
+        check_plot_selection(pair_correlation, actual, steps, Assert)
+    check_plot_selection(pair_correlation, pair_correlation.plot(selection), -1, Assert)
+
+
+def check_plot_selection(pair_correlation, fig, steps, Assert):
+    assert fig.xlabel == "Distance (Å)"
+    assert fig.ylabel == "Pair correlation"
+    expected = {"Sr~Ti": 2, "Ti~O": 5}  # note the reordering of the label
+    for series, (name, index) in zip(fig.series, expected.items()):
+        assert series.name == name
+        Assert.allclose(series.x, pair_correlation.ref.distances)
+        Assert.allclose(series.y, pair_correlation.ref.function[steps, index])
