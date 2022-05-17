@@ -2,20 +2,87 @@ from py4vasp.data import _base, _trajectory
 import py4vasp.exceptions as exception
 import py4vasp._third_party.graph as _graph
 import py4vasp._util.convert as _convert
+import py4vasp._util.documentation as _documentation
 import py4vasp._util.selection as _selection
 
+_pair_correlation_docs = f"""
+The pair-correlation function for one or several blocks of an MD simulation.
 
+Use this class to inspect how the correlation of the position of different
+ions types in an MD simulation. The pair-correlation function gives insight
+into the structural properties and may help to identify certain orders in
+the system.
+
+Parameters
+----------
+raw_pair_correlation : raw.PairCorrelation
+    Dataclass containing the distances at which the pair-correlation function
+    was evaluated and the corresponding values for various ions pairs as
+    specified by the labels.
+
+{_trajectory.trajectory_examples("pair_correlation", step="block")}
+""".strip()
+
+
+def _selection_string(default):
+    return f"""\
+selection : str
+    String specifying which pair-correlation functions are used. Select
+    'total' for the total pair-correlation function or the name of any
+    two ion types (e.g. 'Sr~Ti') for a specific pair-correlation function.
+    When no selection is given, {default}. Separate
+    distinct labels by commas or whitespace. For a complete list of all
+    possible selections, please use
+
+    >>> calc.pair_correlation.labels()
+"""
+
+
+_read_docs = f"""Read the pair-correlation function and store it in a dictionary.
+
+Parameters
+----------
+{_selection_string("all possibilities are read")}
+
+Returns
+-------
+dict
+    Contains the labels corresponding to the selection and the associated
+    pair-correlation function for every selected block. Furthermore, the
+    dictionary contains the distances at which the pair-correlation functions
+    are evaluated.
+
+{_trajectory.trajectory_examples("pair_correlation", "read", "block")}"""
+
+_plot_docs = f"""Plot selected pair-correlation functions.
+
+Parameters
+----------
+{_selection_string("the total pair correlation is used")}
+
+Returns
+-------
+Graph
+    The graph plots the pair-correlation function for all selected blocks
+    and ion pairs. Note that the various blocks with the same legend and
+    only different ion combinations use different color schemes.
+
+{_trajectory.trajectory_examples("pair_correlation", "plot", "block")}"""
+
+
+@_documentation.add(_pair_correlation_docs)
 class PairCorrelation(_trajectory.DataTrajectory):
-    "TODO"
     read = _base.RefinementDescriptor("_to_dict")
     plot = _base.RefinementDescriptor("_to_plotly")
 
+    @_documentation.add(_read_docs)
     def _to_dict(self, selection=_selection.all):
         return {
             "distances": self._raw_data.distances[:],
             **self._read_data(selection),
         }
 
+    @_documentation.add(_plot_docs)
     def _to_plotly(self, selection="total"):
         series = self._make_series(self._to_dict(selection))
         return _graph.Graph(series, xlabel="Distance (Å)", ylabel="Pair correlation")

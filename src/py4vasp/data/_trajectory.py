@@ -5,28 +5,28 @@ from py4vasp.data._base import DataBase
 import py4vasp.exceptions as exception
 
 
-def trajectory_examples(instance_name, function_name=None):
+def trajectory_examples(instance_name, function_name=None, step="step"):
     if function_name is None:
         function_name = "read"
         access = "a method of this class"
-        depend_on = "the steps"
+        depend_on = f"the {step}s"
     else:
         access = "this method"
-        depend_on = "the steps of the class"
+        depend_on = f"the {step}s of the class"
     return f"""
 Examples
 --------
 If you access {access}, the result will depend on {depend_on} that
 you selected with the [] operator. Without any selection the results from the
-final step will be used.
+final {step} will be used.
 
 >>> calc.{instance_name}.{function_name}()
 
-To select the results for all steps, you don't specify the array boundaries.
+To select the results for all {step}s, you don't specify the array boundaries.
 
 >>> calc.{instance_name}[:].{function_name}()
 
-You can also select specific steps or a subset of steps as follows
+You can also select specific {step}s or a subset of {step}s as follows
 
 >>> calc.{instance_name}[5].{function_name}()
 >>> calc.{instance_name}[1:6].{function_name}()""".strip()
