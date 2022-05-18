@@ -16,7 +16,8 @@ class Refinery:
 
     @classmethod
     def from_data(cls, raw_data):
-        data_context = lambda: contextlib.nullcontext(raw_data)
+        data_context = contextlib.nullcontext(None)
+        data_context.data = raw_data
         return cls(data_context)
 
     @classmethod
@@ -25,18 +26,32 @@ class Refinery:
 
     @decorator.decorator
     def access(func, self):
-        with self._data_context() as raw_data:
-            self._raw_data = raw_data
+        with self._data_context:
             return func(self)
 
+    @property
+    def _raw_data(self):
+        return self._data_context.data
 
-class _DataAccess:
+
+class _DataAccess(contextlib.AbstractContextManager):
     def __init__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs
+        self._counter = 0
+        self._stack = contextlib.ExitStack()
 
-    def __call__(self):
-        return raw.access(*self._args, **self._kwargs)
+    def __enter__(self):
+        if self._counter == 0:
+            context = raw.access(*self._args, **self._kwargs)
+            self.data = self._stack.enter_context(context)
+        self._counter += 1
+        return self.data
+
+    def __exit__(self, *_):
+        self._counter -= 1
+        if self._counter == 0:
+            self._stack.close()
 
 
 # ---------------------------------------------------------------------------------------

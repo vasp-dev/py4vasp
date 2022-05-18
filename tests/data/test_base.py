@@ -16,6 +16,10 @@ class Example(_base.Refinery):
     def read(self):
         return self._raw_data.content
 
+    @_base.Refinery.access
+    def wrapper(self):
+        return self.read()
+
 
 def test_from_raw_data():
     raw_data = RawData("test")
@@ -35,7 +39,21 @@ def test_from_path(mock_access):
     #
     # access twice too make sure context is regenerated
     raw_data = RawData("test")
-    mock_access.return_value.__enter__.side_effect = lambda: raw_data
+    mock_access.return_value.__enter__.side_effect = lambda *_: raw_data
     assert example.read() == raw_data.content
     mock_access.assert_called_once_with("example", path=pathname)
     assert example.read() == raw_data.content
+
+
+@patch("py4vasp.raw.access")
+def test_nested_calls(mock_access):
+    raw_data = RawData("test")
+    example = Example.from_data(raw_data)
+    assert example.wrapper() == raw_data.content
+    #
+    pathname = "path were results are stored"
+    example = Example.from_path(pathname)
+    mock_access.return_value.__enter__.side_effect = lambda *_: raw_data
+    assert example.wrapper() == raw_data.content
+    # check access is only called once
+    mock_access.assert_called_once_with("example", path=pathname)
