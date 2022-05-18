@@ -3,16 +3,19 @@
 class Refinery:
     def __init__(self):
         self.__post_init__()
-        
+
     @classmethod
     def from_data(cls, raw_data):
-        return cls()
+        instance = cls()
+        instance._raw_data = raw_data
+        return instance
 
     def __post_init__(self):
         # overload this to do extra initialization
         pass
 
-#---------------------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------------------
 import contextlib
 import functools
 import pathlib
