@@ -32,7 +32,7 @@ def test_from_raw_data():
 
 @patch("py4vasp.raw.access")
 def test_from_path(mock_access):
-    pathname = "path were results are stored"
+    pathname = "path where results are stored"
     example = Example.from_path(pathname)
     assert example.post_init_called
     mock_access.assert_not_called()
@@ -46,12 +46,27 @@ def test_from_path(mock_access):
 
 
 @patch("py4vasp.raw.access")
+def test_from_file(mock_access):
+    filename = "file containing the results"
+    example = Example.from_file(filename)
+    assert example.post_init_called
+    mock_access.assert_not_called()
+    #
+    # access twice too make sure context is regenerated
+    raw_data = RawData("test")
+    mock_access.return_value.__enter__.side_effect = lambda *_: raw_data
+    assert example.read() == raw_data.content
+    mock_access.assert_called_once_with("example", file=filename)
+    assert example.read() == raw_data.content
+
+
+@patch("py4vasp.raw.access")
 def test_nested_calls(mock_access):
     raw_data = RawData("test")
     example = Example.from_data(raw_data)
     assert example.wrapper() == raw_data.content
     #
-    pathname = "path were results are stored"
+    pathname = "path where results are stored"
     example = Example.from_path(pathname)
     mock_access.return_value.__enter__.side_effect = lambda *_: raw_data
     assert example.wrapper() == raw_data.content

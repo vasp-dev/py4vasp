@@ -24,6 +24,10 @@ class Refinery:
     def from_path(cls, path):
         return cls(_DataAccess(cls.__name__.lower(), path=path))
 
+    @classmethod
+    def from_file(cls, file):
+        return cls(_DataAccess(cls.__name__.lower(), file=file))
+
     @decorator.decorator
     def access(func, self):
         with self._data_context:
