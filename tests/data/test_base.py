@@ -12,6 +12,7 @@ class Example(_base.Refinery):
     def __post_init__(self):
         self.post_init_called = True
 
+    @_base.Refinery.access
     def read(self):
         return self._raw_data.content
 
@@ -31,4 +32,10 @@ def test_from_path(mock_access):
     example = Example.from_path(pathname)
     assert example.post_init_called
     mock_access.assert_not_called()
-    # raw_data = RawData("test")
+    #
+    # access twice too make sure context is regenerated
+    raw_data = RawData("test")
+    mock_access.return_value.__enter__.side_effect = lambda: raw_data
+    assert example.read() == raw_data.content
+    mock_access.assert_called_once_with("example", path=pathname)
+    assert example.read() == raw_data.content

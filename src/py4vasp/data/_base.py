@@ -1,22 +1,42 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import contextlib
+import decorator
+from py4vasp import raw
+
+
 class Refinery:
-    def __init__(self):
+    def __init__(self, data_context):
+        self._data_context = data_context
         self.__post_init__()
-
-    @classmethod
-    def from_data(cls, raw_data):
-        instance = cls()
-        instance._raw_data = raw_data
-        return instance
-
-    @classmethod
-    def from_path(cls, path):
-        return cls()
 
     def __post_init__(self):
         # overload this to do extra initialization
         pass
+
+    @classmethod
+    def from_data(cls, raw_data):
+        data_context = lambda: contextlib.nullcontext(raw_data)
+        return cls(data_context)
+
+    @classmethod
+    def from_path(cls, path):
+        return cls(_DataAccess(cls.__name__.lower(), path=path))
+
+    @decorator.decorator
+    def access(func, self):
+        with self._data_context() as raw_data:
+            self._raw_data = raw_data
+            return func(self)
+
+
+class _DataAccess:
+    def __init__(self, *args, **kwargs):
+        self._args = args
+        self._kwargs = kwargs
+
+    def __call__(self):
+        return raw.access(*self._args, **self._kwargs)
 
 
 # ---------------------------------------------------------------------------------------
