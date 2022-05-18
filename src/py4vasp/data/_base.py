@@ -1,5 +1,18 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+class Refinery:
+    def __init__(self):
+        self.__post_init__()
+        
+    @classmethod
+    def from_data(cls, raw_data):
+        return cls()
+
+    def __post_init__(self):
+        # overload this to do extra initialization
+        pass
+
+#---------------------------------------------------------------------------------------
 import contextlib
 import functools
 import pathlib
