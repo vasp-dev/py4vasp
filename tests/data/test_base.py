@@ -1,5 +1,6 @@
 from py4vasp.data import _base
 import dataclasses
+from unittest.mock import patch
 
 
 @dataclasses.dataclass
@@ -22,3 +23,12 @@ def test_from_raw_data():
     # access twice too make sure context is regenerated
     assert example.read() == raw_data.content
     assert example.read() == raw_data.content
+
+
+@patch("py4vasp.raw.access")
+def test_from_path(mock_access):
+    pathname = "path were results are stored"
+    example = Example.from_path(pathname)
+    assert example.post_init_called
+    mock_access.assert_not_called()
+    # raw_data = RawData("test")

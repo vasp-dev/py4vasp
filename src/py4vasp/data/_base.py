@@ -10,6 +10,10 @@ class Refinery:
         instance._raw_data = raw_data
         return instance
 
+    @classmethod
+    def from_path(cls, path):
+        return cls()
+
     def __post_init__(self):
         # overload this to do extra initialization
         pass
