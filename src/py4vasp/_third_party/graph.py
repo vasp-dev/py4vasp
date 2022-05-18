@@ -80,13 +80,13 @@ class Series:
     "The color used for this series."
 
     def __post_init__(self):
-        if len(self.x) != len(self.y):
+        if len(self.x) != np.array(self.y).shape[-1]:
             message = "The length of the two plotted components is inconsistent."
             raise exception.IncorrectUsage(message)
 
     def _generate_traces(self):
         first_trace = True
-        for y in np.atleast_2d(np.array(self.y).T):
+        for y in np.atleast_2d(np.array(self.y)):
             yield self._make_trace(y, first_trace)
             first_trace = False
 

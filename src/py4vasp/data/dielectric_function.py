@@ -120,7 +120,7 @@ def _default_selection_if_none(selection):
 
 
 def _parse_selection(selection, data):
-    tree = _selection.SelectionTree.from_selection(selection)
+    tree = _selection.Tree.from_selection(selection)
     yield from _parse_recursive(tree, _default_choice(data))
 
 

@@ -186,7 +186,7 @@ Iterable[Index]
             orbital=_selection.all,
             spin=_spin_not_set,
         )
-        tree = _selection.SelectionTree.from_selection(selection)
+        tree = _selection.Tree.from_selection(selection)
         yield from _parse_recursive(dicts, tree, default_index)
 
     def _topology(self):

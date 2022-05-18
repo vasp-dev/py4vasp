@@ -196,14 +196,14 @@ def test_single_band_plot(single_band, Assert):
     assert len(fig.series) == 1
     assert fig.series[0].width is None
     Assert.allclose(fig.series[0].x, single_band.ref.kpoints.distances())
-    Assert.allclose(fig.series[0].y, single_band.ref.bands)
+    Assert.allclose(fig.series[0].y, single_band.ref.bands.T)
 
 
 def test_multiple_bands_plot(multiple_bands, Assert):
     fig = multiple_bands.plot()
     assert len(fig.series) == 1  # all bands in one plot
-    assert len(fig.series[0].x) == len(fig.series[0].y)
-    Assert.allclose(fig.series[0].y, multiple_bands.ref.bands)
+    assert len(fig.series[0].x) == fig.series[0].y.shape[-1]
+    Assert.allclose(fig.series[0].y, multiple_bands.ref.bands.T)
 
 
 def test_with_projectors_plot_default_width(with_projectors, Assert):
@@ -224,21 +224,21 @@ def test_spin_projectors_plot(spin_projectors, Assert):
     fig = spin_projectors.plot("O", width)
     assert len(fig.series) == 2
     assert fig.series[0].name == "O_up"
-    check_data(fig.series[0], width, reference.bands_up, reference.O_up, Assert)
+    check_data(fig.series[0], width, reference.bands_up.T, reference.O_up, Assert)
     assert fig.series[1].name == "O_down"
-    check_data(fig.series[1], width, reference.bands_down, reference.O_down, Assert)
+    check_data(fig.series[1], width, reference.bands_down.T, reference.O_down, Assert)
 
 
 def check_figure(fig, width, reference, Assert):
     assert len(fig.series) == 2
     assert fig.series[0].name == "Sr"
     assert fig.series[1].name == "p"
-    check_data(fig.series[0], width, reference.bands, reference.Sr, Assert)
-    check_data(fig.series[1], width, reference.bands, reference.p, Assert)
+    check_data(fig.series[0], width, reference.bands.T, reference.Sr, Assert)
+    check_data(fig.series[1], width, reference.bands.T, reference.p, Assert)
 
 
 def check_data(data, width, band, projection, Assert):
-    assert len(data.x) == len(data.y) == len(data.width)
+    assert len(data.x) == data.y.shape[-1] == len(data.width)
     Assert.allclose(data.y, band)
     Assert.allclose(data.width, width * projection)
 
@@ -254,9 +254,9 @@ def test_spin_polarized_plot(spin_polarized, Assert):
     fig = spin_polarized.plot()
     assert len(fig.series) == 2
     assert fig.series[0].name == "bands_up"
-    Assert.allclose(fig.series[0].y, spin_polarized.ref.bands_up)
+    Assert.allclose(fig.series[0].y, spin_polarized.ref.bands_up.T)
     assert fig.series[1].name == "bands_down"
-    Assert.allclose(fig.series[1].y, spin_polarized.ref.bands_down)
+    Assert.allclose(fig.series[1].y, spin_polarized.ref.bands_down.T)
 
 
 def test_line_no_labels_plot(line_no_labels, Assert):

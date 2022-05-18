@@ -26,6 +26,7 @@ from .dielectric_tensor import DielectricTensor
 from .elastic_modulus import ElasticModulus
 from .energy import Energy
 from .kpoint import Kpoint
+from .pair_correlation import PairCorrelation
 from .piezoelectric_tensor import PiezoelectricTensor
 from .polarization import Polarization
 from .projector import Projector
