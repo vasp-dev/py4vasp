@@ -120,3 +120,14 @@ def test_print_example():
 def test_print_pretty(format_):
     actual, _ = format_(Example.from_data(RAW_DATA))
     assert actual == {"text/plain": RAW_DATA.content}
+
+
+def test_repr(mock_access):
+    context = "custom context"
+    assert repr(Example(context)) == f"Example({repr(context)})"
+    assert repr(Example.from_data(RAW_DATA)) == f"Example.from_data({repr(RAW_DATA)})"
+    assert repr(Example.from_path()) == f"Example.from_path()"
+    pathname = "path to VASP calculation"
+    assert repr(Example.from_path(pathname)) == f"Example.from_path({repr(pathname)})"
+    filename = "file with VASP output"
+    assert repr(Example.from_file(filename)) == f"Example.from_file({repr(filename)})"

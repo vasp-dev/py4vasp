@@ -6,8 +6,9 @@ from py4vasp import raw
 
 
 class Refinery:
-    def __init__(self, data_context):
+    def __init__(self, data_context, **kwargs):
         self._data_context = data_context
+        self._repr = kwargs.get("repr", f"({repr(data_context)})")
         self.__post_init__()
 
     def __post_init__(self):
@@ -16,15 +17,17 @@ class Refinery:
 
     @classmethod
     def from_data(cls, raw_data):
-        return cls(_DataWrapper(raw_data))
+        return cls(_DataWrapper(raw_data), repr=f".from_data({repr(raw_data)})")
 
     @classmethod
     def from_path(cls, path=None):
-        return cls(_DataAccess(cls.__name__.lower(), path=path))
+        repr_ = f".from_path({repr(path)})" if path is not None else ".from_path()"
+        return cls(_DataAccess(_quantity(cls), path=path), repr=repr_)
 
     @classmethod
     def from_file(cls, file):
-        return cls(_DataAccess(cls.__name__.lower(), file=file))
+        repr_ = f".from_file({repr(file)})"
+        return cls(_DataAccess(_quantity(cls), file=file), repr=repr_)
 
     def access(func):
         def func_with_access(self, *args, source=None, **kwargs):
@@ -53,8 +56,15 @@ class Refinery:
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}{self._repr}"
 
-def do_nothing(*args, **kwargs):
+
+def _quantity(cls):
+    return cls.__name__.lower()
+
+
+def _do_nothing(*args, **kwargs):
     pass
 
 
@@ -62,8 +72,8 @@ def do_nothing(*args, **kwargs):
 class _DataWrapper(contextlib.AbstractContextManager):
     data: raw.VaspData
     source: str = None
-    __enter__ = do_nothing
-    __exit__ = do_nothing
+    __enter__ = _do_nothing
+    __exit__ = _do_nothing
 
 
 class _DataAccess(contextlib.AbstractContextManager):
