@@ -10,6 +10,16 @@ class RawData:
     content: str
 
 
+RAW_DATA = RawData("test")
+
+
+@pytest.fixture
+def mock_access():
+    with patch("py4vasp.raw.access") as access:
+        access.return_value.__enter__.side_effect = lambda *_: RAW_DATA
+        yield access
+
+
 class Example(_base.Refinery):
     def __post_init__(self):
         self.post_init_called = True
@@ -23,16 +33,14 @@ class Example(_base.Refinery):
         return self.read()
 
 
-def test_from_raw_data():
-    raw_data = RawData("test")
-    example = Example.from_data(raw_data)
+def test_from_RAW_DATA():
+    example = Example.from_data(RAW_DATA)
     assert example.post_init_called
     # access twice too make sure context is regenerated
-    assert example.read() == raw_data.content
-    assert example.read() == raw_data.content
+    assert example.read() == RAW_DATA.content
+    assert example.read() == RAW_DATA.content
 
 
-@patch("py4vasp.raw.access")
 def test_from_path(mock_access):
     pathname = "path where results are stored"
     example = Example.from_path(pathname)
@@ -40,14 +48,11 @@ def test_from_path(mock_access):
     mock_access.assert_not_called()
     #
     # access twice too make sure context is regenerated
-    raw_data = RawData("test")
-    mock_access.return_value.__enter__.side_effect = lambda *_: raw_data
-    assert example.read() == raw_data.content
+    assert example.read() == RAW_DATA.content
     mock_access.assert_called_once_with("example", path=pathname)
-    assert example.read() == raw_data.content
+    assert example.read() == RAW_DATA.content
 
 
-@patch("py4vasp.raw.access")
 def test_from_file(mock_access):
     filename = "file containing the results"
     example = Example.from_file(filename)
@@ -55,29 +60,23 @@ def test_from_file(mock_access):
     mock_access.assert_not_called()
     #
     # access twice too make sure context is regenerated
-    raw_data = RawData("test")
-    mock_access.return_value.__enter__.side_effect = lambda *_: raw_data
-    assert example.read() == raw_data.content
+    assert example.read() == RAW_DATA.content
     mock_access.assert_called_once_with("example", file=filename)
-    assert example.read() == raw_data.content
+    assert example.read() == RAW_DATA.content
 
 
-@patch("py4vasp.raw.access")
 def test_nested_calls(mock_access):
-    raw_data = RawData("test")
-    example = Example.from_data(raw_data)
-    assert example.wrapper() == raw_data.content
+    example = Example.from_data(RAW_DATA)
+    assert example.wrapper() == RAW_DATA.content
     #
     pathname = "path where results are stored"
     example = Example.from_path(pathname)
-    mock_access.return_value.__enter__.side_effect = lambda *_: raw_data
-    assert example.wrapper() == raw_data.content
+    assert example.wrapper() == RAW_DATA.content
     # check access is only called once
     mock_access.assert_called_once_with("example", path=pathname)
 
 
 def test_source_from_data():
-    raw_data = RawData("test")
-    example = Example.from_data(raw_data)
+    example = Example.from_data(RAW_DATA)
     with pytest.raises(exception.IncorrectUsage):
         example.read(source="don't use source with from_data")
