@@ -109,7 +109,7 @@ class Refinery:
         if not source:
             return
         try:
-            self._data_context.source = source
+            self._data_context.source = source.strip().lower()
         except dataclasses.FrozenInstanceError as error:
             message = f"Creating {self.__class__.__name__}.from_data does not allow to specify a source."
             raise exception.IncorrectUsage(message) from error

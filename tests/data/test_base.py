@@ -112,6 +112,15 @@ def test_source_from_path(mock_access):
     mock_access.assert_called_once_with("example", source=None, path=None)
 
 
+def test_base_source_ignore_whitespace_and_capitalization(mock_access):
+    filename = "file containing the data"
+    example = Example.from_file(filename)
+    source = " SouRCE_wiTh_extRA_whiTeSPace_and_CaPiTaliZAtion  "
+    example.read(source=source)
+    source = source.strip().lower()
+    mock_access.assert_called_once_with("example", source=source, file=filename)
+
+
 def test_print_example():
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
