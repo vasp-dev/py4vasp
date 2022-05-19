@@ -19,7 +19,7 @@ class Refinery:
         return cls(_DataWrapper(raw_data))
 
     @classmethod
-    def from_path(cls, path):
+    def from_path(cls, path=None):
         return cls(_DataAccess(cls.__name__.lower(), path=path))
 
     @classmethod
@@ -62,6 +62,7 @@ class _DataWrapper(contextlib.AbstractContextManager):
 
 class _DataAccess(contextlib.AbstractContextManager):
     def __init__(self, *args, **kwargs):
+        self.source = None
         self._args = args
         self._kwargs = kwargs
         self._counter = 0
@@ -69,7 +70,7 @@ class _DataAccess(contextlib.AbstractContextManager):
 
     def __enter__(self):
         if self._counter == 0:
-            context = raw.access(*self._args, **self._kwargs)
+            context = raw.access(*self._args, source=self.source, **self._kwargs)
             self.data = self._stack.enter_context(context)
         self._counter += 1
         return self.data
@@ -77,6 +78,7 @@ class _DataAccess(contextlib.AbstractContextManager):
     def __exit__(self, *_):
         self._counter -= 1
         if self._counter == 0:
+            self.source = None
             self._stack.close()
 
 

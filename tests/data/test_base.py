@@ -49,7 +49,7 @@ def test_from_path(mock_access):
     #
     # access twice too make sure context is regenerated
     assert example.read() == RAW_DATA.content
-    mock_access.assert_called_once_with("example", path=pathname)
+    mock_access.assert_called_once_with("example", source=None, path=pathname)
     assert example.read() == RAW_DATA.content
 
 
@@ -61,7 +61,7 @@ def test_from_file(mock_access):
     #
     # access twice too make sure context is regenerated
     assert example.read() == RAW_DATA.content
-    mock_access.assert_called_once_with("example", file=filename)
+    mock_access.assert_called_once_with("example", source=None, file=filename)
     assert example.read() == RAW_DATA.content
 
 
@@ -73,10 +73,23 @@ def test_nested_calls(mock_access):
     example = Example.from_path(pathname)
     assert example.wrapper() == RAW_DATA.content
     # check access is only called once
-    mock_access.assert_called_once_with("example", path=pathname)
+    mock_access.assert_called_once_with("example", source=None, path=pathname)
 
 
 def test_source_from_data():
     example = Example.from_data(RAW_DATA)
     with pytest.raises(exception.IncorrectUsage):
         example.read(source="don't use source with from_data")
+
+
+def test_source_from_path(mock_access):
+    example = Example.from_path()
+    source = "read from this source"
+    example.read(source=source)
+    mock_access.assert_called_once_with("example", source=source, path=None)
+    mock_access.reset_mock()
+    example.read()
+    mock_access.assert_called_once_with("example", source=None, path=None)
+    # with pytest.raises(exception.IncorrectUsage):
+    #     example.read(source)  # should be keyword only
+    #     print(mock_access.call_args_list)
