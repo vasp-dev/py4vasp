@@ -115,3 +115,8 @@ def test_print_example():
     with contextlib.redirect_stdout(output):
         Example.from_data(RAW_DATA).print()
     assert RAW_DATA.content == output.getvalue().strip()
+
+
+def test_print_pretty(format_):
+    actual, _ = format_(Example.from_data(RAW_DATA))
+    assert actual == {"text/plain": RAW_DATA.content}

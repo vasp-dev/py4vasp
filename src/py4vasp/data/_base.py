@@ -50,6 +50,9 @@ class Refinery:
     def print(self):
         print(str(self))
 
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
 
 def do_nothing(*args, **kwargs):
     pass
