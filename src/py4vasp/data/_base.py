@@ -6,6 +6,20 @@ import functools
 from py4vasp import raw
 
 
+def data_access(func):
+    """Use this decorator for all public methods of Refinery children. It creates the
+    necessary wrappers to load the data from the VASP output and makes it available
+    via the _raw_data property."""
+
+    @functools.wraps(func)
+    def func_with_access(self, *args, source=None, **kwargs):
+        self._set_source(source)
+        with self._data_context:
+            return func(self, *args, **kwargs)
+
+    return func_with_access
+
+
 class Refinery:
     def __init__(self, data_context, **kwargs):
         self._data_context = data_context
@@ -89,15 +103,6 @@ class Refinery:
         """
         repr_ = f".from_file({repr(file)})"
         return cls(_DataAccess(_quantity(cls), file=file), repr=repr_)
-
-    def access(func):
-        @functools.wraps(func)
-        def func_with_access(self, *args, source=None, **kwargs):
-            self._set_source(source)
-            with self._data_context:
-                return func(self, *args, **kwargs)
-
-        return func_with_access
 
     def _set_source(self, source):
         if not source:

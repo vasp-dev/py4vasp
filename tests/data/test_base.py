@@ -27,20 +27,20 @@ class Example(_base.Refinery):
     def __post_init__(self):
         self.post_init_called = True
 
-    @_base.Refinery.access
+    @_base.data_access
     def read(self):
         "Read documentation."
         return self._raw_data.content
 
-    @_base.Refinery.access
+    @_base.data_access
     def wrapper(self):
         return self.read()
 
-    @_base.Refinery.access
+    @_base.data_access
     def with_arguments(self, mandatory, optional=None):
         return mandatory, optional
 
-    @_base.Refinery.access
+    @_base.data_access
     def __str__(self):
         return self._raw_data.content
 
