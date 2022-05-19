@@ -4,6 +4,7 @@ import contextlib
 import dataclasses
 import functools
 from py4vasp import raw
+from py4vasp._util import convert as _convert
 
 
 def data_access(func):
@@ -129,7 +130,7 @@ class Refinery:
 
 
 def _quantity(cls):
-    return cls.__name__.lower()
+    return _convert.to_snakecase(cls.__name__)
 
 
 def _do_nothing(*args, **kwargs):

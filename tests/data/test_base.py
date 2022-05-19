@@ -140,3 +140,18 @@ def test_docs():
     assert inspect.getdoc(Example.from_data) is not None
     assert inspect.getdoc(Example.from_path) is not None
     assert inspect.getdoc(Example.from_file) is not None
+
+
+class CamelCase(_base.Refinery):
+    @_base.data_access
+    def read(self):
+        return "convert CamelCase to snake_case"
+
+
+def test_camel_to_snake_case(mock_access):
+    CamelCase.from_path().read()
+    mock_access.assert_called_once_with("camel_case", source=None, path=None)
+    mock_access.reset_mock()
+    filename = "file with data"
+    CamelCase.from_file(filename).read()
+    mock_access.assert_called_once_with("camel_case", source=None, file=filename)
