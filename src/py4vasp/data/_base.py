@@ -47,6 +47,9 @@ class Refinery:
     def _raw_data(self):
         return self._data_context.data
 
+    def print(self):
+        print(str(self))
+
 
 def do_nothing(*args, **kwargs):
     pass

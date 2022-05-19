@@ -1,6 +1,8 @@
 from py4vasp.data import _base
 from py4vasp import exceptions as exception
+import contextlib
 import dataclasses
+import io
 import pytest
 from unittest.mock import patch
 
@@ -35,6 +37,10 @@ class Example(_base.Refinery):
     @_base.Refinery.access
     def with_arguments(self, mandatory, optional=None):
         return mandatory, optional
+
+    @_base.Refinery.access
+    def __str__(self):
+        return self._raw_data.content
 
 
 def test_from_RAW_DATA():
@@ -102,3 +108,10 @@ def test_source_from_path(mock_access):
     mock_access.reset_mock()
     example.read()
     mock_access.assert_called_once_with("example", source=None, path=None)
+
+
+def test_print_example():
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        Example.from_data(RAW_DATA).print()
+    assert RAW_DATA.content == output.getvalue().strip()
