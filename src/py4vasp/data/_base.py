@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import contextlib
-import decorator
+import dataclasses
 from py4vasp import raw
 
 
@@ -16,9 +16,7 @@ class Refinery:
 
     @classmethod
     def from_data(cls, raw_data):
-        data_context = contextlib.nullcontext(None)
-        data_context.data = raw_data
-        return cls(data_context)
+        return cls(_DataWrapper(raw_data))
 
     @classmethod
     def from_path(cls, path):
@@ -28,14 +26,38 @@ class Refinery:
     def from_file(cls, file):
         return cls(_DataAccess(cls.__name__.lower(), file=file))
 
-    @decorator.decorator
-    def access(func, self):
-        with self._data_context:
-            return func(self)
+    def access(func):
+        def func_with_access(self, source=None):
+            self._set_source(source)
+            with self._data_context:
+                return func(self)
+
+        return func_with_access
+
+    def _set_source(self, source):
+        if not source:
+            return
+        try:
+            self._data_context.source = source
+        except dataclasses.FrozenInstanceError as error:
+            message = f"Creating {self.__class__.__name__}.from_data does not allow to specify a source."
+            raise exception.IncorrectUsage(message) from error
 
     @property
     def _raw_data(self):
         return self._data_context.data
+
+
+def do_nothing(*args, **kwargs):
+    pass
+
+
+@dataclasses.dataclass(frozen=True)
+class _DataWrapper(contextlib.AbstractContextManager):
+    data: raw.VaspData
+    source: str = None
+    __enter__ = do_nothing
+    __exit__ = do_nothing
 
 
 class _DataAccess(contextlib.AbstractContextManager):

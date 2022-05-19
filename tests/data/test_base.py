@@ -1,5 +1,7 @@
 from py4vasp.data import _base
+from py4vasp import exceptions as exception
 import dataclasses
+import pytest
 from unittest.mock import patch
 
 
@@ -72,3 +74,10 @@ def test_nested_calls(mock_access):
     assert example.wrapper() == raw_data.content
     # check access is only called once
     mock_access.assert_called_once_with("example", path=pathname)
+
+
+def test_source_from_data():
+    raw_data = RawData("test")
+    example = Example.from_data(raw_data)
+    with pytest.raises(exception.IncorrectUsage):
+        example.read(source="don't use source with from_data")
