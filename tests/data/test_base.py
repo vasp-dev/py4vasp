@@ -32,6 +32,10 @@ class Example(_base.Refinery):
     def wrapper(self):
         return self.read()
 
+    @_base.Refinery.access
+    def with_arguments(self, mandatory, optional=None):
+        return mandatory, optional
+
 
 def test_from_RAW_DATA():
     example = Example.from_data(RAW_DATA)
@@ -76,6 +80,14 @@ def test_nested_calls(mock_access):
     mock_access.assert_called_once_with("example", source=None, path=pathname)
 
 
+def test_arguments_passed():
+    example = Example.from_data(RAW_DATA)
+    mandatory = "mandatory argument"
+    optional = "optional argument"
+    assert example.with_arguments(mandatory) == (mandatory, None)
+    assert example.with_arguments(mandatory, optional=optional) == (mandatory, optional)
+
+
 def test_source_from_data():
     example = Example.from_data(RAW_DATA)
     with pytest.raises(exception.IncorrectUsage):
@@ -90,6 +102,3 @@ def test_source_from_path(mock_access):
     mock_access.reset_mock()
     example.read()
     mock_access.assert_called_once_with("example", source=None, path=None)
-    # with pytest.raises(exception.IncorrectUsage):
-    #     example.read(source)  # should be keyword only
-    #     print(mock_access.call_args_list)

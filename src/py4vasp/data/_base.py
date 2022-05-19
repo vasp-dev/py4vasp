@@ -27,10 +27,10 @@ class Refinery:
         return cls(_DataAccess(cls.__name__.lower(), file=file))
 
     def access(func):
-        def func_with_access(self, source=None):
+        def func_with_access(self, *args, source=None, **kwargs):
             self._set_source(source)
             with self._data_context:
-                return func(self)
+                return func(self, *args, **kwargs)
 
         return func_with_access
 
