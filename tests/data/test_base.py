@@ -2,6 +2,7 @@ from py4vasp.data import _base
 from py4vasp import exceptions as exception
 import contextlib
 import dataclasses
+import inspect
 import io
 import pytest
 from unittest.mock import patch
@@ -28,6 +29,7 @@ class Example(_base.Refinery):
 
     @_base.Refinery.access
     def read(self):
+        "Read documentation."
         return self._raw_data.content
 
     @_base.Refinery.access
@@ -131,3 +133,10 @@ def test_repr(mock_access):
     assert repr(Example.from_path(pathname)) == f"Example.from_path({repr(pathname)})"
     filename = "file with VASP output"
     assert repr(Example.from_file(filename)) == f"Example.from_file({repr(filename)})"
+
+
+def test_docs():
+    assert inspect.getdoc(Example.read) == "Read documentation."
+    assert inspect.getdoc(Example.from_data) is not None
+    assert inspect.getdoc(Example.from_path) is not None
+    assert inspect.getdoc(Example.from_file) is not None

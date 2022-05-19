@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import contextlib
 import dataclasses
+import functools
 from py4vasp import raw
 
 
@@ -17,19 +18,80 @@ class Refinery:
 
     @classmethod
     def from_data(cls, raw_data):
+        """Create the instance directly from the raw data.
+
+        Use this approach when the data is put into the correct format by other means
+        than reading from the VASP output files. A typical use case is to read the
+        data with `from_path` and then act on it with some postprocessing and pass
+        the results to this method.
+
+        Parameters
+        ----------
+        raw_data
+            The raw data required to produce this Refinery.
+
+        Returns
+        -------
+            A Refinery instance to handle the passed data.
+        """
         return cls(_DataWrapper(raw_data), repr=f".from_data({repr(raw_data)})")
 
     @classmethod
     def from_path(cls, path=None):
+        """Read the quantities from the given path.
+
+        The VASP schema determines the particular files accessed. The files will only
+        be accessed when the data is required for a particular postprocessing call.
+
+        Parameters
+        ----------
+        path : str or pathlib.Path
+            Path to the directory with the outputs of the VASP calculation. If not
+            set explicitly the current directory will be used.
+
+        Returns
+        -------
+        Refinery
+            The returned instance handles opening and closing the files for every
+            function called on it.
+        """
         repr_ = f".from_path({repr(path)})" if path is not None else ".from_path()"
         return cls(_DataAccess(_quantity(cls), path=path), repr=repr_)
 
     @classmethod
     def from_file(cls, file):
+        """Read the quantities from the given file.
+
+        You want to use this method if you want to avoid using the Calculation
+        wrapper, for example because you renamed the output of the VASP calculation.
+
+        Parameters
+        ----------
+        file : str or io.BufferedReader
+            Filename from which the data is extracted. Alternatively, you can open the
+            file yourself and pass the Reader object. In that case, you need to take
+            care the file is properly closed again and be aware the generated instance
+            of this class becomes unusable after the file is closed.
+
+        Returns
+        -------
+        Refinery
+            The returned instance handles opening and closing the file for every
+            function called on it, unless a Reader object is passed in which case this
+            is left to the user.
+
+        Notes
+        -----
+        VASP produces multiple output files whereas this routine will only link to the
+        single specified file. Prefer `from_path` routine over this method unless you
+        renamed the VASP output files, because `from_path` can collate results from
+        multiple files.
+        """
         repr_ = f".from_file({repr(file)})"
         return cls(_DataAccess(_quantity(cls), file=file), repr=repr_)
 
     def access(func):
+        @functools.wraps(func)
         def func_with_access(self, *args, source=None, **kwargs):
             self._set_source(source)
             with self._data_context:
@@ -51,6 +113,7 @@ class Refinery:
         return self._data_context.data
 
     def print(self):
+        "Print a string representation of this instance."
         print(str(self))
 
     def _repr_pretty_(self, p, cycle):
