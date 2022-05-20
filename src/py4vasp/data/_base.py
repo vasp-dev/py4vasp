@@ -3,6 +3,7 @@
 import contextlib
 import dataclasses
 import functools
+import pathlib
 from py4vasp import raw
 from py4vasp._util import convert as _convert
 
@@ -24,6 +25,7 @@ def data_access(func):
 class Refinery:
     def __init__(self, data_context, **kwargs):
         self._data_context = data_context
+        self._path = kwargs.get("path") or pathlib.Path.cwd()
         self._repr = kwargs.get("repr", f"({repr(data_context)})")
         self.__post_init__()
 
@@ -71,7 +73,7 @@ class Refinery:
             function called on it.
         """
         repr_ = f".from_path({repr(path)})" if path is not None else ".from_path()"
-        return cls(_DataAccess(_quantity(cls), path=path), repr=repr_)
+        return cls(_DataAccess(_quantity(cls), path=path), repr=repr_, path=path)
 
     @classmethod
     def from_file(cls, file):
@@ -103,7 +105,13 @@ class Refinery:
         multiple files.
         """
         repr_ = f".from_file({repr(file)})"
-        return cls(_DataAccess(_quantity(cls), file=file), repr=repr_)
+        path = _get_path_to_file(file)
+        return cls(_DataAccess(_quantity(cls), file=file), repr=repr_, path=path)
+
+    @property
+    def path(self):
+        "Returns the path from which the output is obtained."
+        return self._path
 
     def _set_source(self, source):
         if not source:
@@ -131,6 +139,14 @@ class Refinery:
 
 def _quantity(cls):
     return _convert.to_snakecase(cls.__name__)
+
+
+def _get_path_to_file(file):
+    try:
+        file = pathlib.Path(file)
+    except TypeError:
+        file = pathlib.Path(file.name)
+    return file.parent
 
 
 def _do_nothing(*args, **kwargs):

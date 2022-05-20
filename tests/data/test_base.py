@@ -4,7 +4,9 @@ import contextlib
 import dataclasses
 import inspect
 import io
+import pathlib
 import pytest
+import tempfile
 from unittest.mock import patch
 
 
@@ -142,6 +144,17 @@ def test_repr(mock_access):
     assert repr(Example.from_path(pathname)) == f"Example.from_path({repr(pathname)})"
     filename = "file with VASP output"
     assert repr(Example.from_file(filename)) == f"Example.from_file({repr(filename)})"
+
+
+def test_path(mock_access):
+    assert Example.from_data(RAW_DATA).path == pathlib.Path.cwd()
+    assert Example.from_path().path == pathlib.Path.cwd()
+    pathname = "path_with_VASP_calculation"
+    assert Example.from_path(pathname).path == pathname
+    filename = f"{pathname}/name_of_file"
+    assert Example.from_file(filename).path == pathlib.Path(pathname)
+    with tempfile.NamedTemporaryFile() as file:
+        assert Example.from_file(file).path == pathlib.Path(file.name).parent
 
 
 def test_docs():
