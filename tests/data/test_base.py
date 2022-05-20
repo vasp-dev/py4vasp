@@ -123,10 +123,15 @@ def test_base_source_ignore_whitespace_and_capitalization(mock_access):
     mock_access.assert_called_once_with("example", source=source, file=filename)
 
 
-def test_print_example():
+def test_print_example(mock_access):
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
         Example.from_data(RAW_DATA).print()
+    assert RAW_DATA.content == output.getvalue().strip()
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        Example.from_path().print(source="choice")
+    mock_access.assert_called_once_with("example", source="choice", path=None)
     assert RAW_DATA.content == output.getvalue().strip()
 
 

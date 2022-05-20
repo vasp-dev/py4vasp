@@ -126,6 +126,7 @@ class Refinery:
     def _raw_data(self):
         return self._data_context.data
 
+    @data_access
     def print(self):
         "Print a string representation of this instance."
         print(str(self))
