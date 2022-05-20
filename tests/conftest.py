@@ -226,7 +226,7 @@ def _ion_dielectric_function():
 def _dielectric_tensor(method):
     shape = (3, axes, axes)
     data = np.arange(np.prod(shape)).reshape(shape)
-    return raw.RawDielectricTensor(
+    return raw.DielectricTensor(
         electron=data[0],
         ion=data[1],
         independent_particle=data[2] if method in ("dft", "rpa") else None,

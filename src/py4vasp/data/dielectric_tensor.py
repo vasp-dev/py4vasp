@@ -2,30 +2,30 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import py4vasp.data._base as _base
 import py4vasp._util.convert as _convert
+import py4vasp._util.documentation as _documentation
+
+_read_doc = """\
+Read the dielectric tensor into a dictionary.
+
+Returns
+-------
+dict
+Contains the dielectric tensor and a string describing the method it
+was obtained.
+"""
 
 
-class DielectricTensor(_base.DataBase):
-    """The static dielectric tensor obtained from linear response.
+class DielectricTensor(_base.Refinery):
+    """The static dielectric tensor obtained from linear response."""
 
-    Parameters
-    ----------
-    raw_dielectric_tensor : RawDielectricTensor
-        Dataclass containing the raw dielectric tensor and the generating method.
-    """
+    @_base.data_access
+    @_documentation.add(_read_doc)
+    def read(self):
+        return self.to_dict()
 
-    read = _base.RefinementDescriptor("_to_dict")
-    to_dict = _base.RefinementDescriptor("_to_dict")
-    __str__ = _base.RefinementDescriptor("_to_string")
-
-    def _to_dict(self):
-        """Read the dielectric tensor into a dictionary.
-
-        Returns
-        -------
-        dict
-            Contains the dielectric tensor and a string describing the method it
-            was obtained.
-        """
+    @_base.data_access
+    @_documentation.add(_read_doc)
+    def to_dict(self):
         return {
             "clamped_ion": self._raw_data.electron[:],
             "relaxed_ion": self._raw_data.electron[:] + self._raw_data.ion[:],
@@ -33,8 +33,9 @@ class DielectricTensor(_base.DataBase):
             "method": _convert.text_to_string(self._raw_data.method),
         }
 
-    def _to_string(self):
-        data = self._to_dict()
+    @_base.data_access
+    def __str__(self):
+        data = self.to_dict()
         return f"""
 Macroscopic static dielectric tensor (dimensionless)
   {_description(data["method"])}
