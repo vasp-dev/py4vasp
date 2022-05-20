@@ -205,7 +205,7 @@ def _number_components(selection):
 def _electron_dielectric_function():
     shape = (2, axes, axes, number_points, complex_)
     data = np.linspace(0, 1, np.prod(shape)).reshape(shape)
-    return raw.RawDielectricFunction(
+    return raw.DielectricFunction(
         energies=np.linspace(0, 1, number_points),
         density_density=data[0],
         current_current=data[1],
@@ -215,7 +215,7 @@ def _electron_dielectric_function():
 
 def _ion_dielectric_function():
     shape = (axes, axes, number_points, complex_)
-    return raw.RawDielectricFunction(
+    return raw.DielectricFunction(
         energies=np.linspace(0, 1, number_points),
         density_density=None,
         current_current=None,
