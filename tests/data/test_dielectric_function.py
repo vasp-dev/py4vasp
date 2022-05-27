@@ -363,5 +363,4 @@ dielectric function:
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dielectric_function("electron")
-    instance = DielectricFunction.from_path()
-    check_factory_methods(instance, data)
+    check_factory_methods(DielectricFunction, data)
