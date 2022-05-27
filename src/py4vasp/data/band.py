@@ -153,7 +153,7 @@ pd.DataFrame
         return len(self._raw_data.eigenvalues) == 2
 
     def _kpoints(self):
-        return Kpoint(self._raw_data.kpoints)
+        return Kpoint.from_data(self._raw_data.kpoints)
 
     def _read_projections(self, selection):
         projectors = _projectors_or_dummy(self._raw_data.projectors)

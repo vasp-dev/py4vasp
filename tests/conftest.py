@@ -289,7 +289,7 @@ def _line_kpoints(mode, labels):
         np.linspace(GM, Y, line_length),
         np.linspace(Y, M, line_length),
     )
-    kpoints = raw.RawKpoint(
+    kpoints = raw.Kpoint(
         mode=mode,
         number=line_length,
         coordinates=np.concatenate(coordinates),
@@ -308,7 +308,7 @@ def _grid_kpoints(mode, labels):
     z = np.linspace(0, 1, 4, endpoint=False) + 1 / 8
     coordinates = np.array(list(itertools.product(x, y, z)))
     number_kpoints = len(coordinates) if mode[0] in ["e", b"e"[0]] else 0
-    kpoints = raw.RawKpoint(
+    kpoints = raw.Kpoint(
         mode=mode,
         number=number_kpoints,
         coordinates=coordinates,

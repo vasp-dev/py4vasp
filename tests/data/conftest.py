@@ -36,7 +36,7 @@ def check_instance_accesses_data(instance, data, file=None):
     if failed:
         message = (
             f"The method(s) {', '.join(failed)} do not load the data from file."
-            "The most likely issue is a missing @_base.data_access decorator."
+            " The most likely issue is a missing @_base.data_access decorator."
         )
         raise AssertionError(message)
 

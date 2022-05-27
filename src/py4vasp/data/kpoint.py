@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.data._base import DataBase, RefinementDescriptor
+from py4vasp.data import _base
 import py4vasp._util.documentation as _documentation
 import py4vasp.exceptions as exception
 import py4vasp._util.convert as _convert
@@ -16,40 +16,7 @@ source : str, optional
     file instead of the one specified in KPOINTS.
 """.strip()
 
-
-class Kpoint(DataBase):
-    """The **k** points used in the Vasp calculation.
-
-    This class provides utility functionality to extract information about the
-    **k** points used by Vasp. As such it is mostly used as a helper class for
-    other postprocessing classes to extract the required information, e.g., to
-    generate a band structure.
-
-    Parameters
-    ----------
-    raw_kpoint : RawKpoint
-        Dataclass containing the raw **k**-points data used in the calculation.
-    """
-
-    to_dict = RefinementDescriptor("_to_dict")
-    read = RefinementDescriptor("_to_dict")
-    line_length = RefinementDescriptor("_line_length")
-    number_lines = RefinementDescriptor("_number_lines")
-    distances = RefinementDescriptor("_distances")
-    mode = RefinementDescriptor("_mode")
-    labels = RefinementDescriptor("_labels")
-    __str__ = RefinementDescriptor("_to_string")
-
-    def _to_string(self):
-        text = f"""k-points
-{len(self._raw_data.coordinates)}
-reciprocal"""
-        for kpoint, weight in zip(self._raw_data.coordinates, self._raw_data.weights):
-            text += "\n" + f"{kpoint[0]} {kpoint[1]} {kpoint[2]}  {weight}"
-        return text
-
-    @_documentation.add(
-        f"""Read the **k** points data into a dictionary.
+_read_doc = f"""Read the **k** points data into a dictionary.
 
 Parameters
 ----------
@@ -63,18 +30,8 @@ dict
     specified in the input file of Vasp are transferred such as the mode
     used to generate the **k** points, the line length (if line mode was
     used), and any labels set for specific points."""
-    )
-    def _to_dict(self):
-        return {
-            "mode": self._mode(),
-            "line_length": self._line_length(),
-            "coordinates": self._raw_data.coordinates[:],
-            "weights": self._raw_data.weights[:],
-            "labels": self._labels(),
-        }
 
-    @_documentation.add(
-        f"""Get the number of points per line in the Brillouin zone.
+_line_length_doc = f"""Get the number of points per line in the Brillouin zone.
 
 Parameters
 ----------
@@ -84,14 +41,8 @@ Returns
 -------
 int
     The number of points used to sample a single line."""
-    )
-    def _line_length(self):
-        if self._mode() == "line":
-            return self._raw_data.number
-        return len(self._raw_data.coordinates)
 
-    @_documentation.add(
-        f"""Get the number of lines in the Brillouin zone.
+_number_line_doc = f"""Get the number of lines in the Brillouin zone.
 
 Parameters
 ----------
@@ -101,12 +52,8 @@ Returns
 -------
 int
     The number of lines the band structure contains. For regular meshes this is set to 1."""
-    )
-    def _number_lines(self):
-        return len(self._raw_data.coordinates) // self._line_length()
 
-    @_documentation.add(
-        f"""Convert the coordinates of the **k** points into a one dimensional array
+_distances_doc = f"""Convert the coordinates of the **k** points into a one dimensional array
 
 For every line in the Brillouin zone, the distance between each **k** point
 and the start of the line is calculated. Then the distances of different
@@ -122,19 +69,8 @@ Returns
 np.ndarray
     A reduction of the **k** points onto a one-dimensional array based
     on the distance between the points."""
-    )
-    def _distances(self):
-        cell = self._raw_data.cell.lattice_vectors[-1]
-        cartesian_kpoints = np.linalg.solve(cell, self._raw_data.coordinates[:].T).T
-        kpoint_lines = np.split(cartesian_kpoints, self._number_lines())
-        kpoint_norms = [_line_distances(line) for line in kpoint_lines]
-        concatenate_distances = lambda current, addition: (
-            np.concatenate((current, addition + current[-1]))
-        )
-        return functools.reduce(concatenate_distances, kpoint_norms)
 
-    @_documentation.add(
-        f"""Get the **k**-point generation mode specified in the Vasp input file
+_mode_doc = f"""Get the **k**-point generation mode specified in the Vasp input file
 
 Parameters
 ----------
@@ -144,8 +80,82 @@ Returns
 -------
 str
     A string representing which mode was used to setup the k-points."""
-    )
-    def _mode(self):
+
+
+_labels_doc = f"""Get any labels given in the input file for specific **k** points.
+
+Parameters
+----------
+{_kpoints_opt_source}
+
+Returns
+-------
+list[str]
+    A list of all the k-points explicitly named in the file or the coordinates of the
+    band edges if no name was provided."""
+
+
+class Kpoint(_base.Refinery):
+    """The **k** points used in the Vasp calculation.
+
+    This class provides utility functionality to extract information about the
+    **k** points used by Vasp. As such it is mostly used as a helper class for
+    other postprocessing classes to extract the required information, e.g., to
+    generate a band structure.
+    """
+
+    @_base.data_access
+    def __str__(self):
+        text = f"""k-points
+{len(self._raw_data.coordinates)}
+reciprocal"""
+        for kpoint, weight in zip(self._raw_data.coordinates, self._raw_data.weights):
+            text += "\n" + f"{kpoint[0]} {kpoint[1]} {kpoint[2]}  {weight}"
+        return text
+
+    @_base.data_access
+    @_documentation.add(_read_doc)
+    def read(self):
+        return self.to_dict()
+
+    @_base.data_access
+    @_documentation.add(_read_doc)
+    def to_dict(self):
+        return {
+            "mode": self.mode(),
+            "line_length": self.line_length(),
+            "coordinates": self._raw_data.coordinates[:],
+            "weights": self._raw_data.weights[:],
+            "labels": self.labels(),
+        }
+
+    @_base.data_access
+    @_documentation.add(_line_length_doc)
+    def line_length(self):
+        if self.mode() == "line":
+            return self._raw_data.number
+        return len(self._raw_data.coordinates)
+
+    @_base.data_access
+    @_documentation.add(_number_line_doc)
+    def number_lines(self):
+        return len(self._raw_data.coordinates) // self.line_length()
+
+    @_base.data_access
+    @_documentation.add(_distances_doc)
+    def distances(self):
+        cell = self._raw_data.cell.lattice_vectors[-1]
+        cartesian_kpoints = np.linalg.solve(cell, self._raw_data.coordinates[:].T).T
+        kpoint_lines = np.split(cartesian_kpoints, self.number_lines())
+        kpoint_norms = [_line_distances(line) for line in kpoint_lines]
+        concatenate_distances = lambda current, addition: (
+            np.concatenate((current, addition + current[-1]))
+        )
+        return functools.reduce(concatenate_distances, kpoint_norms)
+
+    @_base.data_access
+    @_documentation.add(_mode_doc)
+    def mode(self):
         mode = _convert.text_to_string(self._raw_data.mode).strip() or "# empty string"
         first_char = mode[0].lower()
         if first_char == "a":
@@ -163,23 +173,12 @@ str
                 f"Could not understand the mode '{mode}' when refining the raw kpoints data."
             )
 
-    @_documentation.add(
-        f"""Get any labels given in the input file for specific **k** points.
-
-Parameters
-----------
-{_kpoints_opt_source}
-
-Returns
--------
-list[str]
-    A list of all the k-points explicitly named in the file or the coordinates of the
-    band edges if no name was provided."""
-    )
-    def _labels(self):
+    @_base.data_access
+    @_documentation.add(_labels_doc)
+    def labels(self):
         if self._raw_data.label_indices is not None:
             return self._labels_from_file()
-        elif self._mode() == "line":
+        elif self.mode() == "line":
             return self._labels_at_band_edges()
         else:
             return None
@@ -192,14 +191,14 @@ list[str]
 
     def _raw_indices(self):
         indices = np.array(self._raw_data.label_indices)
-        if self._mode() == "line":
-            line_length = self._line_length()
+        if self.mode() == "line":
+            line_length = self.line_length()
             return line_length * (indices // 2) - (indices + 1) % 2
         else:
             return indices - 1  # convert from Fortran to Python indices
 
     def _labels_at_band_edges(self):
-        line_length = self._line_length()
+        line_length = self.line_length()
         band_edge = lambda index: not (0 < index % line_length < line_length - 1)
         return [
             _kpoint_label(kpoint) if band_edge(index) else ""

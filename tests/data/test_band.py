@@ -18,7 +18,7 @@ def single_band(raw_data):
     band.ref.bands = raw_band.eigenvalues[0]
     band.ref.occupations = raw_band.occupations[0]
     raw_kpoints = raw_band.kpoints
-    band.ref.kpoints = Kpoint(raw_kpoints)
+    band.ref.kpoints = Kpoint.from_data(raw_kpoints)
     formatter = {"float": lambda x: f"{x:.2f}"}
     kpoint_to_string = lambda vec: np.array2string(vec, formatter=formatter) + " 1"
     band.ref.index = [kpoint_to_string(kpoint) for kpoint in raw_kpoints.coordinates]
@@ -52,7 +52,7 @@ def line_no_labels(raw_data):
     raw_band = raw_data.band("line no_labels")
     band = Band(raw_band)
     band.ref = types.SimpleNamespace()
-    band.ref.kpoints = Kpoint(raw_band.kpoints)
+    band.ref.kpoints = Kpoint.from_data(raw_band.kpoints)
     return band
 
 
@@ -61,7 +61,7 @@ def line_with_labels(raw_data):
     raw_band = raw_data.band("line with_labels")
     band = Band(raw_band)
     band.ref = types.SimpleNamespace()
-    band.ref.kpoints = Kpoint(raw_band.kpoints)
+    band.ref.kpoints = Kpoint.from_data(raw_band.kpoints)
     return band
 
 
