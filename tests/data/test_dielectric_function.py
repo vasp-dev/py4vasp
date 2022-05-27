@@ -392,5 +392,6 @@ def check_factory_method(data, method_under_test):
 
 def check_mock_called(mock_access, source=None):
     mock_access.assert_called_once()
-    assert "dielectric_function" in mock_access.call_args.args
-    assert mock_access.call_args.kwargs.get("source") == source
+    args, kwargs = mock_access.call_args
+    assert ("dielectric_function",) == args
+    assert kwargs.get("source") == source
