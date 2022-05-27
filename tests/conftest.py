@@ -452,7 +452,7 @@ def _Sr2TiO4_internal_strain():
 
 def _Sr2TiO4_projectors():
     orbital_types = "s py pz px dxy dyz dz2 dxz x2-y2 fy3x2 fxyz fyz2 fz3 fxz2 fzx2 fx3"
-    return raw.RawProjector(
+    return raw.Projector(
         topology=_Sr2TiO4_topology(),
         orbital_types=np.array(orbital_types.split(), dtype="S"),
         number_spins=1,
@@ -541,7 +541,7 @@ def _Fe3O4_forces():
 
 
 def _Fe3O4_projectors():
-    return raw.RawProjector(
+    return raw.Projector(
         topology=_Fe3O4_topology(),
         orbital_types=np.array(("s", "p", "d", "f"), dtype="S"),
         number_spins=2,

@@ -91,7 +91,7 @@ def spin_projectors(raw_data):
     band.ref.Fe_d_down = np.sum(raw_band.projections[1, 0:3, 2, :, :], axis=0)
     band.ref.O_up = np.sum(raw_band.projections[0, 3:7, :, :, :], axis=(0, 1))
     band.ref.O_down = np.sum(raw_band.projections[1, 3:7, :, :, :], axis=(0, 1))
-    band.ref.projectors_string = pretty(Projector(raw_band.projectors))
+    band.ref.projectors_string = pretty(Projector.from_data(raw_band.projectors))
     return band
 
 

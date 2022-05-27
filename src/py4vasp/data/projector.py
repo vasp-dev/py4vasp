@@ -4,7 +4,7 @@ from typing import NamedTuple, Iterable, Union
 import numpy as np
 import re
 from .topology import Topology
-from py4vasp.data._base import DataBase, RefinementDescriptor
+from py4vasp.data import _base
 from py4vasp.data._selection import Selection as _Selection
 from py4vasp.data.kpoint import _kpoints_opt_source
 import py4vasp.exceptions as exception
@@ -54,45 +54,7 @@ Select the spin-up contribution of the first three atoms combined
 """
 
 
-class Projector(DataBase):
-    """The projectors used for atom and orbital resolved quantities.
-
-    This is a common class used by all quantities that contains some projected
-    quantity, e.g., the electronic band structure and the DOS. It provides
-    utility functionality to access specific indices of the projected arrays
-    based on a simple mini language specifying the atom or orbital names.
-
-    Parameters
-    ----------
-    raw_proj : RawProjector
-        Dataclass containing data about the elements, the orbitals, and the spin
-        for which projectors are available.
-    """
-
-    class Index(NamedTuple):
-        "Helper class specifying which atom, orbital, and spin are selected."
-        atom: Union[str, _Selection]
-        "Label of the atom or a Selection object to read the corresponding data."
-        orbital: Union[str, _Selection]
-        "Label of the orbital or a Selection object to read the corresponding data."
-        spin: Union[str, _Selection]
-        "Label of the spin component or a Selection object to read the corresponding data."
-
-    _missing_data_message = "No projectors found, please verify the LORBIT tag is set."
-
-    read = RefinementDescriptor("_to_dict")
-    to_dict = RefinementDescriptor("_to_dict")
-    select = RefinementDescriptor("_select")
-    parse_selection = RefinementDescriptor("_parse_selection")
-    __str__ = RefinementDescriptor("_to_string")
-
-    def _to_string(self):
-        return f"""projectors:
-    atoms: {", ".join(self._topology().ion_types())}
-    orbitals: {", ".join(self._orbital_types())}"""
-
-    @_documentation.add(
-        f"""Read the selected data from an array and store it in a dictionary.
+_read_doc = f"""Read the selected data from an array and store it in a dictionary.
 
 Parameters
 ----------
@@ -108,19 +70,8 @@ dict
     column of the array. If a particular selection includes multiple indices
     these elements are added. If the projections are not present, the relevant
     indices are returned."""
-    )
-    def _to_dict(self, selection=None, projections=None):
-        if selection is None:
-            return {}
-        error_message = "Projector selection must be a string."
-        _check.raise_error_if_not_string(selection, error_message)
-        if projections is None:
-            return self._get_indices(selection)
-        projections = _Projections(projections)
-        return self._read_elements(selection, projections)
 
-    @_documentation.add(
-        f"""Map selection strings onto corresponding Selection objects.
+_select_doc = f"""Map selection strings onto corresponding Selection objects.
 
 With the selection strings, you specify which atom, orbital, and spin component
 you are interested in.
@@ -145,24 +96,9 @@ Returns
 Index
     Indices to access the selected projection from an array and an
     associated label."""
-    )
-    def _select(
-        self,
-        atom=_selection.all,
-        orbital=_selection.all,
-        spin=_selection.all,
-    ):
-        dicts = self._init_dicts()
-        _raise_error_if_not_found_in_dict(orbital, dicts["orbital"])
-        _raise_error_if_not_found_in_dict(spin, dicts["spin"])
-        return Projector.Index(
-            atom=_select_atom(dicts["atom"], atom),
-            orbital=dicts["orbital"][orbital],
-            spin=dicts["spin"][spin],
-        )
 
-    @_documentation.add(
-        f"""Generate all possible indices where the projected information is stored.
+
+_parse_selection_doc = f"""Generate all possible indices where the projected information is stored.
 
 Given a string specifying which atoms, orbitals, and spin should be selected
 an iterable object is created that contains the indices compatible with the
@@ -178,8 +114,71 @@ Yields
 Iterable[Index]
     Indices of the atom, the orbital and the spin compatible with a specific
     selection."""
-    )
-    def _parse_selection(self, selection):
+
+
+class Projector(_base.Refinery):
+    """The projectors used for atom and orbital resolved quantities.
+
+    This is a common class used by all quantities that contains some projected
+    quantity, e.g., the electronic band structure and the DOS. It provides
+    utility functionality to access specific indices of the projected arrays
+    based on a simple mini language specifying the atom or orbital names.
+    """
+
+    class Index(NamedTuple):
+        "Helper class specifying which atom, orbital, and spin are selected."
+        atom: Union[str, _Selection]
+        "Label of the atom or a Selection object to read the corresponding data."
+        orbital: Union[str, _Selection]
+        "Label of the orbital or a Selection object to read the corresponding data."
+        spin: Union[str, _Selection]
+        "Label of the spin component or a Selection object to read the corresponding data."
+
+    _missing_data_message = "No projectors found, please verify the LORBIT tag is set."
+
+    @_base.data_access
+    def __str__(self):
+        return f"""projectors:
+    atoms: {", ".join(self._topology().ion_types())}
+    orbitals: {", ".join(self._orbital_types())}"""
+
+    @_base.data_access
+    @_documentation.add(_read_doc)
+    def read(self, selection=None, projections=None):
+        return self.to_dict(selection, projections)
+
+    @_base.data_access
+    @_documentation.add(_read_doc)
+    def to_dict(self, selection=None, projections=None):
+        if selection is None:
+            return {}
+        error_message = "Projector selection must be a string."
+        _check.raise_error_if_not_string(selection, error_message)
+        if projections is None:
+            return self._get_indices(selection)
+        projections = _Projections(projections)
+        return self._read_elements(selection, projections)
+
+    @_base.data_access
+    @_documentation.add(_select_doc)
+    def select(
+        self,
+        atom=_selection.all,
+        orbital=_selection.all,
+        spin=_selection.all,
+    ):
+        dicts = self._init_dicts()
+        _raise_error_if_not_found_in_dict(orbital, dicts["orbital"])
+        _raise_error_if_not_found_in_dict(spin, dicts["spin"])
+        return Projector.Index(
+            atom=_select_atom(dicts["atom"], atom),
+            orbital=dicts["orbital"][orbital],
+            spin=dicts["spin"][spin],
+        )
+
+    @_base.data_access
+    @_documentation.add(_parse_selection_doc)
+    def parse_selection(self, selection=_selection.all):
         dicts = self._init_dicts()
         default_index = Projector.Index(
             atom=_selection.all,
@@ -235,8 +234,8 @@ Iterable[Index]
 
     def _get_indices(self, selection):
         res = {}
-        for select in self._parse_selection(selection):
-            atom, orbital, spin = self._select(*select)
+        for select in self.parse_selection(selection):
+            atom, orbital, spin = self.select(*select)
             label = _merge_labels([atom.label, orbital.label, spin.label])
             indices = (spin.indices, atom.indices, orbital.indices)
             res[label] = indices
@@ -343,4 +342,4 @@ def _projectors_or_dummy(projectors):
     if projectors is None:
         return _NoProjectorAvailable()
     else:
-        return Projector(projectors)
+        return Projector.from_data(projectors)
