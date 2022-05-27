@@ -331,7 +331,7 @@ def _magnetism(number_components):
 
 def _single_band(projectors):
     kpoints = _grid_kpoints("explicit", "no_labels")
-    return raw.RawBand(
+    return raw.Band(
         fermi_energy=0.0,
         eigenvalues=np.array([np.linspace([0], [1], len(kpoints.coordinates))]),
         occupations=np.array([np.linspace([1], [0], len(kpoints.coordinates))]),
@@ -342,7 +342,7 @@ def _single_band(projectors):
 def _multiple_bands(projectors):
     kpoints = _grid_kpoints("explicit", "no_labels")
     shape = (single_spin, len(kpoints.coordinates), number_bands)
-    raw_band = raw.RawBand(
+    raw_band = raw.Band(
         fermi_energy=0.5,
         eigenvalues=np.arange(np.prod(shape)).reshape(shape),
         occupations=np.arange(np.prod(shape)).reshape(shape),
@@ -359,7 +359,7 @@ def _multiple_bands(projectors):
 def _line_band(labels):
     kpoints = _line_kpoints("line", labels)
     shape = (single_spin, len(kpoints.coordinates), number_bands)
-    return raw.RawBand(
+    return raw.Band(
         fermi_energy=0.5,
         eigenvalues=np.arange(np.prod(shape)).reshape(shape),
         occupations=np.arange(np.prod(shape)).reshape(shape),
@@ -371,7 +371,7 @@ def _spin_polarized_bands(projectors):
     kpoints = _grid_kpoints("explicit", "no_labels")
     kpoints.cell = _Fe3O4_cell()
     shape = (two_spins, len(kpoints.coordinates), number_bands)
-    raw_band = raw.RawBand(
+    raw_band = raw.Band(
         fermi_energy=0.0,
         eigenvalues=np.arange(np.prod(shape)).reshape(shape),
         occupations=np.arange(np.prod(shape)).reshape(shape),
