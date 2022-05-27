@@ -2,7 +2,6 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp.data import DielectricFunction
 import dataclasses
-import inspect
 import numpy as np
 import pytest
 import types
@@ -362,36 +361,7 @@ dielectric function:
     assert actual == {"text/plain": reference}
 
 
-def test_factory_methods(raw_data):
+def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dielectric_function("electron")
     instance = DielectricFunction.from_path()
-    for name, method in inspect.getmembers(instance, inspect.ismethod):
-        if should_test_method(name):
-            check_factory_method(data, method)
-
-
-def should_test_method(name):
-    if name == "__str__":
-        return True
-    if name.startswith("from") or name.startswith("_"):
-        return False
-    if name == "to_image":  # would have side effects
-        return False
-    return True
-
-
-def check_factory_method(data, method_under_test):
-    with patch("py4vasp.raw.access") as mock_access:
-        mock_access.return_value.__enter__.side_effect = lambda *_: data
-        method_under_test()
-        check_mock_called(mock_access)
-        mock_access.reset_mock()
-        method_under_test(source="choice")
-        check_mock_called(mock_access, source="choice")
-
-
-def check_mock_called(mock_access, source=None):
-    mock_access.assert_called_once()
-    args, kwargs = mock_access.call_args
-    assert ("dielectric_function",) == args
-    assert kwargs.get("source") == source
+    check_factory_methods(instance, data)

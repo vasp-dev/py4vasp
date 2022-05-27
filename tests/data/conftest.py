@@ -3,10 +3,60 @@
 from contextlib import contextmanager
 from IPython.core.formatters import DisplayFormatter
 from unittest.mock import patch, MagicMock, PropertyMock
+import inspect
 from pathlib import Path
 import pytest
+from py4vasp._util import convert
 import py4vasp._util.version as version
 import py4vasp.raw as raw
+
+
+@pytest.fixture
+def check_factory_methods():
+    def inner(instance, data):
+        failed = []
+        for name, method in inspect.getmembers(instance, inspect.ismethod):
+            if should_test_method(name):
+                try:
+                    check_factory_method(data, method)
+                except (AttributeError, AssertionError):
+                    failed.append(name)
+        if failed:
+            message = (
+                f"The method(s) {', '.join(failed)} do not load the data from file."
+                "The most likely issue is a missing @_base.data_access decorator."
+            )
+            raise AssertionError(message)
+
+    return inner
+
+
+def should_test_method(name):
+    if name == "__str__":
+        return True
+    if name.startswith("from") or name.startswith("_"):
+        return False
+    if name == "to_image":  # would have side effects
+        return False
+    return True
+
+
+def check_factory_method(data, method_under_test):
+    quantity = convert.to_snakecase(data.__class__.__name__)
+    with patch("py4vasp.raw.access") as mock_access:
+        mock_access.return_value.__enter__.side_effect = lambda *_: data
+        method_under_test()
+        check_mock_called(mock_access, quantity)
+        mock_access.reset_mock()
+        method_under_test(source="choice")
+        check_mock_called(mock_access, quantity, source="choice")
+
+
+def check_mock_called(mock_access, quantity, source=None):
+    mock_access.assert_called_once()
+    args, kwargs = mock_access.call_args
+    assert (quantity,) == args
+    assert kwargs.get("source") == source
 
 
 @pytest.fixture
