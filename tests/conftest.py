@@ -392,7 +392,7 @@ def _spin_polarized_bands(projectors):
 
 def _Sr2TiO4_born_effective_charges():
     shape = (number_atoms, axes, axes)
-    return raw.RawBornEffectiveCharge(
+    return raw.BornEffectiveCharge(
         structure=_Sr2TiO4_structure(),
         charge_tensors=np.arange(np.prod(shape)).reshape(shape),
     )
