@@ -8,7 +8,7 @@ from py4vasp.data import PiezoelectricTensor
 @pytest.fixture
 def piezoelectric_tensor(raw_data):
     raw_tensor = raw_data.piezoelectric_tensor("default")
-    tensor = PiezoelectricTensor(raw_tensor)
+    tensor = PiezoelectricTensor.from_data(raw_tensor)
     tensor.ref = types.SimpleNamespace()
     tensor.ref.clamped_ion = raw_tensor.electron
     tensor.ref.relaxed_ion = raw_tensor.ion + raw_tensor.electron
@@ -39,15 +39,6 @@ Piezoelectric tensor (C/m²)
     assert actual == {"text/plain": reference}
 
 
-def test_descriptor(piezoelectric_tensor, check_descriptors):
-    descriptors = {
-        "_to_dict": ["to_dict", "read"],
-        "_to_string": ["__str__"],
-    }
-    check_descriptors(piezoelectric_tensor, descriptors)
-
-
-def test_from_file(raw_data, mock_file, check_read):
-    raw_piezoelectric_tensor = raw_data.piezoelectric_tensor("default")
-    with mock_file("piezoelectric_tensor", raw_piezoelectric_tensor) as mocks:
-        check_read(PiezoelectricTensor, mocks, raw_piezoelectric_tensor)
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.piezoelectric_tensor("default")
+    check_factory_methods(PiezoelectricTensor, data)

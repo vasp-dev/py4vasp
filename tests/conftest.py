@@ -257,7 +257,7 @@ def _Sr2TiO4_pair_correlation():
 def _piezoelectric_tensor():
     shape = (2, axes, axes, axes)
     data = np.arange(np.prod(shape)).reshape(shape)
-    return raw.RawPiezoelectricTensor(
+    return raw.PiezoelectricTensor(
         electron=data[0],
         ion=data[1],
     )
