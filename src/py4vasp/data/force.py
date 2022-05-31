@@ -2,9 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-import py4vasp.data._base as _base
-import py4vasp.data._trajectory as _trajectory
-from py4vasp.data import Structure
+from py4vasp.data import _base, _slice, Structure
 import py4vasp.exceptions as exception
 import py4vasp._util.documentation as _documentation
 import py4vasp._util.reader as _reader
@@ -16,27 +14,17 @@ You can use this class to analyze the forces acting on the atoms. In
 particular, you can check whether the forces are small at the end of the
 calculation.
 
-Parameters
-----------
-raw_force : RawForce
-    Dataclass containing the raw forces and associated structure data.
-
-{_trajectory.trajectory_examples("force")}
+{_slice.examples("force")}
 """.strip()
 
 
 @_documentation.add(forces_docstring)
-class Force(_trajectory.DataTrajectory):
+class Force(_slice.Mixin, _base.Refinery):
     force_rescale = 1.5
     "Scaling constant to convert forces to Å."
 
-    read = _base.RefinementDescriptor("_to_dict")
-    to_dict = _base.RefinementDescriptor("_to_dict")
-    plot = _base.RefinementDescriptor("_to_viewer3d")
-    to_viewer3d = _base.RefinementDescriptor("_to_viewer3d")
-    __str__ = _base.RefinementDescriptor("_to_string")
-
-    def _to_string(self):
+    @_base.data_access
+    def __str__(self):
         "Convert the forces to a format similar to the OUTCAR file."
         result = """
 POSITION                                       TOTAL-FORCE (eV/Angst)
@@ -50,6 +38,7 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
             result += f"\n{position_to_string(position)}    {force_to_string(force)}"
         return result
 
+    @_base.data_access
     @_documentation.add(
         f"""Read the forces and associated structural information for one or more
 selected steps of the trajectory.
@@ -60,14 +49,15 @@ dict
     Contains the forces for all selected steps and the structural information
     to know on which atoms the forces act.
 
-{_trajectory.trajectory_examples("force", "read")}"""
+{_slice.examples("force", "read")}"""
     )
-    def _to_dict(self):
+    def to_dict(self):
         return {
             "structure": self._structure[self._steps].read(),
             "forces": self._force[self._steps],
         }
 
+    @_base.data_access
     @_documentation.add(
         f"""Visualize the forces showing arrows at the atoms.
 
@@ -77,9 +67,9 @@ Viewer3d
     Shows the structure with cell and all atoms adding arrows to the atoms
     sized according to the strength of the force.
 
-{_trajectory.trajectory_examples("force", "plot")}"""
+{_slice.examples("force", "plot")}"""
     )
-    def _to_viewer3d(self):
+    def plot(self):
         self._raise_error_if_slice()
         forces = self.force_rescale * self._force[self._steps]
         color = [0.3, 0.15, 0.35]

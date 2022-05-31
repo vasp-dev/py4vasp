@@ -436,7 +436,7 @@ def _Sr2TiO4_force_constants():
 
 def _Sr2TiO4_forces():
     shape = (number_steps, number_atoms, axes)
-    return raw.RawForce(
+    return raw.Force(
         structure=_Sr2TiO4_structure(),
         forces=np.arange(np.prod(shape)).reshape(shape),
     )
@@ -534,7 +534,7 @@ def _Fe3O4_dos(projectors):
 
 def _Fe3O4_forces():
     shape = (number_steps, number_atoms, axes)
-    return raw.RawForce(
+    return raw.Force(
         structure=_Fe3O4_structure(),
         forces=np.arange(np.prod(shape)).reshape(shape),
     )
