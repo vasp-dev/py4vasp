@@ -12,7 +12,7 @@ import py4vasp.exceptions as exceptions
 @pytest.fixture
 def collinear_density(raw_data):
     raw_density = raw_data.density("Fe3O4 collinear")
-    density = Density(raw_density)
+    density = Density.from_data(raw_density)
     density.ref = types.SimpleNamespace()
     density.ref.structure = Structure(raw_density.structure).read()
     density.ref.charge = raw_density.charge[0]
@@ -23,7 +23,7 @@ def collinear_density(raw_data):
 @pytest.fixture
 def charge_only_density(raw_data):
     raw_density = raw_data.density("Fe3O4 charge_only")
-    density = Density(raw_density)
+    density = Density.from_data(raw_density)
     density.ref = types.SimpleNamespace()
     density.ref.charge = raw_density.charge[0]
     return density
@@ -111,15 +111,6 @@ density:
     assert actual == {"text/plain": reference}
 
 
-def test_descriptor(collinear_density, check_descriptors):
-    descriptors = {
-        "_to_dict": ["to_dict", "read"],
-        "_to_viewer3d": ["to_viewer3d", "plot"],
-    }
-    check_descriptors(collinear_density, descriptors)
-
-
-def test_from_file(raw_data, mock_file, check_read):
-    raw_density = raw_data.density("Fe3O4 collinear")
-    with mock_file("density", raw_density) as mocks:
-        check_read(Density, mocks, raw_density, default_filename="vaspwave.h5")
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.density("Fe3O4 collinear")
+    check_factory_methods(Density, data)

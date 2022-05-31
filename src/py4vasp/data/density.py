@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp.data import Viewer3d, Structure, Topology
-from py4vasp.data._base import DataBase, RefinementDescriptor
+from py4vasp.data import _base
 from IPython.lib.pretty import pretty
 from pathlib import Path
 import py4vasp.exceptions as exceptions
@@ -19,33 +19,15 @@ class _ViewerWrapper:
         self._viewer.show_isosurface(data, **options)
 
 
-class Density(DataBase):
+class Density(_base.Refinery):
     """The charge and magnetization density.
 
     You can use this class to extract the density data of the Vasp calculation
     and to have a quick glance at the resulting density.
-
-    Parameters
-    ----------
-    raw_density : RawDensity
-        Dataclass containing the raw density data as well as structural information.
     """
 
-    read = RefinementDescriptor("_to_dict")
-    to_dict = RefinementDescriptor("_to_dict")
-    plot = RefinementDescriptor("_to_viewer3d")
-    to_viewer3d = RefinementDescriptor("_to_viewer3d")
-    __str__ = RefinementDescriptor("_to_string")
-
-    @classmethod
-    def from_file(cls, file=None):
-        if file is None:
-            file = _filename
-        elif (isinstance(file, Path) or isinstance(file, str)) and Path(file).is_dir():
-            file = file / _filename
-        return super().from_file(file)
-
-    def _to_string(self):
+    @_base.data_access
+    def __str__(self):
         grid = self._raw_data.charge.shape[1:]
         return f"""density:
     structure: {pretty(Topology(self._raw_data.structure.topology))}
@@ -53,7 +35,8 @@ class Density(DataBase):
     {"spin polarized" if self._spin_polarized() else ""}
         """.strip()
 
-    def _to_dict(self):
+    @_base.data_access
+    def to_dict(self):
         """Read the electionic density into a dictionary.
 
         Returns
@@ -68,7 +51,8 @@ class Density(DataBase):
             "magnetization": self._magnetization_if_present(),
         }
 
-    def _to_viewer3d(self, selection="charge", **user_options):
+    @_base.data_access
+    def plot(self, selection="charge", **user_options):
         """Plot the selected density as a 3d isosurface within the structure.
 
         Parameters
