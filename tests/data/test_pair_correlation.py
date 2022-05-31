@@ -1,12 +1,13 @@
 from py4vasp.data import PairCorrelation
 import py4vasp.exceptions as exception
 import pytest
+from unittest.mock import patch
 
 
 @pytest.fixture
 def pair_correlation(raw_data):
     raw_pair_correlation = raw_data.pair_correlation("Sr2TiO4")
-    pair_correlation = PairCorrelation(raw_pair_correlation)
+    pair_correlation = PairCorrelation.from_data(raw_pair_correlation)
     pair_correlation.ref = raw_pair_correlation
     return pair_correlation
 
@@ -65,3 +66,32 @@ def test_labels(pair_correlation):
 def test_plot_nonexisting_label(pair_correlation):
     with pytest.raises(exception.IncorrectUsage):
         pair_correlation.plot("label does exist")
+
+
+@patch("py4vasp.data.pair_correlation.PairCorrelation.plot")
+def test_pair_correlation_to_plotly(mock_plot, pair_correlation):
+    fig = pair_correlation.to_plotly("selection")
+    mock_plot.assert_called_once_with("selection")
+    graph = mock_plot.return_value
+    graph.to_plotly.assert_called_once()
+    assert fig == graph.to_plotly.return_value
+
+
+def test_to_image(pair_correlation):
+    check_to_image(pair_correlation, None, "pair_correlation.png")
+    custom_filename = "custom.jpg"
+    check_to_image(pair_correlation, custom_filename, custom_filename)
+
+
+def check_to_image(pair_correlation, filename_argument, expected_filename):
+    with patch("py4vasp.data.pair_correlation.PairCorrelation.to_plotly") as plot:
+        pair_correlation.to_image("args", filename=filename_argument, key="word")
+        plot.assert_called_once_with("args", key="word")
+        fig = plot.return_value
+        expected_path = pair_correlation.path / expected_filename
+        fig.write_image.assert_called_once_with(expected_path)
+
+
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.pair_correlation("Sr2TiO4")
+    check_factory_methods(PairCorrelation, data)
