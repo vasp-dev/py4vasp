@@ -486,7 +486,7 @@ def _Sr2TiO4_structure():
 
 
 def _Sr2TiO4_topology():
-    return raw.RawTopology(
+    return raw.Topology(
         number_ion_types=np.array((2, 1, 4)),
         ion_types=np.array(("Sr", "Ti", "O "), dtype="S"),
     )
@@ -575,7 +575,7 @@ def _Fe3O4_structure():
 
 
 def _Fe3O4_topology():
-    return raw.RawTopology(
+    return raw.Topology(
         number_ion_types=np.array((3, 4)),
         ion_types=np.array(("Fe", "O "), dtype="S"),
     )
