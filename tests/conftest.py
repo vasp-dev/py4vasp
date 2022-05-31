@@ -264,7 +264,7 @@ def _piezoelectric_tensor():
 
 
 def _polarization():
-    return raw.RawPolarization(electron=np.array((1, 2, 3)), ion=np.array((4, 5, 6)))
+    return raw.Polarization(electron=np.array((1, 2, 3)), ion=np.array((4, 5, 6)))
 
 
 def _energy():
