@@ -271,7 +271,7 @@ def _energy():
     labels = ("ion-electron   TOTEN    ", "kinetic energy EKIN", "temperature    TEIN")
     labels = np.array(labels, dtype="S")
     shape = (number_steps, len(labels))
-    return raw.RawEnergy(
+    return raw.Energy(
         labels=labels,
         values=np.arange(np.prod(shape)).reshape(shape),
     )
