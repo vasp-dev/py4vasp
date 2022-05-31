@@ -30,7 +30,7 @@ class Density(_base.Refinery):
     def __str__(self):
         grid = self._raw_data.charge.shape[1:]
         return f"""density:
-    structure: {pretty(Topology(self._raw_data.structure.topology))}
+    structure: {pretty(Topology.from_data(self._raw_data.structure.topology))}
     grid: {grid[0]}, {grid[1]}, {grid[2]}
     {"spin polarized" if self._spin_polarized() else ""}
         """.strip()

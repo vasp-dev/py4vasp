@@ -184,7 +184,7 @@ class Projector(_base.Refinery):
         yield from _parse_recursive(dicts, tree, default_index)
 
     def _topology(self):
-        return Topology(self._raw_data.topology)
+        return Topology.from_data(self._raw_data.topology)
 
     def _init_dicts(self):
         return {

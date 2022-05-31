@@ -210,9 +210,7 @@ mdtraj.Trajectory
             raise exception.NotImplemented(message)
         data = self._to_dict()
         xyz = data["positions"] @ data["lattice_vectors"] * self.A_to_nm
-        trajectory = mdtraj.Trajectory(
-            xyz, Topology(self._raw_data.topology).to_mdtraj()
-        )
+        trajectory = mdtraj.Trajectory(xyz, self._topology().to_mdtraj())
         trajectory.unitcell_vectors = data["lattice_vectors"] * Structure.A_to_nm
         return trajectory
 
@@ -268,7 +266,7 @@ float or np.ndarray
         return len(self._raw_data.positions[self._slice])
 
     def _topology(self):
-        return Topology(self._raw_data.topology)
+        return Topology.from_data(self._raw_data.topology)
 
     def _lattice_vectors(self):
         lattice_vectors = _LatticeVectors(self._raw_data.cell.lattice_vectors)
@@ -308,7 +306,7 @@ class _LatticeVectors(_reader.Reader):
 def _topology_from_ase(structure):
     # TODO: this should be moved to Topology
     ion_types_and_numbers = Counter(structure.get_chemical_symbols())
-    return raw.RawTopology(
+    return raw.Topology(
         number_ion_types=list(ion_types_and_numbers.values()),
         ion_types=list(ion_types_and_numbers.keys()),
     )
