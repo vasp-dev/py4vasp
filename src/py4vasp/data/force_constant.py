@@ -5,23 +5,15 @@ import py4vasp.data._base as _base
 from py4vasp.data import Structure
 
 
-class ForceConstant(_base.DataBase):
+class ForceConstant(_base.Refinery):
     """The force constants (second derivatives of atomic displacement).
 
     You can use this class to extract the force constants of a linear
     response calculation.
-
-    Parameters
-    ----------
-    raw_force_constant : RawForceConstant
-        Dataclass containing the raw force constants data.
     """
 
-    read = _base.RefinementDescriptor("_to_dict")
-    to_dict = _base.RefinementDescriptor("_to_dict")
-    __str__ = _base.RefinementDescriptor("_to_string")
-
-    def _to_string(self):
+    @_base.data_access
+    def __str__(self):
         result = """
 Force constants (eV/Å²):
 atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     zi,xj     zi,yj     zi,zj
@@ -37,7 +29,8 @@ atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     z
             result += f"\n{i + 1:6d}   {j + 1:6d}  {string_representation}"
         return result
 
-    def _to_dict(self):
+    @_base.data_access
+    def to_dict(self):
         """Read structure information and force constants into a dictionary.
 
         The structural information is added to inform about which atoms are included

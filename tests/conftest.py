@@ -428,7 +428,7 @@ def _Sr2TiO4_dos(projectors):
 
 def _Sr2TiO4_force_constants():
     shape = (axes * number_atoms, axes * number_atoms)
-    return raw.RawForceConstant(
+    return raw.ForceConstant(
         structure=_Sr2TiO4_structure(),
         force_constants=np.arange(np.prod(shape)).reshape(shape),
     )
