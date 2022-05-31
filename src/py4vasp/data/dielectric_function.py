@@ -8,17 +8,7 @@ from py4vasp.data._selection import Selection as _Selection
 import py4vasp.data._export as _export
 import py4vasp._third_party.graph as _graph
 import py4vasp._util.convert as _convert
-import py4vasp._util.documentation as _documentation
 import py4vasp._util.selection as _selection
-
-_read_docs = """\
-Read the data into a dictionary.
-
-Returns
--------
-dict
-    Contains the energies at which the dielectric function was evaluated
-    and the dielectric tensor (3x3 matrix) at these energies."""
 
 
 class DielectricFunction(_base.Refinery, _export.Image):
@@ -51,13 +41,14 @@ dielectric function:
         return components
 
     @_base.data_access
-    @_documentation.add(_read_docs)
-    def read(self):
-        return self.to_dict()
-
-    @_base.data_access
-    @_documentation.add(_read_docs)
     def to_dict(self):
+        """Read the data into a dictionary.
+
+        Returns
+        -------
+        dict
+            Contains the energies at which the dielectric function was evaluated
+            and the dielectric tensor (3x3 matrix) at these energies."""
         data = self._raw_data
         return {
             "energies": data.energies[:],

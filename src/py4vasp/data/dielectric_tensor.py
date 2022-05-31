@@ -2,30 +2,21 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import py4vasp.data._base as _base
 import py4vasp._util.convert as _convert
-import py4vasp._util.documentation as _documentation
-
-_read_doc = """\
-Read the dielectric tensor into a dictionary.
-
-Returns
--------
-dict
-Contains the dielectric tensor and a string describing the method it
-was obtained.
-"""
 
 
 class DielectricTensor(_base.Refinery):
     """The static dielectric tensor obtained from linear response."""
 
     @_base.data_access
-    @_documentation.add(_read_doc)
-    def read(self):
-        return self.to_dict()
-
-    @_base.data_access
-    @_documentation.add(_read_doc)
     def to_dict(self):
+        """Read the dielectric tensor into a dictionary.
+
+        Returns
+        -------
+        dict
+        Contains the dielectric tensor and a string describing the method it
+        was obtained.
+        """
         return {
             "clamped_ion": self._raw_data.electron[:],
             "relaxed_ion": self._raw_data.electron[:] + self._raw_data.ion[:],

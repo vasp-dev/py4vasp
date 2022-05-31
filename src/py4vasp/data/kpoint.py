@@ -16,7 +16,7 @@ source : str, optional
     file instead of the one specified in KPOINTS.
 """.strip()
 
-_read_doc = f"""Read the **k** points data into a dictionary.
+_to_dict_doc = f"""Read the **k** points data into a dictionary.
 
 Parameters
 ----------
@@ -114,12 +114,7 @@ reciprocal"""
         return text
 
     @_base.data_access
-    @_documentation.add(_read_doc)
-    def read(self):
-        return self.to_dict()
-
-    @_base.data_access
-    @_documentation.add(_read_doc)
+    @_documentation.add(_to_dict_doc)
     def to_dict(self):
         return {
             "mode": self.mode(),

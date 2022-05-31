@@ -131,6 +131,10 @@ class Refinery:
         "Print a string representation of this instance."
         print(str(self))
 
+    def read(self, *args, **kwargs):
+        "Convenient wrapper around to_dict. Check that function for examples and optional arguments."
+        return self.to_dict(*args, **kwargs)
+
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 

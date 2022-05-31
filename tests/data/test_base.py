@@ -30,8 +30,8 @@ class Example(_base.Refinery):
         self.post_init_called = True
 
     @_base.data_access
-    def read(self):
-        "Read documentation."
+    def to_dict(self):
+        "to_dict documentation."
         return self._raw_data.content
 
     @_base.data_access
@@ -163,15 +163,30 @@ def test_path(mock_access):
 
 
 def test_docs():
-    assert inspect.getdoc(Example.read) == "Read documentation."
+    assert inspect.getdoc(Example.to_dict) == "to_dict documentation."
     assert inspect.getdoc(Example.from_data) is not None
     assert inspect.getdoc(Example.from_path) is not None
     assert inspect.getdoc(Example.from_file) is not None
 
 
+@patch.object(Example, "to_dict")
+def test_read_wrapper(mock):
+    example = Example.from_data(RawData)
+    check_mock(example, mock)
+    check_mock(example, mock, "only positional")
+    check_mock(example, mock, only="keyword")
+    check_mock(example, mock, "positional", key="word")
+
+
+def check_mock(example, mock, *args, **kwargs):
+    example.read(*args, **kwargs)
+    mock.assert_called_once_with(*args, **kwargs)
+    mock.reset_mock()
+
+
 class CamelCase(_base.Refinery):
     @_base.data_access
-    def read(self):
+    def to_dict(self):
         return "convert CamelCase to snake_case"
 
 

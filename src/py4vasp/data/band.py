@@ -12,8 +12,7 @@ from py4vasp.data import _base
 import py4vasp.data._export as _export
 import py4vasp._third_party.graph as _graph
 
-_read_doc = (
-    lambda name: f"""Read the data into a dictionary.
+_to_dict_doc = f"""Read the data into a dictionary.
 
 Parameters
 ----------
@@ -28,8 +27,7 @@ dict
     and a selection is passed, the projections of these bands on the
     selected projectors are included.
 
-{_selection_examples("band", name)}"""
-)
+{_selection_examples("band", "to_dict")}"""
 
 _to_frame_doc = f"""Read the data into a DataFrame.
 
@@ -105,12 +103,7 @@ class Band(_base.Refinery, _export.Image):
     """.strip()
 
     @_base.data_access
-    @_documentation.add(_read_doc("read"))
-    def read(self, selection=None):
-        return self.to_dict(selection)
-
-    @_base.data_access
-    @_documentation.add(_read_doc("to_dict"))
+    @_documentation.add(_to_dict_doc)
     def to_dict(self, selection=None):
         kpoints = self._kpoints()
         return {

@@ -54,7 +54,7 @@ Select the spin-up contribution of the first three atoms combined
 """
 
 
-_read_doc = f"""Read the selected data from an array and store it in a dictionary.
+_to_dict_doc = f"""Read the selected data from an array and store it in a dictionary.
 
 Parameters
 ----------
@@ -143,12 +143,7 @@ class Projector(_base.Refinery):
     orbitals: {", ".join(self._orbital_types())}"""
 
     @_base.data_access
-    @_documentation.add(_read_doc)
-    def read(self, selection=None, projections=None):
-        return self.to_dict(selection, projections)
-
-    @_base.data_access
-    @_documentation.add(_read_doc)
+    @_documentation.add(_to_dict_doc)
     def to_dict(self, selection=None, projections=None):
         if selection is None:
             return {}
