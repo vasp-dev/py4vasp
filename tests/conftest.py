@@ -444,7 +444,7 @@ def _Sr2TiO4_forces():
 
 def _Sr2TiO4_internal_strain():
     shape = (number_atoms, axes, axes, axes)
-    return raw.RawInternalStrain(
+    return raw.InternalStrain(
         structure=_Sr2TiO4_structure(),
         internal_strain=np.arange(np.prod(shape)).reshape(shape),
     )

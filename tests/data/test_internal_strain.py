@@ -8,7 +8,7 @@ from py4vasp.data import InternalStrain, Structure
 @pytest.fixture
 def Sr2TiO4(raw_data):
     raw_internal_strain = raw_data.internal_strain("Sr2TiO4")
-    internal_strain = InternalStrain(raw_internal_strain)
+    internal_strain = InternalStrain.from_data(raw_internal_strain)
     internal_strain.ref = types.SimpleNamespace()
     internal_strain.ref.structure = Structure(raw_internal_strain.structure)
     internal_strain.ref.internal_strain = raw_internal_strain.internal_strain
@@ -57,15 +57,6 @@ Internal strain tensor (eV/Å):
     assert actual == {"text/plain": reference}
 
 
-def test_descriptor(Sr2TiO4, check_descriptors):
-    descriptors = {
-        "_to_dict": ["to_dict", "read"],
-        "_to_string": ["__str__"],
-    }
-    check_descriptors(Sr2TiO4, descriptors)
-
-
-def test_from_file(raw_data, mock_file, check_read):
-    raw_internal_strain = raw_data.internal_strain("Sr2TiO4")
-    with mock_file("internal_strain", raw_internal_strain) as mocks:
-        check_read(InternalStrain, mocks, raw_internal_strain)
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.internal_strain("Sr2TiO4")
+    check_factory_methods(InternalStrain, data)

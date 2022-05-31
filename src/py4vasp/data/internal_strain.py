@@ -4,23 +4,15 @@ import py4vasp.data._base as _base
 from py4vasp.data import Structure
 
 
-class InternalStrain(_base.DataBase):
+class InternalStrain(_base.Refinery):
     """The internal strain
 
     You can use this class to extract the internal strain of a linear
     response calculation.
-
-    Parameters
-    ----------
-    raw_internal_strain : RawInternalStrain
-        Dataclass containing the raw internal strain data.
     """
 
-    read = _base.RefinementDescriptor("_to_dict")
-    to_dict = _base.RefinementDescriptor("_to_dict")
-    __str__ = _base.RefinementDescriptor("_to_string")
-
-    def _to_string(self):
+    @_base.data_access
+    def __str__(self):
         result = """
 Internal strain tensor (eV/Å):
  ion  displ     X           Y           Z          XY          YZ          ZX
@@ -33,7 +25,8 @@ Internal strain tensor (eV/Å):
                 ion_string = "    "
         return result.strip()
 
-    def _to_dict(self):
+    @_base.data_access
+    def to_dict(self):
         return {
             "structure": self._structure.read(),
             "internal_strain": self._raw_data.internal_strain[:],
