@@ -413,7 +413,7 @@ def _Sr2TiO4_cell():
 
 def _Sr2TiO4_dos(projectors):
     energies = np.linspace(-1, 3, number_points)
-    raw_dos = raw.RawDos(
+    raw_dos = raw.Dos(
         fermi_energy=1.372,
         energies=energies,
         dos=np.array([energies ** 2]),
@@ -514,7 +514,7 @@ def _Fe3O4_density(selection):
 
 def _Fe3O4_dos(projectors):
     energies = np.linspace(-2, 2, number_points)
-    raw_dos = raw.RawDos(
+    raw_dos = raw.Dos(
         fermi_energy=-0.137,
         energies=energies,
         dos=np.array(((energies + 0.5) ** 2, (energies - 0.5) ** 2)),
