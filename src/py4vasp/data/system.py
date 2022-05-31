@@ -4,9 +4,14 @@ import py4vasp.data._base as _base
 import py4vasp._util.convert as _convert
 
 
-class System(_base.DataBase):
+class System(_base.Refinery):
     "Extract the system tag from the INCAR file."
-    __str__ = _base.RefinementDescriptor("_to_string")
 
-    def _to_string(self):
+    @_base.data_access
+    def __str__(self):
         return _convert.text_to_string(self._raw_data.system)
+
+    @_base.data_access
+    def to_dict(self):
+        "Returns a dictionary containing the system tag."
+        return {"system": str(self)}

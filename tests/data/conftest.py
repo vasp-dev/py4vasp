@@ -29,10 +29,10 @@ def check_instance_accesses_data(instance, data, file=None):
     failed = []
     for name, method in inspect.getmembers(instance, inspect.ismethod):
         if should_test_method(name):
-            try:
-                check_method_accesses_data(data, method, file)
-            except (AttributeError, AssertionError):
-                failed.append(name)
+            # try:
+            check_method_accesses_data(data, method, file)
+        # except (AttributeError, AssertionError):
+        # failed.append(name)
     if failed:
         message = (
             f"The method(s) {', '.join(failed)} do not load the data from file."
