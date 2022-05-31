@@ -8,7 +8,7 @@ from py4vasp.data import ElasticModulus
 @pytest.fixture
 def elastic_modulus(raw_data):
     raw_elastic_modulus = raw_data.elastic_modulus("dft")
-    elastic_modulus = ElasticModulus(raw_elastic_modulus)
+    elastic_modulus = ElasticModulus.from_data(raw_elastic_modulus)
     elastic_modulus.ref = types.SimpleNamespace()
     elastic_modulus.ref.clamped_ion = raw_elastic_modulus.clamped_ion
     elastic_modulus.ref.relaxed_ion = raw_elastic_modulus.relaxed_ion
@@ -45,15 +45,6 @@ ZX         117.0000    121.0000    125.0000    119.0000    123.0000    121.0000
     assert actual == {"text/plain": reference}
 
 
-def test_descriptor(elastic_modulus, check_descriptors):
-    descriptors = {
-        "_to_dict": ["to_dict", "read"],
-        "_to_string": ["__str__"],
-    }
-    check_descriptors(elastic_modulus, descriptors)
-
-
-def test_from_file(raw_data, mock_file, check_read):
-    raw_elastic_modulus = raw_data.elastic_modulus("dft")
-    with mock_file("elastic_modulus", raw_elastic_modulus) as mocks:
-        check_read(ElasticModulus, mocks, raw_elastic_modulus)
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.elastic_modulus("dft")
+    check_factory_methods(ElasticModulus, data)

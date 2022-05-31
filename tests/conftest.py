@@ -237,7 +237,7 @@ def _dielectric_tensor(method):
 def _elastic_modulus():
     shape = (2, axes, axes, axes, axes)
     data = np.arange(np.prod(shape)).reshape(shape)
-    return raw.RawElasticModulus(
+    return raw.ElasticModulus(
         clamped_ion=data[0],
         relaxed_ion=data[1],
     )
