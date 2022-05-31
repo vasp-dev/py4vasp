@@ -35,9 +35,12 @@ class Mixin:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._set_steps_and_slice(-1)
+        self._original = True
 
     def __getitem__(self, steps):
+        self._raise_error_if_not_original()
         new = copy.copy(self)
+        new._original = False
         return new._set_steps_and_slice(steps)
 
     def _set_steps_and_slice(self, steps):
@@ -54,6 +57,11 @@ class Mixin:
     @property
     def _last_step_in_slice(self):
         return (self._slice.stop or 0) - 1
+
+    def _raise_error_if_not_original(self):
+        if not self._original:
+            message = "Taking nested slices is not implemented. Please derive all slices from the original Refinery."
+            raise exception.NotImplemented(message)
 
 
 def _create_slice_for_current_step_if_possible(steps):

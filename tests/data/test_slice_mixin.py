@@ -56,6 +56,11 @@ def subset_of_steps():
     return ExampleSlice()[1:4]
 
 
+@pytest.fixture
+def stride():
+    return ExampleSlice()[::3]
+
+
 def test_pass_arguments_to_other():
     example = ExampleSlice("positional", key="word")
     assert example._args == ("positional",)
@@ -82,6 +87,11 @@ def test_access_subset_of_steps(subset_of_steps):
     assert subset_of_steps.slice() == slice(1, 4)
 
 
+def test_access_stride(stride):
+    assert stride.steps() == slice(None, None, 3)
+    assert stride.slice() == slice(None, None, 3)
+
+
 def test_range_single_step(single_step):
     assert single_step.range_steps() == 0
     assert single_step.range_slice() == range(0, 1)
@@ -100,6 +110,11 @@ def test_range_all_steps(all_steps):
 def test_range_subset_of_steps(subset_of_steps):
     assert subset_of_steps.range_steps() == range(1, 4)
     assert subset_of_steps.range_slice() == range(1, 4)
+
+
+def test_range_stride(stride):
+    assert stride.range_steps() == range(0, 10, 3)
+    assert stride.range_slice() == range(0, 10, 3)
 
 
 def test_copy_created():
@@ -127,6 +142,10 @@ def test_is_slice_subset_of_steps(subset_of_steps):
     assert subset_of_steps.is_slice()
 
 
+def test_is_slice_stride(stride):
+    assert stride.is_slice()
+
+
 def test_last_step_in_slice_single_step(single_step):
     assert single_step.last_step_in_slice() == 0
 
@@ -143,12 +162,21 @@ def test_last_step_in_slice_subset_of_steps(subset_of_steps):
     assert subset_of_steps.last_step_in_slice() == 3
 
 
-def test_incorrect_argument(all_steps):
+def test_last_step_in_slice_stride(stride):
+    assert stride.last_step_in_slice() == -1
+
+
+def test_incorrect_argument():
     with pytest.raises(exception.IncorrectUsage):
-        all_steps["step not an integer"]
+        ExampleSlice()["step not an integer"]
 
 
 def test_documentation(single_step, last_step):
     reference = _slice.examples("example")
     assert inspect.getdoc(single_step) == reference
     assert inspect.getdoc(last_step) == reference
+
+
+def test_nested_slices(subset_of_steps):
+    with pytest.raises(exception.NotImplemented):
+        subset_of_steps[:]
