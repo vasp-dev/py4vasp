@@ -324,7 +324,7 @@ def _grid_kpoints(mode, labels):
 def _magnetism(number_components):
     lmax = 3
     shape = (number_steps, number_components, number_atoms, lmax)
-    return raw.RawMagnetism(
+    return raw.Magnetism(
         structure=_Fe3O4_structure(), moments=np.arange(np.prod(shape)).reshape(shape)
     )
 

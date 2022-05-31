@@ -11,7 +11,7 @@ from unittest.mock import patch
 @pytest.fixture
 def collinear_magnetism(raw_data):
     raw_magnetism = raw_data.magnetism("collinear")
-    magnetism = Magnetism(raw_magnetism)
+    magnetism = Magnetism.from_data(raw_magnetism)
     magnetism.ref = types.SimpleNamespace()
     magnetism.ref.charges = raw_magnetism.moments[:, 0, :, :]
     magnetism.ref.moments = raw_magnetism.moments[:, 1, :, :]
@@ -21,7 +21,7 @@ def collinear_magnetism(raw_data):
 @pytest.fixture
 def noncollinear_magnetism(raw_data):
     raw_magnetism = raw_data.magnetism("noncollinear")
-    magnetism = Magnetism(raw_magnetism)
+    magnetism = Magnetism.from_data(raw_magnetism)
     magnetism.ref = types.SimpleNamespace()
     magnetism.ref.charges = raw_magnetism.moments[:, 0, :, :]
     magnetism.ref.moments = np.moveaxis(raw_magnetism.moments[:, 1:4, :, :], 1, 3)
@@ -35,7 +35,7 @@ def charge_only(raw_data):
             return None
 
     raw_magnetism = raw_data.magnetism("charge_only")
-    magnetism = Magnetism(raw_magnetism)
+    magnetism = Magnetism.from_data(raw_magnetism)
     magnetism.ref = types.SimpleNamespace()
     magnetism.ref.charges = raw_magnetism.moments[:, 0, :, :]
     magnetism.ref.moments = GetItemNone()
@@ -232,13 +232,6 @@ def test_charge_only_print(charge_only, format_):
     assert actual == {"text/plain": "not spin polarized"}
 
 
-def test_nonexisting_magnetism():
-    with pytest.raises(exception.NoData):
-        magnetism = Magnetism(None).read()
-    with pytest.raises(exception.NoData):
-        magnetism = Magnetism(None)[:].read()
-
-
 def test_incorrect_argument(all_magnetism):
     check_incorrect_argument(all_magnetism.collinear)
     check_incorrect_argument(all_magnetism.noncollinear)
@@ -259,20 +252,6 @@ def check_incorrect_argument(magnetism):
         magnetism[out_of_bounds].total_charges()
 
 
-def test_descriptor(collinear_magnetism, check_descriptors):
-    last_step = collinear_magnetism[-1]
-    descriptors = {
-        "_to_dict": ["to_dict", "read"],
-        "_to_viewer3d": ["to_viewer3d", "plot"],
-        "_charges": ["charges"],
-        "_moments": ["moments"],
-        "_total_charges": ["total_charges"],
-        "_total_moments": ["total_moments"],
-    }
-    check_descriptors(last_step, descriptors)
-
-
-def test_from_file(raw_data, mock_file, check_read):
-    raw_magnetism = raw_data.magnetism("collinear")
-    with mock_file("magnetism", raw_magnetism) as mocks:
-        check_read(Magnetism, mocks, raw_magnetism)
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.magnetism("collinear")
+    check_factory_methods(Magnetism, data)
