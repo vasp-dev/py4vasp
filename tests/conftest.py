@@ -461,7 +461,7 @@ def _Sr2TiO4_projectors():
 
 def _Sr2TiO4_stress():
     shape = (number_steps, axes, axes)
-    return raw.RawStress(
+    return raw.Stress(
         structure=_Sr2TiO4_structure(),
         stress=np.arange(np.prod(shape)).reshape(shape),
     )
@@ -550,7 +550,7 @@ def _Fe3O4_projectors():
 
 def _Fe3O4_stress():
     shape = (number_steps, axes, axes)
-    return raw.RawStress(
+    return raw.Stress(
         structure=_Fe3O4_structure(),
         stress=np.arange(np.prod(shape)).reshape(shape),
     )

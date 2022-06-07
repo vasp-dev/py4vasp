@@ -11,7 +11,7 @@ import py4vasp.exceptions as exception
 @pytest.fixture
 def Sr2TiO4(raw_data):
     raw_stress = raw_data.stress("Sr2TiO4")
-    stress = Stress(raw_stress)
+    stress = Stress.from_data(raw_stress)
     stress.ref = types.SimpleNamespace()
     stress.ref.structure = Structure(raw_stress.structure)
     stress.ref.stress = raw_stress.stress
@@ -21,7 +21,7 @@ def Sr2TiO4(raw_data):
 @pytest.fixture
 def Fe3O4(raw_data):
     raw_stress = raw_data.stress("Fe3O4")
-    stress = Stress(raw_stress)
+    stress = Stress.from_data(raw_stress)
     stress.ref = types.SimpleNamespace()
     stress.ref.structure = Structure(raw_stress.structure)
     stress.ref.stress = raw_stress.stress
@@ -90,15 +90,6 @@ in kB      18.00000    22.00000    26.00000    20.00000    24.00000    22.00000
     assert actual == {"text/plain": ref_plain}
 
 
-def test_descriptor(Sr2TiO4, check_descriptors):
-    descriptors = {
-        "_to_dict": ["to_dict", "read"],
-        "_to_string": ["__str__"],
-    }
-    check_descriptors(Sr2TiO4, descriptors)
-
-
-def test_from_file(raw_data, mock_file, check_read):
-    raw_stress = raw_data.stress("Sr2TiO4")
-    with mock_file("stress", raw_stress) as mocks:
-        check_read(Stress, mocks, raw_stress)
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.stress("Sr2TiO4")
+    check_factory_methods(Stress, data)
