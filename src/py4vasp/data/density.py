@@ -1,12 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.data import Viewer3d, Structure, Topology
-from py4vasp.data import _base
+from py4vasp.data import _base, _structure, Topology
 from IPython.lib.pretty import pretty
-from pathlib import Path
 import py4vasp.exceptions as exceptions
-
-_filename = "vaspwave.h5"
 
 
 class _ViewerWrapper:
@@ -19,10 +15,10 @@ class _ViewerWrapper:
         self._viewer.show_isosurface(data, **options)
 
 
-class Density(_base.Refinery):
+class Density(_base.Refinery, _structure.Mixin):
     """The charge and magnetization density.
 
-    You can use this class to extract the density data of the Vasp calculation
+    You can use this class to extract the density data of the VASP calculation
     and to have a quick glance at the resulting density.
     """
 
@@ -37,7 +33,7 @@ class Density(_base.Refinery):
 
     @_base.data_access
     def to_dict(self):
-        """Read the electionic density into a dictionary.
+        """Read the electronic density into a dictionary.
 
         Returns
         -------
@@ -46,7 +42,7 @@ class Density(_base.Refinery):
             of a grid in the unit cell.
         """
         return {
-            "structure": self._structure().read(),
+            "structure": self._structure.read(),
             "charge": self._raw_data.charge[0],
             "magnetization": self._magnetization_if_present(),
         }
@@ -58,7 +54,7 @@ class Density(_base.Refinery):
         Parameters
         ----------
         selection : str
-            Can be either *charge* or *magnetization*, dependending on which quantity
+            Can be either *charge* or *magnetization*, depending on which quantity
             should be visualized.
         user_options
             Further arguments with keyword that get directly passed on to the
@@ -70,7 +66,7 @@ class Density(_base.Refinery):
         Viewer3d
             Visualize an isosurface of the density within the 3d structure.
         """
-        viewer = self._structure().plot()
+        viewer = self._structure.plot()
         if selection == "charge":
             self._plot_charge(_ViewerWrapper(viewer), **user_options)
         elif selection == "magnetization":
@@ -79,9 +75,6 @@ class Density(_base.Refinery):
             msg = f"'{selection}' is an unknown option, please use 'charge' or 'magnetization' instead."
             raise exceptions.IncorrectUsage(msg)
         return viewer
-
-    def _structure(self):
-        return Structure.from_data(self._raw_data.structure)
 
     def _magnetization_if_present(self):
         if self._spin_polarized():
@@ -103,7 +96,7 @@ class Density(_base.Refinery):
 
     def _raise_error_if_not_spin_polarized(self):
         if not self._spin_polarized():
-            msg = "Density does not contain magnetization. Please rerun Vasp with ISPIN = 2 to obtain it."
+            msg = "Density does not contain magnetization. Please rerun VASP with ISPIN = 2 to obtain it."
             raise exceptions.NoData(msg)
 
 

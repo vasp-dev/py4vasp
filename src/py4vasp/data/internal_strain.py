@@ -1,10 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import py4vasp.data._base as _base
-from py4vasp.data import Structure
+from py4vasp.data import _base, _structure
 
 
-class InternalStrain(_base.Refinery):
+class InternalStrain(_base.Refinery, _structure.Mixin):
     """The internal strain
 
     You can use this class to extract the internal strain of a linear
@@ -31,10 +30,6 @@ Internal strain tensor (eV/Å):
             "structure": self._structure.read(),
             "internal_strain": self._raw_data.internal_strain[:],
         }
-
-    @property
-    def _structure(self):
-        return Structure.from_data(self._raw_data.structure)
 
 
 def _add_matrix_string(ion_string, displacement, matrix):

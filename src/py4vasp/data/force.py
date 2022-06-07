@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp.data import _base, _slice, Structure
+from py4vasp.data import _base, _slice, _structure
 import py4vasp.exceptions as exception
 import py4vasp._util.documentation as _documentation
 import py4vasp._util.reader as _reader
@@ -19,7 +19,7 @@ calculation.
 
 
 @_documentation.add(forces_docstring)
-class Force(_slice.Mixin, _base.Refinery):
+class Force(_slice.Mixin, _base.Refinery, _structure.Mixin):
     force_rescale = 1.5
     "Scaling constant to convert forces to Å."
 
@@ -76,10 +76,6 @@ Viewer3d
         fig = self._structure.plot()
         fig.show_arrows_at_atoms(forces, color)
         return fig
-
-    @property
-    def _structure(self):
-        return Structure.from_data(self._raw_data.structure)
 
     @property
     def _force(self):
