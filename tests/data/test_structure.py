@@ -142,6 +142,7 @@ def test_from_ase(Sr2TiO4, Assert):
 def test_to_mdtraj(Sr2TiO4, Assert):
     for steps in (slice(None), slice(1, 3)):
         trajectory = Sr2TiO4[steps].to_mdtraj()
+        check_Sr2TiO4_mdtraj(trajectory, Sr2TiO4.ref, steps, Assert)
     with pytest.raises(exception.NotImplemented):
         Sr2TiO4[0].to_mdtraj()
     with pytest.raises(exception.NotImplemented):
@@ -150,8 +151,8 @@ def test_to_mdtraj(Sr2TiO4, Assert):
 
 def check_Sr2TiO4_mdtraj(trajectory, reference, steps, Assert):
     assert trajectory.n_frames == len(reference.positions[steps])
-    assert trajectory.n_atoms == len(reference.elements[steps])
-    unitcell_vectors = Trajectory.A_to_nm * reference.lattice_vectors[steps]
+    assert trajectory.n_atoms == 7
+    unitcell_vectors = Structure.A_to_nm * reference.lattice_vectors[steps]
     cartesian_positions = [
         pos @ cell for pos, cell in zip(reference.positions[steps], unitcell_vectors)
     ]
