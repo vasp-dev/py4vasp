@@ -478,7 +478,7 @@ def _Sr2TiO4_structure():
         [0.50000, 0.00000, 0.5],
         [0.00000, 0.50000, 0.5],
     ]
-    return raw.RawStructure(
+    return raw.Structure(
         topology=_Sr2TiO4_topology(),
         cell=_Sr2TiO4_cell(),
         positions=np.tile(positions, repetitions),
@@ -567,7 +567,7 @@ def _Fe3O4_structure():
         [0.73690, 0.5, 0.72389],
     ]
     shift = np.linspace(-0.02, 0.01, number_steps)
-    return raw.RawStructure(
+    return raw.Structure(
         topology=_Fe3O4_topology(),
         cell=_Fe3O4_cell(),
         positions=np.add.outer(shift, positions),

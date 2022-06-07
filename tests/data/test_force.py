@@ -15,7 +15,7 @@ def Sr2TiO4(raw_data):
     raw_forces = raw_data.force("Sr2TiO4")
     forces = Force.from_data(raw_forces)
     forces.ref = types.SimpleNamespace()
-    forces.ref.structure = Structure(raw_forces.structure)
+    forces.ref.structure = Structure.from_data(raw_forces.structure)
     forces.ref.forces = raw_forces.forces
     return forces
 
@@ -25,7 +25,7 @@ def Fe3O4(raw_data):
     raw_forces = raw_data.force("Fe3O4")
     forces = Force.from_data(raw_forces)
     forces.ref = types.SimpleNamespace()
-    forces.ref.structure = Structure(raw_forces.structure)
+    forces.ref.structure = Structure.from_data(raw_forces.structure)
     forces.ref.forces = raw_forces.forces
     return forces
 
@@ -66,7 +66,7 @@ def test_plot_Fe3O4(Fe3O4, Assert):
 
 
 def check_plot_forces(forces, step, Assert):
-    with patch("py4vasp.data.Structure._to_viewer3d") as plot:
+    with patch("py4vasp.data.Structure.plot") as plot:
         if step == -1:
             forces.plot()
         else:

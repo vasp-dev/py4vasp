@@ -86,7 +86,7 @@ Viewer3d
                 "Visualizing magnetic moments for more than one step is not implemented"
             )
             raise exception.NotImplemented(message)
-        viewer = Structure(self._raw_data.structure)[self._steps].plot()
+        viewer = Structure.from_data(self._raw_data.structure)[self._steps].plot()
         moments = self._prepare_magnetic_moments_for_plotting()
         if moments is not None:
             viewer.show_arrows_at_atoms(moments)

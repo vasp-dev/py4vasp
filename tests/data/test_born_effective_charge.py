@@ -10,7 +10,7 @@ def Sr2TiO4(raw_data):
     raw_born_charges = raw_data.born_effective_charge("Sr2TiO4")
     born_charges = BornEffectiveCharge.from_data(raw_born_charges)
     born_charges.ref = types.SimpleNamespace()
-    born_charges.ref.structure = Structure(raw_born_charges.structure)
+    born_charges.ref.structure = Structure.from_data(raw_born_charges.structure)
     born_charges.ref.charge_tensors = raw_born_charges.charge_tensors
     return born_charges
 

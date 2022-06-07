@@ -13,7 +13,7 @@ def Sr2TiO4(raw_data):
     raw_stress = raw_data.stress("Sr2TiO4")
     stress = Stress.from_data(raw_stress)
     stress.ref = types.SimpleNamespace()
-    stress.ref.structure = Structure(raw_stress.structure)
+    stress.ref.structure = Structure.from_data(raw_stress.structure)
     stress.ref.stress = raw_stress.stress
     return stress
 
@@ -23,7 +23,7 @@ def Fe3O4(raw_data):
     raw_stress = raw_data.stress("Fe3O4")
     stress = Stress.from_data(raw_stress)
     stress.ref = types.SimpleNamespace()
-    stress.ref.structure = Structure(raw_stress.structure)
+    stress.ref.structure = Structure.from_data(raw_stress.structure)
     stress.ref.stress = raw_stress.stress
     return stress
 

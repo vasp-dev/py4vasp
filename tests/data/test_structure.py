@@ -60,41 +60,11 @@ def Fe3O4(raw_data):
 
 
 def make_structure(raw_structure):
-    structure = Structure(raw_structure)
+    structure = Structure.from_data(raw_structure)
     structure.ref = types.SimpleNamespace()
     structure.ref.lattice_vectors = raw_structure.cell.lattice_vectors
     structure.ref.positions = raw_structure.positions
     return structure
-
-
-# @pytest.fixture
-# def Fe3O4_collinear(raw_data):
-#     raw_structure = raw_data.structure("Fe3O4 collinear")
-#     structure = Structure(raw_structure)
-#     structure.ref = types.SimpleNamespace()
-#     structure.ref.moments = np.sum(raw_structure.magnetism.moments[:, 1], axis=2)
-#     structure.ref.lattice_vectors = raw_structure.cell.lattice_vectors
-#     structure.ref.positions = np.mod(raw_structure.positions, 1)
-#     return structure
-#
-#
-# @pytest.fixture
-# def Fe3O4_noncollinear(raw_data):
-#     raw_structure = raw_data.structure("Fe3O4 noncollinear")
-#     structure = Structure(raw_structure)
-#     structure.ref = types.SimpleNamespace()
-#     structure.ref.moments = Magnetism(raw_structure.magnetism)[:].total_moments()
-#     return structure
-#
-#
-# @pytest.fixture
-# def Fe3O4_charge_only(raw_data):
-#     return Structure(raw_data.structure("Fe3O4 charge_only"))
-
-
-# @pytest.fixture
-# def Fe3O4_zero_moments(raw_data):
-#     return Structure(raw_data.structure("Fe3O4 zero_moments"))
 
 
 def test_read_Sr2TiO4(Sr2TiO4, Assert):
@@ -293,22 +263,6 @@ def test_print_trajectory(Sr2TiO4, format_):
     assert actual == {"text/plain": ref_plain, "text/html": ref_html}
 
 
-def test_descriptor(Sr2TiO4, check_descriptors):
-    descriptors = {
-        "_to_dict": ["to_dict", "read"],
-        "_to_viewer3d": ["to_viewer3d", "plot"],
-        "_to_string": ["__str__"],
-        "_to_ase": ["to_ase"],
-        "_to_mdtraj": ["to_mdtraj"],
-        "_to_poscar": ["to_POSCAR"],
-        "_cartesian_positions": ["cartesian_positions"],
-        "_number_atoms": ["number_atoms"],
-        "_number_steps": ["number_steps"],
-    }
-    check_descriptors(Sr2TiO4, descriptors)
-
-
-def test_from_file(raw_data, mock_file, check_read):
-    raw_structure = raw_data.structure("Sr2TiO4")
-    with mock_file("structure", raw_structure) as mocks:
-        check_read(Structure, mocks, raw_structure)
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.structure("Sr2TiO4")
+    check_factory_methods(Structure, data)

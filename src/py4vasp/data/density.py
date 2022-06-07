@@ -81,7 +81,7 @@ class Density(_base.Refinery):
         return viewer
 
     def _structure(self):
-        return Structure(self._raw_data.structure)
+        return Structure.from_data(self._raw_data.structure)
 
     def _magnetization_if_present(self):
         if self._spin_polarized():

@@ -14,7 +14,7 @@ def collinear_density(raw_data):
     raw_density = raw_data.density("Fe3O4 collinear")
     density = Density.from_data(raw_density)
     density.ref = types.SimpleNamespace()
-    density.ref.structure = Structure(raw_density.structure).read()
+    density.ref.structure = Structure.from_data(raw_density.structure).read()
     density.ref.charge = raw_density.charge[0]
     density.ref.magnetization = raw_density.charge[1]
     return density

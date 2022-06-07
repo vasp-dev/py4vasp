@@ -10,7 +10,7 @@ def Sr2TiO4(raw_data):
     raw_force_constants = raw_data.force_constant("Sr2TiO4")
     force_constants = ForceConstant.from_data(raw_force_constants)
     force_constants.ref = types.SimpleNamespace()
-    force_constants.ref.structure = Structure(raw_force_constants.structure)
+    force_constants.ref.structure = Structure.from_data(raw_force_constants.structure)
     force_constants.ref.force_constants = raw_force_constants.force_constants
     return force_constants
 

@@ -1,17 +1,15 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.data import Viewer3d, Topology
+from py4vasp.data import _base, _slice, Viewer3d, Topology
 from py4vasp.data._base import RefinementDescriptor
 from IPython.lib.pretty import pretty
 from collections import Counter
 from dataclasses import dataclass
-import py4vasp.data._trajectory as _trajectory
 import py4vasp.exceptions as exception
 import py4vasp.raw as raw
 import py4vasp._util.documentation as _documentation
 import py4vasp._util.reader as _reader
 import py4vasp._util.sanity_check as _check
-from py4vasp.raw import RawStructure, RawCell
 import ase.io
 import io
 import numpy as np
@@ -36,34 +34,15 @@ calculation. Typically you want to do this to inspect the converged structure
 after an ionic relaxation or to visualize the changes of the structure along
 the simulation.
 
-Parameters
-----------
-raw_structure : RawStructure
-    Dataclass containing the raw data defining the structure.
-
-{_trajectory.trajectory_examples("structure")}
+{_slice.examples("structure")}
 """.strip()
 
 
 @_documentation.add(_structure_docs)
-class Structure(_trajectory.DataTrajectory):
+class Structure(_slice.Mixin, _base.Refinery):
 
     A_to_nm = 0.1
     "Converting Å to nm used for mdtraj trajectories."
-
-    read = RefinementDescriptor("_to_dict")
-    to_dict = RefinementDescriptor("_to_dict")
-    plot = RefinementDescriptor("_to_viewer3d")
-    to_viewer3d = RefinementDescriptor("_to_viewer3d")
-    to_ase = RefinementDescriptor("_to_ase")
-    to_mdtraj = RefinementDescriptor("_to_mdtraj")
-    to_POSCAR = RefinementDescriptor("_to_poscar")
-    cartesian_positions = RefinementDescriptor("_cartesian_positions")
-    volume = RefinementDescriptor("_volume")
-    __str__ = RefinementDescriptor("_to_string")
-    _repr_html_ = RefinementDescriptor("_to_html")
-    number_atoms = RefinementDescriptor("_number_atoms")
-    number_steps = RefinementDescriptor("_number_steps")
 
     @classmethod
     def from_POSCAR(cls, poscar):
@@ -75,18 +54,20 @@ class Structure(_trajectory.DataTrajectory):
     @classmethod
     def from_ase(cls, structure):
         """Generate a structure from the ase Atoms class."""
-        structure = raw.RawStructure(
+        structure = raw.Structure(
             topology=_topology_from_ase(structure),
             cell=_cell_from_ase(structure),
             positions=structure.get_scaled_positions()[np.newaxis],
         )
-        return cls(structure)
+        return cls.from_data(structure)
 
-    def _to_string(self):
+    @_base.data_access
+    def __str__(self):
         "Generate a string representing the final structure usable as a POSCAR file."
         return self._create_repr()
 
-    def _to_html(self):
+    @_base.data_access
+    def _repr_html_(self):
         format_ = _Format(
             begin="<table>\n<tr><td>",
             separator="</td><td>",
@@ -105,11 +86,12 @@ class Structure(_trajectory.DataTrajectory):
 {pretty(self._topology())}{self._step_string()}{format_.newline}
 1.0{format_.newline}
 {vecs_to_table(self._raw_data.cell.lattice_vectors[step])}
-{self._topology().to_poscar(format_.newline)}{format_.newline}
+{self._topology().to_POSCAR(format_.newline)}{format_.newline}
 Direct{format_.newline}
 {vecs_to_table(self._raw_data.positions[step])}
         """.strip()
 
+    @_base.data_access
     @_documentation.add(
         f"""Read the structual information into a dictionary.
 
@@ -120,9 +102,9 @@ dict
     all the atoms in units of the lattice vectors and the elements of
     the atoms for all selected steps.
 
-{_trajectory.trajectory_examples("structure", "read")}"""
+{_slice.examples("structure", "read")}"""
     )
-    def _to_dict(self):
+    def to_dict(self):
         return {
             "lattice_vectors": self._lattice_vectors(),
             "positions": self._raw_data.positions[self._steps],
@@ -130,6 +112,7 @@ dict
             "names": self._topology().names(),
         }
 
+    @_base.data_access
     @_documentation.add(
         f"""Generate a 3d representation of the structure(s).
 
@@ -144,14 +127,15 @@ Returns
 Viewer3d
     Visualize the structure(s) as a 3d figure.
 
-{_trajectory.trajectory_examples("structure", "plot")}"""
+{_slice.examples("structure", "plot")}"""
     )
-    def _to_viewer3d(self, supercell=None):
+    def plot(self, supercell=None):
         if self._is_slice:
             return self._viewer_from_trajectory()
         else:
             return self._viewer_from_structure(supercell)
 
+    @_base.data_access
     @_documentation.add(
         f"""Convert the structure to an ase Atoms object.
 
@@ -166,15 +150,15 @@ Returns
 ase.Atoms
     Structural information for ase package.
 
-{_trajectory.trajectory_examples("structure", "to_ase")}"""
+{_slice.examples("structure", "to_ase")}"""
     )
-    def _to_ase(self, supercell=None):
+    def to_ase(self, supercell=None):
         if self._is_slice:
             message = (
                 "Converting multiple structures to ASE trajectories is not implemented."
             )
             raise exception.NotImplemented(message)
-        data = self._to_dict()
+        data = self.to_dict()
         structure = ase.Atoms(
             symbols=data["elements"],
             cell=data["lattice_vectors"],
@@ -192,6 +176,7 @@ ase.Atoms
                 raise exception.IncorrectUsage(error_message) from err
         return structure
 
+    @_base.data_access
     @_documentation.add(
         f"""Convert the trajectory to mdtraj.Trajectory
 
@@ -202,18 +187,19 @@ mdtraj.Trajectory
     trajectory. By converting the Vasp data to their format, we facilitate
     using all functions of that package.
 
-{_trajectory.trajectory_examples("structure", "to_mdtraj")}"""
+{_slice.examples("structure", "to_mdtraj")}"""
     )
-    def _to_mdtraj(self):
+    def to_mdtraj(self):
         if not self._is_slice:
             message = "Converting a single structure to mdtraj is not implemented."
             raise exception.NotImplemented(message)
-        data = self._to_dict()
+        data = self.to_dict()
         xyz = data["positions"] @ data["lattice_vectors"] * self.A_to_nm
         trajectory = mdtraj.Trajectory(xyz, self._topology().to_mdtraj())
         trajectory.unitcell_vectors = data["lattice_vectors"] * Structure.A_to_nm
         return trajectory
 
+    @_base.data_access
     @_documentation.add(
         f"""Convert the structure(s) to a POSCAR format
 
@@ -222,15 +208,16 @@ Returns
 str or list[str]
     Returns the POSCAR of the current or all selected steps.
 
-{_trajectory.trajectory_examples("structure", "to_POSCAR")}"""
+{_slice.examples("structure", "to_POSCAR")}"""
     )
-    def _to_poscar(self):
+    def to_POSCAR(self):
         if not self._is_slice:
             return self._create_repr()
         else:
             message = "Converting multiple structures to a POSCAR is currently not implemented."
             raise exception.NotImplemented(message)
 
+    @_base.data_access
     @_documentation.add(
         f"""Convert the positions from direct coordinates to cartesian ones.
 
@@ -239,11 +226,12 @@ Returns
 np.ndarray
     Position of all atoms in cartesian coordinates in Å.
 
-{_trajectory.trajectory_examples("structure", "cartesian_positions")}"""
+{_slice.examples("structure", "cartesian_positions")}"""
     )
-    def _cartesian_positions(self):
+    def cartesian_positions(self):
         return self._raw_data.positions[self._steps] @ self._lattice_vectors()
 
+    @_base.data_access
     @_documentation.add(
         f"""Return the volume of the unit cell for the selected steps.
 
@@ -252,16 +240,18 @@ Returns
 float or np.ndarray
     The volume(s) of the selected step(s) in Å³.
 
-{_trajectory.trajectory_examples("structure", "volume")}"""
+{_slice.examples("structure", "volume")}"""
     )
-    def _volume(self):
+    def volume(self):
         return np.abs(np.linalg.det(self._lattice_vectors()))
 
-    def _number_atoms(self):
+    @_base.data_access
+    def number_atoms(self):
         """Return the total number of atoms in the structure."""
         return self._raw_data.positions.shape[1]
 
-    def _number_steps(self):
+    @_base.data_access
+    def number_steps(self):
         """Return the number of structures in the trajectory."""
         return len(self._raw_data.positions[self._slice])
 

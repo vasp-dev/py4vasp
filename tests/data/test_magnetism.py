@@ -168,7 +168,7 @@ def test_plot_noncollinear_magnetism(noncollinear_magnetism, Assert):
 
 
 def get_show_arrow_args(magnetism, step):
-    with patch("py4vasp.data.Structure._to_viewer3d") as plot:
+    with patch("py4vasp.data.Structure.plot") as plot:
         if step == -1:
             magnetism.plot()
         else:
@@ -199,7 +199,7 @@ def check_slices_not_implemented(magnetism):
 
 
 def test_plot_charge_only(charge_only):
-    with patch("py4vasp.data.Structure._to_viewer3d") as plot:
+    with patch("py4vasp.data.Structure.plot") as plot:
         charge_only.plot()
         plot.assert_called_once()
         viewer = plot.return_value

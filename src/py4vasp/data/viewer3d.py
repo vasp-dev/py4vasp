@@ -56,7 +56,7 @@ class Viewer3d:
         supercell : int or np.ndarray
             If present the cell is extended by the specified factor along each axis.
         """
-        ase = structure._to_ase(supercell)
+        ase = structure.to_ase(supercell)
         # ngl works with the standard form, so we need to store the positions in the same format
         standard_cell, _ = ase.cell.standard_form()
         ase.set_cell(standard_cell, scale_atoms=True)
@@ -87,7 +87,7 @@ class Viewer3d:
         supercell : int or np.ndarray
             If present the cell is extended by the specified factor along each axis.
         """
-        ngl_trajectory = nglview.MDTrajTrajectory(trajectory._to_mdtraj())
+        ngl_trajectory = nglview.MDTrajTrajectory(trajectory.to_mdtraj())
         return cls(nglview.NGLWidget(ngl_trajectory))
 
     def _ipython_display_(self):

@@ -72,7 +72,7 @@ class Topology(_base.Refinery):
         return mdtraj.Topology.from_dataframe(df)
 
     @_base.data_access
-    def to_poscar(self, format_newline=""):
+    def to_POSCAR(self, format_newline=""):
         """Generate the topology lines for the POSCAR file.
 
         Parameters

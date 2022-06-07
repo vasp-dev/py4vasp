@@ -10,7 +10,7 @@ def Sr2TiO4(raw_data):
     raw_internal_strain = raw_data.internal_strain("Sr2TiO4")
     internal_strain = InternalStrain.from_data(raw_internal_strain)
     internal_strain.ref = types.SimpleNamespace()
-    internal_strain.ref.structure = Structure(raw_internal_strain.structure)
+    internal_strain.ref.structure = Structure.from_data(raw_internal_strain.structure)
     internal_strain.ref.internal_strain = raw_internal_strain.internal_strain
     return internal_strain
 

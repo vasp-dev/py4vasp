@@ -48,4 +48,4 @@ ion {ion + 1:4d}   {element}
 
     @property
     def _structure(self):
-        return Structure(self._raw_data.structure)
+        return Structure.from_data(self._raw_data.structure)

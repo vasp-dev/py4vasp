@@ -56,10 +56,10 @@ def test_to_mdtraj(Sr2TiO4):
 
 
 def test_to_poscar(Sr2TiO4):
-    assert Sr2TiO4.to_poscar() == "Sr Ti O\n2 1 4"
-    assert Sr2TiO4.to_poscar(".format.") == "Sr Ti O.format.\n2 1 4"
+    assert Sr2TiO4.to_POSCAR() == "Sr Ti O\n2 1 4"
+    assert Sr2TiO4.to_POSCAR(".format.") == "Sr Ti O.format.\n2 1 4"
     with pytest.raises(exception.IncorrectUsage):
-        Sr2TiO4.to_poscar(None)
+        Sr2TiO4.to_POSCAR(None)
 
 
 def test_elements(Sr2TiO4):

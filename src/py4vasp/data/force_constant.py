@@ -49,4 +49,4 @@ atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     z
 
     @property
     def _structure(self):
-        return Structure(self._raw_data.structure)
+        return Structure.from_data(self._raw_data.structure)
