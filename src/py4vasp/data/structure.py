@@ -1,7 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp.data import _base, _slice, Viewer3d, Topology
-from py4vasp.data._base import RefinementDescriptor
 from IPython.lib.pretty import pretty
 from collections import Counter
 from dataclasses import dataclass
@@ -9,11 +8,9 @@ import py4vasp.exceptions as exception
 import py4vasp.raw as raw
 import py4vasp._util.documentation as _documentation
 import py4vasp._util.reader as _reader
-import py4vasp._util.sanity_check as _check
 import ase.io
 import io
 import numpy as np
-import functools
 import mdtraj
 
 
