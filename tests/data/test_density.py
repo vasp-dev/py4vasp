@@ -1,11 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from unittest.mock import patch
-from py4vasp.data import Density, Structure
+from py4vasp.data import Density, Structure, viewer3d
 import pytest
-import numpy as np
 import types
-import py4vasp.data as data
 import py4vasp.exceptions as exceptions
 
 
@@ -43,10 +41,11 @@ def test_read(collinear_density, Assert):
 
 
 def test_charge_plot(collinear_density, Assert):
-    cm_init = patch.object(data.Viewer3d, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(data.Viewer3d, "show_cell")
-    cm_arrows = patch.object(data.Viewer3d, "show_arrows_at_atoms")
-    cm_surface = patch.object(data.Viewer3d, "show_isosurface")
+    obj = viewer3d.Viewer3d
+    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(obj, "show_cell")
+    cm_arrows = patch.object(obj, "show_arrows_at_atoms")
+    cm_surface = patch.object(obj, "show_isosurface")
     with cm_init as init, cm_cell as cell, cm_arrows as arrows, cm_surface as surface:
         collinear_density.plot()
         init.assert_called_once()
@@ -58,10 +57,11 @@ def test_charge_plot(collinear_density, Assert):
 
 
 def test_magnetization_plot(collinear_density, Assert):
-    cm_init = patch.object(data.Viewer3d, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(data.Viewer3d, "show_cell")
-    cm_arrows = patch.object(data.Viewer3d, "show_arrows_at_atoms")
-    cm_surface = patch.object(data.Viewer3d, "show_isosurface")
+    obj = viewer3d.Viewer3d
+    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(obj, "show_cell")
+    cm_arrows = patch.object(obj, "show_arrows_at_atoms")
+    cm_surface = patch.object(obj, "show_isosurface")
     with cm_init as init, cm_cell as cell, cm_arrows as arrows, cm_surface as surface:
         collinear_density.plot(selection="magnetization", isolevel=0.1, smooth=1)
         calls = surface.call_args_list

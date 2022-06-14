@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.data import _base, _slice, Viewer3d, Topology
+from py4vasp.data import _base, _slice, Topology
+from py4vasp.data.viewer3d import Viewer3d
 from IPython.lib.pretty import pretty
 from collections import Counter
 from dataclasses import dataclass

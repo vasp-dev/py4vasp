@@ -1,9 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from unittest.mock import patch
-from py4vasp.control import POSCAR
-from py4vasp.data import Structure, Magnetism, Topology
-import py4vasp.data as data
+from py4vasp.data import Structure, viewer3d
 import py4vasp.exceptions as exception
 import pytest
 import numpy as np
@@ -230,8 +228,9 @@ def test_plot_Fe3O4(Fe3O4):
 
 
 def check_plot_structure(structure):
-    cm_init = patch.object(data.Viewer3d, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(data.Viewer3d, "show_cell")
+    obj = viewer3d.Viewer3d
+    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(obj, "show_cell")
     with cm_init as init, cm_cell as cell:
         structure.plot()
         init.assert_called_once()

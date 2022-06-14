@@ -1,8 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from unittest.mock import patch
-from py4vasp.data import Structure, Viewer3d
-from py4vasp.data.viewer3d import _Arrow3d, _x_axis, _y_axis, _z_axis
+from py4vasp.data import Structure
+from py4vasp.data.viewer3d import Viewer3d, _Arrow3d, _x_axis, _y_axis, _z_axis
 import py4vasp.exceptions as exception
 import ipykernel.jsonutil as json
 import numpy as np
