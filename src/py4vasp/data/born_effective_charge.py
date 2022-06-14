@@ -1,27 +1,18 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import py4vasp.data._base as _base
-from py4vasp.data import Structure
+from py4vasp.data import _base, _structure
 
 
-class BornEffectiveCharge(_base.DataBase):
+class BornEffectiveCharge(_base.Refinery, _structure.Mixin):
     """The Born effective charge tensors coupling electric field and atomic displacement.
 
     You can use this class to extract the Born effective charges of a linear
     response calculation.
-
-    Parameters
-    ----------
-    raw_born_effective_charge : RawBornEffectiveCharge
-        Dataclass containing the raw Born effective charge data.
     """
 
-    read = _base.RefinementDescriptor("_to_dict")
-    to_dict = _base.RefinementDescriptor("_to_dict")
-    __str__ = _base.RefinementDescriptor("_to_string")
-
-    def _to_string(self):
-        data = self._to_dict()
+    @_base.data_access
+    def __str__(self):
+        data = self.to_dict()
         result = """
 BORN EFFECTIVE CHARGES (including local field effects) (in |e|, cumulative output)
 ---------------------------------------------------------------------------------
@@ -36,7 +27,8 @@ ion {ion + 1:4d}   {element}
     3 {vec_to_string(charge_tensor[2])}"""
         return result
 
-    def _to_dict(self):
+    @_base.data_access
+    def to_dict(self):
         """Read structure information and Born effective charges into a dictionary.
 
         The structural information is added to inform about which atoms are included
@@ -53,7 +45,3 @@ ion {ion + 1:4d}   {element}
             "structure": self._structure.read(),
             "charge_tensors": self._raw_data.charge_tensors[:],
         }
-
-    @property
-    def _structure(self):
-        return Structure(self._raw_data.structure)

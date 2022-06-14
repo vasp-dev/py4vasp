@@ -1,8 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from unittest.mock import patch
+from py4vasp import data
 from py4vasp.control import POSCAR
-import py4vasp.data as data
+from py4vasp.data import viewer3d
 from .test_base import AbstractTest
 
 
@@ -23,8 +24,9 @@ def test_plot_poscar():
     0.25 0.25 0.25
     """
     poscar = POSCAR.from_string(text)
-    cm_init = patch.object(data.Viewer3d, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(data.Viewer3d, "show_cell")
+    obj = viewer3d.Viewer3d
+    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(obj, "show_cell")
     with cm_init as init, cm_cell as cell:
         poscar.plot()
         init.assert_called_once()

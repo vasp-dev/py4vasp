@@ -10,7 +10,7 @@ import types
 @pytest.fixture
 def explicit_kpoints(raw_data):
     raw_kpoints = raw_data.kpoint("explicit with_labels")
-    kpoints = Kpoint(raw_kpoints)
+    kpoints = Kpoint.from_data(raw_kpoints)
     kpoints.ref = types.SimpleNamespace()
     kpoints.ref.mode = "explicit"
     kpoints.ref.line_length = len(raw_kpoints.coordinates)
@@ -29,7 +29,7 @@ def explicit_kpoints(raw_data):
 @pytest.fixture
 def grid_kpoints(raw_data):
     raw_kpoints = raw_data.kpoint("automatic")
-    kpoints = Kpoint(raw_kpoints)
+    kpoints = Kpoint.from_data(raw_kpoints)
     kpoints.ref = types.SimpleNamespace()
     kpoints.ref.line_length = len(raw_kpoints.coordinates)
     return kpoints
@@ -38,7 +38,7 @@ def grid_kpoints(raw_data):
 @pytest.fixture
 def line_kpoints(raw_data):
     raw_kpoints = raw_data.kpoint("line with_labels")
-    kpoints = Kpoint(raw_kpoints)
+    kpoints = Kpoint.from_data(raw_kpoints)
     kpoints.ref = types.SimpleNamespace()
     kpoints.ref.line_length = raw_kpoints.number
     kpoints.ref.number_lines = len(raw_kpoints.coordinates) // raw_kpoints.number
@@ -94,12 +94,12 @@ def test_mode(raw_data):
     for ref_mode, formats in allowed_mode_formats.items():
         for format in formats:
             raw_kpoints = raw_data.kpoint(format)
-            actual_mode = Kpoint(raw_kpoints).mode()
+            actual_mode = Kpoint.from_data(raw_kpoints).mode()
             assert actual_mode == ref_mode
     for unknown_mode in ["x", "y", "z"]:
         with pytest.raises(exception.RefinementError):
             raw_kpoints = raw_data.kpoint(unknown_mode)
-            Kpoint(raw_kpoints).mode()
+            Kpoint.from_data(raw_kpoints).mode()
 
 
 def test_explicit_kpoints_line_length(explicit_kpoints):
@@ -137,7 +137,7 @@ def test_grid_kpoints_labels_without_data(grid_kpoints):
 
 def test_line_kpoints_labels_without_data(raw_data):
     raw_kpoints = raw_data.kpoint("line")
-    actual = Kpoint(raw_kpoints).labels()
+    actual = Kpoint.from_data(raw_kpoints).labels()
     ref = [""] * len(raw_kpoints.coordinates)
     ref[0] = r"$[0 0 0]$"
     ref[4] = r"$[0 0 \frac{1}{2}]$"
@@ -218,19 +218,6 @@ reciprocal
     assert actual == {"text/plain": reference}
 
 
-def test_descriptor(explicit_kpoints, check_descriptors):
-    descriptors = {
-        "_to_dict": ["to_dict", "read"],
-        "_line_length": ["line_length"],
-        "_number_lines": ["number_lines"],
-        "_distances": ["distances"],
-        "_mode": ["mode"],
-        "_labels": ["labels"],
-    }
-    check_descriptors(explicit_kpoints, descriptors)
-
-
-def test_from_file(raw_data, mock_file, check_read):
-    raw_kpoints = raw_data.kpoint("explicit")
-    with mock_file("kpoint", raw_kpoints) as mocks:
-        check_read(Kpoint, mocks, raw_kpoints)
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.kpoint("automatic")
+    check_factory_methods(Kpoint, data)

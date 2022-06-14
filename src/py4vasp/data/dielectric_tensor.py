@@ -4,27 +4,18 @@ import py4vasp.data._base as _base
 import py4vasp._util.convert as _convert
 
 
-class DielectricTensor(_base.DataBase):
-    """The static dielectric tensor obtained from linear response.
+class DielectricTensor(_base.Refinery):
+    """The static dielectric tensor obtained from linear response."""
 
-    Parameters
-    ----------
-    raw_dielectric_tensor : RawDielectricTensor
-        Dataclass containing the raw dielectric tensor and the generating method.
-    """
-
-    read = _base.RefinementDescriptor("_to_dict")
-    to_dict = _base.RefinementDescriptor("_to_dict")
-    __str__ = _base.RefinementDescriptor("_to_string")
-
-    def _to_dict(self):
+    @_base.data_access
+    def to_dict(self):
         """Read the dielectric tensor into a dictionary.
 
         Returns
         -------
         dict
-            Contains the dielectric tensor and a string describing the method it
-            was obtained.
+        Contains the dielectric tensor and a string describing the method it
+        was obtained.
         """
         return {
             "clamped_ion": self._raw_data.electron[:],
@@ -33,8 +24,9 @@ class DielectricTensor(_base.DataBase):
             "method": _convert.text_to_string(self._raw_data.method),
         }
 
-    def _to_string(self):
-        data = self._to_dict()
+    @_base.data_access
+    def __str__(self):
+        data = self.to_dict()
         return f"""
 Macroscopic static dielectric tensor (dimensionless)
   {_description(data["method"])}

@@ -3,7 +3,7 @@
 import numpy as np
 import typing
 
-from py4vasp.data._base import DataBase, RefinementDescriptor
+from py4vasp.data import _base
 from py4vasp.data._selection import Selection as _Selection
 import py4vasp.data._export as _export
 import py4vasp._third_party.graph as _graph
@@ -11,27 +11,17 @@ import py4vasp._util.convert as _convert
 import py4vasp._util.selection as _selection
 
 
-class DielectricFunction(DataBase, _export.Image):
+class DielectricFunction(_base.Refinery, _export.Image):
     """The dielectric function resulting from electrons and ions.
 
     You can use this class to extract the dielectric function of a Vasp calculation.
     Vasp evaluates actually evaluates the (symmetric) dielectric tensor, so all
     the returned quantities are 3x3 matrices. For plotting purposes this is reduced
     to the 6 independent variables.
-
-    Parameters
-    ----------
-    raw_dielectric_function : RawDielectricFunction
-        Dataclass containing the raw data necessary to produce a dielectric function.
     """
 
-    read = RefinementDescriptor("_to_dict")
-    to_dict = RefinementDescriptor("_to_dict")
-    plot = RefinementDescriptor("_plot")
-    to_plotly = RefinementDescriptor("_to_plotly")
-    __str__ = RefinementDescriptor("_to_string")
-
-    def _to_string(self):
+    @_base.data_access
+    def __str__(self):
         energies = self._raw_data.energies
         return f"""
 dielectric function:
@@ -50,7 +40,8 @@ dielectric function:
             components += ("ion",)
         return components
 
-    def _to_dict(self):
+    @_base.data_access
+    def to_dict(self):
         """Read the data into a dictionary.
 
         Returns
@@ -66,7 +57,8 @@ dielectric function:
             "ion": _convert_to_complex_if_not_none(data.ion),
         }
 
-    def _plot(self, selection=None):
+    @_base.data_access
+    def plot(self, selection=None):
         """Read the data and generate a figure with the selected directions.
 
         Parameters
@@ -82,7 +74,7 @@ dielectric function:
             figure containing the dielectric function for the selected
             directions and components."""
         selection = _default_selection_if_none(selection)
-        data = self._to_dict()
+        data = self.to_dict()
         choices = _parse_selection(selection, data)
         return _graph.Graph(
             series=[_make_plot(data, *choice) for choice in choices],
@@ -90,7 +82,8 @@ dielectric function:
             ylabel="dielectric function ϵ",
         )
 
-    def _to_plotly(self, selection=None):
+    @_base.data_access
+    def to_plotly(self, selection=None):
         """Read the data and generate a plotly figure.
 
         Parameters
@@ -105,7 +98,7 @@ dielectric function:
         plotly.graph_objects.Figure
             plotly figure containing the dielectric function for the selected
             directions and components."""
-        return self._plot(selection).to_plotly()
+        return self.plot(selection).to_plotly()
 
 
 def _convert_to_complex_if_not_none(array):

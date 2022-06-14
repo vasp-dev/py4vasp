@@ -1,20 +1,18 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from unittest.mock import patch
-from py4vasp.data import Density, Structure
+from py4vasp.data import Density, Structure, viewer3d
 import pytest
-import numpy as np
 import types
-import py4vasp.data as data
 import py4vasp.exceptions as exceptions
 
 
 @pytest.fixture
 def collinear_density(raw_data):
     raw_density = raw_data.density("Fe3O4 collinear")
-    density = Density(raw_density)
+    density = Density.from_data(raw_density)
     density.ref = types.SimpleNamespace()
-    density.ref.structure = Structure(raw_density.structure).read()
+    density.ref.structure = Structure.from_data(raw_density.structure).read()
     density.ref.charge = raw_density.charge[0]
     density.ref.magnetization = raw_density.charge[1]
     return density
@@ -23,7 +21,7 @@ def collinear_density(raw_data):
 @pytest.fixture
 def charge_only_density(raw_data):
     raw_density = raw_data.density("Fe3O4 charge_only")
-    density = Density(raw_density)
+    density = Density.from_data(raw_density)
     density.ref = types.SimpleNamespace()
     density.ref.charge = raw_density.charge[0]
     return density
@@ -43,10 +41,11 @@ def test_read(collinear_density, Assert):
 
 
 def test_charge_plot(collinear_density, Assert):
-    cm_init = patch.object(data.Viewer3d, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(data.Viewer3d, "show_cell")
-    cm_arrows = patch.object(data.Viewer3d, "show_arrows_at_atoms")
-    cm_surface = patch.object(data.Viewer3d, "show_isosurface")
+    obj = viewer3d.Viewer3d
+    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(obj, "show_cell")
+    cm_arrows = patch.object(obj, "show_arrows_at_atoms")
+    cm_surface = patch.object(obj, "show_isosurface")
     with cm_init as init, cm_cell as cell, cm_arrows as arrows, cm_surface as surface:
         collinear_density.plot()
         init.assert_called_once()
@@ -58,10 +57,11 @@ def test_charge_plot(collinear_density, Assert):
 
 
 def test_magnetization_plot(collinear_density, Assert):
-    cm_init = patch.object(data.Viewer3d, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(data.Viewer3d, "show_cell")
-    cm_arrows = patch.object(data.Viewer3d, "show_arrows_at_atoms")
-    cm_surface = patch.object(data.Viewer3d, "show_isosurface")
+    obj = viewer3d.Viewer3d
+    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(obj, "show_cell")
+    cm_arrows = patch.object(obj, "show_arrows_at_atoms")
+    cm_surface = patch.object(obj, "show_isosurface")
     with cm_init as init, cm_cell as cell, cm_arrows as arrows, cm_surface as surface:
         collinear_density.plot(selection="magnetization", isolevel=0.1, smooth=1)
         calls = surface.call_args_list
@@ -111,15 +111,6 @@ density:
     assert actual == {"text/plain": reference}
 
 
-def test_descriptor(collinear_density, check_descriptors):
-    descriptors = {
-        "_to_dict": ["to_dict", "read"],
-        "_to_viewer3d": ["to_viewer3d", "plot"],
-    }
-    check_descriptors(collinear_density, descriptors)
-
-
-def test_from_file(raw_data, mock_file, check_read):
-    raw_density = raw_data.density("Fe3O4 collinear")
-    with mock_file("density", raw_density) as mocks:
-        check_read(Density, mocks, raw_density, default_filename="vaspwave.h5")
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.density("Fe3O4 collinear")
+    check_factory_methods(Density, data)

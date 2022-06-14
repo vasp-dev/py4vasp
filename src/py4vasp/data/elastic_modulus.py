@@ -4,23 +4,15 @@ import numpy as np
 import py4vasp.data._base as _base
 
 
-class ElasticModulus(_base.DataBase):
+class ElasticModulus(_base.Refinery):
     """The elastic modulus (second derivatives w.r.t. strain)
 
     You can use this class to extract the elastic modulus of a linear response
     calculation.
-
-    Parameters
-    ----------
-    raw_elastic_modulus : RawElasticModulus
-        Dataclass containing the raw elastic modulus data.
     """
 
-    read = _base.RefinementDescriptor("_to_dict")
-    to_dict = _base.RefinementDescriptor("_to_dict")
-    __str__ = _base.RefinementDescriptor("_to_string")
-
-    def _to_dict(self):
+    @_base.data_access
+    def to_dict(self):
         """Read the clamped-ion and relaxed-ion elastic modulus into a dictionary.
 
         Returns
@@ -33,7 +25,8 @@ class ElasticModulus(_base.DataBase):
             "relaxed_ion": self._raw_data.relaxed_ion[:],
         }
 
-    def _to_string(self):
+    @_base.data_access
+    def __str__(self):
         return f"""Elastic modulus (kBar)
 Direction    XX          YY          ZZ          XY          YZ          ZX
 --------------------------------------------------------------------------------

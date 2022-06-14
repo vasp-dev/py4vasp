@@ -4,7 +4,9 @@ import contextlib
 import dataclasses
 import inspect
 import io
+import pathlib
 import pytest
+import tempfile
 from unittest.mock import patch
 
 
@@ -28,8 +30,8 @@ class Example(_base.Refinery):
         self.post_init_called = True
 
     @_base.data_access
-    def read(self):
-        "Read documentation."
+    def to_dict(self):
+        "to_dict documentation."
         return self._raw_data.content
 
     @_base.data_access
@@ -121,10 +123,15 @@ def test_base_source_ignore_whitespace_and_capitalization(mock_access):
     mock_access.assert_called_once_with("example", source=source, file=filename)
 
 
-def test_print_example():
+def test_print_example(mock_access):
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
         Example.from_data(RAW_DATA).print()
+    assert RAW_DATA.content == output.getvalue().strip()
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        Example.from_path().print(source="choice")
+    mock_access.assert_called_once_with("example", source="choice", path=None)
     assert RAW_DATA.content == output.getvalue().strip()
 
 
@@ -144,16 +151,42 @@ def test_repr(mock_access):
     assert repr(Example.from_file(filename)) == f"Example.from_file({repr(filename)})"
 
 
+def test_path(mock_access):
+    assert Example.from_data(RAW_DATA).path == pathlib.Path.cwd()
+    assert Example.from_path().path == pathlib.Path.cwd()
+    pathname = "path_with_VASP_calculation"
+    assert Example.from_path(pathname).path == pathname
+    filename = f"{pathname}/name_of_file"
+    assert Example.from_file(filename).path == pathlib.Path(pathname)
+    with tempfile.NamedTemporaryFile() as file:
+        assert Example.from_file(file).path == pathlib.Path(file.name).parent
+
+
 def test_docs():
-    assert inspect.getdoc(Example.read) == "Read documentation."
+    assert inspect.getdoc(Example.to_dict) == "to_dict documentation."
     assert inspect.getdoc(Example.from_data) is not None
     assert inspect.getdoc(Example.from_path) is not None
     assert inspect.getdoc(Example.from_file) is not None
 
 
+@patch.object(Example, "to_dict")
+def test_read_wrapper(mock):
+    example = Example.from_data(RawData)
+    check_mock(example, mock)
+    check_mock(example, mock, "only positional")
+    check_mock(example, mock, only="keyword")
+    check_mock(example, mock, "positional", key="word")
+
+
+def check_mock(example, mock, *args, **kwargs):
+    example.read(*args, **kwargs)
+    mock.assert_called_once_with(*args, **kwargs)
+    mock.reset_mock()
+
+
 class CamelCase(_base.Refinery):
     @_base.data_access
-    def read(self):
+    def to_dict(self):
         return "convert CamelCase to snake_case"
 
 

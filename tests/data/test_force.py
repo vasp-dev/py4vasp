@@ -13,9 +13,9 @@ import py4vasp.exceptions as exception
 @pytest.fixture
 def Sr2TiO4(raw_data):
     raw_forces = raw_data.force("Sr2TiO4")
-    forces = Force(raw_forces)
+    forces = Force.from_data(raw_forces)
     forces.ref = types.SimpleNamespace()
-    forces.ref.structure = Structure(raw_forces.structure)
+    forces.ref.structure = Structure.from_data(raw_forces.structure)
     forces.ref.forces = raw_forces.forces
     return forces
 
@@ -23,9 +23,9 @@ def Sr2TiO4(raw_data):
 @pytest.fixture
 def Fe3O4(raw_data):
     raw_forces = raw_data.force("Fe3O4")
-    forces = Force(raw_forces)
+    forces = Force.from_data(raw_forces)
     forces.ref = types.SimpleNamespace()
-    forces.ref.structure = Structure(raw_forces.structure)
+    forces.ref.structure = Structure.from_data(raw_forces.structure)
     forces.ref.forces = raw_forces.forces
     return forces
 
@@ -66,7 +66,7 @@ def test_plot_Fe3O4(Fe3O4, Assert):
 
 
 def check_plot_forces(forces, step, Assert):
-    with patch("py4vasp.data.Structure._to_viewer3d") as plot:
+    with patch("py4vasp.data.Structure.plot") as plot:
         if step == -1:
             forces.plot()
         else:
@@ -135,16 +135,6 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
     assert actual == {"text/plain": ref_plain}
 
 
-def test_descriptor(Sr2TiO4, check_descriptors):
-    descriptors = {
-        "_to_dict": ["to_dict", "read"],
-        "_to_viewer3d": ["to_viewer3d", "plot"],
-        "_to_string": ["__str__"],
-    }
-    check_descriptors(Sr2TiO4, descriptors)
-
-
-def test_from_file(raw_data, mock_file, check_read):
-    raw_forces = raw_data.force("Sr2TiO4")
-    with mock_file("force", raw_forces) as mocks:
-        check_read(Force, mocks, raw_forces)
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.force("Fe3O4")
+    check_factory_methods(Force, data)

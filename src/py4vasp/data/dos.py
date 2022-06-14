@@ -6,14 +6,14 @@ import numpy as np
 import pandas as pd
 from IPython.lib.pretty import pretty
 from .projector import _projectors_or_dummy, _selection_doc, _selection_examples
-from py4vasp.data._base import DataBase, RefinementDescriptor
+from py4vasp.data import _base
 import py4vasp.data._export as _export
 from py4vasp.data.kpoint import _kpoints_opt_source
 import py4vasp._third_party.graph as _graph
 import py4vasp._util.documentation as _documentation
 
 
-class Dos(DataBase, _export.Image):
+class Dos(_base.Refinery, _export.Image):
     """The electronic density of states (DOS).
 
     You can use this class to extract the DOS data of a Vasp calculation.
@@ -21,23 +21,12 @@ class Dos(DataBase, _export.Image):
     denser mesh for a smoother DOS, but the class will work independent
     of it. If you generated orbital decomposed DOS, you can use this
     class to select which subset of these orbitals to read or plot.
-
-    Parameters
-    ----------
-    raw_dos : RawDos
-        Dataclass containing the raw data necessary to produce a DOS.
     """
 
     _missing_data_message = "No DOS data found, please verify that LORBIT flag is set."
 
-    read = RefinementDescriptor("_to_dict")
-    to_dict = RefinementDescriptor("_to_dict")
-    plot = RefinementDescriptor("_plot")
-    to_plotly = RefinementDescriptor("_to_plotly")
-    to_frame = RefinementDescriptor("_to_frame")
-    __str__ = RefinementDescriptor("_to_string")
-
-    def _to_string(self):
+    @_base.data_access
+    def __str__(self):
         energies = self._raw_data.energies
         return f"""
 {"spin polarized" if self._spin_polarized() else ""} Dos:
@@ -45,6 +34,7 @@ class Dos(DataBase, _export.Image):
 {pretty(self._projectors())}
     """.strip()
 
+    @_base.data_access
     @_documentation.add(
         f"""Read the data into a dictionary.
 
@@ -63,12 +53,13 @@ dict
 
 {_selection_examples("dos", "read")}"""
     )
-    def _to_dict(self, selection=None):
+    def to_dict(self, selection=None):
         return {
             **self._read_data(selection),
             "fermi_energy": self._raw_data.fermi_energy,
         }
 
+    @_base.data_access
     @_documentation.add(
         f"""Generate a graph of the selected data reading it from the VASP output.
 
@@ -87,7 +78,7 @@ Graph
 
 {_selection_examples("dos", "to_plotly")}"""
     )
-    def _plot(self, selection=None):
+    def plot(self, selection=None):
         data = self._read_data(selection)
         return _graph.Graph(
             series=list(_series(data)),
@@ -95,6 +86,7 @@ Graph
             ylabel="DOS (1/eV)",
         )
 
+    @_base.data_access
     @_documentation.add(
         f"""Read the data and generate a plotly figure.
 
@@ -113,9 +105,10 @@ plotly.graph_objects.Figure
 
 {_selection_examples("dos", "to_plotly")}"""
     )
-    def _to_plotly(self, selection=None):
-        return self._plot(selection).to_plotly()
+    def to_plotly(self, selection=None):
+        return self.plot(selection).to_plotly()
 
+    @_base.data_access
     @_documentation.add(
         f"""Read the data into a pandas DataFrame.
 
@@ -134,7 +127,7 @@ pd.DataFrame
 
 {_selection_examples("dos", "to_frame")}"""
     )
-    def _to_frame(self, selection=None):
+    def to_frame(self, selection=None):
         df = pd.DataFrame(self._read_data(selection))
         df.fermi_energy = self._raw_data.fermi_energy
         return df

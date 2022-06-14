@@ -1,26 +1,17 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import py4vasp.data._base as _base
-from py4vasp.data import Structure
+from py4vasp.data import _base, _structure
 
 
-class InternalStrain(_base.DataBase):
+class InternalStrain(_base.Refinery, _structure.Mixin):
     """The internal strain
 
     You can use this class to extract the internal strain of a linear
     response calculation.
-
-    Parameters
-    ----------
-    raw_internal_strain : RawInternalStrain
-        Dataclass containing the raw internal strain data.
     """
 
-    read = _base.RefinementDescriptor("_to_dict")
-    to_dict = _base.RefinementDescriptor("_to_dict")
-    __str__ = _base.RefinementDescriptor("_to_string")
-
-    def _to_string(self):
+    @_base.data_access
+    def __str__(self):
         result = """
 Internal strain tensor (eV/Å):
  ion  displ     X           Y           Z          XY          YZ          ZX
@@ -33,15 +24,12 @@ Internal strain tensor (eV/Å):
                 ion_string = "    "
         return result.strip()
 
-    def _to_dict(self):
+    @_base.data_access
+    def to_dict(self):
         return {
             "structure": self._structure.read(),
             "internal_strain": self._raw_data.internal_strain[:],
         }
-
-    @property
-    def _structure(self):
-        return Structure(self._raw_data.structure)
 
 
 def _add_matrix_string(ion_string, displacement, matrix):

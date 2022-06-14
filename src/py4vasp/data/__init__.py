@@ -31,8 +31,7 @@ from .piezoelectric_tensor import PiezoelectricTensor
 from .polarization import Polarization
 from .projector import Projector
 from .topology import Topology
-from .viewer3d import Viewer3d
-from .structure import Structure
+from ._structure import Structure
 from .system import System
 from .born_effective_charge import BornEffectiveCharge
 from .density import Density

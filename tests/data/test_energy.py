@@ -13,7 +13,7 @@ import py4vasp._util.selection as selection
 @pytest.fixture
 def energy(raw_data):
     raw_energy = raw_data.energy("default")
-    energy = Energy(raw_energy)
+    energy = Energy.from_data(raw_energy)
     energy.ref = types.SimpleNamespace()
     energy.ref.total_label = "ion-electron   TOTEN"
     energy.ref.total_energy = raw_energy.values[:, 0]
@@ -155,7 +155,7 @@ def test_incorrect_label(energy):
         energy.plot(number_instead_of_string)
 
 
-@patch("py4vasp.data.energy.Energy._plot")
+@patch("py4vasp.data.energy.Energy.plot")
 def test_energy_to_plotly(mock_plot, energy):
     fig = energy.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
@@ -171,12 +171,9 @@ def test_to_image(energy):
 
 
 def check_to_image(energy, filename_argument, expected_filename):
-    with patch("py4vasp.data.energy.Energy._to_plotly") as plot:
+    with patch("py4vasp.data.energy.Energy.to_plotly") as plot:
         energy.to_image("args", filename=filename_argument, key="word")
-        plot.assert_called_once()
-        # note: call_args[0][0] is self
-        assert plot.call_args[0][1] == "args"
-        assert plot.call_args[1] == {"key": "word"}
+        plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
         fig.write_image.assert_called_once_with(energy._path / expected_filename)
 
@@ -211,17 +208,6 @@ Energies at {step}:
     assert actual == {"text/plain": reference}
 
 
-def test_descriptor(energy, check_descriptors):
-    descriptors = {
-        "_to_dict": ["to_dict", "read"],
-        "_plot": ["plot"],
-        "_to_plotly": ["to_plotly"],
-        "_to_numpy": ["to_numpy"],
-    }
-    check_descriptors(energy[-1], descriptors)
-
-
-def test_from_file(raw_data, mock_file, check_read):
-    raw_energy = raw_data.energy("default")
-    with mock_file("energy", raw_energy) as mocks:
-        check_read(Energy, mocks, raw_energy)
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.energy("default")
+    check_factory_methods(Energy, data)

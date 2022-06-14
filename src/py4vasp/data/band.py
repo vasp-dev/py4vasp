@@ -8,44 +8,11 @@ import py4vasp._util.documentation as _documentation
 from IPython.lib.pretty import pretty
 from .projector import _projectors_or_dummy, _selection_doc, _selection_examples
 from .kpoint import Kpoint, _kpoints_opt_source
-from py4vasp.data._base import DataBase, RefinementDescriptor
+from py4vasp.data import _base
 import py4vasp.data._export as _export
 import py4vasp._third_party.graph as _graph
 
-
-class Band(DataBase, _export.Image):
-    """The electronic band structure.
-
-    The most common use case of this class is to produce the electronic band
-    structure along a path in the Brillouin zone used in a non self consistent
-    Vasp calculation. In some cases you may want to use the `to_dict` function
-    just to obtain the eigenvalue and projection data though in that case the
-    **k**-point distances that are calculated are meaningless.
-
-    Parameters
-    ----------
-    raw_band : RawBand
-        Dataclass containing the raw data necessary to produce a band structure
-        (eigenvalues, kpoints, ...).
-    """
-
-    read = RefinementDescriptor("_to_dict")
-    to_dict = RefinementDescriptor("_to_dict")
-    plot = RefinementDescriptor("_plot")
-    to_plotly = RefinementDescriptor("_to_plotly")
-    to_frame = RefinementDescriptor("_to_frame")
-    __str__ = RefinementDescriptor("_to_string")
-
-    def _to_string(self):
-        return f"""
-{"spin polarized" if self._spin_polarized() else ""} band data:
-    {self._raw_data.eigenvalues.shape[1]} k-points
-    {self._raw_data.eigenvalues.shape[2]} bands
-{pretty(_projectors_or_dummy(self._raw_data.projectors))}
-    """.strip()
-
-    @_documentation.add(
-        f"""Read the data into a dictionary.
+_to_dict_doc = f"""Read the data into a dictionary.
 
 Parameters
 ----------
@@ -60,53 +27,44 @@ dict
     and a selection is passed, the projections of these bands on the
     selected projectors are included.
 
-{_selection_examples("band", "read")}"""
-    )
-    def _to_dict(self, selection=None):
-        kpoints = self._kpoints()
-        return {
-            "kpoint_distances": kpoints.distances(),
-            "kpoint_labels": kpoints.labels(),
-            "fermi_energy": self._raw_data.fermi_energy,
-            **self._shift_bands_by_fermi_energy(),
-            **self._read_occupations(),
-            "projections": self._read_projections(selection),
-        }
+{_selection_examples("band", "to_dict")}"""
 
-    @_documentation.add(
-        f"""Read the data and generate a plotly figure.
+_to_frame_doc = f"""Read the data into a DataFrame.
+
+Parameters
+----------
+{_selection_doc}
+{_kpoints_opt_source}
+
+Returns
+-------
+pd.DataFrame
+    Contains the eigenvalues and corresponding occupations for all k-points and
+    bands. If a selection string is given, in addition the orbital projections
+    on these bands are returned.
+
+{_selection_examples("band", "to_frame")}"""
+
+_plot_doc = f"""Read the data and generate a graph.
 
 Parameters
 ----------
 {_selection_doc}
 width : float
-Specifies the width of the flatbands if a selection of projections is specified.
+    Specifies the width of the flatbands if a selection of projections is specified.
 {_kpoints_opt_source}
 
 Returns
 -------
-plotly.graph_objects.Figure
-plotly figure containing the spin-up and spin-down bands. If a selection
-is provided the width of the bands represents the projections of the
-bands onto the specified projectors.
+Graph
+    Figure containing the spin-up and spin-down bands. If a selection
+    is provided the width of the bands represents the projections of the
+    bands onto the specified projectors.
 
 {_selection_examples("band", "plot")}"""
-    )
-    def _plot(self, selection=None, width=0.5):
-        return _graph.Graph(
-            series=self._band_structure(selection, width),
-            xticks=self._xticks(),
-            ylabel="Energy (eV)",
-        )
-        # data = self._band_structure(selection, width)
-        # default = {
-        #     "xaxis": {"tickmode": "array", "tickvals": ticks, "ticktext": labels},
-        #     "yaxis": {"title": {"text": "Energy (eV)"}},
-        # }
-        # return go.Figure(data=data, layout=default)
 
-    @_documentation.add(
-        f"""Read the data and generate a plotly figure.
+
+_to_plotly_doc = f"""Read the data and generate a plotly figure.
 
 Parameters
 ----------
@@ -123,28 +81,57 @@ plotly.graph_objects.Figure
     bands onto the specified projectors.
 
 {_selection_examples("band", "to_plotly")}"""
-    )
-    def _to_plotly(self, selection=None, width=0.5):
-        return self._plot(selection, width).to_plotly()
 
-    @_documentation.add(
-        f"""Read the data into a DataFrame.
 
-Parameters
-----------
-{_selection_doc}
-{_kpoints_opt_source}
+class Band(_base.Refinery, _export.Image):
+    """The electronic band structure.
 
-Returns
--------
-pd.DataFrame
-    Contains the eigenvalues and corresponding occupations for all k-points and
-    bands. If a selection string is given, in addition the orbital projections
-    on these bands are returned.
+    The most common use case of this class is to produce the electronic band
+    structure along a path in the Brillouin zone used in a non self consistent
+    Vasp calculation. In some cases you may want to use the `to_dict` function
+    just to obtain the eigenvalue and projection data though in that case the
+    **k**-point distances that are calculated are meaningless.
+    """
 
-{_selection_examples("band", "to_frame")}"""
-    )
-    def _to_frame(self, selection=None):
+    @_base.data_access
+    def __str__(self):
+        return f"""
+{"spin polarized" if self._spin_polarized() else ""} band data:
+    {self._raw_data.eigenvalues.shape[1]} k-points
+    {self._raw_data.eigenvalues.shape[2]} bands
+{pretty(_projectors_or_dummy(self._raw_data.projectors))}
+    """.strip()
+
+    @_base.data_access
+    @_documentation.add(_to_dict_doc)
+    def to_dict(self, selection=None):
+        kpoints = self._kpoints()
+        return {
+            "kpoint_distances": kpoints.distances(),
+            "kpoint_labels": kpoints.labels(),
+            "fermi_energy": self._raw_data.fermi_energy,
+            **self._shift_bands_by_fermi_energy(),
+            **self._read_occupations(),
+            "projections": self._read_projections(selection),
+        }
+
+    @_base.data_access
+    @_documentation.add(_plot_doc)
+    def plot(self, selection=None, width=0.5):
+        return _graph.Graph(
+            series=self._band_structure(selection, width),
+            xticks=self._xticks(),
+            ylabel="Energy (eV)",
+        )
+
+    @_base.data_access
+    @_documentation.add(_to_plotly_doc)
+    def to_plotly(self, selection=None, width=0.5):
+        return self.plot(selection, width).to_plotly()
+
+    @_base.data_access
+    @_documentation.add(_to_frame_doc)
+    def to_frame(self, selection=None):
         index = self._setup_dataframe_index()
         data = self._extract_relevant_data(selection)
         return pd.DataFrame(data, index)
@@ -153,7 +140,7 @@ pd.DataFrame
         return len(self._raw_data.eigenvalues) == 2
 
     def _kpoints(self):
-        return Kpoint(self._raw_data.kpoints)
+        return Kpoint.from_data(self._raw_data.kpoints)
 
     def _read_projections(self, selection):
         projectors = _projectors_or_dummy(self._raw_data.projectors)
@@ -257,7 +244,7 @@ pd.DataFrame
             "occupations_down",
         )
         data = {}
-        for key, value in self._to_dict().items():
+        for key, value in self.to_dict().items():
             if key in relevant_keys:
                 data[key] = _to_series(value)
         for key, value in self._read_projections(selection).items():

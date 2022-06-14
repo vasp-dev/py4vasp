@@ -1,4 +1,4 @@
-from py4vasp.data import _base, _trajectory
+from py4vasp.data import _base, _slice, _export
 import py4vasp.exceptions as exception
 import py4vasp._third_party.graph as _graph
 import py4vasp._util.convert as _convert
@@ -13,14 +13,7 @@ ions types in an MD simulation. The pair-correlation function gives insight
 into the structural properties and may help to identify certain orders in
 the system.
 
-Parameters
-----------
-raw_pair_correlation : raw.PairCorrelation
-    Dataclass containing the distances at which the pair-correlation function
-    was evaluated and the corresponding values for various ions pairs as
-    specified by the labels.
-
-{_trajectory.trajectory_examples("pair_correlation", step="block")}
+{_slice.examples("pair_correlation", step="block")}
 """.strip()
 
 
@@ -52,7 +45,7 @@ dict
     dictionary contains the distances at which the pair-correlation functions
     are evaluated.
 
-{_trajectory.trajectory_examples("pair_correlation", "read", "block")}"""
+{_slice.examples("pair_correlation", "read", "block")}"""
 
 _plot_docs = f"""Plot selected pair-correlation functions.
 
@@ -67,28 +60,45 @@ Graph
     and ion pairs. Note that the various blocks with the same legend and
     only different ion combinations use different color schemes.
 
-{_trajectory.trajectory_examples("pair_correlation", "plot", "block")}"""
+{_slice.examples("pair_correlation", "plot", "block")}"""
+
+_to_plotly_docs = f"""Plot selected pair-correlation functions.
+
+Parameters
+----------
+{_selection_string("the total pair correlation is used")}
+
+Returns
+-------
+plotly.graph_objects.Figure
+    plotly figure containing the pair correlation for every selected blocks.
+
+{_slice.examples("pair_correlation", "to_plotly", "block")}"""
 
 
 @_documentation.add(_pair_correlation_docs)
-class PairCorrelation(_trajectory.DataTrajectory):
-    read = _base.RefinementDescriptor("_to_dict")
-    plot = _base.RefinementDescriptor("_to_plotly")
-    labels = _base.RefinementDescriptor("_labels")
-
+class PairCorrelation(_slice.Mixin, _base.Refinery, _export.Image):
+    @_base.data_access
     @_documentation.add(_read_docs)
-    def _to_dict(self, selection=_selection.all):
+    def to_dict(self, selection=_selection.all):
         return {
             "distances": self._raw_data.distances[:],
             **self._read_data(selection),
         }
 
+    @_base.data_access
     @_documentation.add(_plot_docs)
-    def _to_plotly(self, selection="total"):
-        series = self._make_series(self._to_dict(selection))
+    def plot(self, selection="total"):
+        series = self._make_series(self.to_dict(selection))
         return _graph.Graph(series, xlabel="Distance (Å)", ylabel="Pair correlation")
 
-    def _labels(self):
+    @_base.data_access
+    @_documentation.add(_to_plotly_docs)
+    def to_plotly(self, selection="total"):
+        return self.plot(selection).to_plotly()
+
+    @_base.data_access
+    def labels(self):
         "Return all possible labels for the selection string."
         return tuple(_convert.text_to_string(label) for label in self._raw_data.labels)
 
@@ -105,12 +115,12 @@ class PairCorrelation(_trajectory.DataTrajectory):
             return self._select_specified_subset(selection)
 
     def _select_all(self):
-        for index, label in enumerate(self._labels()):
+        for index, label in enumerate(self.labels()):
             yield label, index
 
     def _select_specified_subset(self, selection):
         tree = _selection.Tree.from_selection(selection)
-        labels = self._labels()
+        labels = self.labels()
         for node in tree.nodes:
             yield self._find_matching_label(node.content, labels)
 

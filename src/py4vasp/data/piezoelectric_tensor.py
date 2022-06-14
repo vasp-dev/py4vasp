@@ -4,31 +4,24 @@ import numpy as np
 import py4vasp.data._base as _base
 
 
-class PiezoelectricTensor(_base.DataBase):
+class PiezoelectricTensor(_base.Refinery):
     """The piezoelectric tensor (second derivatives w.r.t. strain and field)
 
     You can use this class to extract the piezoelectric tensor of a linear
     response calculation.
-
-    Parameters
-    ----------
-    raw_piezoelectric_tensor : RawPiezoelectricTensor
-        Dataclass containing the raw piezoelectric tensor data.
     """
 
-    read = _base.RefinementDescriptor("_to_dict")
-    to_dict = _base.RefinementDescriptor("_to_dict")
-    __str__ = _base.RefinementDescriptor("_to_string")
-
-    def _to_string(self):
-        data = self._to_dict()
+    @_base.data_access
+    def __str__(self):
+        data = self.to_dict()
         return f"""Piezoelectric tensor (C/m²)
          XX          YY          ZZ          XY          YZ          ZX
 ---------------------------------------------------------------------------
 {_tensor_to_string(data["clamped_ion"], "clamped-ion")}
 {_tensor_to_string(data["relaxed_ion"], "relaxed-ion")}"""
 
-    def _to_dict(self):
+    @_base.data_access
+    def to_dict(self):
         """Read the ionic and electronic contribution to the piezoelectric tensor
         into a dictionary.
 

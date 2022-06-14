@@ -27,7 +27,7 @@ def nscf_tensor(raw_data):
 
 def make_reference(raw_data, method):
     raw_tensor = raw_data.dielectric_tensor(method)
-    tensor = DielectricTensor(raw_tensor)
+    tensor = DielectricTensor.from_data(raw_tensor)
     tensor.ref = types.SimpleNamespace()
     tensor.ref.clamped_ion = raw_tensor.electron
     tensor.ref.relaxed_ion = raw_tensor.ion + raw_tensor.electron
@@ -53,13 +53,13 @@ def test_read_nscf_tensor(nscf_tensor, Assert):
 
 
 def check_read_dielectric_tensor(dielectric_tensor, Assert):
-    actual = dielectric_tensor.read()
-    Assert.allclose(actual["clamped_ion"], dielectric_tensor.ref.clamped_ion)
-    Assert.allclose(actual["relaxed_ion"], dielectric_tensor.ref.relaxed_ion)
-    Assert.allclose(
-        actual["independent_particle"], dielectric_tensor.ref.independent_particle
-    )
-    assert actual["method"] == dielectric_tensor.ref.method
+    for method in (dielectric_tensor.read, dielectric_tensor.to_dict):
+        actual = method()
+        reference = dielectric_tensor.ref
+        Assert.allclose(actual["clamped_ion"], reference.clamped_ion)
+        Assert.allclose(actual["relaxed_ion"], reference.relaxed_ion)
+        Assert.allclose(actual["independent_particle"], reference.independent_particle)
+        assert actual["method"] == reference.method
 
 
 def test_print_dft_tensor(dft_tensor, format_):
@@ -103,15 +103,6 @@ Macroscopic static dielectric tensor (dimensionless)
     assert actual == {"text/plain": reference}
 
 
-def test_descriptor(dft_tensor, check_descriptors):
-    descriptors = {
-        "_to_dict": ["to_dict", "read"],
-        "_to_string": ["__str__"],
-    }
-    check_descriptors(dft_tensor, descriptors)
-
-
-def test_from_file(raw_data, mock_file, check_read):
-    raw_dielectric_tensor = raw_data.dielectric_tensor("dft")
-    with mock_file("dielectric_tensor", raw_dielectric_tensor) as mocks:
-        check_read(DielectricTensor, mocks, raw_dielectric_tensor)
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.dielectric_tensor("dft")
+    check_factory_methods(DielectricTensor, data)

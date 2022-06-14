@@ -2,10 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import functools
 import numpy as np
-from py4vasp.data._base import RefinementDescriptor
-import py4vasp.data._export as _export
+from py4vasp.data import _base, _export, _slice
 from py4vasp.data._selection import Selection as _Selection
-import py4vasp.data._trajectory as _trajectory
 import py4vasp.exceptions as exception
 import py4vasp._third_party.graph as _graph
 import py4vasp._util.documentation as _documentation
@@ -20,13 +18,7 @@ The energy data for one or several steps of a relaxation or MD simulation.
 You can use this class to inspect how the ionic relaxation converges or
 during an MD simulation whether the total energy is conserved.
 
-Parameters
-----------
-raw_energy : RawEnergy
-    Dataclass containing the raw energy values for the ionic run and labels
-    specifying which energies are stored.
-
-{_trajectory.trajectory_examples("energy")}
+{_slice.examples("energy")}
 """.strip()
 
 _selection_string = (
@@ -41,16 +33,9 @@ _selection_string = (
 
 
 @_documentation.add(_energy_docs)
-class Energy(_trajectory.DataTrajectory, _export.Image):
-    read = RefinementDescriptor("_to_dict")
-    to_dict = RefinementDescriptor("_to_dict")
-    plot = RefinementDescriptor("_plot")
-    to_plotly = RefinementDescriptor("_to_plotly")
-    to_numpy = RefinementDescriptor("_to_numpy")
-    labels = RefinementDescriptor("_labels")
-    __str__ = RefinementDescriptor("_to_string")
-
-    def _to_string(self):
+class Energy(_slice.Mixin, _base.Refinery, _export.Image):
+    @_base.data_access
+    def __str__(self):
         text = f"Energies at {self._step_string()}:"
         values = self._raw_data.values[self._last_step_in_slice]
         for label, value in zip(self._raw_data.labels, values):
@@ -69,6 +54,7 @@ class Energy(_trajectory.DataTrajectory, _export.Image):
         else:
             return f"step {self._steps + 1}"
 
+    @_base.data_access
     @_documentation.add(
         f"""Read the energy data and store it in a dictionary.
 
@@ -82,14 +68,15 @@ dict
     Contains the exact labels corresponding to the selection and the
     associated energies for every selected ionic step.
 
-{_trajectory.trajectory_examples("energy", "read")}"""
+{_slice.examples("energy", "read")}"""
     )
-    def _to_dict(self, selection=_selection.all):
+    def to_dict(self, selection=_selection.all):
         return {
             label: self._raw_data.values[self._steps, index]
             for label, index in self._parse_selection(selection)
         }
 
+    @_base.data_access
     @_documentation.add(
         f"""Read the energy data and generate a figure of the selected components.
 
@@ -102,9 +89,9 @@ Returns
 Graph
      figure containing the selected energies for every selected ionic step.
 
-{_trajectory.trajectory_examples("energy", "plot")}"""
+{_slice.examples("energy", "plot")}"""
     )
-    def _plot(self, selection="TOTEN"):
+    def plot(self, selection="TOTEN"):
         yaxes = self._create_yaxes(selection)
         return _graph.Graph(
             series=self._make_series(yaxes, selection),
@@ -115,6 +102,7 @@ Graph
         figure.layout.xaxis.title.text = "Step"
         return figure
 
+    @_base.data_access
     @_documentation.add(
         f"""Read the energy data and generate a plotly figure.
 
@@ -127,11 +115,12 @@ Returns
 plotly.graph_objects.Figure
 plotly figure containing the selected energies for every selected ionic step.
 
-{_trajectory.trajectory_examples("energy", "plot")}"""
+{_slice.examples("energy", "plot")}"""
     )
-    def _to_plotly(self, selection="TOTEN"):
-        return self._plot(selection).to_plotly()
+    def to_plotly(self, selection="TOTEN"):
+        return self.plot(selection).to_plotly()
 
+    @_base.data_access
     @_documentation.add(
         f"""Read the energy of the selected steps.
 
@@ -146,16 +135,17 @@ float or np.ndarray or tuple
     When only a single step is inquired, result is a float otherwise an array.
     If you select multiple quantities a tuple of them is returned.
 
-{_trajectory.trajectory_examples("energy", "to_numpy")}"""
+{_slice.examples("energy", "to_numpy")}"""
     )
-    def _to_numpy(self, selection="TOTEN"):
+    def to_numpy(self, selection="TOTEN"):
         result = tuple(
             self._raw_data.values[self._steps, index]
             for _, index in self._parse_selection(selection)
         )
         return _unpack_if_only_one_element(result)
 
-    def _labels(self, selection=_selection.all):
+    @_base.data_access
+    def labels(self, selection=_selection.all):
         "Return the labels corresponding to a particular selection defaulting to all labels."
         return [label for label, _ in self._parse_selection(selection)]
 

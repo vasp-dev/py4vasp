@@ -205,7 +205,7 @@ def _number_components(selection):
 def _electron_dielectric_function():
     shape = (2, axes, axes, number_points, complex_)
     data = np.linspace(0, 1, np.prod(shape)).reshape(shape)
-    return raw.RawDielectricFunction(
+    return raw.DielectricFunction(
         energies=np.linspace(0, 1, number_points),
         density_density=data[0],
         current_current=data[1],
@@ -215,7 +215,7 @@ def _electron_dielectric_function():
 
 def _ion_dielectric_function():
     shape = (axes, axes, number_points, complex_)
-    return raw.RawDielectricFunction(
+    return raw.DielectricFunction(
         energies=np.linspace(0, 1, number_points),
         density_density=None,
         current_current=None,
@@ -226,7 +226,7 @@ def _ion_dielectric_function():
 def _dielectric_tensor(method):
     shape = (3, axes, axes)
     data = np.arange(np.prod(shape)).reshape(shape)
-    return raw.RawDielectricTensor(
+    return raw.DielectricTensor(
         electron=data[0],
         ion=data[1],
         independent_particle=data[2] if method in ("dft", "rpa") else None,
@@ -237,7 +237,7 @@ def _dielectric_tensor(method):
 def _elastic_modulus():
     shape = (2, axes, axes, axes, axes)
     data = np.arange(np.prod(shape)).reshape(shape)
-    return raw.RawElasticModulus(
+    return raw.ElasticModulus(
         clamped_ion=data[0],
         relaxed_ion=data[1],
     )
@@ -257,21 +257,21 @@ def _Sr2TiO4_pair_correlation():
 def _piezoelectric_tensor():
     shape = (2, axes, axes, axes)
     data = np.arange(np.prod(shape)).reshape(shape)
-    return raw.RawPiezoelectricTensor(
+    return raw.PiezoelectricTensor(
         electron=data[0],
         ion=data[1],
     )
 
 
 def _polarization():
-    return raw.RawPolarization(electron=np.array((1, 2, 3)), ion=np.array((4, 5, 6)))
+    return raw.Polarization(electron=np.array((1, 2, 3)), ion=np.array((4, 5, 6)))
 
 
 def _energy():
     labels = ("ion-electron   TOTEN    ", "kinetic energy EKIN", "temperature    TEIN")
     labels = np.array(labels, dtype="S")
     shape = (number_steps, len(labels))
-    return raw.RawEnergy(
+    return raw.Energy(
         labels=labels,
         values=np.arange(np.prod(shape)).reshape(shape),
     )
@@ -289,7 +289,7 @@ def _line_kpoints(mode, labels):
         np.linspace(GM, Y, line_length),
         np.linspace(Y, M, line_length),
     )
-    kpoints = raw.RawKpoint(
+    kpoints = raw.Kpoint(
         mode=mode,
         number=line_length,
         coordinates=np.concatenate(coordinates),
@@ -308,7 +308,7 @@ def _grid_kpoints(mode, labels):
     z = np.linspace(0, 1, 4, endpoint=False) + 1 / 8
     coordinates = np.array(list(itertools.product(x, y, z)))
     number_kpoints = len(coordinates) if mode[0] in ["e", b"e"[0]] else 0
-    kpoints = raw.RawKpoint(
+    kpoints = raw.Kpoint(
         mode=mode,
         number=number_kpoints,
         coordinates=coordinates,
@@ -324,14 +324,14 @@ def _grid_kpoints(mode, labels):
 def _magnetism(number_components):
     lmax = 3
     shape = (number_steps, number_components, number_atoms, lmax)
-    return raw.RawMagnetism(
+    return raw.Magnetism(
         structure=_Fe3O4_structure(), moments=np.arange(np.prod(shape)).reshape(shape)
     )
 
 
 def _single_band(projectors):
     kpoints = _grid_kpoints("explicit", "no_labels")
-    return raw.RawBand(
+    return raw.Band(
         fermi_energy=0.0,
         eigenvalues=np.array([np.linspace([0], [1], len(kpoints.coordinates))]),
         occupations=np.array([np.linspace([1], [0], len(kpoints.coordinates))]),
@@ -342,7 +342,7 @@ def _single_band(projectors):
 def _multiple_bands(projectors):
     kpoints = _grid_kpoints("explicit", "no_labels")
     shape = (single_spin, len(kpoints.coordinates), number_bands)
-    raw_band = raw.RawBand(
+    raw_band = raw.Band(
         fermi_energy=0.5,
         eigenvalues=np.arange(np.prod(shape)).reshape(shape),
         occupations=np.arange(np.prod(shape)).reshape(shape),
@@ -359,7 +359,7 @@ def _multiple_bands(projectors):
 def _line_band(labels):
     kpoints = _line_kpoints("line", labels)
     shape = (single_spin, len(kpoints.coordinates), number_bands)
-    return raw.RawBand(
+    return raw.Band(
         fermi_energy=0.5,
         eigenvalues=np.arange(np.prod(shape)).reshape(shape),
         occupations=np.arange(np.prod(shape)).reshape(shape),
@@ -371,7 +371,7 @@ def _spin_polarized_bands(projectors):
     kpoints = _grid_kpoints("explicit", "no_labels")
     kpoints.cell = _Fe3O4_cell()
     shape = (two_spins, len(kpoints.coordinates), number_bands)
-    raw_band = raw.RawBand(
+    raw_band = raw.Band(
         fermi_energy=0.0,
         eigenvalues=np.arange(np.prod(shape)).reshape(shape),
         occupations=np.arange(np.prod(shape)).reshape(shape),
@@ -392,7 +392,7 @@ def _spin_polarized_bands(projectors):
 
 def _Sr2TiO4_born_effective_charges():
     shape = (number_atoms, axes, axes)
-    return raw.RawBornEffectiveCharge(
+    return raw.BornEffectiveCharge(
         structure=_Sr2TiO4_structure(),
         charge_tensors=np.arange(np.prod(shape)).reshape(shape),
     )
@@ -413,7 +413,7 @@ def _Sr2TiO4_cell():
 
 def _Sr2TiO4_dos(projectors):
     energies = np.linspace(-1, 3, number_points)
-    raw_dos = raw.RawDos(
+    raw_dos = raw.Dos(
         fermi_energy=1.372,
         energies=energies,
         dos=np.array([energies ** 2]),
@@ -428,7 +428,7 @@ def _Sr2TiO4_dos(projectors):
 
 def _Sr2TiO4_force_constants():
     shape = (axes * number_atoms, axes * number_atoms)
-    return raw.RawForceConstant(
+    return raw.ForceConstant(
         structure=_Sr2TiO4_structure(),
         force_constants=np.arange(np.prod(shape)).reshape(shape),
     )
@@ -436,7 +436,7 @@ def _Sr2TiO4_force_constants():
 
 def _Sr2TiO4_forces():
     shape = (number_steps, number_atoms, axes)
-    return raw.RawForce(
+    return raw.Force(
         structure=_Sr2TiO4_structure(),
         forces=np.arange(np.prod(shape)).reshape(shape),
     )
@@ -444,7 +444,7 @@ def _Sr2TiO4_forces():
 
 def _Sr2TiO4_internal_strain():
     shape = (number_atoms, axes, axes, axes)
-    return raw.RawInternalStrain(
+    return raw.InternalStrain(
         structure=_Sr2TiO4_structure(),
         internal_strain=np.arange(np.prod(shape)).reshape(shape),
     )
@@ -452,7 +452,7 @@ def _Sr2TiO4_internal_strain():
 
 def _Sr2TiO4_projectors():
     orbital_types = "s py pz px dxy dyz dz2 dxz x2-y2 fy3x2 fxyz fyz2 fz3 fxz2 fzx2 fx3"
-    return raw.RawProjector(
+    return raw.Projector(
         topology=_Sr2TiO4_topology(),
         orbital_types=np.array(orbital_types.split(), dtype="S"),
         number_spins=1,
@@ -461,7 +461,7 @@ def _Sr2TiO4_projectors():
 
 def _Sr2TiO4_stress():
     shape = (number_steps, axes, axes)
-    return raw.RawStress(
+    return raw.Stress(
         structure=_Sr2TiO4_structure(),
         stress=np.arange(np.prod(shape)).reshape(shape),
     )
@@ -478,7 +478,7 @@ def _Sr2TiO4_structure():
         [0.50000, 0.00000, 0.5],
         [0.00000, 0.50000, 0.5],
     ]
-    return raw.RawStructure(
+    return raw.Structure(
         topology=_Sr2TiO4_topology(),
         cell=_Sr2TiO4_cell(),
         positions=np.tile(positions, repetitions),
@@ -486,7 +486,7 @@ def _Sr2TiO4_structure():
 
 
 def _Sr2TiO4_topology():
-    return raw.RawTopology(
+    return raw.Topology(
         number_ion_types=np.array((2, 1, 4)),
         ion_types=np.array(("Sr", "Ti", "O "), dtype="S"),
     )
@@ -506,7 +506,7 @@ def _Fe3O4_density(selection):
     parts = selection.split()
     structure = RawDataFactory.structure(parts[0])
     grid = (_number_components(parts[1]), 10, 12, 14)
-    return raw.RawDensity(
+    return raw.Density(
         structure=structure,
         charge=np.arange(np.prod(grid)).reshape(grid),
     )
@@ -514,7 +514,7 @@ def _Fe3O4_density(selection):
 
 def _Fe3O4_dos(projectors):
     energies = np.linspace(-2, 2, number_points)
-    raw_dos = raw.RawDos(
+    raw_dos = raw.Dos(
         fermi_energy=-0.137,
         energies=energies,
         dos=np.array(((energies + 0.5) ** 2, (energies - 0.5) ** 2)),
@@ -534,14 +534,14 @@ def _Fe3O4_dos(projectors):
 
 def _Fe3O4_forces():
     shape = (number_steps, number_atoms, axes)
-    return raw.RawForce(
+    return raw.Force(
         structure=_Fe3O4_structure(),
         forces=np.arange(np.prod(shape)).reshape(shape),
     )
 
 
 def _Fe3O4_projectors():
-    return raw.RawProjector(
+    return raw.Projector(
         topology=_Fe3O4_topology(),
         orbital_types=np.array(("s", "p", "d", "f"), dtype="S"),
         number_spins=2,
@@ -550,7 +550,7 @@ def _Fe3O4_projectors():
 
 def _Fe3O4_stress():
     shape = (number_steps, axes, axes)
-    return raw.RawStress(
+    return raw.Stress(
         structure=_Fe3O4_structure(),
         stress=np.arange(np.prod(shape)).reshape(shape),
     )
@@ -567,7 +567,7 @@ def _Fe3O4_structure():
         [0.73690, 0.5, 0.72389],
     ]
     shift = np.linspace(-0.02, 0.01, number_steps)
-    return raw.RawStructure(
+    return raw.Structure(
         topology=_Fe3O4_topology(),
         cell=_Fe3O4_cell(),
         positions=np.add.outer(shift, positions),
@@ -575,7 +575,7 @@ def _Fe3O4_structure():
 
 
 def _Fe3O4_topology():
-    return raw.RawTopology(
+    return raw.Topology(
         number_ion_types=np.array((3, 4)),
         ion_types=np.array(("Fe", "O "), dtype="S"),
     )

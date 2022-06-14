@@ -11,7 +11,7 @@ import pandas as pd
 
 @pytest.fixture
 def Sr2TiO4(raw_data):
-    return Topology(raw_data.topology("Sr2TiO4"))
+    return Topology.from_data(raw_data.topology("Sr2TiO4"))
 
 
 def test_read(Sr2TiO4):
@@ -56,10 +56,10 @@ def test_to_mdtraj(Sr2TiO4):
 
 
 def test_to_poscar(Sr2TiO4):
-    assert Sr2TiO4.to_poscar() == "Sr Ti O\n2 1 4"
-    assert Sr2TiO4.to_poscar(".format.") == "Sr Ti O.format.\n2 1 4"
+    assert Sr2TiO4.to_POSCAR() == "Sr Ti O\n2 1 4"
+    assert Sr2TiO4.to_POSCAR(".format.") == "Sr Ti O.format.\n2 1 4"
     with pytest.raises(exception.IncorrectUsage):
-        Sr2TiO4.to_poscar(None)
+        Sr2TiO4.to_POSCAR(None)
 
 
 def test_elements(Sr2TiO4):
@@ -84,21 +84,6 @@ def test_print(Sr2TiO4, format_):
     assert actual == reference
 
 
-def test_descriptor(Sr2TiO4, check_descriptors):
-    descriptors = {
-        "_to_dict": ["to_dict", "read"],
-        "_to_frame": ["to_frame"],
-        "_to_poscar": ["to_poscar"],
-        "_to_mdtraj": ["to_mdtraj"],
-        "_elements": ["elements"],
-        "_ion_types": ["ion_types"],
-        "_names": ["names"],
-        "_number_atoms": ["number_atoms"],
-    }
-    check_descriptors(Sr2TiO4, descriptors)
-
-
-def test_from_file(raw_data, mock_file, check_read):
-    raw_topology = raw_data.topology("Sr2TiO4")
-    with mock_file("topology", raw_topology) as mocks:
-        check_read(Topology, mocks, raw_topology)
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.topology("Sr2TiO4")
+    check_factory_methods(Topology, data)

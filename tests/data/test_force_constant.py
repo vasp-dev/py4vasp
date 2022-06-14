@@ -8,9 +8,9 @@ from py4vasp.data import ForceConstant, Structure
 @pytest.fixture
 def Sr2TiO4(raw_data):
     raw_force_constants = raw_data.force_constant("Sr2TiO4")
-    force_constants = ForceConstant(raw_force_constants)
+    force_constants = ForceConstant.from_data(raw_force_constants)
     force_constants.ref = types.SimpleNamespace()
-    force_constants.ref.structure = Structure(raw_force_constants.structure)
+    force_constants.ref.structure = Structure.from_data(raw_force_constants.structure)
     force_constants.ref.force_constants = raw_force_constants.force_constants
     return force_constants
 
@@ -64,15 +64,6 @@ atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     z
     assert actual == {"text/plain": reference}
 
 
-def test_descriptor(Sr2TiO4, check_descriptors):
-    descriptors = {
-        "_to_dict": ["to_dict", "read"],
-        "_to_string": ["__str__"],
-    }
-    check_descriptors(Sr2TiO4, descriptors)
-
-
-def test_from_file(raw_data, mock_file, check_read):
-    raw_force_constants = raw_data.force_constant("Sr2TiO4")
-    with mock_file("force_constant", raw_force_constants) as mocks:
-        check_read(ForceConstant, mocks, raw_force_constants)
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.force_constant("Sr2TiO4")
+    check_factory_methods(ForceConstant, data)

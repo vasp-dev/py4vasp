@@ -11,7 +11,7 @@ from unittest.mock import patch
 @pytest.fixture
 def electronic(raw_data):
     raw_electronic = raw_data.dielectric_function("electron")
-    electronic = DielectricFunction(raw_electronic)
+    electronic = DielectricFunction.from_data(raw_electronic)
     electronic.ref = types.SimpleNamespace()
     electronic.ref.energies = raw_electronic.energies
     to_complex = lambda data: data[..., 0] + 1j * data[..., 1]
@@ -24,7 +24,7 @@ def electronic(raw_data):
 @pytest.fixture
 def ionic(raw_data):
     raw_ionic = raw_data.dielectric_function("ion")
-    ionic = DielectricFunction(raw_ionic)
+    ionic = DielectricFunction.from_data(raw_ionic)
     ionic.ref = types.SimpleNamespace()
     ionic.ref.energies = raw_ionic.energies
     to_complex = lambda data: data[..., 0] + 1j * data[..., 1]
@@ -43,11 +43,13 @@ def test_ionic_read(ionic, Assert):
 
 
 def check_dielectric_read(dielectric_function, Assert):
-    actual = dielectric_function.read()
-    Assert.allclose(actual["energies"], dielectric_function.ref.energies)
-    Assert.allclose(actual["density_density"], dielectric_function.ref.density_density)
-    Assert.allclose(actual["current_current"], dielectric_function.ref.current_current)
-    Assert.allclose(actual["ion"], dielectric_function.ref.ion)
+    for method in (dielectric_function.read, dielectric_function.to_dict):
+        actual = method()
+        reference = dielectric_function.ref
+        Assert.allclose(actual["energies"], reference.energies)
+        Assert.allclose(actual["density_density"], reference.density_density)
+        Assert.allclose(actual["current_current"], reference.current_current)
+        Assert.allclose(actual["ion"], reference.ion)
 
 
 @dataclasses.dataclass
@@ -306,7 +308,7 @@ def check_figure_contains_plots(fig, references, Assert):
         assert data.name == ref.name
 
 
-@patch("py4vasp.data.dielectric_function.DielectricFunction._plot")
+@patch("py4vasp.data.dielectric_function.DielectricFunction.plot")
 def test_electronic_to_plotly(mock_plot, electronic):
     fig = electronic.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
@@ -328,14 +330,12 @@ def test_ionic_to_image(ionic):
 
 
 def check_to_image(dielectric_function, filename_argument, expected_filename):
-    plot_function = "py4vasp.data.dielectric_function.DielectricFunction._to_plotly"
+    plot_function = "py4vasp.data.dielectric_function.DielectricFunction.to_plotly"
     with patch(plot_function) as plot:
         dielectric_function.to_image("args", filename=filename_argument, key="word")
-        plot.assert_called_once()
-        assert plot.call_args[0][1] == "args"
-        assert plot.call_args[1] == {"key": "word"}
+        plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
-        expected_path = dielectric_function._path / expected_filename
+        expected_path = dielectric_function.path / expected_filename
         fig.write_image.assert_called_once_with(expected_path)
 
 
@@ -361,16 +361,6 @@ dielectric function:
     assert actual == {"text/plain": reference}
 
 
-def test_descriptor(electronic, check_descriptors):
-    descriptors = {
-        "_to_dict": ["to_dict", "read"],
-        "_plot": ["plot"],
-        "_to_plotly": ["to_plotly"],
-    }
-    check_descriptors(electronic, descriptors)
-
-
-def test_from_file(raw_data, mock_file, check_read):
-    raw_electronic = raw_data.dielectric_function("electron")
-    with mock_file("dielectric_function", raw_electronic) as mocks:
-        check_read(DielectricFunction, mocks, raw_electronic)
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.dielectric_function("electron")
+    check_factory_methods(DielectricFunction, data)

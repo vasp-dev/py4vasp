@@ -2,9 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-import py4vasp.data._base as _base
-import py4vasp.data._trajectory as _trajectory
-from py4vasp.data import Structure
+from py4vasp.data import _base, _slice, Structure
 import py4vasp.exceptions as exception
 import py4vasp._util.documentation as _documentation
 import py4vasp._util.reader as _reader
@@ -16,22 +14,14 @@ You can use this class to analyze the stress on the shape of the cell. In
 particular, you can check whether the stress is small at the end of the
 calculation.
 
-Parameters
-----------
-raw_stress : RawStress
-    Dataclass containing the raw stress tensor and associated structure data.
-
-{_trajectory.trajectory_examples("stress")}
+{_slice.examples("stress")}
 """.strip()
 
 
 @_documentation.add(_stress_docstring)
-class Stress(_trajectory.DataTrajectory):
-    read = _base.RefinementDescriptor("_to_dict")
-    to_dict = _base.RefinementDescriptor("_to_dict")
-    __str__ = _base.RefinementDescriptor("_to_string")
-
-    def _to_string(self):
+class Stress(_slice.Mixin, _base.Refinery):
+    @_base.data_access
+    def __str__(self):
         "Convert the stress to a format similar to the OUTCAR file."
         step = self._last_step_in_slice
         eV_to_kB = 1.602176634e3 / self._structure[step].volume()
@@ -45,6 +35,7 @@ Total   {stress_to_string(stress / eV_to_kB)}
 in kB   {stress_to_string(stress)}
 """.strip()
 
+    @_base.data_access
     @_documentation.add(
         f"""Read the stress and associated structural information for one or more
 selected steps of the trajectory.
@@ -55,9 +46,9 @@ dict
     Contains the stress for all selected steps and the structural information
     to know on which cell the stress acts.
 
-{_trajectory.trajectory_examples("stress", "read")}"""
+{_slice.examples("stress", "read")}"""
     )
-    def _to_dict(self):
+    def to_dict(self):
         return {
             "structure": self._structure[self._steps].read(),
             "stress": self._stress[self._steps],
@@ -65,7 +56,7 @@ dict
 
     @property
     def _structure(self):
-        return Structure(self._raw_data.structure)
+        return Structure.from_data(self._raw_data.structure)
 
     @property
     def _stress(self):

@@ -1,12 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.data import Viewer3d, Structure, Topology
-from py4vasp.data._base import DataBase, RefinementDescriptor
+from py4vasp.data import _base, _structure, Topology
 from IPython.lib.pretty import pretty
-from pathlib import Path
 import py4vasp.exceptions as exceptions
-
-_filename = "vaspwave.h5"
 
 
 class _ViewerWrapper:
@@ -19,42 +15,25 @@ class _ViewerWrapper:
         self._viewer.show_isosurface(data, **options)
 
 
-class Density(DataBase):
+class Density(_base.Refinery, _structure.Mixin):
     """The charge and magnetization density.
 
-    You can use this class to extract the density data of the Vasp calculation
+    You can use this class to extract the density data of the VASP calculation
     and to have a quick glance at the resulting density.
-
-    Parameters
-    ----------
-    raw_density : RawDensity
-        Dataclass containing the raw density data as well as structural information.
     """
 
-    read = RefinementDescriptor("_to_dict")
-    to_dict = RefinementDescriptor("_to_dict")
-    plot = RefinementDescriptor("_to_viewer3d")
-    to_viewer3d = RefinementDescriptor("_to_viewer3d")
-    __str__ = RefinementDescriptor("_to_string")
-
-    @classmethod
-    def from_file(cls, file=None):
-        if file is None:
-            file = _filename
-        elif (isinstance(file, Path) or isinstance(file, str)) and Path(file).is_dir():
-            file = file / _filename
-        return super().from_file(file)
-
-    def _to_string(self):
+    @_base.data_access
+    def __str__(self):
         grid = self._raw_data.charge.shape[1:]
         return f"""density:
-    structure: {pretty(Topology(self._raw_data.structure.topology))}
+    structure: {pretty(Topology.from_data(self._raw_data.structure.topology))}
     grid: {grid[0]}, {grid[1]}, {grid[2]}
     {"spin polarized" if self._spin_polarized() else ""}
         """.strip()
 
-    def _to_dict(self):
-        """Read the electionic density into a dictionary.
+    @_base.data_access
+    def to_dict(self):
+        """Read the electronic density into a dictionary.
 
         Returns
         -------
@@ -63,18 +42,19 @@ class Density(DataBase):
             of a grid in the unit cell.
         """
         return {
-            "structure": self._structure().read(),
+            "structure": self._structure.read(),
             "charge": self._raw_data.charge[0],
             "magnetization": self._magnetization_if_present(),
         }
 
-    def _to_viewer3d(self, selection="charge", **user_options):
+    @_base.data_access
+    def plot(self, selection="charge", **user_options):
         """Plot the selected density as a 3d isosurface within the structure.
 
         Parameters
         ----------
         selection : str
-            Can be either *charge* or *magnetization*, dependending on which quantity
+            Can be either *charge* or *magnetization*, depending on which quantity
             should be visualized.
         user_options
             Further arguments with keyword that get directly passed on to the
@@ -86,7 +66,7 @@ class Density(DataBase):
         Viewer3d
             Visualize an isosurface of the density within the 3d structure.
         """
-        viewer = self._structure().plot()
+        viewer = self._structure.plot()
         if selection == "charge":
             self._plot_charge(_ViewerWrapper(viewer), **user_options)
         elif selection == "magnetization":
@@ -95,9 +75,6 @@ class Density(DataBase):
             msg = f"'{selection}' is an unknown option, please use 'charge' or 'magnetization' instead."
             raise exceptions.IncorrectUsage(msg)
         return viewer
-
-    def _structure(self):
-        return Structure(self._raw_data.structure)
 
     def _magnetization_if_present(self):
         if self._spin_polarized():
@@ -119,7 +96,7 @@ class Density(DataBase):
 
     def _raise_error_if_not_spin_polarized(self):
         if not self._spin_polarized():
-            msg = "Density does not contain magnetization. Please rerun Vasp with ISPIN = 2 to obtain it."
+            msg = "Density does not contain magnetization. Please rerun VASP with ISPIN = 2 to obtain it."
             raise exceptions.NoData(msg)
 
 
