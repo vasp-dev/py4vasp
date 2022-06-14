@@ -17,7 +17,7 @@ import py4vasp.data
 import py4vasp.exceptions as exception
 import py4vasp.control
 import py4vasp._util.convert as _convert
-from pathlib import Path
+import pathlib
 
 
 class Calculation:
@@ -46,7 +46,7 @@ instead of the constructor Calculation()."""
 
         Parameters
         ----------
-        path_name : str or Path
+        path_name : str or pathlib.Path
             Name of the path associated with the calculation.
 
         Returns
@@ -55,8 +55,30 @@ instead of the constructor Calculation()."""
             A calculation associated with the given path.
         """
         calc = cls(_internal=True)
-        calc._path = Path(path_name).expanduser().resolve()
-        calc = _add_all_refinement_classes(calc, _add_to_instance)
+        calc._path = pathlib.Path(path_name).expanduser().resolve()
+        calc = _add_all_refinement_classes(calc, _add_attribute_from_path)
+        return _add_input_files(calc)
+
+    @classmethod
+    def from_file(cls, file_name):
+        """Set up a Calculation from a particular file.
+
+        Typically this limits the amount of information, you have access to, so prefer
+        creating the instance with the :meth:`from_path` if possible.
+
+        Parameters
+        ----------
+        file_name : str of pathlib.Path
+            Name of the file from which the data is read.
+
+        Returns
+        -------
+        Calculation
+            A calculation accessing the data in the given file.
+        """
+        calc = cls(_internal=True)
+        calc._path = pathlib.Path(file_name).expanduser().resolve().parent
+        calc = _add_all_refinement_classes(calc, _AddAttributeFromFile(file_name))
         return _add_input_files(calc)
 
     def path(self):
@@ -98,10 +120,20 @@ def _add_all_refinement_classes(calc, add_single_class):
     return calc
 
 
-def _add_to_instance(calc, name, class_):
-    instance = class_.from_file(calc.path())
+def _add_attribute_from_path(calc, name, class_):
+    instance = class_.from_path(calc.path())
     setattr(calc, _convert.to_snakecase(name), instance)
     return calc
+
+
+class _AddAttributeFromFile:
+    def __init__(self, file_name):
+        self._file_name = file_name
+
+    def __call__(self, calc, name, class_):
+        instance = class_.from_file(self._file_name)
+        setattr(calc, _convert.to_snakecase(name), instance)
+        return calc
 
 
 def _add_to_documentation(calc, name, class_):
@@ -122,7 +154,7 @@ Calculation = _add_all_refinement_classes(Calculation, _add_to_documentation)
 
 
 def _add_input_files(calc):
-    calc._INCAR = py4vasp.control.INCAR(calc._path)
-    calc._KPOINTS = py4vasp.control.KPOINTS(calc._path)
-    calc._POSCAR = py4vasp.control.POSCAR(calc._path)
+    calc._INCAR = py4vasp.control.INCAR(calc.path())
+    calc._KPOINTS = py4vasp.control.KPOINTS(calc.path())
+    calc._POSCAR = py4vasp.control.POSCAR(calc.path())
     return calc
