@@ -115,7 +115,7 @@ def test_supercell(raw_data, assert_arrow_message):
     supercell = 2  # meaning 2 along every direction
     viewer = make_viewer(structure, supercell)
     create_arrows(viewer, number_atoms)
-    assert count_messages(viewer) == supercell ** 3 * number_atoms
+    assert count_messages(viewer) == supercell**3 * number_atoms
 
 
 def test_bare_ngl_cannot_add_arrows_at_atoms(viewer3d):
