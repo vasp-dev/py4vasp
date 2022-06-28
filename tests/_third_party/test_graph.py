@@ -8,7 +8,7 @@ from unittest.mock import patch
 @pytest.fixture
 def parabola():
     x = np.linspace(0, 2, 50)
-    return Series(x=x, y=x ** 2, name="parabola")
+    return Series(x=x, y=x**2, name="parabola")
 
 
 @pytest.fixture
@@ -27,7 +27,7 @@ def two_lines():
 @pytest.fixture
 def fatband():
     x = np.linspace(-1, 1, 40)
-    return Series(x=x, y=np.abs(x), width=x ** 2, name="fatband")
+    return Series(x=x, y=np.abs(x), width=x**2, name="fatband")
 
 
 @pytest.fixture
@@ -169,7 +169,7 @@ def test_plot():
 def test_plot_small_dataset():
     for length in range(10):
         x = np.linspace(0, 1, length)
-        y = x ** 2
+        y = x**2
         series = Series(x, y)
         assert plot(x, y) == Graph(series)
 

@@ -71,9 +71,9 @@ class Viewer3d:
         if isinstance(supercell, collections.abc.Iterable):
             return np.prod(supercell)
         if isinstance(supercell, int):
-            return supercell ** 3
+            return supercell**3
         if isinstance(supercell, float) and supercell.is_integer():
-            return supercell ** 3
+            return supercell**3
         return 1
 
     @classmethod

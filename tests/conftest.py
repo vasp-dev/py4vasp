@@ -416,7 +416,7 @@ def _Sr2TiO4_dos(projectors):
     raw_dos = raw.Dos(
         fermi_energy=1.372,
         energies=energies,
-        dos=np.array([energies ** 2]),
+        dos=np.array([energies**2]),
     )
     if projectors == "with_projectors":
         raw_dos.projectors = _Sr2TiO4_projectors()
