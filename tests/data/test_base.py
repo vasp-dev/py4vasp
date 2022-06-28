@@ -1,5 +1,5 @@
 from py4vasp.data import _base
-from py4vasp import exceptions as exception
+from py4vasp import raw, exceptions as exception
 import contextlib
 import dataclasses
 import inspect
@@ -102,6 +102,12 @@ def test_source_from_data():
     example = Example.from_data(RAW_DATA)
     with pytest.raises(exception.IncorrectUsage):
         example.read(source="don't use source with from_data")
+
+
+def test_default_source_is_none():
+    # default source must be None, otherwise the next test would be incorrect
+    signature = inspect.signature(raw.access)
+    assert signature.parameters["source"].default is None
 
 
 def test_source_from_path(mock_access):

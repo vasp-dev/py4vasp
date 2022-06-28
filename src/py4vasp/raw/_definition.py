@@ -2,6 +2,7 @@ from py4vasp import raw
 from py4vasp.raw._schema import Schema, Link, Length
 
 DEFAULT_FILE = "vaspout.h5"
+DEFAULT_SOURCE = "default"
 VERSION_DATA = raw.Version("version/major", "version/minor", "version/patch")
 
 schema = Schema(VERSION_DATA)
