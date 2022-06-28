@@ -6,12 +6,12 @@ import pathlib
 import py4vasp
 import py4vasp.exceptions as exception
 import py4vasp.raw as raw
-from py4vasp.raw._definition import schema, DEFAULT_FILE
+from py4vasp.raw._definition import schema, DEFAULT_FILE, DEFAULT_SOURCE
 from py4vasp.raw._schema import Link, Length
 
 
 @contextlib.contextmanager
-def _access(quantity, *, source="default", path=None, file=None):
+def _access(quantity, *, source=None, path=None, file=None):
     """Create access to a particular quantity from the VASP output.
 
     Parameters
@@ -68,6 +68,7 @@ class _State:
         return dataclasses.replace(source.data, **datasets)
 
     def _get_source(self, quantity, source):
+        source = source or DEFAULT_SOURCE
         try:
             return schema.sources[quantity][source]
         except KeyError as error:
