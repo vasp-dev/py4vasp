@@ -39,6 +39,16 @@ schema.add(
     projectors=Link("projector", "kpoints_wan"),
     projections="results/projectors_kpoints_wan/par",
 )
+group = "results/phonons"
+schema.add(
+    raw.Band,
+    name="phonon",
+    required=raw.Version(6, 4),
+    kpoints=Link("kpoint", "phonon"),
+    eigenvalues=f"{group}/frequencies",
+    projectors=Link("projector", "phonon"),
+    projections=f"{group}/eigenvectors",
+)
 #
 schema.add(
     raw.BornEffectiveCharge,
@@ -51,6 +61,13 @@ schema.add(
     raw.Cell,
     scale="results/positions/scale",
     lattice_vectors="intermediate/ion_dynamics/lattice_vectors",
+)
+schema.add(
+    raw.Cell,
+    name="phonon",
+    required=raw.Version(6, 4),
+    scale="results/phonons/primitive/scale",
+    lattice_vectors="results/phonons/primitive/lattice_vectors",
 )
 #
 schema.add(
@@ -97,6 +114,16 @@ schema.add(
     energies=f"{group}/energies",
     dos=f"{group}/dos",
     projectors=Link("projector", "kpoints_opt"),
+    projections=f"{group}/dospar",
+)
+group = "results/phonons"
+schema.add(
+    raw.Dos,
+    name="phonon",
+    required=raw.Version(6, 4),
+    energies=f"{group}/dos_mesh",
+    dos=f"{group}/dos",
+    projectors=Link("projector", "phonon"),
     projections=f"{group}/dospar",
 )
 #
@@ -172,6 +199,20 @@ schema.add(
     label_indices=f"{input}/positions_labels_kpoints",
     cell=Link("cell", "default"),
 )
+input = "input/qpoints"
+result = "results/phonons"
+schema.add(
+    raw.Kpoint,
+    name="phonon",
+    required=raw.Version(6, 4),
+    mode=f"{input}/mode",
+    number=f"{input}/number_kpoints",
+    coordinates=f"{result}/qpoint_coords",
+    weights=f"{result}/qpoints_symmetry_weight",
+    labels=f"{input}/labels_kpoints",
+    label_indices=f"{input}/positions_labels_kpoints",
+    cell=Link("cell", "phonon"),
+)
 #
 schema.add(
     raw.Magnetism,
@@ -210,6 +251,15 @@ schema.add(
     orbital_types="results/projectors/lchar",
     number_spins=Length("results/electron_eigenvalues/eigenvalues"),
 )
+schema.add(
+    raw.Projector,
+    name="phonon",
+    required=raw.Version(6, 4),
+    topology=Link("topology", "phonon"),
+    orbital_types="results/phonons/directions",
+    # TODO set spin to 1
+    number_spins=Length("results/electron_eigenvalues/eigenvalues"),
+)
 #
 schema.add(
     raw.Stress,
@@ -230,4 +280,11 @@ schema.add(
     raw.Topology,
     ion_types="results/positions/ion_types",
     number_ion_types="results/positions/number_ion_types",
+)
+schema.add(
+    raw.Topology,
+    name="phonon",
+    required=raw.Version(6, 4),
+    ion_types="results/phonons/primitive/ion_types",
+    number_ion_types="results/phonons/primitive/number_ion_types",
 )

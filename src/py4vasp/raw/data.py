@@ -26,13 +26,13 @@ class Band:
     eigenvalues e.g. with respect to the Fermi energy are meaningful. Includes
     projections of the bands on orbitals and atoms when available."""
 
-    fermi_energy: float
-    "Fermi energy obtained by VASP."
     kpoints: Kpoint
     "**k** points at which the bands are calculated."
     eigenvalues: VaspData
     "Calculated eigenvalues at the **k** points."
-    occupations: VaspData
+    fermi_energy: float = None
+    "Fermi energy obtained by VASP."
+    occupations: VaspData = None
     "The occupations of the different bands."
     projections: VaspData = None
     "If present, orbital projections of the bands."
@@ -124,12 +124,12 @@ class Dos:
     the absolute value of the energy mesh is not important and shifting the energies to
     a reference e.g. the Fermi energy is desired."""
 
-    fermi_energy: float
-    "Fermi energy obtained by VASP."
     energies: VaspData
     "Energy E at which the Dos is evaluated."
     dos: VaspData
     "Dos at the energies D(E)."
+    fermi_energy: float = None
+    "Fermi energy obtained by VASP."
     projections: VaspData = None
     "If present, orbital projections of the Dos."
     projectors: Projector = None
