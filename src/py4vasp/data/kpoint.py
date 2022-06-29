@@ -155,6 +155,8 @@ reciprocal"""
         first_char = mode[0].lower()
         if first_char == "a":
             return "automatic"
+        elif first_char == "b":
+            return "generating lattice"
         elif first_char == "e":
             return "explicit"
         elif first_char == "g":

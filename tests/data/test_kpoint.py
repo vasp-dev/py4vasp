@@ -86,6 +86,7 @@ def test_no_labels_read(grid_kpoints):
 def test_mode(raw_data):
     allowed_mode_formats = {
         "automatic": ["a", b"A", "auto"],
+        "generating lattice": ["b", b"B"],
         "explicit": ["e", b"e", "explicit", "ExplIcIT"],
         "gamma": ["g", b"G", "gamma"],
         "line": ["l", b"l", "line"],
