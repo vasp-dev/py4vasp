@@ -58,8 +58,21 @@ def line_kpoints(raw_data):
     return kpoints
 
 
+@pytest.fixture
+def qpoints(raw_data):
+    raw_kpoints = raw_data.kpoint("qpoints")
+    kpoints = Kpoint.from_data(raw_kpoints)
+    kpoints.ref = types.SimpleNamespace()
+    cartesian = to_cartesian(raw_kpoints.coordinates, raw_kpoints.cell)
+    kpoints.ref.distances = line_distances(cartesian)
+    return kpoints
+
+
 def to_cartesian(direct_coordinates, cell):
-    lattice_vectors = cell.lattice_vectors[-1]
+    if cell.lattice_vectors.ndim == 2:
+        lattice_vectors = cell.lattice_vectors
+    else:
+        lattice_vectors = cell.lattice_vectors[-1]
     direct_to_cartesian = np.linalg.inv(lattice_vectors)
     return direct_coordinates @ direct_to_cartesian.T
 
@@ -159,6 +172,11 @@ def test_explicit_kpoints_distances(explicit_kpoints, Assert):
 def test_line_kpoints_labels_distances(line_kpoints, Assert):
     actual_distances = line_kpoints.distances()
     Assert.allclose(actual_distances, line_kpoints.ref.distances)
+
+
+def test_qpoints_distances(qpoints, Assert):
+    actual_distances = qpoints.distances()
+    Assert.allclose(actual_distances, qpoints.ref.distances)
 
 
 def test_print(explicit_kpoints, format_):

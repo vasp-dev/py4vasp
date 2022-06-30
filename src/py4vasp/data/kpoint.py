@@ -139,7 +139,7 @@ reciprocal"""
     @_base.data_access
     @_documentation.add(_distances_doc)
     def distances(self):
-        cell = self._raw_data.cell.lattice_vectors[-1]
+        cell = _last_step(self._raw_data.cell.lattice_vectors)
         cartesian_kpoints = np.linalg.solve(cell, self._raw_data.coordinates[:].T).T
         kpoint_lines = np.split(cartesian_kpoints, self.number_lines())
         kpoint_norms = [_line_distances(line) for line in kpoint_lines]
@@ -201,6 +201,13 @@ reciprocal"""
             _kpoint_label(kpoint) if band_edge(index) else ""
             for index, kpoint in enumerate(self._raw_data.coordinates)
         ]
+
+
+def _last_step(lattice_vectors):
+    if lattice_vectors.ndim == 2:
+        return lattice_vectors
+    else:
+        return lattice_vectors[-1]
 
 
 def _line_distances(coordinates):

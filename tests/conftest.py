@@ -126,6 +126,8 @@ class RawDataFactory:
 
     @staticmethod
     def kpoint(selection):
+        if selection == "qpoints":
+            return _qpoints()
         mode, *labels = selection.split()
         labels = labels[0] if len(labels) > 0 else "no_labels"
         if mode[0] in ["l", b"l"[0]]:
@@ -275,6 +277,12 @@ def _energy():
         labels=labels,
         values=np.arange(np.prod(shape)).reshape(shape),
     )
+
+
+def _qpoints():
+    kpoints = _grid_kpoints("explicit", "no_labels")
+    kpoints.cell.lattice_vectors = kpoints.cell.lattice_vectors[-1]
+    return kpoints
 
 
 def _line_kpoints(mode, labels):
