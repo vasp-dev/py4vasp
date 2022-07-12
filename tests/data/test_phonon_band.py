@@ -23,3 +23,17 @@ def test_read(phonon_band, Assert):
     band = phonon_band.read()
     Assert.allclose(band["bands"], phonon_band.ref.bands)
     Assert.allclose(band["modes"], phonon_band.ref.modes)
+
+
+def test_plot(phonon_band, Assert):
+    graph = phonon_band.plot()
+    assert graph.ylabel == "Energy (meV)"
+    assert len(graph.series) == 1
+    assert graph.series[0].width is None
+    Assert.allclose(graph.series[0].x, phonon_band.ref.kpoints.distances())
+    Assert.allclose(graph.series[0].y, phonon_band.ref.bands.T)
+
+
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.phonon_band("default")
+    check_factory_methods(PhononBand, data)
