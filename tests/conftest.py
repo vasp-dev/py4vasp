@@ -339,22 +339,22 @@ def _magnetism(number_components):
 
 def _single_band(projectors):
     kpoints = _grid_kpoints("explicit", "no_labels")
+    eigenvalues = np.array([np.linspace([0], [1], len(kpoints.coordinates))])
     return raw.Band(
+        dispersion=raw.Dispersion(kpoints, eigenvalues),
         fermi_energy=0.0,
-        eigenvalues=np.array([np.linspace([0], [1], len(kpoints.coordinates))]),
         occupations=np.array([np.linspace([1], [0], len(kpoints.coordinates))]),
-        kpoints=kpoints,
     )
 
 
 def _multiple_bands(projectors):
     kpoints = _grid_kpoints("explicit", "no_labels")
     shape = (single_spin, len(kpoints.coordinates), number_bands)
+    eigenvalues = np.arange(np.prod(shape)).reshape(shape)
     raw_band = raw.Band(
+        dispersion=raw.Dispersion(kpoints, eigenvalues),
         fermi_energy=0.5,
-        eigenvalues=np.arange(np.prod(shape)).reshape(shape),
         occupations=np.arange(np.prod(shape)).reshape(shape),
-        kpoints=kpoints,
     )
     if projectors == "with_projectors":
         raw_band.projectors = _Sr2TiO4_projectors()
@@ -367,11 +367,11 @@ def _multiple_bands(projectors):
 def _line_band(labels):
     kpoints = _line_kpoints("line", labels)
     shape = (single_spin, len(kpoints.coordinates), number_bands)
+    eigenvalues = np.arange(np.prod(shape)).reshape(shape)
     return raw.Band(
+        dispersion=raw.Dispersion(kpoints, eigenvalues),
         fermi_energy=0.5,
-        eigenvalues=np.arange(np.prod(shape)).reshape(shape),
         occupations=np.arange(np.prod(shape)).reshape(shape),
-        kpoints=kpoints,
     )
 
 
@@ -379,11 +379,11 @@ def _spin_polarized_bands(projectors):
     kpoints = _grid_kpoints("explicit", "no_labels")
     kpoints.cell = _Fe3O4_cell()
     shape = (two_spins, len(kpoints.coordinates), number_bands)
+    eigenvalues = np.arange(np.prod(shape)).reshape(shape)
     raw_band = raw.Band(
+        dispersion=raw.Dispersion(kpoints, eigenvalues),
         fermi_energy=0.0,
-        eigenvalues=np.arange(np.prod(shape)).reshape(shape),
         occupations=np.arange(np.prod(shape)).reshape(shape),
-        kpoints=kpoints,
     )
     if projectors in ["with_projectors", "excess_orbitals"]:
         raw_band.projectors = _Fe3O4_projectors()

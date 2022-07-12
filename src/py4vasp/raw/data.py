@@ -26,13 +26,11 @@ class Band:
     eigenvalues e.g. with respect to the Fermi energy are meaningful. Includes
     projections of the bands on orbitals and atoms when available."""
 
-    kpoints: Kpoint
-    "**k** points at which the bands are calculated."
-    eigenvalues: VaspData
-    "Calculated eigenvalues at the **k** points."
-    fermi_energy: float = None
+    dispersion: Dispersion
+    "The **k** points and eigenvalues of the dispersion."
+    fermi_energy: float
     "Fermi energy obtained by VASP."
-    occupations: VaspData = None
+    occupations: VaspData
     "The occupations of the different bands."
     projections: VaspData = None
     "If present, orbital projections of the bands."
@@ -113,6 +111,16 @@ class DielectricTensor:
     "The dielectric tensor in the independent particle approximation."
     method: str
     "The method used to generate the dielectric tensor."
+
+
+@dataclasses.dataclass
+class Dispersion:
+    """A general class for dispersions (electron and phonon)."""
+
+    kpoints: Kpoint
+    "**k** points at which the bands are calculated."
+    eigenvalues: VaspData
+    "Calculated eigenvalues at the **k** points."
 
 
 @dataclasses.dataclass
@@ -256,6 +264,21 @@ class PairCorrelation:
     "The total and the element-resolved pair-correlation functions."
     labels: VaspData
     "Describes which indices correspond to which element pair."
+
+
+@dataclasses.dataclass
+class PhononBand:
+    """The band structure of the phonons.
+
+    Contains the eigenvalues and eigenvectors at specifics **q** points in the Brillouin
+    zone. Includes the topology to map atoms onto specific modes."""
+
+    dispersion: Dispersion
+    "The **q** points and the eigenvalues."
+    topology: Topology
+    "The atom types in the crystal."
+    eigenvectors: VaspData
+    "The eigenvectors of the phonon modes."
 
 
 @dataclasses.dataclass

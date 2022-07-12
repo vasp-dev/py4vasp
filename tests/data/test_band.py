@@ -15,9 +15,9 @@ def single_band(raw_data):
     band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
     band.ref.fermi_energy = 0.0
-    band.ref.bands = raw_band.eigenvalues[0]
+    band.ref.bands = raw_band.dispersion.eigenvalues[0]
     band.ref.occupations = raw_band.occupations[0]
-    raw_kpoints = raw_band.kpoints
+    raw_kpoints = raw_band.dispersion.kpoints
     band.ref.kpoints = Kpoint.from_data(raw_kpoints)
     formatter = {"float": lambda x: f"{x:.2f}"}
     kpoint_to_string = lambda vec: np.array2string(vec, formatter=formatter) + " 1"
@@ -31,7 +31,7 @@ def multiple_bands(raw_data):
     band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
     band.ref.fermi_energy = raw_band.fermi_energy
-    band.ref.bands = raw_band.eigenvalues[0] - raw_band.fermi_energy
+    band.ref.bands = raw_band.dispersion.eigenvalues[0] - raw_band.fermi_energy
     band.ref.occupations = raw_band.occupations[0]
     return band
 
@@ -41,7 +41,7 @@ def with_projectors(raw_data):
     raw_band = raw_data.band("multiple with_projectors")
     band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
-    band.ref.bands = raw_band.eigenvalues[0] - raw_band.fermi_energy
+    band.ref.bands = raw_band.dispersion.eigenvalues[0] - raw_band.fermi_energy
     band.ref.Sr = np.sum(raw_band.projections[0, 0:2, :, :, :], axis=(0, 1))
     band.ref.p = np.sum(raw_band.projections[0, :, 1:4, :, :], axis=(0, 1))
     return band
@@ -52,7 +52,7 @@ def line_no_labels(raw_data):
     raw_band = raw_data.band("line no_labels")
     band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
-    band.ref.kpoints = Kpoint.from_data(raw_band.kpoints)
+    band.ref.kpoints = Kpoint.from_data(raw_band.dispersion.kpoints)
     return band
 
 
@@ -61,7 +61,7 @@ def line_with_labels(raw_data):
     raw_band = raw_data.band("line with_labels")
     band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
-    band.ref.kpoints = Kpoint.from_data(raw_band.kpoints)
+    band.ref.kpoints = Kpoint.from_data(raw_band.dispersion.kpoints)
     return band
 
 
@@ -71,8 +71,8 @@ def spin_polarized(raw_data):
     band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
     assert raw_band.fermi_energy == 0
-    band.ref.bands_up = raw_band.eigenvalues[0]
-    band.ref.bands_down = raw_band.eigenvalues[1]
+    band.ref.bands_up = raw_band.dispersion.eigenvalues[0]
+    band.ref.bands_down = raw_band.dispersion.eigenvalues[1]
     band.ref.occupations_up = raw_band.occupations[0]
     band.ref.occupations_down = raw_band.occupations[1]
     return band
@@ -83,8 +83,8 @@ def spin_projectors(raw_data):
     raw_band = raw_data.band("spin_polarized with_projectors")
     band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
-    band.ref.bands_up = raw_band.eigenvalues[0]
-    band.ref.bands_down = raw_band.eigenvalues[1]
+    band.ref.bands_up = raw_band.dispersion.eigenvalues[0]
+    band.ref.bands_down = raw_band.dispersion.eigenvalues[1]
     band.ref.s_up = np.sum(raw_band.projections[0, :, 0, :, :], axis=0)
     band.ref.s_down = np.sum(raw_band.projections[1, :, 0, :, :], axis=0)
     band.ref.Fe_d_up = np.sum(raw_band.projections[0, 0:3, 2, :, :], axis=0)

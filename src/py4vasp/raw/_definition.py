@@ -7,13 +7,11 @@ VERSION_DATA = raw.Version("version/major", "version/minor", "version/patch")
 
 schema = Schema(VERSION_DATA)
 #
-group = "results/electron_eigenvalues"
 schema.add(
     raw.Band,
+    dispersion=Link("dispersion", "default"),
     fermi_energy="results/electron_dos/efermi",
-    kpoints=Link("kpoint", "default"),
-    eigenvalues=f"{group}/eigenvalues",
-    occupations=f"{group}/fermiweights",
+    occupations="results/electron_eigenvalues/fermiweights",
     projectors=Link("projector", "default"),
     projections="results/projectors/par",
 )
@@ -21,33 +19,20 @@ group = "results/electron_eigenvalues_kpoints_opt"
 schema.add(
     raw.Band,
     name="kpoints_opt",
+    dispersion=Link("dispersion", "kpoints_opt"),
     fermi_energy="results/electron_dos_kpoints_opt/efermi",
-    kpoints=Link("kpoint", "default"),
-    eigenvalues=f"{group}/eigenvalues",
-    occupations=f"{group}/fermiweights",
+    occupations="results/electron_eigenvalues_kpoints_opt/fermiweights",
     projectors=Link("projector", "kpoints_opt"),
     projections="results/projectors_kpoints_opt/par",
 )
-group = "results/electron_eigenvalues_kpoints_wan"
 schema.add(
     raw.Band,
     name="kpoints_wan",
+    dispersion=Link("dispersion", "kpoints_wan"),
     fermi_energy="results/electron_dos_kpoints_wan/efermi",
-    kpoints=Link("kpoint", "default"),
-    eigenvalues=f"{group}/eigenvalues",
-    occupations=f"{group}/fermiweights",
+    occupations="results/electron_eigenvalues_kpoints_wan/fermiweights",
     projectors=Link("projector", "kpoints_wan"),
     projections="results/projectors_kpoints_wan/par",
-)
-group = "results/phonons"
-schema.add(
-    raw.Band,
-    name="phonon",
-    required=raw.Version(6, 4),
-    kpoints=Link("kpoint", "phonon"),
-    eigenvalues=f"{group}/frequencies",
-    projectors=Link("projector", "phonon"),
-    projections=f"{group}/eigenvectors",
 )
 #
 schema.add(
@@ -95,6 +80,30 @@ schema.add(
     ion=f"{group}/ion_dielectric_tensor",
     independent_particle=f"{group}/independent_particle_dielectric_tensor",
     method=f"{group}/method_dielectric_tensor",
+)
+#
+schema.add(
+    raw.Dispersion,
+    kpoints=Link("kpoint", "default"),
+    eigenvalues="results/electron_eigenvalues/eigenvalues",
+)
+schema.add(
+    raw.Dispersion,
+    name="kpoints_opt",
+    kpoints=Link("kpoint", "kpoints_opt"),
+    eigenvalues="results/electron_eigenvalues_kpoints_opt/eigenvalues",
+)
+schema.add(
+    raw.Dispersion,
+    name="kpoints_wan",
+    kpoints=Link("kpoint", "kpoints_wan"),
+    eigenvalues="results/electron_eigenvalues_kpoints_wan/eigenvalues",
+)
+schema.add(
+    raw.Dispersion,
+    name="phonon",
+    kpoints=Link("kpoint", "phonon"),
+    eigenvalues="results/phonons/frequencies",
 )
 #
 group = "results/electron_dos"
@@ -229,6 +238,14 @@ schema.add(
     labels=f"{group}/labels",
 )
 #
+schema.add(
+    raw.PhononBand,
+    required=raw.Version(6, 4),
+    dispersion=Link("dispersion", "phonon"),
+    topology=Link("topology", "default"),
+    eigenvectors="results/phonons/eigenvectors",
+)
+#
 group = "results/linear_response"
 schema.add(
     raw.PiezoelectricTensor,
@@ -249,15 +266,6 @@ schema.add(
     raw.Projector,
     topology=Link("topology", "default"),
     orbital_types="results/projectors/lchar",
-    number_spins=Length("results/electron_eigenvalues/eigenvalues"),
-)
-schema.add(
-    raw.Projector,
-    name="phonon",
-    required=raw.Version(6, 4),
-    topology=Link("topology", "phonon"),
-    orbital_types="results/phonons/directions",
-    # TODO set spin to 1
     number_spins=Length("results/electron_eigenvalues/eigenvalues"),
 )
 #
