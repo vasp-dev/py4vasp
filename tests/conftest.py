@@ -16,6 +16,7 @@ single_spin = 1
 two_spins = 2
 axes = 3
 complex_ = 2
+number_modes = axes * number_atoms
 
 
 class _Assert:
@@ -152,6 +153,10 @@ class RawDataFactory:
         return _polarization()
 
     @staticmethod
+    def phonon_band(selection):
+        return _phonon_band()
+
+    @staticmethod
     def projector(selection):
         if selection == "Sr2TiO4":
             return _Sr2TiO4_projectors()
@@ -253,6 +258,18 @@ def _Sr2TiO4_pair_correlation():
         distances=np.arange(number_points),
         function=data,
         labels=labels,
+    )
+
+
+def _phonon_band():
+    qpoints = _qpoints()
+    shape_values = (len(qpoints.coordinates), number_modes)
+    eigenvalues = np.arange(np.prod(shape_values)).reshape(shape_values)
+    shape_vectors = (len(qpoints.coordinates), number_modes, number_modes, complex_)
+    return raw.PhononBand(
+        dispersion=raw.Dispersion(qpoints, eigenvalues),
+        topology=_Sr2TiO4_topology(),
+        eigenvectors=np.arange(np.prod(shape_vectors)).reshape(shape_vectors),
     )
 
 

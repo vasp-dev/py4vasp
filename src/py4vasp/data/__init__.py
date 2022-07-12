@@ -27,6 +27,7 @@ from .elastic_modulus import ElasticModulus
 from .energy import Energy
 from .kpoint import Kpoint
 from .pair_correlation import PairCorrelation
+from ._phonon_band import PhononBand
 from .piezoelectric_tensor import PiezoelectricTensor
 from .polarization import Polarization
 from .projector import Projector
