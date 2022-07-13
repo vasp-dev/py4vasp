@@ -269,7 +269,7 @@ def _phonon_band():
     return raw.PhononBand(
         dispersion=raw.Dispersion(qpoints, eigenvalues),
         topology=_Sr2TiO4_topology(),
-        eigenvectors=np.arange(np.prod(shape_vectors)).reshape(shape_vectors),
+        eigenvectors=np.linspace(0, 1, np.prod(shape_vectors)).reshape(shape_vectors),
     )
 
 

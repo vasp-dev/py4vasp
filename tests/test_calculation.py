@@ -53,6 +53,7 @@ def test_all_attributes(mock_access):
         "ForceConstant": "force_constant",
         "InternalStrain": "internal_strain",
         "PairCorrelation": "pair_correlation",
+        "PhononBand": "phonon_band",
         "PiezoelectricTensor": "piezoelectric_tensor",
     }
     for name, _ in inspect.getmembers(py4vasp.data, inspect.isclass):
