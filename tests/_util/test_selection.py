@@ -3,6 +3,11 @@
 from py4vasp._util import selection
 
 
+def test_empty_tree():
+    tree = selection.Tree.from_selection(None)
+    assert tree.nodes == []
+
+
 def test_one_level():
     tree = selection.Tree.from_selection("foo bar baz")
     actual = [str(node) for node in tree.nodes]
