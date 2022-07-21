@@ -10,6 +10,7 @@ from py4vasp._util import convert as _convert, selection as _selection
 import py4vasp._third_party.graph as _graph
 
 _range = re.compile(r"^(\d+)" + re.escape(_selection.range_separator) + r"(\d+)$")
+_eV_to_meV = 1000
 
 
 class PhononBand(_base.Refinery):
@@ -54,7 +55,9 @@ class PhononBand(_base.Refinery):
             return self._regular_band_structure(band)
 
     def _regular_band_structure(self, band):
-        return [_graph.Series(x=band["qpoint_distances"], y=band["bands"].T)]
+        return [
+            _graph.Series(x=band["qpoint_distances"], y=_eV_to_meV * band["bands"].T)
+        ]
 
     def _fat_band_structure(self, band, tree, width):
         dicts = self._init_dicts()
@@ -71,11 +74,10 @@ class PhononBand(_base.Refinery):
 
     def _fat_band(self, band, dicts, index, width):
         selection = _get_selection(dicts, index)
-        print(selection)
         selected = band["modes"][:, selection.indices, :]
         return _graph.Series(
             x=band["qpoint_distances"],
-            y=band["bands"].T,
+            y=_eV_to_meV * band["bands"].T,
             name=selection.label,
             width=width * np.sum(np.abs(selected), axis=1),
         )

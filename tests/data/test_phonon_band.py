@@ -6,6 +6,8 @@ import types
 from py4vasp.data import PhononBand, Kpoint, Topology
 from py4vasp._util import convert
 
+eV_to_meV = 1000
+
 
 @pytest.fixture
 def phonon_band(raw_data):
@@ -40,7 +42,7 @@ def test_plot(phonon_band, Assert):
     assert len(graph.series) == 1
     assert graph.series[0].width is None
     Assert.allclose(graph.series[0].x, phonon_band.ref.kpoints.distances())
-    Assert.allclose(graph.series[0].y, phonon_band.ref.bands.T)
+    Assert.allclose(graph.series[0].y, eV_to_meV * phonon_band.ref.bands.T)
 
 
 def test_plot_selection(phonon_band, Assert):
@@ -75,7 +77,7 @@ def test_plot_selection(phonon_band, Assert):
 
 def check_data(series, width, band, projection, Assert):
     assert len(series.x) == series.y.shape[-1] == len(series.width)
-    Assert.allclose(series.y, band)
+    Assert.allclose(series.y, eV_to_meV * band)
     Assert.allclose(series.width, width * projection)
 
 
