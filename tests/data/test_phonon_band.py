@@ -44,40 +44,39 @@ def test_plot(phonon_band, Assert):
 
 
 def test_plot_selection(phonon_band, Assert):
+    checker = FatbandChecker(phonon_band, Assert)
+    #
     default_width = 1
     graph = phonon_band.plot("Sr, 3(x), y(4:5), z")
-    ref = phonon_band.ref
-    assert len(graph.series) == 4
-    assert graph.series[0].name == "Sr"
-    check_data(graph.series[0], default_width, ref.bands, ref.Sr, Assert)
-    assert graph.series[1].name == "Ti_1_x"
-    check_data(graph.series[1], default_width, ref.bands, ref.Ti_x, Assert)
-    assert graph.series[2].name == "4:5_y"
-    check_data(graph.series[2], default_width, ref.bands, ref.y_45, Assert)
-    assert graph.series[3].name == "z"
-    check_data(graph.series[3], default_width, ref.bands, ref.z, Assert)
-    assert False
-
-
-def test_plot_selection_width(phonon_band, Assert):
+    checker.verify(graph, default_width)
+    #
     width = 0.25
     graph = phonon_band.plot("Sr, 3(x), y(4:5), z", width)
-    ref = phonon_band.ref
-    assert len(graph.series) == 4
-    assert graph.series[0].name == "Sr"
-    check_data(graph.series[0], width, ref.bands, ref.Sr, Assert)
-    assert graph.series[1].name == "Ti_1_x"
-    check_data(graph.series[1], width, ref.bands, ref.Ti_x, Assert)
-    assert graph.series[2].name == "4:5_y"
-    check_data(graph.series[2], width, ref.bands, ref.y_45, Assert)
-    assert graph.series[3].name == "z"
-    check_data(graph.series[3], width, ref.bands, ref.z, Assert)
+    checker.verify(graph, width)
 
 
-def check_data(series, width, band, projection, Assert):
-    assert len(series.x) == series.y.shape[-1] == series.width.shape[-1]
-    Assert.allclose(series.y, band.T)
-    Assert.allclose(series.width, width * projection.T)
+class FatbandChecker:
+    def __init__(self, phonon_band, Assert):
+        ref = phonon_band.ref
+        self.projections = ref.Sr, ref.Ti_x, ref.y_45, ref.z
+        self.labels = "Sr", "Ti_1_x", "4:5_y", "z"
+        self.bands = ref.bands
+        self.Assert = Assert
+
+    def verify(self, graph, width):
+        index = 0
+        for projections, label in zip(self.projections, self.labels):
+            for projection, band in zip(projections.T, self.bands.T):
+                self.check_series(graph.series[index], band, width * projection, label)
+                index = index + 1
+        assert len(graph.series) == index
+
+    def check_series(self, series, band, projection, label):
+        assert series.name == label
+        assert len(series.x) == len(series.y) == len(series.width)
+        self.Assert.allclose(series.y, band)
+        print(series.width.shape, projection.shape)
+        self.Assert.allclose(series.width, projection)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

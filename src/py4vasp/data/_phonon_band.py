@@ -58,10 +58,7 @@ class PhononBand(_base.Refinery):
 
     def _fat_band_structure(self, band, tree, width):
         dicts = self._init_dicts()
-        return [
-            self._fat_band(band, dicts, index, width)
-            for index in self._parse_selection(dicts, tree)
-        ]
+        return list(self._fat_bands(band, dicts, tree, width))
 
     def _init_dicts(self):
         return {
@@ -69,15 +66,20 @@ class PhononBand(_base.Refinery):
             "direction": self._init_direction_dict(),
         }
 
+    def _fat_bands(self, band, dicts, tree, width):
+        for index in self._parse_selection(dicts, tree):
+            yield from self._fat_band(band, dicts, index, width)
+
     def _fat_band(self, band, dicts, index, width):
         selection = _get_selection(dicts, index)
-        selected = band["modes"][:, selection.indices, :]
-        return _graph.Series(
-            x=band["qpoint_distances"],
-            y=band["bands"].T,
-            name=selection.label,
-            width=width * np.sum(np.abs(selected), axis=1).T,
-        )
+        projections = np.sum(np.abs(band["modes"][:, selection.indices, :]), axis=1).T
+        for band_, projection in zip(band["bands"].T, projections):
+            yield _graph.Series(
+                x=band["qpoint_distances"],
+                y=band_,
+                name=selection.label,
+                width=width * projection,
+            )
 
     def _parse_selection(self, dicts, tree):
         default_index = PhononBand.Index(atom=_selection.all, direction=_selection.all)
