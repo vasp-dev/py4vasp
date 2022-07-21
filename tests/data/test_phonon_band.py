@@ -6,8 +6,6 @@ import types
 from py4vasp.data import PhononBand, Kpoint, Topology
 from py4vasp._util import convert
 
-eV_to_meV = 1000
-
 
 @pytest.fixture
 def phonon_band(raw_data):
@@ -38,47 +36,48 @@ def test_read(phonon_band, Assert):
 
 def test_plot(phonon_band, Assert):
     graph = phonon_band.plot()
-    assert graph.ylabel == "Energy (meV)"
+    assert graph.ylabel == "ω (THz)"
     assert len(graph.series) == 1
     assert graph.series[0].width is None
     Assert.allclose(graph.series[0].x, phonon_band.ref.kpoints.distances())
-    Assert.allclose(graph.series[0].y, eV_to_meV * phonon_band.ref.bands.T)
+    Assert.allclose(graph.series[0].y, phonon_band.ref.bands.T)
 
 
 def test_plot_selection(phonon_band, Assert):
     default_width = 1
     graph = phonon_band.plot("Sr, 3(x), y(4:5), z")
-    ref_bands = phonon_band.ref.bands.T
+    ref = phonon_band.ref
     assert len(graph.series) == 4
     assert graph.series[0].name == "Sr"
-    check_data(graph.series[0], default_width, ref_bands, phonon_band.ref.Sr, Assert)
+    check_data(graph.series[0], default_width, ref.bands, ref.Sr, Assert)
     assert graph.series[1].name == "Ti_1_x"
-    check_data(graph.series[1], default_width, ref_bands, phonon_band.ref.Ti_x, Assert)
+    check_data(graph.series[1], default_width, ref.bands, ref.Ti_x, Assert)
     assert graph.series[2].name == "4:5_y"
-    check_data(graph.series[2], default_width, ref_bands, phonon_band.ref.y_45, Assert)
+    check_data(graph.series[2], default_width, ref.bands, ref.y_45, Assert)
     assert graph.series[3].name == "z"
-    check_data(graph.series[3], default_width, ref_bands, phonon_band.ref.z, Assert)
+    check_data(graph.series[3], default_width, ref.bands, ref.z, Assert)
+    assert False
 
 
-def test_plot_selection(phonon_band, Assert):
+def test_plot_selection_width(phonon_band, Assert):
     width = 0.25
     graph = phonon_band.plot("Sr, 3(x), y(4:5), z", width)
-    ref_bands = phonon_band.ref.bands.T
+    ref = phonon_band.ref
     assert len(graph.series) == 4
     assert graph.series[0].name == "Sr"
-    check_data(graph.series[0], width, ref_bands, phonon_band.ref.Sr, Assert)
+    check_data(graph.series[0], width, ref.bands, ref.Sr, Assert)
     assert graph.series[1].name == "Ti_1_x"
-    check_data(graph.series[1], width, ref_bands, phonon_band.ref.Ti_x, Assert)
+    check_data(graph.series[1], width, ref.bands, ref.Ti_x, Assert)
     assert graph.series[2].name == "4:5_y"
-    check_data(graph.series[2], width, ref_bands, phonon_band.ref.y_45, Assert)
+    check_data(graph.series[2], width, ref.bands, ref.y_45, Assert)
     assert graph.series[3].name == "z"
-    check_data(graph.series[3], width, ref_bands, phonon_band.ref.z, Assert)
+    check_data(graph.series[3], width, ref.bands, ref.z, Assert)
 
 
 def check_data(series, width, band, projection, Assert):
-    assert len(series.x) == series.y.shape[-1] == len(series.width)
-    Assert.allclose(series.y, eV_to_meV * band)
-    Assert.allclose(series.width, width * projection)
+    assert len(series.x) == series.y.shape[-1] == series.width.shape[-1]
+    Assert.allclose(series.y, band.T)
+    Assert.allclose(series.width, width * projection.T)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

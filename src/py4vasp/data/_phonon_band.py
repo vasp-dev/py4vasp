@@ -10,7 +10,6 @@ from py4vasp._util import convert as _convert, selection as _selection
 import py4vasp._third_party.graph as _graph
 
 _range = re.compile(r"^(\d+)" + re.escape(_selection.range_separator) + r"(\d+)$")
-_eV_to_meV = 1000
 
 
 class PhononBand(_base.Refinery):
@@ -39,7 +38,7 @@ class PhononBand(_base.Refinery):
     def plot(self, selection=None, width=1.0):
         return _graph.Graph(
             series=self._band_structure(selection, width),
-            ylabel="Energy (meV)",
+            ylabel="ω (THz)",
         )
 
     @property
@@ -55,9 +54,7 @@ class PhononBand(_base.Refinery):
             return self._regular_band_structure(band)
 
     def _regular_band_structure(self, band):
-        return [
-            _graph.Series(x=band["qpoint_distances"], y=_eV_to_meV * band["bands"].T)
-        ]
+        return [_graph.Series(x=band["qpoint_distances"], y=band["bands"].T)]
 
     def _fat_band_structure(self, band, tree, width):
         dicts = self._init_dicts()
@@ -77,9 +74,9 @@ class PhononBand(_base.Refinery):
         selected = band["modes"][:, selection.indices, :]
         return _graph.Series(
             x=band["qpoint_distances"],
-            y=_eV_to_meV * band["bands"].T,
+            y=band["bands"].T,
             name=selection.label,
-            width=width * np.sum(np.abs(selected), axis=1),
+            width=width * np.sum(np.abs(selected), axis=1).T,
         )
 
     def _parse_selection(self, dicts, tree):
