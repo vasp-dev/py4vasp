@@ -83,6 +83,9 @@ class Series:
         if len(self.x) != np.array(self.y).shape[-1]:
             message = "The length of the two plotted components is inconsistent."
             raise exception.IncorrectUsage(message)
+        if self.width is not None and len(self.x) != len(self.width):
+            message = "Using a different width for every line is not implemented."
+            raise exception.NotImplemented(message)
 
     def _generate_traces(self):
         first_trace = True
