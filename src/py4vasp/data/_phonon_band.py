@@ -35,9 +35,9 @@ class PhononBand(_base.Refinery):
         }
 
     @_base.data_access
-    def plot(self, selection=None):
+    def plot(self, selection=None, width=1.0):
         return _graph.Graph(
-            series=self._band_structure(selection),
+            series=self._band_structure(selection, width),
             ylabel="Energy (meV)",
         )
 
@@ -45,21 +45,21 @@ class PhononBand(_base.Refinery):
     def _qpoints(self):
         return data.Kpoint.from_data(self._raw_data.dispersion.kpoints)
 
-    def _band_structure(self, selection):
+    def _band_structure(self, selection, width):
         band = self.to_dict()
         tree = _selection.Tree.from_selection(selection)
         if tree.nodes:
-            return self._fat_band_structure(band, tree)
+            return self._fat_band_structure(band, tree, width)
         else:
             return self._regular_band_structure(band)
 
     def _regular_band_structure(self, band):
         return [_graph.Series(x=band["qpoint_distances"], y=band["bands"].T)]
 
-    def _fat_band_structure(self, band, tree):
+    def _fat_band_structure(self, band, tree, width):
         dicts = self._init_dicts()
         return [
-            self._fat_band(band, dicts, index)
+            self._fat_band(band, dicts, index, width)
             for index in self._parse_selection(dicts, tree)
         ]
 
@@ -69,7 +69,7 @@ class PhononBand(_base.Refinery):
             "direction": self._init_direction_dict(),
         }
 
-    def _fat_band(self, band, dicts, index):
+    def _fat_band(self, band, dicts, index, width):
         selection = _get_selection(dicts, index)
         print(selection)
         selected = band["modes"][:, selection.indices, :]
@@ -77,7 +77,7 @@ class PhononBand(_base.Refinery):
             x=band["qpoint_distances"],
             y=band["bands"].T,
             name=selection.label,
-            width=np.sum(np.abs(selected), axis=1),
+            width=width * np.sum(np.abs(selected), axis=1),
         )
 
     def _parse_selection(self, dicts, tree):

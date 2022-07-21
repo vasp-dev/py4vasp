@@ -58,6 +58,21 @@ def test_plot_selection(phonon_band, Assert):
     check_data(graph.series[3], default_width, ref_bands, phonon_band.ref.z, Assert)
 
 
+def test_plot_selection(phonon_band, Assert):
+    width = 0.25
+    graph = phonon_band.plot("Sr, 3(x), y(4:5), z", width)
+    ref_bands = phonon_band.ref.bands.T
+    assert len(graph.series) == 4
+    assert graph.series[0].name == "Sr"
+    check_data(graph.series[0], width, ref_bands, phonon_band.ref.Sr, Assert)
+    assert graph.series[1].name == "Ti_1_x"
+    check_data(graph.series[1], width, ref_bands, phonon_band.ref.Ti_x, Assert)
+    assert graph.series[2].name == "4:5_y"
+    check_data(graph.series[2], width, ref_bands, phonon_band.ref.y_45, Assert)
+    assert graph.series[3].name == "z"
+    check_data(graph.series[3], width, ref_bands, phonon_band.ref.z, Assert)
+
+
 def check_data(series, width, band, projection, Assert):
     assert len(series.x) == series.y.shape[-1] == len(series.width)
     Assert.allclose(series.y, band)
