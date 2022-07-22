@@ -194,7 +194,7 @@ class Band(_base.Refinery, _export.Image):
         if self._spin_polarized() and not key in name:
             return None
         kdists = self._kpoints().distances()
-        return _graph.Series(kdists, lines.T, name, width=width * projection)
+        return _graph.Series(kdists, lines.T, name, width=width * projection.T)
 
     def _xticks(self):
         ticks, labels = self._degenerate_ticks_and_labels()

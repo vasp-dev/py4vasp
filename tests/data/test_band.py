@@ -224,23 +224,24 @@ def test_spin_projectors_plot(spin_projectors, Assert):
     fig = spin_projectors.plot("O", width)
     assert len(fig.series) == 2
     assert fig.series[0].name == "O_up"
-    check_data(fig.series[0], width, reference.bands_up.T, reference.O_up, Assert)
+    check_data(fig.series[0], width, reference.bands_up, reference.O_up, Assert)
     assert fig.series[1].name == "O_down"
-    check_data(fig.series[1], width, reference.bands_down.T, reference.O_down, Assert)
+    check_data(fig.series[1], width, reference.bands_down, reference.O_down, Assert)
 
 
 def check_figure(fig, width, reference, Assert):
     assert len(fig.series) == 2
     assert fig.series[0].name == "Sr"
     assert fig.series[1].name == "p"
-    check_data(fig.series[0], width, reference.bands.T, reference.Sr, Assert)
-    check_data(fig.series[1], width, reference.bands.T, reference.p, Assert)
+    check_data(fig.series[0], width, reference.bands, reference.Sr, Assert)
+    check_data(fig.series[1], width, reference.bands, reference.p, Assert)
 
 
-def check_data(data, width, band, projection, Assert):
-    assert len(data.x) == data.y.shape[-1] == len(data.width)
-    Assert.allclose(data.y, band)
-    Assert.allclose(data.width, width * projection)
+def check_data(series, width, band, projection, Assert):
+    assert len(series.x) == series.y.shape[-1]
+    assert series.y.shape == series.width.shape
+    Assert.allclose(series.y, band.T)
+    Assert.allclose(series.width, width * projection.T)
 
 
 def test_spin_polarized_plot(spin_polarized, Assert):
