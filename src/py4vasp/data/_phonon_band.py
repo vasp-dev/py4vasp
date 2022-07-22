@@ -4,7 +4,7 @@ import numpy as np
 import re
 from typing import NamedTuple, Union
 from py4vasp import data
-from py4vasp.data import _base
+from py4vasp.data import _base, _export
 from py4vasp.data._selection import Selection as _Selection
 from py4vasp._util import convert as _convert, selection as _selection
 import py4vasp._third_party.graph as _graph
@@ -12,7 +12,7 @@ import py4vasp._third_party.graph as _graph
 _range = re.compile(r"^(\d+)" + re.escape(_selection.range_separator) + r"(\d+)$")
 
 
-class PhononBand(_base.Refinery):
+class PhononBand(_base.Refinery, _export.Image):
     """The phonon band structure.
 
     Use this to examine the phonon band structure along a high-symmetry path in the
@@ -40,6 +40,10 @@ class PhononBand(_base.Refinery):
             series=self._band_structure(selection, width),
             ylabel="ω (THz)",
         )
+
+    @_base.data_access
+    def to_plotly(self, selection=None, width=1.0):
+        return self.plot(selection, width).to_plotly()
 
     @property
     def _qpoints(self):

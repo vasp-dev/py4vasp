@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 import types
+from unittest.mock import patch
 from py4vasp.data import PhononBand, Kpoint, Topology
 from py4vasp._util import convert
 
@@ -73,6 +74,29 @@ class FatbandChecker:
         self.Assert.allclose(series.x, self.distances)
         self.Assert.allclose(series.y, self.bands.T)
         self.Assert.allclose(series.width, width * projection.T)
+
+
+@patch("py4vasp.data._phonon_band.PhononBand.plot")
+def test_energy_to_plotly(mock_plot, phonon_band):
+    fig = phonon_band.to_plotly("selection", width=0.2)
+    mock_plot.assert_called_once_with("selection", 0.2)
+    graph = mock_plot.return_value
+    graph.to_plotly.assert_called_once()
+    assert fig == graph.to_plotly.return_value
+
+
+def test_to_image(phonon_band):
+    check_to_image(phonon_band, None, "phonon_band.png")
+    custom_filename = "custom.jpg"
+    check_to_image(phonon_band, custom_filename, custom_filename)
+
+
+def check_to_image(phonon_band, filename_argument, expected_filename):
+    with patch("py4vasp.data._phonon_band.PhononBand.to_plotly") as plot:
+        phonon_band.to_image("args", filename=filename_argument, key="word")
+        plot.assert_called_once_with("args", key="word")
+        fig = plot.return_value
+        fig.write_image.assert_called_once_with(phonon_band._path / expected_filename)
 
 
 def test_factory_methods(raw_data, check_factory_methods):
