@@ -58,25 +58,21 @@ def test_plot_selection(phonon_band, Assert):
 class FatbandChecker:
     def __init__(self, phonon_band, Assert):
         ref = phonon_band.ref
+        self.distances = ref.kpoints.distances()
         self.projections = ref.Sr, ref.Ti_x, ref.y_45, ref.z
         self.labels = "Sr", "Ti_1_x", "4:5_y", "z"
         self.bands = ref.bands
         self.Assert = Assert
 
     def verify(self, graph, width):
-        index = 0
-        for projections, label in zip(self.projections, self.labels):
-            for projection, band in zip(projections.T, self.bands.T):
-                self.check_series(graph.series[index], band, width * projection, label)
-                index = index + 1
-        assert len(graph.series) == index
+        for item in zip(graph.series, self.projections, self.labels):
+            self.check_series(*item, width)
 
-    def check_series(self, series, band, projection, label):
+    def check_series(self, series, projection, label, width):
         assert series.name == label
-        assert len(series.x) == len(series.y) == len(series.width)
-        self.Assert.allclose(series.y, band)
-        print(series.width.shape, projection.shape)
-        self.Assert.allclose(series.width, projection)
+        self.Assert.allclose(series.x, self.distances)
+        self.Assert.allclose(series.y, self.bands.T)
+        self.Assert.allclose(series.width, width * projection.T)
 
 
 def test_factory_methods(raw_data, check_factory_methods):
