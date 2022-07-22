@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._third_party.graph import Graph, Series, plot
 import py4vasp.exceptions as exception
 import numpy as np
@@ -28,6 +30,14 @@ def two_lines():
 def fatband():
     x = np.linspace(-1, 1, 40)
     return Series(x=x, y=np.abs(x), width=x**2, name="fatband")
+
+
+@pytest.fixture
+def two_fatbands():
+    x = np.linspace(0, 3, 30)
+    y = np.array((x**2, x**3))
+    width = np.sqrt(y)
+    return Series(x=x, y=y, width=width, name="two fatbands")
 
 
 @pytest.fixture
@@ -77,6 +87,11 @@ def test_secondary_yaxis(parabola, sine, Assert):
     assert fig.data[1].yaxis == "y2"
 
 
+def check_legend_group(converted, original, first_trace):
+    assert converted.legendgroup == original.name
+    assert converted.showlegend == first_trace
+
+
 def test_two_lines(two_lines, Assert):
     graph = Graph(two_lines)
     fig = graph.to_plotly()
@@ -85,8 +100,7 @@ def test_two_lines(two_lines, Assert):
     for converted, y in zip(fig.data, two_lines.y):
         original = Series(x=two_lines.x, y=y, name=two_lines.name)
         compare_series(converted, original, Assert)
-        assert converted.legendgroup == original.name
-        assert converted.showlegend == first_trace
+        check_legend_group(converted, original, first_trace)
         if first_trace:
             assert converted.line.color is not None
             color = converted.line.color
@@ -94,22 +108,41 @@ def test_two_lines(two_lines, Assert):
         first_trace = False
 
 
+def compare_series_with_width(converted, original, Assert):
+    upper = original.y + original.width
+    lower = original.y - original.width
+    expected = Series(
+        x=np.concatenate((original.x, original.x[::-1])),
+        y=np.concatenate((lower, upper[::-1])),
+        name=original.name,
+    )
+    compare_series(converted, expected, Assert)
+    assert converted.mode == "none"
+    assert converted.fill == "toself"
+    assert converted.fillcolor is not None
+    assert converted.opacity == 0.5
+
+
 def test_fatband(fatband, Assert):
     graph = Graph(fatband)
     fig = graph.to_plotly()
-    upper = fatband.y + fatband.width
-    lower = fatband.y - fatband.width
-    expected = Series(
-        x=np.concatenate((fatband.x, fatband.x[::-1])),
-        y=np.concatenate((lower, upper[::-1])),
-        name=fatband.name,
-    )
-    assert len(fig.data) == 1
-    compare_series(fig.data[0], expected, Assert)
-    assert fig.data[0].mode == "none"
-    assert fig.data[0].fill == "toself"
-    assert fig.data[0].fillcolor is not None
-    assert fig.data[0].opacity == 0.5
+    compare_series_with_width(fig.data[0], fatband, Assert)
+
+
+def test_two_fatbands(two_fatbands, Assert):
+    graph = Graph(two_fatbands)
+    fig = graph.to_plotly()
+    assert len(fig.data) == 2
+    first_trace = True
+    for converted, y, w in zip(fig.data, two_fatbands.y, two_fatbands.width):
+        original = Series(x=two_fatbands.x, y=y, width=w, name=two_fatbands.name)
+        compare_series_with_width(converted, original, Assert)
+        check_legend_group(converted, original, first_trace)
+        if first_trace:
+            assert converted.fillcolor is not None
+            color = converted.fillcolor
+        assert converted.fillcolor == color
+        first_trace = False
 
 
 def test_custom_xticks(parabola):
@@ -181,11 +214,3 @@ def test_plot_inconsistent_length():
         plot(x, y)
     with pytest.raises(exception.IncorrectUsage):
         plot((x, y))
-
-
-def test_plot_multiple_fatbands_not_implemented():
-    x = np.zeros(10)
-    y = np.zeros((3, 10))
-    width = np.zeros((3, 10))
-    with pytest.raises(exception.NotImplemented):
-        plot(x, y, width=width)

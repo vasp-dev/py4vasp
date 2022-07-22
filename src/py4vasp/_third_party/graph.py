@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from dataclasses import dataclass, replace, fields
 import itertools
 import numpy as np
@@ -83,21 +85,22 @@ class Series:
         if len(self.x) != np.array(self.y).shape[-1]:
             message = "The length of the two plotted components is inconsistent."
             raise exception.IncorrectUsage(message)
-        if self.width is not None and len(self.x) != len(self.width):
-            message = "Using a different width for every line is not implemented."
-            raise exception.NotImplemented(message)
+        # if self.width is not None and len(self.x) != len(self.width):
+        #     message = "Using a different width for every line is not implemented."
+        #     raise exception.NotImplemented(message)
 
     def _generate_traces(self):
         first_trace = True
-        for y in np.atleast_2d(np.array(self.y)):
-            yield self._make_trace(y, first_trace)
+        for item in enumerate(np.atleast_2d(np.array(self.y))):
+            yield self._make_trace(*item, first_trace)
             first_trace = False
 
-    def _make_trace(self, y, first_trace):
+    def _make_trace(self, index, y, first_trace):
         if self.width is None:
             options = self._options_line(y, first_trace)
         else:
-            options = self._options_area(y, first_trace)
+            width = self._get_width(index)
+            options = self._options_area(y, width, first_trace)
         return go.Scatter(**options)
 
     def _options_line(self, y, first_trace):
@@ -108,9 +111,15 @@ class Series:
             "line": {"color": self.color},
         }
 
-    def _options_area(self, y, first_trace):
-        upper = y + self.width
-        lower = y - self.width
+    def _get_width(self, index):
+        if self.width.ndim == 1:
+            return self.width
+        else:
+            return self.width[index]
+
+    def _options_area(self, y, width, first_trace):
+        upper = y + width
+        lower = y - width
         return {
             **self._common_options(first_trace),
             "x": np.concatenate((self.x, self.x[::-1])),
