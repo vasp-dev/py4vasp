@@ -242,7 +242,7 @@ schema.add(
     raw.PhononBand,
     required=raw.Version(6, 4),
     dispersion=Link("dispersion", "phonon"),
-    topology=Link("topology", "default"),
+    topology=Link("topology", "phonon"),
     eigenvectors="results/phonons/eigenvectors",
 )
 #
