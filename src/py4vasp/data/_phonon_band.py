@@ -27,6 +27,13 @@ class PhononBand(_base.Refinery, _export.Image):
         "Label of the direction or a Selection object to read the corresponding data."
 
     @_base.data_access
+    def __str__(self):
+        return f"""phonon band data:
+    {self._raw_data.dispersion.eigenvalues.shape[0]} q-points
+    {self._raw_data.dispersion.eigenvalues.shape[1]} modes
+    {self._topology}"""
+
+    @_base.data_access
     def to_dict(self):
         return {
             "qpoint_distances": self._qpoints.distances(),
@@ -88,7 +95,11 @@ class PhononBand(_base.Refinery, _export.Image):
         yield from _parse_recursive(dicts, tree, default_index)
 
     def _init_atom_dict(self):
-        return data.Topology.from_data(self._raw_data.topology).read()
+        return self._topology.read()
+
+    @property
+    def _topology(self):
+        return data.Topology.from_data(self._raw_data.topology)
 
     def _init_direction_dict(self):
         return {

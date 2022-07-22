@@ -77,7 +77,7 @@ class FatbandChecker:
 
 
 @patch("py4vasp.data._phonon_band.PhononBand.plot")
-def test_energy_to_plotly(mock_plot, phonon_band):
+def test_to_plotly(mock_plot, phonon_band):
     fig = phonon_band.to_plotly("selection", width=0.2)
     mock_plot.assert_called_once_with("selection", 0.2)
     graph = mock_plot.return_value
@@ -97,6 +97,16 @@ def check_to_image(phonon_band, filename_argument, expected_filename):
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
         fig.write_image.assert_called_once_with(phonon_band._path / expected_filename)
+
+
+def test_print(phonon_band, format_):
+    actual, _ = format_(phonon_band)
+    reference = """\
+phonon band data:
+    48 q-points
+    21 modes
+    Sr2TiO4"""
+    assert actual == {"text/plain": reference}
 
 
 def test_factory_methods(raw_data, check_factory_methods):

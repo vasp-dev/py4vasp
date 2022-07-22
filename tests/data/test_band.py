@@ -283,7 +283,7 @@ def test_plot_incorrect_width(with_projectors):
 
 
 @patch("py4vasp.data.band.Band.plot")
-def test_energy_to_plotly(mock_plot, single_band):
+def test_to_plotly(mock_plot, single_band):
     fig = single_band.to_plotly("selection", width=0.2)
     mock_plot.assert_called_once_with("selection", 0.2)
     graph = mock_plot.return_value
