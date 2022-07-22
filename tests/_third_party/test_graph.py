@@ -214,3 +214,11 @@ def test_plot_inconsistent_length():
         plot(x, y)
     with pytest.raises(exception.IncorrectUsage):
         plot((x, y))
+
+
+def test_fatband_inconsistent_length():
+    x = np.zeros(10)
+    y = np.zeros((5, 10))
+    width = np.zeros(20)
+    with pytest.raises(exception.IncorrectUsage):
+        plot(x, y, width=width)
