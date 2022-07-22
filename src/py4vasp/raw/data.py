@@ -136,7 +136,7 @@ class Dos:
     "Energy E at which the Dos is evaluated."
     dos: VaspData
     "Dos at the energies D(E)."
-    fermi_energy: float = None
+    fermi_energy: float
     "Fermi energy obtained by VASP."
     projections: VaspData = None
     "If present, orbital projections of the Dos."
@@ -279,6 +279,23 @@ class PhononBand:
     "The atom types in the crystal."
     eigenvectors: VaspData
     "The eigenvectors of the phonon modes."
+
+
+@dataclasses.dataclass
+class PhononDos:
+    """Contains the phonon density of states (DOS) including its projections where available.
+
+    Contains the energy mesh and the values of the DOS at the mesh points. The DOS can be
+    projected onto specific ions or ion types."""
+
+    energies: VaspData
+    "Energy E at which the Dos is evaluated."
+    dos: VaspData
+    "Dos at the energies D(E)."
+    projections: VaspData
+    "Projection of the DOS onto contribution of specific atoms."
+    topology: Topology
+    "The atom types in the crystal."
 
 
 @dataclasses.dataclass

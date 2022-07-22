@@ -125,16 +125,6 @@ schema.add(
     projectors=Link("projector", "kpoints_opt"),
     projections=f"{group}/dospar",
 )
-group = "results/phonons"
-schema.add(
-    raw.Dos,
-    name="phonon",
-    required=raw.Version(6, 4),
-    energies=f"{group}/dos_mesh",
-    dos=f"{group}/dos",
-    projectors=Link("projector", "phonon"),
-    projections=f"{group}/dospar",
-)
 #
 schema.add(
     raw.Energy,
@@ -238,12 +228,22 @@ schema.add(
     labels=f"{group}/labels",
 )
 #
+group = "results/phonons"
 schema.add(
     raw.PhononBand,
     required=raw.Version(6, 4),
     dispersion=Link("dispersion", "phonon"),
     topology=Link("topology", "phonon"),
-    eigenvectors="results/phonons/eigenvectors",
+    eigenvectors=f"{group}/eigenvectors",
+)
+schema.add(
+    raw.PhononDos,
+    name="phonon",
+    required=raw.Version(6, 4),
+    energies=f"{group}/dos_mesh",
+    dos=f"{group}/dos",
+    topology=Link("topology", "phonon"),
+    projections=f"{group}/dospar",
 )
 #
 group = "results/linear_response"
