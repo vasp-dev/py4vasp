@@ -157,6 +157,10 @@ class RawDataFactory:
         return _phonon_band()
 
     @staticmethod
+    def phonon_dos(selection):
+        return _phonon_dos()
+
+    @staticmethod
     def projector(selection):
         if selection == "Sr2TiO4":
             return _Sr2TiO4_projectors()
@@ -271,6 +275,17 @@ def _phonon_band():
         topology=_Sr2TiO4_topology(),
         eigenvectors=np.linspace(0, 1, np.prod(shape_vectors)).reshape(shape_vectors),
     )
+
+
+def _phonon_dos():
+    energies = np.linspace(0, 5, number_points)
+    dos = energies**2
+    lower_ratio = np.arange(number_modes, dtype=np.float64).reshape(axes, number_atoms)
+    lower_ratio /= np.sum(lower_ratio)
+    upper_ratio = np.array(list(reversed(lower_ratio)))
+    ratio = np.linspace(lower_ratio, upper_ratio, number_points).T
+    projections = np.multiply(ratio, dos)
+    return raw.PhononDos(energies, dos, projections, _Sr2TiO4_topology())
 
 
 def _piezoelectric_tensor():

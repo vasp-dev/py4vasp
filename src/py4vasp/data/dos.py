@@ -16,7 +16,7 @@ import py4vasp._util.documentation as _documentation
 class Dos(_base.Refinery, _export.Image):
     """The electronic density of states (DOS).
 
-    You can use this class to extract the DOS data of a Vasp calculation.
+    You can use this class to extract the DOS data of a VASP calculation.
     Typically you want to run a non self consistent calculation with a
     denser mesh for a smoother DOS, but the class will work independent
     of it. If you generated orbital decomposed DOS, you can use this

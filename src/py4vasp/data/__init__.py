@@ -28,6 +28,7 @@ from .energy import Energy
 from .kpoint import Kpoint
 from .pair_correlation import PairCorrelation
 from ._phonon_band import PhononBand
+from ._phonon_dos import PhononDos
 from .piezoelectric_tensor import PiezoelectricTensor
 from .polarization import Polarization
 from .projector import Projector
