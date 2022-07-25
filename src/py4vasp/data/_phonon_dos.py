@@ -9,3 +9,9 @@ class PhononDos(_base.Refinery):
     You can use this class to extract the phonon DOS data of a VASP
     calculation. The DOS can also be resolved by direction and atom.
     """
+
+    def to_dict(self):
+        return {
+            "energies": self._raw_data.energies[:],
+            "total": self._raw_data.dos[:],
+        }
