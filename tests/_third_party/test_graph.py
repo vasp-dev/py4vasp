@@ -222,3 +222,11 @@ def test_fatband_inconsistent_length():
     width = np.zeros(20)
     with pytest.raises(exception.IncorrectUsage):
         plot(x, y, width=width)
+
+
+def test_nonexisting_attribute_raises_error(parabola):
+    with pytest.raises(AssertionError):
+        parabola.nonexisting = "not possible"
+    graph = Graph(parabola)
+    with pytest.raises(AssertionError):
+        graph.nonexisting = "not possible"

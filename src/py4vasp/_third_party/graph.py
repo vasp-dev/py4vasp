@@ -80,6 +80,7 @@ class Series:
     "Use a secondary y axis to show this series."
     color: str = None
     "The color used for this series."
+    _frozen = False
 
     def __post_init__(self):
         if len(self.x) != np.array(self.y).shape[-1]:
@@ -88,6 +89,13 @@ class Series:
         if self.width is not None and len(self.x) != self.width.shape[-1]:
             message = "The length of width and plot is inconsistent."
             raise exception.IncorrectUsage(message)
+        self._frozen = True
+
+    def __setattr__(self, key, value):
+        # prevent adding new attributes to avoid typos, in Python 3.10 this could be
+        # handled by setting slots=True when creating the dataclass
+        assert not self._frozen or hasattr(self, key)
+        super().__setattr__(key, value)
 
     def _generate_traces(self):
         first_trace = True
@@ -162,6 +170,16 @@ class Graph:
     "Label for the secondary y axis."
     title: str = None
     "Title of the graph."
+    _frozen = False
+
+    def __post_init__(self):
+        self._frozen = True
+
+    def __setattr__(self, key, value):
+        # prevent adding new attributes to avoid typos, in Python 3.10 this could be
+        # handled by setting slots=True when creating the dataclass
+        assert not self._frozen or hasattr(self, key)
+        super().__setattr__(key, value)
 
     def to_plotly(self):
         "Convert the graph to a plotly figure."
