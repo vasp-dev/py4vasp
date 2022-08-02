@@ -41,7 +41,6 @@ class PhononDos(_base.Refinery):
         for index in self._parse_selection(dicts, tree):
             label, selection = _get_selection(dicts, index)
             result[label] = self._partial_dos(selection)
-            print(result[label].shape)
         return result
 
     def _parse_selection(self, dicts, tree):
