@@ -69,10 +69,11 @@ class PhononBand(_base.Refinery, _export.Image):
 
     def _fat_band_structure(self, band, tree, width):
         dicts = self._init_dicts()
-        return [
-            self._fat_band(band, dicts, index, width)
-            for index in self._parse_selection(dicts, tree)
-        ]
+        result = []
+        for index in self._parse_selection(dicts, tree):
+            label, selection = _get_selection(dicts, index)
+            result.append(self._fat_band(band, label, selection, width))
+        return result
 
     def _init_dicts(self):
         return {
@@ -80,14 +81,15 @@ class PhononBand(_base.Refinery, _export.Image):
             "direction": self._init_direction_dict(),
         }
 
-    def _fat_band(self, band, dicts, index, width):
-        selection = _get_selection(dicts, index)
-        selected = band["modes"][:, selection.indices, :]
+    def _fat_band(self, band, label, selection, width):
+        selected = band["modes"][
+            :, :, selection.atom.indices, selection.direction.indices
+        ]
         return _graph.Series(
             x=band["qpoint_distances"],
             y=band["bands"].T,
-            name=selection.label,
-            width=width * np.sum(np.abs(selected), axis=1).T,
+            name=label,
+            width=width * np.sum(np.abs(selected), axis=(2, 3)).T,
         )
 
     def _parse_selection(self, dicts, tree):
@@ -110,43 +112,6 @@ class PhononBand(_base.Refinery, _export.Image):
         }
 
 
-def _get_selection(dicts, index):
-    selection_atom = _select_atom(dicts["atom"], index.atom)
-    selection_direction = dicts["direction"][index.direction]
-    indices = _merge_indices(selection_atom.indices, selection_direction.indices)
-    label = _merge_labels(selection_atom.label, selection_direction.label)
-    return _Selection(indices, label)
-
-
-def _select_atom(atom_dict, atom):
-    if match := _range.match(atom):
-        slice_ = _get_slice_from_atom_dict(atom_dict, match)
-        return _Selection(indices=slice_, label=atom)
-    else:
-        return atom_dict[atom]
-
-
-def _get_slice_from_atom_dict(atom_dict, match):
-    start = atom_dict[match.groups()[0]].indices.start
-    stop = atom_dict[match.groups()[1]].indices.start + 1
-    return slice(start, stop)
-
-
-def _merge_indices(index_atom, index_direction):
-    num_direction = 3
-    start = index_atom.start * num_direction + index_direction.start
-    stop = (index_atom.stop - 1) * num_direction + index_direction.stop
-    step = num_direction - index_direction.stop + index_direction.start + 1
-    return slice(start, stop, step)
-
-
-def _merge_labels(label_atom, label_direction):
-    if label_atom and label_direction:
-        return f"{label_atom}_{label_direction}"
-    else:
-        return label_atom or label_direction
-
-
 def _parse_recursive(dicts, tree, current_index):
     for node in tree.nodes:
         new_index = _update_index(dicts, current_index, str(node))
@@ -165,3 +130,31 @@ def _update_index(dicts, index, part):
     else:
         pass
     return index
+
+
+def _get_selection(dicts, index):
+    selection_atom = _select_atom(dicts["atom"], index.atom)
+    selection_direction = dicts["direction"][index.direction]
+    label = _merge_labels(selection_atom.label, selection_direction.label)
+    return label, PhononBand.Index(selection_atom, selection_direction)
+
+
+def _select_atom(atom_dict, atom):
+    if match := _range.match(atom):
+        slice_ = _get_slice_from_atom_dict(atom_dict, match)
+        return _Selection(indices=slice_, label=atom)
+    else:
+        return atom_dict[atom]
+
+
+def _get_slice_from_atom_dict(atom_dict, match):
+    start = atom_dict[match.groups()[0]].indices.start
+    stop = atom_dict[match.groups()[1]].indices.start + 1
+    return slice(start, stop)
+
+
+def _merge_labels(label_atom, label_direction):
+    if label_atom and label_direction:
+        return f"{label_atom}_{label_direction}"
+    else:
+        return label_atom or label_direction

@@ -248,10 +248,7 @@ def _dielectric_tensor(method):
 def _elastic_modulus():
     shape = (2, axes, axes, axes, axes)
     data = np.arange(np.prod(shape)).reshape(shape)
-    return raw.ElasticModulus(
-        clamped_ion=data[0],
-        relaxed_ion=data[1],
-    )
+    return raw.ElasticModulus(clamped_ion=data[0], relaxed_ion=data[1])
 
 
 def _Sr2TiO4_pair_correlation():
@@ -259,17 +256,16 @@ def _Sr2TiO4_pair_correlation():
     shape = (number_steps, len(labels), number_points)
     data = np.arange(np.prod(shape)).reshape(shape)
     return raw.PairCorrelation(
-        distances=np.arange(number_points),
-        function=data,
-        labels=labels,
+        distances=np.arange(number_points), function=data, labels=labels
     )
 
 
 def _phonon_band():
     qpoints = _qpoints()
-    shape_values = (len(qpoints.coordinates), number_modes)
+    number_qpoints = len(qpoints.coordinates)
+    shape_values = (number_qpoints, number_modes)
     eigenvalues = np.arange(np.prod(shape_values)).reshape(shape_values)
-    shape_vectors = (len(qpoints.coordinates), number_modes, number_modes, complex_)
+    shape_vectors = (number_qpoints, number_modes, number_atoms, axes, complex_)
     return raw.PhononBand(
         dispersion=raw.Dispersion(qpoints, eigenvalues),
         topology=_Sr2TiO4_topology(),
@@ -291,10 +287,7 @@ def _phonon_dos():
 def _piezoelectric_tensor():
     shape = (2, axes, axes, axes)
     data = np.arange(np.prod(shape)).reshape(shape)
-    return raw.PiezoelectricTensor(
-        electron=data[0],
-        ion=data[1],
-    )
+    return raw.PiezoelectricTensor(electron=data[0], ion=data[1])
 
 
 def _polarization():
@@ -305,10 +298,7 @@ def _energy():
     labels = ("ion-electron   TOTEN    ", "kinetic energy EKIN", "temperature    TEIN")
     labels = np.array(labels, dtype="S")
     shape = (number_steps, len(labels))
-    return raw.Energy(
-        labels=labels,
-        values=np.arange(np.prod(shape)).reshape(shape),
-    )
+    return raw.Energy(labels=labels, values=np.arange(np.prod(shape)).reshape(shape))
 
 
 def _qpoints():
@@ -446,17 +436,14 @@ def _Sr2TiO4_cell():
         [-0.839055341042049, -0.367478859090843, 0.401180037874301],
     ]
     return raw.RawCell(
-        lattice_vectors=scale * np.array(number_steps * [lattice_vectors]),
-        scale=scale,
+        lattice_vectors=scale * np.array(number_steps * [lattice_vectors]), scale=scale
     )
 
 
 def _Sr2TiO4_dos(projectors):
     energies = np.linspace(-1, 3, number_points)
     raw_dos = raw.Dos(
-        fermi_energy=1.372,
-        energies=energies,
-        dos=np.array([energies**2]),
+        fermi_energy=1.372, energies=energies, dos=np.array([energies**2])
     )
     if projectors == "with_projectors":
         raw_dos.projectors = _Sr2TiO4_projectors()
@@ -477,8 +464,7 @@ def _Sr2TiO4_force_constants():
 def _Sr2TiO4_forces():
     shape = (number_steps, number_atoms, axes)
     return raw.Force(
-        structure=_Sr2TiO4_structure(),
-        forces=np.arange(np.prod(shape)).reshape(shape),
+        structure=_Sr2TiO4_structure(), forces=np.arange(np.prod(shape)).reshape(shape)
     )
 
 
@@ -502,8 +488,7 @@ def _Sr2TiO4_projectors():
 def _Sr2TiO4_stress():
     shape = (number_steps, axes, axes)
     return raw.Stress(
-        structure=_Sr2TiO4_structure(),
-        stress=np.arange(np.prod(shape)).reshape(shape),
+        structure=_Sr2TiO4_structure(), stress=np.arange(np.prod(shape)).reshape(shape)
     )
 
 
@@ -547,8 +532,7 @@ def _Fe3O4_density(selection):
     structure = RawDataFactory.structure(parts[0])
     grid = (_number_components(parts[1]), 10, 12, 14)
     return raw.Density(
-        structure=structure,
-        charge=np.arange(np.prod(grid)).reshape(grid),
+        structure=structure, charge=np.arange(np.prod(grid)).reshape(grid)
     )
 
 
@@ -575,8 +559,7 @@ def _Fe3O4_dos(projectors):
 def _Fe3O4_forces():
     shape = (number_steps, number_atoms, axes)
     return raw.Force(
-        structure=_Fe3O4_structure(),
-        forces=np.arange(np.prod(shape)).reshape(shape),
+        structure=_Fe3O4_structure(), forces=np.arange(np.prod(shape)).reshape(shape)
     )
 
 
@@ -591,8 +574,7 @@ def _Fe3O4_projectors():
 def _Fe3O4_stress():
     shape = (number_steps, axes, axes)
     return raw.Stress(
-        structure=_Fe3O4_structure(),
-        stress=np.arange(np.prod(shape)).reshape(shape),
+        structure=_Fe3O4_structure(), stress=np.arange(np.prod(shape)).reshape(shape)
     )
 
 
@@ -616,6 +598,5 @@ def _Fe3O4_structure():
 
 def _Fe3O4_topology():
     return raw.Topology(
-        number_ion_types=np.array((3, 4)),
-        ion_types=np.array(("Fe", "O "), dtype="S"),
+        number_ion_types=np.array((3, 4)), ion_types=np.array(("Fe", "O "), dtype="S")
     )

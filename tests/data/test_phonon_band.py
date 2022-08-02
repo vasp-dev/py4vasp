@@ -18,14 +18,16 @@ def phonon_band(raw_data):
     raw_qpoints = raw_band.dispersion.kpoints
     band.ref.kpoints = Kpoint.from_data(raw_qpoints)
     band.ref.topology = Topology.from_data(raw_band.topology)
-    index = slice(6)  # Sr: atom=0 and 1, 3 directions each
-    band.ref.Sr = np.sum(np.abs(band.ref.modes[:, index, :]), axis=1)
-    index = [6]  # Ti: atom=2, x: direction=0 -> (2*3 + 0)
-    band.ref.Ti_x = np.sum(np.abs(band.ref.modes[:, index, :]), axis=1)
-    index = [10, 13]  # 4:5: atom=3 and 4, y: direction=1 -> (3*3 + 1), (4*3 + 1)
-    band.ref.y_45 = np.sum(np.abs(band.ref.modes[:, index, :]), axis=1)
-    index = slice(2, None, 3)  # all atoms, z: direction=2
-    band.ref.z = np.sum(np.abs(band.ref.modes[:, index, :]), axis=1)
+    Sr = slice(0, 2)
+    band.ref.Sr = np.sum(np.abs(band.ref.modes[:, :, Sr, :]), axis=(2, 3))
+    Ti = 2
+    x = 0
+    band.ref.Ti_x = np.abs(band.ref.modes[:, :, Ti, x])
+    _45 = slice(3, 5)
+    y = 1
+    band.ref.y_45 = np.sum(np.abs(band.ref.modes[:, :, _45, y]), axis=2)
+    z = 2
+    band.ref.z = np.sum(np.abs(band.ref.modes[:, :, :, 2]), axis=2)
     return band
 
 
