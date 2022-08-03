@@ -82,3 +82,13 @@ def check_to_image(phonon_dos, filename_argument, expected_filename):
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
         fig.write_image.assert_called_once_with(phonon_dos._path / expected_filename)
+
+
+def test_phonon_dos_print(phonon_dos, format_):
+    actual, _ = format_(phonon_dos)
+    reference = """\
+phonon DOS:
+    [0.00, 5.00] mesh with 50 points
+    21 modes
+    Sr2TiO4"""
+    assert actual == {"text/plain": reference}

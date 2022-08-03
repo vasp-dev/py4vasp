@@ -36,6 +36,7 @@ class PhononProjector:
             "y": _Selection(slice(1, 2), "y"),
             "z": _Selection(slice(2, 3), "z"),
         }
+        self.modes = 3 * topology.number_atoms()
 
     def parse_selection(self, selection):
         """Split a string into the relevant substrings defining the selection.
