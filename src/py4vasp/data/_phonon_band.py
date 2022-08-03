@@ -36,8 +36,10 @@ class PhononBand(_base.Refinery, _export.Image):
             Contains the **q**-point path for plotting phonon band structures and
             the phonon bands. In addition the phonon modes are returned.
         """
+        qpoints = self._qpoints
         return {
-            "qpoint_distances": self._qpoints.distances(),
+            "qpoint_distances": qpoints.distances(),
+            "qpoint_labels": qpoints.labels(),
             "bands": self._raw_data.dispersion.eigenvalues[:],
             "modes": _convert.to_complex(self._raw_data.eigenvectors[:]),
         }

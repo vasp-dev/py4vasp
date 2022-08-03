@@ -16,7 +16,7 @@ def phonon_band(raw_data):
     band.ref.bands = raw_band.dispersion.eigenvalues
     band.ref.modes = convert.to_complex(raw_band.eigenvectors)
     raw_qpoints = raw_band.dispersion.kpoints
-    band.ref.kpoints = Kpoint.from_data(raw_qpoints)
+    band.ref.qpoints = Kpoint.from_data(raw_qpoints)
     band.ref.topology = Topology.from_data(raw_band.topology)
     Sr = slice(0, 2)
     band.ref.Sr = np.sum(np.abs(band.ref.modes[:, :, Sr, :]), axis=(2, 3))
@@ -33,6 +33,8 @@ def phonon_band(raw_data):
 
 def test_read(phonon_band, Assert):
     band = phonon_band.read()
+    Assert.allclose(band["qpoint_distances"], phonon_band.ref.qpoints.distances())
+    assert band["qpoint_labels"] ==  phonon_band.ref.qpoints.labels()
     Assert.allclose(band["bands"], phonon_band.ref.bands)
     Assert.allclose(band["modes"], phonon_band.ref.modes)
 
@@ -42,7 +44,7 @@ def test_plot(phonon_band, Assert):
     assert graph.ylabel == "ω (THz)"
     assert len(graph.series) == 1
     assert graph.series[0].width is None
-    Assert.allclose(graph.series[0].x, phonon_band.ref.kpoints.distances())
+    Assert.allclose(graph.series[0].x, phonon_band.ref.qpoints.distances())
     Assert.allclose(graph.series[0].y, phonon_band.ref.bands.T)
 
 
@@ -61,7 +63,7 @@ def test_plot_selection(phonon_band, Assert):
 class FatbandChecker:
     def __init__(self, phonon_band, Assert):
         ref = phonon_band.ref
-        self.distances = ref.kpoints.distances()
+        self.distances = ref.qpoints.distances()
         self.projections = ref.Sr, ref.Ti_x, ref.y_45, ref.z
         self.labels = "Sr", "Ti_1_x", "4:5_y", "z"
         self.bands = ref.bands
