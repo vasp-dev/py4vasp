@@ -3,8 +3,8 @@
 import numpy as np
 from py4vasp import data
 from py4vasp.data import _base, _export
-from py4vasp.data._phonon_projector import PhononProjector
-from py4vasp._util import convert as _convert
+from py4vasp.data._phonon_projector import PhononProjector, selection_doc
+from py4vasp._util import convert as _convert, documentation
 import py4vasp._third_party.graph as _graph
 
 
@@ -24,6 +24,18 @@ class PhononBand(_base.Refinery, _export.Image):
 
     @_base.data_access
     def to_dict(self):
+        """Read the phonon band structure into a dictionary.
+
+        Parameters
+        ----------
+        {selection}
+
+        Returns
+        -------
+        dict
+            Contains the **q**-point path for plotting phonon band structures and
+            the phonon bands. In addition the phonon modes are returned.
+        """
         return {
             "qpoint_distances": self._qpoints.distances(),
             "bands": self._raw_data.dispersion.eigenvalues[:],
@@ -31,7 +43,23 @@ class PhononBand(_base.Refinery, _export.Image):
         }
 
     @_base.data_access
+    @documentation.format(selection=selection_doc)
     def plot(self, selection=None, width=1.0):
+        """Generate a graph of the phonon bands.
+
+        Parameters
+        ----------
+        {selection}
+        width : float
+            Specifies the width illustrating the projections.
+
+        Returns
+        -------
+        Graph
+            Contains the phonon band structure for all the **q** points. If a
+            selection is provided, the width of the bands is adjusted according to
+            the projection.
+        """
         return _graph.Graph(
             series=self._band_structure(selection, width),
             ylabel="ω (THz)",
@@ -39,6 +67,10 @@ class PhononBand(_base.Refinery, _export.Image):
 
     @_base.data_access
     def to_plotly(self, selection=None, width=1.0):
+        """Generate a plotly figure of the phonon band structure.
+
+        Converts the Graph object to a plotly figure. Check the :py:meth:`plot` method
+        to learn about how the Graph is generated."""
         return self.plot(selection, width).to_plotly()
 
     @property

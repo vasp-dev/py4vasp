@@ -50,11 +50,11 @@ class PhononDos(_base.Refinery, _export.Image):
     @documentation.format(selection=selection_doc)
     def plot(self, selection=None):
         """Generate a graph of the selected DOS.
-        
+
         Parameters
         ----------
         {selection}
-        
+
         Returns
         -------
         Graph
@@ -70,7 +70,7 @@ class PhononDos(_base.Refinery, _export.Image):
     @_base.data_access
     def to_plotly(self, selection=None):
         """Generate a plotly figure of the phonon DOS.
-        
+
         Converts the Graph object to a plotly figure. Check the :py:meth:`plot` method
         to learn about how the Graph is generated."""
         return self.plot(selection).to_plotly()
