@@ -21,10 +21,10 @@ class PhononDos(_base.Refinery):
             **self._read_data(selection),
         }
 
-    def plot(self):
-        data = self.to_dict()
+    def plot(self, selection=None):
+        data = self.to_dict(selection)
         return _graph.Graph(
-            series=[_series(data)],
+            series=list(_series(data)),
             xlabel="ω (THz)",
             ylabel="DOS (1/THz)",
         )
@@ -49,4 +49,8 @@ class PhononDos(_base.Refinery):
 
 
 def _series(data):
-    return _graph.Series(data["energies"], data["total"])
+    energies = data["energies"]
+    for name, dos in data.items():
+        if name == "energies":
+            continue
+        yield _graph.Series(energies, dos, name)

@@ -43,3 +43,18 @@ def test_phonon_dos_plot(phonon_dos, Assert):
     assert len(graph.series) == 1
     Assert.allclose(graph.series[0].x, phonon_dos.ref.energies)
     Assert.allclose(graph.series[0].y, phonon_dos.ref.total_dos)
+
+
+def test_phonon_dos_plot_selection(phonon_dos, Assert):
+    graph = phonon_dos.plot("Sr, 3(x), y(4:5), z")
+    assert len(graph.series) == 5
+    check_series(graph.series[0], phonon_dos.ref.total_dos, "total", Assert)
+    check_series(graph.series[1], phonon_dos.ref.Sr, "Sr", Assert)
+    check_series(graph.series[2], phonon_dos.ref.Ti_x, "Ti_1_x", Assert)
+    check_series(graph.series[3], phonon_dos.ref.y_45, "4:5_y", Assert)
+    check_series(graph.series[4], phonon_dos.ref.z, "z", Assert)
+
+
+def check_series(series, reference, label, Assert):
+    assert series.name == label
+    Assert.allclose(series.y, reference)
