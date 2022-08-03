@@ -302,7 +302,7 @@ def _energy():
 
 
 def _qpoints():
-    qpoints = _line_kpoints("explicit", "with_labels")
+    qpoints = _line_kpoints("line", "with_labels")
     qpoints.cell.lattice_vectors = qpoints.cell.lattice_vectors[-1]
     return qpoints
 

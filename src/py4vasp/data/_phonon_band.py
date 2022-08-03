@@ -64,6 +64,7 @@ class PhononBand(_base.Refinery, _export.Image):
         """
         return _graph.Graph(
             series=self._band_structure(selection, width),
+            xticks=self._xticks(),
             ylabel="ω (THz)",
         )
 
@@ -82,6 +83,37 @@ class PhononBand(_base.Refinery, _export.Image):
     @property
     def _topology(self):
         return data.Topology.from_data(self._raw_data.topology)
+
+    def _xticks(self):
+        ticks, labels = self._degenerate_ticks_and_labels()
+        return self._filter_unique(ticks, labels)
+
+    def _degenerate_ticks_and_labels(self):
+        labels = self._qpoint_labels()
+        mask = np.logical_or(self._edge_of_line(), labels != "")
+        return self._qpoints.distances()[mask], labels[mask]
+
+    def _qpoint_labels(self):
+        labels = self._qpoints.labels()
+        if labels is None:
+            labels = [""] * len(self._raw_data.dispersion.kpoints.coordinates)
+        return np.array(labels)
+
+    def _edge_of_line(self):
+        indices = np.arange(len(self._raw_data.dispersion.kpoints.coordinates))
+        edge_of_line = (indices + 1) % self._qpoints.line_length() == 0
+        edge_of_line[0] = True
+        return edge_of_line
+
+    def _filter_unique(self, ticks, labels):
+        result = {}
+        for tick, label in zip(ticks, labels):
+            if tick in result:
+                previous_label = result[tick]
+                if previous_label != "" and previous_label != label:
+                    label = previous_label + "|" + label
+            result[tick] = label
+        return result
 
     def _band_structure(self, selection, width):
         band = self.to_dict()

@@ -34,7 +34,7 @@ def phonon_band(raw_data):
 def test_read(phonon_band, Assert):
     band = phonon_band.read()
     Assert.allclose(band["qpoint_distances"], phonon_band.ref.qpoints.distances())
-    assert band["qpoint_labels"] ==  phonon_band.ref.qpoints.labels()
+    assert band["qpoint_labels"] == phonon_band.ref.qpoints.labels()
     Assert.allclose(band["bands"], phonon_band.ref.bands)
     Assert.allclose(band["modes"], phonon_band.ref.modes)
 
@@ -46,6 +46,14 @@ def test_plot(phonon_band, Assert):
     assert graph.series[0].width is None
     Assert.allclose(graph.series[0].x, phonon_band.ref.qpoints.distances())
     Assert.allclose(graph.series[0].y, phonon_band.ref.bands.T)
+    check_ticks(graph, phonon_band.ref.qpoints, Assert)
+    assert tuple(graph.xticks.values()) == (r"$\Gamma$", "", r"M|$\Gamma$", "Y", "M")
+
+
+def check_ticks(graph, qpoints, Assert):
+    dists = qpoints.distances()
+    xticks = (*dists[:: qpoints.line_length()], dists[-1])
+    Assert.allclose(list(graph.xticks.keys()), np.array(xticks))
 
 
 def test_plot_selection(phonon_band, Assert):
