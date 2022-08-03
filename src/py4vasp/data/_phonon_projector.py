@@ -7,6 +7,20 @@ from py4vasp.data._selection import Selection as _Selection
 from py4vasp._util import selection as _selection
 
 _range = re.compile(r"^(\d+)" + re.escape(_selection.range_separator) + r"(\d+)$")
+selection_doc = """\
+selection : str
+    A string specifying the projection of the phonon modes onto atoms and directions.
+    Please specify selections using one of the following:
+
+    -   To specify the **atom**, you can either use its element name (Si, Al, ...)
+        or its index as given in the input file (1, 2, ...). For the latter
+        option it is also possible to specify ranges (e.g. 1:4).
+    -   To select a particular **direction** specify the Cartesian direction (x, y, z).
+
+    You separate multiple selections by commas or whitespace and can nest them using
+    parenthesis, e.g. `Sr(x)` or `z(1, 2)`. The order of the selections does not matter,
+    but it is case sensitive to distinguish y (Cartesian direction) from Y (yttrium).
+"""
 
 
 class PhononProjector:

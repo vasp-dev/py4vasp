@@ -3,8 +3,9 @@
 import numpy as np
 from py4vasp import data
 from py4vasp.data import _base, _export
-from py4vasp.data._phonon_projector import PhononProjector
+from py4vasp.data._phonon_projector import PhononProjector, selection_doc
 import py4vasp._third_party.graph as _graph
+from py4vasp._util import documentation
 
 
 class PhononDos(_base.Refinery, _export.Image):
@@ -24,7 +25,21 @@ class PhononDos(_base.Refinery, _export.Image):
     {self._topology}"""
 
     @_base.data_access
+    @documentation.format(selection=selection_doc)
     def to_dict(self, selection=None):
+        """Read the phonon DOS into a dictionary.
+
+        Parameters
+        ----------
+        {selection}
+
+        Returns
+        -------
+        dict
+            Contains the energies at which the phonon  DOS was computed. The total
+            DOS is returned and any possible projected DOS selected by the *selection*
+            argument.
+        """
         return {
             "energies": self._raw_data.energies[:],
             "total": self._raw_data.dos[:],
@@ -32,7 +47,19 @@ class PhononDos(_base.Refinery, _export.Image):
         }
 
     @_base.data_access
+    @documentation.format(selection=selection_doc)
     def plot(self, selection=None):
+        """Generate a graph of the selected DOS.
+        
+        Parameters
+        ----------
+        {selection}
+        
+        Returns
+        -------
+        Graph
+            The graph contains the total DOS. If a selection is given, in addition the
+            projected DOS is shown."""
         data = self.to_dict(selection)
         return _graph.Graph(
             series=list(_series(data)),
@@ -42,6 +69,10 @@ class PhononDos(_base.Refinery, _export.Image):
 
     @_base.data_access
     def to_plotly(self, selection=None):
+        """Generate a plotly figure of the phonon DOS.
+        
+        Converts the Graph object to a plotly figure. Check the :py:meth:`plot` method
+        to learn about how the Graph is generated."""
         return self.plot(selection).to_plotly()
 
     @property
