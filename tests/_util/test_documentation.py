@@ -12,3 +12,27 @@ def test_add_documentation():
         pass
 
     assert inspect.getdoc(func) == doc_string
+
+
+def test_format_documentation():
+    inner_text = """\
+First line
+    Second line
+"""
+
+    @_documentation.format(inner_text=inner_text)
+    def func():
+        """Multiple line string
+
+        {inner_text}
+
+        continued afterwards"""
+
+    expected = """\
+Multiple line string
+
+First line
+    Second line
+
+continued afterwards"""
+    assert inspect.getdoc(func) == expected
