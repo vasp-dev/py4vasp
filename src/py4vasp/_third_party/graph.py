@@ -76,6 +76,8 @@ class Series:
     "When a width is set, the series will be visualized as an area instead of a line."
     y2: bool = False
     "Use a secondary y axis to show this series."
+    subplot: int = None
+    "Split series into different axes"
     color: str = None
     "The color used for this series."
 
@@ -87,7 +89,7 @@ class Series:
     def _generate_traces(self):
         first_trace = True
         for y in np.atleast_2d(np.array(self.y)):
-            yield self._make_trace(y, first_trace)
+            yield self._make_trace(y, first_trace), {"row": self.subplot}
             first_trace = False
 
     def _make_trace(self, y, first_trace):
@@ -140,22 +142,38 @@ class Graph:
 
     series: Series or Sequence[Series]
     "One or more series shown in the graph."
-    xlabel: str = None
+    xlabel: (str,) = None
     "Label for the x axis."
-    xticks: dict = None
+    xticks: (dict,) = None
     "A dictionary specifying positions and labels where ticks are placed on the x axis."
-    ylabel: str = None
+    ylabel: (str,) = None
     "Label for the y axis."
-    y2label: str = None
+    y2label: (str,) = None
     "Label for the secondary y axis."
-    title: str = None
+    title: (str,) = None
     "Title of the graph."
+
+    def __post_init__(self):
+        if any(series.subplot for series in np.atleast_1d(self.series)):
+            if not all(series.subplot for series in np.atleast_1d(self.series)):
+                message = "If subplot is used it has to be set for all data in the series and has to be larger 0"
+                raise exception.IncorrectUsage(message)
+            if len(np.atleast_1d(self.xlabel)) > len(np.atleast_1d(self.series)):
+                message = "Subplot was used with more xlabels than number of subplots. Please check your input"
+                raise exception.IncorrectUsage(message)
+            if len(np.atleast_1d(self.ylabel)) > len(np.atleast_1d(self.series)):
+                message = "Subplot was used with more ylabels than number of subplots. Please check your input"
+                raise exception.IncorrectUsage(message)
 
     def to_plotly(self):
         "Convert the graph to a plotly figure."
         figure = self._make_plotly_figure()
-        for trace in self._generate_plotly_traces():
-            figure.add_trace(trace)
+        for trace, options in self._generate_plotly_traces():
+            if options["row"] is None:
+                figure.add_trace(trace)
+            else:
+                figure.add_trace(trace, row=options["row"], col=1)
+
         return figure
 
     def show(self):
@@ -180,13 +198,25 @@ class Graph:
         return figure
 
     def _figure_with_one_or_two_y_axes(self):
-        if any(series.y2 for series in np.atleast_1d(self.series)):
+        if any(series.subplot for series in np.atleast_1d(self.series)):
+            max_row = max(series.subplot for series in self.series)
+            figure = make_subplots(rows=max_row, cols=1)
+            figure.update_layout(showlegend=False)
+            return figure
+        elif any(series.y2 for series in np.atleast_1d(self.series)):
             return make_subplots(specs=[[{"secondary_y": True}]])
         else:
             return go.Figure()
 
     def _set_xaxis_options(self, figure):
-        figure.layout.xaxis.title.text = self.xlabel
+        if any(series.subplot for series in np.atleast_1d(self.series)):
+            # setting xlabels for subplots
+            row = 1  # this indexes start @ 1 in plotly
+            for i in range(len(np.atleast_1d(self.xlabel))):
+                figure.update_xaxes(title_text=self.xlabel[i], row=row, col=1)
+                row += 1
+        else:
+            figure.layout.xaxis.title.text = self.xlabel
         if self.xticks:
             figure.layout.xaxis.tickmode = "array"
             figure.layout.xaxis.tickvals = tuple(self.xticks.keys())
@@ -197,9 +227,16 @@ class Graph:
         return tuple(label or " " for label in self.xticks.values())
 
     def _set_yaxis_options(self, figure):
-        figure.layout.yaxis.title.text = self.ylabel
-        if self.y2label:
-            figure.layout.yaxis2.title.text = self.y2label
+        if any(series.subplot for series in np.atleast_1d(self.series)):
+            # setting ylabels for subplots
+            row = 1  # this indexes start @ 1 in plotly
+            for i in range(len(np.atleast_1d(self.ylabel))):
+                figure.update_yaxes(title_text=self.ylabel[i], row=row, col=1)
+                row += 1
+        else:
+            figure.layout.yaxis.title.text = self.ylabel
+            if self.y2label:
+                figure.layout.yaxis2.title.text = self.y2label
 
 
 Graph._fields = tuple(field.name for field in fields(Graph))
