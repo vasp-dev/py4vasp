@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 import types
+from unittest.mock import patch
 from py4vasp.data import PhononDos
 
 
@@ -58,3 +59,26 @@ def test_phonon_dos_plot_selection(phonon_dos, Assert):
 def check_series(series, reference, label, Assert):
     assert series.name == label
     Assert.allclose(series.y, reference)
+
+
+@patch("py4vasp.data._phonon_dos.PhononDos.plot")
+def test_phonon_dos_to_plotly(mock_plot, phonon_dos):
+    fig = phonon_dos.to_plotly("selection")
+    mock_plot.assert_called_once_with("selection")
+    graph = mock_plot.return_value
+    graph.to_plotly.assert_called_once()
+    assert fig == graph.to_plotly.return_value
+
+
+def test_phonon_dos_to_image(phonon_dos):
+    check_to_image(phonon_dos, None, "phonon_dos.png")
+    custom_filename = "custom.jpg"
+    check_to_image(phonon_dos, custom_filename, custom_filename)
+
+
+def check_to_image(phonon_dos, filename_argument, expected_filename):
+    with patch("py4vasp.data._phonon_dos.PhononDos.to_plotly") as plot:
+        phonon_dos.to_image("args", filename=filename_argument, key="word")
+        plot.assert_called_once_with("args", key="word")
+        fig = plot.return_value
+        fig.write_image.assert_called_once_with(phonon_dos._path / expected_filename)

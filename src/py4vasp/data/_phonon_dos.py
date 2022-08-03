@@ -2,12 +2,12 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 from py4vasp import data
-from py4vasp.data import _base
+from py4vasp.data import _base, _export
 from py4vasp.data._phonon_projector import PhononProjector
 import py4vasp._third_party.graph as _graph
 
 
-class PhononDos(_base.Refinery):
+class PhononDos(_base.Refinery, _export.Image):
     """The phonon density of states (DOS).
 
     You can use this class to extract the phonon DOS data of a VASP
@@ -28,6 +28,9 @@ class PhononDos(_base.Refinery):
             xlabel="ω (THz)",
             ylabel="DOS (1/THz)",
         )
+
+    def to_plotly(self, selection=None):
+        return self.plot(selection).to_plotly()
 
     def _read_data(self, selection):
         projector = self._get_projector()
