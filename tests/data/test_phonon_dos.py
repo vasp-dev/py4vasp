@@ -34,3 +34,12 @@ def test_phonon_dos_read_projection(phonon_dos, Assert):
     Assert.allclose(actual["Ti_1_x"], phonon_dos.ref.Ti_x)
     Assert.allclose(actual["4:5_y"], phonon_dos.ref.y_45)
     Assert.allclose(actual["z"], phonon_dos.ref.z)
+
+
+def test_phonon_dos_plot(phonon_dos, Assert):
+    graph = phonon_dos.plot()
+    assert graph.xlabel == "ω (THz)"
+    assert graph.ylabel == "DOS (1/THz)"
+    assert len(graph.series) == 1
+    Assert.allclose(graph.series[0].x, phonon_dos.ref.energies)
+    Assert.allclose(graph.series[0].y, phonon_dos.ref.total_dos)

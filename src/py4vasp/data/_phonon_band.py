@@ -81,4 +81,3 @@ class PhononBand(_base.Refinery, _export.Image):
             name=label,
             width=width * np.sum(np.abs(selected), axis=(2, 3)).T,
         )
-

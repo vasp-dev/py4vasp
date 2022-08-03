@@ -4,6 +4,7 @@ import numpy as np
 from py4vasp import data
 from py4vasp.data import _base
 from py4vasp.data._phonon_projector import PhononProjector
+import py4vasp._third_party.graph as _graph
 
 
 class PhononDos(_base.Refinery):
@@ -19,6 +20,14 @@ class PhononDos(_base.Refinery):
             "total": self._raw_data.dos[:],
             **self._read_data(selection),
         }
+
+    def plot(self):
+        data = self.to_dict()
+        return _graph.Graph(
+            series=[_series(data)],
+            xlabel="ω (THz)",
+            ylabel="DOS (1/THz)",
+        )
 
     def _read_data(self, selection):
         projector = self._get_projector()
@@ -37,3 +46,7 @@ class PhononDos(_base.Refinery):
             selection.atom.indices, selection.direction.indices
         ]
         return np.sum(projections, axis=(0, 1))
+
+
+def _series(data):
+    return _graph.Series(data["energies"], data["total"])
