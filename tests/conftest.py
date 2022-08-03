@@ -302,9 +302,9 @@ def _energy():
 
 
 def _qpoints():
-    kpoints = _grid_kpoints("explicit", "no_labels")
-    kpoints.cell.lattice_vectors = kpoints.cell.lattice_vectors[-1]
-    return kpoints
+    qpoints = _line_kpoints("explicit", "with_labels")
+    qpoints.cell.lattice_vectors = qpoints.cell.lattice_vectors[-1]
+    return qpoints
 
 
 def _line_kpoints(mode, labels):

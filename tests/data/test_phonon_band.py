@@ -105,7 +105,7 @@ def test_print(phonon_band, format_):
     actual, _ = format_(phonon_band)
     reference = """\
 phonon band data:
-    48 q-points
+    20 q-points
     21 modes
     Sr2TiO4"""
     assert actual == {"text/plain": reference}
