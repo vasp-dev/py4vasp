@@ -92,3 +92,8 @@ phonon DOS:
     21 modes
     Sr2TiO4"""
     assert actual == {"text/plain": reference}
+
+
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.phonon_dos("default")
+    check_factory_methods(PhononDos, data)

@@ -14,6 +14,7 @@ class PhononDos(_base.Refinery, _export.Image):
     calculation. The DOS can also be resolved by direction and atom.
     """
 
+    @_base.data_access
     def __str__(self):
         energies = self._raw_data.energies
         projector = self._get_projector()
@@ -22,6 +23,7 @@ class PhononDos(_base.Refinery, _export.Image):
     {projector.modes} modes
     {self._topology}"""
 
+    @_base.data_access
     def to_dict(self, selection=None):
         return {
             "energies": self._raw_data.energies[:],
@@ -29,6 +31,7 @@ class PhononDos(_base.Refinery, _export.Image):
             **self._read_data(selection),
         }
 
+    @_base.data_access
     def plot(self, selection=None):
         data = self.to_dict(selection)
         return _graph.Graph(
@@ -37,6 +40,7 @@ class PhononDos(_base.Refinery, _export.Image):
             ylabel="DOS (1/THz)",
         )
 
+    @_base.data_access
     def to_plotly(self, selection=None):
         return self.plot(selection).to_plotly()
 
