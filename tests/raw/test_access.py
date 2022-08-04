@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import py4vasp.raw as raw
 from py4vasp.raw._definition import DEFAULT_FILE
 import py4vasp.exceptions as exception

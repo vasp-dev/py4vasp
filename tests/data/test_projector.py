@@ -62,7 +62,7 @@ def Sr2TiO4_selection():
             "7": Selection(indices=slice(6, 7), label="O_4"),
             "1:3": Selection(indices=slice(0, 3), label="1:3"),
             "4:7": Selection(indices=slice(3, 7), label="4:7"),
-            selection.all: Selection(indices=slice(7)),
+            selection.all: Selection(indices=slice(0, 7)),
         },
         "orbital": {
             "s": Selection(indices=slice(0, 1), label="s"),
@@ -84,11 +84,11 @@ def Sr2TiO4_selection():
             "p": Selection(indices=slice(1, 4), label="p"),
             "d": Selection(indices=slice(4, 9), label="d"),
             "f": Selection(indices=slice(9, 16), label="f"),
-            selection.all: Selection(indices=slice(16)),
+            selection.all: Selection(indices=slice(0, 16)),
         },
         "spin": {
-            "total": Selection(indices=slice(1), label="total"),
-            selection.all: Selection(indices=slice(1)),
+            "total": Selection(indices=slice(0, 1), label="total"),
+            selection.all: Selection(indices=slice(0, 1)),
         },
     }
 
@@ -107,20 +107,20 @@ def Fe3O4_selection():
             "7": Selection(indices=slice(6, 7), label="O_4"),
             "1:2": Selection(indices=slice(0, 2), label="1:2"),
             "4:5": Selection(indices=slice(3, 5), label="4:5"),
-            selection.all: Selection(indices=slice(7)),
+            selection.all: Selection(indices=slice(0, 7)),
         },
         "orbital": {
             "s": Selection(indices=slice(0, 1), label="s"),
             "p": Selection(indices=slice(1, 2), label="p"),
             "d": Selection(indices=slice(2, 3), label="d"),
             "f": Selection(indices=slice(3, 4), label="f"),
-            selection.all: Selection(indices=slice(4)),
+            selection.all: Selection(indices=slice(0, 4)),
         },
         "spin": {
-            "total": Selection(indices=slice(2), label="total"),
-            "up": Selection(indices=slice(1), label="up"),
+            "total": Selection(indices=slice(0, 2), label="total"),
+            "up": Selection(indices=slice(0, 1), label="up"),
             "down": Selection(indices=slice(1, 2), label="down"),
-            selection.all: Selection(indices=slice(2)),
+            selection.all: Selection(indices=slice(0, 2)),
         },
     }
 
@@ -244,8 +244,8 @@ def test_read_empty(Sr2TiO4):
 
 def test_read_only_indices(Sr2TiO4):
     reference = {
-        "Sr_p": (slice(1), slice(0, 2), slice(1, 4)),
-        "Ti_1_dxy": (slice(1), slice(2, 3), slice(4, 5)),
+        "Sr_p": (slice(0, 1), slice(0, 2), slice(1, 4)),
+        "Ti_1_dxy": (slice(0, 1), slice(2, 3), slice(4, 5)),
     }
     assert Sr2TiO4.read(selection="Sr(p) 3(dxy)") == reference
 

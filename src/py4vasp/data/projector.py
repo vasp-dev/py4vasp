@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from typing import NamedTuple, Iterable, Union
+from typing import NamedTuple, Union
 import numpy as np
 import re
 from .topology import Topology
@@ -198,7 +198,7 @@ class Projector(_base.Refinery):
 
     def _init_orbital_dict(self):
         num_orbitals = len(self._raw_data.orbital_types)
-        all_orbitals = _Selection(indices=slice(num_orbitals))
+        all_orbitals = _Selection(indices=slice(0, num_orbitals))
         orbital_dict = {_selection.all: all_orbitals}
         for i, orbital in enumerate(self._orbital_types()):
             orbital_dict[orbital] = _Selection(indices=slice(i, i + 1), label=orbital)
@@ -221,10 +221,10 @@ class Projector(_base.Refinery):
         num_spins = self._raw_data.number_spins
         return {
             "polarized": num_spins == 2,
-            "up": _Selection(indices=slice(1), label="up"),
+            "up": _Selection(indices=slice(0, 1), label="up"),
             "down": _Selection(indices=slice(1, 2), label="down"),
-            "total": _Selection(indices=slice(num_spins), label="total"),
-            _selection.all: _Selection(indices=slice(num_spins)),
+            "total": _Selection(indices=slice(0, num_spins), label="total"),
+            _selection.all: _Selection(indices=slice(0, num_spins)),
         }
 
     def _get_indices(self, selection):

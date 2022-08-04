@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp.raw import VaspData
 from hypothesis import given, assume
 import hypothesis.strategies as strategy
