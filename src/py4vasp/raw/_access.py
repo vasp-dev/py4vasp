@@ -5,7 +5,7 @@ import dataclasses
 import functools
 import h5py
 import pathlib
-import py4vasp
+import textwrap
 import py4vasp.exceptions as exception
 import py4vasp.raw as raw
 from py4vasp.raw._definition import schema, DEFAULT_FILE, DEFAULT_SOURCE
@@ -74,12 +74,7 @@ class _State:
         try:
             return schema.sources[quantity][source]
         except KeyError as error:
-            message = (
-                f"{quantity}/{source} is not available in the HDF5 file. Please check "
-                "the spelling of the arguments. Perhaps the version of py4vasp "
-                f"({py4vasp.__version__}) is not up to date with the documentation."
-            )
-            raise exception.FileAccessError(message)
+            raise exception.FileAccessError(_error_message(quantity, source)) from error
 
     def _open_file(self, filename):
         if filename in self._files:
@@ -145,3 +140,20 @@ class _State:
             return scalar.decode()
         else:
             return scalar
+
+
+def _error_message(quantity, source):
+    if quantity in schema.sources:
+        sources = schema.sources[quantity]
+        first_part = f"""\
+            For the quantity "{quantity}", source="{source}" is not available in the
+            HDF5 file. The following sources are available "{'", "'.join(sources)}"."""
+    else:
+        first_part = f"""\
+            The quantity "{quantity}" is not available in the HDF5 file. The following 
+            quantities are available "{'", "'.join(schema.sources)}"."""
+    second_part = """\
+        Please check for spelling mistakes and verify that your version of
+        py4vasp is up to date."""
+    message = textwrap.dedent(first_part) + " " + textwrap.dedent(second_part)
+    return "\n" + "\n".join(textwrap.wrap(message, width=80))
