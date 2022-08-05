@@ -11,10 +11,10 @@ schema = Schema(VERSION_DATA)
 #
 schema.add(
     raw.Band,
-    dispersion=Link("dispersion", "default"),
+    dispersion=Link("dispersion", DEFAULT_SOURCE),
     fermi_energy="results/electron_dos/efermi",
     occupations="results/electron_eigenvalues/fermiweights",
-    projectors=Link("projector", "default"),
+    projectors=Link("projector", DEFAULT_SOURCE),
     projections="results/projectors/par",
 )
 group = "results/electron_eigenvalues_kpoints_opt"
@@ -40,7 +40,7 @@ schema.add(
 schema.add(
     raw.BornEffectiveCharge,
     required=raw.Version(6, 3),
-    structure=Link("structure", "default"),
+    structure=Link("structure", DEFAULT_SOURCE),
     charge_tensors="results/linear_response/born_charges",
 )
 #
@@ -59,7 +59,7 @@ schema.add(
 #
 schema.add(
     raw.Density,
-    structure=Link("structure", "default"),
+    structure=Link("structure", DEFAULT_SOURCE),
     charge="charge/charge",
 )
 #
@@ -86,7 +86,7 @@ schema.add(
 #
 schema.add(
     raw.Dispersion,
-    kpoints=Link("kpoint", "default"),
+    kpoints=Link("kpoint", DEFAULT_SOURCE),
     eigenvalues="results/electron_eigenvalues/eigenvalues",
 )
 schema.add(
@@ -114,7 +114,7 @@ schema.add(
     fermi_energy=f"{group}/efermi",
     energies=f"{group}/energies",
     dos=f"{group}/dos",
-    projectors=Link("projector", "default"),
+    projectors=Link("projector", DEFAULT_SOURCE),
     projections=f"{group}/dospar",
 )
 group = "results/electron_dos_kpoints_opt"
@@ -144,21 +144,21 @@ schema.add(
 #
 schema.add(
     raw.Force,
-    structure=Link("structure", "default"),
+    structure=Link("structure", DEFAULT_SOURCE),
     forces="intermediate/ion_dynamics/forces",
 )
 #
 schema.add(
     raw.ForceConstant,
     required=raw.Version(6, 3),
-    structure=Link("structure", "default"),
+    structure=Link("structure", DEFAULT_SOURCE),
     force_constants="results/linear_response/force_constants",
 )
 #
 schema.add(
     raw.InternalStrain,
     required=raw.Version(6, 3),
-    structure=Link("structure", "default"),
+    structure=Link("structure", DEFAULT_SOURCE),
     internal_strain="results/linear_response/internal_strain",
 )
 #
@@ -172,7 +172,7 @@ schema.add(
     weights=f"{result}/kpoints_symmetry_weight",
     labels=f"{input}/labels_kpoints",
     label_indices=f"{input}/positions_labels_kpoints",
-    cell=Link("cell", "default"),
+    cell=Link("cell", DEFAULT_SOURCE),
 )
 input = "input/kpoints_opt"
 result = "results/electron_eigenvalues_kpoints_opt"
@@ -185,7 +185,7 @@ schema.add(
     weights=f"{result}/kpoints_symmetry_weight",
     labels=f"{input}/labels_kpoints",
     label_indices=f"{input}/positions_labels_kpoints",
-    cell=Link("cell", "default"),
+    cell=Link("cell", DEFAULT_SOURCE),
 )
 input = "input/kpoints_wan"
 result = "results/electron_eigenvalues_kpoints_wan"
@@ -198,7 +198,7 @@ schema.add(
     weights=f"{result}/kpoints_symmetry_weight",
     labels=f"{input}/labels_kpoints",
     label_indices=f"{input}/positions_labels_kpoints",
-    cell=Link("cell", "default"),
+    cell=Link("cell", DEFAULT_SOURCE),
 )
 input = "input/qpoints"
 result = "results/phonons"
@@ -217,7 +217,7 @@ schema.add(
 #
 schema.add(
     raw.Magnetism,
-    structure=Link("structure", "default"),
+    structure=Link("structure", DEFAULT_SOURCE),
     moments="intermediate/ion_dynamics/magnetism/moments",
 )
 #
@@ -240,7 +240,6 @@ schema.add(
 )
 schema.add(
     raw.PhononDos,
-    name="phonon",
     required=raw.Version(6, 4),
     energies=f"{group}/dos_mesh",
     dos=f"{group}/dos",
@@ -266,21 +265,21 @@ schema.add(
 #
 schema.add(
     raw.Projector,
-    topology=Link("topology", "default"),
+    topology=Link("topology", DEFAULT_SOURCE),
     orbital_types="results/projectors/lchar",
     number_spins=Length("results/electron_eigenvalues/eigenvalues"),
 )
 #
 schema.add(
     raw.Stress,
-    structure=Link("structure", "default"),
+    structure=Link("structure", DEFAULT_SOURCE),
     stress="intermediate/ion_dynamics/stress",
 )
 #
 schema.add(
     raw.Structure,
-    topology=Link("topology", "default"),
-    cell=Link("cell", "default"),
+    topology=Link("topology", DEFAULT_SOURCE),
+    cell=Link("cell", DEFAULT_SOURCE),
     positions="intermediate/ion_dynamics/position_ions",
 )
 #
