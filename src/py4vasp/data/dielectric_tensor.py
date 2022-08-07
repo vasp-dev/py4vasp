@@ -27,13 +27,15 @@ class DielectricTensor(_base.Refinery):
     @_base.data_access
     def __str__(self):
         data = self.to_dict()
-        return f"""
+        fstring = f"""
 Macroscopic static dielectric tensor (dimensionless)
   {_description(data["method"])}
 ------------------------------------------------------
 {_dielectric_tensor_string(data["clamped_ion"], "clamped-ion")}
-{_dielectric_tensor_string(data["relaxed_ion"], "relaxed-ion")}
-""".strip()
+"""
+        if self._raw_data.ion is not None:
+            fstring +="\n{_dielectric_tensor_string(data['relaxed_ion'], 'relaxed-ion')}"
+        return fstring.strip()
 
     def _read_relaxed_ion(self):
         if self._raw_data.ion.is_none():
@@ -47,6 +49,11 @@ Macroscopic static dielectric tensor (dimensionless)
         else:
             return self._raw_data.independent_particle[:]
 
+    def _read_relaxed_ion(self):
+        if self._raw_data.ion is None:
+            return None
+        else:
+            return self._raw_data.electron[:] + self._raw_data.ion[:]
 
 def _dielectric_tensor_string(tensor, label):
     if tensor is None:
