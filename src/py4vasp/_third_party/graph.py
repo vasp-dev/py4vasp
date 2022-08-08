@@ -142,19 +142,19 @@ class Graph:
 
     series: Series or Sequence[Series]
     "One or more series shown in the graph."
-    xlabel: (str,) = None
+    xlabel: str = None
     "Label for the x axis."
-    xticks: (dict,) = None
+    xticks: dict = None
     "A dictionary specifying positions and labels where ticks are placed on the x axis."
-    ylabel: (str,) = None
+    ylabel: str = None
     "Label for the y axis."
-    y2label: (str,) = None
+    y2label: str = None
     "Label for the secondary y axis."
-    title: (str,) = None
+    title: str = None
     "Title of the graph."
 
     def __post_init__(self):
-        if any(series.subplot for series in np.atleast_1d(self.series)):
+        if self._subplot_on:
             if not all(series.subplot for series in np.atleast_1d(self.series)):
                 message = "If subplot is used it has to be set for all data in the series and has to be larger 0"
                 raise exception.IncorrectUsage(message)
@@ -198,7 +198,7 @@ class Graph:
         return figure
 
     def _figure_with_one_or_two_y_axes(self):
-        if any(series.subplot for series in np.atleast_1d(self.series)):
+        if self._subplot_on:
             max_row = max(series.subplot for series in self.series)
             figure = make_subplots(rows=max_row, cols=1)
             figure.update_layout(showlegend=False)
@@ -209,12 +209,11 @@ class Graph:
             return go.Figure()
 
     def _set_xaxis_options(self, figure):
-        if any(series.subplot for series in np.atleast_1d(self.series)):
+        if self._subplot_on:
             # setting xlabels for subplots
-            row = 1  # this indexes start @ 1 in plotly
-            for i in range(len(np.atleast_1d(self.xlabel))):
-                figure.update_xaxes(title_text=self.xlabel[i], row=row, col=1)
-                row += 1
+            for row, xlabel in enumerate(np.atleast_1d(self.xlabel)):
+                # row indices start @ 1 in plotly
+                figure.update_xaxes(title_text=xlabel, row=row + 1, col=1)
         else:
             figure.layout.xaxis.title.text = self.xlabel
         if self.xticks:
@@ -227,16 +226,18 @@ class Graph:
         return tuple(label or " " for label in self.xticks.values())
 
     def _set_yaxis_options(self, figure):
-        if any(series.subplot for series in np.atleast_1d(self.series)):
+        if self._subplot_on:
             # setting ylabels for subplots
-            row = 1  # this indexes start @ 1 in plotly
-            for i in range(len(np.atleast_1d(self.ylabel))):
-                figure.update_yaxes(title_text=self.ylabel[i], row=row, col=1)
-                row += 1
+            for row, ylabel in enumerate(np.atleast_1d(self.ylabel)):
+                figure.update_yaxes(title_text=ylabel, row=row + 1, col=1)
         else:
             figure.layout.yaxis.title.text = self.ylabel
             if self.y2label:
                 figure.layout.yaxis2.title.text = self.y2label
+
+    @property
+    def _subplot_on(self):
+        return any(series.subplot for series in np.atleast_1d(self.series))
 
 
 Graph._fields = tuple(field.name for field in fields(Graph))

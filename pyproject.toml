@@ -6,7 +6,8 @@ authors = [
     "VASP Software GmbH <py4vasp@vasp.at>",
     "Martin Schlipf <martin.schlipf@gmail.com>",
     "Henrique Miranda <miranda.henrique@gmail.com>",
-    "Orest Dubay <orest-d@users.noreply.github.com>"
+    "Orest Dubay <orest-d@users.noreply.github.com>",
+    "Jonathan Lahnsteiner <jonathan.lahnsteiner@gmx.at>"
 ]
 license = "Apache-2.0"
 readme = "README.md"
