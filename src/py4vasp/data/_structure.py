@@ -77,7 +77,7 @@ class Structure(_slice.Mixin, _base.Refinery):
 
     def _create_repr(self, format_=_Format()):
         step = self._last_step_in_slice
-        vec_to_string = lambda vec: format_.separator.join(str(v) for v in vec)
+        vec_to_string = lambda vec: format_.separator.join("{:21.16f}".format(v) for v in vec)
         vecs_to_string = lambda vecs: format_.row.join(vec_to_string(v) for v in vecs)
         vecs_to_table = lambda vecs: format_.begin + vecs_to_string(vecs) + format_.end
         return f"""
