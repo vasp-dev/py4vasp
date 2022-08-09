@@ -53,6 +53,17 @@ Returns
 int
     The number of lines the band structure contains. For regular meshes this is set to 1."""
 
+_number_kpoints = f"""Get the number of points in the Brillouin zone.
+
+Parameters
+----------
+{_kpoints_opt_source}
+
+Returns
+-------
+int
+    The number of points used to sample the Brillouin zone."""
+
 _distances_doc = f"""Convert the coordinates of the **k** points into a one dimensional array
 
 For every line in the Brillouin zone, the distance between each **k** point
@@ -119,6 +130,7 @@ reciprocal"""
         return {
             "mode": self.mode(),
             "line_length": self.line_length(),
+            "number_kpoints": self.number_kpoints(),
             "coordinates": self._raw_data.coordinates[:],
             "weights": self._raw_data.weights[:],
             "labels": self.labels(),
@@ -129,12 +141,17 @@ reciprocal"""
     def line_length(self):
         if self.mode() == "line":
             return self._raw_data.number
-        return len(self._raw_data.coordinates)
+        return self.number_kpoints()
 
     @_base.data_access
     @_documentation.add(_number_line_doc)
     def number_lines(self):
         return len(self._raw_data.coordinates) // self.line_length()
+
+    @_base.data_access
+    @_documentation.add(_number_kpoints)
+    def number_kpoints(self):
+        return len(self._raw_data.coordinates)
 
     @_base.data_access
     @_documentation.add(_distances_doc)
