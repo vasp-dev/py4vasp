@@ -267,7 +267,7 @@ class AnalyseErrorSingleFile:
         np.testing.assert_equal(
             len(data_A),
             len(data_B),
-            err_msg=f"Error in root_mean_square_error_list in {type(cls).__name__}
+            err_msg=f"Error in root_mean_square_error_list in {cls.__name__}
             + "the dimensions of the list do not match",
         )
         error = 0
