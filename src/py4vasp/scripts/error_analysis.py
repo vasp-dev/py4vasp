@@ -108,12 +108,7 @@ class Reader:
         of stress tensor from vaspout.h5 file
         """
         stress = self.calc.stress.read()
-        stress = stress["stress"]
-        self.stress = []
-        for i in range(stress.shape[0]):
-            for j in range(i, stress.shape[1]):
-                self.stress.append(stress[i, j])
-        self.stress = np.asarray(self.stress)
+        self.stress = stress["stress"][np.triu_indices(3)]
 
 
 class AnalyseErrorSingleFile:
