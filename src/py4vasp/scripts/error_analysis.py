@@ -636,7 +636,7 @@ class AnalyseError:
         dataframe.to_csv(fname)
 
 
-def main(argv):
+def main():
     options = get_options(sys.argv[1:])
     x = AnalyseError(options.MLfiles, options.DFTfiles)
     if options.MakePlot:
