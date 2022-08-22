@@ -182,7 +182,7 @@ class AnalyseErrorSingleFile:
         np.testing.assert_equal(
             self.ml_data.NIONS,
             self.dft_data.NIONS,
-            err_msg=f"Number of ions does not match in {self.ml_fname} and {self.dft_fname}"
+            err_msg=f"Number of ions does not match in {self.ml_fname} and {self.dft_fname}",
         )
 
         np.testing.assert_array_almost_equal(
@@ -190,7 +190,7 @@ class AnalyseErrorSingleFile:
             self.dft_data.positions,
             decimal=6,
             err_msg="The positions of your input data does not match in files "
-            + f"{self.ml_fname} and {self.dft_fname}"
+            + f"{self.ml_fname} and {self.dft_fname}",
         )
 
         np.testing.assert_array_almost_equal(
@@ -198,7 +198,7 @@ class AnalyseErrorSingleFile:
             self.dft_data.lattice,
             decimal=6,
             err_msg="The lattice of your input data does not match in files "
-            + f"{self.ml_fname} and {self._dft_fname}"
+            + f"{self.ml_fname} and {self._dft_fname}",
         )
 
     def compute_force_error(self):
@@ -267,7 +267,7 @@ class AnalyseErrorSingleFile:
         np.testing.assert_equal(
             len(data_A),
             len(data_B),
-            err_msg=f"Error in root_mean_square_error_list in {cls.__name__}
+            err_msg=f"Error in root_mean_square_error_list in {cls.__name__}"
             + "the dimensions of the list do not match",
         )
         error = 0
@@ -494,8 +494,7 @@ class AnalyseError:
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
     def plot_energy_error(self):
-        """plotting energy error/atom with sign versus the input configurations
-        """
+        """plotting energy error/atom with sign versus the input configurations"""
         graph = Graph(
             series=Series(self.xaxis, self.energy_error[:, 0]),
             xlabel="configuration",
@@ -506,8 +505,7 @@ class AnalyseError:
         return figure
 
     def plot_force_error(self):
-        """plotting force rmse meV/Angstroem versus input configurations
-        """
+        """plotting force rmse meV/Angstroem versus input configurations"""
         graph = Graph(
             series=Series(self.xaxis, self.force_error[:, 0]),
             xlabel="configuration",
@@ -518,8 +516,7 @@ class AnalyseError:
         return figure
 
     def plot_stress_error(self):
-        """plotting force rmse meV/Angstroem versus input configurations
-        """
+        """plotting force rmse meV/Angstroem versus input configurations"""
         graph = Graph(
             series=Series(self.xaxis, self.stress_error[:, 0]),
             xlabel="configuration",
@@ -575,7 +572,7 @@ class AnalyseError:
 
     def writing_energy_error_file(self, fname="EnergyError.out"):
         """writing the energy error to a output file the output file format will be
-            structure index  | energy per atom in meV
+        structure index  | energy per atom in meV
         """
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         print("Writing the energy error in meV/atom to file ", fname)
@@ -584,7 +581,7 @@ class AnalyseError:
         data = self.prepare_output_array(self.xaxis, self.energy_error[:])
         with open(fname, "w") as outfile:
             outfile.write(
-                f"# RMSE energy/atom in meV/atom {self.format_float([self.rmse_energy]}\n"
+                f"# RMSE energy/atom in meV/atom {self.format_float([self.rmse_energy])}\n"
             )
             outfile.write(
                 "#      structure index   energy difference in meV/atom "
@@ -595,7 +592,7 @@ class AnalyseError:
 
     def writing_force_error_file(self, fname="ForceError.out"):
         """writing the force error to a output file the output file format will be
-            structure index | root mean square force error in meV/Angstroem
+        structure index | root mean square force error in meV/Angstroem
         """
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         print("Writing the force error in meV/Angstroem per atom to file ", fname)
@@ -612,7 +609,7 @@ class AnalyseError:
 
     def writing_stress_error_file(self, fname="StressError.out"):
         """writing the stress error to a output file the output file format will be
-            structure index | root mean square stress error in [kBar]
+        structure index | root mean square stress error in [kBar]
         """
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         print("Writing the stress error in [kBar] to file ", fname)
@@ -626,7 +623,7 @@ class AnalyseError:
             )
             outfile.write("#      structure index      RMSE in kbar \n")
             for row in data:
-                outfile.write(self.format_float(row)) + "\n")
+                outfile.write(self.format_float(row) + "\n")
 
     def write_csv_output_file(self, fname="ErrorAnalysis.csv"):
         """write collected errors to a csv file"""
