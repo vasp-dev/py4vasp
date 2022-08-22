@@ -173,7 +173,7 @@ class AnalyseErrorSingleFile:
         self.compute_stress_error()
 
     @staticmethod
-    def write_array_to_screen(cls, data):
+    def write_array_to_screen(data):
         """writing an array to the screen"""
         for row in data:
             print(row)
@@ -237,8 +237,8 @@ class AnalyseErrorSingleFile:
         self.stress_error = np.linalg.norm(self.ml_data.stress - self.dft_data.stress)
         self.stress_error /= np.sqrt(self.ml_data.stress.shape[0])
 
-    @classmethod
-    def root_mean_square_error_numpy_array(cls, data_A, data_B):
+    @staticmethod
+    def root_mean_square_error_numpy_array(data_A, data_B):
         """computing root mean square error between two data sets
 
         Parameters
@@ -549,8 +549,8 @@ class AnalyseError:
         figure.show()
         return figure
 
-    @classmethod
-    def prepare_output_array(cls, x, y):
+    @staticmethod
+    def prepare_output_array(x, y):
         """concatenate two input arrays of shape (N , ) to a 2d array of shape (N,2)
         that can be used by numpy.savetxt
 
@@ -569,8 +569,8 @@ class AnalyseError:
         data = np.concatenate((xx, yy), axis=1)
         return data
 
-    @classmethod
-    def format_float(cls, data):
+    @staticmethod
+    def format_float(data):
         return "".join(["{:20.8f}".format(x) for x in data])
 
     def writing_energy_error_file(self, fname="EnergyError.out"):
