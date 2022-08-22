@@ -16,6 +16,7 @@ single_spin = 1
 two_spins = 2
 axes = 3
 complex_ = 2
+number_modes = axes * number_atoms
 
 
 class _Assert:
@@ -126,6 +127,8 @@ class RawDataFactory:
 
     @staticmethod
     def kpoint(selection):
+        if selection == "qpoints":
+            return _qpoints()
         mode, *labels = selection.split()
         labels = labels[0] if len(labels) > 0 else "no_labels"
         if mode[0] in ["l", b"l"[0]]:
@@ -148,6 +151,14 @@ class RawDataFactory:
     @staticmethod
     def polarization(selection):
         return _polarization()
+
+    @staticmethod
+    def phonon_band(selection):
+        return _phonon_band()
+
+    @staticmethod
+    def phonon_dos(selection):
+        return _phonon_dos()
 
     @staticmethod
     def projector(selection):
@@ -237,10 +248,7 @@ def _dielectric_tensor(method):
 def _elastic_modulus():
     shape = (2, axes, axes, axes, axes)
     data = np.arange(np.prod(shape)).reshape(shape)
-    return raw.ElasticModulus(
-        clamped_ion=data[0],
-        relaxed_ion=data[1],
-    )
+    return raw.ElasticModulus(clamped_ion=data[0], relaxed_ion=data[1])
 
 
 def _Sr2TiO4_pair_correlation():
@@ -248,19 +256,38 @@ def _Sr2TiO4_pair_correlation():
     shape = (number_steps, len(labels), number_points)
     data = np.arange(np.prod(shape)).reshape(shape)
     return raw.PairCorrelation(
-        distances=np.arange(number_points),
-        function=data,
-        labels=labels,
+        distances=np.arange(number_points), function=data, labels=labels
     )
+
+
+def _phonon_band():
+    qpoints = _qpoints()
+    number_qpoints = len(qpoints.coordinates)
+    shape_values = (number_qpoints, number_modes)
+    eigenvalues = np.arange(np.prod(shape_values)).reshape(shape_values)
+    shape_vectors = (number_qpoints, number_modes, number_atoms, axes, complex_)
+    return raw.PhononBand(
+        dispersion=raw.Dispersion(qpoints, eigenvalues),
+        topology=_Sr2TiO4_topology(),
+        eigenvectors=np.linspace(0, 1, np.prod(shape_vectors)).reshape(shape_vectors),
+    )
+
+
+def _phonon_dos():
+    energies = np.linspace(0, 5, number_points)
+    dos = energies**2
+    lower_ratio = np.arange(number_modes, dtype=np.float64).reshape(axes, number_atoms)
+    lower_ratio /= np.sum(lower_ratio)
+    upper_ratio = np.array(list(reversed(lower_ratio)))
+    ratio = np.linspace(lower_ratio, upper_ratio, number_points).T
+    projections = np.multiply(ratio, dos)
+    return raw.PhononDos(energies, dos, projections, _Sr2TiO4_topology())
 
 
 def _piezoelectric_tensor():
     shape = (2, axes, axes, axes)
     data = np.arange(np.prod(shape)).reshape(shape)
-    return raw.PiezoelectricTensor(
-        electron=data[0],
-        ion=data[1],
-    )
+    return raw.PiezoelectricTensor(electron=data[0], ion=data[1])
 
 
 def _polarization():
@@ -271,10 +298,13 @@ def _energy():
     labels = ("ion-electron   TOTEN    ", "kinetic energy EKIN", "temperature    TEIN")
     labels = np.array(labels, dtype="S")
     shape = (number_steps, len(labels))
-    return raw.Energy(
-        labels=labels,
-        values=np.arange(np.prod(shape)).reshape(shape),
-    )
+    return raw.Energy(labels=labels, values=np.arange(np.prod(shape)).reshape(shape))
+
+
+def _qpoints():
+    qpoints = _line_kpoints("line", "with_labels")
+    qpoints.cell.lattice_vectors = qpoints.cell.lattice_vectors[-1]
+    return qpoints
 
 
 def _line_kpoints(mode, labels):
@@ -331,22 +361,22 @@ def _magnetism(number_components):
 
 def _single_band(projectors):
     kpoints = _grid_kpoints("explicit", "no_labels")
+    eigenvalues = np.array([np.linspace([0], [1], len(kpoints.coordinates))])
     return raw.Band(
+        dispersion=raw.Dispersion(kpoints, eigenvalues),
         fermi_energy=0.0,
-        eigenvalues=np.array([np.linspace([0], [1], len(kpoints.coordinates))]),
         occupations=np.array([np.linspace([1], [0], len(kpoints.coordinates))]),
-        kpoints=kpoints,
     )
 
 
 def _multiple_bands(projectors):
     kpoints = _grid_kpoints("explicit", "no_labels")
     shape = (single_spin, len(kpoints.coordinates), number_bands)
+    eigenvalues = np.arange(np.prod(shape)).reshape(shape)
     raw_band = raw.Band(
+        dispersion=raw.Dispersion(kpoints, eigenvalues),
         fermi_energy=0.5,
-        eigenvalues=np.arange(np.prod(shape)).reshape(shape),
         occupations=np.arange(np.prod(shape)).reshape(shape),
-        kpoints=kpoints,
     )
     if projectors == "with_projectors":
         raw_band.projectors = _Sr2TiO4_projectors()
@@ -359,11 +389,11 @@ def _multiple_bands(projectors):
 def _line_band(labels):
     kpoints = _line_kpoints("line", labels)
     shape = (single_spin, len(kpoints.coordinates), number_bands)
+    eigenvalues = np.arange(np.prod(shape)).reshape(shape)
     return raw.Band(
+        dispersion=raw.Dispersion(kpoints, eigenvalues),
         fermi_energy=0.5,
-        eigenvalues=np.arange(np.prod(shape)).reshape(shape),
         occupations=np.arange(np.prod(shape)).reshape(shape),
-        kpoints=kpoints,
     )
 
 
@@ -371,11 +401,11 @@ def _spin_polarized_bands(projectors):
     kpoints = _grid_kpoints("explicit", "no_labels")
     kpoints.cell = _Fe3O4_cell()
     shape = (two_spins, len(kpoints.coordinates), number_bands)
+    eigenvalues = np.arange(np.prod(shape)).reshape(shape)
     raw_band = raw.Band(
+        dispersion=raw.Dispersion(kpoints, eigenvalues),
         fermi_energy=0.0,
-        eigenvalues=np.arange(np.prod(shape)).reshape(shape),
         occupations=np.arange(np.prod(shape)).reshape(shape),
-        kpoints=kpoints,
     )
     if projectors in ["with_projectors", "excess_orbitals"]:
         raw_band.projectors = _Fe3O4_projectors()
@@ -406,17 +436,14 @@ def _Sr2TiO4_cell():
         [-0.839055341042049, -0.367478859090843, 0.401180037874301],
     ]
     return raw.RawCell(
-        lattice_vectors=scale * np.array(number_steps * [lattice_vectors]),
-        scale=scale,
+        lattice_vectors=scale * np.array(number_steps * [lattice_vectors]), scale=scale
     )
 
 
 def _Sr2TiO4_dos(projectors):
     energies = np.linspace(-1, 3, number_points)
     raw_dos = raw.Dos(
-        fermi_energy=1.372,
-        energies=energies,
-        dos=np.array([energies**2]),
+        fermi_energy=1.372, energies=energies, dos=np.array([energies**2])
     )
     if projectors == "with_projectors":
         raw_dos.projectors = _Sr2TiO4_projectors()
@@ -437,8 +464,7 @@ def _Sr2TiO4_force_constants():
 def _Sr2TiO4_forces():
     shape = (number_steps, number_atoms, axes)
     return raw.Force(
-        structure=_Sr2TiO4_structure(),
-        forces=np.arange(np.prod(shape)).reshape(shape),
+        structure=_Sr2TiO4_structure(), forces=np.arange(np.prod(shape)).reshape(shape)
     )
 
 
@@ -462,8 +488,7 @@ def _Sr2TiO4_projectors():
 def _Sr2TiO4_stress():
     shape = (number_steps, axes, axes)
     return raw.Stress(
-        structure=_Sr2TiO4_structure(),
-        stress=np.arange(np.prod(shape)).reshape(shape),
+        structure=_Sr2TiO4_structure(), stress=np.arange(np.prod(shape)).reshape(shape)
     )
 
 
@@ -507,8 +532,7 @@ def _Fe3O4_density(selection):
     structure = RawDataFactory.structure(parts[0])
     grid = (_number_components(parts[1]), 10, 12, 14)
     return raw.Density(
-        structure=structure,
-        charge=np.arange(np.prod(grid)).reshape(grid),
+        structure=structure, charge=np.arange(np.prod(grid)).reshape(grid)
     )
 
 
@@ -535,8 +559,7 @@ def _Fe3O4_dos(projectors):
 def _Fe3O4_forces():
     shape = (number_steps, number_atoms, axes)
     return raw.Force(
-        structure=_Fe3O4_structure(),
-        forces=np.arange(np.prod(shape)).reshape(shape),
+        structure=_Fe3O4_structure(), forces=np.arange(np.prod(shape)).reshape(shape)
     )
 
 
@@ -551,8 +574,7 @@ def _Fe3O4_projectors():
 def _Fe3O4_stress():
     shape = (number_steps, axes, axes)
     return raw.Stress(
-        structure=_Fe3O4_structure(),
-        stress=np.arange(np.prod(shape)).reshape(shape),
+        structure=_Fe3O4_structure(), stress=np.arange(np.prod(shape)).reshape(shape)
     )
 
 
@@ -576,6 +598,5 @@ def _Fe3O4_structure():
 
 def _Fe3O4_topology():
     return raw.Topology(
-        number_ion_types=np.array((3, 4)),
-        ion_types=np.array(("Fe", "O "), dtype="S"),
+        number_ion_types=np.array((3, 4)), ion_types=np.array(("Fe", "O "), dtype="S")
     )

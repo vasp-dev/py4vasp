@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import raw
 from py4vasp.raw._schema import Schema, Link, Length
 
@@ -7,35 +9,30 @@ VERSION_DATA = raw.Version("version/major", "version/minor", "version/patch")
 
 schema = Schema(VERSION_DATA)
 #
-group = "results/electron_eigenvalues"
 schema.add(
     raw.Band,
+    dispersion=Link("dispersion", DEFAULT_SOURCE),
     fermi_energy="results/electron_dos/efermi",
-    kpoints=Link("kpoint", "default"),
-    eigenvalues=f"{group}/eigenvalues",
-    occupations=f"{group}/fermiweights",
-    projectors=Link("projector", "default"),
+    occupations="results/electron_eigenvalues/fermiweights",
+    projectors=Link("projector", DEFAULT_SOURCE),
     projections="results/projectors/par",
 )
 group = "results/electron_eigenvalues_kpoints_opt"
 schema.add(
     raw.Band,
     name="kpoints_opt",
+    dispersion=Link("dispersion", "kpoints_opt"),
     fermi_energy="results/electron_dos_kpoints_opt/efermi",
-    kpoints=Link("kpoint", "default"),
-    eigenvalues=f"{group}/eigenvalues",
-    occupations=f"{group}/fermiweights",
+    occupations="results/electron_eigenvalues_kpoints_opt/fermiweights",
     projectors=Link("projector", "kpoints_opt"),
     projections="results/projectors_kpoints_opt/par",
 )
-group = "results/electron_eigenvalues_kpoints_wan"
 schema.add(
     raw.Band,
     name="kpoints_wan",
+    dispersion=Link("dispersion", "kpoints_wan"),
     fermi_energy="results/electron_dos_kpoints_wan/efermi",
-    kpoints=Link("kpoint", "default"),
-    eigenvalues=f"{group}/eigenvalues",
-    occupations=f"{group}/fermiweights",
+    occupations="results/electron_eigenvalues_kpoints_wan/fermiweights",
     projectors=Link("projector", "kpoints_wan"),
     projections="results/projectors_kpoints_wan/par",
 )
@@ -43,7 +40,7 @@ schema.add(
 schema.add(
     raw.BornEffectiveCharge,
     required=raw.Version(6, 3),
-    structure=Link("structure", "default"),
+    structure=Link("structure", DEFAULT_SOURCE),
     charge_tensors="results/linear_response/born_charges",
 )
 #
@@ -52,10 +49,17 @@ schema.add(
     scale="results/positions/scale",
     lattice_vectors="intermediate/ion_dynamics/lattice_vectors",
 )
+schema.add(
+    raw.Cell,
+    name="phonon",
+    required=raw.Version(6, 4),
+    scale="results/phonons/primitive/scale",
+    lattice_vectors="results/phonons/primitive/lattice_vectors",
+)
 #
 schema.add(
     raw.Density,
-    structure=Link("structure", "default"),
+    structure=Link("structure", DEFAULT_SOURCE),
     charge="charge/charge",
 )
 #
@@ -80,13 +84,37 @@ schema.add(
     method=f"{group}/method_dielectric_tensor",
 )
 #
+schema.add(
+    raw.Dispersion,
+    kpoints=Link("kpoint", DEFAULT_SOURCE),
+    eigenvalues="results/electron_eigenvalues/eigenvalues",
+)
+schema.add(
+    raw.Dispersion,
+    name="kpoints_opt",
+    kpoints=Link("kpoint", "kpoints_opt"),
+    eigenvalues="results/electron_eigenvalues_kpoints_opt/eigenvalues",
+)
+schema.add(
+    raw.Dispersion,
+    name="kpoints_wan",
+    kpoints=Link("kpoint", "kpoints_wan"),
+    eigenvalues="results/electron_eigenvalues_kpoints_wan/eigenvalues",
+)
+schema.add(
+    raw.Dispersion,
+    name="phonon",
+    kpoints=Link("kpoint", "phonon"),
+    eigenvalues="results/phonons/frequencies",
+)
+#
 group = "results/electron_dos"
 schema.add(
     raw.Dos,
     fermi_energy=f"{group}/efermi",
     energies=f"{group}/energies",
     dos=f"{group}/dos",
-    projectors=Link("projector", "default"),
+    projectors=Link("projector", DEFAULT_SOURCE),
     projections=f"{group}/dospar",
 )
 group = "results/electron_dos_kpoints_opt"
@@ -116,21 +144,21 @@ schema.add(
 #
 schema.add(
     raw.Force,
-    structure=Link("structure", "default"),
+    structure=Link("structure", DEFAULT_SOURCE),
     forces="intermediate/ion_dynamics/forces",
 )
 #
 schema.add(
     raw.ForceConstant,
     required=raw.Version(6, 3),
-    structure=Link("structure", "default"),
+    structure=Link("structure", DEFAULT_SOURCE),
     force_constants="results/linear_response/force_constants",
 )
 #
 schema.add(
     raw.InternalStrain,
     required=raw.Version(6, 3),
-    structure=Link("structure", "default"),
+    structure=Link("structure", DEFAULT_SOURCE),
     internal_strain="results/linear_response/internal_strain",
 )
 #
@@ -144,7 +172,7 @@ schema.add(
     weights=f"{result}/kpoints_symmetry_weight",
     labels=f"{input}/labels_kpoints",
     label_indices=f"{input}/positions_labels_kpoints",
-    cell=Link("cell", "default"),
+    cell=Link("cell", DEFAULT_SOURCE),
 )
 input = "input/kpoints_opt"
 result = "results/electron_eigenvalues_kpoints_opt"
@@ -157,7 +185,7 @@ schema.add(
     weights=f"{result}/kpoints_symmetry_weight",
     labels=f"{input}/labels_kpoints",
     label_indices=f"{input}/positions_labels_kpoints",
-    cell=Link("cell", "default"),
+    cell=Link("cell", DEFAULT_SOURCE),
 )
 input = "input/kpoints_wan"
 result = "results/electron_eigenvalues_kpoints_wan"
@@ -170,12 +198,26 @@ schema.add(
     weights=f"{result}/kpoints_symmetry_weight",
     labels=f"{input}/labels_kpoints",
     label_indices=f"{input}/positions_labels_kpoints",
-    cell=Link("cell", "default"),
+    cell=Link("cell", DEFAULT_SOURCE),
+)
+input = "input/qpoints"
+result = "results/phonons"
+schema.add(
+    raw.Kpoint,
+    name="phonon",
+    required=raw.Version(6, 4),
+    mode=f"{input}/mode",
+    number=f"{input}/number_kpoints",
+    coordinates=f"{result}/qpoint_coords",
+    weights=f"{result}/qpoints_symmetry_weight",
+    labels=f"{input}/labels_kpoints",
+    label_indices=f"{input}/positions_labels_kpoints",
+    cell=Link("cell", "phonon"),
 )
 #
 schema.add(
     raw.Magnetism,
-    structure=Link("structure", "default"),
+    structure=Link("structure", DEFAULT_SOURCE),
     moments="intermediate/ion_dynamics/magnetism/moments",
 )
 #
@@ -186,6 +228,23 @@ schema.add(
     distances=f"{group}/distances",
     function=f"{group}/function",
     labels=f"{group}/labels",
+)
+#
+group = "results/phonons"
+schema.add(
+    raw.PhononBand,
+    required=raw.Version(6, 4),
+    dispersion=Link("dispersion", "phonon"),
+    topology=Link("topology", "phonon"),
+    eigenvectors=f"{group}/eigenvectors",
+)
+schema.add(
+    raw.PhononDos,
+    required=raw.Version(6, 4),
+    energies=f"{group}/dos_mesh",
+    dos=f"{group}/dos",
+    topology=Link("topology", "phonon"),
+    projections=f"{group}/dospar",
 )
 #
 group = "results/linear_response"
@@ -206,21 +265,21 @@ schema.add(
 #
 schema.add(
     raw.Projector,
-    topology=Link("topology", "default"),
+    topology=Link("topology", DEFAULT_SOURCE),
     orbital_types="results/projectors/lchar",
     number_spins=Length("results/electron_eigenvalues/eigenvalues"),
 )
 #
 schema.add(
     raw.Stress,
-    structure=Link("structure", "default"),
+    structure=Link("structure", DEFAULT_SOURCE),
     stress="intermediate/ion_dynamics/stress",
 )
 #
 schema.add(
     raw.Structure,
-    topology=Link("topology", "default"),
-    cell=Link("cell", "default"),
+    topology=Link("topology", DEFAULT_SOURCE),
+    cell=Link("cell", DEFAULT_SOURCE),
     positions="intermediate/ion_dynamics/position_ions",
 )
 #
@@ -230,4 +289,11 @@ schema.add(
     raw.Topology,
     ion_types="results/positions/ion_types",
     number_ion_types="results/positions/number_ion_types",
+)
+schema.add(
+    raw.Topology,
+    name="phonon",
+    required=raw.Version(6, 4),
+    ion_types="results/phonons/primitive/ion_types",
+    number_ion_types="results/phonons/primitive/number_ion_types",
 )

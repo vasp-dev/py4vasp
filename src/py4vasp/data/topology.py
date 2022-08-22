@@ -122,7 +122,7 @@ class Topology(_base.Refinery):
 
     def _default_selection(self):
         num_atoms = self.number_atoms()
-        return {_selection.all: _Selection(indices=slice(num_atoms))}
+        return {_selection.all: _Selection(indices=slice(0, num_atoms))}
 
     def _specific_selection(self):
         start = 0

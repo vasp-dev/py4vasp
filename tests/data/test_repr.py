@@ -6,6 +6,7 @@ from py4vasp.data import *
 def test_repr():
     tests = [
         Band,
+        BornEffectiveCharge,
         Density,
         DielectricFunction,
         DielectricTensor,
@@ -17,9 +18,12 @@ def test_repr():
         InternalStrain,
         Kpoint,
         Magnetism,
+        PairCorrelation,
+        PhononBand,
         PiezoelectricTensor,
         Polarization,
         Projector,
+        System,
         Stress,
         Structure,
         Topology,

@@ -49,19 +49,37 @@ def line_kpoints(raw_data):
     kpoints.ref.labels[15] = "Y"
     kpoints.ref.labels[19] = "M"
     cartesian = to_cartesian(raw_kpoints.coordinates, raw_kpoints.cell)
-    distances = np.zeros(len(cartesian))
-    distances[0:5] = line_distances(cartesian[0:5])
-    distances[5:10] = distances[4] + line_distances(cartesian[5:10])
-    distances[10:15] = distances[9] + line_distances(cartesian[10:15])
-    distances[15:20] = distances[14] + line_distances(cartesian[15:20])
-    kpoints.ref.distances = distances
+    kpoints.ref.distances = multiple_line_distances(cartesian, kpoints.ref.line_length)
+    return kpoints
+
+
+@pytest.fixture
+def qpoints(raw_data):
+    raw_kpoints = raw_data.kpoint("qpoints")
+    kpoints = Kpoint.from_data(raw_kpoints)
+    kpoints.ref = types.SimpleNamespace()
+    cartesian = to_cartesian(raw_kpoints.coordinates, raw_kpoints.cell)
+    kpoints.ref.distances = multiple_line_distances(cartesian, raw_kpoints.number)
     return kpoints
 
 
 def to_cartesian(direct_coordinates, cell):
-    lattice_vectors = cell.lattice_vectors[-1]
+    if cell.lattice_vectors.ndim == 2:
+        lattice_vectors = cell.lattice_vectors
+    else:
+        lattice_vectors = cell.lattice_vectors[-1]
     direct_to_cartesian = np.linalg.inv(lattice_vectors)
     return direct_coordinates @ direct_to_cartesian.T
+
+
+def multiple_line_distances(cartesian, line_length):
+    distances = np.zeros(len(cartesian))
+    previous = 0
+    for i in range(0, len(distances), line_length):
+        slice_ = slice(i, i + line_length)
+        distances[slice_] = previous + line_distances(cartesian[slice_])
+        previous = distances[i + line_length - 1]
+    return distances
 
 
 def line_distances(cartesian):
@@ -86,6 +104,7 @@ def test_no_labels_read(grid_kpoints):
 def test_mode(raw_data):
     allowed_mode_formats = {
         "automatic": ["a", b"A", "auto"],
+        "generating lattice": ["b", b"B"],
         "explicit": ["e", b"e", "explicit", "ExplIcIT"],
         "gamma": ["g", b"G", "gamma"],
         "line": ["l", b"l", "line"],
@@ -158,6 +177,11 @@ def test_explicit_kpoints_distances(explicit_kpoints, Assert):
 def test_line_kpoints_labels_distances(line_kpoints, Assert):
     actual_distances = line_kpoints.distances()
     Assert.allclose(actual_distances, line_kpoints.ref.distances)
+
+
+def test_qpoints_distances(qpoints, Assert):
+    actual_distances = qpoints.distances()
+    Assert.allclose(actual_distances, qpoints.ref.distances)
 
 
 def test_print(explicit_kpoints, format_):

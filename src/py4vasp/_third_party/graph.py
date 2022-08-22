@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from dataclasses import dataclass, replace, fields
 import itertools
 import numpy as np
@@ -80,23 +82,35 @@ class Series:
     "Split series into different axes"
     color: str = None
     "The color used for this series."
+    _frozen = False
 
     def __post_init__(self):
         if len(self.x) != np.array(self.y).shape[-1]:
             message = "The length of the two plotted components is inconsistent."
             raise exception.IncorrectUsage(message)
+        if self.width is not None and len(self.x) != self.width.shape[-1]:
+            message = "The length of width and plot is inconsistent."
+            raise exception.IncorrectUsage(message)
+        self._frozen = True
+
+    def __setattr__(self, key, value):
+        # prevent adding new attributes to avoid typos, in Python 3.10 this could be
+        # handled by setting slots=True when creating the dataclass
+        assert not self._frozen or hasattr(self, key)
+        super().__setattr__(key, value)
 
     def _generate_traces(self):
         first_trace = True
-        for y in np.atleast_2d(np.array(self.y)):
-            yield self._make_trace(y, first_trace), {"row": self.subplot}
+        for item in enumerate(np.atleast_2d(np.array(self.y))):
+            yield self._make_trace(*item, first_trace), {"row": self.subplot}
             first_trace = False
 
-    def _make_trace(self, y, first_trace):
+    def _make_trace(self, index, y, first_trace):
         if self.width is None:
             options = self._options_line(y, first_trace)
         else:
-            options = self._options_area(y, first_trace)
+            width = self._get_width(index)
+            options = self._options_area(y, width, first_trace)
         return go.Scatter(**options)
 
     def _options_line(self, y, first_trace):
@@ -107,9 +121,15 @@ class Series:
             "line": {"color": self.color},
         }
 
-    def _options_area(self, y, first_trace):
-        upper = y + self.width
-        lower = y - self.width
+    def _get_width(self, index):
+        if self.width.ndim == 1:
+            return self.width
+        else:
+            return self.width[index]
+
+    def _options_area(self, y, width, first_trace):
+        upper = y + width
+        lower = y - width
         return {
             **self._common_options(first_trace),
             "x": np.concatenate((self.x, self.x[::-1])),
@@ -152,8 +172,16 @@ class Graph:
     "Label for the secondary y axis."
     title: str = None
     "Title of the graph."
+    _frozen = False
+
+    def __setattr__(self, key, value):
+        # prevent adding new attributes to avoid typos, in Python 3.10 this could be
+        # handled by setting slots=True when creating the dataclass
+        assert not self._frozen or hasattr(self, key)
+        super().__setattr__(key, value)
 
     def __post_init__(self):
+        self._frozen = True
         if self._subplot_on:
             if not all(series.subplot for series in np.atleast_1d(self.series)):
                 message = "If subplot is used it has to be set for all data in the series and has to be larger 0"

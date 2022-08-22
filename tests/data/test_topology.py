@@ -26,7 +26,7 @@ def test_read(Sr2TiO4):
     assert topology["5"] == Selection(indices=slice(4, 5), label="O_2")
     assert topology["6"] == Selection(indices=slice(5, 6), label="O_3")
     assert topology["7"] == Selection(indices=slice(6, 7), label="O_4")
-    assert topology[selection.all] == Selection(indices=slice(7))
+    assert topology[selection.all] == Selection(indices=slice(0, 7))
 
 
 def test_to_frame(Sr2TiO4):

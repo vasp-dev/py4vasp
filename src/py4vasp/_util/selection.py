@@ -33,6 +33,7 @@ class Tree:
     def from_selection(cls, selection):
         tree = cls()
         active_node = tree
+        selection = selection or ""
         for character in selection:
             active_node = active_node.parse_character(character)
         return tree

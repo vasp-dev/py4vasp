@@ -97,8 +97,8 @@ class Band(_base.Refinery, _export.Image):
     def __str__(self):
         return f"""
 {"spin polarized" if self._spin_polarized() else ""} band data:
-    {self._raw_data.eigenvalues.shape[1]} k-points
-    {self._raw_data.eigenvalues.shape[2]} bands
+    {self._raw_data.dispersion.eigenvalues.shape[1]} k-points
+    {self._raw_data.dispersion.eigenvalues.shape[2]} bands
 {pretty(_projectors_or_dummy(self._raw_data.projectors))}
     """.strip()
 
@@ -137,10 +137,10 @@ class Band(_base.Refinery, _export.Image):
         return pd.DataFrame(data, index)
 
     def _spin_polarized(self):
-        return len(self._raw_data.eigenvalues) == 2
+        return len(self._raw_data.dispersion.eigenvalues) == 2
 
     def _kpoints(self):
-        return Kpoint.from_data(self._raw_data.kpoints)
+        return Kpoint.from_data(self._raw_data.dispersion.kpoints)
 
     def _read_projections(self, selection):
         projectors = _projectors_or_dummy(self._raw_data.projectors)
@@ -156,7 +156,7 @@ class Band(_base.Refinery, _export.Image):
             return {"bands": self._shift_particular_spin_by_fermi_energy(0)}
 
     def _shift_particular_spin_by_fermi_energy(self, spin):
-        return self._raw_data.eigenvalues[spin] - self._raw_data.fermi_energy
+        return self._raw_data.dispersion.eigenvalues[spin] - self._raw_data.fermi_energy
 
     def _read_occupations(self):
         if self._spin_polarized():
@@ -194,7 +194,7 @@ class Band(_base.Refinery, _export.Image):
         if self._spin_polarized() and not key in name:
             return None
         kdists = self._kpoints().distances()
-        return _graph.Series(kdists, lines.T, name, width=width * projection)
+        return _graph.Series(kdists, lines.T, name, width=width * projection.T)
 
     def _xticks(self):
         ticks, labels = self._degenerate_ticks_and_labels()
@@ -218,11 +218,11 @@ class Band(_base.Refinery, _export.Image):
     def _kpoint_labels(self):
         labels = self._kpoints().labels()
         if labels is None:
-            labels = [""] * len(self._raw_data.kpoints.coordinates)
+            labels = [""] * len(self._raw_data.dispersion.kpoints.coordinates)
         return np.array(labels)
 
     def _edge_of_line(self):
-        indices = np.arange(len(self._raw_data.kpoints.coordinates))
+        indices = np.arange(len(self._raw_data.dispersion.kpoints.coordinates))
         edge_of_line = (indices + 1) % self._kpoints().line_length() == 0
         edge_of_line[0] = True
         return edge_of_line
@@ -230,8 +230,8 @@ class Band(_base.Refinery, _export.Image):
     def _setup_dataframe_index(self):
         return [
             _index_string(kpoint, band)
-            for kpoint in self._raw_data.kpoints.coordinates
-            for band in range(self._raw_data.eigenvalues.shape[2])
+            for kpoint in self._raw_data.dispersion.kpoints.coordinates
+            for band in range(self._raw_data.dispersion.eigenvalues.shape[2])
         ]
 
     def _extract_relevant_data(self, selection):
