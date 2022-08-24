@@ -198,7 +198,7 @@ class AnalyseErrorSingleFile:
             self.dft_data.lattice,
             decimal=6,
             err_msg="The lattice of your input data does not match in files "
-            + f"{self.ml_fname} and {self._dft_fname}",
+            + f"{self.ml_fname} and {self.dft_fname}",
         )
 
     def compute_force_error(self):
