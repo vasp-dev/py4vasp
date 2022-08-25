@@ -78,6 +78,8 @@ class Series:
     "When a width is set, the series will be visualized as an area instead of a line."
     y2: bool = False
     "Use a secondary y axis to show this series."
+    subplot: int = None
+    "Split series into different axes"
     color: str = None
     "The color used for this series."
     _frozen = False
@@ -100,7 +102,7 @@ class Series:
     def _generate_traces(self):
         first_trace = True
         for item in enumerate(np.atleast_2d(np.array(self.y))):
-            yield self._make_trace(*item, first_trace)
+            yield self._make_trace(*item, first_trace), {"row": self.subplot}
             first_trace = False
 
     def _make_trace(self, index, y, first_trace):
@@ -172,20 +174,34 @@ class Graph:
     "Title of the graph."
     _frozen = False
 
-    def __post_init__(self):
-        self._frozen = True
-
     def __setattr__(self, key, value):
         # prevent adding new attributes to avoid typos, in Python 3.10 this could be
         # handled by setting slots=True when creating the dataclass
         assert not self._frozen or hasattr(self, key)
         super().__setattr__(key, value)
 
+    def __post_init__(self):
+        self._frozen = True
+        if self._subplot_on:
+            if not all(series.subplot for series in np.atleast_1d(self.series)):
+                message = "If subplot is used it has to be set for all data in the series and has to be larger 0"
+                raise exception.IncorrectUsage(message)
+            if len(np.atleast_1d(self.xlabel)) > len(np.atleast_1d(self.series)):
+                message = "Subplot was used with more xlabels than number of subplots. Please check your input"
+                raise exception.IncorrectUsage(message)
+            if len(np.atleast_1d(self.ylabel)) > len(np.atleast_1d(self.series)):
+                message = "Subplot was used with more ylabels than number of subplots. Please check your input"
+                raise exception.IncorrectUsage(message)
+
     def to_plotly(self):
         "Convert the graph to a plotly figure."
         figure = self._make_plotly_figure()
-        for trace in self._generate_plotly_traces():
-            figure.add_trace(trace)
+        for trace, options in self._generate_plotly_traces():
+            if options["row"] is None:
+                figure.add_trace(trace)
+            else:
+                figure.add_trace(trace, row=options["row"], col=1)
+
         return figure
 
     def show(self):
@@ -210,13 +226,24 @@ class Graph:
         return figure
 
     def _figure_with_one_or_two_y_axes(self):
-        if any(series.y2 for series in np.atleast_1d(self.series)):
+        if self._subplot_on:
+            max_row = max(series.subplot for series in self.series)
+            figure = make_subplots(rows=max_row, cols=1)
+            figure.update_layout(showlegend=False)
+            return figure
+        elif any(series.y2 for series in np.atleast_1d(self.series)):
             return make_subplots(specs=[[{"secondary_y": True}]])
         else:
             return go.Figure()
 
     def _set_xaxis_options(self, figure):
-        figure.layout.xaxis.title.text = self.xlabel
+        if self._subplot_on:
+            # setting xlabels for subplots
+            for row, xlabel in enumerate(np.atleast_1d(self.xlabel)):
+                # row indices start @ 1 in plotly
+                figure.update_xaxes(title_text=xlabel, row=row + 1, col=1)
+        else:
+            figure.layout.xaxis.title.text = self.xlabel
         if self.xticks:
             figure.layout.xaxis.tickmode = "array"
             figure.layout.xaxis.tickvals = tuple(self.xticks.keys())
@@ -227,9 +254,18 @@ class Graph:
         return tuple(label or " " for label in self.xticks.values())
 
     def _set_yaxis_options(self, figure):
-        figure.layout.yaxis.title.text = self.ylabel
-        if self.y2label:
-            figure.layout.yaxis2.title.text = self.y2label
+        if self._subplot_on:
+            # setting ylabels for subplots
+            for row, ylabel in enumerate(np.atleast_1d(self.ylabel)):
+                figure.update_yaxes(title_text=ylabel, row=row + 1, col=1)
+        else:
+            figure.layout.yaxis.title.text = self.ylabel
+            if self.y2label:
+                figure.layout.yaxis2.title.text = self.y2label
+
+    @property
+    def _subplot_on(self):
+        return any(series.subplot for series in np.atleast_1d(self.series))
 
 
 Graph._fields = tuple(field.name for field in fields(Graph))

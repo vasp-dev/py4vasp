@@ -47,6 +47,15 @@ def non_numpy():
     return Series(x, y), Series(list(x), list(y))
 
 
+@pytest.fixture
+def subplot():
+    x1 = np.linspace(0, 10)
+    y1 = x1**2
+    x2 = np.linspace(-3, 3)
+    y2 = x2**3
+    return Series(x1, y1, subplot=1), Series(x2, y2, subplot=2)
+
+
 def test_basic_graph(parabola, Assert):
     graph = Graph(parabola)
     fig = graph.to_plotly()
@@ -160,6 +169,34 @@ def test_title(parabola):
     graph.title = "title"
     fig = graph.to_plotly()
     assert fig.layout.title.text == graph.title
+
+
+def test_subplot(subplot):
+    graph = Graph(subplot)
+    graph.xlabel = ("first x-axis", "second x-axis")
+    graph.ylabel = ("first y-axis", "second y-axis")
+    fig = graph.to_plotly()
+    assert True == True
+    assert fig.data[0].xaxis == "x"
+    assert fig.data[0].yaxis == "y"
+    assert fig.layout.xaxis1.title.text == graph.xlabel[0]
+    assert fig.layout.yaxis.title.text == graph.ylabel[0]
+    assert fig.data[1].xaxis == "x2"
+    assert fig.data[1].yaxis == "y2"
+    assert fig.layout.xaxis2.title.text == graph.xlabel[1]
+    assert fig.layout.yaxis2.title.text == graph.ylabel[1]
+
+
+def test_subplot_label_lengths(subplot):
+    with pytest.raises(exception.IncorrectUsage):
+        graph = Graph(subplot, xlabel=("1", "2", "3"))
+    with pytest.raises(exception.IncorrectUsage):
+        graph = Graph(subplot, ylabel=("1", "2", "3"))
+
+
+def test_mixture_subplot_raises_error(parabola, subplot):
+    with pytest.raises(exception.IncorrectUsage):
+        Graph((parabola,) + subplot)
 
 
 def test_non_numpy_data(non_numpy, Assert):
