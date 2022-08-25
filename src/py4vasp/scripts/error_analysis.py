@@ -13,33 +13,35 @@ def get_options(args=sys.argv[1:]):
     parses input arguments
     Parameters
     ----------
-    -dft/ --DFTfiles 
+    -dft/ --DFTfiles
           user has to supply a list of vaspout.h5 files generated during
           DFT calculations
     -ml/ --MLfiles
           user has to supply a list of vaspout.h5 files generated during
           machine learning calculations. The order of the files has to match
           the order of DFT files
-    -plt/ --MakePlot 
+    -plt/ --MakePlot
           whit this flag the user can decide if a plot of the errors will
           be shown
     -txt/ --XYtextFile
           with this file the user gets 3 error files in xy format
           the default is a csv file containing all three errors
     """
-    parser = argparse.ArgumentParser( description = "py4vasp error-analysis\n" +
-                                                    "----------------------\n"  
-                 "This script will extract energies, forces and stress tensors from two sets of files. \n"
-                 "The first set of files are vaspout.h5 files computed with first-principles DFT calculations.\n" +
-                 "The second set of files belongs to the same POSCARs but this time the data is\n"+
-                 "computed with a pre-trained machine learning force field.\n" + 
-                 "Then the script computes the errors between the energies, forces and stress.",
-                 formatter_class = RawTextHelpFormatter )
-    requiredNamed = parser.add_argument_group( 'required arguments')
+    parser = argparse.ArgumentParser(
+        description="py4vasp error-analysis\n" + "----------------------\n"
+        "This script will extract energies, forces and stress tensors from two sets of files. \n"
+        "The first set of files are vaspout.h5 files computed with first-principles DFT calculations.\n"
+        + "The second set of files belongs to the same POSCARs but this time the data is\n"
+        + "computed with a pre-trained machine-learned force field.\n"
+        + "Then the script computes the errors between the energies, forces and stress tensors.",
+        formatter_class=RawTextHelpFormatter,
+    )
+    requiredNamed = parser.add_argument_group("required arguments")
     requiredNamed.add_argument(
         "-dft",
         "--DFTfiles",
         nargs="+",
+        required=True,
         help="Your vaspout.h5 input files obtained from DFT calculations."
         + " Supply in a form, as for example vaspout_{1..200}.h5",
     )
@@ -47,6 +49,7 @@ def get_options(args=sys.argv[1:]):
         "-ml",
         "--MLfiles",
         nargs="+",
+        required=True,
         help="Your vaspout.h5 input files obtained from machine learning calculations"
         + " Supply in a form, as for example vaspout_{1..200}.h5",
     )
