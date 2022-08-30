@@ -23,6 +23,9 @@ def get_options(args=sys.argv[1:]):
     -plt/ --MakePlot
           whit this flag the user can decide if a plot of the errors will
           be shown
+    -pdf/ --pdfplot
+          whit this flag the user can decide if a plot of the errors will
+          be stored to a pdf file
     -txt/ --XYtextFile
           with this file the user gets 3 error files in xy format
           the default is a csv file containing all three errors
@@ -58,6 +61,12 @@ def get_options(args=sys.argv[1:]):
         "--MakePlot",
         action="store_true",
         help="supply flag (without keyword) if you would like to generate a plot",
+    )
+    parser.add_argument(
+        "-pdf",
+        "--pdfplot",
+        action="store_true",
+        help="supply flag (without keyword) if you would like to save plot to pdf",
     )
     parser.add_argument(
         "-txt",
@@ -552,7 +561,7 @@ class AnalyseError:
         figure.show()
         return figure
 
-    def make_plot(self):
+    def make_plot(self,show=False,pdf=False,graph_name="ErrorAnalysis.pdf"):
         """make plot summarizing the energy error per atom [meV/atom]
         the root mean square error of force [meV/Angstroem]
         and the root mean square error of the stress tensor in [kbar]
@@ -565,11 +574,14 @@ class AnalyseError:
         graph.xlabel = ("configuration",) * 3
         graph.ylabel = (
             "error energy [meV/atom]",
-            "root mean square error force [meV/Å]",
-            "root mean square error stress [kbar]",
+            "rmse force [meV/Å]",
+            "rmse stress [kbar]",
         )
         figure = graph.to_plotly()
-        figure.show()
+        if pdf:
+            figure.write_image( graph_name )
+        if show:
+            figure.show()
         return figure
 
     @staticmethod
@@ -665,8 +677,8 @@ class AnalyseError:
 def main():
     options = get_options(sys.argv[1:])
     x = AnalyseError(options.MLfiles, options.DFTfiles)
-    if options.MakePlot:
-        x.make_plot()
+    if options.MakePlot or options.pdfplot:
+        x.make_plot( options.MakePlot , options.pdfplot )
     if options.XYtextFile:
         x.writing_energy_error_file()
         x.writing_force_error_file()
