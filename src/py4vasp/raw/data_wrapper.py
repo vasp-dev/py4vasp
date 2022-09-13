@@ -4,6 +4,7 @@ import numpy as np
 import textwrap
 import py4vasp.exceptions as exception
 
+
 class VaspData(np.lib.mixins.NDArrayOperatorsMixin):
     """Wraps the data produced by the VASP calculation.
 
@@ -25,7 +26,10 @@ class VaspData(np.lib.mixins.NDArrayOperatorsMixin):
     """
 
     def __init__(self, data):
-        self._data = data
+        if data is not None and data.ndim == 0:
+            self._data = data[()]
+        else:
+            self._data = data
 
     def __array__(self):
         return np.array(self.data)

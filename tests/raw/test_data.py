@@ -7,6 +7,8 @@ import hypothesis.strategies as strategy
 import hypothesis.extra.numpy as np_strat
 import numpy as np
 import pytest
+from unittest.mock import MagicMock
+
 
 threshold = 100.0
 
@@ -117,3 +119,11 @@ def test_missing_data(function):
     with pytest.raises(exception.NoData):
         function(vasp)
     assert vasp.is_none()
+
+
+def test_scalar_data():
+    mock = MagicMock()
+    mock.ndim = 0
+    vasp = VaspData(mock)
+    mock.__getitem__.assert_called_once_with(())
+    assert vasp.data == mock.__getitem__.return_value
