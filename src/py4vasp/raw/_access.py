@@ -130,7 +130,7 @@ class _State:
 
     def _parse_dataset(self, dataset):
         if dataset is None:
-            return None
+            return raw.VaspData(None)
         if dataset.ndim > 0:
             return raw.VaspData(dataset)
         return self._parse_scalar(dataset[()])

@@ -89,8 +89,7 @@ def test_access_with_link(mock_access):
 
 def linked_quantity_reference(mock_access, file=None):
     quantity = "simple"
-    mock_file, sources = mock_access
-    source = sources[quantity]["default"]
+    mock_file, _ = mock_access
     with raw.access(quantity, file=file) as simple:
         h5f = mock_file.return_value.__enter__.return_value
         result = simple, mock_file.call_args_list, h5f.get.call_args_list
@@ -99,7 +98,7 @@ def linked_quantity_reference(mock_access, file=None):
 
 
 def test_access_open_once(mock_access):
-    mock_file, sources = mock_access
+    mock_file, _ = mock_access
     with raw.access("complex", source="mandatory") as complex:
         # open two different files
         assert mock_file.call_count == 2
@@ -156,12 +155,12 @@ def mock_version_dataset(number):
 
 
 def test_access_none(mock_access):
-    mock_file, sources = mock_access
+    mock_file, _ = mock_access
     mock_get = mock_file.return_value.__enter__.return_value.get
     mock_get.side_effect = lambda _: None
     with raw.access("simple") as simple:
-        assert simple.foo is None
-        assert simple.bar is None
+        assert simple.foo.is_none()
+        assert simple.bar.is_none()
 
 
 def test_access_bytes(mock_access):
