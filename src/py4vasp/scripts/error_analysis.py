@@ -561,7 +561,7 @@ class AnalyseError:
         figure.show()
         return figure
 
-    def make_plot(self,show=False,pdf=False,graph_name="ErrorAnalysis.pdf"):
+    def make_plot(self, show=False, pdf=False, graph_name="ErrorAnalysis.pdf"):
         """make plot summarizing the energy error per atom [meV/atom]
         the root mean square error of force [meV/Angstroem]
         and the root mean square error of the stress tensor in [kbar]
@@ -579,7 +579,7 @@ class AnalyseError:
         )
         figure = graph.to_plotly()
         if pdf:
-            figure.write_image( graph_name )
+            figure.write_image(graph_name)
         if show:
             figure.show()
         return figure
@@ -678,7 +678,7 @@ def main():
     options = get_options(sys.argv[1:])
     x = AnalyseError(options.MLfiles, options.DFTfiles)
     if options.MakePlot or options.pdfplot:
-        x.make_plot( options.MakePlot , options.pdfplot )
+        x.make_plot(options.MakePlot, options.pdfplot)
     if options.XYtextFile:
         x.writing_energy_error_file()
         x.writing_force_error_file()
