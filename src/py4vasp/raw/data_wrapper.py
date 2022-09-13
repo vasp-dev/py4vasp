@@ -1,7 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
-
+import textwrap
+import py4vasp.exceptions as exception
 
 class VaspData(np.lib.mixins.NDArrayOperatorsMixin):
     """Wraps the data produced by the VASP calculation.
@@ -27,33 +28,47 @@ class VaspData(np.lib.mixins.NDArrayOperatorsMixin):
         self._data = data
 
     def __array__(self):
-        return np.array(self._data)
+        return np.array(self.data)
 
     def __getitem__(self, key):
-        return self._data[key]
+        return self.data[key]
 
     def __repr__(self):
         return f"{self.__class__.__name__}({repr(self._data)})"
 
     def __len__(self):
-        return len(self._data)
+        return len(self.data)
+
+    def is_none(self):
+        return self._data is None
+
+    @property
+    def data(self):
+        if self.is_none():
+            message = """\
+                Could not find data in output, please make sure that the provided input
+                should produce this data and that the VASP calculation already finished.
+                Also check that VASP did not exit with an error."""
+            raise exception.NoData(textwrap.dedent(message))
+        else:
+            return self._data
 
     @property
     def ndim(self):
         "The number of dimensions of the data."
-        return self._data.ndim
+        return self.data.ndim
 
     @property
     def size(self):
         "The total number of elements of the data."
-        return self._data.size
+        return self.data.size
 
     @property
     def shape(self):
         "The shape of the data. Empty tuple for scalar data."
-        return self._data.shape
+        return self.data.shape
 
     @property
     def dtype(self):
         "Describes the type of the contained data."
-        return self._data.dtype
+        return self.data.dtype
