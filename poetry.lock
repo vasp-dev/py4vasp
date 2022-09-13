@@ -245,7 +245,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
 name = "coverage"
-version = "6.4.2"
+version = "6.4.4"
 description = "Code coverage measurement for Python"
 category = "dev"
 optional = false
@@ -428,7 +428,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 name = "importlib-metadata"
 version = "4.12.0"
 description = "Read metadata from Python packages"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -686,6 +686,20 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "lxml"
+version = "4.9.1"
+description = "Powerful and Pythonic XML processing library combining libxml2/libxslt with the ElementTree API."
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, != 3.4.*"
+
+[package.extras]
+cssselect = ["cssselect (>=0.7)"]
+html5 = ["html5lib"]
+htmlsoup = ["beautifulsoup4"]
+source = ["Cython (>=0.29.7)"]
+
+[[package]]
 name = "markupsafe"
 version = "2.1.1"
 description = "Safely add untrusted strings to HTML/XML markup."
@@ -747,8 +761,8 @@ scipy = "*"
 
 [[package]]
 name = "mistune"
-version = "0.8.4"
-description = "The fastest markdown parser in pure Python"
+version = "2.0.4"
+description = "A sane Markdown parser with useful plugins and renderers"
 category = "main"
 optional = false
 python-versions = "*"
@@ -792,7 +806,7 @@ test = ["black", "check-manifest", "flake8", "ipykernel", "ipython (<8.0.0)", "i
 
 [[package]]
 name = "nbconvert"
-version = "6.5.0"
+version = "7.0.0"
 description = "Converting Jupyter Notebooks"
 category = "main"
 optional = false
@@ -802,12 +816,13 @@ python-versions = ">=3.7"
 beautifulsoup4 = "*"
 bleach = "*"
 defusedxml = "*"
-entrypoints = ">=0.2.2"
+importlib-metadata = {version = ">=3.6", markers = "python_version < \"3.10\""}
 jinja2 = ">=3.0"
 jupyter-core = ">=4.7"
 jupyterlab-pygments = "*"
-MarkupSafe = ">=2.0"
-mistune = ">=0.8.1,<2"
+lxml = "*"
+markupsafe = ">=2.0"
+mistune = ">=2.0.3,<3"
 nbclient = ">=0.5.0"
 nbformat = ">=5.1"
 packaging = "*"
@@ -817,10 +832,12 @@ tinycss2 = "*"
 traitlets = ">=5.0"
 
 [package.extras]
-all = ["pytest", "pytest-cov", "pytest-dependency", "ipykernel", "ipywidgets (>=7)", "pre-commit", "pyppeteer (>=1,<1.1)", "tornado (>=6.1)", "sphinx (>=1.5.1)", "sphinx-rtd-theme", "nbsphinx (>=0.2.12)", "ipython"]
-docs = ["sphinx (>=1.5.1)", "sphinx-rtd-theme", "nbsphinx (>=0.2.12)", "ipython"]
+all = ["ipykernel", "ipython", "ipywidgets (>=7)", "nbsphinx (>=0.2.12)", "pre-commit", "pyppeteer (>=1,<1.1)", "pyqtwebengine (>=5.15)", "pytest", "pytest-cov", "pytest-dependency", "sphinx-rtd-theme", "sphinx (==5.0.2)", "tornado (>=6.1)"]
+docs = ["ipython", "nbsphinx (>=0.2.12)", "sphinx-rtd-theme", "sphinx (==5.0.2)"]
+qtpdf = ["pyqtwebengine (>=5.15)"]
+qtpng = ["pyqtwebengine (>=5.15)"]
 serve = ["tornado (>=6.1)"]
-test = ["pytest", "pytest-cov", "pytest-dependency", "ipykernel", "ipywidgets (>=7)", "pre-commit", "pyppeteer (>=1,<1.1)"]
+test = ["ipykernel", "ipywidgets (>=7)", "pre-commit", "pyppeteer (>=1,<1.1)", "pytest", "pytest-cov", "pytest-dependency"]
 webpdf = ["pyppeteer (>=1,<1.1)"]
 
 [[package]]
@@ -1595,7 +1612,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "fa6c5121450da3541ee1f04ff88146da1c10f38d2505173a0aba02eae289bcd1"
+content-hash = "1860a2231107042da64faac71af323e85b98bb083180801753c0eaef00936194"
 
 [metadata.files]
 alabaster = [
@@ -1962,6 +1979,7 @@ lazy-object-proxy = [
     {file = "lazy_object_proxy-1.7.1-cp39-cp39-win_amd64.whl", hash = "sha256:677ea950bef409b47e51e733283544ac3d660b709cfce7b187f5ace137960d61"},
     {file = "lazy_object_proxy-1.7.1-pp37.pp38-none-any.whl", hash = "sha256:d66906d5785da8e0be7360912e99c9188b70f52c422f9fc18223347235691a84"},
 ]
+lxml = []
 markupsafe = [
     {file = "MarkupSafe-2.1.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:86b1f75c4e7c2ac2ccdaec2b9022845dbb81880ca318bb7a0a01fbf7813e3812"},
     {file = "MarkupSafe-2.1.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:f121a1420d4e173a5d96e47e9a0c0dcff965afdf1626d28de1460815f7c4ee7a"},
@@ -2056,10 +2074,7 @@ mdtraj = [
     {file = "mdtraj-1.9.6-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:44fcc435df4057126c123585e36a8a4563e24588ad438c916751e2e01501e2ff"},
     {file = "mdtraj-1.9.6.tar.gz", hash = "sha256:5b7c9b98dd0a1c1a2ddd6c1690fba6096a63314da2e79e05a8a1402b8949ad3c"},
 ]
-mistune = [
-    {file = "mistune-0.8.4-py2.py3-none-any.whl", hash = "sha256:88a1051873018da288eee8538d476dffe1262495144b33ecb586c4ab266bb8d4"},
-    {file = "mistune-0.8.4.tar.gz", hash = "sha256:59a3429db53c50b5c6bcc8a07f8848cb00d7dc8bdb431a4ab41920d201d4756e"},
-]
+mistune = []
 mrcfile = [
     {file = "mrcfile-1.3.0-py2.py3-none-any.whl", hash = "sha256:4eeaed257eee22dbe142481c35498244d190e4ca10a2daf2ba3749db6822fd41"},
     {file = "mrcfile-1.3.0.tar.gz", hash = "sha256:3a113042d24820b9dfc6902cb9d93bcbebdee22beb40552f2c35303ace4b0547"},
@@ -2072,10 +2087,7 @@ nbclient = [
     {file = "nbclient-0.6.4-py3-none-any.whl", hash = "sha256:f251bba200a2b401a061dfd700a7a70b5772f664fb49d4a2d3e5536ec0e98c76"},
     {file = "nbclient-0.6.4.tar.gz", hash = "sha256:cdef7757cead1735d2c70cc66095b072dced8a1e6d1c7639ef90cd3e04a11f2e"},
 ]
-nbconvert = [
-    {file = "nbconvert-6.5.0-py3-none-any.whl", hash = "sha256:c56dd0b8978a1811a5654f74c727ff16ca87dd5a43abd435a1c49b840fcd8360"},
-    {file = "nbconvert-6.5.0.tar.gz", hash = "sha256:223e46e27abe8596b8aed54301fadbba433b7ffea8196a68fd7b1ff509eee99d"},
-]
+nbconvert = []
 nbformat = [
     {file = "nbformat-5.4.0-py3-none-any.whl", hash = "sha256:0d6072aaec95dddc39735c144ee8bbc6589c383fb462e4058abc855348152dad"},
     {file = "nbformat-5.4.0.tar.gz", hash = "sha256:44ba5ca6acb80c5d5a500f1e5b83ede8cbe364d5a495c4c8cf60aaf1ba656501"},
