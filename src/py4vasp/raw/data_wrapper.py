@@ -26,8 +26,9 @@ class VaspData(np.lib.mixins.NDArrayOperatorsMixin):
     """
 
     def __init__(self, data):
+        self._repr_data = repr(data)
         if data is not None and data.ndim == 0:
-            self._data = data[()]
+            self._data = np.array(data)
         else:
             self._data = data
 
@@ -38,7 +39,7 @@ class VaspData(np.lib.mixins.NDArrayOperatorsMixin):
         return self.data[key]
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({repr(self._data)})"
+        return f"{self.__class__.__name__}({self._repr_data})"
 
     def __len__(self):
         return len(self.data)

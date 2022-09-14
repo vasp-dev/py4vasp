@@ -17,7 +17,8 @@ threshold = 100.0
 def operands(draw):
     (shape_x, shape_y), _ = draw(np_strat.mutually_broadcastable_shapes(num_shapes=2))
     x = draw_test_data(draw, shape_x)
-    y = draw_test_data(draw, shape_y)
+    y = draw_test_data(draw, shape_y, positive=True)
+
     return x, y
 
 
@@ -35,8 +36,9 @@ def array_and_slice(draw):
     return array, slice
 
 
-def draw_test_data(draw, shape):
-    elements = strategy.floats(min_value=-threshold, max_value=threshold)
+def draw_test_data(draw, shape, positive=False):
+    min_value = 1 / threshold if positive else -threshold
+    elements = strategy.floats(min_value=min_value, max_value=threshold)
     if len(shape) == 0:
         result = draw(elements)
     else:
@@ -122,8 +124,16 @@ def test_missing_data(function):
 
 
 def test_scalar_data():
+    reference = 1
     mock = MagicMock()
     mock.ndim = 0
+    mock.__array__ = lambda: np.array(reference)
     vasp = VaspData(mock)
-    mock.__getitem__.assert_called_once_with(())
-    assert vasp.data == mock.__getitem__.return_value
+    assert vasp == reference
+    assert np.array(vasp) == reference
+    assert vasp[()] == reference
+    assert vasp.ndim == 0
+    assert vasp.size == 1
+    assert vasp.shape == ()
+    assert vasp.dtype == np.int64
+    assert repr(vasp) == f"VaspData({repr(mock)})"
