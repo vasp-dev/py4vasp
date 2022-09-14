@@ -23,12 +23,15 @@ def mock_access(complex_schema):
 
 
 _mock_results = {}
+EXAMPLE_DATA = np.array(1)
 
 
 def mock_read_result(key):
     if key not in _mock_results:
         mock = MagicMock()
-        mock.ndim = 0 if "foo" in key else len(key)
+        if "foo" in key:
+            mock.ndim = 0
+            mock.__array__ = MagicMock(return_value=EXAMPLE_DATA)
         _mock_results[key] = mock
     return _mock_results[key]
 
@@ -36,8 +39,8 @@ def mock_read_result(key):
 def check_data(actual, key):
     mock = mock_read_result(key)
     if mock.ndim == 0:
-        mock.__getitem__.assert_called_once_with(())
-        assert actual == mock.__getitem__.return_value
+        mock.__array__.assert_called_once_with()
+        assert actual == EXAMPLE_DATA
     else:
         assert isinstance(actual, raw.VaspData)
         assert actual[:] == mock.__getitem__.return_value
@@ -83,14 +86,13 @@ def test_access_with_link(mock_access):
         get_calls += list(expected_calls(source))
         check_file_access(mock_file, file_calls, get_calls)
         check_data(with_link.baz, source.data.baz)
-        assert with_link.simple.foo[:] == reference.foo[:]
+        assert with_link.simple.foo == reference.foo
         assert with_link.simple.bar[:] == reference.bar[:]
 
 
 def linked_quantity_reference(mock_access, file=None):
     quantity = "simple"
-    mock_file, sources = mock_access
-    source = sources[quantity]["default"]
+    mock_file, _ = mock_access
     with raw.access(quantity, file=file) as simple:
         h5f = mock_file.return_value.__enter__.return_value
         result = simple, mock_file.call_args_list, h5f.get.call_args_list
@@ -99,7 +101,7 @@ def linked_quantity_reference(mock_access, file=None):
 
 
 def test_access_open_once(mock_access):
-    mock_file, sources = mock_access
+    mock_file, _ = mock_access
     with raw.access("complex", source="mandatory") as complex:
         # open two different files
         assert mock_file.call_count == 2
@@ -126,7 +128,7 @@ def test_access_from_file(mock_access):
         get_calls += list(expected_calls(source))
         check_file_access(mock_file, file_calls, get_calls)
         check_data(with_link.baz, source.data.baz)
-        assert with_link.simple.foo[:] == reference.foo[:]
+        assert with_link.simple.foo == reference.foo
         assert with_link.simple.bar[:] == reference.bar[:]
 
 
@@ -156,12 +158,12 @@ def mock_version_dataset(number):
 
 
 def test_access_none(mock_access):
-    mock_file, sources = mock_access
+    mock_file, _ = mock_access
     mock_get = mock_file.return_value.__enter__.return_value.get
     mock_get.side_effect = lambda _: None
     with raw.access("simple") as simple:
-        assert simple.foo is None
-        assert simple.bar is None
+        assert simple.foo.is_none()
+        assert simple.bar.is_none()
 
 
 def test_access_bytes(mock_access):

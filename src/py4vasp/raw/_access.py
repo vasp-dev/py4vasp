@@ -4,6 +4,7 @@ import contextlib
 import dataclasses
 import functools
 import h5py
+import numpy as np
 import pathlib
 import textwrap
 import py4vasp.exceptions as exception
@@ -129,17 +130,14 @@ class _State:
         return self._parse_dataset(h5f.get(key))
 
     def _parse_dataset(self, dataset):
-        if dataset is None:
-            return None
-        if dataset.ndim > 0:
-            return raw.VaspData(dataset)
-        return self._parse_scalar(dataset[()])
+        result = raw.VaspData(dataset)
+        if _scalar_string(result):
+            result = result.data
+        return result
 
-    def _parse_scalar(self, scalar):
-        if isinstance(scalar, bytes):
-            return scalar.decode()
-        else:
-            return scalar
+
+def _scalar_string(data):
+    return not data.is_none() and data.ndim == 0 and data.dtype.type == np.str_
 
 
 def _error_message(quantity, source):

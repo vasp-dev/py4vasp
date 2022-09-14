@@ -32,10 +32,10 @@ class Band:
     "Fermi energy obtained by VASP."
     occupations: VaspData
     "The occupations of the different bands."
-    projections: VaspData = None
+    projectors: Projector
+    "Projector information (element, angular momentum, spin)."
+    projections: VaspData = VaspData(None)
     "If present, orbital projections of the bands."
-    projectors: Projector = None
-    "If present, projector information (element, angular momentum, spin)."
 
 
 @dataclasses.dataclass
@@ -138,10 +138,10 @@ class Dos:
     "Dos at the energies D(E)."
     fermi_energy: float
     "Fermi energy obtained by VASP."
-    projections: VaspData = None
+    projectors: Projector
+    "Projector information (element, angular momentum, spin)."
+    projections: VaspData = VaspData(None)
     "If present, orbital projections of the Dos."
-    projectors: Projector = None
-    "If present, projector information (element, angular momentum, spin)."
 
 
 @dataclasses.dataclass
@@ -229,9 +229,9 @@ class Kpoint:
     "Weight of the **k** points used for integration."
     cell: Cell
     "Unit cell of the crystal."
-    labels: VaspData = None
+    labels: VaspData = VaspData(None)
     "High symmetry label for specific **k** points used in band structures."
-    label_indices: VaspData = None
+    label_indices: VaspData = VaspData(None)
     "Indices of the labeled **k** points in the generation list."
 
 

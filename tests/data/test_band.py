@@ -312,6 +312,7 @@ def test_multiple_bands_print(multiple_bands, format_):
 band data:
     48 k-points
     3 bands
+no projectors
     """.strip()
     assert actual == {"text/plain": reference}
 
@@ -322,6 +323,7 @@ def test_line_no_labels_print(line_no_labels, format_):
 band data:
     20 k-points
     3 bands
+no projectors
     """.strip()
     assert actual == {"text/plain": reference}
 
@@ -332,6 +334,7 @@ def test_line_with_labels_print(line_with_labels, format_):
 band data:
     20 k-points
     3 bands
+no projectors
     """.strip()
     assert actual == {"text/plain": reference}
 

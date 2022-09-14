@@ -21,7 +21,7 @@ class NotImplemented(Py4VaspError):
 
 class NoData(Py4VaspError):
     """Exception raised when certain data is not present, because the corresponding
-    Incar flags have not been set."""
+    INCAR flags have not been set."""
 
 
 class FileAccessError(Py4VaspError):
