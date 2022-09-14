@@ -135,7 +135,7 @@ def test_scalar_data():
     assert vasp.ndim == 0
     assert vasp.size == 1
     assert vasp.shape == ()
-    assert vasp.dtype == np.int64
+    assert vasp.dtype == np.array(reference).dtype
     assert repr(vasp) == f"VaspData({repr(mock)})"
 
 
