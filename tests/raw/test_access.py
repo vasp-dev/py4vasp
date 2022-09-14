@@ -23,12 +23,15 @@ def mock_access(complex_schema):
 
 
 _mock_results = {}
+EXAMPLE_DATA = np.array(1)
 
 
 def mock_read_result(key):
     if key not in _mock_results:
         mock = MagicMock()
-        mock.ndim = 0 if "foo" in key else len(key)
+        if "foo" in key:
+            mock.ndim = 0
+            mock.__array__ = MagicMock(return_value=EXAMPLE_DATA)
         _mock_results[key] = mock
     return _mock_results[key]
 
@@ -36,8 +39,8 @@ def mock_read_result(key):
 def check_data(actual, key):
     mock = mock_read_result(key)
     if mock.ndim == 0:
-        mock.__getitem__.assert_called_once_with(())
-        assert actual == mock.__getitem__.return_value
+        mock.__array__.assert_called_once_with()
+        assert actual == EXAMPLE_DATA
     else:
         assert isinstance(actual, raw.VaspData)
         assert actual[:] == mock.__getitem__.return_value
@@ -83,7 +86,7 @@ def test_access_with_link(mock_access):
         get_calls += list(expected_calls(source))
         check_file_access(mock_file, file_calls, get_calls)
         check_data(with_link.baz, source.data.baz)
-        assert with_link.simple.foo[:] == reference.foo[:]
+        assert with_link.simple.foo == reference.foo
         assert with_link.simple.bar[:] == reference.bar[:]
 
 
@@ -125,7 +128,7 @@ def test_access_from_file(mock_access):
         get_calls += list(expected_calls(source))
         check_file_access(mock_file, file_calls, get_calls)
         check_data(with_link.baz, source.data.baz)
-        assert with_link.simple.foo[:] == reference.foo[:]
+        assert with_link.simple.foo == reference.foo
         assert with_link.simple.bar[:] == reference.bar[:]
 
 
