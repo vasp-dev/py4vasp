@@ -210,6 +210,7 @@ def test_Sr2TiO4_print(Sr2TiO4, format_):
     reference = f"""
 Dos:
     energies: [-1.00, 3.00] 50 points
+no projectors
     """.strip()
     assert actual == {"text/plain": reference}
 
@@ -219,6 +220,7 @@ def test_Fe3O4_print(Fe3O4, format_):
     reference = f"""
 spin polarized Dos:
     energies: [-2.00, 2.00] 50 points
+no projectors
     """.strip()
     assert actual == {"text/plain": reference}
 

@@ -173,7 +173,7 @@ reciprocal"""
     @_base.data_access
     @_documentation.add(_labels_doc)
     def labels(self):
-        if self._raw_data.label_indices is not None:
+        if not self._raw_data.label_indices.is_none():
             return self._labels_from_file()
         elif self.mode() == "line":
             return self._labels_at_band_edges()

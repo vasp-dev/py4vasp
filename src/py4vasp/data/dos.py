@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import pandas as pd
 from IPython.lib.pretty import pretty
-from .projector import _projectors_or_dummy, _selection_doc, _selection_examples
+from .projector import Projector as _Projector, _selection_doc, _selection_examples
 from py4vasp.data import _base
 import py4vasp.data._export as _export
 from py4vasp.data.kpoint import _kpoints_opt_source
@@ -133,9 +133,12 @@ pd.DataFrame
         return self._raw_data.dos.shape[0] == 2
 
     def _projectors(self):
-        return _projectors_or_dummy(self._raw_data.projectors)
+        return _Projector.from_data(self._raw_data.projectors)
 
     def _read_data(self, selection):
+        proj = self._projectors()
+        args = (selection, self._raw_data.projections)
+        proj.read(*args)
         return {
             **self._read_energies(),
             **self._read_total_dos(),

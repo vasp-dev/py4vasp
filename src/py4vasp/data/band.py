@@ -6,7 +6,7 @@ import pandas as pd
 import py4vasp._util.sanity_check as _check
 import py4vasp._util.documentation as _documentation
 from IPython.lib.pretty import pretty
-from .projector import _projectors_or_dummy, _selection_doc, _selection_examples
+from .projector import Projector as _Projector, _selection_doc, _selection_examples
 from .kpoint import Kpoint, _kpoints_opt_source
 from py4vasp.data import _base
 import py4vasp.data._export as _export
@@ -99,7 +99,7 @@ class Band(_base.Refinery, _export.Image):
 {"spin polarized" if self._spin_polarized() else ""} band data:
     {self._raw_data.dispersion.eigenvalues.shape[1]} k-points
     {self._raw_data.dispersion.eigenvalues.shape[2]} bands
-{pretty(_projectors_or_dummy(self._raw_data.projectors))}
+{pretty(self._projector)}
     """.strip()
 
     @_base.data_access
@@ -142,9 +142,12 @@ class Band(_base.Refinery, _export.Image):
     def _kpoints(self):
         return Kpoint.from_data(self._raw_data.dispersion.kpoints)
 
+    @property
+    def _projector(self):
+        return _Projector.from_data(self._raw_data.projectors)
+
     def _read_projections(self, selection):
-        projectors = _projectors_or_dummy(self._raw_data.projectors)
-        return projectors.read(selection, self._raw_data.projections)
+        return self._projector.read(selection, self._raw_data.projections)
 
     def _shift_bands_by_fermi_energy(self):
         if self._spin_polarized():

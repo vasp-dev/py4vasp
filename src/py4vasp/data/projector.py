@@ -138,6 +138,8 @@ class Projector(_base.Refinery):
 
     @_base.data_access
     def __str__(self):
+        if self._raw_data.orbital_types.is_none():
+            return "no projectors"
         return f"""projectors:
     atoms: {", ".join(self._topology().ion_types())}
     orbitals: {", ".join(self._orbital_types())}"""
@@ -149,10 +151,11 @@ class Projector(_base.Refinery):
             return {}
         error_message = "Projector selection must be a string."
         _check.raise_error_if_not_string(selection, error_message)
+        indices = self._get_indices(selection)
         if projections is None:
-            return self._get_indices(selection)
-        projections = _Projections(projections)
-        return self._read_elements(selection, projections)
+            return indices
+        else:
+            return self._read_elements(indices, projections)
 
     @_base.data_access
     @_documentation.add(_select_doc)
@@ -197,6 +200,7 @@ class Projector(_base.Refinery):
         return self._topology().read()
 
     def _init_orbital_dict(self):
+        self._raise_error_if_orbitals_missing()
         num_orbitals = len(self._raw_data.orbital_types)
         all_orbitals = _Selection(indices=slice(0, num_orbitals))
         orbital_dict = {_selection.all: all_orbitals}
@@ -207,6 +211,11 @@ class Projector(_base.Refinery):
             orbital_dict["d"] = _Selection(indices=slice(4, 9), label="d")
             orbital_dict["f"] = _Selection(indices=slice(9, 16), label="f")
         return orbital_dict
+
+    def _raise_error_if_orbitals_missing(self):
+        if self._raw_data.orbital_types.is_none():
+            message = "Projectors are not available, rerun Vasp setting LORBIT >= 10."
+            raise exception.IncorrectUsage(message)
 
     def _orbital_types(self):
         clean_string = lambda orbital: _convert.text_to_string(orbital).strip()
@@ -236,10 +245,11 @@ class Projector(_base.Refinery):
             res[label] = indices
         return res
 
-    def _read_elements(self, selection, projections):
+    def _read_elements(self, indices, projections):
+        projections = _Projections(projections)
         return {
             label: np.sum(projections[indices], axis=(0, 1, 2))
-            for label, indices in self._get_indices(selection).items()
+            for label, indices in indices.items()
         }
 
 
@@ -319,22 +329,3 @@ def _setup_spin_indices(index, spin_polarized):
     else:
         for key in ("up", "down"):
             yield index._replace(spin=key)
-
-
-class _NoProjectorAvailable:
-    def read(self, selection, projections):
-        if selection is not None:
-            raise exception.IncorrectUsage(
-                "Projectors are not available, rerun Vasp setting LORBIT >= 10."
-            )
-        return {}
-
-    def __repr__(self):
-        return ""
-
-
-def _projectors_or_dummy(projectors):
-    if projectors is None:
-        return _NoProjectorAvailable()
-    else:
-        return Projector.from_data(projectors)

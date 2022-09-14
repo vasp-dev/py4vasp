@@ -26,6 +26,11 @@ def Fe3O4(raw_data):
     return Projector.from_data(raw_data.projector("Fe3O4"))
 
 
+@pytest.fixture
+def missing_orbitals(raw_data):
+    return Projector.from_data(raw_data.projector("without_orbitals"))
+
+
 def test_Sr2TiO4_selection(Sr2TiO4):
     ref = Sr2TiO4_selection()
     check_projector_selection(Sr2TiO4, ref)
@@ -34,6 +39,11 @@ def test_Sr2TiO4_selection(Sr2TiO4):
 def test_Fe3O4_selection(Fe3O4):
     ref = Fe3O4_selection()
     check_projector_selection(Fe3O4, ref)
+
+
+def test_missing_orbital_selection(missing_orbitals):
+    with pytest.raises(exception.IncorrectUsage):
+        missing_orbitals.select()
 
 
 def check_projector_selection(proj, ref):
@@ -133,6 +143,11 @@ def test_Sr2TiO4_parse_selection(Sr2TiO4):
 def test_Fe3O4_parse_selection(Fe3O4):
     testcases = Fe3O4_testcases()
     check_parse_selection(Fe3O4, testcases)
+
+
+def test_missing_orbitals_selection(missing_orbitals):
+    with pytest.raises(exception.IncorrectUsage):
+        next(missing_orbitals.parse_selection())
 
 
 def check_parse_selection(projectors, testcases):
@@ -264,6 +279,13 @@ def test_read_projections(Sr2TiO4, Assert):
     Assert.allclose(actual["Ti_1_dxy"], Ti_ref)
 
 
+def test_missing_orbitals_read(missing_orbitals):
+    with pytest.raises(exception.IncorrectUsage):
+        missing_orbitals.read("any string")
+    with pytest.raises(exception.IncorrectUsage):
+        missing_orbitals.read("any string", "any data")
+
+
 def test_error_parsing(Sr2TiO4):
     with pytest.raises(exception.IncorrectUsage):
         Sr2TiO4.read(selection="XX")
@@ -298,6 +320,11 @@ projectors:
     orbitals: s, py, pz, px, dxy, dyz, dz2, dxz, dx2y2, fy3x2, fxyz, fyz2, fz3, fxz2, fzx2, fx3
     """.strip()
     assert actual == {"text/plain": reference}
+
+
+def test_missing_orbitals_print(missing_orbitals, format_):
+    actual, _ = format_(missing_orbitals)
+    assert actual == {"text/plain": "no projectors"}
 
 
 def test_factory_methods(raw_data, check_factory_methods):

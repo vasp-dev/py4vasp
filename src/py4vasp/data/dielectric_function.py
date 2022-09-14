@@ -32,11 +32,11 @@ dielectric function:
 
     def _components(self):
         components = ()
-        if self._raw_data.density_density is not None:
+        if not self._raw_data.density_density.is_none():
             components += ("density",)
-        if self._raw_data.current_current is not None:
+        if not self._raw_data.current_current.is_none():
             components += ("current",)
-        if self._raw_data.ion is not None:
+        if not self._raw_data.ion.is_none():
             components += ("ion",)
         return components
 
@@ -102,7 +102,7 @@ dielectric function:
 
 
 def _convert_to_complex_if_not_none(array):
-    if array is None:
+    if array.is_none():
         return None
     else:
         return _convert.to_complex(array[:])

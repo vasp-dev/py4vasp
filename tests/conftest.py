@@ -22,14 +22,21 @@ number_modes = axes * number_atoms
 class _Assert:
     @staticmethod
     def allclose(actual, desired):
-        if actual is None:
-            assert desired is None
+        if _is_none(actual):
+            assert _is_none(desired)
         else:
             actual, desired = np.broadcast_arrays(actual, desired)
             actual, mask_actual = _finite_subset(actual)
             desired, mask_desired = _finite_subset(desired)
             assert np.all(mask_actual == mask_desired)
             assert_array_almost_equal_nulp(actual, desired, 10)
+
+
+def _is_none(data):
+    if isinstance(data, raw.VaspData):
+        return data.is_none()
+    else:
+        return data is None
 
 
 def _finite_subset(array):
@@ -163,9 +170,11 @@ class RawDataFactory:
     @staticmethod
     def projector(selection):
         if selection == "Sr2TiO4":
-            return _Sr2TiO4_projectors()
+            return _Sr2TiO4_projectors(use_orbitals=True)
         elif selection == "Fe3O4":
-            return _Fe3O4_projectors()
+            return _Fe3O4_projectors(use_orbitals=True)
+        elif selection == "without_orbitals":
+            return _Sr2TiO4_projectors(use_orbitals=False)
         else:
             raise exception.NotImplemented()
 
@@ -218,9 +227,9 @@ def _electron_dielectric_function():
     data = np.linspace(0, 1, np.prod(shape)).reshape(shape)
     return raw.DielectricFunction(
         energies=np.linspace(0, 1, number_points),
-        density_density=data[0],
-        current_current=data[1],
-        ion=None,
+        density_density=_make_data(data[0]),
+        current_current=_make_data(data[1]),
+        ion=raw.VaspData(None),
     )
 
 
@@ -228,9 +237,9 @@ def _ion_dielectric_function():
     shape = (axes, axes, number_points, complex_)
     return raw.DielectricFunction(
         energies=np.linspace(0, 1, number_points),
-        density_density=None,
-        current_current=None,
-        ion=np.linspace(0, 1, np.prod(shape)).reshape(shape),
+        density_density=raw.VaspData(None),
+        current_current=raw.VaspData(None),
+        ion=_make_data(np.linspace(0, 1, np.prod(shape)).reshape(shape)),
     )
 
 
@@ -327,8 +336,8 @@ def _line_kpoints(mode, labels):
         cell=_Sr2TiO4_cell(),
     )
     if labels == "with_labels":
-        kpoints.labels = [r"$\Gamma$", " M ", r"$\Gamma$", "Y", "M"]
-        kpoints.label_indices = [1, 4, 5, 7, 8]
+        kpoints.labels = _make_data([r"$\Gamma$", " M ", r"$\Gamma$", "Y", "M"])
+        kpoints.label_indices = _make_data([1, 4, 5, 7, 8])
     return kpoints
 
 
@@ -346,8 +355,8 @@ def _grid_kpoints(mode, labels):
         cell=_Sr2TiO4_cell(),
     )
     if labels == "with_labels":
-        kpoints.labels = ["foo", b"bar", "baz"]
-        kpoints.label_indices = [9, 25, 40]
+        kpoints.labels = _make_data(["foo", b"bar", "baz"])
+        kpoints.label_indices = _make_data([9, 25, 40])
     return kpoints
 
 
@@ -364,8 +373,9 @@ def _single_band(projectors):
     eigenvalues = np.array([np.linspace([0], [1], len(kpoints.coordinates))])
     return raw.Band(
         dispersion=raw.Dispersion(kpoints, eigenvalues),
-        fermi_energy=0.0,
+        fermi_energy=_make_data(0.0),
         occupations=np.array([np.linspace([1], [0], len(kpoints.coordinates))]),
+        projectors=_Sr2TiO4_projectors(use_orbitals=False),
     )
 
 
@@ -373,13 +383,14 @@ def _multiple_bands(projectors):
     kpoints = _grid_kpoints("explicit", "no_labels")
     shape = (single_spin, len(kpoints.coordinates), number_bands)
     eigenvalues = np.arange(np.prod(shape)).reshape(shape)
+    use_orbitals = projectors == "with_projectors"
     raw_band = raw.Band(
         dispersion=raw.Dispersion(kpoints, eigenvalues),
-        fermi_energy=0.5,
+        fermi_energy=_make_data(0.5),
         occupations=np.arange(np.prod(shape)).reshape(shape),
+        projectors=_Sr2TiO4_projectors(use_orbitals),
     )
-    if projectors == "with_projectors":
-        raw_band.projectors = _Sr2TiO4_projectors()
+    if use_orbitals:
         number_orbitals = len(raw_band.projectors.orbital_types)
         shape = (single_spin, number_atoms, number_orbitals, *shape[1:])
         raw_band.projections = np.random.random(shape)
@@ -392,8 +403,9 @@ def _line_band(labels):
     eigenvalues = np.arange(np.prod(shape)).reshape(shape)
     return raw.Band(
         dispersion=raw.Dispersion(kpoints, eigenvalues),
-        fermi_energy=0.5,
+        fermi_energy=_make_data(0.5),
         occupations=np.arange(np.prod(shape)).reshape(shape),
+        projectors=_Sr2TiO4_projectors(use_orbitals=False),
     )
 
 
@@ -402,21 +414,20 @@ def _spin_polarized_bands(projectors):
     kpoints.cell = _Fe3O4_cell()
     shape = (two_spins, len(kpoints.coordinates), number_bands)
     eigenvalues = np.arange(np.prod(shape)).reshape(shape)
+    use_orbitals = projectors in ["with_projectors", "excess_orbitals"]
     raw_band = raw.Band(
         dispersion=raw.Dispersion(kpoints, eigenvalues),
-        fermi_energy=0.0,
+        fermi_energy=_make_data(0.0),
         occupations=np.arange(np.prod(shape)).reshape(shape),
+        projectors=_Fe3O4_projectors(use_orbitals),
     )
-    if projectors in ["with_projectors", "excess_orbitals"]:
-        raw_band.projectors = _Fe3O4_projectors()
+    if use_orbitals:
         number_orbitals = len(raw_band.projectors.orbital_types)
         shape = (two_spins, number_atoms, number_orbitals, *shape[1:])
         raw_band.projections = np.random.random(shape)
     if projectors == "excess_orbitals":
-        old_orbitals = raw_band.projectors.orbital_types
-        new_orbitals = np.array(["g", "h", "i"], dtype="S")
-        expanded_orbital_types = np.concatenate((old_orbitals, new_orbitals))
-        raw_band.projectors.orbital_types = expanded_orbital_types
+        orbital_types = _make_orbital_types(use_orbitals, "s p d f g h i")
+        raw_band.projectors.orbital_types = orbital_types
     return raw_band
 
 
@@ -442,11 +453,14 @@ def _Sr2TiO4_cell():
 
 def _Sr2TiO4_dos(projectors):
     energies = np.linspace(-1, 3, number_points)
+    use_orbitals = projectors == "with_projectors"
     raw_dos = raw.Dos(
-        fermi_energy=1.372, energies=energies, dos=np.array([energies**2])
+        fermi_energy=1.372,
+        energies=energies,
+        dos=np.array([energies**2]),
+        projectors=_Sr2TiO4_projectors(use_orbitals),
     )
-    if projectors == "with_projectors":
-        raw_dos.projectors = _Sr2TiO4_projectors()
+    if use_orbitals:
         number_orbitals = len(raw_dos.projectors.orbital_types)
         shape = (single_spin, number_atoms, number_orbitals, number_points)
         raw_dos.projections = np.random.random(shape)
@@ -476,11 +490,11 @@ def _Sr2TiO4_internal_strain():
     )
 
 
-def _Sr2TiO4_projectors():
+def _Sr2TiO4_projectors(use_orbitals):
     orbital_types = "s py pz px dxy dyz dz2 dxz x2-y2 fy3x2 fxyz fyz2 fz3 fxz2 fzx2 fx3"
     return raw.Projector(
         topology=_Sr2TiO4_topology(),
-        orbital_types=np.array(orbital_types.split(), dtype="S"),
+        orbital_types=_make_orbital_types(use_orbitals, orbital_types),
         number_spins=1,
     )
 
@@ -538,21 +552,20 @@ def _Fe3O4_density(selection):
 
 def _Fe3O4_dos(projectors):
     energies = np.linspace(-2, 2, number_points)
+    use_orbitals = projectors in ["with_projectors", "excess_orbitals"]
     raw_dos = raw.Dos(
         fermi_energy=-0.137,
         energies=energies,
         dos=np.array(((energies + 0.5) ** 2, (energies - 0.5) ** 2)),
+        projectors=_Fe3O4_projectors(use_orbitals),
     )
-    if projectors in ["with_projectors", "excess_orbitals"]:
-        raw_dos.projectors = _Fe3O4_projectors()
+    if use_orbitals:
         number_orbitals = len(raw_dos.projectors.orbital_types)
         shape = (two_spins, number_atoms, number_orbitals, number_points)
         raw_dos.projections = np.random.random(shape)
     if projectors == "excess_orbitals":
-        old_orbitals = raw_dos.projectors.orbital_types
-        new_orbitals = np.array(["g", "h", "i"], dtype="S")
-        expanded_orbital_types = np.concatenate((old_orbitals, new_orbitals))
-        raw_dos.projectors.orbital_types = expanded_orbital_types
+        orbital_types = _make_orbital_types(use_orbitals, "s p d f g h i")
+        raw_dos.projectors.orbital_types = orbital_types
     return raw_dos
 
 
@@ -563,10 +576,10 @@ def _Fe3O4_forces():
     )
 
 
-def _Fe3O4_projectors():
+def _Fe3O4_projectors(use_orbitals):
     return raw.Projector(
         topology=_Fe3O4_topology(),
-        orbital_types=np.array(("s", "p", "d", "f"), dtype="S"),
+        orbital_types=_make_orbital_types(use_orbitals, "s p d f"),
         number_spins=2,
     )
 
@@ -600,3 +613,14 @@ def _Fe3O4_topology():
     return raw.Topology(
         number_ion_types=np.array((3, 4)), ion_types=np.array(("Fe", "O "), dtype="S")
     )
+
+
+def _make_data(data):
+    return raw.VaspData(np.array(data))
+
+
+def _make_orbital_types(use_orbitals, orbital_types):
+    if use_orbitals:
+        return raw.VaspData(np.array(orbital_types.split(), dtype="S"))
+    else:
+        return raw.VaspData(None)
