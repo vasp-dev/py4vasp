@@ -28,7 +28,7 @@ class VaspData(np.lib.mixins.NDArrayOperatorsMixin):
     def __init__(self, data):
         self._repr_data = repr(data)
         if data is not None and data.ndim == 0:
-            self._data = np.array(data)
+            self._data = _parse_scalar(data)
         else:
             self._data = data
 
@@ -77,3 +77,9 @@ class VaspData(np.lib.mixins.NDArrayOperatorsMixin):
     def dtype(self):
         "Describes the type of the contained data."
         return self.data.dtype
+
+
+def _parse_scalar(data):
+    if data.dtype.type == np.bytes_:
+        data = data[()].decode()
+    return np.array(data)

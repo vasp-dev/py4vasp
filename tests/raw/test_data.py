@@ -137,3 +137,9 @@ def test_scalar_data():
     assert vasp.shape == ()
     assert vasp.dtype == np.int64
     assert repr(vasp) == f"VaspData({repr(mock)})"
+
+
+def test_scalar_string():
+    reference = "text stored in file"
+    vasp = VaspData(np.array(reference.encode()))
+    assert vasp.data == reference
