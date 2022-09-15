@@ -373,7 +373,7 @@ def _single_band(projectors):
     eigenvalues = np.array([np.linspace([0], [1], len(kpoints.coordinates))])
     return raw.Band(
         dispersion=raw.Dispersion(kpoints, eigenvalues),
-        fermi_energy=_make_data(0.0),
+        fermi_energy=0.0,
         occupations=np.array([np.linspace([1], [0], len(kpoints.coordinates))]),
         projectors=_Sr2TiO4_projectors(use_orbitals=False),
     )
@@ -386,7 +386,7 @@ def _multiple_bands(projectors):
     use_orbitals = projectors == "with_projectors"
     raw_band = raw.Band(
         dispersion=raw.Dispersion(kpoints, eigenvalues),
-        fermi_energy=_make_data(0.5),
+        fermi_energy=0.5,
         occupations=np.arange(np.prod(shape)).reshape(shape),
         projectors=_Sr2TiO4_projectors(use_orbitals),
     )
@@ -403,7 +403,7 @@ def _line_band(labels):
     eigenvalues = np.arange(np.prod(shape)).reshape(shape)
     return raw.Band(
         dispersion=raw.Dispersion(kpoints, eigenvalues),
-        fermi_energy=_make_data(0.5),
+        fermi_energy=0.5,
         occupations=np.arange(np.prod(shape)).reshape(shape),
         projectors=_Sr2TiO4_projectors(use_orbitals=False),
     )
@@ -417,7 +417,7 @@ def _spin_polarized_bands(projectors):
     use_orbitals = projectors in ["with_projectors", "excess_orbitals"]
     raw_band = raw.Band(
         dispersion=raw.Dispersion(kpoints, eigenvalues),
-        fermi_energy=_make_data(0.0),
+        fermi_energy=0.0,
         occupations=np.arange(np.prod(shape)).reshape(shape),
         projectors=_Fe3O4_projectors(use_orbitals),
     )
