@@ -19,7 +19,7 @@ class DielectricTensor(_base.Refinery):
         """
         return {
             "clamped_ion": self._raw_data.electron[:],
-            "relaxed_ion": self._raw_data.electron[:] + self._raw_data.ion[:],
+            "relaxed_ion": self._read_relaxed_ion(),
             "independent_particle": self._read_independent_particle(),
             "method": _convert.text_to_string(self._raw_data.method),
         }
@@ -35,14 +35,22 @@ Macroscopic static dielectric tensor (dimensionless)
 {_dielectric_tensor_string(data["relaxed_ion"], "relaxed-ion")}
 """.strip()
 
+    def _read_relaxed_ion(self):
+        if self._raw_data.ion.is_none():
+            return None
+        else:
+            return self._raw_data.electron[:] + self._raw_data.ion[:]
+
     def _read_independent_particle(self):
-        if self._raw_data.independent_particle is None:
+        if self._raw_data.independent_particle.is_none():
             return None
         else:
             return self._raw_data.independent_particle[:]
 
 
 def _dielectric_tensor_string(tensor, label):
+    if tensor is None:
+        return ""
     row_to_string = lambda row: 6 * " " + " ".join(f"{x:12.6f}" for x in row)
     rows = (row_to_string(row) for row in tensor)
     return f"{label:^55}".rstrip() + "\n" + "\n".join(rows)

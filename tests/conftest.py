@@ -88,7 +88,9 @@ class RawDataFactory:
 
     @staticmethod
     def dielectric_tensor(selection):
-        return _dielectric_tensor(selection)
+        method, with_ion = selection.split()
+        with_ion = with_ion == "with_ion"
+        return _dielectric_tensor(method, with_ion)
 
     @staticmethod
     def dos(selection):
@@ -243,13 +245,15 @@ def _ion_dielectric_function():
     )
 
 
-def _dielectric_tensor(method):
+def _dielectric_tensor(method, with_ion):
     shape = (3, axes, axes)
     data = np.arange(np.prod(shape)).reshape(shape)
+    ion = raw.VaspData(data[1] if with_ion else None)
+    independent_particle = raw.VaspData(data[2] if method in ("dft", "rpa") else None)
     return raw.DielectricTensor(
-        electron=data[0],
-        ion=data[1],
-        independent_particle=data[2] if method in ("dft", "rpa") else None,
+        electron=raw.VaspData(data[0]),
+        ion=ion,
+        independent_particle=independent_particle,
         method=method.encode(),
     )
 

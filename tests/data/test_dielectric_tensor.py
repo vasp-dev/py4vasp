@@ -7,32 +7,40 @@ from py4vasp.data import DielectricTensor
 
 @pytest.fixture
 def dft_tensor(raw_data):
-    return make_reference(raw_data, "dft")
+    expected_description = "including local field effects in DFT"
+    return make_reference(raw_data, "dft with_ion", expected_description)
 
 
 @pytest.fixture
 def rpa_tensor(raw_data):
-    return make_reference(raw_data, "rpa")
+    expected_description = "including local field effects in RPA (Hartree)"
+    return make_reference(raw_data, "rpa without_ion", expected_description)
 
 
 @pytest.fixture
 def scf_tensor(raw_data):
-    return make_reference(raw_data, "scf")
+    expected_description = "including local field effects"
+    return make_reference(raw_data, "scf with_ion", expected_description)
 
 
 @pytest.fixture
 def nscf_tensor(raw_data):
-    return make_reference(raw_data, "nscf")
+    expected_description = "excluding local field effects"
+    return make_reference(raw_data, "nscf without_ion", expected_description)
 
 
-def make_reference(raw_data, method):
+def make_reference(raw_data, method, expected_description):
     raw_tensor = raw_data.dielectric_tensor(method)
     tensor = DielectricTensor.from_data(raw_tensor)
     tensor.ref = types.SimpleNamespace()
     tensor.ref.clamped_ion = raw_tensor.electron
-    tensor.ref.relaxed_ion = raw_tensor.ion + raw_tensor.electron
+    if raw_tensor.ion.is_none():
+        tensor.ref.relaxed_ion = None
+    else:
+        tensor.ref.relaxed_ion = raw_tensor.ion + raw_tensor.electron
     tensor.ref.independent_particle = raw_tensor.independent_particle
-    tensor.ref.method = method
+    tensor.ref.method = method.split()[0]
+    tensor.ref.expected_description = expected_description
     return tensor
 
 
@@ -64,45 +72,47 @@ def check_read_dielectric_tensor(dielectric_tensor, Assert):
 
 def test_print_dft_tensor(dft_tensor, format_):
     actual, _ = format_(dft_tensor)
-    expected_description = "including local field effects in DFT"
-    check_print_dielectric_tensor(actual, expected_description)
+    check_print_dielectric_tensor(actual, dft_tensor.ref)
 
 
 def test_print_rpa_tensor(rpa_tensor, format_):
     actual, _ = format_(rpa_tensor)
-    expected_description = "including local field effects in RPA (Hartree)"
-    check_print_dielectric_tensor(actual, expected_description)
+    check_print_dielectric_tensor(actual, rpa_tensor.ref)
 
 
 def test_print_scf_tensor(scf_tensor, format_):
     actual, _ = format_(scf_tensor)
-    expected_description = "including local field effects"
-    check_print_dielectric_tensor(actual, expected_description)
+    check_print_dielectric_tensor(actual, scf_tensor.ref)
 
 
 def test_print_dft_tensor(nscf_tensor, format_):
     actual, _ = format_(nscf_tensor)
-    expected_description = "excluding local field effects"
-    check_print_dielectric_tensor(actual, expected_description)
+    check_print_dielectric_tensor(actual, nscf_tensor.ref)
 
 
-def check_print_dielectric_tensor(actual, expected_description):
-    reference = f"""
+def check_print_dielectric_tensor(actual, reference):
+    if reference.relaxed_ion is None:
+        relaxed_ion = ""
+    else:
+        relaxed_ion = """\
+                      relaxed-ion
+          9.000000    11.000000    13.000000
+         15.000000    17.000000    19.000000
+         21.000000    23.000000    25.000000
+"""
+    expected = f"""
 Macroscopic static dielectric tensor (dimensionless)
-  {expected_description}
+  {reference.expected_description}
 ------------------------------------------------------
                       clamped-ion
           0.000000     1.000000     2.000000
           3.000000     4.000000     5.000000
           6.000000     7.000000     8.000000
-                      relaxed-ion
-          9.000000    11.000000    13.000000
-         15.000000    17.000000    19.000000
-         21.000000    23.000000    25.000000
+{relaxed_ion}
 """.strip()
-    assert actual == {"text/plain": reference}
+    assert actual == {"text/plain": expected}
 
 
 def test_factory_methods(raw_data, check_factory_methods):
-    data = raw_data.dielectric_tensor("dft")
+    data = raw_data.dielectric_tensor("dft with_ion")
     check_factory_methods(DielectricTensor, data)
