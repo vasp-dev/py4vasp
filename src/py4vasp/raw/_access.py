@@ -131,13 +131,13 @@ class _State:
 
     def _parse_dataset(self, dataset):
         result = raw.VaspData(dataset)
-        if _scalar_string(result):
-            result = result.data
+        if _is_scalar(result):
+            result = result[()]
         return result
 
 
-def _scalar_string(data):
-    return not data.is_none() and data.ndim == 0 and data.dtype.type == np.str_
+def _is_scalar(data):
+    return not data.is_none() and data.ndim == 0
 
 
 def _error_message(quantity, source):

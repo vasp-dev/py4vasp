@@ -88,7 +88,9 @@ class RawDataFactory:
 
     @staticmethod
     def dielectric_tensor(selection):
-        return _dielectric_tensor(selection)
+        method, with_ion = selection.split()
+        with_ion = with_ion == "with_ion"
+        return _dielectric_tensor(method, with_ion)
 
     @staticmethod
     def dos(selection):
@@ -243,13 +245,15 @@ def _ion_dielectric_function():
     )
 
 
-def _dielectric_tensor(method):
+def _dielectric_tensor(method, with_ion):
     shape = (3, axes, axes)
     data = np.arange(np.prod(shape)).reshape(shape)
+    ion = raw.VaspData(data[1] if with_ion else None)
+    independent_particle = raw.VaspData(data[2] if method in ("dft", "rpa") else None)
     return raw.DielectricTensor(
-        electron=data[0],
-        ion=data[1],
-        independent_particle=data[2] if method in ("dft", "rpa") else None,
+        electron=raw.VaspData(data[0]),
+        ion=ion,
+        independent_particle=independent_particle,
         method=method.encode(),
     )
 
@@ -373,7 +377,7 @@ def _single_band(projectors):
     eigenvalues = np.array([np.linspace([0], [1], len(kpoints.coordinates))])
     return raw.Band(
         dispersion=raw.Dispersion(kpoints, eigenvalues),
-        fermi_energy=_make_data(0.0),
+        fermi_energy=0.0,
         occupations=np.array([np.linspace([1], [0], len(kpoints.coordinates))]),
         projectors=_Sr2TiO4_projectors(use_orbitals=False),
     )
@@ -386,7 +390,7 @@ def _multiple_bands(projectors):
     use_orbitals = projectors == "with_projectors"
     raw_band = raw.Band(
         dispersion=raw.Dispersion(kpoints, eigenvalues),
-        fermi_energy=_make_data(0.5),
+        fermi_energy=0.5,
         occupations=np.arange(np.prod(shape)).reshape(shape),
         projectors=_Sr2TiO4_projectors(use_orbitals),
     )
@@ -403,7 +407,7 @@ def _line_band(labels):
     eigenvalues = np.arange(np.prod(shape)).reshape(shape)
     return raw.Band(
         dispersion=raw.Dispersion(kpoints, eigenvalues),
-        fermi_energy=_make_data(0.5),
+        fermi_energy=0.5,
         occupations=np.arange(np.prod(shape)).reshape(shape),
         projectors=_Sr2TiO4_projectors(use_orbitals=False),
     )
@@ -417,7 +421,7 @@ def _spin_polarized_bands(projectors):
     use_orbitals = projectors in ["with_projectors", "excess_orbitals"]
     raw_band = raw.Band(
         dispersion=raw.Dispersion(kpoints, eigenvalues),
-        fermi_energy=_make_data(0.0),
+        fermi_energy=0.0,
         occupations=np.arange(np.prod(shape)).reshape(shape),
         projectors=_Fe3O4_projectors(use_orbitals),
     )
