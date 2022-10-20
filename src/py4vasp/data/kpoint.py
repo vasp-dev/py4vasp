@@ -146,7 +146,7 @@ reciprocal"""
     @_base.data_access
     @_documentation.add(_number_line_doc)
     def number_lines(self):
-        return len(self._raw_data.coordinates) // self.line_length()
+        return self.number_kpoints() // self.line_length()
 
     @_base.data_access
     @_documentation.add(_number_kpoints)
