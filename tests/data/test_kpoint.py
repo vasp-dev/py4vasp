@@ -121,6 +121,18 @@ def test_mode(raw_data):
             Kpoint.from_data(raw_kpoints).mode()
 
 
+def test_explicit_kpoints_number_kpoints(explicit_kpoints):
+    assert explicit_kpoints.number_kpoints() == explicit_kpoints.ref.line_length
+
+
+def test_grid_kpoints_number_kpoints(grid_kpoints):
+    assert grid_kpoints.number_kpoints() == grid_kpoints.ref.line_length
+
+
+def test_line_kpoints_number_kpoints(line_kpoints):
+    assert line_kpoints.number_kpoints() == len(line_kpoints.ref.distances)
+
+
 def test_explicit_kpoints_line_length(explicit_kpoints):
     assert explicit_kpoints.line_length() == explicit_kpoints.ref.line_length
 
