@@ -17,11 +17,34 @@ import mdtraj
 
 @dataclass
 class _Format:
-    begin: str = ""
-    separator: str = " "
-    row: str = "\n"
-    end: str = ""
+    begin_table: str = ""
+    column_separator: str = " "
+    row_separator: str = "\n"
+    end_table: str = ""
     newline: str = ""
+
+    def comment_line(self, topology, step_string):
+        return f"{pretty(topology)}{step_string}{self.newline}"
+
+    def scaling_factor(self):
+        return f"1.0{self.newline}"
+
+    def ion_list(self, topology):
+        return f"{topology.to_POSCAR(self.newline)}{self.newline}"
+
+    def coordinate_system(self):
+        return f"Direct{self.newline}"
+
+    def vectors_to_table(self, vectors):
+        rows = (self._vector_to_row(vector) for vector in vectors)
+        return f"{self.begin_table}{self.row_separator.join(rows)}{self.end_table}"
+
+    def _vector_to_row(self, vector):
+        elements = (self._element_to_string(element) for element in vector)
+        return self.column_separator.join(elements)
+
+    def _element_to_string(self, element):
+        return f"{element:21.16f}"
 
 
 _structure_docs = f"""
@@ -67,31 +90,29 @@ class Structure(_slice.Mixin, _base.Refinery):
     @_base.data_access
     def _repr_html_(self):
         format_ = _Format(
-            begin="<table>\n<tr><td>",
-            separator="</td><td>",
-            row="</td></tr>\n<tr><td>",
-            end="</td></tr>\n</table>",
+            begin_table="<table>\n<tr><td>",
+            column_separator="</td><td>",
+            row_separator="</td></tr>\n<tr><td>",
+            end_table="</td></tr>\n</table>",
             newline="<br>",
         )
         return self._create_repr(format_)
 
     def _create_repr(self, format_=_Format()):
         step = self._last_step_in_slice
-        vec_to_string = lambda vec: format_.separator.join("{:21.16f}".format(v) for v in vec)
-        vecs_to_string = lambda vecs: format_.row.join(vec_to_string(v) for v in vecs)
-        vecs_to_table = lambda vecs: format_.begin + vecs_to_string(vecs) + format_.end
-        return f"""
-{pretty(self._topology())}{self._step_string()}{format_.newline}
-1.0{format_.newline}
-{vecs_to_table(self._raw_data.cell.lattice_vectors[step])}
-{self._topology().to_POSCAR(format_.newline)}{format_.newline}
-Direct{format_.newline}
-{vecs_to_table(self._raw_data.positions[step])}
-        """.strip()
+        lines = (
+            format_.comment_line(self._topology(), self._step_string()),
+            format_.scaling_factor(),
+            format_.vectors_to_table(self._raw_data.cell.lattice_vectors[step]),
+            format_.ion_list(self._topology()),
+            format_.coordinate_system(),
+            format_.vectors_to_table(self._raw_data.positions[step]),
+        )
+        return "\n".join(lines)
 
     @_base.data_access
     @_documentation.add(
-        f"""Read the structual information into a dictionary.
+        f"""Read the structural information into a dictionary.
 
 Returns
 -------
