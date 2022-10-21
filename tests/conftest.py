@@ -93,6 +93,21 @@ class RawDataFactory:
         return _dielectric_tensor(method, with_ion)
 
     @staticmethod
+    def dispersion(selection):
+        if selection == "single_band":
+            return _single_band_dispersion()
+        elif selection == "multiple_bands":
+            return _multiple_bands_dispersion()
+        elif selection == "line":
+            return _line_dispersion("no_labels")
+        elif selection == "spin_polarized":
+            return _spin_polarized_dispersion()
+        elif selection == "phonon":
+            return _phonon_dispersion()
+        else:
+            raise exception.NotImplemented()
+
+    @staticmethod
     def dos(selection):
         structure, *projectors = selection.split()
         projectors = projectors[0] if len(projectors) > 0 else "no_projectors"
@@ -274,16 +289,20 @@ def _Sr2TiO4_pair_correlation():
 
 
 def _phonon_band():
-    qpoints = _qpoints()
-    number_qpoints = len(qpoints.coordinates)
-    shape_values = (number_qpoints, number_modes)
-    eigenvalues = np.arange(np.prod(shape_values)).reshape(shape_values)
-    shape_vectors = (number_qpoints, number_modes, number_atoms, axes, complex_)
+    dispersion = _phonon_dispersion()
+    shape = (*dispersion.eigenvalues.shape, number_atoms, axes, complex_)
     return raw.PhononBand(
-        dispersion=raw.Dispersion(qpoints, eigenvalues),
+        dispersion=dispersion,
         topology=_Sr2TiO4_topology(),
-        eigenvectors=np.linspace(0, 1, np.prod(shape_vectors)).reshape(shape_vectors),
+        eigenvectors=np.linspace(0, 1, np.prod(shape)).reshape(shape),
     )
+
+
+def _phonon_dispersion():
+    qpoints = _qpoints()
+    shape = (len(qpoints.coordinates), number_modes)
+    eigenvalues = np.arange(np.prod(shape)).reshape(shape)
+    return raw.Dispersion(qpoints, eigenvalues)
 
 
 def _phonon_dos():
@@ -373,23 +392,27 @@ def _magnetism(number_components):
 
 
 def _single_band(projectors):
-    kpoints = _grid_kpoints("explicit", "no_labels")
-    eigenvalues = np.array([np.linspace([0], [1], len(kpoints.coordinates))])
+    dispersion = _single_band_dispersion()
     return raw.Band(
-        dispersion=raw.Dispersion(kpoints, eigenvalues),
+        dispersion=dispersion,
         fermi_energy=0.0,
-        occupations=np.array([np.linspace([1], [0], len(kpoints.coordinates))]),
+        occupations=np.array([np.linspace([1], [0], dispersion.eigenvalues.size)]),
         projectors=_Sr2TiO4_projectors(use_orbitals=False),
     )
 
 
-def _multiple_bands(projectors):
+def _single_band_dispersion():
     kpoints = _grid_kpoints("explicit", "no_labels")
-    shape = (single_spin, len(kpoints.coordinates), number_bands)
-    eigenvalues = np.arange(np.prod(shape)).reshape(shape)
+    eigenvalues = np.array([np.linspace([0], [1], len(kpoints.coordinates))])
+    return raw.Dispersion(kpoints, eigenvalues)
+
+
+def _multiple_bands(projectors):
+    dispersion = _multiple_bands_dispersion()
+    shape = dispersion.eigenvalues.shape
     use_orbitals = projectors == "with_projectors"
     raw_band = raw.Band(
-        dispersion=raw.Dispersion(kpoints, eigenvalues),
+        dispersion=dispersion,
         fermi_energy=0.5,
         occupations=np.arange(np.prod(shape)).reshape(shape),
         projectors=_Sr2TiO4_projectors(use_orbitals),
@@ -401,26 +424,37 @@ def _multiple_bands(projectors):
     return raw_band
 
 
-def _line_band(labels):
-    kpoints = _line_kpoints("line", labels)
+def _multiple_bands_dispersion():
+    kpoints = _grid_kpoints("explicit", "no_labels")
     shape = (single_spin, len(kpoints.coordinates), number_bands)
     eigenvalues = np.arange(np.prod(shape)).reshape(shape)
+    return raw.Dispersion(kpoints, eigenvalues)
+
+
+def _line_band(labels):
+    dispersion = _line_dispersion(labels)
+    shape = dispersion.eigenvalues.shape
     return raw.Band(
-        dispersion=raw.Dispersion(kpoints, eigenvalues),
+        dispersion=dispersion,
         fermi_energy=0.5,
         occupations=np.arange(np.prod(shape)).reshape(shape),
         projectors=_Sr2TiO4_projectors(use_orbitals=False),
     )
 
 
-def _spin_polarized_bands(projectors):
-    kpoints = _grid_kpoints("explicit", "no_labels")
-    kpoints.cell = _Fe3O4_cell()
-    shape = (two_spins, len(kpoints.coordinates), number_bands)
+def _line_dispersion(labels):
+    kpoints = _line_kpoints("line", labels)
+    shape = (single_spin, len(kpoints.coordinates), number_bands)
     eigenvalues = np.arange(np.prod(shape)).reshape(shape)
+    return raw.Dispersion(kpoints, eigenvalues)
+
+
+def _spin_polarized_bands(projectors):
+    dispersion = _spin_polarized_dispersion()
+    shape = dispersion.eigenvalues.shape
     use_orbitals = projectors in ["with_projectors", "excess_orbitals"]
     raw_band = raw.Band(
-        dispersion=raw.Dispersion(kpoints, eigenvalues),
+        dispersion=dispersion,
         fermi_energy=0.0,
         occupations=np.arange(np.prod(shape)).reshape(shape),
         projectors=_Fe3O4_projectors(use_orbitals),
@@ -433,6 +467,14 @@ def _spin_polarized_bands(projectors):
         orbital_types = _make_orbital_types(use_orbitals, "s p d f g h i")
         raw_band.projectors.orbital_types = orbital_types
     return raw_band
+
+
+def _spin_polarized_dispersion():
+    kpoints = _grid_kpoints("explicit", "no_labels")
+    kpoints.cell = _Fe3O4_cell()
+    shape = (two_spins, len(kpoints.coordinates), number_bands)
+    eigenvalues = np.arange(np.prod(shape)).reshape(shape)
+    return raw.Dispersion(kpoints, eigenvalues)
 
 
 def _Sr2TiO4_born_effective_charges():
