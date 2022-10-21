@@ -5,7 +5,7 @@ import dataclasses
 import functools
 import pathlib
 from py4vasp import raw
-from py4vasp._util import convert as _convert
+from py4vasp._util import convert as _convert, sanity_check as _check
 
 
 def data_access(func):
@@ -17,6 +17,7 @@ def data_access(func):
     def func_with_access(self, *args, source=None, **kwargs):
         self._set_source(source)
         with self._data_context:
+            _check.raise_error_if_not_callable(func, self, *args, **kwargs)
             return func(self, *args, **kwargs)
 
     return func_with_access

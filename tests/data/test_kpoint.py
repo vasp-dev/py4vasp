@@ -196,6 +196,15 @@ def test_qpoints_distances(qpoints, Assert):
     Assert.allclose(actual_distances, qpoints.ref.distances)
 
 
+def test_grid_kpoints_path_indices(grid_kpoints):
+    indices = grid_kpoints.path_indices((0, 0, 0), (0, 0, 1))
+    expected = np.array([0, 1, 2, 3])
+    assert all(indices == expected)
+    indices = grid_kpoints.path_indices((0, 0, 0.125), (0.75, 1, 0.875))
+    expected = np.array([0, 17, 34])
+    assert all(indices == expected)
+
+
 def test_print(explicit_kpoints, format_):
     actual, _ = format_(explicit_kpoints)
     reference = """
