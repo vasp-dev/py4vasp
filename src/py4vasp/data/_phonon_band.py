@@ -26,21 +26,17 @@ class PhononBand(_base.Refinery, _export.Image):
     def to_dict(self):
         """Read the phonon band structure into a dictionary.
 
-        Parameters
-        ----------
-        {selection}
-
         Returns
         -------
         dict
             Contains the **q**-point path for plotting phonon band structures and
             the phonon bands. In addition the phonon modes are returned.
         """
-        qpoints = self._qpoints
+        dispersion = self._dispersion.read()
         return {
-            "qpoint_distances": qpoints.distances(),
-            "qpoint_labels": qpoints.labels(),
-            "bands": self._raw_data.dispersion.eigenvalues[:],
+            "qpoint_distances": dispersion["kpoint_distances"],
+            "qpoint_labels": dispersion["kpoint_labels"],
+            "bands": dispersion["eigenvalues"],
             "modes": _convert.to_complex(self._raw_data.eigenvectors[:]),
         }
 
@@ -75,6 +71,10 @@ class PhononBand(_base.Refinery, _export.Image):
         Converts the Graph object to a plotly figure. Check the :py:meth:`plot` method
         to learn about how the Graph is generated."""
         return self.plot(selection, width).to_plotly()
+
+    @property
+    def _dispersion(self):
+        return data.Dispersion.from_data(self._raw_data.dispersion)
 
     @property
     def _qpoints(self):

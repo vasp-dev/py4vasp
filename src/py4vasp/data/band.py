@@ -3,6 +3,7 @@
 import itertools
 import numpy as np
 import pandas as pd
+from py4vasp import data
 import py4vasp._util.sanity_check as _check
 import py4vasp._util.documentation as _documentation
 from IPython.lib.pretty import pretty
@@ -105,12 +106,12 @@ class Band(_base.Refinery, _export.Image):
     @_base.data_access
     @_documentation.add(_to_dict_doc)
     def to_dict(self, selection=None):
-        kpoints = self._kpoints()
+        dispersion = self._dispersion.read()
         return {
-            "kpoint_distances": kpoints.distances(),
-            "kpoint_labels": kpoints.labels(),
+            "kpoint_distances": dispersion["kpoint_distances"],
+            "kpoint_labels": dispersion["kpoint_labels"],
             "fermi_energy": self._raw_data.fermi_energy,
-            **self._shift_bands_by_fermi_energy(),
+            **self._shift_dispersion_by_fermi_energy(dispersion),
             **self._read_occupations(),
             "projections": self._read_projections(selection),
         }
@@ -139,6 +140,10 @@ class Band(_base.Refinery, _export.Image):
     def _spin_polarized(self):
         return len(self._raw_data.dispersion.eigenvalues) == 2
 
+    @property
+    def _dispersion(self):
+        return data.Dispersion.from_data(self._raw_data.dispersion)
+
     def _kpoints(self):
         return Kpoint.from_data(self._raw_data.dispersion.kpoints)
 
@@ -148,6 +153,13 @@ class Band(_base.Refinery, _export.Image):
 
     def _read_projections(self, selection):
         return self._projector.read(selection, self._raw_data.projections)
+
+    def _shift_dispersion_by_fermi_energy(self, dispersion):
+        shifted = dispersion["eigenvalues"] - self._raw_data.fermi_energy
+        if len(shifted) == 2:
+            return {"bands_up": shifted[0], "bands_down": shifted[1]}
+        else:
+            return {"bands": shifted[0]}
 
     def _shift_bands_by_fermi_energy(self):
         if self._spin_polarized():
