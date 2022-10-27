@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import itertools
 import numpy as np
 from py4vasp import data
 from py4vasp.data import _base
@@ -23,24 +24,52 @@ class Dispersion(_base.Refinery):
     def _kpoints(self):
         return data.Kpoint.from_data(self._raw_data.kpoints)
 
-    def plot(self):
+    def plot(self, projections=None):
         data = self.to_dict()
+        projections = self._use_projections_or_default(projections)
         return _graph.Graph(
-            series=_band_structure(data),
+            series=_band_structure(data, projections),
             xticks=_xticks(data, self._kpoints.line_length()),
         )
 
+    def _use_projections_or_default(self, projections):
+        if projections is not None:
+            return projections
+        elif self._spin_polarized():
+            return {"up": None, "down": None}
+        else:
+            return {"bands": None}
 
-def _band_structure(data):
-    bands = _make_3d(data["eigenvalues"])
-    return [_graph.Series(data["kpoint_distances"], component.T) for component in bands]
+    def _spin_polarized(self):
+        eigenvalues = self._raw_data.eigenvalues
+        return eigenvalues.ndim == 3 and eigenvalues.shape[0] == 2
 
 
-def _make_3d(eigenvalues):
+def _band_structure(data, projections):
+    return [_make_series(data, projection) for projection in projections.items()]
+
+
+def _make_series(data, projection):
+    name, width = _get_name_and_width(projection)
+    x = data["kpoint_distances"]
+    y = _get_bands(data["eigenvalues"], name)
+    return _graph.Series(x, y, name, width=width)
+
+
+def _get_name_and_width(projection):
+    name, width = projection
+    if width is not None:
+        width = width.T
+    return name, width
+
+
+def _get_bands(eigenvalues, name):
     if eigenvalues.ndim == 2:
-        return eigenvalues[None, :, :]
+        return eigenvalues.T
+    elif "down" in name:
+        return eigenvalues[1].T
     else:
-        return eigenvalues
+        return eigenvalues[0].T
 
 
 def _xticks(data, line_length):
