@@ -1,6 +1,5 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import itertools
 import numpy as np
 from py4vasp import data
 from py4vasp.data import _base
