@@ -20,6 +20,14 @@ class Dispersion(_base.Refinery):
 
     @_base.data_access
     def to_dict(self):
+        """Read the dispersion into a dictionary.
+
+        Returns
+        -------
+        dict
+            Contains the **k**-point distances and associated labels as well as the
+            eigenvalues of all the bands.
+        """
         return {
             "kpoint_distances": self._kpoints.distances(),
             "kpoint_labels": self._kpoints.labels(),
@@ -32,6 +40,25 @@ class Dispersion(_base.Refinery):
 
     @_base.data_access
     def plot(self, projections=None):
+        """Generate a graph of the dispersion.
+
+        The bands are plotted along the k-point distances. The k-point labels are added
+        as ticks if present. Pass a dictionary with projections to generate a fatband
+        plot based on the weights passed.
+
+        Parameters
+        ----------
+        projections : dict
+            The key will be used for the legend of the figure. The values will be used
+            to broaden the lines. Must have the same shape as the eigenvalues of the
+            dispersion.
+
+        Returns
+        -------
+        Graph
+            Contains the band structure for all the **k** points. If projections are
+            passed, the width of the band is adjusted accordingly.
+        """
         data = self.to_dict()
         projections = self._use_projections_or_default(projections)
         return _graph.Graph(
