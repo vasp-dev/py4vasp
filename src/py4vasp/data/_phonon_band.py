@@ -37,7 +37,7 @@ class PhononBand(_base.Refinery, _export.Image):
             "qpoint_distances": dispersion["kpoint_distances"],
             "qpoint_labels": dispersion["kpoint_labels"],
             "bands": dispersion["eigenvalues"],
-            "modes": _convert.to_complex(self._raw_data.eigenvectors[:]),
+            "modes": self._modes,
         }
 
     @_base.data_access
@@ -58,11 +58,10 @@ class PhononBand(_base.Refinery, _export.Image):
             selection is provided, the width of the bands is adjusted according to
             the projection.
         """
-        return _graph.Graph(
-            series=self._band_structure(selection, width),
-            xticks=self._xticks(),
-            ylabel="ω (THz)",
-        )
+        projections = self._projections(selection, width)
+        graph = self._dispersion.plot(projections)
+        graph.ylabel = "ω (THz)"
+        return graph
 
     @_base.data_access
     def to_plotly(self, selection=None, width=1.0):
@@ -77,73 +76,27 @@ class PhononBand(_base.Refinery, _export.Image):
         return data.Dispersion.from_data(self._raw_data.dispersion)
 
     @property
-    def _qpoints(self):
-        return data.Kpoint.from_data(self._raw_data.dispersion.kpoints)
-
-    @property
     def _topology(self):
         return data.Topology.from_data(self._raw_data.topology)
 
-    def _xticks(self):
-        ticks, labels = self._degenerate_ticks_and_labels()
-        return self._filter_unique(ticks, labels)
+    @property
+    def _modes(self):
+        return _convert.to_complex(self._raw_data.eigenvectors[:])
 
-    def _degenerate_ticks_and_labels(self):
-        labels = self._qpoint_labels()
-        mask = np.logical_or(self._edge_of_line(), labels != "")
-        return self._qpoints.distances()[mask], labels[mask]
-
-    def _qpoint_labels(self):
-        labels = self._qpoints.labels()
-        if labels is None:
-            labels = [""] * len(self._raw_data.dispersion.kpoints.coordinates)
-        return np.array(labels)
-
-    def _edge_of_line(self):
-        indices = np.arange(len(self._raw_data.dispersion.kpoints.coordinates))
-        edge_of_line = (indices + 1) % self._qpoints.line_length() == 0
-        edge_of_line[0] = True
-        return edge_of_line
-
-    def _filter_unique(self, ticks, labels):
-        result = {}
-        for tick, label in zip(ticks, labels):
-            if tick in result:
-                previous_label = result[tick]
-                if previous_label != "" and previous_label != label:
-                    label = previous_label + "|" + label
-            result[tick] = label
-        return result
-
-    def _band_structure(self, selection, width):
-        band = self.to_dict()
-        if selection is None:
-            return self._regular_band_structure(band)
-        else:
-            return self._fat_band_structure(band, selection, width)
-
-    def _regular_band_structure(self, band):
-        return [_graph.Series(x=band["qpoint_distances"], y=band["bands"].T)]
-
-    def _fat_band_structure(self, band, selection, width):
-        projector = self._get_projector()
-        result = []
-        for index in projector.parse_selection(selection):
-            label, selection = projector.select(*index)
-            result.append(self._fat_band(band, label, selection, width))
-        return result
-
-    def _get_projector(self):
+    @property
+    def _projector(self):
         topology = data.Topology.from_data(self._raw_data.topology)
         return PhononProjector(topology)
 
-    def _fat_band(self, band, label, selection, width):
-        selected = band["modes"][
-            :, :, selection.atom.indices, selection.direction.indices
-        ]
-        return _graph.Series(
-            x=band["qpoint_distances"],
-            y=band["bands"].T,
-            name=label,
-            width=width * np.sum(np.abs(selected), axis=(2, 3)).T,
+    def _projections(self, selection, width):
+        if selection is None:
+            return None
+        projector = self._projector
+        return dict(
+            self._create_projection(*projector.select(*index), width)
+            for index in projector.parse_selection(selection)
         )
+
+    def _create_projection(self, label, select, width):
+        selected = self._modes[:, :, select.atom.indices, select.direction.indices]
+        return label, width * np.sum(np.abs(selected), axis=(2, 3))
