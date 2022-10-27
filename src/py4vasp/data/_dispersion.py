@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import data
 from py4vasp.data import _base
+import py4vasp._third_party.graph as _graph
 
 
 class Dispersion(_base.Refinery):
@@ -20,3 +21,19 @@ class Dispersion(_base.Refinery):
     @property
     def _kpoints(self):
         return data.Kpoint.from_data(self._raw_data.kpoints)
+
+    def plot(self):
+        return _graph.Graph(series=list(self._band_structure()))
+
+    def _band_structure(self):
+        data = self.to_dict()
+        bands = _make_3d(data["eigenvalues"])
+        for component in bands:
+            yield _graph.Series(data["kpoint_distances"], component.T)
+
+
+def _make_3d(eigenvalues):
+    if eigenvalues.ndim == 2:
+        return eigenvalues[None, :, :]
+    else:
+        return eigenvalues
