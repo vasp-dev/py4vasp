@@ -23,6 +23,7 @@ from .band import Band
 from .dos import Dos
 from .dielectric_function import DielectricFunction
 from .dielectric_tensor import DielectricTensor
+from ._dispersion import Dispersion
 from .elastic_modulus import ElasticModulus
 from .energy import Energy
 from .kpoint import Kpoint

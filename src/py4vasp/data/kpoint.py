@@ -197,6 +197,14 @@ reciprocal"""
         else:
             return None
 
+    @_base.data_access
+    def path_indices(self, start, finish):
+        # find linear dependent k-points
+        direction = np.array(finish) - np.array(start)
+        deltas = self._raw_data.coordinates - np.array(start)
+        areas = np.linalg.norm(np.cross(direction, deltas), axis=1)
+        return np.flatnonzero(np.isclose(areas, 0))
+
     def _labels_from_file(self):
         labels = [""] * len(self._raw_data.coordinates)
         for label, index in zip(self._raw_data.labels, self._raw_indices()):

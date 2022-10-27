@@ -66,7 +66,7 @@ def check_method_accesses_data(data, method_under_test, file):
 def execute_method(method_under_test, **kwargs):
     try:
         method_under_test(**kwargs)
-    except exception.NotImplemented:
+    except (exception.NotImplemented, exception.IncorrectUsage):
         # ignore py4vasp error
         pass
 
