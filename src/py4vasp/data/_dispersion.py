@@ -12,6 +12,7 @@ class Dispersion(_base.Refinery):
     Provides some utility functionalities common to all dispersions to avoid duplication
     of code."""
 
+    @_base.data_access
     def to_dict(self):
         return {
             "kpoint_distances": self._kpoints.distances(),
@@ -23,6 +24,7 @@ class Dispersion(_base.Refinery):
     def _kpoints(self):
         return data.Kpoint.from_data(self._raw_data.kpoints)
 
+    @_base.data_access
     def plot(self, projections=None):
         data = self.to_dict()
         projections = self._use_projections_or_default(projections)

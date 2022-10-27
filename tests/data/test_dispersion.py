@@ -84,3 +84,8 @@ def test_plot_dispersion_with_projections(dispersion, Assert):
         Assert.allclose(series.y, bands[:, :, component])
         assert series.name == name
         Assert.allclose(series.width, width.T)
+
+
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.dispersion("single_band")
+    check_factory_methods(Dispersion, data)
