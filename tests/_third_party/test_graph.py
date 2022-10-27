@@ -16,7 +16,7 @@ def parabola():
 @pytest.fixture
 def sine():
     x = np.linspace(0, np.pi, 50)
-    return Series(x=x, y=np.sin(x), name="sine")
+    return Series(x=x, y=np.sin(x), name="sine", marker="o")
 
 
 @pytest.fixture
@@ -61,6 +61,13 @@ def test_basic_graph(parabola, Assert):
     fig = graph.to_plotly()
     assert len(fig.data) == 1
     compare_series(fig.data[0], parabola, Assert)
+
+
+def test_marker(sine, Assert):
+    graph = Graph(sine)
+    fig = graph.to_plotly()
+    assert len(fig.data) == 1
+    assert fig.data[0].mode == "markers"
 
 
 def test_two_series(parabola, sine, Assert):

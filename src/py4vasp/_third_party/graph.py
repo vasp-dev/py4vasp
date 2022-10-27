@@ -82,6 +82,8 @@ class Series:
     "Split series into different axes"
     color: str = None
     "The color used for this series."
+    marker: str = None
+    "Which marker is used for the series, None defaults to line mode."
     _frozen = False
 
     def __post_init__(self):
@@ -118,6 +120,7 @@ class Series:
             **self._common_options(first_trace),
             "x": self.x,
             "y": y,
+            "mode": "markers" if self.marker else None,
             "line": {"color": self.color},
         }
 
