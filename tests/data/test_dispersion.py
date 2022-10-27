@@ -86,6 +86,14 @@ def test_plot_dispersion_with_projections(dispersion, Assert):
         Assert.allclose(series.width, width.T)
 
 
+def test_print(dispersion, format_):
+    actual, _ = format_(dispersion)
+    reference = f"""band data:
+    {dispersion.ref.kpoints.number_kpoints()} k-points
+    {dispersion.ref.eigenvalues.shape[-1]} bands"""
+    assert actual == {"text/plain": reference}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dispersion("single_band")
     check_factory_methods(Dispersion, data)

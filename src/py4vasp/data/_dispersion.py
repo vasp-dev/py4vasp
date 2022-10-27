@@ -13,6 +13,12 @@ class Dispersion(_base.Refinery):
     of code."""
 
     @_base.data_access
+    def __str__(self):
+        return f"""band data:
+    {self._kpoints.number_kpoints()} k-points
+    {self._raw_data.eigenvalues.shape[-1]} bands"""
+
+    @_base.data_access
     def to_dict(self):
         return {
             "kpoint_distances": self._kpoints.distances(),
