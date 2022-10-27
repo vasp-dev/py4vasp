@@ -1,6 +1,5 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import itertools
 import numpy as np
 import pandas as pd
 from py4vasp import data
@@ -11,7 +10,6 @@ from .projector import Projector as _Projector, _selection_doc, _selection_examp
 from .kpoint import Kpoint, _kpoints_opt_source
 from py4vasp.data import _base
 import py4vasp.data._export as _export
-import py4vasp._third_party.graph as _graph
 
 _to_dict_doc = f"""Read the data into a dictionary.
 
@@ -119,11 +117,11 @@ class Band(_base.Refinery, _export.Image):
     @_base.data_access
     @_documentation.add(_plot_doc)
     def plot(self, selection=None, width=0.5):
-        return _graph.Graph(
-            series=self._band_structure(selection, width),
-            xticks=self._xticks(),
-            ylabel="Energy (eV)",
-        )
+        projections = self._projections(selection, width)
+        graph = self._dispersion.plot(projections)
+        graph = self._shift_series_by_fermi_energy(graph)
+        graph.ylabel = "Energy (eV)"
+        return graph
 
     @_base.data_access
     @_documentation.add(_to_plotly_doc)
@@ -151,27 +149,18 @@ class Band(_base.Refinery, _export.Image):
     def _projector(self):
         return _Projector.from_data(self._raw_data.projectors)
 
+    def _projections(self, selection, width):
+        if selection is None:
+            return None
+        error_message = "Width of fat band structure must be a number."
+        _check.raise_error_if_not_number(width, error_message)
+        return {
+            name: width * projection
+            for name, projection in self._read_projections(selection).items()
+        }
+
     def _read_projections(self, selection):
         return self._projector.read(selection, self._raw_data.projections)
-
-    def _shift_dispersion_by_fermi_energy(self, dispersion):
-        shifted = dispersion["eigenvalues"] - self._raw_data.fermi_energy
-        if len(shifted) == 2:
-            return {"bands_up": shifted[0], "bands_down": shifted[1]}
-        else:
-            return {"bands": shifted[0]}
-
-    def _shift_bands_by_fermi_energy(self):
-        if self._spin_polarized():
-            return {
-                "bands_up": self._shift_particular_spin_by_fermi_energy(0),
-                "bands_down": self._shift_particular_spin_by_fermi_energy(1),
-            }
-        else:
-            return {"bands": self._shift_particular_spin_by_fermi_energy(0)}
-
-    def _shift_particular_spin_by_fermi_energy(self, spin):
-        return self._raw_data.dispersion.eigenvalues[spin] - self._raw_data.fermi_energy
 
     def _read_occupations(self):
         if self._spin_polarized():
@@ -182,65 +171,17 @@ class Band(_base.Refinery, _export.Image):
         else:
             return {"occupations": self._raw_data.occupations[0]}
 
-    def _band_structure(self, selection, width):
-        bands = self._shift_bands_by_fermi_energy()
-        projections = self._read_projections(selection)
-        if len(projections) == 0:
-            return self._regular_band_structure(bands)
+    def _shift_dispersion_by_fermi_energy(self, dispersion):
+        shifted = dispersion["eigenvalues"] - self._raw_data.fermi_energy
+        if len(shifted) == 2:
+            return {"bands_up": shifted[0], "bands_down": shifted[1]}
         else:
-            return self._fat_band_structure(bands, projections, width)
+            return {"bands": shifted[0]}
 
-    def _regular_band_structure(self, bands):
-        kdists = self._kpoints().distances()
-        return [_graph.Series(kdists, lines.T, name) for name, lines in bands.items()]
-
-    def _fat_band_structure(self, bands, projections, width):
-        error_message = "Width of fat band structure must be a number."
-        _check.raise_error_if_not_number(width, error_message)
-        data = (
-            self._fat_band(args, width)
-            for args in itertools.product(bands.items(), projections.items())
-        )
-        return list(filter(None, data))
-
-    def _fat_band(self, args, width):
-        (key, lines), (name, projection) = args
-        key = key.lstrip("bands_")
-        if self._spin_polarized() and not key in name:
-            return None
-        kdists = self._kpoints().distances()
-        return _graph.Series(kdists, lines.T, name, width=width * projection.T)
-
-    def _xticks(self):
-        ticks, labels = self._degenerate_ticks_and_labels()
-        return self._filter_unique(ticks, labels)
-
-    def _degenerate_ticks_and_labels(self):
-        labels = self._kpoint_labels()
-        mask = np.logical_or(self._edge_of_line(), labels != "")
-        return self._kpoints().distances()[mask], labels[mask]
-
-    def _filter_unique(self, ticks, labels):
-        result = {}
-        for tick, label in zip(ticks, labels):
-            if tick in result:
-                previous_label = result[tick]
-                if previous_label != "" and previous_label != label:
-                    label = previous_label + "|" + label
-            result[tick] = label
-        return result
-
-    def _kpoint_labels(self):
-        labels = self._kpoints().labels()
-        if labels is None:
-            labels = [""] * len(self._raw_data.dispersion.kpoints.coordinates)
-        return np.array(labels)
-
-    def _edge_of_line(self):
-        indices = np.arange(len(self._raw_data.dispersion.kpoints.coordinates))
-        edge_of_line = (indices + 1) % self._kpoints().line_length() == 0
-        edge_of_line[0] = True
-        return edge_of_line
+    def _shift_series_by_fermi_energy(self, graph):
+        for series in graph.series:
+            series.y = series.y - self._raw_data.fermi_energy
+        return graph
 
     def _setup_dataframe_index(self):
         return [

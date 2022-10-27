@@ -247,9 +247,9 @@ def check_data(series, width, band, projection, Assert):
 def test_spin_polarized_plot(spin_polarized, Assert):
     fig = spin_polarized.plot()
     assert len(fig.series) == 2
-    assert fig.series[0].name == "bands_up"
+    assert fig.series[0].name == "up"
     Assert.allclose(fig.series[0].y, spin_polarized.ref.bands_up.T)
-    assert fig.series[1].name == "bands_down"
+    assert fig.series[1].name == "down"
     Assert.allclose(fig.series[1].y, spin_polarized.ref.bands_down.T)
 
 
