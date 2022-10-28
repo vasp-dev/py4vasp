@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._third_party.graph import Graph, Series, plot
 import py4vasp.exceptions as exception
+import dataclasses
 import numpy as np
 import pytest
 from unittest.mock import patch
@@ -71,11 +72,11 @@ def test_marker(sine, Assert):
 
 
 def test_two_series(parabola, sine, Assert):
-    graph = Graph([parabola, sine])
-    fig = graph.to_plotly()
-    assert len(fig.data) == 2
-    for converted, original in zip(fig.data, [parabola, sine]):
-        compare_series(converted, original, Assert)
+    for graph in (Graph([parabola, sine]), Graph(parabola) + Graph(sine)):
+        fig = graph.to_plotly()
+        assert len(fig.data) == 2
+        for converted, original in zip(fig.data, [parabola, sine]):
+            compare_series(converted, original, Assert)
 
 
 def compare_series(converted, original, Assert):
@@ -178,12 +179,34 @@ def test_title(parabola):
     assert fig.layout.title.text == graph.title
 
 
+def test_merging_of_fields_of_graph(sine, parabola):
+    init_all_fields = {field.name: field.name for field in dataclasses.fields(Graph)}
+    init_all_fields.pop("series")
+    graph1 = Graph(sine, **init_all_fields)
+    graph2 = Graph(parabola)
+    for field in dataclasses.fields(Graph):
+        if field.name == "series":
+            continue
+        # if only one side is defined, use that one
+        graph = graph1 + graph2
+        assert getattr(graph, field.name) == field.name
+        graph = graph2 + graph1
+        assert getattr(graph, field.name) == field.name
+        # if both sides are defined, they need to be identical
+        graph = graph1 + dataclasses.replace(graph2, **{field.name: field.name})
+        assert getattr(graph, field.name) == field.name
+        # if they are not an error is raised
+        with pytest.raises(exception.IncorrectUsage):
+            graph1 + dataclasses.replace(graph2, **{field.name: "other"})
+        with pytest.raises(exception.IncorrectUsage):
+            dataclasses.replace(graph2, **{field.name: "other"}) + graph1
+
+
 def test_subplot(subplot):
     graph = Graph(subplot)
     graph.xlabel = ("first x-axis", "second x-axis")
     graph.ylabel = ("first y-axis", "second y-axis")
     fig = graph.to_plotly()
-    assert True == True
     assert fig.data[0].xaxis == "x"
     assert fig.data[0].yaxis == "y"
     assert fig.layout.xaxis1.title.text == graph.xlabel[0]
@@ -196,9 +219,9 @@ def test_subplot(subplot):
 
 def test_subplot_label_lengths(subplot):
     with pytest.raises(exception.IncorrectUsage):
-        graph = Graph(subplot, xlabel=("1", "2", "3"))
+        Graph(subplot, xlabel=("1", "2", "3"))
     with pytest.raises(exception.IncorrectUsage):
-        graph = Graph(subplot, ylabel=("1", "2", "3"))
+        Graph(subplot, ylabel=("1", "2", "3"))
 
 
 def test_mixture_subplot_raises_error(parabola, subplot):
@@ -213,6 +236,26 @@ def test_non_numpy_data(non_numpy, Assert):
     for converted, original in zip(fig.data, non_numpy):
         Assert.allclose(converted.x, np.array(original.x))
         Assert.allclose(converted.y, np.array(original.y))
+
+
+def test_add_label_to_single_line(parabola, Assert):
+    graph = Graph(parabola).label("new label")
+    assert len(graph.series) == 1
+    Assert.allclose(graph.series[0].x, parabola.x)
+    Assert.allclose(graph.series[0].y, parabola.y)
+    assert graph.series[0].name == "new label"
+    assert parabola.name == "parabola"
+
+
+def test_add_label_to_multiple_lines(parabola, sine, Assert):
+    graph = Graph([parabola, sine]).label("new label")
+    assert len(graph.series) == 2
+    Assert.allclose(graph.series[0].x, parabola.x)
+    Assert.allclose(graph.series[0].y, parabola.y)
+    assert graph.series[0].name == "new label parabola"
+    Assert.allclose(graph.series[1].x, sine.x)
+    Assert.allclose(graph.series[1].y, sine.y)
+    assert graph.series[1].name == "new label sine"
 
 
 @patch("plotly.graph_objs.Figure._ipython_display_")
