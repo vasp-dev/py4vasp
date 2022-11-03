@@ -26,6 +26,7 @@ from .dielectric_tensor import DielectricTensor
 from ._dispersion import Dispersion
 from .elastic_modulus import ElasticModulus
 from .energy import Energy
+from ._fatband import Fatband
 from .kpoint import Kpoint
 from .pair_correlation import PairCorrelation
 from ._phonon_band import PhononBand
