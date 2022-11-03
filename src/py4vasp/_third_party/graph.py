@@ -108,27 +108,36 @@ class Series:
             first_trace = False
 
     def _make_trace(self, index, y, first_trace):
-        if self.width is None:
+        width = self._get_width(index)
+        if self._is_line():
             options = self._options_line(y, first_trace)
-        else:
-            width = self._get_width(index)
+        elif self._is_area():
             options = self._options_area(y, width, first_trace)
+        else:
+            options = self._options_points(y, width, first_trace)
         return go.Scatter(**options)
+
+    def _get_width(self, index):
+        if self.width is None:
+            return None
+        elif self.width.ndim == 1:
+            return self.width
+        else:
+            return self.width[index]
+
+    def _is_line(self):
+        return (self.width is None) and (self.marker is None)
+
+    def _is_area(self):
+        return (self.width is not None) and (self.marker is None)
 
     def _options_line(self, y, first_trace):
         return {
             **self._common_options(first_trace),
             "x": self.x,
             "y": y,
-            "mode": "markers" if self.marker else None,
             "line": {"color": self.color},
         }
-
-    def _get_width(self, index):
-        if self.width.ndim == 1:
-            return self.width
-        else:
-            return self.width[index]
 
     def _options_area(self, y, width, first_trace):
         upper = y + width
@@ -141,6 +150,15 @@ class Series:
             "fill": "toself",
             "fillcolor": self.color,
             "opacity": 0.5,
+        }
+
+    def _options_points(self, y, width, first_trace):
+        return {
+            **self._common_options(first_trace),
+            "x": self.x,
+            "y": y,
+            "mode": "markers",
+            "marker": {"size": width, "sizemode": "area", "color": self.color},
         }
 
     def _common_options(self, first_trace):
@@ -254,6 +272,7 @@ class Graph(Sequence):
         self._set_xaxis_options(figure)
         self._set_yaxis_options(figure)
         figure.layout.title.text = self.title
+        figure.layout.legend.itemsizing = "constant"
         return figure
 
     def _figure_with_one_or_two_y_axes(self):

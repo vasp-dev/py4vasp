@@ -64,13 +64,6 @@ def test_basic_graph(parabola, Assert):
     compare_series(fig.data[0], parabola, Assert)
 
 
-def test_marker(sine, Assert):
-    graph = Graph(sine)
-    fig = graph.to_plotly()
-    assert len(fig.data) == 1
-    assert fig.data[0].mode == "markers"
-
-
 def test_two_series(parabola, sine, Assert):
     for graph in (Graph([parabola, sine]), Graph(parabola) + Graph(sine)):
         fig = graph.to_plotly()
@@ -160,6 +153,39 @@ def test_two_fatbands(two_fatbands, Assert):
             color = converted.fillcolor
         assert converted.fillcolor == color
         first_trace = False
+
+
+def test_simple_with_marker(sine):
+    graph = Graph(sine)
+    fig = graph.to_plotly()
+    assert len(fig.data) == 1
+    assert fig.data[0].mode == "markers"
+    assert fig.data[0].marker.size is None
+
+
+def test_fatband_with_marker(fatband, Assert):
+    with_marker = dataclasses.replace(fatband, marker="o")
+    graph = Graph(with_marker)
+    fig = graph.to_plotly()
+    assert fig.layout.legend.itemsizing == "constant"
+    assert len(fig.data) == 1
+    compare_series(fig.data[0], fatband, Assert)
+    assert fig.data[0].mode == "markers"
+    assert fig.data[0].marker.sizemode == "area"
+    Assert.allclose(fig.data[0].marker.size, fatband.width)
+
+
+def test_two_fatband_with_marker(two_fatbands, Assert):
+    with_marker = dataclasses.replace(two_fatbands, marker="o")
+    graph = Graph(with_marker)
+    fig = graph.to_plotly()
+    assert fig.layout.legend.itemsizing == "constant"
+    assert len(fig.data) == 2
+    for converted, y, w in zip(fig.data, two_fatbands.y, two_fatbands.width):
+        original = Series(x=two_fatbands.x, y=y, name=two_fatbands.name)
+        compare_series(converted, original, Assert)
+        assert converted.mode == "markers"
+        Assert.allclose(converted.marker.size, w)
 
 
 def test_custom_xticks(parabola):
