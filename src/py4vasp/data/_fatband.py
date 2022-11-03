@@ -7,6 +7,14 @@ class Fatband(_base.Refinery):
     "Access data for producing BSE fatband plots."
 
     @_base.data_access
+    def __str__(self):
+        shape = self._raw_data.bse_index.shape
+        return f"""BSE fatband data:
+    {shape[1]} k-points
+    {shape[3]} valence bands
+    {shape[2]} conduction bands"""
+
+    @_base.data_access
     def to_dict(self):
         """Read the data into a dictionary.
 

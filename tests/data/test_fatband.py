@@ -34,6 +34,16 @@ def test_fatband_read(fatband, Assert):
     assert actual["first_conduction_band"] == fatband.ref.first_conduction_band
 
 
+def test_fatband_print(fatband, format_):
+    actual, _ = format_(fatband)
+    reference = """\
+BSE fatband data:
+    48 k-points
+    2 valence bands
+    1 conduction bands"""
+    assert actual == {"text/plain": reference}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.fatband("default")
     check_factory_methods(Fatband, data)
