@@ -147,7 +147,7 @@ schema.add(
     raw.Fatband,
     required=raw.Version(6, 4),
     dispersion=Link("dispersion", DEFAULT_SOURCE),
-    fermi_energy="results/electron_dos/efermi",
+    fermi_energy=f"{group}/efermi",
     bse_index=f"{group}/bse_index",
     optical_transitions=f"{group}/bse_fatbands",
     first_valence_band=f"{group}/bse_vbmin",
