@@ -144,14 +144,17 @@ def _error_message(quantity, source):
     if quantity in schema.sources:
         sources = schema.sources[quantity]
         first_part = f"""\
-            For the quantity "{quantity}", source="{source}" is not available in the
-            HDF5 file. The following sources are available "{'", "'.join(sources)}"."""
+            py4vasp did not understand your input! The code executed requires to access
+            the source="{source}" of the quantity "{quantity}". Perhaps there is a
+            spelling mistake in the source? Please, compare the spelling of the source
+            "{source}" with the sources py4vasp knows about "{'", "'.join(sources)}"."""
     else:
         first_part = f"""\
-            The quantity "{quantity}" is not available in the HDF5 file. The following 
-            quantities are available "{'", "'.join(schema.sources)}"."""
+            py4vasp does not know how to access the quantity "{quantity}". Perhaps there
+            is a spelling mistake? Please, compare the spelling of the quantity "{quantity}"
+            with the quantities py4vasp knows about "{'", "'.join(schema.sources)}"."""
     second_part = """\
-        Please check for spelling mistakes and verify that your version of
-        py4vasp is up to date."""
+        It is also possible that this feature was only added in a later version of
+        py4vasp, so please check that you use the most recent version."""
     message = textwrap.dedent(first_part) + " " + textwrap.dedent(second_part)
     return "\n" + "\n".join(textwrap.wrap(message, width=80))

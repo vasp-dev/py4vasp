@@ -136,3 +136,28 @@ def test_adding_twice_error():
     schema.add(Simple, foo="foo1", bar="bar1")
     with pytest.raises(exception.IncorrectUsage):
         schema.add(Simple, foo="foo2", bar="bar2")
+
+
+def test_schema_is_complete(complex_schema):
+    schema, _ = complex_schema
+    assert not schema.verified
+    schema.verify()  # should not raise error
+    assert schema.verified
+
+
+def test_incomplete_schema():
+    target = Simple("foo_dataset", "bar_dataset")
+    pointer = WithLink("baz_dataset", Link("simple", source="other"))
+    schema = Schema(VERSION)
+    schema.add(WithLink, baz=pointer.baz, simple=pointer.simple)
+    # test missing quantity
+    assert not schema.verified
+    with pytest.raises(AssertionError):
+        schema.verify()
+    assert not schema.verified
+    # test missing source
+    schema.add(Simple, foo=target.foo, bar=target.bar)
+    assert not schema.verified
+    with pytest.raises(AssertionError):
+        schema.verify()
+    assert not schema.verified
