@@ -64,7 +64,18 @@ class Schema:
 
     def verify(self):
         "Verify that the schema is complete, i.e., all the links are valid."
+        for sources in self._sources.values():
+            for source in sources.values():
+                self._verify_source(source.data)
         self._verified = True
+
+    def _verify_source(self, source):
+        for field in dataclasses.fields(source):
+            field = getattr(source, field.name)
+            if not isinstance(field, Link):
+                continue
+            assert field.quantity in self._sources
+            assert field.source in self._sources[field.quantity]
 
     def __str__(self):
         version = _parse_version(self.version)
