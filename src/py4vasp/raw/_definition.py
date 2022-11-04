@@ -281,6 +281,20 @@ schema.add(
     orbital_types="results/projectors/lchar",
     number_spins=Length("results/electron_eigenvalues/eigenvalues"),
 )
+schema.add(
+    raw.Projector,
+    name="kpoints_opt",
+    topology=Link("topology", DEFAULT_SOURCE),
+    orbital_types="results/projectors_kpoints_opt/lchar",
+    number_spins=Length("results/electron_eigenvalues/eigenvalues"),
+)
+schema.add(
+    raw.Projector,
+    name="kpoints_wan",
+    topology=Link("topology", DEFAULT_SOURCE),
+    orbital_types="results/projectors_kpoints_wan/lchar",
+    number_spins=Length("results/electron_eigenvalues/eigenvalues"),
+)
 #
 schema.add(
     raw.Stress,

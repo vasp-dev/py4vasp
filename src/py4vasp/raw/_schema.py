@@ -64,18 +64,28 @@ class Schema:
 
     def verify(self):
         "Verify that the schema is complete, i.e., all the links are valid."
-        for sources in self._sources.values():
-            for source in sources.values():
-                self._verify_source(source.data)
+        for quantity, sources in self._sources.items():
+            for name, source in sources.items():
+                self._verify_source(f"{quantity}/{name}", source.data)
         self._verified = True
 
-    def _verify_source(self, source):
+    def _verify_source(self, key, source):
         for field in dataclasses.fields(source):
             field = getattr(source, field.name)
             if not isinstance(field, Link):
                 continue
-            assert field.quantity in self._sources
-            assert field.source in self._sources[field.quantity]
+            self._verify_quantity_is_in_schema(key, field)
+            self._verify_source_is_defined_for_quantity(key, field)
+
+    def _verify_quantity_is_in_schema(self, key, field):
+        message = f"""Verifying the schema failed in link resolution for {key}, because
+    {field.quantity} is not defined in the schema."""
+        assert field.quantity in self._sources, message
+
+    def _verify_source_is_defined_for_quantity(self, key, field):
+        message = f"""Verifying the schema failed in link resolution for {key}, because
+    {field.source} is not a source defined in the schema for the quantity {field.quantity}."""
+        assert field.source in self._sources[field.quantity], message
 
     def __str__(self):
         version = _parse_version(self.version)
