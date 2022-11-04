@@ -136,3 +136,10 @@ def test_adding_twice_error():
     schema.add(Simple, foo="foo1", bar="bar1")
     with pytest.raises(exception.IncorrectUsage):
         schema.add(Simple, foo="foo2", bar="bar2")
+
+
+def test_schema_is_complete(complex_schema):
+    schema, _ = complex_schema
+    assert not schema.verified
+    schema.verify()  # should not raise error
+    assert schema.verified

@@ -11,14 +11,44 @@ class Schema:
     def __init__(self, version):
         self._sources = {"version": {"default": Source(version)}}
         self._version = version
+        self._verified = False
 
     def add(self, cls, name="default", file=None, required=None, **kwargs):
+        """Add a new quantity to the schema.
+
+        The name of the quantity is deduced from the class you pass in, for example
+        DielectricFunction -> dielectric_function. You need to provide where all fields
+        of the class can be obtained from in the HDF5 file as keyword arguments. If a
+        quantity just links to other objects, use the Link class to specify which
+        particular other quantity is used. Furthermore, there are optional arguments
+        to set nondefault locations and requirements.
+
+        Parameters
+        ----------
+        cls : dataclass
+            The dataclass defining which data should be read from the HDF5 file.
+        name : str
+            The name this quantity can be accessed under. This is important if multiple
+            entries have the same structure but originate from different data in the
+            HDF5 file. Choose the name well, because this is exposed to the user.
+        file : str
+            If you pass a filename, you overwrite the default behavior from where the
+            data should be read. You can use this if VASP produces multiple HDF5 files
+            and you want to read from more than one of them.
+        required : raw.Version
+            Set a version requirement of the HDF5 file that must be fulfilled so that
+            the data can be read without error.
+        kwargs
+            You need to specify for all the fields of the class from where in the HDF5
+            file they can be obtained.
+        """
         class_name = convert.to_snakecase(cls.__name__)
         self._sources.setdefault(class_name, {})
         if name in self._sources[class_name]:
             message = f"{class_name}/{name} already in the schema. Please choose a different name."
             raise exception.IncorrectUsage(message)
         self._sources[class_name][name] = Source(cls(**kwargs), file, required)
+        self._verified = False
 
     @property
     def sources(self):
@@ -27,6 +57,14 @@ class Schema:
     @property
     def version(self):
         return self._version
+
+    @property
+    def verified(self):
+        return self._verified
+
+    def verify(self):
+        "Verify that the schema is complete, i.e., all the links are valid."
+        self._verified = True
 
     def __str__(self):
         version = _parse_version(self.version)
