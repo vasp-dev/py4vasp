@@ -4,5 +4,5 @@ from .calculation import Calculation
 from py4vasp._third_party.interactive import set_error_handling
 from py4vasp._third_party.graph import plot
 
-__version__ = "0.5.1"
+__version__ = "0.6.0"
 set_error_handling("Minimal")
