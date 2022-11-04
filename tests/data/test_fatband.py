@@ -11,7 +11,7 @@ def fatband(raw_data):
     fatband.ref = types.SimpleNamespace()
     fatband.ref.dispersion = Dispersion.from_data(raw_fatband.dispersion)
     fatbands = raw_fatband.fatbands
-    fatband.ref.fatbands = fatbands[:,:,0] + fatbands[:,:,1] * 1j
+    fatband.ref.fatbands = fatbands[:, :, 0] + fatbands[:, :, 1] * 1j
     fatband.ref.fermi_energy = raw_fatband.fermi_energy
     # convert to Python indices
     fatband.ref.bse_index = raw_fatband.bse_index - 1
