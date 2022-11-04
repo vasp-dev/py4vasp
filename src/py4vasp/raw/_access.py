@@ -152,7 +152,7 @@ def _error_message(quantity, source):
         first_part = f"""\
             py4vasp does not know how to access the quantity "{quantity}". Perhaps there
             is a spelling mistake? Please, compare the spelling of the quantity "{quantity}"
-            with the quantities py4vasp knows abouts "{'", "'.join(schema.sources)}"."""
+            with the quantities py4vasp knows about "{'", "'.join(schema.sources)}"."""
     second_part = """\
         It is also possible that this feature was only added in a later version of
         py4vasp, so please check that you use the most recent version."""
