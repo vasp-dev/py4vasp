@@ -182,8 +182,8 @@ class Fatband:
     "The Fermi energy of the system."
     bse_index: VaspData
     "The connection between spin, band and **k**-point indices to an index of the optical transitions."
-    optical_transitions: VaspData
-    "Strengths of the optical transitions."
+    fatbands: VaspData
+    "Component of the eigenvector, norm can be used for plotting fatbands."
     first_valence_band: int
     "Index of the first valence band."
     first_conduction_band: int

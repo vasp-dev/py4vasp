@@ -28,14 +28,14 @@ class Fatband(_base.Refinery):
             bands, valence bands and that the conduction and valence band indices may
             be offset by first_valence_band and first_conduction_band, respectively.
         """
-        transitions = convert.to_complex(self._raw_data.optical_transitions[:])
+        fatbands = convert.to_complex(self._raw_data.fatbands[:])
         dispersion = self._dispersion.read()
         return {
             "kpoint_distances": dispersion["kpoint_distances"],
             "kpoint_labels": dispersion["kpoint_labels"],
             "bands": dispersion["eigenvalues"] - self._raw_data.fermi_energy,
             "bse_index": self._raw_data.bse_index[:] - 1,
-            "optical_transitions": transitions,
+            "fatbands": fatbands,
             "fermi_energy": self._raw_data.fermi_energy,
             "first_valence_band": self._raw_data.first_valence_band[:] - 1,
             "first_conduction_band": self._raw_data.first_conduction_band[:] - 1,

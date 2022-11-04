@@ -527,12 +527,12 @@ def _Sr2TiO4_fatband():
     bse_index = np.arange(np.prod(shape)).reshape(shape)
     number_transitions = bse_index.size
     shape = (number_eigenvectors, number_transitions, complex_)
-    transitions = np.random.uniform(0, 20, shape)
+    fatbands = np.random.uniform(0, 20, shape)
     return raw.Fatband(
         dispersion=dispersion,
         fermi_energy=0.2,
         bse_index=raw.VaspData(bse_index),
-        optical_transitions=raw.VaspData(transitions),
+        fatbands=raw.VaspData(fatbands),
         first_valence_band=raw.VaspData(np.array([1])),
         first_conduction_band=raw.VaspData(np.array([3])),
     )

@@ -149,7 +149,7 @@ schema.add(
     dispersion=Link("dispersion", DEFAULT_SOURCE),
     fermi_energy=f"{group}/efermi",
     bse_index=f"{group}/bse_index",
-    optical_transitions=f"{group}/bse_fatbands",
+    fatbands=f"{group}/bse_fatbands",
     first_valence_band=f"{group}/bse_vbmin",
     first_conduction_band=f"{group}/bse_cbmin",
 )
