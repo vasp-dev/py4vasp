@@ -1,9 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from collections.abc import Sequence
 from dataclasses import dataclass, replace, fields
 import itertools
 import numpy as np
-from typing import Sequence
 import plotly.graph_objects as go
 import plotly.io as pio
 from plotly.subplots import make_subplots
@@ -82,6 +82,8 @@ class Series:
     "Split series into different axes"
     color: str = None
     "The color used for this series."
+    marker: str = None
+    "Which marker is used for the series, None defaults to line mode."
     _frozen = False
 
     def __post_init__(self):
@@ -106,12 +108,28 @@ class Series:
             first_trace = False
 
     def _make_trace(self, index, y, first_trace):
-        if self.width is None:
+        width = self._get_width(index)
+        if self._is_line():
             options = self._options_line(y, first_trace)
-        else:
-            width = self._get_width(index)
+        elif self._is_area():
             options = self._options_area(y, width, first_trace)
+        else:
+            options = self._options_points(y, width, first_trace)
         return go.Scatter(**options)
+
+    def _get_width(self, index):
+        if self.width is None:
+            return None
+        elif self.width.ndim == 1:
+            return self.width
+        else:
+            return self.width[index]
+
+    def _is_line(self):
+        return (self.width is None) and (self.marker is None)
+
+    def _is_area(self):
+        return (self.width is not None) and (self.marker is None)
 
     def _options_line(self, y, first_trace):
         return {
@@ -120,12 +138,6 @@ class Series:
             "y": y,
             "line": {"color": self.color},
         }
-
-    def _get_width(self, index):
-        if self.width.ndim == 1:
-            return self.width
-        else:
-            return self.width[index]
 
     def _options_area(self, y, width, first_trace):
         upper = y + width
@@ -138,6 +150,15 @@ class Series:
             "fill": "toself",
             "fillcolor": self.color,
             "opacity": 0.5,
+        }
+
+    def _options_points(self, y, width, first_trace):
+        return {
+            **self._common_options(first_trace),
+            "x": self.x,
+            "y": y,
+            "mode": "markers",
+            "marker": {"size": width, "sizemode": "area", "color": self.color},
         }
 
     def _common_options(self, first_trace):
@@ -153,7 +174,7 @@ Series._fields = tuple(field.name for field in fields(Series))
 
 
 @dataclass
-class Graph:
+class Graph(Sequence):
     """Wraps the functionality to generate graphs of series.
 
     From a single or multiple series a graph is generated based on the optional
@@ -183,15 +204,24 @@ class Graph:
     def __post_init__(self):
         self._frozen = True
         if self._subplot_on:
-            if not all(series.subplot for series in np.atleast_1d(self.series)):
+            if not all(series.subplot for series in self):
                 message = "If subplot is used it has to be set for all data in the series and has to be larger 0"
                 raise exception.IncorrectUsage(message)
-            if len(np.atleast_1d(self.xlabel)) > len(np.atleast_1d(self.series)):
+            if len(np.atleast_1d(self.xlabel)) > len(self):
                 message = "Subplot was used with more xlabels than number of subplots. Please check your input"
                 raise exception.IncorrectUsage(message)
-            if len(np.atleast_1d(self.ylabel)) > len(np.atleast_1d(self.series)):
+            if len(np.atleast_1d(self.ylabel)) > len(self):
                 message = "Subplot was used with more ylabels than number of subplots. Please check your input"
                 raise exception.IncorrectUsage(message)
+
+    def __add__(self, other):
+        return Graph(tuple(self) + tuple(other), **_merge_fields(self, other))
+
+    def __getitem__(self, index):
+        return np.atleast_1d(self.series)[index]
+
+    def __len__(self):
+        return np.atleast_1d(self.series).size
 
     def to_plotly(self):
         "Convert the graph to a plotly figure."
@@ -208,12 +238,31 @@ class Graph:
         "Show the graph with the default look."
         self.to_plotly().show()
 
+    def label(self, new_label):
+        """Apply a new label to all series within.
+
+        If there is only a single series, the label will replace the current one. If there
+        are more than one, the new label will be prefixed to the existing ones.
+
+        Parameters
+        ----------
+        new_label : str
+            The new label added to the series.
+        """
+        self.series = [self._make_label(series, new_label) for series in self]
+        return self
+
+    def _make_label(self, series, new_label):
+        if len(self) > 1:
+            new_label = f"{new_label} {series.name}"
+        return replace(series, name=new_label)
+
     def _ipython_display_(self):
         self.to_plotly()._ipython_display_()
 
     def _generate_plotly_traces(self):
         colors = itertools.cycle(_vasp_colors)
-        for series in np.atleast_1d(self.series):
+        for series in self:
             if not series.color:
                 series = replace(series, color=next(colors))
             yield from series._generate_traces()
@@ -223,15 +272,16 @@ class Graph:
         self._set_xaxis_options(figure)
         self._set_yaxis_options(figure)
         figure.layout.title.text = self.title
+        figure.layout.legend.itemsizing = "constant"
         return figure
 
     def _figure_with_one_or_two_y_axes(self):
         if self._subplot_on:
-            max_row = max(series.subplot for series in self.series)
+            max_row = max(series.subplot for series in self)
             figure = make_subplots(rows=max_row, cols=1)
             figure.update_layout(showlegend=False)
             return figure
-        elif any(series.y2 for series in np.atleast_1d(self.series)):
+        elif any(series.y2 for series in self):
             return make_subplots(specs=[[{"secondary_y": True}]])
         else:
             return go.Figure()
@@ -265,7 +315,30 @@ class Graph:
 
     @property
     def _subplot_on(self):
-        return any(series.subplot for series in np.atleast_1d(self.series))
+        return any(series.subplot for series in self)
 
 
 Graph._fields = tuple(field.name for field in fields(Graph))
+
+
+def _merge_fields(left_graph, right_graph):
+    return {
+        field.name: _merge_field(left_graph, right_graph, field.name)
+        for field in fields(Graph)
+        if field.name != "series"
+    }
+
+
+def _merge_field(left_graph, right_graph, field_name):
+    left_field = getattr(left_graph, field_name)
+    right_field = getattr(right_graph, field_name)
+    if not left_field:
+        return right_field
+    if not right_field:
+        return left_field
+    if left_field != right_field:
+        message = f"""Cannot combine two graphs with incompatible {field_name}:
+    left: {left_field}
+    right: {right_field}"""
+        raise exception.IncorrectUsage(message)
+    return left_field

@@ -12,6 +12,9 @@ number_steps = 4
 number_atoms = 7
 number_points = 50
 number_bands = 3
+number_valence_bands = 2
+number_conduction_bands = 1
+number_eigenvectors = 5
 single_spin = 1
 two_spins = 2
 axes = 3
@@ -125,6 +128,10 @@ class RawDataFactory:
     @staticmethod
     def energy(selection):
         return _energy()
+
+    @staticmethod
+    def fatband(selection):
+        return _Sr2TiO4_fatband()
 
     @staticmethod
     def force_constant(selection):
@@ -511,6 +518,24 @@ def _Sr2TiO4_dos(projectors):
         shape = (single_spin, number_atoms, number_orbitals, number_points)
         raw_dos.projections = np.random.random(shape)
     return raw_dos
+
+
+def _Sr2TiO4_fatband():
+    dispersion = _multiple_bands_dispersion()
+    number_kpoints = len(dispersion.kpoints.coordinates)
+    shape = (single_spin, number_kpoints, number_conduction_bands, number_valence_bands)
+    bse_index = np.arange(np.prod(shape)).reshape(shape)
+    number_transitions = bse_index.size
+    shape = (number_eigenvectors, number_transitions, complex_)
+    fatbands = np.random.uniform(0, 20, shape)
+    return raw.Fatband(
+        dispersion=dispersion,
+        fermi_energy=0.2,
+        bse_index=raw.VaspData(bse_index),
+        fatbands=raw.VaspData(fatbands),
+        first_valence_band=raw.VaspData(np.array([1])),
+        first_conduction_band=raw.VaspData(np.array([3])),
+    )
 
 
 def _Sr2TiO4_force_constants():

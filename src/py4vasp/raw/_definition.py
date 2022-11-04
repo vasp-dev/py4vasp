@@ -142,6 +142,18 @@ schema.add(
     relaxed_ion=f"{group}/relaxed_ion_elastic_modulus",
 )
 #
+group = "results/linear_response"
+schema.add(
+    raw.Fatband,
+    required=raw.Version(6, 4),
+    dispersion=Link("dispersion", DEFAULT_SOURCE),
+    fermi_energy=f"{group}/efermi",
+    bse_index=f"{group}/bse_index",
+    fatbands=f"{group}/bse_fatbands",
+    first_valence_band=f"{group}/bse_vbmin",
+    first_conduction_band=f"{group}/bse_cbmin",
+)
+#
 schema.add(
     raw.Force,
     structure=Link("structure", DEFAULT_SOURCE),
