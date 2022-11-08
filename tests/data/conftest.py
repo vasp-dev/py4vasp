@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from IPython.core.formatters import DisplayFormatter
 
-from py4vasp import raw, exception
+from py4vasp import exception, raw
 from py4vasp._util import convert
 
 TEST_FILENAME = "read_data_from_this_file"

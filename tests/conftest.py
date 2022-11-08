@@ -1,12 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import itertools
-import numpy as np
-from numpy.testing import assert_array_almost_equal_nulp
-import pytest
-from py4vasp import exception
-import py4vasp.raw as raw
 
+import numpy as np
+import pytest
+from numpy.testing import assert_array_almost_equal_nulp
+
+from py4vasp import exception, raw
 
 number_steps = 4
 number_atoms = 7

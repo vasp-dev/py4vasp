@@ -3,8 +3,8 @@
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._third_party import graph
 from py4vasp._data import base, export, slice_
+from py4vasp._third_party import graph
 from py4vasp._util import check, convert, documentation, select
 
 _energy_docs = f"""

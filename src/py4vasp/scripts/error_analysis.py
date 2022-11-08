@@ -1,6 +1,7 @@
-import sys
 import argparse
+import sys
 from argparse import RawTextHelpFormatter
+
 import numpy as np
 import pandas as pd
 
