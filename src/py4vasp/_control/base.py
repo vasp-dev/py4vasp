@@ -3,7 +3,7 @@
 from pathlib import Path
 
 
-class InputBase:
+class InputFile:
     def __init__(self, path):
         self._path = path
 

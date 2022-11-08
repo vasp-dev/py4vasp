@@ -1,9 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.control._base import InputBase
+from py4vasp._control import base
 
 
-class INCAR(InputBase):
+class INCAR(base.InputFile):
     """The INCAR file defining the input parameters of a VASP calculation.
 
     Parameters

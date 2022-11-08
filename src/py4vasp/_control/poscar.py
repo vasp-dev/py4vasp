@@ -1,10 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.control._base import InputBase
+from py4vasp._control import base
 from py4vasp.data import Structure
 
 
-class POSCAR(InputBase):
+class POSCAR(base.InputFile):
     """The POSCAR file defining the structure used in the VASP calculation.
 
     Parameters

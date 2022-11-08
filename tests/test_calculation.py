@@ -65,7 +65,7 @@ def test_all_attributes(mock_access):
 
 
 def test_input_files_from_path():
-    with patch("py4vasp.control._base.InputBase.__init__", return_value=None) as mock:
+    with patch("py4vasp._control.base.InputFile.__init__", return_value=None) as mock:
         calculation = py4vasp.Calculation.from_path("test_path")
         mock.assert_called_with(calculation.path())
     calculation = py4vasp.Calculation.from_path("test_path")
@@ -73,7 +73,7 @@ def test_input_files_from_path():
 
 
 def test_input_files_from_file():
-    with patch("py4vasp.control._base.InputBase.__init__", return_value=None) as mock:
+    with patch("py4vasp._control.base.InputFile.__init__", return_value=None) as mock:
         calculation = py4vasp.Calculation.from_file("test_file")
         mock.assert_called_with(calculation.path())
     calculation = py4vasp.Calculation.from_file("test_file")
@@ -90,7 +90,7 @@ def check_one_input_file(calculation, input_file):
     text = "! comment line"
     name = input_file.__name__
     assert isinstance(getattr(calculation, name), input_file)
-    with patch("py4vasp.control._base.open", mock_open(read_data=text)) as mock:
+    with patch("py4vasp._control.base.open", mock_open(read_data=text)) as mock:
         setattr(calculation, name, text)
         mock.assert_called_once_with(calculation.path() / name, "w")
         mock.reset_mock()
