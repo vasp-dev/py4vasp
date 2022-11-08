@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import inspect
 import numbers
+
 import py4vasp.exceptions as exception
 
 

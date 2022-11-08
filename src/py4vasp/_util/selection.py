@@ -2,7 +2,6 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
 
-
 range_separator = ":"
 pair_separator = "~"
 group_separators = (range_separator, pair_separator)

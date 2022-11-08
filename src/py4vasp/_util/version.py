@@ -1,8 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.raw import RawVersion
-import py4vasp.exceptions as exception
 import functools
+
+import py4vasp.exceptions as exception
+from py4vasp.raw import RawVersion
 
 minimal_vasp_version = RawVersion(6, 2)
 current_vasp_version = RawVersion(6, 3, 0)

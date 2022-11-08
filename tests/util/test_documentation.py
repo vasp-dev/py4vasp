@@ -1,7 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import py4vasp._util.documentation as _documentation
 import inspect
+
+import py4vasp._util.documentation as _documentation
 
 
 def test_add_documentation():

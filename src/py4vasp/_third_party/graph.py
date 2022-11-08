@@ -1,12 +1,14 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from collections.abc import Sequence
-from dataclasses import dataclass, replace, fields
 import itertools
+from collections.abc import Sequence
+from dataclasses import dataclass, fields, replace
+
 import numpy as np
 import plotly.graph_objects as go
 import plotly.io as pio
 from plotly.subplots import make_subplots
+
 import py4vasp.exceptions as exception
 
 _vasp_colors = ("#4C265F", "#2FB5AB", "#2C68FC", "#A82C35", "#808080")
