@@ -1,10 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.data import Kpoint
-import py4vasp.exceptions as exception
-import pytest
-import numpy as np
 import types
+
+import numpy as np
+import pytest
+
+from py4vasp import exception
+from py4vasp.data import Kpoint
 
 
 @pytest.fixture

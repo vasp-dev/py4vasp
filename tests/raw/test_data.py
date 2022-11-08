@@ -1,14 +1,15 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import py4vasp.exceptions as exception
-from py4vasp.raw import VaspData
-from hypothesis import given, assume
-import hypothesis.strategies as strategy
-import hypothesis.extra.numpy as np_strat
-import numpy as np
-import pytest
 from unittest.mock import MagicMock
 
+import hypothesis.extra.numpy as np_strat
+import hypothesis.strategies as strategy
+import numpy as np
+import pytest
+from hypothesis import assume, given
+
+from py4vasp import exception
+from py4vasp.raw import VaspData
 
 threshold = 100.0
 

@@ -1,14 +1,16 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import types
 from unittest.mock import patch
-from py4vasp.data import Structure
-from py4vasp.data.viewer3d import Viewer3d, _Arrow3d, _x_axis, _y_axis, _z_axis
-import py4vasp.exceptions as exception
+
 import ipykernel.jsonutil as json
+import nglview
 import numpy as np
 import pytest
-import nglview
-import types
+
+from py4vasp import exception
+from py4vasp._data.viewer3d import Viewer3d, _Arrow3d, _x_axis, _y_axis, _z_axis
+from py4vasp.data import Structure
 
 
 @pytest.fixture

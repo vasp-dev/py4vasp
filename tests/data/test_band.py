@@ -1,12 +1,14 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.data import Band, Kpoint, Projector
-from IPython.lib.pretty import pretty
-from unittest.mock import patch
-import py4vasp.exceptions as exception
-import pytest
-import numpy as np
 import types
+from unittest.mock import patch
+
+import numpy as np
+import pytest
+from IPython.lib.pretty import pretty
+
+from py4vasp import exception
+from py4vasp.data import Band, Kpoint, Projector
 
 
 @pytest.fixture
@@ -283,7 +285,7 @@ def test_plot_incorrect_width(with_projectors):
         with_projectors.plot("Sr", width="not a number")
 
 
-@patch("py4vasp.data.band.Band.plot")
+@patch("py4vasp._data.band.Band.plot")
 def test_to_plotly(mock_plot, single_band):
     fig = single_band.to_plotly("selection", width=0.2)
     mock_plot.assert_called_once_with("selection", 0.2)
@@ -299,7 +301,7 @@ def test_to_image(single_band):
 
 
 def check_to_image(single_band, filename_argument, expected_filename):
-    with patch("py4vasp.data.band.Band.to_plotly") as plot:
+    with patch("py4vasp._data.band.Band.to_plotly") as plot:
         single_band.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value

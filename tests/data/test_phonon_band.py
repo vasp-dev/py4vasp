@@ -1,11 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import numpy as np
-import pytest
 import types
 from unittest.mock import patch
-from py4vasp.data import PhononBand, Kpoint, Topology
+
+import numpy as np
+import pytest
+
 from py4vasp._util import convert
+from py4vasp.data import Kpoint, PhononBand, Topology
 
 
 @pytest.fixture
@@ -88,7 +90,7 @@ class FatbandChecker:
         self.Assert.allclose(series.width, width * projection.T)
 
 
-@patch("py4vasp.data._phonon_band.PhononBand.plot")
+@patch("py4vasp._data.phonon_band.PhononBand.plot")
 def test_to_plotly(mock_plot, phonon_band):
     fig = phonon_band.to_plotly("selection", width=0.2)
     mock_plot.assert_called_once_with("selection", 0.2)
@@ -104,7 +106,7 @@ def test_to_image(phonon_band):
 
 
 def check_to_image(phonon_band, filename_argument, expected_filename):
-    with patch("py4vasp.data._phonon_band.PhononBand.to_plotly") as plot:
+    with patch("py4vasp._data.phonon_band.PhononBand.to_plotly") as plot:
         phonon_band.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value

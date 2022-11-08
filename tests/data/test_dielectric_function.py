@@ -1,11 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.data import DielectricFunction
 import dataclasses
-import numpy as np
-import pytest
 import types
 from unittest.mock import patch
+
+import numpy as np
+import pytest
+
+from py4vasp.data import DielectricFunction
 
 
 @pytest.fixture
@@ -308,7 +310,7 @@ def check_figure_contains_plots(fig, references, Assert):
         assert data.name == ref.name
 
 
-@patch("py4vasp.data.dielectric_function.DielectricFunction.plot")
+@patch("py4vasp._data.dielectric_function.DielectricFunction.plot")
 def test_electronic_to_plotly(mock_plot, electronic):
     fig = electronic.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
@@ -330,7 +332,7 @@ def test_ionic_to_image(ionic):
 
 
 def check_to_image(dielectric_function, filename_argument, expected_filename):
-    plot_function = "py4vasp.data.dielectric_function.DielectricFunction.to_plotly"
+    plot_function = "py4vasp._data.dielectric_function.DielectricFunction.to_plotly"
     with patch(plot_function) as plot:
         dielectric_function.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")

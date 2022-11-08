@@ -1,11 +1,14 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from unittest.mock import patch
-from py4vasp.data import Structure, viewer3d
-import py4vasp.exceptions as exception
-import pytest
-import numpy as np
 import types
+from unittest.mock import patch
+
+import numpy as np
+import pytest
+
+from py4vasp import exception
+from py4vasp._data import viewer3d
+from py4vasp.data import Structure
 
 REF_POSCAR = """\
 Sr2TiO4

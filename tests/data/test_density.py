@@ -1,10 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from unittest.mock import patch
-from py4vasp.data import Density, Structure, viewer3d
-import pytest
 import types
-import py4vasp.exceptions as exceptions
+from unittest.mock import patch
+
+import pytest
+
+from py4vasp import exception
+from py4vasp._data import viewer3d
+from py4vasp.data import Density, Structure
 
 
 @pytest.fixture
@@ -79,14 +82,14 @@ def test_charge_only(charge_only_density, Assert):
 
 
 def test_missing_element(charge_only_density, Assert):
-    with pytest.raises(exceptions.IncorrectUsage):
+    with pytest.raises(exception.IncorrectUsage):
         charge_only_density.plot("unknown tag")
-    with pytest.raises(exceptions.NoData):
+    with pytest.raises(exception.NoData):
         charge_only_density.plot("magnetization")
 
 
 def test_color_specified_for_magnetism(collinear_density, Assert):
-    with pytest.raises(exceptions.NotImplemented):
+    with pytest.raises(exception.NotImplemented):
         collinear_density.plot("magnetization", color="brown")
 
 

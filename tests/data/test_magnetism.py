@@ -1,11 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.data import Magnetism
-import py4vasp.exceptions as exception
-import numpy as np
-import pytest
 import types
 from unittest.mock import patch
+
+import numpy as np
+import pytest
+
+from py4vasp import exception
+from py4vasp.data import Magnetism
 
 
 @pytest.fixture

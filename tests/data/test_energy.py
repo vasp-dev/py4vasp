@@ -1,13 +1,15 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.data import Energy
-from unittest.mock import patch
-import pytest
 import numbers
-import numpy as np
 import types
-import py4vasp.exceptions as exception
-import py4vasp._util.selection as selection
+from unittest.mock import patch
+
+import numpy as np
+import pytest
+
+from py4vasp import exception
+from py4vasp._util import select
+from py4vasp.data import Energy
 
 
 @pytest.fixture
@@ -106,7 +108,7 @@ def test_plot_all(energy, Assert):
 
 
 def check_plot_all(energy, steps, Assert):
-    fig = energy[steps].plot(selection.all)
+    fig = energy[steps].plot(select.all)
     assert fig.ylabel == "Energy (eV)"
     assert fig.y2label == "Temperature (K)"
     Assert.allclose(fig.series[0].y, energy.ref.total_energy[steps])
@@ -155,7 +157,7 @@ def test_incorrect_label(energy):
         energy.plot(number_instead_of_string)
 
 
-@patch("py4vasp.data.energy.Energy.plot")
+@patch("py4vasp._data.energy.Energy.plot")
 def test_energy_to_plotly(mock_plot, energy):
     fig = energy.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
@@ -171,7 +173,7 @@ def test_to_image(energy):
 
 
 def check_to_image(energy, filename_argument, expected_filename):
-    with patch("py4vasp.data.energy.Energy.to_plotly") as plot:
+    with patch("py4vasp._data.energy.Energy.to_plotly") as plot:
         energy.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value

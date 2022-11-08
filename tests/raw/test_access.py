@@ -1,14 +1,16 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import py4vasp.raw as raw
-from py4vasp.raw._definition import DEFAULT_FILE
-import py4vasp.exceptions as exception
-from util import VERSION
-from dataclasses import fields
-import numpy as np
 import pathlib
+from dataclasses import fields
+from unittest.mock import MagicMock, call, patch
+
+import numpy as np
 import pytest
-from unittest.mock import patch, call, MagicMock
+from util import VERSION
+
+import py4vasp.raw as raw
+from py4vasp import exception
+from py4vasp._raw.definition import DEFAULT_FILE
 
 
 @pytest.fixture
@@ -18,7 +20,7 @@ def mock_access(complex_schema):
         h5f = mock_file.return_value.__enter__.return_value
         h5f.get.side_effect = mock_read_result
         h5f.__getitem__.side_effect = lambda _: mock_version_dataset(999)
-        with patch("py4vasp.raw._access.schema", schema):
+        with patch("py4vasp._raw.access.schema", schema):
             yield mock_file, sources
 
 

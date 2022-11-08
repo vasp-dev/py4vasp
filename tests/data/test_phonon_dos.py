@@ -1,9 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import numpy as np
-import pytest
 import types
 from unittest.mock import patch
+
+import numpy as np
+import pytest
+
 from py4vasp.data import PhononDos
 
 
@@ -61,7 +63,7 @@ def check_series(series, reference, label, Assert):
     Assert.allclose(series.y, reference)
 
 
-@patch("py4vasp.data._phonon_dos.PhononDos.plot")
+@patch("py4vasp._data.phonon_dos.PhononDos.plot")
 def test_phonon_dos_to_plotly(mock_plot, phonon_dos):
     fig = phonon_dos.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
@@ -77,7 +79,7 @@ def test_phonon_dos_to_image(phonon_dos):
 
 
 def check_to_image(phonon_dos, filename_argument, expected_filename):
-    with patch("py4vasp.data._phonon_dos.PhononDos.to_plotly") as plot:
+    with patch("py4vasp._data.phonon_dos.PhononDos.to_plotly") as plot:
         phonon_dos.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value

@@ -1,9 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.data import PairCorrelation
-import py4vasp.exceptions as exception
-import pytest
 from unittest.mock import patch
+
+import pytest
+
+from py4vasp import exception
+from py4vasp.data import PairCorrelation
 
 
 @pytest.fixture
@@ -70,7 +72,7 @@ def test_plot_nonexisting_label(pair_correlation):
         pair_correlation.plot("label does exist")
 
 
-@patch("py4vasp.data.pair_correlation.PairCorrelation.plot")
+@patch("py4vasp._data.pair_correlation.PairCorrelation.plot")
 def test_pair_correlation_to_plotly(mock_plot, pair_correlation):
     fig = pair_correlation.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
@@ -86,7 +88,7 @@ def test_to_image(pair_correlation):
 
 
 def check_to_image(pair_correlation, filename_argument, expected_filename):
-    with patch("py4vasp.data.pair_correlation.PairCorrelation.to_plotly") as plot:
+    with patch("py4vasp._data.pair_correlation.PairCorrelation.to_plotly") as plot:
         pair_correlation.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value

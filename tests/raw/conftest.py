@@ -1,9 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import pytest
-from util import Simple, OptionalArgument, WithLink, WithLength, Complex, VERSION
-from py4vasp.raw._schema import Schema, Source, Link, Length
+from util import VERSION, Complex, OptionalArgument, Simple, WithLength, WithLink
+
 from py4vasp import raw
+from py4vasp._raw.schema import Length, Link, Schema, Source
 
 
 @pytest.fixture

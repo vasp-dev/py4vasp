@@ -1,6 +1,6 @@
 name: tests
 
-on: 
+on:
   push:
     branches: [master]
   pull_request:
@@ -32,6 +32,9 @@ jobs:
         poetry run pytest --cov=py4vasp --cov-report term
     - name: Check code style
       run: |
+        poetry run isort --version
+        poetry run isort --check src
+        poetry run isort --check tests
         poetry run black --version
         poetry run black --check src
         poetry run black --check tests
@@ -62,6 +65,9 @@ jobs:
         poetry run pytest --cov=py4vasp --cov-report term
     - name: Check code style
       run: |
+        poetry run isort --version
+        poetry run isort --check src
+        poetry run isort --check tests
         poetry run black --version
         poetry run black --check src
         poetry run black --check tests

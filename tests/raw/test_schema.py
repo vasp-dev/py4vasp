@@ -1,8 +1,10 @@
-from py4vasp import raw
-from py4vasp.raw._schema import Schema, Source, Link, Length
-import py4vasp.exceptions as exception
-from util import Simple, OptionalArgument, WithLink, WithLength, Complex, VERSION
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import pytest
+from util import VERSION, OptionalArgument, Simple, WithLength, WithLink
+
+from py4vasp import exception, raw
+from py4vasp._raw.schema import Length, Link, Schema, Source
 
 
 def test_simple_schema():

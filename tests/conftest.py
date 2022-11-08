@@ -1,12 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import itertools
-import numpy as np
-from numpy.testing import assert_array_almost_equal_nulp
-import pytest
-import py4vasp.exceptions as exception
-import py4vasp.raw as raw
 
+import numpy as np
+import pytest
+from numpy.testing import assert_array_almost_equal_nulp
+
+from py4vasp import exception, raw
 
 number_steps = 4
 number_atoms = 7
@@ -499,7 +499,7 @@ def _Sr2TiO4_cell():
         [0.678112209738693, 0.734958387251008, 0.0],
         [-0.839055341042049, -0.367478859090843, 0.401180037874301],
     ]
-    return raw.RawCell(
+    return raw.Cell(
         lattice_vectors=scale * np.array(number_steps * [lattice_vectors]), scale=scale
     )
 
@@ -609,7 +609,7 @@ def _Fe3O4_cell():
         [-1.3633791448, 0.0, 5.0446102592],
     ]
     scaling = np.linspace(0.98, 1.01, number_steps)
-    return raw.RawCell(lattice_vectors=np.multiply.outer(scaling, lattice_vectors))
+    return raw.Cell(lattice_vectors=np.multiply.outer(scaling, lattice_vectors))
 
 
 def _Fe3O4_density(selection):

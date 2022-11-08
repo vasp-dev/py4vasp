@@ -1,15 +1,17 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.data import _base
-from py4vasp import raw, exceptions as exception
 import contextlib
 import dataclasses
 import inspect
 import io
 import pathlib
-import pytest
 import tempfile
 from unittest.mock import patch
+
+import pytest
+
+from py4vasp import exception, raw
+from py4vasp._data import base
 
 
 @dataclasses.dataclass
@@ -27,24 +29,24 @@ def mock_access():
         yield access
 
 
-class Example(_base.Refinery):
+class Example(base.Refinery):
     def __post_init__(self):
         self.post_init_called = True
 
-    @_base.data_access
+    @base.data_access
     def to_dict(self):
         "to_dict documentation."
         return self._raw_data.content
 
-    @_base.data_access
+    @base.data_access
     def wrapper(self):
         return self.read()
 
-    @_base.data_access
+    @base.data_access
     def with_arguments(self, mandatory, optional=None):
         return mandatory, optional
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         return self._raw_data.content
 
@@ -192,8 +194,8 @@ def check_mock(example, mock, *args, **kwargs):
     mock.reset_mock()
 
 
-class CamelCase(_base.Refinery):
-    @_base.data_access
+class CamelCase(base.Refinery):
+    @base.data_access
     def to_dict(self):
         return "convert CamelCase to snake_case"
 
