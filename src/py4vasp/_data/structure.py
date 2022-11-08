@@ -9,9 +9,7 @@ import mdtraj
 import numpy as np
 from IPython.lib.pretty import pretty
 
-import py4vasp.exceptions as exception
-import py4vasp.raw as raw
-from py4vasp import data
+from py4vasp import data, exception, raw
 from py4vasp._data import base, slice_
 from py4vasp._data.viewer3d import Viewer3d
 from py4vasp._util import documentation, reader

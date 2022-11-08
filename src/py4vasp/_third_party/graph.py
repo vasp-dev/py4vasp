@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 import plotly.io as pio
 from plotly.subplots import make_subplots
 
-import py4vasp.exceptions as exception
+from py4vasp import exception
 
 _vasp_colors = ("#4C265F", "#2FB5AB", "#2C68FC", "#A82C35", "#808080")
 pio.templates["vasp"] = go.layout.Template(layout={"colorway": _vasp_colors})

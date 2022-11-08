@@ -10,8 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from py4vasp import exceptions as exception
-from py4vasp import raw
+from py4vasp import exception, raw
 from py4vasp._data import base
 
 

@@ -9,7 +9,7 @@ import mrcfile
 import nglview
 import numpy as np
 
-import py4vasp.exceptions as exception
+from py4vasp import exception
 
 
 class _Arrow3d(NamedTuple):

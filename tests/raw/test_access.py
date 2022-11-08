@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import py4vasp.raw as raw
 from py4vasp.raw._definition import DEFAULT_FILE
-import py4vasp.exceptions as exception
+from py4vasp import exception
 from util import VERSION
 from dataclasses import fields
 import numpy as np

@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
 from typing import Any
-from py4vasp import exceptions as exception
+from py4vasp import exception
 from py4vasp import raw
 import py4vasp._util.convert as convert
 

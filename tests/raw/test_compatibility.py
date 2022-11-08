@@ -4,7 +4,7 @@ import dataclasses
 import pytest
 from unittest.mock import patch, PropertyMock
 from py4vasp.raw import File, RawVersion
-import py4vasp.exceptions as exception
+from py4vasp import exception
 
 
 def test_vasp_6_3_features():

@@ -2,8 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import pytest
 
+from py4vasp import exception
 from py4vasp._util import check
-import py4vasp.exceptions as exception
 
 
 def test_error_if_not_string():

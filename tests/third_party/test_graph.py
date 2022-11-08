@@ -6,7 +6,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-import py4vasp.exceptions as exception
+from py4vasp import exception
 from py4vasp._third_party.graph import Graph, Series, plot
 
 

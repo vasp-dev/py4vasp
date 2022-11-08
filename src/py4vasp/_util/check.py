@@ -3,7 +3,7 @@
 import inspect
 import numbers
 
-import py4vasp.exceptions as exception
+from py4vasp import exception
 
 
 def raise_error_if_not_string(test_if_string, error_message):

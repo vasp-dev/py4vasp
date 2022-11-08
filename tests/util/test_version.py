@@ -3,7 +3,7 @@
 import pytest
 
 import py4vasp._util.version as version_
-import py4vasp.exceptions as exception
+from py4vasp import exception
 from py4vasp.raw import RawVersion
 
 incompatible_version = RawVersion(version_.current_vasp_version.major + 1)

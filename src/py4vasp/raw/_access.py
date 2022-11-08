@@ -7,7 +7,7 @@ import h5py
 import numpy as np
 import pathlib
 import textwrap
-import py4vasp.exceptions as exception
+from py4vasp import exception
 import py4vasp.raw as raw
 from py4vasp.raw._definition import schema, DEFAULT_FILE, DEFAULT_SOURCE
 from py4vasp.raw._schema import Link, Length

@@ -4,7 +4,7 @@ from contextlib import AbstractContextManager
 from pathlib import Path
 from .rawdata import *
 import h5py
-import py4vasp.exceptions as exception
+from py4vasp import exception
 import py4vasp._util.version as _version
 
 

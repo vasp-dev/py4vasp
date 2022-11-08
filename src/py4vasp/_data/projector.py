@@ -5,8 +5,7 @@ from typing import NamedTuple, Union
 
 import numpy as np
 
-import py4vasp.exceptions as exception
-from py4vasp import data
+from py4vasp import data, exception
 from py4vasp._data import base, kpoint
 from py4vasp._data.selection import Selection
 from py4vasp._util import check, convert, documentation, reader, select

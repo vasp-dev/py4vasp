@@ -2,8 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-import py4vasp._third_party.graph as _graph
-import py4vasp.exceptions as exception
+from py4vasp import exception
+from py4vasp._third_party import graph
 from py4vasp._data import base, export, slice_
 from py4vasp._util import check, convert, documentation, select
 
@@ -88,7 +88,7 @@ Graph
     )
     def plot(self, selection="TOTEN"):
         yaxes = self._create_yaxes(selection)
-        return _graph.Graph(
+        return graph.Graph(
             series=self._make_series(yaxes, selection),
             xlabel="Step",
             ylabel=yaxes.ylabel,
@@ -175,7 +175,7 @@ float or np.ndarray or tuple
     def _make_series(self, yaxes, selection):
         steps = np.arange(len(self._raw_data.values))[self._slice] + 1
         return [
-            _graph.Series(
+            graph.Series(
                 x=steps,
                 y=self._raw_data.values[self._slice, index],
                 name=label[:14].strip(),

@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp.raw import *
-import py4vasp.exceptions as exception
+from py4vasp import exception
 import contextlib
 import pytest
 import h5py

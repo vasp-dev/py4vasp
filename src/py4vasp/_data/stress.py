@@ -2,8 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-import py4vasp.exceptions as exception
-from py4vasp import data
+from py4vasp import data, exception
 from py4vasp._data import base, slice_
 from py4vasp._util import documentation, reader
 

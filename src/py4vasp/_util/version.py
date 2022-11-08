@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import functools
 
-import py4vasp.exceptions as exception
+from py4vasp import exception
 from py4vasp.raw import RawVersion
 
 minimal_vasp_version = RawVersion(6, 2)

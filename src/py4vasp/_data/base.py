@@ -5,8 +5,7 @@ import dataclasses
 import functools
 import pathlib
 
-from py4vasp import exceptions as exception
-from py4vasp import raw
+from py4vasp import raw, exception
 from py4vasp._util import check, convert
 
 

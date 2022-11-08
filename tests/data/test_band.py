@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from IPython.lib.pretty import pretty
 
-import py4vasp.exceptions as exception
+from py4vasp import exception
 from py4vasp.data import Band, Kpoint, Projector
 
 

@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-import py4vasp.exceptions as exception
+from py4vasp import exception
 from py4vasp._util.reader import Reader
 
 

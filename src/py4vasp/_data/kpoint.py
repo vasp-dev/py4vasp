@@ -5,7 +5,7 @@ from fractions import Fraction
 
 import numpy as np
 
-import py4vasp.exceptions as exception
+from py4vasp import exception
 from py4vasp._data import base
 from py4vasp._util import convert, documentation
 

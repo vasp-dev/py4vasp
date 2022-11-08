@@ -4,7 +4,7 @@ import itertools
 import numpy as np
 from numpy.testing import assert_array_almost_equal_nulp
 import pytest
-import py4vasp.exceptions as exception
+from py4vasp import exception
 import py4vasp.raw as raw
 
 

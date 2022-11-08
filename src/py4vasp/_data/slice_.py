@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import copy
 
-import py4vasp.exceptions as exception
+from py4vasp import exception
 
 
 def examples(instance_name, function_name=None, step="step"):

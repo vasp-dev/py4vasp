@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import py4vasp.exceptions as exception
+from py4vasp import exception
 from py4vasp._data import base, export, slice_
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, select

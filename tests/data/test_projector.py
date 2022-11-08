@@ -5,7 +5,7 @@ from typing import Iterable, NamedTuple
 import numpy as np
 import pytest
 
-import py4vasp.exceptions as exception
+from py4vasp import exception
 from py4vasp._data.selection import Selection
 from py4vasp._util import select
 from py4vasp.data import Projector

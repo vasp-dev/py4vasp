@@ -1,6 +1,6 @@
 from py4vasp import raw
 from py4vasp.raw._schema import Schema, Source, Link, Length
-import py4vasp.exceptions as exception
+from py4vasp import exception
 from util import Simple, OptionalArgument, WithLink, WithLength, Complex, VERSION
 import pytest
 

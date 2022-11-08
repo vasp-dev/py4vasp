@@ -14,7 +14,7 @@ object. For example you may use
 """
 import inspect
 import py4vasp.data
-import py4vasp.exceptions as exception
+from py4vasp import exception
 import py4vasp.control
 import py4vasp._util.convert as _convert
 import pathlib

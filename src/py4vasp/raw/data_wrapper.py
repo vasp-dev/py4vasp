@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 import textwrap
-import py4vasp.exceptions as exception
+from py4vasp import exception
 
 
 class VaspData(np.lib.mixins.NDArrayOperatorsMixin):

@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import py4vasp.data
 import py4vasp.control as ctrl
-import py4vasp.exceptions as exception
+from py4vasp import exception
 import inspect
 
 

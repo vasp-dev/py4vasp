@@ -2,8 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from IPython.lib.pretty import pretty
 
-import py4vasp.exceptions as exceptions
-from py4vasp import data
+from py4vasp import data, exception
 from py4vasp._data import base, structure
 
 
@@ -75,7 +74,7 @@ class Density(base.Refinery, structure.Mixin):
             self._plot_magnetism(_ViewerWrapper(viewer), **user_options)
         else:
             msg = f"'{selection}' is an unknown option, please use 'charge' or 'magnetization' instead."
-            raise exceptions.IncorrectUsage(msg)
+            raise exception.IncorrectUsage(msg)
         return viewer
 
     def _magnetization_if_present(self):
@@ -99,10 +98,10 @@ class Density(base.Refinery, structure.Mixin):
     def _raise_error_if_not_spin_polarized(self):
         if not self._spin_polarized():
             msg = "Density does not contain magnetization. Please rerun VASP with ISPIN = 2 to obtain it."
-            raise exceptions.NoData(msg)
+            raise exception.NoData(msg)
 
 
 def _raise_error_if_color_is_specified(**user_options):
     if "color" in user_options:
         msg = "Specifying the color of a magnetic isosurface is not implemented."
-        raise exceptions.NotImplemented(msg)
+        raise exception.NotImplemented(msg)
