@@ -13,11 +13,10 @@ object. For example you may use
 >>> calc.structure.print()  # to print the structure in a POSCAR format
 """
 import inspect
-import py4vasp.data
-from py4vasp import exception
-import py4vasp.control
-import py4vasp._util.convert as _convert
 import pathlib
+
+from py4vasp import _data, control, data, exception
+from py4vasp._util import convert
 
 
 class Calculation:
@@ -114,15 +113,15 @@ instead of the constructor Calculation()."""
 
 
 def _add_all_refinement_classes(calc, add_single_class):
-    for name, class_ in inspect.getmembers(py4vasp.data, inspect.isclass):
-        if issubclass(class_, py4vasp._data.base.Refinery):
+    for name, class_ in inspect.getmembers(data, inspect.isclass):
+        if issubclass(class_, _data.base.Refinery):
             calc = add_single_class(calc, name, class_)
     return calc
 
 
 def _add_attribute_from_path(calc, name, class_):
     instance = class_.from_path(calc.path())
-    setattr(calc, _convert.to_snakecase(name), instance)
+    setattr(calc, convert.to_snakecase(name), instance)
     return calc
 
 
@@ -132,7 +131,7 @@ class _AddAttributeFromFile:
 
     def __call__(self, calc, name, class_):
         instance = class_.from_file(self._file_name)
-        setattr(calc, _convert.to_snakecase(name), instance)
+        setattr(calc, convert.to_snakecase(name), instance)
         return calc
 
 
@@ -141,7 +140,7 @@ def _add_to_documentation(calc, name, class_):
     functions = inspect.getmembers(class_, inspect.isfunction)
     names = [name for name, _ in functions if not name.startswith("_")]
     calc.__doc__ += f"""
-    {_convert.to_snakecase(name)}
+    {convert.to_snakecase(name)}
         {first_line}
 
 """
@@ -154,7 +153,7 @@ Calculation = _add_all_refinement_classes(Calculation, _add_to_documentation)
 
 
 def _add_input_files(calc):
-    calc._INCAR = py4vasp.control.INCAR(calc.path())
-    calc._KPOINTS = py4vasp.control.KPOINTS(calc.path())
-    calc._POSCAR = py4vasp.control.POSCAR(calc.path())
+    calc._INCAR = control.INCAR(calc.path())
+    calc._KPOINTS = control.KPOINTS(calc.path())
+    calc._POSCAR = control.POSCAR(calc.path())
     return calc

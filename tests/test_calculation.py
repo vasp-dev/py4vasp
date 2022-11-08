@@ -1,12 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from unittest.mock import patch, mock_open
-from pathlib import Path
-import pytest
-import py4vasp.data
-import py4vasp.control as ctrl
-from py4vasp import exception
 import inspect
+from pathlib import Path
+from unittest.mock import mock_open, patch
+
+import pytest
+
+from py4vasp import Calculation, control, data, exception
 
 
 @patch("py4vasp._data.base.Refinery.from_path", autospec=True)
@@ -14,12 +14,12 @@ import inspect
 def test_creation_from_path(mock_access, mock_from_path):
     # note: in pytest __file__ defaults to absolute path
     absolute_path = Path(__file__)
-    calc = py4vasp.Calculation.from_path(absolute_path)
+    calc = Calculation.from_path(absolute_path)
     assert calc.path() == absolute_path
     relative_path = absolute_path.relative_to(Path.cwd())
-    calc = py4vasp.Calculation.from_path(relative_path)
+    calc = Calculation.from_path(relative_path)
     assert calc.path() == absolute_path
-    calc = py4vasp.Calculation.from_path("~")
+    calc = Calculation.from_path("~")
     assert calc.path() == Path.home()
     mock_access.assert_not_called()
     mock_from_path.assert_called()
@@ -31,12 +31,12 @@ def test_creation_from_file(mock_access, mock_from_file):
     # note: in pytest __file__ defaults to absolute path
     absolute_path = Path(__file__)
     absolute_file = absolute_path / "example.h5"
-    calc = py4vasp.Calculation.from_file(absolute_file)
+    calc = Calculation.from_file(absolute_file)
     assert calc.path() == absolute_path
     relative_file = absolute_file.relative_to(Path.cwd())
-    calc = py4vasp.Calculation.from_file(relative_file)
+    calc = Calculation.from_file(relative_file)
     assert calc.path() == absolute_path
-    calc = py4vasp.Calculation.from_file("~/example.h5")
+    calc = Calculation.from_file("~/example.h5")
     assert calc.path() == Path.home()
     mock_access.assert_not_called()
     mock_from_file.assert_called()
@@ -44,7 +44,7 @@ def test_creation_from_file(mock_access, mock_from_file):
 
 @patch("py4vasp.raw.access", autospec=True)
 def test_all_attributes(mock_access):
-    calculation = py4vasp.Calculation.from_path("test_path")
+    calculation = Calculation.from_path("test_path")
     camel_cases = {
         "BornEffectiveCharge": "born_effective_charge",
         "DielectricFunction": "dielectric_function",
@@ -57,7 +57,7 @@ def test_all_attributes(mock_access):
         "PhononDos": "phonon_dos",
         "PiezoelectricTensor": "piezoelectric_tensor",
     }
-    for name, _ in inspect.getmembers(py4vasp.data, inspect.isclass):
+    for name, _ in inspect.getmembers(data, inspect.isclass):
         attr = camel_cases.get(name, name.lower())
         assert hasattr(calculation, attr)
     mock_access.assert_not_called()
@@ -66,22 +66,22 @@ def test_all_attributes(mock_access):
 
 def test_input_files_from_path():
     with patch("py4vasp._control.base.InputFile.__init__", return_value=None) as mock:
-        calculation = py4vasp.Calculation.from_path("test_path")
+        calculation = Calculation.from_path("test_path")
         mock.assert_called_with(calculation.path())
-    calculation = py4vasp.Calculation.from_path("test_path")
+    calculation = Calculation.from_path("test_path")
     check_all_input_files(calculation)
 
 
 def test_input_files_from_file():
     with patch("py4vasp._control.base.InputFile.__init__", return_value=None) as mock:
-        calculation = py4vasp.Calculation.from_file("test_file")
+        calculation = Calculation.from_file("test_file")
         mock.assert_called_with(calculation.path())
-    calculation = py4vasp.Calculation.from_file("test_file")
+    calculation = Calculation.from_file("test_file")
     check_all_input_files(calculation)
 
 
 def check_all_input_files(calculation):
-    input_files = [ctrl.INCAR, ctrl.KPOINTS, ctrl.POSCAR]
+    input_files = [control.INCAR, control.KPOINTS, control.POSCAR]
     for input_file in input_files:
         check_one_input_file(calculation, input_file)
 
@@ -100,8 +100,8 @@ def check_one_input_file(calculation, input_file):
 
 def test_using_constructor_raises_exception():
     with pytest.raises(exception.IncorrectUsage):
-        py4vasp.Calculation()
+        Calculation()
     with pytest.raises(exception.IncorrectUsage):
-        py4vasp.Calculation("path")
+        Calculation("path")
     with pytest.raises(exception.IncorrectUsage):
-        py4vasp.Calculation(key="value")
+        Calculation(key="value")
