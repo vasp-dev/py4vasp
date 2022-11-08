@@ -499,7 +499,7 @@ def _Sr2TiO4_cell():
         [0.678112209738693, 0.734958387251008, 0.0],
         [-0.839055341042049, -0.367478859090843, 0.401180037874301],
     ]
-    return raw.RawCell(
+    return raw.Cell(
         lattice_vectors=scale * np.array(number_steps * [lattice_vectors]), scale=scale
     )
 
@@ -609,7 +609,7 @@ def _Fe3O4_cell():
         [-1.3633791448, 0.0, 5.0446102592],
     ]
     scaling = np.linspace(0.98, 1.01, number_steps)
-    return raw.RawCell(lattice_vectors=np.multiply.outer(scaling, lattice_vectors))
+    return raw.Cell(lattice_vectors=np.multiply.outer(scaling, lattice_vectors))
 
 
 def _Fe3O4_density(selection):

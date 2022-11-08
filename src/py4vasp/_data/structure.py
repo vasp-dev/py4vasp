@@ -322,7 +322,7 @@ def _topology_from_ase(structure):
 
 
 def _cell_from_ase(structure):
-    return raw.RawCell(lattice_vectors=np.array([structure.get_cell()]))
+    return raw.Cell(lattice_vectors=np.array([structure.get_cell()]))
 
 
 class Mixin:

@@ -1,8 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from __future__ import annotations
+
 import dataclasses
-from py4vasp.raw.data_wrapper import VaspData
+
+from py4vasp._raw.data_wrapper import VaspData
 
 
 @dataclasses.dataclass(order=True, frozen=True)
@@ -62,7 +64,7 @@ class Cell:
 
     lattice_vectors: VaspData
     "Lattice vectors defining the unit cell."
-    scale: float
+    scale: float = 1.0
     "Global scaling factor applied to all lattice vectors."
 
 

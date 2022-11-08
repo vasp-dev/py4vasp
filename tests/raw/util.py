@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
+
 from py4vasp import raw
 
 VERSION = raw.Version("major_dataset", "minor_dataset", "patch_dataset")

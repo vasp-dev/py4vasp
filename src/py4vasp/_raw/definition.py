@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp import raw
-from py4vasp.raw._schema import Schema, Link, Length
+import py4vasp._raw.data as raw
+from py4vasp._raw.schema import Length, Link, Schema
 
 DEFAULT_FILE = "vaspout.h5"
 DEFAULT_SOURCE = "default"

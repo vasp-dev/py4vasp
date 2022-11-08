@@ -3,14 +3,14 @@
 import contextlib
 import dataclasses
 import functools
-import h5py
-import numpy as np
 import pathlib
 import textwrap
-from py4vasp import exception
-import py4vasp.raw as raw
-from py4vasp.raw._definition import schema, DEFAULT_FILE, DEFAULT_SOURCE
-from py4vasp.raw._schema import Link, Length
+
+import h5py
+
+from py4vasp import exception, raw
+from py4vasp._raw.definition import DEFAULT_FILE, DEFAULT_SOURCE, schema
+from py4vasp._raw.schema import Length, Link
 
 
 @contextlib.contextmanager

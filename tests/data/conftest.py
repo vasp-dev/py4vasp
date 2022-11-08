@@ -7,7 +7,7 @@ import pytest
 from IPython.core.formatters import DisplayFormatter
 
 from py4vasp import raw, exception
-from py4vasp._util import convert, version
+from py4vasp._util import convert
 
 TEST_FILENAME = "read_data_from_this_file"
 
@@ -74,11 +74,6 @@ def check_mock_called(mock_access, quantity, file, source=None):
     assert (quantity,) == args
     assert kwargs.get("source") == source
     assert kwargs.get("file") == file
-
-
-@pytest.fixture
-def outdated_version():
-    return raw.RawVersion(version.minimal_vasp_version.major - 1)
 
 
 @pytest.fixture

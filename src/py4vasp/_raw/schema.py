@@ -1,10 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from __future__ import annotations
+
 import dataclasses
 from typing import Any
+
 from py4vasp import exception
-from py4vasp import raw
-import py4vasp._util.convert as convert
+from py4vasp._util import convert
 
 
 class Schema:
@@ -100,7 +102,7 @@ class Schema:
 class Source:
     data: Any
     file: str = None
-    required: raw.Version = None
+    required: Version = None
 
 
 @dataclasses.dataclass

@@ -5,7 +5,7 @@
 In the HDF5 file, the raw data is stored with specific keys. To avoid
 propagating the name of these keys to the higher tier modules, we transform
 everything into dataclasses. This enables the introduction of new file formats by
-replacing the `File` class.
+replacing the `access` function.
 
 Notes
 -----
@@ -15,13 +15,5 @@ needed is read. However, this has the consequence that you need to
 enforce the read operation before the file is closed.
 """
 
-from .data_wrapper import VaspData
-from .rawdata import *
-from .data import *
-from ._access import access
-from .file import File
-import inspect
-import sys
-
-_this_mod = sys.modules[__name__]
-__all__ = [name for name, _ in inspect.getmembers(_this_mod, inspect.isclass)]
+from py4vasp._raw.access import access
+from py4vasp._raw.data import *
