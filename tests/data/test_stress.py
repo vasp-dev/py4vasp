@@ -1,11 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import numpy as np
-import pytest
 import types
 
-from py4vasp.data import Stress, Structure
+import pytest
+
 import py4vasp.exceptions as exception
+from py4vasp.data import Stress, Structure
 
 
 @pytest.fixture

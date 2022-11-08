@@ -1,12 +1,14 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.data import Dos
-from unittest.mock import patch
-import py4vasp.exceptions as exception
-import py4vasp._util.selection as _selection
-import pytest
-import numpy as np
 import types
+from unittest.mock import patch
+
+import numpy as np
+import pytest
+
+import py4vasp.exceptions as exception
+from py4vasp._util import select
+from py4vasp.data import Dos
 
 
 @pytest.fixture
@@ -120,10 +122,10 @@ def test_Fe3O4_to_frame(Fe3O4, Assert):
 
 
 def test_Sr2TiO4_projectors_to_frame(Sr2TiO4_projectors, Assert):
-    all = _selection.all
+    all_ = select.all
     equivalent_selections = [
         "s Sr(d) Ti O(px,dxy) 2(p) 4 3(dz2) 1:2(p)",
-        f"2( p), dz2(3) Sr(d) p(1:2), {all}(s), 4 Ti({all}) px(O) O(dxy)",
+        f"2( p), dz2(3) Sr(d) p(1:2), {all_}(s), 4 Ti({all_}) px(O) O(dxy)",
     ]
     for selection in equivalent_selections:
         actual = Sr2TiO4_projectors.to_frame(selection)
@@ -182,7 +184,7 @@ def test_Fe3O4_projectors_plot(Fe3O4_projectors, Assert):
     Assert.allclose(data[O_d_down].y, -Fe3O4_projectors.ref.O_d_down)
 
 
-@patch("py4vasp.data.dos.Dos.plot")
+@patch("py4vasp._data.dos.Dos.plot")
 def test_Sr2TiO4_to_plotly(mock_plot, Sr2TiO4):
     fig = Sr2TiO4.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
@@ -198,7 +200,7 @@ def test_Sr2TiO4_to_image(Sr2TiO4):
 
 
 def check_to_image(Sr2TiO4, filename_argument, expected_filename):
-    with patch("py4vasp.data.dos.Dos.to_plotly") as plot:
+    with patch("py4vasp._data.dos.Dos.to_plotly") as plot:
         Sr2TiO4.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value

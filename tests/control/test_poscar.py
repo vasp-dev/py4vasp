@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from py4vasp import data
 from py4vasp.control import POSCAR
-from py4vasp.data import viewer3d
+from py4vasp._data import viewer3d
 
 from .test_base import AbstractTest
 

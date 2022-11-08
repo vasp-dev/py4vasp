@@ -1,13 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import numpy as np
-import pytest
 import types
 from unittest.mock import patch
 
-import py4vasp.data as data
-from py4vasp.data import Force, Structure
+import numpy as np
+import pytest
+
 import py4vasp.exceptions as exception
+from py4vasp.data import Force, Structure
 
 
 @pytest.fixture

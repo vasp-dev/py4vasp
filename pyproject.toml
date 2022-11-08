@@ -58,6 +58,8 @@ pytest = {channel = "anaconda"}
 sphinx = {channel = "anaconda"}
 black = {channel = "conda-forge"}
 
+[tool.isort]
+profile = "black"
 
 [tool.dephell.main]
 from = {format = "poetry", path = "pyproject.toml"}

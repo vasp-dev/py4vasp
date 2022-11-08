@@ -1,10 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from unittest.mock import patch
-from py4vasp.data import Density, Structure, viewer3d
-import pytest
 import types
+from unittest.mock import patch
+
+import pytest
+
 import py4vasp.exceptions as exceptions
+from py4vasp._data import viewer3d
+from py4vasp.data import Density, Structure
 
 
 @pytest.fixture

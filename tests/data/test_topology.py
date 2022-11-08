@@ -1,12 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.data import Topology
-from py4vasp.data._selection import Selection
-import py4vasp.exceptions as exception
-import py4vasp._util.selection as selection
-import pytest
-import numpy as np
 import pandas as pd
+import pytest
+
+import py4vasp.exceptions as exception
+from py4vasp._data.selection import Selection
+from py4vasp._util import select
+from py4vasp.data import Topology
 
 
 @pytest.fixture
@@ -26,7 +26,7 @@ def test_read(Sr2TiO4):
     assert topology["5"] == Selection(indices=slice(4, 5), label="O_2")
     assert topology["6"] == Selection(indices=slice(5, 6), label="O_3")
     assert topology["7"] == Selection(indices=slice(6, 7), label="O_4")
-    assert topology[selection.all] == Selection(indices=slice(0, 7))
+    assert topology[select.all] == Selection(indices=slice(0, 7))
 
 
 def test_to_frame(Sr2TiO4):

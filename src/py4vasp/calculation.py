@@ -115,7 +115,7 @@ instead of the constructor Calculation()."""
 
 def _add_all_refinement_classes(calc, add_single_class):
     for name, class_ in inspect.getmembers(py4vasp.data, inspect.isclass):
-        if issubclass(class_, py4vasp.data._base.Refinery):
+        if issubclass(class_, py4vasp._data.base.Refinery):
             calc = add_single_class(calc, name, class_)
     return calc
 
