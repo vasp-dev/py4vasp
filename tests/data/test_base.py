@@ -67,7 +67,7 @@ def test_from_path(mock_access):
     #
     # access twice too make sure context is regenerated
     assert example.read() == RAW_DATA.content
-    mock_access.assert_called_once_with("example", source=None, path=pathname)
+    mock_access.assert_called_once_with("example", selection=None, path=pathname)
     assert example.read() == RAW_DATA.content
 
 
@@ -79,7 +79,7 @@ def test_from_file(mock_access):
     #
     # access twice too make sure context is regenerated
     assert example.read() == RAW_DATA.content
-    mock_access.assert_called_once_with("example", source=None, file=filename)
+    mock_access.assert_called_once_with("example", selection=None, file=filename)
     assert example.read() == RAW_DATA.content
 
 
@@ -91,7 +91,7 @@ def test_nested_calls(mock_access):
     example = Example.from_path(pathname)
     assert example.wrapper() == RAW_DATA.content
     # check access is only called once
-    mock_access.assert_called_once_with("example", source=None, path=pathname)
+    mock_access.assert_called_once_with("example", selection=None, path=pathname)
 
 
 def test_arguments_passed():
@@ -108,20 +108,20 @@ def test_source_from_data():
         example.read(source="don't use source with from_data")
 
 
-def test_default_source_is_none():
+def test_default_selection_is_none():
     # default source must be None, otherwise the next test would be incorrect
     signature = inspect.signature(raw.access)
-    assert signature.parameters["source"].default is None
+    assert signature.parameters["selection"].default is None
 
 
 def test_source_from_path(mock_access):
     example = Example.from_path()
     source = "read from this source"
     example.read(source=source)
-    mock_access.assert_called_once_with("example", source=source, path=None)
+    mock_access.assert_called_once_with("example", selection=source, path=None)
     mock_access.reset_mock()
     example.read()
-    mock_access.assert_called_once_with("example", source=None, path=None)
+    mock_access.assert_called_once_with("example", selection=None, path=None)
 
 
 def test_base_source_ignore_whitespace_and_capitalization(mock_access):
@@ -130,7 +130,7 @@ def test_base_source_ignore_whitespace_and_capitalization(mock_access):
     source = " SouRCE_wiTh_extRA_whiTeSPace_and_CaPiTaliZAtion  "
     example.read(source=source)
     source = source.strip().lower()
-    mock_access.assert_called_once_with("example", source=source, file=filename)
+    mock_access.assert_called_once_with("example", selection=source, file=filename)
 
 
 def test_print_example(mock_access):
@@ -141,7 +141,7 @@ def test_print_example(mock_access):
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
         Example.from_path().print(source="choice")
-    mock_access.assert_called_once_with("example", source="choice", path=None)
+    mock_access.assert_called_once_with("example", selection="choice", path=None)
     assert RAW_DATA.content == output.getvalue().strip()
 
 
@@ -202,8 +202,8 @@ class CamelCase(base.Refinery):
 
 def test_camel_to_snake_case(mock_access):
     CamelCase.from_path().read()
-    mock_access.assert_called_once_with("camel_case", source=None, path=None)
+    mock_access.assert_called_once_with("camel_case", selection=None, path=None)
     mock_access.reset_mock()
     filename = "file with data"
     CamelCase.from_file(filename).read()
-    mock_access.assert_called_once_with("camel_case", source=None, file=filename)
+    mock_access.assert_called_once_with("camel_case", selection=None, file=filename)

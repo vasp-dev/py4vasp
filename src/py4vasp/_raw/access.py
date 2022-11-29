@@ -14,14 +14,14 @@ from py4vasp._raw.schema import Length, Link
 
 
 @contextlib.contextmanager
-def _access(quantity, *, source=None, path=None, file=None):
+def _access(quantity, *, selection=None, path=None, file=None):
     """Create access to a particular quantity from the VASP output.
 
     Parameters
     ----------
     quantity : str
         Select which particular quantity to access.
-    source : str, optional
+    selection : str, optional
         Keyword-only argument to select different sources of the quantity.
     path : str, optional
         Keyword-only argument to set the path from which VASP output is read. Defaults
@@ -39,7 +39,7 @@ def _access(quantity, *, source=None, path=None, file=None):
     """
     state = _State(path, file)
     with state.exit_stack:
-        yield state.access(quantity, source)
+        yield state.access(quantity, selection)
 
 
 @functools.wraps(_access)

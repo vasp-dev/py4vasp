@@ -178,7 +178,7 @@ class _DataAccess(contextlib.AbstractContextManager):
 
     def __enter__(self):
         if self._counter == 0:
-            context = raw.access(*self._args, source=self.source, **self._kwargs)
+            context = raw.access(*self._args, selection=self.source, **self._kwargs)
             self.data = self._stack.enter_context(context)
         self._counter += 1
         return self.data

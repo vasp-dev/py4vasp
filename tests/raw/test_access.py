@@ -72,7 +72,7 @@ def test_access_optional_argument(mock_access):
     quantity = "optional_argument"
     mock_file, sources = mock_access
     source = sources[quantity]["mandatory"]
-    with raw.access(quantity, source="mandatory") as opt_arg:
+    with raw.access(quantity, selection="mandatory") as opt_arg:
         check_single_file_access(mock_file, DEFAULT_FILE, source)
         check_data(opt_arg.mandatory, source.data.mandatory)
         assert opt_arg.optional == None
@@ -104,7 +104,7 @@ def linked_quantity_reference(mock_access, file=None):
 
 def test_access_open_once(mock_access):
     mock_file, _ = mock_access
-    with raw.access("complex", source="mandatory") as complex:
+    with raw.access("complex", selection="mandatory") as complex:
         # open two different files
         assert mock_file.call_count == 2
 
@@ -252,7 +252,7 @@ def test_access_missing_quantity_or_source(mock_access):
         with raw.access("quantity not available in the schema"):
             pass
     with pytest.raises(exception.FileAccessError):
-        with raw.access("simple", source="source not available in the schema"):
+        with raw.access("simple", selection="source not available in the schema"):
             pass
 
 

@@ -72,7 +72,7 @@ def check_mock_called(mock_access, quantity, file, source=None):
     mock_access.assert_called_once()
     args, kwargs = mock_access.call_args
     assert (quantity,) == args
-    assert kwargs.get("source") == source
+    assert kwargs.get("selection") == source
     assert kwargs.get("file") == file
 
 
