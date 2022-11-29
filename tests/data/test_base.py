@@ -102,10 +102,10 @@ def test_arguments_passed():
     assert example.with_arguments(mandatory, optional=optional) == (mandatory, optional)
 
 
-def test_source_from_data():
+def test_selection_from_data():
     example = Example.from_data(RAW_DATA)
     with pytest.raises(exception.IncorrectUsage):
-        example.read(source="don't use source with from_data")
+        example.read(selection="don't use selection with from_data")
 
 
 def test_default_selection_is_none():
@@ -114,10 +114,10 @@ def test_default_selection_is_none():
     assert signature.parameters["selection"].default is None
 
 
-def test_source_from_path(mock_access):
+def test_selection_from_path(mock_access):
     example = Example.from_path()
     source = "read from this source"
-    example.read(source=source)
+    example.read(selection=source)
     mock_access.assert_called_once_with("example", selection=source, path=None)
     mock_access.reset_mock()
     example.read()
@@ -128,7 +128,7 @@ def test_base_source_ignore_whitespace_and_capitalization(mock_access):
     filename = "file containing the data"
     example = Example.from_file(filename)
     source = " SouRCE_wiTh_extRA_whiTeSPace_and_CaPiTaliZAtion  "
-    example.read(source=source)
+    example.read(selection=source)
     source = source.strip().lower()
     mock_access.assert_called_once_with("example", selection=source, file=filename)
 
@@ -140,7 +140,7 @@ def test_print_example(mock_access):
     assert RAW_DATA.content == output.getvalue().strip()
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
-        Example.from_path().print(source="choice")
+        Example.from_path().print(selection="choice")
     mock_access.assert_called_once_with("example", selection="choice", path=None)
     assert RAW_DATA.content == output.getvalue().strip()
 

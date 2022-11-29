@@ -15,8 +15,8 @@ def data_access(func):
     via the _raw_data property."""
 
     @functools.wraps(func)
-    def func_with_access(self, *args, source=None, **kwargs):
-        self._set_source(source)
+    def func_with_access(self, *args, selection=None, **kwargs):
+        self._set_selection(selection)
         with self._data_context:
             check.raise_error_if_not_callable(func, self, *args, **kwargs)
             return func(self, *args, **kwargs)
@@ -115,13 +115,13 @@ class Refinery:
         "Returns the path from which the output is obtained."
         return self._path
 
-    def _set_source(self, source):
-        if not source:
+    def _set_selection(self, selection):
+        if not selection:
             return
         try:
-            self._data_context.source = source.strip().lower()
+            self._data_context.selection = selection.strip().lower()
         except dataclasses.FrozenInstanceError as error:
-            message = f"Creating {self.__class__.__name__}.from_data does not allow to specify a source."
+            message = f"Creating {self.__class__.__name__}.from_data does not allow to select a source."
             raise exception.IncorrectUsage(message) from error
 
     @property
@@ -170,7 +170,7 @@ class _DataWrapper(contextlib.AbstractContextManager):
 
 class _DataAccess(contextlib.AbstractContextManager):
     def __init__(self, *args, **kwargs):
-        self.source = None
+        self.selection = None
         self._args = args
         self._kwargs = kwargs
         self._counter = 0
@@ -178,7 +178,7 @@ class _DataAccess(contextlib.AbstractContextManager):
 
     def __enter__(self):
         if self._counter == 0:
-            context = raw.access(*self._args, selection=self.source, **self._kwargs)
+            context = raw.access(*self._args, selection=self.selection, **self._kwargs)
             self.data = self._stack.enter_context(context)
         self._counter += 1
         return self.data
@@ -186,5 +186,5 @@ class _DataAccess(contextlib.AbstractContextManager):
     def __exit__(self, *_):
         self._counter -= 1
         if self._counter == 0:
-            self.source = None
+            self.selection = None
             self._stack.close()

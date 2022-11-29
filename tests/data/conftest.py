@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from IPython.core.formatters import DisplayFormatter
 
-from py4vasp import exception, raw
+from py4vasp import exception
 from py4vasp._util import convert
 
 TEST_FILENAME = "read_data_from_this_file"
@@ -56,8 +56,8 @@ def check_method_accesses_data(data, method_under_test, file):
         execute_method(method_under_test)
         check_mock_called(mock_access, quantity, file)
         mock_access.reset_mock()
-        execute_method(method_under_test, source="choice")
-        check_mock_called(mock_access, quantity, file, source="choice")
+        execute_method(method_under_test, selection="choice")
+        check_mock_called(mock_access, quantity, file, selection="choice")
 
 
 def execute_method(method_under_test, **kwargs):
@@ -68,11 +68,11 @@ def execute_method(method_under_test, **kwargs):
         pass
 
 
-def check_mock_called(mock_access, quantity, file, source=None):
+def check_mock_called(mock_access, quantity, file, selection=None):
     mock_access.assert_called_once()
     args, kwargs = mock_access.call_args
     assert (quantity,) == args
-    assert kwargs.get("selection") == source
+    assert kwargs.get("selection") == selection
     assert kwargs.get("file") == file
 
 

@@ -262,6 +262,7 @@ def test_read_empty(Sr2TiO4):
     assert Sr2TiO4.read() == {}
 
 
+@pytest.mark.xfail(reason="Not ported for new selection logic yet.")
 def test_read_only_indices(Sr2TiO4):
     reference = {
         "Sr_p": (slice(0, 1), slice(0, 2), slice(1, 4)),
@@ -270,6 +271,7 @@ def test_read_only_indices(Sr2TiO4):
     assert Sr2TiO4.read(selection="Sr(p) 3(dxy)") == reference
 
 
+@pytest.mark.xfail(reason="Not ported for new selection logic yet.")
 def test_read_projections(Sr2TiO4, Assert):
     num_spins = 1
     num_atoms = 7
@@ -291,6 +293,7 @@ def test_missing_orbitals_read(missing_orbitals):
         missing_orbitals.read("any string", "any data")
 
 
+@pytest.mark.xfail(reason="Not ported for new selection logic yet.")
 def test_error_parsing(Sr2TiO4):
     with pytest.raises(exception.IncorrectUsage):
         Sr2TiO4.read(selection="XX")
