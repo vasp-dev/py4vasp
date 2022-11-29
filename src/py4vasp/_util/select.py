@@ -84,3 +84,18 @@ class Tree:
 
     def __str__(self):
         return str(self._content)
+
+    def __len__(self):
+        if len(self._children) == 0:
+            return 1
+        else:
+            return sum(len(child) for child in self._children)
+
+    def selections(self):
+        content = (self._content,) if self._parent else ()
+        if len(self._children) == 0:
+            yield content
+        else:
+            for child in self._children:
+                for selection in child.selections():
+                    yield content + selection
