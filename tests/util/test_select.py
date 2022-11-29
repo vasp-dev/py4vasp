@@ -5,6 +5,7 @@ from py4vasp._util import select
 
 def test_empty_tree():
     tree = select.Tree.from_selection(None)
+    assert len(tree) == 0
     assert tree.nodes == []
 
 
@@ -85,9 +86,13 @@ def test_pair_selection():
     assert tree.nodes[1].content == select.Group(["baz", "foo"], separator="~")
 
 
-def test_iterate_complex_tree():
+def test_selections_simple_tree():
     tree = select.Tree.from_selection("foo")
+    assert len(tree) == 1
     assert list(tree.selections()) == [("foo",)]
+
+
+def test_selections_complex_tree():
     tree = select.Tree.from_selection("A(B(1:3), C~D(E F)) G(H, J) K")
     expected = [
         ("A", "B", select.Group(["1", "3"], ":")),
@@ -97,4 +102,10 @@ def test_iterate_complex_tree():
         ("G", "J"),
         ("K",),
     ]
+    assert len(tree) == len(expected)
     assert list(tree.selections()) == expected
+
+
+def test_selections_empty_tree():
+    tree = select.Tree.from_selection(None)
+    assert list(tree.selections()) == [()]

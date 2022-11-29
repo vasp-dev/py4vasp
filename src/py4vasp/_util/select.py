@@ -86,7 +86,9 @@ class Tree:
         return str(self._content)
 
     def __len__(self):
-        if len(self._children) == 0:
+        if self._empty_tree():
+            return 0
+        elif len(self._children) == 0:
             return 1
         else:
             return sum(len(child) for child in self._children)
@@ -99,3 +101,6 @@ class Tree:
             for child in self._children:
                 for selection in child.selections():
                     yield content + selection
+
+    def _empty_tree(self):
+        return self._parent is None and not self._children
