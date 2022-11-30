@@ -16,14 +16,25 @@ def data_access(func):
 
     @functools.wraps(func)
     def func_with_access(self, *args, selection=None, **kwargs):
-        tree = select.Tree.from_selection(selection)
-        for selection in tree.selections():
-            self._set_selection(selection)
+        def handle(selection):
+            selected = self._set_selection(selection)
             with self._data_context:
                 check.raise_error_if_not_callable(func, self, *args, **kwargs)
-                return func(self, *args, **kwargs)
+                return selected, func(self, *args, **kwargs)
+
+        tree = select.Tree.from_selection(selection)
+        return _merge_results(handle(selection) for selection in tree.selections())
 
     return func_with_access
+
+
+def _merge_results(results):
+    results = dict(results)
+    if all(value is None for value in results.values()):
+        return None
+    if len(results) == 1:
+        return results.popitem()[1]  # unpack value of first element
+    return results
 
 
 class Refinery:
@@ -120,9 +131,10 @@ class Refinery:
     def _set_selection(self, selection):
         selection_in_schema = self._find_selection_in_schema(selection)
         if not selection_in_schema:
-            return
+            return "default"
         try:
             self._data_context.selection = selection_in_schema
+            return selection_in_schema
         except dataclasses.FrozenInstanceError as error:
             message = f"Creating {self.__class__.__name__}.from_data does not allow to select a source."
             raise exception.IncorrectUsage(message) from error

@@ -215,3 +215,18 @@ def test_camel_to_snake_case(mock_access):
     filename = "file with data"
     CamelCase.from_file(filename).read()
     mock_access.assert_called_once_with("camel_case", selection=None, file=filename)
+
+
+def test_multiple_selection(mock_access):
+    example = Example.from_path()
+    actual = example.read(selection=f"default {SELECTION}")
+    expected = {"default": RAW_DATA.content, SELECTION: RAW_DATA.content}
+    assert actual == expected
+
+
+def test_multiple_print(mock_access):
+    example = Example.from_path()
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        assert example.print(selection=f"default {SELECTION}") is None
+    assert output.getvalue().strip() == f"{RAW_DATA.content}\n{RAW_DATA.content}"
