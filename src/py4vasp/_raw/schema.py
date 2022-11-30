@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any
+import textwrap
 
 from py4vasp import exception
 from py4vasp._util import convert
@@ -59,6 +59,12 @@ class Schema:
     @property
     def version(self):
         return self._version
+
+    def selections(self, quantity):
+        try:
+            return self._sources[quantity].keys()
+        except KeyError as error:
+            raise exception.FileAccessError(error_message(self, quantity)) from error
 
     @property
     def verified(self):
@@ -158,3 +164,23 @@ def _parse_field(key, value):
 
 def _parse_requirement(version):
     return f"{version.major}.{version.minor}.{version.patch}"
+
+
+def error_message(schema, quantity, source=None):
+    if quantity in schema.sources:
+        sources = schema.sources[quantity]
+        first_part = f"""\
+            py4vasp did not understand your input! The code executed requires to access
+            the source="{source}" of the quantity "{quantity}". Perhaps there is a
+            spelling mistake in the source? Please, compare the spelling of the source
+            "{source}" with the sources py4vasp knows about "{'", "'.join(sources)}"."""
+    else:
+        first_part = f"""\
+            py4vasp does not know how to access the quantity "{quantity}". Perhaps there
+            is a spelling mistake? Please, compare the spelling of the quantity "{quantity}"
+            with the quantities py4vasp knows about "{'", "'.join(schema.sources)}"."""
+    second_part = """\
+        It is also possible that this feature was only added in a later version of
+        py4vasp, so please check that you use the most recent version."""
+    message = textwrap.dedent(first_part) + " " + textwrap.dedent(second_part)
+    return "\n" + "\n".join(textwrap.wrap(message, width=80))

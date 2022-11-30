@@ -4,13 +4,12 @@ import contextlib
 import dataclasses
 import functools
 import pathlib
-import textwrap
 
 import h5py
 
 from py4vasp import exception, raw
 from py4vasp._raw.definition import DEFAULT_FILE, DEFAULT_SOURCE, schema
-from py4vasp._raw.schema import Length, Link
+from py4vasp._raw.schema import Length, Link, error_message
 
 
 @contextlib.contextmanager
@@ -75,7 +74,8 @@ class _State:
         try:
             return schema.sources[quantity][source]
         except KeyError as error:
-            raise exception.FileAccessError(_error_message(quantity, source)) from error
+            message = error_message(schema, quantity, source)
+            raise exception.FileAccessError(message) from error
 
     def _open_file(self, filename):
         if filename in self._files:
@@ -138,23 +138,3 @@ class _State:
 
 def _is_scalar(data):
     return not data.is_none() and data.ndim == 0
-
-
-def _error_message(quantity, source):
-    if quantity in schema.sources:
-        sources = schema.sources[quantity]
-        first_part = f"""\
-            py4vasp did not understand your input! The code executed requires to access
-            the source="{source}" of the quantity "{quantity}". Perhaps there is a
-            spelling mistake in the source? Please, compare the spelling of the source
-            "{source}" with the sources py4vasp knows about "{'", "'.join(sources)}"."""
-    else:
-        first_part = f"""\
-            py4vasp does not know how to access the quantity "{quantity}". Perhaps there
-            is a spelling mistake? Please, compare the spelling of the quantity "{quantity}"
-            with the quantities py4vasp knows about "{'", "'.join(schema.sources)}"."""
-    second_part = """\
-        It is also possible that this feature was only added in a later version of
-        py4vasp, so please check that you use the most recent version."""
-    message = textwrap.dedent(first_part) + " " + textwrap.dedent(second_part)
-    return "\n" + "\n".join(textwrap.wrap(message, width=80))
