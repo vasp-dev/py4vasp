@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import inspect
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from IPython.core.formatters import DisplayFormatter
@@ -10,10 +10,19 @@ from py4vasp import exception
 from py4vasp._util import convert
 
 TEST_FILENAME = "read_data_from_this_file"
+SELECTION = "alternative"
 
 
 @pytest.fixture
-def check_factory_methods():
+def mock_schema():
+    mock = MagicMock()
+    mock.selections.return_value = ("default", SELECTION)
+    with patch("py4vasp.raw.schema", mock):
+        yield mock
+
+
+@pytest.fixture
+def check_factory_methods(mock_schema):
     def inner(cls, data):
         instance = cls.from_path()
         check_instance_accesses_data(instance, data)
@@ -56,8 +65,8 @@ def check_method_accesses_data(data, method_under_test, file):
         execute_method(method_under_test)
         check_mock_called(mock_access, quantity, file)
         mock_access.reset_mock()
-        execute_method(method_under_test, selection="choice")
-        check_mock_called(mock_access, quantity, file, selection="choice")
+        execute_method(method_under_test, selection=SELECTION)
+        check_mock_called(mock_access, quantity, file, selection=SELECTION)
 
 
 def execute_method(method_under_test, **kwargs):

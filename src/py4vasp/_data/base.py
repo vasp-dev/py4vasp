@@ -6,7 +6,7 @@ import functools
 import pathlib
 
 from py4vasp import exception, raw
-from py4vasp._util import check, convert
+from py4vasp._util import check, convert, select
 
 
 def data_access(func):
@@ -16,10 +16,12 @@ def data_access(func):
 
     @functools.wraps(func)
     def func_with_access(self, *args, selection=None, **kwargs):
-        self._set_selection(selection)
-        with self._data_context:
-            check.raise_error_if_not_callable(func, self, *args, **kwargs)
-            return func(self, *args, **kwargs)
+        tree = select.Tree.from_selection(selection)
+        for selection in tree.selections():
+            self._set_selection(selection)
+            with self._data_context:
+                check.raise_error_if_not_callable(func, self, *args, **kwargs)
+                return func(self, *args, **kwargs)
 
     return func_with_access
 
@@ -116,13 +118,24 @@ class Refinery:
         return self._path
 
     def _set_selection(self, selection):
-        if not selection:
+        selection_in_schema = self._find_selection_in_schema(selection)
+        if not selection_in_schema:
             return
         try:
-            self._data_context.selection = selection.strip().lower()
+            self._data_context.selection = selection_in_schema
         except dataclasses.FrozenInstanceError as error:
             message = f"Creating {self.__class__.__name__}.from_data does not allow to select a source."
             raise exception.IncorrectUsage(message) from error
+
+    def _find_selection_in_schema(self, selection):
+        available_selections = raw.schema.selections(_quantity(self.__class__))
+        candidates = {part.lower() for part in selection}
+        result = candidates.intersection(available_selections)
+        assert len(result) <= 1
+        if result:
+            return result.pop()
+        else:
+            return None
 
     @property
     def _raw_data(self):
@@ -163,7 +176,7 @@ def _do_nothing(*args, **kwargs):
 @dataclasses.dataclass(frozen=True)
 class _DataWrapper(contextlib.AbstractContextManager):
     data: raw.VaspData
-    source: str = None
+    selection: str = None
     __enter__ = _do_nothing
     __exit__ = _do_nothing
 

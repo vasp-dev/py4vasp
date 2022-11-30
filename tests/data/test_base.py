@@ -6,26 +6,34 @@ import inspect
 import io
 import pathlib
 import tempfile
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from py4vasp import exception, raw
 from py4vasp._data import base
 
+from .conftest import SELECTION
+
 
 @dataclasses.dataclass
 class RawData:
     content: str
+    selection: str = None
 
 
-RAW_DATA = RawData("test")
+RAW_DATA = RawData("example")
 
 
 @pytest.fixture
-def mock_access():
+def mock_access(mock_schema):
+    def mock_behavior(quantity, *, selection=None, path=None, file=None):
+        mock = MagicMock()
+        mock.__enter__.side_effect = lambda *_: RawData(quantity, selection)
+        return mock
+
     with patch("py4vasp.raw.access") as access:
-        access.return_value.__enter__.side_effect = lambda *_: RAW_DATA
+        access.side_effect = mock_behavior
         yield access
 
 
@@ -51,7 +59,7 @@ class Example(base.Refinery):
         return self._raw_data.content
 
 
-def test_from_RAW_DATA():
+def test_from_RAW_DATA(mock_schema):
     example = Example.from_data(RAW_DATA)
     assert example.post_init_called
     # access twice too make sure context is regenerated
@@ -94,7 +102,7 @@ def test_nested_calls(mock_access):
     mock_access.assert_called_once_with("example", selection=None, path=pathname)
 
 
-def test_arguments_passed():
+def test_arguments_passed(mock_schema):
     example = Example.from_data(RAW_DATA)
     mandatory = "mandatory argument"
     optional = "optional argument"
@@ -102,10 +110,11 @@ def test_arguments_passed():
     assert example.with_arguments(mandatory, optional=optional) == (mandatory, optional)
 
 
-def test_selection_from_data():
+def test_selection_from_data(mock_schema):
+    # don't use selection with from_data
     example = Example.from_data(RAW_DATA)
     with pytest.raises(exception.IncorrectUsage):
-        example.read(selection="don't use selection with from_data")
+        example.read(selection=SELECTION)
 
 
 def test_default_selection_is_none():
@@ -116,21 +125,20 @@ def test_default_selection_is_none():
 
 def test_selection_from_path(mock_access):
     example = Example.from_path()
-    source = "read from this source"
-    example.read(selection=source)
-    mock_access.assert_called_once_with("example", selection=source, path=None)
+    example.read(selection=SELECTION)
+    mock_access.assert_called_once_with("example", selection=SELECTION, path=None)
     mock_access.reset_mock()
     example.read()
     mock_access.assert_called_once_with("example", selection=None, path=None)
 
 
 def test_base_source_ignore_whitespace_and_capitalization(mock_access):
+    # create a selection which is capitalized and has extra whitespace
+    selection = f"  {SELECTION.upper()}  "
     filename = "file containing the data"
     example = Example.from_file(filename)
-    source = " SouRCE_wiTh_extRA_whiTeSPace_and_CaPiTaliZAtion  "
-    example.read(selection=source)
-    source = source.strip().lower()
-    mock_access.assert_called_once_with("example", selection=source, file=filename)
+    example.read(selection=selection)
+    mock_access.assert_called_once_with("example", selection=SELECTION, file=filename)
 
 
 def test_print_example(mock_access):
@@ -140,12 +148,12 @@ def test_print_example(mock_access):
     assert RAW_DATA.content == output.getvalue().strip()
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
-        Example.from_path().print(selection="choice")
-    mock_access.assert_called_once_with("example", selection="choice", path=None)
+        Example.from_path().print(selection=SELECTION)
+    mock_access.assert_called_once_with("example", selection=SELECTION, path=None)
     assert RAW_DATA.content == output.getvalue().strip()
 
 
-def test_print_pretty(format_):
+def test_print_pretty(mock_schema, format_):
     actual, _ = format_(Example.from_data(RAW_DATA))
     assert actual == {"text/plain": RAW_DATA.content}
 
