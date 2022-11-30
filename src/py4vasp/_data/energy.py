@@ -68,7 +68,7 @@ dict
     def to_dict(self, selection=select.all):
         return {
             label: self._raw_data.values[self._steps, index]
-            for label, index in self._parse_selection(selection)
+            for label, index in self._parse_user_selection(selection)
         }
 
     @base.data_access
@@ -135,16 +135,16 @@ float or np.ndarray or tuple
     def to_numpy(self, selection="TOTEN"):
         result = tuple(
             self._raw_data.values[self._steps, index]
-            for _, index in self._parse_selection(selection)
+            for _, index in self._parse_user_selection(selection)
         )
         return _unpack_if_only_one_element(result)
 
     @base.data_access
     def labels(self, selection=select.all):
         "Return the labels corresponding to a particular selection defaulting to all labels."
-        return [label for label, _ in self._parse_selection(selection)]
+        return [label for label, _ in self._parse_user_selection(selection)]
 
-    def _parse_selection(self, selection):
+    def _parse_user_selection(self, selection):
         # NOTE it would be nice to use SelectionTree instead, however that requires
         # the labels may have spaces so it might lead to redunandancies
         indices = self._find_selection_indices(selection)
@@ -170,7 +170,7 @@ float or np.ndarray or tuple
         )
 
     def _create_yaxes(self, selection):
-        return _YAxes(self._parse_selection(selection))
+        return _YAxes(self._parse_user_selection(selection))
 
     def _make_series(self, yaxes, selection):
         steps = np.arange(len(self._raw_data.values))[self._slice] + 1
@@ -181,7 +181,7 @@ float or np.ndarray or tuple
                 name=label[:14].strip(),
                 y2=yaxes.y2(label),
             )
-            for label, index in self._parse_selection(selection)
+            for label, index in self._parse_user_selection(selection)
         ]
 
 

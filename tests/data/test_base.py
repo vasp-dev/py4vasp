@@ -12,6 +12,7 @@ import pytest
 
 from py4vasp import exception, raw
 from py4vasp._data import base
+from py4vasp._util import select
 
 from .conftest import SELECTION
 
@@ -56,7 +57,7 @@ class Example(base.Refinery):
 
     @base.data_access
     def with_selection_argument(self, selection=None):
-        return self._raw_data.selection, selection
+        return self._raw_data.selection, list(selection)
 
     @base.data_access
     def __str__(self):
@@ -241,8 +242,20 @@ def test_selection_passed_to_inner_function(mock_access):
     example = Example.from_path()
     source, argument = example.with_selection_argument(selection=selection)
     assert source is None
-    assert argument == (selection,)
+    assert argument == [[selection]]
     example = Example.from_data(RAW_DATA)
     source, argument = example.with_selection_argument(selection=selection)
     assert source is None
-    assert argument == (selection,)
+    assert argument == [[selection]]
+
+
+def test_selection_of_sources_are_filtered(mock_access):
+    range_ = select.Group(["1", "3"], separator=":")
+    pair = select.Group(["2", "4"], separator="~")
+    selection = f"foo {SELECTION}(bar({range_}),baz({pair}))"
+    example = Example.from_path()
+    result = example.with_selection_argument(selection=selection)
+    assert result["default"] == (None, [["foo"]])
+    source, argument = result["alternative"]
+    assert source == "alternative"
+    assert list(argument) == [["bar", range_], ["baz", pair]]

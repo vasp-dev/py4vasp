@@ -105,10 +105,10 @@ class PairCorrelation(slice_.Mixin, base.Refinery, export.Image):
     def _read_data(self, selection):
         return {
             label: self._raw_data.function[self._steps, index]
-            for label, index in self._parse_selection(selection)
+            for label, index in self._parse_user_selection(selection)
         }
 
-    def _parse_selection(self, selection):
+    def _parse_user_selection(self, selection):
         if selection == select.all:
             return self._select_all()
         else:

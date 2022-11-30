@@ -19,22 +19,21 @@ def data_access(func):
 
     @functools.wraps(func)
     def func_with_access(self, *args, selection=None, **kwargs):
-        def handle(selection):
-            selected = self._set_selection(selection)
-            new_kwargs = {**kwargs, **_remaining_selection(selected, selection)}
+        def handle(selected, remaining):
+            self._set_selection(selected)
+            new_kwargs = {**kwargs, **_remaining_selection(remaining)}
             with self._data_context:
                 check.raise_error_if_not_callable(func, self, *args, **new_kwargs)
-                return selected, func(self, *args, **new_kwargs)
+                return selected or "default", func(self, *args, **new_kwargs)
 
-        tree = select.Tree.from_selection(selection)
-        return _merge_results(handle(selection) for selection in tree.selections())
+        selections = self._parse_selection(selection)
+        return _merge_results(handle(*selection) for selection in selections.items())
 
     return func_with_access
 
 
-def _remaining_selection(selected, selection):
-    remaining = tuple(element for element in selection if element.lower() != selected)
-    if len(remaining) == 0:
+def _remaining_selection(remaining):
+    if remaining == [[]]:
         return {}
     else:
         return {"selection": remaining}
@@ -141,25 +140,34 @@ class Refinery:
         return self._path
 
     def _set_selection(self, selection):
-        selection_in_schema = self._find_selection_in_schema(selection)
-        if not selection_in_schema:
-            return "default"
+        if not selection:
+            return
         try:
-            self._data_context.selection = selection_in_schema
-            return selection_in_schema
+            self._data_context.selection = selection
         except dataclasses.FrozenInstanceError as error:
             message = f"Creating {self.__class__.__name__}.from_data does not allow to select a source."
             raise exception.IncorrectUsage(message) from error
 
+    def _parse_selection(self, selection):
+        tree = select.Tree.from_selection(selection)
+        result = {}
+        for selection in tree.selections():
+            selected, remaining = self._find_selection_in_schema(selection)
+            result.setdefault(selected, [])
+            result[selected].append(remaining)
+        return result
+
     def _find_selection_in_schema(self, selection):
-        available_selections = raw.schema.selections(_quantity(self.__class__))
-        candidates = {part.lower() for part in selection}
-        result = candidates.intersection(available_selections)
-        assert len(result) <= 1
-        if result:
-            return result.pop()
-        else:
-            return None
+        options = raw.schema.selections(_quantity(self.__class__))
+        selected = None
+        remaining = []
+        for part in selection:
+            sanitized_part = str(part).lower()
+            if sanitized_part not in options:
+                remaining.append(part)
+            else:
+                selected = sanitized_part
+        return selected, remaining
 
     @property
     def _raw_data(self):
