@@ -55,6 +55,10 @@ class Example(base.Refinery):
         return mandatory, optional
 
     @base.data_access
+    def with_selection_argument(self, selection=None):
+        return self._raw_data.selection, selection
+
+    @base.data_access
     def __str__(self):
         return self._raw_data.content
 
@@ -230,3 +234,15 @@ def test_multiple_print(mock_access):
     with contextlib.redirect_stdout(output):
         assert example.print(selection=f"default {SELECTION}") is None
     assert output.getvalue().strip() == f"{RAW_DATA.content}\n{RAW_DATA.content}"
+
+
+def test_selection_passed_to_inner_function(mock_access):
+    selection = "selection_does_not_match_source"
+    example = Example.from_path()
+    source, argument = example.with_selection_argument(selection=selection)
+    assert source is None
+    assert argument == (selection,)
+    example = Example.from_data(RAW_DATA)
+    source, argument = example.with_selection_argument(selection=selection)
+    assert source is None
+    assert argument == (selection,)

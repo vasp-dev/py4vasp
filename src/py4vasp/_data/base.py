@@ -12,20 +12,32 @@ from py4vasp._util import check, convert, select
 def data_access(func):
     """Use this decorator for all public methods of Refinery children. It creates the
     necessary wrappers to load the data from the VASP output and makes it available
-    via the _raw_data property."""
+    via the _raw_data property. The decorator also selects the appropriate source from
+    the HDF5 file based on the selection argument. If multiple selections are requested
+    these will be handled iteratively and returned as a dictionary. Any remaining
+    selection not matching a source is passed to the inner function."""
 
     @functools.wraps(func)
     def func_with_access(self, *args, selection=None, **kwargs):
         def handle(selection):
             selected = self._set_selection(selection)
+            new_kwargs = {**kwargs, **_remaining_selection(selected, selection)}
             with self._data_context:
-                check.raise_error_if_not_callable(func, self, *args, **kwargs)
-                return selected, func(self, *args, **kwargs)
+                check.raise_error_if_not_callable(func, self, *args, **new_kwargs)
+                return selected, func(self, *args, **new_kwargs)
 
         tree = select.Tree.from_selection(selection)
         return _merge_results(handle(selection) for selection in tree.selections())
 
     return func_with_access
+
+
+def _remaining_selection(selected, selection):
+    remaining = tuple(element for element in selection if element.lower() != selected)
+    if len(remaining) == 0:
+        return {}
+    else:
+        return {"selection": remaining}
 
 
 def _merge_results(results):
