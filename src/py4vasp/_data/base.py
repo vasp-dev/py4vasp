@@ -26,79 +26,6 @@ def data_access(func):
     return func_with_access
 
 
-class _FunctionWrapper:
-    def __init__(self, func, refinery):
-        self._refinery = refinery
-        self._func = func
-
-    def run(self, *args, **kwargs):
-        selection, bound_arguments = self._find_selection_in_arguments(*args, **kwargs)
-        selections = self._parse_selection(selection)
-        results = self._run_selections(bound_arguments, selections)
-        return self._merge_results(results)
-
-    def _find_selection_in_arguments(self, *args, **kwargs):
-        signature = inspect.signature(self._func)
-        if "selection" in signature.parameters:
-            arguments = signature.bind(self._refinery, *args, **kwargs)
-            arguments.apply_defaults()
-            selection = arguments.arguments["selection"]
-        else:
-            selection = kwargs.pop("selection", None)
-            arguments = signature.bind(self._refinery, *args, **kwargs)
-        return selection, arguments
-
-    def _parse_selection(self, selection):
-        tree = select.Tree.from_selection(selection)
-        result = {}
-        for selection in tree.selections():
-            selected, remaining = self._find_selection_in_schema(selection)
-            result.setdefault(selected, [])
-            result[selected].append(remaining)
-        return result
-
-    def _run_selections(self, bound_arguments, selections):
-        for selection in selections.items():
-            yield self._run_selection(bound_arguments, *selection)
-
-    def _run_selection(self, bound_arguments, selected, remaining):
-        self._refinery._set_selection(selected)
-        work = self._set_remaining_selection(bound_arguments, remaining)
-        with self._refinery._data_context:
-            check.raise_error_if_not_callable(self._func, *work.args, **work.kwargs)
-            return selected or "default", self._func(*work.args, **work.kwargs)
-
-    def _set_remaining_selection(self, bound_arguments, remaining):
-        if "selection" not in bound_arguments.arguments:
-            return bound_arguments
-        if remaining == [[]]:
-            selection = None
-        else:
-            selection = select.selections_to_string(remaining)
-        bound_arguments.arguments["selection"] = selection
-        return bound_arguments
-
-    def _find_selection_in_schema(self, selection):
-        options = raw.schema.selections(_quantity(self._refinery.__class__))
-        selected = None
-        remaining = []
-        for part in selection:
-            sanitized_part = str(part).lower()
-            if sanitized_part not in options:
-                remaining.append(part)
-            else:
-                selected = sanitized_part
-        return selected, remaining
-
-    def _merge_results(self, results):
-        results = dict(results)
-        if all(value is None for value in results.values()):
-            return None
-        if len(results) == 1:
-            return results.popitem()[1]  # unpack value of first element
-        return results
-
-
 class Refinery:
     def __init__(self, data_context, **kwargs):
         self._data_context = data_context
@@ -128,7 +55,8 @@ class Refinery:
         -------
             A Refinery instance to handle the passed data.
         """
-        return cls(_DataWrapper(raw_data), repr=f".from_data({repr(raw_data)})")
+        repr_ = f".from_data({repr(raw_data)})"
+        return cls(_DataWrapper(_quantity(cls), raw_data), repr=repr_)
 
     @classmethod
     def from_path(cls, path=None):
@@ -190,15 +118,6 @@ class Refinery:
         "Returns the path from which the output is obtained."
         return self._path
 
-    def _set_selection(self, selection):
-        if not selection:
-            return
-        try:
-            self._data_context.selection = selection
-        except dataclasses.FrozenInstanceError as error:
-            message = f"Creating {self.__class__.__name__}.from_data does not allow to select a source."
-            raise exception.IncorrectUsage(message) from error
-
     @property
     def _raw_data(self):
         return self._data_context.data
@@ -231,29 +150,113 @@ def _get_path_to_file(file):
     return file.parent
 
 
-def _do_nothing(*args, **kwargs):
-    pass
+class _FunctionWrapper:
+    def __init__(self, func, refinery):
+        self._data_context = refinery._data_context
+        self._func = functools.partial(func, refinery)
+
+    def run(self, *args, **kwargs):
+        selection, bound_arguments = self._find_selection_in_arguments(*args, **kwargs)
+        selections = self._parse_selection(selection)
+        results = self._run_selections(bound_arguments, selections)
+        return self._merge_results(results)
+
+    def _find_selection_in_arguments(self, *args, **kwargs):
+        signature = inspect.signature(self._func)
+        if "selection" in signature.parameters:
+            arguments = signature.bind(*args, **kwargs)
+            arguments.apply_defaults()
+            selection = arguments.arguments["selection"]
+        else:
+            selection = kwargs.pop("selection", None)
+            arguments = signature.bind(*args, **kwargs)
+        return selection, arguments
+
+    def _parse_selection(self, selection):
+        tree = select.Tree.from_selection(selection)
+        result = {}
+        for selection in tree.selections():
+            selected, remaining = self._find_selection_in_schema(selection)
+            result.setdefault(selected, [])
+            result[selected].append(remaining)
+        return result
+
+    def _find_selection_in_schema(self, selection):
+        options = raw.schema.selections(self._data_context.quantity)
+        selected = None
+        remaining = []
+        for part in selection:
+            sanitized_part = str(part).lower()
+            if sanitized_part not in options:
+                remaining.append(part)
+            else:
+                selected = sanitized_part
+        return selected, remaining
+
+    def _run_selections(self, bound_arguments, selections):
+        for selection in selections.items():
+            yield self._run_selection(bound_arguments, *selection)
+
+    def _run_selection(self, bound_arguments, selected, remaining):
+        self._data_context.set_selection(selected)
+        work = self._set_remaining_selection(bound_arguments, remaining)
+        with self._data_context:
+            check.raise_error_if_not_callable(self._func, *work.args, **work.kwargs)
+            return selected or "default", self._func(*work.args, **work.kwargs)
+
+    def _set_remaining_selection(self, bound_arguments, remaining):
+        if "selection" not in bound_arguments.arguments:
+            return bound_arguments
+        if remaining == [[]]:
+            selection = None
+        else:
+            selection = select.selections_to_string(remaining)
+        bound_arguments.arguments["selection"] = selection
+        return bound_arguments
+
+    def _merge_results(self, results):
+        results = dict(results)
+        if all(value is None for value in results.values()):
+            return None
+        if len(results) == 1:
+            return results.popitem()[1]  # unpack value of first element
+        return results
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class _DataWrapper(contextlib.AbstractContextManager):
+    quantity: str
     data: raw.VaspData
     selection: str = None
-    __enter__ = _do_nothing
-    __exit__ = _do_nothing
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, *_):
+        pass
+
+    def set_selection(self, selection):
+        if selection is None:
+            return
+        message = (
+            f"Creating {self.quantity}.from_data does not allow to select a source."
+        )
+        raise exception.IncorrectUsage(message)
 
 
 class _DataAccess(contextlib.AbstractContextManager):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, quantity, **kwargs):
         self.selection = None
-        self._args = args
+        self.quantity = quantity
         self._kwargs = kwargs
         self._counter = 0
         self._stack = contextlib.ExitStack()
 
     def __enter__(self):
         if self._counter == 0:
-            context = raw.access(*self._args, selection=self.selection, **self._kwargs)
+            context = raw.access(
+                self.quantity, selection=self.selection, **self._kwargs
+            )
             self.data = self._stack.enter_context(context)
         self._counter += 1
         return self.data
@@ -263,3 +266,6 @@ class _DataAccess(contextlib.AbstractContextManager):
         if self._counter == 0:
             self.selection = None
             self._stack.close()
+
+    def set_selection(self, selection):
+        self.selection = selection
