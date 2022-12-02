@@ -104,3 +104,13 @@ class Tree:
 
     def _empty_tree(self):
         return self._parent is None and not self._children
+
+
+def selections_to_string(selections):
+    "This routine is intended to convert selections back to string that would regenerate a tree."
+    return " ".join(_selection_to_string(selection) for selection in selections)
+
+
+def _selection_to_string(selection):
+    parts = [str(part) for part in selection]
+    return "(".join(parts) + ")" * (len(parts) - 1)
