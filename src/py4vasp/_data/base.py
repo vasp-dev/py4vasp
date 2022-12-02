@@ -20,40 +20,83 @@ def data_access(func):
 
     @functools.wraps(func)
     def func_with_access(self, *args, **kwargs):
-        def handle(selected, remaining):
-            self._set_selection(selected)
-            work = _set_remaining_selection(bound_arguments, remaining)
-            with self._data_context:
-                check.raise_error_if_not_callable(func, *work.args, **work.kwargs)
-                return selected or "default", func(*work.args, **work.kwargs)
-
-        selection, bound_arguments = self._find_selection_in_arguments(
-            func, *args, **kwargs
-        )
-        selections = self._parse_selection(selection)
-        return _merge_results(handle(*selection) for selection in selections.items())
+        wrapper = _FunctionWrapper(func, self)
+        return wrapper.run(*args, **kwargs)
 
     return func_with_access
 
 
-def _set_remaining_selection(bound_arguments, remaining):
-    if "selection" not in bound_arguments.arguments:
+class _FunctionWrapper:
+    def __init__(self, func, refinery):
+        self._refinery = refinery
+        self._func = func
+
+    def run(self, *args, **kwargs):
+        selection, bound_arguments = self._find_selection_in_arguments(*args, **kwargs)
+        selections = self._parse_selection(selection)
+        results = self._run_selections(bound_arguments, selections)
+        return self._merge_results(results)
+
+    def _find_selection_in_arguments(self, *args, **kwargs):
+        signature = inspect.signature(self._func)
+        if "selection" in signature.parameters:
+            arguments = signature.bind(self._refinery, *args, **kwargs)
+            arguments.apply_defaults()
+            selection = arguments.arguments["selection"]
+        else:
+            selection = kwargs.pop("selection", None)
+            arguments = signature.bind(self._refinery, *args, **kwargs)
+        return selection, arguments
+
+    def _parse_selection(self, selection):
+        tree = select.Tree.from_selection(selection)
+        result = {}
+        for selection in tree.selections():
+            selected, remaining = self._find_selection_in_schema(selection)
+            result.setdefault(selected, [])
+            result[selected].append(remaining)
+        return result
+
+    def _run_selections(self, bound_arguments, selections):
+        for selection in selections.items():
+            yield self._run_selection(bound_arguments, *selection)
+
+    def _run_selection(self, bound_arguments, selected, remaining):
+        self._refinery._set_selection(selected)
+        work = self._set_remaining_selection(bound_arguments, remaining)
+        with self._refinery._data_context:
+            check.raise_error_if_not_callable(self._func, *work.args, **work.kwargs)
+            return selected or "default", self._func(*work.args, **work.kwargs)
+
+    def _set_remaining_selection(self, bound_arguments, remaining):
+        if "selection" not in bound_arguments.arguments:
+            return bound_arguments
+        if remaining == [[]]:
+            selection = None
+        else:
+            selection = select.selections_to_string(remaining)
+        bound_arguments.arguments["selection"] = selection
         return bound_arguments
-    if remaining == [[]]:
-        selection = None
-    else:
-        selection = select.selections_to_string(remaining)
-    bound_arguments.arguments["selection"] = selection
-    return bound_arguments
 
+    def _find_selection_in_schema(self, selection):
+        options = raw.schema.selections(_quantity(self._refinery.__class__))
+        selected = None
+        remaining = []
+        for part in selection:
+            sanitized_part = str(part).lower()
+            if sanitized_part not in options:
+                remaining.append(part)
+            else:
+                selected = sanitized_part
+        return selected, remaining
 
-def _merge_results(results):
-    results = dict(results)
-    if all(value is None for value in results.values()):
-        return None
-    if len(results) == 1:
-        return results.popitem()[1]  # unpack value of first element
-    return results
+    def _merge_results(self, results):
+        results = dict(results)
+        if all(value is None for value in results.values()):
+            return None
+        if len(results) == 1:
+            return results.popitem()[1]  # unpack value of first element
+        return results
 
 
 class Refinery:
@@ -155,38 +198,6 @@ class Refinery:
         except dataclasses.FrozenInstanceError as error:
             message = f"Creating {self.__class__.__name__}.from_data does not allow to select a source."
             raise exception.IncorrectUsage(message) from error
-
-    def _find_selection_in_arguments(self, func, *args, **kwargs):
-        signature = inspect.signature(func)
-        if "selection" in signature.parameters:
-            arguments = signature.bind(self, *args, **kwargs)
-            arguments.apply_defaults()
-            selection = arguments.arguments["selection"]
-        else:
-            selection = kwargs.pop("selection", None)
-            arguments = signature.bind(self, *args, **kwargs)
-        return selection, arguments
-
-    def _parse_selection(self, selection):
-        tree = select.Tree.from_selection(selection)
-        result = {}
-        for selection in tree.selections():
-            selected, remaining = self._find_selection_in_schema(selection)
-            result.setdefault(selected, [])
-            result[selected].append(remaining)
-        return result
-
-    def _find_selection_in_schema(self, selection):
-        options = raw.schema.selections(_quantity(self.__class__))
-        selected = None
-        remaining = []
-        for part in selection:
-            sanitized_part = str(part).lower()
-            if sanitized_part not in options:
-                remaining.append(part)
-            else:
-                selected = sanitized_part
-        return selected, remaining
 
     @property
     def _raw_data(self):
