@@ -1,5 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import pytest
+
+from py4vasp import exception
 from py4vasp._util import select
 
 
@@ -113,7 +116,12 @@ def test_selections_empty_tree():
 
 def test_selections_to_string():
     tree = select.Tree.from_selection("A(B(1:3), C~D(E F)) G(H, J) K")
-    expected = "A(B(1:3)) A(C~D(E)) A(C~D(F)) G(H) G(J) K"
+    expected = "A(B(1:3)), A(C~D(E)), A(C~D(F)), G(H), G(J), K"
     assert select.selections_to_string(tree.selections()) == expected
     copy = select.Tree.from_selection(expected)
     assert list(tree.selections()) == list(copy.selections())
+
+
+def test_incorrect_selection_raises_error():
+    with pytest.raises(exception.IncorrectUsage):
+        select.Tree.from_selection(1)
