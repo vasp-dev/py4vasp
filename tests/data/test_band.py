@@ -134,7 +134,6 @@ def test_spin_polarized_read(spin_polarized, Assert):
     Assert.allclose(band["occupations_down"], spin_polarized.ref.occupations_down)
 
 
-@pytest.mark.xfail(reason="Not ported for new selection logic yet.")
 def test_spin_projectors_read(spin_projectors, Assert):
     band = spin_projectors.read(selection="s Fe(d)")
     Assert.allclose(band["projections"]["s_up"], spin_projectors.ref.s_up)
@@ -185,7 +184,6 @@ def test_spin_polarized_to_frame(spin_polarized, Assert):
     Assert.allclose(actual.occupations_down, ref.occupations_down.T.flatten())
 
 
-@pytest.mark.xfail(reason="Not ported for new selection logic yet.")
 def test_spin_projectors_to_frame(spin_projectors, Assert):
     actual = spin_projectors.to_frame(selection="O Fe(d)")
     Assert.allclose(actual.O_up, spin_projectors.ref.O_up.T.flatten())
@@ -210,14 +208,12 @@ def test_multiple_bands_plot(multiple_bands, Assert):
     Assert.allclose(fig.series[0].y, multiple_bands.ref.bands.T)
 
 
-@pytest.mark.xfail(reason="Not ported for new selection logic yet.")
 def test_with_projectors_plot_default_width(with_projectors, Assert):
     default_width = 0.5
     fig = with_projectors.plot(selection="Sr, p")
     check_figure(fig, default_width, with_projectors.ref, Assert)
 
 
-@pytest.mark.xfail(reason="Not ported for new selection logic yet.")
 def test_with_projectors_plot_custom_width(with_projectors, Assert):
     width = 0.1
     fig = with_projectors.plot(selection="Sr, p", width=width)

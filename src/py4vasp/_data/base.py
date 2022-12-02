@@ -3,6 +3,7 @@
 import contextlib
 import dataclasses
 import functools
+import inspect
 import pathlib
 
 from py4vasp import exception, raw
@@ -18,25 +19,32 @@ def data_access(func):
     selection not matching a source is passed to the inner function."""
 
     @functools.wraps(func)
-    def func_with_access(self, *args, selection=None, **kwargs):
+    def func_with_access(self, *args, **kwargs):
         def handle(selected, remaining):
             self._set_selection(selected)
-            new_kwargs = {**kwargs, **_remaining_selection(remaining)}
+            work = _set_remaining_selection(bound_arguments, remaining)
             with self._data_context:
-                check.raise_error_if_not_callable(func, self, *args, **new_kwargs)
-                return selected or "default", func(self, *args, **new_kwargs)
+                check.raise_error_if_not_callable(func, *work.args, **work.kwargs)
+                return selected or "default", func(*work.args, **work.kwargs)
 
+        selection, bound_arguments = self._find_selection_in_arguments(
+            func, *args, **kwargs
+        )
         selections = self._parse_selection(selection)
         return _merge_results(handle(*selection) for selection in selections.items())
 
     return func_with_access
 
 
-def _remaining_selection(remaining):
+def _set_remaining_selection(bound_arguments, remaining):
+    if "selection" not in bound_arguments.arguments:
+        return bound_arguments
     if remaining == [[]]:
-        return {}
+        selection = None
     else:
-        return {"selection": remaining}
+        selection = select.selections_to_string(remaining)
+    bound_arguments.arguments["selection"] = selection
+    return bound_arguments
 
 
 def _merge_results(results):
@@ -147,6 +155,17 @@ class Refinery:
         except dataclasses.FrozenInstanceError as error:
             message = f"Creating {self.__class__.__name__}.from_data does not allow to select a source."
             raise exception.IncorrectUsage(message) from error
+
+    def _find_selection_in_arguments(self, func, *args, **kwargs):
+        signature = inspect.signature(func)
+        if "selection" in signature.parameters:
+            arguments = signature.bind(self, *args, **kwargs)
+            arguments.apply_defaults()
+            selection = arguments.arguments["selection"]
+        else:
+            selection = kwargs.pop("selection", None)
+            arguments = signature.bind(self, *args, **kwargs)
+        return selection, arguments
 
     def _parse_selection(self, selection):
         tree = select.Tree.from_selection(selection)

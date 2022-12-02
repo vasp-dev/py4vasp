@@ -23,21 +23,22 @@ def mock_schema():
 
 @pytest.fixture
 def check_factory_methods(mock_schema):
-    def inner(cls, data):
+    def inner(cls, data, parameters={}):
         instance = cls.from_path()
-        check_instance_accesses_data(instance, data)
+        check_instance_accesses_data(instance, data, parameters)
         instance = cls.from_file(TEST_FILENAME)
-        check_instance_accesses_data(instance, data, file=TEST_FILENAME)
+        check_instance_accesses_data(instance, data, parameters, file=TEST_FILENAME)
 
     return inner
 
 
-def check_instance_accesses_data(instance, data, file=None):
+def check_instance_accesses_data(instance, data, parameters, file=None):
     failed = []
     for name, method in inspect.getmembers(instance, inspect.ismethod):
         if should_test_method(name):
+            kwargs = parameters.get(name, {})
             try:
-                check_method_accesses_data(data, method, file)
+                check_method_accesses_data(data, method, file, **kwargs)
             except (AttributeError, AssertionError):
                 failed.append(name)
     if failed:
@@ -58,14 +59,14 @@ def should_test_method(name):
     return True
 
 
-def check_method_accesses_data(data, method_under_test, file):
+def check_method_accesses_data(data, method_under_test, file, **kwargs):
     quantity = convert.to_snakecase(data.__class__.__name__)
     with patch("py4vasp.raw.access") as mock_access:
         mock_access.return_value.__enter__.side_effect = lambda *_: data
-        execute_method(method_under_test)
+        execute_method(method_under_test, **kwargs)
         check_mock_called(mock_access, quantity, file)
         mock_access.reset_mock()
-        execute_method(method_under_test, selection=SELECTION)
+        execute_method(method_under_test, selection=SELECTION, **kwargs)
         check_mock_called(mock_access, quantity, file, selection=SELECTION)
 
 

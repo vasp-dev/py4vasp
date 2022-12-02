@@ -56,8 +56,12 @@ class Example(base.Refinery):
         return mandatory, optional
 
     @base.data_access
+    def with_variadic_arguments(self, *args, **kwargs):
+        return args, kwargs
+
+    @base.data_access
     def with_selection_argument(self, selection=None):
-        return self._raw_data.selection, list(selection)
+        return self._raw_data.selection, selection
 
     @base.data_access
     def __str__(self):
@@ -113,6 +117,20 @@ def test_arguments_passed(mock_schema):
     optional = "optional argument"
     assert example.with_arguments(mandatory) == (mandatory, None)
     assert example.with_arguments(mandatory, optional=optional) == (mandatory, optional)
+
+
+def test_variadic_arguments_passed(mock_schema):
+    example = Example.from_data(RAW_DATA)
+    args, kwargs = example.with_variadic_arguments(1, 2, 3, foo=4, bar=5)
+    assert args == (1, 2, 3)
+    assert kwargs == {"foo": 4, "bar": 5}
+
+
+def test_variadic_arguments_with_selection(mock_access):
+    example = Example.from_path()
+    args, kwargs = example.with_variadic_arguments("foo", bar=1, selection=SELECTION)
+    assert args == ("foo",)
+    assert kwargs == {"bar": 1}
 
 
 def test_selection_from_data(mock_schema):
@@ -242,11 +260,17 @@ def test_selection_passed_to_inner_function(mock_access):
     example = Example.from_path()
     source, argument = example.with_selection_argument(selection=selection)
     assert source is None
-    assert argument == [[selection]]
+    assert argument == selection
     example = Example.from_data(RAW_DATA)
     source, argument = example.with_selection_argument(selection=selection)
     assert source is None
-    assert argument == [[selection]]
+    assert argument == selection
+
+
+def test_missing_selection_argument(mock_access):
+    example = Example.from_path()
+    result = example.with_selection_argument()
+    assert result == (None, None)
 
 
 def test_selection_of_sources_are_filtered(mock_access):
@@ -255,7 +279,19 @@ def test_selection_of_sources_are_filtered(mock_access):
     selection = f"foo {SELECTION}(bar({range_}),baz({pair}))"
     example = Example.from_path()
     result = example.with_selection_argument(selection=selection)
-    assert result["default"] == (None, [["foo"]])
-    source, argument = result["alternative"]
-    assert source == "alternative"
-    assert list(argument) == [["bar", range_], ["baz", pair]]
+    assert result["default"] == (None, "foo")
+    assert result[SELECTION] == (SELECTION, f"bar({range_}), baz({pair})")
+
+
+def test_selection_as_positional_argument(mock_access):
+    example = Example.from_path()
+    selection = f"foo(bar {SELECTION})"
+    result = example.with_selection_argument(selection)
+    assert result["default"] == (None, "foo(bar)")
+    assert result[SELECTION] == (SELECTION, "foo")
+
+
+def test_incorrect_selection_raises_usage_error(mock_access):
+    example = Example.from_path()
+    with pytest.raises(exception.IncorrectUsage):
+        example.with_selection_argument(selection=1)

@@ -59,7 +59,6 @@ def test_charge_plot(collinear_density, Assert):
     assert kwargs == {"isolevel": 0.2, "color": "yellow", "opacity": 0.6}
 
 
-@pytest.mark.xfail(reason="Not ported for new selection logic yet.")
 def test_magnetization_plot(collinear_density, Assert):
     obj = viewer3d.Viewer3d
     cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
