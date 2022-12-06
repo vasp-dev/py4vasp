@@ -8,3 +8,6 @@ class Mixin(abc.ABC):
 
     def plot(self):
         return self.to_graph()
+
+    def to_plotly(self):
+        return self.to_graph().to_plotly()
