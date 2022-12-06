@@ -61,25 +61,6 @@ Graph
 {projector.selection_examples("band", "plot")}"""
 
 
-_to_plotly_doc = f"""Read the data and generate a plotly figure.
-
-Parameters
-----------
-{projector.selection_doc}
-width : float
-    Specifies the width of the flatbands if a selection of projections is specified.
-{kpoint.kpoints_opt_source}
-
-Returns
--------
-plotly.graph_objects.Figure
-    plotly figure containing the spin-up and spin-down bands. If a selection
-    is provided the width of the bands represents the projections of the
-    bands onto the specified projectors.
-
-{projector.selection_examples("band", "to_plotly")}"""
-
-
 class Band(base.Refinery, graph.Mixin):
     """The electronic band structure.
 
