@@ -38,3 +38,16 @@ def test_converting_graph_to_image():
     example.to_image()
     fig = GRAPH.to_plotly.return_value
     fig.write_image.assert_called_once_with(example._path / "example_graph.png")
+
+
+def test_converting_graph_to_image_with_filename():
+    example = ExampleGraph()
+    example.to_image(filename="example.jpg")
+    fig = GRAPH.to_plotly.return_value
+    fig.write_image.assert_called_once_with(example._path / "example.jpg")
+
+
+def test_filename_is_keyword_only_argument():
+    example = ExampleGraph()
+    with pytest.raises(TypeError):
+        example.to_image("example.jpg")
