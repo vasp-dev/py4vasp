@@ -121,7 +121,7 @@ class _State:
 
     def _get_dataset(self, h5f, key):
         if key is None:
-            return None
+            return raw.VaspData(None)
         if isinstance(key, Link):
             return self.access(key.quantity, source=key.source)
         if isinstance(key, Length):

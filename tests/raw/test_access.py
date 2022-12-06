@@ -75,7 +75,7 @@ def test_access_optional_argument(mock_access):
     with raw.access(quantity, selection="mandatory") as opt_arg:
         check_single_file_access(mock_file, DEFAULT_FILE, source)
         check_data(opt_arg.mandatory, source.data.mandatory)
-        assert opt_arg.optional == None
+        assert opt_arg.optional.is_none()
 
 
 def test_access_with_link(mock_access):
