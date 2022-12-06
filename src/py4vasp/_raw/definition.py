@@ -64,14 +64,96 @@ schema.add(
 )
 #
 group = "results/linear_response"
-suffix = "_dielectric_function"
+energies = "energies_dielectric_function"
+values = "_dielectric_function"
 schema.add(
     raw.DielectricFunction,
     required=raw.Version(6, 3),
-    energies=f"{group}/energies{suffix}",
-    density_density=f"{group}/density_density{suffix}",
-    current_current=f"{group}/current_current{suffix}",
-    ion=f"{group}/ion{suffix}",
+    energies=f"{group}/{energies}",
+    dielectric_function=f"{group}/density_density{values}",
+    current_current=f"{group}/current_current{values}",
+)
+schema.add(
+    raw.DielectricFunction,
+    name="ion",
+    required=raw.Version(6, 4),
+    energies=f"{group}/ion_{energies}",
+    dielectric_function=f"{group}/ion{values}",
+    current_current=None,
+)
+schema.add(
+    raw.DielectricFunction,
+    name="bse",
+    required=raw.Version(6, 4),
+    energies=f"{group}/bse_{energies}",
+    dielectric_function=f"{group}/bse{values}",
+    current_current=None,
+)
+schema.add(
+    raw.DielectricFunction,
+    name="ipa",
+    required=raw.Version(6, 4),
+    energies=f"{group}/ipa_{energies}",
+    dielectric_function=f"{group}/ipa{values}",
+    current_current=None,
+)
+schema.add(
+    raw.DielectricFunction,
+    name="rpa",
+    required=raw.Version(6, 4),
+    energies=f"{group}/rpa_{energies}",
+    dielectric_function=f"{group}/rpa{values}",
+    current_current=None,
+)
+schema.add(
+    raw.DielectricFunction,
+    name="resonant",
+    required=raw.Version(6, 4),
+    energies=f"{group}/resonant_{energies}",
+    dielectric_function=f"{group}/resonant{values}",
+    current_current=None,
+)
+schema.add(
+    raw.DielectricFunction,
+    name="dft",
+    required=raw.Version(6, 4),
+    energies=f"{group}/dft_{energies}",
+    dielectric_function=f"{group}/dft{values}",
+    current_current=None,
+)
+schema.add(
+    raw.DielectricFunction,
+    name="tcte",
+    required=raw.Version(6, 4),
+    energies=f"{group}/tcte_{energies}",
+    dielectric_function=f"{group}/tcte{values}",
+    current_current=None,
+)
+schema.add(
+    raw.DielectricFunction,
+    name="tctc",
+    required=raw.Version(6, 4),
+    energies=f"{group}/tctc_{energies}",
+    dielectric_function=f"{group}/tctc{values}",
+    current_current=None,
+)
+group = "results/linear_response_kpoints_opt"
+schema.add(
+    raw.DielectricFunction,
+    name="kpoints_opt",
+    required=raw.Version(6, 4),
+    energies=f"{group}/{energies}",
+    dielectric_function=f"{group}/density_density{values}",
+    current_current=f"{group}/current_current{values}",
+)
+group = "results/linear_response_kpoints_wan"
+schema.add(
+    raw.DielectricFunction,
+    name="kpoints_wan",
+    required=raw.Version(6, 4),
+    energies=f"{group}/{energies}",
+    dielectric_function=f"{group}/density_density{values}",
+    current_current=f"{group}/current_current{values}",
 )
 #
 group = "results/linear_response"

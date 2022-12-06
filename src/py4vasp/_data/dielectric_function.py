@@ -24,19 +24,14 @@ class DielectricFunction(base.Refinery, graph.Mixin):
         return f"""
 dielectric function:
     energies: [{energies[0]:0.2f}, {energies[-1]:0.2f}] {len(energies)} points
-    components: {", ".join(self._components())}
-    directions: isotropic, xx, yy, zz, xy, yz, xz
+{self._components()}    directions: isotropic, xx, yy, zz, xy, yz, xz
         """.strip()
 
     def _components(self):
-        components = ()
-        if not self._raw_data.density_density.is_none():
-            components += ("density",)
-        if not self._raw_data.current_current.is_none():
-            components += ("current",)
-        if not self._raw_data.ion.is_none():
-            components += ("ion",)
-        return components
+        if self._raw_data.current_current.is_none():
+            return ""
+        else:
+            return "    components: density, current\n"
 
     @base.data_access
     def to_dict(self):
@@ -47,12 +42,11 @@ dielectric function:
         dict
             Contains the energies at which the dielectric function was evaluated
             and the dielectric tensor (3x3 matrix) at these energies."""
-        data = self._raw_data
+        data = convert.to_complex(np.array(self._raw_data.dielectric_function))
         return {
-            "energies": data.energies[:],
-            "density_density": _convert_to_complex_if_not_none(data.density_density),
-            "current_current": _convert_to_complex_if_not_none(data.current_current),
-            "ion": _convert_to_complex_if_not_none(data.ion),
+            "energies": self._raw_data.energies[:],
+            "dielectric_function": data,
+            **self._add_current_current_if_available(),
         }
 
     @base.data_access
@@ -73,41 +67,40 @@ dielectric function:
             directions and components."""
         selection = _default_selection_if_none(selection)
         data = self.to_dict()
-        choices = _parse_selection(selection, data)
+        choices = _parse_selection(selection, "current_current" in data)
         return graph.Graph(
             series=[_make_plot(data, *choice) for choice in choices],
             xlabel="Energy (eV)",
             ylabel="dielectric function ϵ",
         )
 
-
-def _convert_to_complex_if_not_none(array):
-    if array.is_none():
-        return None
-    else:
-        return convert.to_complex(array[:])
+    def _add_current_current_if_available(self):
+        if self._raw_data.current_current.is_none():
+            return {}
+        data = convert.to_complex(np.array(self._raw_data.current_current))
+        return {"current_current": data}
 
 
 def _default_selection_if_none(selection):
     return "isotropic" if selection is None else selection
 
 
-def _parse_selection(selection, data):
+def _parse_selection(selection, has_current_current):
     tree = select.Tree.from_selection(selection)
-    yield from _parse_recursive(tree, _default_choice(data))
+    yield from _parse_recursive(tree, _default_choice(has_current_current))
+
+
+def _default_choice(has_current_current):
+    if has_current_current:
+        return _Choice("density")
+    else:
+        return _Choice()
 
 
 class _Choice(typing.NamedTuple):
-    component: str
+    component: str = None
     direction: str = "isotropic"
     real_or_imag: str = select.all
-
-
-def _default_choice(data):
-    if data["density_density"] is not None:
-        return _Choice("density")
-    else:
-        return _Choice("ion")
 
 
 def _parse_recursive(tree, current_choice):
@@ -120,7 +113,7 @@ def _parse_recursive(tree, current_choice):
 
 
 def _update_choice(current_choice, part):
-    if part in ("density", "current", "ion"):
+    if part in ("current", "density"):
         return current_choice._replace(component=part)
     elif part in ("isotropic", "xx", "yy", "zz", "xy", "xz", "yz"):
         return current_choice._replace(direction=part)
@@ -153,12 +146,10 @@ def _select_data(data, component, direction, real_or_imag):
 
 
 def _select_data_component(data, component):
-    if component == "density":
-        return data["density_density"]
-    elif component == "current":
+    if component == "current":
         return data["current_current"]
     else:
-        return data["ion"]
+        return data["dielectric_function"]
 
 
 def _select_data_direction(tensor, direction):
@@ -180,7 +171,9 @@ def _select_data_direction(tensor, direction):
 
 
 def _build_name(component, direction, real_or_imag):
-    name = f"{real_or_imag[:2].capitalize()},{component}"
+    name = real_or_imag[:2].capitalize()
+    if component:
+        name = f"{component},{name}"
     if direction != "isotropic":
         name += f",{direction}"
     return name

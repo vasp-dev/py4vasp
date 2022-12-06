@@ -81,20 +81,19 @@ class Density:
 class DielectricFunction:
     """The full frequency-dependent dielectric function.
 
-    Contains the electronic or ionic contribution to the dielectric function. The
-    former is evaluated as density-density and current-current response. The total
-    dielectric function is the sum of the ionic and electronic part. It provides
-    insight into optical properties such as the reflectivity and absorption. Note
-    that the dielectric function is a 3x3 matrix for every frequency."""
+    The total dielectric function is the sum of the ionic and electronic part. It
+    provides insight into optical properties such as the reflectivity and absorption.
+    Note that the dielectric function is a 3x3 matrix for every frequency. There are
+    many different levels of theory with which you can evaluate the dielectric function
+    in VASP. For the electronic dielectric function a current-current response may be
+    provided as alternative."""
 
     energies: VaspData
     "The energies at which the dielectric function is evaluated."
-    density_density: VaspData
-    "The values of the electronic dielectric function using the density-density response."
-    current_current: VaspData
-    "The values of the electronic dielectric function using the current-current response."
-    ion: VaspData
-    "The values of the ionic dielectrion function."
+    dielectric_function: VaspData
+    "The values of the dielectric function (frequency-dependent 3x3 tensor)."
+    current_current: VaspData = VaspData(None)
+    "Dielectric function obtained using the current-current response."
 
 
 @dataclasses.dataclass

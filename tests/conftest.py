@@ -251,19 +251,18 @@ def _electron_dielectric_function():
     data = np.linspace(0, 1, np.prod(shape)).reshape(shape)
     return raw.DielectricFunction(
         energies=np.linspace(0, 1, number_points),
-        density_density=_make_data(data[0]),
+        dielectric_function=_make_data(data[0]),
         current_current=_make_data(data[1]),
-        ion=raw.VaspData(None),
     )
 
 
 def _ion_dielectric_function():
     shape = (axes, axes, number_points, complex_)
+    data = np.linspace(0, 1, np.prod(shape)).reshape(shape)
     return raw.DielectricFunction(
         energies=np.linspace(0, 1, number_points),
-        density_density=raw.VaspData(None),
+        dielectric_function=_make_data(data),
         current_current=raw.VaspData(None),
-        ion=_make_data(np.linspace(0, 1, np.prod(shape)).reshape(shape)),
     )
 
 
