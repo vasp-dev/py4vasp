@@ -63,7 +63,7 @@ def check_series(series, reference, label, Assert):
     Assert.allclose(series.y, reference)
 
 
-@patch("py4vasp._data.phonon_dos.PhononDos.plot")
+@patch("py4vasp._data.phonon_dos.PhononDos.to_graph")
 def test_phonon_dos_to_plotly(mock_plot, phonon_dos):
     fig = phonon_dos.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
