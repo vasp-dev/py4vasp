@@ -184,7 +184,7 @@ def test_Fe3O4_projectors_plot(Fe3O4_projectors, Assert):
     Assert.allclose(data[O_d_down].y, -Fe3O4_projectors.ref.O_d_down)
 
 
-@patch("py4vasp._data.dos.Dos.plot")
+@patch("py4vasp._data.dos.Dos.to_graph")
 def test_Sr2TiO4_to_plotly(mock_plot, Sr2TiO4):
     fig = Sr2TiO4.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
