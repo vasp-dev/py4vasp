@@ -4,12 +4,12 @@ import typing
 
 import numpy as np
 
-import py4vasp._third_party.graph as _graph
-from py4vasp._data import base, export
+from py4vasp._data import base
+from py4vasp._third_party import graph
 from py4vasp._util import convert, select
 
 
-class DielectricFunction(base.Refinery, export.Image):
+class DielectricFunction(base.Refinery, graph.Mixin):
     """The dielectric function resulting from electrons and ions.
 
     You can use this class to extract the dielectric function of a Vasp calculation.
@@ -56,7 +56,7 @@ dielectric function:
         }
 
     @base.data_access
-    def plot(self, selection=None):
+    def to_graph(self, selection=None):
         """Read the data and generate a figure with the selected directions.
 
         Parameters
@@ -74,29 +74,11 @@ dielectric function:
         selection = _default_selection_if_none(selection)
         data = self.to_dict()
         choices = _parse_selection(selection, data)
-        return _graph.Graph(
+        return graph.Graph(
             series=[_make_plot(data, *choice) for choice in choices],
             xlabel="Energy (eV)",
             ylabel="dielectric function ϵ",
         )
-
-    @base.data_access
-    def to_plotly(self, selection=None):
-        """Read the data and generate a plotly figure.
-
-        Parameters
-        ----------
-        selection : str
-            Specify along which directions and which components of the dielectric
-            function you want to plot. Defaults to *isotropic* and both the real
-            and the complex part.
-
-        Returns
-        -------
-        plotly.graph_objects.Figure
-            plotly figure containing the dielectric function for the selected
-            directions and components."""
-        return self.plot(selection).to_plotly()
 
 
 def _convert_to_complex_if_not_none(array):
@@ -159,7 +141,7 @@ def _setup_component_choices(choice):
 
 
 def _make_plot(data, *choice):
-    return _graph.Series(
+    return graph.Series(
         x=data["energies"], y=_select_data(data, *choice), name=_build_name(*choice)
     )
 

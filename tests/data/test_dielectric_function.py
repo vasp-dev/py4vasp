@@ -310,7 +310,7 @@ def check_figure_contains_plots(fig, references, Assert):
         assert data.name == ref.name
 
 
-@patch("py4vasp._data.dielectric_function.DielectricFunction.plot")
+@patch("py4vasp._data.dielectric_function.DielectricFunction.to_graph")
 def test_electronic_to_plotly(mock_plot, electronic):
     fig = electronic.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
