@@ -3,7 +3,7 @@
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._data import base, export, slice_
+from py4vasp._data import base, slice_
 from py4vasp._third_party import graph
 from py4vasp._util import check, convert, documentation, select
 
@@ -28,7 +28,7 @@ _selection_string = (
 
 
 @documentation.add(_energy_docs)
-class Energy(slice_.Mixin, base.Refinery, export.Image):
+class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
     @base.data_access
     def __str__(self):
         text = f"Energies at {self._step_string()}:"
@@ -86,7 +86,7 @@ Graph
 
 {slice_.examples("energy", "plot")}"""
     )
-    def plot(self, selection="TOTEN"):
+    def to_graph(self, selection="TOTEN"):
         yaxes = self._create_yaxes(selection)
         return graph.Graph(
             series=self._make_series(yaxes, selection),
@@ -96,24 +96,6 @@ Graph
         )
         figure.layout.xaxis.title.text = "Step"
         return figure
-
-    @base.data_access
-    @documentation.add(
-        f"""Read the energy data and generate a plotly figure.
-
-Parameters
-----------
-{_selection_string("the total energy")}
-
-Returns
--------
-plotly.graph_objects.Figure
-plotly figure containing the selected energies for every selected ionic step.
-
-{slice_.examples("energy", "plot")}"""
-    )
-    def to_plotly(self, selection="TOTEN"):
-        return self.plot(selection).to_plotly()
 
     @base.data_access
     @documentation.add(
