@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import abc
 
+from py4vasp._third_party.graph.graph import Graph
 from py4vasp._util import convert
 
 """Use the Mixin for all quantities that define an option to produce an x-y graph. This
@@ -19,7 +20,11 @@ class Mixin(abc.ABC):
 
         This will merge multiple graphs if you specify different sources with the
         selection arguments. All arguments are passed to the wrapped function."""
-        return self.to_graph(*args, **kwargs)
+        graph_or_graphs = self.to_graph(*args, **kwargs)
+        if isinstance(graph_or_graphs, Graph):
+            return graph_or_graphs
+        else:
+            return _merge_graphs(graph_or_graphs)
 
     def to_plotly(self, *args, **kwargs):
         """Convert the graph of this quantity to a plotly figure.
@@ -45,3 +50,10 @@ class Mixin(abc.ABC):
         classname = convert.to_snakecase(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.png"
         fig.write_image(self._path / filename)
+
+
+def _merge_graphs(graphs):
+    result = Graph([])
+    for label, graph in graphs.items():
+        result = result + graph.label(label)
+    return result

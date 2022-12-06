@@ -7,7 +7,7 @@ import pytest
 
 from py4vasp._third_party import graph
 
-GRAPH = MagicMock()
+GRAPH = MagicMock(spec=graph.Graph)
 
 
 class ExampleGraph(graph.Mixin):
@@ -55,7 +55,7 @@ def test_filename_is_keyword_only_argument():
         example.to_image("example.jpg")
 
 
-class ExampleWithArguments(graph.Mixin):
+class WithArguments(graph.Mixin):
     _path = Path("/absolute/path")
 
     def to_graph(self, mandatory, optional=None):
@@ -66,7 +66,7 @@ class ExampleWithArguments(graph.Mixin):
 
 
 def test_arguments_passed_by_plot():
-    example = ExampleWithArguments()
+    example = WithArguments()
     graph = example.plot("only mandatory")
     assert graph.arguments == {"mandatory": "only mandatory", "optional": None}
     graph = example.plot("first", "second")
@@ -76,7 +76,7 @@ def test_arguments_passed_by_plot():
 
 
 def test_arguments_passed_by_to_plotly():
-    example = ExampleWithArguments()
+    example = WithArguments()
     example.to_plotly("only mandatory")
     assert GRAPH.arguments == {"mandatory": "only mandatory", "optional": None}
     example.to_plotly("first", "second")
@@ -86,10 +86,30 @@ def test_arguments_passed_by_to_plotly():
 
 
 def test_arguments_passed_by_to_image():
-    example = ExampleWithArguments()
+    example = WithArguments()
     example.to_image("only mandatory")
     assert GRAPH.arguments == {"mandatory": "only mandatory", "optional": None}
     example.to_image("first", "second", filename="example.png")
     assert GRAPH.arguments == {"mandatory": "first", "optional": "second"}
     example.to_image(optional="foo", mandatory="bar")
     assert GRAPH.arguments == {"mandatory": "bar", "optional": "foo"}
+
+
+class MultipleGraphs(graph.Mixin):
+    _path = Path("./relative_path")
+
+    def to_graph(self):
+        series = [graph.Series([1], [2], "foo"), graph.Series([3], [4], "bar")]
+        return {
+            "first": graph.Graph(graph.Series([5], [6], "ignored")),
+            "second": graph.Graph(series),
+        }
+
+
+def test_multiple_graphs_merged_by_plot():
+    example = MultipleGraphs()
+    result = example.plot()
+    assert len(result) == 3
+    assert result[0].name == "first"
+    assert result[1].name == "second foo"
+    assert result[2].name == "second bar"
