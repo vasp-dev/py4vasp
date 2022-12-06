@@ -1,5 +1,7 @@
 import abc
 
+from py4vasp._util import convert
+
 
 class Mixin(abc.ABC):
     @abc.abstractmethod
@@ -11,3 +13,10 @@ class Mixin(abc.ABC):
 
     def to_plotly(self):
         return self.to_graph().to_plotly()
+
+    def to_image(self):
+        fig = self.to_plotly()
+        classname = convert.to_snakecase(self.__class__.__name__).strip("_")
+        # filename = filename if filename is not None else f"{classname}.png"
+        filename = f"{classname}.png"
+        fig.write_image(self._path / filename)
