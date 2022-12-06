@@ -1,11 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-"""Use the Mixin for all quantities that define an option to produce an x-y graph. This
-will automatically implement all the common functionality to turn this graphs into
-different formats."""
 import abc
 
 from py4vasp._util import convert
+
+"""Use the Mixin for all quantities that define an option to produce an x-y graph. This
+will automatically implement all the common functionality to turn this graphs into
+different formats."""
 
 
 class Mixin(abc.ABC):

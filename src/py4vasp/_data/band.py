@@ -5,7 +5,8 @@ import pandas as pd
 from IPython.lib.pretty import pretty
 
 from py4vasp import data
-from py4vasp._data import base, graph, kpoint, projector
+from py4vasp._data import base, kpoint, projector
+from py4vasp._third_party import graph
 from py4vasp._util import check, documentation
 
 _to_dict_doc = f"""Read the data into a dictionary.

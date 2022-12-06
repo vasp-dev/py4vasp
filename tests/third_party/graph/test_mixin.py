@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from py4vasp._data import graph
+from py4vasp._third_party import graph
 
 GRAPH = MagicMock()
 
