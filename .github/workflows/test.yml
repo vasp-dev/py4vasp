@@ -52,11 +52,14 @@ jobs:
     - name: Install dependencies with conda
       run: |
         conda info
-        conda install -c conda-forge poetry
         conda install -c conda-forge mdtraj
+    - name: Install poetry
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry
+        poetry --version
     - name: Install py4vasp
       run: |
-        poetry --version
         poetry config virtualenvs.create false --local
         poetry install
     - name: Test with pytest
