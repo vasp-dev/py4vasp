@@ -3,7 +3,7 @@
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._data import base, export, slice_
+from py4vasp._data import base, slice_
 from py4vasp._third_party import graph
 from py4vasp._util import check, convert, documentation, select
 
@@ -28,7 +28,7 @@ _selection_string = (
 
 
 @documentation.add(_energy_docs)
-class Energy(slice_.Mixin, base.Refinery, export.Image):
+class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
     @base.data_access
     def __str__(self):
         text = f"Energies at {self._step_string()}:"
@@ -68,7 +68,7 @@ dict
     def to_dict(self, selection=select.all):
         return {
             label: self._raw_data.values[self._steps, index]
-            for label, index in self._parse_selection(selection)
+            for label, index in self._parse_user_selection(selection)
         }
 
     @base.data_access
@@ -86,7 +86,7 @@ Graph
 
 {slice_.examples("energy", "plot")}"""
     )
-    def plot(self, selection="TOTEN"):
+    def to_graph(self, selection="TOTEN"):
         yaxes = self._create_yaxes(selection)
         return graph.Graph(
             series=self._make_series(yaxes, selection),
@@ -96,24 +96,6 @@ Graph
         )
         figure.layout.xaxis.title.text = "Step"
         return figure
-
-    @base.data_access
-    @documentation.add(
-        f"""Read the energy data and generate a plotly figure.
-
-Parameters
-----------
-{_selection_string("the total energy")}
-
-Returns
--------
-plotly.graph_objects.Figure
-plotly figure containing the selected energies for every selected ionic step.
-
-{slice_.examples("energy", "plot")}"""
-    )
-    def to_plotly(self, selection="TOTEN"):
-        return self.plot(selection).to_plotly()
 
     @base.data_access
     @documentation.add(
@@ -135,16 +117,16 @@ float or np.ndarray or tuple
     def to_numpy(self, selection="TOTEN"):
         result = tuple(
             self._raw_data.values[self._steps, index]
-            for _, index in self._parse_selection(selection)
+            for _, index in self._parse_user_selection(selection)
         )
         return _unpack_if_only_one_element(result)
 
     @base.data_access
     def labels(self, selection=select.all):
         "Return the labels corresponding to a particular selection defaulting to all labels."
-        return [label for label, _ in self._parse_selection(selection)]
+        return [label for label, _ in self._parse_user_selection(selection)]
 
-    def _parse_selection(self, selection):
+    def _parse_user_selection(self, selection):
         # NOTE it would be nice to use SelectionTree instead, however that requires
         # the labels may have spaces so it might lead to redunandancies
         indices = self._find_selection_indices(selection)
@@ -170,7 +152,7 @@ float or np.ndarray or tuple
         )
 
     def _create_yaxes(self, selection):
-        return _YAxes(self._parse_selection(selection))
+        return _YAxes(self._parse_user_selection(selection))
 
     def _make_series(self, yaxes, selection):
         steps = np.arange(len(self._raw_data.values))[self._slice] + 1
@@ -181,7 +163,7 @@ float or np.ndarray or tuple
                 name=label[:14].strip(),
                 y2=yaxes.y2(label),
             )
-            for label, index in self._parse_selection(selection)
+            for label, index in self._parse_user_selection(selection)
         ]
 
 

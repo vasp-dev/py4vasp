@@ -267,4 +267,5 @@ reciprocal
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.kpoint("automatic")
-    check_factory_methods(Kpoint, data)
+    parameters = {"path_indices": {"start": (0, 0, 0), "finish": (1, 1, 1)}}
+    check_factory_methods(Kpoint, data, parameters)

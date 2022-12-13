@@ -285,10 +285,10 @@ def test_plot_incorrect_width(with_projectors):
         with_projectors.plot("Sr", width="not a number")
 
 
-@patch("py4vasp._data.band.Band.plot")
+@patch("py4vasp._data.band.Band.to_graph")
 def test_to_plotly(mock_plot, single_band):
     fig = single_band.to_plotly("selection", width=0.2)
-    mock_plot.assert_called_once_with("selection", 0.2)
+    mock_plot.assert_called_once_with("selection", width=0.2)
     graph = mock_plot.return_value
     graph.to_plotly.assert_called_once()
     assert fig == graph.to_plotly.return_value

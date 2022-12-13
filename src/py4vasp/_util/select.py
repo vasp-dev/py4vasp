@@ -2,6 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
 
+from py4vasp._util import check
+
 range_separator = ":"
 pair_separator = "~"
 group_separators = (range_separator, pair_separator)
@@ -33,6 +35,8 @@ class Tree:
         tree = cls()
         active_node = tree
         selection = selection or ""
+        message = f"Selection must be a string. The passed argument {selection} is not allowed."
+        check.raise_error_if_not_string(selection, message)
         for character in selection:
             active_node = active_node.parse_character(character)
         return tree
@@ -84,3 +88,33 @@ class Tree:
 
     def __str__(self):
         return str(self._content)
+
+    def __len__(self):
+        if self._empty_tree():
+            return 0
+        elif len(self._children) == 0:
+            return 1
+        else:
+            return sum(len(child) for child in self._children)
+
+    def selections(self):
+        content = (self._content,) if self._parent else ()
+        if len(self._children) == 0:
+            yield content
+        else:
+            for child in self._children:
+                for selection in child.selections():
+                    yield content + selection
+
+    def _empty_tree(self):
+        return self._parent is None and not self._children
+
+
+def selections_to_string(selections):
+    "This routine is intended to convert selections back to string that would regenerate a tree."
+    return ", ".join(_selection_to_string(selection) for selection in selections)
+
+
+def _selection_to_string(selection):
+    parts = [str(part) for part in selection]
+    return "(".join(parts) + ")" * (len(parts) - 1)

@@ -5,7 +5,8 @@ import pandas as pd
 from IPython.lib.pretty import pretty
 
 from py4vasp import data
-from py4vasp._data import base, export, kpoint, projector
+from py4vasp._data import base, kpoint, projector
+from py4vasp._third_party import graph
 from py4vasp._util import check, documentation
 
 _to_dict_doc = f"""Read the data into a dictionary.
@@ -41,7 +42,7 @@ pd.DataFrame
 
 {projector.selection_examples("band", "to_frame")}"""
 
-_plot_doc = f"""Read the data and generate a graph.
+_to_graph_doc = f"""Read the data and generate a graph.
 
 Parameters
 ----------
@@ -60,26 +61,7 @@ Graph
 {projector.selection_examples("band", "plot")}"""
 
 
-_to_plotly_doc = f"""Read the data and generate a plotly figure.
-
-Parameters
-----------
-{projector.selection_doc}
-width : float
-    Specifies the width of the flatbands if a selection of projections is specified.
-{kpoint.kpoints_opt_source}
-
-Returns
--------
-plotly.graph_objects.Figure
-    plotly figure containing the spin-up and spin-down bands. If a selection
-    is provided the width of the bands represents the projections of the
-    bands onto the specified projectors.
-
-{projector.selection_examples("band", "to_plotly")}"""
-
-
-class Band(base.Refinery, export.Image):
+class Band(base.Refinery, graph.Mixin):
     """The electronic band structure.
 
     The most common use case of this class is to produce the electronic band
@@ -112,18 +94,13 @@ class Band(base.Refinery, export.Image):
         }
 
     @base.data_access
-    @documentation.add(_plot_doc)
-    def plot(self, selection=None, width=0.5):
+    @documentation.add(_to_graph_doc)
+    def to_graph(self, selection=None, width=0.5):
         projections = self._projections(selection, width)
         graph = self._dispersion.plot(projections)
         graph = self._shift_series_by_fermi_energy(graph)
         graph.ylabel = "Energy (eV)"
         return graph
-
-    @base.data_access
-    @documentation.add(_to_plotly_doc)
-    def to_plotly(self, selection=None, width=0.5):
-        return self.plot(selection, width).to_plotly()
 
     @base.data_access
     @documentation.add(_to_frame_doc)

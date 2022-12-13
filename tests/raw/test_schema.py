@@ -133,6 +133,19 @@ complex:
     assert str(schema) == reference
 
 
+def test_selections(complex_schema):
+    schema, reference = complex_schema
+    for quantity, selections in reference.items():
+        assert schema.selections(quantity) == selections.keys()
+
+
+def test_missing_quantity():
+    schema = Schema(VERSION)
+    schema.add(Simple, foo="foo", bar="bar")
+    with pytest.raises(exception.FileAccessError):
+        schema.selections(quantity="does not exist")
+
+
 def test_adding_twice_error():
     schema = Schema(VERSION)
     schema.add(Simple, foo="foo1", bar="bar1")

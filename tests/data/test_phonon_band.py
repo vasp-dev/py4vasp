@@ -90,10 +90,10 @@ class FatbandChecker:
         self.Assert.allclose(series.width, width * projection.T)
 
 
-@patch("py4vasp._data.phonon_band.PhononBand.plot")
+@patch("py4vasp._data.phonon_band.PhononBand.to_graph")
 def test_to_plotly(mock_plot, phonon_band):
     fig = phonon_band.to_plotly("selection", width=0.2)
-    mock_plot.assert_called_once_with("selection", 0.2)
+    mock_plot.assert_called_once_with("selection", width=0.2)
     graph = mock_plot.return_value
     graph.to_plotly.assert_called_once()
     assert fig == graph.to_plotly.return_value

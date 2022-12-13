@@ -4,12 +4,12 @@ import pandas as pd
 from IPython.lib.pretty import pretty
 
 from py4vasp import data
-from py4vasp._data import base, export, kpoint, projector
+from py4vasp._data import base, kpoint, projector
 from py4vasp._third_party import graph
 from py4vasp._util import documentation
 
 
-class Dos(base.Refinery, export.Image):
+class Dos(base.Refinery, graph.Mixin):
     """The electronic density of states (DOS).
 
     You can use this class to extract the DOS data of a VASP calculation.
@@ -74,35 +74,13 @@ Graph
 
 {projector.selection_examples("dos", "to_plotly")}"""
     )
-    def plot(self, selection=None):
+    def to_graph(self, selection=None):
         data = self._read_data(selection)
         return graph.Graph(
             series=list(_series(data)),
             xlabel="Energy (eV)",
             ylabel="DOS (1/eV)",
         )
-
-    @base.data_access
-    @documentation.add(
-        f"""Read the data and generate a plotly figure.
-
-Parameters
-----------
-{projector.selection_doc}
-{kpoint.kpoints_opt_source}
-
-Returns
--------
-plotly.graph_objects.Figure
-    plotly figure containing the total DOS. If the calculation was spin
-    polarized, the resulting DOS is spin resolved and the spin-down DOS
-    is plotted towards negative values. If a selection is passed the orbital
-    resolved DOS is given for the specified projectors.
-
-{projector.selection_examples("dos", "to_plotly")}"""
-    )
-    def to_plotly(self, selection=None):
-        return self.plot(selection).to_plotly()
 
     @base.data_access
     @documentation.add(

@@ -3,13 +3,13 @@
 import numpy as np
 
 from py4vasp import data
-from py4vasp._data import base, export
+from py4vasp._data import base
 from py4vasp._data.phonon_projector import PhononProjector, selection_doc
 from py4vasp._third_party import graph
 from py4vasp._util import documentation
 
 
-class PhononDos(base.Refinery, export.Image):
+class PhononDos(base.Refinery, graph.Mixin):
     """The phonon density of states (DOS).
 
     You can use this class to extract the phonon DOS data of a VASP
@@ -49,7 +49,7 @@ class PhononDos(base.Refinery, export.Image):
 
     @base.data_access
     @documentation.format(selection=selection_doc)
-    def plot(self, selection=None):
+    def to_graph(self, selection=None):
         """Generate a graph of the selected DOS.
 
         Parameters
@@ -67,14 +67,6 @@ class PhononDos(base.Refinery, export.Image):
             xlabel="ω (THz)",
             ylabel="DOS (1/THz)",
         )
-
-    @base.data_access
-    def to_plotly(self, selection=None):
-        """Generate a plotly figure of the phonon DOS.
-
-        Converts the Graph object to a plotly figure. Check the :py:meth:`plot` method
-        to learn about how the Graph is generated."""
-        return self.plot(selection).to_plotly()
 
     @property
     def _topology(self):

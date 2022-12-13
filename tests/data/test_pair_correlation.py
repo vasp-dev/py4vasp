@@ -72,7 +72,7 @@ def test_plot_nonexisting_label(pair_correlation):
         pair_correlation.plot("label does exist")
 
 
-@patch("py4vasp._data.pair_correlation.PairCorrelation.plot")
+@patch("py4vasp._data.pair_correlation.PairCorrelation.to_graph")
 def test_pair_correlation_to_plotly(mock_plot, pair_correlation):
     fig = pair_correlation.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")

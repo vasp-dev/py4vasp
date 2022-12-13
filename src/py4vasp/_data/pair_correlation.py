@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import exception
-from py4vasp._data import base, export, slice_
+from py4vasp._data import base, slice_
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, select
 
@@ -62,22 +62,9 @@ Graph
 
 {slice_.examples("pair_correlation", "plot", "block")}"""
 
-_to_plotly_docs = f"""Plot selected pair-correlation functions.
-
-Parameters
-----------
-{_selection_string("the total pair correlation is used")}
-
-Returns
--------
-plotly.graph_objects.Figure
-    plotly figure containing the pair correlation for every selected blocks.
-
-{slice_.examples("pair_correlation", "to_plotly", "block")}"""
-
 
 @documentation.add(_pair_correlation_docs)
-class PairCorrelation(slice_.Mixin, base.Refinery, export.Image):
+class PairCorrelation(slice_.Mixin, base.Refinery, graph.Mixin):
     @base.data_access
     @documentation.add(_read_docs)
     def to_dict(self, selection=select.all):
@@ -88,14 +75,9 @@ class PairCorrelation(slice_.Mixin, base.Refinery, export.Image):
 
     @base.data_access
     @documentation.add(_plot_docs)
-    def plot(self, selection="total"):
+    def to_graph(self, selection="total"):
         series = self._make_series(self.to_dict(selection))
         return graph.Graph(series, xlabel="Distance (Å)", ylabel="Pair correlation")
-
-    @base.data_access
-    @documentation.add(_to_plotly_docs)
-    def to_plotly(self, selection="total"):
-        return self.plot(selection).to_plotly()
 
     @base.data_access
     def labels(self):
@@ -105,10 +87,10 @@ class PairCorrelation(slice_.Mixin, base.Refinery, export.Image):
     def _read_data(self, selection):
         return {
             label: self._raw_data.function[self._steps, index]
-            for label, index in self._parse_selection(selection)
+            for label, index in self._parse_user_selection(selection)
         }
 
-    def _parse_selection(self, selection):
+    def _parse_user_selection(self, selection):
         if selection == select.all:
             return self._select_all()
         else:

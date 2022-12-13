@@ -3,12 +3,13 @@
 import numpy as np
 
 from py4vasp import data
-from py4vasp._data import base, export
+from py4vasp._data import base
 from py4vasp._data.phonon_projector import PhononProjector, selection_doc
+from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation
 
 
-class PhononBand(base.Refinery, export.Image):
+class PhononBand(base.Refinery, graph.Mixin):
     """The phonon band structure.
 
     Use this to examine the phonon band structure along a high-symmetry path in the
@@ -42,7 +43,7 @@ class PhononBand(base.Refinery, export.Image):
 
     @base.data_access
     @documentation.format(selection=selection_doc)
-    def plot(self, selection=None, width=1.0):
+    def to_graph(self, selection=None, width=1.0):
         """Generate a graph of the phonon bands.
 
         Parameters
@@ -62,14 +63,6 @@ class PhononBand(base.Refinery, export.Image):
         graph = self._dispersion.plot(projections)
         graph.ylabel = "ω (THz)"
         return graph
-
-    @base.data_access
-    def to_plotly(self, selection=None, width=1.0):
-        """Generate a plotly figure of the phonon band structure.
-
-        Converts the Graph object to a plotly figure. Check the :py:meth:`plot` method
-        to learn about how the Graph is generated."""
-        return self.plot(selection, width).to_plotly()
 
     @property
     def _dispersion(self):

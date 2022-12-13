@@ -157,7 +157,7 @@ def test_incorrect_label(energy):
         energy.plot(number_instead_of_string)
 
 
-@patch("py4vasp._data.energy.Energy.plot")
+@patch("py4vasp._data.energy.Energy.to_graph")
 def test_energy_to_plotly(mock_plot, energy):
     fig = energy.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
