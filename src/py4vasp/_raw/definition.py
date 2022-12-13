@@ -91,6 +91,14 @@ schema.add(
 )
 schema.add(
     raw.DielectricFunction,
+    name="tdhf",
+    required=raw.Version(6, 4),
+    energies=f"{group}/tdhf_{energies}",
+    dielectric_function=f"{group}/tdhf{values}",
+    current_current=None,
+)
+schema.add(
+    raw.DielectricFunction,
     name="ipa",
     required=raw.Version(6, 4),
     energies=f"{group}/ipa_{energies}",
