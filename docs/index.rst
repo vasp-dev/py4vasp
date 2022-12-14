@@ -127,7 +127,7 @@ how you can apply *py4vasp* in your research.
    control
    raw
    data
-   exceptions
+   exception
 
 ----------------------------------------------------------------------------------------
 
