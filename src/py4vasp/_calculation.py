@@ -143,6 +143,7 @@ def _add_to_documentation(calc, class_):
         calc.__doc__ += _link_to_method(class_.__name__, name)
     return calc
 
+
 def _header_for_class(class_):
     first_line = class_.__doc__.split("\n")[0]
     class_name = class_.__name__
@@ -151,8 +152,10 @@ def _header_for_class(class_):
         {first_line} (:class:`py4vasp.data.{class_name}`)
     """
 
+
 def _link_to_method(class_name, method_name):
     return f"\n        * :meth:`py4vasp.data.{class_name}.{method_name}`"
+
 
 Calculation = _add_all_refinement_classes(Calculation, _add_to_documentation)
 

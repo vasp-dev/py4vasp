@@ -4,6 +4,7 @@
 
 The design goal is that all foreseeable exceptions in py4vasp issue an exception of the Py4VaspException class. Any other kind of exception would indicate a bug in the code. If possible the part standard users interact with should not raise any exception, but should give advice on how to overcome the issue."""
 
+
 class Py4VaspError(Exception):
     """Base class for all exceptions raised by py4vasp"""
 
