@@ -18,11 +18,11 @@
 # -- Project information -----------------------------------------------------
 
 project = "py4vasp"
-copyright = "2022, Vasp Software GmbH"
-author = "Vasp Software GmbH"
+copyright = "2022, VASP Software GmbH"
+author = "VASP Software GmbH"
 
 # The full version, including alpha/beta/rc tags
-release = "0.4.0"
+release = "0.6.0"
 
 
 # -- General configuration ---------------------------------------------------

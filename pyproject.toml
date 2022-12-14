@@ -37,6 +37,7 @@ Sphinx = "^5.0.2"
 black = "^22.6.0"
 hypothesis = "^6.48.1"
 isort = "^5.10.1"
+sphinx-automodapi = "^0.14.1"
 
 [tool.poetry.scripts]
 error-analysis = "py4vasp.scripts.error_analysis:main"

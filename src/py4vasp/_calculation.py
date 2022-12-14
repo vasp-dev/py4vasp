@@ -24,9 +24,9 @@ class Calculation:
 
     Notes
     -----
-    To create new instances, you should use the classmethod :meth:`from_path`. This
-    will ensure that the path to your VASP calculation is properly set and all features
-    work as intended.
+    To create new instances, you should use the classmethod :meth:`from_path` or
+    :meth:`from_file`. This will ensure that the path to your VASP calculation is
+    properly set and all features work as intended.
 
     Attributes
     ----------
@@ -113,15 +113,15 @@ instead of the constructor Calculation()."""
 
 
 def _add_all_refinement_classes(calc, add_single_class):
-    for name, class_ in inspect.getmembers(data, inspect.isclass):
+    for _, class_ in inspect.getmembers(data, inspect.isclass):
         if issubclass(class_, _data.base.Refinery):
-            calc = add_single_class(calc, name, class_)
+            calc = add_single_class(calc, class_)
     return calc
 
 
-def _add_attribute_from_path(calc, name, class_):
+def _add_attribute_from_path(calc, class_):
     instance = class_.from_path(calc.path())
-    setattr(calc, convert.to_snakecase(name), instance)
+    setattr(calc, convert.to_snakecase(class_.__name__), instance)
     return calc
 
 
@@ -129,24 +129,32 @@ class _AddAttributeFromFile:
     def __init__(self, file_name):
         self._file_name = file_name
 
-    def __call__(self, calc, name, class_):
+    def __call__(self, calc, class_):
         instance = class_.from_file(self._file_name)
-        setattr(calc, convert.to_snakecase(name), instance)
+        setattr(calc, convert.to_snakecase(class_.__name__), instance)
         return calc
 
 
-def _add_to_documentation(calc, name, class_):
-    first_line = class_.__doc__.split("\n")[0]
+def _add_to_documentation(calc, class_):
     functions = inspect.getmembers(class_, inspect.isfunction)
-    names = [name for name, _ in functions if not name.startswith("_")]
-    calc.__doc__ += f"""
-    {convert.to_snakecase(name)}
-        {first_line}
-
-"""
-    for name in names:
-        calc.__doc__ += f"        * :py:meth:`py4vasp.data.{class_.__name__}.{name}`\n"
+    method_names = [name for name, _ in functions if not name.startswith("_")]
+    calc.__doc__ += _header_for_class(class_)
+    for name in method_names:
+        calc.__doc__ += _link_to_method(class_.__name__, name)
     return calc
+
+
+def _header_for_class(class_):
+    first_line = class_.__doc__.split("\n")[0]
+    class_name = class_.__name__
+    return f"""
+    {convert.to_snakecase(class_name)}
+        {first_line} (:class:`py4vasp.data.{class_name}`)
+    """
+
+
+def _link_to_method(class_name, method_name):
+    return f"\n        * :meth:`py4vasp.data.{class_name}.{method_name}`"
 
 
 Calculation = _add_all_refinement_classes(Calculation, _add_to_documentation)
