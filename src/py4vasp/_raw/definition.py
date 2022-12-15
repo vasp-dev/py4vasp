@@ -416,6 +416,7 @@ schema.add(
 #
 schema.add(
     raw.Velocity,
+    required=raw.Version(6, 4),
     structure=Link("structure", DEFAULT_SOURCE),
     velocities="intermediate/ion_dynamics/ion_velocities",
 )
