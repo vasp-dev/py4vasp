@@ -78,3 +78,15 @@ def check_plot_velocity(velocity, step, Assert):
         args, _ = viewer.show_arrows_at_atoms.call_args
     Assert.allclose(args[0], velocity.velocity_rescale * velocity.ref.velocities[step])
     Assert.allclose(args[1], convert.to_rgb(VASP_GRAY))
+
+
+def test_incorrect_access(Sr2TiO4):
+    out_of_bounds = 999
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4[out_of_bounds].read()
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4["string instead of int"].read()
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4[out_of_bounds].plot()
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4["string instead of int"].plot()
