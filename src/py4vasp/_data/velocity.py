@@ -12,6 +12,7 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin):
     "The ion velocities for all steps of the calculation."
     velocity_rescale = 1
 
+    @base.data_access
     def __str__(self):
         step = self._last_step_in_slice
         velocities = self._vectors_to_string(self._velocity[step])
@@ -26,12 +27,14 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin):
     def _element_to_string(self, element):
         return f"{element:21.16f}"
 
+    @base.data_access
     def to_dict(self):
         return {
             "structure": self._structure[self._steps].read(),
             "velocities": self._velocity[self._steps],
         }
 
+    @base.data_access
     def plot(self):
         self._raise_error_if_slice()
         velocities = self.velocity_rescale * self._velocity[self._steps]

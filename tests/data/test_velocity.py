@@ -128,3 +128,8 @@ def test_print_Sr2TiO4(Sr2TiO4, format_):
   57.0000000000000000   58.0000000000000000   59.0000000000000000
   60.0000000000000000   61.0000000000000000   62.0000000000000000"""
     assert actual == {"text/plain": ref_plain}
+
+
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.velocity("Fe3O4")
+    check_factory_methods(Velocity, data)
