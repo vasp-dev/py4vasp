@@ -6,15 +6,11 @@ from dataclasses import dataclass, fields, replace
 
 import numpy as np
 import plotly.graph_objects as go
-import plotly.io as pio
 from plotly.subplots import make_subplots
 
 from py4vasp import exception
+from py4vasp._config import VASP_COLORS
 from py4vasp._third_party.graph.series import Series
-
-_vasp_colors = ("#4C265F", "#2FB5AB", "#2C68FC", "#A82C35", "#808080")
-pio.templates["vasp"] = go.layout.Template(layout={"colorway": _vasp_colors})
-pio.templates.default = "ggplot2+vasp"
 
 
 @dataclass
@@ -105,7 +101,7 @@ class Graph(Sequence):
         self.to_plotly()._ipython_display_()
 
     def _generate_plotly_traces(self):
-        colors = itertools.cycle(_vasp_colors)
+        colors = itertools.cycle(VASP_COLORS)
         for series in self:
             if not series.color:
                 series = replace(series, color=next(colors))
