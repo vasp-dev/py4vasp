@@ -1,10 +1,14 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
+from unittest.mock import patch
 
 import pytest
 
+from py4vasp import exception
 from py4vasp.data import Structure, Velocity
+from py4vasp._config import VASP_GRAY
+from py4vasp._util import convert
 
 
 @pytest.fixture
@@ -47,3 +51,30 @@ def check_read_velocity(actual, reference, steps, Assert):
         else:
             Assert.allclose(actual["structure"][key], reference_structure[key])
     Assert.allclose(actual["velocities"], reference.velocities[steps])
+
+
+def test_plot_Sr2TiO4(Sr2TiO4, Assert):
+    check_plot_velocity(Sr2TiO4, -1, Assert)
+    check_plot_velocity(Sr2TiO4, 0, Assert)
+    for steps in (slice(None), slice(1, 3)):
+        with pytest.raises(exception.NotImplemented):
+            Sr2TiO4[steps].plot()
+
+
+def test_plot_Fe3O4(Fe3O4, Assert):
+    check_plot_velocity(Fe3O4, -1, Assert)
+    check_plot_velocity(Fe3O4, 0, Assert)
+
+
+def check_plot_velocity(velocity, step, Assert):
+    with patch("py4vasp.data.Structure.plot") as plot:
+        if step == -1:
+            velocity.plot()
+        else:
+            velocity[step].plot()
+        plot.assert_called_once()
+        viewer = plot.return_value
+        viewer.show_arrows_at_atoms.assert_called_once()
+        args, _ = viewer.show_arrows_at_atoms.call_args
+    Assert.allclose(args[0], velocity.velocity_rescale * velocity.ref.velocities[step])
+    Assert.allclose(args[1], convert.to_rgb(VASP_GRAY))
