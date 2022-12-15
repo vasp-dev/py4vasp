@@ -44,3 +44,4 @@ from py4vasp._data.stress import Stress
 from py4vasp._data.structure import Structure
 from py4vasp._data.system import System
 from py4vasp._data.topology import Topology
+from py4vasp._data.velocity import Velocity

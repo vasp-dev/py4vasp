@@ -229,6 +229,15 @@ class RawDataFactory:
         else:
             raise exception.NotImplemented()
 
+    @staticmethod
+    def velocity(selection):
+        if selection == "Sr2TiO4":
+            return _Sr2TiO4_velocity()
+        elif selection == "Fe3O4":
+            return _Fe3O4_velocity()
+        else:
+            raise exception.NotImplemented()
+
 
 @pytest.fixture
 def raw_data():
@@ -601,6 +610,12 @@ def _Sr2TiO4_topology():
     )
 
 
+def _Sr2TiO4_velocity():
+    shape = (number_steps, number_atoms, axes)
+    velocities = np.arange(np.prod(shape)).reshape(shape)
+    return raw.Velocity(structure=_Sr2TiO4_structure(), velocities=velocities)
+
+
 def _Fe3O4_cell():
     lattice_vectors = [
         [5.1427, 0.0, 0.0],
@@ -683,6 +698,12 @@ def _Fe3O4_topology():
     return raw.Topology(
         number_ion_types=np.array((3, 4)), ion_types=np.array(("Fe", "O "), dtype="S")
     )
+
+
+def _Fe3O4_velocity():
+    shape = (number_steps, number_atoms, axes)
+    velocities = np.arange(np.prod(shape)).reshape(shape)
+    return raw.Velocity(structure=_Fe3O4_structure(), velocities=velocities)
 
 
 def _make_data(data):
