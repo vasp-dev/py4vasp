@@ -413,3 +413,9 @@ schema.add(
     ion_types="results/phonons/primitive/ion_types",
     number_ion_types="results/phonons/primitive/number_ion_types",
 )
+#
+schema.add(
+    raw.Velocity,
+    structure=Link("structure", DEFAULT_SOURCE),
+    velocities="intermediate/ion_dynamics/ion_velocities",
+)

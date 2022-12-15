@@ -400,3 +400,12 @@ class Topology:
     "Amount of ions of a particular type."
     ion_types: VaspData
     "Element of a particular type."
+
+
+@dataclasses.dataclass
+class Velocity:
+    "Contains the ion velocities along the trajectory."
+    structure: Structure
+    "Structural information to relate the velocties to."
+    velocities: VaspData
+    "Observed ion velocities."
