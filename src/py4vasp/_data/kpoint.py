@@ -9,101 +9,11 @@ from py4vasp import exception
 from py4vasp._data import base
 from py4vasp._util import convert, documentation
 
-kpoints_opt_source = """
-source : str, optional
-    If you used a KPOINTS_OPT file to use a second k-point mesh, you can provide
-    a keyword argument `source="kpoints_opt"` to use the k-points defined in that
-    file instead of the one specified in KPOINTS.
-""".strip()
-
-_to_dict_doc = f"""Read the **k** points data into a dictionary.
-
-Parameters
-----------
-{kpoints_opt_source}
-
-Returns
--------
-dict
-    Contains the coordinates of the **k** points (in crystal units) as
-    well as their weights used for integrations. Moreover, some data
-    specified in the input file of Vasp are transferred such as the mode
-    used to generate the **k** points, the line length (if line mode was
-    used), and any labels set for specific points."""
-
-_line_length_doc = f"""Get the number of points per line in the Brillouin zone.
-
-Parameters
-----------
-{kpoints_opt_source}
-
-Returns
--------
-int
-    The number of points used to sample a single line."""
-
-_number_line_doc = f"""Get the number of lines in the Brillouin zone.
-
-Parameters
-----------
-{kpoints_opt_source}
-
-Returns
--------
-int
-    The number of lines the band structure contains. For regular meshes this is set to 1."""
-
-_number_kpoints = f"""Get the number of points in the Brillouin zone.
-
-Parameters
-----------
-{kpoints_opt_source}
-
-Returns
--------
-int
-    The number of points used to sample the Brillouin zone."""
-
-_distances_doc = f"""Convert the coordinates of the **k** points into a one dimensional array
-
-For every line in the Brillouin zone, the distance between each **k** point
-and the start of the line is calculated. Then the distances of different
-lines are concatenated into a single list. This routine is mostly useful
-to plot data along high-symmetry lines like band structures.
-
-Parameters
-----------
-{kpoints_opt_source}
-
-Returns
--------
-np.ndarray
-    A reduction of the **k** points onto a one-dimensional array based
-    on the distance between the points."""
-
-_mode_doc = f"""Get the **k**-point generation mode specified in the Vasp input file
-
-Parameters
-----------
-{kpoints_opt_source}
-
-Returns
--------
-str
-    A string representing which mode was used to setup the k-points."""
-
-
-_labels_doc = f"""Get any labels given in the input file for specific **k** points.
-
-Parameters
-----------
-{kpoints_opt_source}
-
-Returns
--------
-list[str]
-    A list of all the k-points explicitly named in the file or the coordinates of the
-    band edges if no name was provided."""
+_kpoints_selection = """\
+selection : str, optional
+    You can select "kpoints_opt" or "kpoints_wan" here, to read from those meshes instead
+    of the default one defined by the KPOINTS file.
+"""
 
 
 class Kpoint(base.Refinery):
@@ -125,8 +35,23 @@ reciprocal"""
         return text
 
     @base.data_access
-    @documentation.add(_to_dict_doc)
+    @documentation.format(selection=_kpoints_selection)
     def to_dict(self):
+        """Read the **k** points data into a dictionary.
+
+        Parameters
+        ----------
+        {selection}
+
+        Returns
+        -------
+        dict
+            Contains the coordinates of the **k** points (in crystal units) as
+            well as their weights used for integrations. Moreover, some data
+            specified in the input file of Vasp are transferred such as the mode
+            used to generate the **k** points, the line length (if line mode was
+            used), and any labels set for specific points.
+        """
         return {
             "mode": self.mode(),
             "line_length": self.line_length(),
@@ -137,25 +62,74 @@ reciprocal"""
         }
 
     @base.data_access
-    @documentation.add(_line_length_doc)
+    @documentation.format(selection=_kpoints_selection)
     def line_length(self):
+        """Get the number of points per line in the Brillouin zone.
+
+        Parameters
+        ----------
+        {selection}
+
+        Returns
+        -------
+        int
+            The number of points used to sample a single line.
+        """
         if self.mode() == "line":
             return self._raw_data.number
         return self.number_kpoints()
 
     @base.data_access
-    @documentation.add(_number_line_doc)
+    @documentation.format(selection=_kpoints_selection)
     def number_lines(self):
+        """Get the number of lines in the Brillouin zone.
+
+        Parameters
+        ----------
+        {selection}
+
+        Returns
+        -------
+        int
+            The number of lines the band structure contains. For regular meshes this is set to 1."""
         return self.number_kpoints() // self.line_length()
 
     @base.data_access
-    @documentation.add(_number_kpoints)
+    @documentation.format(selection=_kpoints_selection)
     def number_kpoints(self):
+        """Get the number of points in the Brillouin zone.
+
+        Parameters
+        ----------
+        {selection}
+
+        Returns
+        -------
+        int
+            The number of points used to sample the Brillouin zone.
+        """
         return len(self._raw_data.coordinates)
 
     @base.data_access
-    @documentation.add(_distances_doc)
+    @documentation.format(selection=_kpoints_selection)
     def distances(self):
+        """Convert the coordinates of the **k** points into a one dimensional array
+
+        For every line in the Brillouin zone, the distance between each **k** point
+        and the start of the line is calculated. Then the distances of different
+        lines are concatenated into a single list. This routine is mostly useful
+        to plot data along high-symmetry lines like band structures.
+
+        Parameters
+        ----------
+        {selection}
+
+        Returns
+        -------
+        np.ndarray
+            A reduction of the **k** points onto a one-dimensional array based
+            on the distance between the points.
+        """
         cell = _last_step(self._raw_data.cell.lattice_vectors)
         cartesian_kpoints = np.linalg.solve(cell, self._raw_data.coordinates[:].T).T
         kpoint_lines = np.split(cartesian_kpoints, self.number_lines())
@@ -166,8 +140,19 @@ reciprocal"""
         return functools.reduce(concatenate_distances, kpoint_norms)
 
     @base.data_access
-    @documentation.add(_mode_doc)
+    @documentation.format(selection=_kpoints_selection)
     def mode(self):
+        """Get the **k**-point generation mode specified in the Vasp input file
+
+        Parameters
+        ----------
+        {selection}
+
+        Returns
+        -------
+        str
+            A string representing which mode was used to setup the k-points.
+        """
         mode = convert.text_to_string(self._raw_data.mode).strip() or "# empty string"
         first_char = mode[0].lower()
         if first_char == "a":
@@ -188,8 +173,20 @@ reciprocal"""
             )
 
     @base.data_access
-    @documentation.add(_labels_doc)
+    @documentation.format(selection=_kpoints_selection)
     def labels(self):
+        """Get any labels given in the input file for specific **k** points.
+
+        Parameters
+        ----------
+        {selection}
+
+        Returns
+        -------
+        list[str]
+            A list of all the k-points explicitly named in the file or the coordinates of the
+            band edges if no name was provided.
+        """
         if not self._raw_data.label_indices.is_none():
             return self._labels_from_file()
         elif self.mode() == "line":
@@ -198,8 +195,22 @@ reciprocal"""
             return None
 
     @base.data_access
+    @documentation.format(selection=_kpoints_selection)
     def path_indices(self, start, finish):
-        # find linear dependent k-points
+        """Find linear dependent k points between start and finish
+
+        Loop over all possible k points and return the indices of the ones for which
+        k-point - start is linear dependent on finish - start.
+
+        Parameters
+        ----------
+        {selection}
+
+        Returns
+        -------
+        list[int]
+            A list of indices of all k points that fulfil the linear dependence.
+        """
         direction = np.array(finish) - np.array(start)
         deltas = self._raw_data.coordinates - np.array(start)
         areas = np.linalg.norm(np.cross(direction, deltas), axis=1)

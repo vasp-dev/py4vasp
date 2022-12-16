@@ -31,6 +31,12 @@ selection : str
     does not matter, but it is case sensitive to distinguish p (angular momentum
     l = 1) from P (phosphorus).
 """.strip()
+kpoints_opt_source = """
+source : str, optional
+    If you used a KPOINTS_OPT file to use a second k-point mesh, you can provide
+    a keyword argument `source="kpoints_opt"` to use the k-points defined in that
+    file instead of the one specified in KPOINTS.
+""".strip()
 
 
 def selection_examples(instance_name, function_name):
@@ -57,7 +63,7 @@ Parameters
 {selection_doc}
 projections : np.ndarray or None
     Array containing projected data.
-{kpoint.kpoints_opt_source}
+{kpoints_opt_source}
 
 Returns
 -------
@@ -84,7 +90,7 @@ orbital : str
 spin : str
     Select "up" or "down" for a specific spin component or "total" for
     the sum of both.
-{kpoint.kpoints_opt_source}
+{kpoints_opt_source}
 
 
 Returns
@@ -103,7 +109,7 @@ select.
 Parameters
 ----------
 {selection_doc}
-{kpoint.kpoints_opt_source}
+{kpoints_opt_source}
 
 Yields
 ------
