@@ -18,7 +18,7 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin):
     {examples}
     """
 
-    velocity_rescale = 1
+    velocity_rescale = 200
 
     @base.data_access
     def __str__(self):
