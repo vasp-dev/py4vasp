@@ -5,7 +5,7 @@ import numpy as np
 from py4vasp import exception
 from py4vasp._config import VASP_GRAY
 from py4vasp._data import base, slice_, structure
-from py4vasp._util import convert, reader, documentation
+from py4vasp._util import convert, documentation, reader
 
 
 @documentation.format(examples=slice_.examples("velocity"))

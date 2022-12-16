@@ -6,9 +6,9 @@ from unittest.mock import patch
 import pytest
 
 from py4vasp import exception
-from py4vasp.data import Structure, Velocity
 from py4vasp._config import VASP_GRAY
 from py4vasp._util import convert
+from py4vasp.data import Structure, Velocity
 
 
 @pytest.fixture
