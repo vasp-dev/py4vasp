@@ -6,19 +6,18 @@ from py4vasp import exception
 from py4vasp._data import base, slice_, structure
 from py4vasp._util import documentation, reader
 
-forces_docstring = f"""
-The forces acting on the atoms for selected steps of the simulation.
 
-You can use this class to analyze the forces acting on the atoms. In
-particular, you can check whether the forces are small at the end of the
-calculation.
-
-{slice_.examples("force")}
-""".strip()
-
-
-@documentation.add(forces_docstring)
+@documentation.format(examples=slice_.examples("force"))
 class Force(slice_.Mixin, base.Refinery, structure.Mixin):
+    """The forces acting on the atoms for selected steps of the simulation.
+
+    You can use this class to analyze the forces acting on the atoms. In
+    particular, you can check whether the forces are small at the end of the
+    calculation.
+
+    {examples}
+    """
+
     force_rescale = 1.5
     "Scaling constant to convert forces to Å."
 
@@ -38,37 +37,37 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         return result
 
     @base.data_access
-    @documentation.add(
-        f"""Read the forces and associated structural information for one or more
-selected steps of the trajectory.
-
-Returns
--------
-dict
-    Contains the forces for all selected steps and the structural information
-    to know on which atoms the forces act.
-
-{slice_.examples("force", "read")}"""
-    )
+    @documentation.format(examples=slice_.examples("force", "to_dict"))
     def to_dict(self):
+        """Read the forces and associated structural information for one or more
+        selected steps of the trajectory.
+
+        Returns
+        -------
+        dict
+            Contains the forces for all selected steps and the structural information
+            to know on which atoms the forces act.
+
+        {examples}
+        """
         return {
             "structure": self._structure[self._steps].read(),
             "forces": self._force[self._steps],
         }
 
     @base.data_access
-    @documentation.add(
-        f"""Visualize the forces showing arrows at the atoms.
-
-Returns
--------
-Viewer3d
-    Shows the structure with cell and all atoms adding arrows to the atoms
-    sized according to the strength of the force.
-
-{slice_.examples("force", "plot")}"""
-    )
+    @documentation.format(examples=slice_.examples("force", "to_graph"))
     def plot(self):
+        """Visualize the forces showing arrows at the atoms.
+
+        Returns
+        -------
+        Viewer3d
+            Shows the structure with cell and all atoms adding arrows to the atoms
+            sized according to the strength of the force.
+
+        {examples}
+        """
         self._raise_error_if_slice()
         forces = self.force_rescale * self._force[self._steps]
         color = [0.3, 0.15, 0.35]
