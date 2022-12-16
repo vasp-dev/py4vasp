@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import re
+import textwrap
 
 import numpy as np
 
@@ -36,3 +37,9 @@ def to_snakecase(word: str) -> str:
     word = re.sub(r"([a-z\d])([A-Z])", r"\1_\2", word)
     word = word.replace("-", "_")
     return word.lower()
+
+
+def to_rgb(hex):
+    "Convert a HEX color code to fractional RGB."
+    hex = hex.lstrip("#")
+    return np.array([int(part, 16) for part in textwrap.wrap(hex, 2)]) / 255
