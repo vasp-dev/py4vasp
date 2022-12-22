@@ -5,60 +5,9 @@ import pandas as pd
 from IPython.lib.pretty import pretty
 
 from py4vasp import data
-from py4vasp._data import base, kpoint, projector
+from py4vasp._data import base, projector
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation
-
-_to_dict_doc = f"""Read the data into a dictionary.
-
-Parameters
-----------
-{projector.selection_doc}
-{kpoint.kpoints_opt_source}
-
-Returns
--------
-dict
-    Contains the **k**-point path for plotting band structures with the
-    eigenvalues shifted to bring the Fermi energy to 0. If available
-    and a selection is passed, the projections of these bands on the
-    selected projectors are included.
-
-{projector.selection_examples("band", "to_dict")}"""
-
-_to_frame_doc = f"""Read the data into a DataFrame.
-
-Parameters
-----------
-{projector.selection_doc}
-{kpoint.kpoints_opt_source}
-
-Returns
--------
-pd.DataFrame
-    Contains the eigenvalues and corresponding occupations for all k-points and
-    bands. If a selection string is given, in addition the orbital projections
-    on these bands are returned.
-
-{projector.selection_examples("band", "to_frame")}"""
-
-_to_graph_doc = f"""Read the data and generate a graph.
-
-Parameters
-----------
-{projector.selection_doc}
-width : float
-    Specifies the width of the flatbands if a selection of projections is specified.
-{kpoint.kpoints_opt_source}
-
-Returns
--------
-Graph
-    Figure containing the spin-up and spin-down bands. If a selection
-    is provided the width of the bands represents the projections of the
-    bands onto the specified projectors.
-
-{projector.selection_examples("band", "plot")}"""
 
 
 class Band(base.Refinery, graph.Mixin):
@@ -81,8 +30,27 @@ class Band(base.Refinery, graph.Mixin):
     """.strip()
 
     @base.data_access
-    @documentation.add(_to_dict_doc)
+    @documentation.format(
+        selection_doc=projector.selection_doc,
+        examples=projector.selection_examples("band", "to_dict"),
+    )
     def to_dict(self, selection=None):
+        """Read the data into a dictionary.
+
+        Parameters
+        ----------
+        {selection_doc}
+
+        Returns
+        -------
+        dict
+            Contains the **k**-point path for plotting band structures with the
+            eigenvalues shifted to bring the Fermi energy to 0. If available
+            and a selection is passed, the projections of these bands on the
+            selected projectors are included.
+
+        {examples}
+        """
         dispersion = self._dispersion.read()
         return {
             "kpoint_distances": dispersion["kpoint_distances"],
@@ -94,8 +62,28 @@ class Band(base.Refinery, graph.Mixin):
         }
 
     @base.data_access
-    @documentation.add(_to_graph_doc)
+    @documentation.format(
+        selection_doc=projector.selection_doc,
+        examples=projector.selection_examples("band", "to_graph"),
+    )
     def to_graph(self, selection=None, width=0.5):
+        """Read the data and generate a graph.
+
+        Parameters
+        ----------
+        {selection_doc}
+        width : float
+            Specifies the width of the flatbands if a selection of projections is specified.
+
+        Returns
+        -------
+        Graph
+            Figure containing the spin-up and spin-down bands. If a selection
+            is provided the width of the bands represents the projections of the
+            bands onto the specified projectors.
+
+        {examples}
+        """
         projections = self._projections(selection, width)
         graph = self._dispersion.plot(projections)
         graph = self._shift_series_by_fermi_energy(graph)
@@ -103,8 +91,26 @@ class Band(base.Refinery, graph.Mixin):
         return graph
 
     @base.data_access
-    @documentation.add(_to_frame_doc)
+    @documentation.format(
+        selection_doc=projector.selection_doc,
+        examples=projector.selection_examples("band", "to_frame"),
+    )
     def to_frame(self, selection=None):
+        """Read the data into a DataFrame.
+
+        Parameters
+        ----------
+        {selection_doc}
+
+        Returns
+        -------
+        pd.DataFrame
+            Contains the eigenvalues and corresponding occupations for all k-points and
+            bands. If a selection string is given, in addition the orbital projections
+            on these bands are returned.
+
+        {examples}
+        """
         index = self._setup_dataframe_index()
         data = self._extract_relevant_data(selection)
         return pd.DataFrame(data, index)

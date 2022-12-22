@@ -10,13 +10,9 @@ from py4vasp._data import base, kpoint
 from py4vasp._data.selection import Selection
 from py4vasp._util import check, convert, documentation, reader, select
 
-_spin_not_set = "not set"
-_range = re.compile(r"^(\d+)" + re.escape(select.range_separator) + r"(\d+)$")
-_select_all = select.all
-
-selection_doc = r"""
+selection_doc = """\
 selection : str
-    A string specifying the projection of the orbitals. There are three distinct
+    A string specifying the projection of the orbitals. There are four distinct
     possibilities:
 
     -   To specify the **atom**, you can either use its element name (Si, Al, ...)
@@ -25,12 +21,14 @@ selection : str
     -   To select a particular **orbital** you can give a string (s, px, dxz, ...)
         or select multiple orbitals by their angular momentum (s, p, d, f).
     -   For the **spin**, you have the options up, down, or total.
+    -   If you used a different **k**-point mesh choose "kpoints_opt" or "kpoints_wan"
+        to select them instead of the default mesh specified in the KPOINTS file.
 
     You separate multiple selections by commas or whitespace and can nest them using
     parenthesis, e.g. `Sr(s, p)` or `s(up), p(down)`. The order of the selections
     does not matter, but it is case sensitive to distinguish p (angular momentum
     l = 1) from P (phosphorus).
-""".strip()
+"""
 
 
 def selection_examples(instance_name, function_name):
@@ -50,66 +48,9 @@ Select the spin-up contribution of the first three atoms combined
 """
 
 
-_to_dict_doc = f"""Read the selected data from an array and store it in a dictionary.
-
-Parameters
-----------
-{selection_doc}
-projections : np.ndarray or None
-    Array containing projected data.
-{kpoint.kpoints_opt_source}
-
-Returns
--------
-dict
-    Dictionary where the label of the selection is linked to a particular
-    column of the array. If a particular selection includes multiple indices
-    these elements are added. If the projections are not present, the relevant
-    indices are returned."""
-
-_select_doc = f"""Map selection strings onto corresponding Selection objects.
-
-With the selection strings, you specify which atom, orbital, and spin component
-you are interested in.
-
-Parameters
-----------
-atom : str
-    Element name or index of the atom in the input file of Vasp. If a
-    range is specified (e.g. 1{select.range_separator}3) a pointer to
-    multiple indices will be created.
-orbital : str
-    Character identifying the angular momentum of the orbital. You may
-    select a specific one (e.g. px) or all of the same character (e.g. d).
-spin : str
-    Select "up" or "down" for a specific spin component or "total" for
-    the sum of both.
-{kpoint.kpoints_opt_source}
-
-
-Returns
--------
-Index
-    Indices to access the selected projection from an array and an
-    associated label."""
-
-
-_parse_selection_doc = f"""Generate all possible indices where the projected information is stored.
-
-Given a string specifying which atoms, orbitals, and spin should be selected
-an iterable object is created that contains the indices compatible with the
-select.
-
-Parameters
-----------
-{selection_doc}
-{kpoint.kpoints_opt_source}
-
-Yields
-------
-Iterable[Index]
-    Indices of the atom, the orbital and the spin compatible with a specific
-    selection."""
+_spin_not_set = "not set"
+_range = re.compile(r"^(\d+)" + re.escape(select.range_separator) + r"(\d+)$")
+_select_all = select.all
 
 
 class Projector(base.Refinery):
@@ -141,8 +82,24 @@ class Projector(base.Refinery):
     orbitals: {", ".join(self._orbital_types())}"""
 
     @base.data_access
-    @documentation.add(_to_dict_doc)
+    @documentation.format(selection_doc=selection_doc)
     def to_dict(self, selection=None, projections=None):
+        """Read the selected data from an array and store it in a dictionary.
+
+        Parameters
+        ----------
+        {selection_doc}
+        projections : np.ndarray or None
+            Array containing projected data.
+
+        Returns
+        -------
+        dict
+            Dictionary where the label of the selection is linked to a particular
+            column of the array. If a particular selection includes multiple indices
+            these elements are added. If the projections are not present, the relevant
+            indices are returned.
+        """
         if selection is None:
             return {}
         error_message = "Projector selection must be a string."
@@ -154,13 +111,37 @@ class Projector(base.Refinery):
             return self._read_elements(indices, projections)
 
     @base.data_access
-    @documentation.add(_select_doc)
+    @documentation.format(separator=select.range_separator)
     def select(
         self,
         atom=_select_all,
         orbital=_select_all,
         spin=_select_all,
     ):
+        """Map selection strings onto corresponding Selection objects.
+
+        With the selection strings, you specify which atom, orbital, and spin component
+        you are interested in.
+
+        Parameters
+        ----------
+        atom : str
+            Element name or index of the atom in the input file of Vasp. If a
+            range is specified (e.g. 1{separator}3) a pointer to
+            multiple indices will be created.
+        orbital : str
+            Character identifying the angular momentum of the orbital. You may
+            select a specific one (e.g. px) or all of the same character (e.g. d).
+        spin : str
+            Select "up" or "down" for a specific spin component or "total" for
+            the sum of both.
+
+        Returns
+        -------
+        Index
+            Indices to access the selected projection from an array and an
+            associated label.
+        """
         dicts = self._init_dicts()
         _raise_error_if_not_found_in_dict(orbital, dicts["orbital"])
         _raise_error_if_not_found_in_dict(spin, dicts["spin"])
@@ -171,8 +152,23 @@ class Projector(base.Refinery):
         )
 
     @base.data_access
-    @documentation.add(_parse_selection_doc)
+    @documentation.format(selection_doc=selection_doc)
     def parse_selection(self, selection=_select_all):
+        """Generate all possible indices where the projected information is stored.
+
+        Given a string specifying which atoms, orbitals, and spin should be selected
+        an iterable object is created that contains the indices compatible with the
+        select.
+
+        Parameters
+        ----------
+        {selection_doc}
+
+        Yields
+        ------
+        Iterable[Index]
+            Indices of the atom, the orbital and the spin compatible with a specific
+            selection."""
         dicts = self._init_dicts()
         default_index = Projector.Index(
             atom=_select_all,

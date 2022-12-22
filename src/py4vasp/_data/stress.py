@@ -2,23 +2,22 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import data, exception
+from py4vasp import data
 from py4vasp._data import base, slice_
 from py4vasp._util import documentation, reader
 
-_stress_docstring = f"""
-The stress acting on the unit cell for selected steps of the simulation.
 
-You can use this class to analyze the stress on the shape of the cell. In
-particular, you can check whether the stress is small at the end of the
-calculation.
-
-{slice_.examples("stress")}
-""".strip()
-
-
-@documentation.add(_stress_docstring)
+@documentation.format(examples=slice_.examples("stress"))
 class Stress(slice_.Mixin, base.Refinery):
+    """The stress acting on the unit cell for selected steps of the simulation.
+
+    You can use this class to analyze the stress on the shape of the cell. In
+    particular, you can check whether the stress is small at the end of the
+    calculation.
+
+    {examples}
+    """
+
     @base.data_access
     def __str__(self):
         "Convert the stress to a format similar to the OUTCAR file."
@@ -35,19 +34,19 @@ in kB   {stress_to_string(stress)}
 """.strip()
 
     @base.data_access
-    @documentation.add(
-        f"""Read the stress and associated structural information for one or more
-selected steps of the trajectory.
-
-Returns
--------
-dict
-    Contains the stress for all selected steps and the structural information
-    to know on which cell the stress acts.
-
-{slice_.examples("stress", "read")}"""
-    )
+    @documentation.format(examples=slice_.examples("stress", "to_dict"))
     def to_dict(self):
+        """Read the stress and associated structural information for one or more
+        selected steps of the trajectory.
+
+        Returns
+        -------
+        dict
+            Contains the stress for all selected steps and the structural information
+            to know on which cell the stress acts.
+
+        {examples}
+        """
         return {
             "structure": self._structure[self._steps].read(),
             "stress": self._stress[self._steps],

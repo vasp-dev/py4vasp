@@ -5,16 +5,6 @@ import inspect
 import py4vasp._util.documentation as _documentation
 
 
-def test_add_documentation():
-    doc_string = "doc string"
-
-    @_documentation.add(doc_string)
-    def func():
-        pass
-
-    assert inspect.getdoc(func) == doc_string
-
-
 def test_format_documentation():
     inner_text = """\
 First line

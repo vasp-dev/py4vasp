@@ -47,20 +47,17 @@ class _Format:
         return f"{element:21.16f}"
 
 
-_structure_docs = f"""
-The structure of the crystal for selected steps of the simulation.
-
-You can use this class to process structural information from the Vasp
-calculation. Typically you want to do this to inspect the converged structure
-after an ionic relaxation or to visualize the changes of the structure along
-the simulation.
-
-{slice_.examples("structure")}
-""".strip()
-
-
-@documentation.add(_structure_docs)
+@documentation.format(examples=slice_.examples("structure"))
 class Structure(slice_.Mixin, base.Refinery):
+    """The structure of the crystal for selected steps of the simulation.
+
+    You can use this class to process structural information from the Vasp
+    calculation. Typically you want to do this to inspect the converged structure
+    after an ionic relaxation or to visualize the changes of the structure along
+    the simulation.
+
+    {examples}
+    """
 
     A_to_nm = 0.1
     "Converting Å to nm used for mdtraj trajectories."
@@ -111,19 +108,19 @@ class Structure(slice_.Mixin, base.Refinery):
         return "\n".join(lines)
 
     @base.data_access
-    @documentation.add(
-        f"""Read the structural information into a dictionary.
-
-Returns
--------
-dict
-    Contains the unit cell of the crystal, as well as the position of
-    all the atoms in units of the lattice vectors and the elements of
-    the atoms for all selected steps.
-
-{slice_.examples("structure", "read")}"""
-    )
+    @documentation.format(examples=slice_.examples("structure", "to_dict"))
     def to_dict(self):
+        """Read the structural information into a dictionary.
+
+        Returns
+        -------
+        dict
+            Contains the unit cell of the crystal, as well as the position of
+            all the atoms in units of the lattice vectors and the elements of
+            the atoms for all selected steps.
+
+        {examples}
+        """
         return {
             "lattice_vectors": self._lattice_vectors(),
             "positions": self._raw_data.positions[self._steps],
@@ -132,46 +129,46 @@ dict
         }
 
     @base.data_access
-    @documentation.add(
-        f"""Generate a 3d representation of the structure(s).
-
-Parameters
-----------
-supercell : int or np.ndarray
-    If present the structure is replicated the specified number of times
-    along each direction.
-
-Returns
--------
-Viewer3d
-    Visualize the structure(s) as a 3d figure.
-
-{slice_.examples("structure", "plot")}"""
-    )
+    @documentation.format(examples=slice_.examples("structure", "to_graph"))
     def plot(self, supercell=None):
+        """Generate a 3d representation of the structure(s).
+
+        Parameters
+        ----------
+        supercell : int or np.ndarray
+            If present the structure is replicated the specified number of times
+            along each direction.
+
+        Returns
+        -------
+        Viewer3d
+            Visualize the structure(s) as a 3d figure.
+
+        {examples}
+        """
         if self._is_slice:
             return self._viewer_from_trajectory()
         else:
             return self._viewer_from_structure(supercell)
 
     @base.data_access
-    @documentation.add(
-        f"""Convert the structure to an ase Atoms object.
-
-Parameters
-----------
-supercell : int or np.ndarray
-    If present the structure is replicated the specified number of times
-    along each direction.
-
-Returns
--------
-ase.Atoms
-    Structural information for ase package.
-
-{slice_.examples("structure", "to_ase")}"""
-    )
+    @documentation.format(examples=slice_.examples("structure", "to_ase"))
     def to_ase(self, supercell=None):
+        """Convert the structure to an ase Atoms object.
+
+        Parameters
+        ----------
+        supercell : int or np.ndarray
+            If present the structure is replicated the specified number of times
+            along each direction.
+
+        Returns
+        -------
+        ase.Atoms
+            Structural information for ase package.
+
+        {examples}
+        """
         if self._is_slice:
             message = (
                 "Converting multiple structures to ASE trajectories is not implemented."
@@ -196,19 +193,19 @@ ase.Atoms
         return structure
 
     @base.data_access
-    @documentation.add(
-        f"""Convert the trajectory to mdtraj.Trajectory
-
-Returns
--------
-mdtraj.Trajectory
-    The mdtraj package offers many functionalities to analyze a MD
-    trajectory. By converting the Vasp data to their format, we facilitate
-    using all functions of that package.
-
-{slice_.examples("structure", "to_mdtraj")}"""
-    )
+    @documentation.format(examples=slice_.examples("structure", "to_mdtraj"))
     def to_mdtraj(self):
+        """Convert the trajectory to mdtraj.Trajectory
+
+        Returns
+        -------
+        mdtraj.Trajectory
+            The mdtraj package offers many functionalities to analyze a MD
+            trajectory. By converting the Vasp data to their format, we facilitate
+            using all functions of that package.
+
+        {examples}
+        """
         if not self._is_slice:
             message = "Converting a single structure to mdtraj is not implemented."
             raise exception.NotImplemented(message)
@@ -219,17 +216,17 @@ mdtraj.Trajectory
         return trajectory
 
     @base.data_access
-    @documentation.add(
-        f"""Convert the structure(s) to a POSCAR format
-
-Returns
--------
-str or list[str]
-    Returns the POSCAR of the current or all selected steps.
-
-{slice_.examples("structure", "to_POSCAR")}"""
-    )
+    @documentation.format(examples=slice_.examples("structure", "to_POSCAR"))
     def to_POSCAR(self):
+        """Convert the structure(s) to a POSCAR format
+
+        Returns
+        -------
+        str or list[str]
+            Returns the POSCAR of the current or all selected steps.
+
+        {examples}
+        """
         if not self._is_slice:
             return self._create_repr()
         else:
@@ -237,31 +234,31 @@ str or list[str]
             raise exception.NotImplemented(message)
 
     @base.data_access
-    @documentation.add(
-        f"""Convert the positions from direct coordinates to cartesian ones.
-
-Returns
--------
-np.ndarray
-    Position of all atoms in cartesian coordinates in Å.
-
-{slice_.examples("structure", "cartesian_positions")}"""
-    )
+    @documentation.format(examples=slice_.examples("structure", "cartesian_positions"))
     def cartesian_positions(self):
+        """Convert the positions from direct coordinates to cartesian ones.
+
+        Returns
+        -------
+        np.ndarray
+            Position of all atoms in cartesian coordinates in Å.
+
+        {examples}
+        """
         return self._raw_data.positions[self._steps] @ self._lattice_vectors()
 
     @base.data_access
-    @documentation.add(
-        f"""Return the volume of the unit cell for the selected steps.
-
-Returns
--------
-float or np.ndarray
-    The volume(s) of the selected step(s) in Å³.
-
-{slice_.examples("structure", "volume")}"""
-    )
+    @documentation.format(examples=slice_.examples("structure", "volume"))
     def volume(self):
+        """Return the volume of the unit cell for the selected steps.
+
+        Returns
+        -------
+        float or np.ndarray
+            The volume(s) of the selected step(s) in Å³.
+
+        {examples}
+        """
         return np.abs(np.linalg.det(self._lattice_vectors()))
 
     @base.data_access

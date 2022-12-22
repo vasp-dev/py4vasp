@@ -4,7 +4,7 @@ import pandas as pd
 from IPython.lib.pretty import pretty
 
 from py4vasp import data
-from py4vasp._data import base, kpoint, projector
+from py4vasp._data import base, projector
 from py4vasp._third_party import graph
 from py4vasp._util import documentation
 
@@ -31,50 +31,54 @@ class Dos(base.Refinery, graph.Mixin):
     """.strip()
 
     @base.data_access
-    @documentation.add(
-        f"""Read the data into a dictionary.
-
-Parameters
-----------
-{projector.selection_doc}
-{kpoint.kpoints_opt_source}
-
-Returns
--------
-dict
-    Contains the energies at which the DOS was evaluated aligned to the
-    Fermi energy and the total DOS or the spin-resolved DOS for
-    spin-polarized calculations. If available and a selection is passed,
-    the orbital resolved DOS for the selected orbitals is included.
-
-{projector.selection_examples("dos", "read")}"""
+    @documentation.format(
+        selection_doc=projector.selection_doc,
+        examples=projector.selection_examples("dos", "to_dict"),
     )
     def to_dict(self, selection=None):
+        """Read the data into a dictionary.
+
+        Parameters
+        ----------
+        {selection_doc}
+
+        Returns
+        -------
+        dict
+            Contains the energies at which the DOS was evaluated aligned to the
+            Fermi energy and the total DOS or the spin-resolved DOS for
+            spin-polarized calculations. If available and a selection is passed,
+            the orbital resolved DOS for the selected orbitals is included.
+
+        {examples}
+        """
         return {
             **self._read_data(selection),
             "fermi_energy": self._raw_data.fermi_energy,
         }
 
     @base.data_access
-    @documentation.add(
-        f"""Generate a graph of the selected data reading it from the VASP output.
-
-Parameters
-----------
-{projector.selection_doc}
-{kpoint.kpoints_opt_source}
-
-Returns
--------
-Graph
-    Graph containing the total DOS. If the calculation was spin polarized,
-    the resulting DOS is spin resolved and the spin-down DOS is plotted
-    towards negative values. If a selection is given the orbital-resolved
-    DOS is given for the specified projectors.
-
-{projector.selection_examples("dos", "to_plotly")}"""
+    @documentation.format(
+        selection_doc=projector.selection_doc,
+        examples=projector.selection_examples("dos", "to_graph"),
     )
     def to_graph(self, selection=None):
+        """Generate a graph of the selected data reading it from the VASP output.
+
+        Parameters
+        ----------
+        {selection_doc}
+
+        Returns
+        -------
+        Graph
+            Graph containing the total DOS. If the calculation was spin polarized,
+            the resulting DOS is spin resolved and the spin-down DOS is plotted
+            towards negative values. If a selection is given the orbital-resolved
+            DOS is given for the specified projectors.
+
+        {examples}
+        """
         data = self._read_data(selection)
         return graph.Graph(
             series=list(_series(data)),
@@ -83,25 +87,27 @@ Graph
         )
 
     @base.data_access
-    @documentation.add(
-        f"""Read the data into a pandas DataFrame.
-
-Parameters
-----------
-{projector.selection_doc}
-{kpoint.kpoints_opt_source}
-
-Returns
--------
-pd.DataFrame
-    Contains the energies at which the DOS was evaluated aligned to the
-    Fermi energy and the total DOS or the spin-resolved DOS for
-    spin-polarized calculations. If available and a selection is passed,
-    the orbital resolved DOS for the selected orbitals is included.
-
-{projector.selection_examples("dos", "to_frame")}"""
+    @documentation.format(
+        selection_doc=projector.selection_doc,
+        examples=projector.selection_examples("dos", "to_frame"),
     )
     def to_frame(self, selection=None):
+        """Read the data into a pandas DataFrame.
+
+        Parameters
+        ----------
+        {selection_doc}
+
+        Returns
+        -------
+        pd.DataFrame
+            Contains the energies at which the DOS was evaluated aligned to the
+            Fermi energy and the total DOS or the spin-resolved DOS for
+            spin-polarized calculations. If available and a selection is passed,
+            the orbital resolved DOS for the selected orbitals is included.
+
+        {examples}
+        """
         df = pd.DataFrame(self._read_data(selection))
         df.fermi_energy = self._raw_data.fermi_energy
         return df

@@ -7,28 +7,27 @@ from py4vasp._data import base, slice_
 from py4vasp._third_party import graph
 from py4vasp._util import check, convert, documentation, select
 
-_energy_docs = f"""
-The energy data for one or several steps of a relaxation or MD simulation.
 
-You can use this class to inspect how the ionic relaxation converges or
-during an MD simulation whether the total energy is conserved.
-
-{slice_.examples("energy")}
-""".strip()
-
-_selection_string = (
-    lambda default: f"""selection : str or None
+def _selection_string(default):
+    return f"""selection : str or None
     String specifying the labels of the energy to be read. A substring
     of the label is sufficient. If no energy is select this will default
     to selecting {default}. Separate distinct labels by commas. For a
     complete list of all possible selections, please use
     >>> calc.energy.labels()
 """
-)
 
 
-@documentation.add(_energy_docs)
+@documentation.format(examples=slice_.examples("energy"))
 class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
+    """The energy data for one or several steps of a relaxation or MD simulation.
+
+    You can use this class to inspect how the ionic relaxation converges or
+    during an MD simulation whether the total energy is conserved.
+
+    {examples}
+    """
+
     @base.data_access
     def __str__(self):
         text = f"Energies at {self._step_string()}:"
@@ -50,43 +49,49 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
             return f"step {self._steps + 1}"
 
     @base.data_access
-    @documentation.add(
-        f"""Read the energy data and store it in a dictionary.
-
-Parameters
-----------
-{_selection_string("all energies")}
-
-Returns
--------
-dict
-    Contains the exact labels corresponding to the selection and the
-    associated energies for every selected ionic step.
-
-{slice_.examples("energy", "read")}"""
+    @documentation.format(
+        selection=_selection_string("all energies"),
+        examples=slice_.examples("energy", "to_dict"),
     )
     def to_dict(self, selection=select.all):
+        """Read the energy data and store it in a dictionary.
+
+        Parameters
+        ----------
+        {selection}
+
+        Returns
+        -------
+        dict
+            Contains the exact labels corresponding to the selection and the
+            associated energies for every selected ionic step.
+
+        {examples}
+        """
         return {
             label: self._raw_data.values[self._steps, index]
             for label, index in self._parse_user_selection(selection)
         }
 
     @base.data_access
-    @documentation.add(
-        f"""Read the energy data and generate a figure of the selected components.
-
-Parameters
-----------
-{_selection_string("the total energy")}
-
-Returns
--------
-Graph
-     figure containing the selected energies for every selected ionic step.
-
-{slice_.examples("energy", "plot")}"""
+    @documentation.format(
+        selection=_selection_string("the total energy"),
+        examples=slice_.examples("energy", "to_graph"),
     )
     def to_graph(self, selection="TOTEN"):
+        """Read the energy data and generate a figure of the selected components.
+
+        Parameters
+        ----------
+        {selection}
+
+        Returns
+        -------
+        Graph
+            figure containing the selected energies for every selected ionic step.
+
+        {examples}
+        """
         yaxes = self._create_yaxes(selection)
         return graph.Graph(
             series=self._make_series(yaxes, selection),
@@ -94,27 +99,28 @@ Graph
             ylabel=yaxes.ylabel,
             y2label=yaxes.y2label,
         )
-        figure.layout.xaxis.title.text = "Step"
-        return figure
 
     @base.data_access
-    @documentation.add(
-        f"""Read the energy of the selected steps.
-
-Parameters
-----------
-{_selection_string("the total energy")}
-
-Returns
--------
-float or np.ndarray or tuple
-    Contains energies associated with the selection for the selected ionic step(s).
-    When only a single step is inquired, result is a float otherwise an array.
-    If you select multiple quantities a tuple of them is returned.
-
-{slice_.examples("energy", "to_numpy")}"""
+    @documentation.format(
+        selection=_selection_string("the total energy"),
+        examples=slice_.examples("energy", "to_numpy"),
     )
     def to_numpy(self, selection="TOTEN"):
+        """Read the energy of the selected steps.
+
+        Parameters
+        ----------
+        {selection}
+
+        Returns
+        -------
+        float or np.ndarray or tuple
+            Contains energies associated with the selection for the selected ionic step(s).
+            When only a single step is inquired, result is a float otherwise an array.
+            If you select multiple quantities a tuple of them is returned.
+
+        {examples}
+        """
         result = tuple(
             self._raw_data.values[self._steps, index]
             for _, index in self._parse_user_selection(selection)

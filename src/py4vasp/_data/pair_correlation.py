@@ -5,17 +5,6 @@ from py4vasp._data import base, slice_
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, select
 
-_pair_correlation_docs = f"""
-The pair-correlation function for one or several blocks of an MD simulation.
-
-Use this class to inspect how the correlation of the position of different
-ions types in an MD simulation. The pair-correlation function gives insight
-into the structural properties and may help to identify certain orders in
-the system.
-
-{slice_.examples("pair_correlation", step="block")}
-""".strip()
-
 
 def _selection_string(default):
     return f"""\
@@ -31,51 +20,66 @@ selection : str
 """
 
 
-_read_docs = f"""Read the pair-correlation function and store it in a dictionary.
-
-Parameters
-----------
-{_selection_string("all possibilities are read")}
-
-Returns
--------
-dict
-    Contains the labels corresponding to the selection and the associated
-    pair-correlation function for every selected block. Furthermore, the
-    dictionary contains the distances at which the pair-correlation functions
-    are evaluated.
-
-{slice_.examples("pair_correlation", "read", "block")}"""
-
-_plot_docs = f"""Plot selected pair-correlation functions.
-
-Parameters
-----------
-{_selection_string("the total pair correlation is used")}
-
-Returns
--------
-Graph
-    The graph plots the pair-correlation function for all selected blocks
-    and ion pairs. Note that the various blocks with the same legend and
-    only different ion combinations use different color schemes.
-
-{slice_.examples("pair_correlation", "plot", "block")}"""
-
-
-@documentation.add(_pair_correlation_docs)
+@documentation.format(examples=slice_.examples("pair_correlation", step="block"))
 class PairCorrelation(slice_.Mixin, base.Refinery, graph.Mixin):
+    """The pair-correlation function for one or several blocks of an MD simulation.
+
+    Use this class to inspect how the correlation of the position of different
+    ions types in an MD simulation. The pair-correlation function gives insight
+    into the structural properties and may help to identify certain orders in
+    the system.
+
+    {examples}
+    """
+
     @base.data_access
-    @documentation.add(_read_docs)
+    @documentation.format(
+        selection=_selection_string("all possibilities are read"),
+        examples=slice_.examples("pair_correlation", "to_dict", "block"),
+    )
     def to_dict(self, selection=select.all):
+        """Read the pair-correlation function and store it in a dictionary.
+
+        Parameters
+        ----------
+        {selection}
+
+        Returns
+        -------
+        dict
+            Contains the labels corresponding to the selection and the associated
+            pair-correlation function for every selected block. Furthermore, the
+            dictionary contains the distances at which the pair-correlation functions
+            are evaluated.
+
+        {examples}
+        """
         return {
             "distances": self._raw_data.distances[:],
             **self._read_data(selection),
         }
 
     @base.data_access
-    @documentation.add(_plot_docs)
+    @documentation.format(
+        selection=_selection_string("the total pair correlation is used"),
+        examples=slice_.examples("pair_correlation", "to_graph", "block"),
+    )
     def to_graph(self, selection="total"):
+        """Plot selected pair-correlation functions.
+
+        Parameters
+        ----------
+        {selection}
+
+        Returns
+        -------
+        Graph
+            The graph plots the pair-correlation function for all selected blocks
+            and ion pairs. Note that the various blocks with the same legend and
+            only different ion combinations use different color schemes.
+
+        {examples}
+        """
         series = self._make_series(self.to_dict(selection))
         return graph.Graph(series, xlabel="Distance (Å)", ylabel="Pair correlation")
 

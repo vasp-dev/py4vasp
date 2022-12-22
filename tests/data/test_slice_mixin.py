@@ -17,8 +17,10 @@ class Other:
         print("other", args, kwargs)
 
 
-@documentation.add(slice_.examples("example"))
+@documentation.format(examples=slice_.examples("example"))
 class ExampleSlice(slice_.Mixin, Other):
+    "{examples}"
+
     def steps(self):
         return self._steps
 
