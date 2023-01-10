@@ -113,22 +113,29 @@ class Topology(base.Refinery):
         return np.sum(self._raw_data.number_ion_types)
 
     def _create_repr(self, number_suffix):
-        number_strings = (number_suffix(n) for n in self._raw_data.number_ion_types)
-        return "".join(itertools.chain(*zip(self.ion_types(), number_strings)))
+        ion_string = lambda ion, number: f"{ion}{number_suffix(number)}"
+        return "".join(ion_string(*item) for item in self._total_type_numbers().items())
+
+    def _total_type_numbers(self):
+        result = {}
+        for ion_type, number in self._type_numbers():
+            result.setdefault(ion_type, 0)
+            result[ion_type] += number
+        return result
 
     def _default_selection(self):
         num_atoms = self.number_atoms()
         return {select.all: Selection(indices=slice(0, num_atoms))}
 
     def _specific_selection(self):
-        res = {}
+        result = {}
         for i, element in enumerate(self.elements()):
-            res.setdefault(element, Selection(indices=[], label=element))
-            res[element].indices.append(i)
+            result.setdefault(element, Selection(indices=[], label=element))
+            result[element].indices.append(i)
             # create labels like Si_1, Si_2, Si_3 (starting at 1)
-            label = f"{element}{_subscript}{len(res[element].indices)}"
-            res[str(i + 1)] = Selection(indices=[i], label=label)
-        return _merge_to_slice_if_possible(res)
+            label = f"{element}{_subscript}{len(result[element].indices)}"
+            result[str(i + 1)] = Selection(indices=[i], label=label)
+        return _merge_to_slice_if_possible(result)
 
     def _type_numbers(self):
         return zip(self._ion_types, self._raw_data.number_ion_types)

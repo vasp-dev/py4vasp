@@ -145,6 +145,14 @@ class TestCa3AsBr3:
     def test_number_atoms(self):
         assert self.topology.number_atoms() == 7
 
+    def test_print(self, format_):
+        actual, _ = format_(self.topology)
+        reference = {
+            "text/plain": "Ca3AsBr3",
+            "text/html": "Ca<sub>3</sub>AsBr<sub>3</sub>",
+        }
+        assert actual == reference
+
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.topology("Sr2TiO4")
