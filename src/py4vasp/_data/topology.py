@@ -86,7 +86,7 @@ class Topology(base.Refinery):
         """
         error_message = "The formatting information must be a string."
         check.raise_error_if_not_string(format_newline, error_message)
-        ion_types = " ".join(self.ion_types())
+        ion_types = " ".join(self._ion_types)
         number_ion_types = " ".join(str(x) for x in self._raw_data.number_ion_types)
         return ion_types + format_newline + "\n" + number_ion_types
 
@@ -105,8 +105,7 @@ class Topology(base.Refinery):
     @base.data_access
     def ion_types(self):
         "Return the type of all ions in the system as string."
-        clean_string = lambda ion_type: convert.text_to_string(ion_type).strip()
-        return [clean_string(ion_type) for ion_type in self._raw_data.ion_types]
+        return list(dict.fromkeys(self._ion_types))
 
     @base.data_access
     def number_atoms(self):
@@ -122,17 +121,35 @@ class Topology(base.Refinery):
         return {select.all: Selection(indices=slice(0, num_atoms))}
 
     def _specific_selection(self):
-        start = 0
         res = {}
-        for ion_type, number in self._type_numbers():
-            end = start + number
-            res[ion_type] = Selection(indices=slice(start, end), label=ion_type)
-            for i in range(start, end):
-                # create labels like Si_1, Si_2, Si_3 (starting at 1)
-                label = ion_type + _subscript + str(i - start + 1)
-                res[str(i + 1)] = Selection(indices=slice(i, i + 1), label=label)
-            start += number
-        return res
+        for i, element in enumerate(self.elements()):
+            res.setdefault(element, Selection(indices=[], label=element))
+            res[element].indices.append(i)
+            # create labels like Si_1, Si_2, Si_3 (starting at 1)
+            label = f"{element}{_subscript}{len(res[element].indices)}"
+            res[str(i + 1)] = Selection(indices=[i], label=label)
+        return _merge_to_slice_if_possible(res)
 
     def _type_numbers(self):
-        return zip(self.ion_types(), self._raw_data.number_ion_types)
+        return zip(self._ion_types, self._raw_data.number_ion_types)
+
+    @property
+    def _ion_types(self):
+        clean_string = lambda ion_type: convert.text_to_string(ion_type).strip()
+        return (clean_string(ion_type) for ion_type in self._raw_data.ion_types)
+
+
+def _merge_to_slice_if_possible(selections):
+    for selection in selections.values():
+        if _is_slice(selection.indices):
+            selection.indices = _to_slice(selection.indices)
+    return selections
+
+
+def _is_slice(indices):
+    assert sorted(indices) == indices
+    return len(indices) == indices[-1] - indices[0] + 1
+
+
+def _to_slice(indices):
+    return slice(indices[0], indices[-1] + 1)
