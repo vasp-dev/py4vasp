@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import ase
 import pandas as pd
 import pytest
 
@@ -51,6 +52,12 @@ class Base:
 
     def test_number_atoms(self):
         assert self.topology.number_atoms() == 7
+
+    def test_from_ase(self):
+        structure = ase.Atoms("".join(self.elements))
+        topology = Topology.from_ase(structure)
+        assert topology.elements() == self.elements
+        assert str(topology) == str(self.topology)
 
     @property
     def unique_elements(self):

@@ -10,7 +10,7 @@ import numpy as np
 from IPython.lib.pretty import pretty
 
 from py4vasp import data, exception, raw
-from py4vasp._data import base, slice_
+from py4vasp._data import base, slice_, topology
 from py4vasp._data.viewer3d import Viewer3d
 from py4vasp._util import documentation, reader
 
@@ -73,7 +73,7 @@ class Structure(slice_.Mixin, base.Refinery):
     def from_ase(cls, structure):
         """Generate a structure from the ase Atoms class."""
         structure = raw.Structure(
-            topology=_topology_from_ase(structure),
+            topology=topology.raw_topology_from_ase(structure),
             cell=_cell_from_ase(structure),
             positions=structure.get_scaled_positions()[np.newaxis],
         )
@@ -307,15 +307,6 @@ class _LatticeVectors(reader.Reader):
             f"`{steps}` are properly formatted and within the boundaries. "
             "Additionally, you may consider the original error message:\n" + err.args[0]
         )
-
-
-def _topology_from_ase(structure):
-    # TODO: this should be moved to Topology
-    ion_types_and_numbers = Counter(structure.get_chemical_symbols())
-    return raw.Topology(
-        number_ion_types=list(ion_types_and_numbers.values()),
-        ion_types=list(ion_types_and_numbers.keys()),
-    )
 
 
 def _cell_from_ase(structure):

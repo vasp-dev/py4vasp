@@ -6,6 +6,7 @@ import mdtraj
 import numpy as np
 import pandas as pd
 
+from py4vasp import raw
 from py4vasp._data import base
 from py4vasp._data.selection import Selection
 from py4vasp._util import check, convert, select
@@ -20,6 +21,11 @@ class Topology(base.Refinery):
     the unit cell, but one could extend it to identify logical units like the
     octahedra in perovskites.
     """
+
+    @classmethod
+    def from_ase(cls, structure):
+        """Generate a Topology from the given ase Atoms object."""
+        return cls.from_data(raw_topology_from_ase(structure))
 
     @base.data_access
     def __str__(self):
@@ -144,6 +150,19 @@ class Topology(base.Refinery):
     def _ion_types(self):
         clean_string = lambda ion_type: convert.text_to_string(ion_type).strip()
         return (clean_string(ion_type) for ion_type in self._raw_data.ion_types)
+
+
+def raw_topology_from_ase(structure):
+    """Convert the given ase Atoms object to a raw.Topology."""
+    number_ion_types = []
+    ion_types = []
+    for element in structure.symbols:
+        if ion_types and ion_types[-1] == element:
+            number_ion_types[-1] += 1
+        else:
+            ion_types.append(element)
+            number_ion_types.append(1)
+    return raw.Topology(number_ion_types, ion_types)
 
 
 def _merge_to_slice_if_possible(selections):
