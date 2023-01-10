@@ -14,7 +14,6 @@ class Other:
         self._range = range(10)
         self._args = args
         self._kwargs = kwargs
-        print("other", args, kwargs)
 
 
 @documentation.format(examples=slice_.examples("example"))

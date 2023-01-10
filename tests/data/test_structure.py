@@ -94,7 +94,6 @@ def check_Fe3O4_structure(actual, reference, steps, Assert):
 
 
 def test_to_poscar(Sr2TiO4):
-    print(Sr2TiO4.to_POSCAR())
     assert Sr2TiO4.to_POSCAR() == REF_POSCAR
     assert Sr2TiO4[0].to_POSCAR() == REF_POSCAR.replace("Sr2TiO4", "Sr2TiO4 (step 1)")
     for steps in (slice(None), slice(1, 3)):
@@ -249,7 +248,6 @@ def test_incorrect_step(Sr2TiO4):
 
 def test_print_final(Sr2TiO4, format_):
     actual, _ = format_(Sr2TiO4)
-    print(actual["text/html"])
     assert actual == {"text/plain": REF_POSCAR, "text/html": REF_HTML}
 
 
