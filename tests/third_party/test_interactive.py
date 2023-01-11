@@ -12,8 +12,6 @@ def test_no_error_handling_outside_ipython():
 
 def test_set_error_handling(capsys):
     with patch("IPython.get_ipython") as mock:
-        magic = mock.return_value.magic
-        magic.side_effect = lambda _: print("magic called")
         interactive.set_error_handling("Minimal")
         mock.return_value.magic.assert_called_once_with("xmode Minimal")
         output, _ = capsys.readouterr()

@@ -226,6 +226,8 @@ class RawDataFactory:
             return _Sr2TiO4_topology()
         elif selection == "Fe3O4":
             return _Fe3O4_topology()
+        elif selection == "Ca2AsBr-CaBr2":  # test duplicate entries
+            return _Ca3AsBr3_topology()
         else:
             raise exception.NotImplemented()
 
@@ -704,6 +706,13 @@ def _Fe3O4_velocity():
     shape = (number_steps, number_atoms, axes)
     velocities = np.arange(np.prod(shape)).reshape(shape)
     return raw.Velocity(structure=_Fe3O4_structure(), velocities=velocities)
+
+
+def _Ca3AsBr3_topology():
+    return raw.Topology(
+        number_ion_types=np.array((2, 1, 1, 1, 2)),
+        ion_types=np.array(("Ca", "As", "Br", "Ca", "Br"), dtype="S"),
+    )
 
 
 def _make_data(data):
