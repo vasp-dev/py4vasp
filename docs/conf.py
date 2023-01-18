@@ -22,7 +22,7 @@ copyright = "2022, VASP Software GmbH"
 author = "VASP Software GmbH"
 
 # The full version, including alpha/beta/rc tags
-release = "0.6.0"
+release = "0.7.0"
 
 
 # -- General configuration ---------------------------------------------------
