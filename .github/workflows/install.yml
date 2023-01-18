@@ -2,8 +2,7 @@ name: install
 
 on:
   schedule:
-    cron: "0 2 * * *"
-    branches: "release*"
+    -cron: "0 2 * * *"
 
 jobs:
   tests:
