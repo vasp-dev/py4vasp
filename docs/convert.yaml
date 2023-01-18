@@ -1,0 +1,13 @@
+latest:
+    - dirhtml
+    - Calculation:
+        - dirhtml/calculation
+    - raw:
+        - dirhtml/raw
+        - dirhtml/api/py4vasp.raw.*
+    - data:
+        - dirhtml/data
+        - dirhtml/api/py4vasp.data.*
+    - exception:
+        - dirhtml/exception
+        - dirhtml/api/py4vasp.exception.*
