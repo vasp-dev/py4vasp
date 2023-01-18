@@ -1,7 +1,7 @@
 latest:
     - dirhtml
     - Calculation:
-        - dirhtml/calculation
+        - dirhtml/Calculation
     - raw:
         - dirhtml/raw
         - dirhtml/api/py4vasp.raw.*

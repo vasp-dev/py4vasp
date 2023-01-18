@@ -1,17 +1,5 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-"""Provide the tools to manage VASP calculations.
-
-This is the main user interface if you want to simply investigate the results of VASP
-calculations. Create a Calculation object associated with the VASP calculation that you
-run. Then you can access the properties of that calculation via the attributes of the
-object. For example you may use
-
->>> calc = Calculation.from_path("path_to_your_calculation")
->>> calc.dos.plot()         # to plot the density of states
->>> calc.magnetism.read()   # to read the magnetic moments
->>> calc.structure.print()  # to print the structure in a POSCAR format
-"""
 import inspect
 import pathlib
 
@@ -21,6 +9,19 @@ from py4vasp._util import convert
 
 class Calculation:
     """Manage access to input and output of VASP calculations.
+
+    This is the main user interface if you want to simply investigate the results of VASP
+    calculations. Create a Calculation object associated with the VASP calculation that you
+    run. Then you can access the properties of that calculation via the attributes of the
+    object.
+
+    Examples
+    --------
+
+    >>> calc = Calculation.from_path("path_to_your_calculation")
+    >>> calc.dos.plot()         # to plot the density of states
+    >>> calc.magnetism.read()   # to read the magnetic moments
+    >>> calc.structure.print()  # to print the structure in a POSCAR format
 
     Notes
     -----

@@ -1,4 +1,4 @@
-calculation
+Calculation
 ===========
 
 .. autoclass:: py4vasp.Calculation
