@@ -53,7 +53,7 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
         selection=_selection_string("all energies"),
         examples=slice_.examples("energy", "to_dict"),
     )
-    def to_dict(self, selection=select.all):
+    def to_dict(self, selection=None):
         """Read the energy data and store it in a dictionary.
 
         Parameters
@@ -68,6 +68,7 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
 
         {examples}
         """
+        selection = selection or select.all
         return {
             label: self._raw_data.values[self._steps, index]
             for label, index in self._parse_user_selection(selection)
@@ -78,7 +79,7 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
         selection=_selection_string("the total energy"),
         examples=slice_.examples("energy", "to_graph"),
     )
-    def to_graph(self, selection="TOTEN"):
+    def to_graph(self, selection=None):
         """Read the energy data and generate a figure of the selected components.
 
         Parameters
@@ -92,6 +93,7 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
 
         {examples}
         """
+        selection = selection or "TOTEN"
         yaxes = self._create_yaxes(selection)
         return graph.Graph(
             series=self._make_series(yaxes, selection),
