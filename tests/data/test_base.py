@@ -24,6 +24,7 @@ class RawData:
 
 
 RAW_DATA = RawData("example")
+DEFAULT_SELECTION = "default_selection"
 
 
 @pytest.fixture
@@ -60,7 +61,7 @@ class Example(base.Refinery):
         return args, kwargs
 
     @base.data_access
-    def with_selection_argument(self, selection=None):
+    def with_selection_argument(self, selection=DEFAULT_SELECTION):
         return self._raw_data.selection, selection
 
     @base.data_access
@@ -270,7 +271,13 @@ def test_selection_passed_to_inner_function(mock_access):
 def test_missing_selection_argument(mock_access):
     example = Example.from_path()
     result = example.with_selection_argument()
-    assert result == (None, None)
+    assert result == (None, DEFAULT_SELECTION)
+
+
+def test_only_other_data(mock_access):
+    example = Example.from_path()
+    result = example.with_selection_argument(SELECTION)
+    assert result == (SELECTION, DEFAULT_SELECTION)
 
 
 def test_selection_of_sources_are_filtered(mock_access):

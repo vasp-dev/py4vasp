@@ -208,7 +208,7 @@ class _FunctionWrapper:
         if "selection" not in bound_arguments.arguments:
             return bound_arguments
         if remaining == [[]]:
-            selection = None
+            selection = bound_arguments.signature.parameters["selection"].default
         else:
             selection = select.selections_to_string(remaining)
         bound_arguments.arguments["selection"] = selection
