@@ -38,6 +38,16 @@ the simple installation above fails, you may need to use *conda* to install *mdt
   conda install -c conda-forge mdtraj
   pip install py4vasp
 
+Alternatively, you can obtain the code from GitHub and install it. This will give you
+the most recent version with all bugfixes. However, some features may only work once
+the next VASP version is released.
+
+.. code-block:: bash
+
+  git clone https://github.com/vasp-dev/py4vasp.git
+  cd py4vasp
+  pip install .
+
 If these commands succeed, you should be able to use *py4vasp*. You can make a quick
 test of your installation running the following command
 
@@ -91,7 +101,7 @@ a single line of code
 Under the hood, this will access the *vaspout.h5* file, because *py4vasp* knows where
 the output is stored after you ran VASP. It will read the relevant tags from
 the file and store them all in a Python dictionary. If you want to access particular
-orbital projections, let's say the *p* orbitals, you can pass a ``select = "p"`` as
+orbital projections, let's say the *p* orbitals, you can pass a ``selection = "p"`` as
 an argument to the routine. More generally, you can check how to use a function with
 
 >>> help(calc.dos.read)
@@ -123,7 +133,8 @@ how you can apply *py4vasp* in your research.
    :maxdepth: 1
    :caption: Contents:
 
-   Calculation
+   calculation
+   control
    raw
    data
    exception
