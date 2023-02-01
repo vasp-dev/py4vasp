@@ -133,7 +133,7 @@ how you can apply *py4vasp* in your research.
    :maxdepth: 1
    :caption: Contents:
 
-   calculation
+   Calculation
    control
    raw
    data
