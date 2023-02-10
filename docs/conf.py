@@ -18,7 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = "py4vasp"
-copyright = "2022, VASP Software GmbH"
+copyright = "2023, VASP Software GmbH"
 author = "VASP Software GmbH"
 
 # The full version, including alpha/beta/rc tags
