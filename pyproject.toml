@@ -18,7 +18,10 @@ repository = "https://github.com/vasp-dev/py4vasp"
 "Support Forum" = "https://vasp.at/forum/"
 
 [tool.poetry.dependencies]
-python = ">=3.8"
+# We actually do not want the <4 restriction here. This is due to requests 2.28.2 having
+# this restriction, which will hopefully be released in a future release there
+#python = ">=3.8"
+python = ">=3.8,<4"
 numpy = ">=1.23.0"
 h5py = ">=3.7.0"
 pandas = ">=1.4.3"
