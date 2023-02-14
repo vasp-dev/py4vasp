@@ -5,7 +5,7 @@
 
 > Please note that this document is intended mostly for developers that want to use
 > the version of py4vasp provided on Github. If you just want to install py4vasp to
-> use it, please follow the [official documentation](https://vasp.at/py4vasp).
+> use it, please follow the [official documentation](https://vasp.at/py4vasp/latest).
 
 ## Installation
 
