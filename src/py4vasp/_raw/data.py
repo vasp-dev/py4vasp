@@ -7,6 +7,10 @@ import dataclasses
 from py4vasp._raw.data_wrapper import VaspData
 
 
+def NONE():
+    return dataclasses.field(default_factory=lambda: VaspData(None))
+
+
 @dataclasses.dataclass(order=True, frozen=True)
 class Version:
     "The version number of VASP."
@@ -36,7 +40,7 @@ class Band:
     "The occupations of the different bands."
     projectors: Projector
     "Projector information (element, angular momentum, spin)."
-    projections: VaspData = VaspData(None)
+    projections: VaspData = NONE()
     "If present, orbital projections of the bands."
 
 
@@ -92,7 +96,7 @@ class DielectricFunction:
     "The energies at which the dielectric function is evaluated."
     dielectric_function: VaspData
     "The values of the dielectric function (frequency-dependent 3x3 tensor)."
-    current_current: VaspData = VaspData(None)
+    current_current: VaspData = NONE()
     "Dielectric function obtained using the current-current response."
 
 
@@ -141,7 +145,7 @@ class Dos:
     "Fermi energy obtained by VASP."
     projectors: Projector
     "Projector information (element, angular momentum, spin)."
-    projections: VaspData = VaspData(None)
+    projections: VaspData = NONE()
     "If present, orbital projections of the Dos."
 
 
@@ -248,9 +252,9 @@ class Kpoint:
     "Weight of the **k** points used for integration."
     cell: Cell
     "Unit cell of the crystal."
-    labels: VaspData = VaspData(None)
+    labels: VaspData = NONE()
     "High symmetry label for specific **k** points used in band structures."
-    label_indices: VaspData = VaspData(None)
+    label_indices: VaspData = NONE()
     "Indices of the labeled **k** points in the generation list."
 
 
