@@ -73,7 +73,7 @@ class Band(base.Refinery, graph.Mixin):
         ----------
         {selection_doc}
         width : float
-            Specifies the width of the flatbands if a selection of projections is specified.
+            Specifies the width of the fatbands if a selection of projections is specified.
 
         Returns
         -------

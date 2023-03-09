@@ -209,7 +209,7 @@ class Force:
 class ForceConstant:
     """The force constants of the material.
 
-    The force constant describes the second derivate of the total energy with respect
+    The force constant describes the second derivative of the total energy with respect
     to the displacement of ions. It is an important quantity for the phonon spectrum."""
 
     structure: Structure
@@ -410,6 +410,6 @@ class Topology:
 class Velocity:
     "Contains the ion velocities along the trajectory."
     structure: Structure
-    "Structural information to relate the velocties to."
+    "Structural information to relate the velocities to."
     velocities: VaspData
     "Observed ion velocities."

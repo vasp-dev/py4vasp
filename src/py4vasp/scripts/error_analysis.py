@@ -114,7 +114,7 @@ class Reader:
     read_energy
         reading the energy, initialize energy
     read_force
-        reading force, initialize force, postions, NIONS, lattice
+        reading force, initialize force, positions, NIONS, lattice
     read_stress
         reading stress tensor upper triangle
     """
@@ -176,7 +176,7 @@ class AnalyseErrorSingleFile:
     -------
     write_array_to_screen
         writing array to screen
-    check_structures_for_eqivalence
+    check_structures_for_equivalence
         compare structure parameters, positions, lattice, number ions for
         equivalence between structures
     compute_force_error
@@ -186,7 +186,7 @@ class AnalyseErrorSingleFile:
     compute_stress_error
         compute the root mean square error of upper triangle of stress tensor
     root_mean_square_error_numpy_array
-        compute the root mean suqare error between two numpy arrays
+        compute the root mean square error between two numpy arrays
     root_mean_square_error_list
         compute root mean square error between two python lists containing
         ndarrays arrays
@@ -341,10 +341,10 @@ class AnalyseError:
         indx_start  =  1
         indx_end    =  len( ML )
         len( ML ) points
-    energy_error : ndrray
-        energy erros per atom for all supplied file pairs
+    energy_error : ndarray
+        energy errors per atom for all supplied file pairs
     force_error : ndarray
-        root mean square erros between the supplied file pairs
+        root mean square errors between the supplied file pairs
     stress_error : ndarray
        root mean square error between supplied file pairs
     energy : ndarray
@@ -360,17 +360,17 @@ class AnalyseError:
          generate xaxis for plots, structure index
     compute_errors
          computing the errors between the two file sets for every file pair
-         seperate
+         separate
     compute_average_errors
-         compute root mean sqaure erros between total data set
+         compute root mean square errors between total data set
     print_average_errors
-         printing average erros to screen
+         printing average errors to screen
     plot_energy_error
          generate plot for energy error per atom
     plot_force_error
          plot root mean square error for forces
     plot_stress_error
-         plot root mean square erros of stress tensor
+         plot root mean square errors of stress tensor
     make_plot
          plot energy, force, stress error in subplots
     prepare_output_array

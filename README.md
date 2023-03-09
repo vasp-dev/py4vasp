@@ -58,6 +58,6 @@ We welcome contributions to py4vasp. To improve the code please follow this work
 * We will try to include your merge request rapidly when all the tests pass and your
   code is covered by tests.
 
-Please limit the size of a the pull request to approximately 200 lines of code
+Please limit the size of a pull request to approximately 200 lines of code
 otherwise reviewing the changes gets unwieldy. Prefer splitting the work into
 multiple smaller chunks if necessary.
