@@ -54,24 +54,39 @@ jobs:
       run: |
         conda info
         conda install -c conda-forge mdtraj
-    - name: Install poetry
-      run: |
-        python -m pip install --upgrade pip
-        pip install "poetry!=1.4.1"
-        poetry --version
     - name: Install py4vasp
-      run: |
-        poetry config virtualenvs.create false --local
-        poetry install
+        python -m pip install --upgrade pip
+        pip install .
     - name: Test with pytest
-      run: |
-        poetry run pytest --version
-        poetry run pytest --cov=py4vasp --cov-report term
+        pip install pytest hypothesis
+        pytest --version
+        pytest --cov=py4vasp --cov-report term
     - name: Check code style
-      run: |
-        poetry run isort --version
-        poetry run isort --check src
-        poetry run isort --check tests
-        poetry run black --version
-        poetry run black --check src
-        poetry run black --check tests
+        pip install black isort
+        isort --version
+        isort --check src
+        isort --check tests
+        black --version
+        black --check src
+        black --check tests
+        #    - name: Install poetry
+        #      run: |
+        #        python -m pip install --upgrade pip
+        #        pip install "poetry!=1.4.1"
+        #        poetry --version
+        #    - name: Install py4vasp
+        #      run: |
+        #        poetry config virtualenvs.create false --local
+        #        poetry install
+        #    - name: Test with pytest
+        #      run: |
+        #        poetry run pytest --version
+        #        poetry run pytest --cov=py4vasp --cov-report term
+        #    - name: Check code style
+        #      run: |
+        #        poetry run isort --version
+        #        poetry run isort --check src
+        #        poetry run isort --check tests
+        #        poetry run black --version
+        #        poetry run black --check src
+        #        poetry run black --check tests
