@@ -134,7 +134,7 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
 
     def _parse_user_selection(self, selection):
         # NOTE it would be nice to use SelectionTree instead, however that requires
-        # the labels may have spaces so it might lead to redunandancies
+        # the labels may have spaces so it might lead to redundancies
         indices = self._find_selection_indices(selection)
         get_label = lambda index: convert.text_to_string(self._raw_data.labels[index])
         for index in indices:

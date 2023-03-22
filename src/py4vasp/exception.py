@@ -11,7 +11,7 @@ class Py4VaspError(Exception):
 
 class RefinementError(Py4VaspError):
     """When refining the raw dataclass into the class handling e.g. reading and
-    plotting of the data an error occured"""
+    plotting of the data an error occurred"""
 
 
 class IncorrectUsage(Py4VaspError):
@@ -37,7 +37,7 @@ class OutdatedVaspVersion(Py4VaspError):
 
 
 class StopExecution(Py4VaspError):
-    """Exception raised when an error occured in the user interface. This prevents
+    """Exception raised when an error occurred in the user interface. This prevents
     further cells from being executed."""
 
     def _render_traceback_(self):
