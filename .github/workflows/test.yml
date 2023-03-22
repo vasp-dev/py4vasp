@@ -61,7 +61,7 @@ jobs:
         pip install ipykernel  # missing dependecy of nglview
     - name: Test with pytest
       run: |
-        pip install pytest hypothesis
+        pip install pytest pytest-cov hypothesis
         pytest --version
         pytest --cov=py4vasp --cov-report term
     - name: Check code style
