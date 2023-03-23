@@ -27,6 +27,10 @@ numpy = ">=1.23.0"
 h5py = ">=3.7.0"
 pandas = ">=1.4.3"
 nglview = ">=3.0.3"
+# nglview is not compatible with recent ipywidgets, so we need to set the constraint here
+# this should be removed again, once this is fixed in nglview and the broken version of
+# nglview should be excluded
+ipywidgets = "^7.7"
 ase = ">=3.22.1"
 mdtraj = ">=1.9.6"
 mrcfile = ">=1.3.0"
