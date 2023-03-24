@@ -4,6 +4,7 @@ import types
 
 import pytest
 
+from py4vasp import exception
 from py4vasp.data import DielectricTensor
 
 
@@ -70,6 +71,12 @@ def check_read_dielectric_tensor(dielectric_tensor, Assert):
         Assert.allclose(actual["relaxed_ion"], reference.relaxed_ion)
         Assert.allclose(actual["independent_particle"], reference.independent_particle)
         assert actual["method"] == reference.method
+
+
+def test_unknown_method(raw_data):
+    raw_tensor = raw_data.dielectric_tensor("unknown_method with_ion")
+    with pytest.raises(exception.NotImplemented):
+        DielectricTensor.from_data(raw_tensor).print()
 
 
 def test_print_dft_tensor(dft_tensor, format_):
