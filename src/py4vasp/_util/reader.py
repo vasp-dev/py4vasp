@@ -24,6 +24,3 @@ class Reader:
             return self._array[key]
         except (ValueError, IndexError, TypeError) as err:
             raise exception.IncorrectUsage(self.error_message(key, err)) from err
-
-    def __len__(self):
-        return len(self._array)
