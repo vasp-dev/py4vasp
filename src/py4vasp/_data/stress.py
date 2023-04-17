@@ -48,8 +48,8 @@ in kB   {stress_to_string(stress)}
         {examples}
         """
         return {
-            "structure": self._structure[self._steps].read(),
             "stress": self._stress[self._steps],
+            "structure": self._structure[self._steps].read(),
         }
 
     @property

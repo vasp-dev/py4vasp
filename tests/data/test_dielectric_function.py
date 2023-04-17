@@ -7,6 +7,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
+from py4vasp import exception
 from py4vasp.data import DielectricFunction
 
 
@@ -262,6 +263,11 @@ def test_ionic_plot_nested(ionic, Assert):
     selection = "xx zz(Re,Im)"
     fig = ionic.plot(selection)
     check_figure_contains_plots(fig, plots, Assert)
+
+
+def test_incorrect_direction_raises_error(electronic):
+    with pytest.raises(exception.IncorrectUsage):
+        electronic.plot("incorrect")
 
 
 def isotropic(tensor):

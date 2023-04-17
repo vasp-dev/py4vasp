@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from py4vasp import exception
 from py4vasp._data import base
 from py4vasp._util import convert
 
@@ -65,4 +66,5 @@ def _description(method):
         return "including local field effects"
     elif method == "nscf":
         return "excluding local field effects"
-    assert False  # unknown method
+    message = f"The method {method} is not implemented in this version of py4vasp."
+    raise exception.NotImplemented(message)

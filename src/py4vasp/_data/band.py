@@ -122,9 +122,6 @@ class Band(base.Refinery, graph.Mixin):
     def _dispersion(self):
         return data.Dispersion.from_data(self._raw_data.dispersion)
 
-    def _kpoints(self):
-        return data.Kpoint.from_data(self._raw_data.dispersion.kpoints)
-
     @property
     def _projector(self):
         return data.Projector.from_data(self._raw_data.projectors)

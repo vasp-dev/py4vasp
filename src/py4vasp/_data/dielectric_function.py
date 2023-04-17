@@ -4,6 +4,7 @@ import typing
 
 import numpy as np
 
+from py4vasp import exception
 from py4vasp._data import base
 from py4vasp._third_party import graph
 from py4vasp._util import convert, select
@@ -122,7 +123,8 @@ def _update_choice(current_choice, part):
     elif part in ("Im", "imag", "imaginary"):
         return current_choice._replace(real_or_imag="imag")
     else:
-        assert False
+        message = f"The choice {current_choice} was not understood. Please check if there are any spelling mistakes."
+        raise exception.IncorrectUsage(message)
 
 
 def _setup_component_choices(choice):
