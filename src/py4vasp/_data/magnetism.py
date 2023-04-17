@@ -66,7 +66,7 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
 
     @base.data_access
     @documentation.format(examples=slice_.examples("magnetism", "to_graph"))
-    def plot(self):
+    def plot(self, supercell=None):
         """Visualize the magnetic moments as arrows inside the structure.
 
         Returns
@@ -84,7 +84,7 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
                 "Visualizing magnetic moments for more than one step is not implemented"
             )
             raise exception.NotImplemented(message)
-        viewer = self._structure[self._steps].plot()
+        viewer = self._structure[self._steps].plot(supercell)
         moments = self._prepare_magnetic_moments_for_plotting()
         if moments is not None:
             viewer.show_arrows_at_atoms(moments)

@@ -209,6 +209,15 @@ def test_plot_charge_only(charge_only):
     check_slices_not_implemented(charge_only)
 
 
+def test_plot_supercell(collinear_magnetism):
+    supercell = (3, 2, 1)
+    with patch("py4vasp.data.Structure.plot") as plot:
+        collinear_magnetism.plot(supercell)
+        plot.assert_called_once_with(supercell)
+        viewer = plot.return_value
+        viewer.show_arrows_at_atoms.assert_called_once()
+
+
 def test_collinear_print(collinear_magnetism, format_):
     actual, _ = format_(collinear_magnetism)
     reference = "MAGMOM = 444.00 453.00 462.00 471.00 480.00 489.00 498.00"
