@@ -98,6 +98,14 @@ def test_attributes(data):
     assert not vasp.is_none()
 
 
+@given(data=array_or_scalar())
+def test_conversion(data, Assert):
+    vasp = VaspData(data)
+    Assert.allclose(vasp.astype(np.float32), data.astype(np.float32))
+    Assert.allclose(np.array(vasp), data)
+    Assert.allclose(np.asarray(vasp, np.float16), np.asarray(vasp, np.float16))
+
+
 @given(array_slice=array_and_slice())
 def test_slices(array_slice, Assert):
     array, slice = array_slice

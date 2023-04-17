@@ -59,6 +59,7 @@ schema.add(
 #
 schema.add(
     raw.Density,
+    file="vaspwave.h5",
     structure=Link("structure", DEFAULT_SOURCE),
     charge="charge/charge",
 )

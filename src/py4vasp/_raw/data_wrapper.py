@@ -34,8 +34,8 @@ class VaspData(np.lib.mixins.NDArrayOperatorsMixin):
         else:
             self._data = data
 
-    def __array__(self):
-        return np.array(self.data)
+    def __array__(self, *args, **kwargs):
+        return np.array(self.data, *args, **kwargs)
 
     def __getitem__(self, key):
         return self.data[key]
@@ -79,6 +79,10 @@ class VaspData(np.lib.mixins.NDArrayOperatorsMixin):
     def dtype(self):
         "Describes the type of the contained data."
         return self.data.dtype
+
+    def astype(self, *args, **kwargs):
+        "Copy of the array, cast to a specified type."
+        return self.data.astype(*args, **kwargs)
 
 
 def _parse_scalar(data):

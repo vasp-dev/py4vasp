@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from py4vasp import exception
+from py4vasp import exception, raw
 from py4vasp._data import viewer3d
 from py4vasp.data import Density, Structure
 
@@ -73,6 +73,13 @@ def test_magnetization_plot(collinear_density, Assert):
     assert kwargs == {"isolevel": 0.1, "color": "blue", "opacity": 0.6, "smooth": 1}
     _, kwargs = calls[1]
     assert kwargs == {"isolevel": 0.1, "color": "red", "opacity": 0.6, "smooth": 1}
+
+
+def test_empty_density(raw_data):
+    raw_density = raw.Density(raw_data.structure("Sr2TiO4"), charge=raw.VaspData(None))
+    density = Density.from_data(raw_density)
+    with pytest.raises(exception.NoData):
+        density.read()
 
 
 def test_charge_only(charge_only_density, Assert):
