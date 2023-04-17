@@ -633,7 +633,7 @@ def _Fe3O4_density(selection):
     structure = RawDataFactory.structure(parts[0])
     grid = (_number_components(parts[1]), 10, 12, 14)
     return raw.Density(
-        structure=structure, charge=np.arange(np.prod(grid)).reshape(grid)
+        structure=structure, charge=raw.VaspData(np.arange(np.prod(grid)).reshape(grid))
     )
 
 

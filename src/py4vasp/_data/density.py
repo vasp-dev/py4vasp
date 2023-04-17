@@ -25,6 +25,7 @@ class Density(base.Refinery, structure.Mixin):
 
     @base.data_access
     def __str__(self):
+        _raise_error_if_no_data(self._raw_data.charge)
         grid = self._raw_data.charge.shape[1:]
         return f"""density:
     structure: {pretty(data.Topology.from_data(self._raw_data.structure.topology))}
@@ -42,6 +43,7 @@ class Density(base.Refinery, structure.Mixin):
             Contains the structure information as well as the density represented
             of a grid in the unit cell.
         """
+        _raise_error_if_no_data(self._raw_data.charge)
         return {
             "structure": self._structure.read(),
             "charge": self._raw_data.charge[0],
@@ -99,6 +101,17 @@ class Density(base.Refinery, structure.Mixin):
         if not self._spin_polarized():
             msg = "Density does not contain magnetization. Please rerun VASP with ISPIN = 2 to obtain it."
             raise exception.NoData(msg)
+
+
+def _raise_error_if_no_data(data):
+    if data.is_none():
+        raise exception.NoData(
+            "Density data was not found. Note that the density information is written "
+            "on the demand to a different file (vaspwave.h5). Please make sure that "
+            "this file exists and LCHARGH5 = T is set in the INCAR file. Another "
+            'common issue is when you create `Calculation.from_file("vaspout.h5")` '
+            "because this will overwrite the default file behavior."
+        )
 
 
 def _raise_error_if_color_is_specified(**user_options):
