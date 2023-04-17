@@ -166,6 +166,7 @@ def test_supercell_scale_all(Sr2TiO4, Assert):
     supercell = Sr2TiO4.to_ase(supercell=scale)
     assert len(supercell) == number_atoms * scale**3
     Assert.allclose(supercell.cell.array, scale * Sr2TiO4.ref.lattice_vectors)
+    assert list(supercell.symbols) == 16 * ["Sr"] + 8 * ["Ti"] + 32 * ["O"]
 
 
 def test_supercell_scale_individual(Sr2TiO4, Assert):

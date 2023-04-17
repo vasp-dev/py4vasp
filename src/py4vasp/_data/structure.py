@@ -181,6 +181,7 @@ class Structure(slice_.Mixin, base.Refinery):
             scaled_positions=data["positions"],
             pbc=True,
         )
+        num_atoms_prim = len(structure)
         if supercell is not None:
             try:
                 structure *= supercell
@@ -190,7 +191,9 @@ class Structure(slice_.Mixin, base.Refinery):
                     "supercell is either an integer or a list of 3 integers."
                 )
                 raise exception.IncorrectUsage(error_message) from err
-        return structure
+        num_atoms_super = len(structure)
+        order = sorted(range(num_atoms_super), key=lambda n: n % num_atoms_prim)
+        return structure[order]
 
     @base.data_access
     @documentation.format(examples=slice_.examples("structure", "to_mdtraj"))
