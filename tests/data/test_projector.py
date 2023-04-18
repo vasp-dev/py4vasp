@@ -297,6 +297,8 @@ def test_error_parsing(Sr2TiO4):
     with pytest.raises(exception.IncorrectUsage):
         number_instead_of_string = -1
         Sr2TiO4.read(selection=number_instead_of_string)
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4.read("up")
 
 
 def test_incorrect_selection(Sr2TiO4):

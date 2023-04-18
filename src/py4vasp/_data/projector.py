@@ -220,13 +220,15 @@ class Projector(base.Refinery):
 
     def _init_spin_dict(self):
         num_spins = self._raw_data.number_spins
-        return {
+        result = {
             "polarized": num_spins == 2,
-            "up": Selection(indices=slice(0, 1), label="up"),
-            "down": Selection(indices=slice(1, 2), label="down"),
             "total": Selection(indices=slice(0, num_spins), label="total"),
             _select_all: Selection(indices=slice(0, num_spins)),
         }
+        if num_spins == 2:
+            result["up"] = Selection(indices=slice(0, 1), label="up")
+            result["down"] = Selection(indices=slice(1, 2), label="down")
+        return result
 
     def _get_indices(self, selection):
         res = {}
@@ -280,7 +282,7 @@ def _get_slice_from_atom_dict(atom_dict, match):
 def _raise_error_if_not_found_in_dict(selection, dict_):
     if selection not in dict_:
         raise exception.IncorrectUsage(
-            f"Could not find {selection} in projectors. Please check the spelling. "
+            f"Could not find `{selection}` in projectors. Please check the spelling. "
             f"The available selection are one of {', '.join(dict_)}."
         )
 
@@ -304,9 +306,15 @@ def _update_index(dicts, index, part):
         index = index._replace(orbital=part)
     elif part in dicts["spin"]:
         index = index._replace(spin=part)
+    elif part in ["up", "down"]:
+        raise exception.IncorrectUsage(
+            f"Could not find `{part}` in the list of projectors because there is only "
+            "one spin component in the HDF5 file. Please check whether you set ISPIN = 2 "
+            "and make sure the calculation already completed."
+        )
     else:
         raise exception.IncorrectUsage(
-            f"Could not find {part} in the list of projectors. Please check "
+            f"Could not find `{part}` in the list of projectors. Please check "
             "if everything is spelled correctly. Notice that the selection is case "
             "sensitive so that 's' (orbital) can be distinguished from 'S' (sulfur)."
         )
