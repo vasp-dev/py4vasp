@@ -186,6 +186,8 @@ class Projector(base.Refinery):
 
     @base.data_access
     def selections(self):
+        """Return a dictionary describing what options are available to specify the
+        atom, orbital, and spin."""
         dicts = self._init_dicts()
         return {
             "atom": _filter_and_sort_keys(dicts["atom"]),
