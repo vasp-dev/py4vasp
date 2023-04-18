@@ -28,6 +28,12 @@ selection : str
     parenthesis, e.g. `Sr(s, p)` or `s(up), p(down)`. The order of the selections
     does not matter, but it is case sensitive to distinguish p (angular momentum
     l = 1) from P (phosphorus).
+
+    If you are unsure about the specific projections that are available, you can use
+
+    >>> calc.projector.selections()
+
+    to get a list of all available ones.
 """
 
 
