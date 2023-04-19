@@ -6,7 +6,7 @@ from typing import NamedTuple, Union
 import numpy as np
 
 from py4vasp import data, exception
-from py4vasp._data import base, kpoint
+from py4vasp._data import base
 from py4vasp._data.selection import Selection
 from py4vasp._util import check, convert, documentation, reader, select
 
@@ -28,6 +28,12 @@ selection : str
     parenthesis, e.g. `Sr(s, p)` or `s(up), p(down)`. The order of the selections
     does not matter, but it is case sensitive to distinguish p (angular momentum
     l = 1) from P (phosphorus).
+
+    If you are unsure about the specific projections that are available, you can use
+
+    >>> calc.projector.selections()
+
+    to get a list of all available ones.
 """
 
 
@@ -177,6 +183,17 @@ class Projector(base.Refinery):
         )
         tree = select.Tree.from_selection(selection)
         yield from _parse_recursive(dicts, tree, default_index)
+
+    @base.data_access
+    def selections(self):
+        """Return a dictionary describing what options are available to specify the
+        atom, orbital, and spin."""
+        dicts = self._init_dicts()
+        return {
+            "atom": _filter_and_sort_keys(dicts["atom"]),
+            "orbital": _filter_and_sort_keys(dicts["orbital"]),
+            "spin": _filter_and_sort_keys(dicts["spin"]),
+        }
 
     def _topology(self):
         return data.Topology.from_data(self._raw_data.topology)
@@ -329,3 +346,21 @@ def _setup_spin_indices(index, spin_polarized):
     else:
         for key in ("up", "down"):
             yield index._replace(spin=key)
+
+
+def _filter_and_sort_keys(keys):
+    filtered_keys = filter(lambda key: key not in [_select_all, "polarized"], keys)
+    return sorted(filtered_keys, key=_sort_key)
+
+
+def _sort_key(key):
+    spin_keys = ["total", "up", "down"]
+    orbital_keys = ["s", "p", "d", "f"]
+    if key in spin_keys:
+        return 0
+    if key[:1] in orbital_keys:
+        return str(orbital_keys.index(key[:1])) + key
+    if key.isdecimal():
+        return int(key)
+    assert key.istitle()  # should be atom
+    return 0

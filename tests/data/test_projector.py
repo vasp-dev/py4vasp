@@ -319,6 +319,25 @@ def test_incorrect_reading_of_projections(Sr2TiO4):
         Sr2TiO4.read("Sr", np.zeros(3))
 
 
+def test_selections_Sr2TiO4(Sr2TiO4):
+    p_orbitals = ["p", "px", "py", "pz"]
+    d_orbitals = ["d", "dx2y2", "dxy", "dxz", "dyz", "dz2"]
+    f_orbitals = ["f", "fx3", "fxyz", "fxz2", "fy3x2", "fyz2", "fz3", "fzx2"]
+    assert Sr2TiO4.selections() == {
+        "atom": ["Sr", "Ti", "O", "1", "2", "3", "4", "5", "6", "7"],
+        "orbital": ["s", *p_orbitals, *d_orbitals, *f_orbitals],
+        "spin": ["total"],
+    }
+
+
+def test_selections_Fe3O4(Fe3O4):
+    assert Fe3O4.selections() == {
+        "atom": ["Fe", "O", "1", "2", "3", "4", "5", "6", "7"],
+        "orbital": ["s", "p", "d", "f"],
+        "spin": ["total", "up", "down"],
+    }
+
+
 def test_print(Sr2TiO4, format_):
     actual, _ = format_(Sr2TiO4)
     reference = """
