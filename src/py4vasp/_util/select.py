@@ -27,6 +27,7 @@ class Tree:
         self._new_child = True
         self._ignore_separator = True
         self._is_operation = False
+        self._operation_complete = False
         self._parent = parent
         self._children = []
         self._content = ""
@@ -61,15 +62,19 @@ class Tree:
             return self._children[-1]
         elif character == ")":
             return self._parent._parse_separator(character)
+        elif self._operation_complete:
+            node = self._finalize_operation()
+            return node._store_content_in_child(character)
         else:
             return self._store_content_in_child(character)
 
     def _parse_separator(self, character):
         if not self._ignore_separator:
             self._new_child = True
-        if self._is_operation:
-            return self._complete_operation(character)
-        return self
+        if character == " ":
+            self._operation_complete = self._is_operation and len(self._children) == 2
+            return self
+        return self._finalize_operation()
 
     def _parse_group(self, separator):
         self._ignore_separator = True
@@ -88,16 +93,17 @@ class Tree:
 
     def _transform_to_operation(self, operator):
         self._is_operation = True
+        self._operation_complete = False
         self._children.append(Tree(self))
         self._children[-1]._content = self._content
         self._content = operator
 
-    def _complete_operation(self, character):
-        if character == " " and len(self._children) == 1:
+    def _finalize_operation(self):
+        if not self._is_operation:
             return self
-        elif self._parent:
+        if self._parent:
             self._parent._new_child = True
-            return self._parent._parse_separator(character)
+            return self._parent._parse_separator(",")
         else:
             return self
 
