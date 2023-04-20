@@ -108,17 +108,17 @@ def test_addition_and_subtraction(selection):
     assert str(level1.nodes[1]) == "d"
 
 
-@pytest.mark.parametrize("selection", ["a+b-c", "a + b - c"])
+@pytest.mark.parametrize("selection", ["foo+bar-baz", "foo + bar - baz"])
 def test_longer_equation(selection):
     tree = select.Tree.from_selection(selection)
     assert len(tree) == 1
     level1 = tree.nodes[0]
     assert str(level1) == "+"
-    assert str(level1.nodes[0]) == "a"
+    assert str(level1.nodes[0]) == "foo"
     level2 = level1.nodes[1]
     assert str(level2) == "-"
-    assert str(level2.nodes[0]) == "b"
-    assert str(level2.nodes[1]) == "c"
+    assert str(level2.nodes[0]) == "bar"
+    assert str(level2.nodes[1]) == "baz"
 
 
 @pytest.mark.parametrize("selection", ["-a", "- a", "+a"])

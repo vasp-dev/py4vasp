@@ -80,6 +80,9 @@ class Tree:
                 for selection in child.selections():
                     yield content + selection
 
+    def _empty_tree(self):
+        return self._parent is None and not self._children
+
     def parse_character(self, character):
         if character == ",":
             return self._parse_new_selection()
@@ -105,7 +108,7 @@ class Tree:
         return self._finalize_operation()
 
     def _finalize_operation(self):
-        if self._is_operation and len(self._children) == 2:
+        if self._new_child_needed() and self._is_operation and len(self._children) == 2:
             return self._parent._parse_new_selection()
         return self
 
@@ -162,10 +165,13 @@ class Tree:
         return isinstance(content, Group) and not content.group[1]
 
     def _add_child_if_needed(self, ignore_space):
-        if not self._new_selection and (not self._space_parsed or ignore_space):
+        if not self._new_child_needed(ignore_space):
             return
         self._children.append(Tree(self))
         self._new_selection = False
+
+    def _new_child_needed(self, ignore_space=False):
+        return self._new_selection or (self._space_parsed and not ignore_space)
 
     def _raise_error_if_group_misses_left_hand_side(self, separator):
         if len(self._children) > 0:
@@ -208,9 +214,6 @@ class Tree:
             return
         message = f"The operator {self._content} is not followed by an element."
         raise SelectionParserError(message)
-
-    def _empty_tree(self):
-        return self._parent is None and not self._children
 
 
 def _parse_selection_character_by_character(tree, selection):
