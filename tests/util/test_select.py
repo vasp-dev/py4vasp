@@ -133,6 +133,16 @@ def test_unary_operator(selection):
     assert str(level1.nodes[1]) == "a"
 
 
+@pytest.mark.parametrize("selection", ["a, -b", "a,-b"])
+def test_unary_operator_after_split(selection):
+    tree = select.Tree.from_selection(selection)
+    assert len(tree) == 2
+    level1 = tree.nodes[1]
+    assert str(level1) == "-"
+    assert level1.is_operation
+    assert str(level1.nodes[1]) == "b"
+
+
 def test_selections_simple_tree():
     tree = select.Tree.from_selection("foo")
     assert len(tree) == 1

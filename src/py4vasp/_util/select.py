@@ -30,8 +30,8 @@ class Group:
 
 class Tree:
     def __init__(self, parent=None):
-        self._new_child = True
-        self._ignore_separator = True
+        self._new_selection = True
+        self._space_parsed = False
         self._is_operation = False
         self._operation_complete = False
         self._parent = parent
@@ -56,8 +56,10 @@ class Tree:
         return self._content
 
     def parse_character(self, character):
-        if character in (" ", ","):
-            return self._parse_separator(character)
+        if character == ",":
+            return self._parse_new_selection()
+        elif character == " ":
+            return self._parse_space()
         elif character in group_separators:
             return self._parse_group(character)
         elif character in operators:
@@ -67,7 +69,7 @@ class Tree:
             return self._children[-1]
         elif character == ")":
             self._raise_error_if_superfluous_closing_parenthesis()
-            return self._parent._parse_separator(character)
+            return self._parent._parse_new_selection()
         elif character == end_of_text:
             self._raise_error_if_closing_parenthesis_missing()
             self._raise_error_if_group_misses_right_hand_side()
@@ -79,20 +81,20 @@ class Tree:
         else:
             return self._store_content_in_child(character)
 
-    def _parse_separator(self, character):
-        if not self._ignore_separator:
-            self._new_child = True
-        if character == " ":
-            self._operation_complete = self._is_operation and len(self._children) == 2
-            return self
+    def _parse_space(self):
+        self._space_parsed = True
+        self._operation_complete = self._is_operation and len(self._children) == 2
+        return self
+
+    def _parse_new_selection(self):
+        self._new_selection = True
         self._raise_error_if_group_misses_right_hand_side()
         self._raise_error_if_operation_misses_right_hand_side()
         return self._finalize_operation()
 
     def _parse_group(self, separator):
         self._raise_error_if_group_misses_left_hand_side(separator)
-        self._ignore_separator = True
-        self._new_child = False
+        self._ignore_space = True
         self._children[-1]._transform_to_group(separator)
         return self
 
@@ -100,10 +102,7 @@ class Tree:
         self._content = Group([self._content, ""], separator)
 
     def _parse_operator(self, operator):
-        self._ignore_separator = True
-        if len(self._children) == 0:
-            self._add_new_child()
-        # self._new_child = False
+        self._add_child_if_needed(ignore_space=True)
         self._children[-1]._transform_to_operation(operator)
         return self._children[-1]
 
@@ -144,9 +143,7 @@ class Tree:
         raise SelectionParserError(message)
 
     def _raise_error_if_operation_misses_right_hand_side(self):
-        if not self._is_operation:
-            return
-        if len(self._children) == 2:
+        if not self._is_operation or len(self._children) == 2:
             return
         message = f"The operator {self._content} is not followed by an element."
         raise SelectionParserError(message)
@@ -159,24 +156,28 @@ class Tree:
         self._content = operator
 
     def _finalize_operation(self):
-        if not self._is_operation:
-            return self
-        if self._parent:
-            self._parent._new_child = True
-            return self._parent._parse_separator(",")
-        else:
-            return self
+        if self._is_operation and self._parent:
+            return self._parent._parse_new_selection()
+        return self
 
     def _store_content_in_child(self, character):
-        self._ignore_separator = False
-        if self._new_child:
-            self._add_new_child()
+        ignore_space = self._is_operation or self._child_is_open_group()
+        self._add_child_if_needed(ignore_space)
+        self._space_parsed = False
         self._children[-1]._content += character
         return self
 
-    def _add_new_child(self):
+    def _child_is_open_group(self):
+        if len(self._children) == 0:
+            return False
+        content = self._children[-1]._content
+        return isinstance(content, Group) and not content.group[1]
+
+    def _add_child_if_needed(self, ignore_space):
+        if not self._new_selection and (not self._space_parsed or ignore_space):
+            return
         self._children.append(Tree(self))
-        self._new_child = False
+        self._new_selection = False
 
     def __str__(self):
         return str(self._content)
