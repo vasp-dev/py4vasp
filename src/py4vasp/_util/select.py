@@ -71,6 +71,7 @@ class Tree:
         elif character == end_of_text:
             self._raise_error_if_closing_parenthesis_missing()
             self._raise_error_if_group_misses_right_hand_side()
+            self._raise_error_if_operation_misses_right_hand_side()
             return self
         elif self._operation_complete:
             node = self._finalize_operation()
@@ -85,6 +86,7 @@ class Tree:
             self._operation_complete = self._is_operation and len(self._children) == 2
             return self
         self._raise_error_if_group_misses_right_hand_side()
+        self._raise_error_if_operation_misses_right_hand_side()
         return self._finalize_operation()
 
     def _parse_group(self, separator):
@@ -137,6 +139,14 @@ class Tree:
         if not self._parent or self._is_operation:
             return
         message = "An opening parenthesis was not followed by a closing one."
+        raise SelectionParserError(message)
+
+    def _raise_error_if_operation_misses_right_hand_side(self):
+        if not self._is_operation:
+            return
+        if len(self._children) == 2:
+            return
+        message = f"The operator {self._content} is not followed by an element."
         raise SelectionParserError(message)
 
     def _transform_to_operation(self, operator):

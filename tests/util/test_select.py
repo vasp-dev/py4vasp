@@ -169,3 +169,9 @@ def test_broken_group_raises_error(selection):
 def test_broken_parenthesis(selection):
     with pytest.raises(exception.IncorrectUsage):
         select.Tree.from_selection(selection)
+
+
+@pytest.mark.parametrize("selection", ["a+", "b-", "a-,b"])
+def test_missing_operand(selection):
+    with pytest.raises(exception.IncorrectUsage):
+        select.Tree.from_selection(selection)
