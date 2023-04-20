@@ -89,6 +89,24 @@ def test_pair_selection():
     assert tree.nodes[1].content == select.Group(["baz", "foo"], separator="~")
 
 
+def test_addition_and_subtraction():
+    tree = select.Tree.from_selection("a  +  b, c-d")
+    assert not tree.is_operation
+    assert len(tree) == 2
+    level1 = tree.nodes[0]
+    assert len(level1) == 1
+    assert str(level1) == "+"
+    assert level1.is_operation
+    assert str(level1.nodes[0]) == "a"
+    assert str(level1.nodes[1]) == "b"
+    level1 = tree.nodes[1]
+    assert len(level1) == 1
+    assert str(level1) == "-"
+    assert level1.is_operation
+    assert str(level1.nodes[0]) == "c"
+    assert str(level1.nodes[1]) == "d"
+
+
 def test_selections_simple_tree():
     tree = select.Tree.from_selection("foo")
     assert len(tree) == 1

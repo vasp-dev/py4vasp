@@ -7,6 +7,7 @@ from py4vasp._util import check
 range_separator = ":"
 pair_separator = "~"
 group_separators = (range_separator, pair_separator)
+operators = ("+", "-")
 all = "__all__"
 
 
@@ -25,7 +26,7 @@ class Tree:
     def __init__(self, parent=None):
         self._new_child = True
         self._ignore_separator = True
-        self._is_group = False
+        self._is_operation = False
         self._parent = parent
         self._children = []
         self._content = ""
@@ -51,19 +52,23 @@ class Tree:
 
     def parse_character(self, character):
         if character in (" ", ","):
-            return self._parse_separator()
+            return self._parse_separator(character)
         elif character in group_separators:
             return self._parse_group(character)
+        elif character in operators:
+            return self._parse_operator(character)
         elif character == "(":
             return self._children[-1]
         elif character == ")":
-            return self._parent._parse_separator()
+            return self._parent._parse_separator(character)
         else:
             return self._store_content_in_child(character)
 
-    def _parse_separator(self):
+    def _parse_separator(self, character):
         if not self._ignore_separator:
             self._new_child = True
+        if self._is_operation:
+            return self._complete_operation(character)
         return self
 
     def _parse_group(self, separator):
@@ -74,6 +79,27 @@ class Tree:
 
     def _transform_to_group(self, separator):
         self._content = Group([self._content, ""], separator)
+
+    def _parse_operator(self, operator):
+        self._ignore_separator = True
+        self._new_child = False
+        self._children[-1]._transform_to_operation(operator)
+        return self._children[-1]
+
+    def _transform_to_operation(self, operator):
+        self._is_operation = True
+        self._children.append(Tree(self))
+        self._children[-1]._content = self._content
+        self._content = operator
+
+    def _complete_operation(self, character):
+        if character == " ":
+            return self
+        elif self._parent:
+            self._parent._new_child = True
+            return self._parent._parse_separator(character)
+        else:
+            return self
 
     def _store_content_in_child(self, character):
         self._ignore_separator = False
@@ -92,15 +118,22 @@ class Tree:
     def __len__(self):
         if self._empty_tree():
             return 0
-        elif len(self._children) == 0:
+        elif len(self._children) == 0 or self._is_operation:
             return 1
         else:
             return sum(len(child) for child in self._children)
+
+    @property
+    def is_operation(self):
+        return self._is_operation
 
     def selections(self):
         content = (self._content,) if self._parent else ()
         if len(self._children) == 0:
             yield content
+        elif self._is_operation:
+            rhs = self._children[1].content if len(self._children) > 1 else None
+            yield content + (self._children[0].content, rhs)
         else:
             for child in self._children:
                 for selection in child.selections():
