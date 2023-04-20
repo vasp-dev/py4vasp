@@ -33,7 +33,6 @@ class Tree:
         self._new_selection = True
         self._space_parsed = False
         self._is_operation = False
-        self._operation_complete = False
         self._parent = parent
         self._children = []
         self._content = ""
@@ -106,13 +105,12 @@ class Tree:
         return self._finalize_operation()
 
     def _finalize_operation(self):
-        if self._is_operation and self._parent:
+        if self._is_operation and len(self._children) == 2:
             return self._parent._parse_new_selection()
         return self
 
     def _parse_space(self):
         self._space_parsed = True
-        self._operation_complete = self._is_operation and len(self._children) == 2
         return self
 
     def _parse_group(self, separator):
@@ -139,7 +137,6 @@ class Tree:
 
     def _transform_to_operation(self, operator):
         self._is_operation = True
-        self._operation_complete = False
         self._children.append(Tree(self))
         self._children[-1]._content = self._content
         self._content = operator
@@ -151,18 +148,12 @@ class Tree:
         return self
 
     def _store_character_in_tree(self, character):
-        if self._operation_complete:
-            node = self._finalize_operation()
-        else:
-            node = self
-        return node._store_character(character)
-
-    def _store_character(self, character):
-        ignore_space = self._is_operation or self._child_is_open_group()
-        self._add_child_if_needed(ignore_space)
-        self._space_parsed = False
-        self._children[-1]._content += character
-        return self
+        node = self._finalize_operation()
+        ignore_space = node._is_operation or node._child_is_open_group()
+        node._add_child_if_needed(ignore_space)
+        node._space_parsed = False
+        node._children[-1]._content += character
+        return node
 
     def _child_is_open_group(self):
         if len(self._children) == 0:
