@@ -157,3 +157,9 @@ def test_selections_to_string():
 def test_incorrect_selection_raises_error():
     with pytest.raises(exception.IncorrectUsage):
         select.Tree.from_selection(1)
+
+
+@pytest.mark.parametrize("selection", [":1", "1:", "1:,2", "a~", "a~,b", "~a"])
+def test_broken_group_raises_error(selection):
+    with pytest.raises(exception.IncorrectUsage):
+        select.Tree.from_selection(selection)

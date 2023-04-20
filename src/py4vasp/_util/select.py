@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
 
+from py4vasp import exception
 from py4vasp._util import check
 
 range_separator = ":"
@@ -9,6 +10,11 @@ pair_separator = "~"
 group_separators = (range_separator, pair_separator)
 operators = ("+", "-")
 all = "__all__"
+end_of_text = chr(3)
+
+
+class SelectionParserError(Exception):
+    """This is created when something goes wrong parsing a character"""
 
 
 @dataclasses.dataclass
@@ -35,12 +41,10 @@ class Tree:
     @classmethod
     def from_selection(cls, selection):
         tree = cls()
-        active_node = tree
         selection = selection or ""
         message = f"Selection must be a string. The passed argument {selection} is not allowed."
         check.raise_error_if_not_string(selection, message)
-        for character in selection:
-            active_node = active_node.parse_character(character)
+        _parse_selection_character_by_character(tree, selection)
         return tree
 
     @property
@@ -62,6 +66,9 @@ class Tree:
             return self._children[-1]
         elif character == ")":
             return self._parent._parse_separator(character)
+        elif character == end_of_text:
+            self._raise_error_if_group_misses_right_hand_side()
+            return self
         elif self._operation_complete:
             node = self._finalize_operation()
             return node._store_content_in_child(character)
@@ -74,9 +81,11 @@ class Tree:
         if character == " ":
             self._operation_complete = self._is_operation and len(self._children) == 2
             return self
+        self._raise_error_if_group_misses_right_hand_side()
         return self._finalize_operation()
 
     def _parse_group(self, separator):
+        self._raise_error_if_group_misses_left_hand_side(separator)
         self._ignore_separator = True
         self._new_child = False
         self._children[-1]._transform_to_group(separator)
@@ -90,6 +99,24 @@ class Tree:
         self._new_child = False
         self._children[-1]._transform_to_operation(operator)
         return self._children[-1]
+
+    def _raise_error_if_group_misses_left_hand_side(self, separator):
+        if len(self._children) > 0:
+            return
+        self._raise_group_error_message("left", separator)
+
+    def _raise_error_if_group_misses_right_hand_side(self):
+        if len(self._children) == 0:
+            return
+        content = self._children[-1].content
+        if not isinstance(content, Group) or content.group[1]:
+            return
+        self._raise_group_error_message("right", content.separator)
+
+    def _raise_group_error_message(self, missing_side, separator):
+        group = "range" if separator == range_separator else "pair"
+        message = f"The {missing_side} argument of {group} is missing."
+        raise SelectionParserError(message)
 
     def _transform_to_operation(self, operator):
         self._is_operation = True
@@ -146,6 +173,24 @@ class Tree:
 
     def _empty_tree(self):
         return self._parent is None and not self._children
+
+
+def _parse_selection_character_by_character(tree, selection):
+    active_node = tree
+    try:
+        for ii, character in enumerate(selection):
+            active_node = active_node.parse_character(character)
+        active_node.parse_character(end_of_text)
+    except SelectionParserError as error:
+        _raise_error_if_parsing_failed(error, selection, ii)
+
+
+def _raise_error_if_parsing_failed(error, selection, ii):
+    message = f"""Error when parsing the selection string
+  {selection}
+  {" " * ii}^
+{error}"""
+    raise exception.IncorrectUsage(message)
 
 
 def selections_to_string(selections):
