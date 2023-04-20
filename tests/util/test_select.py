@@ -89,8 +89,9 @@ def test_pair_selection():
     assert tree.nodes[1].content == select.Group(["baz", "foo"], separator="~")
 
 
-def test_addition_and_subtraction():
-    tree = select.Tree.from_selection("a  +  b, c-d")
+@pytest.mark.parametrize("selection", ["a + b, c - d", "a+b c-d"])
+def test_addition_and_subtraction(selection):
+    tree = select.Tree.from_selection(selection)
     assert not tree.is_operation
     assert len(tree) == 2
     level1 = tree.nodes[0]

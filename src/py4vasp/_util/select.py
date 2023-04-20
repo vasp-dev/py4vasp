@@ -93,7 +93,7 @@ class Tree:
         self._content = operator
 
     def _complete_operation(self, character):
-        if character == " ":
+        if character == " " and len(self._children) == 1:
             return self
         elif self._parent:
             self._parent._new_child = True
@@ -132,8 +132,7 @@ class Tree:
         if len(self._children) == 0:
             yield content
         elif self._is_operation:
-            rhs = self._children[1].content if len(self._children) > 1 else None
-            yield content + (self._children[0].content, rhs)
+            yield content + (self._children[0].content, self._children[1].content)
         else:
             for child in self._children:
                 for selection in child.selections():
