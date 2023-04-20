@@ -121,6 +121,18 @@ def test_longer_equation(selection):
     assert str(level2.nodes[1]) == "c"
 
 
+@pytest.mark.parametrize("selection", ["-a", "- a", "+a"])
+def test_unary_operator(selection):
+    tree = select.Tree.from_selection(selection)
+    assert len(tree) == 1
+    level1 = tree.nodes[0]
+    assert str(level1) == selection[:1]
+    assert level1.is_operation
+    assert len(level1) == 1
+    assert str(level1.nodes[0]) == ""
+    assert str(level1.nodes[1]) == "a"
+
+
 def test_selections_simple_tree():
     tree = select.Tree.from_selection("foo")
     assert len(tree) == 1

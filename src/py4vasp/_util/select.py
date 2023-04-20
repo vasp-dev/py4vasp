@@ -101,7 +101,9 @@ class Tree:
 
     def _parse_operator(self, operator):
         self._ignore_separator = True
-        self._new_child = False
+        if len(self._children) == 0:
+            self._add_new_child()
+        # self._new_child = False
         self._children[-1]._transform_to_operation(operator)
         return self._children[-1]
 
@@ -167,14 +169,14 @@ class Tree:
 
     def _store_content_in_child(self, character):
         self._ignore_separator = False
-        self._add_child_if_necessary()
+        if self._new_child:
+            self._add_new_child()
         self._children[-1]._content += character
         return self
 
-    def _add_child_if_necessary(self):
-        if self._new_child:
-            self._children.append(Tree(self))
-            self._new_child = False
+    def _add_new_child(self):
+        self._children.append(Tree(self))
+        self._new_child = False
 
     def __str__(self):
         return str(self._content)
