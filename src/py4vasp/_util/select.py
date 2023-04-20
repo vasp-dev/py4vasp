@@ -63,10 +63,13 @@ class Tree:
         elif character in operators:
             return self._parse_operator(character)
         elif character == "(":
+            self._raise_error_if_opening_parenthesis_without_argument()
             return self._children[-1]
         elif character == ")":
+            self._raise_error_if_superfluous_closing_parenthesis()
             return self._parent._parse_separator(character)
         elif character == end_of_text:
+            self._raise_error_if_closing_parenthesis_missing()
             self._raise_error_if_group_misses_right_hand_side()
             return self
         elif self._operation_complete:
@@ -116,6 +119,24 @@ class Tree:
     def _raise_group_error_message(self, missing_side, separator):
         group = "range" if separator == range_separator else "pair"
         message = f"The {missing_side} argument of {group} is missing."
+        raise SelectionParserError(message)
+
+    def _raise_error_if_opening_parenthesis_without_argument(self):
+        if len(self._children) > 0:
+            return
+        message = "Opening parenthesis '(' must relate to a previous argument."
+        raise SelectionParserError(message)
+
+    def _raise_error_if_superfluous_closing_parenthesis(self):
+        if self._parent:
+            return
+        message = "Closing parenthesis ')' must follow an opening one."
+        raise SelectionParserError(message)
+
+    def _raise_error_if_closing_parenthesis_missing(self):
+        if not self._parent or self._is_operation:
+            return
+        message = "An opening parenthesis was not followed by a closing one."
         raise SelectionParserError(message)
 
     def _transform_to_operation(self, operator):
