@@ -55,6 +55,32 @@ class Tree:
     def content(self):
         return self._content
 
+    @property
+    def is_operation(self):
+        return self._is_operation
+
+    def __str__(self):
+        return str(self._content)
+
+    def __len__(self):
+        if self._empty_tree():
+            return 0
+        elif len(self._children) == 0 or self._is_operation:
+            return 1
+        else:
+            return sum(len(child) for child in self._children)
+
+    def selections(self):
+        content = (self._content,) if self._parent else ()
+        if len(self._children) == 0:
+            yield content
+        elif self._is_operation:
+            yield content + (self._children[0].content, self._children[1].content)
+        else:
+            for child in self._children:
+                for selection in child.selections():
+                    yield content + selection
+
     def parse_character(self, character):
         if character == ",":
             return self._parse_new_selection()
@@ -78,6 +104,11 @@ class Tree:
         self._raise_error_if_group_misses_right_hand_side()
         self._raise_error_if_operation_misses_right_hand_side()
         return self._finalize_operation()
+
+    def _finalize_operation(self):
+        if self._is_operation and self._parent:
+            return self._parent._parse_new_selection()
+        return self
 
     def _parse_space(self):
         self._space_parsed = True
@@ -113,11 +144,6 @@ class Tree:
         self._children[-1]._content = self._content
         self._content = operator
 
-    def _finalize_operation(self):
-        if self._is_operation and self._parent:
-            return self._parent._parse_new_selection()
-        return self
-
     def _parse_end_of_text(self):
         self._raise_error_if_closing_parenthesis_missing()
         self._raise_error_if_group_misses_right_hand_side()
@@ -149,7 +175,7 @@ class Tree:
             return
         self._children.append(Tree(self))
         self._new_selection = False
-        
+
     def _raise_error_if_group_misses_left_hand_side(self, separator):
         if len(self._children) > 0:
             return
@@ -191,32 +217,6 @@ class Tree:
             return
         message = f"The operator {self._content} is not followed by an element."
         raise SelectionParserError(message)
-
-    def __str__(self):
-        return str(self._content)
-
-    def __len__(self):
-        if self._empty_tree():
-            return 0
-        elif len(self._children) == 0 or self._is_operation:
-            return 1
-        else:
-            return sum(len(child) for child in self._children)
-
-    @property
-    def is_operation(self):
-        return self._is_operation
-
-    def selections(self):
-        content = (self._content,) if self._parent else ()
-        if len(self._children) == 0:
-            yield content
-        elif self._is_operation:
-            yield content + (self._children[0].content, self._children[1].content)
-        else:
-            for child in self._children:
-                for selection in child.selections():
-                    yield content + selection
 
     def _empty_tree(self):
         return self._parent is None and not self._children
