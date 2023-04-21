@@ -148,7 +148,7 @@ def test_adding_two_parenthesis():
     assert graph(selection) == expected
 
 
-def test_complex_tree():
+def test_complex_nesting():
     selection = "A(B(1:3), C~D(E F)) G(H, J) K"
     expected_selections = (
         ("A", "B", select.Group(["1", "3"], ":")),
@@ -171,12 +171,40 @@ def test_complex_tree():
     assert graph(selection) == expected_graph
 
 
-def test_selections_to_string():
-    tree = select.Tree.from_selection("A(B(1:3), C~D(E F)) G(H, J) K")
-    expected = "A(B(1:3)), A(C~D(E)), A(C~D(F)), G(H), G(J), K"
-    assert select.selections_to_string(tree.selections()) == expected
-    copy = select.Tree.from_selection(expected)
-    assert list(tree.selections()) == list(copy.selections())
+def test_complex_operation():
+    selection = "A(x + y(z)) + B(1:3 u - v) - C~D"
+    first_operand = selections("A(x+y(z))")
+    second_operand = selections("B(1:3 u-v)")
+    third_operand = selections("C~D")
+    inner_operation = select.Operation(second_operand, "-", third_operand)
+    outer_operation = select.Operation(first_operand, "+", ((inner_operation,),))
+    assert selections(selection) == ((outer_operation,),)
+    expected = """graph LR
+    _1_[+] --> A
+    A --> _0_[+]
+    _0_[+] --> x
+    _0_[+] --> y
+    y --> z
+    _1_[+] --> _3_[-]
+    _3_[-] --> B
+    B --> 1:3
+    B --> _2_[-]
+    _2_[-] --> u
+    _2_[-] --> v
+    _3_[-] --> C~D"""
+    assert graph(selection) == expected
+
+
+@pytest.mark.parametrize(
+    "input, output",
+    [
+        ("A(B(1:3), C~D(E F)) G(H, J)", "A(B(1:3)), A(C~D(E)), A(C~D(F)), G(H), G(J)"),
+        # ("A(x+y(z)) + B(1:3 u-v) - C~D", "A(x + y(z)) + B(1:3, u - v) - C~D"), TODO
+    ],
+)
+def test_selections_to_string(input, output):
+    assert select.selections_to_string(selections(input)) == output
+    assert selections(input) == selections(output)
 
 
 def test_incorrect_selection_raises_error():

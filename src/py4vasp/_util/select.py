@@ -42,6 +42,14 @@ class Operation:
     operator: str
     right_operand: str
 
+    def __str__(self):
+        parts = [
+            selections_to_string(self.left_operand),
+            self.operator,
+            selections_to_string(self.right_operand),
+        ]
+        return " ".join(parts)
+
 
 class Tree:
     def __init__(self, parent=None):
