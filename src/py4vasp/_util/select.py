@@ -159,7 +159,7 @@ class Tree:
         self._new_selection = True
         self._raise_error_if_superfluous_closing_parenthesis()
         node = self._finalize_operation()
-        return node._parent._parse_new_selection()
+        return node._parent._parse_space()
 
     def _parse_operator(self, operator):
         self._add_child_if_needed(ignore_space=True)
@@ -168,9 +168,13 @@ class Tree:
 
     def _transform_to_operation(self, operator):
         self._is_operation = True
-        self._children.append(Tree(self))
-        self._children[-1]._content = self._content
+        node = Tree(self)
+        node._content = self._content
+        node._children = self._children
+        for child in node._children:
+            child._parent = node
         self._content = _Operator(operator, self._next_id())
+        self._children = [node]
 
     def _next_id(self):
         if self._parent:

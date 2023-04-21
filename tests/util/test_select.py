@@ -126,13 +126,25 @@ def test_unary_operator_after_split(selection):
 
 
 @pytest.mark.parametrize("selection", ["A(x + y)", "A ( x+y )"])
-def test_operator_and_parenthesis(selection):
+def test_operator_in_parenthesis(selection):
     operation = select.Operation(selections("x")[0], "+", selections("y")[0])
     assert selections(selection) == (("A", operation),)
     expected = """graph LR
     A --> _0_[+]
     _0_[+] --> x
     _0_[+] --> y"""
+    assert graph(selection) == expected
+
+
+def test_adding_two_parenthesis():
+    selection = "A(x) - B(y)"
+    operation = select.Operation(selections("A(x)")[0], "-", selections("B(y)")[0])
+    assert selections(selection) == ((operation,),)
+    expected = """graph LR
+    _0_[-] --> A
+    A --> x
+    _0_[-] --> B
+    B --> y"""
     assert graph(selection) == expected
 
 
