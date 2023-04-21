@@ -30,10 +30,17 @@ class Group:
 
 
 @dataclasses.dataclass
-class Operator:
+class _Operator:
     operator: str
     _id: int
     __str__ = lambda self: f"_{self._id}_[{self.operator}]"
+
+
+@dataclasses.dataclass
+class Operation:
+    left_operand: str
+    operator: str
+    right_operand: str
 
 
 class Tree:
@@ -71,20 +78,15 @@ class Tree:
     def __str__(self):
         return str(self._content)
 
-    def __len__(self):
-        if self._empty_tree():
-            return 0
-        elif len(self._children) == 0 or self._is_operation:
-            return 1
-        else:
-            return sum(len(child) for child in self._children)
-
     def selections(self):
-        content = (self._content,) if self._parent else ()
+        content = (self._content,) if self._content else ()
         if len(self._children) == 0:
             yield content
         elif self._is_operation:
-            yield content + (self._children[0].content, self._children[1].content)
+            left_operand = tuple(self._children[0].selections())[0]
+            operator = self._content.operator
+            right_operand = tuple(self._children[1].selections())[0]
+            yield (Operation(left_operand, operator, right_operand),)
         else:
             for child in self._children:
                 for selection in child.selections():
@@ -168,7 +170,7 @@ class Tree:
         self._is_operation = True
         self._children.append(Tree(self))
         self._children[-1]._content = self._content
-        self._content = Operator(operator, self._next_id())
+        self._content = _Operator(operator, self._next_id())
 
     def _next_id(self):
         if self._parent:
