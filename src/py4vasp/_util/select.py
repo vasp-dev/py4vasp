@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
+import itertools
 
 from py4vasp import exception
 from py4vasp._util import check
@@ -28,6 +29,13 @@ class Group:
         return self
 
 
+@dataclasses.dataclass
+class Operator:
+    operator: str
+    _id: int
+    __str__ = lambda self: f"_{self._id}_[{self.operator}]"
+
+
 class Tree:
     def __init__(self, parent=None):
         self._new_selection = True
@@ -36,6 +44,8 @@ class Tree:
         self._parent = parent
         self._children = []
         self._content = ""
+        if not parent:
+            self._counter = itertools.count()
 
     @classmethod
     def from_selection(cls, selection):
@@ -82,6 +92,20 @@ class Tree:
 
     def _empty_tree(self):
         return self._parent is None and not self._children
+
+    def to_mermaid(self):
+        return "\n".join(self._to_mermaid(root=True))
+
+    def _to_mermaid(self, root=False):
+        if root:
+            yield "graph LR"
+        if self._content:
+            if str(self._parent):
+                yield f"    {self._parent} --> {self}"
+            elif not self._children:
+                yield f"    {self}"
+        for child in self._children:
+            yield from child._to_mermaid()
 
     def parse_character(self, character):
         if character == ",":
@@ -130,8 +154,10 @@ class Tree:
         return self._children[-1]
 
     def _parse_close_parenthesis(self):
+        self._new_selection = True
         self._raise_error_if_superfluous_closing_parenthesis()
-        return self._parent._parse_new_selection()
+        node = self._finalize_operation()
+        return node._parent._parse_new_selection()
 
     def _parse_operator(self, operator):
         self._add_child_if_needed(ignore_space=True)
@@ -142,7 +168,13 @@ class Tree:
         self._is_operation = True
         self._children.append(Tree(self))
         self._children[-1]._content = self._content
-        self._content = operator
+        self._content = Operator(operator, self._next_id())
+
+    def _next_id(self):
+        if self._parent:
+            return self._parent._next_id()
+        else:
+            return next(self._counter)
 
     def _parse_end_of_text(self):
         self._raise_error_if_closing_parenthesis_missing()

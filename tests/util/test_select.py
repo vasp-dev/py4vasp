@@ -9,6 +9,7 @@ from py4vasp._util import select
 def test_empty_tree():
     tree = select.Tree.from_selection(None)
     assert len(tree) == 0
+    assert tree.to_mermaid() == "graph LR"
     assert tree.nodes == []
 
 
@@ -17,76 +18,76 @@ def test_one_level():
     actual = [str(node) for node in tree.nodes]
     assert len(tree) == 3
     assert actual == ["foo", "bar", "baz"]
+    expected = """graph LR
+    foo
+    bar
+    baz"""
+    assert tree.to_mermaid() == expected
 
 
 def test_multiple_level():
     tree = select.Tree.from_selection("foo(bar(baz))")
     assert len(tree) == 1
-    level1 = tree.nodes[0]
-    assert str(level1) == "foo"
-    level2 = level1.nodes[0]
-    assert str(level2) == "bar"
-    level3 = level2.nodes[0]
-    assert str(level3) == "baz"
-    assert level3.nodes == []
+    expected = """graph LR
+    foo --> bar
+    bar --> baz"""
+    assert tree.to_mermaid() == expected
 
 
 def test_mixed_selection():
     tree = select.Tree.from_selection("foo(bar baz)")
     assert len(tree) == 2
-    level1 = tree.nodes[0]
-    assert str(level1) == "foo"
-    assert [str(node) for node in level1.nodes] == ["bar", "baz"]
+    expected = """graph LR
+    foo --> bar
+    foo --> baz"""
+    assert tree.to_mermaid() == expected
 
 
 def test_comma_as_separator():
     tree = select.Tree.from_selection("foo, bar(1, 2)")
     assert len(tree) == 3
-    assert str(tree.nodes[0]) == "foo"
-    level1 = tree.nodes[1]
-    assert str(level1) == "bar"
-    assert str(level1.nodes[0]) == "1"
-    assert str(level1.nodes[1]) == "2"
+    expected = """graph LR
+    foo
+    bar --> 1
+    bar --> 2"""
+    assert tree.to_mermaid() == expected
 
 
 def test_excess_whitespace():
     tree = select.Tree.from_selection("  foo   (  bar,   baz  )")
     assert len(tree) == 2
-    level1 = tree.nodes[0]
-    assert str(level1) == "foo"
-    assert len(level1.nodes) == 2
-    assert str(level1.nodes[0]) == "bar"
-    assert str(level1.nodes[1]) == "baz"
+    expected = """graph LR
+    foo --> bar
+    foo --> baz"""
+    assert tree.to_mermaid() == expected
 
 
 def test_no_whitespace():
     tree = select.Tree.from_selection("foo(bar)baz")
     assert len(tree) == 2
-    level1 = tree.nodes[0]
-    assert str(level1) == "foo"
-    assert str(level1.nodes[0]) == "bar"
-    assert str(tree.nodes[1]) == "baz"
+    expected = """graph LR
+    foo --> bar
+    baz"""
+    assert tree.to_mermaid() == expected
 
 
 def test_ranges():
     tree = select.Tree.from_selection("foo(1 : 3) 2 : 6 baz")
     assert len(tree) == 3
-    level1 = tree.nodes[0]
-    assert str(level1) == "foo"
-    assert str(level1.nodes[0]) == "1:3"
-    assert level1.nodes[0].content == select.Group(["1", "3"], separator=":")
-    assert str(tree.nodes[1]) == "2:6"
-    assert tree.nodes[1].content == select.Group(["2", "6"], separator=":")
-    assert str(tree.nodes[2]) == "baz"
+    expected = """graph LR
+    foo --> 1:3
+    2:6
+    baz"""
+    assert tree.to_mermaid() == expected
 
 
 def test_pair_selection():
     tree = select.Tree.from_selection("foo  ~  bar, baz~foo")
     assert len(tree) == 2
-    assert str(tree.nodes[0]) == "foo~bar"
-    assert tree.nodes[0].content == select.Group(["foo", "bar"], separator="~")
-    assert str(tree.nodes[1]) == "baz~foo"
-    assert tree.nodes[1].content == select.Group(["baz", "foo"], separator="~")
+    expected = """graph LR
+    foo~bar
+    baz~foo"""
+    assert tree.to_mermaid() == expected
 
 
 @pytest.mark.parametrize("selection", ["a + b, c - d", "a+b c-d"])
@@ -94,53 +95,53 @@ def test_addition_and_subtraction(selection):
     tree = select.Tree.from_selection(selection)
     assert not tree.is_operation
     assert len(tree) == 2
-    level1 = tree.nodes[0]
-    assert len(level1) == 1
-    assert str(level1) == "+"
-    assert level1.is_operation
-    assert str(level1.nodes[0]) == "a"
-    assert str(level1.nodes[1]) == "b"
-    level1 = tree.nodes[1]
-    assert len(level1) == 1
-    assert str(level1) == "-"
-    assert level1.is_operation
-    assert str(level1.nodes[0]) == "c"
-    assert str(level1.nodes[1]) == "d"
+    expected = """graph LR
+    _0_[+] --> a
+    _0_[+] --> b
+    _1_[-] --> c
+    _1_[-] --> d"""
+    assert tree.to_mermaid() == expected
 
 
 @pytest.mark.parametrize("selection", ["foo+bar-baz", "foo + bar - baz"])
 def test_longer_equation(selection):
     tree = select.Tree.from_selection(selection)
     assert len(tree) == 1
-    level1 = tree.nodes[0]
-    assert str(level1) == "+"
-    assert str(level1.nodes[0]) == "foo"
-    level2 = level1.nodes[1]
-    assert str(level2) == "-"
-    assert str(level2.nodes[0]) == "bar"
-    assert str(level2.nodes[1]) == "baz"
+    expected = """graph LR
+    _0_[+] --> foo
+    _0_[+] --> _1_[-]
+    _1_[-] --> bar
+    _1_[-] --> baz"""
+    assert tree.to_mermaid() == expected
 
 
 @pytest.mark.parametrize("selection", ["-a", "- a", "+a"])
 def test_unary_operator(selection):
     tree = select.Tree.from_selection(selection)
     assert len(tree) == 1
-    level1 = tree.nodes[0]
-    assert str(level1) == selection[:1]
-    assert level1.is_operation
-    assert len(level1) == 1
-    assert str(level1.nodes[0]) == ""
-    assert str(level1.nodes[1]) == "a"
+    expected = f"""graph LR
+    _0_[{selection[0]}] --> a"""
+    assert tree.to_mermaid() == expected
 
 
 @pytest.mark.parametrize("selection", ["a, -b", "a,-b"])
 def test_unary_operator_after_split(selection):
     tree = select.Tree.from_selection(selection)
     assert len(tree) == 2
-    level1 = tree.nodes[1]
-    assert str(level1) == "-"
-    assert level1.is_operation
-    assert str(level1.nodes[1]) == "b"
+    expected = """graph LR
+    a
+    _0_[-] --> b"""
+    assert tree.to_mermaid() == expected
+
+
+def test_operator_and_parenthesis():
+    tree = select.Tree.from_selection("A(x + y)")
+    assert len(tree) == 1
+    expected = """graph LR
+    A --> _0_[+]
+    _0_[+] --> x
+    _0_[+] --> y"""
+    assert tree.to_mermaid() == expected
 
 
 def test_selections_simple_tree():
