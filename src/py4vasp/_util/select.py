@@ -83,9 +83,9 @@ class Tree:
         if len(self._children) == 0:
             yield content
         elif self._is_operation:
-            left_operand = tuple(self._children[0].selections())[0]
+            left_operand = tuple(self._children[0].selections())
             operator = self._content.operator
-            right_operand = tuple(self._children[1].selections())[0]
+            right_operand = tuple(self._children[1].selections())
             yield (Operation(left_operand, operator, right_operand),)
         else:
             for child in self._children:
