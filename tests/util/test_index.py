@@ -20,3 +20,11 @@ def test_sum_over_selection(input, output):
     map = {0: {"A": [1, 2], "B": slice(3, 8, 2)}}
     selector = index.Selector(map, values)
     assert selector[input] == np.sum(values[output])
+
+
+@pytest.mark.parametrize("input, output", [("x", [7]), ("y", [2, 5])])
+def test_two_components(input, output):
+    values = np.arange(30).reshape((3, 10))
+    map = {1: {"x": 7, "y": [2, 5]}}
+    selector = index.Selector(map, values)
+    assert np.all(selector[input] == np.sum(values[:, output], axis=1))
