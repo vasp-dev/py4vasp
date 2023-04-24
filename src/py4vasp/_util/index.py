@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import dataclasses
 
+import numpy as np
+
 
 @dataclasses.dataclass
 class Selector:
@@ -12,4 +14,4 @@ class Selector:
 
     def __getitem__(self, key):
         index = self.maps[0][key]
-        return self.data[index]
+        return np.sum(self.data[index])
