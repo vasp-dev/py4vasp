@@ -148,6 +148,23 @@ def test_adding_two_parenthesis():
     assert graph(selection) == expected
 
 
+def test_nested_operations():
+    selection = "A(x y) + B(u v)"
+    Ax_Bu = select.Operation(("A", "x"), "+", ("B", "u"))
+    Ax_Bv = select.Operation(("A", "x"), "+", ("B", "v"))
+    Ay_Bu = select.Operation(("A", "y"), "+", ("B", "u"))
+    Ay_Bv = select.Operation(("A", "y"), "+", ("B", "v"))
+    assert selections(selection) == ((Ax_Bu,), (Ax_Bv,), (Ay_Bu,), (Ay_Bv,))
+    expected = """graph LR
+    _0_[+] --> A
+    A --> x
+    A --> y
+    _0_[+] --> B
+    B --> u
+    B --> v"""
+    assert graph(selection) == expected
+
+
 def test_complex_nesting():
     selection = "A(B(1:3), C~D(E F)) G(H, J) K"
     expected_selections = (
@@ -171,28 +188,30 @@ def test_complex_nesting():
     assert graph(selection) == expected_graph
 
 
-# def test_complex_operation():
-#     selection = "A(x + y(z)) + B(1:3 u - v) - C~D"
-#     first_operand = selections("A(x+y(z))")
-#     second_operand = selections("B(1:3 u-v)")
-#     third_operand = selections("C~D")
-#     inner_operation = select.Operation(second_operand, "-", third_operand)
-#     outer_operation = select.Operation(first_operand, "+", ((inner_operation,),))
-#     assert selections(selection) == ((outer_operation,),)
-#     expected = """graph LR
-#     _1_[+] --> A
-#     A --> _0_[+]
-#     _0_[+] --> x
-#     _0_[+] --> y
-#     y --> z
-#     _1_[+] --> _3_[-]
-#     _3_[-] --> B
-#     B --> 1:3
-#     B --> _2_[-]
-#     _2_[-] --> u
-#     _2_[-] --> v
-#     _3_[-] --> C~D"""
-#     assert graph(selection) == expected
+def test_complex_operation():
+    selection = "A(x + y(z)) + B(1:3 u - v) - C~D"
+    first_operand = selections("A(x+y(z))")[0]
+    second_operands = selections("B(1:3 u-v)")
+    third_operand = selections("C~D")[0]
+    inner_operation1 = select.Operation(second_operands[0], "-", third_operand)
+    inner_operation2 = select.Operation(second_operands[1], "-", third_operand)
+    outer_operation1 = select.Operation(first_operand, "+", (inner_operation1,))
+    outer_operation2 = select.Operation(first_operand, "+", (inner_operation2,))
+    assert selections(selection) == ((outer_operation1,), (outer_operation2,))
+    expected = """graph LR
+    _1_[+] --> A
+    A --> _0_[+]
+    _0_[+] --> x
+    _0_[+] --> y
+    y --> z
+    _1_[+] --> _3_[-]
+    _3_[-] --> B
+    B --> 1:3
+    B --> _2_[-]
+    _2_[-] --> u
+    _2_[-] --> v
+    _3_[-] --> C~D"""
+    assert graph(selection) == expected
 
 
 @pytest.mark.parametrize(

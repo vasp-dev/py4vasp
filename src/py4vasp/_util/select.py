@@ -99,10 +99,10 @@ class Tree:
         if len(self._children) == 0:
             yield content
         elif self._is_operation:
-            left_operand = tuple(self._children[0].selections())[0]
-            operator = self._content.operator
-            right_operand = tuple(self._children[1].selections())[0]
-            yield (Operation(left_operand, operator, right_operand),)
+            left_operands = self._children[0].selections()
+            right_operands = self._children[1].selections()
+            for left_op, right_op in itertools.product(left_operands, right_operands):
+                yield (Operation(left_op, self._content.operator, right_op),)
         else:
             for child in self._children:
                 for selection in child.selections():
