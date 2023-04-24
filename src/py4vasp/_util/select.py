@@ -43,20 +43,9 @@ class Operation:
     right_operand: tuple
 
     def __str__(self):
-        for left, right in itertools.product(self.left_operand, self.right_operand):
-            print("::", left, right)
-            print(";;", selections_to_string((left,)), selections_to_string((right,)))
-        parts = [
-            f"{selections_to_string([left])} {self.operator} {selections_to_string([right])}"
-            for left, right in itertools.product(self.left_operand, self.right_operand)
-        ]
-        return ", ".join(parts)
-        # parts = [
-        #     selections_to_string(self.left_operand),
-        #     self.operator,
-        #     selections_to_string(self.right_operand),
-        # ]
-        # return " ".join(parts)
+        left_op = _selection_to_string(self.left_operand)
+        right_op = _selection_to_string(self.right_operand)
+        return f"{left_op} {self.operator} {right_op}"
 
 
 class Tree:

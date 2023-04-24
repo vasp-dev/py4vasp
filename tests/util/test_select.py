@@ -218,7 +218,10 @@ def test_complex_operation():
     "input, output",
     [
         ("A(B(1:3), C~D(E F)) G(H, J)", "A(B(1:3)), A(C~D(E)), A(C~D(F)), G(H), G(J)"),
-        # ("A(x+y(z)) + B(1:3 u-v) - C~D", "A(x + y(z)) + B(1:3, u - v) - C~D"), TODO
+        (
+            "A(x+y(z)) + B(1:3 u-v) - C~D",
+            "A(x + y(z)) + B(1:3) - C~D, A(x + y(z)) + B(u - v) - C~D",
+        ),
     ],
 )
 def test_selections_to_string(input, output):
