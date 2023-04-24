@@ -38,17 +38,25 @@ class _Operator:
 
 @dataclasses.dataclass
 class Operation:
-    left_operand: str
+    left_operand: tuple
     operator: str
-    right_operand: str
+    right_operand: tuple
 
     def __str__(self):
+        for left, right in itertools.product(self.left_operand, self.right_operand):
+            print("::", left, right)
+            print(";;", selections_to_string((left,)), selections_to_string((right,)))
         parts = [
-            selections_to_string(self.left_operand),
-            self.operator,
-            selections_to_string(self.right_operand),
+            f"{selections_to_string([left])} {self.operator} {selections_to_string([right])}"
+            for left, right in itertools.product(self.left_operand, self.right_operand)
         ]
-        return " ".join(parts)
+        return ", ".join(parts)
+        # parts = [
+        #     selections_to_string(self.left_operand),
+        #     self.operator,
+        #     selections_to_string(self.right_operand),
+        # ]
+        # return " ".join(parts)
 
 
 class Tree:
@@ -91,9 +99,9 @@ class Tree:
         if len(self._children) == 0:
             yield content
         elif self._is_operation:
-            left_operand = tuple(self._children[0].selections())
+            left_operand = tuple(self._children[0].selections())[0]
             operator = self._content.operator
-            right_operand = tuple(self._children[1].selections())
+            right_operand = tuple(self._children[1].selections())[0]
             yield (Operation(left_operand, operator, right_operand),)
         else:
             for child in self._children:
