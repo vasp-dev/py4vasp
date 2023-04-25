@@ -16,16 +16,26 @@ class Selector:
             for dim, map_ in maps.items()
             for key, indices in map_.items()
         }
+        self._weights = [None] * self._data.ndim
+        for dim, _ in maps.items():
+            self._weights[dim] = np.ones(self._data.shape[dim])
 
     def __getitem__(self, selection):
-        indices = [slice(None)] * self._data.ndim
-        keys = [""] * self._data.ndim
-        for key in selection:
-            dimension, slice_ = self._get_dimension_and_slice(key)
-            _raise_error_if_index_already_set(keys[dimension], key)
-            indices[dimension] = slice_
-            keys[dimension] = key
-        return np.sum(self._data[tuple(indices)], axis=self._axes)
+        # indices = [slice(None)] * self._data.ndim
+        # keys = [""] * self._data.ndim
+        # for key in selection:
+        #     dimension, slice_ = self._get_dimension_and_slice(key)
+        #     _raise_error_if_index_already_set(keys[dimension], key)
+        #     indices[dimension] = slice_
+        #     keys[dimension] = key
+        # return np.sum(self._data[tuple(indices)], axis=self._axes)
+        weights = self._weights.copy()
+        key = selection[0]
+        dim, slice_ = self._map[key]
+        weight = np.zeros_like(weights[dim])
+        weight[slice_] = 1
+        weights[dim] = weight
+        return np.einsum("a,a", self._data, weight)
 
     def _get_dimension_and_slice(self, key):
         try:
@@ -35,6 +45,8 @@ class Selector:
                 return self._read_range(key)
             elif _is_pair(key):
                 return self._read_pair(key)
+            elif isinstance(key, select.Operation):
+                return self._evaluate_operation(key)
             else:
                 assert False, f"Reading {key} is not implemented."
         except KeyError as error:
