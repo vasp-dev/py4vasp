@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from py4vasp import exception
-from py4vasp._util import index
+from py4vasp._util import index, select
 
 
 @pytest.mark.parametrize("selection, indices", [("Sr", 1), ("Ti", 2), ("O", 3)])
@@ -63,6 +63,21 @@ def test_select_two_of_four_components(selection, expected):
     assert np.all(selector[selection] == expected)
 
 
+@pytest.mark.parametrize(
+    "selection, indices",
+    [
+        ((select.Group(["1", "3"], select.range_separator),), slice(0, 3)),
+        ((select.Group(["2", "6"], select.range_separator),), slice(1, 6)),
+        ((select.Group(["4", "5"], select.range_separator),), slice(3, 5)),
+    ],
+)
+def test_select_range(selection, indices):
+    values = np.arange(10) ** 2
+    map_ = {0: {"1": 0, "2": 1, "3": 2, "4": 3, "5": 4, "6": 5}}
+    selector = index.Selector(map_, values)
+    assert selector[selection] == np.sum(values[indices])
+
+
 def test_error_when_duplicate_key():
     with pytest.raises(exception._Py4VaspInternalError):
         index.Selector({0: {"A": 1}, 1: {"A": 2}}, None)
@@ -71,3 +86,10 @@ def test_error_when_duplicate_key():
 def test_error_when_indices_are_not_int_or_slice():
     with pytest.raises(exception._Py4VaspInternalError):
         index.Selector({0: {"A": [1, 2]}}, None)
+
+
+def test_error_when_range_belongs_to_different_dimensions():
+    map_ = {0: {"A": 1}, 1: {"x": 2}}
+    selector = index.Selector(map_, np.zeros(10))
+    with pytest.raises(exception.IncorrectUsage):
+        selector[(select.Group(["A", "x"], ":"),)]

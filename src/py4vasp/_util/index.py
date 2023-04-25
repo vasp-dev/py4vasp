@@ -3,6 +3,7 @@
 import numpy as np
 
 from py4vasp import exception
+from py4vasp._util import select
 
 
 class Selector:
@@ -19,9 +20,23 @@ class Selector:
     def __getitem__(self, selection):
         indices = [slice(None)] * self._data.ndim
         for key in selection:
-            dimension, slice_ = self._map[key]
+            dimension, slice_ = self._get_dimension_and_slice(key)
             indices[dimension] = slice_
         return np.sum(self._data[tuple(indices)], axis=self._axes)
+
+    def _get_dimension_and_slice(self, key):
+        if isinstance(key, str):
+            return self._map[key]
+        elif isinstance(key, select.Group):
+            return self._read_group(key)
+
+    def _read_group(self, group):
+        dim1, left = self._map[group.group[0]]
+        dim2, right = self._map[group.group[1]]
+        if dim1 != dim2:
+            message = f"The range {group} could not be read, because the components correspond to different dimensions."
+            raise exception.IncorrectUsage(message)
+        return dim1, slice(left.start, right.stop)
 
 
 def _make_slice(indices):
