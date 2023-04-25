@@ -9,6 +9,7 @@ class Selector:
     def __init__(self, maps, data):
         self._data = data
         self._axes = tuple(maps.keys())
+        _raise_error_if_duplicate_keys(maps)
         self._map = {
             key: (dim, _make_slice(indices))
             for dim, map_ in maps.items()
@@ -30,3 +31,26 @@ def _make_slice(indices):
         return indices
     message = f"A conversion of {indices} to slice is not implemented."
     raise exception._Py4VaspInternalError(message)
+
+
+def _raise_error_if_duplicate_keys(maps):
+    duplicates = _find_duplicates(maps)
+    if not duplicates:
+        return
+    raise exception._Py4VaspInternalError(_format_error_message(duplicates))
+
+
+def _find_duplicates(maps):
+    keys = set()
+    duplicates = set()
+    for map_ in maps.values():
+        new_keys = set(map_.keys())
+        duplicates.update(keys.intersection(new_keys))
+        keys.update(new_keys)
+    return duplicates
+
+
+def _format_error_message(duplicates):
+    text = "', '".join(duplicates)
+    occur = "occurs" if len(duplicates) == 1 else "occur"
+    return f"The maps may not have duplicate keys, but '{text}' {occur} more than once."

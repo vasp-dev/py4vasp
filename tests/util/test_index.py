@@ -47,6 +47,11 @@ def test_select_two_of_two_components(selection, indices):
     assert selector[selection] == np.sum(values[indices])
 
 
+def test_error_when_duplicate_key():
+    with pytest.raises(exception._Py4VaspInternalError):
+        index.Selector({0: {"A": 1}, 1: {"A": 2}}, None)
+
+
 def test_error_when_indices_are_not_int_or_slice():
     with pytest.raises(exception._Py4VaspInternalError):
         index.Selector({0: {"A": [1, 2]}}, None)
