@@ -1,4 +1,4 @@
-# Copyright © VASP Software GmbH,
+# Copyright © VASP Software GmbH,G
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
@@ -25,32 +25,49 @@ class Selector:
         return np.sum(self._data[tuple(indices)], axis=self._axes)
 
     def _get_dimension_and_slice(self, key):
-        if isinstance(key, str):
-            return self._map[key]
-        elif isinstance(key, select.Group):
-            return self._read_group(key)
+        try:
+            if isinstance(key, str):
+                return self._map[key]
+            elif _is_range(key):
+                return self._read_range(key)
+            elif _is_pair(key):
+                return self._read_pair(key)
+            else:
+                assert False, f"Reading {key} is not implemented."
+        except KeyError as error:
+            message = (
+                "Could not read {key}, please check the spelling and capitalization."
+            )
+            raise exception.IncorrectUsage(message) from error
 
-    def _read_group(self, group):
-        dimension = self._read_dimension(group)
-        slice_ = self._merge_slice(group)
+    def _read_range(self, range_):
+        dimension = self._read_dimension(range_)
+        slice_ = self._merge_slice(range_)
         return dimension, slice_
 
-    def _read_dimension(self, group):
-        dim1, _ = self._map[group.group[0]]
-        dim2, _ = self._map[group.group[1]]
+    def _read_dimension(self, range_):
+        dim1, _ = self._map[range_.group[0]]
+        dim2, _ = self._map[range_.group[1]]
         if dim1 == dim2:
             return dim1
-        message = f"The range {group} could not be read, because the components correspond to different dimensions."
+        message = f"The range {range_} could not be read, because the components correspond to different dimensions."
         raise exception.IncorrectUsage(message)
 
-    def _merge_slice(self, group):
+    def _merge_slice(self, range_):
         allowed_steps = (None, 1)
-        _, left = self._map[group.group[0]]
-        _, right = self._map[group.group[1]]
+        _, left = self._map[range_.group[0]]
+        _, right = self._map[range_.group[1]]
         if left.step in allowed_steps and right.step in allowed_steps:
             return slice(left.start, right.stop)
-        message = f"Cannot read range {group} because the data is not contiguous."
+        message = f"Cannot read range {range_} because the data is not contiguous."
         raise exception.IncorrectUsage(message)
+
+    def _read_pair(self, pair):
+        key = str(pair)
+        if key in self._map:
+            return self._map[key]
+        pair.group = reversed(pair.group)
+        return self._map[str(pair)]
 
 
 def _make_slice(indices):
@@ -83,3 +100,11 @@ def _format_error_message(duplicates):
     text = "', '".join(duplicates)
     occur = "occurs" if len(duplicates) == 1 else "occur"
     return f"The maps may not have duplicate keys, but '{text}' {occur} more than once."
+
+
+def _is_range(key):
+    return isinstance(key, select.Group) and key.separator == select.range_separator
+
+
+def _is_pair(key):
+    return isinstance(key, select.Group) and key.separator == select.pair_separator

@@ -78,6 +78,23 @@ def test_select_range(selection, indices):
     assert selector[selection] == np.sum(values[indices])
 
 
+@pytest.mark.parametrize(
+    "selection, indices",
+    [
+        (("total",), 0),
+        ((select.Group(["A", "B"], select.pair_separator),), 1),
+        ((select.Group(["B", "A"], select.pair_separator),), 1),
+        ((select.Group(["C", "A"], select.pair_separator),), 2),
+        ((select.Group(["B", "C"], select.pair_separator),), 3),
+    ],
+)
+def test_select_pair(selection, indices):
+    values = np.arange(10) ** 2
+    map_ = {0: {"total": 0, "A~B": 1, "A~C": 2, "B~C": 3}}
+    selector = index.Selector(map_, values)
+    assert selector[selection] == np.sum(values[indices])
+
+
 def test_error_when_duplicate_key():
     with pytest.raises(exception._Py4VaspInternalError):
         index.Selector({0: {"A": 1}, 1: {"A": 2}}, None)
@@ -86,6 +103,20 @@ def test_error_when_duplicate_key():
 def test_error_when_indices_are_not_int_or_slice():
     with pytest.raises(exception._Py4VaspInternalError):
         index.Selector({0: {"A": [1, 2]}}, None)
+
+
+@pytest.mark.parametrize(
+    "selection",
+    [
+        ("A",),
+        (select.Group(["A", "B"], select.range_separator),),
+        (select.Group(["A", "B"], select.pair_separator),),
+    ],
+)
+def test_error_when_key_is_not_present(selection):
+    map_ = {0: {"B": 1}}
+    with pytest.raises(exception.IncorrectUsage):
+        index.Selector(map_, np.zeros(10))[selection]
 
 
 def test_error_when_range_belongs_to_different_dimensions():
