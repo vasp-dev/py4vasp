@@ -47,6 +47,22 @@ def test_select_two_of_two_components(selection, indices):
     assert selector[selection] == np.sum(values[indices])
 
 
+@pytest.mark.parametrize(
+    "selection, expected",
+    [
+        (("A", "x"), np.array([[30, 34, 38, 42, 46], [270, 274, 278, 282, 286]])),
+        (("A", "y"), np.array([[15, 17, 19, 21, 23], [135, 137, 139, 141, 143]])),
+        (("B", "x"), np.array([[110, 114, 118, 122, 126], [350, 354, 358, 362, 366]])),
+        (("B", "y"), np.array([[55, 57, 59, 61, 63], [175, 177, 179, 181, 183]])),
+    ],
+)
+def test_select_two_of_four_components(selection, expected):
+    values = np.arange(120).reshape((2, 3, 4, 5))
+    map_ = {1: {"A": 0, "B": 1}, 2: {"x": slice(None), "y": slice(1, 3)}}
+    selector = index.Selector(map_, values)
+    assert np.all(selector[selection] == expected)
+
+
 def test_error_when_duplicate_key():
     with pytest.raises(exception._Py4VaspInternalError):
         index.Selector({0: {"A": 1}, 1: {"A": 2}}, None)
