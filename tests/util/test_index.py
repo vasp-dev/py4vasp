@@ -48,5 +48,5 @@ def test_select_two_of_two_components(selection, indices):
 
 
 def test_error_when_indices_are_not_int_or_slice():
-    with pytest.raises(exception.NotImplemented):
+    with pytest.raises(exception._Py4VaspInternalError):
         index.Selector({0: {"A": [1, 2]}}, None)

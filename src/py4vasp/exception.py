@@ -43,3 +43,9 @@ class StopExecution(Py4VaspError):
     def _render_traceback_(self):
         "This exception is silent and does not produce any traceback."
         pass
+
+
+class _Py4VaspInternalError(Exception):
+    """This error should not propagate to the user. It should be raised when a local
+    routine encounters unexpected behavior that the routine cannot deal with. Then
+    the calling routine should resolve the error or reraise it as a Py4VaspError."""

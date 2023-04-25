@@ -29,4 +29,4 @@ def _make_slice(indices):
     if isinstance(indices, slice):
         return indices
     message = f"A conversion of {indices} to slice is not implemented."
-    raise exception.NotImplemented(message)
+    raise exception._Py4VaspInternalError(message)

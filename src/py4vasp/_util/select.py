@@ -14,10 +14,6 @@ all = "__all__"
 end_of_text = chr(3)
 
 
-class SelectionParserError(Exception):
-    """This is created when something goes wrong parsing a character"""
-
-
 @dataclasses.dataclass
 class Group:
     group: list
@@ -232,31 +228,31 @@ class Tree:
     def _raise_group_error_message(self, missing_side, separator):
         group = "range" if separator == range_separator else "pair"
         message = f"The {missing_side} argument of {group} is missing."
-        raise SelectionParserError(message)
+        raise exception._Py4VaspInternalError(message)
 
     def _raise_error_if_opening_parenthesis_without_argument(self):
         if len(self._children) > 0:
             return
         message = "Opening parenthesis '(' must relate to a previous argument."
-        raise SelectionParserError(message)
+        raise exception._Py4VaspInternalError(message)
 
     def _raise_error_if_superfluous_closing_parenthesis(self):
         if self._parent:
             return
         message = "Closing parenthesis ')' must follow an opening one."
-        raise SelectionParserError(message)
+        raise exception._Py4VaspInternalError(message)
 
     def _raise_error_if_closing_parenthesis_missing(self):
         if not self._parent or self._is_operation:
             return
         message = "An opening parenthesis was not followed by a closing one."
-        raise SelectionParserError(message)
+        raise exception._Py4VaspInternalError(message)
 
     def _raise_error_if_operation_misses_right_hand_side(self):
         if not self._is_operation or len(self._children) == 2:
             return
         message = f"The operator {self._content} is not followed by an element."
-        raise SelectionParserError(message)
+        raise exception._Py4VaspInternalError(message)
 
 
 def _parse_selection_character_by_character(tree, selection):
@@ -265,7 +261,7 @@ def _parse_selection_character_by_character(tree, selection):
         for ii, character in enumerate(selection):
             active_node = active_node.parse_character(character)
         active_node.parse_character(end_of_text)
-    except SelectionParserError as error:
+    except exception._Py4VaspInternalError as error:
         _raise_error_if_parsing_failed(error, selection, ii)
 
 
