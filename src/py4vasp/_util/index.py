@@ -31,12 +31,26 @@ class Selector:
             return self._read_group(key)
 
     def _read_group(self, group):
-        dim1, left = self._map[group.group[0]]
-        dim2, right = self._map[group.group[1]]
-        if dim1 != dim2:
-            message = f"The range {group} could not be read, because the components correspond to different dimensions."
-            raise exception.IncorrectUsage(message)
-        return dim1, slice(left.start, right.stop)
+        dimension = self._read_dimension(group)
+        slice_ = self._merge_slice(group)
+        return dimension, slice_
+
+    def _read_dimension(self, group):
+        dim1, _ = self._map[group.group[0]]
+        dim2, _ = self._map[group.group[1]]
+        if dim1 == dim2:
+            return dim1
+        message = f"The range {group} could not be read, because the components correspond to different dimensions."
+        raise exception.IncorrectUsage(message)
+
+    def _merge_slice(self, group):
+        allowed_steps = (None, 1)
+        _, left = self._map[group.group[0]]
+        _, right = self._map[group.group[1]]
+        if left.step in allowed_steps and right.step in allowed_steps:
+            return slice(left.start, right.stop)
+        message = f"Cannot read range {group} because the data is not contiguous."
+        raise exception.IncorrectUsage(message)
 
 
 def _make_slice(indices):

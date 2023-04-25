@@ -73,7 +73,7 @@ def test_select_two_of_four_components(selection, expected):
 )
 def test_select_range(selection, indices):
     values = np.arange(10) ** 2
-    map_ = {0: {"1": 0, "2": 1, "3": 2, "4": 3, "5": 4, "6": 5}}
+    map_ = {0: {"1": 0, "2": 1, "3": 2, "4": 3, "5": slice(4, 5), "6": slice(5, 6, 1)}}
     selector = index.Selector(map_, values)
     assert selector[selection] == np.sum(values[indices])
 
@@ -92,4 +92,13 @@ def test_error_when_range_belongs_to_different_dimensions():
     map_ = {0: {"A": 1}, 1: {"x": 2}}
     selector = index.Selector(map_, np.zeros(10))
     with pytest.raises(exception.IncorrectUsage):
-        selector[(select.Group(["A", "x"], ":"),)]
+        selector[(select.Group(["A", "x"], select.range_separator),)]
+
+
+@pytest.mark.parametrize("range_", [("A", "B"), ("B", "A")])
+def test_error_when_slice_has_step(range_):
+    map_ = {0: {"A": slice(1, 5, -1), "B": 2}}
+    selector = index.Selector(map_, np.zeros(10))
+    group = select.Group(range_, select.range_separator)
+    with pytest.raises(exception.IncorrectUsage):
+        selector[(group,)]
