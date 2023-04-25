@@ -133,3 +133,9 @@ def test_error_when_slice_has_step(range_):
     group = select.Group(range_, select.range_separator)
     with pytest.raises(exception.IncorrectUsage):
         selector[(group,)]
+
+
+def test_error_when_two_selections_for_the_same_dimension():
+    map_ = {0: {"A": 1, "B": 2}}
+    with pytest.raises(exception.IncorrectUsage):
+        index.Selector(map_, np.zeros(10))[("A", "B")]

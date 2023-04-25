@@ -19,9 +19,12 @@ class Selector:
 
     def __getitem__(self, selection):
         indices = [slice(None)] * self._data.ndim
+        keys = [""] * self._data.ndim
         for key in selection:
             dimension, slice_ = self._get_dimension_and_slice(key)
+            _raise_error_if_index_already_set(keys[dimension], key)
             indices[dimension] = slice_
+            keys[dimension] = key
         return np.sum(self._data[tuple(indices)], axis=self._axes)
 
     def _get_dimension_and_slice(self, key):
@@ -77,6 +80,13 @@ def _make_slice(indices):
         return indices
     message = f"A conversion of {indices} to slice is not implemented."
     raise exception._Py4VaspInternalError(message)
+
+
+def _raise_error_if_index_already_set(previous_key, key):
+    if not previous_key:
+        return
+    message = f"Conflicting keys '{previous_key}' and '{key}' act on the same index."
+    raise exception.IncorrectUsage(message)
 
 
 def _raise_error_if_duplicate_keys(maps):
