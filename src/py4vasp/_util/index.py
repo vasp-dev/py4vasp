@@ -27,6 +27,13 @@ class Selector:
         self._einsum = ",".join([string.ascii_letters[: data.ndim], *sorted(dims)])
 
     def __getitem__(self, selection):
+        weights = self._get_weights(selection)
+        relevant_weights = filter(lambda x: x is not None, weights)
+        return np.einsum(self._einsum, self._data, *relevant_weights)
+
+    def _get_weights(self, selection):
+        if isinstance(selection[0], select.Operation):
+            return self._evaluate_operation(selection[0])
         weights = self._weights.copy()
         keys = [""] * self._data.ndim
         for key in selection:
@@ -34,8 +41,7 @@ class Selector:
             _raise_error_if_index_already_set(keys[dimension], key)
             weights[dimension] = weight
             keys[dimension] = key
-        relevant_weights = filter(lambda x: x is not None, weights)
-        return np.einsum(self._einsum, self._data, *relevant_weights)
+        return weights
 
     def _get_dimension_and_weight(self, key):
         try:
@@ -45,8 +51,6 @@ class Selector:
                 return self._read_range(key)
             elif _is_pair(key):
                 return self._read_pair(key)
-            elif isinstance(key, select.Operation):
-                return self._evaluate_operation(key)
             else:
                 assert False, f"Reading {key} is not implemented."
         except KeyError as error:
@@ -88,6 +92,14 @@ class Selector:
             pair = dataclasses.replace(pair, group=reversed(pair.group))
             key = str(pair)
         return self._weight_from_slice(*self._map[key])
+
+    def _evaluate_operation(self, operation):
+        left_weights = self._get_weights(operation.left_operand)
+        right_weights = self._get_weights(operation.right_operand)
+        return [
+            _combine(*operands, operation.operator)
+            for operands in zip(left_weights, right_weights)
+        ]
 
 
 def _make_slice(indices):
@@ -135,3 +147,10 @@ def _is_range(key):
 
 def _is_pair(key):
     return isinstance(key, select.Group) and key.separator == select.pair_separator
+
+
+def _combine(left, right, operator):
+    if operator == "+":
+        return left + right
+    elif operator == "-":
+        return left - right

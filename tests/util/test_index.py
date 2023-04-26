@@ -95,19 +95,25 @@ def test_select_pair(selection, indices):
     assert selector[selection] == np.sum(values[indices])
 
 
-# @pytest.mark.parametrize(
-#     "selection, expected",
-#     [
-#         ((select.Operation(("A",), "+", ("B",)),), 5),
-#         ((select.Operation(("C",), "-", ("D",)),), -7),
-#         ((select.Operation(("E",), "+", ("E",)),), 50),
-#     ]
-# )
-# def test_select_operation(selection, expected):
-#     values = np.arange(10) ** 2
-#     map_ = {0: {"A": 1, "B": 2, "C": 3, "D": 4, "E": 5}}
-#     selector = index.Selector(map_, values)
-#     assert selector[selection] == expected
+def make_operation(left, operator, right):
+    return select.Operation((left,), operator, (right,))
+
+
+@pytest.mark.parametrize(
+    "selection, expected",
+    [
+        ((make_operation("A", "+", "B"),), 5),
+        ((make_operation("C", "-", "D"),), -7),
+        ((make_operation("E", "+", "E"),), 50),
+        ((make_operation("A", "+", make_operation("B", "-", "C")),), -4),
+        ((make_operation(make_operation("D", "-", "E"), "+", "F"),), 27),
+    ],
+)
+def test_select_operation(selection, expected, Assert):
+    values = np.arange(10) ** 2
+    map_ = {0: {"A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6}}
+    selector = index.Selector(map_, values)
+    Assert.allclose(selector[selection], expected)
 
 
 def test_error_when_duplicate_key():
