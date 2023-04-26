@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,G
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 import string
 
 import numpy as np
@@ -26,30 +27,20 @@ class Selector:
         self._einsum = ",".join([string.ascii_letters[: data.ndim], *sorted(dims)])
 
     def __getitem__(self, selection):
-        # indices = [slice(None)] * self._data.ndim
-        # keys = [""] * self._data.ndim
-        # for key in selection:
-        #     dimension, slice_ = self._get_dimension_and_slice(key)
-        #     _raise_error_if_index_already_set(keys[dimension], key)
-        #     indices[dimension] = slice_
-        #     keys[dimension] = key
-        # return np.sum(self._data[tuple(indices)], axis=self._axes)
         weights = self._weights.copy()
         keys = [""] * self._data.ndim
         for key in selection:
-            dimension, slice_ = self._get_dimension_and_slice(key)
-            weight = np.zeros_like(weights[dimension])
+            dimension, weight = self._get_dimension_and_weight(key)
             _raise_error_if_index_already_set(keys[dimension], key)
-            weight[slice_] = 1
             weights[dimension] = weight
             keys[dimension] = key
         relevant_weights = filter(lambda x: x is not None, weights)
         return np.einsum(self._einsum, self._data, *relevant_weights)
 
-    def _get_dimension_and_slice(self, key):
+    def _get_dimension_and_weight(self, key):
         try:
             if isinstance(key, str):
-                return self._map[key]
+                return self._weight_from_slice(*self._map[key])
             elif _is_range(key):
                 return self._read_range(key)
             elif _is_pair(key):
@@ -60,14 +51,19 @@ class Selector:
                 assert False, f"Reading {key} is not implemented."
         except KeyError as error:
             message = (
-                "Could not read {key}, please check the spelling and capitalization."
+                f"Could not read {key}, please check the spelling and capitalization."
             )
             raise exception.IncorrectUsage(message) from error
+
+    def _weight_from_slice(self, dimension, slice_):
+        weight = np.zeros_like(self._weights[dimension])
+        weight[slice_] = 1
+        return dimension, weight
 
     def _read_range(self, range_):
         dimension = self._read_dimension(range_)
         slice_ = self._merge_slice(range_)
-        return dimension, slice_
+        return self._weight_from_slice(dimension, slice_)
 
     def _read_dimension(self, range_):
         dim1, _ = self._map[range_.group[0]]
@@ -88,10 +84,10 @@ class Selector:
 
     def _read_pair(self, pair):
         key = str(pair)
-        if key in self._map:
-            return self._map[key]
-        pair.group = reversed(pair.group)
-        return self._map[str(pair)]
+        if key not in self._map:
+            pair = dataclasses.replace(pair, group=reversed(pair.group))
+            key = str(pair)
+        return self._weight_from_slice(*self._map[key])
 
 
 def _make_slice(indices):
