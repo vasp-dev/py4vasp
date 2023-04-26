@@ -35,12 +35,13 @@ class Selector:
         #     keys[dimension] = key
         # return np.sum(self._data[tuple(indices)], axis=self._axes)
         weights = self._weights.copy()
-        key = selection[0]
-        dim, slice_ = self._map[key]
-        weight = np.zeros_like(weights[dim])
-        weight[slice_] = 1
-        weights[dim] = weight
-        return np.einsum(self._einsum, self._data, weight)
+        for key in selection:
+            dim, slice_ = self._map[key]
+            weight = np.zeros_like(weights[dim])
+            weight[slice_] = 1
+            weights[dim] = weight
+        relevant_weights = filter(lambda x: x is not None, weights)
+        return np.einsum(self._einsum, self._data, *relevant_weights)
 
     def _get_dimension_and_slice(self, key):
         try:
