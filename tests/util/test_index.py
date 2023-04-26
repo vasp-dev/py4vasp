@@ -23,12 +23,12 @@ def test_sum_over_selection(selection, indices):
     assert selector[(selection,)] == np.sum(values[indices])
 
 
-# @pytest.mark.parametrize("selection, indices", [("x", [7]), ("y", [2, 5])])
-# def test_select_one_of_two_components(selection, indices):
-#     values = np.arange(30).reshape((3, 10))
-#     map_ = {1: {"x": 7, "y": slice(2, 6, 3)}}
-#     selector = index.Selector(map_, values)
-#     assert np.all(selector[(selection,)] == np.sum(values[:, indices], axis=1))
+@pytest.mark.parametrize("selection, indices", [("x", [7]), ("y", [2, 5])])
+def test_select_one_of_two_components(selection, indices):
+    values = np.arange(30).reshape((3, 10))
+    map_ = {1: {"x": 7, "y": slice(2, 6, 3)}}
+    selector = index.Selector(map_, values)
+    assert np.all(selector[(selection,)] == np.sum(values[:, indices], axis=1))
 
 
 # @pytest.mark.parametrize(

@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,G
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import string
+
 import numpy as np
 
 from py4vasp import exception
@@ -16,9 +18,12 @@ class Selector:
             for dim, map_ in maps.items()
             for key, indices in map_.items()
         }
-        self._weights = [None] * self._data.ndim
-        for dim, _ in maps.items():
-            self._weights[dim] = np.ones(self._data.shape[dim])
+        self._weights = [
+            np.ones(data.shape[dim]) if dim in maps else None
+            for dim in range(data.ndim)
+        ]
+        dims = {string.ascii_letters[dim] for dim in maps}
+        self._einsum = ",".join([string.ascii_letters[: data.ndim], *sorted(dims)])
 
     def __getitem__(self, selection):
         # indices = [slice(None)] * self._data.ndim
@@ -35,7 +40,7 @@ class Selector:
         weight = np.zeros_like(weights[dim])
         weight[slice_] = 1
         weights[dim] = weight
-        return np.einsum("a,a", self._data, weight)
+        return np.einsum(self._einsum, self._data, weight)
 
     def _get_dimension_and_slice(self, key):
         try:
