@@ -28,6 +28,7 @@ class Selector:
 
     def __getitem__(self, selection):
         weights = self._get_weights(selection)
+        print(weights)
         relevant_weights = filter(lambda x: x is not None, weights)
         return np.einsum(self._einsum, self._data, *relevant_weights)
 
@@ -96,6 +97,7 @@ class Selector:
     def _evaluate_operation(self, operation):
         left_weights = self._get_weights(operation.left_operand)
         right_weights = self._get_weights(operation.right_operand)
+        print(left_weights, right_weights)
         return [
             _combine(*operands, operation.operator)
             for operands in zip(left_weights, right_weights)
@@ -150,7 +152,9 @@ def _is_pair(key):
 
 
 def _combine(left, right, operator):
+    if left is None and right is None:
+        return None
     if operator == "+":
         return left + right
-    elif operator == "-":
+    if operator == "-":
         return left - right

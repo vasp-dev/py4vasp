@@ -116,6 +116,18 @@ def test_select_operation(selection, expected, Assert):
     Assert.allclose(selector[selection], expected)
 
 
+@pytest.mark.xfail
+@pytest.mark.parametrize(
+    "selection, expected", [((make_operation("A", "+", "x"),), [669, 7029, 20589])]
+)
+def test_mix_indices(selection, expected, Assert):
+    values = np.arange(60).reshape((3, 4, 5)) ** 2
+    map_ = {1: {"A": 1, "B": 2}, 2: {"x": 1, "y": 2}}
+    selector = index.Selector(map_, values)
+    print(selector[("A",)], selector[("x",)])
+    Assert.allclose(selector[selection], expected)
+
+
 def test_error_when_duplicate_key():
     with pytest.raises(exception._Py4VaspInternalError):
         index.Selector({0: {"A": 1}, 1: {"A": 2}}, None)
