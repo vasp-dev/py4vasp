@@ -63,36 +63,36 @@ def test_select_two_of_four_components(selection, expected):
     assert np.all(selector[selection] == expected)
 
 
-# @pytest.mark.parametrize(
-#     "selection, indices",
-#     [
-#         ((select.Group(["1", "3"], select.range_separator),), slice(0, 3)),
-#         ((select.Group(["2", "6"], select.range_separator),), slice(1, 6)),
-#         ((select.Group(["4", "5"], select.range_separator),), slice(3, 5)),
-#     ],
-# )
-# def test_select_range(selection, indices):
-#     values = np.arange(10) ** 2
-#     map_ = {0: {"1": 0, "2": 1, "3": 2, "4": 3, "5": slice(4, 5), "6": slice(5, 6, 1)}}
-#     selector = index.Selector(map_, values)
-#     assert selector[selection] == np.sum(values[indices])
+@pytest.mark.parametrize(
+    "selection, indices",
+    [
+        ((select.Group(["1", "3"], select.range_separator),), slice(0, 3)),
+        ((select.Group(["2", "6"], select.range_separator),), slice(1, 6)),
+        ((select.Group(["4", "5"], select.range_separator),), slice(3, 5)),
+    ],
+)
+def test_select_range(selection, indices):
+    values = np.arange(10) ** 2
+    map_ = {0: {"1": 0, "2": 1, "3": 2, "4": 3, "5": slice(4, 5), "6": slice(5, 6, 1)}}
+    selector = index.Selector(map_, values)
+    assert selector[selection] == np.sum(values[indices])
 
 
-# @pytest.mark.parametrize(
-#     "selection, indices",
-#     [
-#         (("total",), 0),
-#         ((select.Group(["A", "B"], select.pair_separator),), 1),
-#         ((select.Group(["B", "A"], select.pair_separator),), 1),
-#         ((select.Group(["C", "A"], select.pair_separator),), 2),
-#         ((select.Group(["B", "C"], select.pair_separator),), 3),
-#     ],
-# )
-# def test_select_pair(selection, indices):
-#     values = np.arange(10) ** 2
-#     map_ = {0: {"total": 0, "A~B": 1, "A~C": 2, "B~C": 3}}
-#     selector = index.Selector(map_, values)
-#     assert selector[selection] == np.sum(values[indices])
+@pytest.mark.parametrize(
+    "selection, indices",
+    [
+        (("total",), 0),
+        ((select.Group(["A", "B"], select.pair_separator),), 1),
+        ((select.Group(["B", "A"], select.pair_separator),), 1),
+        ((select.Group(["C", "A"], select.pair_separator),), 2),
+        ((select.Group(["B", "C"], select.pair_separator),), 3),
+    ],
+)
+def test_select_pair(selection, indices):
+    values = np.arange(10) ** 2
+    map_ = {0: {"total": 0, "A~B": 1, "A~C": 2, "B~C": 3}}
+    selector = index.Selector(map_, values)
+    assert selector[selection] == np.sum(values[indices])
 
 
 # @pytest.mark.parametrize(
@@ -109,47 +109,48 @@ def test_select_two_of_four_components(selection, expected):
 #     selector = index.Selector(map_, values)
 #     assert selector[selection] == expected
 
-# def test_error_when_duplicate_key():
-#     with pytest.raises(exception._Py4VaspInternalError):
-#         index.Selector({0: {"A": 1}, 1: {"A": 2}}, None)
+
+def test_error_when_duplicate_key():
+    with pytest.raises(exception._Py4VaspInternalError):
+        index.Selector({0: {"A": 1}, 1: {"A": 2}}, None)
 
 
-# def test_error_when_indices_are_not_int_or_slice():
-#     with pytest.raises(exception._Py4VaspInternalError):
-#         index.Selector({0: {"A": [1, 2]}}, None)
+def test_error_when_indices_are_not_int_or_slice():
+    with pytest.raises(exception._Py4VaspInternalError):
+        index.Selector({0: {"A": [1, 2]}}, None)
 
 
-# @pytest.mark.parametrize(
-#     "selection",
-#     [
-#         ("A",),
-#         (select.Group(["A", "B"], select.range_separator),),
-#         (select.Group(["A", "B"], select.pair_separator),),
-#     ],
-# )
-# def test_error_when_key_is_not_present(selection):
-#     map_ = {0: {"B": 1}}
-#     with pytest.raises(exception.IncorrectUsage):
-#         index.Selector(map_, np.zeros(10))[selection]
+@pytest.mark.parametrize(
+    "selection",
+    [
+        ("A",),
+        (select.Group(["A", "B"], select.range_separator),),
+        (select.Group(["A", "B"], select.pair_separator),),
+    ],
+)
+def test_error_when_key_is_not_present(selection):
+    map_ = {0: {"B": 1}}
+    with pytest.raises(exception.IncorrectUsage):
+        index.Selector(map_, np.zeros(10))[selection]
 
 
-# def test_error_when_range_belongs_to_different_dimensions():
-#     map_ = {0: {"A": 1}, 1: {"x": 2}}
-#     selector = index.Selector(map_, np.zeros(10))
-#     with pytest.raises(exception.IncorrectUsage):
-#         selector[(select.Group(["A", "x"], select.range_separator),)]
+def test_error_when_range_belongs_to_different_dimensions():
+    map_ = {0: {"A": 1}, 1: {"x": 2}}
+    selector = index.Selector(map_, np.zeros(10))
+    with pytest.raises(exception.IncorrectUsage):
+        selector[(select.Group(["A", "x"], select.range_separator),)]
 
 
-# @pytest.mark.parametrize("range_", [("A", "B"), ("B", "A")])
-# def test_error_when_slice_has_step(range_):
-#     map_ = {0: {"A": slice(1, 5, -1), "B": 2}}
-#     selector = index.Selector(map_, np.zeros(10))
-#     group = select.Group(range_, select.range_separator)
-#     with pytest.raises(exception.IncorrectUsage):
-#         selector[(group,)]
+@pytest.mark.parametrize("range_", [("A", "B"), ("B", "A")])
+def test_error_when_slice_has_step(range_):
+    map_ = {0: {"A": slice(1, 5, -1), "B": 2}}
+    selector = index.Selector(map_, np.zeros(10))
+    group = select.Group(range_, select.range_separator)
+    with pytest.raises(exception.IncorrectUsage):
+        selector[(group,)]
 
 
-# def test_error_when_two_selections_for_the_same_dimension():
-#     map_ = {0: {"A": 1, "B": 2}}
-#     with pytest.raises(exception.IncorrectUsage):
-#         index.Selector(map_, np.zeros(10))[("A", "B")]
+def test_error_when_two_selections_for_the_same_dimension():
+    map_ = {0: {"A": 1, "B": 2}}
+    with pytest.raises(exception.IncorrectUsage):
+        index.Selector(map_, np.zeros(10))[("A", "B")]

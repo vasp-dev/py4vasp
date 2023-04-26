@@ -35,11 +35,14 @@ class Selector:
         #     keys[dimension] = key
         # return np.sum(self._data[tuple(indices)], axis=self._axes)
         weights = self._weights.copy()
+        keys = [""] * self._data.ndim
         for key in selection:
-            dim, slice_ = self._map[key]
-            weight = np.zeros_like(weights[dim])
+            dimension, slice_ = self._get_dimension_and_slice(key)
+            weight = np.zeros_like(weights[dimension])
+            _raise_error_if_index_already_set(keys[dimension], key)
             weight[slice_] = 1
-            weights[dim] = weight
+            weights[dimension] = weight
+            keys[dimension] = key
         relevant_weights = filter(lambda x: x is not None, weights)
         return np.einsum(self._einsum, self._data, *relevant_weights)
 
