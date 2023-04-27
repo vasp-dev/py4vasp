@@ -39,7 +39,7 @@ class Selector:
                 assert False, f"Reading {key} is not implemented."
         except KeyError as error:
             message = (
-                "Could not read {key}, please check the spelling and capitalization."
+                f"Could not read {key}, please check the spelling and capitalization."
             )
             raise exception.IncorrectUsage(message) from error
 
