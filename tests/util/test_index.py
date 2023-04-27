@@ -122,6 +122,7 @@ def test_select_operation(selection, expected, Assert):
         ((make_operation("A", "+", "x"),), [669, 7029, 20589]),
         ((make_operation("y", "-", "B"),), [-244, -1524, -3604]),
         ((select.Operation(("A", "y"), "-", ("x", "B")),), [-72, -232, -392]),
+        (("A", make_operation("y", "-", "x")), [13, 53, 93]),
     ],
 )
 def test_mix_indices(selection, expected, Assert):
