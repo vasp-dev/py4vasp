@@ -6,6 +6,12 @@ from py4vasp import exception
 from py4vasp._util import select
 
 
+class Slices(list):
+    def __init__(self, list_, factor=1):
+        super().__init__(list_)
+        self.factor = factor
+
+
 class Selector:
     def __init__(self, maps, data):
         self._data = data
@@ -18,14 +24,14 @@ class Selector:
         }
 
     def __getitem__(self, selection):
-        indices = [slice(None)] * self._data.ndim
+        slices = Slices([slice(None)] * self._data.ndim)
         keys = [""] * self._data.ndim
         for key in selection:
             dimension, slice_ = self._get_dimension_and_slice(key)
             _raise_error_if_index_already_set(keys[dimension], key)
-            indices[dimension] = slice_
+            slices[dimension] = slice_
             keys[dimension] = key
-        return np.sum(self._data[tuple(indices)], axis=self._axes)
+        return slices.factor * np.sum(self._data[tuple(slices)], axis=self._axes)
 
     def _get_dimension_and_slice(self, key):
         try:
