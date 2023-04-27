@@ -95,6 +95,42 @@ def test_select_pair(selection, indices):
     assert selector[selection] == np.sum(values[indices])
 
 
+def make_operation(left, operator, right):
+    return select.Operation((left,), operator, (right,))
+
+
+@pytest.mark.parametrize(
+    "selection, expected",
+    [
+        ((make_operation("A", "+", "B"),), 5),
+        ((make_operation("C", "-", "D"),), -7),
+        ((make_operation("E", "+", "E"),), 50),
+        ((make_operation("A", "+", make_operation("B", "-", "C")),), -4),
+        ((make_operation(make_operation("D", "-", "E"), "+", "F"),), 27),
+    ],
+)
+def test_select_operation(selection, expected, Assert):
+    values = np.arange(10) ** 2
+    map_ = {0: {"A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6}}
+    selector = index.Selector(map_, values)
+    Assert.allclose(selector[selection], expected)
+
+
+@pytest.mark.parametrize(
+    "selection, expected",
+    [
+        ((make_operation("A", "+", "x"),), [669, 7029, 20589]),
+        ((make_operation("y", "-", "B"),), [-244, -1524, -3604]),
+        ((select.Operation(("A", "y"), "-", ("x", "B")),), [-72, -232, -392]),
+    ],
+)
+def test_mix_indices(selection, expected, Assert):
+    values = np.arange(60).reshape((3, 4, 5)) ** 2
+    map_ = {1: {"A": 1, "B": 2}, 2: {"x": 1, "y": 2}}
+    selector = index.Selector(map_, values)
+    Assert.allclose(selector[selection], expected)
+
+
 def test_error_when_duplicate_key():
     with pytest.raises(exception._Py4VaspInternalError):
         index.Selector({0: {"A": 1}, 1: {"A": 2}}, None)

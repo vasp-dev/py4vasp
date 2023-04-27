@@ -7,9 +7,9 @@ from py4vasp._util import select
 
 
 class Slices(list):
-    def __init__(self, list_, factor=1):
+    def __init__(self, list_, operator):
         super().__init__(list_)
-        self.factor = factor
+        self.factor = 1 if operator == "+" else -1
 
 
 class Selector:
@@ -24,14 +24,23 @@ class Selector:
         }
 
     def __getitem__(self, selection):
-        slices = Slices([slice(None)] * self._data.ndim)
+        return sum(
+            slices.factor * np.sum(self._data[tuple(slices)], axis=self._axes)
+            for slices in self._get_all_slices(selection)
+        )
+
+    def _get_all_slices(self, selection, operator="+"):
+        if isinstance(selection[0], select.Operation):
+            yield from self._evaluate_operation(selection[0])
+            return
+        slices = Slices([slice(None)] * self._data.ndim, operator)
         keys = [""] * self._data.ndim
         for key in selection:
             dimension, slice_ = self._get_dimension_and_slice(key)
             _raise_error_if_index_already_set(keys[dimension], key)
             slices[dimension] = slice_
             keys[dimension] = key
-        return slices.factor * np.sum(self._data[tuple(slices)], axis=self._axes)
+        yield slices
 
     def _get_dimension_and_slice(self, key):
         try:
@@ -77,6 +86,10 @@ class Selector:
             return self._map[key]
         pair.group = reversed(pair.group)
         return self._map[str(pair)]
+
+    def _evaluate_operation(self, operation):
+        yield from self._get_all_slices(operation.left_operand)
+        yield from self._get_all_slices(operation.right_operand, operation.operator)
 
 
 def _make_slice(indices):
