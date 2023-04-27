@@ -1,8 +1,5 @@
 # Copyright © VASP Software GmbH,G
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import dataclasses
-import string
-
 import numpy as np
 
 from py4vasp import exception
@@ -19,35 +16,21 @@ class Selector:
             for dim, map_ in maps.items()
             for key, indices in map_.items()
         }
-        self._weights = [
-            np.ones(data.shape[dim]) if dim in maps else None
-            for dim in range(data.ndim)
-        ]
-        dims = {string.ascii_letters[dim] for dim in maps}
-        self._einsum = ",".join([string.ascii_letters[: data.ndim], *sorted(dims)])
 
     def __getitem__(self, selection):
-        weights = self._get_weights(selection)
-        print(weights)
-        relevant_weights = filter(lambda x: x is not None, weights)
-        return np.einsum(self._einsum, self._data, *relevant_weights)
-
-    def _get_weights(self, selection):
-        if isinstance(selection[0], select.Operation):
-            return self._evaluate_operation(selection[0])
-        weights = self._weights.copy()
+        indices = [slice(None)] * self._data.ndim
         keys = [""] * self._data.ndim
         for key in selection:
-            dimension, weight = self._get_dimension_and_weight(key)
+            dimension, slice_ = self._get_dimension_and_slice(key)
             _raise_error_if_index_already_set(keys[dimension], key)
-            weights[dimension] = weight
+            indices[dimension] = slice_
             keys[dimension] = key
-        return weights
+        return np.sum(self._data[tuple(indices)], axis=self._axes)
 
-    def _get_dimension_and_weight(self, key):
+    def _get_dimension_and_slice(self, key):
         try:
             if isinstance(key, str):
-                return self._weight_from_slice(*self._map[key])
+                return self._map[key]
             elif _is_range(key):
                 return self._read_range(key)
             elif _is_pair(key):
@@ -56,19 +39,14 @@ class Selector:
                 assert False, f"Reading {key} is not implemented."
         except KeyError as error:
             message = (
-                f"Could not read {key}, please check the spelling and capitalization."
+                "Could not read {key}, please check the spelling and capitalization."
             )
             raise exception.IncorrectUsage(message) from error
-
-    def _weight_from_slice(self, dimension, slice_):
-        weight = np.zeros_like(self._weights[dimension])
-        weight[slice_] = 1
-        return dimension, weight
 
     def _read_range(self, range_):
         dimension = self._read_dimension(range_)
         slice_ = self._merge_slice(range_)
-        return self._weight_from_slice(dimension, slice_)
+        return dimension, slice_
 
     def _read_dimension(self, range_):
         dim1, _ = self._map[range_.group[0]]
@@ -89,19 +67,10 @@ class Selector:
 
     def _read_pair(self, pair):
         key = str(pair)
-        if key not in self._map:
-            pair = dataclasses.replace(pair, group=reversed(pair.group))
-            key = str(pair)
-        return self._weight_from_slice(*self._map[key])
-
-    def _evaluate_operation(self, operation):
-        left_weights = self._get_weights(operation.left_operand)
-        right_weights = self._get_weights(operation.right_operand)
-        print(left_weights, right_weights)
-        return [
-            _combine(*operands, operation.operator)
-            for operands in zip(left_weights, right_weights)
-        ]
+        if key in self._map:
+            return self._map[key]
+        pair.group = reversed(pair.group)
+        return self._map[str(pair)]
 
 
 def _make_slice(indices):
@@ -149,12 +118,3 @@ def _is_range(key):
 
 def _is_pair(key):
     return isinstance(key, select.Group) and key.separator == select.pair_separator
-
-
-def _combine(left, right, operator):
-    if left is None and right is None:
-        return None
-    if operator == "+":
-        return left + right
-    if operator == "-":
-        return left - right
