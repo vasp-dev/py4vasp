@@ -135,6 +135,12 @@ def test_select_operation(selection, expected, Assert):
         (("A", make_operation("y", "-", "x")), [13, 53, 93]),
         ((make_operation(make_range("A", "B"), "-", "x"),), [571, 5411, 15051]),
         ((make_operation("y", "-", make_pair("z", "z")),), [-80, -240, -400]),
+        # TODO: unary operators, parentheses
+        # A - B(x + y) should be A - B(x) - B(y)
+        # (
+        #     (select.Operation(("A",), "-", ("B", make_operation("x", "+", "y"))),),
+        #     [-10, 1670, 5750],
+        # ),
     ],
 )
 def test_mix_indices(selection, expected, Assert):
@@ -142,6 +148,8 @@ def test_mix_indices(selection, expected, Assert):
     map_ = {1: {"A": 1, "B": 2}, 2: {"x": 1, "y": 2, "z~z": 3}}
     selector = index.Selector(map_, values)
     Assert.allclose(selector[selection], expected)
+
+
 
 
 def test_complex_operation(Assert):
