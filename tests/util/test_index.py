@@ -7,6 +7,18 @@ from py4vasp import exception
 from py4vasp._util import index, select
 
 
+def make_range(left, right):
+    return select.Group([left, right], select.range_separator)
+
+
+def make_pair(left, right):
+    return select.Group([left, right], select.pair_separator)
+
+
+def make_operation(left, operator, right):
+    return select.Operation((left,), operator, (right,))
+
+
 @pytest.mark.parametrize("selection, indices", [("Sr", 1), ("Ti", 2), ("O", 3)])
 def test_one_component(selection, indices):
     values = np.arange(10) ** 2
@@ -66,9 +78,9 @@ def test_select_two_of_four_components(selection, expected):
 @pytest.mark.parametrize(
     "selection, indices",
     [
-        ((select.Group(["1", "3"], select.range_separator),), slice(0, 3)),
-        ((select.Group(["2", "6"], select.range_separator),), slice(1, 6)),
-        ((select.Group(["4", "5"], select.range_separator),), slice(3, 5)),
+        ((make_range("1", "3"),), slice(0, 3)),
+        ((make_range("2", "6"),), slice(1, 6)),
+        ((make_range("4", "5"),), slice(3, 5)),
     ],
 )
 def test_select_range(selection, indices):
@@ -82,10 +94,10 @@ def test_select_range(selection, indices):
     "selection, indices",
     [
         (("total",), 0),
-        ((select.Group(["A", "B"], select.pair_separator),), 1),
-        ((select.Group(["B", "A"], select.pair_separator),), 1),
-        ((select.Group(["C", "A"], select.pair_separator),), 2),
-        ((select.Group(["B", "C"], select.pair_separator),), 3),
+        ((make_pair("A", "B"),), 1),
+        ((make_pair("B", "A"),), 1),
+        ((make_pair("C", "A"),), 2),
+        ((make_pair("B", "C"),), 3),
     ],
 )
 def test_select_pair(selection, indices):
@@ -95,10 +107,6 @@ def test_select_pair(selection, indices):
     assert selector[selection] == np.sum(values[indices])
 
 
-def make_operation(left, operator, right):
-    return select.Operation((left,), operator, (right,))
-
-
 @pytest.mark.parametrize(
     "selection, expected",
     [
@@ -106,7 +114,9 @@ def make_operation(left, operator, right):
         ((make_operation("C", "-", "D"),), -7),
         ((make_operation("E", "+", "E"),), 50),
         ((make_operation("A", "+", make_operation("B", "-", "C")),), -4),
+        ((make_operation("A", "-", make_operation("B", "+", "C")),), 6),
         ((make_operation(make_operation("D", "-", "E"), "+", "F"),), 27),
+        ((make_operation(make_operation("D", "+", "E"), "-", "F"),), 5),
     ],
 )
 def test_select_operation(selection, expected, Assert):
@@ -123,13 +133,33 @@ def test_select_operation(selection, expected, Assert):
         ((make_operation("y", "-", "B"),), [-244, -1524, -3604]),
         ((select.Operation(("A", "y"), "-", ("x", "B")),), [-72, -232, -392]),
         (("A", make_operation("y", "-", "x")), [13, 53, 93]),
+        ((make_operation(make_range("A", "B"), "-", "x"),), [571, 5411, 15051]),
+        ((make_operation("y", "-", make_pair("z", "z")),), [-80, -240, -400]),
     ],
 )
 def test_mix_indices(selection, expected, Assert):
     values = np.arange(60).reshape((3, 4, 5)) ** 2
-    map_ = {1: {"A": 1, "B": 2}, 2: {"x": 1, "y": 2}}
+    map_ = {1: {"A": 1, "B": 2}, 2: {"x": 1, "y": 2, "z~z": 3}}
     selector = index.Selector(map_, values)
     Assert.allclose(selector[selection], expected)
+
+
+def test_complex_operation(Assert):
+    values = np.sqrt(np.arange(120).reshape([5, 4, 3, 2]))
+    map_ = {
+        0: {"x": 1, "y": 2, "u": 3, "v": 4},
+        1: {"A": 1, "B": 2, "C~D": 3},
+        2: {"1": 0, "z": 1, "3": 2},
+    }
+    selector = index.Selector(map_, values)
+    selection = "A(x + y(z)) + B(1:3 u - v) - C~D"
+    selections = select.Tree.from_selection(selection).selections()
+    expected_results = [
+        [17.923642676146642, 18.351800332750983],
+        [-98.3178573582437 , -99.00269818706242],
+    ]
+    for selection, expected in zip(selections, expected_results):
+        Assert.allclose(selector[selection], expected)
 
 
 def test_error_when_duplicate_key():
