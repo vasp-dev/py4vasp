@@ -45,7 +45,8 @@ class Operation:
 
 
 class Tree:
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, *, _internal=False):
+        _raise_error_if_not_internal_call(_internal)
         self._new_selection = True
         self._space_parsed = False
         self._is_operation = False
@@ -57,7 +58,7 @@ class Tree:
 
     @classmethod
     def from_selection(cls, selection):
-        tree = cls()
+        tree = cls(_internal=True)
         selection = selection or ""
         message = f"Selection must be a string. The passed argument {selection} is not allowed."
         check.raise_error_if_not_string(selection, message)
@@ -169,7 +170,7 @@ class Tree:
 
     def _transform_to_operation(self, operator):
         self._is_operation = True
-        node = Tree(self)
+        node = Tree(self, _internal=True)
         node._content = self._content
         node._children = self._children
         for child in node._children:
@@ -206,7 +207,7 @@ class Tree:
     def _add_child_if_needed(self, ignore_space):
         if not self._new_child_needed(ignore_space):
             return
-        self._children.append(Tree(self))
+        self._children.append(Tree(self, _internal=True))
         self._new_selection = False
 
     def _new_child_needed(self, ignore_space=False):
@@ -271,6 +272,18 @@ def _raise_error_if_parsing_failed(error, selection, ii):
   {" " * ii}^
 {error}"""
     raise exception.IncorrectUsage(message)
+
+
+def _raise_error_if_not_internal_call(internal):
+    if internal:
+        return
+    message = """
+Tree was initialized using the default constructor; this is most likely not what you
+want. In most cases, you should use `Tree.from_selection` to initialize instead. The
+default constructor is used internally to construct the leaves of the Tree. In the rare
+case, where you do want to use the internal constructor, please pass the keyword
+argument `_internal = True`."""
+    raise exception._Py4VaspInternalError(message)
 
 
 def selections_to_string(selections):

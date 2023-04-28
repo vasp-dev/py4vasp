@@ -252,6 +252,12 @@ def test_missing_operand(selection):
         select.Tree.from_selection(selection)
 
 
+@pytest.mark.parametrize("selection", [None, "string"])
+def test_default_constructor_raises_error(selection):
+    with pytest.raises(exception._Py4VaspInternalError):
+        select.Tree(selection)
+
+
 def selections(selection):
     tree = select.Tree.from_selection(selection)
     return tuple(tree.selections())

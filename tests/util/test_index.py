@@ -156,7 +156,7 @@ def test_complex_operation(Assert):
     selections = select.Tree.from_selection(selection).selections()
     expected_results = [
         [17.923642676146642, 18.351800332750983],
-        [-98.3178573582437 , -99.00269818706242],
+        [-98.3178573582437, -99.00269818706242],
     ]
     for selection, expected in zip(selections, expected_results):
         Assert.allclose(selector[selection], expected)
