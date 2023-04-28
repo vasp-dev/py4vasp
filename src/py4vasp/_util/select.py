@@ -1,5 +1,46 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+""" Parse a string to a Tree of selections.
+
+In many cases, a user may want to select a certain subset of quantities to be refined.
+Examples include selecting the projected DOS or a particular component of the energy.
+To give the user a consistent experience, all routines that provide this functionality
+should use this Tree to understand what the user input. A typical use-case will look
+like this
+
+>>> from py4vasp._util import select
+>>> def parse_user_selection(selection):
+>>>     tree = select.Tree.from_selection(selection)
+>>>     for selection in tree.selections():
+>>>         ...     # code to analyze the selection
+
+Each individual selection will be a tuple to allow for nested selections. In the
+simplest case where you only want to provide dictionary-like access, you could use the
+first component of this tuple.
+
+Features
+--------
+lists
+    A space or a comma separates elements in the selection. A string "a, b c" would
+    result in three selections "a", "b", and "c".
+
+nesting
+    Occasionally, you want to select from multiple indices e.g. the d DOS of Ti. This
+    selection would be achieved by "Ti(d)" which would result in a single selection
+    represented by the tuple '("Ti", "d")'. Note that the order of the selection should
+    not matter in general, so "d(Ti)" should yield the same result as "Ti(d)".
+
+groups
+    Sometimes it can be useful to group multiple elements together. Currently, it is
+    supported to connect two elements with a colon to form a range ("1:3") or with
+    a tilde to form a pair ("A~B").
+
+operations
+    Adding or subtracting two quantities is supported. Currently this will interpret
+    the operations left to right, so multiplication and division is not available to
+    make sure the equation is correct.
+
+"""
 import dataclasses
 import itertools
 
@@ -12,36 +53,6 @@ group_separators = (range_separator, pair_separator)
 operators = ("+", "-")
 all = "__all__"
 end_of_text = chr(3)
-
-
-@dataclasses.dataclass
-class Group:
-    group: list
-    separator: str
-    __str__ = lambda self: self.separator.join(self.group)
-
-    def __iadd__(self, character):
-        self.group[-1] += character
-        return self
-
-
-@dataclasses.dataclass
-class _Operator:
-    operator: str
-    _id: int
-    __str__ = lambda self: f"_{self._id}_[{self.operator}]"
-
-
-@dataclasses.dataclass
-class Operation:
-    left_operand: tuple
-    operator: str
-    right_operand: tuple
-
-    def __str__(self):
-        left_op = _selection_to_string(self.left_operand)
-        right_op = _selection_to_string(self.right_operand)
-        return f"{left_op} {self.operator} {right_op}"
 
 
 class Tree:
@@ -254,6 +265,36 @@ class Tree:
             return
         message = f"The operator {self._content} is not followed by an element."
         raise exception._Py4VaspInternalError(message)
+
+
+@dataclasses.dataclass
+class Group:
+    group: list
+    separator: str
+    __str__ = lambda self: self.separator.join(self.group)
+
+    def __iadd__(self, character):
+        self.group[-1] += character
+        return self
+
+
+@dataclasses.dataclass
+class _Operator:
+    operator: str
+    _id: int
+    __str__ = lambda self: f"_{self._id}_[{self.operator}]"
+
+
+@dataclasses.dataclass
+class Operation:
+    left_operand: tuple
+    operator: str
+    right_operand: tuple
+
+    def __str__(self):
+        left_op = _selection_to_string(self.left_operand)
+        right_op = _selection_to_string(self.right_operand)
+        return f"{left_op} {self.operator} {right_op}"
 
 
 def _parse_selection_character_by_character(tree, selection):
