@@ -5,8 +5,8 @@
 In many cases, a user may want to select a certain subset of quantities to be refined.
 Examples include selecting the projected DOS or a particular component of the energy.
 To give the user a consistent experience, all routines that provide this functionality
-should use this Tree to understand what the user input. A typical use-case will look
-like this
+should use this Tree to understand the user input. A typical use-case will look like
+this
 
 >>> from py4vasp._util import select
 >>> def parse_user_selection(selection):
@@ -40,6 +40,9 @@ operations
     the operations left to right, so multiplication and division is not available to
     make sure the equation is correct.
 
+For the common case, where you want to use the user selection to specify the index of
+an array, the `py4vasp._util.index.Selector` defines an interface compatible with the
+features of the Tree.
 """
 import dataclasses
 import itertools
@@ -56,7 +59,10 @@ end_of_text = chr(3)
 
 
 class Tree:
+    "Contains the whole tree or a subsection of the tree parsed from the user input."
+
     def __init__(self, parent=None, *, _internal=False):
+        "For internal use, you should not call this. Use `from_selection` instead."
         _raise_error_if_not_internal_call(_internal)
         self._new_selection = True
         self._space_parsed = False
@@ -69,11 +75,18 @@ class Tree:
 
     @classmethod
     def from_selection(cls, selection):
+        """Parse the user selection into a Tree object.
+
+        Parameters
+        ----------
+        selection : str
+            User provided string defining some selected quantities.
+        """
         tree = cls(_internal=True)
         selection = selection or ""
         message = f"Selection must be a string. The passed argument {selection} is not allowed."
         check.raise_error_if_not_string(selection, message)
-        _parse_selection_character_by_character(tree, selection)
+        tree._parse_selection_character_by_character(selection)
         return tree
 
     @property
@@ -91,24 +104,42 @@ class Tree:
     def __str__(self):
         return str(self._content)
 
-    def selections(self):
+    def selections(self, selected=()):
+        """Core routine generating all user selections parsed.
+
+        This will generate one selection at a time so it should be used in a loop or
+        converted to a list.
+
+        Parameters
+        ----------
+        selected : tuple
+            Prior selections obtained from a different source. These selections will
+            be added to any additional selection parsed from the user input. If not
+            set, if defaults to giving just the user selections.
+
+        Yields
+        ------
+        tuple
+            Each selection corresponds to one path from the root of the tree to one of
+            its leaves.
+        """
         content = (self._content,) if self._content else ()
-        if len(self._children) == 0:
-            yield content
+        if not self._children:
+            yield selected + content
         elif self._is_operation:
-            left_operands = self._children[0].selections()
-            right_operands = self._children[1].selections()
-            for left_op, right_op in itertools.product(left_operands, right_operands):
-                yield (Operation(left_op, self._content.operator, right_op),)
+            yield from self._operation_selections(selected)
         else:
             for child in self._children:
-                for selection in child.selections():
-                    yield content + selection
+                yield from child.selections(selected + content)
 
-    def _empty_tree(self):
-        return self._parent is None and not self._children
+    def _operation_selections(self, selected):
+        left_operands = self._children[0].selections()
+        right_operands = self._children[1].selections()
+        for left_op, right_op in itertools.product(left_operands, right_operands):
+            yield *selected, Operation(left_op, self._content.operator, right_op)
 
     def to_mermaid(self):
+        "Helper routine to visualize the Tree using Mermaid"
         return "\n".join(self._to_mermaid(root=True))
 
     def _to_mermaid(self, root=False):
@@ -122,7 +153,16 @@ class Tree:
         for child in self._children:
             yield from child._to_mermaid()
 
-    def parse_character(self, character):
+    def _parse_selection_character_by_character(self, selection):
+        active_node = self
+        try:
+            for ii, character in enumerate(selection):
+                active_node = active_node._parse_character(character)
+            active_node._parse_character(end_of_text)
+        except exception._Py4VaspInternalError as error:
+            _raise_error_if_parsing_failed(error, selection, ii)
+
+    def _parse_character(self, character):
         if character == ",":
             return self._parse_new_selection()
         elif character == " ":
@@ -232,7 +272,7 @@ class Tree:
     def _raise_error_if_group_misses_right_hand_side(self):
         if len(self._children) == 0:
             return
-        content = self._children[-1].content
+        content = self._children[-1]._content
         if not isinstance(content, Group) or content.group[1]:
             return
         self._raise_group_error_message("right", content.separator)
@@ -269,8 +309,11 @@ class Tree:
 
 @dataclasses.dataclass
 class Group:
+    "A user selection where multiple elements should be treated together."
     group: list
+    "The individual members of the group."
     separator: str
+    "The string separating the members of the group."
     __str__ = lambda self: self.separator.join(self.group)
 
     def __iadd__(self, character):
@@ -287,9 +330,13 @@ class _Operator:
 
 @dataclasses.dataclass
 class Operation:
+    "A mathematical operation like addition and subtraction."
     left_operand: tuple
+    "The selection on the left-hand side of the operation."
     operator: str
+    "A character identifying the operation."
     right_operand: tuple
+    "The selection on the right-hand side of the operation."
 
     def __str__(self):
         left_op = _selection_to_string(self.left_operand)
@@ -298,16 +345,6 @@ class Operation:
 
     def unary(self):
         return self.left_operand == ()
-
-
-def _parse_selection_character_by_character(tree, selection):
-    active_node = tree
-    try:
-        for ii, character in enumerate(selection):
-            active_node = active_node.parse_character(character)
-        active_node.parse_character(end_of_text)
-    except exception._Py4VaspInternalError as error:
-        _raise_error_if_parsing_failed(error, selection, ii)
 
 
 def _raise_error_if_parsing_failed(error, selection, ii):
