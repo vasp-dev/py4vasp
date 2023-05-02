@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import itertools
+
 import numpy as np
 import pytest
 
@@ -135,12 +137,6 @@ def test_select_operation(selection, expected, Assert):
         (("A", make_operation("y", "-", "x")), [13, 53, 93]),
         ((make_operation(make_range("A", "B"), "-", "x"),), [571, 5411, 15051]),
         ((make_operation("y", "-", make_pair("z", "z")),), [-80, -240, -400]),
-        # TODO: unary operators, parentheses
-        # A - B(x + y) should be A - B(x) - B(y)
-        # (
-        #     (select.Operation(("A",), "-", ("B", make_operation("x", "+", "y"))),),
-        #     [-10, 1670, 5750],
-        # ),
     ],
 )
 def test_mix_indices(selection, expected, Assert):
@@ -150,6 +146,25 @@ def test_mix_indices(selection, expected, Assert):
     Assert.allclose(selector[selection], expected)
 
 
+@pytest.mark.parametrize(
+    "first_text, second_text",
+    [
+        ("A - B(x + y)", "A - x(B) - y(B)"),
+    ],
+)
+def test_equivalent_operation(first_text, second_text, Assert):
+    values = np.log(np.arange(120).reshape([2, 3, 4, 5]) + 1)
+    map_ = {
+        0: {"A": 0, "B": 1},
+        1: {"x": 0, "y": 1, "z": 2},
+    }
+    selector = index.Selector(map_, values)
+    first_selections = select.Tree.from_selection(first_text).selections()
+    second_selections = select.Tree.from_selection(second_text).selections()
+    for first, second in itertools.zip_longest(first_selections, second_selections):
+        assert first is not None
+        assert second is not None
+        Assert.allclose(selector[first], selector[second])
 
 
 def test_complex_operation(Assert):

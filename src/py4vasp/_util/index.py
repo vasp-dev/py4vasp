@@ -26,26 +26,26 @@ class Selector:
             for slices in self._get_all_slices(selection)
         )
 
-    def _get_all_slices(self, selection):
+    def _get_all_slices(self, selection, operator="+"):
         if len(selection) == 0:
             yield _Slices(self._data.ndim)
         elif len(selection) == 1:
-            yield from self._get_slices_from_single_selection(*selection)
+            yield from self._get_slices_from_single_selection(*selection, operator)
         else:
-            left_slices = self._get_all_slices(selection[::2])
+            left_slices = self._get_all_slices(selection[::2], operator)
             right_slices = self._get_all_slices(selection[1::2])
             for left, right in itertools.product(left_slices, right_slices):
                 yield _Slices.from_merge(left, right)
 
-    def _get_slices_from_single_selection(self, selection):
+    def _get_slices_from_single_selection(self, selection, operator):
         if isinstance(selection, str):
-            yield self._read_key(selection)
+            yield self._read_key(selection).set_operator(operator)
         elif _is_range(selection):
-            yield self._read_range(selection)
+            yield self._read_range(selection).set_operator(operator)
         elif _is_pair(selection):
-            yield self._read_pair(selection)
+            yield self._read_pair(selection).set_operator(operator)
         elif isinstance(selection, select.Operation):
-            yield from self._evaluate_operation(selection)
+            yield from self._evaluate_operation(selection, operator)
         else:
             assert False, f"Reading {key} is not implemented."
 
@@ -88,11 +88,17 @@ class Selector:
             key = str(pair)
         return self._read_key(key)
 
-    def _evaluate_operation(self, operation):
-        yield from self._get_all_slices(operation.left_operand)
-        generator = self._get_all_slices(operation.right_operand)
-        yield next(generator).set_operator(operation.operator)
-        yield from generator
+    def _evaluate_operation(self, operation, operator):
+        yield from self._get_all_slices(operation.left_operand, operator)
+        operator = _merge_operator(operator, operation.operator)
+        yield from self._get_all_slices(operation.right_operand, operation.operator)
+
+
+def _merge_operator(first_operator, second_operator):
+    if first_operator == second_operator:
+        return "+"
+    else:
+        return "-"
 
 
 def _make_slice(indices):
@@ -132,7 +138,7 @@ class _Slices:
         return self
 
     def set_operator(self, operator):
-        self.factor = 1 if operator == "+" else -1
+        self.factor *= 1 if operator == "+" else -1
         return self
 
     @property
