@@ -89,7 +89,8 @@ class Selector:
         return self._read_key(key)
 
     def _evaluate_operation(self, operation, operator):
-        yield from self._get_all_slices(operation.left_operand, operator)
+        if not operation.unary():
+            yield from self._get_all_slices(operation.left_operand, operator)
         operator = _merge_operator(operator, operation.operator)
         yield from self._get_all_slices(operation.right_operand, operation.operator)
 

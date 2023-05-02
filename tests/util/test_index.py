@@ -150,6 +150,7 @@ def test_mix_indices(selection, expected, Assert):
     "first_text, second_text",
     [
         ("A - B(x + y)", "A - x(B) - y(B)"),
+        ("-A + B", "B - A"),
     ],
 )
 def test_equivalent_operation(first_text, second_text, Assert):
@@ -157,6 +158,7 @@ def test_equivalent_operation(first_text, second_text, Assert):
     map_ = {
         0: {"A": 0, "B": 1},
         1: {"x": 0, "y": 1, "z": 2},
+        3: {},
     }
     selector = index.Selector(map_, values)
     first_selections = select.Tree.from_selection(first_text).selections()

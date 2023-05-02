@@ -296,6 +296,9 @@ class Operation:
         right_op = _selection_to_string(self.right_operand)
         return f"{left_op} {self.operator} {right_op}"
 
+    def unary(self):
+        return self.left_operand == ()
+
 
 def _parse_selection_character_by_character(tree, selection):
     active_node = tree
