@@ -1,5 +1,31 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+""" Select indices from an array based on a map.
+
+In multiple cases, VASP produces multiple outputs and the user wants to select one of
+its components e.g. plotting the p DOS. This module provides the Selector class that
+can take the selections of a `py4vasp._util.selection.Tree` and extract the relevant
+components from the array. The defaults for each index is to select all components and
+we sum over all selected components.
+
+Example
+-------
+>>> from py4vasp._util import index
+>>> selections = [("A", "x"), ("B", "y"), ("z",)]
+>>> maps = {1: {"A": 0, "B": 1}, 2: {"x": 0, "y": 1, "z": 2}}
+>>> data = np.random.random((10, 2, 3))
+>>> selector = index.Selector(maps, data)
+>>> result = [selector[selection] for selection in selections]
+
+Here, we generated the selections manually; normally you would obtain them from a
+`py4vasp._util.selection.Tree`. The maps define which labels correspond to which indices
+in the data array. The key identifies which dimension of the data array to access. The
+value is a dictionary of labels onto sections of the array. You can use single indices
+like in this example or a `slice`. The first two selections will return `data[:,0,0]`
+and `data[:,1,1]`, respectively. The last selection is equivalent to
+`np.sum(data[:,:,2], axis=-1)` because we sum over all dimensions mentioned as keys
+in `maps`.
+"""
 import dataclasses
 import itertools
 
@@ -10,6 +36,19 @@ from py4vasp._util import select
 
 
 class Selector:
+    """Manages the logic to read a user selection.
+
+    Parameters
+    ----------
+    maps : dict
+        The keys of the dictionary should be integer values indicating the dimension
+        of the array described by its values. The values are dictionaries that map
+        labels of the dimension onto corresponding slices of the array. Instead of a
+        slice a single index is allowed as well.
+    data : VaspData
+        An array read from the VASP calculation. The indices in the maps should be
+        compatible with the dimension of this array.
+    """
     def __init__(self, maps, data):
         self._data = data
         self._axes = tuple(maps.keys())
@@ -21,6 +60,22 @@ class Selector:
         }
 
     def __getitem__(self, selection):
+        """Main functionality provided by the class.
+
+        Parameters
+        ----------
+        selection : tuple
+            A selection ideally produced by `py4vasp._util.selection.Tree`. The elements
+            of the tuple should correspond to labels in the maps used to initialize this
+            class or mathematical operations of them.
+
+        Returns
+        -------
+        np.ndarray
+            The subsection of the array corresponding to the selection. Note that this
+            will sum over all dimensions provided in the initialization of the class,
+            i.e., ndim of the result = ndim of data - len(maps).
+        """
         return sum(
             slices.factor * np.sum(self._data[slices.indices], axis=self._axes)
             for slices in self._get_all_slices(selection)
@@ -172,16 +227,16 @@ def _raise_error_if_index_used_twice(left_key, right_key):
     raise exception.IncorrectUsage(message)
 
 
+def _raise_key_not_found_error(key, error):
+    message = f"Could not read {key}, please check the spelling and capitalization."
+    raise exception.IncorrectUsage(message) from error
+
+
 def _raise_error_if_duplicate_keys(maps):
     duplicates = _find_duplicates(maps)
     if not duplicates:
         return
     raise exception._Py4VaspInternalError(_format_error_message(duplicates))
-
-
-def _raise_key_not_found_error(key, error):
-    message = f"Could not read {key}, please check the spelling and capitalization."
-    raise exception.IncorrectUsage(message) from error
 
 
 def _find_duplicates(maps):
