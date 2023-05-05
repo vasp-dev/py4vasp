@@ -9,7 +9,7 @@ import numpy as np
 from py4vasp import data, exception
 from py4vasp._data import base
 from py4vasp._data.selection import Selection
-from py4vasp._util import check, convert, documentation, reader, select
+from py4vasp._util import convert, documentation, index, reader, select
 
 selection_doc = """\
 selection : str
@@ -117,8 +117,14 @@ class Projector(base.Refinery):
     def project(self, selection, projections):
         if not selection:
             return {}
-        error_message = "Projector selection must be a string."
-        check.raise_error_if_not_string(selection, error_message)
+        maps = self.to_dict()
+        maps = {0: maps["spin"], 1: maps["atom"], 2: maps["orbital"]}
+        selector = index.Selector(maps, projections)
+        tree = select.Tree.from_selection(selection)
+        print(list(tree.selections()))
+        return {selection: selector[selection] for selection in tree.selections()}
+        # error_message = "Projector selection must be a string."
+        # check.raise_error_if_not_string(selection, error_message)
         indices = self._get_indices(selection)
         return self._read_elements(indices, projections)
 

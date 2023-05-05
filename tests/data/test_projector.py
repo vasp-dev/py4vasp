@@ -340,6 +340,8 @@ def test_evaluate_projections(Sr2TiO4, Assert):
     Sr_ref = np.sum(projections[0, 0:2, 1:4], axis=(0, 1))
     Ti_ref = projections[0, 2, 4]
     actual = Sr2TiO4.project(selection="Sr(p) 3(dxy)", projections=projections)
+    Assert.allclose(actual[("Sr", "p")], Sr_ref)
+    print(actual, np.allclose(actual[("Sr", "p")], Sr_ref))
     Assert.allclose(actual["Sr_p"], Sr_ref)
     Assert.allclose(actual["Ti_1_dxy"], Ti_ref)
 
