@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import re
+import warnings
 from typing import NamedTuple, Union
 
 import numpy as np
@@ -108,6 +109,15 @@ class Projector(base.Refinery):
         """
         if selection is None:
             return self._init_dicts()
+        message = "Calling `Projector.to_dict` with selection is deprecated, please use `Projector.project` instead."
+        warnings.warn(message, DeprecationWarning, stacklevel=2)
+        return self.project(selection, projections)
+
+    @base.data_access
+    def project(self, selection, projections):
+        if not selection:
+            return {}
+        print("selection", selection)
         error_message = "Projector selection must be a string."
         check.raise_error_if_not_string(selection, error_message)
         indices = self._get_indices(selection)
@@ -115,9 +125,6 @@ class Projector(base.Refinery):
             return indices
         else:
             return self._read_elements(indices, projections)
-
-    def project(self, selection, projections):
-        return self.to_dict(selection, projections)
 
     @base.data_access
     @documentation.format(separator=select.range_separator)

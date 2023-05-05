@@ -5,7 +5,7 @@ from typing import Iterable, NamedTuple
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import exception, raw
 from py4vasp._data.selection import Selection
 from py4vasp._util import select
 from py4vasp.data import Projector
@@ -352,21 +352,26 @@ def test_evaluate_projections(Sr2TiO4, Assert):
     Assert.allclose(actual["Ti_1_dxy"], Ti_ref)
 
 
-def test_missing_orbitals_read(missing_orbitals):
+def test_missing_arguments_should_return_empty_dictionary(Sr2TiO4):
+    data = raw.VaspData(np.zeros(10))
+    assert Sr2TiO4.project(selection="", projections=data) == {}
+    assert Sr2TiO4.project(selection=None, projections=data) == {}
+    # assert Sr2TiO4.project(selection="anything", projections=raw.VaspData(None)) == {}
+
+
+def test_missing_orbitals_project(missing_orbitals):
     with pytest.raises(exception.IncorrectUsage):
-        missing_orbitals.read("any string")
-    with pytest.raises(exception.IncorrectUsage):
-        missing_orbitals.read("any string", "any data")
+        missing_orbitals.project("any string", "any data")
 
 
 def test_error_parsing(Sr2TiO4):
     with pytest.raises(exception.IncorrectUsage):
-        Sr2TiO4.read(selection="XX")
+        Sr2TiO4.project(selection="XX", projections=None)
     with pytest.raises(exception.IncorrectUsage):
         number_instead_of_string = -1
-        Sr2TiO4.read(selection=number_instead_of_string)
+        Sr2TiO4.project(selection=number_instead_of_string, projections=None)
     with pytest.raises(exception.IncorrectUsage):
-        Sr2TiO4.read("up")
+        Sr2TiO4.project("up", projections=None)
 
 
 def test_incorrect_selection(Sr2TiO4):
@@ -382,9 +387,9 @@ def test_incorrect_selection(Sr2TiO4):
 
 def test_incorrect_reading_of_projections(Sr2TiO4):
     with pytest.raises(exception.IncorrectUsage):
-        Sr2TiO4.read("Sr", [1, 2, 3])
+        Sr2TiO4.project("Sr", [1, 2, 3])
     with pytest.raises(exception.IncorrectUsage):
-        Sr2TiO4.read("Sr", np.zeros(3))
+        Sr2TiO4.project("Sr", np.zeros(3))
 
 
 def test_selections_Sr2TiO4(Sr2TiO4):
