@@ -137,7 +137,7 @@ class Band(base.Refinery, graph.Mixin):
         }
 
     def _read_projections(self, selection):
-        return self._projector.read(selection, self._raw_data.projections)
+        return self._projector.project(selection, self._raw_data.projections)
 
     def _read_occupations(self):
         if self._spin_polarized():

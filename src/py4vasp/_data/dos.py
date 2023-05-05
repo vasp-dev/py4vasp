@@ -119,13 +119,10 @@ class Dos(base.Refinery, graph.Mixin):
         return data.Projector.from_data(self._raw_data.projectors)
 
     def _read_data(self, selection):
-        proj = self._projectors()
-        args = (selection, self._raw_data.projections)
-        proj.read(*args)
         return {
             **self._read_energies(),
             **self._read_total_dos(),
-            **self._projectors().read(selection, self._raw_data.projections),
+            **self._projectors().project(selection, self._raw_data.projections),
         }
 
     def _read_energies(self):
