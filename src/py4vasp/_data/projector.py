@@ -107,7 +107,7 @@ class Projector(base.Refinery):
             indices are returned.
         """
         if selection is None:
-            return {}
+            return self._init_dicts()
         error_message = "Projector selection must be a string."
         check.raise_error_if_not_string(selection, error_message)
         indices = self._get_indices(selection)
@@ -148,7 +148,7 @@ class Projector(base.Refinery):
             Indices to access the selected projection from an array and an
             associated label.
         """
-        dicts = self._init_dicts()
+        dicts = self._init_dicts_old()
         _raise_error_if_not_found_in_dict(orbital, dicts["orbital"])
         _raise_error_if_not_found_in_dict(spin, dicts["spin"])
         return Projector.Index(
@@ -175,7 +175,7 @@ class Projector(base.Refinery):
         Iterable[Index]
             Indices of the atom, the orbital and the spin compatible with a specific
             selection."""
-        dicts = self._init_dicts()
+        dicts = self._init_dicts_old()
         default_index = Projector.Index(
             atom=_select_all,
             orbital=_select_all,
@@ -188,7 +188,7 @@ class Projector(base.Refinery):
     def selections(self):
         """Return a dictionary describing what options are available to specify the
         atom, orbital, and spin."""
-        dicts = self._init_dicts()
+        dicts = self._init_dicts_old()
         return {
             "atom": _filter_and_sort_keys(dicts["atom"]),
             "orbital": _filter_and_sort_keys(dicts["orbital"]),
@@ -199,16 +199,46 @@ class Projector(base.Refinery):
         return data.Topology.from_data(self._raw_data.topology)
 
     def _init_dicts(self):
-        return {
-            "atom": self._init_atom_dict(),
-            "orbital": self._init_orbital_dict(),
-            "spin": self._init_spin_dict(),
-        }
+        if self._raw_data.orbital_types.is_none():
+            return {}
+        atom_dict = self._init_atom_dict()
+        orbital_dict = self._init_orbital_dict()
+        spin_dict = self._init_spin_dict()
+        return {"atom": atom_dict, "orbital": orbital_dict, "spin": spin_dict}
 
     def _init_atom_dict(self):
-        return self._topology().read()
+        return {
+            key: value.indices
+            for key, value in self._topology().read().items()
+            if key != _select_all
+        }
 
     def _init_orbital_dict(self):
+        orbital_dict = {
+            orbital: slice(i, i + 1) for i, orbital in enumerate(self._orbital_types())
+        }
+        if "px" in orbital_dict:
+            orbital_dict["p"] = slice(1, 4)
+            orbital_dict["d"] = slice(4, 9)
+            orbital_dict["f"] = slice(9, 16)
+        return orbital_dict
+
+    def _init_spin_dict(self):
+        if self._raw_data.number_spins == 1:
+            return {"total": slice(0, 1)}
+        return {"total": slice(0, 2), "up": slice(0, 1), "down": slice(1, 2)}
+
+    def _init_dicts_old(self):
+        return {
+            "atom": self._init_atom_dict_old(),
+            "orbital": self._init_orbital_dict_old(),
+            "spin": self._init_spin_dict_old(),
+        }
+
+    def _init_atom_dict_old(self):
+        return self._topology().read()
+
+    def _init_orbital_dict_old(self):
         self._raise_error_if_orbitals_missing()
         num_orbitals = len(self._raw_data.orbital_types)
         all_orbitals = Selection(indices=slice(0, num_orbitals))
@@ -235,7 +265,7 @@ class Projector(base.Refinery):
             else:
                 yield orbital
 
-    def _init_spin_dict(self):
+    def _init_spin_dict_old(self):
         num_spins = self._raw_data.number_spins
         result = {
             "polarized": num_spins == 2,

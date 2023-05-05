@@ -258,8 +258,76 @@ def Fe3O4_testcases():
     )
 
 
-def test_read_empty(Sr2TiO4):
-    assert Sr2TiO4.read() == {}
+def test_read_missing_orbitals(missing_orbitals):
+    assert missing_orbitals.read() == {}
+
+
+def test_read_Sr2TiO4(Sr2TiO4):
+    assert Sr2TiO4.read() == {
+        "atom": {
+            "Sr": slice(0, 2),
+            "Ti": slice(2, 3),
+            "O": slice(3, 7),
+            "1": slice(0, 1),
+            "2": slice(1, 2),
+            "3": slice(2, 3),
+            "4": slice(3, 4),
+            "5": slice(4, 5),
+            "6": slice(5, 6),
+            "7": slice(6, 7),
+        },
+        "orbital": {
+            "s": slice(0, 1),
+            "p": slice(1, 4),
+            "py": slice(1, 2),
+            "pz": slice(2, 3),
+            "px": slice(3, 4),
+            "d": slice(4, 9),
+            "dxy": slice(4, 5),
+            "dyz": slice(5, 6),
+            "dz2": slice(6, 7),
+            "dxz": slice(7, 8),
+            "dx2y2": slice(8, 9),
+            "f": slice(9, 16),
+            "fy3x2": slice(9, 10),
+            "fxyz": slice(10, 11),
+            "fyz2": slice(11, 12),
+            "fz3": slice(12, 13),
+            "fxz2": slice(13, 14),
+            "fzx2": slice(14, 15),
+            "fx3": slice(15, 16),
+        },
+        "spin": {
+            "total": slice(0, 1),
+        },
+    }
+
+
+def test_read_Fe3O4(Fe3O4):
+    assert Fe3O4.read() == {
+        "atom": {
+            "Fe": slice(0, 3),
+            "O": slice(3, 7),
+            "1": slice(0, 1),
+            "2": slice(1, 2),
+            "3": slice(2, 3),
+            "4": slice(3, 4),
+            "5": slice(4, 5),
+            "6": slice(5, 6),
+            "7": slice(6, 7),
+        },
+        "orbital": {
+            "s": slice(0, 1),
+            "p": slice(1, 2),
+            "d": slice(2, 3),
+            "f": slice(3, 4),
+        },
+        "spin": {
+            "total": slice(0, 2),
+            "up": slice(0, 1),
+            "down": slice(1, 2),
+        },
+    }
 
 
 def test_read_only_indices(Sr2TiO4):

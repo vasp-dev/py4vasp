@@ -49,6 +49,7 @@ class Selector:
         An array read from the VASP calculation. The indices in the maps should be
         compatible with the dimension of this array.
     """
+
     def __init__(self, maps, data):
         self._data = data
         self._axes = tuple(maps.keys())
