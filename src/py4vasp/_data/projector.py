@@ -117,14 +117,10 @@ class Projector(base.Refinery):
     def project(self, selection, projections):
         if not selection:
             return {}
-        print("selection", selection)
         error_message = "Projector selection must be a string."
         check.raise_error_if_not_string(selection, error_message)
         indices = self._get_indices(selection)
-        if projections is None:
-            return indices
-        else:
-            return self._read_elements(indices, projections)
+        return self._read_elements(indices, projections)
 
     @base.data_access
     @documentation.format(separator=select.range_separator)

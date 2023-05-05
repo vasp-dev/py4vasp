@@ -330,14 +330,6 @@ def test_read_Fe3O4(Fe3O4):
     }
 
 
-def test_read_only_indices(Sr2TiO4):
-    reference = {
-        "Sr_p": (slice(0, 1), slice(0, 2), slice(1, 4)),
-        "Ti_1_dxy": (slice(0, 1), slice(2, 3), slice(4, 5)),
-    }
-    assert Sr2TiO4.read(selection="Sr(p) 3(dxy)") == reference
-
-
 def test_evaluate_projections(Sr2TiO4, Assert):
     num_spins = 1
     num_atoms = 7
@@ -356,7 +348,6 @@ def test_missing_arguments_should_return_empty_dictionary(Sr2TiO4):
     data = raw.VaspData(np.zeros(10))
     assert Sr2TiO4.project(selection="", projections=data) == {}
     assert Sr2TiO4.project(selection=None, projections=data) == {}
-    # assert Sr2TiO4.project(selection="anything", projections=raw.VaspData(None)) == {}
 
 
 def test_missing_orbitals_project(missing_orbitals):
