@@ -338,7 +338,7 @@ def test_read_only_indices(Sr2TiO4):
     assert Sr2TiO4.read(selection="Sr(p) 3(dxy)") == reference
 
 
-def test_read_projections(Sr2TiO4, Assert):
+def test_evaluate_projections(Sr2TiO4, Assert):
     num_spins = 1
     num_atoms = 7
     num_orbitals = 10
@@ -347,7 +347,7 @@ def test_read_projections(Sr2TiO4, Assert):
     projections = np.arange(np.prod(shape)).reshape(shape)
     Sr_ref = np.sum(projections[0, 0:2, 1:4], axis=(0, 1))
     Ti_ref = projections[0, 2, 4]
-    actual = Sr2TiO4.read(selection="Sr(p) 3(dxy)", projections=projections)
+    actual = Sr2TiO4.project(selection="Sr(p) 3(dxy)", projections=projections)
     Assert.allclose(actual["Sr_p"], Sr_ref)
     Assert.allclose(actual["Ti_1_dxy"], Ti_ref)
 
@@ -423,4 +423,5 @@ def test_missing_orbitals_print(missing_orbitals, format_):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.projector("Sr2TiO4")
-    check_factory_methods(Projector, data)
+    parameters = {"project": {"selection": "Sr", "projections": None}}
+    check_factory_methods(Projector, data, parameters)

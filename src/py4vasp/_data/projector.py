@@ -116,6 +116,9 @@ class Projector(base.Refinery):
         else:
             return self._read_elements(indices, projections)
 
+    def project(self, selection, projections):
+        return self.to_dict(selection, projections)
+
     @base.data_access
     @documentation.format(separator=select.range_separator)
     def select(
