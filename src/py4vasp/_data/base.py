@@ -208,11 +208,17 @@ class _FunctionWrapper:
         if "selection" not in bound_arguments.arguments:
             return bound_arguments
         if remaining == [[]]:
-            selection = bound_arguments.signature.parameters["selection"].default
+            selection = self._use_default_or_empty_string(bound_arguments.signature)
         else:
             selection = select.selections_to_string(remaining)
         bound_arguments.arguments["selection"] = selection
         return bound_arguments
+
+    def _use_default_or_empty_string(self, signature):
+        if signature.parameters["selection"].default == inspect.Parameter.empty:
+            return ""
+        else:
+            return signature.parameters["selection"].default
 
     def _merge_results(self, results):
         results = dict(results)

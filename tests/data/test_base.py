@@ -65,6 +65,10 @@ class Example(base.Refinery):
         return self._raw_data.selection, selection
 
     @base.data_access
+    def selection_without_default(self, selection):
+        return selection
+
+    @base.data_access
     def __str__(self):
         return self._raw_data.content
 
@@ -266,6 +270,16 @@ def test_selection_passed_to_inner_function(mock_access):
     source, argument = example.with_selection_argument(selection=selection)
     assert source is None
     assert argument == selection
+
+
+@pytest.mark.parametrize("selection", ["a_specific_text", "", None])
+def test_selection_passed_when_no_default_exists(mock_access, selection):
+    expected = selection or ""
+    example = Example.from_path()
+    argument = example.selection_without_default(selection)
+    assert argument == expected
+    argument = example.selection_without_default(f"{SELECTION}({expected})")
+    assert argument == expected
 
 
 def test_missing_selection_argument(mock_access):
