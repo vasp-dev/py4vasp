@@ -82,6 +82,10 @@ class Selector:
             for slices in self._get_all_slices(selection)
         )
 
+    def label(self, selection):
+        for slices in self._get_all_slices(selection):
+            return slices.label(self._axes)
+
     def _get_all_slices(self, selection, operator="+"):
         if len(selection) == 0:
             yield _Slices(self._data.ndim)
@@ -201,6 +205,9 @@ class _Slices:
     @property
     def indices(self):
         return tuple(self._indices)
+
+    def label(self, axes):
+        return "_".join(filter(None, (self._keys[axis] for axis in axes)))
 
     def print(self, label):
         print(label, self._indices, self._keys, self.factor)
