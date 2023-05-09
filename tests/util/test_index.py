@@ -204,16 +204,18 @@ def test_complex_operation(Assert):
         (("5",), "B_2"),
         (("8",), "8"),  # use number of no matching label
         (("up", "z", "3"), "A_3_z_up"),
+        ((make_pair("u", "v"),), "u~v"),
+        ((make_pair("v", "u"),), "u~v"),
     ],
 )
 def test_label(selection, label):
     numbers = {str(i + 1): i for i in range(8)}
     map_ = {
         1: {"A": slice(0, 3), "B": slice(3, 7), **numbers},
-        2: {"x": 0, "y": 1, "z": 2},
+        2: {"x": 0, "y": 1, "z": 2, "u~v": 3},
         0: {"total": slice(0, 2), "up": 0, "down": 1},
     }
-    selector = index.Selector(map_, np.zeros((2, 8, 3, 0)))
+    selector = index.Selector(map_, np.zeros((2, 8, 4, 0)))
     assert selector.label(selection) == label
 
 
