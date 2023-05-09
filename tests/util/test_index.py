@@ -206,6 +206,13 @@ def test_complex_operation(Assert):
         (("up", "z", "3"), "A_3_z_up"),
         ((make_pair("u", "v"),), "u~v"),
         ((make_pair("v", "u"),), "u~v"),
+        ((make_range("2", "4"),), "2:4"),
+        (("A", make_range("x", "z")), "A_x:z"),
+        (("z", make_range("1", "5")), "1:5_z"),
+        ((make_operation("A", "+", "B"),), "A + B"),
+        ((make_operation("x", "-", "up"),), "x - up"),
+        ((select.Operation((), "+", "1"),), "A_1"),
+        ((select.Operation((), "-", "x"),), "-x"),
     ],
 )
 def test_label(selection, label):

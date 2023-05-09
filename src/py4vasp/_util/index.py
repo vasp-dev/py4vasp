@@ -108,8 +108,14 @@ class Selector:
         )
 
     def label(self, selection):
+        return " ".join(
+            slices.label(i, self._axes, self._number_labels)
+            for i, slices in enumerate(self._get_all_slices(selection))
+        )
         for slices in self._get_all_slices(selection):
-            return slices.label(self._axes, self._number_labels)
+            print(slices.label(self._axes, self._number_labels))
+            result = slices.label(self._axes, self._number_labels)
+        return result
 
     def _get_all_slices(self, selection, operator="+"):
         if len(selection) == 0:
@@ -231,8 +237,12 @@ class _Slices:
     def indices(self):
         return tuple(self._indices)
 
-    def label(self, axes, number_labels):
-        return "_".join(self._parse_keys(axes, number_labels))
+    def label(self, index, axes, number_labels):
+        if index == 0:
+            factor = "" if self.factor == 1 else "-"
+        else:
+            factor = "+ " if self.factor == 1 else "- "
+        return factor + "_".join(self._parse_keys(axes, number_labels))
 
     def _parse_keys(self, axes, number_labels):
         for axis in axes:
@@ -240,10 +250,11 @@ class _Slices:
                 yield self._parse_key(key, number_labels)
 
     def _parse_key(self, key, number_labels):
+        if _is_range(key):
+            return str(key)
         if key.isdecimal():
             return number_labels[key]
-        else:
-            return key
+        return key
 
 
 def _merge_keys(left_keys, right_keys):
