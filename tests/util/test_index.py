@@ -226,6 +226,29 @@ def test_label(selection, label):
     assert selector.label(selection) == label
 
 
+@pytest.mark.parametrize(
+    "selection, label",
+    [
+        ("A(y) - x(B)", "A_y - B_x"),
+        ("A - B(x + y)", "A - B_x - B_y"),
+        ("A:B - z", "A:B - z"),
+        ("x(1) + y(2) - z(4)", "A_1_x + A_2_y - B_1_z"),
+        ("up(x + y(2)) - down(z(1 + 2))", "x_up + A_2_y_up - A_1_z_down - A_2_z_down"),
+    ],
+)
+def test_label_operations(selection, label):
+    tree = select.Tree.from_selection(selection)
+    selection, *_ = tree.selections()
+    numbers = {str(i + 1): i for i in range(8)}
+    map_ = {
+        1: {"A": slice(0, 3), "B": slice(3, 7), **numbers},
+        2: {"x": 0, "y": 1, "z": 2, "u~v": 3},
+        0: {"total": slice(0, 2), "up": 0, "down": 1},
+    }
+    selector = index.Selector(map_, np.zeros((2, 8, 4, 0)))
+    assert selector.label(selection) == label
+
+
 def test_error_when_duplicate_key():
     with pytest.raises(exception._Py4VaspInternalError):
         index.Selector({0: {"A": 1}, 1: {"A": 2}}, None)
