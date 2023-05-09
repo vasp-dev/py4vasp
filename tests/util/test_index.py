@@ -160,9 +160,9 @@ def test_mix_indices(selection, expected, Assert):
 def test_equivalent_operation(first_text, second_text, Assert):
     values = np.log(np.arange(120).reshape([2, 3, 4, 5]) + 1)
     map_ = {
+        3: {"1": 0, "2": 1, "3": 2, "4": 3, "5": 4},
         0: {"A": 0, "B": 1},
         1: {"x": 0, "y": 1, "z": 2},
-        3: {"1": 0, "2": 1, "3": 2, "4": 3, "5": 4},
     }
     selector = index.Selector(map_, values)
     first_selections = select.Tree.from_selection(first_text).selections()
@@ -176,8 +176,8 @@ def test_equivalent_operation(first_text, second_text, Assert):
 def test_complex_operation(Assert):
     values = np.sqrt(np.arange(120).reshape([5, 4, 3, 2]))
     map_ = {
-        0: {"x": 1, "y": 2, "u": 3, "v": 4},
         1: {"A": 1, "B": 2, "C~D": 3},
+        0: {"x": 1, "y": 2, "u": 3, "v": 4},
         2: {"1": 0, "z": 1, "3": 2},
     }
     selector = index.Selector(map_, values)
@@ -200,6 +200,8 @@ def test_complex_operation(Assert):
         (("down", "B"), "B_down"),
         (("B", "y"), "B_y"),
         (("z", "up"), "z_up"),
+        (("1",), "A_1"),
+        (("5",), "B_2"),
     ],
 )
 def test_label(selection, label):

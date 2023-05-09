@@ -54,11 +54,35 @@ class Selector:
         self._data = data
         self._axes = tuple(maps.keys())
         _raise_error_if_duplicate_keys(maps)
-        self._map = {
+        self._map = self._make_map(maps)
+        self._number_labels = self._make_number_labels(maps)
+        print(self._number_labels)
+
+    def _make_map(self, maps):
+        return {
             key: (dim, _make_slice(indices))
             for dim, map_ in maps.items()
             for key, indices in map_.items()
         }
+
+    def _make_number_labels(self, maps):
+        return {
+            key: self._make_label(map_, index, self._data.shape[dim])
+            for dim, map_ in maps.items()
+            for key, index in map_.items()
+            if key.isdecimal()
+        }
+
+    def _make_label(self, map_, index, size):
+        indices = range(size)
+        elements = list(indices[_make_slice(index)])
+        element = elements[0]
+        for key, value in map_.items():
+            if key.isdecimal():
+                continue
+            range_ = indices[_make_slice(value)]
+            if element in range_:
+                return f"{key}_{range_.index(element) + 1}"
 
     def __getitem__(self, selection):
         """Main functionality provided by the class.
@@ -84,7 +108,7 @@ class Selector:
 
     def label(self, selection):
         for slices in self._get_all_slices(selection):
-            return slices.label(self._axes)
+            return slices.label(self._axes, self._number_labels)
 
     def _get_all_slices(self, selection, operator="+"):
         if len(selection) == 0:
@@ -206,11 +230,19 @@ class _Slices:
     def indices(self):
         return tuple(self._indices)
 
-    def label(self, axes):
-        return "_".join(filter(None, (self._keys[axis] for axis in axes)))
+    def label(self, axes, number_labels):
+        return "_".join(self._parse_keys(axes, number_labels))
 
-    def print(self, label):
-        print(label, self._indices, self._keys, self.factor)
+    def _parse_keys(self, axes, number_labels):
+        for axis in axes:
+            if key := self._keys[axis]:
+                yield self._parse_key(key, number_labels)
+
+    def _parse_key(self, key, number_labels):
+        if key.isdecimal():
+            return number_labels[key]
+        else:
+            return key
 
 
 def _merge_keys(left_keys, right_keys):
