@@ -28,10 +28,18 @@ class VaspData(np.lib.mixins.NDArrayOperatorsMixin):
     """
 
     def __init__(self, data):
+        if data is None:
+            self._data = None
+            self._repr_data = "None"
+            return
         if isinstance(data, VaspData):
-            data = data._data
+            self._data = data._data
+            self._repr_data = data._repr_data
+            return
         self._repr_data = repr(data)
-        if data is not None and data.ndim == 0:
+        if not hasattr(data, "__array__"):
+            data = np.array(data)
+        if data.ndim == 0:
             self._data = _parse_scalar(data)
         else:
             self._data = data
