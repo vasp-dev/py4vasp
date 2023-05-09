@@ -202,16 +202,18 @@ def test_complex_operation(Assert):
         (("z", "up"), "z_up"),
         (("1",), "A_1"),
         (("5",), "B_2"),
+        (("8",), "8"),  # use number of no matching label
+        (("up", "z", "3"), "A_3_z_up"),
     ],
 )
 def test_label(selection, label):
-    numbers = {str(i + 1): i for i in range(7)}
+    numbers = {str(i + 1): i for i in range(8)}
     map_ = {
         1: {"A": slice(0, 3), "B": slice(3, 7), **numbers},
         2: {"x": 0, "y": 1, "z": 2},
         0: {"total": slice(0, 2), "up": 0, "down": 1},
     }
-    selector = index.Selector(map_, np.zeros((2, 7, 3, 0)))
+    selector = index.Selector(map_, np.zeros((2, 8, 3, 0)))
     assert selector.label(selection) == label
 
 
@@ -223,6 +225,11 @@ def test_error_when_duplicate_key():
 def test_error_when_indices_are_not_int_or_slice():
     with pytest.raises(exception._Py4VaspInternalError):
         index.Selector({0: {"A": [1, 2]}}, None)
+
+
+def test_error_when_numbers_are_longer_than_one():
+    with pytest.raises(exception._Py4VaspInternalError):
+        index.Selector({0: {"A": 1, "1": slice(0, 2)}}, np.zeros(3))
 
 
 @pytest.mark.parametrize(

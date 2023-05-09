@@ -56,7 +56,6 @@ class Selector:
         _raise_error_if_duplicate_keys(maps)
         self._map = self._make_map(maps)
         self._number_labels = self._make_number_labels(maps)
-        print(self._number_labels)
 
     def _make_map(self, maps):
         return {
@@ -67,22 +66,24 @@ class Selector:
 
     def _make_number_labels(self, maps):
         return {
-            key: self._make_label(map_, index, self._data.shape[dim])
+            key: self._make_label(map_, key, index, self._data.shape[dim])
             for dim, map_ in maps.items()
             for key, index in map_.items()
             if key.isdecimal()
         }
 
-    def _make_label(self, map_, index, size):
+    def _make_label(self, map_, number, index, size):
         indices = range(size)
-        elements = list(indices[_make_slice(index)])
-        element = elements[0]
+        index, *rest = list(indices[_make_slice(index)])
+        message = f"Integer label {number} maps to more than a single index."
+        _raise_error_if_list_not_empty(rest, message)
         for key, value in map_.items():
             if key.isdecimal():
                 continue
             range_ = indices[_make_slice(value)]
-            if element in range_:
-                return f"{key}_{range_.index(element) + 1}"
+            if index in range_:
+                return f"{key}_{range_.index(index) + 1}"
+        return number
 
     def __getitem__(self, selection):
         """Main functionality provided by the class.
@@ -270,6 +271,11 @@ def _raise_error_if_index_used_twice(left_key, right_key):
 def _raise_key_not_found_error(key, error):
     message = f"Could not read {key}, please check the spelling and capitalization."
     raise exception.IncorrectUsage(message) from error
+
+
+def _raise_error_if_list_not_empty(list_, message):
+    if list_:
+        raise exception._Py4VaspInternalError(message)
 
 
 def _raise_error_if_duplicate_keys(maps):
