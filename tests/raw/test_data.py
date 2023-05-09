@@ -152,3 +152,10 @@ def test_scalar_string():
     reference = "text stored in file"
     vasp = VaspData(np.array(reference.encode()))
     assert vasp.data == reference
+
+
+def test_nested_data():
+    data = VaspData(None)
+    assert VaspData(data).is_none()
+    data = np.zeros(10)
+    assert isinstance(VaspData(data).data, np.ndarray)
