@@ -31,7 +31,7 @@ import itertools
 
 import numpy as np
 
-from py4vasp import exception
+from py4vasp import exception, raw
 from py4vasp._util import select
 
 
@@ -51,9 +51,11 @@ class Selector:
     """
 
     def __init__(self, maps, data):
-        self._data = data
+        self._data = raw.VaspData(data)
         self._axes = tuple(maps.keys())
         _raise_error_if_duplicate_keys(maps)
+        if not self._data.is_none():
+            _raise_error_if_map_out_of_bounds(maps.keys(), self._data.ndim)
         self._map = self._make_map(maps)
         self._number_labels = self._make_number_labels(maps)
 
@@ -112,10 +114,6 @@ class Selector:
             slices.label(i, self._axes, self._number_labels)
             for i, slices in enumerate(self._get_all_slices(selection))
         )
-        for slices in self._get_all_slices(selection):
-            print(slices.label(self._axes, self._number_labels))
-            result = slices.label(self._axes, self._number_labels)
-        return result
 
     def _get_all_slices(self, selection, operator="+"):
         if len(selection) == 0:
@@ -195,7 +193,7 @@ def _merge_operator(first_operator, second_operator):
 
 def _make_slice(indices):
     if isinstance(indices, int):
-        return slice(indices, indices + 1)
+        return slice(indices, indices + 1 or None)
     if isinstance(indices, slice):
         return indices
     message = f"A conversion of {indices} to slice is not implemented."
@@ -310,3 +308,13 @@ def _format_error_message(duplicates):
     text = "', '".join(duplicates)
     occur = "occurs" if len(duplicates) == 1 else "occur"
     return f"The maps may not have duplicate keys, but '{text}' {occur} more than once."
+
+
+def _raise_error_if_map_out_of_bounds(dimensions, max_dimension):
+    range_ = range(max_dimension)
+    for dim in dimensions:
+        try:
+            range_[dim]
+        except IndexError:
+            message = f"The selected dimension {dim} is outside of the dimension of the data {max_dimension}."
+            raise exception._Py4VaspInternalError(message)

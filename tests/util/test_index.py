@@ -45,6 +45,15 @@ def test_select_one_of_two_components(selection, indices):
     assert np.all(selector[(selection,)] == np.sum(values[:, indices], axis=1))
 
 
+@pytest.mark.parametrize("selection, expected", [("A", 4), ("B", 11), ("C", -1)])
+def test_select_from_list(selection, expected):
+    values = [11, 9, 7, 4, 2, -1]
+    map_ = {0: {"A": 3, "B": 0, "C": -1}}
+    selector = index.Selector(map_, values)
+    assert selector[(selection,)] == expected
+    assert selector.label(selection) == selection
+
+
 @pytest.mark.parametrize(
     "selection, indices",
     [
@@ -280,7 +289,7 @@ def test_error_when_key_is_not_present(selection):
 
 def test_error_when_range_belongs_to_different_dimensions():
     map_ = {0: {"A": 1}, 1: {"x": 2}}
-    selector = index.Selector(map_, np.zeros(10))
+    selector = index.Selector(map_, np.zeros((3, 4)))
     with pytest.raises(exception.IncorrectUsage):
         selector[(select.Group(["A", "x"], select.range_separator),)]
 
@@ -298,3 +307,10 @@ def test_error_when_two_selections_for_the_same_dimension():
     map_ = {0: {"A": 1, "B": 2}}
     with pytest.raises(exception.IncorrectUsage):
         index.Selector(map_, np.zeros(10))[("A", "B")]
+
+
+def test_error_when_out_of_bounds_access():
+    data = np.zeros((5, 4))
+    map_ = {2: {"u": 1}}
+    with pytest.raises(exception._Py4VaspInternalError):
+        index.Selector(map_, data)
