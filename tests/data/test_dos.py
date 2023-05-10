@@ -90,6 +90,18 @@ def test_Fe3O4_projectors_read(Fe3O4_projectors, Assert):
     Assert.allclose(actual["O_d_down"], Fe3O4_projectors.ref.O_d_down)
 
 
+def test_combine_projectors(Fe3O4_projectors, Assert):
+    actual = Fe3O4_projectors.read("Fe + O(d), Fe - O(d)")
+    addition_up = Fe3O4_projectors.ref.Fe_up + Fe3O4_projectors.ref.O_d_up
+    addition_down = Fe3O4_projectors.ref.Fe_down + Fe3O4_projectors.ref.O_d_down
+    subtraction_up = Fe3O4_projectors.ref.Fe_up - Fe3O4_projectors.ref.O_d_up
+    subtraction_down = Fe3O4_projectors.ref.Fe_down - Fe3O4_projectors.ref.O_d_down
+    Assert.allclose(actual["Fe_up + O_d_up"], addition_up)
+    Assert.allclose(actual["Fe_down + O_d_down"], addition_down)
+    Assert.allclose(actual["Fe_up - O_d_up"], subtraction_up)
+    Assert.allclose(actual["Fe_down - O_d_down"], subtraction_down)
+
+
 def test_read_missing_projectors(Sr2TiO4):
     with pytest.raises(exception.IncorrectUsage):
         Sr2TiO4.read("s")
@@ -167,7 +179,7 @@ def test_Sr2TiO4_projectors_plot(Sr2TiO4_projectors, Assert):
 def test_Fe3O4_projectors_plot(Fe3O4_projectors, Assert):
     fig = Fe3O4_projectors.plot("Fe p O(d)")
     data = fig.series
-    assert len(data) == 8  # spin resolved total + 3 selections
+    assert len(data) == 8  # (total + 3 selections) x 2 (spin resolution)
     names = [d.name for d in data]
     Fe_up = names.index("Fe_up")
     Assert.allclose(data[Fe_up].y, Fe3O4_projectors.ref.Fe_up)
@@ -181,6 +193,20 @@ def test_Fe3O4_projectors_plot(Fe3O4_projectors, Assert):
     Assert.allclose(data[O_d_up].y, Fe3O4_projectors.ref.O_d_up)
     O_d_down = names.index("O_d_down")
     Assert.allclose(data[O_d_down].y, -Fe3O4_projectors.ref.O_d_down)
+
+
+def test_plot_combine_projectors(Fe3O4_projectors, Assert):
+    fig = Fe3O4_projectors.plot("Fe(up) + O(d(down)), Fe - p")
+    data = fig.series
+    assert len(data) == 5  # 2 total, 3 selections
+    addition = Fe3O4_projectors.ref.Fe_up + Fe3O4_projectors.ref.O_d_down
+    subtraction_up = Fe3O4_projectors.ref.Fe_up - Fe3O4_projectors.ref.p_up
+    subtraction_down = Fe3O4_projectors.ref.Fe_down - Fe3O4_projectors.ref.p_down
+    names = [d.name for d in data]
+    print(data[names.index("Fe_up + O_d_down")])
+    Assert.allclose(data[names.index("Fe_up + O_d_down")].y, addition)
+    Assert.allclose(data[names.index("Fe_up - p_up")].y, subtraction_up)
+    Assert.allclose(data[names.index("Fe_down - p_down")].y, -subtraction_down)
 
 
 @patch("py4vasp._data.dos.Dos.to_graph")

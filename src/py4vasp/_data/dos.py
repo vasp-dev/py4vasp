@@ -140,5 +140,9 @@ def _series(data):
     for name, dos in data.items():
         if name == "energies":
             continue
-        spin_factor = 1 if "down" not in name else -1
+        spin_factor = -1 if _flip_down_component(name) else 1
         yield graph.Series(energies, spin_factor * dos, name)
+
+
+def _flip_down_component(name):
+    return "down" in name and "up" not in name and "total" not in name
