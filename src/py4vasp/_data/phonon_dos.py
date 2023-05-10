@@ -3,13 +3,12 @@
 import numpy as np
 
 from py4vasp import data
-from py4vasp._data import base
-from py4vasp._data.phonon_projector import selection_doc
+from py4vasp._data import base, phonon
 from py4vasp._third_party import graph
 from py4vasp._util import documentation, index, select
 
 
-class PhononDos(base.Refinery, graph.Mixin):
+class PhononDos(base.Refinery, phonon.Mixin, graph.Mixin):
     """The phonon density of states (DOS).
 
     You can use this class to extract the phonon DOS data of a VASP
@@ -26,7 +25,7 @@ class PhononDos(base.Refinery, graph.Mixin):
     {topology}"""
 
     @base.data_access
-    @documentation.format(selection=selection_doc)
+    @documentation.format(selection=phonon.selection_doc)
     def to_dict(self, selection=None):
         """Read the phonon DOS into a dictionary.
 
@@ -48,7 +47,7 @@ class PhononDos(base.Refinery, graph.Mixin):
         }
 
     @base.data_access
-    @documentation.format(selection=selection_doc)
+    @documentation.format(selection=phonon.selection_doc)
     def to_graph(self, selection=None):
         """Generate a graph of the selected DOS.
 
@@ -78,23 +77,6 @@ class PhononDos(base.Refinery, graph.Mixin):
             selector.label(selection): selector[selection]
             for selection in tree.selections()
         }
-
-    def _init_atom_dict(self):
-        return {
-            key: value.indices
-            for key, value in self._topology().read().items()
-            if key != select.all
-        }
-
-    def _init_direction_dict(self):
-        return {
-            "x": slice(0, 1),
-            "y": slice(1, 2),
-            "z": slice(2, 3),
-        }
-
-    def _topology(self):
-        return data.Topology.from_data(self._raw_data.topology)
 
 
 def _series(data):
