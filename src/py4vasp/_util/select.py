@@ -375,3 +375,16 @@ def selections_to_string(selections):
 def _selection_to_string(selection):
     parts = [str(part) for part in selection]
     return "(".join(parts) + ")" * (len(parts) - 1)
+
+
+def contains(selection, choice):
+    return any(_part_contains(part, choice) for part in selection)
+
+
+def _part_contains(part, choice):
+    if isinstance(part, Group):
+        return choice in part.group
+    if isinstance(part, Operation):
+        left_op, right_op = part.left_operand, part.right_operand
+        return contains(left_op, choice) or contains(right_op, choice)
+    return part == choice
