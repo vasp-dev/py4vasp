@@ -30,6 +30,10 @@ selection : str
     does not matter, but it is case sensitive to distinguish p (angular momentum
     l = 1) from P (phosphorus).
 
+    It is possible to add or subtract different components, e.g., a selection of
+    "Ti(d) - O(p)" would project onto the d orbitals of Ti and the p orbitals of O and
+    then compute the difference of these two selections.
+
     If you are unsure about the specific projections that are available, you can use
 
     >>> calc.projector.selections()
@@ -52,6 +56,10 @@ Select the d orbitals of Mn, Co, and Fe:
 Select the spin-up contribution of the first three atoms combined
 
 >>> calc.{instance_name}.{function_name}("up(1{select.range_separator}3)")
+
+Add the contribution of three d orbitals
+
+>>> calc.{instance_name}.{function_name}("dxy + dxz + dyz")
 """
 
 
@@ -80,23 +88,26 @@ class Projector(base.Refinery):
     orbitals: {", ".join(self._orbital_types())}"""
 
     @base.data_access
-    @documentation.format(selection_doc=selection_doc)
     def to_dict(self, selection=None, projections=None):
-        """Read the selected data from an array and store it in a dictionary.
+        """Return a map from labels to indices in the arrays produced by VASP.
+
+        .. deprecated:: 0.8.0
+            Passing arguments to the read routine is deprecated. Please use the `project`
+            method instead.
 
         Parameters
         ----------
-        {selection_doc}
+        selection : str or None
+            Passed to the `project` method.
         projections : np.ndarray or None
-            Array containing projected data.
+            Passed to the `project` method.
 
         Returns
         -------
         dict
-            Dictionary where the label of the selection is linked to a particular
-            column of the array. If a particular selection includes multiple indices
-            these elements are added. If the projections are not present, the relevant
-            indices are returned.
+            A dictionary containing three dictionaries for spin, atom, and orbitals.
+            Each of those describes which indices VASP uses to store certain elements
+            for projected quantities.
         """
         if selection is None:
             return self._init_dicts()
@@ -105,7 +116,27 @@ class Projector(base.Refinery):
         return self.project(selection, projections)
 
     @base.data_access
+    @documentation.format(selection_doc=selection_doc)
     def project(self, selection, projections):
+        """Select a certain subset of the given projections and return them with a
+        suitable label.
+
+        Parameters
+        ----------
+        selection : str
+            {selection_doc}
+        projections : np.ndarray
+            A data array where the first three indices correspond to spin, atom, and
+            orbital, respectively. The selection will be parsed and mapped onto the
+            corresponding dimension.
+        Returns
+        -------
+        dict
+            Each selection receives a label describing its spin, atom, and orbital, where
+            default choices are skipped. The value associated to the label contains the
+            corresponding subsection of the projections array summed over all remaining
+            spin components, atoms, and orbitals.
+        """
         if not selection:
             return {}
         self._raise_error_if_orbitals_missing()
@@ -240,6 +271,9 @@ class Projector(base.Refinery):
     ):
         """Map selection strings onto corresponding Selection objects.
 
+        .. deprecated:: 0.8.0
+            This routine was mostly for internal use but is not needed anymore.
+
         With the selection strings, you specify which atom, orbital, and spin component
         you are interested in.
 
@@ -277,6 +311,9 @@ class Projector(base.Refinery):
     @documentation.format(selection_doc=selection_doc)
     def parse_selection(self, selection=_select_all):
         """Generate all possible indices where the projected information is stored.
+
+        .. deprecated:: 0.8.0
+            This routine was mostly for internal use but is not needed anymore.
 
         Given a string specifying which atoms, orbitals, and spin should be selected
         an iterable object is created that contains the indices compatible with the
