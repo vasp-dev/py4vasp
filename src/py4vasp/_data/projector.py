@@ -69,15 +69,6 @@ class Projector(base.Refinery):
     based on a simple mini language specifying the atom or orbital names.
     """
 
-    class Index(NamedTuple):
-        "Helper class specifying which atom, orbital, and spin are selected."
-        atom: Union[str, Selection]
-        "Label of the atom or a Selection object to read the corresponding data."
-        orbital: Union[str, Selection]
-        "Label of the orbital or a Selection object to read the corresponding data."
-        spin: Union[str, Selection]
-        "Label of the spin component or a Selection object to read the corresponding data."
-
     _missing_data_message = "No projectors found, please verify the LORBIT tag is set."
 
     @base.data_access
@@ -124,6 +115,17 @@ class Projector(base.Refinery):
             for selection in self._parse_selection(selection)
         }
 
+    @base.data_access
+    def selections(self):
+        """Return a dictionary describing what options are available to specify the
+        atom, orbital, and spin."""
+        dicts = self._init_dicts()
+        return {
+            "atom": sorted(dicts["atom"], key=self._sort_key),
+            "orbital": sorted(dicts["orbital"], key=self._sort_key),
+            "spin": sorted(dicts["spin"], key=self._sort_key),
+        }
+
     def _make_selector(self, projections):
         maps = self.to_dict()
         maps = {1: maps["atom"], 2: maps["orbital"], 0: maps["spin"]}
@@ -151,6 +153,82 @@ class Projector(base.Refinery):
     def _add_spin_components(self, selection):
         yield selection + ("up",)
         yield selection + ("down",)
+
+    def _raise_error_if_orbitals_missing(self):
+        if self._raw_data.orbital_types.is_none():
+            message = "Projectors are not available, rerun Vasp setting LORBIT >= 10."
+            raise exception.IncorrectUsage(message)
+
+    def _topology(self):
+        return data.Topology.from_data(self._raw_data.topology)
+
+    def _init_dicts(self):
+        if self._raw_data.orbital_types.is_none():
+            return {}
+        atom_dict = self._init_atom_dict()
+        orbital_dict = self._init_orbital_dict()
+        spin_dict = self._init_spin_dict()
+        return {"atom": atom_dict, "orbital": orbital_dict, "spin": spin_dict}
+
+    def _init_atom_dict(self):
+        return {
+            key: value.indices
+            for key, value in self._topology().read().items()
+            if key != _select_all
+        }
+
+    def _init_orbital_dict(self):
+        orbital_dict = {
+            orbital: slice(i, i + 1) for i, orbital in enumerate(self._orbital_types())
+        }
+        if "px" in orbital_dict:
+            orbital_dict["p"] = slice(1, 4)
+            orbital_dict["d"] = slice(4, 9)
+            orbital_dict["f"] = slice(9, 16)
+        return orbital_dict
+
+    def _orbital_types(self):
+        clean_string = lambda orbital: convert.text_to_string(orbital).strip()
+        for orbital in self._raw_data.orbital_types:
+            orbital = clean_string(orbital)
+            if orbital == "x2-y2":
+                yield "dx2y2"
+            else:
+                yield orbital
+
+    def _init_spin_dict(self):
+        if not self._spin_polarized:
+            return {"total": slice(0, 1)}
+        return {"total": slice(0, 2), "up": slice(0, 1), "down": slice(1, 2)}
+
+    @property
+    def _spin_polarized(self):
+        return self._raw_data.number_spins == 2
+
+    def _sort_key(self, key):
+        spin_keys = ["total", "up", "down"]
+        orbital_keys = ["s", "p", "d", "f"]
+        if key in spin_keys:
+            return 0
+        if key[:1] in orbital_keys:
+            return str(orbital_keys.index(key[:1])) + key
+        if key.isdecimal():
+            return int(key)
+        assert key.istitle()  # should be atom
+        return 0
+
+    #
+    # The code underneath is deprecated and should not be used.
+    #
+
+    class Index(NamedTuple):
+        "Helper class specifying which atom, orbital, and spin are selected."
+        atom: Union[str, Selection]
+        "Label of the atom or a Selection object to read the corresponding data."
+        orbital: Union[str, Selection]
+        "Label of the orbital or a Selection object to read the corresponding data."
+        spin: Union[str, Selection]
+        "Label of the spin component or a Selection object to read the corresponding data."
 
     @base.data_access
     @documentation.format(separator=select.range_separator)
@@ -184,6 +262,8 @@ class Projector(base.Refinery):
             Indices to access the selected projection from an array and an
             associated label.
         """
+        message = "Calling `Projector.select` is deprecated. If you need this functionality please contact the VASP team."
+        warnings.warn(message, DeprecationWarning, stacklevel=2)
         dicts = self._init_dicts_old()
         _raise_error_if_not_found_in_dict(orbital, dicts["orbital"])
         _raise_error_if_not_found_in_dict(spin, dicts["spin"])
@@ -211,6 +291,8 @@ class Projector(base.Refinery):
         Iterable[Index]
             Indices of the atom, the orbital and the spin compatible with a specific
             selection."""
+        message = "Calling `Projector.parse_selection is deprecated. If you need this functionality please contact the VASP team."
+        warnings.warn(message, DeprecationWarning, stacklevel=2)
         dicts = self._init_dicts_old()
         default_index = Projector.Index(
             atom=_select_all,
@@ -219,54 +301,6 @@ class Projector(base.Refinery):
         )
         tree = select.Tree.from_selection(selection)
         yield from _parse_recursive(dicts, tree, default_index)
-
-    @base.data_access
-    def selections(self):
-        """Return a dictionary describing what options are available to specify the
-        atom, orbital, and spin."""
-        dicts = self._init_dicts_old()
-        return {
-            "atom": _filter_and_sort_keys(dicts["atom"]),
-            "orbital": _filter_and_sort_keys(dicts["orbital"]),
-            "spin": _filter_and_sort_keys(dicts["spin"]),
-        }
-
-    def _topology(self):
-        return data.Topology.from_data(self._raw_data.topology)
-
-    def _init_dicts(self):
-        if self._raw_data.orbital_types.is_none():
-            return {}
-        atom_dict = self._init_atom_dict()
-        orbital_dict = self._init_orbital_dict()
-        spin_dict = self._init_spin_dict()
-        return {"atom": atom_dict, "orbital": orbital_dict, "spin": spin_dict}
-
-    def _init_atom_dict(self):
-        return {
-            key: value.indices
-            for key, value in self._topology().read().items()
-            if key != _select_all
-        }
-
-    def _init_orbital_dict(self):
-        orbital_dict = {
-            orbital: slice(i, i + 1) for i, orbital in enumerate(self._orbital_types())
-        }
-        if "px" in orbital_dict:
-            orbital_dict["p"] = slice(1, 4)
-            orbital_dict["d"] = slice(4, 9)
-            orbital_dict["f"] = slice(9, 16)
-        return orbital_dict
-
-    def _init_spin_dict(self):
-        if not self._spin_polarized:
-            return {"total": slice(0, 1)}
-        return {"total": slice(0, 2), "up": slice(0, 1), "down": slice(1, 2)}
-
-    @property
-    def _spin_polarized(self):
-        return self._raw_data.number_spins == 2
 
     def _init_dicts_old(self):
         return {
@@ -290,20 +324,6 @@ class Projector(base.Refinery):
             orbital_dict["d"] = Selection(indices=slice(4, 9), label="d")
             orbital_dict["f"] = Selection(indices=slice(9, 16), label="f")
         return orbital_dict
-
-    def _raise_error_if_orbitals_missing(self):
-        if self._raw_data.orbital_types.is_none():
-            message = "Projectors are not available, rerun Vasp setting LORBIT >= 10."
-            raise exception.IncorrectUsage(message)
-
-    def _orbital_types(self):
-        clean_string = lambda orbital: convert.text_to_string(orbital).strip()
-        for orbital in self._raw_data.orbital_types:
-            orbital = clean_string(orbital)
-            if orbital == "x2-y2":
-                yield "dx2y2"
-            else:
-                yield orbital
 
     def _init_spin_dict_old(self):
         num_spins = self._raw_data.number_spins
@@ -416,21 +436,3 @@ def _setup_spin_indices(index, spin_polarized):
     else:
         for key in ("up", "down"):
             yield index._replace(spin=key)
-
-
-def _filter_and_sort_keys(keys):
-    filtered_keys = filter(lambda key: key not in [_select_all, "polarized"], keys)
-    return sorted(filtered_keys, key=_sort_key)
-
-
-def _sort_key(key):
-    spin_keys = ["total", "up", "down"]
-    orbital_keys = ["s", "p", "d", "f"]
-    if key in spin_keys:
-        return 0
-    if key[:1] in orbital_keys:
-        return str(orbital_keys.index(key[:1])) + key
-    if key.isdecimal():
-        return int(key)
-    assert key.istitle()  # should be atom
-    return 0
