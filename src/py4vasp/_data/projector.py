@@ -117,16 +117,24 @@ class Projector(base.Refinery):
     def project(self, selection, projections):
         if not selection:
             return {}
+        self._raise_error_if_orbitals_missing()
+        selector = self._make_selector(projections)
+        tree = select.Tree.from_selection(selection)
+        return {
+            selector.label(selection): selector[selection]
+            for selection in tree.selections()
+        }
+
+    def _make_selector(self, projections):
         maps = self.to_dict()
         maps = {0: maps["spin"], 1: maps["atom"], 2: maps["orbital"]}
-        selector = index.Selector(maps, projections)
-        tree = select.Tree.from_selection(selection)
-        print(list(tree.selections()))
-        return {selection: selector[selection] for selection in tree.selections()}
-        # error_message = "Projector selection must be a string."
-        # check.raise_error_if_not_string(selection, error_message)
-        indices = self._get_indices(selection)
-        return self._read_elements(indices, projections)
+        try:
+            return index.Selector(maps, projections)
+        except exception._Py4VaspInternalError as error:
+            message = f"""Error reading the projections. Please make sure that the passed
+                projections has the right format, i.e., the indices correspond to spin,
+                atom, and orbital, respectively."""
+            raise exception.IncorrectUsage(message) from error
 
     @base.data_access
     @documentation.format(separator=select.range_separator)

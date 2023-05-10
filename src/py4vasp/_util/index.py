@@ -316,5 +316,5 @@ def _raise_error_if_map_out_of_bounds(dimensions, max_dimension):
         try:
             range_[dim]
         except IndexError:
-            message = f"The selected dimension {dim} is outside of the dimension of the data {max_dimension}."
+            message = f"The selected dimension {dim} is outside of the dimension of the data {range_}."
             raise exception._Py4VaspInternalError(message)

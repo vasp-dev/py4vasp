@@ -33,6 +33,16 @@ def missing_orbitals(raw_data):
     return Projector.from_data(raw_data.projector("without_orbitals"))
 
 
+@pytest.fixture
+def projections():
+    num_spins = 1
+    num_atoms = 7
+    num_orbitals = 10
+    num_quantity = 25
+    shape = (num_spins, num_atoms, num_orbitals, num_quantity)
+    return np.arange(np.prod(shape)).reshape(shape)
+
+
 def test_Sr2TiO4_selection(Sr2TiO4):
     ref = Sr2TiO4_selection()
     check_projector_selection(Sr2TiO4, ref)
@@ -330,26 +340,17 @@ def test_read_Fe3O4(Fe3O4):
     }
 
 
-def test_evaluate_projections(Sr2TiO4, Assert):
-    num_spins = 1
-    num_atoms = 7
-    num_orbitals = 10
-    num_quantity = 25
-    shape = (num_spins, num_atoms, num_orbitals, num_quantity)
-    projections = np.arange(np.prod(shape)).reshape(shape)
+def test_evaluate_projections(Sr2TiO4, projections, Assert):
     Sr_ref = np.sum(projections[0, 0:2, 1:4], axis=(0, 1))
     Ti_ref = projections[0, 2, 4]
     actual = Sr2TiO4.project(selection="Sr(p) 3(dxy)", projections=projections)
-    Assert.allclose(actual[("Sr", "p")], Sr_ref)
-    print(actual, np.allclose(actual[("Sr", "p")], Sr_ref))
     Assert.allclose(actual["Sr_p"], Sr_ref)
     Assert.allclose(actual["Ti_1_dxy"], Ti_ref)
 
 
-def test_missing_arguments_should_return_empty_dictionary(Sr2TiO4):
-    data = raw.VaspData(np.zeros(10))
-    assert Sr2TiO4.project(selection="", projections=data) == {}
-    assert Sr2TiO4.project(selection=None, projections=data) == {}
+def test_missing_arguments_should_return_empty_dictionary(Sr2TiO4, projections):
+    assert Sr2TiO4.project(selection="", projections=projections) == {}
+    assert Sr2TiO4.project(selection=None, projections=projections) == {}
 
 
 def test_missing_orbitals_project(missing_orbitals):
@@ -357,14 +358,15 @@ def test_missing_orbitals_project(missing_orbitals):
         missing_orbitals.project("any string", "any data")
 
 
-def test_error_parsing(Sr2TiO4):
+def test_error_parsing(Sr2TiO4, projections):
+    data = raw.VaspData(np.zeros(10))
     with pytest.raises(exception.IncorrectUsage):
-        Sr2TiO4.project(selection="XX", projections=None)
+        Sr2TiO4.project(selection="XX", projections=projections)
     with pytest.raises(exception.IncorrectUsage):
         number_instead_of_string = -1
-        Sr2TiO4.project(selection=number_instead_of_string, projections=None)
+        Sr2TiO4.project(selection=number_instead_of_string, projections=projections)
     with pytest.raises(exception.IncorrectUsage):
-        Sr2TiO4.project("up", projections=None)
+        Sr2TiO4.project(selection="up", projections=projections)
 
 
 def test_incorrect_selection(Sr2TiO4):
@@ -419,7 +421,7 @@ def test_missing_orbitals_print(missing_orbitals, format_):
     assert actual == {"text/plain": "no projectors"}
 
 
-def test_factory_methods(raw_data, check_factory_methods):
+def test_factory_methods(raw_data, check_factory_methods, projections):
     data = raw_data.projector("Sr2TiO4")
-    parameters = {"project": {"selection": "Sr", "projections": None}}
+    parameters = {"project": {"selection": "Sr", "projections": projections}}
     check_factory_methods(Projector, data, parameters)
