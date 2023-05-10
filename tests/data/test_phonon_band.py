@@ -23,13 +23,11 @@ def phonon_band(raw_data):
     Sr = slice(0, 2)
     band.ref.Sr = np.sum(np.abs(band.ref.modes[:, :, Sr, :]), axis=(2, 3))
     Ti = 2
-    x = 0
+    x, y, z = range(3)
     band.ref.Ti_x = np.abs(band.ref.modes[:, :, Ti, x])
     _45 = slice(3, 5)
-    y = 1
     band.ref.y_45 = np.sum(np.abs(band.ref.modes[:, :, _45, y]), axis=2)
-    z = 2
-    band.ref.z = np.sum(np.abs(band.ref.modes[:, :, :, 2]), axis=2)
+    band.ref.z = np.sum(np.abs(band.ref.modes[:, :, :, z]), axis=2)
     return band
 
 
@@ -62,11 +60,11 @@ def test_plot_selection(phonon_band, Assert):
     checker = FatbandChecker(phonon_band, Assert)
     #
     default_width = 1
-    graph = phonon_band.plot("Sr, 3(x), y(4:5), z")
+    graph = phonon_band.plot("Sr, 3(x), y(4:5), z, Sr - Ti(x)")
     checker.verify(graph, default_width)
     #
     width = 0.25
-    graph = phonon_band.plot("Sr, 3(x), y(4:5), z", width)
+    graph = phonon_band.plot("Sr, 3(x), y(4:5), z, Sr - Ti(x)", width)
     checker.verify(graph, width)
 
 
@@ -74,8 +72,8 @@ class FatbandChecker:
     def __init__(self, phonon_band, Assert):
         ref = phonon_band.ref
         self.distances = ref.qpoints.distances()
-        self.projections = ref.Sr, ref.Ti_x, ref.y_45, ref.z
-        self.labels = "Sr", "Ti_1_x", "4:5_y", "z"
+        self.projections = ref.Sr, ref.Ti_x, ref.y_45, ref.z, ref.Sr - ref.Ti_x
+        self.labels = "Sr", "Ti_1_x", "4:5_y", "z", "Sr - Ti_x"
         self.bands = ref.bands
         self.Assert = Assert
 
