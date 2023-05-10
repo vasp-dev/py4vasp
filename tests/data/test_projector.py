@@ -348,6 +348,22 @@ def test_evaluate_projections(Sr2TiO4, projections, Assert):
     Assert.allclose(actual["Ti_1_dxy"], Ti_ref)
 
 
+def test_spin_projections(Fe3O4, projections, Assert):
+    spin_projections = np.array([projections[0] + 1, projections[0] - 1])
+    Fe_ref = np.sum(spin_projections[:, 0:3], axis=(1, 2))
+    d_ref = np.sum(spin_projections[:, :, 2], axis=(1))
+    O_ref = np.sum(spin_projections[:, 3:7], axis=(0, 1, 2))
+    p_ref = np.sum(spin_projections[:, :, 1], axis=(0, 1))
+    down_ref = np.sum(spin_projections[1], axis=(0, 1))
+    actual = Fe3O4.project("Fe d O(total) p + down", spin_projections)
+    Assert.allclose(actual["Fe_up"], Fe_ref[0])
+    Assert.allclose(actual["Fe_down"], Fe_ref[1])
+    Assert.allclose(actual["d_up"], d_ref[0])
+    Assert.allclose(actual["d_down"], d_ref[1])
+    Assert.allclose(actual["O_total"], O_ref)
+    Assert.allclose(actual["p + down"], p_ref + down_ref)
+
+
 def test_missing_arguments_should_return_empty_dictionary(Sr2TiO4, projections):
     assert Sr2TiO4.project(selection="", projections=projections) == {}
     assert Sr2TiO4.project(selection=None, projections=projections) == {}
@@ -359,7 +375,6 @@ def test_missing_orbitals_project(missing_orbitals):
 
 
 def test_error_parsing(Sr2TiO4, projections):
-    data = raw.VaspData(np.zeros(10))
     with pytest.raises(exception.IncorrectUsage):
         Sr2TiO4.project(selection="XX", projections=projections)
     with pytest.raises(exception.IncorrectUsage):

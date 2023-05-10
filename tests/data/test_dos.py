@@ -122,10 +122,9 @@ def test_Fe3O4_to_frame(Fe3O4, Assert):
 
 
 def test_Sr2TiO4_projectors_to_frame(Sr2TiO4_projectors, Assert):
-    all_ = select.all
     equivalent_selections = [
         "s Sr(d) Ti O(px,dxy) 2(p) 4 3(dz2) 1:2(p)",
-        f"2( p), dz2(3) Sr(d) p(1:2), {all_}(s), 4 Ti({all_}) px(O) O(dxy)",
+        "2( p), dz2(3) Sr(d) p(1:2), s, 4 Ti px(O) O(dxy)",
     ]
     for selection in equivalent_selections:
         actual = Sr2TiO4_projectors.to_frame(selection)

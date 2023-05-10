@@ -119,15 +119,14 @@ class Projector(base.Refinery):
             return {}
         self._raise_error_if_orbitals_missing()
         selector = self._make_selector(projections)
-        tree = select.Tree.from_selection(selection)
         return {
             selector.label(selection): selector[selection]
-            for selection in tree.selections()
+            for selection in self._parse_selection(selection)
         }
 
     def _make_selector(self, projections):
         maps = self.to_dict()
-        maps = {0: maps["spin"], 1: maps["atom"], 2: maps["orbital"]}
+        maps = {1: maps["atom"], 2: maps["orbital"], 0: maps["spin"]}
         try:
             return index.Selector(maps, projections)
         except exception._Py4VaspInternalError as error:
@@ -135,6 +134,23 @@ class Projector(base.Refinery):
                 projections has the right format, i.e., the indices correspond to spin,
                 atom, and orbital, respectively."""
             raise exception.IncorrectUsage(message) from error
+
+    def _parse_selection(self, selection):
+        tree = select.Tree.from_selection(selection)
+        for selection in tree.selections():
+            if not self._spin_polarized or self._spin_selected(selection):
+                yield selection
+            else:
+                yield from self._add_spin_components(selection)
+
+    def _spin_selected(self, selection):
+        return any(
+            select.contains(selection, choice) for choice in self._init_spin_dict()
+        )
+
+    def _add_spin_components(self, selection):
+        yield selection + ("up",)
+        yield selection + ("down",)
 
     @base.data_access
     @documentation.format(separator=select.range_separator)
@@ -244,9 +260,13 @@ class Projector(base.Refinery):
         return orbital_dict
 
     def _init_spin_dict(self):
-        if self._raw_data.number_spins == 1:
+        if not self._spin_polarized:
             return {"total": slice(0, 1)}
         return {"total": slice(0, 2), "up": slice(0, 1), "down": slice(1, 2)}
+
+    @property
+    def _spin_polarized(self):
+        return self._raw_data.number_spins == 2
 
     def _init_dicts_old(self):
         return {
