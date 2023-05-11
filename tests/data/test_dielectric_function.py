@@ -283,11 +283,11 @@ def get_direction(tensor, direction):
 
 def expected_plot_name(real_or_imag, direction, component=None):
     parts = (real_or_imag,)
+    if component is not None:
+        parts += (component,)
     if direction != "isotropic":
         parts += (direction,)
-    if component is not None:
-        parts = (component,) + parts
-    return ",".join(parts)
+    return "_".join(parts)
 
 
 def check_figure_contains_plots(fig, references, Assert):
