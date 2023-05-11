@@ -37,12 +37,35 @@ def test_sum_over_selection(selection, indices):
     assert selector[(selection,)] == np.sum(values[indices])
 
 
+@pytest.mark.parametrize("selection, expected", [("A", 98), ("B", 45)])
+def test_map_contains_slice_or_step(selection, expected):
+    values = np.arange(10) ** 2
+    map_ = {0: {"A": [1, 4, 9], "B": slice(0, 8, 3)}}
+    selector = index.Selector(map_, values)
+    assert selector[(selection,)] == expected
+
+
 @pytest.mark.parametrize("selection, indices", [("x", [7]), ("y", [2, 5])])
 def test_select_one_of_two_components(selection, indices):
     values = np.arange(30).reshape((3, 10))
     map_ = {1: {"x": 7, "y": slice(2, 6, 3)}}
     selector = index.Selector(map_, values)
     assert np.all(selector[(selection,)] == np.sum(values[:, indices], axis=1))
+
+
+@pytest.mark.parametrize(
+    "selection, expected",
+    [
+        ("x", [1.732050807568877, 2.0, 2.23606797749979]),
+        ("y", [2.917980236721544, 3.182861868757633, 3.366007993209797]),
+        ("z", [3.464101615137755, 3.632351299197724, 3.787630057136079]),
+    ],
+)
+def test_custom_function(selection, expected, Assert):
+    values = np.sqrt(np.arange(30)).reshape(10, 3)
+    map_ = {0: {"x": 1, "y": slice(0, 8), "z": [1, 4, 9]}}
+    selector = index.Selector(map_, values, reduction=np.average)
+    Assert.allclose(selector[(selection,)], expected)
 
 
 @pytest.mark.parametrize("selection, expected", [("A", 4), ("B", 11), ("C", -1)])
@@ -201,6 +224,25 @@ def test_complex_operation(Assert):
 
 
 @pytest.mark.parametrize(
+    "selection, expected",
+    [
+        ("A + x", [4.069394429954547e-02, 3.866352549793870e-09]),
+        ("B - y", [-1.732435589575556e-02, 3.400533929941882e-04]),
+        ("A(z) + B(x - y)", [-3.599130760612862e-01, -5.358270586524438e-02]),
+    ],
+)
+def test_operation_with_custom_reduction(selection, expected, Assert):
+    values = np.log(np.linspace(0.1, 1.9, 48)).reshape(2, 4, 6)
+    map_ = {
+        1: {"A": slice(0, 3), "B": slice(2, 4)},
+        2: {"x": slice(1, 5), "y": slice(None, None, 3), "z": slice(0, 5, 2)},
+    }
+    selector = index.Selector(map_, values, reduction=np.prod)
+    selection, *_ = select.Tree.from_selection(selection).selections()
+    Assert.allclose(selector[selection], expected)
+
+
+@pytest.mark.parametrize(
     "selection, label",
     [
         (("up",), "up"),
@@ -263,11 +305,6 @@ def test_error_when_duplicate_key():
         index.Selector({0: {"A": 1}, 1: {"A": 2}}, None)
 
 
-def test_error_when_indices_are_not_int_or_slice():
-    with pytest.raises(exception._Py4VaspInternalError):
-        index.Selector({0: {"A": [1, 2]}}, None)
-
-
 def test_error_when_numbers_are_longer_than_one():
     with pytest.raises(exception._Py4VaspInternalError):
         index.Selector({0: {"A": 1, "1": slice(0, 2)}}, np.zeros(3))
@@ -294,9 +331,9 @@ def test_error_when_range_belongs_to_different_dimensions():
         selector[(select.Group(["A", "x"], select.range_separator),)]
 
 
-@pytest.mark.parametrize("range_", [("A", "B"), ("B", "A")])
+@pytest.mark.parametrize("range_", [("A", "B"), ("B", "A"), ("C", "B")])
 def test_error_when_slice_has_step(range_):
-    map_ = {0: {"A": slice(1, 5, -1), "B": 2}}
+    map_ = {0: {"A": slice(1, 5, -1), "B": 2, "C": [1, 4]}}
     selector = index.Selector(map_, np.zeros(10))
     group = select.Group(range_, select.range_separator)
     with pytest.raises(exception.IncorrectUsage):

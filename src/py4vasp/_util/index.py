@@ -48,9 +48,13 @@ class Selector:
     data : VaspData
         An array read from the VASP calculation. The indices in the maps should be
         compatible with the dimension of this array.
+    reduction : function
+        The function used to reduce over the dimensions listed in the map. If not
+        specified a summation is performed. Note that the function must have an axis
+        argument with the same meaning as `np.sum`.
     """
 
-    def __init__(self, maps, data):
+    def __init__(self, maps, data, *, reduction=np.sum):
         self._data = raw.VaspData(data)
         self._axes = tuple(maps.keys())
         _raise_error_if_duplicate_keys(maps)
@@ -58,6 +62,7 @@ class Selector:
             _raise_error_if_map_out_of_bounds(maps.keys(), self._data.ndim)
         self._map = self._make_map(maps)
         self._number_labels = self._make_number_labels(maps)
+        self._reduction = reduction
 
     def _make_map(self, maps):
         return {
@@ -101,15 +106,29 @@ class Selector:
         -------
         np.ndarray
             The subsection of the array corresponding to the selection. Note that this
-            will sum over all dimensions provided in the initialization of the class,
+            will reduce over all dimensions provided in the initialization of the class,
             i.e., ndim of the result = ndim of data - len(maps).
         """
         return sum(
-            slices.factor * np.sum(self._data[slices.indices], axis=self._axes)
+            slices.factor * self._reduction(self._data[slices.indices], axis=self._axes)
             for slices in self._get_all_slices(selection)
         )
 
     def label(self, selection):
+        """Construct a label for a particular selection.
+
+        Parameters
+        ----------
+        selection : tuple
+            A selection ideally produced by `py4vasp._util.selection.Tree`. The elements
+            of the tuple should correspond to labels in the maps used to initialize this
+            class or mathematical operations of them.
+
+        Returns
+        -------
+        str
+            A string describing the selection in the context of the maps.
+        """
         return " ".join(
             slices.label(i, self._axes, self._number_labels)
             for i, slices in enumerate(self._get_all_slices(selection))
@@ -162,13 +181,13 @@ class Selector:
         raise exception.IncorrectUsage(message)
 
     def _merge_slice(self, range_):
-        allowed_steps = (None, 1)
         _, left = self._map[range_.group[0]]
         _, right = self._map[range_.group[1]]
-        if left.step in allowed_steps and right.step in allowed_steps:
+        if not _data_contiguous(left) or not _data_contiguous(right):
+            message = f"Cannot read range {range_} because the data is not contiguous."
+            raise exception.IncorrectUsage(message)
+        else:
             return slice(left.start, right.stop)
-        message = f"Cannot read range {range_} because the data is not contiguous."
-        raise exception.IncorrectUsage(message)
 
     def _read_pair(self, pair):
         key = str(pair)
@@ -196,6 +215,8 @@ def _make_slice(indices):
         return slice(indices, indices + 1 or None)
     if isinstance(indices, slice):
         return indices
+    if np.ndim(indices) == 1:
+        return np.array(indices)
     message = f"A conversion of {indices} to slice is not implemented."
     raise exception._Py4VaspInternalError(message)
 
@@ -206,6 +227,10 @@ def _is_range(key):
 
 def _is_pair(key):
     return isinstance(key, select.Group) and key.separator == select.pair_separator
+
+
+def _data_contiguous(slice_):
+    return isinstance(slice_, slice) and slice_.step in (1, None)
 
 
 class _Slices:
