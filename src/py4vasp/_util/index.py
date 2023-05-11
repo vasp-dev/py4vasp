@@ -303,9 +303,13 @@ def _merge_keys(left_keys, right_keys):
 
 def _merge_indices(defaults, left_indices, right_indices):
     return [
-        left if right == default else right
+        left if _right_is_default(right, default) else right
         for default, left, right in zip(defaults, left_indices, right_indices)
     ]
+
+
+def _right_is_default(right, default):
+    return np.array_equal(right, default)
 
 
 def _raise_error_if_index_used_twice(left_key, right_key):
