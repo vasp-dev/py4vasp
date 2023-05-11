@@ -111,11 +111,7 @@ def test_select_two_of_four_components(selection, expected):
 
 @pytest.mark.parametrize(
     "selection, expected",
-    [
-        (("A",), [26, 34]),
-        (("x",), [14, 22]),
-        ((), [10, 18]),
-    ],
+    [(("A",), [26, 34]), (("x",), [14, 22]), ((), [10, 18]), (("A", "x"), [30, 38])],
 )
 def test_select_with_default(selection, expected):
     values = np.arange(24).reshape(3, 2, 4)
@@ -236,6 +232,20 @@ def test_complex_operation(Assert):
     ]
     for selection, expected in zip(selections, expected_results):
         Assert.allclose(selector[selection], expected)
+
+
+# @pytest.mark.parametrize(
+#     "selection, expected",
+#     [
+#         ("A + x")
+#     ]
+# )
+# def test_operation_with_default_selection(selection, expected, Assert)
+#     values = np.tanh(np.linspace(-2, 2, 60)).reshape(5, 3, 4)
+#     map_ = {0: {"A"}}
+#     selector = index.Selector(map_, values)
+#     selection, *_ = select.Tree.from_selection(selection).selections()
+#     Assert.allclose(selector[selection], expected)
 
 
 @pytest.mark.parametrize(

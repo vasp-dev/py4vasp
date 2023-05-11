@@ -245,6 +245,7 @@ def _data_contiguous(slice_):
 
 class _Slices:
     def __init__(self, indices):
+        self._default = indices
         self._indices = indices.copy()
         self._keys = [""] * len(indices)
         self.factor = 1
@@ -252,8 +253,10 @@ class _Slices:
     @classmethod
     def from_merge(cls, left, right):
         slices = cls([])
+        assert left._default == right._default
+        slices._default = left._default
+        slices._indices = _merge_indices(left._default, left._indices, right._indices)
         slices._keys = _merge_keys(left._keys, right._keys)
-        slices._indices = _merge_indices(left._indices, right._indices)
         slices.factor = left.factor * right.factor
         return slices
 
@@ -298,10 +301,10 @@ def _merge_keys(left_keys, right_keys):
     return result
 
 
-def _merge_indices(left_indices, right_indices):
+def _merge_indices(defaults, left_indices, right_indices):
     return [
-        left_index if right_index == slice(None) else right_index
-        for left_index, right_index in zip(left_indices, right_indices)
+        left if right == default else right
+        for default, left, right in zip(defaults, left_indices, right_indices)
     ]
 
 
