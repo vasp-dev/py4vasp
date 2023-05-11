@@ -44,7 +44,8 @@ class Selector:
         The keys of the dictionary should be integer values indicating the dimension
         of the array described by its values. The values are dictionaries that map
         labels of the dimension onto corresponding slices of the array. Instead of a
-        slice a single index is allowed as well.
+        slice a single index is allowed as well. If the label is set to None, this
+        particular selection overwrites the default of all indices.
     data : VaspData
         An array read from the VASP calculation. The indices in the maps should be
         compatible with the dimension of this array.
@@ -62,6 +63,7 @@ class Selector:
             _raise_error_if_map_out_of_bounds(maps.keys(), self._data.ndim)
         self._map = self._make_map(maps)
         self._number_labels = self._make_number_labels(maps)
+        self._indices = self._make_default_indices(maps, self._data.ndim)
         self._reduction = reduction
 
     def _make_map(self, maps):
@@ -69,6 +71,7 @@ class Selector:
             key: (dim, _make_slice(indices))
             for dim, map_ in maps.items()
             for key, indices in map_.items()
+            if key is not None
         }
 
     def _make_number_labels(self, maps):
@@ -76,7 +79,7 @@ class Selector:
             key: self._make_label(map_, key, index, self._data.shape[dim])
             for dim, map_ in maps.items()
             for key, index in map_.items()
-            if key.isdecimal()
+            if key is not None and key.isdecimal()
         }
 
     def _make_label(self, map_, number, index, size):
@@ -91,6 +94,13 @@ class Selector:
             if index in range_:
                 return f"{key}_{range_.index(index) + 1}"
         return number
+
+    def _make_default_indices(self, maps, ndim):
+        indices = [slice(None)] * ndim
+        for dim, map_ in maps.items():
+            if None in map_:
+                indices[dim] = _make_slice(map_[None])
+        return indices
 
     def __getitem__(self, selection):
         """Main functionality provided by the class.
@@ -136,7 +146,7 @@ class Selector:
 
     def _get_all_slices(self, selection, operator="+"):
         if len(selection) == 0:
-            yield _Slices(self._data.ndim)
+            yield _Slices(self._indices)
         elif len(selection) == 1:
             yield from self._get_slices_from_single_selection(*selection, operator)
         else:
@@ -162,7 +172,7 @@ class Selector:
             dimension, slice_ = self._map[key]
         except KeyError as error:
             _raise_key_not_found_error(key, error)
-        return _Slices(self._data.ndim).set(dimension, slice_, key)
+        return _Slices(self._indices).set(dimension, slice_, key)
 
     def _read_range(self, range_):
         try:
@@ -170,7 +180,7 @@ class Selector:
             slice_ = self._merge_slice(range_)
         except KeyError as error:
             _raise_key_not_found_error(range_, error)
-        return _Slices(self._data.ndim).set(dimension, slice_, range_)
+        return _Slices(self._indices).set(dimension, slice_, range_)
 
     def _read_dimension(self, range_):
         dim1, _ = self._map[range_.group[0]]
@@ -234,14 +244,14 @@ def _data_contiguous(slice_):
 
 
 class _Slices:
-    def __init__(self, ndim):
-        self._indices = [slice(None)] * ndim
-        self._keys = [""] * ndim
+    def __init__(self, indices):
+        self._indices = indices.copy()
+        self._keys = [""] * len(indices)
         self.factor = 1
 
     @classmethod
     def from_merge(cls, left, right):
-        slices = cls(len(left._indices))
+        slices = cls([])
         slices._keys = _merge_keys(left._keys, right._keys)
         slices._indices = _merge_indices(left._indices, right._indices)
         slices.factor = left.factor * right.factor
@@ -321,11 +331,12 @@ def _raise_error_if_duplicate_keys(maps):
 
 def _find_duplicates(maps):
     keys = set()
-    duplicates = set()
+    duplicates = {None}
     for map_ in maps.values():
         new_keys = set(map_.keys())
         duplicates.update(keys.intersection(new_keys))
         keys.update(new_keys)
+    duplicates.remove(None)
     return duplicates
 
 

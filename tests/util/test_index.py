@@ -110,6 +110,21 @@ def test_select_two_of_four_components(selection, expected):
 
 
 @pytest.mark.parametrize(
+    "selection, expected",
+    [
+        (("A",), [26, 34]),
+        (("x",), [14, 22]),
+        ((), [10, 18]),
+    ],
+)
+def test_select_with_default(selection, expected):
+    values = np.arange(24).reshape(3, 2, 4)
+    map_ = {0: {"A": slice(1, 3), None: slice(0, 2)}, 2: {None: 1, "x": 3}}
+    selector = index.Selector(map_, values)
+    assert np.all(selector[selection] == expected)
+
+
+@pytest.mark.parametrize(
     "selection, indices",
     [
         ((make_range("1", "3"),), slice(0, 3)),
