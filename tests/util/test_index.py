@@ -234,18 +234,23 @@ def test_complex_operation(Assert):
         Assert.allclose(selector[selection], expected)
 
 
-# @pytest.mark.parametrize(
-#     "selection, expected",
-#     [
-#         ("A + x")
-#     ]
-# )
-# def test_operation_with_default_selection(selection, expected, Assert)
-#     values = np.tanh(np.linspace(-2, 2, 60)).reshape(5, 3, 4)
-#     map_ = {0: {"A"}}
-#     selector = index.Selector(map_, values)
-#     selection, *_ = select.Tree.from_selection(selection).selections()
-#     Assert.allclose(selector[selection], expected)
+@pytest.mark.parametrize(
+    "selection, expected",
+    [
+        ("A + x", [0.435144515066183, 1.278152404958349, 2.037388074302085]),
+        ("x(A) - x", [0.2516487639954, 0.270462229948895, 0.251648763995401]),
+        (
+            "y - x + A",
+            [1.035127542931675e-01, 1.352311149744472e-01, 1.481360097022331e-01],
+        ),
+    ],
+)
+def test_operation_with_default_selection(selection, expected, Assert):
+    values = np.tanh(np.linspace(-2, 2, 60)).reshape(5, 3, 4)
+    map_ = {2: {"A": slice(2, 4), None: slice(0, 2)}, 0: {"x": 2, "y": 1, None: 3}}
+    selector = index.Selector(map_, values)
+    selection, *_ = select.Tree.from_selection(selection).selections()
+    Assert.allclose(selector[selection], expected)
 
 
 @pytest.mark.parametrize(
