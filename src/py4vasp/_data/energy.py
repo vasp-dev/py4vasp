@@ -33,7 +33,7 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
         text = f"Energies at {self._step_string()}:"
         values = self._raw_data.values[self._last_step_in_slice]
         for label, value in zip(self._raw_data.labels, values):
-            label = f"{convert.text_to_string(label):22.22}"
+            label = f"{convert.text_to_string(label):23.23}"
             text += f"\n   {label}={value:17.6f}"
         return text
 
@@ -42,7 +42,7 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
             range_ = range(len(self._raw_data.values))[self._slice]
             start = range_.start + 1  # convert to Fortran index
             stop = range_.stop
-            return f"step {stop} of range {start}-{stop}"
+            return f"step {stop} of range {start}:{stop}"
         elif self._steps == -1:
             return "final step"
         else:
