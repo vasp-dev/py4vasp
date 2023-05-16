@@ -9,11 +9,11 @@ from py4vasp._util import convert, documentation, index, select
 
 def _selection_string(default):
     return f"""selection : str or None
-    String specifying the labels of the energy to be read. A substring
-    of the label is sufficient. If no energy is select this will default
-    to selecting {default}. Separate distinct labels by commas. For a
-    complete list of all possible selections, please use
-    >>> calc.energy.labels()
+    String specifying the labels of the energy to be read. If no energy is selected
+    this will default to selecting {default}. Separate distinct labels by commas or
+    whitespace. You can add or subtract different contributions e.g. `TOTEN + EKIN`.
+    For a complete list of all possible selections, please use
+    >>> calc.energy.selections()
 """
 
 
@@ -143,6 +143,15 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
 
     @base.data_access
     def selections(self):
+        """Returns all possible selections you can use for the other routines.
+
+        Returns
+        -------
+        tuple
+            Each element of the tuple is one possible selection for an energy or
+            temperature. Note that some elements correspond to the same underlying data.
+            If they are, they will be next to each other in the returned tuple.
+        """
         return tuple(self._init_selection_dict().keys())
 
     def _read_data(self, tree, steps_or_slice):
