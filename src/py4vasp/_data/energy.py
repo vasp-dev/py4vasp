@@ -5,7 +5,7 @@ import numpy as np
 from py4vasp import exception
 from py4vasp._data import base, slice_
 from py4vasp._third_party import graph
-from py4vasp._util import check, convert, documentation, select
+from py4vasp._util import check, convert, documentation, index, select
 
 
 def _selection_string(default):
@@ -16,6 +16,13 @@ def _selection_string(default):
     complete list of all possible selections, please use
     >>> calc.energy.labels()
 """
+
+
+_SELECTIONS = {
+    "ion-electron   TOTEN   ": ["TOTEN"],
+    "kinetic energy EKIN    ": ["EKIN"],
+    "temperature    TEIN    ": ["temperature"],
+}
 
 
 @documentation.format(examples=slice_.examples("energy"))
@@ -53,7 +60,7 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
         selection=_selection_string("all energies"),
         examples=slice_.examples("energy", "to_dict"),
     )
-    def to_dict(self, selection=select.all):
+    def to_dict(self, selection=None):
         """Read the energy data and store it in a dictionary.
 
         Parameters
@@ -68,9 +75,28 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
 
         {examples}
         """
+        if selection is None:
+            return self._default_dict()
+        return dict(self._read_data(selection))
+
+    def _default_dict(self):
         return {
-            label: self._raw_data.values[self._steps, index]
-            for label, index in self._parse_user_selection(selection)
+            convert.text_to_string(label).strip(): value[self._steps]
+            for label, value in zip(self._raw_data.labels, self._raw_data.values.T)
+        }
+
+    def _read_data(self, selection):
+        tree = select.Tree.from_selection(selection)
+        maps = {1: self._init_selection_dict()}
+        selector = index.Selector(maps, self._raw_data.values)
+        for selection in tree.selections():
+            yield selector.label(selection), selector[selection][self._steps]
+
+    def _init_selection_dict(self):
+        return {
+            selection: index
+            for index, label in enumerate(self._raw_data.labels)
+            for selection in _SELECTIONS.get(convert.text_to_string(label), ())
         }
 
     @base.data_access
@@ -125,7 +151,7 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
             self._raw_data.values[self._steps, index]
             for _, index in self._parse_user_selection(selection)
         )
-        return _unpack_if_only_one_element(result)
+        return np.array(_unpack_if_only_one_element(result))
 
     @base.data_access
     def labels(self, selection=select.all):
