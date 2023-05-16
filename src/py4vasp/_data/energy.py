@@ -25,6 +25,9 @@ _SELECTIONS = {
     "nose potential ES      ": ["nose_potential", "ES"],
     "nose kinetic   EPS     ": ["nose_kinetic", "EPS"],
     "total energy   ETOTAL  ": ["total_energy", "ETOTAL"],
+    "free energy    TOTEN   ": ["free_energy", "TOTEN"],
+    "energy without entropy ": ["without_entropy", "ENOENT"],
+    "energy(sigma->0)       ": ["sigma_0", "ESIG0"],
 }
 
 

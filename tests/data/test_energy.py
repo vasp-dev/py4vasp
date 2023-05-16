@@ -14,13 +14,13 @@ from py4vasp.data import Energy
 @pytest.fixture
 def MD_energy(raw_data):
     raw_energy = raw_data.energy("MD")
-    MD_energy = Energy.from_data(raw_energy)
-    MD_energy.ref = types.SimpleNamespace()
-    MD_energy.ref.number_steps = len(raw_energy.values)
+    energy = Energy.from_data(raw_energy)
+    energy.ref = types.SimpleNamespace()
+    energy.ref.number_steps = len(raw_energy.values)
     get_label = lambda x: convert.text_to_string(x).strip()
-    MD_energy.ref.labels = [get_label(label) for label in raw_energy.labels]
-    MD_energy.ref.values = raw_energy.values.T
-    return MD_energy
+    energy.ref.labels = [get_label(label) for label in raw_energy.labels]
+    energy.ref.values = raw_energy.values.T
+    return energy
 
 
 @pytest.mark.parametrize(
@@ -120,7 +120,7 @@ def check_to_image(MD_energy, filename_argument, expected_filename):
         fig.write_image.assert_called_once_with(MD_energy._path / expected_filename)
 
 
-def test_selections(MD_energy):
+def test_selections(MD_energy, raw_data):
     assert MD_energy.selections() == (
         "ion_electron",
         "TOTEN",
@@ -136,6 +136,14 @@ def test_selections(MD_energy):
         "EPS",
         "total_energy",
         "ETOTAL",
+    )
+    assert Energy.from_data(raw_data.energy("relax")).selections() == (
+        "free_energy",
+        "TOTEN",
+        "without_entropy",
+        "ENOENT",
+        "sigma_0",
+        "ESIG0"
     )
 
 
