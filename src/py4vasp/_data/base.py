@@ -164,13 +164,26 @@ class _FunctionWrapper:
     def _find_selection_in_arguments(self, *args, **kwargs):
         signature = inspect.signature(self._func)
         if "selection" in signature.parameters:
-            arguments = signature.bind(*args, **kwargs)
-            arguments.apply_defaults()
-            selection = arguments.arguments["selection"]
+            return self._get_selection_from_parameters(signature, *args, **kwargs)
+        elif selection := kwargs.pop("selection", None):
+            return selection, signature.bind(*args, **kwargs)
         else:
-            selection = kwargs.pop("selection", None)
-            arguments = signature.bind(*args, **kwargs)
-        return selection, arguments
+            return self._get_selection_from_args(signature, *args, **kwargs)
+
+    def _get_selection_from_parameters(self, signature, *args, **kwargs):
+        arguments = signature.bind(*args, **kwargs)
+        arguments.apply_defaults()
+        return arguments.arguments["selection"], arguments
+
+    def _get_selection_from_args(self, signature, *args, **kwargs):
+        try:
+            # if the signature works, there is no additional selection argument
+            return None, signature.bind(*args, **kwargs)
+        except TypeError as error:
+            try:
+                return args[-1], signature.bind(*(args[:-1]), **kwargs)
+            except:
+                raise error
 
     def _parse_selection(self, selection):
         tree = select.Tree.from_selection(selection)

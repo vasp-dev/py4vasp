@@ -91,6 +91,11 @@ def test_from_path(mock_access):
     assert example.read() == RAW_DATA.content
     mock_access.assert_called_once_with("example", selection=None, path=pathname)
     assert example.read() == RAW_DATA.content
+    #
+    # access with selection
+    mock_access.reset_mock()
+    assert example.read(selection=SELECTION) == RAW_DATA.content
+    mock_access.assert_called_once_with("example", selection=SELECTION, path=pathname)
 
 
 def test_from_file(mock_access):
@@ -103,6 +108,11 @@ def test_from_file(mock_access):
     assert example.read() == RAW_DATA.content
     mock_access.assert_called_once_with("example", selection=None, file=filename)
     assert example.read() == RAW_DATA.content
+    #
+    # access with selection
+    mock_access.reset_mock()
+    assert example.read(SELECTION) == RAW_DATA.content
+    mock_access.assert_called_once_with("example", selection=SELECTION, file=filename)
 
 
 def test_nested_calls(mock_access):
@@ -122,6 +132,17 @@ def test_arguments_passed(mock_schema):
     optional = "optional argument"
     assert example.with_arguments(mandatory) == (mandatory, None)
     assert example.with_arguments(mandatory, optional=optional) == (mandatory, optional)
+
+
+def test_arguments_and_selection(mock_access):
+    pathname = "path with VASP output"
+    example = Example.from_path(pathname)
+    first, second = "first argument", "second argument"
+    assert example.with_arguments(first, selection=SELECTION) == (first, None)
+    mock_access.assert_called_once_with("example", selection=SELECTION, path=pathname)
+    mock_access.reset_mock()
+    assert example.with_arguments(first, second, SELECTION) == (first, second)
+    mock_access.assert_called_once_with("example", selection=SELECTION, path=pathname)
 
 
 def test_variadic_arguments_passed(mock_schema):
