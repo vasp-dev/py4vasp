@@ -4,7 +4,6 @@ import typing
 
 import numpy as np
 
-from py4vasp import exception
 from py4vasp._data import base
 from py4vasp._third_party import graph
 from py4vasp._util import convert, index, select
@@ -69,7 +68,8 @@ dielectric function:
         selection : str
             Specify along which directions and which components of the dielectric
             function you want to plot. Defaults to *isotropic* and both the real
-            and the complex part.
+            and the complex part. You can use the `selections` routine if you are
+            not sure which options are available.
 
         Returns
         -------
