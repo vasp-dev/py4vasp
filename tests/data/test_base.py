@@ -345,3 +345,8 @@ def test_selection_operations_not_implemented(operator, mock_access):
     example = Example.from_path()
     with pytest.raises(exception.NotImplemented):
         example.read(selection)
+
+
+def test_selection_not_found(mock_access):
+    with pytest.raises(exception.IncorrectUsage):
+        Example.from_path().read("unknown_selection")

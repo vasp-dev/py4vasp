@@ -220,6 +220,7 @@ class _FunctionWrapper:
 
     def _set_remaining_selection(self, bound_arguments, remaining):
         if "selection" not in bound_arguments.arguments:
+            self._raise_error_if_any_remaining_selection(remaining)
             return bound_arguments
         if remaining == [[]]:
             selection = self._use_default_or_empty_string(bound_arguments.signature)
@@ -241,6 +242,16 @@ class _FunctionWrapper:
         if len(results) == 1:
             return results.popitem()[1]  # unpack value of first element
         return results
+
+    def _raise_error_if_any_remaining_selection(self, remaining):
+        if remaining == [[]]:
+            return
+        selection = select.selections_to_string(remaining)
+        sources = '", "'.join(raw.schema.selections(self._data_context.quantity))
+        message = f"""py4vasp found a selection "{selection}", but could not parse it.
+            Please check for possible spelling errors. Possible sources for
+            {self._data_context.quantity} are "{sources}"."""
+        raise exception.IncorrectUsage(message)
 
 
 def _raise_error_if_contains_operation(selection):
