@@ -140,8 +140,7 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
         {examples}
         """
         tree = select.Tree.from_selection(selection)
-        result = tuple(values for _, values in self._read_data(tree, self._steps))
-        return np.array(_unpack_if_only_one_element(result))
+        return np.squeeze([values for _, values in self._read_data(tree, self._steps)])
 
     @base.data_access
     def selections(self):
@@ -183,10 +182,3 @@ class _YAxes:
     def use_y2(self, label):
         choices = _SELECTIONS["temperature    TEIN    "]
         return self.use_both and label in choices
-
-
-def _unpack_if_only_one_element(tuple_):
-    if len(tuple_) == 1:
-        return tuple_[0]
-    else:
-        return tuple_
