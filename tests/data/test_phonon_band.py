@@ -111,6 +111,13 @@ def check_to_image(phonon_band, filename_argument, expected_filename):
         fig.write_image.assert_called_once_with(phonon_band._path / expected_filename)
 
 
+def test_selections(phonon_band):
+    assert phonon_band.selections() == {
+        "atom": ["Sr", "Ti", "O", "1", "2", "3", "4", "5", "6", "7"],
+        "direction": ["x", "y", "z"],
+    }
+
+
 def test_print(phonon_band, format_):
     actual, _ = format_(phonon_band)
     reference = """\

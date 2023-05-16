@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import data
+from py4vasp._data import base
 from py4vasp._util import select
 
 selection_doc = """\
@@ -16,11 +17,24 @@ selection : str
     You separate multiple selections by commas or whitespace and can nest them using
     parenthesis, e.g. `Sr(x)` or `z(1, 2)`. The order of the selections does not matter,
     but it is case sensitive to distinguish y (Cartesian direction) from Y (yttrium).
+    You can also add or subtract different selections e.g. `Sr - Ti`.
+
+    If you are unsure what selections exist, please use the `selections` routine which
+    will return all possibilities.
 """
 
 
 class Mixin:
     "Provide functionality common to Phonon classes."
+
+    @base.data_access
+    def selections(self):
+        "Return a dictionary specifying which atoms and directions can be used as selection."
+        atoms = self._init_atom_dict().keys()
+        return {
+            "atom": sorted(atoms, key=self._sort_key),
+            "direction": ["x", "y", "z"],
+        }
 
     def _topology(self):
         return data.Topology.from_data(self._raw_data.topology)
@@ -38,3 +52,6 @@ class Mixin:
             "y": slice(1, 2),
             "z": slice(2, 3),
         }
+
+    def _sort_key(self, key):
+        return key.isdecimal()
