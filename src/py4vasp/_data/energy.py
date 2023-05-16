@@ -19,13 +19,13 @@ def _selection_string(default):
 
 
 _SELECTIONS = {
-    "ion-electron   TOTEN   ": ["TOTEN"],
-    "kinetic energy EKIN    ": ["EKIN"],
-    "kin. lattice   EKIN_LAT": ["EKIN_LAT"],
+    "ion-electron   TOTEN   ": ["ion_electron", "TOTEN"],
+    "kinetic energy EKIN    ": ["kinetic_energy", "EKIN"],
+    "kin. lattice   EKIN_LAT": ["kinetic_lattice", "EKIN_LAT"],
     "temperature    TEIN    ": ["temperature", "TEIN"],
-    "nose potential ES      ": ["ES"],
-    "nose kinetic   EPS     ": ["nose_kinetic"],
-    "total energy   ETOTAL  ": ["ETOTAL"],
+    "nose potential ES      ": ["nose_potential", "ES"],
+    "nose kinetic   EPS     ": ["nose_kinetic", "EPS"],
+    "total energy   ETOTAL  ": ["total_energy", "ETOTAL"],
 }
 
 
@@ -140,6 +140,10 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
         result = tuple(values for _, values in self._read_data(selection, self._steps))
         return np.array(_unpack_if_only_one_element(result))
 
+    @base.data_access
+    def selections(self):
+        return tuple(self._init_selection_dict().keys())
+
     def _read_data(self, selection, steps_or_slice):
         tree = select.Tree.from_selection(selection)
         maps = {1: self._init_selection_dict()}
@@ -165,11 +169,6 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
             )
             for label, values in self._read_data(selection, self._slice)
         ]
-
-    @base.data_access
-    def labels(self, selection=select.all):
-        "Return the labels corresponding to a particular selection defaulting to all labels."
-        return [label for label, _ in self._parse_user_selection(selection)]
 
     def _parse_user_selection(self, selection):
         # NOTE it would be nice to use SelectionTree instead, however that requires

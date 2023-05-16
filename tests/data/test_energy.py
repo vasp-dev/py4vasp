@@ -120,13 +120,23 @@ def check_to_image(MD_energy, filename_argument, expected_filename):
         fig.write_image.assert_called_once_with(MD_energy._path / expected_filename)
 
 
-def test_labels(MD_energy):
-    total_energy = MD_energy.ref.labels[0]
-    kinetic_energy = MD_energy.ref.labels[1]
-    temperature = MD_energy.ref.labels[3]
-    assert MD_energy.labels() == MD_energy.ref.labels
-    assert MD_energy.labels("temperature") == [temperature]
-    assert MD_energy.labels("TOTEN, EKIN") == [total_energy, kinetic_energy]
+def test_selections(MD_energy):
+    assert MD_energy.selections() == (
+        "ion_electron",
+        "TOTEN",
+        "kinetic_energy",
+        "EKIN",
+        "kinetic_lattice",
+        "EKIN_LAT",
+        "temperature",
+        "TEIN",
+        "nose_potential",
+        "ES",
+        "nose_kinetic",
+        "EPS",
+        "total_energy",
+        "ETOTAL",
+    )
 
 
 @pytest.mark.parametrize(
@@ -147,7 +157,7 @@ def test_print(steps, step_label, MD_energy, format_):
     energies = MD_energy.ref.values[:, last_step]
     lines = [f"Energies at {step_label}:"]
     lines += [
-        f"   {ll:23.23}={ee:17.6f}" for ll, ee in zip(MD_energy.labels(), energies)
+        f"   {ll:23.23}={ee:17.6f}" for ll, ee in zip(MD_energy.ref.labels, energies)
     ]
     assert actual == {"text/plain": "\n".join(lines)}
 
