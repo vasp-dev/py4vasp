@@ -81,7 +81,8 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
         """
         if selection is None:
             return self._default_dict()
-        return dict(self._read_data(selection, self._steps))
+        tree = select.Tree.from_selection(selection)
+        return dict(self._read_data(tree, self._steps))
 
     def _default_dict(self):
         return {
@@ -108,9 +109,10 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
 
         {examples}
         """
-        yaxes = self._create_yaxes(selection)
+        tree = select.Tree.from_selection(selection)
+        yaxes = _YAxes(tree)
         return graph.Graph(
-            series=self._make_series(yaxes, selection),
+            series=self._make_series(yaxes, tree),
             xlabel="Step",
             ylabel=yaxes.ylabel,
             y2label=yaxes.y2label,
@@ -137,15 +139,15 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
 
         {examples}
         """
-        result = tuple(values for _, values in self._read_data(selection, self._steps))
+        tree = select.Tree.from_selection(selection)
+        result = tuple(values for _, values in self._read_data(tree, self._steps))
         return np.array(_unpack_if_only_one_element(result))
 
     @base.data_access
     def selections(self):
         return tuple(self._init_selection_dict().keys())
 
-    def _read_data(self, selection, steps_or_slice):
-        tree = select.Tree.from_selection(selection)
+    def _read_data(self, tree, steps_or_slice):
         maps = {1: self._init_selection_dict()}
         selector = index.Selector(maps, self._raw_data.values)
         for selection in tree.selections():
@@ -158,21 +160,12 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
             for selection in _SELECTIONS.get(convert.text_to_string(label), ())
         }
 
-    def _make_series(self, yaxes, selection):
+    def _make_series(self, yaxes, tree):
         steps = np.arange(len(self._raw_data.values))[self._slice] + 1
         return [
-            graph.Series(
-                x=steps,
-                y=values,
-                name=label,
-                y2=yaxes.use_y2(label),
-            )
-            for label, values in self._read_data(selection, self._slice)
+            graph.Series(x=steps, y=values, name=label, y2=yaxes.use_y2(label))
+            for label, values in self._read_data(tree, self._slice)
         ]
-
-    def _create_yaxes(self, selection):
-        tree = select.Tree.from_selection(selection)
-        return _YAxes(tree)
 
 
 class _YAxes:
