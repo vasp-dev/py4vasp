@@ -337,3 +337,11 @@ def test_incorrect_selection_raises_usage_error(mock_access):
     example = Example.from_path()
     with pytest.raises(exception.IncorrectUsage):
         example.with_selection_argument(selection=1)
+
+
+@pytest.mark.parametrize("operator", ["+", "-"])
+def test_selection_operations_not_implemented(operator, mock_access):
+    selection = f"default {operator} {SELECTION}"
+    example = Example.from_path()
+    with pytest.raises(exception.NotImplemented):
+        example.read(selection)

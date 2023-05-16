@@ -189,6 +189,7 @@ class _FunctionWrapper:
         tree = select.Tree.from_selection(selection)
         result = {}
         for selection in tree.selections():
+            _raise_error_if_contains_operation(selection)
             selected, remaining = self._find_selection_in_schema(selection)
             result.setdefault(selected, [])
             result[selected].append(remaining)
@@ -240,6 +241,12 @@ class _FunctionWrapper:
         if len(results) == 1:
             return results.popitem()[1]  # unpack value of first element
         return results
+
+
+def _raise_error_if_contains_operation(selection):
+    if any(isinstance(part, select.Operation) for part in selection):
+        message = "Addition and subtraction for data from different sources is not implemented."
+        raise exception.NotImplemented(message)
 
 
 @dataclasses.dataclass
