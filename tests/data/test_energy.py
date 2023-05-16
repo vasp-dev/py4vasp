@@ -71,7 +71,7 @@ def test_plot(selection, labels, subset, steps, MD_energy, Assert):
     "selection, subset",
     [
         (None, slice(0, 1)),  # default selection = TOTEN
-        ("EPS", slice(5, 6)),  # TODO should be nose_kinetic
+        ("nose_kinetic", slice(5, 6)),
         ("EKIN_LAT, ES", [2, 4]),
     ],
 )

@@ -21,7 +21,10 @@ def _selection_string(default):
 _SELECTIONS = {
     "ion-electron   TOTEN   ": ["TOTEN"],
     "kinetic energy EKIN    ": ["EKIN"],
+    "kin. lattice   EKIN_LAT": ["EKIN_LAT"],
     "temperature    TEIN    ": ["temperature", "TEIN"],
+    "nose potential ES      ": ["ES"],
+    "nose kinetic   EPS     ": ["nose_kinetic"],
     "total energy   ETOTAL  ": ["ETOTAL"],
 }
 
@@ -113,6 +116,30 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
             y2label=yaxes.y2label,
         )
 
+    @base.data_access
+    @documentation.format(
+        selection=_selection_string("the total energy"),
+        examples=slice_.examples("energy", "to_numpy"),
+    )
+    def to_numpy(self, selection="TOTEN"):
+        """Read the energy of the selected steps.
+
+        Parameters
+        ----------
+        {selection}
+
+        Returns
+        -------
+        float or np.ndarray or tuple
+            Contains energies associated with the selection for the selected ionic step(s).
+            When only a single step is inquired, result is a float otherwise an array.
+            If you select multiple quantities a tuple of them is returned.
+
+        {examples}
+        """
+        result = tuple(values for _, values in self._read_data(selection, self._steps))
+        return np.array(_unpack_if_only_one_element(result))
+
     def _read_data(self, selection, steps_or_slice):
         tree = select.Tree.from_selection(selection)
         maps = {1: self._init_selection_dict()}
@@ -138,33 +165,6 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
             )
             for label, values in self._read_data(selection, self._slice)
         ]
-
-    @base.data_access
-    @documentation.format(
-        selection=_selection_string("the total energy"),
-        examples=slice_.examples("energy", "to_numpy"),
-    )
-    def to_numpy(self, selection="TOTEN"):
-        """Read the energy of the selected steps.
-
-        Parameters
-        ----------
-        {selection}
-
-        Returns
-        -------
-        float or np.ndarray or tuple
-            Contains energies associated with the selection for the selected ionic step(s).
-            When only a single step is inquired, result is a float otherwise an array.
-            If you select multiple quantities a tuple of them is returned.
-
-        {examples}
-        """
-        result = tuple(
-            self._raw_data.values[self._steps, index]
-            for _, index in self._parse_user_selection(selection)
-        )
-        return np.array(_unpack_if_only_one_element(result))
 
     @base.data_access
     def labels(self, selection=select.all):
