@@ -21,7 +21,8 @@ def _selection_string(default):
 _SELECTIONS = {
     "ion-electron   TOTEN   ": ["TOTEN"],
     "kinetic energy EKIN    ": ["EKIN"],
-    "temperature    TEIN    ": ["temperature"],
+    "temperature    TEIN    ": ["temperature", "TEIN"],
+    "total energy   ETOTAL  ": ["ETOTAL"],
 }
 
 
@@ -77,26 +78,12 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
         """
         if selection is None:
             return self._default_dict()
-        return dict(self._read_data(selection))
+        return dict(self._read_data(selection, self._steps))
 
     def _default_dict(self):
         return {
             convert.text_to_string(label).strip(): value[self._steps]
             for label, value in zip(self._raw_data.labels, self._raw_data.values.T)
-        }
-
-    def _read_data(self, selection):
-        tree = select.Tree.from_selection(selection)
-        maps = {1: self._init_selection_dict()}
-        selector = index.Selector(maps, self._raw_data.values)
-        for selection in tree.selections():
-            yield selector.label(selection), selector[selection][self._steps]
-
-    def _init_selection_dict(self):
-        return {
-            selection: index
-            for index, label in enumerate(self._raw_data.labels)
-            for selection in _SELECTIONS.get(convert.text_to_string(label), ())
         }
 
     @base.data_access
@@ -125,6 +112,32 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
             ylabel=yaxes.ylabel,
             y2label=yaxes.y2label,
         )
+
+    def _read_data(self, selection, steps_or_slice):
+        tree = select.Tree.from_selection(selection)
+        maps = {1: self._init_selection_dict()}
+        selector = index.Selector(maps, self._raw_data.values)
+        for selection in tree.selections():
+            yield selector.label(selection), selector[selection][steps_or_slice]
+
+    def _init_selection_dict(self):
+        return {
+            selection: index
+            for index, label in enumerate(self._raw_data.labels)
+            for selection in _SELECTIONS.get(convert.text_to_string(label), ())
+        }
+
+    def _make_series(self, yaxes, selection):
+        steps = np.arange(len(self._raw_data.values))[self._slice] + 1
+        return [
+            graph.Series(
+                x=steps,
+                y=values,
+                name=label,
+                y2=yaxes.y2(label),
+            )
+            for label, values in self._read_data(selection, self._slice)
+        ]
 
     @base.data_access
     @documentation.format(
@@ -185,18 +198,6 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
 
     def _create_yaxes(self, selection):
         return _YAxes(self._parse_user_selection(selection))
-
-    def _make_series(self, yaxes, selection):
-        steps = np.arange(len(self._raw_data.values))[self._slice] + 1
-        return [
-            graph.Series(
-                x=steps,
-                y=self._raw_data.values[self._slice, index],
-                name=label[:14].strip(),
-                y2=yaxes.y2(label),
-            )
-            for label, index in self._parse_user_selection(selection)
-        ]
 
 
 class _YAxes:

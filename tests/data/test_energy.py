@@ -43,15 +43,15 @@ def test_read(selection, labels, subset, steps, MD_energy, Assert):
 
 
 @pytest.mark.parametrize(
-    "selection, subset",
+    "selection, labels, subset",
     [
-        (None, slice(0, 1)),  # default selection = TOTEN
-        ("temperature", slice(3, 4)),
-        ("ETOTAL, TEIN", [6, 3]),
+        (None, ["TOTEN"], slice(0, 1)),  # default selection = TOTEN
+        ("temperature", ["temperature"], slice(3, 4)),
+        ("ETOTAL, TEIN", ["ETOTAL", "TEIN"], [6, 3]),
     ],
 )
 @pytest.mark.parametrize("steps", [slice(None), slice(1, 3), 0, -1])
-def test_plot(selection, subset, steps, MD_energy, Assert):
+def test_plot(selection, labels, subset, steps, MD_energy, Assert):
     kwargs = {"selection": selection} if selection else {}
     graph = MD_energy[steps].plot(**kwargs) if steps != -1 else MD_energy.plot(**kwargs)
     assert graph.xlabel == "Step"
@@ -61,9 +61,10 @@ def test_plot(selection, subset, steps, MD_energy, Assert):
     assert graph.y2label == y2label
     xx = np.arange(MD_energy.ref.number_steps) + 1
     assert len(graph.series) == len(MD_energy.ref.values[subset])
-    for series, yy in zip(graph.series, MD_energy.ref.values[subset]):
+    for series, label, yy in zip(graph.series, labels, MD_energy.ref.values[subset]):
         Assert.allclose(series.x, xx[steps])
         Assert.allclose(series.y, yy[steps])
+        assert series.name == label
 
 
 @pytest.mark.parametrize(
