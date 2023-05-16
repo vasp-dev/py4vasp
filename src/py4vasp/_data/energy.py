@@ -165,59 +165,31 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
                 x=steps,
                 y=values,
                 name=label,
-                y2=yaxes.y2(label),
+                y2=yaxes.use_y2(label),
             )
             for label, values in self._read_data(selection, self._slice)
         ]
 
-    def _parse_user_selection(self, selection):
-        # NOTE it would be nice to use SelectionTree instead, however that requires
-        # the labels may have spaces so it might lead to redundancies
-        indices = self._find_selection_indices(selection)
-        get_label = lambda index: convert.text_to_string(self._raw_data.labels[index])
-        for index in indices:
-            yield get_label(index).strip(), index
-
-    def _find_selection_indices(self, selection):
-        if selection == select.all:
-            return range(len(self._raw_data.labels))
-        else:
-            selection_parts = _split_selection_in_parts(selection)
-            return [self._find_selection_index(part) for part in selection_parts]
-
-    def _find_selection_index(self, selection):
-        for index, label in enumerate(self._raw_data.labels):
-            label = convert.text_to_string(label).strip()
-            if selection in label:
-                return index
-        raise exception.IncorrectUsage(
-            f"{selection} was not found in the list of energies. "
-            "Please make sure the spelling is correct."
-        )
-
     def _create_yaxes(self, selection):
-        return _YAxes(self._parse_user_selection(selection))
+        tree = select.Tree.from_selection(selection)
+        return _YAxes(tree)
 
 
 class _YAxes:
-    def __init__(self, selections):
-        selections = set(self._is_temperature(s) for s, _ in selections)
-        use_energy = False in selections
-        self.use_both = len(selections) == 2
+    def __init__(self, tree):
+        uses = set(self._is_temperature(selection) for selection in tree.selections())
+        use_energy = False in uses
+        self.use_both = len(uses) == 2
         self.ylabel = "Energy (eV)" if use_energy else "Temperature (K)"
         self.y2label = "Temperature (K)" if self.use_both else None
 
-    def y2(self, label):
-        return self.use_both and self._is_temperature(label)
+    def _is_temperature(self, selection):
+        choices = _SELECTIONS["temperature    TEIN    "]
+        return any(select.contains(selection, choice) for choice in choices)
 
-    def _is_temperature(self, label):
-        return "temperature" in label
-
-
-def _split_selection_in_parts(selection):
-    error_message = "Energy selection must be a string."
-    check.raise_error_if_not_string(selection, error_message)
-    return (part.strip() for part in selection.split(","))
+    def use_y2(self, label):
+        choices = _SELECTIONS["temperature    TEIN    "]
+        return self.use_both and label in choices
 
 
 def _unpack_if_only_one_element(tuple_):
