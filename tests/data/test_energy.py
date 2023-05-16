@@ -143,7 +143,7 @@ def test_selections(MD_energy, raw_data):
         "without_entropy",
         "ENOENT",
         "sigma_0",
-        "ESIG0"
+        "ESIG0",
     )
 
 

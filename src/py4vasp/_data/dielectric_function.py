@@ -83,6 +83,18 @@ dielectric function:
             ylabel="dielectric function ϵ",
         )
 
+    @base.data_access
+    def selections(self):
+        "Returns a dictionary of possible selections for component, direction, and complex value."
+        components = (
+            ["density", "current"] if self._has_current_component() else ["density"]
+        )
+        return {
+            "components": components,
+            "directions": [key for key in self._init_directions_dict() if key],
+            "complex": ["real", "Re", "imag", "Im"],
+        }
+
     def _default_selection_if_none(self, selection):
         if selection is not None:
             return selection

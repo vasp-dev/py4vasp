@@ -331,6 +331,22 @@ def check_to_image(dielectric_function, filename_argument, expected_filename):
         fig.write_image.assert_called_once_with(expected_path)
 
 
+def test_electronic_selections(electronic):
+    assert electronic.selections() == {
+        "components": ["density", "current"],
+        "directions": ["isotropic", "xx", "yy", "zz", "xy", "xz", "yz"],
+        "complex": ["real", "Re", "imag", "Im"],
+    }
+
+
+def test_ionic_selections(ionic):
+    assert ionic.selections() == {
+        "components": ["density"],
+        "directions": ["isotropic", "xx", "yy", "zz", "xy", "xz", "yz"],
+        "complex": ["real", "Re", "imag", "Im"],
+    }
+
+
 def test_electronic_print(electronic, format_):
     actual, _ = format_(electronic)
     reference = f"""
