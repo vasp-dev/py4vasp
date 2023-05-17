@@ -125,7 +125,6 @@ def test_spin_projections(Fe3O4, projections, Assert):
     p_ref = np.sum(spin_projections[:, :, 1], axis=(0, 1))
     down_ref = np.sum(spin_projections[1], axis=(0, 1))
     actual = Fe3O4.project("Fe O(p + d) d O(total) p + down", spin_projections)
-    print(actual)
     Assert.allclose(actual["Fe_up"], Fe_ref[0])
     Assert.allclose(actual["Fe_down"], Fe_ref[1])
     Assert.allclose(actual["d_up"], d_ref[0])

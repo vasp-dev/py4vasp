@@ -374,36 +374,6 @@ class Projector(base.Refinery):
             result["down"] = Selection(indices=slice(1, 2), label="down")
         return result
 
-    def _get_indices(self, selection):
-        res = {}
-        for select in self.parse_selection(selection):
-            atom, orbital, spin = self.select(*select)
-            label = _merge_labels([atom.label, orbital.label, spin.label])
-            indices = (spin.indices, atom.indices, orbital.indices)
-            res[label] = indices
-        return res
-
-    def _read_elements(self, indices, projections):
-        projections = _Projections(projections)
-        return {
-            label: np.sum(projections[indices], axis=(0, 1, 2))
-            for label, indices in indices.items()
-        }
-
-
-def _merge_labels(labels):
-    return "_".join(filter(None, labels))
-
-
-class _Projections(reader.Reader):
-    def error_message(self, key, err):
-        return (
-            "Error reading the projections. Please make sure the size of the array "
-            f"{self.shape} is compatible with the selected indices. Please also test "
-            "if the passed projections allow access by index arrays. "
-            "Additionally, you may consider the original error message:\n" + err.args[0]
-        )
-
 
 def _select_atom(atom_dict, atom):
     match = _range.match(atom)
@@ -450,18 +420,6 @@ def _update_index(dicts, index, part):
         index = index._replace(orbital=part)
     elif part in dicts["spin"]:
         index = index._replace(spin=part)
-    elif part in ["up", "down"]:
-        raise exception.IncorrectUsage(
-            f"Could not find `{part}` in the list of projectors because there is only "
-            "one spin component in the HDF5 file. Please check whether you set ISPIN = 2 "
-            "and make sure the calculation already completed."
-        )
-    else:
-        raise exception.IncorrectUsage(
-            f"Could not find `{part}` in the list of projectors. Please check "
-            "if everything is spelled correctly. Notice that the selection is case "
-            "sensitive so that 's' (orbital) can be distinguished from 'S' (sulfur)."
-        )
     return index
 
 

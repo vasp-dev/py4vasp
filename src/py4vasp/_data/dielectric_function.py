@@ -95,12 +95,6 @@ dielectric function:
             "complex": ["real", "Re", "imag", "Im"],
         }
 
-    def _default_selection_if_none(self, selection):
-        if selection is not None:
-            return selection
-        else:
-            return ""
-
     def _replace_complex_labels(self, selection):
         selection = selection.replace("real", "Re")
         return selection.replace("imaginary", "Im").replace("imag", "Im")

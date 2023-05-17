@@ -355,3 +355,9 @@ def test_operations_are_passed_to_wrapped_routines(mock_schema):
 def test_selection_not_found(mock_access):
     with pytest.raises(exception.IncorrectUsage):
         Example.from_path().read("unknown_selection")
+
+
+def test_syntax_error_still_raised(mock_schema):
+    example = Example.from_data(RAW_DATA)
+    with pytest.raises(TypeError):
+        example.read(1, 2)

@@ -381,3 +381,10 @@ def test_error_when_out_of_bounds_access():
     map_ = {2: {"u": 1}}
     with pytest.raises(exception._Py4VaspInternalError):
         index.Selector(map_, data)
+
+
+def test_error_if_indices_are_not_convertible():
+    data = np.zeros((3, 2))
+    map_ = {0: {"x": "y"}}
+    with pytest.raises(exception._Py4VaspInternalError):
+        index.Selector(map_, data)

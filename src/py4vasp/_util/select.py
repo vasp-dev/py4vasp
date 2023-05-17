@@ -93,14 +93,6 @@ class Tree:
     def nodes(self):
         return self._children
 
-    @property
-    def content(self):
-        return self._content
-
-    @property
-    def is_operation(self):
-        return self._is_operation
-
     def __str__(self):
         return str(self._content)
 

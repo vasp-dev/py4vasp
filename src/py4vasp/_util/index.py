@@ -320,7 +320,9 @@ def _raise_error_if_index_used_twice(left_key, right_key):
 
 
 def _raise_key_not_found_error(key, error):
-    message = f"Could not read {key}, please check the spelling and capitalization."
+    message = f"""Could not read "{key}", please check the spelling and capitalization.
+        Perhaps the INCAR file does not produce the required data. Many classes also
+        provide a `selections` method, that you can use to see what keys are found."""
     raise exception.IncorrectUsage(message) from error
 
 
