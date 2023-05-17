@@ -347,6 +347,11 @@ def test_selection_operations_not_implemented(operator, mock_access):
         example.read(selection)
 
 
+def test_operations_are_passed_to_wrapped_routines(mock_schema):
+    example = Example.from_data(RAW_DATA)
+    assert example.selection_without_default("A + B") == "A + B"
+
+
 def test_selection_not_found(mock_access):
     with pytest.raises(exception.IncorrectUsage):
         Example.from_path().read("unknown_selection")

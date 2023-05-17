@@ -189,7 +189,6 @@ class _FunctionWrapper:
         tree = select.Tree.from_selection(selection)
         result = {}
         for selection in tree.selections():
-            _raise_error_if_contains_operation(selection)
             selected, remaining = self._find_selection_in_schema(selection)
             result.setdefault(selected, [])
             result[selected].append(remaining)
@@ -197,15 +196,16 @@ class _FunctionWrapper:
 
     def _find_selection_in_schema(self, selection):
         options = raw.schema.selections(self._data_context.quantity)
-        selected = None
-        remaining = []
-        for part in selection:
-            sanitized_part = str(part).lower()
-            if sanitized_part not in options:
-                remaining.append(part)
-            else:
-                selected = sanitized_part
-        return selected, remaining
+        for option in options:
+            if select.contains(selection, option, ignore_case=True):
+                return self._remove_selected_option_if_possible(selection, option)
+        return None, list(selection)
+
+    def _remove_selected_option_if_possible(self, selection, option):
+        is_option = lambda part: str(part).lower() == option.lower()
+        remaining = [part for part in selection if not is_option(part)]
+        _raise_error_if_option_was_not_removed(selection, option, remaining)
+        return option.lower(), remaining
 
     def _run_selections(self, bound_arguments, selections):
         for selection in selections.items():
@@ -254,9 +254,12 @@ class _FunctionWrapper:
         raise exception.IncorrectUsage(message)
 
 
-def _raise_error_if_contains_operation(selection):
-    if any(isinstance(part, select.Operation) for part in selection):
-        message = "Addition and subtraction for data from different sources is not implemented."
+def _raise_error_if_option_was_not_removed(selection, option, remaining):
+    if len(remaining) == len(selection):
+        message = f"""py4vasp identified the source "{option}" in your selection string
+            "{select.selections_to_string((selection,))}". However, the source could not
+            be extracted from the selection. A possible reason is that it is used in an
+            addition or subtraction, which is not implemented."""
         raise exception.NotImplemented(message)
 
 
