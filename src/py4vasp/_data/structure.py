@@ -66,7 +66,6 @@ class Structure(slice_.Mixin, base.Refinery):
     def from_POSCAR(cls, poscar, *, elements=None):
         """Generate a structure from string in POSCAR format."""
         poscar = _replace_or_set_elements(str(poscar), elements)
-        print(poscar)
         poscar = io.StringIO(poscar)
         structure = ase.io.read(poscar, format="vasp")
         return cls.from_ase(structure)
