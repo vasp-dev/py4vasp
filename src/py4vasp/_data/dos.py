@@ -119,13 +119,10 @@ class Dos(base.Refinery, graph.Mixin):
         return data.Projector.from_data(self._raw_data.projectors)
 
     def _read_data(self, selection):
-        proj = self._projectors()
-        args = (selection, self._raw_data.projections)
-        proj.read(*args)
         return {
             **self._read_energies(),
             **self._read_total_dos(),
-            **self._projectors().read(selection, self._raw_data.projections),
+            **self._projectors().project(selection, self._raw_data.projections),
         }
 
     def _read_energies(self):
@@ -143,5 +140,9 @@ def _series(data):
     for name, dos in data.items():
         if name == "energies":
             continue
-        spin_factor = 1 if "down" not in name else -1
+        spin_factor = -1 if _flip_down_component(name) else 1
         yield graph.Series(energies, spin_factor * dos, name)
+
+
+def _flip_down_component(name):
+    return "down" in name and "up" not in name and "total" not in name

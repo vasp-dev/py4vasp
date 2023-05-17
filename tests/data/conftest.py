@@ -66,6 +66,9 @@ def check_method_accesses_data(data, method_under_test, file, **kwargs):
         execute_method(method_under_test, **kwargs)
         check_mock_called(mock_access, quantity, file)
         mock_access.reset_mock()
+        if "selection" in kwargs:
+            kwargs = kwargs.copy()
+            kwargs.pop("selection")
         execute_method(method_under_test, selection=SELECTION, **kwargs)
         check_mock_called(mock_access, quantity, file, selection=SELECTION)
 

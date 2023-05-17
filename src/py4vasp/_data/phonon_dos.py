@@ -3,13 +3,12 @@
 import numpy as np
 
 from py4vasp import data
-from py4vasp._data import base
-from py4vasp._data.phonon_projector import PhononProjector, selection_doc
+from py4vasp._data import base, phonon
 from py4vasp._third_party import graph
-from py4vasp._util import documentation
+from py4vasp._util import documentation, index, select
 
 
-class PhononDos(base.Refinery, graph.Mixin):
+class PhononDos(base.Refinery, phonon.Mixin, graph.Mixin):
     """The phonon density of states (DOS).
 
     You can use this class to extract the phonon DOS data of a VASP
@@ -19,14 +18,14 @@ class PhononDos(base.Refinery, graph.Mixin):
     @base.data_access
     def __str__(self):
         energies = self._raw_data.energies
-        projector = self._get_projector()
+        topology = self._topology()
         return f"""phonon DOS:
     [{energies[0]:0.2f}, {energies[-1]:0.2f}] mesh with {len(energies)} points
-    {projector.modes} modes
-    {self._topology}"""
+    {3 * topology.number_atoms()} modes
+    {topology}"""
 
     @base.data_access
-    @documentation.format(selection=selection_doc)
+    @documentation.format(selection=phonon.selection_doc)
     def to_dict(self, selection=None):
         """Read the phonon DOS into a dictionary.
 
@@ -37,7 +36,7 @@ class PhononDos(base.Refinery, graph.Mixin):
         Returns
         -------
         dict
-            Contains the energies at which the phonon  DOS was computed. The total
+            Contains the energies at which the phonon DOS was computed. The total
             DOS is returned and any possible projected DOS selected by the *selection*
             argument.
         """
@@ -48,7 +47,7 @@ class PhononDos(base.Refinery, graph.Mixin):
         }
 
     @base.data_access
-    @documentation.format(selection=selection_doc)
+    @documentation.format(selection=phonon.selection_doc)
     def to_graph(self, selection=None):
         """Generate a graph of the selected DOS.
 
@@ -68,27 +67,16 @@ class PhononDos(base.Refinery, graph.Mixin):
             ylabel="DOS (1/THz)",
         )
 
-    @property
-    def _topology(self):
-        return data.Topology.from_data(self._raw_data.topology)
-
     def _read_data(self, selection):
-        projector = self._get_projector()
-        result = {}
-        for index in projector.parse_selection(selection):
-            label, selection = projector.select(*index)
-            result[label] = self._partial_dos(selection)
-        return result
-
-    def _get_projector(self):
-        topology = data.Topology.from_data(self._raw_data.topology)
-        return PhononProjector(topology)
-
-    def _partial_dos(self, selection):
-        projections = self._raw_data.projections[
-            selection.atom.indices, selection.direction.indices
-        ]
-        return np.sum(projections, axis=(0, 1))
+        if not selection:
+            return {}
+        maps = {0: self._init_atom_dict(), 1: self._init_direction_dict()}
+        selector = index.Selector(maps, self._raw_data.projections)
+        tree = select.Tree.from_selection(selection)
+        return {
+            selector.label(selection): selector[selection]
+            for selection in tree.selections()
+        }
 
 
 def _series(data):

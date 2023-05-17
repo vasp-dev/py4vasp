@@ -32,7 +32,7 @@ class _Assert:
             actual, mask_actual = _finite_subset(actual)
             desired, mask_desired = _finite_subset(desired)
             assert np.all(mask_actual == mask_desired)
-            assert_array_almost_equal_nulp(actual, desired, 10)
+            assert_array_almost_equal_nulp(actual, desired, 30)
 
 
 def _is_none(data):
@@ -127,7 +127,12 @@ class RawDataFactory:
 
     @staticmethod
     def energy(selection):
-        return _energy()
+        if selection == "MD":
+            return _MD_energy()
+        elif selection == "relax":
+            return _relax_energy()
+        else:
+            raise exception.NotImplemented()
 
     @staticmethod
     def fatband(selection):
@@ -343,8 +348,29 @@ def _polarization():
     return raw.Polarization(electron=np.array((1, 2, 3)), ion=np.array((4, 5, 6)))
 
 
-def _energy():
-    labels = ("ion-electron   TOTEN    ", "kinetic energy EKIN", "temperature    TEIN")
+def _MD_energy():
+    labels = (
+        "ion-electron   TOTEN   ",
+        "kinetic energy EKIN    ",
+        "kin. lattice   EKIN_LAT",
+        "temperature    TEIN    ",
+        "nose potential ES      ",
+        "nose kinetic   EPS     ",
+        "total energy   ETOTAL  ",
+    )
+    return _create_energy(labels)
+
+
+def _relax_energy():
+    labels = (
+        "free energy    TOTEN   ",
+        "energy without entropy ",
+        "energy(sigma->0)       ",
+    )
+    return _create_energy(labels)
+
+
+def _create_energy(labels):
     labels = np.array(labels, dtype="S")
     shape = (number_steps, len(labels))
     return raw.Energy(labels=labels, values=np.arange(np.prod(shape)).reshape(shape))

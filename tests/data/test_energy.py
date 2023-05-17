@@ -1,6 +1,5 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import numbers
 import types
 from unittest.mock import patch
 
@@ -8,208 +7,169 @@ import numpy as np
 import pytest
 
 from py4vasp import exception
-from py4vasp._util import select
+from py4vasp._util import convert
 from py4vasp.data import Energy
 
 
 @pytest.fixture
-def energy(raw_data):
-    raw_energy = raw_data.energy("default")
+def MD_energy(raw_data):
+    raw_energy = raw_data.energy("MD")
     energy = Energy.from_data(raw_energy)
     energy.ref = types.SimpleNamespace()
-    energy.ref.total_label = "ion-electron   TOTEN"
-    energy.ref.total_energy = raw_energy.values[:, 0]
-    energy.ref.kinetic_label = "kinetic energy EKIN"
-    energy.ref.kinetic_energy = raw_energy.values[:, 1]
-    energy.ref.temperature_label = "temperature    TEIN"
-    energy.ref.temperature = raw_energy.values[:, 2]
+    energy.ref.number_steps = len(raw_energy.values)
+    get_label = lambda x: convert.text_to_string(x).strip()
+    energy.ref.labels = [get_label(label) for label in raw_energy.labels]
+    energy.ref.values = raw_energy.values.T
     return energy
 
 
-def test_read_default(energy, Assert):
-    for steps in (slice(None), slice(1, 3), 0):
-        check_read_default(energy, energy[steps].read(), steps, Assert)
-    check_read_default(energy, energy.read(), -1, Assert)
+@pytest.mark.parametrize(
+    "selection, labels, subset",
+    [
+        (None, None, slice(None)),  # default selection = all
+        ("temperature", ["temperature"], slice(3, 4)),
+        ("TOTEN, EKIN", ["TOTEN", "EKIN"], slice(None, 2)),
+    ],
+)
+@pytest.mark.parametrize("steps", [slice(None), slice(1, 3), 0, -1])
+def test_read(selection, labels, subset, steps, MD_energy, Assert):
+    kwargs = {"selection": selection} if selection else {}
+    dict_ = MD_energy[steps].read(**kwargs) if steps != -1 else MD_energy.read(**kwargs)
+    reference = MD_energy.ref
+    labels = labels or reference.labels[subset]
+    assert len(dict_) == len(labels)
+    for label, expected in zip(labels, reference.values[subset]):
+        Assert.allclose(dict_[label], expected[steps])
 
 
-def check_read_default(energy, dict_, steps, Assert):
-    assert len(dict_) == 3
-    Assert.allclose(dict_[energy.ref.total_label], energy.ref.total_energy[steps])
-    Assert.allclose(dict_[energy.ref.kinetic_label], energy.ref.kinetic_energy[steps])
-    Assert.allclose(dict_[energy.ref.temperature_label], energy.ref.temperature[steps])
+@pytest.mark.parametrize(
+    "selection, labels, subset",
+    [
+        (None, ["TOTEN"], slice(0, 1)),  # default selection = TOTEN
+        ("temperature", ["temperature"], slice(3, 4)),
+        ("ETOTAL, TEIN", ["ETOTAL", "TEIN"], [6, 3]),
+    ],
+)
+@pytest.mark.parametrize("steps", [slice(None), slice(1, 3), 0, -1])
+def test_plot(selection, labels, subset, steps, MD_energy, Assert):
+    kwargs = {"selection": selection} if selection else {}
+    graph = MD_energy[steps].plot(**kwargs) if steps != -1 else MD_energy.plot(**kwargs)
+    assert graph.xlabel == "Step"
+    ylabel = "Temperature (K)" if selection == "temperature" else "Energy (eV)"
+    assert graph.ylabel == ylabel
+    y2label = "Temperature (K)" if selection == "ETOTAL, TEIN" else None
+    assert graph.y2label == y2label
+    xx = np.arange(MD_energy.ref.number_steps) + 1
+    assert len(graph.series) == len(MD_energy.ref.values[subset])
+    for series, label, yy in zip(graph.series, labels, MD_energy.ref.values[subset]):
+        Assert.allclose(series.x, xx[steps])
+        Assert.allclose(series.y, yy[steps])
+        assert series.name == label
 
 
-def test_read_temperature(energy, Assert):
-    for steps in (slice(None), slice(1, 3), 0):
-        check_read_temperature(energy, energy[steps].read("temperature"), steps, Assert)
-    check_read_temperature(energy, energy.read("temperature"), -1, Assert)
+@pytest.mark.parametrize(
+    "selection, subset",
+    [
+        (None, slice(0, 1)),  # default selection = TOTEN
+        ("nose_kinetic", slice(5, 6)),
+        ("EKIN_LAT, ES", [2, 4]),
+    ],
+)
+@pytest.mark.parametrize("steps", [slice(None), slice(1, 3), 0, -1])
+def test_to_numpy(selection, subset, steps, MD_energy, Assert):
+    kwargs = {"selection": selection} if selection else {}
+    if steps != -1:
+        actual = MD_energy[steps].to_numpy(**kwargs)
+    else:
+        actual = MD_energy.to_numpy(**kwargs)
+    expected_ndim = isinstance(steps, slice) + (selection == "EKIN_LAT, ES")
+    assert actual.ndim == expected_ndim
+    Assert.allclose(actual, MD_energy.ref.values[subset, steps])
 
 
-def check_read_temperature(energy, dict_, steps, Assert):
-    assert len(dict_) == 1
-    Assert.allclose(dict_[energy.ref.temperature_label], energy.ref.temperature[steps])
-
-
-def test_read_two(energy, Assert):
-    for steps in (slice(None), slice(1, 3), 0):
-        check_read_two(energy, energy[steps].read("TOTEN, EKIN"), steps, Assert)
-    check_read_two(energy, energy.read("TOTEN, EKIN"), -1, Assert)
-
-
-def check_read_two(energy, dict_, steps, Assert):
-    assert len(dict_) == 2
-    Assert.allclose(dict_[energy.ref.total_label], energy.ref.total_energy[steps])
-    Assert.allclose(dict_[energy.ref.kinetic_label], energy.ref.kinetic_energy[steps])
-
-
-def test_plot_default(energy, Assert):
-    for steps in (slice(None), slice(1, 3)):
-        check_plot_default(energy, steps, Assert)
-
-
-def check_plot_default(energy, steps, Assert):
-    fig = energy[steps].plot()
-    assert fig.xlabel == "Step"
-    assert fig.ylabel == "Energy (eV)"
-    Assert.allclose(fig.series[0].x, np.arange(len(energy.ref.total_energy))[steps] + 1)
-    Assert.allclose(fig.series[0].y, energy.ref.total_energy[steps])
-
-
-def test_plot_temperature(energy, Assert):
-    for steps in (slice(None), slice(1, 3), 0):
-        check_plot_temperature(energy, steps, Assert)
-
-
-def check_plot_temperature(energy, steps, Assert):
-    fig = energy[steps].plot("temperature")
-    assert fig.ylabel == "Temperature (K)"
-    assert fig.y2label is None
-    Assert.allclose(fig.series[0].y, energy.ref.temperature[steps])
-
-
-def test_plot_energy_and_temperature(energy, Assert):
-    for steps in (slice(None), slice(1, 3)):
-        check_plot_energy_and_temperature(energy, steps, Assert)
-
-
-def check_plot_energy_and_temperature(energy, steps, Assert):
-    fig = energy[steps].plot("temperature, EKIN")
-    assert fig.ylabel == "Energy (eV)"
-    assert fig.y2label == "Temperature (K)"
-    Assert.allclose(fig.series[0].y, energy.ref.temperature[steps])
-    assert fig.series[0].name == "temperature"
-    Assert.allclose(fig.series[1].y, energy.ref.kinetic_energy[steps])
-    assert fig.series[1].name == "kinetic energy"
-
-
-def test_plot_all(energy, Assert):
-    for steps in (slice(None), slice(1, 3)):
-        check_plot_all(energy, steps, Assert)
-
-
-def check_plot_all(energy, steps, Assert):
-    fig = energy[steps].plot(select.all)
-    assert fig.ylabel == "Energy (eV)"
-    assert fig.y2label == "Temperature (K)"
-    Assert.allclose(fig.series[0].y, energy.ref.total_energy[steps])
-    assert fig.series[0].name == "ion-electron"
-    Assert.allclose(fig.series[1].y, energy.ref.kinetic_energy[steps])
-    assert fig.series[1].name == "kinetic energy"
-    Assert.allclose(fig.series[2].y, energy.ref.temperature[steps])
-    assert fig.series[2].name == "temperature"
-
-
-def test_to_numpy_default(energy, Assert):
-    for steps in (slice(None), slice(1, 3), 0):
-        actual = energy[steps].to_numpy()
-        if isinstance(steps, slice):
-            assert isinstance(actual, np.ndarray)
-        Assert.allclose(actual, energy.ref.total_energy[steps])
-    actual = energy.to_numpy()
-    Assert.allclose(actual, energy.ref.total_energy[-1])
-    assert isinstance(actual, numbers.Real)
-
-
-def test_to_numpy_temperature(energy, Assert):
-    for steps in (slice(None), slice(1, 3), 0):
-        actual = energy[steps].to_numpy("temperature")
-        Assert.allclose(actual, energy.ref.temperature[steps])
-    Assert.allclose(energy.to_numpy("temperature"), energy.ref.temperature[-1])
-
-
-def test_to_numpy_two_energies(energy, Assert):
-    for steps in (slice(None), slice(1, 3), 0):
-        E_total, E_kinetic = energy[steps].to_numpy("TOTEN, EKIN")
-        Assert.allclose(E_total, energy.ref.total_energy[steps])
-        Assert.allclose(E_kinetic, energy.ref.kinetic_energy[steps])
-    E_total, E_kinetic = energy.to_numpy("TOTEN, EKIN")
-    Assert.allclose(E_total, energy.ref.total_energy[-1])
-    Assert.allclose(E_kinetic, energy.ref.kinetic_energy[-1])
-
-
-def test_incorrect_label(energy):
+def test_incorrect_label(MD_energy):
     with pytest.raises(exception.IncorrectUsage):
-        energy.read("not available")
+        MD_energy.read("not available")
     with pytest.raises(exception.IncorrectUsage):
-        energy.plot("not available")
+        MD_energy.plot("not available")
     with pytest.raises(exception.IncorrectUsage):
         number_instead_of_string = 1
-        energy.plot(number_instead_of_string)
+        MD_energy.plot(number_instead_of_string)
 
 
 @patch("py4vasp._data.energy.Energy.to_graph")
-def test_energy_to_plotly(mock_plot, energy):
-    fig = energy.to_plotly("selection")
+def test_energy_to_plotly(mock_plot, MD_energy):
+    fig = MD_energy.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
     graph = mock_plot.return_value
     graph.to_plotly.assert_called_once()
     assert fig == graph.to_plotly.return_value
 
 
-def test_to_image(energy):
-    check_to_image(energy, None, "energy.png")
+def test_to_image(MD_energy):
+    check_to_image(MD_energy, None, "energy.png")
     custom_filename = "custom.jpg"
-    check_to_image(energy, custom_filename, custom_filename)
+    check_to_image(MD_energy, custom_filename, custom_filename)
 
 
-def check_to_image(energy, filename_argument, expected_filename):
+def check_to_image(MD_energy, filename_argument, expected_filename):
     with patch("py4vasp._data.energy.Energy.to_plotly") as plot:
-        energy.to_image("args", filename=filename_argument, key="word")
+        MD_energy.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
-        fig.write_image.assert_called_once_with(energy._path / expected_filename)
+        fig.write_image.assert_called_once_with(MD_energy._path / expected_filename)
 
 
-def test_labels(energy):
-    total_energy = energy.ref.total_label
-    kinetic_energy = energy.ref.kinetic_label
-    temperature = energy.ref.temperature_label
-    assert energy.labels() == [total_energy, kinetic_energy, temperature]
-    assert energy.labels("temperature") == [temperature]
-    assert energy.labels("TOTEN, EKIN") == [total_energy, kinetic_energy]
+def test_selections(MD_energy, raw_data):
+    assert MD_energy.selections() == (
+        "ion_electron",
+        "TOTEN",
+        "kinetic_energy",
+        "EKIN",
+        "kinetic_lattice",
+        "EKIN_LAT",
+        "temperature",
+        "TEIN",
+        "nose_potential",
+        "ES",
+        "nose_kinetic",
+        "EPS",
+        "total_energy",
+        "ETOTAL",
+    )
+    assert Energy.from_data(raw_data.energy("relax")).selections() == (
+        "free_energy",
+        "TOTEN",
+        "without_entropy",
+        "ENOENT",
+        "sigma_0",
+        "ESIG0",
+    )
 
 
-def test_print(energy, format_):
-    actual, _ = format_(energy)
-    check_print(actual, "final step", " 9.000000", "10.000000", "11.000000")
-    actual, _ = format_(energy[0])
-    check_print(actual, "step 1", " 0.000000", " 1.000000", " 2.000000")
-    actual, _ = format_(energy[:])
-    check_print(actual, "step 4 of range 1-4", " 9.000000", "10.000000", "11.000000")
-    actual, _ = format_(energy[1:3])
-    check_print(actual, "step 3 of range 2-3", " 6.000000", " 7.000000", " 8.000000")
-
-
-def check_print(actual, step, toten, ekin, tein):
-    reference = f"""
-Energies at {step}:
-   ion-electron   TOTEN  =        {toten}
-   kinetic energy EKIN   =        {ekin}
-   temperature    TEIN   =        {tein}
-    """.strip()
-    assert actual == {"text/plain": reference}
+@pytest.mark.parametrize(
+    "steps, step_label",
+    [
+        (-1, "final step"),
+        (0, "step 1"),
+        (slice(None), "step 4 of range 1:4"),
+        (slice(1, 3), "step 3 of range 2:3"),
+    ],
+)
+def test_print(steps, step_label, MD_energy, format_):
+    actual, _ = format_(MD_energy[steps]) if steps != -1 else format_(MD_energy)
+    if isinstance(steps, int):
+        last_step = steps
+    else:
+        last_step = (steps.stop or MD_energy.ref.number_steps) - 1
+    energies = MD_energy.ref.values[:, last_step]
+    lines = [f"Energies at {step_label}:"]
+    lines += [
+        f"   {ll:23.23}={ee:17.6f}" for ll, ee in zip(MD_energy.ref.labels, energies)
+    ]
+    assert actual == {"text/plain": "\n".join(lines)}
 
 
 def test_factory_methods(raw_data, check_factory_methods):
-    data = raw_data.energy("default")
+    data = raw_data.energy("MD")
     check_factory_methods(Energy, data)

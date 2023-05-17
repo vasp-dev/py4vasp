@@ -1,9 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp import exception
 from py4vasp._data import base, slice_
 from py4vasp._third_party import graph
-from py4vasp._util import convert, documentation, select
+from py4vasp._util import convert, documentation, index, select
 
 
 def _selection_string(default):
@@ -37,7 +36,7 @@ class PairCorrelation(slice_.Mixin, base.Refinery, graph.Mixin):
         selection=_selection_string("all possibilities are read"),
         examples=slice_.examples("pair_correlation", "to_dict", "block"),
     )
-    def to_dict(self, selection=select.all):
+    def to_dict(self, selection=None):
         """Read the pair-correlation function and store it in a dictionary.
 
         Parameters
@@ -54,6 +53,7 @@ class PairCorrelation(slice_.Mixin, base.Refinery, graph.Mixin):
 
         {examples}
         """
+        selection = self._default_selection_if_none(selection)
         return {
             "distances": self._raw_data.distances[:],
             **self._read_data(selection),
@@ -88,45 +88,20 @@ class PairCorrelation(slice_.Mixin, base.Refinery, graph.Mixin):
         "Return all possible labels for the selection string."
         return tuple(convert.text_to_string(label) for label in self._raw_data.labels)
 
+    def _default_selection_if_none(self, selection):
+        return selection or ",".join(self.labels())
+
     def _read_data(self, selection):
+        map_ = {1: self._init_pair_correlation_dict()}
+        selector = index.Selector(map_, self._raw_data.function)
+        tree = select.Tree.from_selection(selection)
         return {
-            label: self._raw_data.function[self._steps, index]
-            for label, index in self._parse_user_selection(selection)
+            selector.label(selection): selector[selection][self._steps]
+            for selection in tree.selections()
         }
 
-    def _parse_user_selection(self, selection):
-        if selection == select.all:
-            return self._select_all()
-        else:
-            return self._select_specified_subset(selection)
-
-    def _select_all(self):
-        for index, label in enumerate(self.labels()):
-            yield label, index
-
-    def _select_specified_subset(self, selection):
-        tree = select.Tree.from_selection(selection)
-        labels = self.labels()
-        for node in tree.nodes:
-            yield self._find_matching_label(node.content, labels)
-
-    def _find_matching_label(self, content, labels):
-        for index, label in enumerate(labels):
-            if self._content_matches_label(content, label):
-                return label, index
-        labels = ", ".join(labels)
-        message = (
-            f"{content} is not a valid label. Please check for possible spelling errors. "
-            f"The following labels are possible: {labels}."
-        )
-        raise exception.IncorrectUsage(message)
-
-    def _content_matches_label(self, content, label):
-        if isinstance(content, str):
-            return content == label
-        else:
-            reversed_content = content.separator.join(reversed(content.group))
-            return str(content) == label or reversed_content == label
+    def _init_pair_correlation_dict(self):
+        return {label: i for i, label in enumerate(self.labels())}
 
     def _make_series(self, selected_data):
         distances = selected_data["distances"]

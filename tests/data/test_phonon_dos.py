@@ -31,12 +31,14 @@ def test_phonon_dos_read(phonon_dos, Assert):
 
 
 def test_phonon_dos_read_projection(phonon_dos, Assert):
-    actual = phonon_dos.read("Sr, 3(x), y(4:5), z")
+    actual = phonon_dos.read("Sr, 3(x), y(4:5), z, Sr - Ti(x)")
     assert "total" in actual
     Assert.allclose(actual["Sr"], phonon_dos.ref.Sr)
     Assert.allclose(actual["Ti_1_x"], phonon_dos.ref.Ti_x)
     Assert.allclose(actual["4:5_y"], phonon_dos.ref.y_45)
     Assert.allclose(actual["z"], phonon_dos.ref.z)
+    subtraction = phonon_dos.ref.Sr - phonon_dos.ref.Ti_x
+    Assert.allclose(actual["Sr - Ti_x"], subtraction)
 
 
 def test_phonon_dos_plot(phonon_dos, Assert):
@@ -84,6 +86,13 @@ def check_to_image(phonon_dos, filename_argument, expected_filename):
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
         fig.write_image.assert_called_once_with(phonon_dos._path / expected_filename)
+
+
+def test_selections(phonon_dos):
+    assert phonon_dos.selections() == {
+        "atom": ["Sr", "Ti", "O", "1", "2", "3", "4", "5", "6", "7"],
+        "direction": ["x", "y", "z"],
+    }
 
 
 def test_phonon_dos_print(phonon_dos, format_):

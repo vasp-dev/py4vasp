@@ -152,3 +152,24 @@ def test_scalar_string():
     reference = "text stored in file"
     vasp = VaspData(np.array(reference.encode()))
     assert vasp.data == reference
+
+
+def test_list_data(Assert):
+    data = [[1, 2, 3], [4, 5, 6]]
+    reference = np.array(data)
+    actual = VaspData(data)
+    Assert.allclose(actual, reference)
+    Assert.allclose(np.array(actual), reference)
+    Assert.allclose(actual[()], reference)
+    assert actual.ndim == reference.ndim
+    assert actual.size == reference.size
+    assert actual.shape == reference.shape
+    assert actual.dtype == reference.dtype
+    assert repr(actual) == f"VaspData({repr(data)})"
+
+
+def test_nested_data():
+    data = VaspData(None)
+    assert VaspData(data).is_none()
+    data = np.zeros(10)
+    assert isinstance(VaspData(data).data, np.ndarray)

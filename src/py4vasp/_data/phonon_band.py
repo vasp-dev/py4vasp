@@ -3,13 +3,12 @@
 import numpy as np
 
 from py4vasp import data
-from py4vasp._data import base
-from py4vasp._data.phonon_projector import PhononProjector, selection_doc
+from py4vasp._data import base, phonon
 from py4vasp._third_party import graph
-from py4vasp._util import convert, documentation
+from py4vasp._util import convert, documentation, index, select
 
 
-class PhononBand(base.Refinery, graph.Mixin):
+class PhononBand(base.Refinery, phonon.Mixin, graph.Mixin):
     """The phonon band structure.
 
     Use this to examine the phonon band structure along a high-symmetry path in the
@@ -21,7 +20,7 @@ class PhononBand(base.Refinery, graph.Mixin):
         return f"""phonon band data:
     {self._raw_data.dispersion.eigenvalues.shape[0]} q-points
     {self._raw_data.dispersion.eigenvalues.shape[1]} modes
-    {self._topology}"""
+    {self._topology()}"""
 
     @base.data_access
     def to_dict(self):
@@ -33,16 +32,16 @@ class PhononBand(base.Refinery, graph.Mixin):
             Contains the **q**-point path for plotting phonon band structures and
             the phonon bands. In addition the phonon modes are returned.
         """
-        dispersion = self._dispersion.read()
+        dispersion = self._dispersion().read()
         return {
             "qpoint_distances": dispersion["kpoint_distances"],
             "qpoint_labels": dispersion["kpoint_labels"],
             "bands": dispersion["eigenvalues"],
-            "modes": self._modes,
+            "modes": self._modes(),
         }
 
     @base.data_access
-    @documentation.format(selection=selection_doc)
+    @documentation.format(selection=phonon.selection_doc)
     def to_graph(self, selection=None, width=1.0):
         """Generate a graph of the phonon bands.
 
@@ -60,36 +59,23 @@ class PhononBand(base.Refinery, graph.Mixin):
             the projection.
         """
         projections = self._projections(selection, width)
-        graph = self._dispersion.plot(projections)
+        graph = self._dispersion().plot(projections)
         graph.ylabel = "ω (THz)"
         return graph
 
-    @property
     def _dispersion(self):
         return data.Dispersion.from_data(self._raw_data.dispersion)
 
-    @property
-    def _topology(self):
-        return data.Topology.from_data(self._raw_data.topology)
-
-    @property
     def _modes(self):
         return convert.to_complex(self._raw_data.eigenvectors[:])
 
-    @property
-    def _projector(self):
-        topology = data.Topology.from_data(self._raw_data.topology)
-        return PhononProjector(topology)
-
     def _projections(self, selection, width):
-        if selection is None:
+        if not selection:
             return None
-        projector = self._projector
-        return dict(
-            self._create_projection(*projector.select(*index), width)
-            for index in projector.parse_selection(selection)
-        )
-
-    def _create_projection(self, label, select, width):
-        selected = self._modes[:, :, select.atom.indices, select.direction.indices]
-        return label, width * np.sum(np.abs(selected), axis=(2, 3))
+        maps = {2: self._init_atom_dict(), 3: self._init_direction_dict()}
+        selector = index.Selector(maps, np.abs(self._modes()))
+        tree = select.Tree.from_selection(selection)
+        return {
+            selector.label(selection): width * selector[selection]
+            for selection in tree.selections()
+        }

@@ -65,6 +65,10 @@ class Example(base.Refinery):
         return self._raw_data.selection, selection
 
     @base.data_access
+    def selection_without_default(self, selection):
+        return selection
+
+    @base.data_access
     def __str__(self):
         return self._raw_data.content
 
@@ -87,6 +91,11 @@ def test_from_path(mock_access):
     assert example.read() == RAW_DATA.content
     mock_access.assert_called_once_with("example", selection=None, path=pathname)
     assert example.read() == RAW_DATA.content
+    #
+    # access with selection
+    mock_access.reset_mock()
+    assert example.read(selection=SELECTION) == RAW_DATA.content
+    mock_access.assert_called_once_with("example", selection=SELECTION, path=pathname)
 
 
 def test_from_file(mock_access):
@@ -99,6 +108,11 @@ def test_from_file(mock_access):
     assert example.read() == RAW_DATA.content
     mock_access.assert_called_once_with("example", selection=None, file=filename)
     assert example.read() == RAW_DATA.content
+    #
+    # access with selection
+    mock_access.reset_mock()
+    assert example.read(SELECTION) == RAW_DATA.content
+    mock_access.assert_called_once_with("example", selection=SELECTION, file=filename)
 
 
 def test_nested_calls(mock_access):
@@ -118,6 +132,17 @@ def test_arguments_passed(mock_schema):
     optional = "optional argument"
     assert example.with_arguments(mandatory) == (mandatory, None)
     assert example.with_arguments(mandatory, optional=optional) == (mandatory, optional)
+
+
+def test_arguments_and_selection(mock_access):
+    pathname = "path with VASP output"
+    example = Example.from_path(pathname)
+    first, second = "first argument", "second argument"
+    assert example.with_arguments(first, selection=SELECTION) == (first, None)
+    mock_access.assert_called_once_with("example", selection=SELECTION, path=pathname)
+    mock_access.reset_mock()
+    assert example.with_arguments(first, second, SELECTION) == (first, second)
+    mock_access.assert_called_once_with("example", selection=SELECTION, path=pathname)
 
 
 def test_variadic_arguments_passed(mock_schema):
@@ -268,6 +293,16 @@ def test_selection_passed_to_inner_function(mock_access):
     assert argument == selection
 
 
+@pytest.mark.parametrize("selection", ["a_specific_text", "", None])
+def test_selection_passed_when_no_default_exists(mock_access, selection):
+    expected = selection or ""
+    example = Example.from_path()
+    argument = example.selection_without_default(selection)
+    assert argument == expected
+    argument = example.selection_without_default(f"{SELECTION}({expected})")
+    assert argument == expected
+
+
 def test_missing_selection_argument(mock_access):
     example = Example.from_path()
     result = example.with_selection_argument()
@@ -302,3 +337,27 @@ def test_incorrect_selection_raises_usage_error(mock_access):
     example = Example.from_path()
     with pytest.raises(exception.IncorrectUsage):
         example.with_selection_argument(selection=1)
+
+
+@pytest.mark.parametrize("operator", ["+", "-"])
+def test_selection_operations_not_implemented(operator, mock_access):
+    selection = f"default {operator} {SELECTION}"
+    example = Example.from_path()
+    with pytest.raises(exception.NotImplemented):
+        example.read(selection)
+
+
+def test_operations_are_passed_to_wrapped_routines(mock_schema):
+    example = Example.from_data(RAW_DATA)
+    assert example.selection_without_default("A + B") == "A + B"
+
+
+def test_selection_not_found(mock_access):
+    with pytest.raises(exception.IncorrectUsage):
+        Example.from_path().read("unknown_selection")
+
+
+def test_syntax_error_still_raised(mock_schema):
+    example = Example.from_data(RAW_DATA)
+    with pytest.raises(TypeError):
+        example.read(1, 2)

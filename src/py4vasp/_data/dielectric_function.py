@@ -4,17 +4,16 @@ import typing
 
 import numpy as np
 
-from py4vasp import exception
 from py4vasp._data import base
 from py4vasp._third_party import graph
-from py4vasp._util import convert, select
+from py4vasp._util import convert, index, select
 
 
 class DielectricFunction(base.Refinery, graph.Mixin):
     """The dielectric function resulting from electrons and ions.
 
     You can use this class to extract the dielectric function of a Vasp calculation.
-    Vasp evaluates actually evaluates the (symmetric) dielectric tensor, so all
+    VASP evaluates actually evaluates the (symmetric) dielectric tensor, so all
     the returned quantities are 3x3 matrices. For plotting purposes this is reduced
     to the 6 independent variables.
     """
@@ -29,10 +28,10 @@ dielectric function:
         """.strip()
 
     def _components(self):
-        if self._raw_data.current_current.is_none():
-            return ""
-        else:
+        if self._has_current_component():
             return "    components: density, current\n"
+        else:
+            return ""
 
     @base.data_access
     def to_dict(self):
@@ -50,6 +49,16 @@ dielectric function:
             **self._add_current_current_if_available(),
         }
 
+    def _add_current_current_if_available(self):
+        if self._has_current_component():
+            data = convert.to_complex(np.array(self._raw_data.current_current))
+            return {"current_current": data}
+        else:
+            return {}
+
+    def _has_current_component(self):
+        return not self._raw_data.current_current.is_none()
+
     @base.data_access
     def to_graph(self, selection=None):
         """Read the data and generate a figure with the selected directions.
@@ -59,123 +68,100 @@ dielectric function:
         selection : str
             Specify along which directions and which components of the dielectric
             function you want to plot. Defaults to *isotropic* and both the real
-            and the complex part.
+            and the complex part. You can use the `selections` routine if you are
+            not sure which options are available.
 
         Returns
         -------
         Graph
             figure containing the dielectric function for the selected
             directions and components."""
-        selection = _default_selection_if_none(selection)
-        data = self.to_dict()
-        choices = _parse_selection(selection, "current_current" in data)
+        selection = self._replace_complex_labels(selection or "")
         return graph.Graph(
-            series=[_make_plot(data, *choice) for choice in choices],
+            series=self._make_series(selection),
             xlabel="Energy (eV)",
             ylabel="dielectric function ϵ",
         )
 
-    def _add_current_current_if_available(self):
-        if self._raw_data.current_current.is_none():
-            return {}
-        data = convert.to_complex(np.array(self._raw_data.current_current))
-        return {"current_current": data}
+    @base.data_access
+    def selections(self):
+        "Returns a dictionary of possible selections for component, direction, and complex value."
+        components = (
+            ["density", "current"] if self._has_current_component() else ["density"]
+        )
+        return {
+            "components": components,
+            "directions": [key for key in self._init_directions_dict() if key],
+            "complex": ["real", "Re", "imag", "Im"],
+        }
 
+    def _replace_complex_labels(self, selection):
+        selection = selection.replace("real", "Re")
+        return selection.replace("imaginary", "Im").replace("imag", "Im")
 
-def _default_selection_if_none(selection):
-    return "isotropic" if selection is None else selection
+    def _make_series(self, selection):
+        energies = self._raw_data.energies[:]
+        selector = self._make_selector()
+        return [
+            graph.Series(energies, selector[selection], selector.label(selection))
+            for selection in self._generate_selections(selection)
+        ]
 
+    def _make_selector(self):
+        maps = {
+            3: self._init_complex_dict(),
+            0: self._init_components_dict(),
+            1: self._init_directions_dict(),
+        }
+        return index.Selector(maps, self._get_data(), reduction=np.average)
 
-def _parse_selection(selection, has_current_current):
-    tree = select.Tree.from_selection(selection)
-    yield from _parse_recursive(tree, _default_choice(has_current_current))
+    def _init_components_dict(self):
+        return {None: 0, "density": 0, "current": 1}
 
+    def _init_directions_dict(self):
+        return {
+            None: [0, 4, 8],
+            "isotropic": [0, 4, 8],
+            "xx": 0,
+            "yy": 4,
+            "zz": 8,
+            "xy": [1, 3],
+            "xz": [2, 6],
+            "yz": [5, 7],
+        }
 
-def _default_choice(has_current_current):
-    if has_current_current:
-        return _Choice("density")
-    else:
-        return _Choice()
+    def _init_complex_dict(self):
+        return {"Re": 0, "Im": 1}
 
-
-class _Choice(typing.NamedTuple):
-    component: str = None
-    direction: str = "isotropic"
-    real_or_imag: str = select.all
-
-
-def _parse_recursive(tree, current_choice):
-    for node in tree.nodes:
-        new_choice = _update_choice(current_choice, str(node))
-        if len(node.nodes) == 0:
-            yield from _setup_component_choices(new_choice)
+    def _get_data(self):
+        *_, number_points, complex_ = self._raw_data.dielectric_function.shape
+        if self._has_current_component():
+            new_shape = (9, number_points, complex_)
+            density = np.reshape(self._raw_data.dielectric_function, new_shape)
+            current = np.reshape(self._raw_data.current_current, new_shape)
+            return np.array([density, current])
         else:
-            yield from _parse_recursive(node, new_choice)
+            new_shape = (1, 9, number_points, complex_)
+            return np.reshape(self._raw_data.dielectric_function, new_shape)
 
+    def _generate_selections(self, selection):
+        tree = select.Tree.from_selection(selection)
+        for selection in tree.selections():
+            if not self._component_selected(selection):
+                selection = selection + ("density",)
+            if self._complex_selected(selection):
+                yield selection
+            else:
+                yield selection + ("Re",)
+                yield selection + ("Im",)
 
-def _update_choice(current_choice, part):
-    if part in ("current", "density"):
-        return current_choice._replace(component=part)
-    elif part in ("isotropic", "xx", "yy", "zz", "xy", "xz", "yz"):
-        return current_choice._replace(direction=part)
-    elif part in ("Re", "real"):
-        return current_choice._replace(real_or_imag="real")
-    elif part in ("Im", "imag", "imaginary"):
-        return current_choice._replace(real_or_imag="imag")
-    else:
-        message = f"The choice {current_choice} was not understood. Please check if there are any spelling mistakes."
-        raise exception.IncorrectUsage(message)
+    def _component_selected(self, selection):
+        if self._has_current_component():
+            return select.contains(selection, "density") or select.contains(
+                selection, "current"
+            )
+        else:
+            return True
 
-
-def _setup_component_choices(choice):
-    if choice.real_or_imag == select.all:
-        yield choice._replace(real_or_imag="real")
-        yield choice._replace(real_or_imag="imag")
-    else:
-        yield choice
-
-
-def _make_plot(data, *choice):
-    return graph.Series(
-        x=data["energies"], y=_select_data(data, *choice), name=_build_name(*choice)
-    )
-
-
-def _select_data(data, component, direction, real_or_imag):
-    data_component = _select_data_component(data, component)
-    data_direction = _select_data_direction(data_component, direction)
-    return getattr(data_direction, real_or_imag)
-
-
-def _select_data_component(data, component):
-    if component == "current":
-        return data["current_current"]
-    else:
-        return data["dielectric_function"]
-
-
-def _select_data_direction(tensor, direction):
-    x, y, z = range(3)
-    if direction == "isotropic":
-        return np.trace(tensor) / 3
-    elif direction == "xx":
-        return tensor[x, x]
-    elif direction == "yy":
-        return tensor[y, y]
-    elif direction == "zz":
-        return tensor[z, z]
-    elif direction == "xy":
-        return 0.5 * (tensor[x, y] + tensor[y, x])
-    elif direction == "yz":
-        return 0.5 * (tensor[y, z] + tensor[z, y])
-    elif direction == "xz":
-        return 0.5 * (tensor[x, z] + tensor[z, x])
-
-
-def _build_name(component, direction, real_or_imag):
-    name = real_or_imag[:2].capitalize()
-    if component:
-        name = f"{component},{name}"
-    if direction != "isotropic":
-        name += f",{direction}"
-    return name
+    def _complex_selected(self, selection):
+        return select.contains(selection, "Re") or select.contains(selection, "Im")

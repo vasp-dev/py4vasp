@@ -2,20 +2,33 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import exception
 from py4vasp._data import base, slice_
 from py4vasp._third_party import graph
-from py4vasp._util import check, convert, documentation, select
+from py4vasp._util import convert, documentation, index, select
 
 
 def _selection_string(default):
     return f"""selection : str or None
-    String specifying the labels of the energy to be read. A substring
-    of the label is sufficient. If no energy is select this will default
-    to selecting {default}. Separate distinct labels by commas. For a
-    complete list of all possible selections, please use
-    >>> calc.energy.labels()
+    String specifying the labels of the energy to be read. If no energy is selected
+    this will default to selecting {default}. Separate distinct labels by commas or
+    whitespace. You can add or subtract different contributions e.g. `TOTEN + EKIN`.
+    For a complete list of all possible selections, please use
+    >>> calc.energy.selections()
 """
+
+
+_SELECTIONS = {
+    "ion-electron   TOTEN   ": ["ion_electron", "TOTEN"],
+    "kinetic energy EKIN    ": ["kinetic_energy", "EKIN"],
+    "kin. lattice   EKIN_LAT": ["kinetic_lattice", "EKIN_LAT"],
+    "temperature    TEIN    ": ["temperature", "TEIN"],
+    "nose potential ES      ": ["nose_potential", "ES"],
+    "nose kinetic   EPS     ": ["nose_kinetic", "EPS"],
+    "total energy   ETOTAL  ": ["total_energy", "ETOTAL"],
+    "free energy    TOTEN   ": ["free_energy", "TOTEN"],
+    "energy without entropy ": ["without_entropy", "ENOENT"],
+    "energy(sigma->0)       ": ["sigma_0", "ESIG0"],
+}
 
 
 @documentation.format(examples=slice_.examples("energy"))
@@ -33,7 +46,7 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
         text = f"Energies at {self._step_string()}:"
         values = self._raw_data.values[self._last_step_in_slice]
         for label, value in zip(self._raw_data.labels, values):
-            label = f"{convert.text_to_string(label):22.22}"
+            label = f"{convert.text_to_string(label):23.23}"
             text += f"\n   {label}={value:17.6f}"
         return text
 
@@ -42,7 +55,7 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
             range_ = range(len(self._raw_data.values))[self._slice]
             start = range_.start + 1  # convert to Fortran index
             stop = range_.stop
-            return f"step {stop} of range {start}-{stop}"
+            return f"step {stop} of range {start}:{stop}"
         elif self._steps == -1:
             return "final step"
         else:
@@ -53,7 +66,7 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
         selection=_selection_string("all energies"),
         examples=slice_.examples("energy", "to_dict"),
     )
-    def to_dict(self, selection=select.all):
+    def to_dict(self, selection=None):
         """Read the energy data and store it in a dictionary.
 
         Parameters
@@ -68,9 +81,15 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
 
         {examples}
         """
+        if selection is None:
+            return self._default_dict()
+        tree = select.Tree.from_selection(selection)
+        return dict(self._read_data(tree, self._steps))
+
+    def _default_dict(self):
         return {
-            label: self._raw_data.values[self._steps, index]
-            for label, index in self._parse_user_selection(selection)
+            convert.text_to_string(label).strip(): value[self._steps]
+            for label, value in zip(self._raw_data.labels, self._raw_data.values.T)
         }
 
     @base.data_access
@@ -92,9 +111,10 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
 
         {examples}
         """
-        yaxes = self._create_yaxes(selection)
+        tree = select.Tree.from_selection(selection)
+        yaxes = _YAxes(tree)
         return graph.Graph(
-            series=self._make_series(yaxes, selection),
+            series=self._make_series(yaxes, tree),
             xlabel="Step",
             ylabel=yaxes.ylabel,
             y2label=yaxes.y2label,
@@ -121,81 +141,55 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
 
         {examples}
         """
-        result = tuple(
-            self._raw_data.values[self._steps, index]
-            for _, index in self._parse_user_selection(selection)
-        )
-        return _unpack_if_only_one_element(result)
+        tree = select.Tree.from_selection(selection)
+        return np.squeeze([values for _, values in self._read_data(tree, self._steps)])
 
     @base.data_access
-    def labels(self, selection=select.all):
-        "Return the labels corresponding to a particular selection defaulting to all labels."
-        return [label for label, _ in self._parse_user_selection(selection)]
+    def selections(self):
+        """Returns all possible selections you can use for the other routines.
 
-    def _parse_user_selection(self, selection):
-        # NOTE it would be nice to use SelectionTree instead, however that requires
-        # the labels may have spaces so it might lead to redundancies
-        indices = self._find_selection_indices(selection)
-        get_label = lambda index: convert.text_to_string(self._raw_data.labels[index])
-        for index in indices:
-            yield get_label(index).strip(), index
+        Returns
+        -------
+        tuple
+            Each element of the tuple is one possible selection for an energy or
+            temperature. Note that some elements correspond to the same underlying data.
+            If they are, they will be next to each other in the returned tuple.
+        """
+        return tuple(self._init_selection_dict().keys())
 
-    def _find_selection_indices(self, selection):
-        if selection == select.all:
-            return range(len(self._raw_data.labels))
-        else:
-            selection_parts = _split_selection_in_parts(selection)
-            return [self._find_selection_index(part) for part in selection_parts]
+    def _read_data(self, tree, steps_or_slice):
+        maps = {1: self._init_selection_dict()}
+        selector = index.Selector(maps, self._raw_data.values)
+        for selection in tree.selections():
+            yield selector.label(selection), selector[selection][steps_or_slice]
 
-    def _find_selection_index(self, selection):
-        for index, label in enumerate(self._raw_data.labels):
-            label = convert.text_to_string(label).strip()
-            if selection in label:
-                return index
-        raise exception.IncorrectUsage(
-            f"{selection} was not found in the list of energies. "
-            "Please make sure the spelling is correct."
-        )
+    def _init_selection_dict(self):
+        return {
+            selection: index
+            for index, label in enumerate(self._raw_data.labels)
+            for selection in _SELECTIONS.get(convert.text_to_string(label), ())
+        }
 
-    def _create_yaxes(self, selection):
-        return _YAxes(self._parse_user_selection(selection))
-
-    def _make_series(self, yaxes, selection):
+    def _make_series(self, yaxes, tree):
         steps = np.arange(len(self._raw_data.values))[self._slice] + 1
         return [
-            graph.Series(
-                x=steps,
-                y=self._raw_data.values[self._slice, index],
-                name=label[:14].strip(),
-                y2=yaxes.y2(label),
-            )
-            for label, index in self._parse_user_selection(selection)
+            graph.Series(x=steps, y=values, name=label, y2=yaxes.use_y2(label))
+            for label, values in self._read_data(tree, self._slice)
         ]
 
 
 class _YAxes:
-    def __init__(self, selections):
-        selections = set(self._is_temperature(s) for s, _ in selections)
-        use_energy = False in selections
-        self.use_both = len(selections) == 2
+    def __init__(self, tree):
+        uses = set(self._is_temperature(selection) for selection in tree.selections())
+        use_energy = False in uses
+        self.use_both = len(uses) == 2
         self.ylabel = "Energy (eV)" if use_energy else "Temperature (K)"
         self.y2label = "Temperature (K)" if self.use_both else None
 
-    def y2(self, label):
-        return self.use_both and self._is_temperature(label)
+    def _is_temperature(self, selection):
+        choices = _SELECTIONS["temperature    TEIN    "]
+        return any(select.contains(selection, choice) for choice in choices)
 
-    def _is_temperature(self, label):
-        return "temperature" in label
-
-
-def _split_selection_in_parts(selection):
-    error_message = "Energy selection must be a string."
-    check.raise_error_if_not_string(selection, error_message)
-    return (part.strip() for part in selection.split(","))
-
-
-def _unpack_if_only_one_element(tuple_):
-    if len(tuple_) == 1:
-        return tuple_[0]
-    else:
-        return tuple_
+    def use_y2(self, label):
+        choices = _SELECTIONS["temperature    TEIN    "]
+        return self.use_both and label in choices

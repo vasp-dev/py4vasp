@@ -283,11 +283,11 @@ def get_direction(tensor, direction):
 
 def expected_plot_name(real_or_imag, direction, component=None):
     parts = (real_or_imag,)
+    if component is not None:
+        parts += (component,)
     if direction != "isotropic":
         parts += (direction,)
-    if component is not None:
-        parts = (component,) + parts
-    return ",".join(parts)
+    return "_".join(parts)
 
 
 def check_figure_contains_plots(fig, references, Assert):
@@ -329,6 +329,22 @@ def check_to_image(dielectric_function, filename_argument, expected_filename):
         fig = plot.return_value
         expected_path = dielectric_function.path / expected_filename
         fig.write_image.assert_called_once_with(expected_path)
+
+
+def test_electronic_selections(electronic):
+    assert electronic.selections() == {
+        "components": ["density", "current"],
+        "directions": ["isotropic", "xx", "yy", "zz", "xy", "xz", "yz"],
+        "complex": ["real", "Re", "imag", "Im"],
+    }
+
+
+def test_ionic_selections(ionic):
+    assert ionic.selections() == {
+        "components": ["density"],
+        "directions": ["isotropic", "xx", "yy", "zz", "xy", "xz", "yz"],
+        "complex": ["real", "Re", "imag", "Im"],
+    }
 
 
 def test_electronic_print(electronic, format_):

@@ -164,13 +164,26 @@ class _FunctionWrapper:
     def _find_selection_in_arguments(self, *args, **kwargs):
         signature = inspect.signature(self._func)
         if "selection" in signature.parameters:
-            arguments = signature.bind(*args, **kwargs)
-            arguments.apply_defaults()
-            selection = arguments.arguments["selection"]
+            return self._get_selection_from_parameters(signature, *args, **kwargs)
+        elif selection := kwargs.pop("selection", None):
+            return selection, signature.bind(*args, **kwargs)
         else:
-            selection = kwargs.pop("selection", None)
-            arguments = signature.bind(*args, **kwargs)
-        return selection, arguments
+            return self._get_selection_from_args(signature, *args, **kwargs)
+
+    def _get_selection_from_parameters(self, signature, *args, **kwargs):
+        arguments = signature.bind(*args, **kwargs)
+        arguments.apply_defaults()
+        return arguments.arguments["selection"], arguments
+
+    def _get_selection_from_args(self, signature, *args, **kwargs):
+        try:
+            # if the signature works, there is no additional selection argument
+            return None, signature.bind(*args, **kwargs)
+        except TypeError as error:
+            try:
+                return args[-1], signature.bind(*(args[:-1]), **kwargs)
+            except:
+                raise error
 
     def _parse_selection(self, selection):
         tree = select.Tree.from_selection(selection)
@@ -183,15 +196,16 @@ class _FunctionWrapper:
 
     def _find_selection_in_schema(self, selection):
         options = raw.schema.selections(self._data_context.quantity)
-        selected = None
-        remaining = []
-        for part in selection:
-            sanitized_part = str(part).lower()
-            if sanitized_part not in options:
-                remaining.append(part)
-            else:
-                selected = sanitized_part
-        return selected, remaining
+        for option in options:
+            if select.contains(selection, option, ignore_case=True):
+                return self._remove_selected_option_if_possible(selection, option)
+        return None, list(selection)
+
+    def _remove_selected_option_if_possible(self, selection, option):
+        is_option = lambda part: str(part).lower() == option.lower()
+        remaining = [part for part in selection if not is_option(part)]
+        _raise_error_if_option_was_not_removed(selection, option, remaining)
+        return option.lower(), remaining
 
     def _run_selections(self, bound_arguments, selections):
         for selection in selections.items():
@@ -206,13 +220,20 @@ class _FunctionWrapper:
 
     def _set_remaining_selection(self, bound_arguments, remaining):
         if "selection" not in bound_arguments.arguments:
+            self._raise_error_if_any_remaining_selection(remaining)
             return bound_arguments
         if remaining == [[]]:
-            selection = bound_arguments.signature.parameters["selection"].default
+            selection = self._use_default_or_empty_string(bound_arguments.signature)
         else:
             selection = select.selections_to_string(remaining)
         bound_arguments.arguments["selection"] = selection
         return bound_arguments
+
+    def _use_default_or_empty_string(self, signature):
+        if signature.parameters["selection"].default == inspect.Parameter.empty:
+            return ""
+        else:
+            return signature.parameters["selection"].default
 
     def _merge_results(self, results):
         results = dict(results)
@@ -221,6 +242,25 @@ class _FunctionWrapper:
         if len(results) == 1:
             return results.popitem()[1]  # unpack value of first element
         return results
+
+    def _raise_error_if_any_remaining_selection(self, remaining):
+        if remaining == [[]]:
+            return
+        selection = select.selections_to_string(remaining)
+        sources = '", "'.join(raw.schema.selections(self._data_context.quantity))
+        message = f"""py4vasp found a selection "{selection}", but could not parse it.
+            Please check for possible spelling errors. Possible sources for
+            {self._data_context.quantity} are "{sources}"."""
+        raise exception.IncorrectUsage(message)
+
+
+def _raise_error_if_option_was_not_removed(selection, option, remaining):
+    if len(remaining) == len(selection):
+        message = f"""py4vasp identified the source "{option}" in your selection string
+            "{select.selections_to_string((selection,))}". However, the source could not
+            be extracted from the selection. A possible reason is that it is used in an
+            addition or subtraction, which is not implemented."""
+        raise exception.NotImplemented(message)
 
 
 @dataclasses.dataclass
