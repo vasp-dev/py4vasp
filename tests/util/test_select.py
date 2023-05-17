@@ -240,6 +240,7 @@ def test_selections_to_string(input, output):
 def test_contains(selection, expected):
     for selection in selections(selection):
         assert select.contains(selection, choice="A") == expected
+        assert select.contains(selection, choice="a", ignore_case=True) == expected
 
 
 def test_incorrect_selection_raises_error():

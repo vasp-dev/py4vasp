@@ -377,14 +377,33 @@ def _selection_to_string(selection):
     return "(".join(parts) + ")" * (len(parts) - 1)
 
 
-def contains(selection, choice):
-    return any(_part_contains(part, choice) for part in selection)
+def contains(selection, choice, ignore_case=False):
+    return any(_part_contains(part, choice, ignore_case) for part in selection)
 
 
-def _part_contains(part, choice):
+def _part_contains(part, choice, ignore_case):
     if isinstance(part, Group):
-        return choice in part.group
+        return _choice_in_group(part.group, choice, ignore_case)
     if isinstance(part, Operation):
-        left_op, right_op = part.left_operand, part.right_operand
-        return contains(left_op, choice) or contains(right_op, choice)
-    return part == choice
+        return _choice_in_operation(part, choice, ignore_case)
+    return _part_is_choice(part, choice, ignore_case)
+
+
+def _choice_in_group(group, choice, ignore_case):
+    if ignore_case:
+        return any(choice.lower() == element.lower() for element in group)
+    else:
+        return choice in group
+
+
+def _choice_in_operation(part, choice, ignore_case):
+    in_left_op = contains(part.left_operand, choice, ignore_case)
+    in_right_op = contains(part.right_operand, choice, ignore_case)
+    return in_left_op or in_right_op
+
+
+def _part_is_choice(part, choice, ignore_case):
+    if ignore_case:
+        return part.lower() == choice.lower()
+    else:
+        return part == choice
