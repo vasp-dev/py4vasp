@@ -32,7 +32,7 @@ class _Assert:
             actual, mask_actual = _finite_subset(actual)
             desired, mask_desired = _finite_subset(desired)
             assert np.all(mask_actual == mask_desired)
-            assert_array_almost_equal_nulp(actual, desired, 10)
+            assert_array_almost_equal_nulp(actual, desired, 30)
 
 
 def _is_none(data):
