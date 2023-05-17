@@ -63,9 +63,11 @@ class Structure(slice_.Mixin, base.Refinery):
     "Converting Å to nm used for mdtraj trajectories."
 
     @classmethod
-    def from_POSCAR(cls, poscar):
+    def from_POSCAR(cls, poscar, *, elements=None):
         """Generate a structure from string in POSCAR format."""
-        poscar = io.StringIO(str(poscar))
+        poscar = _replace_or_set_elements(str(poscar), elements)
+        print(poscar)
+        poscar = io.StringIO(poscar)
         structure = ase.io.read(poscar, format="vasp")
         return cls.from_ase(structure)
 
@@ -314,6 +316,31 @@ class _LatticeVectors(reader.Reader):
 
 def _cell_from_ase(structure):
     return raw.Cell(lattice_vectors=np.array([structure.get_cell()]))
+
+
+def _replace_or_set_elements(poscar, elements):
+    line_with_elements = 5
+    elements = "" if not elements else " ".join(elements)
+    lines = poscar.split("\n")
+    if _elements_not_in_poscar(lines[line_with_elements]):
+        _raise_error_if_elements_not_set(elements)
+        lines.insert(line_with_elements, elements)
+    elif elements:
+        lines[line_with_elements] = elements
+    return "\n".join(lines)
+
+
+def _elements_not_in_poscar(elements):
+    elements = elements.split()
+    return any(element.isdecimal() for element in elements)
+
+
+def _raise_error_if_elements_not_set(elements):
+    if not elements:
+        message = """The POSCAR file does not specify the elements needed to create a
+            Structure. Please pass `elements=[...]` to the `from_POSCAR` routine where
+            ... are the elements in the same order as in the POSCAR."""
+        raise exception.IncorrectUsage(message)
 
 
 class Mixin:
