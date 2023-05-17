@@ -104,6 +104,34 @@ def test_to_poscar(Sr2TiO4):
 def test_from_poscar(Sr2TiO4, Assert):
     structure = Structure.from_POSCAR(REF_POSCAR)
     check_Sr2TiO4_structure(structure.read(), Sr2TiO4.ref, -1, Assert)
+    structure = Structure.from_POSCAR(REF_POSCAR, elements=["Ba", "Zr", "S"])
+    actual = structure.read()
+    Assert.allclose(actual["lattice_vectors"], Sr2TiO4.ref.lattice_vectors[-1])
+    Assert.allclose(actual["positions"], Sr2TiO4.ref.positions[-1])
+    assert actual["elements"] == ["Ba", "Ba", "Zr", "S", "S", "S", "S"]
+    assert actual["names"] == ["Ba_1", "Ba_2", "Zr_1", "S_1", "S_2", "S_3", "S_4"]
+
+
+def test_from_poscar_without_elements(Sr2TiO4, Assert):
+    poscar = """\
+POSCAR without elements
+1.0
+   6.9229000000000003    0.0000000000000000    0.0000000000000000
+   4.6945030167999979    5.0880434191000035    0.0000000000000000
+  -5.8086962205000017   -2.5440193935999971    2.7773292841999986
+2 1 4
+Direct
+   0.6452900000000000    0.6452900000000000    0.0000000000000000
+   0.3547100000000000    0.3547100000000000    0.0000000000000000
+   0.0000000000000000    0.0000000000000000    0.0000000000000000
+   0.8417800000000000    0.8417800000000000    0.0000000000000000
+   0.1582300000000000    0.1582300000000000    0.0000000000000000
+   0.5000000000000000    0.0000000000000000    0.5000000000000000
+   0.0000000000000000    0.5000000000000000    0.5000000000000000"""
+    with pytest.raises(exception.IncorrectUsage):
+        structure = Structure.from_POSCAR(poscar)
+    structure = Structure.from_POSCAR(poscar, elements=["Sr", "Ti", "O"])
+    check_Sr2TiO4_structure(structure.read(), Sr2TiO4.ref, -1, Assert)
 
 
 def test_to_ase_Sr2TiO4(Sr2TiO4, Assert):
