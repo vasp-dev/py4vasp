@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import importlib
 
 from py4vasp import exception
@@ -19,3 +21,7 @@ def optional(name):
         return importlib.import_module(name)
     except:
         return _ModulePlaceholder(name)
+
+
+def is_imported(module):
+    return not isinstance(module, _ModulePlaceholder)
