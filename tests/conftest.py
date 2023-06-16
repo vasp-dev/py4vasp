@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import itertools
+import importlib.metadata
 
 import numpy as np
 import pytest
@@ -20,6 +21,27 @@ two_spins = 2
 axes = 3
 complex_ = 2
 number_modes = axes * number_atoms
+
+
+@pytest.fixture(scope="session")
+def is_core():
+    try:
+        importlib.metadata.distribution("py4vasp-core")
+        return True
+    except importlib.metadata.PackageNotFoundError:
+        return False
+
+
+@pytest.fixture()
+def only_core(is_core):
+    if not is_core:
+        pytest.skip("This test checks py4vasp-core functionality not used by py4vasp.")
+
+
+@pytest.fixture()
+def not_core(is_core):
+    if is_core:
+        pytest.skip("This test requires features not present in py4vasp-core.")
 
 
 class _Assert:
