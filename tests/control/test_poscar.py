@@ -13,7 +13,7 @@ class TestPoscar(AbstractTest):
     tested_class = POSCAR
 
 
-def test_plot_poscar():
+def test_plot_poscar(not_core):
     text = """! comment line
     5.43
     0.0 0.5 0.5
