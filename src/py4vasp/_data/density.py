@@ -1,9 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from IPython.lib.pretty import pretty
-
 from py4vasp import data, exception
 from py4vasp._data import base, structure
+from py4vasp._util import import_
+
+pretty = import_.optional("IPython.lib.pretty")
 
 
 class _ViewerWrapper:
@@ -27,8 +28,9 @@ class Density(base.Refinery, structure.Mixin):
     def __str__(self):
         _raise_error_if_no_data(self._raw_data.charge)
         grid = self._raw_data.charge.shape[1:]
+        topology = data.Topology.from_data(self._raw_data.structure.topology)
         return f"""density:
-    structure: {pretty(data.Topology.from_data(self._raw_data.structure.topology))}
+    structure: {pretty.pretty(topology)}
     grid: {grid[0]}, {grid[1]}, {grid[2]}
     {"spin polarized" if self._spin_polarized() else ""}
         """.strip()

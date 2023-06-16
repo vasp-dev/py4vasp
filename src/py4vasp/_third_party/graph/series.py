@@ -3,9 +3,11 @@
 from dataclasses import dataclass, fields
 
 import numpy as np
-import plotly.graph_objects as go
 
 from py4vasp import exception
+from py4vasp._util import import_
+
+go = import_.optional("plotly.graph_objects")
 
 
 @dataclass

@@ -5,11 +5,13 @@ import os
 import tempfile
 from typing import NamedTuple
 
-import mrcfile
-import nglview
 import numpy as np
 
 from py4vasp import exception
+from py4vasp._util import import_
+
+mrcfile = import_.optional("mrcfile")
+nglview = import_.optional("nglview")
 
 
 class _Arrow3d(NamedTuple):
