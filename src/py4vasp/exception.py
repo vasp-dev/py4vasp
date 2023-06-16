@@ -36,6 +36,11 @@ class OutdatedVaspVersion(Py4VaspError):
     used version of Vasp."""
 
 
+class ModuleNotInstalled(Py4VaspError):
+    """Exception raised when a functionality is used that relies on an optional
+    dependency of py4vasp but that dependency is not installed."""
+
+
 class StopExecution(Py4VaspError):
     """Exception raised when an error occurred in the user interface. This prevents
     further cells from being executed."""

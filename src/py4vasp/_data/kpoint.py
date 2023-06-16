@@ -91,7 +91,8 @@ reciprocal"""
         Returns
         -------
         int
-            The number of lines the band structure contains. For regular meshes this is set to 1."""
+            The number of lines the band structure contains. For regular meshes this is set to 1.
+        """
         return self.number_kpoints() // self.line_length()
 
     @base.data_access
