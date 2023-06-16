@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import inspect
+import os
 from pathlib import Path
 from unittest.mock import mock_open, patch
 
@@ -16,7 +17,7 @@ def test_creation_from_path(mock_access, mock_from_path):
     absolute_path = Path(__file__)
     calc = Calculation.from_path(absolute_path)
     assert calc.path() == absolute_path
-    relative_path = absolute_path.relative_to(Path.cwd())
+    relative_path = os.path.relpath(absolute_path, Path.cwd())
     calc = Calculation.from_path(relative_path)
     assert calc.path() == absolute_path
     calc = Calculation.from_path("~")
@@ -33,7 +34,7 @@ def test_creation_from_file(mock_access, mock_from_file):
     absolute_file = absolute_path / "example.h5"
     calc = Calculation.from_file(absolute_file)
     assert calc.path() == absolute_path
-    relative_file = absolute_file.relative_to(Path.cwd())
+    relative_file = os.path.relpath(absolute_file, Path.cwd())
     calc = Calculation.from_file(relative_file)
     assert calc.path() == absolute_path
     calc = Calculation.from_file("~/example.h5")
