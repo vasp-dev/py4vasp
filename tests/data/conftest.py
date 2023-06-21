@@ -4,10 +4,11 @@ import inspect
 from unittest.mock import MagicMock, patch
 
 import pytest
-from IPython.core.formatters import DisplayFormatter
 
 from py4vasp import exception
-from py4vasp._util import convert
+from py4vasp._util import convert, import_
+
+formatters = import_.optional("IPython.core.formatters")
 
 TEST_FILENAME = "read_data_from_this_file"
 SELECTION = "alternative"
@@ -90,5 +91,5 @@ def check_mock_called(mock_access, quantity, file, selection=None):
 
 
 @pytest.fixture
-def format_():
-    return DisplayFormatter().format
+def format_(not_core):
+    return formatters.DisplayFormatter().format
