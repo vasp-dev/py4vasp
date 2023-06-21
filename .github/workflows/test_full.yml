@@ -31,10 +31,8 @@ jobs:
     - name: Test with pytest
       run: |
         cd full
-        poetry shell
-        cd ..
-        pytest --version
-        pytest --cov=py4vasp --cov-report term
+        poetry run pytest ../tests --version
+        poetry run pytest ../tests --cov=py4vasp --cov-report term
     - name: Check code style
       run: |
         cd full
