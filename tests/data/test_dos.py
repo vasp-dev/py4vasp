@@ -118,14 +118,14 @@ def test_read_excess_orbital_types(raw_data, Assert):
     Assert.allclose(actual["g_down"], zero)
 
 
-def test_Sr2TiO4_to_frame(Sr2TiO4, Assert):
+def test_Sr2TiO4_to_frame(Sr2TiO4, Assert, not_core):
     actual = Sr2TiO4.to_frame()
     Assert.allclose(actual.energies, Sr2TiO4.ref.energies)
     Assert.allclose(actual.total, Sr2TiO4.ref.dos)
     assert actual.fermi_energy == Sr2TiO4.ref.fermi_energy
 
 
-def test_Fe3O4_to_frame(Fe3O4, Assert):
+def test_Fe3O4_to_frame(Fe3O4, Assert, not_core):
     actual = Fe3O4.to_frame()
     Assert.allclose(actual.energies, Fe3O4.ref.energies)
     Assert.allclose(actual.up, Fe3O4.ref.dos_up)
@@ -133,7 +133,7 @@ def test_Fe3O4_to_frame(Fe3O4, Assert):
     assert actual.fermi_energy == Fe3O4.ref.fermi_energy
 
 
-def test_Sr2TiO4_projectors_to_frame(Sr2TiO4_projectors, Assert):
+def test_Sr2TiO4_projectors_to_frame(Sr2TiO4_projectors, Assert, not_core):
     equivalent_selections = [
         "s Sr(d) Ti O(px,dxy) 2(p) 4 3(dz2) 1:2(p)",
         "2( p), dz2(3) Sr(d) p(1:2), s, 4 Ti px(O) O(dxy)",
