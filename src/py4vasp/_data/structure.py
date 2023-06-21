@@ -14,7 +14,6 @@ from py4vasp._util import documentation, import_, reader
 ase = import_.optional("ase")
 ase_io = import_.optional("ase.io")
 mdtraj = import_.optional("mdtraj")
-pretty = import_.optional("IPython.lib.pretty")
 
 
 @dataclass
@@ -26,7 +25,7 @@ class _Format:
     newline: str = ""
 
     def comment_line(self, topology, step_string):
-        return f"{pretty.pretty(topology)}{step_string}{self.newline}"
+        return f"{topology}{step_string}{self.newline}"
 
     def scaling_factor(self):
         return f"1.0{self.newline}"

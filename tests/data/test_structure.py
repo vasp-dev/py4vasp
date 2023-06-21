@@ -101,7 +101,7 @@ def test_to_poscar(Sr2TiO4):
             Sr2TiO4[steps].to_POSCAR()
 
 
-def test_from_poscar(Sr2TiO4, Assert):
+def test_from_poscar(Sr2TiO4, Assert, not_core):
     structure = Structure.from_POSCAR(REF_POSCAR)
     check_Sr2TiO4_structure(structure.read(), Sr2TiO4.ref, -1, Assert)
     structure = Structure.from_POSCAR(REF_POSCAR, elements=["Ba", "Zr", "S"])
@@ -112,7 +112,7 @@ def test_from_poscar(Sr2TiO4, Assert):
     assert actual["names"] == ["Ba_1", "Ba_2", "Zr_1", "S_1", "S_2", "S_3", "S_4"]
 
 
-def test_from_poscar_without_elements(Sr2TiO4, Assert):
+def test_from_poscar_without_elements(Sr2TiO4, Assert, not_core):
     poscar = """\
 POSCAR without elements
 1.0
@@ -134,7 +134,7 @@ Direct
     check_Sr2TiO4_structure(structure.read(), Sr2TiO4.ref, -1, Assert)
 
 
-def test_to_ase_Sr2TiO4(Sr2TiO4, Assert):
+def test_to_ase_Sr2TiO4(Sr2TiO4, Assert, not_core):
     check_Sr2TiO4_ase(Sr2TiO4.to_ase(), Sr2TiO4.ref, -1, Assert)
     check_Sr2TiO4_ase(Sr2TiO4[0].to_ase(), Sr2TiO4.ref, 0, Assert)
     for steps in (slice(None), slice(1, 3)):
@@ -149,7 +149,7 @@ def check_Sr2TiO4_ase(structure, reference, steps, Assert):
     assert all(structure.pbc)
 
 
-def test_to_ase_Fe3O4(Fe3O4, Assert):
+def test_to_ase_Fe3O4(Fe3O4, Assert, not_core):
     check_Fe3O4_ase(Fe3O4.to_ase(), Fe3O4.ref, -1, Assert)
     check_Fe3O4_ase(Fe3O4[0].to_ase(), Fe3O4.ref, 0, Assert)
 
@@ -162,12 +162,12 @@ def check_Fe3O4_ase(structure, reference, steps, Assert):
     assert all(structure.pbc)
 
 
-def test_from_ase(Sr2TiO4, Assert):
+def test_from_ase(Sr2TiO4, Assert, not_core):
     structure = Structure.from_ase(Sr2TiO4.to_ase())
     check_Sr2TiO4_structure(structure.read(), Sr2TiO4.ref, -1, Assert)
 
 
-def test_to_mdtraj(Sr2TiO4, Assert):
+def test_to_mdtraj(Sr2TiO4, Assert, not_core):
     for steps in (slice(None), slice(1, 3)):
         trajectory = Sr2TiO4[steps].to_mdtraj()
         check_Sr2TiO4_mdtraj(trajectory, Sr2TiO4.ref, steps, Assert)
@@ -188,7 +188,7 @@ def check_Sr2TiO4_mdtraj(trajectory, reference, steps, Assert):
     Assert.allclose(trajectory.unitcell_vectors, unitcell_vectors)
 
 
-def test_supercell_scale_all(Sr2TiO4, Assert):
+def test_supercell_scale_all(Sr2TiO4, Assert, not_core):
     number_atoms = 7
     scale = 2
     supercell = Sr2TiO4.to_ase(supercell=scale)
@@ -197,7 +197,7 @@ def test_supercell_scale_all(Sr2TiO4, Assert):
     assert list(supercell.symbols) == 16 * ["Sr"] + 8 * ["Ti"] + 32 * ["O"]
 
 
-def test_supercell_scale_individual(Sr2TiO4, Assert):
+def test_supercell_scale_individual(Sr2TiO4, Assert, not_core):
     number_atoms = 7
     scale = (2, 1, 3)
     supercell = Sr2TiO4.to_ase(supercell=scale)
@@ -205,14 +205,14 @@ def test_supercell_scale_individual(Sr2TiO4, Assert):
     Assert.allclose(supercell.cell.array, np.diag(scale) @ Sr2TiO4.ref.lattice_vectors)
 
 
-def test_supercell_wrong_size(Sr2TiO4):
+def test_supercell_wrong_size(Sr2TiO4, not_core):
     with pytest.raises(exception.IncorrectUsage):
         Sr2TiO4.to_ase("foo")
     with pytest.raises(exception.IncorrectUsage):
         Sr2TiO4.to_ase([1, 2])
 
 
-def test_cartesian_positions(Sr2TiO4, Fe3O4, Assert):
+def test_cartesian_positions(Sr2TiO4, Fe3O4, Assert, not_core):
     check_cartesian_positions(Sr2TiO4, Assert)
     check_cartesian_positions(Fe3O4, Assert)
     check_cartesian_positions(Fe3O4[0], Assert)
@@ -246,13 +246,13 @@ def test_number_steps(Sr2TiO4):
     assert Sr2TiO4[1:3].number_steps() == 2
 
 
-def test_plot_Sr2TiO4(Sr2TiO4):
+def test_plot_Sr2TiO4(Sr2TiO4, not_core):
     check_plot_structure(Sr2TiO4)
     for steps in (slice(None), slice(1, 3), 0):
         check_plot_structure(Sr2TiO4[steps])
 
 
-def test_plot_Fe3O4(Fe3O4):
+def test_plot_Fe3O4(Fe3O4, not_core):
     check_plot_structure(Fe3O4)
     for steps in (slice(None), slice(1, 3), 0):
         check_plot_structure(Fe3O4[steps])
