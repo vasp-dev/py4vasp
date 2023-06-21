@@ -10,6 +10,7 @@ from py4vasp.data import Topology
 ase = import_.optional("ase")
 pd = import_.optional("pandas")
 
+
 class Base:
     def test_read(self):
         topology = self.topology.read()

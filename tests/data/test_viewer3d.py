@@ -3,14 +3,16 @@
 import types
 from unittest.mock import patch
 
-import ipykernel.jsonutil as json
-import nglview
 import numpy as np
 import pytest
 
 from py4vasp import exception
 from py4vasp._data.viewer3d import Viewer3d, _Arrow3d, _x_axis, _y_axis, _z_axis
 from py4vasp.data import Structure
+from py4vasp._util import import_
+
+json = import_.optional("ipykernel.jsonutil")
+nglview = import_.optional("nglview")
 
 
 @pytest.fixture
@@ -30,7 +32,7 @@ def assert_arrow_message(Assert):
 
 
 @pytest.fixture
-def viewer3d(raw_data):
+def viewer3d(raw_data, not_core):
     structure = Structure.from_data(raw_data.structure("Sr2TiO4"))
     return make_viewer(structure)
 
@@ -107,7 +109,7 @@ def test_arrows(viewer3d, assert_arrow_message):
     viewer3d.hide_arrows_at_atoms()
 
 
-def test_supercell(raw_data, assert_arrow_message):
+def test_supercell(raw_data, assert_arrow_message, not_core):
     structure = Structure.from_data(raw_data.structure("Sr2TiO4"))
     number_atoms = structure.number_atoms()
     supercell = (1, 2, 3)
@@ -132,13 +134,13 @@ def create_arrows(viewer, number_atoms):
     return arrows
 
 
-def test_serializable():
+def test_serializable(not_core):
     arrow = _Arrow3d(np.zeros(3), np.ones(3), np.ones(1))
     for element in arrow.to_serializable():
         json.json_clean(element)
 
 
-def test_standard_form(raw_data, Assert):
+def test_standard_form(raw_data, Assert, not_core):
     # TODO: this test should be changed to make the intention clearer
     # The issue is that the positions of the arrows are incorrect if we pass a structure
     # which has not been transformed to standard form.
@@ -150,7 +152,7 @@ def test_standard_form(raw_data, Assert):
     Assert.allclose(viewer._positions, raw_structure.positions)
 
 
-def test_isosurface(raw_data):
+def test_isosurface(raw_data, not_core):
     raw_density = raw_data.density("Fe3O4 collinear")
     viewer = make_viewer(Structure.from_data(raw_density.structure))
     viewer.show_isosurface(raw_density.charge)
@@ -164,7 +166,7 @@ def test_isosurface(raw_data):
     assert_add_surface(messages[1], kwargs)
 
 
-def test_trajectory(raw_data):
+def test_trajectory(raw_data, not_core):
     structure = Structure.from_data(raw_data.structure("Sr2TiO4"))
     viewer = structure[:].plot()
     viewer.default_messages = 0
