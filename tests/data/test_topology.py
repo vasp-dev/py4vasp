@@ -1,14 +1,14 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import ase
-import pandas as pd
 import pytest
 
 from py4vasp import exception
 from py4vasp._data.selection import Selection
-from py4vasp._util import select
+from py4vasp._util import select, import_
 from py4vasp.data import Topology
 
+ase = import_.optional("ase")
+pd = import_.optional("pandas")
 
 class Base:
     def test_read(self):
@@ -19,13 +19,13 @@ class Base:
             assert topology[str(i + 1)] == expected
         self.check_ion_indices(topology)
 
-    def test_to_frame(self):
+    def test_to_frame(self, not_core):
         actual = self.topology.to_frame()
         ref_data = {"name": self.names, "element": self.elements}
         reference = pd.DataFrame(ref_data)
         assert reference.equals(actual)
 
-    def test_to_mdtraj(self):
+    def test_to_mdtraj(self, not_core):
         actual, _ = self.topology.to_mdtraj().to_dataframe()
         num_atoms = self.topology.number_atoms()
         ref_data = {
@@ -53,7 +53,7 @@ class Base:
     def test_number_atoms(self):
         assert self.topology.number_atoms() == 7
 
-    def test_from_ase(self):
+    def test_from_ase(self, not_core):
         structure = ase.Atoms("".join(self.elements))
         topology = Topology.from_ase(structure)
         assert topology.elements() == self.elements
