@@ -23,7 +23,7 @@ def mock_schema():
 
 
 @pytest.fixture
-def check_factory_methods(mock_schema):
+def check_factory_methods(mock_schema, not_core):
     def inner(cls, data, parameters={}):
         instance = cls.from_path()
         check_instance_accesses_data(instance, data, parameters)
