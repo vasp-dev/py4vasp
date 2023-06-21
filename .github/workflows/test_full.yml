@@ -28,6 +28,7 @@ jobs:
         poetry --version
         cd full
         poetry install
+        poetry add mdtraj  # should move to pyproject.toml
     - name: Test with pytest
       run: |
         cd full
