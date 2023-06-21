@@ -59,14 +59,14 @@ def subplot():
     return Series(x1, y1, subplot=1), Series(x2, y2, subplot=2)
 
 
-def test_basic_graph(parabola, Assert):
+def test_basic_graph(parabola, Assert, not_core):
     graph = Graph(parabola)
     fig = graph.to_plotly()
     assert len(fig.data) == 1
     compare_series(fig.data[0], parabola, Assert)
 
 
-def test_two_series(parabola, sine, Assert):
+def test_two_series(parabola, sine, Assert, not_core):
     for graph in (Graph([parabola, sine]), Graph(parabola) + Graph(sine)):
         fig = graph.to_plotly()
         assert len(fig.data) == 2
@@ -80,7 +80,7 @@ def compare_series(converted, original, Assert):
     assert converted.name == original.name
 
 
-def test_axis_label(parabola):
+def test_axis_label(parabola, not_core):
     graph = Graph(parabola)
     graph.xlabel = "xaxis label"
     graph.ylabel = "yaxis label"
@@ -89,7 +89,7 @@ def test_axis_label(parabola):
     assert fig.layout.yaxis.title.text == graph.ylabel
 
 
-def test_secondary_yaxis(parabola, sine, Assert):
+def test_secondary_yaxis(parabola, sine, Assert, not_core):
     sine.y2 = True
     graph = Graph([parabola, sine])
     graph.y2label = "secondary yaxis label"
@@ -104,7 +104,7 @@ def check_legend_group(converted, original, first_trace):
     assert converted.showlegend == first_trace
 
 
-def test_two_lines(two_lines, Assert):
+def test_two_lines(two_lines, Assert, not_core):
     graph = Graph(two_lines)
     fig = graph.to_plotly()
     assert len(fig.data) == 2
@@ -135,13 +135,13 @@ def compare_series_with_width(converted, original, Assert):
     assert converted.opacity == 0.5
 
 
-def test_fatband(fatband, Assert):
+def test_fatband(fatband, Assert, not_core):
     graph = Graph(fatband)
     fig = graph.to_plotly()
     compare_series_with_width(fig.data[0], fatband, Assert)
 
 
-def test_two_fatbands(two_fatbands, Assert):
+def test_two_fatbands(two_fatbands, Assert, not_core):
     graph = Graph(two_fatbands)
     fig = graph.to_plotly()
     assert len(fig.data) == 2
@@ -157,7 +157,7 @@ def test_two_fatbands(two_fatbands, Assert):
         first_trace = False
 
 
-def test_simple_with_marker(sine):
+def test_simple_with_marker(sine, not_core):
     graph = Graph(sine)
     fig = graph.to_plotly()
     assert len(fig.data) == 1
@@ -165,7 +165,7 @@ def test_simple_with_marker(sine):
     assert fig.data[0].marker.size is None
 
 
-def test_fatband_with_marker(fatband, Assert):
+def test_fatband_with_marker(fatband, Assert, not_core):
     with_marker = dataclasses.replace(fatband, marker="o")
     graph = Graph(with_marker)
     fig = graph.to_plotly()
@@ -177,7 +177,7 @@ def test_fatband_with_marker(fatband, Assert):
     Assert.allclose(fig.data[0].marker.size, fatband.width)
 
 
-def test_two_fatband_with_marker(two_fatbands, Assert):
+def test_two_fatband_with_marker(two_fatbands, Assert, not_core):
     with_marker = dataclasses.replace(two_fatbands, marker="o")
     graph = Graph(with_marker)
     fig = graph.to_plotly()
@@ -190,7 +190,7 @@ def test_two_fatband_with_marker(two_fatbands, Assert):
         Assert.allclose(converted.marker.size, w)
 
 
-def test_custom_xticks(parabola):
+def test_custom_xticks(parabola, not_core):
     graph = Graph(parabola)
     graph.xticks = {0.1: "X", 0.3: "Y", 0.4: "", 0.8: "Z"}
     fig = graph.to_plotly()
@@ -200,7 +200,7 @@ def test_custom_xticks(parabola):
     # empty ticks should be replace by " " because otherwise plotly will replace them
 
 
-def test_title(parabola):
+def test_title(parabola, not_core):
     graph = Graph(parabola)
     graph.title = "title"
     fig = graph.to_plotly()
@@ -230,7 +230,7 @@ def test_merging_of_fields_of_graph(sine, parabola):
             dataclasses.replace(graph2, **{field.name: "other"}) + graph1
 
 
-def test_subplot(subplot):
+def test_subplot(subplot, not_core):
     graph = Graph(subplot)
     graph.xlabel = ("first x-axis", "second x-axis")
     graph.ylabel = ("first y-axis", "second y-axis")
@@ -257,7 +257,7 @@ def test_mixture_subplot_raises_error(parabola, subplot):
         Graph((parabola,) + subplot)
 
 
-def test_non_numpy_data(non_numpy, Assert):
+def test_non_numpy_data(non_numpy, Assert, not_core):
     graph = Graph(non_numpy)
     fig = graph.to_plotly()
     assert len(fig.data) == len(non_numpy)
@@ -287,14 +287,14 @@ def test_add_label_to_multiple_lines(parabola, sine, Assert):
 
 
 @patch("plotly.graph_objs.Figure._ipython_display_")
-def test_ipython_display(mock_display, parabola):
+def test_ipython_display(mock_display, parabola, not_core):
     graph = Graph(parabola)
     graph._ipython_display_()
     mock_display.assert_called_once()
 
 
 @patch("plotly.graph_objs.Figure.show")
-def test_show(mock_show, parabola):
+def test_show(mock_show, parabola, not_core):
     graph = Graph(parabola)
     graph.show()
     mock_show.assert_called_once()
