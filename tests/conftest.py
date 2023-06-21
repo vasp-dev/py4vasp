@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import itertools
 import importlib.metadata
+import itertools
 
 import numpy as np
 import pytest

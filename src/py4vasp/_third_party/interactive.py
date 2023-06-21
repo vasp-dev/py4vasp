@@ -6,12 +6,29 @@ import os
 from py4vasp._util import import_
 
 IPython = import_.optional("IPython")
+_ERROR_VERBOSITY = "Minimal"
 
 
 def set_error_handling(verbosity):
-    if not import_.is_imported(IPython):
-        return
-    ipython = IPython.get_ipython()
-    if ipython is not None:
+    global _ERROR_VERBOSITY
+    ipython = _get_ipython()
+    if ipython is None:
+        _ERROR_VERBOSITY = verbosity
+    else:
         with open(os.devnull, "w") as ignore, contextlib.redirect_stdout(ignore):
             ipython.magic(f"xmode {verbosity}")
+
+
+def error_handling():
+    ipython = _get_ipython()
+    if ipython is None:
+        return _ERROR_VERBOSITY
+    else:
+        return ipython.xmode
+
+
+def _get_ipython():
+    if import_.is_imported(IPython):
+        return IPython.get_ipython()
+    else:
+        return None
