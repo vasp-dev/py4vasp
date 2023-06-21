@@ -8,8 +8,8 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._data.viewer3d import Viewer3d, _Arrow3d, _x_axis, _y_axis, _z_axis
-from py4vasp.data import Structure
 from py4vasp._util import import_
+from py4vasp.data import Structure
 
 json = import_.optional("ipykernel.jsonutil")
 nglview = import_.optional("nglview")

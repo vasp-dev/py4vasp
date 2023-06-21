@@ -4,7 +4,7 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._data.selection import Selection
-from py4vasp._util import select, import_
+from py4vasp._util import import_, select
 from py4vasp.data import Topology
 
 ase = import_.optional("ase")
