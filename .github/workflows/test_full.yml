@@ -31,19 +31,17 @@ jobs:
     - name: Test with pytest
       run: |
         cd full
-        poetry run pytest ../tests --version
+        poetry run pytest --version
         poetry run pytest ../tests --cov=py4vasp --cov-report term
     - name: Check code style
       run: |
         cd full
-        poetry shell
-        cd ..
-        isort --version
-        isort --check src
-        isort --check tests
-        black --version
-        black --check src
-        black --check tests
+        poetry run isort --version
+        poetry run isort --check ../src
+        poetry run isort --check ../tests
+        poetry run black --version
+        poetry run black --check ../src
+        poetry run black --check ../tests
 
 
   # test-windows:
