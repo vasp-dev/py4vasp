@@ -265,7 +265,7 @@ schema.add(
     internal_strain="results/linear_response/internal_strain",
 )
 #
-input = "input/kpoints"
+input_ = "input/kpoints"
 result = "results/electron_eigenvalues"
 schema.add(
     raw.Kpoint,
@@ -277,7 +277,7 @@ schema.add(
     label_indices=f"{input}/positions_labels_kpoints",
     cell=Link("cell", DEFAULT_SOURCE),
 )
-input = "input/kpoints_opt"
+input_ = "input/kpoints_opt"
 result = "results/electron_eigenvalues_kpoints_opt"
 schema.add(
     raw.Kpoint,
@@ -290,7 +290,7 @@ schema.add(
     label_indices=f"{input}/positions_labels_kpoints",
     cell=Link("cell", DEFAULT_SOURCE),
 )
-input = "input/kpoints_wan"
+input_ = "input/kpoints_wan"
 result = "results/electron_eigenvalues_kpoints_wan"
 schema.add(
     raw.Kpoint,
@@ -303,7 +303,7 @@ schema.add(
     label_indices=f"{input}/positions_labels_kpoints",
     cell=Link("cell", DEFAULT_SOURCE),
 )
-input = "input/qpoints"
+input_ = "input/qpoints"
 result = "results/phonons"
 schema.add(
     raw.Kpoint,
