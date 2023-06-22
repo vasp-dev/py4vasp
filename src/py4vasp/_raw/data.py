@@ -270,8 +270,10 @@ class Magnetism:
 
     structure: Structure
     "Structural information about the system."
-    moments: VaspData
+    spin_moments: VaspData
     "Contains the charge and magnetic moments atom and orbital resolved."
+    orbital_moments: VaspData = NONE()
+    "Contains the orbital magnetization for all atoms"
 
 
 @dataclasses.dataclass

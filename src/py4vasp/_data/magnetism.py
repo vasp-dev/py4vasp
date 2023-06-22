@@ -102,7 +102,7 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
 
         {examples}
         """
-        moments = _Moments(self._raw_data.moments)
+        moments = _Moments(self._raw_data.spin_moments)
         return moments[self._steps, 0, :, :]
 
     @base.data_access
@@ -122,7 +122,7 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
 
         {examples}
         """
-        moments = _Moments(self._raw_data.moments)
+        moments = _Moments(self._raw_data.spin_moments)
         _fail_if_steps_out_of_bounds(moments, self._steps)
         if moments.shape[1] == 1:
             return None
@@ -165,7 +165,7 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
 
         {examples}
         """
-        moments = _Moments(self._raw_data.moments)
+        moments = _Moments(self._raw_data.spin_moments)
         _fail_if_steps_out_of_bounds(moments, self._steps)
         if moments.shape[1] == 1:
             return None

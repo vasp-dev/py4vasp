@@ -451,9 +451,13 @@ def _grid_kpoints(mode, labels):
 def _magnetism(number_components):
     lmax = 3
     shape = (number_steps, number_components, number_atoms, lmax)
-    return raw.Magnetism(
-        structure=_Fe3O4_structure(), moments=np.arange(np.prod(shape)).reshape(shape)
+    magnetism = raw.Magnetism(
+        structure=_Fe3O4_structure(),
+        spin_moments=np.arange(np.prod(shape)).reshape(shape)
     )
+    if number_components == 4:
+        magnetism.orbital_moments = np.sqrt(magnetism.spin_moments)
+    return magnetism
 
 
 def _single_band(projectors):

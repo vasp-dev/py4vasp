@@ -15,8 +15,8 @@ def collinear_magnetism(raw_data):
     raw_magnetism = raw_data.magnetism("collinear")
     magnetism = Magnetism.from_data(raw_magnetism)
     magnetism.ref = types.SimpleNamespace()
-    magnetism.ref.charges = raw_magnetism.moments[:, 0, :, :]
-    magnetism.ref.moments = raw_magnetism.moments[:, 1, :, :]
+    magnetism.ref.charges = raw_magnetism.spin_moments[:, 0, :, :]
+    magnetism.ref.moments = raw_magnetism.spin_moments[:, 1, :, :]
     return magnetism
 
 
@@ -25,8 +25,8 @@ def noncollinear_magnetism(raw_data):
     raw_magnetism = raw_data.magnetism("noncollinear")
     magnetism = Magnetism.from_data(raw_magnetism)
     magnetism.ref = types.SimpleNamespace()
-    magnetism.ref.charges = raw_magnetism.moments[:, 0, :, :]
-    magnetism.ref.moments = np.moveaxis(raw_magnetism.moments[:, 1:4, :, :], 1, 3)
+    magnetism.ref.charges = raw_magnetism.spin_moments[:, 0, :, :]
+    magnetism.ref.moments = np.moveaxis(raw_magnetism.spin_moments[:, 1:4, :, :], 1, 3)
     return magnetism
 
 
@@ -39,7 +39,7 @@ def charge_only(raw_data):
     raw_magnetism = raw_data.magnetism("charge_only")
     magnetism = Magnetism.from_data(raw_magnetism)
     magnetism.ref = types.SimpleNamespace()
-    magnetism.ref.charges = raw_magnetism.moments[:, 0, :, :]
+    magnetism.ref.charges = raw_magnetism.spin_moments[:, 0, :, :]
     magnetism.ref.moments = GetItemNone()
     return magnetism
 

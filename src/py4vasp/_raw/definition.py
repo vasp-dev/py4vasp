@@ -321,7 +321,8 @@ schema.add(
 schema.add(
     raw.Magnetism,
     structure=Link("structure", DEFAULT_SOURCE),
-    moments="intermediate/ion_dynamics/magnetism/moments",
+    spin_moments="intermediate/ion_dynamics/magnetism/spin_moments/values",
+    orbital_moments="intermediate/ion_dynamics/magnetism/orbital_moments/values",
 )
 #
 group = "intermediate/pair_correlation"
