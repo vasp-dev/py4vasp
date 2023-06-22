@@ -11,7 +11,7 @@
 
 We use the [poetry dependency manager](https://python-poetry.org/) which takes care of
 all dependencies and maintains a virtual environment to check the code. If you want to
-test something in the virtual environment, just use e.g. ```poetry run jupyter-notebook```.
+test something in the virtual environment, just use e.g. `poetry run jupyter-notebook`.
 
 Using poetry installing and the code requires the following steps. The last step will
 test whether everything worked
@@ -35,15 +35,38 @@ conda create --name py4vasp-env python=3.8
 conda activate py4vasp-env
 conda install -c conda-forge poetry
 conda install -c conda-forge mdtraj
-poetry config virtualenvs.create false --local
 poetry install
 poetry run pytest
 ~~~
 
+## py4vasp core
+
+If you want to use py4vasp to develop your own scripts, you may want to limit the amount
+of external dependencies. To this end, we provide alternative configuration files that
+only install numpy, h5py, and the development dependencies. To install this core package
+replace the configurations files in the root folder with the ones in the `core` folder
+~~~shell
+cp core/* .
+~~~
+Then you can install py4vasp with the same steps as above. Note that some tests will be
+skipped because they require the external packages to run.
+
+If you want to exclude even the development dependencies, you can run
+~~~shell
+poetry install --without dev
+~~~
+for the minimal installation.
+
 ## Code style
 
 Code style is enforced, but is not something the developer should spend time on, so we
-decided on using the black formatter. Please run ```black .``` before committing the code.
+decided on using black and isort. Please run
+~~~shell
+black src tests
+isort src tests
+~~~
+before committing the code. This will autoformat your code and sort the import
+statements in a consistent order.
 
 ## Contributing to py4vasp
 
