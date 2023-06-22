@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "py4vasp"
+name = "py4vasp-core"
 version = "0.7.3"
 description = "Tool for assisting with the analysis and setup of VASP calculations."
 authors = [
@@ -12,6 +12,7 @@ authors = [
 ]
 license = "Apache-2.0"
 readme = "README.md"
+packages = [{include = "py4vasp", from = "src"}]
 homepage = "https://vasp.at/py4vasp/latest"
 repository = "https://github.com/vasp-dev/py4vasp"
 
@@ -23,14 +24,6 @@ repository = "https://github.com/vasp-dev/py4vasp"
 python = ">=3.8"
 numpy = ">=1.23"
 h5py = ">=3.7.0"
-pandas = ">=1.4.3"
-nglview = ">=3.0.5"
-ase = ">=3.22.1"
-mrcfile = ">=1.3.0"
-plotly = ">=5.9.0"
-kaleido = ">=0.2.1,<0.2.1.post1 || >0.2.1.post1"
-ipython = "^8.12"
-mdtraj = ">=1.9.6"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.1.2"
@@ -39,10 +32,6 @@ pylint = ">=2.15"
 hypothesis = ">=6.48.1"
 black = ">=22.6.0"
 isort = ">=5.10.1"
-
-[tool.poetry.group.doc.dependencies]
-sphinx = ">=5.0.2"
-sphinx-automodapi = ">=0.14.1"
 
 
 [tool.isort]

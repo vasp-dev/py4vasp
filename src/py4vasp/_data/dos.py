@@ -1,12 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import pandas as pd
-from IPython.lib.pretty import pretty
-
 from py4vasp import data
 from py4vasp._data import base, projector
 from py4vasp._third_party import graph
-from py4vasp._util import documentation
+from py4vasp._util import documentation, import_
+
+pd = import_.optional("pandas")
+pretty = import_.optional("IPython.lib.pretty")
 
 
 class Dos(base.Refinery, graph.Mixin):
@@ -27,7 +27,7 @@ class Dos(base.Refinery, graph.Mixin):
         return f"""
 {"spin polarized" if self._spin_polarized() else ""} Dos:
     energies: [{energies[0]:0.2f}, {energies[-1]:0.2f}] {len(energies)} points
-{pretty(self._projectors())}
+{pretty.pretty(self._projectors())}
     """.strip()
 
     @base.data_access

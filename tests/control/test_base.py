@@ -5,7 +5,11 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import mock_open, patch
 
-from IPython.lib.pretty import pretty
+import pytest
+
+from py4vasp._util import import_
+
+pretty = import_.optional("IPython.lib.pretty")
 
 
 class AbstractTest:
@@ -55,7 +59,11 @@ class AbstractTest:
             instance.print()
             assert buffer.getvalue().strip() == text
 
+    @pytest.mark.skipif(
+        not import_.is_imported(pretty),
+        reason="This test requires pretty from IPython.",
+    )
     def test_pretty_instance(self):
         text = "! comment line"
         instance = self.tested_class.from_string(text)
-        assert pretty(instance) == text
+        assert pretty.pretty(instance) == text

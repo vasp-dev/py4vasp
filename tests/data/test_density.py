@@ -43,7 +43,7 @@ def test_read(collinear_density, Assert):
     Assert.allclose(actual["magnetization"], collinear_density.ref.magnetization)
 
 
-def test_charge_plot(collinear_density, Assert):
+def test_charge_plot(collinear_density, Assert, not_core):
     obj = viewer3d.Viewer3d
     cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
     cm_cell = patch.object(obj, "show_cell")
@@ -59,7 +59,7 @@ def test_charge_plot(collinear_density, Assert):
     assert kwargs == {"isolevel": 0.2, "color": "yellow", "opacity": 0.6}
 
 
-def test_magnetization_plot(collinear_density, Assert):
+def test_magnetization_plot(collinear_density, Assert, not_core):
     obj = viewer3d.Viewer3d
     cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
     cm_cell = patch.object(obj, "show_cell")
@@ -88,14 +88,14 @@ def test_charge_only(charge_only_density, Assert):
     assert actual["magnetization"] is None
 
 
-def test_missing_element(charge_only_density, Assert):
+def test_missing_element(charge_only_density, Assert, not_core):
     with pytest.raises(exception.IncorrectUsage):
         charge_only_density.plot("unknown tag")
     with pytest.raises(exception.NoData):
         charge_only_density.plot("magnetization")
 
 
-def test_color_specified_for_magnetism(collinear_density, Assert):
+def test_color_specified_for_magnetism(collinear_density, Assert, not_core):
     with pytest.raises(exception.NotImplemented):
         collinear_density.plot("magnetization", color="brown")
 

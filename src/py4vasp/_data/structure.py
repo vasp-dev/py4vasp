@@ -4,15 +4,16 @@ import io
 from collections import Counter
 from dataclasses import dataclass
 
-import ase.io
-import mdtraj
 import numpy as np
-from IPython.lib.pretty import pretty
 
 from py4vasp import data, exception, raw
 from py4vasp._data import base, slice_, topology
 from py4vasp._data.viewer3d import Viewer3d
-from py4vasp._util import documentation, reader
+from py4vasp._util import documentation, import_, reader
+
+ase = import_.optional("ase")
+ase_io = import_.optional("ase.io")
+mdtraj = import_.optional("mdtraj")
 
 
 @dataclass
@@ -24,7 +25,7 @@ class _Format:
     newline: str = ""
 
     def comment_line(self, topology, step_string):
-        return f"{pretty(topology)}{step_string}{self.newline}"
+        return f"{topology}{step_string}{self.newline}"
 
     def scaling_factor(self):
         return f"1.0{self.newline}"
@@ -67,7 +68,7 @@ class Structure(slice_.Mixin, base.Refinery):
         """Generate a structure from string in POSCAR format."""
         poscar = _replace_or_set_elements(str(poscar), elements)
         poscar = io.StringIO(poscar)
-        structure = ase.io.read(poscar, format="vasp")
+        structure = ase_io.read(poscar, format="vasp")
         return cls.from_ase(structure)
 
     @classmethod

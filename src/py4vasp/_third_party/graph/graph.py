@@ -5,12 +5,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass, fields, replace
 
 import numpy as np
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 from py4vasp import exception
 from py4vasp._config import VASP_COLORS
 from py4vasp._third_party.graph.series import Series
+from py4vasp._util import import_
+
+go = import_.optional("plotly.graph_objects")
+subplots = import_.optional("plotly.subplots")
 
 
 @dataclass
@@ -118,11 +120,11 @@ class Graph(Sequence):
     def _figure_with_one_or_two_y_axes(self):
         if self._subplot_on:
             max_row = max(series.subplot for series in self)
-            figure = make_subplots(rows=max_row, cols=1)
+            figure = subplots.make_subplots(rows=max_row, cols=1)
             figure.update_layout(showlegend=False)
             return figure
         elif any(series.y2 for series in self):
-            return make_subplots(specs=[[{"secondary_y": True}]])
+            return subplots.make_subplots(specs=[[{"secondary_y": True}]])
         else:
             return go.Figure()
 

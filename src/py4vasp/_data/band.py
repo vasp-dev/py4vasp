@@ -1,13 +1,14 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
-import pandas as pd
-from IPython.lib.pretty import pretty
 
 from py4vasp import data
 from py4vasp._data import base, projector
 from py4vasp._third_party import graph
-from py4vasp._util import check, documentation
+from py4vasp._util import check, documentation, import_
+
+pd = import_.optional("pandas")
+pretty = import_.optional("IPython.lib.pretty")
 
 
 class Band(base.Refinery, graph.Mixin):
@@ -26,7 +27,7 @@ class Band(base.Refinery, graph.Mixin):
 {"spin polarized" if self._spin_polarized() else ""} band data:
     {self._raw_data.dispersion.eigenvalues.shape[1]} k-points
     {self._raw_data.dispersion.eigenvalues.shape[2]} bands
-{pretty(self._projector)}
+{pretty.pretty(self._projector)}
     """.strip()
 
     @base.data_access

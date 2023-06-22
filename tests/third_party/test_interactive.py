@@ -6,11 +6,12 @@ import py4vasp._third_party.interactive as interactive
 
 
 def test_no_error_handling_outside_ipython():
-    with patch("IPython.get_ipython", return_value=None) as mock:
-        interactive.set_error_handling("Minimal")
+    assert interactive.error_handling() == "Minimal"  # default
+    interactive.set_error_handling("Plain")
+    assert interactive.error_handling() == "Plain"
 
 
-def test_set_error_handling(capsys):
+def test_set_error_handling(capsys, not_core):
     with patch("IPython.get_ipython") as mock:
         interactive.set_error_handling("Minimal")
         mock.return_value.magic.assert_called_once_with("xmode Minimal")

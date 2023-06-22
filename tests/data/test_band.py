@@ -5,7 +5,6 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
-from IPython.lib.pretty import pretty
 
 from py4vasp import exception
 from py4vasp.data import Band, Kpoint, Projector
@@ -93,7 +92,7 @@ def spin_projectors(raw_data):
     band.ref.Fe_d_down = np.sum(raw_band.projections[1, 0:3, 2, :, :], axis=0)
     band.ref.O_up = np.sum(raw_band.projections[0, 3:7, :, :, :], axis=(0, 1))
     band.ref.O_down = np.sum(raw_band.projections[1, 3:7, :, :, :], axis=(0, 1))
-    band.ref.projectors_string = pretty(Projector.from_data(raw_band.projectors))
+    band.ref.projectors_string = str(Projector.from_data(raw_band.projectors))
     return band
 
 
@@ -160,14 +159,14 @@ def test_more_projections_style(raw_data, Assert):
     Assert.allclose(band["projections"]["g_down"], zero)
 
 
-def test_single_polarized_to_frame(single_band, Assert):
+def test_single_polarized_to_frame(single_band, Assert, not_core):
     actual = single_band.to_frame()
     assert all(actual.index == single_band.ref.index)
     Assert.allclose(actual.bands, single_band.ref.bands[:, 0])
     Assert.allclose(actual.occupations, single_band.ref.occupations[:, 0])
 
 
-def test_multiple_bands_to_frame(multiple_bands, Assert):
+def test_multiple_bands_to_frame(multiple_bands, Assert, not_core):
     actual = multiple_bands.to_frame()
     assert actual.index[0] == "[0.00 0.00 0.12] 1"
     assert actual.index[1] == "2"
@@ -177,13 +176,13 @@ def test_multiple_bands_to_frame(multiple_bands, Assert):
     Assert.allclose(actual.occupations, multiple_bands.ref.occupations.T.flatten())
 
 
-def test_with_projectors_to_frame(with_projectors, Assert):
+def test_with_projectors_to_frame(with_projectors, Assert, not_core):
     actual = with_projectors.to_frame("Sr p")
     Assert.allclose(actual.Sr, with_projectors.ref.Sr.T.flatten())
     Assert.allclose(actual.p, with_projectors.ref.p.T.flatten())
 
 
-def test_spin_polarized_to_frame(spin_polarized, Assert):
+def test_spin_polarized_to_frame(spin_polarized, Assert, not_core):
     actual = spin_polarized.to_frame()
     ref = spin_polarized.ref
     Assert.allclose(actual.bands_up, ref.bands_up.T.flatten())
@@ -192,7 +191,7 @@ def test_spin_polarized_to_frame(spin_polarized, Assert):
     Assert.allclose(actual.occupations_down, ref.occupations_down.T.flatten())
 
 
-def test_spin_projectors_to_frame(spin_projectors, Assert):
+def test_spin_projectors_to_frame(spin_projectors, Assert, not_core):
     actual = spin_projectors.to_frame(selection="O Fe(d)")
     Assert.allclose(actual.O_up, spin_projectors.ref.O_up.T.flatten())
     Assert.allclose(actual.O_down, spin_projectors.ref.O_down.T.flatten())
