@@ -11,8 +11,7 @@ authors = [
     "Eisuke Kawashima <e-kwsm@users.noreply.github.com>"
 ]
 license = "Apache-2.0"
-readme = "../README.md"
-packages = [{include = "py4vasp", from = "../src/"}]
+readme = "README.md"
 homepage = "https://vasp.at/py4vasp/latest"
 repository = "https://github.com/vasp-dev/py4vasp"
 

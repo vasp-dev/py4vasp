@@ -26,23 +26,20 @@ jobs:
         python -m pip install --upgrade pip
         pip install "poetry!=1.4.1"
         poetry --version
-        cd full
         poetry install
         poetry add mdtraj  # should move to pyproject.toml
     - name: Test with pytest
       run: |
-        cd full
         poetry run pytest --version
-        poetry run pytest ../tests --cov=py4vasp --cov-report term
+        poetry run pytest tests --cov=py4vasp --cov-report term
     - name: Check code style
       run: |
-        cd full
         poetry run isort --version
-        poetry run isort --check ../src
-        poetry run isort --check ../tests
+        poetry run isort --check src
+        poetry run isort --check tests
         poetry run black --version
-        poetry run black --check ../src
-        poetry run black --check ../tests
+        poetry run black --check src
+        poetry run black --check tests
 
 
   # test-windows:
