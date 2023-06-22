@@ -10,10 +10,9 @@ jobs:
   tests:
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
-        os: [ubuntu-latest] #, macos-latest]
-        python-version: ["3.8"] #, "3.9", "3.10"]
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.8", "3.9", "3.10"]
 
     steps:
     - uses: actions/checkout@v3
@@ -32,27 +31,31 @@ jobs:
       run: |
         poetry run pytest --version
         poetry run pytest
-#
-#
-#   test-windows:
-#     runs-on: windows-latest
-#
-#     steps:
-#     - uses: actions/checkout@v3
-#     - uses: conda-incubator/setup-miniconda@v2
-#       with:
-#         auto-update-conda: true
-#         python-version: 3.8
-#     - name: Install dependencies with conda
-#       run: |
-#         conda info
-#         conda install -c conda-forge mdtraj
-#     - name: Install py4vasp
-#       run: |
-#         python -m pip install --upgrade pip
-#         cd core
-#         pip install .
-#     - name: Test with pytest
-#       run: |
-#         pip install pytest pytest-cov hypothesis
-#         pytest --version
+
+
+  test-windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10"]
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: conda-incubator/setup-miniconda@v2
+      with:
+        auto-update-conda: true
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies with conda
+      run: |
+        conda info
+        conda install -c conda-forge mdtraj
+    - name: Install py4vasp
+      run: |
+        python -m pip install --upgrade pip
+        cd core
+        pip install .
+    - name: Test with pytest
+      run: |
+        pip install pytest pytest-cov hypothesis
+        pytest --version
+        pytest
