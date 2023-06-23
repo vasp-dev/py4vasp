@@ -103,6 +103,28 @@ def test_moments(example_magnetism, slice_, Assert):
     Assert.allclose(magnetism.moments(), example_magnetism.ref.moments[slice_])
 
 
+def test_moments_selection(example_magnetism, Assert):
+    magnetism = example_magnetism
+    Assert.allclose(magnetism.moments("total"), magnetism.ref.moments[-1])
+    if magnetism.ref.kind == "orbital_moments":
+        check_spin_and_orbital_moment(magnetism, Assert)
+    else:
+        check_spin_moment_only(magnetism, Assert)
+    with pytest.raises(exception.IncorrectUsage):
+        magnetism.moments("unknown_option")
+
+
+def check_spin_and_orbital_moment(magnetism, Assert):
+    Assert.allclose(magnetism.moments("spin"), magnetism.ref.spin_moments[-1])
+    Assert.allclose(magnetism.moments("orbital"), magnetism.ref.orbital_moments[-1])
+
+
+def check_spin_moment_only(magnetism, Assert):
+    Assert.allclose(magnetism.moments("spin"), magnetism.ref.moments[-1])
+    with pytest.raises(exception.NoData):
+        magnetism.moments("orbital")
+
+
 def test_total_charges(example_magnetism, slice_, Assert):
     magnetism = example_magnetism[slice_] if slice_ != -1 else example_magnetism
     total_charges = np.sum(magnetism.ref.charges, axis=2)

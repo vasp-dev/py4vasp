@@ -109,7 +109,7 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
     @documentation.format(
         index_note=_index_note, examples=slice_.examples("magnetism", "moments")
     )
-    def moments(self):
+    def moments(self, selection="total"):
         """Read the magnetic moments of the selected steps.
 
         Returns
@@ -123,12 +123,13 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
         {examples}
         """
         self._raise_error_if_steps_out_of_bounds()
+        self._raise_error_if_selection_not_available(selection)
         if self._only_charge:
             return None
         elif self._spin_polarized:
             return self._collinear_moments()
         else:
-            return self._noncollinear_moments()
+            return self._noncollinear_moments(selection)
 
     @base.data_access
     @documentation.format(examples=slice_.examples("magnetism", "total_charges"))
@@ -176,18 +177,30 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
     def _noncollinear(self):
         return self._raw_data.spin_moments.shape[1] == 4
 
+    @property
+    def _has_orbital_moments(self):
+        return not self._raw_data.orbital_moments.is_none()
+
     def _collinear_moments(self):
         return self._raw_data.spin_moments[self._steps, 1]
 
-    def _noncollinear_moments(self):
-        moments = self._raw_data.spin_moments[self._steps, 1:]
-        if not self._raw_data.orbital_moments.is_none():
-            moments = moments + self._raw_data.orbital_moments[self._steps, 1:]
+    def _noncollinear_moments(self, selection):
+        spin_moments = self._raw_data.spin_moments[self._steps, 1:]
+        if self._has_orbital_moments:
+            orbital_moments = self._raw_data.orbital_moments[self._steps, 1:]
+        else:
+            orbital_moments = np.zeros_like(spin_moments)
+        if selection == "orbital":
+            moments = orbital_moments
+        elif selection == "spin":
+            moments = spin_moments
+        else:
+            moments = spin_moments + orbital_moments
         direction_axis = 1 if moments.ndim == 4 else 0
         return np.moveaxis(moments, direction_axis, -1)
 
     def _add_spin_and_orbital_moments(self):
-        if self._raw_data.orbital_moments.is_none():
+        if not self._has_orbital_moments:
             return {}
         spin_moments = self._raw_data.spin_moments[self._steps, 1:]
         orbital_moments = self._raw_data.orbital_moments[self._steps, 1:]
@@ -215,6 +228,19 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
                 f"Error reading the magnetic moments. Please check if the steps "
                 f"`{self._steps}` are properly formatted and within the boundaries."
             ) from error
+
+    def _raise_error_if_selection_not_available(self, selection):
+        if selection not in ("spin", "orbital", "total"):
+            raise exception.IncorrectUsage(
+                f"The selection {selection} is incorrect. Please check if it is spelled"
+                "correctly. Possible choices are total, spin, or orbital."
+            )
+        if selection != "orbital" or self._has_orbital_moments:
+            return
+        raise exception.NoData(
+            "There are no orbital moments in the VASP output. Please make sure that you"
+            "run the calculation with LORBMOM = T and LSORBIT = T."
+        )
 
 
 def _sum_over_orbitals(quantity, is_vector=False):
