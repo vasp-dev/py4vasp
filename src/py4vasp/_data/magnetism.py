@@ -4,7 +4,7 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._data import base, slice_, structure
-from py4vasp._util import documentation, reader
+from py4vasp._util import documentation
 
 _index_note = """Notes
 -----
@@ -81,10 +81,9 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
         {examples}
         """
         if self._is_slice:
-            message = (
+            raise exception.NotImplemented(
                 "Visualizing magnetic moments for more than one step is not implemented"
             )
-            raise exception.NotImplemented(message)
         viewer = self._structure[self._steps].plot(supercell)
         moments = self._prepare_magnetic_moments_for_plotting()
         if moments is not None:
@@ -103,8 +102,8 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
 
         {examples}
         """
-        moments = _Moments(self._raw_data.spin_moments)
-        return moments[self._steps, 0, :, :]
+        self._raise_error_if_steps_out_of_bounds()
+        return self._raw_data.spin_moments[self._steps, 0]
 
     @base.data_access
     @documentation.format(
@@ -123,21 +122,13 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
 
         {examples}
         """
-        moments = _Moments(self._raw_data.spin_moments)
-        _fail_if_steps_out_of_bounds(moments, self._steps)
-        if moments.shape[1] == 1:
+        self._raise_error_if_steps_out_of_bounds()
+        if self._only_charge:
             return None
-        elif moments.shape[1] == 2:
-            return moments[self._steps, 1, :, :]
-        elif self._raw_data.orbital_moments.is_none():
-            moments = moments[self._steps, 1:, :, :]
-            direction_axis = 1 if moments.ndim == 4 else 0
-            return np.moveaxis(moments, direction_axis, -1)
+        elif self._spin_polarized:
+            return self._collinear_moments()
         else:
-            spin_moments = moments[self._steps, 1:, :, :]
-            orbital_moments = _Moments(self._raw_data.orbital_moments)[self._steps, 1:]
-            direction_axis = 1 if spin_moments.ndim == 4 else 0
-            return np.moveaxis(spin_moments + orbital_moments, direction_axis, -1)
+            return self._noncollinear_moments()
 
     @base.data_access
     @documentation.format(examples=slice_.examples("magnetism", "total_charges"))
@@ -171,22 +162,35 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
 
         {examples}
         """
-        moments = _Moments(self._raw_data.spin_moments)
-        _fail_if_steps_out_of_bounds(moments, self._steps)
-        if moments.shape[1] == 1:
-            return None
-        elif moments.shape[1] == 2:
-            return _sum_over_orbitals(self.moments())
-        else:
-            total_moments = _sum_over_orbitals(moments[self._steps, 1:, :, :])
-            direction_axis = 1 if total_moments.ndim == 3 else 0
-            return np.moveaxis(total_moments, direction_axis, -1)
+        return _sum_over_orbitals(self.moments(), is_vector=self._noncollinear)
+
+    @property
+    def _only_charge(self):
+        return self._raw_data.spin_moments.shape[1] == 1
+
+    @property
+    def _spin_polarized(self):
+        return self._raw_data.spin_moments.shape[1] == 2
+
+    @property
+    def _noncollinear(self):
+        return self._raw_data.spin_moments.shape[1] == 4
+
+    def _collinear_moments(self):
+        return self._raw_data.spin_moments[self._steps, 1]
+
+    def _noncollinear_moments(self):
+        moments = self._raw_data.spin_moments[self._steps, 1:]
+        if not self._raw_data.orbital_moments.is_none():
+            moments = moments + self._raw_data.orbital_moments[self._steps, 1:]
+        direction_axis = 1 if moments.ndim == 4 else 0
+        return np.moveaxis(moments, direction_axis, -1)
 
     def _add_spin_and_orbital_moments(self):
         if self._raw_data.orbital_moments.is_none():
             return {}
-        spin_moments = _Moments(self._raw_data.spin_moments)[self._steps, 1:]
-        orbital_moments = _Moments(self._raw_data.orbital_moments)[self._steps, 1:]
+        spin_moments = self._raw_data.spin_moments[self._steps, 1:]
+        orbital_moments = self._raw_data.orbital_moments[self._steps, 1:]
         direction_axis = 1 if spin_moments.ndim == 4 else 0
         return {
             "spin_moments": np.moveaxis(spin_moments, direction_axis, -1),
@@ -203,23 +207,21 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
         else:
             return None
 
-
-class _Moments(reader.Reader):
-    def error_message(self, key, err):
-        key = np.array(key)
-        steps = key if key.ndim == 0 else key[0]
-        return (
-            f"Error reading the magnetic moments. Please check if the steps "
-            f"`{steps}` are properly formatted and within the boundaries. "
-            "Additionally, you may consider the original error message:\n" + err.args[0]
-        )
+    def _raise_error_if_steps_out_of_bounds(self):
+        try:
+            np.zeros(self._raw_data.spin_moments.shape[0])[self._steps]
+        except IndexError as error:
+            raise exception.IncorrectUsage(
+                f"Error reading the magnetic moments. Please check if the steps "
+                f"`{self._steps}` are properly formatted and within the boundaries."
+            ) from error
 
 
-def _fail_if_steps_out_of_bounds(moments, steps):
-    moments[steps]  # try to access requested step raising an error if out of bounds
-
-
-def _sum_over_orbitals(quantity):
+def _sum_over_orbitals(quantity, is_vector=False):
+    if quantity is None:
+        return None
+    if is_vector:
+        return np.sum(quantity, axis=-2)
     return np.sum(quantity, axis=-1)
 
 
