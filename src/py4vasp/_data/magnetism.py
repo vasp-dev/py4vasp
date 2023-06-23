@@ -150,7 +150,7 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
     @documentation.format(
         index_note=_index_note, examples=slice_.examples("magnetism", "total_moments")
     )
-    def total_moments(self):
+    def total_moments(self, selection="total"):
         """Read the total magnetic moments of the selected steps.
 
         Returns
@@ -163,7 +163,7 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
 
         {examples}
         """
-        return _sum_over_orbitals(self.moments(), is_vector=self._noncollinear)
+        return _sum_over_orbitals(self.moments(selection), is_vector=self._noncollinear)
 
     @property
     def _only_charge(self):
