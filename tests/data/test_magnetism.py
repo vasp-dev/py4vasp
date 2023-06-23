@@ -31,6 +31,20 @@ def noncollinear_magnetism(raw_data):
 
 
 @pytest.fixture
+def orbital_moments(raw_data):
+    raw_magnetism = raw_data.magnetism("orbital_moments")
+    magnetism = Magnetism.from_data(raw_magnetism)
+    magnetism.ref = types.SimpleNamespace()
+    magnetism.ref.charges = raw_magnetism.spin_moments[:, 0, :, :]
+    spin_moments = np.moveaxis(raw_magnetism.spin_moments[:, 1:4, :, :], 1, 3)
+    orbital_moments = np.moveaxis(raw_magnetism.orbital_moments[:, 1:4, :, :], 1, 3)
+    magnetism.ref.moments = spin_moments + orbital_moments
+    magnetism.ref.spin_moments = spin_moments
+    magnetism.ref.orbital_moments = orbital_moments
+    return magnetism
+
+
+@pytest.fixture
 def charge_only(raw_data):
     class GetItemNone:
         def __getitem__(self, step):
@@ -89,6 +103,17 @@ def check_read_last_step(magnetism, Assert):
     actual = magnetism.read()
     Assert.allclose(actual["charges"], magnetism.ref.charges[-1])
     Assert.allclose(actual["moments"], magnetism.ref.moments[-1])
+
+
+def test_read_spin_and_orbital_moments(orbital_moments, Assert):
+    check_read(orbital_moments, Assert)
+    actual = orbital_moments.read()
+    reference = orbital_moments.ref
+    Assert.allclose(actual["spin_moments"], reference.spin_moments[-1])
+    Assert.allclose(actual["orbital_moments"], reference.orbital_moments[-1])
+    actual = orbital_moments[:].read()
+    Assert.allclose(actual["spin_moments"], reference.spin_moments)
+    Assert.allclose(actual["orbital_moments"], reference.orbital_moments)
 
 
 def test_charges(all_magnetism, Assert):

@@ -62,6 +62,7 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
         return {
             "charges": self.charges(),
             "moments": self.moments(),
+            **self._add_spin_and_orbital_moments(),
         }
 
     @base.data_access
@@ -128,10 +129,15 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
             return None
         elif moments.shape[1] == 2:
             return moments[self._steps, 1, :, :]
-        else:
+        elif self._raw_data.orbital_moments.is_none():
             moments = moments[self._steps, 1:, :, :]
             direction_axis = 1 if moments.ndim == 4 else 0
             return np.moveaxis(moments, direction_axis, -1)
+        else:
+            spin_moments = moments[self._steps, 1:, :, :]
+            orbital_moments = _Moments(self._raw_data.orbital_moments)[self._steps, 1:]
+            direction_axis = 1 if spin_moments.ndim == 4 else 0
+            return np.moveaxis(spin_moments + orbital_moments, direction_axis, -1)
 
     @base.data_access
     @documentation.format(examples=slice_.examples("magnetism", "total_charges"))
@@ -175,6 +181,17 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
             total_moments = _sum_over_orbitals(moments[self._steps, 1:, :, :])
             direction_axis = 1 if total_moments.ndim == 3 else 0
             return np.moveaxis(total_moments, direction_axis, -1)
+
+    def _add_spin_and_orbital_moments(self):
+        if self._raw_data.orbital_moments.is_none():
+            return {}
+        spin_moments = _Moments(self._raw_data.spin_moments)[self._steps, 1:]
+        orbital_moments = _Moments(self._raw_data.orbital_moments)[self._steps, 1:]
+        direction_axis = 1 if spin_moments.ndim == 4 else 0
+        return {
+            "spin_moments": np.moveaxis(spin_moments, direction_axis, -1),
+            "orbital_moments": np.moveaxis(orbital_moments, direction_axis, -1),
+        }
 
     def _prepare_magnetic_moments_for_plotting(self):
         moments = self.total_moments()
