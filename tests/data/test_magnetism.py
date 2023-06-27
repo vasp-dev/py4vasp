@@ -145,7 +145,7 @@ def test_total_moments_selection(example_magnetism, selection, Assert):
 
 
 @pytest.mark.parametrize("selection", [None, "total", "spin", "orbital"])
-def test_plot(example_magnetism, steps, selection, Assert):
+def test_plot(example_magnetism, steps, selection, Assert, not_core):
     magnetism = example_magnetism[steps] if steps != -1 else example_magnetism
     plot_selection = functools.partial(magnetism.plot, selection)
     plot_under_test = plot_selection if selection else magnetism.plot
