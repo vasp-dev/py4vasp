@@ -38,7 +38,7 @@ def viewer3d(raw_data, not_core):
 
 
 @pytest.fixture
-def nonstandard_form(raw_data):
+def nonstandard_form(raw_data, not_core):
     raw_structure = raw_data.structure("Sr2TiO4")
     x = np.sqrt(0.5)
     raw_structure.cell.lattice_vectors = np.array([[[x, x, 0], [-x, x, 0], [0, 0, 1]]])
@@ -151,7 +151,7 @@ def test_serializable(not_core):
         json.json_clean(element)
 
 
-def test_nonstandard_form(nonstandard_form, Assert, assert_arrow_message, not_core):
+def test_nonstandard_form(nonstandard_form, Assert, assert_arrow_message):
     viewer = nonstandard_form
     Assert.allclose(viewer._positions, viewer.ref.positions)
     viewer.show_axes()
