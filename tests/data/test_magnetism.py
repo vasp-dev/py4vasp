@@ -135,14 +135,13 @@ def test_total_moments(example_magnetism, steps, Assert):
 
 @pytest.mark.parametrize("selection", ["total", "spin", "orbital"])
 def test_total_moments_selection(example_magnetism, selection, Assert):
-    try:
-        moments = example_magnetism.moments(selection)
-    except exception.NoData:
+    if expect_exception(example_magnetism.ref.kind, selection):
         with pytest.raises(exception.NoData):
             example_magnetism.total_moments(selection)
-        return
-    total_moments = np.sum(moments, axis=1) if moments is not None else None
-    Assert.allclose(example_magnetism.total_moments(selection), total_moments)
+    else:
+        moments = example_magnetism.moments(selection)
+        total_moments = np.sum(moments, axis=1) if moments is not None else None
+        Assert.allclose(example_magnetism.total_moments(selection), total_moments)
 
 
 @pytest.mark.parametrize("selection", [None, "total", "spin", "orbital"])
@@ -154,9 +153,17 @@ def test_plot(example_magnetism, steps, selection, Assert):
         with pytest.raises(exception.NotImplemented):
             plot_under_test()
         return
-    actual_moments = get_moments(example_magnetism.ref.kind, plot_under_test)
-    reference_moments = expected_moments(example_magnetism.ref, selection, steps)
-    Assert.allclose(actual_moments, reference_moments)
+    if expect_exception(example_magnetism.ref.kind, selection):
+        with pytest.raises(exception.NoData):
+            plot_under_test()
+    else:
+        reference_moments = expected_moments(example_magnetism.ref, selection, steps)
+        actual_moments = get_moments(example_magnetism.ref.kind, plot_under_test)
+        Assert.allclose(actual_moments, reference_moments)
+
+
+def expect_exception(kind, selection):
+    return kind != "orbital_moments" and selection == "orbital"
 
 
 def get_moments(kind, plot_under_test, selection=None):

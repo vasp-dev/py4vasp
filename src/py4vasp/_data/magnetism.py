@@ -98,8 +98,8 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
             raise exception.NotImplemented(
                 "Visualizing magnetic moments for more than one step is not implemented"
             )
-        viewer = self._structure[self._steps].plot(selection, supercell)
-        moments = self._prepare_magnetic_moments_for_plotting()
+        viewer = self._structure[self._steps].plot(supercell)
+        moments = self._prepare_magnetic_moments_for_plotting(selection)
         if moments is not None:
             viewer.show_arrows_at_atoms(moments)
         return viewer
@@ -236,8 +236,8 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
             "orbital_moments": np.moveaxis(orbital_moments, direction_axis, -1),
         }
 
-    def _prepare_magnetic_moments_for_plotting(self):
-        moments = self.total_moments()
+    def _prepare_magnetic_moments_for_plotting(self, selection):
+        moments = self.total_moments(selection)
         moments = _convert_moment_to_3d_vector(moments)
         max_length_moments = _max_length_moments(moments)
         if max_length_moments > 1e-15:
@@ -258,13 +258,13 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
     def _raise_error_if_selection_not_available(self, selection):
         if selection not in ("spin", "orbital", "total"):
             raise exception.IncorrectUsage(
-                f"The selection {selection} is incorrect. Please check if it is spelled"
+                f"The selection {selection} is incorrect. Please check if it is spelled "
                 "correctly. Possible choices are total, spin, or orbital."
             )
         if selection != "orbital" or self._has_orbital_moments:
             return
         raise exception.NoData(
-            "There are no orbital moments in the VASP output. Please make sure that you"
+            "There are no orbital moments in the VASP output. Please make sure that you "
             "run the calculation with LORBMOM = T and LSORBIT = T."
         )
 
