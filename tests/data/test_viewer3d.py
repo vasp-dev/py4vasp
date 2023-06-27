@@ -37,6 +37,17 @@ def viewer3d(raw_data, not_core):
     return make_viewer(structure)
 
 
+@pytest.fixture
+def nonstandard_form(raw_data):
+    raw_structure = raw_data.structure("Sr2TiO4")
+    x = np.sqrt(0.5)
+    raw_structure.cell.lattice_vectors = np.array([[[x, x, 0], [-x, x, 0], [0, 0, 1]]])
+    raw_structure.positions += 0.1  # shift to avoid small comparisons
+    viewer = make_viewer(Structure.from_data(raw_structure))
+    viewer.ref.transformation = np.array([[x, x, 0], [-x, x, 0], [0, 0, 1]])
+    return viewer
+
+
 def make_viewer(structure, supercell=None):
     viewer = structure.plot(supercell)
     viewer.ref = types.SimpleNamespace()
@@ -109,7 +120,7 @@ def test_arrows(viewer3d, assert_arrow_message):
     viewer3d.hide_arrows_at_atoms()
 
 
-def test_supercell(raw_data, assert_arrow_message, not_core):
+def test_supercell(raw_data, not_core):
     structure = Structure.from_data(raw_data.structure("Sr2TiO4"))
     number_atoms = structure.number_atoms()
     supercell = (1, 2, 3)
@@ -129,7 +140,7 @@ def test_bare_ngl_cannot_add_arrows_at_atoms(viewer3d):
 
 
 def create_arrows(viewer, number_atoms):
-    arrows = np.repeat([(0, 0, 1)], number_atoms, axis=0)
+    arrows = np.repeat([(0.2, 0.4, 0.6)], number_atoms, axis=0)
     viewer.show_arrows_at_atoms(arrows)
     return arrows
 
@@ -140,16 +151,28 @@ def test_serializable(not_core):
         json.json_clean(element)
 
 
-def test_standard_form(raw_data, Assert, not_core):
-    # TODO: this test should be changed to make the intention clearer
-    # The issue is that the positions of the arrows are incorrect if we pass a structure
-    # which has not been transformed to standard form.
-    raw_structure = raw_data.structure("Sr2TiO4")
-    x = np.sqrt(0.5)
-    raw_structure.cell.lattice_vectors = np.array([[[x, x, 0], [-x, x, 0], [0, 0, 1]]])
-    raw_structure.positions += 0.1  # shift to avoid small comparisons
-    viewer = make_viewer(Structure.from_data(raw_structure))
-    Assert.allclose(viewer._positions, raw_structure.positions)
+def test_nonstandard_form(nonstandard_form, Assert, assert_arrow_message, not_core):
+    viewer = nonstandard_form
+    Assert.allclose(viewer._positions, viewer.ref.positions)
+    viewer.show_axes()
+    messages = last_messages(viewer, n=3)
+    assert_arrow_message(messages[0], rotate(_x_axis, viewer.ref.transformation))
+    assert_arrow_message(messages[1], rotate(_y_axis, viewer.ref.transformation))
+    assert_arrow_message(messages[2], rotate(_z_axis, viewer.ref.transformation))
+    #
+    color = [0.1, 0.1, 0.8]
+    number_atoms = len(viewer.ref.positions)
+    arrows = create_arrows(viewer, number_atoms)
+    messages = last_messages(viewer, number_atoms)
+    for message, tail, arrow in zip(messages, viewer.ref.positions, arrows):
+        tip = tail + viewer.ref.transformation @ arrow
+        assert_arrow_message(message, _Arrow3d(tail, tip, color))
+
+
+def rotate(arrow, transformation):
+    return _Arrow3d(
+        transformation @ arrow.tail, transformation @ arrow.tip, arrow.color
+    )
 
 
 def test_isosurface(raw_data, not_core):
