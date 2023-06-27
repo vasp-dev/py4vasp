@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import functools
 import types
 from unittest.mock import patch
 
@@ -144,20 +145,23 @@ def test_total_moments_selection(example_magnetism, selection, Assert):
     Assert.allclose(example_magnetism.total_moments(selection), total_moments)
 
 
-def test_plot(example_magnetism, steps, Assert):
+@pytest.mark.parametrize("selection", [None, "total", "spin", "orbital"])
+def test_plot(example_magnetism, steps, selection, Assert):
     magnetism = example_magnetism[steps] if steps != -1 else example_magnetism
+    plot_selection = functools.partial(magnetism.plot, selection)
+    plot_under_test = plot_selection if selection else magnetism.plot
     if isinstance(steps, slice):
         with pytest.raises(exception.NotImplemented):
-            magnetism.plot()
+            plot_under_test()
         return
-    actual_moments = get_moments(example_magnetism.ref.kind, magnetism)
-    reference_moments = expected_moments(example_magnetism.ref, steps)
+    actual_moments = get_moments(example_magnetism.ref.kind, plot_under_test)
+    reference_moments = expected_moments(example_magnetism.ref, selection, steps)
     Assert.allclose(actual_moments, reference_moments)
 
 
-def get_moments(kind, magnetism):
+def get_moments(kind, plot_under_test, selection=None):
     with patch("py4vasp.data.Structure.plot") as plot:
-        magnetism.plot()
+        plot_under_test()
     plot.assert_called_once()
     viewer = plot.return_value
     if kind == "charge_only":
@@ -169,21 +173,28 @@ def get_moments(kind, magnetism):
         return args[0]
 
 
-def expected_moments(reference, steps):
+def expected_moments(reference, selection, steps):
     if reference.kind == "charge_only":
         return None
-    total_moments = np.sum(reference.moments[steps], axis=1)
+    if reference.kind == "orbital_moments" and selection == "spin":
+        moments = np.sum(reference.spin_moments[steps], axis=1)
+    elif reference.kind == "orbital_moments" and selection == "orbital":
+        moments = np.sum(reference.orbital_moments[steps], axis=1)
+    else:
+        moments = np.sum(reference.moments[steps], axis=1)
     if reference.kind == "collinear":
-        total_moments = np.array([[0, 0, m] for m in total_moments])
-    largest_moment = np.max(np.linalg.norm(total_moments, axis=1))
+        moments = np.array([[0, 0, m] for m in moments])
+    largest_moment = np.max(np.linalg.norm(moments, axis=1))
     rescale_moments = Magnetism.length_moments / largest_moment
-    return rescale_moments * total_moments
+    return rescale_moments * moments
 
 
-def test_plot_supercell(collinear_magnetism):
+def test_plot_supercell(example_magnetism):
+    if example_magnetism.ref.kind == "charge_only":
+        return
     supercell = (3, 2, 1)
     with patch("py4vasp.data.Structure.plot") as plot:
-        collinear_magnetism.plot(supercell)
+        example_magnetism.plot(supercell=supercell)
         plot.assert_called_once_with(supercell)
         viewer = plot.return_value
         viewer.show_arrows_at_atoms.assert_called_once()

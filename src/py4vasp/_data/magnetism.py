@@ -6,11 +6,19 @@ from py4vasp import exception
 from py4vasp._data import base, slice_, structure
 from py4vasp._util import documentation
 
-_index_note = """Notes
+_index_note = """\
+Notes
 -----
 The index order is different compared to the raw data when noncollinear calculations
 are used. This routine returns the magnetic moments as (steps, atoms, orbitals,
 directions)."""
+
+_moment_selection = """\
+selection : str
+    If VASP was run with LORBMOM = T, the orbital moments are computed and the routine
+    will default to the total moments. You can specify "spin" or "orbital" to select
+    the individual contributions instead.
+"""
 
 
 @documentation.format(examples=slice_.examples("magnetism"))
@@ -66,9 +74,15 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
         }
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("magnetism", "to_graph"))
-    def plot(self, supercell=None):
+    @documentation.format(
+        selection=_moment_selection, examples=slice_.examples("magnetism", "to_graph")
+    )
+    def plot(self, selection="total", supercell=None):
         """Visualize the magnetic moments as arrows inside the structure.
+
+        Paramaters
+        ----------
+        {selection}
 
         Returns
         -------
@@ -84,7 +98,7 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
             raise exception.NotImplemented(
                 "Visualizing magnetic moments for more than one step is not implemented"
             )
-        viewer = self._structure[self._steps].plot(supercell)
+        viewer = self._structure[self._steps].plot(selection, supercell)
         moments = self._prepare_magnetic_moments_for_plotting()
         if moments is not None:
             viewer.show_arrows_at_atoms(moments)
@@ -107,10 +121,16 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
 
     @base.data_access
     @documentation.format(
-        index_note=_index_note, examples=slice_.examples("magnetism", "moments")
+        selection=_moment_selection,
+        index_note=_index_note,
+        examples=slice_.examples("magnetism", "moments"),
     )
     def moments(self, selection="total"):
         """Read the magnetic moments of the selected steps.
+
+        Parameters
+        ----------
+        {selection}
 
         Returns
         -------
@@ -148,10 +168,16 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
 
     @base.data_access
     @documentation.format(
-        index_note=_index_note, examples=slice_.examples("magnetism", "total_moments")
+        selection=_moment_selection,
+        index_note=_index_note,
+        examples=slice_.examples("magnetism", "total_moments"),
     )
     def total_moments(self, selection="total"):
         """Read the total magnetic moments of the selected steps.
+
+        Parameters
+        ----------
+        {selection}
 
         Returns
         -------
