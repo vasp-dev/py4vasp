@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import functools
 import types
 from unittest.mock import patch
 
@@ -10,38 +11,63 @@ from py4vasp import exception
 from py4vasp.data import Magnetism
 
 
-@pytest.fixture
-def collinear_magnetism(raw_data):
-    raw_magnetism = raw_data.magnetism("collinear")
-    magnetism = Magnetism.from_data(raw_magnetism)
-    magnetism.ref = types.SimpleNamespace()
-    magnetism.ref.charges = raw_magnetism.moments[:, 0, :, :]
-    magnetism.ref.moments = raw_magnetism.moments[:, 1, :, :]
-    return magnetism
+@pytest.fixture(params=[slice(None), slice(1, 3), 0, -1])
+def steps(request):
+    return request.param
 
 
-@pytest.fixture
-def noncollinear_magnetism(raw_data):
-    raw_magnetism = raw_data.magnetism("noncollinear")
-    magnetism = Magnetism.from_data(raw_magnetism)
-    magnetism.ref = types.SimpleNamespace()
-    magnetism.ref.charges = raw_magnetism.moments[:, 0, :, :]
-    magnetism.ref.moments = np.moveaxis(raw_magnetism.moments[:, 1:4, :, :], 1, 3)
-    return magnetism
+@pytest.fixture(params=["collinear", "noncollinear", "orbital_moments", "charge_only"])
+def example_magnetism(raw_data, request):
+    return setup_magnetism(raw_data, kind=request.param)
 
 
 @pytest.fixture
 def charge_only(raw_data):
+    return setup_magnetism(raw_data, "charge_only")
+
+
+@pytest.fixture
+def collinear_magnetism(raw_data):
+    return setup_magnetism(raw_data, "collinear")
+
+
+@pytest.fixture
+def noncollinear_magnetism(raw_data):
+    return setup_magnetism(raw_data, "noncollinear")
+
+
+@pytest.fixture
+def orbital_moments(raw_data):
+    return setup_magnetism(raw_data, "orbital_moments")
+
+
+def setup_magnetism(raw_data, kind):
+    raw_magnetism = raw_data.magnetism(kind)
+    magnetism = Magnetism.from_data(raw_magnetism)
+    magnetism.ref = types.SimpleNamespace()
+    magnetism.ref.kind = kind
+    magnetism.ref.charges = raw_magnetism.spin_moments[:, 0]
+    set_moments(raw_magnetism, magnetism.ref)
+    return magnetism
+
+
+def set_moments(raw_magnetism, reference):
     class GetItemNone:
         def __getitem__(self, step):
             return None
 
-    raw_magnetism = raw_data.magnetism("charge_only")
-    magnetism = Magnetism.from_data(raw_magnetism)
-    magnetism.ref = types.SimpleNamespace()
-    magnetism.ref.charges = raw_magnetism.moments[:, 0, :, :]
-    magnetism.ref.moments = GetItemNone()
-    return magnetism
+    if reference.kind == "charge_only":
+        reference.moments = GetItemNone()
+    elif reference.kind == "collinear":
+        reference.moments = raw_magnetism.spin_moments[:, 1]
+    elif reference.kind == "noncollinear":
+        reference.moments = np.moveaxis(raw_magnetism.spin_moments[:, 1:4], 1, 3)
+    else:
+        spin_moments = np.moveaxis(raw_magnetism.spin_moments[:, 1:4], 1, 3)
+        orbital_moments = np.moveaxis(raw_magnetism.orbital_moments[:, 1:4], 1, 3)
+        reference.moments = spin_moments + orbital_moments
+        reference.spin_moments = spin_moments
+        reference.orbital_moments = orbital_moments
 
 
 @pytest.fixture
@@ -53,166 +79,129 @@ def all_magnetism(collinear_magnetism, noncollinear_magnetism, charge_only):
     return magnetism
 
 
-def test_read(all_magnetism, Assert):
-    check_read(all_magnetism.collinear, Assert)
-    check_read(all_magnetism.noncollinear, Assert)
-    check_read(all_magnetism.charge_only, Assert)
-
-
-def check_read(magnetism, Assert):
-    check_read_all_steps(magnetism, Assert)
-    check_read_subset_of_steps(magnetism, Assert)
-    check_read_specific_step(magnetism, Assert)
-    check_read_last_step(magnetism, Assert)
-
-
-def check_read_all_steps(magnetism, Assert):
-    actual = magnetism[:].read()
-    Assert.allclose(actual["charges"], magnetism.ref.charges[:])
-    Assert.allclose(actual["moments"], magnetism.ref.moments[:])
-
-
-def check_read_subset_of_steps(magnetism, Assert):
-    subset = slice(1, 3)
-    actual = magnetism[subset].read()
-    Assert.allclose(actual["charges"], magnetism.ref.charges[subset])
-    Assert.allclose(actual["moments"], magnetism.ref.moments[subset])
-
-
-def check_read_specific_step(magnetism, Assert):
-    actual = magnetism[0].read()
-    Assert.allclose(actual["charges"], magnetism.ref.charges[0])
-    Assert.allclose(actual["moments"], magnetism.ref.moments[0])
-
-
-def check_read_last_step(magnetism, Assert):
+def test_read(example_magnetism, steps, Assert):
+    magnetism = example_magnetism[steps] if steps != -1 else example_magnetism
     actual = magnetism.read()
-    Assert.allclose(actual["charges"], magnetism.ref.charges[-1])
-    Assert.allclose(actual["moments"], magnetism.ref.moments[-1])
+    Assert.allclose(actual["charges"], example_magnetism.ref.charges[steps])
+    Assert.allclose(actual["moments"], example_magnetism.ref.moments[steps])
 
 
-def test_charges(all_magnetism, Assert):
-    check_charges(all_magnetism.collinear, Assert)
-    check_charges(all_magnetism.noncollinear, Assert)
-    check_charges(all_magnetism.charge_only, Assert)
+def test_read_spin_and_orbital_moments(orbital_moments, steps, Assert):
+    magnetism = orbital_moments[steps] if steps != -1 else orbital_moments
+    actual = magnetism.read()
+    reference = orbital_moments.ref
+    Assert.allclose(actual["spin_moments"], reference.spin_moments[steps])
+    Assert.allclose(actual["orbital_moments"], reference.orbital_moments[steps])
 
 
-def check_charges(magnetism, Assert):
-    Assert.allclose(magnetism[:].charges(), magnetism.ref.charges[:])
-    Assert.allclose(magnetism[1:3].charges(), magnetism.ref.charges[1:3])
-    Assert.allclose(magnetism[0].charges(), magnetism.ref.charges[0])
-    Assert.allclose(magnetism.charges(), magnetism.ref.charges[-1])
+def test_charges(example_magnetism, steps, Assert):
+    magnetism = example_magnetism[steps] if steps != -1 else example_magnetism
+    Assert.allclose(magnetism.charges(), example_magnetism.ref.charges[steps])
 
 
-def test_moments(all_magnetism, Assert):
-    check_moments(all_magnetism.collinear, Assert)
-    check_moments(all_magnetism.noncollinear, Assert)
-    check_moments(all_magnetism.charge_only, Assert)
+def test_moments(example_magnetism, steps, Assert):
+    magnetism = example_magnetism[steps] if steps != -1 else example_magnetism
+    Assert.allclose(magnetism.moments(), example_magnetism.ref.moments[steps])
 
 
-def check_moments(magnetism, Assert):
-    Assert.allclose(magnetism[:].moments(), magnetism.ref.moments[:])
-    Assert.allclose(magnetism[1:3].moments(), magnetism.ref.moments[1:3])
-    Assert.allclose(magnetism[0].moments(), magnetism.ref.moments[0])
-    Assert.allclose(magnetism.moments(), magnetism.ref.moments[-1])
+def test_moments_selection(example_magnetism, Assert):
+    magnetism = example_magnetism
+    Assert.allclose(magnetism.moments("total"), magnetism.ref.moments[-1])
+    if magnetism.ref.kind == "orbital_moments":
+        Assert.allclose(magnetism.moments("spin"), magnetism.ref.spin_moments[-1])
+        Assert.allclose(magnetism.moments("orbital"), magnetism.ref.orbital_moments[-1])
+    else:
+        Assert.allclose(magnetism.moments("spin"), magnetism.ref.moments[-1])
+        with pytest.raises(exception.NoData):
+            magnetism.moments("orbital")
+    with pytest.raises(exception.IncorrectUsage):
+        magnetism.moments("unknown_option")
 
 
-def test_total_charges(all_magnetism, Assert):
-    check_total_charges(all_magnetism.collinear, Assert)
-    check_total_charges(all_magnetism.noncollinear, Assert)
-    check_total_charges(all_magnetism.charge_only, Assert)
-
-
-def check_total_charges(magnetism, Assert):
+def test_total_charges(example_magnetism, steps, Assert):
+    magnetism = example_magnetism[steps] if steps != -1 else example_magnetism
     total_charges = np.sum(magnetism.ref.charges, axis=2)
-    Assert.allclose(magnetism[:].total_charges(), total_charges[:])
-    Assert.allclose(magnetism[1:3].total_charges(), total_charges[1:3])
-    Assert.allclose(magnetism[0].total_charges(), total_charges[0])
-    Assert.allclose(magnetism.total_charges(), total_charges[-1])
+    Assert.allclose(magnetism.total_charges(), total_charges[steps])
 
 
-def test_total_moments(collinear_magnetism, noncollinear_magnetism, Assert):
-    check_total_moments(collinear_magnetism, Assert)
-    check_total_moments(noncollinear_magnetism, Assert)
+def test_total_moments(example_magnetism, steps, Assert):
+    magnetism = example_magnetism[steps] if steps != -1 else example_magnetism
+    if example_magnetism.ref.kind == "charge_only":
+        assert magnetism.total_moments() is None
+    else:
+        total_moments = np.sum(magnetism.ref.moments, axis=2)
+        Assert.allclose(magnetism.total_moments(), total_moments[steps])
 
 
-def check_total_moments(magnetism, Assert):
-    total_moments = np.sum(magnetism.ref.moments, axis=2)
-    Assert.allclose(magnetism[:].total_moments(), total_moments[:])
-    Assert.allclose(magnetism[1:3].total_moments(), total_moments[1:3])
-    Assert.allclose(magnetism[0].total_moments(), total_moments[0])
-    Assert.allclose(magnetism.total_moments(), total_moments[-1])
+@pytest.mark.parametrize("selection", ["total", "spin", "orbital"])
+def test_total_moments_selection(example_magnetism, selection, Assert):
+    if expect_exception(example_magnetism.ref.kind, selection):
+        with pytest.raises(exception.NoData):
+            example_magnetism.total_moments(selection)
+    else:
+        moments = example_magnetism.moments(selection)
+        total_moments = np.sum(moments, axis=1) if moments is not None else None
+        Assert.allclose(example_magnetism.total_moments(selection), total_moments)
 
 
-def test_charge_only_total_moments(charge_only):
-    assert charge_only[:].total_moments() is None
-    assert charge_only[1:3].total_moments() is None
-    assert charge_only[0].total_moments() is None
-    assert charge_only.total_moments() is None
+@pytest.mark.parametrize("selection", [None, "total", "spin", "orbital"])
+def test_plot(example_magnetism, steps, selection, Assert, not_core):
+    magnetism = example_magnetism[steps] if steps != -1 else example_magnetism
+    plot_selection = functools.partial(magnetism.plot, selection)
+    plot_under_test = plot_selection if selection else magnetism.plot
+    if isinstance(steps, slice):
+        with pytest.raises(exception.NotImplemented):
+            plot_under_test()
+        return
+    if expect_exception(example_magnetism.ref.kind, selection):
+        with pytest.raises(exception.NoData):
+            plot_under_test()
+    else:
+        reference_moments = expected_moments(example_magnetism.ref, selection, steps)
+        actual_moments = get_moments(example_magnetism.ref.kind, plot_under_test)
+        Assert.allclose(actual_moments, reference_moments)
 
 
-def test_plot_collinear_magnetism(collinear_magnetism, Assert):
-    total_moments = np.sum(collinear_magnetism.ref.moments, axis=2)
-    for step in (0, -1):
-        actual_moments = get_show_arrow_args(collinear_magnetism, step)
-        reference_moments = total_moments[step]
-        check_plot_collinear_magnetism(actual_moments, reference_moments, Assert)
-    check_slices_not_implemented(collinear_magnetism)
+def expect_exception(kind, selection):
+    return kind != "orbital_moments" and selection == "orbital"
 
 
-def test_plot_noncollinear_magnetism(noncollinear_magnetism, Assert):
-    total_moments = np.sum(noncollinear_magnetism.ref.moments, axis=2)
-    for step in (0, -1):
-        actual_moments = get_show_arrow_args(noncollinear_magnetism, step)
-        reference_moments = total_moments[step]
-        check_plot_noncollinear_magnetism(actual_moments, reference_moments, Assert)
-    check_slices_not_implemented(noncollinear_magnetism)
-
-
-def get_show_arrow_args(magnetism, step):
+def get_moments(kind, plot_under_test, selection=None):
     with patch("py4vasp.data.Structure.plot") as plot:
-        if step == -1:
-            magnetism.plot()
-        else:
-            magnetism[step].plot()
-        plot.assert_called_once()
-        viewer = plot.return_value
+        plot_under_test()
+    plot.assert_called_once()
+    viewer = plot.return_value
+    if kind == "charge_only":
+        viewer.show_arrows_at_atoms.assert_not_called()
+        return None
+    else:
         viewer.show_arrows_at_atoms.assert_called_once()
         args, _ = viewer.show_arrows_at_atoms.call_args
-    return args[0]
+        return args[0]
 
 
-def check_plot_collinear_magnetism(actual_moments, reference_moments, Assert):
-    rescale_moments = Magnetism.length_moments / np.max(reference_moments)
-    for actual, reference in zip(actual_moments, reference_moments):
-        Assert.allclose(actual, rescale_moments * np.array([0.0, 0.0, reference]))
-
-
-def check_plot_noncollinear_magnetism(actual_moments, reference_moments, Assert):
-    largest_moment = np.max(np.linalg.norm(reference_moments, axis=1))
+def expected_moments(reference, selection, steps):
+    if reference.kind == "charge_only":
+        return None
+    if reference.kind == "orbital_moments" and selection == "spin":
+        moments = np.sum(reference.spin_moments[steps], axis=1)
+    elif reference.kind == "orbital_moments" and selection == "orbital":
+        moments = np.sum(reference.orbital_moments[steps], axis=1)
+    else:
+        moments = np.sum(reference.moments[steps], axis=1)
+    if reference.kind == "collinear":
+        moments = np.array([[0, 0, m] for m in moments])
+    largest_moment = np.max(np.linalg.norm(moments, axis=1))
     rescale_moments = Magnetism.length_moments / largest_moment
-    Assert.allclose(actual_moments, rescale_moments * reference_moments)
+    return rescale_moments * moments
 
 
-def check_slices_not_implemented(magnetism):
-    for steps in (slice(None), slice(1, 3)):
-        with pytest.raises(exception.NotImplemented):
-            magnetism[steps].plot()
-
-
-def test_plot_charge_only(charge_only):
-    with patch("py4vasp.data.Structure.plot") as plot:
-        charge_only.plot()
-        plot.assert_called_once()
-        viewer = plot.return_value
-        viewer.show_arrows_at_atoms.assert_not_called()
-    check_slices_not_implemented(charge_only)
-
-
-def test_plot_supercell(collinear_magnetism):
+def test_plot_supercell(example_magnetism):
+    if example_magnetism.ref.kind == "charge_only":
+        return
     supercell = (3, 2, 1)
     with patch("py4vasp.data.Structure.plot") as plot:
-        collinear_magnetism.plot(supercell)
+        example_magnetism.plot(supercell=supercell)
         plot.assert_called_once_with(supercell)
         viewer = plot.return_value
         viewer.show_arrows_at_atoms.assert_called_once()
@@ -243,24 +232,18 @@ def test_charge_only_print(charge_only, format_):
     assert actual == {"text/plain": "not spin polarized"}
 
 
-def test_incorrect_argument(all_magnetism):
-    check_incorrect_argument(all_magnetism.collinear)
-    check_incorrect_argument(all_magnetism.noncollinear)
-    check_incorrect_argument(all_magnetism.charge_only)
-
-
-def check_incorrect_argument(magnetism):
+def test_incorrect_argument(example_magnetism):
     with pytest.raises(exception.IncorrectUsage):
-        magnetism["step not an integer"].read()
+        example_magnetism["step not an integer"].read()
     out_of_bounds = 999
     with pytest.raises(exception.IncorrectUsage):
-        magnetism[out_of_bounds].moments()
+        example_magnetism[out_of_bounds].moments()
     with pytest.raises(exception.IncorrectUsage):
-        magnetism[out_of_bounds].total_moments()
+        example_magnetism[out_of_bounds].total_moments()
     with pytest.raises(exception.IncorrectUsage):
-        magnetism[out_of_bounds].charges()
+        example_magnetism[out_of_bounds].charges()
     with pytest.raises(exception.IncorrectUsage):
-        magnetism[out_of_bounds].total_charges()
+        example_magnetism[out_of_bounds].total_charges()
 
 
 def test_factory_methods(raw_data, check_factory_methods):

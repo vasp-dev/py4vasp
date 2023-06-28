@@ -24,6 +24,12 @@ class _Arrow3d(NamedTuple):
         return list(self.tail), list(self.tip), list(self.color), float(self.radius)
 
 
+def _rotate(arrow, transformation):
+    return _Arrow3d(
+        transformation @ arrow.tail, transformation @ arrow.tip, arrow.color
+    )
+
+
 _x_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((3, 0, 0)), color=[1, 0, 0])
 _y_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((0, 3, 0)), color=[0, 1, 0])
 _z_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((0, 0, 3)), color=[0, 0, 1])
@@ -62,13 +68,14 @@ class Viewer3d:
         """
         ase = structure.to_ase(supercell)
         # ngl works with the standard form, so we need to store the positions in the same format
-        standard_cell, _ = ase.cell.standard_form()
-        ase.set_cell(standard_cell, scale_atoms=True)
+        standard_cell, transformation = ase.cell.standard_form()
+        ase.set_cell(standard_cell)
         res = cls(nglview.show_ase(ase))
         res._lengths = tuple(ase.cell.lengths())
         res._angles = tuple(ase.cell.angles())
         res._positions = ase.positions
         res._number_cells = res._calculate_number_cells(supercell)
+        res._transformation = transformation
         return res
 
     def _calculate_number_cells(self, supercell):
@@ -110,9 +117,9 @@ class Viewer3d:
         if self._axes is not None:
             return
         self._axes = (
-            self._make_arrow(_x_axis),
-            self._make_arrow(_y_axis),
-            self._make_arrow(_z_axis),
+            self._make_arrow(_rotate(_x_axis, self._transformation)),
+            self._make_arrow(_rotate(_y_axis, self._transformation)),
+            self._make_arrow(_rotate(_z_axis, self._transformation)),
         )
 
     def hide_axes(self):
@@ -141,7 +148,7 @@ class Viewer3d:
         """
         if self._positions is None:
             raise exception.RefinementError("Positions of atoms are not known.")
-        arrows = np.repeat(arrows, self._number_cells, axis=0)
+        arrows = np.repeat(arrows @ self._transformation.T, self._number_cells, axis=0)
         for tail, arrow in zip(self._positions, arrows):
             tip = tail + arrow
             arrow = _Arrow3d(tail, tip, color)
