@@ -1,7 +1,8 @@
 # py4vasp
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![tests](https://github.com/vasp-dev/py4vasp/actions/workflows/test.yml/badge.svg)](https://github.com/vasp-dev/py4vasp/actions/workflows/test.yml)
+[![test-full](https://github.com/vasp-dev/py4vasp/actions/workflows/test_full.yml/badge.svg)](https://github.com/vasp-dev/py4vasp/actions/workflows/test_full.yml)
+[![test-core](https://github.com/vasp-dev/py4vasp/actions/workflows/test_core.yml/badge.svg)](https://github.com/vasp-dev/py4vasp/actions/workflows/test_core.yml)
 
 > Please note that this document is intended mostly for developers that want to use
 > the version of py4vasp provided on Github. If you just want to install py4vasp to
