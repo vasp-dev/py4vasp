@@ -320,6 +320,7 @@ schema.add(
 #
 schema.add(
     raw.Magnetism,
+    required=raw.Version(6, 5),
     structure=Link("structure", DEFAULT_SOURCE),
     spin_moments="intermediate/ion_dynamics/magnetism/spin_moments/values",
     orbital_moments="intermediate/ion_dynamics/magnetism/orbital_moments/values",
