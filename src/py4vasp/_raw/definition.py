@@ -38,6 +38,13 @@ schema.add(
 )
 #
 schema.add(
+    raw.Bandgap,
+    required=raw.Version(6, 5),
+    labels="intermediate/electron/band/labels",
+    values="intermediate/electron/band/data",
+)
+#
+schema.add(
     raw.BornEffectiveCharge,
     required=raw.Version(6, 3),
     structure=Link("structure", DEFAULT_SOURCE),

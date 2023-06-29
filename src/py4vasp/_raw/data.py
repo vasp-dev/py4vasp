@@ -45,6 +45,20 @@ class Band:
 
 
 @dataclasses.dataclass
+class Bandgap:
+    """The bandgap of the system.
+
+    Contains the band extrema defining the fundamental and optical band gap and the
+    k-point coordinates where the band gaps are for all steps of a relaxation/MD
+    simulation."""
+
+    labels: VaspData
+    "These labels identify which band data is stored."
+    values: VaspData
+    "The data contained according to the labels."
+
+
+@dataclasses.dataclass
 class BornEffectiveCharge:
     """The Born effective charges resulting form a linear response calculation.
 
