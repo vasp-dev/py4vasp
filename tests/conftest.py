@@ -92,6 +92,10 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
+    def bandgap(selection):
+        return _band_gap()
+
+    @staticmethod
     def born_effective_charge(selection):
         if selection == "Sr2TiO4":
             return _Sr2TiO4_born_effective_charges()
@@ -282,6 +286,28 @@ def _number_components(selection):
         return 1
     else:
         raise exception.NotImplemented()
+
+
+def _band_gap():
+    labels = (
+        "valence band maximum",
+        "conduction band minimum",
+        "optical gap bottom",
+        "optical gap top",
+        "Fermi energy",
+        "kx (VBM)",
+        "ky (VBM)",
+        "kz (VBM)",
+        "kx (CBM)",
+        "ky (CBM)",
+        "kz (CBM)",
+        "kx (optical)",
+        "ky (optical)",
+        "kz (optical)",
+    )
+    shape = (number_steps, len(labels))
+    data = np.arange(np.prod(shape)).reshape(shape)
+    return raw.Bandgap(labels=np.array(labels, dtype="S"), values=data)
 
 
 def _electron_dielectric_function():
