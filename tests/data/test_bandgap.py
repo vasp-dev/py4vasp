@@ -29,11 +29,16 @@ def bandgap(raw_data):
     return bandgap
 
 
-def test_read(bandgap, Assert):
-    actual = bandgap.read()
-    Assert.allclose(actual["fundamental"], bandgap.ref.fundamental[-1])
-    Assert.allclose(actual["kpoint_VBM"], bandgap.ref.kpoint_vbm[-1])
-    Assert.allclose(actual["kpoint_CBM"], bandgap.ref.kpoint_cbm[-1])
-    Assert.allclose(actual["optical"], bandgap.ref.optical[-1])
-    Assert.allclose(actual["kpoint_optical"], bandgap.ref.kpoint_optical[-1])
-    Assert.allclose(actual["fermi_energy"], bandgap.ref.fermi_energy[-1])
+@pytest.fixture(params=[slice(None), slice(1, 3), 0, -1])
+def steps(request):
+    return request.param
+
+
+def test_read(bandgap, steps, Assert):
+    actual = bandgap.read() if steps == -1 else bandgap[steps].read()
+    Assert.allclose(actual["fundamental"], bandgap.ref.fundamental[steps])
+    Assert.allclose(actual["kpoint_VBM"], bandgap.ref.kpoint_vbm[steps])
+    Assert.allclose(actual["kpoint_CBM"], bandgap.ref.kpoint_cbm[steps])
+    Assert.allclose(actual["optical"], bandgap.ref.optical[steps])
+    Assert.allclose(actual["kpoint_optical"], bandgap.ref.kpoint_optical[steps])
+    Assert.allclose(actual["fermi_energy"], bandgap.ref.fermi_energy[steps])
