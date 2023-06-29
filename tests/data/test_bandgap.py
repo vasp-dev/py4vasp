@@ -42,3 +42,13 @@ def test_read(bandgap, steps, Assert):
     Assert.allclose(actual["optical"], bandgap.ref.optical[steps])
     Assert.allclose(actual["kpoint_optical"], bandgap.ref.kpoint_optical[steps])
     Assert.allclose(actual["fermi_energy"], bandgap.ref.fermi_energy[steps])
+
+
+def test_fundamental(bandgap, steps, Assert):
+    actual = bandgap.fundamental() if steps == -1 else bandgap[steps].fundamental()
+    Assert.allclose(actual, bandgap.ref.fundamental[steps])
+
+
+def test_optical(bandgap, steps, Assert):
+    actual = bandgap.optical() if steps == -1 else bandgap[steps].optical()
+    Assert.allclose(actual, bandgap.ref.optical[steps])

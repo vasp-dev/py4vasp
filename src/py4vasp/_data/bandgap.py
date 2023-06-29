@@ -18,18 +18,18 @@ class Bandgap(slice_.Mixin, base.Refinery):
 
     def to_dict(self):
         return {
-            "fundamental": self._fundamental(),
+            "fundamental": self.fundamental(),
             "kpoint_VBM": self._kpoint("VBM"),
             "kpoint_CBM": self._kpoint("CBM"),
-            "optical": self._optical(),
+            "optical": self.optical(),
             "kpoint_optical": self._kpoint("optical"),
             "fermi_energy": self._get("Fermi energy"),
         }
 
-    def _fundamental(self):
+    def fundamental(self):
         return self._get("conduction band minimum") - self._get("valence band maximum")
 
-    def _optical(self):
+    def optical(self):
         return self._get("optical gap top") - self._get("optical gap bottom")
 
     def _kpoint(self, label):
