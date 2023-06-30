@@ -269,12 +269,12 @@ input_ = "input/kpoints"
 result = "results/electron_eigenvalues"
 schema.add(
     raw.Kpoint,
-    mode=f"{input}/mode",
-    number=f"{input}/number_kpoints",
+    mode=f"{input_}/mode",
+    number=f"{input_}/number_kpoints",
     coordinates=f"{result}/kpoint_coords",
     weights=f"{result}/kpoints_symmetry_weight",
-    labels=f"{input}/labels_kpoints",
-    label_indices=f"{input}/positions_labels_kpoints",
+    labels=f"{input_}/labels_kpoints",
+    label_indices=f"{input_}/positions_labels_kpoints",
     cell=Link("cell", DEFAULT_SOURCE),
 )
 input_ = "input/kpoints_opt"
@@ -282,12 +282,12 @@ result = "results/electron_eigenvalues_kpoints_opt"
 schema.add(
     raw.Kpoint,
     name="kpoints_opt",
-    mode=f"{input}/mode",
-    number=f"{input}/number_kpoints",
+    mode=f"{input_}/mode",
+    number=f"{input_}/number_kpoints",
     coordinates=f"{result}/kpoint_coords",
     weights=f"{result}/kpoints_symmetry_weight",
-    labels=f"{input}/labels_kpoints",
-    label_indices=f"{input}/positions_labels_kpoints",
+    labels=f"{input_}/labels_kpoints",
+    label_indices=f"{input_}/positions_labels_kpoints",
     cell=Link("cell", DEFAULT_SOURCE),
 )
 input_ = "input/kpoints_wan"
@@ -295,12 +295,12 @@ result = "results/electron_eigenvalues_kpoints_wan"
 schema.add(
     raw.Kpoint,
     name="kpoints_wan",
-    mode=f"{input}/mode",
-    number=f"{input}/number_kpoints",
+    mode=f"{input_}/mode",
+    number=f"{input_}/number_kpoints",
     coordinates=f"{result}/kpoint_coords",
     weights=f"{result}/kpoints_symmetry_weight",
-    labels=f"{input}/labels_kpoints",
-    label_indices=f"{input}/positions_labels_kpoints",
+    labels=f"{input_}/labels_kpoints",
+    label_indices=f"{input_}/positions_labels_kpoints",
     cell=Link("cell", DEFAULT_SOURCE),
 )
 input_ = "input/qpoints"
@@ -309,12 +309,12 @@ schema.add(
     raw.Kpoint,
     name="phonon",
     required=raw.Version(6, 4),
-    mode=f"{input}/mode",
-    number=f"{input}/number_kpoints",
+    mode=f"{input_}/mode",
+    number=f"{input_}/number_kpoints",
     coordinates=f"{result}/qpoint_coords",
     weights=f"{result}/qpoints_symmetry_weight",
-    labels=f"{input}/labels_kpoints",
-    label_indices=f"{input}/positions_labels_kpoints",
+    labels=f"{input_}/labels_kpoints",
+    label_indices=f"{input_}/positions_labels_kpoints",
     cell=Link("cell", "phonon"),
 )
 #
