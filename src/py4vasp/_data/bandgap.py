@@ -48,7 +48,18 @@ kpoint:
             return scalar_or_array
 
     @base.data_access
+    @documentation.format(examples=slice_.examples("bandgap", "to_dict"))
     def to_dict(self):
+        """Read the bandgap data from a VASP relaxation or MD trajectory.
+
+        Returns
+        -------
+        dict
+            Contains the fundamental and optical gap as well as the coordinates of the
+            k points where the relevant points in the band structure are.
+
+        {examples}
+        """
         return {
             "fundamental": self.fundamental(),
             "kpoint_VBM": self._kpoint("VBM"),
@@ -59,11 +70,37 @@ kpoint:
         }
 
     @base.data_access
+    @documentation.format(examples=slice_.examples("bandgap", "fundamental"))
     def fundamental(self):
+        """Return the fundamental bandgap.
+
+        The fundamental bandgap is between the maximum of the valence band and the
+        minimum of the conduction band.
+
+        Returns
+        -------
+        np.ndarray
+            The value of the bandgap for all selected steps.
+
+        {examples}
+        """
         return self._get("conduction band minimum") - self._get("valence band maximum")
 
     @base.data_access
+    @documentation.format(examples=slice_.examples("bandgap", "optical"))
     def optical(self):
+        """Return the optical bandgap.
+
+        The optical bandgap is the minimal distance between a valence and conduction
+        band at a single k point and for a single spin.
+
+        Returns
+        -------
+        np.ndarray
+            The value of the bandgap for all selected steps.
+
+        {examples}
+        """
         return self._get("optical gap top") - self._get("optical gap bottom")
 
     def _kpoint(self, label):
@@ -82,7 +119,17 @@ kpoint:
         )
 
     @base.data_access
+    @documentation.format(examples=slice_.examples("bandgap", "to_graph"))
     def to_graph(self):
+        """Plot the optical and fundamental bandgap along the trajectory.
+
+        Returns
+        -------
+        Graph
+            Figure with the ionic step on the x axis and the value of the bandgap on
+            the y axis.
+
+        {examples}"""
         return graph.Graph(
             [self._make_series("fundamental"), self._make_series("optical")],
             xlabel="Step",
