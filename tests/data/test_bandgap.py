@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
 
+import numpy as np
 import pytest
 
 from py4vasp import data
@@ -43,12 +44,25 @@ def test_read(bandgap, steps, Assert):
     Assert.allclose(actual["kpoint_optical"], bandgap.ref.kpoint_optical[steps])
     Assert.allclose(actual["fermi_energy"], bandgap.ref.fermi_energy[steps])
 
-
 def test_fundamental(bandgap, steps, Assert):
     actual = bandgap.fundamental() if steps == -1 else bandgap[steps].fundamental()
     Assert.allclose(actual, bandgap.ref.fundamental[steps])
 
-
 def test_optical(bandgap, steps, Assert):
     actual = bandgap.optical() if steps == -1 else bandgap[steps].optical()
     Assert.allclose(actual, bandgap.ref.optical[steps])
+
+def test_plot(bandgap, steps, Assert):
+    graph = bandgap.plot() if steps== -1 else bandgap[steps].plot()
+    xx = np.arange(len(bandgap.ref.fundamental))[steps] + 1
+    assert graph.xlabel == "Step"
+    assert graph.ylabel == "bandgap (eV)"
+    assert len(graph.series) == 2
+    fundamental = graph.series[0]
+    assert fundamental.name == "fundamental"
+    Assert.allclose(fundamental.x, xx)
+    Assert.allclose(fundamental.y, bandgap.ref.fundamental[steps])
+    optical = graph.series[1]
+    assert optical.name == "optical"
+    Assert.allclose(optical.x, xx)
+    Assert.allclose(optical.y, bandgap.ref.fundamental[steps])
