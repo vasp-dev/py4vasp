@@ -23,11 +23,9 @@ def bandgap(raw_data):
     bandgap = data.Bandgap.from_data(raw_bandgap)
     bandgap.ref = types.SimpleNamespace()
     bandgap.ref.fundamental = raw_bandgap.values[:, CBM] - raw_bandgap.values[:, VBM]
-    print(bandgap.ref.fundamental)
     bandgap.ref.kpoint_vbm = raw_bandgap.values[:, KPOINT_VBM]
     bandgap.ref.kpoint_cbm = raw_bandgap.values[:, KPOINT_CBM]
     bandgap.ref.optical = raw_bandgap.values[:, TOP] - raw_bandgap.values[:, BOTTOM]
-    print(bandgap.ref.optical)
     bandgap.ref.kpoint_optical = raw_bandgap.values[:, KPOINT_OPTICAL]
     bandgap.ref.fermi_energy = raw_bandgap.values[:, FERMI]
     return bandgap
@@ -133,3 +131,8 @@ kpoint:
     val. band min:   6.855655   6.928203   7.000000
     cond. band max:  7.071068   7.141428   7.211103
     optical gap:     7.280110   7.348469   7.416198"""
+
+
+def test_factory_methods(raw_data, check_factory_methods):
+    raw_bandgap = raw_data.bandgap("default")
+    check_factory_methods(data.Bandgap, raw_bandgap)

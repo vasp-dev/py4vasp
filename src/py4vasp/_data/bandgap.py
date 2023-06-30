@@ -17,6 +17,7 @@ class Bandgap(slice_.Mixin, base.Refinery, graph.Mixin):
     {examples}
     """
 
+    @base.data_access
     def __str__(self):
         data = self.to_dict()
         return """\
@@ -46,6 +47,7 @@ kpoint:
         else:
             return scalar_or_array
 
+    @base.data_access
     def to_dict(self):
         return {
             "fundamental": self.fundamental(),
@@ -56,9 +58,11 @@ kpoint:
             "fermi_energy": self._get("Fermi energy"),
         }
 
+    @base.data_access
     def fundamental(self):
         return self._get("conduction band minimum") - self._get("valence band maximum")
 
+    @base.data_access
     def optical(self):
         return self._get("optical gap top") - self._get("optical gap bottom")
 
@@ -77,6 +81,7 @@ kpoint:
             if convert.text_to_string(label) == desired_label
         )
 
+    @base.data_access
     def to_graph(self):
         return graph.Graph(
             [self._make_series("fundamental"), self._make_series("optical")],
