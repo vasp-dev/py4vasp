@@ -23,9 +23,11 @@ def bandgap(raw_data):
     bandgap = data.Bandgap.from_data(raw_bandgap)
     bandgap.ref = types.SimpleNamespace()
     bandgap.ref.fundamental = raw_bandgap.values[:, CBM] - raw_bandgap.values[:, VBM]
+    print(bandgap.ref.fundamental)
     bandgap.ref.kpoint_vbm = raw_bandgap.values[:, KPOINT_VBM]
     bandgap.ref.kpoint_cbm = raw_bandgap.values[:, KPOINT_CBM]
     bandgap.ref.optical = raw_bandgap.values[:, TOP] - raw_bandgap.values[:, BOTTOM]
+    print(bandgap.ref.optical)
     bandgap.ref.kpoint_optical = raw_bandgap.values[:, KPOINT_OPTICAL]
     bandgap.ref.fermi_energy = raw_bandgap.values[:, FERMI]
     return bandgap
@@ -69,7 +71,7 @@ def test_plot(bandgap, steps, Assert):
     optical = graph.series[1]
     assert optical.name == "optical"
     Assert.allclose(optical.x, xx)
-    Assert.allclose(optical.y, bandgap.ref.fundamental[steps])
+    Assert.allclose(optical.y, bandgap.ref.optical[steps])
 
 
 @patch("py4vasp._data.bandgap.Bandgap.to_graph")
@@ -93,3 +95,41 @@ def check_to_image(bandgap, filename_argument, expected_filename):
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
         fig.write_image.assert_called_once_with(bandgap._path / expected_filename)
+
+
+def test_print(bandgap, steps, format_):
+    actual, _ = format_(bandgap) if steps == -1 else format_(bandgap[steps])
+    reference = get_reference_string(steps)
+    assert actual == {"text/plain": reference}
+
+
+def get_reference_string(steps):
+    if steps == 0:
+        return """\
+bandgap:
+    step: 1
+    fundamental:  1.000000
+    optical:      0.317837
+kpoint:
+    val. band min:   2.236068   2.449490   2.645751
+    cond. band max:  2.828427   3.000000   3.162278
+    optical gap:     3.316625   3.464102   3.605551"""
+    if steps == slice(1, 3):
+        return """\
+bandgap:
+    step: 3
+    fundamental:  0.093662
+    optical:      0.090539
+kpoint:
+    val. band min:   5.744563   5.830952   5.916080
+    cond. band max:  6.000000   6.082763   6.164414
+    optical gap:     6.244998   6.324555   6.403124"""
+    return """\
+bandgap:
+    step: 4
+    fundamental:  0.076698
+    optical:      0.074954
+kpoint:
+    val. band min:   6.855655   6.928203   7.000000
+    cond. band max:  7.071068   7.141428   7.211103
+    optical gap:     7.280110   7.348469   7.416198"""

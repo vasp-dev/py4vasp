@@ -306,7 +306,7 @@ def _band_gap():
         "kz (optical)",
     )
     shape = (number_steps, len(labels))
-    data = np.arange(np.prod(shape)).reshape(shape)
+    data = np.sqrt(np.arange(np.prod(shape)).reshape(shape))
     return raw.Bandgap(labels=np.array(labels, dtype="S"), values=data)
 
 

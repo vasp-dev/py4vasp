@@ -17,6 +17,35 @@ class Bandgap(slice_.Mixin, base.Refinery, graph.Mixin):
     {examples}
     """
 
+    def __str__(self):
+        data = self.to_dict()
+        return """\
+bandgap:
+    step: {step}
+    fundamental:{fundamental:10.6f}
+    optical:    {optical:10.6f}
+kpoint:
+    val. band min: {kpoint_vbm}
+    cond. band max:{kpoint_cbm}
+    optical gap:   {kpoint_optical}""".format(
+            step=np.arange(len(self._raw_data.values))[self._slice][-1] + 1,
+            fundamental=self._last_element(data["fundamental"]),
+            optical=self._last_element(data["optical"]),
+            kpoint_vbm=self._kpoint_str(data["kpoint_VBM"]),
+            kpoint_cbm=self._kpoint_str(data["kpoint_CBM"]),
+            kpoint_optical=self._kpoint_str(data["kpoint_optical"]),
+        )
+
+    def _kpoint_str(self, kpoint):
+        kpoint = self._last_element(kpoint)
+        return " ".join(map("{:10.6f}".format, kpoint))
+
+    def _last_element(self, scalar_or_array):
+        if self._is_slice:
+            return scalar_or_array[-1]
+        else:
+            return scalar_or_array
+
     def to_dict(self):
         return {
             "fundamental": self.fundamental(),
@@ -33,13 +62,6 @@ class Bandgap(slice_.Mixin, base.Refinery, graph.Mixin):
     def optical(self):
         return self._get("optical gap top") - self._get("optical gap bottom")
 
-    def to_graph(self):
-        return graph.Graph(
-            [self._make_series("fundamental"), self._make_series("optical")],
-            xlabel="Step",
-            ylabel="bandgap (eV)",
-        )
-
     def _kpoint(self, label):
         kpoint = [
             self._get(f"kx ({label})"),
@@ -53,6 +75,13 @@ class Bandgap(slice_.Mixin, base.Refinery, graph.Mixin):
             self._raw_data.values[self._steps, index]
             for index, label in enumerate(self._raw_data.labels[:])
             if convert.text_to_string(label) == desired_label
+        )
+
+    def to_graph(self):
+        return graph.Graph(
+            [self._make_series("fundamental"), self._make_series("optical")],
+            xlabel="Step",
+            ylabel="bandgap (eV)",
         )
 
     def _make_series(self, label):
