@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -44,16 +45,19 @@ def test_read(bandgap, steps, Assert):
     Assert.allclose(actual["kpoint_optical"], bandgap.ref.kpoint_optical[steps])
     Assert.allclose(actual["fermi_energy"], bandgap.ref.fermi_energy[steps])
 
+
 def test_fundamental(bandgap, steps, Assert):
     actual = bandgap.fundamental() if steps == -1 else bandgap[steps].fundamental()
     Assert.allclose(actual, bandgap.ref.fundamental[steps])
+
 
 def test_optical(bandgap, steps, Assert):
     actual = bandgap.optical() if steps == -1 else bandgap[steps].optical()
     Assert.allclose(actual, bandgap.ref.optical[steps])
 
+
 def test_plot(bandgap, steps, Assert):
-    graph = bandgap.plot() if steps== -1 else bandgap[steps].plot()
+    graph = bandgap.plot() if steps == -1 else bandgap[steps].plot()
     xx = np.arange(len(bandgap.ref.fundamental))[steps] + 1
     assert graph.xlabel == "Step"
     assert graph.ylabel == "bandgap (eV)"
@@ -66,3 +70,26 @@ def test_plot(bandgap, steps, Assert):
     assert optical.name == "optical"
     Assert.allclose(optical.x, xx)
     Assert.allclose(optical.y, bandgap.ref.fundamental[steps])
+
+
+@patch("py4vasp._data.bandgap.Bandgap.to_graph")
+def test_energy_to_plotly(mock_plot, bandgap):
+    fig = bandgap.to_plotly()
+    mock_plot.assert_called_once_with()
+    graph = mock_plot.return_value
+    graph.to_plotly.assert_called_once()
+    assert fig == graph.to_plotly.return_value
+
+
+def test_to_image(bandgap):
+    check_to_image(bandgap, None, "bandgap.png")
+    custom_filename = "custom.jpg"
+    check_to_image(bandgap, custom_filename, custom_filename)
+
+
+def check_to_image(bandgap, filename_argument, expected_filename):
+    with patch("py4vasp._data.bandgap.Bandgap.to_plotly") as plot:
+        bandgap.to_image("args", filename=filename_argument, key="word")
+        plot.assert_called_once_with("args", key="word")
+        fig = plot.return_value
+        fig.write_image.assert_called_once_with(bandgap._path / expected_filename)
