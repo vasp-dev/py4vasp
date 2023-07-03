@@ -26,6 +26,15 @@ Internal strain tensor (eV/Å):
 
     @base.data_access
     def to_dict(self):
+        """Read the internal strain to a dictionary.
+
+        Returns
+        -------
+        dict
+            The dictionary contains the structure of the system. As well as the internal
+            strain tensor for all ions. The internal strain is the derivative of the
+            energy with respect to ionic position and strain of the cell.
+        """
         return {
             "structure": self._structure.read(),
             "internal_strain": self._raw_data.internal_strain[:],
