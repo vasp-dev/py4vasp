@@ -17,4 +17,4 @@ enforce the read operation before the file is closed.
 
 from py4vasp._raw.access import access
 from py4vasp._raw.data import *
-from py4vasp._raw.definition import schema
+from py4vasp._raw.definition import get_schema

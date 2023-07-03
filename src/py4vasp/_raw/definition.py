@@ -8,7 +8,13 @@ DEFAULT_SOURCE = "default"
 VERSION_DATA = raw.Version("version/major", "version/minor", "version/patch")
 
 schema = Schema(VERSION_DATA)
-#
+
+
+def get_schema():
+    "Return a YAML representation of the schema."
+    return str(schema)
+
+
 schema.add(
     raw.Band,
     dispersion=Link("dispersion", DEFAULT_SOURCE),
