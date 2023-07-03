@@ -15,6 +15,11 @@ def get_schema():
     return str(schema)
 
 
+def selections(quantity):
+    "Return all possible selections for a particular quantity."
+    return schema.selections(quantity)
+
+
 schema.add(
     raw.Band,
     dispersion=Link("dispersion", DEFAULT_SOURCE),
