@@ -30,7 +30,6 @@ EXAMPLE_SCALAR = np.array(1)
 
 
 def mock_read_result(key):
-    print(key)
     if key not in _mock_results:
         mock = MagicMock()
         if "foo" in key:
@@ -44,7 +43,6 @@ def mock_read_result(key):
 
 def check_data(actual, key):
     mock = mock_read_result(key)
-    print("which mock", mock, hasattr(mock, "__array__"))
     if mock.ndim == 0:
         mock.__array__.assert_called_once_with()
         assert actual == EXAMPLE_SCALAR
@@ -57,7 +55,6 @@ def test_access_quantity(mock_access):
     quantity = "optional_argument"
     mock_file, sources = mock_access
     source = sources[quantity]["default"]
-    print("file", mock_file, hasattr(mock_file, "__array__"))
     with raw.access(quantity) as opt_arg:
         check_single_file_access(mock_file, DEFAULT_FILE, source)
         check_data(opt_arg.mandatory, source.data.mandatory)
