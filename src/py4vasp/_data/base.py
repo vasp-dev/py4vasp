@@ -195,7 +195,7 @@ class _FunctionWrapper:
         return result
 
     def _find_selection_in_schema(self, selection):
-        options = raw.schema.selections(self._data_context.quantity)
+        options = raw.selections(self._data_context.quantity)
         for option in options:
             if select.contains(selection, option, ignore_case=True):
                 return self._remove_selected_option_if_possible(selection, option)
@@ -247,7 +247,7 @@ class _FunctionWrapper:
         if remaining == [[]]:
             return
         selection = select.selections_to_string(remaining)
-        sources = '", "'.join(raw.schema.selections(self._data_context.quantity))
+        sources = '", "'.join(raw.selections(self._data_context.quantity))
         message = f"""py4vasp found a selection "{selection}", but could not parse it.
             Please check for possible spelling errors. Possible sources for
             {self._data_context.quantity} are "{sources}"."""

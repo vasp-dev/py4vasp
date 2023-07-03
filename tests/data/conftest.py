@@ -18,7 +18,7 @@ SELECTION = "alternative"
 def mock_schema():
     mock = MagicMock()
     mock.selections.return_value = ("default", SELECTION)
-    with patch("py4vasp.raw.schema", mock):
+    with patch("py4vasp._raw.definition.schema", mock):
         yield mock
 
 
