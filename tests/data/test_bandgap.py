@@ -8,26 +8,27 @@ import pytest
 
 from py4vasp import data
 
+VBM = 0
+CBM = 1
+BOTTOM = 2
+TOP = 3
+FERMI = 4
+KPOINT_VBM = slice(5, 8)
+KPOINT_CBM = slice(8, 11)
+KPOINT_OPTICAL = slice(11, 14)
+
 
 @pytest.fixture
 def bandgap(raw_data):
-    VBM = 0
-    CBM = 1
-    BOTTOM = 2
-    TOP = 3
-    FERMI = 4
-    KPOINT_VBM = slice(5, 8)
-    KPOINT_CBM = slice(8, 11)
-    KPOINT_OPTICAL = slice(11, 14)
-    raw_bandgap = raw_data.bandgap("default")
-    bandgap = data.Bandgap.from_data(raw_bandgap)
+    raw_gap = raw_data.bandgap("default")
+    bandgap = data.Bandgap.from_data(raw_gap)
     bandgap.ref = types.SimpleNamespace()
-    bandgap.ref.fundamental = raw_bandgap.values[:, CBM] - raw_bandgap.values[:, VBM]
-    bandgap.ref.kpoint_vbm = raw_bandgap.values[:, KPOINT_VBM]
-    bandgap.ref.kpoint_cbm = raw_bandgap.values[:, KPOINT_CBM]
-    bandgap.ref.optical = raw_bandgap.values[:, TOP] - raw_bandgap.values[:, BOTTOM]
-    bandgap.ref.kpoint_optical = raw_bandgap.values[:, KPOINT_OPTICAL]
-    bandgap.ref.fermi_energy = raw_bandgap.values[:, FERMI]
+    bandgap.ref.fundamental = raw_gap.values[:, 0, CBM] - raw_gap.values[:, 0, VBM]
+    bandgap.ref.kpoint_vbm = raw_gap.values[:, 0, KPOINT_VBM]
+    bandgap.ref.kpoint_cbm = raw_gap.values[:, 0, KPOINT_CBM]
+    bandgap.ref.optical = raw_gap.values[:, 0, TOP] - raw_gap.values[:, 0, BOTTOM]
+    bandgap.ref.kpoint_optical = raw_gap.values[:, 0, KPOINT_OPTICAL]
+    bandgap.ref.fermi_energy = raw_gap.values[:, 0, FERMI]
     return bandgap
 
 
@@ -134,5 +135,5 @@ kpoint:
 
 
 def test_factory_methods(raw_data, check_factory_methods):
-    raw_bandgap = raw_data.bandgap("default")
-    check_factory_methods(data.Bandgap, raw_bandgap)
+    raw_gap = raw_data.bandgap("default")
+    check_factory_methods(data.Bandgap, raw_gap)

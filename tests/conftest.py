@@ -93,7 +93,7 @@ class RawDataFactory:
 
     @staticmethod
     def bandgap(selection):
-        return _band_gap()
+        return _band_gap(selection)
 
     @staticmethod
     def born_effective_charge(selection):
@@ -288,7 +288,7 @@ def _number_components(selection):
         raise exception.NotImplemented()
 
 
-def _band_gap():
+def _band_gap(selection):
     labels = (
         "valence band maximum",
         "conduction band minimum",
@@ -305,8 +305,11 @@ def _band_gap():
         "ky (optical)",
         "kz (optical)",
     )
-    shape = (number_steps, len(labels))
+    num_spins = two_spins if selection == "spin_polarized" else single_spin
+    shape = (number_steps, num_spins, len(labels))
     data = np.sqrt(np.arange(np.prod(shape)).reshape(shape))
+    if num_spins == 2:
+        data[:, 1, 4] = data[:, 0, 4]  # only spin-independent Fermi energy implemented
     return raw.Bandgap(labels=np.array(labels, dtype="S"), values=data)
 
 

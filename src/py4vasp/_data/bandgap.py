@@ -113,7 +113,7 @@ kpoint:
 
     def _get(self, desired_label):
         return next(
-            self._raw_data.values[self._steps, index]
+            self._raw_data.values[self._steps, 0, index]
             for index, label in enumerate(self._raw_data.labels[:])
             if convert.text_to_string(label) == desired_label
         )
