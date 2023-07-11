@@ -69,8 +69,18 @@ def test_read_spin_polarized(spin_polarized, steps, Assert):
     actual = spin_polarized.read() if steps == -1 else spin_polarized[steps].read()
     ref = spin_polarized.ref
     Assert.allclose(actual["fundamental"], ref.minimal_gap[steps])
+    Assert.allclose(actual["fundamental_up"], ref.fundamental[steps, 0])
+    Assert.allclose(actual["fundamental_down"], ref.fundamental[steps, 1])
     Assert.allclose(actual["kpoint_VBM"], ref.kpoint_vbm_minimal[steps])
     Assert.allclose(actual["kpoint_CBM"], ref.kpoint_cbm_minimal[steps])
+    Assert.allclose(actual["kpoint_VBM_up"], ref.kpoint_vbm[steps, 0])
+    Assert.allclose(actual["kpoint_VBM_down"], ref.kpoint_vbm[steps, 1])
+    Assert.allclose(actual["kpoint_CBM_up"], ref.kpoint_cbm[steps, 0])
+    Assert.allclose(actual["kpoint_CBM_down"], ref.kpoint_cbm[steps, 1])
+    Assert.allclose(actual["optical_up"], ref.optical[steps, 0])
+    Assert.allclose(actual["optical_down"], ref.optical[steps, 1])
+    Assert.allclose(actual["kpoint_optical_up"], ref.kpoint_optical[steps, 0])
+    Assert.allclose(actual["kpoint_optical_down"], ref.kpoint_optical[steps, 1])
 
 
 def test_fundamental(bandgap, steps, Assert):

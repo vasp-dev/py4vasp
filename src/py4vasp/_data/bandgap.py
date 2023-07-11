@@ -20,6 +20,7 @@ class Bandgap(slice_.Mixin, base.Refinery, graph.Mixin):
     @base.data_access
     def __str__(self):
         data = self.to_dict()
+        print(data["optical"])
         return """\
 bandgap:
     step: {step}
@@ -65,9 +66,9 @@ kpoint:
         """
         return {
             **self._minimal_gap(),
-            "optical": self.optical(),
-            "kpoint_optical": np.squeeze(self._kpoint("optical")),
-            "fermi_energy": self._get_old("Fermi energy"),
+            **self._spin_dependent_gaps(),
+            **self._optical_gap(),
+            "fermi_energy": self._get("Fermi energy", spin=0),
         }
 
     def _minimal_gap(self):
@@ -85,9 +86,35 @@ kpoint:
             "kpoint_CBM": np.squeeze(kpoint_cbm),
         }
 
+    def _spin_dependent_gaps(self):
+        if not self._spin_polarized():
+            return {}
+        return {
+            "fundamental_up": self.fundamental("up"),
+            "fundamental_down": self.fundamental("down"),
+            "kpoint_VBM_up": self._kpoint("VBM", spin=0),
+            "kpoint_VBM_down": self._kpoint("VBM", spin=1),
+            "kpoint_CBM_up": self._kpoint("CBM", spin=0),
+            "kpoint_CBM_down": self._kpoint("CBM", spin=1),
+        }
+
+    def _optical_gap(self):
+        if self._spin_polarized():
+            return {
+                "optical_up": self.optical("up"),
+                "optical_down": self.optical("down"),
+                "kpoint_optical_up": self._kpoint("optical", spin=0),
+                "kpoint_optical_down": self._kpoint("optical", spin=1),
+            }
+        else:
+            return {
+                "optical": self.optical(),
+                "kpoint_optical": np.squeeze(self._kpoint("optical")),
+            }
+
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "fundamental"))
-    def fundamental(self):
+    def fundamental(self, selection="minimal"):
         """Return the fundamental bandgap.
 
         The fundamental bandgap is between the maximum of the valence band and the
@@ -100,13 +127,16 @@ kpoint:
 
         {examples}
         """
-        return self._get_old("conduction band minimum") - self._get_old(
-            "valence band maximum"
-        )
+        if selection == "minimal":
+            return self._minimal_gap()["fundamental"]
+        spin = 0 if selection == "up" else 1
+        cbm = self._get("conduction band minimum", spin)
+        vbm = self._get("valence band maximum", spin)
+        return np.squeeze(cbm - vbm)
 
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "optical"))
-    def optical(self):
+    def optical(self, selection="minimal"):
         """Return the optical bandgap.
 
         The optical bandgap is the minimal distance between a valence and conduction
@@ -119,7 +149,17 @@ kpoint:
 
         {examples}
         """
-        return self._get_old("optical gap top") - self._get_old("optical gap bottom")
+        if selection == "minimal":
+            return np.squeeze(
+                np.min(
+                    self._get("optical gap top") - self._get("optical gap bottom"),
+                    axis=-1,
+                )
+            )
+        spin = 0 if selection == "up" else 1
+        top = self._get("optical gap top", spin)
+        bottom = self._get("optical gap bottom", spin)
+        return np.squeeze(top - bottom)
 
     def _kpoint(self, label, spin=slice(None)):
         kpoint = [
@@ -129,18 +169,12 @@ kpoint:
         ]
         return np.moveaxis(kpoint, 0, -1)
 
-    def _kpoint_old(self, label):
-        return self._kpoint(label, spin=0)
-
     def _get(self, desired_label, spin=slice(None)):
         return next(
             self._raw_data.values[self._slice, spin, index]
             for index, label in enumerate(self._raw_data.labels[:])
             if convert.text_to_string(label) == desired_label
         )
-
-    def _get_old(self, desired_label):
-        return np.squeeze(self._get(desired_label, spin=0))
 
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "to_graph"))
