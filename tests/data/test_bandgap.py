@@ -21,13 +21,31 @@ KPOINT_OPTICAL = slice(11, 14)
 @pytest.fixture
 def bandgap(raw_data):
     raw_gap = raw_data.bandgap("default")
+    return setup_bandgap(raw_gap)
+
+
+@pytest.fixture
+def spin_polarized(raw_data):
+    raw_gap = raw_data.bandgap("spin_polarized")
+    bandgap = setup_bandgap(raw_gap)
+    max_vbm = 1
+    min_cbm = 0
+    minimal_gap = raw_gap.values[:, min_cbm, CBM] - raw_gap.values[:, max_vbm, VBM]
+    bandgap.ref.minimal_gap = minimal_gap
+    bandgap.ref.kpoint_vbm_minimal = raw_gap.values[:, max_vbm, KPOINT_VBM]
+    bandgap.ref.kpoint_cbm_minimal = raw_gap.values[:, min_cbm, KPOINT_CBM]
+    return bandgap
+
+
+def setup_bandgap(raw_gap):
     bandgap = data.Bandgap.from_data(raw_gap)
+    values = np.squeeze(raw_gap.values)
     bandgap.ref = types.SimpleNamespace()
-    bandgap.ref.fundamental = raw_gap.values[:, 0, CBM] - raw_gap.values[:, 0, VBM]
-    bandgap.ref.kpoint_vbm = raw_gap.values[:, 0, KPOINT_VBM]
-    bandgap.ref.kpoint_cbm = raw_gap.values[:, 0, KPOINT_CBM]
-    bandgap.ref.optical = raw_gap.values[:, 0, TOP] - raw_gap.values[:, 0, BOTTOM]
-    bandgap.ref.kpoint_optical = raw_gap.values[:, 0, KPOINT_OPTICAL]
+    bandgap.ref.fundamental = values[..., CBM] - values[..., VBM]
+    bandgap.ref.kpoint_vbm = values[..., KPOINT_VBM]
+    bandgap.ref.kpoint_cbm = values[..., KPOINT_CBM]
+    bandgap.ref.optical = values[..., TOP] - values[..., BOTTOM]
+    bandgap.ref.kpoint_optical = values[..., KPOINT_OPTICAL]
     bandgap.ref.fermi_energy = raw_gap.values[:, 0, FERMI]
     return bandgap
 
@@ -37,7 +55,7 @@ def steps(request):
     return request.param
 
 
-def test_read(bandgap, steps, Assert):
+def test_read_default(bandgap, steps, Assert):
     actual = bandgap.read() if steps == -1 else bandgap[steps].read()
     Assert.allclose(actual["fundamental"], bandgap.ref.fundamental[steps])
     Assert.allclose(actual["kpoint_VBM"], bandgap.ref.kpoint_vbm[steps])
@@ -45,6 +63,14 @@ def test_read(bandgap, steps, Assert):
     Assert.allclose(actual["optical"], bandgap.ref.optical[steps])
     Assert.allclose(actual["kpoint_optical"], bandgap.ref.kpoint_optical[steps])
     Assert.allclose(actual["fermi_energy"], bandgap.ref.fermi_energy[steps])
+
+
+def test_read_spin_polarized(spin_polarized, steps, Assert):
+    actual = spin_polarized.read() if steps == -1 else spin_polarized[steps].read()
+    ref = spin_polarized.ref
+    Assert.allclose(actual["fundamental"], ref.minimal_gap[steps])
+    Assert.allclose(actual["kpoint_VBM"], ref.kpoint_vbm_minimal[steps])
+    Assert.allclose(actual["kpoint_CBM"], ref.kpoint_cbm_minimal[steps])
 
 
 def test_fundamental(bandgap, steps, Assert):

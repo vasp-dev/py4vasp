@@ -47,6 +47,9 @@ kpoint:
         else:
             return scalar_or_array
 
+    def _spin_polarized(self):
+        return self._raw_data.values.shape[1] == 2
+
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "to_dict"))
     def to_dict(self):
@@ -61,12 +64,25 @@ kpoint:
         {examples}
         """
         return {
-            "fundamental": self.fundamental(),
-            "kpoint_VBM": self._kpoint("VBM"),
-            "kpoint_CBM": self._kpoint("CBM"),
+            **self._minimal_gap(),
             "optical": self.optical(),
-            "kpoint_optical": self._kpoint("optical"),
-            "fermi_energy": self._get("Fermi energy"),
+            "kpoint_optical": np.squeeze(self._kpoint("optical")),
+            "fermi_energy": self._get_old("Fermi energy"),
+        }
+
+    def _minimal_gap(self):
+        vbm = self._get("valence band maximum")
+        cbm = self._get("conduction band minimum")
+        max_spin = np.argmax(vbm, axis=-1)
+        min_spin = np.argmin(cbm, axis=-1)
+        vbm = np.array([band[spin] for band, spin in zip(vbm, max_spin)])
+        cbm = np.array([band[spin] for band, spin in zip(cbm, min_spin)])
+        kpoint_vbm = [kpt[spin] for kpt, spin in zip(self._kpoint("VBM"), max_spin)]
+        kpoint_cbm = [kpt[spin] for kpt, spin in zip(self._kpoint("CBM"), min_spin)]
+        return {
+            "fundamental": np.squeeze(cbm - vbm),
+            "kpoint_VBM": np.squeeze(kpoint_vbm),
+            "kpoint_CBM": np.squeeze(kpoint_cbm),
         }
 
     @base.data_access
@@ -84,7 +100,9 @@ kpoint:
 
         {examples}
         """
-        return self._get("conduction band minimum") - self._get("valence band maximum")
+        return self._get_old("conduction band minimum") - self._get_old(
+            "valence band maximum"
+        )
 
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "optical"))
@@ -101,22 +119,28 @@ kpoint:
 
         {examples}
         """
-        return self._get("optical gap top") - self._get("optical gap bottom")
+        return self._get_old("optical gap top") - self._get_old("optical gap bottom")
 
-    def _kpoint(self, label):
+    def _kpoint(self, label, spin=slice(None)):
         kpoint = [
-            self._get(f"kx ({label})"),
-            self._get(f"ky ({label})"),
-            self._get(f"kz ({label})"),
+            self._get(f"kx ({label})", spin),
+            self._get(f"ky ({label})", spin),
+            self._get(f"kz ({label})", spin),
         ]
-        return np.array(kpoint).T
+        return np.moveaxis(kpoint, 0, -1)
 
-    def _get(self, desired_label):
+    def _kpoint_old(self, label):
+        return self._kpoint(label, spin=0)
+
+    def _get(self, desired_label, spin=slice(None)):
         return next(
-            self._raw_data.values[self._steps, 0, index]
+            self._raw_data.values[self._slice, spin, index]
             for index, label in enumerate(self._raw_data.labels[:])
             if convert.text_to_string(label) == desired_label
         )
+
+    def _get_old(self, desired_label):
+        return np.squeeze(self._get(desired_label, spin=0))
 
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "to_graph"))
