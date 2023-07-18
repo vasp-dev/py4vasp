@@ -292,8 +292,8 @@ def _band_gap(selection):
     labels = (
         "valence band maximum",
         "conduction band minimum",
-        "optical gap bottom",
-        "optical gap top",
+        "direct gap bottom",
+        "direct gap top",
         "Fermi energy",
         "kx (VBM)",
         "ky (VBM)",
@@ -301,15 +301,17 @@ def _band_gap(selection):
         "kx (CBM)",
         "ky (CBM)",
         "kz (CBM)",
-        "kx (optical)",
-        "ky (optical)",
-        "kz (optical)",
+        "kx (direct)",
+        "ky (direct)",
+        "kz (direct)",
     )
-    num_spins = two_spins if selection == "spin_polarized" else single_spin
-    shape = (number_steps, num_spins, len(labels))
+    num_components = 3 if selection == "spin_polarized" else 1
+    shape = (number_steps, num_components, len(labels))
     data = np.sqrt(np.arange(np.prod(shape)).reshape(shape))
-    if num_spins == 2:
-        data[:, 1, 4] = data[:, 0, 4]  # only spin-independent Fermi energy implemented
+    if num_components == 3:
+        # only spin-independent Fermi energy implemented
+        data[:, 1, 4] = data[:, 0, 4]
+        data[:, 2, 4] = data[:, 0, 4]
     return raw.Bandgap(labels=np.array(labels, dtype="S"), values=data)
 
 

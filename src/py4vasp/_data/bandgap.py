@@ -11,7 +11,7 @@ from py4vasp._util import convert, documentation
 class Bandgap(slice_.Mixin, base.Refinery, graph.Mixin):
     """Extract information about the band extrema during the relaxation or MD simulation.
 
-    Contains utility functions to access the fundamental and optical bandgap as well as
+    Contains utility functions to access the fundamental and direct bandgap as well as
     the k-point coordinates at which these are found.
 
     {examples}
@@ -20,22 +20,21 @@ class Bandgap(slice_.Mixin, base.Refinery, graph.Mixin):
     @base.data_access
     def __str__(self):
         data = self.to_dict()
-        print(data["optical"])
         return """\
 bandgap:
     step: {step}
     fundamental:{fundamental:10.6f}
-    optical:    {optical:10.6f}
+    direct:    {direct:10.6f}
 kpoint:
     val. band min: {kpoint_vbm}
     cond. band max:{kpoint_cbm}
-    optical gap:   {kpoint_optical}""".format(
+    direct gap:   {kpoint_direct}""".format(
             step=np.arange(len(self._raw_data.values))[self._slice][-1] + 1,
             fundamental=self._last_element(data["fundamental"]),
-            optical=self._last_element(data["optical"]),
+            direct=self._last_element(data["direct"]),
             kpoint_vbm=self._kpoint_str(data["kpoint_VBM"]),
             kpoint_cbm=self._kpoint_str(data["kpoint_CBM"]),
-            kpoint_optical=self._kpoint_str(data["kpoint_optical"]),
+            kpoint_direct=self._kpoint_str(data["kpoint_direct"]),
         )
 
     def _kpoint_str(self, kpoint):
@@ -49,7 +48,7 @@ kpoint:
             return scalar_or_array
 
     def _spin_polarized(self):
-        return self._raw_data.values.shape[1] == 2
+        return self._raw_data.values.shape[1] == 3
 
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "to_dict"))
@@ -59,58 +58,45 @@ kpoint:
         Returns
         -------
         dict
-            Contains the fundamental and optical gap as well as the coordinates of the
+            Contains the fundamental and direct gap as well as the coordinates of the
             k points where the relevant points in the band structure are.
 
         {examples}
         """
         return {
-            **self._minimal_gap(),
-            **self._spin_dependent_gaps(),
-            **self._optical_gap(),
+            **self._fundamental_gap(),
+            **self._kpoint_dict("VBM"),
+            **self._kpoint_dict("CBM"),
+            **self._direct_gap(),
+            **self._kpoint_dict("direct"),
             "fermi_energy": self._get("Fermi energy", spin=0),
         }
 
-    def _minimal_gap(self):
+    def _fundamental_gap(self):
         vbm = self._get("valence band maximum")
         cbm = self._get("conduction band minimum")
-        max_spin = np.argmax(vbm, axis=-1)
-        min_spin = np.argmin(cbm, axis=-1)
-        vbm = np.array([band[spin] for band, spin in zip(vbm, max_spin)])
-        cbm = np.array([band[spin] for band, spin in zip(cbm, min_spin)])
-        kpoint_vbm = [kpt[spin] for kpt, spin in zip(self._kpoint("VBM"), max_spin)]
-        kpoint_cbm = [kpt[spin] for kpt, spin in zip(self._kpoint("CBM"), min_spin)]
         return {
-            "fundamental": np.squeeze(cbm - vbm),
-            "kpoint_VBM": np.squeeze(kpoint_vbm),
-            "kpoint_CBM": np.squeeze(kpoint_cbm),
+            f"fundamental{suffix}": cbm[..., i] - vbm[..., i]
+            for i, suffix in enumerate(self._suffixes())
         }
 
-    def _spin_dependent_gaps(self):
-        if not self._spin_polarized():
-            return {}
+    def _direct_gap(self):
+        top = self._get("direct gap top")
+        bottom = self._get("direct gap bottom")
         return {
-            "fundamental_up": self.fundamental("up"),
-            "fundamental_down": self.fundamental("down"),
-            "kpoint_VBM_up": self._kpoint("VBM", spin=0),
-            "kpoint_VBM_down": self._kpoint("VBM", spin=1),
-            "kpoint_CBM_up": self._kpoint("CBM", spin=0),
-            "kpoint_CBM_down": self._kpoint("CBM", spin=1),
+            f"direct{suffix}": top[..., i] - bottom[..., i]
+            for i, suffix in enumerate(self._suffixes())
         }
 
-    def _optical_gap(self):
-        if self._spin_polarized():
-            return {
-                "optical_up": self.optical("up"),
-                "optical_down": self.optical("down"),
-                "kpoint_optical_up": self._kpoint("optical", spin=0),
-                "kpoint_optical_down": self._kpoint("optical", spin=1),
-            }
-        else:
-            return {
-                "optical": self.optical(),
-                "kpoint_optical": np.squeeze(self._kpoint("optical")),
-            }
+    def _kpoint_dict(self, label):
+        kpoint = self._kpoint(label)
+        return {
+            f"kpoint_{label}{suffix}": kpoint[..., i, :]
+            for i, suffix in enumerate(self._suffixes())
+        }
+
+    def _suffixes(self):
+        return ("", "_up", "_down") if self._spin_polarized() else ("",)
 
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "fundamental"))
@@ -127,19 +113,16 @@ kpoint:
 
         {examples}
         """
-        if selection == "minimal":
-            return self._minimal_gap()["fundamental"]
-        spin = 0 if selection == "up" else 1
-        cbm = self._get("conduction band minimum", spin)
-        vbm = self._get("valence band maximum", spin)
-        return np.squeeze(cbm - vbm)
+        cbm = self._get("conduction band minimum", 0)
+        vbm = self._get("valence band maximum", 0)
+        return cbm - vbm
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("bandgap", "optical"))
-    def optical(self, selection="minimal"):
-        """Return the optical bandgap.
+    @documentation.format(examples=slice_.examples("bandgap", "direct"))
+    def direct(self, selection="minimal"):
+        """Return the direct bandgap.
 
-        The optical bandgap is the minimal distance between a valence and conduction
+        The direct bandgap is the minimal distance between a valence and conduction
         band at a single k point and for a single spin.
 
         Returns
@@ -152,13 +135,13 @@ kpoint:
         if selection == "minimal":
             return np.squeeze(
                 np.min(
-                    self._get("optical gap top") - self._get("optical gap bottom"),
+                    self._get("direct gap top") - self._get("direct gap bottom"),
                     axis=-1,
                 )
             )
         spin = 0 if selection == "up" else 1
-        top = self._get("optical gap top", spin)
-        bottom = self._get("optical gap bottom", spin)
+        top = self._get("direct gap top", spin)
+        bottom = self._get("direct gap bottom", spin)
         return np.squeeze(top - bottom)
 
     def _kpoint(self, label, spin=slice(None)):
@@ -171,7 +154,7 @@ kpoint:
 
     def _get(self, desired_label, spin=slice(None)):
         return next(
-            self._raw_data.values[self._slice, spin, index]
+            self._raw_data.values[self._steps, spin, index]
             for index, label in enumerate(self._raw_data.labels[:])
             if convert.text_to_string(label) == desired_label
         )
@@ -179,7 +162,7 @@ kpoint:
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "to_graph"))
     def to_graph(self):
-        """Plot the optical and fundamental bandgap along the trajectory.
+        """Plot the direct and fundamental bandgap along the trajectory.
 
         Returns
         -------
@@ -189,7 +172,7 @@ kpoint:
 
         {examples}"""
         return graph.Graph(
-            [self._make_series("fundamental"), self._make_series("optical")],
+            [self._make_series("fundamental"), self._make_series("direct")],
             xlabel="Step",
             ylabel="bandgap (eV)",
         )
