@@ -69,14 +69,24 @@ def test_read_spin_polarized(spin_polarized, steps, Assert):
     Assert.allclose(actual["fermi_energy"], ref.fermi_energy[steps])
 
 
-def test_fundamental(bandgap, steps, Assert):
+def test_fundamental_default(bandgap, steps, Assert):
     actual = bandgap.fundamental() if steps == -1 else bandgap[steps].fundamental()
     Assert.allclose(actual, bandgap.ref.fundamental[steps, 0])
 
 
-def test_direct(bandgap, steps, Assert):
+def test_fundamental_spin_polarized(spin_polarized, steps, Assert):
+    bandgap = spin_polarized if steps == -1 else spin_polarized[steps]
+    Assert.allclose(bandgap.fundamental(), bandgap.ref.fundamental[steps, 0])
+
+
+def test_direct_default(bandgap, steps, Assert):
     actual = bandgap.direct() if steps == -1 else bandgap[steps].direct()
     Assert.allclose(actual, bandgap.ref.direct[steps, 0])
+
+
+def test_fundamental_spin_polarized(spin_polarized, steps, Assert):
+    bandgap = spin_polarized if steps == -1 else spin_polarized[steps]
+    Assert.allclose(bandgap.direct(), bandgap.ref.direct[steps, 0])
 
 
 def test_plot(bandgap, steps, Assert):

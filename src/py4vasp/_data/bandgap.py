@@ -119,7 +119,7 @@ Fermi energy:    {fermi_energy}"""
 
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "fundamental"))
-    def fundamental(self, selection="minimal"):
+    def fundamental(self):
         """Return the fundamental bandgap.
 
         The fundamental bandgap is between the maximum of the valence band and the
@@ -132,13 +132,11 @@ Fermi energy:    {fermi_energy}"""
 
         {examples}
         """
-        cbm = self._get("conduction band minimum", spin=0)
-        vbm = self._get("valence band maximum", spin=0)
-        return cbm - vbm
+        return self._gap("fundamental", spin=0)
 
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "direct"))
-    def direct(self, selection="minimal"):
+    def direct(self):
         """Return the direct bandgap.
 
         The direct bandgap is the minimal distance between a valence and conduction
@@ -151,17 +149,7 @@ Fermi energy:    {fermi_energy}"""
 
         {examples}
         """
-        if selection == "minimal":
-            return np.squeeze(
-                np.min(
-                    self._get("direct gap top") - self._get("direct gap bottom"),
-                    axis=-1,
-                )
-            )
-        spin = 0 if selection == "up" else 1
-        top = self._get("direct gap top", spin)
-        bottom = self._get("direct gap bottom", spin)
-        return np.squeeze(top - bottom)
+        return self._gap("direct", spin=0)
 
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "to_graph"))
