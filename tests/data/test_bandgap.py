@@ -114,6 +114,12 @@ def check_default_graph(bandgap, steps, Assert, graph):
     Assert.allclose(direct.y, bandgap.ref.direct[steps, 0])
 
 
+def test_plot_selection(bandgap, steps, Assert):
+    graph = bandgap.plot("direct") if steps == -1 else bandgap[steps].plot("direct")
+    assert len(graph.series) == 1
+    Assert.allclose(graph.series[0].y, bandgap.ref.direct[steps, 0])
+
+
 @patch("py4vasp._data.bandgap.Bandgap.to_graph")
 def test_energy_to_plotly(mock_plot, bandgap):
     fig = bandgap.to_plotly()

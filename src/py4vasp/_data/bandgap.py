@@ -6,7 +6,7 @@ import numpy as np
 
 from py4vasp._data import base, slice_
 from py4vasp._third_party import graph
-from py4vasp._util import convert, documentation
+from py4vasp._util import convert, documentation, select
 
 
 class Gap(typing.NamedTuple):
@@ -59,7 +59,7 @@ Fermi energy:    {fermi_energy}"""
             upper_band=self._output_energy("direct gap top"),
             direct=self._output_gap("direct"),
             kpoint_direct=self._output_kpoint("direct"),
-            fermi_energy=self._output_energy("Fermi energy", spin=slice(0, 1)),
+            fermi_energy=self._output_energy("Fermi energy", component=slice(0, 1)),
         )
 
     def _output_header(self):
@@ -68,8 +68,8 @@ Fermi energy:    {fermi_energy}"""
         else:
             return "      spin independent"
 
-    def _output_energy(self, label, spin=slice(None)):
-        energies = self._get(label, steps=self._last_step_in_slice, spin=spin)
+    def _output_energy(self, label, component=slice(None)):
+        energies = self._get(label, steps=self._last_step_in_slice, component=component)
         return (9 * " ").join(map("{:20.6f}".format, energies))
 
     def _output_gap(self, label):
@@ -100,7 +100,7 @@ Fermi energy:    {fermi_energy}"""
             **self._kpoint_dict("CBM"),
             **self._gap_dict("direct"),
             **self._kpoint_dict("direct"),
-            "fermi_energy": self._get("Fermi energy", spin=0),
+            "fermi_energy": self._get("Fermi energy", component=0),
         }
 
     def _gap_dict(self, label):
@@ -132,7 +132,7 @@ Fermi energy:    {fermi_energy}"""
 
         {examples}
         """
-        return self._gap("fundamental", spin=0)
+        return self._gap("fundamental", component=0)
 
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "direct"))
@@ -149,11 +149,11 @@ Fermi energy:    {fermi_energy}"""
 
         {examples}
         """
-        return self._gap("direct", spin=0)
+        return self._gap("direct", component=0)
 
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "to_graph"))
-    def to_graph(self):
+    def to_graph(self, selection="fundamental, direct"):
         """Plot the direct and fundamental bandgap along the trajectory.
 
         Returns
@@ -163,15 +163,19 @@ Fermi energy:    {fermi_energy}"""
             the y axis.
 
         {examples}"""
-        return graph.Graph(
-            [self._make_series("fundamental"), self._make_series("direct")],
-            xlabel="Step",
-            ylabel="bandgap (eV)",
-        )
+        series = [self._make_series(label) for label in self._parse(selection)]
+        return graph.Graph(series, xlabel="Step", ylabel="bandgap (eV)")
+
+    def _parse(self, selection):
+        tree = select.Tree.from_selection(selection)
+        for selection in tree.selections():
+            label = {"fundamental", "direct"}.intersection(selection)
+            if len(label) == 1:
+                yield label.pop()
 
     def _make_series(self, label):
         steps = np.arange(len(self._raw_data.values))[self._slice] + 1
-        gaps = np.atleast_1d(getattr(self, label)())
+        gaps = np.atleast_1d(self._gap(label, component=0))
         return graph.Series(steps, gaps, label)
 
     def _spin_polarized(self):
@@ -190,10 +194,10 @@ Fermi energy:    {fermi_energy}"""
         ]
         return np.moveaxis(kpoint, 0, -1)
 
-    def _get(self, desired_label, *, steps=None, spin=slice(None)):
+    def _get(self, desired_label, *, steps=None, component=slice(None)):
         steps = steps or self._steps
         return next(
-            self._raw_data.values[steps, spin, index]
+            self._raw_data.values[steps, component, index]
             for index, label in enumerate(self._raw_data.labels[:])
             if convert.text_to_string(label) == desired_label
         )
