@@ -19,6 +19,8 @@ GAPS = {
     "direct": Gap("direct gap bottom", "direct gap top"),
 }
 
+COMPONENTS = ("independent", "up", "down")
+
 
 @documentation.format(examples=slice_.examples("bandgap"))
 class Bandgap(slice_.Mixin, base.Refinery, graph.Mixin):
@@ -163,19 +165,29 @@ Fermi energy:    {fermi_energy}"""
             the y axis.
 
         {examples}"""
-        series = [self._make_series(label) for label in self._parse(selection)]
+        series = [self._make_series(*choice) for choice in self._parse(selection)]
         return graph.Graph(series, xlabel="Step", ylabel="bandgap (eV)")
 
     def _parse(self, selection):
         tree = select.Tree.from_selection(selection)
         for selection in tree.selections():
-            label = {"fundamental", "direct"}.intersection(selection)
+            label = set(GAPS).intersection(selection)
+            component = set(COMPONENTS).intersection(selection)
+            if len(component) == 1:
+                component = COMPONENTS.index(component.pop())
+            else:
+                component = 0
             if len(label) == 1:
-                yield label.pop()
+                yield label.pop(), component
+            else:
+                for label in GAPS:
+                    yield label, component
 
-    def _make_series(self, label):
+    def _make_series(self, label, component):
         steps = np.arange(len(self._raw_data.values))[self._slice] + 1
-        gaps = np.atleast_1d(self._gap(label, component=0))
+        gaps = np.atleast_1d(self._gap(label, component=component))
+        if component != 0:
+            label = f"{label}_{COMPONENTS[component]}"
         return graph.Series(steps, gaps, label)
 
     def _spin_polarized(self):

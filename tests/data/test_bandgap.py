@@ -114,10 +114,30 @@ def check_default_graph(bandgap, steps, Assert, graph):
     Assert.allclose(direct.y, bandgap.ref.direct[steps, 0])
 
 
-def test_plot_selection(bandgap, steps, Assert):
+def test_plot_selection_default(bandgap, steps, Assert):
     graph = bandgap.plot("direct") if steps == -1 else bandgap[steps].plot("direct")
     assert len(graph.series) == 1
+    assert graph.series[0].name == "direct"
     Assert.allclose(graph.series[0].y, bandgap.ref.direct[steps, 0])
+
+
+def test_plot_selection_spin_polarized(spin_polarized, steps, Assert):
+    bandgap = spin_polarized if steps == -1 else spin_polarized[steps]
+    selection = "up, fundamental(down), independent(direct)"
+    graph = bandgap.plot(selection)
+    assert len(graph.series) == 4
+    fundamental_up = graph.series[0]
+    assert fundamental_up.name == "fundamental_up"
+    Assert.allclose(fundamental_up.y, bandgap.ref.fundamental[steps, 1])
+    direct_up = graph.series[1]
+    assert direct_up.name == "direct_up"
+    Assert.allclose(direct_up.y, bandgap.ref.direct[steps, 1])
+    fundamental_down = graph.series[2]
+    assert fundamental_down.name == "fundamental_down"
+    Assert.allclose(fundamental_down.y, bandgap.ref.fundamental[steps, 2])
+    direct = graph.series[3]
+    assert direct.name == "direct"
+    Assert.allclose(direct.y, bandgap.ref.direct[steps, 0])
 
 
 @patch("py4vasp._data.bandgap.Bandgap.to_graph")
