@@ -20,26 +20,49 @@ class Bandgap(slice_.Mixin, base.Refinery, graph.Mixin):
     @base.data_access
     def __str__(self):
         data = self.to_dict()
-        return """\
-bandgap:
-    step: {step}
-    fundamental:{fundamental:10.6f}
-    direct:    {direct:10.6f}
-kpoint:
-    val. band min: {kpoint_vbm}
-    cond. band max:{kpoint_cbm}
-    direct gap:   {kpoint_direct}""".format(
-            step=np.arange(len(self._raw_data.values))[self._slice][-1] + 1,
-            fundamental=self._last_element(data["fundamental"]),
-            direct=self._last_element(data["direct"]),
-            kpoint_vbm=self._kpoint_str(data["kpoint_VBM"]),
-            kpoint_cbm=self._kpoint_str(data["kpoint_CBM"]),
-            kpoint_direct=self._kpoint_str(data["kpoint_direct"]),
-        )
+        template = """\
+Band structure
+--------------
+                       spin independent
+val. band max:   {val_band_max:20.6f}
+cond. band min:  {cond_band_min:20.6f}
+fundamental gap: {fundamental:20.6f}
+VBM @ kpoint:    {kpoint_vbm}
+CBM @ kpoint:    {kpoint_cbm}
+
+lower band:      {lower_band:20.6f}
+upper band:      {upper_band:20.6f}
+direct gap:      {direct:20.6f}
+@ kpoint:        {kpoint_direct}
+
+Fermi energy:    {fermi_energy:20.6f}"""
+        dict_ = {
+            "val_band_max": self._get(
+                "valence band maximum", steps=self._last_step_in_slice, spin=0
+            ),
+            "cond_band_min": self._get(
+                "conduction band minimum", steps=self._last_step_in_slice, spin=0
+            ),
+            "fundamental": self._last_element(data["fundamental"]),
+            "kpoint_vbm": self._kpoint_str(data["kpoint_VBM"]),
+            "kpoint_cbm": self._kpoint_str(data["kpoint_CBM"]),
+            "lower_band": self._get(
+                "direct gap bottom", steps=self._last_step_in_slice, spin=0
+            ),
+            "upper_band": self._get(
+                "direct gap top", steps=self._last_step_in_slice, spin=0
+            ),
+            "direct": self._last_element(data["direct"]),
+            "kpoint_direct": self._kpoint_str(data["kpoint_direct"]),
+            "fermi_energy": self._get(
+                "Fermi energy", steps=self._last_step_in_slice, spin=0
+            ),
+        }
+        return template.format(**dict_)
 
     def _kpoint_str(self, kpoint):
         kpoint = self._last_element(kpoint)
-        return " ".join(map("{:10.6f}".format, kpoint))
+        return " " + " ".join(map("{:8.4f}".format, kpoint))
 
     def _last_element(self, scalar_or_array):
         if self._is_slice:
@@ -49,6 +72,13 @@ kpoint:
 
     def _spin_polarized(self):
         return self._raw_data.values.shape[1] == 3
+
+    def _get_last(self, desired_label, spin=slice(None)):
+        return next(
+            self._raw_data.values[self._last_step_in_slice, spin, index]
+            for index, label in enumerate(self._raw_data.labels[:])
+            if convert.text_to_string(label) == desired_label
+        )
 
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "to_dict"))
@@ -113,8 +143,8 @@ kpoint:
 
         {examples}
         """
-        cbm = self._get("conduction band minimum", 0)
-        vbm = self._get("valence band maximum", 0)
+        cbm = self._get("conduction band minimum", spin=0)
+        vbm = self._get("valence band maximum", spin=0)
         return cbm - vbm
 
     @base.data_access
@@ -146,15 +176,16 @@ kpoint:
 
     def _kpoint(self, label, spin=slice(None)):
         kpoint = [
-            self._get(f"kx ({label})", spin),
-            self._get(f"ky ({label})", spin),
-            self._get(f"kz ({label})", spin),
+            self._get(f"kx ({label})", spin=spin),
+            self._get(f"ky ({label})", spin=spin),
+            self._get(f"kz ({label})", spin=spin),
         ]
         return np.moveaxis(kpoint, 0, -1)
 
-    def _get(self, desired_label, spin=slice(None)):
+    def _get(self, desired_label, *, steps=None, spin=slice(None)):
+        steps = steps or self._steps
         return next(
-            self._raw_data.values[self._steps, spin, index]
+            self._raw_data.values[steps, spin, index]
             for index, label in enumerate(self._raw_data.labels[:])
             if convert.text_to_string(label) == desired_label
         )
