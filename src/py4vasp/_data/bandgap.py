@@ -1,10 +1,23 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import typing
+
 import numpy as np
 
 from py4vasp._data import base, slice_
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation
+
+
+class Gap(typing.NamedTuple):
+    bottom: str
+    top: str
+
+
+GAPS = {
+    "fundamental": Gap("valence band maximum", "conduction band minimum"),
+    "direct": Gap("direct gap bottom", "direct gap top"),
+}
 
 
 @documentation.format(examples=slice_.examples("bandgap"))
@@ -19,66 +32,54 @@ class Bandgap(slice_.Mixin, base.Refinery, graph.Mixin):
 
     @base.data_access
     def __str__(self):
-        data = self.to_dict()
         template = """\
 Band structure
 --------------
-                       spin independent
-val. band max:   {val_band_max:20.6f}
-cond. band min:  {cond_band_min:20.6f}
-fundamental gap: {fundamental:20.6f}
+                 {header}
+val. band max:   {val_band_max}
+cond. band min:  {cond_band_min}
+fundamental gap: {fundamental}
 VBM @ kpoint:    {kpoint_vbm}
 CBM @ kpoint:    {kpoint_cbm}
 
-lower band:      {lower_band:20.6f}
-upper band:      {upper_band:20.6f}
-direct gap:      {direct:20.6f}
+lower band:      {lower_band}
+upper band:      {upper_band}
+direct gap:      {direct}
 @ kpoint:        {kpoint_direct}
 
-Fermi energy:    {fermi_energy:20.6f}"""
-        dict_ = {
-            "val_band_max": self._get(
-                "valence band maximum", steps=self._last_step_in_slice, spin=0
-            ),
-            "cond_band_min": self._get(
-                "conduction band minimum", steps=self._last_step_in_slice, spin=0
-            ),
-            "fundamental": self._last_element(data["fundamental"]),
-            "kpoint_vbm": self._kpoint_str(data["kpoint_VBM"]),
-            "kpoint_cbm": self._kpoint_str(data["kpoint_CBM"]),
-            "lower_band": self._get(
-                "direct gap bottom", steps=self._last_step_in_slice, spin=0
-            ),
-            "upper_band": self._get(
-                "direct gap top", steps=self._last_step_in_slice, spin=0
-            ),
-            "direct": self._last_element(data["direct"]),
-            "kpoint_direct": self._kpoint_str(data["kpoint_direct"]),
-            "fermi_energy": self._get(
-                "Fermi energy", steps=self._last_step_in_slice, spin=0
-            ),
-        }
-        return template.format(**dict_)
-
-    def _kpoint_str(self, kpoint):
-        kpoint = self._last_element(kpoint)
-        return " " + " ".join(map("{:8.4f}".format, kpoint))
-
-    def _last_element(self, scalar_or_array):
-        if self._is_slice:
-            return scalar_or_array[-1]
-        else:
-            return scalar_or_array
-
-    def _spin_polarized(self):
-        return self._raw_data.values.shape[1] == 3
-
-    def _get_last(self, desired_label, spin=slice(None)):
-        return next(
-            self._raw_data.values[self._last_step_in_slice, spin, index]
-            for index, label in enumerate(self._raw_data.labels[:])
-            if convert.text_to_string(label) == desired_label
+Fermi energy:    {fermi_energy}"""
+        return template.format(
+            header=self._output_header(),
+            val_band_max=self._output_energy("valence band maximum"),
+            cond_band_min=self._output_energy("conduction band minimum"),
+            fundamental=self._output_gap("fundamental"),
+            kpoint_vbm=self._output_kpoint("VBM"),
+            kpoint_cbm=self._output_kpoint("CBM"),
+            lower_band=self._output_energy("direct gap bottom"),
+            upper_band=self._output_energy("direct gap top"),
+            direct=self._output_gap("direct"),
+            kpoint_direct=self._output_kpoint("direct"),
+            fermi_energy=self._output_energy("Fermi energy", spin=slice(0, 1)),
         )
+
+    def _output_header(self):
+        if self._spin_polarized():
+            return "      spin independent             spin component 1             spin component 2"
+        else:
+            return "      spin independent"
+
+    def _output_energy(self, label, spin=slice(None)):
+        energies = self._get(label, steps=self._last_step_in_slice, spin=spin)
+        return (9 * " ").join(map("{:20.6f}".format, energies))
+
+    def _output_gap(self, label):
+        gaps = self._gap(label, steps=self._last_step_in_slice)
+        return (9 * " ").join(map("{:20.6f}".format, gaps))
+
+    def _output_kpoint(self, label):
+        kpoints = self._kpoint(label, steps=self._last_step_in_slice)
+        to_string = lambda kpoint: " ".join(map("{:8.4f}".format, kpoint))
+        return " " + "   ".join(map(to_string, kpoints))
 
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "to_dict"))
@@ -94,29 +95,17 @@ Fermi energy:    {fermi_energy:20.6f}"""
         {examples}
         """
         return {
-            **self._fundamental_gap(),
+            **self._gap_dict("fundamental"),
             **self._kpoint_dict("VBM"),
             **self._kpoint_dict("CBM"),
-            **self._direct_gap(),
+            **self._gap_dict("direct"),
             **self._kpoint_dict("direct"),
             "fermi_energy": self._get("Fermi energy", spin=0),
         }
 
-    def _fundamental_gap(self):
-        vbm = self._get("valence band maximum")
-        cbm = self._get("conduction band minimum")
-        return {
-            f"fundamental{suffix}": cbm[..., i] - vbm[..., i]
-            for i, suffix in enumerate(self._suffixes())
-        }
-
-    def _direct_gap(self):
-        top = self._get("direct gap top")
-        bottom = self._get("direct gap bottom")
-        return {
-            f"direct{suffix}": top[..., i] - bottom[..., i]
-            for i, suffix in enumerate(self._suffixes())
-        }
+    def _gap_dict(self, label):
+        gaps = self._gap(label).T
+        return {f"{label}{suffix}": gap for gap, suffix in zip(gaps, self._suffixes())}
 
     def _kpoint_dict(self, label):
         kpoint = self._kpoint(label)
@@ -174,22 +163,6 @@ Fermi energy:    {fermi_energy:20.6f}"""
         bottom = self._get("direct gap bottom", spin)
         return np.squeeze(top - bottom)
 
-    def _kpoint(self, label, spin=slice(None)):
-        kpoint = [
-            self._get(f"kx ({label})", spin=spin),
-            self._get(f"ky ({label})", spin=spin),
-            self._get(f"kz ({label})", spin=spin),
-        ]
-        return np.moveaxis(kpoint, 0, -1)
-
-    def _get(self, desired_label, *, steps=None, spin=slice(None)):
-        steps = steps or self._steps
-        return next(
-            self._raw_data.values[steps, spin, index]
-            for index, label in enumerate(self._raw_data.labels[:])
-            if convert.text_to_string(label) == desired_label
-        )
-
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "to_graph"))
     def to_graph(self):
@@ -212,3 +185,27 @@ Fermi energy:    {fermi_energy:20.6f}"""
         steps = np.arange(len(self._raw_data.values))[self._slice] + 1
         gaps = np.atleast_1d(getattr(self, label)())
         return graph.Series(steps, gaps, label)
+
+    def _spin_polarized(self):
+        return self._raw_data.values.shape[1] == 3
+
+    def _gap(self, label, **kwargs):
+        top = self._get(GAPS[label].top, **kwargs)
+        bottom = self._get(GAPS[label].bottom, **kwargs)
+        return top - bottom
+
+    def _kpoint(self, label, **kwargs):
+        kpoint = [
+            self._get(f"kx ({label})", **kwargs),
+            self._get(f"ky ({label})", **kwargs),
+            self._get(f"kz ({label})", **kwargs),
+        ]
+        return np.moveaxis(kpoint, 0, -1)
+
+    def _get(self, desired_label, *, steps=None, spin=slice(None)):
+        steps = steps or self._steps
+        return next(
+            self._raw_data.values[steps, spin, index]
+            for index, label in enumerate(self._raw_data.labels[:])
+            if convert.text_to_string(label) == desired_label
+        )

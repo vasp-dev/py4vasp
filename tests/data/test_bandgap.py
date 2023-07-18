@@ -21,8 +21,6 @@ KPOINT_DIRECT = slice(11, 14)
 @pytest.fixture
 def bandgap(raw_data):
     raw_gap = raw_data.bandgap("default")
-    for l, x in zip(raw_gap.labels, raw_gap.values.T):
-        print(l, x[0])
     return setup_bandgap(raw_gap)
 
 
@@ -120,13 +118,13 @@ def check_to_image(bandgap, filename_argument, expected_filename):
         fig.write_image.assert_called_once_with(bandgap._path / expected_filename)
 
 
-def test_print(bandgap, steps, format_):
+def test_print_default(bandgap, steps, format_):
     actual, _ = format_(bandgap) if steps == -1 else format_(bandgap[steps])
-    reference = get_reference_string(steps)
+    reference = get_reference_string_default(steps)
     assert actual == {"text/plain": reference}
 
 
-def get_reference_string(steps):
+def get_reference_string_default(steps):
     if steps == 0:
         return """\
 Band structure
@@ -178,6 +176,67 @@ direct gap:                  0.074954
 @ kpoint:           7.2801   7.3485   7.4162
 
 Fermi energy:                6.782330"""
+
+
+def test_print_spin_polarized(spin_polarized, steps, format_):
+    bandgap = spin_polarized if steps == -1 else spin_polarized[steps]
+    actual, _ = format_(bandgap)
+    reference = get_reference_string_spin_polarized(steps)
+    assert actual == {"text/plain": reference}
+
+
+def get_reference_string_spin_polarized(steps):
+    if steps == 0:
+        return """\
+Band structure
+--------------
+                       spin independent             spin component 1             spin component 2
+val. band max:               0.000000                     3.741657                     5.291503
+cond. band min:              1.000000                     3.872983                     5.385165
+fundamental gap:             1.000000                     0.131326                     0.093662
+VBM @ kpoint:       2.2361   2.4495   2.6458     4.3589   4.4721   4.5826     5.7446   5.8310   5.9161
+CBM @ kpoint:       2.8284   3.0000   3.1623     4.6904   4.7958   4.8990     6.0000   6.0828   6.1644
+
+lower band:                  1.414214                     4.000000                     5.477226
+upper band:                  1.732051                     4.123106                     5.567764
+direct gap:                  0.317837                     0.123106                     0.090539
+@ kpoint:           3.3166   3.4641   3.6056     5.0000   5.0990   5.1962     6.2450   6.3246   6.4031
+
+Fermi energy:                2.000000"""
+    elif steps == slice(1, 3):
+        return """\
+Band structure
+--------------
+                       spin independent             spin component 1             spin component 2
+val. band max:               9.165151                     9.899495                    10.583005
+cond. band min:              9.219544                     9.949874                    10.630146
+fundamental gap:             0.054393                     0.050379                     0.047141
+VBM @ kpoint:       9.4340   9.4868   9.5394    10.1489  10.1980  10.2470    10.8167  10.8628  10.9087
+CBM @ kpoint:       9.5917   9.6437   9.6954    10.2956  10.3441  10.3923    10.9545  11.0000  11.0454
+
+lower band:                  9.273618                    10.000000                    10.677078
+upper band:                  9.327379                    10.049876                    10.723805
+direct gap:                  0.053761                     0.049876                     0.046727
+@ kpoint:           9.7468   9.7980   9.8489    10.4403  10.4881  10.5357    11.0905  11.1355  11.1803
+
+Fermi energy:                9.380832"""
+    else:
+        return """\
+Band structure
+--------------
+                       spin independent             spin component 1             spin component 2
+val. band max:              11.224972                    11.832160                    12.409674
+cond. band min:             11.269428                    11.874342                    12.449900
+fundamental gap:             0.044456                     0.042183                     0.040226
+VBM @ kpoint:      11.4455  11.4891  11.5326    12.0416  12.0830  12.1244    12.6095  12.6491  12.6886
+CBM @ kpoint:      11.5758  11.6190  11.6619    12.1655  12.2066  12.2474    12.7279  12.7671  12.8062
+
+lower band:                 11.313708                    11.916375                    12.489996
+upper band:                 11.357817                    11.958261                    12.529964
+direct gap:                  0.044108                     0.041885                     0.039968
+@ kpoint:          11.7047  11.7473  11.7898    12.2882  12.3288  12.3693    12.8452  12.8841  12.9228
+
+Fermi energy:               11.401754"""
 
 
 def test_factory_methods(raw_data, check_factory_methods):
