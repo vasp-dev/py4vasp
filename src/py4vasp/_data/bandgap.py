@@ -1,9 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import itertools
 import typing
 
 import numpy as np
 
+from py4vasp import exception
 from py4vasp._data import base, slice_
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, select
@@ -171,24 +173,43 @@ Fermi energy:    {fermi_energy}"""
     def _parse(self, selection):
         tree = select.Tree.from_selection(selection)
         for selection in tree.selections():
-            label = set(GAPS).intersection(selection)
-            component = set(COMPONENTS).intersection(selection)
-            if len(component) == 1:
-                component = COMPONENTS.index(component.pop())
-            else:
-                component = 0
-            if len(label) == 1:
-                yield label.pop(), component
-            else:
-                for label in GAPS:
-                    yield label, component
+            self._raise_error_if_unused_selection(selection)
+            components = self._parse_components(selection)
+            labels = self._parse_labels(selection)
+            yield from itertools.product(labels, components)
+
+    def _raise_error_if_unused_selection(self, selection):
+        if rest := set(selection).difference(GAPS).difference(COMPONENTS):
+            raise exception.IncorrectUsage(
+                f"A part of your selection {rest} could not be mapped to a valid selection"
+            )
+
+    def _parse_components(self, selection):
+        components = set(COMPONENTS).intersection(selection)
+        if not components:
+            components = ("independent",)
+        elif not self._spin_polarized():
+            raise exception.IncorrectUsage(
+                f"You selected a component {components} but the VASP calculation did not include spin polarization."
+            )
+        return components
+
+    def _parse_labels(self, selection):
+        labels = set(GAPS).intersection(selection)
+        if not labels:
+            labels = GAPS.keys()
+        elif len(labels) > 1:
+            raise exception.IncorrectUsage(
+                f"Two conflicting labels selected {labels}. Please check your input."
+            )
+        return labels
 
     def _make_series(self, label, component):
         steps = np.arange(len(self._raw_data.values))[self._slice] + 1
-        gaps = np.atleast_1d(self._gap(label, component=component))
-        if component != 0:
-            label = f"{label}_{COMPONENTS[component]}"
-        return graph.Series(steps, gaps, label)
+        gaps = self._gap(label, component=COMPONENTS.index(component))
+        if component != "independent":
+            label = f"{label}_{component}"
+        return graph.Series(steps, np.atleast_1d(gaps), label)
 
     def _spin_polarized(self):
         return self._raw_data.values.shape[1] == 3

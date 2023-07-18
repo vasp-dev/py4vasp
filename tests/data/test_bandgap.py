@@ -6,7 +6,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import data
+from py4vasp import data, exception
 
 VBM = 0
 CBM = 1
@@ -138,6 +138,12 @@ def test_plot_selection_spin_polarized(spin_polarized, steps, Assert):
     direct = graph.series[3]
     assert direct.name == "direct"
     Assert.allclose(direct.y, bandgap.ref.direct[steps, 0])
+
+
+@pytest.mark.parametrize("selection", ["up", "unknown", "fundamental(direct)"])
+def test_plot_incorrect_selection(bandgap, selection):
+    with pytest.raises(exception.IncorrectUsage):
+        bandgap.plot(selection)
 
 
 @patch("py4vasp._data.bandgap.Bandgap.to_graph")
