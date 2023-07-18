@@ -41,7 +41,14 @@ schema.add(
     raw.Bandgap,
     required=raw.Version(6, 5),
     labels="intermediate/electron/band/labels",
-    values="intermediate/electron/band/data",
+    values="intermediate/electron/band/gap_from_weight",
+)
+schema.add(
+    raw.Bandgap,
+    name="kpoint",
+    required=raw.Version(6, 5),
+    labels="intermediate/electron/band/labels",
+    values="intermediate/electron/band/gap_from_kpoint",
 )
 #
 schema.add(
