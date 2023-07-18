@@ -89,8 +89,17 @@ def test_fundamental_spin_polarized(spin_polarized, steps, Assert):
     Assert.allclose(bandgap.direct(), bandgap.ref.direct[steps, 0])
 
 
-def test_plot(bandgap, steps, Assert):
+def test_plot_default(bandgap, steps, Assert):
     graph = bandgap.plot() if steps == -1 else bandgap[steps].plot()
+    check_default_graph(bandgap, steps, Assert, graph)
+
+
+def test_plot_spin_polarized(spin_polarized, steps, Assert):
+    graph = spin_polarized.plot() if steps == -1 else spin_polarized[steps].plot()
+    check_default_graph(spin_polarized, steps, Assert, graph)
+
+
+def check_default_graph(bandgap, steps, Assert, graph):
     xx = np.arange(len(bandgap.ref.fundamental))[steps] + 1
     assert graph.xlabel == "Step"
     assert graph.ylabel == "bandgap (eV)"
