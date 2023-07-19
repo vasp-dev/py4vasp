@@ -160,6 +160,13 @@ Fermi energy:    {fermi_energy}"""
     def to_graph(self, selection="fundamental, direct"):
         """Plot the direct and fundamental bandgap along the trajectory.
 
+        Parameters
+        ----------
+        selection : str
+            Select which bandgap to include in the plot. By default the fundamental
+            and the direct one are included. In spin-polarized calculations, you can
+            also select up or down to obtain the bandgap without spin flips.
+
         Returns
         -------
         Graph
