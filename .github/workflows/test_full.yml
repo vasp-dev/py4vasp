@@ -29,6 +29,7 @@ jobs:
         conda info
         conda install -c conda-forge mdtraj
     - name: Install dependencies
+      shell: bash -el {0}
       run: |
         conda activate test
         conda env list
