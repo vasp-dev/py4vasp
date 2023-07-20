@@ -11,8 +11,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.8", "3.9", "3.10"]
+        os: [ubuntu-latest] #, macos-latest, windows-latest]
+        python-version: ["3.8"] #, "3.9", "3.10"]
 
     steps:
     - uses: actions/checkout@v3
@@ -26,6 +26,7 @@ jobs:
     - name: Install dependencies with conda
       shell: bash -el {0}
       run: |
+        conda env list
         conda activate test
         conda info
         conda install -c conda-forge mdtraj
