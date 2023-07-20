@@ -30,6 +30,8 @@ jobs:
         conda install -c conda-forge mdtraj
     - name: Install dependencies
       run: |
+        conda env list
+        which python
         python --version
         python -m pip install --upgrade pip
         pip install "poetry!=1.4.1"
@@ -39,6 +41,9 @@ jobs:
         conda list
     - name: Test with pytest
       run: |
+        conda env list
+        conda list
+        which pytest
         poetry run pytest --version
         poetry run pytest --cov=py4vasp --cov-report term
     - name: Check code style
