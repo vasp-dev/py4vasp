@@ -27,9 +27,15 @@ jobs:
     - name: Set up poetry
       shell: bash -el {0}
       run: |
+        conda env list
         python --version
         python -m pip install --upgrade pip
         pip install "poetry!=1.4.1"
+    - name: Install mdtraj (root)
+      shell: bash -el {0}
+      run: |
+          conda info
+          conda install -q --no-deps -c conda-forge mdtraj
     - name: Install py4vasp
       shell: bash -el {0}
       run: |
@@ -38,12 +44,12 @@ jobs:
         poetry --version
         poetry install
         conda list
-    - name: Install mdtraj with conda
+    - name: Install mdtraj (dependencies)
       shell: bash -el {0}
       run: |
         conda env list
         conda info
-        conda install -q -c conda-forge mdtraj
+        conda install -q --only-deps -c conda-forge mdtraj
         conda list
     - name: Test with pytest
       shell: bash -el {0}
