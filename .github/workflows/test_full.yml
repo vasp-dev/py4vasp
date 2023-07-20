@@ -25,7 +25,9 @@ jobs:
         auto-update-conda: true
         # activate-environment: py4vasp
     - name: Install dependencies with conda
+      shell: bash -el {0}
       run: |
+        conda activate test
         conda info
         conda install -c conda-forge mdtraj
     - name: Install dependencies
@@ -42,6 +44,7 @@ jobs:
         poetry install
         conda list
     - name: Test with pytest
+      shell: bash -el {0}
       run: |
         conda activate test
         conda env list
@@ -50,7 +53,9 @@ jobs:
         poetry run pytest --version
         poetry run pytest --cov=py4vasp --cov-report term
     - name: Check code style
+      shell: bash -el {0}
       run: |
+        conda activate test
         poetry run isort --version
         poetry run isort --check src
         poetry run isort --check tests
