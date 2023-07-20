@@ -26,8 +26,8 @@ jobs:
         conda install -c conda-forge mdtraj
     - name: Install dependencies
       run: |
-        python --version
-        curl -sSL https://install.python-poetry.org | python -
+        python3 --version
+        curl -sSL https://install.python-poetry.org | python3 -
         poetry --version
         poetry config virtualenvs.create false --local
         poetry install
