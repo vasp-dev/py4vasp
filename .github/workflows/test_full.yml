@@ -42,6 +42,7 @@ jobs:
       shell: bash -el {0}
       run: |
         conda env list
+        python --version
         poetry --version
         poetry install
         conda list
