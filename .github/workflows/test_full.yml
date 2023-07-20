@@ -37,11 +37,13 @@ jobs:
         poetry config virtualenvs.create false --local
         poetry --version
         poetry install
+        conda list
     - name: Install mdtraj with conda
       shell: bash -el {0}
       run: |
+        conda env list
         conda info
-        conda install -c conda-forge mdtraj
+        conda install -q -c conda-forge mdtraj
         conda list
     - name: Test with pytest
       shell: bash -el {0}
