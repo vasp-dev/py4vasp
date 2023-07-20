@@ -30,7 +30,8 @@ jobs:
     - name: Install dependencies
       run: |
         python --version
-        curl -sSL https://install.python-poetry.org | python -
+        python -m pip install --upgrade pip
+        pip install "poetry!=1.4.1"
         poetry --version
         poetry config virtualenvs.create false --local
         poetry install
