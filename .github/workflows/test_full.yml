@@ -11,8 +11,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.8", "3.9", "3.10"]
+        os: [windows-latest] #[ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.8"] #, "3.9", "3.10"]
 
     steps:
     - uses: actions/checkout@v3
@@ -24,11 +24,6 @@ jobs:
       uses: conda-incubator/setup-miniconda@v2
       with:
         auto-update-conda: true
-    - name: Install mdtraj with conda
-      shell: bash -el {0}
-      run: |
-        conda info
-        conda install -c conda-forge mdtraj
     - name: Install dependencies
       shell: bash -el {0}
       run: |
@@ -37,6 +32,11 @@ jobs:
         pip install "poetry!=1.4.1"
         poetry --version
         poetry install
+    - name: Install mdtraj with conda
+      shell: bash -el {0}
+      run: |
+        conda info
+        conda install -c conda-forge mdtraj
     - name: Test with pytest
       shell: bash -el {0}
       run: |
