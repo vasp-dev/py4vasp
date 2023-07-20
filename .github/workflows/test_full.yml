@@ -16,30 +16,30 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    - uses: conda-incubator/setup-miniconda@v2
+    - name: Set up conda
+      uses: conda-incubator/setup-miniconda@v2
       with:
         auto-update-conda: true
-    - name: Install dependencies with conda
-      shell: bash -el {0}
-      run: |
-        conda info
-        conda install -c conda-forge mdtraj
-    - name: Install dependencies
+        python-version: ${{ matrix.python-version }}
+    - name: Set up poetry
       shell: bash -el {0}
       run: |
         python --version
-        python -m pip install --upgrade pip
-        pip install "poetry!=1.4.1"
+        python -m pip install --progress-bar=off --upgrade pip
+        pip install --progress-bar=off "poetry!=1.4.1"
+    - name: Install py4vasp
+      shell: bash -el {0}
+      run: |
         poetry --version
         poetry install
+    - name: Install mdtraj with conda
+      shell: bash -el {0}
+      run: |
+        conda info
+        conda install -q -c conda-forge mdtraj
     - name: Test with pytest
       shell: bash -el {0}
       run: |
-        which pytest
         poetry run pytest --version
         poetry run pytest --cov=py4vasp --cov-report term
     - name: Check code style
