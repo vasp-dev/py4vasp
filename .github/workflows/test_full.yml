@@ -16,21 +16,23 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
+      #    - name: Set up Python ${{ matrix.python-version }}
+      #      uses: actions/setup-python@v4
+      #      with:
+      #        python-version: ${{ matrix.python-version }}
     - name: Set up conda
       uses: conda-incubator/setup-miniconda@v2
       with:
         auto-update-conda: true
+        python-version: ${{ matrix.python-version }}
     - name: Set up poetry
       shell: bash -el {0}
       run: |
         conda env list
         python --version
-        python -m pip install --upgrade pip
-        pip install "poetry!=1.4.1"
+        # python -m pip install --upgrade pip
+        # pip install "poetry!=1.4.1"
+        conda install -c conda-forge poetry
     - name: Install mdtraj with conda
       shell: bash -el {0}
       run: |
