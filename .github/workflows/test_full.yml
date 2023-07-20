@@ -24,12 +24,15 @@ jobs:
       uses: conda-incubator/setup-miniconda@v2
       with:
         auto-update-conda: true
-    - name: Install dependencies
+    - name: Set up poetry
       shell: bash -el {0}
       run: |
         python --version
         python -m pip install --upgrade pip
         pip install "poetry!=1.4.1"
+    - name: Install py4vasp
+      shell: bash -el {0}
+      run: |
         poetry --version
         poetry install
     - name: Install mdtraj with conda
@@ -40,7 +43,6 @@ jobs:
     - name: Test with pytest
       shell: bash -el {0}
       run: |
-        which pytest
         poetry run pytest --version
         poetry run pytest --cov=py4vasp --cov-report term
     - name: Check code style
