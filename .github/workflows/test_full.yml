@@ -33,6 +33,7 @@ jobs:
     - name: Install py4vasp
       shell: bash -el {0}
       run: |
+        conda activate test
         poetry --version
         poetry install
     - name: Install mdtraj with conda
@@ -40,6 +41,7 @@ jobs:
       run: |
         conda info
         conda install -c conda-forge mdtraj
+        conda list
     - name: Test with pytest
       shell: bash -el {0}
       run: |
