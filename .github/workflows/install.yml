@@ -18,24 +18,22 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.8
     - name: Set up conda
       uses: conda-incubator/setup-miniconda@v2
       with:
         auto-update-conda: true
-    - name: Install mdtraj with conda
+        python-version: 3.8
+    - name: Install py4vasp and testing tools
       shell: bash -el {0}
-      run: |
-        conda info
-        conda install -c conda-forge mdtraj
-    - name: Install from pyproject file
       run: |
         python -m pip install --upgrade pip
         pip install .
         pip install pytest hypothesis
+    - name: Install mdtraj with conda
+      shell: bash -el {0}
+      run: |
+        conda info
+        conda install -q -c conda-forge mdtraj
     - name: Test with pytest
       run: |
         pytest --version
