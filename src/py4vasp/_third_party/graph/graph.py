@@ -159,8 +159,13 @@ class Graph(Sequence):
     def to_frame(self):
         df = pd.DataFrame()
         for series in np.atleast_1d(self.series):
-            df[f"{series.name}.x"] = series.x
-            df[f"{series.name}.y"] = series.y
+            replace_space = lambda text: text.replace(" ", "_")
+            df[replace_space(f"{series.name}.x")] = series.x
+            if series.y.ndim == 1: 
+                df[replace_space(f"{series.name}.y")] = series.y
+            else:
+                for idx, series_y in enumerate(np.atleast_2d(series.y)):
+                    df[replace_space(f"{series.name}.y{idx}")] = series_y
         return df
 
     @property
