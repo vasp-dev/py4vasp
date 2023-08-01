@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, fields, replace
 
 import numpy as np
+import pandas as pd
 
 from py4vasp import exception
 from py4vasp._config import VASP_COLORS
@@ -154,6 +155,13 @@ class Graph(Sequence):
             figure.layout.yaxis.title.text = self.ylabel
             if self.y2label:
                 figure.layout.yaxis2.title.text = self.y2label
+
+    def to_frame(self):
+        x = self.series.x
+        y = self.series.y
+        name = self.series.name
+        df = pd.DataFrame({f"{name}.x": x, f"{name}.y": y})
+        return df
 
     @property
     def _subplot_on(self):

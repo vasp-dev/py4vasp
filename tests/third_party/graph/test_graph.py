@@ -286,6 +286,13 @@ def test_add_label_to_multiple_lines(parabola, sine, Assert):
     assert graph.series[1].name == "new label sine"
 
 
+def test_convert_parabola_to_frame(parabola, Assert):
+    graph = Graph(parabola)
+    df = graph.to_frame()
+    Assert.allclose(df["parabola.x"], parabola.x)
+    Assert.allclose(df["parabola.y"], parabola.y)
+
+
 @patch("plotly.graph_objs.Figure._ipython_display_")
 def test_ipython_display(mock_display, parabola, not_core):
     graph = Graph(parabola)
