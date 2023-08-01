@@ -293,6 +293,16 @@ def test_convert_parabola_to_frame(parabola, Assert):
     Assert.allclose(df["parabola.y"], parabola.y)
 
 
+def test_convert_sequence_parabola_to_frame(parabola, sine, Assert):
+    sequence = [parabola, sine]
+    graph = Graph(sequence)
+    df = graph.to_frame()
+    Assert.allclose(df["parabola.x"], parabola.x)
+    Assert.allclose(df["parabola.y"], parabola.y)
+    Assert.allclose(df["sine.x"], sine.x)
+    Assert.allclose(df["sine.y"], sine.y)
+
+
 @patch("plotly.graph_objs.Figure._ipython_display_")
 def test_ipython_display(mock_display, parabola, not_core):
     graph = Graph(parabola)

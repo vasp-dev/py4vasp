@@ -157,10 +157,10 @@ class Graph(Sequence):
                 figure.layout.yaxis2.title.text = self.y2label
 
     def to_frame(self):
-        x = self.series.x
-        y = self.series.y
-        name = self.series.name
-        df = pd.DataFrame({f"{name}.x": x, f"{name}.y": y})
+        df = pd.DataFrame()
+        for series in np.atleast_1d(self.series):
+            df[f"{series.name}.x"] = series.x
+            df[f"{series.name}.y"] = series.y
         return df
 
     @property
