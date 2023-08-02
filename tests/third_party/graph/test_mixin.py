@@ -34,6 +34,16 @@ def test_converting_graph_to_plotly():
     GRAPH.to_plotly.assert_called_once_with()
     assert fig == GRAPH.to_plotly.return_value
 
+def test_convert_graph_to_frame():
+    example = ExampleGraph()
+    df = example.to_frame()
+    GRAPH.to_frame.assert_called_once_with()
+    assert df == GRAPH.to_frame.return_value
+
+def test_convert_graph_to_csv():
+    example = ExampleGraph()
+    example.to_csv()
+    GRAPH.to_csv.assert_called_once_with(example._path / "example_graph.csv")
 
 def test_converting_graph_to_image():
     example = ExampleGraph()
@@ -41,6 +51,17 @@ def test_converting_graph_to_image():
     fig = GRAPH.to_plotly.return_value
     fig.write_image.assert_called_once_with(example._path / "example_graph.png")
 
+def test_converting_graph_to_csv_with_relative_filename():
+    example = ExampleGraph()
+    example.to_csv(filename="example.csv")
+    GRAPH.to_csv.assert_called_once_with(example._path / "example.csv")
+
+def test_converting_graph_to_csv_with_absolute_filename():
+    example = ExampleGraph()
+    basedir_path = example._path.resolve()
+    full_path = basedir_path / "example.csv"
+    example.to_csv(filename=full_path)
+    GRAPH.to_csv.assert_called_once_with(full_path)
 
 def test_converting_graph_to_image_with_filename():
     example = ExampleGraph()
