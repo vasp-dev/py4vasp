@@ -159,13 +159,19 @@ class Graph(Sequence):
     def to_frame(self):
         df = pd.DataFrame()
         for series in np.atleast_1d(self.series):
-            df[self._name_column(series, "x", None)] = series.x
-            for idx, series_y in enumerate(np.atleast_2d(series.y)):
-                df[self._name_column(series, "y", idx)] = series_y
-            if series.width is not None:
-                assert series.width.ndim == series.y.ndim
-                for idx, series_width in enumerate(np.atleast_2d(series.width)):
-                    df[self._name_column(series, "width", idx)] = series_width
+            _df = self._create_and_populate_df(series)
+            df = df.join(_df, how="outer")
+        return df
+
+    def _create_and_populate_df(self, series):
+        df = pd.DataFrame()
+        df[self._name_column(series, "x", None)] = series.x
+        for idx, series_y in enumerate(np.atleast_2d(series.y)):
+            df[self._name_column(series, "y", idx)] = series_y
+        if series.width is not None:
+            assert series.width.ndim == series.y.ndim
+            for idx, series_width in enumerate(np.atleast_2d(series.width)):
+                df[self._name_column(series, "width", idx)] = series_width
         return df
 
     def _name_column(self, series, suffix, idx=None):

@@ -311,8 +311,8 @@ def test_convert_multiple_lines(two_lines, Assert):
     Assert.allclose(df["two_lines.y0"], two_lines.y[0])
     Assert.allclose(df["two_lines.y1"], two_lines.y[1])
 
+
 def test_convert_two_fatbands_to_frame(two_fatbands, Assert):
-    
     graph = Graph(two_fatbands)
     df = graph.to_frame()
     Assert.allclose(df["two_fatbands.x"], two_fatbands.x)
@@ -320,6 +320,23 @@ def test_convert_two_fatbands_to_frame(two_fatbands, Assert):
     Assert.allclose(df["two_fatbands.y1"], two_fatbands.y[1])
     Assert.allclose(df["two_fatbands.width0"], two_fatbands.width[0])
     Assert.allclose(df["two_fatbands.width1"], two_fatbands.width[1])
+
+
+def test_convert_different_length_series_to_frame(parabola, two_lines, Assert):
+    sequence = [two_lines, parabola]
+    graph = Graph(sequence)
+    df = graph.to_frame()
+    assert len(df) == max(len(parabola.x), len(two_lines.x))
+    Assert.allclose(df["parabola.x"], parabola.x)
+    Assert.allclose(df["parabola.y"], parabola.y)
+    pad_width = len(parabola.x) - len(two_lines.x)
+    pad_nan = np.repeat(np.nan, pad_width)
+    padded_two_lines_x = np.hstack((two_lines.x, pad_nan))
+    padded_two_lines_y = np.hstack((two_lines.y, np.vstack((pad_nan, pad_nan))))
+    Assert.allclose(df["two_lines.x"], padded_two_lines_x)
+    Assert.allclose(df["two_lines.y0"], padded_two_lines_y[0])
+    Assert.allclose(df["two_lines.y1"], padded_two_lines_y[1])
+
 
 @patch("plotly.graph_objs.Figure._ipython_display_")
 def test_ipython_display(mock_display, parabola, not_core):
