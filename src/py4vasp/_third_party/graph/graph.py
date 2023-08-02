@@ -163,6 +163,7 @@ class Graph(Sequence):
             for idx, series_y in enumerate(np.atleast_2d(series.y)):
                 df[self._name_column(series, "y", idx)] = series_y
             if series.width is not None:
+                assert series.width.ndim == series.y.ndim
                 for idx, series_width in enumerate(np.atleast_2d(series.width)):
                     df[self._name_column(series, "width", idx)] = series_width
         return df

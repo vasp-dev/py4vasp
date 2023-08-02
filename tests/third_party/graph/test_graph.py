@@ -313,7 +313,6 @@ def test_convert_multiple_lines(two_lines, Assert):
 
 def test_convert_two_fatbands_to_frame(two_fatbands, Assert):
     
-    print(two_fatbands._get_width(0))
     graph = Graph(two_fatbands)
     df = graph.to_frame()
     Assert.allclose(df["two_fatbands.x"], two_fatbands.x)
@@ -321,7 +320,7 @@ def test_convert_two_fatbands_to_frame(two_fatbands, Assert):
     Assert.allclose(df["two_fatbands.y1"], two_fatbands.y[1])
     Assert.allclose(df["two_fatbands.width0"], two_fatbands.width[0])
     Assert.allclose(df["two_fatbands.width1"], two_fatbands.width[1])
-    
+
 @patch("plotly.graph_objs.Figure._ipython_display_")
 def test_ipython_display(mock_display, parabola, not_core):
     graph = Graph(parabola)
