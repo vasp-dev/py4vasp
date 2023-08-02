@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import itertools
+import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass, fields, replace
 
@@ -163,6 +164,10 @@ class Graph(Sequence):
             df = df.join(_df, how="outer")
         return df
 
+    def to_csv(self, filename):
+        df = self.to_frame()
+        df.to_csv(filename, index=False)
+
     def _create_and_populate_df(self, series):
         df = pd.DataFrame()
         df[self._name_column(series, "x", None)] = series.x
@@ -175,7 +180,10 @@ class Graph(Sequence):
         return df
 
     def _name_column(self, series, suffix, idx=None):
-        text_suffix = series.name.replace(" ", "_") + f".{suffix}"
+        if series.name:
+            text_suffix = series.name.replace(" ", "_") + f".{suffix}"
+        else:
+            text_suffix = "series_" + str(uuid.uuid1())
         if series.y.ndim == 1 or idx is None:
             return text_suffix
         else:

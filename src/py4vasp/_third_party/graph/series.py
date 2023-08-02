@@ -39,7 +39,9 @@ class Series:
     _frozen = False
 
     def __post_init__(self):
-        if len(self.x) != np.array(self.y).shape[-1]:
+        self.x = np.asarray(self.x)
+        self.y = np.asarray(self.y)
+        if len(self.x) != self.y.shape[-1]:
             message = "The length of the two plotted components is inconsistent."
             raise exception.IncorrectUsage(message)
         if self.width is not None and len(self.x) != self.width.shape[-1]:
