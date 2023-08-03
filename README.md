@@ -67,7 +67,11 @@ black src tests
 isort src tests
 ~~~
 before committing the code. This will autoformat your code and sort the import
-statements in a consistent order.
+statements in a consistent order. If you would like this code formatting to be done
+along with each commit, you can run
+~~~shell
+pre-commit install
+~~~
 
 ## Contributing to py4vasp
 
