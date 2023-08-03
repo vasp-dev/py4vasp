@@ -158,6 +158,18 @@ class Graph(Sequence):
                 figure.layout.yaxis2.title.text = self.y2label
 
     def to_frame(self):
+        """Convert graph to a pandas dataframe.
+
+        Every series will have at least two columns, named after the series name
+        with the suffix x and y. Additionally, if weights are provided, they will
+        also be written out as another column. If a series does not have a name, a
+        name will be generated based on a uuid.
+
+        Returns
+        -------
+        Dataframe
+            A pandas dataframe with columns for each series in the graph
+        """
         df = pd.DataFrame()
         for series in np.atleast_1d(self.series):
             _df = self._create_and_populate_df(series)
@@ -165,6 +177,16 @@ class Graph(Sequence):
         return df
 
     def to_csv(self, filename):
+        """Export graph to a csv file.
+
+        Starting from the dataframe generated from `to_frame`, use the `to_csv` method
+        implemented in pandas to write out a csv file with a given filename
+
+        Parameters
+        ----------
+        filename: str | Path
+            Name of the exported csv file
+        """
         df = self.to_frame()
         df.to_csv(filename, index=False)
 
