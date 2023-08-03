@@ -69,7 +69,7 @@ def test_converting_graph_to_csv_with_relative_filename():
 
 def test_converting_graph_to_csv_with_absolute_filename():
     example = ExampleGraph()
-    basedir_path = example._path.resolve()
+    basedir_path = example._path.absolute()
     full_path = basedir_path / "example.csv"
     example.to_csv(filename=full_path)
     GRAPH.to_frame.assert_called_once_with()
@@ -86,7 +86,7 @@ def test_converting_graph_to_image_with_filename():
 
 def test_converting_graph_to_image_with_absolute_filename():
     example = ExampleGraph()
-    basedir_path = example._path.resolve()
+    basedir_path = example._path.absolute()
     full_path = basedir_path / "example.jpg"
     example.to_image(filename=full_path)
     fig = GRAPH.to_plotly.return_value
