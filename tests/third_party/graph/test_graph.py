@@ -286,6 +286,73 @@ def test_add_label_to_multiple_lines(parabola, sine, Assert):
     assert graph.series[1].name == "new label sine"
 
 
+def test_convert_parabola_to_frame(parabola, Assert, not_core):
+    graph = Graph(parabola)
+    df = graph.to_frame()
+    Assert.allclose(df["parabola.x"], parabola.x)
+    Assert.allclose(df["parabola.y"], parabola.y)
+
+
+def test_convert_sequence_parabola_to_frame(parabola, sine, Assert, not_core):
+    sequence = [parabola, sine]
+    graph = Graph(sequence)
+    df = graph.to_frame()
+    Assert.allclose(df["parabola.x"], parabola.x)
+    Assert.allclose(df["parabola.y"], parabola.y)
+    Assert.allclose(df["sine.x"], sine.x)
+    Assert.allclose(df["sine.y"], sine.y)
+
+
+def test_convert_multiple_lines(two_lines, Assert, not_core):
+    graph = Graph(two_lines)
+    df = graph.to_frame()
+    assert len(df.columns) == 3
+    Assert.allclose(df["two_lines.x"], two_lines.x)
+    Assert.allclose(df["two_lines.y0"], two_lines.y[0])
+    Assert.allclose(df["two_lines.y1"], two_lines.y[1])
+
+
+def test_convert_two_fatbands_to_frame(two_fatbands, Assert, not_core):
+    graph = Graph(two_fatbands)
+    df = graph.to_frame()
+    Assert.allclose(df["two_fatbands.x"], two_fatbands.x)
+    Assert.allclose(df["two_fatbands.y0"], two_fatbands.y[0])
+    Assert.allclose(df["two_fatbands.y1"], two_fatbands.y[1])
+    Assert.allclose(df["two_fatbands.width0"], two_fatbands.width[0])
+    Assert.allclose(df["two_fatbands.width1"], two_fatbands.width[1])
+
+
+def test_write_csv(tmp_path, two_fatbands, non_numpy, Assert, not_core):
+    import pandas as pd
+
+    sequence = [two_fatbands, *non_numpy]
+    graph = Graph(sequence)
+    graph.to_csv(tmp_path / "filename.csv")
+    ref = graph.to_frame()
+    actual = pd.read_csv(tmp_path / "filename.csv")
+    ref_rounded = np.round(ref.values, 12)
+    actual_rounded = np.round(actual.values, 12)
+    Assert.allclose(ref_rounded, actual_rounded)
+
+
+def test_convert_different_length_series_to_frame(
+    parabola, two_lines, Assert, not_core
+):
+    sequence = [two_lines, parabola]
+    graph = Graph(sequence)
+    df = graph.to_frame()
+    assert len(df) == max(len(parabola.x), len(two_lines.x))
+    Assert.allclose(df["parabola.x"], parabola.x)
+    Assert.allclose(df["parabola.y"], parabola.y)
+    pad_width = len(parabola.x) - len(two_lines.x)
+    pad_nan = np.repeat(np.nan, pad_width)
+    padded_two_lines_x = np.hstack((two_lines.x, pad_nan))
+    padded_two_lines_y = np.hstack((two_lines.y, np.vstack((pad_nan, pad_nan))))
+    Assert.allclose(df["two_lines.x"], padded_two_lines_x)
+    Assert.allclose(df["two_lines.y0"], padded_two_lines_y[0])
+    Assert.allclose(df["two_lines.y1"], padded_two_lines_y[1])
+
+
 @patch("plotly.graph_objs.Figure._ipython_display_")
 def test_ipython_display(mock_display, parabola, not_core):
     graph = Graph(parabola)

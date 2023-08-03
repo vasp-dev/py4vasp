@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import itertools
+import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass, fields, replace
 
@@ -13,6 +14,7 @@ from py4vasp._util import import_
 
 go = import_.optional("plotly.graph_objects")
 subplots = import_.optional("plotly.subplots")
+pd = import_.optional("pandas")
 
 
 @dataclass
@@ -154,6 +156,60 @@ class Graph(Sequence):
             figure.layout.yaxis.title.text = self.ylabel
             if self.y2label:
                 figure.layout.yaxis2.title.text = self.y2label
+
+    def to_frame(self):
+        """Convert graph to a pandas dataframe.
+
+        Every series will have at least two columns, named after the series name
+        with the suffix x and y. Additionally, if weights are provided, they will
+        also be written out as another column. If a series does not have a name, a
+        name will be generated based on a uuid.
+
+        Returns
+        -------
+        Dataframe
+            A pandas dataframe with columns for each series in the graph
+        """
+        df = pd.DataFrame()
+        for series in np.atleast_1d(self.series):
+            _df = self._create_and_populate_df(series)
+            df = df.join(_df, how="outer")
+        return df
+
+    def to_csv(self, filename):
+        """Export graph to a csv file.
+
+        Starting from the dataframe generated from `to_frame`, use the `to_csv` method
+        implemented in pandas to write out a csv file with a given filename
+
+        Parameters
+        ----------
+        filename: str | Path
+            Name of the exported csv file
+        """
+        df = self.to_frame()
+        df.to_csv(filename, index=False)
+
+    def _create_and_populate_df(self, series):
+        df = pd.DataFrame()
+        df[self._name_column(series, "x", None)] = series.x
+        for idx, series_y in enumerate(np.atleast_2d(series.y)):
+            df[self._name_column(series, "y", idx)] = series_y
+        if series.width is not None:
+            assert series.width.ndim == series.y.ndim
+            for idx, series_width in enumerate(np.atleast_2d(series.width)):
+                df[self._name_column(series, "width", idx)] = series_width
+        return df
+
+    def _name_column(self, series, suffix, idx=None):
+        if series.name:
+            text_suffix = series.name.replace(" ", "_") + f".{suffix}"
+        else:
+            text_suffix = "series_" + str(uuid.uuid1())
+        if series.y.ndim == 1 or idx is None:
+            return text_suffix
+        else:
+            return f"{text_suffix}{idx}"
 
     @property
     def _subplot_on(self):

@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import abc
+import os
 
 from py4vasp._third_party.graph.graph import Graph
 from py4vasp._util import convert
@@ -14,6 +15,49 @@ class Mixin(abc.ABC):
     @abc.abstractmethod
     def to_graph(self, *args, **kwargs):
         pass
+
+    def to_frame(self, *args, **kwargs):
+        """Wrapper around the :py:meth:`to_frame` function.
+
+        Generates dataframes from the graph object. For information about
+        parameters that can be passed to this method, look at :py:meth:`to_graph`.
+
+        Returns
+        -------
+        Dataframe
+            Pandas dataframe corresponding to data in the graph
+        """
+        graph = self.to_graph(*args, **kwargs)
+        return graph.to_frame()
+
+    def to_csv(self, *args, filename=None, **kwargs):
+        """Converts data to a csv file.
+
+        Writes out a csv file for data stored in a dataframe generated with
+        the :py:meth:`to_frame` method. Useful for creating external plots
+        for further analysis.
+
+        If no filename is provided a default filename is deduced from the
+        name of the class.
+
+        Note that the filename must be a keyword argument, i.e., you explicitly
+        need to write *filename="name_of_file"* because the arguments are passed
+        on to the :py:meth:`to_graph` function. Please check the documentation of that function
+        to learn which arguments are allowed.
+
+        Parameters
+        ----------
+        filename: str | Path
+            Name of the csv file which the data is exported to.
+        """
+        classname = convert.to_snakecase(self.__class__.__name__).strip("_")
+        filename = filename if filename is not None else f"{classname}.csv"
+        if os.path.isabs(filename):
+            writeout_path = filename
+        else:
+            writeout_path = self._path / filename
+        df = self.to_frame(*args, **kwargs)
+        df.to_csv(writeout_path, index=False)
 
     def plot(self, *args, **kwargs):
         """Wrapper around the :py:meth:`to_graph` function.
@@ -49,7 +93,11 @@ class Mixin(abc.ABC):
         fig = self.to_plotly(*args, **kwargs)
         classname = convert.to_snakecase(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.png"
-        fig.write_image(self._path / filename)
+        if os.path.isabs(filename):
+            writeout_path = filename
+        else:
+            writeout_path = self._path / filename
+        fig.write_image(writeout_path)
 
 
 def _merge_graphs(graphs):
