@@ -5,6 +5,8 @@ on:
     - cron: "0 2 * * 6"
   push:
     branches: [master]
+  pull_request:
+    branches: [master]
 
 jobs:
   tests:
@@ -27,6 +29,7 @@ jobs:
         python -m pip install --progress-bar=off --upgrade pip
         pip install --progress-bar=off .
         pip install --progress-bar=off pytest hypothesis
+        pip install --progress-bar=off ipykernel
     - name: Install mdtraj with conda
       shell: bash -el {0}
       run: |
