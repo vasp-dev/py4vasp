@@ -39,6 +39,7 @@ hypothesis = ">=6.48.1"
 black = ">=22.6.0"
 isort = ">=5.10.1"
 ipykernel = ">=6.25.0"
+pre-commit = ">=3.3.3"
 
 [tool.poetry.group.doc.dependencies]
 sphinx = ">=5.0.2"
