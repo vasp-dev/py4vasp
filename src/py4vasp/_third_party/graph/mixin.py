@@ -1,7 +1,6 @@
- # Copyright © VASP Software GmbH,
+# Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import abc
-
 import os
 
 from py4vasp._third_party.graph.graph import Graph
@@ -16,15 +15,15 @@ class Mixin(abc.ABC):
     @abc.abstractmethod
     def to_graph(self, *args, **kwargs):
         pass
-    
+
     def to_frame(self, *args, **kwargs):
         graph = self.to_graph(*args, **kwargs)
         return graph.to_frame()
-    
+
     def to_csv(self, *args, filename=None, **kwargs):
         classname = convert.to_snakecase(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.csv"
-        if os.path.isabs(filename): 
+        if os.path.isabs(filename):
             writeout_path = filename
         else:
             writeout_path = self._path / filename
@@ -65,7 +64,7 @@ class Mixin(abc.ABC):
         fig = self.to_plotly(*args, **kwargs)
         classname = convert.to_snakecase(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.png"
-        if os.path.isabs(filename): 
+        if os.path.isabs(filename):
             writeout_path = filename
         else:
             writeout_path = self._path / filename
