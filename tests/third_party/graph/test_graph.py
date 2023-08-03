@@ -286,14 +286,14 @@ def test_add_label_to_multiple_lines(parabola, sine, Assert):
     assert graph.series[1].name == "new label sine"
 
 
-def test_convert_parabola_to_frame(parabola, Assert):
+def test_convert_parabola_to_frame(parabola, Assert, not_core):
     graph = Graph(parabola)
     df = graph.to_frame()
     Assert.allclose(df["parabola.x"], parabola.x)
     Assert.allclose(df["parabola.y"], parabola.y)
 
 
-def test_convert_sequence_parabola_to_frame(parabola, sine, Assert):
+def test_convert_sequence_parabola_to_frame(parabola, sine, Assert, not_core):
     sequence = [parabola, sine]
     graph = Graph(sequence)
     df = graph.to_frame()
@@ -303,7 +303,7 @@ def test_convert_sequence_parabola_to_frame(parabola, sine, Assert):
     Assert.allclose(df["sine.y"], sine.y)
 
 
-def test_convert_multiple_lines(two_lines, Assert):
+def test_convert_multiple_lines(two_lines, Assert, not_core):
     graph = Graph(two_lines)
     df = graph.to_frame()
     assert len(df.columns) == 3
@@ -312,7 +312,7 @@ def test_convert_multiple_lines(two_lines, Assert):
     Assert.allclose(df["two_lines.y1"], two_lines.y[1])
 
 
-def test_convert_two_fatbands_to_frame(two_fatbands, Assert):
+def test_convert_two_fatbands_to_frame(two_fatbands, Assert, not_core):
     graph = Graph(two_fatbands)
     df = graph.to_frame()
     Assert.allclose(df["two_fatbands.x"], two_fatbands.x)
@@ -335,7 +335,9 @@ def test_write_csv(tmp_path, two_fatbands, non_numpy, Assert, not_core):
     Assert.allclose(ref_rounded, actual_rounded)
 
 
-def test_convert_different_length_series_to_frame(parabola, two_lines, Assert):
+def test_convert_different_length_series_to_frame(
+    parabola, two_lines, Assert, not_core
+):
     sequence = [two_lines, parabola]
     graph = Graph(sequence)
     df = graph.to_frame()
