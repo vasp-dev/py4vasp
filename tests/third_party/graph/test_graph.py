@@ -4,7 +4,6 @@ import dataclasses
 from unittest.mock import patch
 
 import numpy as np
-import pandas as pd
 import pytest
 
 from py4vasp import exception
@@ -323,7 +322,8 @@ def test_convert_two_fatbands_to_frame(two_fatbands, Assert):
     Assert.allclose(df["two_fatbands.width1"], two_fatbands.width[1])
 
 
-def test_write_csv(tmp_path, two_fatbands, non_numpy, Assert):
+def test_write_csv(tmp_path, two_fatbands, non_numpy, Assert, not_core):
+    import pandas as pd
     sequence = [two_fatbands, *non_numpy]
     graph = Graph(sequence)
     graph.to_csv(tmp_path / "filename.csv")

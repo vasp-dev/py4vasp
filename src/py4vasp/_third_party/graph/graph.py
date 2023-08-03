@@ -6,7 +6,6 @@ from collections.abc import Sequence
 from dataclasses import dataclass, fields, replace
 
 import numpy as np
-import pandas as pd
 
 from py4vasp import exception
 from py4vasp._config import VASP_COLORS
@@ -15,6 +14,7 @@ from py4vasp._util import import_
 
 go = import_.optional("plotly.graph_objects")
 subplots = import_.optional("plotly.subplots")
+pd = import_.optional("pandas")
 
 
 @dataclass
