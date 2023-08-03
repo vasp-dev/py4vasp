@@ -22,14 +22,14 @@ class Mixin(abc.ABC):
         return graph.to_frame()
     
     def to_csv(self, *args, filename=None, **kwargs):
-        graph = self.to_graph(*args, **kwargs)
         classname = convert.to_snakecase(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.csv"
         if os.path.isabs(filename): 
             writeout_path = filename
         else:
             writeout_path = self._path / filename
-        graph.to_csv(writeout_path)
+        df = self.to_frame(*args, **kwargs)
+        df.to_csv(writeout_path, index=False)
 
     def plot(self, *args, **kwargs):
         """Wrapper around the :py:meth:`to_graph` function.
@@ -65,7 +65,11 @@ class Mixin(abc.ABC):
         fig = self.to_plotly(*args, **kwargs)
         classname = convert.to_snakecase(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.png"
-        fig.write_image(self._path / filename)
+        if os.path.isabs(filename): 
+            writeout_path = filename
+        else:
+            writeout_path = self._path / filename
+        fig.write_image(writeout_path)
 
 
 def _merge_graphs(graphs):

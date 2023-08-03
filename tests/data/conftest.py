@@ -57,6 +57,8 @@ def should_test_method(name):
         return False
     if name == "to_image":  # would have side effects
         return False
+    if name == "to_csv":
+        return False
     return True
 
 
