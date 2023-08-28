@@ -49,6 +49,9 @@ class _Assert:
     def allclose(actual, desired):
         if _is_none(actual):
             assert _is_none(desired)
+        elif actual.dtype == np.bool_:
+            assert desired.dtype == np.bool_
+            assert np.all(actual == desired)
         else:
             actual, desired = np.broadcast_arrays(actual, desired)
             actual, mask_actual = _finite_subset(actual)
@@ -104,7 +107,12 @@ class RawDataFactory:
 
     @staticmethod
     def CONTCAR(selection):
-        return _Sr2TiO4_CONTCAR()
+        if selection == "Sr2TiO4":
+            return _Sr2TiO4_CONTCAR()
+        elif selection == "Fe3O4":
+            return _Fe3O4_CONTCAR()
+        else:
+            raise exception.NotImplemented()
 
     @staticmethod
     def density(selection):
@@ -721,6 +729,23 @@ def _Fe3O4_cell():
     ]
     scaling = np.linspace(0.98, 1.01, number_steps)
     return raw.Cell(lattice_vectors=np.multiply.outer(scaling, lattice_vectors))
+
+
+def _Fe3O4_CONTCAR():
+    structure = _Fe3O4_structure()
+    structure.cell.lattice_vectors = structure.cell.lattice_vectors[-1]
+    structure.positions = structure.positions[-1]
+    selective_dynamics = np.random.choice([True, False], size=(number_atoms, axes))
+    lattice_velocities = 0.1 * structure.cell.lattice_vectors
+    shape = structure.positions.shape
+    ion_velocities = np.arange(np.prod(shape)).reshape(shape)
+    return raw.CONTCAR(
+        structure=structure,
+        system="Fe3O4",
+        selective_dynamics=raw.VaspData(selective_dynamics),
+        lattice_velocities=raw.VaspData(lattice_velocities),
+        ion_velocities=raw.VaspData(ion_velocities),
+    )
 
 
 def _Fe3O4_density(selection):
