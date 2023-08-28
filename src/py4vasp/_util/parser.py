@@ -2,13 +2,14 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from py4vasp._raw.data import Cell
+from py4vasp._raw.data import Cell, Topology
 from py4vasp._raw.data_wrapper import VaspData
 
 
 @dataclass
 class ParsePoscar:
     poscar: str
+    species_name: str | None = None
 
     def __post_init__(self):
         self.split_poscar = self.poscar.split("\n")
@@ -29,3 +30,19 @@ class ParsePoscar:
         lattice_vectors = VaspData(lattice_vectors)
         cell = Cell(lattice_vectors=lattice_vectors, scale=scaling_factor)
         return cell
+
+    @property
+    def topology(self):
+        if self.species_name is None:
+            species_name = self.split_poscar[5].split()
+            assert all(
+                s.isalpha() for s in species_name
+            ), "Either supply species as an argument or in the POSCAR file."
+            number_of_species = self.split_poscar[6].split()
+        else:
+            species_name = np.array(self.species_name.split())
+            number_of_species = self.split_poscar[5].split()
+        number_of_species = VaspData(np.array(number_of_species, dtype=int))
+        species_name = VaspData(np.array(species_name))
+        topology = Topology(number_ion_types=number_of_species, ion_types=species_name)
+        return topology
