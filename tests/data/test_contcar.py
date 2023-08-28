@@ -13,6 +13,7 @@ def example_CONTCAR(raw_data):
     contcar = CONTCAR.from_data(raw_contcar)
     contcar.ref = types.SimpleNamespace()
     contcar.ref.structure = Structure.from_data(raw_data.structure("Sr2TiO4"))[-1]
+    contcar.ref.system = raw_contcar.system.decode()
     return contcar
 
 
@@ -23,3 +24,4 @@ def test_read(example_CONTCAR, Assert):
     Assert.allclose(actual["positions"], expected["positions"])
     assert actual["elements"] == expected["elements"]
     assert actual["names"] == expected["names"]
+    assert actual["system"] == example_CONTCAR.ref.system

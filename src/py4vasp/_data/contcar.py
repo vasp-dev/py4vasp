@@ -4,13 +4,17 @@ import numpy as np
 
 from py4vasp import data, raw
 from py4vasp._data import base
+from py4vasp._util import convert
 
 
 class CONTCAR(base.Refinery):
     "Access the final positions after the VASP calculation."
 
     def to_dict(self):
-        return self._structure().read()
+        return {
+            **self._structure().read(),
+            "system": convert.text_to_string(self._raw_data.system),
+        }
 
     def _structure(self):
         structure = self._raw_data.structure
