@@ -87,6 +87,11 @@ class Cell:
 
 
 @dataclasses.dataclass
+class CONTCAR:
+    structure: Structure
+
+
+@dataclasses.dataclass
 class Density:
     "The electronic charge and magnetization density on the Fourier grid."
     structure: Structure
