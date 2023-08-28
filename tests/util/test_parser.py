@@ -1,4 +1,9 @@
+import numpy as np
 import pytest
+
+from py4vasp._raw.data import Cell
+from py4vasp._raw.data_wrapper import VaspData
+from py4vasp._util.parser import ParsePoscar
 
 
 @pytest.fixture
@@ -78,3 +83,25 @@ Direct
 0.0 0.0 0.0
 0.25 0.25 0.25"""
     assert output_poscar_string == expected_poscar_string
+
+
+def test_comment_line(cubic_BN):
+    output_poscar_string, componentwise_inputs = cubic_BN()
+    comment_line = componentwise_inputs[0]
+    parsed_comment_line = ParsePoscar(output_poscar_string).comment_line
+    assert comment_line == parsed_comment_line
+
+
+def test_cell(cubic_BN, Assert):
+    output_poscar_string, componentwise_inputs = cubic_BN()
+    _scaling_factor = componentwise_inputs[1]
+    _lattice = componentwise_inputs[2]
+    lattice_vectors = np.array([x.split() for x in _lattice.split("\n")], dtype=float)
+    scaling_factor = np.array(_scaling_factor.split(), dtype=float)
+    if len(scaling_factor) == 1:
+        scaling_factor = scaling_factor[0]
+    lattice_vectors = VaspData(lattice_vectors)
+    expected_cell = Cell(lattice_vectors=lattice_vectors, scale=scaling_factor)
+    output_cell = ParsePoscar(output_poscar_string).cell
+    Assert.allclose(expected_cell.lattice_vectors, output_cell.lattice_vectors)
+    Assert.allclose(expected_cell.scale, output_cell.scale)
