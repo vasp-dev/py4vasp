@@ -49,7 +49,7 @@ class _Assert:
     def allclose(actual, desired):
         if _is_none(actual):
             assert _is_none(desired)
-        elif actual.dtype == np.bool_:
+        elif getattr(actual, "dtype", None) == np.bool_:
             assert desired.dtype == np.bool_
             assert np.all(actual == desired)
         else:
