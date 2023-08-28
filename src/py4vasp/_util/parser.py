@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from py4vasp._raw.data import Cell, Topology
+from py4vasp._raw.data import CONTCAR, Cell, Structure, Topology
 from py4vasp._raw.data_wrapper import VaspData
 
 
@@ -64,3 +64,12 @@ class ParsePoscar:
         else:
             raise ValueError(f"Unknown type of positions: {type_positions}")
         return positions
+
+    def to_contcar(self):
+        structure = Structure(
+            topology=self.topology,
+            cell=self.cell,
+            positions=self.ion_positions,
+        )
+        contcar = CONTCAR(structure)
+        return contcar

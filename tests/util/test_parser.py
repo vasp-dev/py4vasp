@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from py4vasp._raw.data import Cell, Topology
+from py4vasp._raw.data import CONTCAR, Cell, Structure, Topology
 from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._util.parser import ParsePoscar
 
@@ -157,3 +157,16 @@ def test_positions_direct(cubic_BN, species_name_provided, Assert):
     else:
         output_ion_positions = ParsePoscar(poscar_string, *arguments).ion_positions
     Assert.allclose(expected_ion_positions, output_ion_positions)
+
+
+@pytest.mark.parametrize("species_name_provided", [True, False])
+def test_to_contcar(cubic_BN, species_name_provided, Assert):
+    poscar_string, componentwise_inputs, arguments = cubic_BN(
+        species_name_provided=species_name_provided
+    )
+    if not arguments:
+        output_contcar = ParsePoscar(poscar_string).to_contcar()
+    else:
+        output_contcar = ParsePoscar(poscar_string, *arguments).to_contcar()
+    assert isinstance(output_contcar, CONTCAR)
+    assert isinstance(output_contcar.structure, Structure)
