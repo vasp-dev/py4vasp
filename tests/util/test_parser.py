@@ -137,3 +137,23 @@ def test_topology(cubic_BN, species_name_provided, Assert):
         expected_topology.number_ion_types, output_topology.number_ion_types
     )
     assert np.all(expected_topology.ion_types == output_topology.ion_types)
+
+
+@pytest.mark.parametrize("species_name_provided", [True, False])
+def test_positions_direct(cubic_BN, species_name_provided, Assert):
+    poscar_string, componentwise_inputs, arguments = cubic_BN(
+        species_name_provided=species_name_provided
+    )
+    if species_name_provided:
+        _ion_positions = componentwise_inputs[5]
+    else:
+        _ion_positions = componentwise_inputs[4]
+    ion_positions = [x.split() for x in _ion_positions.split("\n")]
+    assert ion_positions[0][0] == "Direct"
+    expected_ion_positions = np.array(ion_positions[1:], dtype=float)
+    expected_ion_positions = VaspData(expected_ion_positions)
+    if not arguments:
+        output_ion_positions = ParsePoscar(poscar_string).ion_positions
+    else:
+        output_ion_positions = ParsePoscar(poscar_string, *arguments).ion_positions
+    Assert.allclose(expected_ion_positions, output_ion_positions)

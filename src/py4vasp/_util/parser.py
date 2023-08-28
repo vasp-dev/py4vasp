@@ -46,3 +46,17 @@ class ParsePoscar:
         species_name = VaspData(np.array(species_name))
         topology = Topology(number_ion_types=number_of_species, ion_types=species_name)
         return topology
+
+    @property
+    def ion_positions(self):
+        number_of_species = self.topology.number_ion_types.data.sum()
+        if self.species_name is None:
+            type_positions = self.split_poscar[7]
+            positions = self.split_poscar[8 : 8 + number_of_species]
+        else:
+            type_positions = self.split_poscar[6]
+            positions = self.split_poscar[7 : 7 + number_of_species]
+        if type_positions == "Direct":
+            positions = np.array([x.split() for x in positions], dtype=float)
+            positions = VaspData(positions)
+        return positions
