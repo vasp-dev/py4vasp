@@ -103,6 +103,10 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
+    def CONTCAR(selection):
+        return _Sr2TiO4_CONTCAR()
+
+    @staticmethod
     def density(selection):
         return _Fe3O4_density(selection)
 
@@ -596,6 +600,13 @@ def _Sr2TiO4_cell():
     return raw.Cell(
         lattice_vectors=scale * np.array(number_steps * [lattice_vectors]), scale=scale
     )
+
+
+def _Sr2TiO4_CONTCAR():
+    structure = _Sr2TiO4_structure()
+    structure.cell.lattice_vectors = structure.cell.lattice_vectors[-1]
+    structure.positions = structure.positions[-1]
+    return raw.CONTCAR(structure=structure)
 
 
 def _Sr2TiO4_dos(projectors):
