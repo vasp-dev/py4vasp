@@ -59,4 +59,8 @@ class ParsePoscar:
         if type_positions == "Direct":
             positions = np.array([x.split() for x in positions], dtype=float)
             positions = VaspData(positions)
+        elif type_positions == "Coordinates":
+            raise NotImplementedError
+        else:
+            raise ValueError(f"Unknown type of positions: {type_positions}")
         return positions
