@@ -9,7 +9,7 @@ from py4vasp._raw.data_wrapper import VaspData
 @dataclass
 class ParsePoscar:
     poscar: str
-    species_name: str | None = None
+    species_name: str or None = None
 
     def __post_init__(self):
         self.split_poscar = self.poscar.split("\n")
@@ -71,5 +71,5 @@ class ParsePoscar:
             cell=self.cell,
             positions=self.ion_positions,
         )
-        contcar = CONTCAR(structure)
+        contcar = CONTCAR(structure, system=self.comment_line)
         return contcar

@@ -606,7 +606,7 @@ def _Sr2TiO4_CONTCAR():
     structure = _Sr2TiO4_structure()
     structure.cell.lattice_vectors = structure.cell.lattice_vectors[-1]
     structure.positions = structure.positions[-1]
-    return raw.CONTCAR(structure=structure)
+    return raw.CONTCAR(structure=structure, system=b"Sr2TiO4")
 
 
 def _Sr2TiO4_dos(projectors):

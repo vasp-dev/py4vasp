@@ -88,7 +88,24 @@ class Cell:
 
 @dataclasses.dataclass
 class CONTCAR:
+    """The data corresponding to the CONTCAR file.
+
+    The CONTCAR file contains structural information (lattice, positions, topology),
+    relaxation constraints, and data relevant for continuation calculations.
+    """
+
     structure: Structure
+    "The structure of the system at the end of the calculation."
+    system: str
+    "A comment line describing the system."
+    selective_dynamics: VaspData = NONE()
+    "Specifies in which directions the atoms may move."
+    lattice_velocities: VaspData = NONE()
+    "The current velocities of the lattice vectors."
+    ion_velocities: VaspData = NONE()
+    "The current velocities of the ions."
+    _predictor_corrector: VaspData = NONE()
+    "Internal algorithmic data relevant for restarting calculations."
 
 
 @dataclasses.dataclass
