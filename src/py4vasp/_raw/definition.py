@@ -95,9 +95,9 @@ schema.add(
     required=raw.Version(6, 5),
     structure=Link("structure", "final"),
     system="results/positions/system",
-    selective_dynamics="NotImplemented",
-    lattice_velocities="NotImplemented",
-    ion_velocities="NotImplemented",
+    selective_dynamics="/results/positions/selective_dynamics_ions",
+    lattice_velocities="/results/positions/lattice_velocities",
+    ion_velocities="/results/positions/ion_velocities",
     _predictor_corrector="NotImplemented",
 )
 schema.add(
