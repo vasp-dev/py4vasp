@@ -71,7 +71,8 @@ schema.add(
 #
 schema.add(
     raw.Cell,
-    scale="results/positions/scale",
+    required=raw.Version(6, 5),
+    scale="intermediate/ion_dynamics/scale",
     lattice_vectors="intermediate/ion_dynamics/lattice_vectors",
 )
 schema.add(
