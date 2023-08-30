@@ -495,8 +495,6 @@ def test_ion_velocities(cubic_BN, velocity_coordinate_system):
     expected_ion_velocities = [x[0:3] for x in ion_velocities[1:]]
     expected_ion_velocities = VaspData(expected_ion_velocities)
     output_ion_velocities = ParsePoscar(poscar_string, **arguments).ion_velocities
-    print(expected_ion_velocities)
-    print(output_ion_velocities)
     assert np.allclose(expected_ion_velocities, output_ion_velocities)
 
 

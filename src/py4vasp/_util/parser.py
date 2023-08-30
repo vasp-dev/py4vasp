@@ -153,7 +153,7 @@ class ParsePoscar:
         if self.species_name is None:
             idx_start += 1
         if len(self.split_poscar) <= idx_start:
-            raise ParserError("No lattice velocities found in POSCAR.")
+            return False
         lattice_velocities_header = self.split_poscar[idx_start]
         if lattice_velocities_header == "Lattice velocities and vectors":
             return True
@@ -186,7 +186,7 @@ class ParsePoscar:
         return cartesian_positions
 
     @property
-    def ion_velocities(self):
+    def has_ion_velocities(self):
         num_species = self.topology.number_ion_types.data.sum()
         idx_start = 7 + num_species
         if self.has_selective_dynamics:
@@ -196,7 +196,25 @@ class ParsePoscar:
         if self.has_lattice_velocities:
             idx_start += 8
         if len(self.split_poscar) <= idx_start:
+            return False
+        ion_velocities_header = self.split_poscar[idx_start]
+        if ion_velocities_header in ["", "Cartesian", "Direct"]:
+            return True
+        else:
+            return False
+
+    @property
+    def ion_velocities(self):
+        num_species = self.topology.number_ion_types.data.sum()
+        if not self.has_ion_velocities:
             raise ParserError("No ion velocities found in POSCAR.")
+        idx_start = 7 + num_species
+        if self.has_selective_dynamics:
+            idx_start += 1
+        if self.species_name is None:
+            idx_start += 1
+        if self.has_lattice_velocities:
+            idx_start += 8
         coordinate_system = self.split_poscar[idx_start]
         ion_velocities = self.split_poscar[idx_start + 1 : idx_start + 1 + num_species]
         ion_velocities = [x.split() for x in ion_velocities]
@@ -215,10 +233,13 @@ class ParsePoscar:
             cell=self.cell,
             positions=ion_positions,
         )
-        contcar = CONTCAR(
-            structure=structure,
-            system=self.comment_line,
-            selective_dynamics=selective_dynamics,
-            lattice_velocities=self.lattice_velocities,
-        )
+        optional = {}
+        if self.has_selective_dynamics:
+            optional["selective_dynamics"] = selective_dynamics
+        if self.has_lattice_velocities:
+            optional["lattice_velocities"] = self.lattice_velocities
+        if self.has_ion_velocities:
+            optional["ion_velocities"] = self.ion_velocities
+
+        contcar = CONTCAR(structure=structure, system=self.comment_line, **optional)
         return contcar
