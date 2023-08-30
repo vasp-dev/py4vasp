@@ -89,28 +89,48 @@ class ParsePoscar:
         return topology
 
     @property
-    def ion_positions(self):
+    def ion_positions_and_selective_dynamics(self):
         number_of_species = self.topology.number_ion_types.data.sum()
+        idx_start = 6
+        if self.has_selective_dynamics:
+            idx_start += 1
         if self.species_name is None:
-            type_positions = self.split_poscar[7]
-            positions = self.split_poscar[8 : 8 + number_of_species]
-        else:
-            type_positions = self.split_poscar[6]
-            positions = self.split_poscar[7 : 7 + number_of_species]
+            idx_start += 1
+        type_positions = self.split_poscar[idx_start]
+        positions_and_selective_dyn = self.split_poscar[
+            idx_start + 1 : idx_start + 1 + number_of_species
+        ]
         if type_positions == "Direct":
-            positions = np.array([x.split() for x in positions], dtype=float)
+            positions = np.array(
+                [x.split()[0:3] for x in positions_and_selective_dyn], dtype=float
+            )
+            if self.has_selective_dynamics:
+                selective_dynamics = [
+                    x.split()[3:6] for x in positions_and_selective_dyn
+                ]
+                selective_dynamics = [
+                    [True if x == "T" else False for x in y] for y in selective_dynamics
+                ]
+            else:
+                selective_dynamics = False
             positions = VaspData(positions)
+            selective_dynamics = VaspData(selective_dynamics)
         elif type_positions == "Coordinates":
             raise NotImplementedError
         else:
             raise ValueError(f"Unknown type of positions: {type_positions}")
-        return positions
+        return positions, selective_dynamics
 
     def to_contcar(self):
+        ion_positions, selective_dynamics = self.ion_positions_and_selective_dynamics
         structure = Structure(
             topology=self.topology,
             cell=self.cell,
-            positions=self.ion_positions,
+            positions=ion_positions,
         )
-        contcar = CONTCAR(structure, system=self.comment_line)
+        contcar = CONTCAR(
+            structure=structure,
+            system=self.comment_line,
+            selective_dynamics=selective_dynamics,
+        )
         return contcar

@@ -102,6 +102,9 @@ def cubic_BN(poscar_creator):
             if has_ion_positions
             else None
         )
+        if has_selective_dynamics:
+            ion_positions[1].append("T F T")
+            ion_positions[2].append("F T F")
         lattice_velocities = (
             [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]] if has_lattice_velocities else None
         )
@@ -169,6 +172,22 @@ def test_cubic_BN_fixture_species_name_provided(cubic_BN):
 Direct
 0.0 0.0 0.0
 0.25 0.25 0.25"""
+    assert output_poscar_string == expected_poscar_string
+
+
+def test_cubic_BN_fixture_selective_dynamics(cubic_BN):
+    output_poscar_string, *_ = cubic_BN(has_selective_dynamics=True)
+    expected_poscar_string = """Cubic BN
+2.0
+0.0 0.5 0.5
+0.5 0.0 0.5
+0.5 0.5 0.0
+B N
+1 1
+Selective dynamics
+Direct
+0.0 0.0 0.0 T F T
+0.25 0.25 0.25 F T F"""
     assert output_poscar_string == expected_poscar_string
 
 
@@ -263,34 +282,42 @@ def test_has_selective_dynamics(cubic_BN, has_selective_dynamics):
     assert has_selective_dynamics == output_has_selective_dynamics
 
 
-@pytest.mark.parametrize("species_name_provided", [True, False])
-def test_positions_direct(cubic_BN, species_name_provided, Assert):
+@pytest.mark.parametrize("has_species_name", [True, False])
+@pytest.mark.parametrize("has_selective_dynamics", [True, False])
+def test_positions_direct(cubic_BN, has_species_name, has_selective_dynamics, Assert):
     poscar_string, componentwise_inputs, arguments = cubic_BN(
-        species_name_provided=species_name_provided
+        has_species_name=has_species_name, has_selective_dynamics=has_selective_dynamics
     )
-    if species_name_provided:
-        _ion_positions = componentwise_inputs[5]
-    else:
-        _ion_positions = componentwise_inputs[4]
-    ion_positions = [x.split() for x in _ion_positions.split("\n")]
+    ion_positions = componentwise_inputs[6]
     assert ion_positions[0][0] == "Direct"
-    expected_ion_positions = np.array(ion_positions[1:], dtype=float)
+    expected_ion_positions = [x[0:3] for x in ion_positions[1:]]
+    if has_selective_dynamics:
+        expected_selective_dynamics = [x[3:] for x in ion_positions[1:]]
+        expected_selective_dynamics = [
+            item for sublist in expected_selective_dynamics for item in sublist
+        ]
+        expected_selective_dynamics = [x.split() for x in expected_selective_dynamics]
+        expected_selective_dynamics = [
+            [True if x == "T" else False for x in sublist]
+            for sublist in expected_selective_dynamics
+        ]
+    else:
+        expected_selective_dynamics = False
     expected_ion_positions = VaspData(expected_ion_positions)
-    if not arguments:
-        output_ion_positions = ParsePoscar(poscar_string).ion_positions
-    else:
-        output_ion_positions = ParsePoscar(poscar_string, *arguments).ion_positions
+    expected_selective_dynamics = VaspData(expected_selective_dynamics)
+    output_ion_positions, output_selective_dynamics = ParsePoscar(
+        poscar_string, **arguments
+    ).ion_positions_and_selective_dynamics
     Assert.allclose(expected_ion_positions, output_ion_positions)
+    Assert.allclose(expected_selective_dynamics, output_selective_dynamics)
 
 
-@pytest.mark.parametrize("species_name_provided", [True, False])
-def test_to_contcar(cubic_BN, species_name_provided, Assert):
+@pytest.mark.parametrize("has_species_name", [True, False])
+def test_to_contcar(cubic_BN, has_species_name, Assert):
     poscar_string, componentwise_inputs, arguments = cubic_BN(
-        species_name_provided=species_name_provided
+        has_species_name=has_species_name
     )
-    if not arguments:
-        output_contcar = ParsePoscar(poscar_string).to_contcar()
-    else:
-        output_contcar = ParsePoscar(poscar_string, *arguments).to_contcar()
+    output_contcar = ParsePoscar(poscar_string, **arguments).to_contcar()
     assert isinstance(output_contcar, CONTCAR)
     assert isinstance(output_contcar.structure, Structure)
+    assert isinstance(output_contcar.selective_dynamics, VaspData)
