@@ -64,9 +64,10 @@ class ParsePoscar:
     def topology(self):
         if self.species_name is None:
             species_name = self.split_poscar[5].split()
-            assert all(
-                s.isalpha() for s in species_name
-            ), "Either supply species as an argument or in the POSCAR file."
+            if not all(s.isalpha() for s in species_name):
+                raise ParserError(
+                    "Either supply species as an argument or in the POSCAR file."
+                )
             number_of_species = self.split_poscar[6].split()
         else:
             species_name = np.array(self.species_name.split())

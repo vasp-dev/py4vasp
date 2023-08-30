@@ -179,7 +179,7 @@ def test_comment_line(cubic_BN):
     assert comment_line == parsed_comment_line
 
 
-def test_error_no_scaling_factor_provided(cubic_BN, Assert):
+def test_error_no_scaling_factor_provided(cubic_BN):
     poscar_string, *_ = cubic_BN(num_scaling_factors=0)
     with pytest.raises(ParserError):
         ParsePoscar(poscar_string).cell
@@ -248,6 +248,12 @@ def test_topology(cubic_BN, has_species_name, Assert):
         expected_topology.number_ion_types, output_topology.number_ion_types
     )
     assert np.all(expected_topology.ion_types == output_topology.ion_types)
+
+
+def test_error_no_species_provided(cubic_BN):
+    poscar_string, *_ = cubic_BN(has_species_name=False)
+    with pytest.raises(ParserError):
+        ParsePoscar(poscar_string).topology
 
 
 @pytest.mark.parametrize("species_name_provided", [True, False])
