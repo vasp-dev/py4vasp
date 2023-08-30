@@ -128,6 +128,11 @@ class ParsePoscar:
             reciprocal_lattice_vectors = self.get_reciprocal_lattice_vectors(self.cell)
             direct_positions = cartesian_positions @ reciprocal_lattice_vectors.T
             positions = np.remainder(direct_positions, 1)
+        else:
+            raise ParserError(
+                "The type of positions is not specified in the right format. Choose\
+                either 'Direct' or 'Cartesian'."
+            )
         if self.has_selective_dynamics:
             selective_dynamics = [x.split()[3:6] for x in positions_and_selective_dyn]
             selective_dynamics = [
@@ -140,9 +145,27 @@ class ParsePoscar:
         return positions, selective_dynamics
 
     @property
+    def has_lattice_velocities(self):
+        num_species = self.topology.number_ion_types.data.sum()
+        idx_start = 7 + num_species
+        if self.has_selective_dynamics:
+            idx_start += 1
+        if self.species_name is None:
+            idx_start += 1
+        if len(self.split_poscar) <= idx_start:
+            raise ParserError("No lattice velocities found in POSCAR.")
+        lattice_velocities_header = self.split_poscar[idx_start]
+        if lattice_velocities_header == "Lattice velocities and vectors":
+            return True
+        else:
+            return False
+
+    @property
     def lattice_velocities(self):
         num_species = self.topology.number_ion_types.data.sum()
         idx_start = 7 + num_species
+        if not self.has_lattice_velocities:
+            raise ParserError("No lattice velocities found in POSCAR.")
         if self.has_selective_dynamics:
             idx_start += 1
         if self.species_name is None:
@@ -151,6 +174,39 @@ class ParsePoscar:
         lattice_velocities = [x.split() for x in lattice_velocities]
         lattice_velocities = VaspData(np.array(lattice_velocities, dtype=float))
         return lattice_velocities
+
+    @classmethod
+    def _convert_direct_to_cartesian(cls, cell, x, scale=True):
+        if scale:
+            lattice_vectors = cell.lattice_vectors.data * cell.scale
+        else:
+            lattice_vectors = np.array(cell.lattice_vectors.data)
+
+        cartesian_positions = x @ lattice_vectors.T
+        return cartesian_positions
+
+    @property
+    def ion_velocities(self):
+        num_species = self.topology.number_ion_types.data.sum()
+        idx_start = 7 + num_species
+        if self.has_selective_dynamics:
+            idx_start += 1
+        if self.species_name is None:
+            idx_start += 1
+        if self.has_lattice_velocities:
+            idx_start += 8
+        if len(self.split_poscar) <= idx_start:
+            raise ParserError("No ion velocities found in POSCAR.")
+        coordinate_system = self.split_poscar[idx_start]
+        ion_velocities = self.split_poscar[idx_start + 1 : idx_start + 1 + num_species]
+        ion_velocities = [x.split() for x in ion_velocities]
+        if coordinate_system == "Direct":
+            ion_velocities = self._convert_direct_to_cartesian(
+                self.cell, np.array(ion_velocities, dtype=float), scale=False
+            )
+            ion_velocities = ion_velocities.tolist()
+        ion_velocities = VaspData(np.array(ion_velocities, dtype=float))
+        return ion_velocities
 
     def to_contcar(self):
         ion_positions, selective_dynamics = self.ion_positions_and_selective_dynamics

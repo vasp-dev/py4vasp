@@ -85,7 +85,8 @@ def cubic_BN(poscar_creator):
         has_ion_positions: bool = True,
         has_lattice_velocities: bool = False,
         has_ion_velocities: bool = False,
-        coordinate_system: str = "Direct",
+        ions_coordinate_system: str = "Direct",
+        velocity_coordinate_system: str = "Cartesian",
     ):
         comment_line = "Cubic BN" if has_comment_line else None
         scaling_factor = (
@@ -100,10 +101,10 @@ def cubic_BN(poscar_creator):
         ions_per_species = [1, 1] if has_ion_per_species else None
         selective_dynamics = "Selective dynamics" if has_selective_dynamics else None
         positions = [[0.0, 0.0, 0.0], [0.25, 0.0, 0.25]]
-        if coordinate_system == "Direct":
+        if ions_coordinate_system == "Direct":
             ion_positions = [["Direct"]] + positions if has_ion_positions else None
             ion_positions_direct = copy.deepcopy(ion_positions)
-        elif coordinate_system == "Cartesian":
+        elif ions_coordinate_system == "Cartesian":
             if positions is None:
                 ion_positions_direct = None
                 ion_positions = None
@@ -132,9 +133,22 @@ def cubic_BN(poscar_creator):
             if has_lattice_velocities
             else None
         )
-        ion_velocities = (
-            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]] if has_ion_velocities else None
+        direct_velocities = [[0.2, 0.4, -0.2], [0.4, 0.6, -0.3]]
+        cartesian_velocities = np.array(direct_velocities) @ np.array(lattice).T
+        cartesian_velocities = np.round(cartesian_velocities, 5)
+        cartesian_velocities = cartesian_velocities.tolist()
+        if velocity_coordinate_system == "Direct":
+            ion_velocities = (
+                [["Direct"]] + direct_velocities if has_ion_velocities else None
+            )
+        elif velocity_coordinate_system == "Cartesian":
+            ion_velocities = (
+                [["Cartesian"]] + cartesian_velocities if has_ion_velocities else None
+            )
+        output_ion_velocities = (
+            [["Cartesian"]] + cartesian_velocities if has_ion_velocities else None
         )
+
         componentwise_input = [
             comment_line,
             scaling_factor,
@@ -156,7 +170,7 @@ def cubic_BN(poscar_creator):
             selective_dynamics,
             ion_positions_direct,
             lattice_velocities,
-            ion_velocities,
+            output_ion_velocities,
         ]
         arguments = {}
         if not has_species_name:
@@ -227,7 +241,7 @@ Direct
 
 
 def test_cubic_BN_fixture_cartesian(cubic_BN):
-    output_poscar_string, *_ = cubic_BN(coordinate_system="Cartesian")
+    output_poscar_string, *_ = cubic_BN(ions_coordinate_system="Cartesian")
     expected_poscar_string = """Cubic BN
 2.0
 0.0 0.5 0.5
@@ -261,6 +275,36 @@ Lattice velocities and vectors
 0.0 1.0 1.0
 1.0 0.0 1.0
 1.0 1.0 0.0"""
+    assert output_poscar_string == expected_poscar_string
+
+
+def test_cubic_BN_fixture_ion_velocities(cubic_BN):
+    output_poscar_string, *_ = cubic_BN(
+        has_lattice_velocities=True,
+        has_ion_velocities=True,
+        velocity_coordinate_system="Cartesian",
+    )
+    expected_poscar_string = """Cubic BN
+2.0
+0.0 0.5 0.5
+0.5 0.0 0.5
+0.5 0.5 0.0
+B N
+1 1
+Direct
+0.0 0.0 0.0
+0.25 0.0 0.25
+Lattice velocities and vectors
+1
+0.0 -0.6 0.2
+0.1 0.3 -0.2
+0.2 -0.4 0.4
+0.0 1.0 1.0
+1.0 0.0 1.0
+1.0 1.0 0.0
+Cartesian
+0.1 0.0 0.3
+0.15 0.05 0.5"""
     assert output_poscar_string == expected_poscar_string
 
 
@@ -394,7 +438,7 @@ def test_positions_cartesian(
     poscar_string, componentwise_inputs, arguments = cubic_BN(
         has_species_name=has_species_name,
         has_selective_dynamics=has_selective_dynamics,
-        coordinate_system="Cartesian",
+        ions_coordinate_system="Cartesian",
         num_scaling_factors=num_scaling_factors,
     )
     ion_positions = componentwise_inputs[6]
@@ -434,10 +478,35 @@ def test_lattice_velocities(cubic_BN, Assert):
     Assert.allclose(expected_lattice_velocities, output_lattice_velocities)
 
 
+def test_no_lattice_velocities(cubic_BN):
+    poscar_string, *_ = cubic_BN(has_lattice_velocities=False)
+    with pytest.raises(ParserError):
+        ParsePoscar(poscar_string).lattice_velocities
+
+
+@pytest.mark.parametrize("velocity_coordinate_system", ["Cartesian", "Direct"])
+def test_ion_velocities(cubic_BN, velocity_coordinate_system):
+    poscar_string, componentwise_inputs, arguments = cubic_BN(
+        has_lattice_velocities=True,
+        has_ion_velocities=True,
+        velocity_coordinate_system=velocity_coordinate_system,
+    )
+    ion_velocities = componentwise_inputs[8]
+    expected_ion_velocities = [x[0:3] for x in ion_velocities[1:]]
+    expected_ion_velocities = VaspData(expected_ion_velocities)
+    output_ion_velocities = ParsePoscar(poscar_string, **arguments).ion_velocities
+    print(expected_ion_velocities)
+    print(output_ion_velocities)
+    assert np.allclose(expected_ion_velocities, output_ion_velocities)
+
+
 @pytest.mark.parametrize("has_species_name", [True, False])
 def test_to_contcar(cubic_BN, has_species_name, Assert):
     poscar_string, componentwise_inputs, arguments = cubic_BN(
-        has_species_name=has_species_name
+        has_species_name=has_species_name,
+        has_selective_dynamics=True,
+        has_lattice_velocities=True,
+        has_ion_velocities=True,
     )
     output_contcar = ParsePoscar(poscar_string, **arguments).to_contcar()
     assert isinstance(output_contcar, CONTCAR)
