@@ -1,9 +1,11 @@
+import re
 from dataclasses import dataclass
 
 import numpy as np
 
 from py4vasp._raw.data import CONTCAR, Cell, Structure, Topology
 from py4vasp._raw.data_wrapper import VaspData
+from py4vasp.exception import ParserError
 
 
 @dataclass
@@ -21,14 +23,28 @@ class ParsePoscar:
     @property
     def cell(self):
         scaling_factor = self.split_poscar[1]
+        if len(scaling_factor.split()) not in [1, 3]:
+            raise ParserError(
+                "The scaling factor is not specified in the right format."
+            )
         scaling_factor = np.array(scaling_factor.split(), dtype=float)
-        if len(scaling_factor) == 1:
+        if scaling_factor.ndim == 0 or (
+            scaling_factor.ndim == 1 and len(scaling_factor) == 1
+        ):
             scaling_factor = scaling_factor[0]
+        if scaling_factor.ndim == 1:
+            if np.any(scaling_factor <= 0):
+                raise ParserError(
+                    "The scaling factor for the cell is either negative or zero."
+                )
         lattice_vectors = np.array(
             [x.split() for x in self.split_poscar[2:5]], dtype=float
         )
-        lattice_vectors = VaspData(lattice_vectors)
-        cell = Cell(lattice_vectors=lattice_vectors, scale=scaling_factor)
+        if scaling_factor.ndim == 1:
+            scaled_lattice_vectors = lattice_vectors * scaling_factor
+            cell = Cell(lattice_vectors=VaspData(scaled_lattice_vectors), scale=1.0)
+        else:
+            cell = Cell(lattice_vectors=lattice_vectors, scale=scaling_factor)
         return cell
 
     @property
