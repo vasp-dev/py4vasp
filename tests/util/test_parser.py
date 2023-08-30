@@ -77,7 +77,7 @@ def poscar_creator():
 def cubic_BN(poscar_creator):
     def _cubic_BN(
         has_comment_line: bool = True,
-        num_scaling_factors: int = True,
+        num_scaling_factors: int = 1,
         has_lattice: bool = True,
         has_species_name: bool = True,
         has_ion_per_species: bool = True,
@@ -119,8 +119,18 @@ def cubic_BN(poscar_creator):
             ion_positions[2].append("F T F")
             ion_positions_direct[1].append("T F T")
             ion_positions_direct[2].append("F T F")
+        if num_scaling_factors > 0:
+            scaled_lattice = np.array(lattice) * np.array(scaling_factor).T
+            scaled_lattice = scaled_lattice.tolist()
+        else:
+            scaled_lattice = lattice
+        _lattice_velocities = [[0.0, -0.6, 0.2], [0.1, 0.3, -0.2], [0.2, -0.4, 0.4]]
         lattice_velocities = (
-            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]] if has_lattice_velocities else None
+            [["Lattice velocities and vectors"], [1]]
+            + _lattice_velocities
+            + scaled_lattice
+            if has_lattice_velocities
+            else None
         )
         ion_velocities = (
             [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]] if has_ion_velocities else None
@@ -228,6 +238,29 @@ B N
 Cartesian
 0.0 0.0 0.0
 0.125 0.25 0.125"""
+    assert output_poscar_string == expected_poscar_string
+
+
+def test_cubic_BN_fixture_lattice_velocities(cubic_BN):
+    output_poscar_string, *_ = cubic_BN(has_lattice_velocities=True)
+    expected_poscar_string = """Cubic BN
+2.0
+0.0 0.5 0.5
+0.5 0.0 0.5
+0.5 0.5 0.0
+B N
+1 1
+Direct
+0.0 0.0 0.0
+0.25 0.0 0.25
+Lattice velocities and vectors
+1
+0.0 -0.6 0.2
+0.1 0.3 -0.2
+0.2 -0.4 0.4
+0.0 1.0 1.0
+1.0 0.0 1.0
+1.0 1.0 0.0"""
     assert output_poscar_string == expected_poscar_string
 
 
@@ -387,6 +420,20 @@ def test_positions_cartesian(
     assert np.allclose(expected_selective_dynamics, output_selective_dynamics)
 
 
+def test_lattice_velocities(cubic_BN, Assert):
+    poscar_string, componentwise_inputs, arguments = cubic_BN(
+        has_lattice_velocities=True
+    )
+    lattice_velocities = componentwise_inputs[7]
+    assert lattice_velocities[0][0] == "Lattice velocities and vectors"
+    expected_lattice_velocities = [x[0:3] for x in lattice_velocities[2:5]]
+    expected_lattice_velocities = VaspData(expected_lattice_velocities)
+    output_lattice_velocities = ParsePoscar(
+        poscar_string, **arguments
+    ).lattice_velocities
+    Assert.allclose(expected_lattice_velocities, output_lattice_velocities)
+
+
 @pytest.mark.parametrize("has_species_name", [True, False])
 def test_to_contcar(cubic_BN, has_species_name, Assert):
     poscar_string, componentwise_inputs, arguments = cubic_BN(
@@ -396,3 +443,4 @@ def test_to_contcar(cubic_BN, has_species_name, Assert):
     assert isinstance(output_contcar, CONTCAR)
     assert isinstance(output_contcar.structure, Structure)
     assert isinstance(output_contcar.selective_dynamics, VaspData)
+    assert isinstance(output_contcar.lattice_velocities, VaspData)

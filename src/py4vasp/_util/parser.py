@@ -139,6 +139,19 @@ class ParsePoscar:
 
         return positions, selective_dynamics
 
+    @property
+    def lattice_velocities(self):
+        num_species = self.topology.number_ion_types.data.sum()
+        idx_start = 7 + num_species
+        if self.has_selective_dynamics:
+            idx_start += 1
+        if self.species_name is None:
+            idx_start += 1
+        lattice_velocities = self.split_poscar[idx_start + 2 : idx_start + 2 + 3]
+        lattice_velocities = [x.split() for x in lattice_velocities]
+        lattice_velocities = VaspData(np.array(lattice_velocities, dtype=float))
+        return lattice_velocities
+
     def to_contcar(self):
         ion_positions, selective_dynamics = self.ion_positions_and_selective_dynamics
         structure = Structure(
@@ -150,5 +163,6 @@ class ParsePoscar:
             structure=structure,
             system=self.comment_line,
             selective_dynamics=selective_dynamics,
+            lattice_velocities=self.lattice_velocities,
         )
         return contcar
