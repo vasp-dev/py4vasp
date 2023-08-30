@@ -20,6 +20,12 @@ class ParsePoscar:
     def comment_line(self):
         return self.split_poscar[0]
 
+    @classmethod
+    def _get_volume(cls, lattice_vectors):
+        return np.dot(
+            lattice_vectors[0], np.cross(lattice_vectors[1], lattice_vectors[2])
+        )
+
     @property
     def cell(self):
         scaling_factor = self.split_poscar[1]
@@ -44,7 +50,14 @@ class ParsePoscar:
             scaled_lattice_vectors = lattice_vectors * scaling_factor
             cell = Cell(lattice_vectors=VaspData(scaled_lattice_vectors), scale=1.0)
         else:
-            cell = Cell(lattice_vectors=lattice_vectors, scale=scaling_factor)
+            if scaling_factor > 0:
+                cell = Cell(lattice_vectors=lattice_vectors, scale=scaling_factor)
+            else:
+                volume = self._get_volume(lattice_vectors)
+                cell = Cell(
+                    lattice_vectors=lattice_vectors,
+                    scale=(abs(scaling_factor) / volume) ** (1 / 3),
+                )
         return cell
 
     @property

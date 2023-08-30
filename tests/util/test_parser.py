@@ -140,7 +140,6 @@ B N
 Direct
 0.0 0.0 0.0
 0.25 0.25 0.25"""
-    print(output_poscar_string)
     assert output_poscar_string == expected_poscar_string
 
 
@@ -180,6 +179,12 @@ def test_comment_line(cubic_BN):
     assert comment_line == parsed_comment_line
 
 
+def test_error_no_scaling_factor_provided(cubic_BN, Assert):
+    poscar_string, *_ = cubic_BN(num_scaling_factors=0)
+    with pytest.raises(ParserError):
+        ParsePoscar(poscar_string).cell
+
+
 @pytest.mark.parametrize("num_scaling_factors", [1, 3])
 def test_cell(cubic_BN, num_scaling_factors, Assert):
     poscar_string, componentwise_inputs, _ = cubic_BN(
@@ -190,7 +195,9 @@ def test_cell(cubic_BN, num_scaling_factors, Assert):
     # Performed in the convention of how VASP manages the scaling factor
     # If scaling factor is a float, then it is preserved from POSCAR -> CONTCAR
     # However, if it is a Sequence, then is preserves only the scaled lattice vectors
-    # and the scaling factor is set to 1.0
+    # and the scaling factor is set to 1.0. If a negative number is set, then it
+    # it is interpreted as the desired volume of the cell and the scaling factor
+    # is computed accordingly (see next test).
     if isinstance(scaling_factor, float) or len(scaling_factor) == 1:
         _scaling_factor = (
             scaling_factor if isinstance(scaling_factor, float) else scaling_factor[0]
@@ -204,10 +211,22 @@ def test_cell(cubic_BN, num_scaling_factors, Assert):
     Assert.allclose(expected_cell.scale, output_cell.scale)
 
 
-def test_error_no_scaling_factor_provided(cubic_BN, Assert):
-    poscar_string, *_ = cubic_BN(num_scaling_factors=0)
-    with pytest.raises(ParserError):
-        ParsePoscar(poscar_string).cell
+def test_negative_scaling_factor(cubic_BN, poscar_creator, Assert):
+    _, componentwise_inputs, _ = cubic_BN(num_scaling_factors=1)
+    scaling_factor = -27  # Negative number interpreted as expected volume
+    componentwise_inputs[1] = scaling_factor
+    poscar_string = poscar_creator(*componentwise_inputs)
+    unscaled_lattice = componentwise_inputs[2]
+    volume_of_cell = np.dot(
+        unscaled_lattice[0], np.cross(unscaled_lattice[1], unscaled_lattice[2])
+    )
+    expected_scaling_factor = (-scaling_factor / volume_of_cell) ** (1 / 3)
+    expected_cell = Cell(
+        lattice_vectors=unscaled_lattice, scale=expected_scaling_factor
+    )
+    output_cell = ParsePoscar(poscar_string).cell
+    Assert.allclose(expected_cell.lattice_vectors, output_cell.lattice_vectors)
+    Assert.allclose(expected_cell.scale, output_cell.scale)
 
 
 @pytest.mark.parametrize("species_name_provided", [True, False])
