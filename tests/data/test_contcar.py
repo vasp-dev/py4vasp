@@ -21,6 +21,18 @@ def CONTCAR(raw_data, request):
     return contcar
 
 
+class OptionalOutputCheck:
+    def __init__(self, dict_, Assert):
+        self.dict_ = dict_
+        self.Assert = Assert
+
+    def element_agrees(self, key, reference):
+        if reference.is_none():
+            assert key not in self.dict_
+        else:
+            self.Assert.allclose(self.dict_[key], reference)
+
+
 def test_read(CONTCAR, Assert):
     actual = CONTCAR.read()
     expected = CONTCAR.ref.structure.read()
@@ -29,6 +41,7 @@ def test_read(CONTCAR, Assert):
     assert actual["elements"] == expected["elements"]
     assert actual["names"] == expected["names"]
     assert actual["system"] == CONTCAR.ref.system
-    Assert.allclose(actual["selective_dynamics"], CONTCAR.ref.selective_dynamics)
-    Assert.allclose(actual["lattice_velocities"], CONTCAR.ref.lattice_velocities)
-    Assert.allclose(actual["ion_velocities"], CONTCAR.ref.ion_velocities)
+    check = OptionalOutputCheck(actual, Assert)
+    check.element_agrees("selective_dynamics", CONTCAR.ref.selective_dynamics)
+    check.element_agrees("lattice_velocities", CONTCAR.ref.lattice_velocities)
+    check.element_agrees("ion_velocities", CONTCAR.ref.ion_velocities)
