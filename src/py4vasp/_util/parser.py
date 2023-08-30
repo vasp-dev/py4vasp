@@ -61,6 +61,17 @@ class ParsePoscar:
         return cell
 
     @property
+    def has_selective_dynamics(self):
+        if self.species_name is None:
+            possible_selective_dynamics = self.split_poscar[7]
+        else:
+            possible_selective_dynamics = self.split_poscar[6]
+        if possible_selective_dynamics[0] in ["S", "s"]:
+            return True
+        else:
+            return False
+
+    @property
     def topology(self):
         if self.species_name is None:
             species_name = self.split_poscar[5].split()

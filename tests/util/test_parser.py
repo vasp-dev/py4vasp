@@ -256,6 +256,13 @@ def test_error_no_species_provided(cubic_BN):
         ParsePoscar(poscar_string).topology
 
 
+@pytest.mark.parametrize("has_selective_dynamics", [True, False])
+def test_has_selective_dynamics(cubic_BN, has_selective_dynamics):
+    poscar_string, *_ = cubic_BN(has_selective_dynamics=has_selective_dynamics)
+    output_has_selective_dynamics = ParsePoscar(poscar_string).has_selective_dynamics
+    assert has_selective_dynamics == output_has_selective_dynamics
+
+
 @pytest.mark.parametrize("species_name_provided", [True, False])
 def test_positions_direct(cubic_BN, species_name_provided, Assert):
     poscar_string, componentwise_inputs, arguments = cubic_BN(
