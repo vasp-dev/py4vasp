@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import copy
 from typing import Sequence
 
 import numpy as np
@@ -84,6 +85,7 @@ def cubic_BN(poscar_creator):
         has_ion_positions: bool = True,
         has_lattice_velocities: bool = False,
         has_ion_velocities: bool = False,
+        coordinate_system: str = "Direct",
     ):
         comment_line = "Cubic BN" if has_comment_line else None
         scaling_factor = (
@@ -97,14 +99,26 @@ def cubic_BN(poscar_creator):
         species_names = ["B", "N"] if has_species_name else None
         ions_per_species = [1, 1] if has_ion_per_species else None
         selective_dynamics = "Selective dynamics" if has_selective_dynamics else None
-        ion_positions = (
-            [["Direct"], [0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]
-            if has_ion_positions
-            else None
-        )
+        positions = [[0.0, 0.0, 0.0], [0.25, 0.0, 0.25]]
+        if coordinate_system == "Direct":
+            ion_positions = [["Direct"]] + positions if has_ion_positions else None
+            ion_positions_direct = copy.deepcopy(ion_positions)
+        elif coordinate_system == "Cartesian":
+            if positions is None:
+                ion_positions_direct = None
+                ion_positions = None
+            else:
+                ion_positions_direct = [["Direct"]] + positions
+                positions = np.array(positions)
+                lattice = np.array(lattice)
+                positions = positions @ lattice.T
+                lattice = lattice.tolist()
+                ion_positions = [["Cartesian"]] + positions.tolist()
         if has_selective_dynamics:
             ion_positions[1].append("T F T")
             ion_positions[2].append("F T F")
+            ion_positions_direct[1].append("T F T")
+            ion_positions_direct[2].append("F T F")
         lattice_velocities = (
             [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]] if has_lattice_velocities else None
         )
@@ -123,10 +137,21 @@ def cubic_BN(poscar_creator):
             ion_velocities,
         ]
         poscar_input_string = poscar_creator(*componentwise_input)
+        expected_output = [
+            comment_line,
+            scaling_factor,
+            lattice,
+            species_names,
+            ions_per_species,
+            selective_dynamics,
+            ion_positions_direct,
+            lattice_velocities,
+            ion_velocities,
+        ]
         arguments = {}
         if not has_species_name:
             arguments["species_name"] = "B N"
-        return poscar_input_string, componentwise_input, arguments
+        return poscar_input_string, expected_output, arguments
 
     return _cubic_BN
 
@@ -142,7 +167,7 @@ B N
 1 1
 Direct
 0.0 0.0 0.0
-0.25 0.25 0.25"""
+0.25 0.0 0.25"""
     assert output_poscar_string == expected_poscar_string
 
 
@@ -157,7 +182,7 @@ B N
 1 1
 Direct
 0.0 0.0 0.0
-0.25 0.25 0.25"""
+0.25 0.0 0.25"""
     assert output_poscar_string == expected_poscar_string
 
 
@@ -171,7 +196,7 @@ def test_cubic_BN_fixture_species_name_provided(cubic_BN):
 1 1
 Direct
 0.0 0.0 0.0
-0.25 0.25 0.25"""
+0.25 0.0 0.25"""
     assert output_poscar_string == expected_poscar_string
 
 
@@ -187,7 +212,22 @@ B N
 Selective dynamics
 Direct
 0.0 0.0 0.0 T F T
-0.25 0.25 0.25 F T F"""
+0.25 0.0 0.25 F T F"""
+    assert output_poscar_string == expected_poscar_string
+
+
+def test_cubic_BN_fixture_cartesian(cubic_BN):
+    output_poscar_string, *_ = cubic_BN(coordinate_system="Cartesian")
+    expected_poscar_string = """Cubic BN
+2.0
+0.0 0.5 0.5
+0.5 0.0 0.5
+0.5 0.5 0.0
+B N
+1 1
+Cartesian
+0.0 0.0 0.0
+0.125 0.25 0.125"""
     assert output_poscar_string == expected_poscar_string
 
 
@@ -310,6 +350,41 @@ def test_positions_direct(cubic_BN, has_species_name, has_selective_dynamics, As
     ).ion_positions_and_selective_dynamics
     Assert.allclose(expected_ion_positions, output_ion_positions)
     Assert.allclose(expected_selective_dynamics, output_selective_dynamics)
+
+
+@pytest.mark.parametrize("has_species_name", [True, False])
+@pytest.mark.parametrize("has_selective_dynamics", [True, False])
+@pytest.mark.parametrize("num_scaling_factors", [1, 3])
+def test_positions_cartesian(
+    cubic_BN, has_species_name, has_selective_dynamics, num_scaling_factors
+):
+    poscar_string, componentwise_inputs, arguments = cubic_BN(
+        has_species_name=has_species_name,
+        has_selective_dynamics=has_selective_dynamics,
+        coordinate_system="Cartesian",
+        num_scaling_factors=num_scaling_factors,
+    )
+    ion_positions = componentwise_inputs[6]
+    expected_ion_positions = [x[0:3] for x in ion_positions[1:]]
+    if has_selective_dynamics:
+        expected_selective_dynamics = [x[3:] for x in ion_positions[1:]]
+        expected_selective_dynamics = [
+            item for sublist in expected_selective_dynamics for item in sublist
+        ]
+        expected_selective_dynamics = [x.split() for x in expected_selective_dynamics]
+        expected_selective_dynamics = [
+            [True if x == "T" else False for x in sublist]
+            for sublist in expected_selective_dynamics
+        ]
+    else:
+        expected_selective_dynamics = False
+    expected_ion_positions = VaspData(expected_ion_positions)
+    expected_selective_dynamics = VaspData(expected_selective_dynamics)
+    output_ion_positions, output_selective_dynamics = ParsePoscar(
+        poscar_string, **arguments
+    ).ion_positions_and_selective_dynamics
+    assert np.allclose(expected_ion_positions, output_ion_positions)
+    assert np.allclose(expected_selective_dynamics, output_selective_dynamics)
 
 
 @pytest.mark.parametrize("has_species_name", [True, False])

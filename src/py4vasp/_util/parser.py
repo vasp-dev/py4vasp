@@ -26,8 +26,17 @@ class ParsePoscar:
             lattice_vectors[0], np.cross(lattice_vectors[1], lattice_vectors[2])
         )
 
+    @classmethod
+    def get_reciprocal_lattice_vectors(cls, cell):
+        lattice_vectors = cell.lattice_vectors.data * cell.scale
+        volume = cls._get_volume(lattice_vectors)
+        b1 = np.cross(lattice_vectors[1], lattice_vectors[2]) / volume
+        b2 = np.cross(lattice_vectors[2], lattice_vectors[0]) / volume
+        b3 = np.cross(lattice_vectors[0], lattice_vectors[1]) / volume
+        return np.array([b1, b2, b3])
+
     @property
-    def cell(self):
+    def scaling_factor(self):
         scaling_factor = self.split_poscar[1]
         if len(scaling_factor.split()) not in [1, 3]:
             raise ParserError(
@@ -43,6 +52,11 @@ class ParsePoscar:
                 raise ParserError(
                     "The scaling factor for the cell is either negative or zero."
                 )
+        return scaling_factor
+
+    @property
+    def cell(self):
+        scaling_factor = self.scaling_factor
         lattice_vectors = np.array(
             [x.split() for x in self.split_poscar[2:5]], dtype=float
         )
@@ -104,21 +118,25 @@ class ParsePoscar:
             positions = np.array(
                 [x.split()[0:3] for x in positions_and_selective_dyn], dtype=float
             )
-            if self.has_selective_dynamics:
-                selective_dynamics = [
-                    x.split()[3:6] for x in positions_and_selective_dyn
-                ]
-                selective_dynamics = [
-                    [True if x == "T" else False for x in y] for y in selective_dynamics
-                ]
-            else:
-                selective_dynamics = False
             positions = VaspData(positions)
-            selective_dynamics = VaspData(selective_dynamics)
-        elif type_positions == "Coordinates":
-            raise NotImplementedError
+        elif type_positions == "Cartesian":
+            cartesian_positions = np.array(
+                [x.split()[0:3] for x in positions_and_selective_dyn], dtype=float
+            )
+            scaling_factor = self.scaling_factor
+            cartesian_positions = cartesian_positions * scaling_factor
+            reciprocal_lattice_vectors = self.get_reciprocal_lattice_vectors(self.cell)
+            direct_positions = cartesian_positions @ reciprocal_lattice_vectors.T
+            positions = np.remainder(direct_positions, 1)
+        if self.has_selective_dynamics:
+            selective_dynamics = [x.split()[3:6] for x in positions_and_selective_dyn]
+            selective_dynamics = [
+                [True if x == "T" else False for x in y] for y in selective_dynamics
+            ]
         else:
-            raise ValueError(f"Unknown type of positions: {type_positions}")
+            selective_dynamics = False
+        selective_dynamics = VaspData(selective_dynamics)
+
         return positions, selective_dynamics
 
     def to_contcar(self):
