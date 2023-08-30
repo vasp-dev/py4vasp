@@ -122,7 +122,7 @@ def cubic_BN(poscar_creator):
         poscar_input_string = poscar_creator(*componentwise_input)
         arguments = {}
         if not has_species_name:
-            arguments["species_name"] = ["B", "N"]
+            arguments["species_name"] = "B N"
         return poscar_input_string, componentwise_input, arguments
 
     return _cubic_BN
@@ -229,29 +229,21 @@ def test_negative_scaling_factor(cubic_BN, poscar_creator, Assert):
     Assert.allclose(expected_cell.scale, output_cell.scale)
 
 
-@pytest.mark.parametrize("species_name_provided", [True, False])
-def test_topology(cubic_BN, species_name_provided, Assert):
+@pytest.mark.parametrize("has_species_name", [True, False])
+def test_topology(cubic_BN, has_species_name, Assert):
     poscar_string, componentwise_inputs, arguments = cubic_BN(
-        species_name_provided=species_name_provided
+        has_species_name=has_species_name
     )
-    if species_name_provided:
-        _species_names = componentwise_inputs[3]
-        _ions_per_species = componentwise_inputs[4]
-    else:
-        _species_names = arguments[0]
-        _ions_per_species = componentwise_inputs[3]
-    expected_species_names = _species_names.split()
-    expected_species_names = np.array(expected_species_names)
-    expected_ions_per_species = np.array(_ions_per_species.split(), dtype=int)
-    expected_species_names = VaspData(expected_species_names)
-    expected_ions_per_species = VaspData(expected_ions_per_species)
+    species_names = componentwise_inputs[3]
+    ions_per_species = componentwise_inputs[4]
+    expected_species_names = (
+        VaspData(species_names) if species_names else arguments["species_name"].split()
+    )
+    expected_ions_per_species = VaspData(ions_per_species)
     expected_topology = Topology(
         number_ion_types=expected_ions_per_species, ion_types=expected_species_names
     )
-    if not arguments:
-        output_topology = ParsePoscar(poscar_string).topology
-    else:
-        output_topology = ParsePoscar(poscar_string, *arguments).topology
+    output_topology = ParsePoscar(poscar_string, **arguments).topology
     Assert.allclose(
         expected_topology.number_ion_types, output_topology.number_ion_types
     )
