@@ -1,3 +1,7 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from typing import Sequence
+
 import numpy as np
 import pytest
 
@@ -7,38 +11,128 @@ from py4vasp._util.parser import ParsePoscar
 
 
 @pytest.fixture
-def cubic_BN():
-    def _cubic_BN(scaling_factor=3.57, species_name_provided=True):
-        if isinstance(scaling_factor, float) or isinstance(scaling_factor, int):
+def poscar_creator():
+    def _poscar_creator(
+        comment_line: str or None,
+        scaling_factor: Sequence[float] or float or None,
+        lattice: Sequence[float] or None,
+        species_names: Sequence[str] or None,
+        ions_per_species: Sequence[int],
+        selective_dynamics: str or None,
+        ion_positions: Sequence[float] or None,
+        lattice_velocities: Sequence[float] or None,
+        ion_velocities: Sequence[float] or None,
+    ) -> str:
+        if isinstance(scaling_factor, (int, float)):
             scaling_factor = [scaling_factor]
-        _comment_line = "Cubic BN"
-        _scaling_factor = " ".join([str(x) for x in scaling_factor])
-        _lattice = """0.0 0.5 0.5\n0.5 0.0 0.5\n0.5 0.5 0.0"""
-        _species_names = "B N"
-        _ions_per_species = "1 1"
-        _ion_positions = """Direct\n0.0 0.0 0.0\n0.25 0.25 0.25"""
-        if species_name_provided:
-            componentwise_inputs = [
-                _comment_line,
-                _scaling_factor,
-                _lattice,
-                _species_names,
-                _ions_per_species,
-                _ion_positions,
-            ]
-            arguments = None
-        else:
-            componentwise_inputs = [
-                _comment_line,
-                _scaling_factor,
-                _lattice,
-                _ions_per_species,
-                _ion_positions,
-            ]
-            arguments = [_species_names]
+        input_comment_line = comment_line if comment_line else None
+        input_scaling_factor = (
+            " ".join([str(x) for x in scaling_factor]) if scaling_factor else None
+        )
+        input_lattice = (
+            "\n".join([" ".join([str(y) for y in x]) for x in lattice])
+            if lattice
+            else None
+        )
+        input_species_names = " ".join(species_names) if species_names else None
+        input_ions_per_species = (
+            " ".join([str(x) for x in ions_per_species]) if ions_per_species else None
+        )
+        input_selective_dynamics = selective_dynamics if selective_dynamics else None
+        input_ion_positions = (
+            "\n".join([" ".join([str(y) for y in x]) for x in ion_positions])
+            if ion_positions
+            else None
+        )
+        input_lattice_velocities = (
+            "\n".join([" ".join([str(y) for y in x]) for x in lattice_velocities])
+            if lattice_velocities
+            else None
+        )
+        input_ion_velocities = (
+            "\n".join([" ".join([str(y) for y in x]) for x in ion_velocities])
+            if ion_velocities
+            else None
+        )
+        componentwise_input = [
+            input_comment_line,
+            input_scaling_factor,
+            input_lattice,
+            input_species_names,
+            input_ions_per_species,
+            input_selective_dynamics,
+            input_ion_positions,
+            input_lattice_velocities,
+            input_ion_velocities,
+        ]
+        poscar_input_string = "\n".join(filter(None, componentwise_input))
+        return poscar_input_string
 
-        poscar_input_string = "\n".join(componentwise_inputs)
-        return poscar_input_string, componentwise_inputs, arguments
+    return _poscar_creator
+
+
+@pytest.fixture
+def cubic_BN(poscar_creator):
+    def _cubic_BN(
+        has_comment_line: bool = True,
+        num_scaling_factors: int = True,
+        has_lattice: bool = True,
+        has_species_name: bool = True,
+        has_ion_per_species: bool = True,
+        has_selective_dynamics: bool = False,
+        has_ion_positions: bool = True,
+        has_lattice_velocities: bool = False,
+        has_ion_velocities: bool = False,
+    ):
+        comment_line = "Cubic BN" if has_comment_line else None
+        scaling_factor = (
+            [float(i) for i in range(1, num_scaling_factors + 1)]
+            if num_scaling_factors
+            else None
+        )
+        lattice = (
+            [[0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]] if has_lattice else None
+        )
+        species_names = ["B", "N"] if has_species_name else None
+        ions_per_species = [1, 1] if has_ion_per_species else None
+        selective_dynamics = "Selective dynamics" if has_selective_dynamics else None
+        ion_positions = (
+            [["Direct"], [0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]
+            if has_ion_positions
+            else None
+        )
+        lattice_velocities = (
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]] if has_lattice_velocities else None
+        )
+        ion_velocities = (
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]] if has_ion_velocities else None
+        )
+        poscar_input_string = poscar_creator(
+            comment_line,
+            scaling_factor,
+            lattice,
+            species_names,
+            ions_per_species,
+            selective_dynamics,
+            ion_positions,
+            lattice_velocities,
+            ion_velocities,
+        )
+        componentwise_input = [
+            comment_line,
+            scaling_factor,
+            lattice,
+            species_names,
+            ions_per_species,
+            selective_dynamics,
+            ion_positions,
+            lattice_velocities,
+            ion_velocities,
+        ]
+        arguments = {}
+        if not has_species_name:
+            arguments["species_name"] = ["B", "N"]
+        return poscar_input_string, componentwise_input, arguments
 
     return _cubic_BN
 
@@ -46,7 +140,7 @@ def cubic_BN():
 def test_cubic_BN_fixture_defaults(cubic_BN):
     output_poscar_string, *_ = cubic_BN()
     expected_poscar_string = """Cubic BN
-3.57
+1.0
 0.0 0.5 0.5
 0.5 0.0 0.5
 0.5 0.5 0.0
@@ -59,9 +153,9 @@ Direct
 
 
 def test_cubic_BN_fixture_scaling_factor(cubic_BN):
-    output_poscar_string, *_ = cubic_BN(scaling_factor=[3.57, 3.57, 3.57])
+    output_poscar_string, *_ = cubic_BN(num_scaling_factors=3)
     expected_poscar_string = """Cubic BN
-3.57 3.57 3.57
+1.0 2.0 3.0
 0.0 0.5 0.5
 0.5 0.0 0.5
 0.5 0.5 0.0
@@ -74,9 +168,9 @@ Direct
 
 
 def test_cubic_BN_fixture_species_name_provided(cubic_BN):
-    output_poscar_string, *_ = cubic_BN(species_name_provided=False)
+    output_poscar_string, *_ = cubic_BN(has_species_name=False)
     expected_poscar_string = """Cubic BN
-3.57
+1.0
 0.0 0.5 0.5
 0.5 0.0 0.5
 0.5 0.5 0.0
@@ -94,7 +188,7 @@ def test_comment_line(cubic_BN):
     assert comment_line == parsed_comment_line
 
 
-@pytest.mark.parametrize("_scaling_factor", [3.57, [3.57, 3.57, 3.57]])
+@pytest.mark.parametrize("num_scaling_factors", [0, 1, 3])
 def test_cell(cubic_BN, _scaling_factor, Assert):
     poscar_string, componentwise_inputs, _ = cubic_BN()
     _scaling_factor = componentwise_inputs[1]
