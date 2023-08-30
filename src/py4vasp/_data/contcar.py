@@ -14,9 +14,9 @@ class CONTCAR(base.Refinery):
         return {
             **self._structure().read(),
             "system": convert.text_to_string(self._raw_data.system),
-            "selective_dynamics": self._read_selective_dynamics(),
-            "lattice_velocities": self._read_lattice_velocities(),
-            "ion_velocities": self._read_ion_velocities(),
+            **self._read("selective_dynamics"),
+            **self._read("lattice_velocities"),
+            **self._read("ion_velocities"),
         }
 
     def _structure(self):
@@ -31,20 +31,6 @@ class CONTCAR(base.Refinery):
         )
         return data.Structure.from_data(raw_structure)
 
-    def _read_selective_dynamics(self):
-        if self._raw_data.selective_dynamics.is_none():
-            return None
-        else:
-            return self._raw_data.selective_dynamics[:]
-
-    def _read_lattice_velocities(self):
-        if self._raw_data.lattice_velocities.is_none():
-            return None
-        else:
-            return self._raw_data.lattice_velocities[:]
-
-    def _read_ion_velocities(self):
-        if self._raw_data.ion_velocities.is_none():
-            return None
-        else:
-            return self._raw_data.ion_velocities[:]
+    def _read(self, key):
+        data = getattr(self._raw_data, key)
+        return {key: data} if not data.is_none() else {}
