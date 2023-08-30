@@ -89,7 +89,8 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
     def _default_dict(self):
         return {
             convert.text_to_string(label).strip(): value[self._steps]
-            for label, value in zip(self._raw_data.labels, self._raw_data.values.T)
+            #for label, value in zip(self._raw_data.labels, self._raw_data.values.T)
+            for label, value in zip(self._raw_data.labels, np.array( self._raw_data.values).T )
         }
 
     @base.data_access

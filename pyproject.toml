@@ -45,6 +45,8 @@ pre-commit = ">=3.3.3"
 sphinx = ">=5.0.2"
 sphinx-automodapi = ">=0.14.1"
 
+[tool.poetry.scripts]
+error-analysis = "py4vasp.scripts.error_analysis:main"
 
 [tool.isort]
 profile = "black"
