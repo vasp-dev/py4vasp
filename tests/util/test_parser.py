@@ -14,7 +14,7 @@ from py4vasp.exception import ParserError
 
 @pytest.fixture
 def poscar_creator():
-    def _to_string(input: Sequence[int or float] or float or None) -> str:
+    def _to_string(input: Sequence[int or float] or int or float or None) -> str:
         if input is None:
             return None
         if not isinstance(input, Sequence):
