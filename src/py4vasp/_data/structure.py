@@ -250,7 +250,7 @@ class Structure(slice_.Mixin, base.Refinery):
 
         {examples}
         """
-        return self._raw_data.positions[self._steps] @ self._lattice_vectors()
+        return self._positions() @ self._lattice_vectors()
 
     @base.data_access
     @documentation.format(examples=slice_.examples("structure", "volume"))

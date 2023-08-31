@@ -176,6 +176,14 @@ def check_Fe3O4_ase(structure, reference, steps, Assert):
     assert all(structure.pbc)
 
 
+def test_to_ase_Ca3AsBr3(Ca3AsBr3, Assert, not_core):
+    structure = Ca3AsBr3.to_ase()
+    Assert.allclose(structure.cell.array, Ca3AsBr3.ref.lattice_vectors)
+    Assert.allclose(structure.get_scaled_positions(), Ca3AsBr3.ref.positions)
+    assert all(structure.symbols == "Ca2AsBrCaBr2")
+    assert all(structure.pbc)
+
+
 def test_from_ase(Sr2TiO4, Assert, not_core):
     structure = Structure.from_ase(Sr2TiO4.to_ase())
     check_Sr2TiO4_structure(structure.read(), Sr2TiO4.ref, -1, Assert)
@@ -226,10 +234,11 @@ def test_supercell_wrong_size(Sr2TiO4, not_core):
         Sr2TiO4.to_ase([1, 2])
 
 
-def test_cartesian_positions(Sr2TiO4, Fe3O4, Assert, not_core):
+def test_cartesian_positions(Sr2TiO4, Fe3O4, Ca3AsBr3, Assert, not_core):
     check_cartesian_positions(Sr2TiO4, Assert)
     check_cartesian_positions(Fe3O4, Assert)
     check_cartesian_positions(Fe3O4[0], Assert)
+    check_cartesian_positions(Ca3AsBr3, Assert)
 
 
 def check_cartesian_positions(structure, Assert):
