@@ -14,7 +14,7 @@ class ParsePoscar:
     species_name: str or None = None
 
     def __post_init__(self):
-        self.split_poscar = self.poscar.split("\n")
+        self.split_poscar = self.poscar.splitlines()
 
     @property
     def comment_line(self):
