@@ -289,6 +289,10 @@ def test_plot_Fe3O4(Fe3O4, not_core):
         check_plot_structure(Fe3O4[steps])
 
 
+def test_plot_Ca3AsBr3(Ca3AsBr3, not_core):
+    check_plot_structure(Ca3AsBr3)
+
+
 def check_plot_structure(structure):
     obj = viewer3d.Viewer3d
     cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)

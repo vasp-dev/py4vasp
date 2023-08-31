@@ -277,7 +277,11 @@ class Structure(slice_.Mixin, base.Refinery):
     @base.data_access
     def number_steps(self):
         """Return the number of structures in the trajectory."""
-        return len(self._raw_data.positions[self._slice])
+        if self._is_trajectory:
+            range_ = range(len(self._raw_data.positions))
+            return len(range_[self._slice])
+        else:
+            return 1
 
     def _topology(self):
         return data.Topology.from_data(self._raw_data.topology)
