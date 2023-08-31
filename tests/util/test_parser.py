@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import copy
-from typing import Sequence
+from typing import List, Sequence
 
 import numpy as np
 import pytest
@@ -61,6 +61,31 @@ def poscar_creator():
 
 @pytest.fixture
 def cubic_BN(poscar_creator):
+    def _assign_value(value, has_value: bool or None):
+        if has_value:
+            return value
+        else:
+            return None
+
+    def _add_header(header: str, contents: List):
+        if not contents:
+            return None
+        contents = [[header]] + contents
+        return contents
+
+    def _convert_coordinate_system(
+        from_system: str, to_system: str, quantity: List, lattice: List or None
+    ):
+        if not lattice:
+            return None
+        if from_system == "Direct" and to_system == "Cartesian":
+            quantity = np.array(quantity) @ np.array(lattice).T
+            quantity = np.round(quantity, 8)
+            quantity_new_sys = _add_header(
+                header="Cartesian", contents=quantity.tolist()
+            )
+        return quantity_new_sys
+
     def _cubic_BN(
         has_comment_line: bool = True,
         num_scaling_factors: int = 1,
@@ -74,33 +99,51 @@ def cubic_BN(poscar_creator):
         ions_coordinate_system: str = "Direct",
         velocity_coordinate_system: str = "Cartesian",
     ):
-        comment_line = "Cubic BN" if has_comment_line else None
-        scaling_factor = (
-            [float(i + 1) for i in range(1, num_scaling_factors + 1)]
-            if num_scaling_factors
-            else None
+        DEFAULTS = {
+            "comment_line": "Cubic BN",
+            "scaling_factor": [float(i + 1) for i in range(1, num_scaling_factors + 1)],
+            "lattice": [[0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]],
+            "species_names": ["B", "N"],
+            "ions_per_species": [1, 1],
+            "selective_dynamics": "Selective dynamics",
+            "ion_positions": [[0.0, 0.0, 0.0], [0.25, 0.0, 0.25]],
+            "lattice_velocities": [
+                [1],
+                [0.0, -0.6, 0.2],
+                [0.1, 0.3, -0.2],
+                [0.2, -0.4, 0.4],
+            ],
+            "ion_velocities": [[0.2, 0.4, -0.2], [0.4, 0.6, -0.3]],
+            "ions_coordinate_system": "Direct",
+            "velocity_coordinate_system": "Direct",
+        }
+        comment_line = DEFAULTS["comment_line"]
+        comment_line = _assign_value(comment_line, has_comment_line)
+        scaling_factor = DEFAULTS["scaling_factor"]
+        scaling_factor = _assign_value(scaling_factor, num_scaling_factors > 0)
+        lattice = DEFAULTS["lattice"]
+        lattice = _assign_value(lattice, has_lattice)
+        species_names = DEFAULTS["species_names"]
+        species_names = _assign_value(species_names, has_species_name)
+        ions_per_species = DEFAULTS["ions_per_species"]
+        ions_per_species = _assign_value(ions_per_species, has_ion_per_species)
+        selective_dynamics = DEFAULTS["selective_dynamics"]
+        selective_dynamics = _assign_value(selective_dynamics, has_selective_dynamics)
+        positions_writeout = _add_header(
+            header=DEFAULTS["ions_coordinate_system"],
+            contents=DEFAULTS["ion_positions"],
         )
-        lattice = (
-            [[0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]] if has_lattice else None
-        )
-        species_names = ["B", "N"] if has_species_name else None
-        ions_per_species = [1, 1] if has_ion_per_species else None
-        selective_dynamics = "Selective dynamics" if has_selective_dynamics else None
-        positions = [[0.0, 0.0, 0.0], [0.25, 0.0, 0.25]]
-        if ions_coordinate_system == "Direct":
-            ion_positions = [["Direct"]] + positions if has_ion_positions else None
-            ion_positions_direct = copy.deepcopy(ion_positions)
-        elif ions_coordinate_system == "Cartesian":
-            if positions is None:
-                ion_positions_direct = None
-                ion_positions = None
-            else:
-                ion_positions_direct = [["Direct"]] + positions
-                positions = np.array(positions)
-                lattice = np.array(lattice)
-                positions = positions @ lattice.T
-                lattice = lattice.tolist()
-                ion_positions = [["Cartesian"]] + positions.tolist()
+        ion_positions_direct = _assign_value(positions_writeout, has_ion_positions)
+        if ions_coordinate_system == DEFAULTS["ions_coordinate_system"]:
+            ion_positions = copy.deepcopy(ion_positions_direct)
+        else:
+            positions_writeout = _convert_coordinate_system(
+                from_system=DEFAULTS["ions_coordinate_system"],
+                to_system=ions_coordinate_system,
+                quantity=DEFAULTS["ion_positions"],
+                lattice=DEFAULTS["lattice"],
+            )
+            ion_positions = _assign_value(positions_writeout, has_ion_positions)
         if has_selective_dynamics:
             ion_positions[1].append("T F T")
             ion_positions[2].append("F T F")
@@ -111,30 +154,36 @@ def cubic_BN(poscar_creator):
             scaled_lattice = scaled_lattice.tolist()
         else:
             scaled_lattice = lattice
-        _lattice_velocities = [[0.0, -0.6, 0.2], [0.1, 0.3, -0.2], [0.2, -0.4, 0.4]]
-        lattice_velocities = (
-            [["Lattice velocities and vectors"], [1]]
-            + _lattice_velocities
-            + scaled_lattice
-            if has_lattice_velocities
-            else None
+        _lattice_velocities = []
+        _lattice_velocities.extend(DEFAULTS["lattice_velocities"])
+        _lattice_velocities.extend(scaled_lattice)
+        lattice_velocities = _assign_value(_lattice_velocities, has_lattice_velocities)
+        lattice_velocities = _add_header(
+            header="Lattice velocities and vectors", contents=_lattice_velocities
         )
-        direct_velocities = [[0.2, 0.4, -0.2], [0.4, 0.6, -0.3]]
-        cartesian_velocities = np.array(direct_velocities) @ np.array(lattice).T
-        cartesian_velocities = np.round(cartesian_velocities, 5)
-        cartesian_velocities = cartesian_velocities.tolist()
-        if velocity_coordinate_system == "Direct":
-            ion_velocities = (
-                [["Direct"]] + direct_velocities if has_ion_velocities else None
+        lattice_velocities = _assign_value(lattice_velocities, has_lattice_velocities)
+        if velocity_coordinate_system == DEFAULTS["velocity_coordinate_system"]:
+            ion_velocities = _add_header(
+                header=DEFAULTS["velocity_coordinate_system"],
+                contents=DEFAULTS["ion_velocities"],
             )
-        elif velocity_coordinate_system == "Cartesian":
-            ion_velocities = (
-                [["Cartesian"]] + cartesian_velocities if has_ion_velocities else None
+        else:
+            ion_velocities = _convert_coordinate_system(
+                from_system=DEFAULTS["velocity_coordinate_system"],
+                to_system=velocity_coordinate_system,
+                quantity=DEFAULTS["ion_velocities"],
+                lattice=DEFAULTS["lattice"],
             )
-        output_ion_velocities = (
-            [["Cartesian"]] + cartesian_velocities if has_ion_velocities else None
-        )
-
+        ion_velocities = _assign_value(ion_velocities, has_ion_velocities)
+        if velocity_coordinate_system == "Cartesian":
+            output_ion_velocities = ion_velocities
+        else:
+            output_ion_velocities = _convert_coordinate_system(
+                from_system=velocity_coordinate_system,
+                to_system="Cartesian",
+                quantity=ion_velocities[1:],
+                lattice=lattice,
+            )
         componentwise_input = [
             comment_line,
             scaling_factor,
