@@ -253,20 +253,28 @@ def test_volume_Fe3O4(Fe3O4, Assert):
     Assert.allclose(Fe3O4[1:3].volume(), reference_volumes[1:3])
 
 
+def test_volume_Ca3AsO3(Ca3AsBr3, Assert):
+    lattice_vectors = Ca3AsBr3.ref.lattice_vectors[np.newaxis]
+    reference_volumes = determine_reference_volumes(lattice_vectors)[-1]
+    Assert.allclose(Ca3AsBr3.volume(), reference_volumes)
+
+
 def determine_reference_volumes(lattice_vectors):
     cross_product = np.cross(lattice_vectors[:, 0], lattice_vectors[:, 1])
     return np.abs(np.einsum("ij,ij -> i", cross_product, lattice_vectors[:, 2]))
 
 
-def test_number_atoms(Sr2TiO4):
+def test_number_atoms(Sr2TiO4, Ca3AsBr3):
     assert Sr2TiO4.number_atoms() == 7
+    assert Ca3AsBr3.number_atoms() == 7
 
 
-def test_number_steps(Sr2TiO4):
+def test_number_steps(Sr2TiO4, Ca3AsBr3):
     assert Sr2TiO4.number_steps() == 1
     assert Sr2TiO4[0].number_steps() == 1
     assert Sr2TiO4[:].number_steps() == len(Sr2TiO4.ref.positions)
     assert Sr2TiO4[1:3].number_steps() == 2
+    assert Ca3AsBr3.number_steps() == 1
 
 
 def test_plot_Sr2TiO4(Sr2TiO4, not_core):

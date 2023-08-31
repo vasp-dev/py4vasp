@@ -269,7 +269,10 @@ class Structure(slice_.Mixin, base.Refinery):
     @base.data_access
     def number_atoms(self):
         """Return the total number of atoms in the structure."""
-        return self._raw_data.positions.shape[1]
+        if self._is_trajectory:
+            return self._raw_data.positions.shape[1]
+        else:
+            return self._raw_data.positions.shape[0]
 
     @base.data_access
     def number_steps(self):
