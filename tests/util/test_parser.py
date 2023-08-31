@@ -14,6 +14,16 @@ from py4vasp.exception import ParserError
 
 @pytest.fixture
 def poscar_creator():
+    def _to_string(input: Sequence[int or float] or float or None) -> str:
+        if input is None:
+            return None
+        if not isinstance(input, Sequence):
+            return " ".join([str(input)])
+        if not all(isinstance(x, list) for x in input):
+            return " ".join([str(x) for x in input])
+        else:
+            return "\n".join([" ".join([str(y) for y in x]) for x in input])
+
     def _poscar_creator(
         comment_line: str or None,
         scaling_factor: Sequence[float] or float or None,
@@ -25,47 +35,23 @@ def poscar_creator():
         lattice_velocities: Sequence[float] or None,
         ion_velocities: Sequence[float] or None,
     ) -> str:
-        if isinstance(scaling_factor, (int, float)):
-            scaling_factor = [scaling_factor]
-        input_comment_line = comment_line if comment_line else None
-        input_scaling_factor = (
-            " ".join([str(x) for x in scaling_factor]) if scaling_factor else None
-        )
-        input_lattice = (
-            "\n".join([" ".join([str(y) for y in x]) for x in lattice])
-            if lattice
-            else None
-        )
-        input_species_names = " ".join(species_names) if species_names else None
-        input_ions_per_species = (
-            " ".join([str(x) for x in ions_per_species]) if ions_per_species else None
-        )
-        input_selective_dynamics = selective_dynamics if selective_dynamics else None
-        input_ion_positions = (
-            "\n".join([" ".join([str(y) for y in x]) for x in ion_positions])
-            if ion_positions
-            else None
-        )
-        input_lattice_velocities = (
-            "\n".join([" ".join([str(y) for y in x]) for x in lattice_velocities])
-            if lattice_velocities
-            else None
-        )
-        input_ion_velocities = (
-            "\n".join([" ".join([str(y) for y in x]) for x in ion_velocities])
-            if ion_velocities
-            else None
-        )
+        scaling_factor = _to_string(scaling_factor)
+        lattice = _to_string(lattice)
+        species_names = _to_string(species_names)
+        ions_per_species = _to_string(ions_per_species)
+        ion_positions = _to_string(ion_positions)
+        lattice_velocities = _to_string(lattice_velocities)
+        ion_velocities = _to_string(ion_velocities)
         componentwise_input = [
-            input_comment_line,
-            input_scaling_factor,
-            input_lattice,
-            input_species_names,
-            input_ions_per_species,
-            input_selective_dynamics,
-            input_ion_positions,
-            input_lattice_velocities,
-            input_ion_velocities,
+            comment_line,
+            scaling_factor,
+            lattice,
+            species_names,
+            ions_per_species,
+            selective_dynamics,
+            ion_positions,
+            lattice_velocities,
+            ion_velocities,
         ]
         poscar_input_string = "\n".join(filter(None, componentwise_input))
         return poscar_input_string
