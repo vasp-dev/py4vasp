@@ -737,10 +737,11 @@ def _Fe3O4_CONTCAR():
     structure = _Fe3O4_structure()
     structure.cell.lattice_vectors = structure.cell.lattice_vectors[-1]
     structure.positions = structure.positions[-1]
-    selective_dynamics = np.random.choice([True, False], size=(number_atoms, axes))
-    lattice_velocities = 0.1 * structure.cell.lattice_vectors
+    even_numbers = np.arange(structure.positions.size) % 2 == 0
+    selective_dynamics = even_numbers.reshape(structure.positions.shape)
+    lattice_velocities = 0.1 * structure.cell.lattice_vectors**2 - 0.3
     shape = structure.positions.shape
-    ion_velocities = np.arange(np.prod(shape)).reshape(shape)
+    ion_velocities = np.sqrt(np.arange(np.prod(shape)).reshape(shape))
     return raw.CONTCAR(
         structure=structure,
         system="Fe3O4",
