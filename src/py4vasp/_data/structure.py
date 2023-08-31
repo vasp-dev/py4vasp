@@ -125,7 +125,7 @@ class Structure(slice_.Mixin, base.Refinery):
         """
         return {
             "lattice_vectors": self._lattice_vectors(),
-            "positions": self._raw_data.positions[self._steps],
+            "positions": self._positions(),
             "elements": self._topology().elements(),
             "names": self._topology().names(),
         }
@@ -281,7 +281,10 @@ class Structure(slice_.Mixin, base.Refinery):
 
     def _lattice_vectors(self):
         lattice_vectors = _LatticeVectors(self._raw_data.cell.lattice_vectors)
-        return lattice_vectors[self._steps]
+        return lattice_vectors[self._get_steps()]
+
+    def _positions(self):
+        return self._raw_data.positions[self._get_steps()]
 
     def _viewer_from_structure(self, supercell):
         viewer = Viewer3d.from_structure(self, supercell=supercell)
@@ -293,6 +296,9 @@ class Structure(slice_.Mixin, base.Refinery):
         viewer.show_cell()
         return viewer
 
+    def _get_steps(self):
+        return self._steps if self._is_trajectory else ()
+
     def _step_string(self):
         if self._is_slice:
             range_ = range(len(self._raw_data.positions))[self._steps]
@@ -301,6 +307,10 @@ class Structure(slice_.Mixin, base.Refinery):
             return ""
         else:
             return f" (step {self._steps + 1})"
+
+    @property
+    def _is_trajectory(self):
+        return self._raw_data.positions.ndim == 3
 
 
 class _LatticeVectors(reader.Reader):

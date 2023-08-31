@@ -59,6 +59,11 @@ def Fe3O4(raw_data):
     return make_structure(raw_data.structure("Fe3O4"))
 
 
+@pytest.fixture
+def Ca3AsBr3(raw_data):
+    return make_structure(raw_data.structure("Ca3AsBr3"))
+
+
 def make_structure(raw_structure):
     structure = Structure.from_data(raw_structure)
     structure.ref = types.SimpleNamespace()
@@ -91,6 +96,15 @@ def check_Fe3O4_structure(actual, reference, steps, Assert):
     Assert.allclose(actual["positions"], reference.positions[steps])
     assert actual["elements"] == ["Fe", "Fe", "Fe", "O", "O", "O", "O"]
     assert actual["names"] == ["Fe_1", "Fe_2", "Fe_3", "O_1", "O_2", "O_3", "O_4"]
+
+
+def test_read_Ca3AsBr3(Ca3AsBr3, Assert):
+    # special case of single structure instead of trajectory
+    actual = Ca3AsBr3.read()
+    Assert.allclose(actual["lattice_vectors"], Ca3AsBr3.ref.lattice_vectors)
+    Assert.allclose(actual["positions"], Ca3AsBr3.ref.positions)
+    assert actual["elements"] == ["Ca", "Ca", "As", "Br", "Ca", "Br", "Br"]
+    assert actual["names"] == ["Ca_1", "Ca_2", "As_1", "Br_1", "Ca_3", "Br_2", "Br_3"]
 
 
 def test_to_poscar(Sr2TiO4):

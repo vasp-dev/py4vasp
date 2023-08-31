@@ -260,6 +260,8 @@ class RawDataFactory:
             return _Sr2TiO4_structure()
         elif selection == "Fe3O4":
             return _Fe3O4_structure()
+        elif selection == "Ca3AsBr3":
+            return _Ca3AsBr3_structure()
         else:
             raise exception.NotImplemented()
 
@@ -826,6 +828,30 @@ def _Fe3O4_velocity():
     shape = (number_steps, number_atoms, axes)
     velocities = np.arange(np.prod(shape)).reshape(shape)
     return raw.Velocity(structure=_Fe3O4_structure(), velocities=velocities)
+
+
+def _Ca3AsBr3_cell():
+    return raw.Cell(
+        scale=5.93,
+        lattice_vectors=_make_data(np.eye(3)),
+    )
+
+
+def _Ca3AsBr3_structure():
+    positions = [
+        [0.5, 0.0, 0.0],  # Ca_1
+        [0.0, 0.5, 0.0],  # Ca_2
+        [0.0, 0.0, 0.0],  # As
+        [0.0, 0.5, 0.5],  # Br_1
+        [0.0, 0.0, 0.5],  # Ca_3
+        [0.5, 0.0, 0.5],  # Br_2
+        [0.5, 0.5, 0.0],  # Br_3
+    ]
+    return raw.Structure(
+        topology=_Ca3AsBr3_topology(),
+        cell=_Ca3AsBr3_cell(),
+        positions=_make_data(positions),
+    )
 
 
 def _Ca3AsBr3_topology():
