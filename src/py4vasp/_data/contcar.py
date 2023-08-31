@@ -3,33 +3,21 @@
 import numpy as np
 
 from py4vasp import data, raw
-from py4vasp._data import base
+from py4vasp._data import base, structure
 from py4vasp._util import convert
 
 
-class CONTCAR(base.Refinery):
+class CONTCAR(base.Refinery, structure.Mixin):
     "Access the final positions after the VASP calculation."
 
     def to_dict(self):
         return {
-            **self._structure().read(),
+            **self._structure.read(),
             "system": convert.text_to_string(self._raw_data.system),
             **self._read("selective_dynamics"),
             **self._read("lattice_velocities"),
             **self._read("ion_velocities"),
         }
-
-    def _structure(self):
-        structure = self._raw_data.structure
-        raw_structure = raw.Structure(
-            cell=raw.Cell(
-                lattice_vectors=np.array([structure.cell.lattice_vectors]),
-                scale=structure.cell.scale,
-            ),
-            topology=structure.topology,
-            positions=np.array([structure.positions]),
-        )
-        return data.Structure.from_data(raw_structure)
 
     def _read(self, key):
         data = getattr(self._raw_data, key)
