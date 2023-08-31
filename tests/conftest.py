@@ -608,7 +608,7 @@ def _Sr2TiO4_cell():
         [-0.839055341042049, -0.367478859090843, 0.401180037874301],
     ]
     return raw.Cell(
-        lattice_vectors=scale * np.array(number_steps * [lattice_vectors]), scale=scale
+        lattice_vectors=np.array(number_steps * [lattice_vectors]), scale=scale
     )
 
 

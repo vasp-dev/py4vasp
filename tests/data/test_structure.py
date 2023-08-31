@@ -12,10 +12,10 @@ from py4vasp.data import Structure
 
 REF_POSCAR = """\
 Sr2TiO4
-1.0
-   6.9229000000000003    0.0000000000000000    0.0000000000000000
-   4.6945030167999979    5.0880434191000035    0.0000000000000000
-  -5.8086962205000017   -2.5440193935999971    2.7773292841999986
+6.9229000000000003
+   1.0000000000000000    0.0000000000000000    0.0000000000000000
+   0.6781122097386930    0.7349583872510080    0.0000000000000000
+  -0.8390553410420490   -0.3674788590908430    0.4011800378743010
 Sr Ti O
 2 1 4
 Direct
@@ -29,11 +29,11 @@ Direct
 
 REF_HTML = """\
 Sr2TiO4<br>
-1.0<br>
+6.9229000000000003<br>
 <table>
-<tr><td>   6.9229000000000003</td><td>   0.0000000000000000</td><td>   0.0000000000000000</td></tr>
-<tr><td>   4.6945030167999979</td><td>   5.0880434191000035</td><td>   0.0000000000000000</td></tr>
-<tr><td>  -5.8086962205000017</td><td>  -2.5440193935999971</td><td>   2.7773292841999986</td></tr>
+<tr><td>   1.0000000000000000</td><td>   0.0000000000000000</td><td>   0.0000000000000000</td></tr>
+<tr><td>   0.6781122097386930</td><td>   0.7349583872510080</td><td>   0.0000000000000000</td></tr>
+<tr><td>  -0.8390553410420490</td><td>  -0.3674788590908430</td><td>   0.4011800378743010</td></tr>
 </table>
 Sr Ti O<br>
 2 1 4<br>
@@ -47,6 +47,22 @@ Direct<br>
 <tr><td>   0.5000000000000000</td><td>   0.0000000000000000</td><td>   0.5000000000000000</td></tr>
 <tr><td>   0.0000000000000000</td><td>   0.5000000000000000</td><td>   0.5000000000000000</td></tr>
 </table>"""
+
+REF_Ca3AsBr3 = """Ca3AsBr3
+5.9299999999999997
+   1.0000000000000000    0.0000000000000000    0.0000000000000000
+   0.0000000000000000    1.0000000000000000    0.0000000000000000
+   0.0000000000000000    0.0000000000000000    1.0000000000000000
+Ca As Br Ca Br
+2 1 1 1 2
+Direct
+   0.5000000000000000    0.0000000000000000    0.0000000000000000
+   0.0000000000000000    0.5000000000000000    0.0000000000000000
+   0.0000000000000000    0.0000000000000000    0.0000000000000000
+   0.0000000000000000    0.5000000000000000    0.5000000000000000
+   0.0000000000000000    0.0000000000000000    0.5000000000000000
+   0.5000000000000000    0.0000000000000000    0.5000000000000000
+   0.5000000000000000    0.5000000000000000    0.0000000000000000"""
 
 
 @pytest.fixture
@@ -67,7 +83,8 @@ def Ca3AsBr3(raw_data):
 def make_structure(raw_structure):
     structure = Structure.from_data(raw_structure)
     structure.ref = types.SimpleNamespace()
-    structure.ref.lattice_vectors = raw_structure.cell.lattice_vectors
+    cell = raw_structure.cell
+    structure.ref.lattice_vectors = cell.scale * cell.lattice_vectors
     structure.ref.positions = raw_structure.positions
     return structure
 
@@ -107,12 +124,13 @@ def test_read_Ca3AsBr3(Ca3AsBr3, Assert):
     assert actual["names"] == ["Ca_1", "Ca_2", "As_1", "Br_1", "Ca_3", "Br_2", "Br_3"]
 
 
-def test_to_poscar(Sr2TiO4):
+def test_to_poscar(Sr2TiO4, Ca3AsBr3):
     assert Sr2TiO4.to_POSCAR() == REF_POSCAR
     assert Sr2TiO4[0].to_POSCAR() == REF_POSCAR.replace("Sr2TiO4", "Sr2TiO4 (step 1)")
     for steps in (slice(None), slice(1, 3)):
         with pytest.raises(exception.NotImplemented):
             Sr2TiO4[steps].to_POSCAR()
+    assert Ca3AsBr3.to_POSCAR() == REF_Ca3AsBr3
 
 
 def test_from_poscar(Sr2TiO4, Assert, not_core):
@@ -303,11 +321,13 @@ def check_plot_structure(structure):
         cell.assert_called_once()
 
 
-def test_incorrect_step(Sr2TiO4):
+def test_incorrect_step(Sr2TiO4, Ca3AsBr3):
     with pytest.raises(exception.IncorrectUsage):
         Sr2TiO4[100].read()
     with pytest.raises(exception.IncorrectUsage):
         Sr2TiO4[[0, 1]].read()
+    with pytest.raises(exception.IncorrectUsage):
+        Ca3AsBr3[0]
 
 
 def test_print_final(Sr2TiO4, format_):
@@ -319,6 +339,7 @@ def test_print_specific(Sr2TiO4, format_):
     actual, _ = format_(Sr2TiO4[0])
     ref_plain = REF_POSCAR.replace("Sr2TiO4", "Sr2TiO4 (step 1)")
     ref_html = REF_HTML.replace("Sr2TiO4", "Sr2TiO4 (step 1)")
+    assert actual["text/plain"] == ref_plain
     assert actual == {"text/plain": ref_plain, "text/html": ref_html}
 
 
@@ -327,6 +348,11 @@ def test_print_trajectory(Sr2TiO4, format_):
     ref_plain = REF_POSCAR.replace("Sr2TiO4", "Sr2TiO4 from step 2 to 4")
     ref_html = REF_HTML.replace("Sr2TiO4", "Sr2TiO4 from step 2 to 4")
     assert actual == {"text/plain": ref_plain, "text/html": ref_html}
+
+
+def test_print_Ca3AsBr3(Ca3AsBr3, format_):
+    actual, _ = format_(Ca3AsBr3)
+    assert actual["text/plain"] == REF_Ca3AsBr3
 
 
 def test_factory_methods(raw_data, check_factory_methods):
