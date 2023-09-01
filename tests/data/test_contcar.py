@@ -100,7 +100,7 @@ def test_read(CONTCAR, Assert):
     check.element_agrees("ion_velocities", CONTCAR.ref.ion_velocities)
 
 
-def test_plot(CONTCAR):
+def test_plot(CONTCAR, not_core):
     obj = viewer3d.Viewer3d
     cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
     cm_cell = patch.object(obj, "show_cell")
