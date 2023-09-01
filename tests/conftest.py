@@ -49,6 +49,9 @@ class _Assert:
     def allclose(actual, desired):
         if _is_none(actual):
             assert _is_none(desired)
+        elif getattr(actual, "dtype", None) == np.bool_:
+            assert desired.dtype == np.bool_
+            assert np.all(actual == desired)
         else:
             actual, desired = np.broadcast_arrays(actual, desired)
             actual, mask_actual = _finite_subset(actual)
@@ -99,6 +102,15 @@ class RawDataFactory:
     def born_effective_charge(selection):
         if selection == "Sr2TiO4":
             return _Sr2TiO4_born_effective_charges()
+        else:
+            raise exception.NotImplemented()
+
+    @staticmethod
+    def CONTCAR(selection):
+        if selection == "Sr2TiO4":
+            return _Sr2TiO4_CONTCAR()
+        elif selection == "Fe3O4":
+            return _Fe3O4_CONTCAR()
         else:
             raise exception.NotImplemented()
 
@@ -248,6 +260,8 @@ class RawDataFactory:
             return _Sr2TiO4_structure()
         elif selection == "Fe3O4":
             return _Fe3O4_structure()
+        elif selection == "Ca3AsBr3":
+            return _Ca3AsBr3_structure()
         else:
             raise exception.NotImplemented()
 
@@ -594,8 +608,15 @@ def _Sr2TiO4_cell():
         [-0.839055341042049, -0.367478859090843, 0.401180037874301],
     ]
     return raw.Cell(
-        lattice_vectors=scale * np.array(number_steps * [lattice_vectors]), scale=scale
+        lattice_vectors=np.array(number_steps * [lattice_vectors]), scale=scale
     )
+
+
+def _Sr2TiO4_CONTCAR():
+    structure = _Sr2TiO4_structure()
+    structure.cell.lattice_vectors = structure.cell.lattice_vectors[-1]
+    structure.positions = structure.positions[-1]
+    return raw.CONTCAR(structure=structure, system=b"Sr2TiO4")
 
 
 def _Sr2TiO4_dos(projectors):
@@ -712,6 +733,24 @@ def _Fe3O4_cell():
     return raw.Cell(lattice_vectors=np.multiply.outer(scaling, lattice_vectors))
 
 
+def _Fe3O4_CONTCAR():
+    structure = _Fe3O4_structure()
+    structure.cell.lattice_vectors = structure.cell.lattice_vectors[-1]
+    structure.positions = structure.positions[-1]
+    even_numbers = np.arange(structure.positions.size) % 2 == 0
+    selective_dynamics = even_numbers.reshape(structure.positions.shape)
+    lattice_velocities = 0.1 * structure.cell.lattice_vectors**2 - 0.3
+    shape = structure.positions.shape
+    ion_velocities = np.sqrt(np.arange(np.prod(shape)).reshape(shape))
+    return raw.CONTCAR(
+        structure=structure,
+        system="Fe3O4",
+        selective_dynamics=raw.VaspData(selective_dynamics),
+        lattice_velocities=raw.VaspData(lattice_velocities),
+        ion_velocities=raw.VaspData(ion_velocities),
+    )
+
+
 def _Fe3O4_density(selection):
     parts = selection.split()
     structure = RawDataFactory.structure(parts[0])
@@ -790,6 +829,30 @@ def _Fe3O4_velocity():
     shape = (number_steps, number_atoms, axes)
     velocities = np.arange(np.prod(shape)).reshape(shape)
     return raw.Velocity(structure=_Fe3O4_structure(), velocities=velocities)
+
+
+def _Ca3AsBr3_cell():
+    return raw.Cell(
+        scale=5.93,
+        lattice_vectors=_make_data(np.eye(3)),
+    )
+
+
+def _Ca3AsBr3_structure():
+    positions = [
+        [0.5, 0.0, 0.0],  # Ca_1
+        [0.0, 0.5, 0.0],  # Ca_2
+        [0.0, 0.0, 0.0],  # As
+        [0.0, 0.5, 0.5],  # Br_1
+        [0.0, 0.0, 0.5],  # Ca_3
+        [0.5, 0.0, 0.5],  # Br_2
+        [0.5, 0.5, 0.0],  # Br_3
+    ]
+    return raw.Structure(
+        topology=_Ca3AsBr3_topology(),
+        cell=_Ca3AsBr3_cell(),
+        positions=_make_data(positions),
+    )
 
 
 def _Ca3AsBr3_topology():

@@ -27,8 +27,8 @@ class _Format:
     def comment_line(self, topology, step_string):
         return f"{topology}{step_string}{self.newline}"
 
-    def scaling_factor(self):
-        return f"1.0{self.newline}"
+    def scaling_factor(self, scale):
+        return f"{self._element_to_string(scale)}{self.newline}".lstrip()
 
     def ion_list(self, topology):
         return f"{topology.to_POSCAR(self.newline)}{self.newline}"
@@ -98,10 +98,10 @@ class Structure(slice_.Mixin, base.Refinery):
         return self._create_repr(format_)
 
     def _create_repr(self, format_=_Format()):
-        step = self._last_step_in_slice
+        step = self._get_last_step()
         lines = (
             format_.comment_line(self._topology(), self._step_string()),
-            format_.scaling_factor(),
+            format_.scaling_factor(self._raw_data.cell.scale),
             format_.vectors_to_table(self._raw_data.cell.lattice_vectors[step]),
             format_.ion_list(self._topology()),
             format_.coordinate_system(),
@@ -125,7 +125,7 @@ class Structure(slice_.Mixin, base.Refinery):
         """
         return {
             "lattice_vectors": self._lattice_vectors(),
-            "positions": self._raw_data.positions[self._steps],
+            "positions": self._positions(),
             "elements": self._topology().elements(),
             "names": self._topology().names(),
         }
@@ -250,7 +250,7 @@ class Structure(slice_.Mixin, base.Refinery):
 
         {examples}
         """
-        return self._raw_data.positions[self._steps] @ self._lattice_vectors()
+        return self._positions() @ self._lattice_vectors()
 
     @base.data_access
     @documentation.format(examples=slice_.examples("structure", "volume"))
@@ -269,19 +269,29 @@ class Structure(slice_.Mixin, base.Refinery):
     @base.data_access
     def number_atoms(self):
         """Return the total number of atoms in the structure."""
-        return self._raw_data.positions.shape[1]
+        if self._is_trajectory:
+            return self._raw_data.positions.shape[1]
+        else:
+            return self._raw_data.positions.shape[0]
 
     @base.data_access
     def number_steps(self):
         """Return the number of structures in the trajectory."""
-        return len(self._raw_data.positions[self._slice])
+        if self._is_trajectory:
+            range_ = range(len(self._raw_data.positions))
+            return len(range_[self._slice])
+        else:
+            return 1
 
     def _topology(self):
         return data.Topology.from_data(self._raw_data.topology)
 
     def _lattice_vectors(self):
         lattice_vectors = _LatticeVectors(self._raw_data.cell.lattice_vectors)
-        return lattice_vectors[self._steps]
+        return self._raw_data.cell.scale * lattice_vectors[self._get_steps()]
+
+    def _positions(self):
+        return self._raw_data.positions[self._get_steps()]
 
     def _viewer_from_structure(self, supercell):
         viewer = Viewer3d.from_structure(self, supercell=supercell)
@@ -293,6 +303,12 @@ class Structure(slice_.Mixin, base.Refinery):
         viewer.show_cell()
         return viewer
 
+    def _get_steps(self):
+        return self._steps if self._is_trajectory else ()
+
+    def _get_last_step(self):
+        return self._last_step_in_slice if self._is_trajectory else ()
+
     def _step_string(self):
         if self._is_slice:
             range_ = range(len(self._raw_data.positions))[self._steps]
@@ -301,6 +317,16 @@ class Structure(slice_.Mixin, base.Refinery):
             return ""
         else:
             return f" (step {self._steps + 1})"
+
+    def __getitem__(self, steps):
+        if not self._is_trajectory:
+            message = "The structure is not a Trajectory so accessing individual elements is not allowed."
+            raise exception.IncorrectUsage(message)
+        return super().__getitem__(steps)
+
+    @property
+    def _is_trajectory(self):
+        return self._raw_data.positions.ndim == 3
 
 
 class _LatticeVectors(reader.Reader):

@@ -122,7 +122,7 @@ def _add_all_refinement_classes(calc, add_single_class):
 
 def _add_attribute_from_path(calc, class_):
     instance = class_.from_path(calc.path())
-    setattr(calc, convert.to_snakecase(class_.__name__), instance)
+    setattr(calc, convert.quantity_name(class_.__name__), instance)
     return calc
 
 
@@ -132,7 +132,7 @@ class _AddAttributeFromFile:
 
     def __call__(self, calc, class_):
         instance = class_.from_file(self._file_name)
-        setattr(calc, convert.to_snakecase(class_.__name__), instance)
+        setattr(calc, convert.quantity_name(class_.__name__), instance)
         return calc
 
 
@@ -149,7 +149,7 @@ def _header_for_class(class_):
     first_line = class_.__doc__.split("\n")[0]
     class_name = class_.__name__
     return f"""
-    {convert.to_snakecase(class_name)}
+    {convert.quantity_name(class_name)}
         {first_line} (:class:`py4vasp.data.{class_name}`)
     """
 

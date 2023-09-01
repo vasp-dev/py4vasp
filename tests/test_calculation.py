@@ -46,10 +46,11 @@ def test_creation_from_file(mock_access, mock_from_file):
 @patch("py4vasp.raw.access", autospec=True)
 def test_all_attributes(mock_access):
     calculation = Calculation.from_path("test_path")
-    camel_cases = {
+    special_cases = {
         "BornEffectiveCharge": "born_effective_charge",
         "DielectricFunction": "dielectric_function",
         "DielectricTensor": "dielectric_tensor",
+        "CONTCAR": "CONTCAR",
         "ElasticModulus": "elastic_modulus",
         "ForceConstant": "force_constant",
         "InternalStrain": "internal_strain",
@@ -59,7 +60,7 @@ def test_all_attributes(mock_access):
         "PiezoelectricTensor": "piezoelectric_tensor",
     }
     for name, _ in inspect.getmembers(data, inspect.isclass):
-        attr = camel_cases.get(name, name.lower())
+        attr = special_cases.get(name, name.lower())
         assert hasattr(calculation, attr)
     mock_access.assert_not_called()
     mock_access.return_value.__enter__.assert_not_called()
