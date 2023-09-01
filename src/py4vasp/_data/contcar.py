@@ -8,10 +8,23 @@ from py4vasp._util import convert
 
 
 class CONTCAR(base.Refinery, structure.Mixin):
-    "Access the final positions after the VASP calculation."
+    """Access the final positions after the VASP calculation.
+
+    The CONTCAR contains the final structure of the VASP calculation. It can be used as
+    input for the next calculation if desired. Depending on the particular setup the
+    CONTCAR might contain additional information about the system such as the ion
+    and lattice velocities."""
 
     @base.data_access
     def to_dict(self):
+        """Extract the structural data and the available additional data to a dictionary.
+
+        Returns
+        -------
+        dict
+            Contains the final structure and information about the selective dynamics,
+            lattice and ion velocities if available.
+        """
         return {
             **self._structure.read(),
             "system": convert.text_to_string(self._raw_data.system),
@@ -22,10 +35,22 @@ class CONTCAR(base.Refinery, structure.Mixin):
 
     def _read(self, key):
         data = getattr(self._raw_data, key)
-        return {key: data} if not data.is_none() else {}
+        return {key: data[:]} if not data.is_none() else {}
 
     @base.data_access
     def plot(self, supercell=None):
+        """Generate a visualization of the final structure.
+
+        Parameters
+        ----------
+        supercell : int or np.ndarray
+            Scales all axes by the given factors.
+
+        Returns
+        -------
+        Viewer3d
+            A 3d visualization of the structure.
+        """
         return self._structure.plot(supercell)
 
     @base.data_access
@@ -88,7 +113,8 @@ def _vectors_and_flags_to_lines(vectors, flags):
 
 
 def _vector_to_line(vector, scientific):
-    return " ".join(_float_format(x, scientific) for x in vector)
+    insert = "" if scientific else " "
+    return insert.join(_float_format(x, scientific) for x in vector)
 
 
 def _flag_to_line(flag):
