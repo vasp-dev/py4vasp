@@ -139,7 +139,7 @@ class Refinery:
 
 
 def _quantity(cls):
-    return convert.to_snakecase(cls.__name__)
+    return convert.quantity_name(cls.__name__)
 
 
 def _get_path_to_file(file):

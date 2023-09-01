@@ -50,7 +50,7 @@ class Mixin(abc.ABC):
         filename: str | Path
             Name of the csv file which the data is exported to.
         """
-        classname = convert.to_snakecase(self.__class__.__name__).strip("_")
+        classname = convert.quantity_name(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.csv"
         if os.path.isabs(filename):
             writeout_path = filename
@@ -91,7 +91,7 @@ class Mixin(abc.ABC):
         on to the :py:meth:`to_graph` function. Please check the documentation of that function
         to learn which arguments are allowed."""
         fig = self.to_plotly(*args, **kwargs)
-        classname = convert.to_snakecase(self.__class__.__name__).strip("_")
+        classname = convert.quantity_name(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.png"
         if os.path.isabs(filename):
             writeout_path = filename
