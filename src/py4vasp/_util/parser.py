@@ -28,6 +28,12 @@ class ParsePoscar:
 
     @classmethod
     def get_reciprocal_lattice_vectors(cls, cell):
+        """Get the reciprocal lattice vectors from the cell.
+
+        Computes the reciprocal lattice vectors from the cell. The cell must
+        be a Cell object. The reciprocal lattice vectors are computed without
+        the (2pi) factor.
+        """
         lattice_vectors = cell.lattice_vectors.data * cell.scale
         volume = cls._get_volume(lattice_vectors)
         b1 = np.cross(lattice_vectors[1], lattice_vectors[2]) / volume
@@ -37,6 +43,14 @@ class ParsePoscar:
 
     @property
     def scaling_factor(self):
+        """The scaling factor from the POSCAR file.
+
+        Parses the scaling factor, deciding it the scaling factor is a single
+        number (all dimensions) or a vector (each dimension). If the scaling
+        if a negative number, then it is interpreted as a volume and the
+        a single scaling is computed to make sure that the volume of the final
+        cell is the same.
+        """
         scaling_factor = self.split_poscar[1]
         if len(scaling_factor.split()) not in [1, 3]:
             raise ParserError(
@@ -56,6 +70,13 @@ class ParsePoscar:
 
     @property
     def cell(self):
+        """The cell from the POSCAR file.
+
+        Parses the cell from the POSCAR file. The cell is parsed as is and
+        the scaling factor is reported in the Cell object. In case volume scaling
+        is used, the scaling factor is computed to make sure that the volume of
+        the final cell is the same.
+        """
         scaling_factor = self.scaling_factor
         lattice_vectors = np.array(
             [x.split() for x in self.split_poscar[2:5]], dtype=float
@@ -76,6 +97,13 @@ class ParsePoscar:
 
     @property
     def has_selective_dynamics(self):
+        """Checks if the POSCAR file has selective dynamics.
+
+        Checks if the POSCAR file has selective dynamics. The check is done
+        by looking at the 7th line of the POSCAR file. If the first letter
+        is 'S' or 's', then it is assumed that the POSCAR file has selective
+        dynamics.
+        """
         if self.species_name is None:
             possible_selective_dynamics = self.split_poscar[7]
         else:
@@ -87,6 +115,13 @@ class ParsePoscar:
 
     @property
     def topology(self):
+        """The topology from the POSCAR file.
+
+        Parses the topology from the POSCAR file. The topology is parsed as is
+        and the species names are reported in the Topology object. If the species
+        names are not specified in the POSCAR file, then the species names must
+        be supplied as an argument.
+        """
         if self.species_name is None:
             species_name = self.split_poscar[5].split()
             if not all(s.isalpha() for s in species_name):
@@ -104,6 +139,14 @@ class ParsePoscar:
 
     @property
     def ion_positions_and_selective_dynamics(self):
+        """The ion positions and selective dynamics from the POSCAR file.
+
+        Parses the ion positions and selective dynamics from the POSCAR file.
+        The ion positions and selective dynamics are parsed as is and the
+        positions are reported in the Structure object. If the positions are
+        specified in Cartesian coordinates, then the positions are converted
+        to direct coordinates.
+        """
         number_of_species = self.topology.number_ion_types.data.sum()
         idx_start = 6
         if self.has_selective_dynamics:
@@ -146,6 +189,13 @@ class ParsePoscar:
 
     @property
     def has_lattice_velocities(self):
+        """Checks if the POSCAR file has lattice velocities.
+
+        Checks if the POSCAR file has lattice velocities. The check is done
+        by looking at the 7th line of the POSCAR file. If that line
+        is 'Lattice velocities and vectors', then it is assumed that the POSCAR
+        file has lattice velocities.
+        """
         num_species = self.topology.number_ion_types.data.sum()
         idx_start = 7 + num_species
         if self.has_selective_dynamics:
@@ -162,6 +212,13 @@ class ParsePoscar:
 
     @property
     def lattice_velocities(self):
+        """The lattice velocities from the POSCAR file.
+
+        Parses the lattice velocities from the POSCAR file. The lattice velocities
+        are parsed as is and the velocities are reported in the Structure object.
+        If the velocities are specified in Direct coordinates, then the velocities
+        are converted to Cartesian coordinates.
+        """
         num_species = self.topology.number_ion_types.data.sum()
         idx_start = 7 + num_species
         if not self.has_lattice_velocities:
@@ -187,6 +244,13 @@ class ParsePoscar:
 
     @property
     def has_ion_velocities(self):
+        """Checks if the POSCAR file has ion velocities.
+
+        Checks if the POSCAR file has ion velocities. The header for the ion
+        velocities can be either 'Cartesian' or 'Direct' or an empty line
+        (assumed to be Cartesian). If the header is not one of these, then
+        it is assumed that the POSCAR file does not have ion velocities.
+        """
         num_species = self.topology.number_ion_types.data.sum()
         idx_start = 7 + num_species
         if self.has_selective_dynamics:
@@ -205,6 +269,13 @@ class ParsePoscar:
 
     @property
     def ion_velocities(self):
+        """The ion velocities from the POSCAR file.
+
+        Parses the ion velocities from the POSCAR file. The ion velocities
+        are parsed as is and the velocities are reported in the Structure object.
+        If the velocities are specified in Direct coordinates, then the velocities
+        are converted to Cartesian coordinates.
+        """
         num_species = self.topology.number_ion_types.data.sum()
         if not self.has_ion_velocities:
             raise ParserError("No ion velocities found in POSCAR.")
@@ -227,6 +298,13 @@ class ParsePoscar:
         return ion_velocities
 
     def to_contcar(self):
+        """Converts a string POSCAR file to a CONTCAR object.
+
+        The CONTCAR object contains the Structure object and the system
+        name (comment line), and the optional arguments selective_dynamics,
+        lattice_velocities, and ion_velocities. The optional arguments are
+        only included if they are present in the POSCAR file.
+        """
         ion_positions, selective_dynamics = self.ion_positions_and_selective_dynamics
         structure = Structure(
             topology=self.topology,
