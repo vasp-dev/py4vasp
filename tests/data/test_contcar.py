@@ -1,10 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
+from unittest.mock import patch
 
 import pytest
 
 from py4vasp import data
+from py4vasp._data import viewer3d
 
 REF_Sr2TiO4 = """\
 Sr2TiO4
@@ -98,7 +100,22 @@ def test_read(CONTCAR, Assert):
     check.element_agrees("ion_velocities", CONTCAR.ref.ion_velocities)
 
 
+def test_plot(CONTCAR):
+    obj = viewer3d.Viewer3d
+    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(obj, "show_cell")
+    with cm_init as init, cm_cell as cell:
+        fig = CONTCAR.plot()
+        init.assert_called_once()
+        cell.assert_called_once()
+
+
 def test_print(CONTCAR, format_):
     actual, _ = format_(CONTCAR)
     assert actual["text/plain"] == CONTCAR.ref.string
     assert actual == {"text/plain": CONTCAR.ref.string}
+
+
+def test_factory_methods(raw_data, check_factory_methods):
+    raw_contcar = raw_data.CONTCAR("Sr2TiO4")
+    check_factory_methods(data.CONTCAR, raw_contcar)

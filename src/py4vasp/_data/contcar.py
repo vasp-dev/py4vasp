@@ -10,6 +10,7 @@ from py4vasp._util import convert
 class CONTCAR(base.Refinery, structure.Mixin):
     "Access the final positions after the VASP calculation."
 
+    @base.data_access
     def to_dict(self):
         return {
             **self._structure.read(),
@@ -23,6 +24,11 @@ class CONTCAR(base.Refinery, structure.Mixin):
         data = getattr(self._raw_data, key)
         return {key: data} if not data.is_none() else {}
 
+    @base.data_access
+    def plot(self, supercell=None):
+        return self._structure.plot(supercell)
+
+    @base.data_access
     def __str__(self):
         return "\n".join(self._line_generator())
 
