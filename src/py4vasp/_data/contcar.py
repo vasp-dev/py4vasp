@@ -41,7 +41,7 @@ class CONTCAR(base.Refinery, structure.Mixin):
         yield self._topology().to_POSCAR()
         if not selective_dynamics.is_none():
             yield "Selective dynamics"
-        yield "Fractional ion positions"
+        yield "Direct"
         yield from _ion_position_lines(positions, selective_dynamics)
         yield from _lattice_velocity_lines(self._raw_data.lattice_velocities, cell)
         yield from _ion_velocity_lines(self._raw_data.ion_velocities)
@@ -73,7 +73,7 @@ def _lattice_velocity_lines(velocities, cell):
 def _ion_velocity_lines(velocities):
     if velocities.is_none():
         return
-    yield "Cartesian ion velocities"
+    yield "Cartesian"
     yield from _vectors_to_lines(velocities, scientific=True)
 
 

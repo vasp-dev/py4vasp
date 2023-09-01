@@ -34,7 +34,7 @@ class _Format:
         return f"{topology.to_POSCAR(self.newline)}{self.newline}"
 
     def coordinate_system(self):
-        return f"Fractional ion positions{self.newline}"
+        return f"Direct{self.newline}"
 
     def vectors_to_table(self, vectors):
         rows = (self._vector_to_row(vector) for vector in vectors)
