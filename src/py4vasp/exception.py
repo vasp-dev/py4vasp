@@ -50,6 +50,10 @@ class StopExecution(Py4VaspError):
         pass
 
 
+class ParserError(Py4VaspError):
+    """Exception raised when the parser encounters an error."""
+
+
 class _Py4VaspInternalError(Exception):
     """This error should not propagate to the user. It should be raised when a local
     routine encounters unexpected behavior that the routine cannot deal with. Then

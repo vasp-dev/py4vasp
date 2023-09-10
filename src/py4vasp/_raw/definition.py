@@ -71,8 +71,16 @@ schema.add(
 #
 schema.add(
     raw.Cell,
-    scale="results/positions/scale",
+    required=raw.Version(6, 5),
+    scale="intermediate/ion_dynamics/scale",
     lattice_vectors="intermediate/ion_dynamics/lattice_vectors",
+)
+schema.add(
+    raw.Cell,
+    name="final",
+    required=raw.Version(6, 5),
+    scale="results/positions/scale",
+    lattice_vectors="results/positions/lattice_vectors",
 )
 schema.add(
     raw.Cell,
@@ -82,6 +90,16 @@ schema.add(
     lattice_vectors="results/phonons/primitive/lattice_vectors",
 )
 #
+schema.add(
+    raw.CONTCAR,
+    required=raw.Version(6, 5),
+    structure=Link("structure", "final"),
+    system="results/positions/system",
+    selective_dynamics="/results/positions/selective_dynamics_ions",
+    lattice_velocities="/results/positions/lattice_velocities",
+    ion_velocities="/results/positions/ion_velocities",
+    _predictor_corrector="NotImplemented",
+)
 schema.add(
     raw.Density,
     file="vaspwave.h5",
@@ -425,6 +443,14 @@ schema.add(
     topology=Link("topology", DEFAULT_SOURCE),
     cell=Link("cell", DEFAULT_SOURCE),
     positions="intermediate/ion_dynamics/position_ions",
+)
+schema.add(
+    raw.Structure,
+    name="final",
+    required=raw.Version(6, 5),
+    topology=Link("topology", DEFAULT_SOURCE),
+    cell=Link("cell", "final"),
+    positions="results/positions/position_ions",
 )
 #
 schema.add(raw.System, system="input/incar/SYSTEM")

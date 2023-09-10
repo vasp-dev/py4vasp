@@ -22,6 +22,7 @@ the documentation of the individual classes.
 from py4vasp._data.band import Band
 from py4vasp._data.bandgap import Bandgap
 from py4vasp._data.born_effective_charge import BornEffectiveCharge
+from py4vasp._data.contcar import CONTCAR
 from py4vasp._data.density import Density
 from py4vasp._data.dielectric_function import DielectricFunction
 from py4vasp._data.dielectric_tensor import DielectricTensor

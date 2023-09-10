@@ -63,7 +63,7 @@ def should_test_method(name):
 
 
 def check_method_accesses_data(data, method_under_test, file, **kwargs):
-    quantity = convert.to_snakecase(data.__class__.__name__)
+    quantity = convert.quantity_name(data.__class__.__name__)
     with patch("py4vasp.raw.access") as mock_access:
         mock_access.return_value.__enter__.side_effect = lambda *_: data
         execute_method(method_under_test, **kwargs)
