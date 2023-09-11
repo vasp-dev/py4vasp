@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from py4vasp import CompareCalculations
+from py4vasp import Calculation, CompareCalculations
 
 
 def test_error_when_using_constructor():
@@ -108,3 +108,25 @@ def test_create_from_files_with_wildcards(tmp_path):
             for i in range(len(absolute_paths_2))
         ]
     )
+
+
+def test_list_calculations():
+    absolute_path_1 = Path(__file__) / "path_1"
+    absolute_path_2 = Path(__file__) / "path_2"
+    compare = CompareCalculations.from_paths(
+        path_name_1=absolute_path_1, path_name_2=absolute_path_2
+    )
+    calculations = compare.calculations()
+    for calc_name, calc_list in calculations.items():
+        assert len(calc_list) == 1
+        assert isinstance(calc_list[0], Calculation)
+    # Test if the same works for files
+    absolute_path_1 = Path(__file__) / "example_1.h5"
+    absolute_path_2 = Path(__file__) / "example_2.h5"
+    compare = CompareCalculations.from_files(
+        path_name_1=absolute_path_1, path_name_2=absolute_path_2
+    )
+    calculations = compare.calculations()
+    for calc_name, calc_list in calculations.items():
+        assert len(calc_list) == 1
+        assert isinstance(calc_list[0], Calculation)
