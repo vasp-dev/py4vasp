@@ -27,23 +27,17 @@ Please provide a path to a VASP calculation as a string or pathlib.Path."""
     def from_paths(cls, **kwargs):
         compare = cls()
         compare._paths = {}
-        compare._calculations = {}
         for key, paths in cls._path_finder(**kwargs):
             compare._paths[key] = paths
-            compare._calculations[key] = [Calculation.from_path(path) for path in paths]
         return compare
 
     @classmethod
     def from_files(cls, **kwargs):
         compare = cls()
         compare._paths = {}
-        compare._calculations = {}
         for key, paths in cls._path_finder(**kwargs):
             basedir_paths = [path.parent for path in paths]
             compare._paths[key] = basedir_paths
-            compare._calculations[key] = [
-                Calculation.from_path(path) for path in basedir_paths
-            ]
         return compare
 
     def paths(self) -> Dict[str, pathlib.Path]:

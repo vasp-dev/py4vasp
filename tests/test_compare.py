@@ -76,3 +76,30 @@ def test_creation_from_file():
     output_paths = compare.paths()
     assert output_paths["path_name_1"] == [absolute_path_1.parent]
     assert output_paths["path_name_2"] == [absolute_path_2.parent]
+
+
+def test_create_from_files_with_wildcards(tmp_path):
+    paths_1 = [tmp_path / "example1_a.h5", tmp_path / "example1_b.h5"]
+    absolute_paths_1 = [path.resolve() for path in paths_1]
+    paths_2 = [tmp_path / "example2_a.h5", tmp_path / "example2_b.h5"]
+    absolute_paths_2 = [path.resolve() for path in paths_2]
+    create_files = lambda paths: [path.touch() for path in paths]
+    create_files(paths_1)
+    create_files(paths_2)
+    compare = CompareCalculations.from_files(
+        file_1=tmp_path / "example1_*.h5",
+        file_2=tmp_path / "example2_*.h5",
+    )
+    output_paths = compare.paths()
+    assert all(
+        [
+            output_paths["file_1"][i] == absolute_paths_1[i].parent
+            for i in range(len(absolute_paths_1))
+        ]
+    )
+    assert all(
+        [
+            output_paths["file_2"][i] == absolute_paths_2[i].parent
+            for i in range(len(absolute_paths_2))
+        ]
+    )
