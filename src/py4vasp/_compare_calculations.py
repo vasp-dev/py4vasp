@@ -7,8 +7,12 @@ from py4vasp import Calculation, exception
 
 
 class CompareCalculations:
-    def __init__(self):
-        pass
+    def __init__(self, *args, **kwargs):
+        if not kwargs.get("_internal"):
+            message = """\
+Please setup new CompareCalculations instance using the classmethod CompareCalculations.from_paths()
+or CompareCalculations.from_files() instead of the constructor CompareCalculations()."""
+            raise exception.IncorrectUsage(message)
 
     def _path_finder(**kwargs):
         for key, value in kwargs.items():
@@ -25,7 +29,7 @@ Please provide a path to a VASP calculation as a string or pathlib.Path."""
 
     @classmethod
     def from_paths(cls, **kwargs):
-        compare = cls()
+        compare = cls(_internal=True)
         compare._paths = {}
         for key, paths in cls._path_finder(**kwargs):
             compare._paths[key] = paths
@@ -33,7 +37,7 @@ Please provide a path to a VASP calculation as a string or pathlib.Path."""
 
     @classmethod
     def from_files(cls, **kwargs):
-        compare = cls()
+        compare = cls(_internal=True)
         compare._paths = {}
         for key, paths in cls._path_finder(**kwargs):
             basedir_paths = [path.parent for path in paths]

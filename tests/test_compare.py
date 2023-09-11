@@ -8,6 +8,11 @@ import pytest
 from py4vasp import CompareCalculations
 
 
+def test_error_when_using_constructor():
+    with pytest.raises(Exception):
+        CompareCalculations()
+
+
 def test_creation_from_paths():
     # Test creation from absolute paths
     absolute_path_1 = Path(__file__) / "path_1"
