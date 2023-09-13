@@ -7,7 +7,8 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
-from py4vasp import Calculation, MLFFErrorAnalysis
+from py4vasp import Calculation
+from py4vasp._analysis.mlff import MLFFErrorAnalysis
 
 
 @patch("py4vasp._data.base.Refinery.from_path", autospec=True)
@@ -18,7 +19,7 @@ def test_read_inputs(mock_access, mock_from_path):
     error_analysis = MLFFErrorAnalysis.from_paths(
         dft_data=absolute_path_dft, mlff_data=absolute_path_mlff
     )
-    assert isinstance(error_analysis.mlff_energies(), np.ndarray)
-    assert error_analysis.mlff_energies().ndim == 2
-    assert isinstance(error_analysis.dft_energies(), np.ndarray)
-    assert error_analysis.dft_energies().ndim == 2
+    assert isinstance(error_analysis.mlff_energies, np.ndarray)
+    assert error_analysis.mlff_energies.ndim == 2
+    assert isinstance(error_analysis.dft_energies, np.ndarray)
+    assert error_analysis.dft_energies.ndim == 2

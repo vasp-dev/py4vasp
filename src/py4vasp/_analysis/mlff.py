@@ -14,6 +14,7 @@ class MLFFErrorAnalysis:
         mlff_error_analysis = cls(_internal=True)
         calculations = Calculations.from_paths(dft_data=dft_data, mlff_data=mlff_data)
         mlff_error_analysis._calculations = calculations
+        set_appropriate_attrs(mlff_error_analysis)
         return mlff_error_analysis
 
     @classmethod
@@ -21,18 +22,17 @@ class MLFFErrorAnalysis:
         mlff_error_analysis = cls(_internal=True)
         calculations = Calculations.from_files(dft_data=dft_data, mlff_data=mlff_data)
         mlff_error_analysis._calculations = calculations
+        set_appropriate_attrs(mlff_error_analysis)
         return mlff_error_analysis
 
-    def mlff_energies(self):
-        energy_data = self._calculations.energies.read()
-        mlff_energy_data = energy_data["mlff_data"]
-        tag = "free energy    TOTEN"
-        energies = [_mlff_data[tag] for _mlff_data in mlff_energy_data]
-        return np.array(energies)
 
-    def dft_energies(self):
-        energy_data = self._calculations.energies.read()
-        dft_energy_data = energy_data["dft_data"]
-        tag = "free energy    TOTEN"
-        energies = [_dft_data[tag] for _dft_data in dft_energy_data]
-        return np.array(energies)
+def set_appropriate_attrs(cls):
+    for datatype in ["dft", "mlff"]:
+        set_energies(cls, tag="free energy    TOTEN", datatype=datatype)
+
+
+def set_energies(cls, tag, datatype):
+    all_energies = cls._calculations.energies.read()
+    energy_data = all_energies[f"{datatype}_data"]
+    energies = np.array([_energy_data[tag] for _energy_data in energy_data])
+    setattr(cls, f"{datatype}_energies", energies)
