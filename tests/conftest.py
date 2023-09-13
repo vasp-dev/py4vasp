@@ -8,6 +8,7 @@ import pytest
 from numpy.testing import assert_array_almost_equal_nulp
 
 from py4vasp import exception, raw
+from py4vasp._data.base import _DataWrapper
 
 number_steps = 4
 number_atoms = 7
@@ -277,6 +278,51 @@ def raw_data():
     return RawDataFactory
 
 
+class MockRefineryMLFF:
+    def __init__(self, data_context, **kwargs):
+        self._data_context = data_context
+        self._repr = ".from_path()"
+        self._path = None
+
+    @classmethod
+    def from_path(cls):
+        return cls(_DataWrapper("energy", data=_relax_energy()))
+
+
+class RawDataFactoryCompareMLFF:
+    @staticmethod
+    def energy(selection):
+        if selection == "DFT":
+            return _relax_energy()
+        elif selection == "MLFF":
+            return _MLFF_energy()
+        else:
+            raise exception.NotImplemented()
+
+    @staticmethod
+    def force(selection):
+        if selection == "DFT":
+            return _Sr2TiO4_forces()
+        elif selection == "MLFF":
+            return _Sr2TiO4_forces(randomize=True)
+        else:
+            raise exception.NotImplemented()
+
+    @staticmethod
+    def stress(selection):
+        if selection == "DFT":
+            return _Sr2TiO4_stress()
+        elif selection == "MLFF":
+            return _Sr2TiO4_stress(randomize=True)
+        else:
+            raise exception.NotImplemented()
+
+
+@pytest.fixture
+def raw_data_compare_mlff():
+    return RawDataFactoryCompareMLFF
+
+
 def _number_components(selection):
     if selection == "collinear":
         return 2
@@ -423,10 +469,24 @@ def _relax_energy():
     return _create_energy(labels)
 
 
-def _create_energy(labels):
+def _MLFF_energy():
+    labels = (
+        "free energy    TOTEN   ",
+        "energy without entropy ",
+        "energy(sigma->0)       ",
+    )
+    return _create_energy(labels, randomize=True)
+
+
+def _create_energy(labels, randomize=False):
     labels = np.array(labels, dtype="S")
     shape = (number_steps, len(labels))
-    return raw.Energy(labels=labels, values=np.arange(np.prod(shape)).reshape(shape))
+    if randomize:
+        return raw.Energy(labels=labels, values=np.random.random(shape))
+    else:
+        return raw.Energy(
+            labels=labels, values=np.arange(np.prod(shape)).reshape(shape)
+        )
 
 
 def _qpoints():
@@ -640,11 +700,15 @@ def _Sr2TiO4_force_constants():
     )
 
 
-def _Sr2TiO4_forces():
+def _Sr2TiO4_forces(randomize=False):
     shape = (number_steps, number_atoms, axes)
-    return raw.Force(
-        structure=_Sr2TiO4_structure(), forces=np.arange(np.prod(shape)).reshape(shape)
-    )
+    if randomize:
+        return raw.Force(structure=_Sr2TiO4_structure(), forces=np.random.random(shape))
+    else:
+        return raw.Force(
+            structure=_Sr2TiO4_structure(),
+            forces=np.arange(np.prod(shape)).reshape(shape),
+        )
 
 
 def _Sr2TiO4_internal_strain():
@@ -664,11 +728,17 @@ def _Sr2TiO4_projectors(use_orbitals):
     )
 
 
-def _Sr2TiO4_stress():
+def _Sr2TiO4_stress(randomize=False):
     shape = (number_steps, axes, axes)
-    return raw.Stress(
-        structure=_Sr2TiO4_structure(), stress=np.arange(np.prod(shape)).reshape(shape)
-    )
+    if randomize:
+        return raw.Stress(
+            structure=_Sr2TiO4_structure(), stress=np.random.random(shape)
+        )
+    else:
+        return raw.Stress(
+            structure=_Sr2TiO4_structure(),
+            stress=np.arange(np.prod(shape)).reshape(shape),
+        )
 
 
 def _Sr2TiO4_structure():
