@@ -11,6 +11,8 @@ from py4vasp import data, exception
 def match_combine_with_refinement(combine_name: str):
     combine_to_refinement_name = {
         "Energies": "Energy",
+        "Forces": "Force",
+        "Stresses": "Stress",
     }
     for _, class_ in inspect.getmembers(data, inspect.isclass):
         if class_.__name__ == combine_to_refinement_name[combine_name]:
@@ -44,3 +46,16 @@ class BaseCombine:
             all_refinements = [refinement.from_file(_file) for _file in file]
             base.__getattribute__(f"_{cls.__name__.lower()}")[key] = all_refinements
         return base
+
+    def to_dict(self, *args, **kwargs):
+        _data = {}
+        _class_name = f"_{self.__class__.__name__.lower()}"
+        keyval_refinements = self.__getattribute__(_class_name).items()
+        for key, refinement in keyval_refinements:
+            _data[key] = [
+                _refinement.read(*args, **kwargs) for _refinement in refinement
+            ]
+        return _data
+
+    def read(self, *args, **kwargs):
+        return self.to_dict(*args, **kwargs)

@@ -2,10 +2,14 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import os
 from pathlib import Path
+from unittest.mock import mock_open, patch
 
 import pytest
 
 from py4vasp import Calculation, Calculations
+from py4vasp._data.energy import Energy
+from py4vasp._data.force import Force
+from py4vasp._data.stress import Stress
 
 
 def test_error_when_using_constructor():
@@ -110,6 +114,28 @@ def test_create_from_files_with_wildcards(tmp_path):
     )
 
 
-def test_has_attributes():
+@patch("py4vasp._data.base.Refinery.from_path", autospec=True)
+@patch("py4vasp.raw.access", autospec=True)
+def test_has_attributes(mock_access, mock_from_path):
     calculations = Calculations.from_paths(path_name_1="path_1", path_name_2="path_2")
     assert hasattr(calculations, "energies")
+    assert hasattr(calculations.energies, "read")
+    output_read = calculations.energies.read()
+    assert isinstance(output_read, dict)
+    assert output_read.keys() == {"path_name_1", "path_name_2"}
+    assert isinstance(output_read["path_name_1"], list)
+    assert isinstance(output_read["path_name_2"], list)
+    assert hasattr(calculations, "forces")
+    assert hasattr(calculations.forces, "read")
+    output_read = calculations.forces.read()
+    assert isinstance(output_read, dict)
+    assert output_read.keys() == {"path_name_1", "path_name_2"}
+    assert isinstance(output_read["path_name_1"], list)
+    assert isinstance(output_read["path_name_2"], list)
+    assert hasattr(calculations, "stresses")
+    assert hasattr(calculations.stresses, "read")
+    output_read = calculations.stresses.read()
+    assert isinstance(output_read, dict)
+    assert output_read.keys() == {"path_name_1", "path_name_2"}
+    assert isinstance(output_read["path_name_1"], list)
+    assert isinstance(output_read["path_name_2"], list)

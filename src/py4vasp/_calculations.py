@@ -1,6 +1,5 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import abc
 import inspect
 import pathlib
 from typing import Dict, List
@@ -9,7 +8,7 @@ from py4vasp import Calculation, combine, exception
 from py4vasp._util import convert
 
 
-class Calculations(abc.ABC):
+class Calculations:
     def __init__(self, *args, **kwargs):
         if not kwargs.get("_internal"):
             message = """\

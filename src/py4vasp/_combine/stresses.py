@@ -4,6 +4,6 @@
 from py4vasp._combine.base import BaseCombine
 
 
-class Energies(BaseCombine):
+class Stresses(BaseCombine):
     def __init__(self):
         pass
