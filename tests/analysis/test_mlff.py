@@ -29,3 +29,5 @@ def test_read_inputs(mock_access, mock_from_path):
     assert isinstance(error_analysis.dft_positions, np.ndarray)
     assert isinstance(error_analysis.mlff_nions, int)
     assert isinstance(error_analysis.dft_nions, int)
+    assert isinstance(error_analysis.mlff_stresses, np.ndarray)
+    assert isinstance(error_analysis.dft_stresses, np.ndarray)

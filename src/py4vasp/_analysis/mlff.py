@@ -30,6 +30,7 @@ def set_appropriate_attrs(cls):
     for datatype in ["dft", "mlff"]:
         set_energies(cls, tag="free energy    TOTEN", datatype=datatype)
         set_forces_related_attributes(cls, datatype=datatype)
+        set_stresses(cls, datatype=datatype)
 
 
 def set_energies(cls, tag, datatype):
@@ -51,3 +52,10 @@ def set_forces_related_attributes(cls, datatype):
     setattr(cls, f"{datatype}_lattice_vectors", lattice_vectors)
     setattr(cls, f"{datatype}_positions", positions)
     setattr(cls, f"{datatype}_nions", nions)
+
+
+def set_stresses(cls, datatype):
+    all_stress_data = cls._calculations.stresses.read()
+    stress_data = all_stress_data[f"{datatype}_data"]
+    stresses = np.array([_stress_data["stresses"] for _stress_data in stress_data])
+    setattr(cls, f"{datatype}_stresses", stresses)
