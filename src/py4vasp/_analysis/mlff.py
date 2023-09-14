@@ -10,6 +10,13 @@ class MLFFErrorAnalysis:
         pass
 
     @classmethod
+    def _from_data(cls, _calculations):
+        mlff_error_analysis = cls(_internal=True)
+        mlff_error_analysis._calculations = _calculations
+        set_appropriate_attrs(mlff_error_analysis)
+        return mlff_error_analysis
+
+    @classmethod
     def from_paths(cls, dft_data, mlff_data):
         mlff_error_analysis = cls(_internal=True)
         calculations = Calculations.from_paths(dft_data=dft_data, mlff_data=mlff_data)
@@ -57,5 +64,5 @@ def set_forces_related_attributes(cls, datatype):
 def set_stresses(cls, datatype):
     all_stress_data = cls._calculations.stresses.read()
     stress_data = all_stress_data[f"{datatype}_data"]
-    stresses = np.array([_stress_data["stresses"] for _stress_data in stress_data])
+    stresses = np.array([_stress_data["stress"] for _stress_data in stress_data])
     setattr(cls, f"{datatype}_stresses", stresses)

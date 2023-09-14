@@ -153,11 +153,11 @@ class RawDataFactory:
         return _elastic_modulus()
 
     @staticmethod
-    def energy(selection):
+    def energy(selection, randomize: bool = False):
         if selection == "MD":
-            return _MD_energy()
+            return _MD_energy(randomize)
         elif selection == "relax":
-            return _relax_energy()
+            return _relax_energy(randomize)
         else:
             raise exception.NotImplemented()
 
@@ -173,11 +173,11 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
-    def force(selection):
+    def force(selection, randomize: bool = False):
         if selection == "Sr2TiO4":
-            return _Sr2TiO4_forces()
+            return _Sr2TiO4_forces(randomize)
         elif selection == "Fe3O4":
-            return _Fe3O4_forces()
+            return _Fe3O4_forces(randomize)
         else:
             raise exception.NotImplemented()
 
@@ -235,11 +235,11 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
-    def stress(selection):
+    def stress(selection, randomize: bool = False):
         if selection == "Sr2TiO4":
-            return _Sr2TiO4_stress()
+            return _Sr2TiO4_stress(randomize)
         elif selection == "Fe3O4":
-            return _Fe3O4_stress()
+            return _Fe3O4_stress(randomize)
         else:
             raise exception.NotImplemented()
 
@@ -402,7 +402,7 @@ def _polarization():
     return raw.Polarization(electron=np.array((1, 2, 3)), ion=np.array((4, 5, 6)))
 
 
-def _MD_energy():
+def _MD_energy(randomize: bool = False):
     labels = (
         "ion-electron   TOTEN   ",
         "kinetic energy EKIN    ",
@@ -412,22 +412,27 @@ def _MD_energy():
         "nose kinetic   EPS     ",
         "total energy   ETOTAL  ",
     )
-    return _create_energy(labels)
+    return _create_energy(labels, randomize=randomize)
 
 
-def _relax_energy():
+def _relax_energy(randomize: bool = False):
     labels = (
         "free energy    TOTEN   ",
         "energy without entropy ",
         "energy(sigma->0)       ",
     )
-    return _create_energy(labels)
+    return _create_energy(labels, randomize=randomize)
 
 
-def _create_energy(labels):
+def _create_energy(labels, randomize: bool = False):
     labels = np.array(labels, dtype="S")
     shape = (number_steps, len(labels))
-    return raw.Energy(labels=labels, values=np.arange(np.prod(shape)).reshape(shape))
+    if randomize:
+        return raw.Energy(labels=labels, values=np.random.random(shape))
+    else:
+        return raw.Energy(
+            labels=labels, values=np.arange(np.prod(shape)).reshape(shape)
+        )
 
 
 def _qpoints():
@@ -641,11 +646,15 @@ def _Sr2TiO4_force_constants():
     )
 
 
-def _Sr2TiO4_forces():
+def _Sr2TiO4_forces(randomize):
     shape = (number_steps, number_atoms, axes)
+    if randomize:
+        forces = np.random.random(shape)
+    else:
+        forces = np.arange(np.prod(shape)).reshape(shape)
     return raw.Force(
         structure=_Sr2TiO4_structure(),
-        forces=np.arange(np.prod(shape)).reshape(shape),
+        forces=forces,
     )
 
 
@@ -666,12 +675,13 @@ def _Sr2TiO4_projectors(use_orbitals):
     )
 
 
-def _Sr2TiO4_stress():
+def _Sr2TiO4_stress(randomize):
     shape = (number_steps, axes, axes)
-    return raw.Stress(
-        structure=_Sr2TiO4_structure(),
-        stress=np.arange(np.prod(shape)).reshape(shape),
-    )
+    if randomize:
+        stresses = np.random.random(shape)
+    else:
+        stresses = np.arange(np.prod(shape)).reshape(shape)
+    return raw.Stress(structure=_Sr2TiO4_structure(), stress=stresses)
 
 
 def _Sr2TiO4_structure():
@@ -743,11 +753,13 @@ def _Fe3O4_dos(projectors):
     return raw_dos
 
 
-def _Fe3O4_forces():
+def _Fe3O4_forces(randomize):
     shape = (number_steps, number_atoms, axes)
-    return raw.Force(
-        structure=_Fe3O4_structure(), forces=np.arange(np.prod(shape)).reshape(shape)
-    )
+    if randomize:
+        forces = np.random.random(shape)
+    else:
+        forces = np.arange(np.prod(shape)).reshape(shape)
+    return raw.Force(structure=_Fe3O4_structure(), forces=forces)
 
 
 def _Fe3O4_projectors(use_orbitals):
@@ -758,10 +770,15 @@ def _Fe3O4_projectors(use_orbitals):
     )
 
 
-def _Fe3O4_stress():
+def _Fe3O4_stress(randomize):
     shape = (number_steps, axes, axes)
+    if randomize:
+        stresses = np.random.random(shape)
+    else:
+        stresses = np.arange(np.prod(shape)).reshape(shape)
     return raw.Stress(
-        structure=_Fe3O4_structure(), stress=np.arange(np.prod(shape)).reshape(shape)
+        structure=_Fe3O4_structure(),
+        stress=stresses,
     )
 
 
