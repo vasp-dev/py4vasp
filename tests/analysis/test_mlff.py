@@ -199,3 +199,18 @@ def test_attributes_from_data(mock_calculations):
 def test_validator(mock_calculations_incorrect):
     with pytest.raises(exception.IncorrectUsage):
         mlff_error_analysis = MLFFErrorAnalysis._from_data(mock_calculations_incorrect)
+
+
+def test_energy_error_computation(mock_calculations):
+    mlff_error_analysis = MLFFErrorAnalysis._from_data(mock_calculations)
+
+    def _energy_error_per_atom(mlff_energy, dft_energy, natoms):
+        return (dft_energy - mlff_energy) / natoms
+
+    expected_energy_error = _energy_error_per_atom(
+        mlff_energy=mlff_error_analysis.mlff_energies,
+        dft_energy=mlff_error_analysis.dft_energies,
+        natoms=mlff_error_analysis.mlff_nions,
+    )
+    output_energy_error = mlff_error_analysis.get_energy_error_per_atom()
+    assert np.array_equal(expected_energy_error, output_energy_error)

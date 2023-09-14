@@ -32,6 +32,10 @@ class MLFFErrorAnalysis:
         set_appropriate_attrs(mlff_error_analysis)
         return mlff_error_analysis
 
+    def get_energy_error_per_atom(self):
+        error = (self.dft_energies - self.mlff_energies) / self.dft_nions
+        return error
+
 
 def set_appropriate_attrs(cls):
     for datatype in ["dft", "mlff"]:
