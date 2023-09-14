@@ -20,6 +20,12 @@ def test_read_inputs(mock_access, mock_from_path):
         dft_data=absolute_path_dft, mlff_data=absolute_path_mlff
     )
     assert isinstance(error_analysis.mlff_energies, np.ndarray)
-    assert error_analysis.mlff_energies.ndim == 2
     assert isinstance(error_analysis.dft_energies, np.ndarray)
-    assert error_analysis.dft_energies.ndim == 2
+    assert isinstance(error_analysis.mlff_forces, np.ndarray)
+    assert isinstance(error_analysis.dft_forces, np.ndarray)
+    assert isinstance(error_analysis.mlff_lattice_vectors, np.ndarray)
+    assert isinstance(error_analysis.dft_lattice_vectors, np.ndarray)
+    assert isinstance(error_analysis.mlff_positions, np.ndarray)
+    assert isinstance(error_analysis.dft_positions, np.ndarray)
+    assert isinstance(error_analysis.mlff_nions, int)
+    assert isinstance(error_analysis.dft_nions, int)

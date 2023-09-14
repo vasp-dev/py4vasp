@@ -29,6 +29,7 @@ class MLFFErrorAnalysis:
 def set_appropriate_attrs(cls):
     for datatype in ["dft", "mlff"]:
         set_energies(cls, tag="free energy    TOTEN", datatype=datatype)
+        set_forces_related_attributes(cls, datatype=datatype)
 
 
 def set_energies(cls, tag, datatype):
@@ -36,3 +37,17 @@ def set_energies(cls, tag, datatype):
     energy_data = all_energies[f"{datatype}_data"]
     energies = np.array([_energy_data[tag] for _energy_data in energy_data])
     setattr(cls, f"{datatype}_energies", energies)
+
+
+def set_forces_related_attributes(cls, datatype):
+    all_force_data = cls._calculations.forces.read()
+    force_data = all_force_data[f"{datatype}_data"]
+    forces = np.array([_force_data["forces"] for _force_data in force_data])
+    lattice_vectors = [_force_data["lattice_vectors"] for _force_data in force_data]
+    lattice_vectors = np.array(lattice_vectors)
+    positions = np.array([_force_data["positions"] for _force_data in force_data])
+    nions = positions.shape[0]
+    setattr(cls, f"{datatype}_forces", forces)
+    setattr(cls, f"{datatype}_lattice_vectors", lattice_vectors)
+    setattr(cls, f"{datatype}_positions", positions)
+    setattr(cls, f"{datatype}_nions", nions)
