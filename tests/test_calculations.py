@@ -2,14 +2,11 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import os
 from pathlib import Path
-from unittest.mock import mock_open, patch
+from unittest.mock import patch
 
 import pytest
 
-from py4vasp import Calculation, Calculations
-from py4vasp._data.energy import Energy
-from py4vasp._data.force import Force
-from py4vasp._data.stress import Stress
+from py4vasp import Calculations
 
 
 def test_error_when_using_constructor():
@@ -27,6 +24,9 @@ def test_creation_from_paths():
     output_paths = calculations.paths()
     assert output_paths["path_name_1"] == [absolute_path_1]
     assert output_paths["path_name_2"] == [absolute_path_2]
+    output_number_of_calculations = calculations.number_of_calculations()
+    assert output_number_of_calculations["path_name_1"] == 1
+    assert output_number_of_calculations["path_name_2"] == 1
     # Test creation from relative paths
     relative_path_1 = os.path.relpath(absolute_path_1, Path.cwd())
     relative_path_2 = os.path.relpath(absolute_path_2, Path.cwd())
@@ -36,6 +36,9 @@ def test_creation_from_paths():
     output_paths = calculations.paths()
     assert output_paths["path_name_1"] == [absolute_path_1]
     assert output_paths["path_name_2"] == [absolute_path_2]
+    output_number_of_calculations = calculations.number_of_calculations()
+    assert output_number_of_calculations["path_name_1"] == 1
+    assert output_number_of_calculations["path_name_2"] == 1
     # Test creation with string paths
     calculations = Calculations.from_paths(
         path_name_1=absolute_path_1.as_posix(), path_name_2=absolute_path_2.as_posix()
@@ -43,6 +46,9 @@ def test_creation_from_paths():
     output_paths = calculations.paths()
     assert output_paths["path_name_1"] == [absolute_path_1]
     assert output_paths["path_name_2"] == [absolute_path_2]
+    output_number_of_calculations = calculations.number_of_calculations()
+    assert output_number_of_calculations["path_name_1"] == 1
+    assert output_number_of_calculations["path_name_2"] == 1
 
 
 def test_creation_from_paths_with_incorrect_input():
@@ -74,6 +80,9 @@ def test_creation_from_paths_with_wildcards(tmp_path):
             for i in range(len(absolute_paths_2))
         ]
     )
+    output_number_of_calculations = calculations.number_of_calculations()
+    assert output_number_of_calculations["path_name_1"] == 2
+    assert output_number_of_calculations["path_name_2"] == 2
 
 
 def test_creation_from_file():
@@ -85,6 +94,9 @@ def test_creation_from_file():
     output_paths = calculations.paths()
     assert output_paths["path_name_1"] == [absolute_path_1.parent]
     assert output_paths["path_name_2"] == [absolute_path_2.parent]
+    output_number_of_calculations = calculations.number_of_calculations()
+    assert output_number_of_calculations["path_name_1"] == 1
+    assert output_number_of_calculations["path_name_2"] == 1
 
 
 def test_create_from_files_with_wildcards(tmp_path):
@@ -112,6 +124,9 @@ def test_create_from_files_with_wildcards(tmp_path):
             for i in range(len(absolute_paths_2))
         ]
     )
+    output_number_of_calculations = calculations.number_of_calculations()
+    assert output_number_of_calculations["file_1"] == 2
+    assert output_number_of_calculations["file_2"] == 2
 
 
 @patch("py4vasp._data.base.Refinery.from_path", autospec=True)

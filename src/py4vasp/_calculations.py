@@ -4,7 +4,7 @@ import inspect
 import pathlib
 from typing import Dict, List
 
-from py4vasp import Calculation, combine, exception
+from py4vasp import combine, exception
 from py4vasp._util import convert
 
 
@@ -59,6 +59,9 @@ Please provide a path to a VASP calculation as a string or pathlib.Path."""
 
     def files(self) -> Dict[str, List[pathlib.Path]]:
         return self._files
+
+    def number_of_calculations(self) -> Dict[str, int]:
+        return {key: len(value) for key, value in self._paths.items()}
 
 
 def _add_attribute_from_path(calc, class_):

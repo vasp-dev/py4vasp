@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from typing import Dict
+
 import numpy as np
 
 from py4vasp import Calculations, exception
@@ -56,6 +58,7 @@ class MLFFErrorAnalysis:
 
 def set_appropriate_attrs(cls):
     for datatype in ["dft", "mlff"]:
+        set_accounting_attributes(cls, datatype=datatype)
         set_energies(cls, tag="free energy    TOTEN", datatype=datatype)
         set_forces_related_attributes(cls, datatype=datatype)
         set_stresses(cls, datatype=datatype)
@@ -68,12 +71,21 @@ def validate_data(cls):
         np.testing.assert_almost_equal(
             cls.dft_lattice_vectors, cls.mlff_lattice_vectors
         )
-        assert cls.dft_nions == cls.mlff_nions
+        np.testing.assert_almost_equal(cls.dft_nions, cls.mlff_nions)
     except AssertionError:
         raise exception.IncorrectUsage(
             """\
 Please pass a consistent set of data between DFT and MLFF calculations."""
         )
+
+
+def set_accounting_attributes(cls, datatype):
+    nconfig = cls._calculations.number_of_calculations()[f"{datatype}_data"]
+    force_data = cls._calculations.forces.read()[f"{datatype}_data"]
+    elements = _dict_to_array(force_data, "elements")
+    nions = np.array([len(_elements) for _elements in elements])
+    setattr(cls, f"{datatype}_nconfig", nconfig)
+    setattr(cls, f"{datatype}_nions", nions)
 
 
 def set_energies(cls, tag, datatype):
@@ -83,18 +95,20 @@ def set_energies(cls, tag, datatype):
     setattr(cls, f"{datatype}_energies", energies)
 
 
+def _dict_to_array(data: Dict, key: str) -> np.ndarray:
+    return np.array([_data[key] for _data in data])
+
+
 def set_forces_related_attributes(cls, datatype):
     all_force_data = cls._calculations.forces.read()
     force_data = all_force_data[f"{datatype}_data"]
-    forces = np.array([_force_data["forces"] for _force_data in force_data])
-    lattice_vectors = [_force_data["lattice_vectors"] for _force_data in force_data]
+    forces = _dict_to_array(force_data, "forces")
+    lattice_vectors = _dict_to_array(force_data, "lattice_vectors")
     lattice_vectors = np.array(lattice_vectors)
-    positions = np.array([_force_data["positions"] for _force_data in force_data])
-    nions = positions.shape[0]
+    positions = _dict_to_array(force_data, "positions")
     setattr(cls, f"{datatype}_forces", forces)
     setattr(cls, f"{datatype}_lattice_vectors", lattice_vectors)
     setattr(cls, f"{datatype}_positions", positions)
-    setattr(cls, f"{datatype}_nions", nions)
 
 
 def set_stresses(cls, datatype):
