@@ -10,7 +10,7 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
-from py4vasp import Calculation, exception
+from py4vasp import exception
 from py4vasp._analysis.mlff import MLFFErrorAnalysis
 from py4vasp.data import Energy, Force, Stress
 
@@ -44,16 +44,21 @@ class MockCalculations:
         _energies: Dict[str, np.ndarray],
         _forces: Dict[str, np.ndarray],
         _stresses: Dict[str, np.ndarray],
+        _paths: Dict[str, Path],
     ):
         _cls = cls()
         setattr(_cls, "energies", Energies(data=_energies))
         setattr(_cls, "forces", Forces(data=_forces))
         setattr(_cls, "stresses", Stresses(data=_stresses))
+        setattr(_cls, "_paths", _paths)
         return _cls
 
     def number_of_calculations(self):
         num_ions = len(self.forces.read()["mlff_data"])
         return {"dft_data": num_ions, "mlff_data": num_ions}
+
+    def paths(self):
+        return self._paths
 
 
 @pytest.fixture
@@ -72,6 +77,7 @@ def mock_calculations(raw_data):
         stress = Stress.from_data(raw_stress)
         stress_data = stress.read()
         data["_stresses"][datatype].append(stress_data)
+        data["_paths"][datatype].append(Path(__file__) / "calc")
     data = {key: dict(value) for key, value in data.items()}
     _mock_calculations = MockCalculations.set_attributes(**data)
     return _mock_calculations
@@ -94,6 +100,7 @@ def mock_multiple_calculations(raw_data):
             stress = Stress.from_data(raw_stress)
             stress_data = stress.read()
             data["_stresses"][datatype].append(stress_data)
+            data["_paths"][datatype].append(Path(__file__) / "calc")
     data = {key: dict(value) for key, value in data.items()}
     _mock_calculations = MockCalculations.set_attributes(**data)
     return _mock_calculations
@@ -119,6 +126,7 @@ def mock_calculations_incorrect(raw_data):
         stress = Stress.from_data(raw_stress)
         stress_data = stress.read()
         data["_stresses"][datatype].append(stress_data)
+        data["_paths"][datatype].append(Path(__file__) / "calc")
     data = {key: dict(value) for key, value in data.items()}
     _mock_calculations = MockCalculations.set_attributes(**data)
     return _mock_calculations
@@ -238,13 +246,14 @@ def test_validator(mock_calculations_incorrect):
         mlff_error_analysis = MLFFErrorAnalysis._from_data(mock_calculations_incorrect)
 
 
-def test_energy_error_computation(mock_calculations):
+def test_energy_per_atom_computation(mock_calculations):
     mlff_error_analysis = MLFFErrorAnalysis._from_data(mock_calculations)
 
-    def _energy_error_per_atom(mlff_energy, dft_energy, natoms):
-        return (dft_energy - mlff_energy) / natoms
+    def rmse_error_energy(mlff_energy, dft_energy, natoms):
+        error = (mlff_energy - dft_energy) / natoms
+        return error
 
-    expected_energy_error = _energy_error_per_atom(
+    expected_energy_error = rmse_error_energy(
         mlff_energy=mlff_error_analysis.mlff_energies,
         dft_energy=mlff_error_analysis.dft_energies,
         natoms=mlff_error_analysis.mlff_nions,
@@ -253,14 +262,14 @@ def test_energy_error_computation(mock_calculations):
     assert np.array_equal(expected_energy_error, output_energy_error)
 
 
-def test_multiple_energy_computation(mock_multiple_calculations):
+def test_multiple_energy_per_atom_computation(mock_multiple_calculations):
     mlff_error_analysis = MLFFErrorAnalysis._from_data(mock_multiple_calculations)
 
-    def _energy_error_per_atom(mlff_energy, dft_energy, natoms, nconfig):
-        error = (dft_energy - mlff_energy) / natoms
+    def rmse_error_energy(mlff_energy, dft_energy, natoms, nconfig):
+        error = (mlff_energy - dft_energy) / natoms
         return np.sum(np.abs(error), axis=-1) / nconfig
 
-    expected_energy_error = _energy_error_per_atom(
+    expected_energy_error = rmse_error_energy(
         mlff_energy=mlff_error_analysis.mlff_energies,
         dft_energy=mlff_error_analysis.dft_energies,
         natoms=mlff_error_analysis.mlff_nions,

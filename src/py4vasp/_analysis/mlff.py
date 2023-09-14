@@ -35,7 +35,7 @@ class MLFFErrorAnalysis:
         return mlff_error_analysis
 
     def get_energy_error_per_atom(self, normalize_by_configurations=False):
-        error = (self.dft_energies - self.mlff_energies) / self.dft_nions
+        error = (self.mlff_energies - self.dft_energies) / self.dft_nions
         if normalize_by_configurations:
             error = np.sum(np.abs(error), axis=-1) / self.dft_nconfig
         return error
@@ -93,6 +93,11 @@ def set_accounting_attributes(cls, datatype):
     nions = np.array([len(_elements) for _elements in elements])
     setattr(cls, f"{datatype}_nconfig", nconfig)
     setattr(cls, f"{datatype}_nions", nions)
+    paths = cls._calculations.paths()[f"{datatype}_data"]
+    setattr(cls, f"{datatype}_paths", paths)
+    if hasattr(cls._calculations, "_files"):
+        files = cls._calculations.files()[f"{datatype}_data"]
+        setattr(cls, f"{datatype}_files", files)
 
 
 def set_energies(cls, tag, datatype):
