@@ -34,8 +34,10 @@ class MLFFErrorAnalysis:
         set_appropriate_attrs(mlff_error_analysis)
         return mlff_error_analysis
 
-    def get_energy_error_per_atom(self):
+    def get_energy_error_per_atom(self, normalize_by_configurations=False):
         error = (self.dft_energies - self.mlff_energies) / self.dft_nions
+        if normalize_by_configurations:
+            error = np.sum(error, axis=-1) / self.dft_nconfig
         return error
 
     def _get_rmse(self, dft_quantity, mlff_quantity, degrees_of_freedom):
@@ -43,16 +45,20 @@ class MLFFErrorAnalysis:
         error = np.sqrt(np.sum(norm_error**2, axis=-1) / degrees_of_freedom)
         return error
 
-    def get_force_rmse(self):
+    def get_force_rmse(self, normalize_by_configurations=False):
         deg_freedom = 3 * self.dft_nions
         error = self._get_rmse(self.dft_forces, self.mlff_forces, deg_freedom)
+        if normalize_by_configurations:
+            error = np.sum(error, axis=-1) / self.dft_nconfig
         return error
 
-    def get_stress_rmse(self):
+    def get_stress_rmse(self, normalize_by_configurations=False):
         deg_freedom = 6 * self.dft_nions
         dft_stresses = np.triu(self.dft_stresses)
         mlff_stresses = np.triu(self.mlff_stresses)
         error = self._get_rmse(dft_stresses, mlff_stresses, deg_freedom)
+        if normalize_by_configurations:
+            error = np.sum(error, axis=-1) / self.dft_nconfig
         return error
 
 
