@@ -130,3 +130,40 @@ def test_read_from_data(mock_calculations):
     assert output_energies == expected_energies
     assert output_forces == expected_forces
     assert output_stresses == expected_stresses
+
+
+def _iter_properties(tag, data):
+    return np.array([_data[tag] for _data in data])
+
+
+def test_attributes_from_data(mock_calculations):
+    energies_dict = mock_calculations.energies.read()
+    mlff_energies = _iter_properties("free energy    TOTEN", energies_dict["mlff_data"])
+    dft_energies = _iter_properties("free energy    TOTEN", energies_dict["dft_data"])
+    forces_dict = mock_calculations.forces.read()
+    mlff_forces = _iter_properties("forces", forces_dict["mlff_data"])
+    dft_forces = _iter_properties("forces", forces_dict["dft_data"])
+    mlff_lattice_vectors = _iter_properties("lattice_vectors", forces_dict["mlff_data"])
+    dft_lattice_vectors = _iter_properties("lattice_vectors", forces_dict["dft_data"])
+    mlff_positions = _iter_properties("positions", forces_dict["mlff_data"])
+    dft_positions = _iter_properties("positions", forces_dict["dft_data"])
+    mlff_nions = mlff_positions.shape[0]
+    dft_nions = dft_positions.shape[0]
+    stresses_dict = mock_calculations.stresses.read()
+    mlff_stresses = _iter_properties("stress", stresses_dict["mlff_data"])
+    dft_stresses = _iter_properties("stress", stresses_dict["dft_data"])
+    mlff_error_analysis = MLFFErrorAnalysis._from_data(mock_calculations)
+    assert np.array_equal(mlff_error_analysis.mlff_energies, mlff_energies)
+    assert np.array_equal(mlff_error_analysis.dft_energies, dft_energies)
+    assert np.array_equal(mlff_error_analysis.mlff_forces, mlff_forces)
+    assert np.array_equal(mlff_error_analysis.dft_forces, dft_forces)
+    assert np.array_equal(
+        mlff_error_analysis.mlff_lattice_vectors, mlff_lattice_vectors
+    )
+    assert np.array_equal(mlff_error_analysis.dft_lattice_vectors, dft_lattice_vectors)
+    assert np.array_equal(mlff_error_analysis.mlff_positions, mlff_positions)
+    assert np.array_equal(mlff_error_analysis.dft_positions, dft_positions)
+    assert mlff_error_analysis.mlff_nions == mlff_nions
+    assert mlff_error_analysis.dft_nions == dft_nions
+    assert np.array_equal(mlff_error_analysis.mlff_stresses, mlff_stresses)
+    assert np.array_equal(mlff_error_analysis.dft_stresses, dft_stresses)
