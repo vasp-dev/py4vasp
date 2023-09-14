@@ -10,7 +10,7 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
-from py4vasp import Calculation
+from py4vasp import Calculation, exception
 from py4vasp._analysis.mlff import MLFFErrorAnalysis
 from py4vasp.data import Energy, Force, Stress
 
@@ -61,6 +61,33 @@ def mock_calculations(raw_data):
         energy_data = energy.read()
         data["_energies"][datatype].append(energy_data)
         raw_force = raw_data.force("Sr2TiO4", randomize=True)
+        force = Force.from_data(raw_force)
+        force_data = force.read()
+        data["_forces"][datatype].append(force_data)
+        structure_data = force_data.pop("structure")
+        force_data.update(structure_data)
+        raw_stress = raw_data.stress("Sr2TiO4", randomize=True)
+        stress = Stress.from_data(raw_stress)
+        stress_data = stress.read()
+        data["_stresses"][datatype].append(stress_data)
+    data = {key: dict(value) for key, value in data.items()}
+    _mock_calculations = MockCalculations.set_attributes(**data)
+    return _mock_calculations
+
+
+@pytest.fixture
+def mock_calculations_incorrect(raw_data):
+    data = defaultdict(lambda: defaultdict(list))
+    for datatype in ["dft_data", "mlff_data"]:
+        raw_energy = raw_data.energy("relax", randomize=True)
+        energy = Energy.from_data(raw_energy)
+        energy_data = energy.read()
+        data["_energies"][datatype].append(energy_data)
+        if datatype == "mlff_data":
+            species = "Sr2TiO4"
+        else:
+            species = "Fe3O4"
+        raw_force = raw_data.force(species, randomize=True)
         force = Force.from_data(raw_force)
         force_data = force.read()
         data["_forces"][datatype].append(force_data)
@@ -167,3 +194,8 @@ def test_attributes_from_data(mock_calculations):
     assert mlff_error_analysis.dft_nions == dft_nions
     assert np.array_equal(mlff_error_analysis.mlff_stresses, mlff_stresses)
     assert np.array_equal(mlff_error_analysis.dft_stresses, dft_stresses)
+
+
+def test_validator(mock_calculations_incorrect):
+    with pytest.raises(exception.IncorrectUsage):
+        mlff_error_analysis = MLFFErrorAnalysis._from_data(mock_calculations_incorrect)

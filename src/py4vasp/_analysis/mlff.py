@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import Calculations
+from py4vasp import Calculations, exception
 
 
 class MLFFErrorAnalysis:
@@ -38,6 +38,21 @@ def set_appropriate_attrs(cls):
         set_energies(cls, tag="free energy    TOTEN", datatype=datatype)
         set_forces_related_attributes(cls, datatype=datatype)
         set_stresses(cls, datatype=datatype)
+    validate_data(cls)
+
+
+def validate_data(cls):
+    try:
+        np.testing.assert_almost_equal(cls.dft_positions, cls.mlff_positions)
+        np.testing.assert_almost_equal(
+            cls.dft_lattice_vectors, cls.mlff_lattice_vectors
+        )
+        assert cls.dft_nions == cls.mlff_nions
+    except AssertionError:
+        raise exception.IncorrectUsage(
+            """\
+Please pass a consistent set of data between DFT and MLFF calculations."""
+        )
 
 
 def set_energies(cls, tag, datatype):
