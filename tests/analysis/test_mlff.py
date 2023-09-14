@@ -214,3 +214,39 @@ def test_energy_error_computation(mock_calculations):
     )
     output_energy_error = mlff_error_analysis.get_energy_error_per_atom()
     assert np.array_equal(expected_energy_error, output_energy_error)
+
+
+def test_force_error_computation(mock_calculations):
+    mlff_error_analysis = MLFFErrorAnalysis._from_data(mock_calculations)
+
+    def rmse_error_force(mlff_force, dft_force, natoms):
+        norm_error = np.linalg.norm(dft_force - mlff_force, axis=-1)
+        rmse = np.sqrt(np.sum(norm_error**2, axis=-1) / (3 * natoms))
+        return rmse
+
+    expected_force_error = rmse_error_force(
+        mlff_force=mlff_error_analysis.mlff_forces,
+        dft_force=mlff_error_analysis.dft_forces,
+        natoms=mlff_error_analysis.mlff_nions,
+    )
+    output_force_error = mlff_error_analysis.get_force_rmse()
+    assert np.array_equal(expected_force_error, output_force_error)
+
+
+def test_stress_error_computation(mock_calculations):
+    mlff_error_analysis = MLFFErrorAnalysis._from_data(mock_calculations)
+
+    def rmse_error_stress(mlff_stress, dft_stress, natoms):
+        mlff_stress = np.triu(mlff_stress)
+        dft_stress = np.triu(dft_stress)
+        norm_error = np.linalg.norm(dft_stress - mlff_stress, axis=-1)
+        rmse = np.sqrt(np.sum(norm_error**2, axis=-1) / (6 * natoms))
+        return rmse
+
+    expected_stress_error = rmse_error_stress(
+        mlff_stress=mlff_error_analysis.mlff_stresses,
+        dft_stress=mlff_error_analysis.dft_stresses,
+        natoms=mlff_error_analysis.mlff_nions,
+    )
+    output_stress_error = mlff_error_analysis.get_stress_rmse()
+    assert np.array_equal(expected_stress_error, output_stress_error)

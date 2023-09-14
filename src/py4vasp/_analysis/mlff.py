@@ -36,6 +36,23 @@ class MLFFErrorAnalysis:
         error = (self.dft_energies - self.mlff_energies) / self.dft_nions
         return error
 
+    def _get_rmse(self, dft_quantity, mlff_quantity, degrees_of_freedom):
+        norm_error = np.linalg.norm(dft_quantity - mlff_quantity, axis=-1)
+        error = np.sqrt(np.sum(norm_error**2, axis=-1) / degrees_of_freedom)
+        return error
+
+    def get_force_rmse(self):
+        deg_freedom = 3 * self.dft_nions
+        error = self._get_rmse(self.dft_forces, self.mlff_forces, deg_freedom)
+        return error
+
+    def get_stress_rmse(self):
+        deg_freedom = 6 * self.dft_nions
+        dft_stresses = np.triu(self.dft_stresses)
+        mlff_stresses = np.triu(self.mlff_stresses)
+        error = self._get_rmse(dft_stresses, mlff_stresses, deg_freedom)
+        return error
+
 
 def set_appropriate_attrs(cls):
     for datatype in ["dft", "mlff"]:
