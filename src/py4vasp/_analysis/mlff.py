@@ -37,7 +37,7 @@ class MLFFErrorAnalysis:
     def get_energy_error_per_atom(self, normalize_by_configurations=False):
         error = (self.dft_energies - self.mlff_energies) / self.dft_nions
         if normalize_by_configurations:
-            error = np.sum(error, axis=-1) / self.dft_nconfig
+            error = np.sum(np.abs(error), axis=-1) / self.dft_nconfig
         return error
 
     def _get_rmse(self, dft_quantity, mlff_quantity, degrees_of_freedom):
@@ -53,7 +53,7 @@ class MLFFErrorAnalysis:
         return error
 
     def get_stress_rmse(self, normalize_by_configurations=False):
-        deg_freedom = 6 * self.dft_nions
+        deg_freedom = 6
         dft_stresses = np.triu(self.dft_stresses)
         mlff_stresses = np.triu(self.mlff_stresses)
         error = self._get_rmse(dft_stresses, mlff_stresses, deg_freedom)
@@ -88,7 +88,8 @@ Please pass a consistent set of data between DFT and MLFF calculations."""
 def set_accounting_attributes(cls, datatype):
     nconfig = cls._calculations.number_of_calculations()[f"{datatype}_data"]
     force_data = cls._calculations.forces.read()[f"{datatype}_data"]
-    elements = _dict_to_array(force_data, "elements")
+    structures = _dict_to_list(force_data, "structure")
+    elements = _dict_to_array(structures, "elements")
     nions = np.array([len(_elements) for _elements in elements])
     setattr(cls, f"{datatype}_nconfig", nconfig)
     setattr(cls, f"{datatype}_nions", nions)
@@ -105,13 +106,18 @@ def _dict_to_array(data: Dict, key: str) -> np.ndarray:
     return np.array([_data[key] for _data in data])
 
 
+def _dict_to_list(data: Dict, key: str) -> list:
+    return [_data[key] for _data in data]
+
+
 def set_forces_related_attributes(cls, datatype):
     all_force_data = cls._calculations.forces.read()
     force_data = all_force_data[f"{datatype}_data"]
     forces = _dict_to_array(force_data, "forces")
-    lattice_vectors = _dict_to_array(force_data, "lattice_vectors")
+    structures = _dict_to_list(force_data, "structure")
+    lattice_vectors = _dict_to_array(structures, "lattice_vectors")
     lattice_vectors = np.array(lattice_vectors)
-    positions = _dict_to_array(force_data, "positions")
+    positions = _dict_to_array(structures, "positions")
     setattr(cls, f"{datatype}_forces", forces)
     setattr(cls, f"{datatype}_lattice_vectors", lattice_vectors)
     setattr(cls, f"{datatype}_positions", positions)
