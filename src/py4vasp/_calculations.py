@@ -66,13 +66,13 @@ Please provide a path to a VASP calculation as a string or pathlib.Path."""
 
 def _add_attribute_from_path(calc, class_):
     instance = class_.from_paths(calc.paths())
-    setattr(calc, convert.to_snakecase(class_.__name__), instance)
+    setattr(calc, convert.quantity_name(class_.__name__), instance)
     return calc
 
 
 def _add_attribute_from_file(calc, class_):
     instance = class_.from_files(calc.files())
-    setattr(calc, convert.to_snakecase(class_.__name__), instance)
+    setattr(calc, convert.quantity_name(class_.__name__), instance)
     return calc
 
 
