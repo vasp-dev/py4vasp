@@ -9,6 +9,28 @@ from py4vasp._util import convert
 
 
 class Calculations:
+    """A class to handle multiple Calculations all at once.
+
+    This class combines the functionality of the Calculation class for more than one
+    calculation. Create a Calculations object using either a wildcard for a set of
+    paths or files or pass in paths and files directly. Then you can access the
+    properties of all calculations via the attributes of the object.
+
+    Examples
+    --------
+    >>> calcs = Calculations.from_paths(calc1="path_to_calc1", calc2="path_to_calc2")
+    >>> calcs.energies.read() # returns a dictionary with the energies of calc1 and calc2
+    >>> calcs.forces.read()   # returns a dictionary with the forces of calc1 and calc2
+    >>> calcs.stresses.read() # returns a dictionary with the stresses of calc1 and calc2
+
+    Notes
+    -----
+    To create new instances, you should use the classmethod :meth:`from_paths` or
+    :meth:`from_files`. This will ensure that the paths to your VASP calculations are
+    properly set and all features work as intended. Note that this is an alpha version
+    and the API might change in the future.
+    """
+
     def __init__(self, *args, **kwargs):
         if not kwargs.get("_internal"):
             message = """\
@@ -31,6 +53,17 @@ Please provide a path to a VASP calculation as a string or pathlib.Path."""
 
     @classmethod
     def from_paths(cls, **kwargs):
+        """Set up a Calculations object for paths.
+
+        Setup a calculation for paths by passing in a dictionary with the name of the
+        calculation as key and the path to the calculation as value.
+
+        Parameters
+        ----------
+        **kwargs : Dict[str, str or pathlib.Path]
+            A dictionary with the name of the calculation as key and the path to the
+            calculation as value. Wildcards are allowed.
+        """
         calculations = cls(_internal=True)
         calculations._paths = {}
         for key, paths in cls._path_finder(**kwargs):
@@ -42,6 +75,19 @@ Please provide a path to a VASP calculation as a string or pathlib.Path."""
 
     @classmethod
     def from_files(cls, **kwargs):
+        """Set up a Calculations object from files.
+
+        Setup a calculation for files by passing in a dictionary with the name of the
+        calculation as key and the path to the calculation as value. Note that this
+        limits the amount of information, you have access to, so prefer creating the
+        instance with the :meth:`from_paths` if possible.
+
+        Parameters
+        ----------
+        **kwargs : Dict[str, str or pathlib.Path]
+            A dictionary with the name of the calculation as key and the files to the
+            calculation as value. Wildcards are allowed.
+        """
         calculations = cls(_internal=True)
         calculations._paths = {}
         calculations._files = {}
@@ -55,12 +101,15 @@ Please provide a path to a VASP calculation as a string or pathlib.Path."""
         return calculations
 
     def paths(self) -> Dict[str, List[pathlib.Path]]:
+        """Return the paths of the calculations."""
         return self._paths
 
     def files(self) -> Dict[str, List[pathlib.Path]]:
+        """Return the files of the calculations."""
         return self._files
 
     def number_of_calculations(self) -> Dict[str, int]:
+        """Return the number of calculations for each calculation."""
         return {key: len(value) for key, value in self._paths.items()}
 
 

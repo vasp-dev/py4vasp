@@ -140,20 +140,20 @@ def test_read_inputs_from_path(mock_access, mock_from_path):
     error_analysis = MLFFErrorAnalysis.from_paths(
         dft_data=absolute_path_dft, mlff_data=absolute_path_mlff
     )
-    assert isinstance(error_analysis.mlff_energies, np.ndarray)
-    assert isinstance(error_analysis.dft_energies, np.ndarray)
-    assert isinstance(error_analysis.mlff_forces, np.ndarray)
-    assert isinstance(error_analysis.dft_forces, np.ndarray)
-    assert isinstance(error_analysis.mlff_lattice_vectors, np.ndarray)
-    assert isinstance(error_analysis.dft_lattice_vectors, np.ndarray)
-    assert isinstance(error_analysis.mlff_positions, np.ndarray)
-    assert isinstance(error_analysis.dft_positions, np.ndarray)
-    assert isinstance(error_analysis.mlff_nconfig, int)
-    assert isinstance(error_analysis.dft_nconfig, int)
-    assert isinstance(error_analysis.mlff_nions, np.ndarray)
-    assert isinstance(error_analysis.dft_nions, np.ndarray)
-    assert isinstance(error_analysis.mlff_stresses, np.ndarray)
-    assert isinstance(error_analysis.dft_stresses, np.ndarray)
+    assert isinstance(error_analysis.mlff.energies, np.ndarray)
+    assert isinstance(error_analysis.dft.energies, np.ndarray)
+    assert isinstance(error_analysis.mlff.forces, np.ndarray)
+    assert isinstance(error_analysis.dft.forces, np.ndarray)
+    assert isinstance(error_analysis.mlff.lattice_vectors, np.ndarray)
+    assert isinstance(error_analysis.dft.lattice_vectors, np.ndarray)
+    assert isinstance(error_analysis.mlff.positions, np.ndarray)
+    assert isinstance(error_analysis.dft.positions, np.ndarray)
+    assert isinstance(error_analysis.mlff.nconfig, int)
+    assert isinstance(error_analysis.dft.nconfig, int)
+    assert isinstance(error_analysis.mlff.nions, np.ndarray)
+    assert isinstance(error_analysis.dft.nions, np.ndarray)
+    assert isinstance(error_analysis.mlff.stresses, np.ndarray)
+    assert isinstance(error_analysis.dft.stresses, np.ndarray)
 
 
 @patch("py4vasp._data.base.Refinery.from_path", autospec=True)
@@ -164,20 +164,20 @@ def test_read_inputs_from_files(mock_analysis, mock_from_path):
     error_analysis = MLFFErrorAnalysis.from_files(
         dft_data=absolute_files_dft, mlff_data=absolute_files_mlff
     )
-    assert isinstance(error_analysis.mlff_energies, np.ndarray)
-    assert isinstance(error_analysis.dft_energies, np.ndarray)
-    assert isinstance(error_analysis.mlff_forces, np.ndarray)
-    assert isinstance(error_analysis.dft_forces, np.ndarray)
-    assert isinstance(error_analysis.mlff_lattice_vectors, np.ndarray)
-    assert isinstance(error_analysis.dft_lattice_vectors, np.ndarray)
-    assert isinstance(error_analysis.mlff_positions, np.ndarray)
-    assert isinstance(error_analysis.dft_positions, np.ndarray)
-    assert isinstance(error_analysis.mlff_nconfig, int)
-    assert isinstance(error_analysis.dft_nconfig, int)
-    assert isinstance(error_analysis.mlff_nions, np.ndarray)
-    assert isinstance(error_analysis.dft_nions, np.ndarray)
-    assert isinstance(error_analysis.mlff_stresses, np.ndarray)
-    assert isinstance(error_analysis.dft_stresses, np.ndarray)
+    assert isinstance(error_analysis.mlff.energies, np.ndarray)
+    assert isinstance(error_analysis.dft.energies, np.ndarray)
+    assert isinstance(error_analysis.mlff.forces, np.ndarray)
+    assert isinstance(error_analysis.dft.forces, np.ndarray)
+    assert isinstance(error_analysis.mlff.lattice_vectors, np.ndarray)
+    assert isinstance(error_analysis.dft.lattice_vectors, np.ndarray)
+    assert isinstance(error_analysis.mlff.positions, np.ndarray)
+    assert isinstance(error_analysis.dft.positions, np.ndarray)
+    assert isinstance(error_analysis.mlff.nconfig, int)
+    assert isinstance(error_analysis.dft.nconfig, int)
+    assert isinstance(error_analysis.mlff.nions, np.ndarray)
+    assert isinstance(error_analysis.dft.nions, np.ndarray)
+    assert isinstance(error_analysis.mlff.stresses, np.ndarray)
+    assert isinstance(error_analysis.dft.stresses, np.ndarray)
 
 
 def test_read_from_data(mock_calculations):
@@ -225,20 +225,20 @@ def test_attributes_from_data(mocker, request):
     mlff_stresses = _iter_properties("stress", stresses_dict["mlff_data"])
     dft_stresses = _iter_properties("stress", stresses_dict["dft_data"])
     mlff_error_analysis = MLFFErrorAnalysis._from_data(mock_calculations)
-    assert np.array_equal(mlff_error_analysis.mlff_energies, mlff_energies)
-    assert np.array_equal(mlff_error_analysis.dft_energies, dft_energies)
-    assert np.array_equal(mlff_error_analysis.mlff_forces, mlff_forces)
-    assert np.array_equal(mlff_error_analysis.dft_forces, dft_forces)
+    assert np.array_equal(mlff_error_analysis.mlff.energies, mlff_energies)
+    assert np.array_equal(mlff_error_analysis.dft.energies, dft_energies)
+    assert np.array_equal(mlff_error_analysis.mlff.forces, mlff_forces)
+    assert np.array_equal(mlff_error_analysis.dft.forces, dft_forces)
     assert np.array_equal(
-        mlff_error_analysis.mlff_lattice_vectors, mlff_lattice_vectors
+        mlff_error_analysis.mlff.lattice_vectors, mlff_lattice_vectors
     )
-    assert np.array_equal(mlff_error_analysis.dft_lattice_vectors, dft_lattice_vectors)
-    assert np.array_equal(mlff_error_analysis.mlff_positions, mlff_positions)
-    assert np.array_equal(mlff_error_analysis.dft_positions, dft_positions)
-    assert mlff_error_analysis.mlff_nconfig == mlff_config
-    assert mlff_error_analysis.dft_nconfig == dft_config
-    assert np.array_equal(mlff_error_analysis.mlff_stresses, mlff_stresses)
-    assert np.array_equal(mlff_error_analysis.dft_stresses, dft_stresses)
+    assert np.array_equal(mlff_error_analysis.dft.lattice_vectors, dft_lattice_vectors)
+    assert np.array_equal(mlff_error_analysis.mlff.positions, mlff_positions)
+    assert np.array_equal(mlff_error_analysis.dft.positions, dft_positions)
+    assert mlff_error_analysis.mlff.nconfig == mlff_config
+    assert mlff_error_analysis.dft.nconfig == dft_config
+    assert np.array_equal(mlff_error_analysis.mlff.stresses, mlff_stresses)
+    assert np.array_equal(mlff_error_analysis.dft.stresses, dft_stresses)
 
 
 def test_validator(mock_calculations_incorrect):
@@ -254,9 +254,9 @@ def test_energy_per_atom_computation(mock_calculations):
         return error
 
     expected_energy_error = rmse_error_energy(
-        mlff_energy=mlff_error_analysis.mlff_energies,
-        dft_energy=mlff_error_analysis.dft_energies,
-        natoms=mlff_error_analysis.mlff_nions,
+        mlff_energy=mlff_error_analysis.mlff.energies,
+        dft_energy=mlff_error_analysis.dft.energies,
+        natoms=mlff_error_analysis.mlff.nions,
     )
     output_energy_error = mlff_error_analysis.get_energy_error_per_atom()
     assert np.array_equal(expected_energy_error, output_energy_error)
@@ -270,10 +270,10 @@ def test_multiple_energy_per_atom_computation(mock_multiple_calculations):
         return np.sum(np.abs(error), axis=-1) / nconfig
 
     expected_energy_error = rmse_error_energy(
-        mlff_energy=mlff_error_analysis.mlff_energies,
-        dft_energy=mlff_error_analysis.dft_energies,
-        natoms=mlff_error_analysis.mlff_nions,
-        nconfig=mlff_error_analysis.mlff_nconfig,
+        mlff_energy=mlff_error_analysis.mlff.energies,
+        dft_energy=mlff_error_analysis.dft.energies,
+        natoms=mlff_error_analysis.mlff.nions,
+        nconfig=mlff_error_analysis.mlff.nconfig,
     )
     output_energy_error = mlff_error_analysis.get_energy_error_per_atom(
         normalize_by_configurations=True
@@ -290,9 +290,9 @@ def test_force_error_computation(mock_calculations):
         return rmse
 
     expected_force_error = rmse_error_force(
-        mlff_force=mlff_error_analysis.mlff_forces,
-        dft_force=mlff_error_analysis.dft_forces,
-        natoms=mlff_error_analysis.mlff_nions,
+        mlff_force=mlff_error_analysis.mlff.forces,
+        dft_force=mlff_error_analysis.dft.forces,
+        natoms=mlff_error_analysis.mlff.nions,
     )
     output_force_error = mlff_error_analysis.get_force_rmse()
     assert np.array_equal(expected_force_error, output_force_error)
@@ -307,10 +307,10 @@ def test_multiple_force_computation(mock_multiple_calculations):
         return np.sum(rmse, axis=-1) / nconfig
 
     expected_force_error = rmse_error_force(
-        mlff_force=mlff_error_analysis.mlff_forces,
-        dft_force=mlff_error_analysis.dft_forces,
-        natoms=mlff_error_analysis.mlff_nions,
-        nconfig=mlff_error_analysis.mlff_nconfig,
+        mlff_force=mlff_error_analysis.mlff.forces,
+        dft_force=mlff_error_analysis.dft.forces,
+        natoms=mlff_error_analysis.mlff.nions,
+        nconfig=mlff_error_analysis.mlff.nconfig,
     )
     output_force_error = mlff_error_analysis.get_force_rmse(
         normalize_by_configurations=True
@@ -329,9 +329,9 @@ def test_stress_error_computation(mock_calculations):
         return rmse
 
     expected_stress_error = rmse_error_stress(
-        mlff_stress=mlff_error_analysis.mlff_stresses,
-        dft_stress=mlff_error_analysis.dft_stresses,
-        natoms=mlff_error_analysis.mlff_nions,
+        mlff_stress=mlff_error_analysis.mlff.stresses,
+        dft_stress=mlff_error_analysis.dft.stresses,
+        natoms=mlff_error_analysis.mlff.nions,
     )
     output_stress_error = mlff_error_analysis.get_stress_rmse()
     assert np.array_equal(expected_stress_error, output_stress_error)
@@ -340,7 +340,7 @@ def test_stress_error_computation(mock_calculations):
 def test_multiple_stress_computation(mock_multiple_calculations):
     mlff_error_analysis = MLFFErrorAnalysis._from_data(mock_multiple_calculations)
 
-    def rmse_error_stress(mlff_stress, dft_stress, natoms, nconfig):
+    def rmse_error_stress(mlff_stress, dft_stress, nconfig):
         mlff_stress = np.triu(mlff_stress)
         dft_stress = np.triu(dft_stress)
         norm_error = np.linalg.norm(dft_stress - mlff_stress, axis=-1)
@@ -348,10 +348,9 @@ def test_multiple_stress_computation(mock_multiple_calculations):
         return np.sum(rmse, axis=-1) / nconfig
 
     expected_stress_error = rmse_error_stress(
-        mlff_stress=mlff_error_analysis.mlff_stresses,
-        dft_stress=mlff_error_analysis.dft_stresses,
-        natoms=mlff_error_analysis.mlff_nions,
-        nconfig=mlff_error_analysis.mlff_nconfig,
+        mlff_stress=mlff_error_analysis.mlff.stresses,
+        dft_stress=mlff_error_analysis.dft.stresses,
+        nconfig=mlff_error_analysis.mlff.nconfig,
     )
     output_stress_error = mlff_error_analysis.get_stress_rmse(
         normalize_by_configurations=True
