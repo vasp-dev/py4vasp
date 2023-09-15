@@ -71,14 +71,14 @@ schema.add(
 #
 schema.add(
     raw.Cell,
-    required=raw.Version(6, 5),
-    scale="intermediate/ion_dynamics/scale",
+    required=raw.Version(6, 4),
+    scale="results/positions/scale",
     lattice_vectors="intermediate/ion_dynamics/lattice_vectors",
 )
 schema.add(
     raw.Cell,
     name="final",
-    required=raw.Version(6, 5),
+    required=raw.Version(6, 4),
     scale="results/positions/scale",
     lattice_vectors="results/positions/lattice_vectors",
 )
