@@ -44,7 +44,7 @@ class Schema:
             You need to specify for all the fields of the class from where in the HDF5
             file they can be obtained.
         """
-        class_name = convert.to_snakecase(cls.__name__)
+        class_name = convert.quantity_name(cls.__name__)
         self._sources.setdefault(class_name, {})
         if name in self._sources[class_name]:
             message = f"{class_name}/{name} already in the schema. Please choose a different name."

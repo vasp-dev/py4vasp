@@ -12,10 +12,10 @@ from py4vasp.data import Structure
 
 REF_POSCAR = """\
 Sr2TiO4
-1.0
-   6.9229000000000003    0.0000000000000000    0.0000000000000000
-   4.6945030167999979    5.0880434191000035    0.0000000000000000
-  -5.8086962205000017   -2.5440193935999971    2.7773292841999986
+6.9229000000000003
+   1.0000000000000000    0.0000000000000000    0.0000000000000000
+   0.6781122097386930    0.7349583872510080    0.0000000000000000
+  -0.8390553410420490   -0.3674788590908430    0.4011800378743010
 Sr Ti O
 2 1 4
 Direct
@@ -29,11 +29,11 @@ Direct
 
 REF_HTML = """\
 Sr2TiO4<br>
-1.0<br>
+6.9229000000000003<br>
 <table>
-<tr><td>   6.9229000000000003</td><td>   0.0000000000000000</td><td>   0.0000000000000000</td></tr>
-<tr><td>   4.6945030167999979</td><td>   5.0880434191000035</td><td>   0.0000000000000000</td></tr>
-<tr><td>  -5.8086962205000017</td><td>  -2.5440193935999971</td><td>   2.7773292841999986</td></tr>
+<tr><td>   1.0000000000000000</td><td>   0.0000000000000000</td><td>   0.0000000000000000</td></tr>
+<tr><td>   0.6781122097386930</td><td>   0.7349583872510080</td><td>   0.0000000000000000</td></tr>
+<tr><td>  -0.8390553410420490</td><td>  -0.3674788590908430</td><td>   0.4011800378743010</td></tr>
 </table>
 Sr Ti O<br>
 2 1 4<br>
@@ -48,6 +48,22 @@ Direct<br>
 <tr><td>   0.0000000000000000</td><td>   0.5000000000000000</td><td>   0.5000000000000000</td></tr>
 </table>"""
 
+REF_Ca3AsBr3 = """Ca3AsBr3
+5.9299999999999997
+   1.0000000000000000    0.0000000000000000    0.0000000000000000
+   0.0000000000000000    1.0000000000000000    0.0000000000000000
+   0.0000000000000000    0.0000000000000000    1.0000000000000000
+Ca As Br Ca Br
+2 1 1 1 2
+Direct
+   0.5000000000000000    0.0000000000000000    0.0000000000000000
+   0.0000000000000000    0.5000000000000000    0.0000000000000000
+   0.0000000000000000    0.0000000000000000    0.0000000000000000
+   0.0000000000000000    0.5000000000000000    0.5000000000000000
+   0.0000000000000000    0.0000000000000000    0.5000000000000000
+   0.5000000000000000    0.0000000000000000    0.5000000000000000
+   0.5000000000000000    0.5000000000000000    0.0000000000000000"""
+
 
 @pytest.fixture
 def Sr2TiO4(raw_data):
@@ -59,10 +75,16 @@ def Fe3O4(raw_data):
     return make_structure(raw_data.structure("Fe3O4"))
 
 
+@pytest.fixture
+def Ca3AsBr3(raw_data):
+    return make_structure(raw_data.structure("Ca3AsBr3"))
+
+
 def make_structure(raw_structure):
     structure = Structure.from_data(raw_structure)
     structure.ref = types.SimpleNamespace()
-    structure.ref.lattice_vectors = raw_structure.cell.lattice_vectors
+    cell = raw_structure.cell
+    structure.ref.lattice_vectors = cell.scale * cell.lattice_vectors
     structure.ref.positions = raw_structure.positions
     return structure
 
@@ -93,12 +115,22 @@ def check_Fe3O4_structure(actual, reference, steps, Assert):
     assert actual["names"] == ["Fe_1", "Fe_2", "Fe_3", "O_1", "O_2", "O_3", "O_4"]
 
 
-def test_to_poscar(Sr2TiO4):
+def test_read_Ca3AsBr3(Ca3AsBr3, Assert):
+    # special case of single structure instead of trajectory
+    actual = Ca3AsBr3.read()
+    Assert.allclose(actual["lattice_vectors"], Ca3AsBr3.ref.lattice_vectors)
+    Assert.allclose(actual["positions"], Ca3AsBr3.ref.positions)
+    assert actual["elements"] == ["Ca", "Ca", "As", "Br", "Ca", "Br", "Br"]
+    assert actual["names"] == ["Ca_1", "Ca_2", "As_1", "Br_1", "Ca_3", "Br_2", "Br_3"]
+
+
+def test_to_poscar(Sr2TiO4, Ca3AsBr3):
     assert Sr2TiO4.to_POSCAR() == REF_POSCAR
     assert Sr2TiO4[0].to_POSCAR() == REF_POSCAR.replace("Sr2TiO4", "Sr2TiO4 (step 1)")
     for steps in (slice(None), slice(1, 3)):
         with pytest.raises(exception.NotImplemented):
             Sr2TiO4[steps].to_POSCAR()
+    assert Ca3AsBr3.to_POSCAR() == REF_Ca3AsBr3
 
 
 def test_from_poscar(Sr2TiO4, Assert, not_core):
@@ -162,6 +194,14 @@ def check_Fe3O4_ase(structure, reference, steps, Assert):
     assert all(structure.pbc)
 
 
+def test_to_ase_Ca3AsBr3(Ca3AsBr3, Assert, not_core):
+    structure = Ca3AsBr3.to_ase()
+    Assert.allclose(structure.cell.array, Ca3AsBr3.ref.lattice_vectors)
+    Assert.allclose(structure.get_scaled_positions(), Ca3AsBr3.ref.positions)
+    assert all(structure.symbols == "Ca2AsBrCaBr2")
+    assert all(structure.pbc)
+
+
 def test_from_ase(Sr2TiO4, Assert, not_core):
     structure = Structure.from_ase(Sr2TiO4.to_ase())
     check_Sr2TiO4_structure(structure.read(), Sr2TiO4.ref, -1, Assert)
@@ -212,10 +252,11 @@ def test_supercell_wrong_size(Sr2TiO4, not_core):
         Sr2TiO4.to_ase([1, 2])
 
 
-def test_cartesian_positions(Sr2TiO4, Fe3O4, Assert, not_core):
+def test_cartesian_positions(Sr2TiO4, Fe3O4, Ca3AsBr3, Assert, not_core):
     check_cartesian_positions(Sr2TiO4, Assert)
     check_cartesian_positions(Fe3O4, Assert)
     check_cartesian_positions(Fe3O4[0], Assert)
+    check_cartesian_positions(Ca3AsBr3, Assert)
 
 
 def check_cartesian_positions(structure, Assert):
@@ -230,20 +271,28 @@ def test_volume_Fe3O4(Fe3O4, Assert):
     Assert.allclose(Fe3O4[1:3].volume(), reference_volumes[1:3])
 
 
+def test_volume_Ca3AsO3(Ca3AsBr3, Assert):
+    lattice_vectors = Ca3AsBr3.ref.lattice_vectors[np.newaxis]
+    reference_volumes = determine_reference_volumes(lattice_vectors)[-1]
+    Assert.allclose(Ca3AsBr3.volume(), reference_volumes)
+
+
 def determine_reference_volumes(lattice_vectors):
     cross_product = np.cross(lattice_vectors[:, 0], lattice_vectors[:, 1])
     return np.abs(np.einsum("ij,ij -> i", cross_product, lattice_vectors[:, 2]))
 
 
-def test_number_atoms(Sr2TiO4):
+def test_number_atoms(Sr2TiO4, Ca3AsBr3):
     assert Sr2TiO4.number_atoms() == 7
+    assert Ca3AsBr3.number_atoms() == 7
 
 
-def test_number_steps(Sr2TiO4):
+def test_number_steps(Sr2TiO4, Ca3AsBr3):
     assert Sr2TiO4.number_steps() == 1
     assert Sr2TiO4[0].number_steps() == 1
     assert Sr2TiO4[:].number_steps() == len(Sr2TiO4.ref.positions)
     assert Sr2TiO4[1:3].number_steps() == 2
+    assert Ca3AsBr3.number_steps() == 1
 
 
 def test_plot_Sr2TiO4(Sr2TiO4, not_core):
@@ -258,6 +307,10 @@ def test_plot_Fe3O4(Fe3O4, not_core):
         check_plot_structure(Fe3O4[steps])
 
 
+def test_plot_Ca3AsBr3(Ca3AsBr3, not_core):
+    check_plot_structure(Ca3AsBr3)
+
+
 def check_plot_structure(structure):
     obj = viewer3d.Viewer3d
     cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
@@ -268,11 +321,13 @@ def check_plot_structure(structure):
         cell.assert_called_once()
 
 
-def test_incorrect_step(Sr2TiO4):
+def test_incorrect_step(Sr2TiO4, Ca3AsBr3):
     with pytest.raises(exception.IncorrectUsage):
         Sr2TiO4[100].read()
     with pytest.raises(exception.IncorrectUsage):
         Sr2TiO4[[0, 1]].read()
+    with pytest.raises(exception.IncorrectUsage):
+        Ca3AsBr3[0]
 
 
 def test_print_final(Sr2TiO4, format_):
@@ -284,6 +339,7 @@ def test_print_specific(Sr2TiO4, format_):
     actual, _ = format_(Sr2TiO4[0])
     ref_plain = REF_POSCAR.replace("Sr2TiO4", "Sr2TiO4 (step 1)")
     ref_html = REF_HTML.replace("Sr2TiO4", "Sr2TiO4 (step 1)")
+    assert actual["text/plain"] == ref_plain
     assert actual == {"text/plain": ref_plain, "text/html": ref_html}
 
 
@@ -292,6 +348,11 @@ def test_print_trajectory(Sr2TiO4, format_):
     ref_plain = REF_POSCAR.replace("Sr2TiO4", "Sr2TiO4 from step 2 to 4")
     ref_html = REF_HTML.replace("Sr2TiO4", "Sr2TiO4 from step 2 to 4")
     assert actual == {"text/plain": ref_plain, "text/html": ref_html}
+
+
+def test_print_Ca3AsBr3(Ca3AsBr3, format_):
+    actual, _ = format_(Ca3AsBr3)
+    assert actual["text/plain"] == REF_Ca3AsBr3
 
 
 def test_factory_methods(raw_data, check_factory_methods):

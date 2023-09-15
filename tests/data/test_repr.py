@@ -6,7 +6,9 @@ from py4vasp.data import *
 def test_repr():
     tests = [
         Band,
+        Bandgap,
         BornEffectiveCharge,
+        CONTCAR,
         Density,
         DielectricFunction,
         DielectricTensor,
@@ -25,9 +27,9 @@ def test_repr():
         PiezoelectricTensor,
         Polarization,
         Projector,
-        System,
         Stress,
         Structure,
+        System,
         Topology,
     ]
     for class_ in tests:

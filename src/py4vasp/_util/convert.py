@@ -20,9 +20,16 @@ def to_complex(array):
     return array.view(np.complex128).reshape(array.shape[:-1])
 
 
+def quantity_name(quantity):
+    if quantity == "CONTCAR":
+        return quantity
+    else:
+        return _to_snakecase(quantity)
+
+
 # NOTE: to_snakecase is the function underscore from the inflection package
 #       (Copyright (C) 2012-2020 Janne Vanhala)
-def to_snakecase(word: str) -> str:
+def _to_snakecase(word: str) -> str:
     """
     Make an underscored, lowercase form from the expression in the string.
     Example::
