@@ -22,7 +22,7 @@ or CompareCalculations.from_files() instead of the constructor CompareCalculatio
                 message = """\
 Please provide a path to a VASP calculation as a string or pathlib.Path."""
                 raise exception.IncorrectUsage(message)
-            paths = pathlib.Path(value).expanduser().resolve()
+            paths = pathlib.Path(value).expanduser().absolute()
             if "*" in paths.as_posix():
                 paths = sorted(list(paths.parent.glob(paths.name)))
             else:
