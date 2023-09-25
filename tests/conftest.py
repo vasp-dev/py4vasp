@@ -236,6 +236,20 @@ class RawDataFactory:
         return _phonon_dos()
 
     @staticmethod
+    def potential(
+        selection,
+        hartree_potential: bool = False,
+        ionic_potential: bool = False,
+        xc_potential: bool = False,
+    ):
+        return _Fe3O4_potential(
+            selection,
+            hartree_potential=hartree_potential,
+            ionic_potential=ionic_potential,
+            xc_potential=xc_potential,
+        )
+
+    @staticmethod
     def projector(selection):
         if selection == "Sr2TiO4":
             return _Sr2TiO4_projectors(use_orbitals=True)
@@ -799,6 +813,40 @@ def _Fe3O4_forces(randomize):
     else:
         forces = np.arange(np.prod(shape)).reshape(shape)
     return raw.Force(structure=_Fe3O4_structure(), forces=forces)
+
+
+def _Fe3O4_potential(
+    selection, hartree_potential=True, ionic_potential=True, xc_potential=True
+):
+    structure = RawDataFactory.structure("Fe3O4")
+
+    def _generate_arbitrary_grids(shape):
+        return np.random.ran(*shape)
+
+    if selection == "non_spin_polarized":
+        grid = (10, 12, 14)
+    elif selection == "collinear":
+        grid = (2, 10, 12, 14)
+    elif selection == "non_collinear":
+        grid = (4, 10, 12, 14)
+    else:
+        raise exception.IncorrectUsage(
+            """\
+Possible selections are non_spin polarized, collinear and non_collinear."""
+        )
+    hartree_potential = _generate_arbitrary_grids(grid)
+    ionic_potential = _generate_arbitrary_grids(grid)
+    xc_potential = _generate_arbitrary_grids(grid)
+    total_potential = hartree_potential + ionic_potential + xc_potential
+    kwargs = {}
+    if hartree_potential:
+        kwargs["hartree_potential"] = raw.VaspData(hartree_potential)
+    if ionic_potential:
+        kwargs["ionic_potential"] = raw.VaspData(ionic_potential)
+    if xc_potential:
+        kwargs["xc_potential"] = raw.VaspData(xc_potential)
+    kwargs["total_potential"] = raw.VaspData(total_potential)
+    return raw.Potential(structure=structure, **kwargs)
 
 
 def _Fe3O4_projectors(use_orbitals):

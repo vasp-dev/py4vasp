@@ -412,6 +412,16 @@ schema.add(
 )
 #
 schema.add(
+    raw.Potential,
+    required=raw.Version(6, 5),
+    structure=Link("structure", DEFAULT_SOURCE),
+    hartree_potential="results/potential/hartree_potential",
+    ionic_potential="results/potential/ionic_potential",
+    xc_potential="results/potential/xc_potential",
+    total_potential="results/potential/total_potential",
+)
+#
+schema.add(
     raw.Projector,
     topology=Link("topology", DEFAULT_SOURCE),
     orbital_types="results/projectors/lchar",
