@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
 
+import numpy as np
 import pytest
 
 from py4vasp.data import Potential, Structure
@@ -31,3 +32,65 @@ def reference_potential(raw_data):
         return potential
 
     return _reference_potential
+
+
+def separate_potentials(selection, potential_name, potential):
+    output = {}
+    _potential = getattr(potential.ref, f"{potential_name}_potential")
+    _potential = _potential.__array__()
+    if selection == "non_spin_polarized":
+        output[f"{potential_name}"] = _potential
+    elif selection == "collinear":
+        output[f"{potential_name}"] = (_potential[0] + _potential[1]) / 2
+        output[f"{potential_name}_up"] = _potential[0]
+        output[f"{potential_name}_down"] = _potential[1]
+    elif selection == "non_collinear":
+        output[f"{potential_name}"] = _potential[0]
+        output[f"{potential_name}_magnetization"] = _potential[1:3]
+    return output
+
+
+@pytest.fixture
+def potential_data(reference_potential):
+    def _potential_data(
+        selection: str,
+        hartree_potential: bool,
+        ionic_potential: bool,
+        xc_potential: bool,
+    ):
+        reference = reference_potential(
+            selection, hartree_potential, ionic_potential, xc_potential
+        )
+        total_potential_data = separate_potentials(selection, "total", reference)
+        if hartree_potential:
+            hartree_potential_data = separate_potentials(
+                selection, "hartree", reference
+            )
+            total_potential_data.update(hartree_potential_data)
+        if ionic_potential:
+            ionic_potential_data = separate_potentials(selection, "ionic", reference)
+            total_potential_data.update(ionic_potential_data)
+        if xc_potential:
+            xc_potential_data = separate_potentials(selection, "xc", reference)
+            total_potential_data.update(xc_potential_data)
+        reference.ref.to_dict = total_potential_data
+        return reference
+
+    return _potential_data
+
+
+@pytest.mark.parametrize(
+    "selection", ["non_spin_polarized", "collinear", "non_collinear"]
+)
+@pytest.mark.parametrize("hartree_potential", [True, False])
+@pytest.mark.parametrize("ionic_potential", [True, False])
+@pytest.mark.parametrize("xc_potential", [True, False])
+def test_read(
+    potential_data, selection, hartree_potential, ionic_potential, xc_potential, Assert
+):
+    potential = potential_data(
+        selection, hartree_potential, ionic_potential, xc_potential
+    )
+    output_potential = potential.read()
+    expected_potential = potential.ref.to_dict
+    assert output_potential == expected_potential

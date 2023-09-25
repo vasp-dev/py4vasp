@@ -821,7 +821,7 @@ def _Fe3O4_potential(
     structure = RawDataFactory.structure("Fe3O4")
 
     def _generate_arbitrary_grids(shape):
-        return np.random.ran(*shape)
+        return np.random.rand(*shape)
 
     if selection == "non_spin_polarized":
         grid = (10, 12, 14)
@@ -834,18 +834,26 @@ def _Fe3O4_potential(
             """\
 Possible selections are non_spin polarized, collinear and non_collinear."""
         )
-    hartree_potential = _generate_arbitrary_grids(grid)
-    ionic_potential = _generate_arbitrary_grids(grid)
-    xc_potential = _generate_arbitrary_grids(grid)
-    total_potential = hartree_potential + ionic_potential + xc_potential
+    hartree_potential_data = _generate_arbitrary_grids(grid)
+    ionic_potential_data = _generate_arbitrary_grids(grid)
+    xc_potential_data = _generate_arbitrary_grids(grid)
+    total_potential_data = (
+        hartree_potential_data + ionic_potential_data + xc_potential_data
+    )
     kwargs = {}
     if hartree_potential:
-        kwargs["hartree_potential"] = raw.VaspData(hartree_potential)
+        kwargs["hartree_potential"] = raw.VaspData(hartree_potential_data)
+    else:
+        kwargs["hartree_potential"] = None
     if ionic_potential:
-        kwargs["ionic_potential"] = raw.VaspData(ionic_potential)
+        kwargs["ionic_potential"] = raw.VaspData(ionic_potential_data)
+    else:
+        kwargs["ionic_potential"] = None
     if xc_potential:
-        kwargs["xc_potential"] = raw.VaspData(xc_potential)
-    kwargs["total_potential"] = raw.VaspData(total_potential)
+        kwargs["xc_potential"] = raw.VaspData(xc_potential_data)
+    else:
+        kwargs["xc_potential"] = None
+    kwargs["total_potential"] = raw.VaspData(total_potential_data)
     return raw.Potential(structure=structure, **kwargs)
 
 
