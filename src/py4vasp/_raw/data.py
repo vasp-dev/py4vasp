@@ -390,6 +390,26 @@ class Polarization:
 
 
 @dataclasses.dataclass
+class Potential:
+    """The potential on a real space grid.
+
+    Depending on the options set in the INCAR file, this dataclass can store the total
+    potential, the hartree potential, the ionic potential and the exchange-correlation
+    potential."""
+
+    structure: VaspData
+    """Atomic structure used to generate the potential"""
+    hartree_potential: VaspData
+    """Hartree potential, a contribution to the total potential"""
+    ionic_potential: VaspData
+    """Ionic potential, a contribution to the total potential"""
+    xc_potential: VaspData
+    """Exchange-correlation potential, a contribution to the total potential"""
+    total_potential: VaspData
+    """The total potential = ionic + hartree + xc potentials"""
+
+
+@dataclasses.dataclass
 class Projector:
     """Projectors used for atom and orbital projections.
 
