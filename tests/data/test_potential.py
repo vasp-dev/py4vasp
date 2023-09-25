@@ -2,7 +2,6 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
 
-import numpy as np
 import pytest
 
 from py4vasp.data import Potential, Structure
@@ -39,7 +38,7 @@ def separate_potentials(selection, potential_name, potential):
     _potential = getattr(potential.ref, f"{potential_name}_potential")
     _potential = _potential.__array__()
     if selection == "non_spin_polarized":
-        output[f"{potential_name}"] = _potential
+        output[f"{potential_name}"] = _potential[0]
     elif selection == "collinear":
         output[f"{potential_name}"] = (_potential[0] + _potential[1]) / 2
         output[f"{potential_name}_up"] = _potential[0]

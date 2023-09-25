@@ -824,7 +824,7 @@ def _Fe3O4_potential(
         return np.random.rand(*shape)
 
     if selection == "non_spin_polarized":
-        grid = (10, 12, 14)
+        grid = (1, 10, 12, 14)
     elif selection == "collinear":
         grid = (2, 10, 12, 14)
     elif selection == "non_collinear":

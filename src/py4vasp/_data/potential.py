@@ -13,18 +13,34 @@ class Potential(base.Refinery, structure.Mixin):
     """The potential"""
 
     @staticmethod
-    def _create_potential_dict(name, raw_data):
+    def _is_non_polarized(potential):
+        return potential.shape[0] == 1
+
+    @staticmethod
+    def _is_collinear(potential):
+        return potential.shape[0] == 2
+
+    @staticmethod
+    def _is_noncollinear(potential):
+        return potential.shape[0] == 4
+
+    @staticmethod
+    def _does_this_potential_exist(raw_data, name):
+        potential = getattr(raw_data, f"{name}_potential", None)
+        return potential is not None
+
+    def _create_potential_dict(self, name, raw_data):
         potential_dict = {}
-        potential = getattr(raw_data, f"{name}_potential")
-        if not potential:
+        if not self._does_this_potential_exist(raw_data, name):
             return
-        if potential.ndim == 3:  # non-spin polarized
-            potential_dict[name] = potential
-        elif potential.ndim == 4 and potential.shape[0] == 2:  # collinear
+        potential = getattr(raw_data, f"{name}_potential")
+        if self._is_non_polarized(potential):
+            potential_dict[name] = potential[0]
+        elif self._is_collinear(potential):
             potential_dict[f"{name}_up"] = potential[0]
             potential_dict[f"{name}_down"] = potential[1]
             potential_dict[name] = np.mean(potential, axis=0)
-        elif potential.ndim == 4 and potential.shape[0] == 4:  # non-collinear
+        elif self._is_noncollinear(potential):
             potential_dict[name] = potential[0]
             potential_dict[f"{name}_magnetization"] = potential[1:]
         else:
@@ -40,15 +56,10 @@ because the shapes of one of these arrays of potentials has changed."""
     def to_dict(self):
         _raise_error_if_no_data(self._raw_data.total_potential)
         output = self._create_potential_dict("total", self._raw_data)
-        hartree_potential_dict = self._create_potential_dict("hartree", self._raw_data)
-        ionic_potential_dict = self._create_potential_dict("ionic", self._raw_data)
-        xc_potential_dict = self._create_potential_dict("xc", self._raw_data)
-        if hartree_potential_dict:
-            output.update(hartree_potential_dict)
-        if ionic_potential_dict:
-            output.update(ionic_potential_dict)
-        if xc_potential_dict:
-            output.update(xc_potential_dict)
+        for name in ["hartree", "ionic", "xc"]:
+            potential_dict = self._create_potential_dict(name, self._raw_data)
+            if potential_dict:
+                output.update(potential_dict)
         return output
 
 
