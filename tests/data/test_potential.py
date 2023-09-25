@@ -46,7 +46,7 @@ def separate_potentials(selection, potential_name, potential):
         output[f"{potential_name}_down"] = _potential[1]
     elif selection == "non_collinear":
         output[f"{potential_name}"] = _potential[0]
-        output[f"{potential_name}_magnetization"] = _potential[1:3]
+        output[f"{potential_name}_magnetization"] = _potential[1:4]
     return output
 
 
@@ -92,5 +92,11 @@ def test_read(
         selection, hartree_potential, ionic_potential, xc_potential
     )
     output_potential = potential.read()
+    output_keys = list(output_potential.keys())
     expected_potential = potential.ref.to_dict
-    assert output_potential == expected_potential
+    for key in output_keys:
+        _output = output_potential.pop(key)
+        _expected = expected_potential.pop(key)
+        Assert.allclose(_output, _expected)
+    assert not output_potential  # Must be empty
+    assert not expected_potential  # Must be empty
