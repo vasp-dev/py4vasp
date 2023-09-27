@@ -22,6 +22,7 @@ two_spins = 2
 axes = 3
 complex_ = 2
 number_modes = axes * number_atoms
+grid_dimensions = (10, 12, 14)
 
 
 @pytest.fixture(scope="session")
@@ -236,18 +237,14 @@ class RawDataFactory:
         return _phonon_dos()
 
     @staticmethod
-    def potential(
-        selection,
-        hartree_potential: bool = False,
-        ionic_potential: bool = False,
-        xc_potential: bool = False,
-    ):
-        return _Fe3O4_potential(
-            selection,
-            hartree_potential=hartree_potential,
-            ionic_potential=ionic_potential,
-            xc_potential=xc_potential,
-        )
+    def potential(selection: str):
+        parts = selection.split()
+        if parts[0] == "Sr2TiO4":
+            return _Sr2TiO4_potential(parts[1])
+        elif parts[0] == "Fe3O4":
+            return _Fe3O4_potential(*parts[1:])
+        else:
+            raise exception.NotImplemented()
 
     @staticmethod
     def projector(selection):
@@ -701,6 +698,21 @@ def _Sr2TiO4_internal_strain():
     )
 
 
+def _Sr2TiO4_potential(included_potential):
+    structure = _Sr2TiO4_structure()
+    shape = (1, *grid_dimensions)
+    include_xc = included_potential in ("xc", "all")
+    include_hartree = included_potential in ("hartree", "all")
+    include_ionic = included_potential in ("ionic", "all")
+    return raw.Potential(
+        structure=structure,
+        total_potential=_make_arbitrary_data(shape),
+        xc_potential=_make_arbitrary_data(shape, present=include_xc),
+        hartree_potential=_make_arbitrary_data(shape, present=include_hartree),
+        ionic_potential=_make_arbitrary_data(shape, present=include_ionic),
+    )
+
+
 def _Sr2TiO4_projectors(use_orbitals):
     orbital_types = "s py pz px dxy dyz dz2 dxz x2-y2 fy3x2 fxyz fyz2 fz3 fxz2 fzx2 fx3"
     return raw.Projector(
@@ -815,46 +827,20 @@ def _Fe3O4_forces(randomize):
     return raw.Force(structure=_Fe3O4_structure(), forces=forces)
 
 
-def _Fe3O4_potential(
-    selection, hartree_potential=True, ionic_potential=True, xc_potential=True
-):
-    structure = RawDataFactory.structure("Fe3O4")
-
-    def _generate_arbitrary_grids(shape):
-        return np.random.rand(*shape)
-
-    if selection == "non_spin_polarized":
-        grid = (1, 10, 12, 14)
-    elif selection == "collinear":
-        grid = (2, 10, 12, 14)
-    elif selection == "non_collinear":
-        grid = (4, 10, 12, 14)
-    else:
-        raise exception.IncorrectUsage(
-            """\
-Possible selections are non_spin polarized, collinear and non_collinear."""
-        )
-    hartree_potential_data = _generate_arbitrary_grids(grid)
-    ionic_potential_data = _generate_arbitrary_grids(grid)
-    xc_potential_data = _generate_arbitrary_grids(grid)
-    total_potential_data = (
-        hartree_potential_data + ionic_potential_data + xc_potential_data
+def _Fe3O4_potential(selection, included_potential):
+    structure = _Fe3O4_structure()
+    shape_polarized = (_number_components(selection), *grid_dimensions)
+    shape_trivial = (1, *grid_dimensions)
+    include_xc = included_potential in ("xc", "all")
+    include_hartree = included_potential in ("hartree", "all")
+    include_ionic = included_potential in ("ionic", "all")
+    return raw.Potential(
+        structure=structure,
+        total_potential=_make_arbitrary_data(shape_polarized),
+        xc_potential=_make_arbitrary_data(shape_polarized, present=include_xc),
+        hartree_potential=_make_arbitrary_data(shape_trivial, present=include_hartree),
+        ionic_potential=_make_arbitrary_data(shape_trivial, present=include_ionic),
     )
-    kwargs = {}
-    if hartree_potential:
-        kwargs["hartree_potential"] = raw.VaspData(hartree_potential_data)
-    else:
-        kwargs["hartree_potential"] = None
-    if ionic_potential:
-        kwargs["ionic_potential"] = raw.VaspData(ionic_potential_data)
-    else:
-        kwargs["ionic_potential"] = None
-    if xc_potential:
-        kwargs["xc_potential"] = raw.VaspData(xc_potential_data)
-    else:
-        kwargs["xc_potential"] = None
-    kwargs["total_potential"] = raw.VaspData(total_potential_data)
-    return raw.Potential(structure=structure, **kwargs)
 
 
 def _Fe3O4_projectors(use_orbitals):
@@ -936,6 +922,13 @@ def _Ca3AsBr3_topology():
         number_ion_types=np.array((2, 1, 1, 1, 2)),
         ion_types=np.array(("Ca", "As", "Br", "Ca", "Br"), dtype="S"),
     )
+
+
+def _make_arbitrary_data(shape, present=True):
+    if present:
+        return raw.VaspData(np.arange(np.prod(shape)).reshape(shape))
+    else:
+        return raw.VaspData(None)
 
 
 def _make_data(data):
