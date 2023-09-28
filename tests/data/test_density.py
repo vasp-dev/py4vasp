@@ -3,6 +3,7 @@
 import types
 from unittest.mock import patch
 
+import numpy as np
 import pytest
 
 from py4vasp import exception, raw
@@ -10,69 +11,60 @@ from py4vasp._data import viewer3d
 from py4vasp.data import Density, Structure
 
 
+@pytest.fixture(params=["Sr2TiO4", "Fe3O4 collinear", "Fe3O4 noncollinear"])
+def reference_density(raw_data, request):
+    return make_reference_density(raw_data, request.param)
+
+
 @pytest.fixture
 def collinear_density(raw_data):
-    raw_density = raw_data.density("Fe3O4 collinear")
+    return make_reference_density(raw_data, "Fe3O4 collinear")
+
+
+def make_reference_density(raw_data, selection):
+    raw_density = raw_data.density(selection)
     density = Density.from_data(raw_density)
     density.ref = types.SimpleNamespace()
     density.ref.structure = Structure.from_data(raw_density.structure).read()
-    density.ref.charge = raw_density.charge[0]
-    density.ref.magnetization = raw_density.charge[1]
+    density.ref.output = get_expected_dict(raw_density.charge)
+    density.ref.string = get_expected_string(raw_density.charge)
     return density
 
 
-@pytest.fixture
-def charge_only_density(raw_data):
-    raw_density = raw_data.density("Fe3O4 charge_only")
-    density = Density.from_data(raw_density)
-    density.ref = types.SimpleNamespace()
-    density.ref.charge = raw_density.charge[0]
-    return density
+def get_expected_dict(charge):
+    if len(charge) == 1:  # nonpolarized
+        return {"charge": charge[0].T}
+    if len(charge) == 2:  # collinear
+        return {"charge": charge[0].T, "magnetization": charge[1].T}
+    # noncollinear
+    return {"charge": charge[0].T, "magnetization": np.moveaxis(charge[1:].T, -1, 0)}
 
 
-def test_read(collinear_density, Assert):
-    actual = collinear_density.read()
-    actual_structure = actual["structure"]
-    reference_structure = collinear_density.ref.structure
-    for key in actual_structure:
-        if key in ("elements", "names"):
-            assert actual_structure[key] == reference_structure[key]
-        else:
-            Assert.allclose(actual_structure[key], reference_structure[key])
-    Assert.allclose(actual["charge"], collinear_density.ref.charge)
-    Assert.allclose(actual["magnetization"], collinear_density.ref.magnetization)
+def get_expected_string(charge):
+    if len(charge) == 1:
+        return """\
+nonpolarized density:
+    structure: Sr2TiO4
+    grid: 10, 12, 14"""
+    elif len(charge) == 2:
+        return """\
+collinear density:
+    structure: Fe3O4
+    grid: 10, 12, 14"""
+    else:
+        return """\
+noncollinear density:
+    structure: Fe3O4
+    grid: 10, 12, 14"""
 
 
-def test_charge_plot(collinear_density, Assert, not_core):
-    obj = viewer3d.Viewer3d
-    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(obj, "show_cell")
-    cm_arrows = patch.object(obj, "show_arrows_at_atoms")
-    cm_surface = patch.object(obj, "show_isosurface")
-    with cm_init as init, cm_cell as cell, cm_arrows as arrows, cm_surface as surface:
-        collinear_density.plot()
-        init.assert_called_once()
-        cell.assert_called_once()
-        surface.assert_called_once()
-        args, kwargs = surface.call_args
-    Assert.allclose(args[0], collinear_density.ref.charge)
-    assert kwargs == {"isolevel": 0.2, "color": "yellow", "opacity": 0.6}
-
-
-def test_magnetization_plot(collinear_density, Assert, not_core):
-    obj = viewer3d.Viewer3d
-    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(obj, "show_cell")
-    cm_arrows = patch.object(obj, "show_arrows_at_atoms")
-    cm_surface = patch.object(obj, "show_isosurface")
-    with cm_init as init, cm_cell as cell, cm_arrows as arrows, cm_surface as surface:
-        collinear_density.plot(selection="magnetization", isolevel=0.1, smooth=1)
-        calls = surface.call_args_list
-    assert len(calls) == 2
-    _, kwargs = calls[0]
-    assert kwargs == {"isolevel": 0.1, "color": "blue", "opacity": 0.6, "smooth": 1}
-    _, kwargs = calls[1]
-    assert kwargs == {"isolevel": 0.1, "color": "red", "opacity": 0.6, "smooth": 1}
+def test_read(reference_density, Assert):
+    actual = reference_density.read()
+    actual_structure = actual.pop("structure")
+    Assert.same_structure(actual_structure, reference_density.ref.structure)
+    assert actual.keys() == reference_density.ref.output.keys()
+    for key in actual:
+        Assert.allclose(actual[key], reference_density.ref.output[key])
 
 
 def test_empty_density(raw_data):
@@ -82,17 +74,69 @@ def test_empty_density(raw_data):
         density.read()
 
 
-def test_charge_only(charge_only_density, Assert):
-    actual = charge_only_density.read()
-    Assert.allclose(actual["charge"], charge_only_density.ref.charge)
-    assert actual["magnetization"] is None
+def test_charge_plot(reference_density, Assert, not_core):
+    obj = viewer3d.Viewer3d
+    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(obj, "show_cell")
+    cm_surface = patch.object(obj, "show_isosurface")
+    with cm_init as init, cm_cell as cell, cm_surface as surface:
+        reference_density.plot()
+        init.assert_called_once()
+        cell.assert_called_once()
+        surface.assert_called_once()
+        args, kwargs = surface.call_args
+    Assert.allclose(args[0], reference_density.ref.output["charge"])
+    assert kwargs == {"isolevel": 0.2, "color": "yellow", "opacity": 0.6}
 
 
-def test_missing_element(charge_only_density, Assert, not_core):
-    with pytest.raises(exception.IncorrectUsage):
-        charge_only_density.plot("unknown tag")
+def test_magnetization_plot(reference_density, Assert, not_core):
+    if reference_density.nonpolarized():
+        check_accessing_spin_raises_error(reference_density)
+    else:
+        check_plotting_magnetization_density(reference_density, Assert)
+
+
+def check_accessing_spin_raises_error(nonpolarized_density):
     with pytest.raises(exception.NoData):
-        charge_only_density.plot("magnetization")
+        nonpolarized_density.plot("magnetization")
+
+
+def check_plotting_magnetization_density(polarized_density, Assert):
+    obj = viewer3d.Viewer3d
+    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(obj, "show_cell")
+    cm_surface = patch.object(obj, "show_isosurface")
+    with cm_init as init, cm_cell as cell, cm_surface as surface:
+        polarized_density.plot(selection="magnetization", isolevel=0.1, smooth=1)
+        calls = surface.call_args_list
+    reference_magnetization = polarized_density.ref.output["magnetization"]
+    if polarized_density.collinear():
+        check_collinear_plot(reference_magnetization, calls, Assert)
+    elif polarized_density.noncollinear():
+        check_noncollinear_plot(reference_magnetization, calls, Assert)
+
+
+def check_collinear_plot(magnetization, calls, Assert):
+    assert len(calls) == 2
+    args, kwargs = calls[0]
+    Assert.allclose(args[0], magnetization)
+    assert kwargs == {"isolevel": 0.1, "color": "blue", "opacity": 0.6, "smooth": 1}
+    args, kwargs = calls[1]
+    Assert.allclose(args[0], -magnetization)
+    assert kwargs == {"isolevel": 0.1, "color": "red", "opacity": 0.6, "smooth": 1}
+
+
+def check_noncollinear_plot(magnetization, calls, Assert):
+    magnetization = np.linalg.norm(magnetization, axis=0)
+    assert len(calls) == 1
+    args, kwargs = calls[0]
+    Assert.allclose(args[0], magnetization)
+    assert kwargs == {"isolevel": 0.1, "color": "yellow", "opacity": 0.6, "smooth": 1}
+
+
+def test_missing_element(reference_density, Assert, not_core):
+    with pytest.raises(exception.IncorrectUsage):
+        reference_density.plot("unknown tag")
 
 
 def test_color_specified_for_magnetism(collinear_density, Assert, not_core):
@@ -100,25 +144,9 @@ def test_color_specified_for_magnetism(collinear_density, Assert, not_core):
         collinear_density.plot("magnetization", color="brown")
 
 
-def test_collinear_print(collinear_density, format_):
-    actual, _ = format_(collinear_density)
-    reference = """
-density:
-    structure: Fe3O4
-    grid: 10, 12, 14
-    spin polarized
-    """.strip()
-    assert actual == {"text/plain": reference}
-
-
-def test_charge_only_print(charge_only_density, format_):
-    actual, _ = format_(charge_only_density)
-    reference = """
-density:
-    structure: Fe3O4
-    grid: 10, 12, 14
-    """.strip()
-    assert actual == {"text/plain": reference}
+def test_print(reference_density, format_):
+    actual, _ = format_(reference_density)
+    assert actual == {"text/plain": reference_density.ref.string}
 
 
 def test_factory_methods(raw_data, check_factory_methods):

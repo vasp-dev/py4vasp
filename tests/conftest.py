@@ -22,7 +22,7 @@ two_spins = 2
 axes = 3
 complex_ = 2
 number_modes = axes * number_atoms
-grid_dimensions = (10, 12, 14)
+grid_dimensions = (14, 12, 10)  # note: order is z, y, x
 
 
 @pytest.fixture(scope="session")
@@ -60,6 +60,14 @@ class _Assert:
             desired, mask_desired = _finite_subset(desired)
             assert np.all(mask_actual == mask_desired)
             assert_array_almost_equal_nulp(actual, desired, 30)
+
+    @staticmethod
+    def same_structure(actual, desired):
+        for key in actual:
+            if key in ("elements", "names"):
+                assert actual[key] == desired[key]
+            else:
+                _Assert.allclose(actual[key], desired[key])
 
 
 def _is_none(data):
@@ -118,7 +126,13 @@ class RawDataFactory:
 
     @staticmethod
     def density(selection):
-        return _Fe3O4_density(selection)
+        parts = selection.split()
+        if parts[0] == "Sr2TiO4":
+            return _Sr2TiO4_density()
+        elif parts[0] == "Fe3O4":
+            return _Fe3O4_density(parts[1])
+        else:
+            raise exception.NotImplemented()
 
     @staticmethod
     def dielectric_function(selection):
@@ -636,6 +650,12 @@ def _Sr2TiO4_CONTCAR():
     return raw.CONTCAR(structure=structure, system=b"Sr2TiO4")
 
 
+def _Sr2TiO4_density():
+    structure = _Sr2TiO4_structure()
+    grid = (1, *grid_dimensions)
+    return raw.Density(structure=structure, charge=_make_arbitrary_data(grid))
+
+
 def _Sr2TiO4_dos(projectors):
     energies = np.linspace(-1, 3, number_points)
     use_orbitals = projectors == "with_projectors"
@@ -791,12 +811,9 @@ def _Fe3O4_CONTCAR():
 
 
 def _Fe3O4_density(selection):
-    parts = selection.split()
-    structure = RawDataFactory.structure(parts[0])
-    grid = (_number_components(parts[1]), 10, 12, 14)
-    return raw.Density(
-        structure=structure, charge=raw.VaspData(np.arange(np.prod(grid)).reshape(grid))
-    )
+    structure = _Fe3O4_structure()
+    grid = (_number_components(selection), *grid_dimensions)
+    return raw.Density(structure=structure, charge=_make_arbitrary_data(grid))
 
 
 def _Fe3O4_dos(projectors):
