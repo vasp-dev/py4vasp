@@ -41,7 +41,7 @@ class Potential(base.Refinery, structure.Mixin):
     def plot(self, selection="total", *, isolevel=0):
         self._raise_error_if_selection_incorrect(selection)
         potential = getattr(self._raw_data, f"{selection}_potential")
-        _raise_error_if_no_data(potential)
+        _raise_error_if_no_data(potential, selection)
         viewer = self._structure.plot()
         options = {"isolevel": isolevel, "color": "yellow", "opacity": 0.6}
         viewer.show_isosurface(potential[0].T, **options)
@@ -65,8 +65,10 @@ def _is_noncollinear(potential):
     return potential.shape[0] == 4
 
 
-def _raise_error_if_no_data(data):
+def _raise_error_if_no_data(data, selection="total"):
     if data.is_none():
-        raise exception.NoData(
-            "Cannot find the total potential data. Did you set LVTOT=T in the INCAR file?"
-        )
+        message = f"Cannot find the {selection} potential data."
+        message += " Did you set LVTOT = T in the INCAR file?"
+        if selection != "total":
+            message += f" Did you set POTH5 = {selection} in the INCAR file?"
+        raise exception.NoData(message)

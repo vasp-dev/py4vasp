@@ -6,7 +6,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import exception, raw
 from py4vasp._data import viewer3d
 from py4vasp.data import Potential, Structure
 
@@ -99,6 +99,15 @@ def test_plot_selected_potential(reference_potential, Assert, not_core):
 def test_incorrect_selection(reference_potential):
     with pytest.raises(exception.IncorrectUsage):
         reference_potential.plot("random_string")
+
+
+@pytest.mark.parametrize("selection", ["total", "xc", "ionic", "hartree"])
+def test_empty_potential(raw_data, selection):
+    raw_potential = raw_data.potential("Sr2TiO4 total")
+    raw_potential.total_potential = raw.VaspData(None)
+    potential = Potential.from_data(raw_potential)
+    with pytest.raises(exception.NoData):
+        potential.plot(selection)
 
 
 def test_factory_methods(raw_data, check_factory_methods):
