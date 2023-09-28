@@ -37,6 +37,15 @@ class Potential(base.Refinery, structure.Mixin):
         result.update(itertools.chain(*potentials))
         return result
 
+    @base.data_access
+    def plot(self, selection="total", *, isolevel=0):
+        _raise_error_if_no_data(self._raw_data.total_potential)
+        viewer = self._structure.plot()
+        options = {"isolevel": isolevel, "color": "yellow", "opacity": 0.6}
+        potential = self._raw_data.total_potential[0].T
+        viewer.show_isosurface(potential, **options)
+        return viewer
+
 
 def _is_collinear(potential):
     return potential.shape[0] == 2

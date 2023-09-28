@@ -1,10 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
+from unittest.mock import patch
 
 import numpy as np
 import pytest
 
+from py4vasp._data import viewer3d
 from py4vasp.data import Potential, Structure
 
 
@@ -56,3 +58,23 @@ def test_read(reference_potential, Assert):
         if key == "structure":
             continue
         Assert.allclose(actual[key], reference_potential.ref.output[key])
+
+
+def test_plot_total_potential(reference_potential, Assert, not_core):
+    obj = viewer3d.Viewer3d
+    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(obj, "show_cell")
+    cm_surface = patch.object(obj, "show_isosurface")
+    with cm_init as init, cm_cell as cell, cm_surface as surface:
+        reference_potential.plot()
+        init.assert_called_once()
+        cell.assert_called_once()
+        surface.assert_called_once()
+        args, kwargs = surface.call_args
+    Assert.allclose(args[0], reference_potential.ref.output["total"])
+    assert kwargs == {"isolevel": 0.0, "color": "yellow", "opacity": 0.6}
+
+
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.potential("Fe3O4 collinear total")
+    check_factory_methods(Potential, data)
