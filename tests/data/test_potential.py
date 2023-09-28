@@ -18,7 +18,11 @@ def included_parts(request):
 
 @pytest.fixture(params=["Sr2TiO4", "Fe3O4 collinear", "Fe3O4 noncollinear"])
 def reference_potential(raw_data, request, included_parts):
-    raw_potential = raw_data.potential(f"{request.param} {included_parts}")
+    return make_reference_potential(raw_data, f"{request.param} {included_parts}")
+
+
+def make_reference_potential(raw_data, selection):
+    raw_potential = raw_data.potential(selection)
     potential = Potential.from_data(raw_potential)
     potential.ref = types.SimpleNamespace()
     potential.ref.included_parts = included_parts
@@ -94,6 +98,43 @@ def test_plot_selected_potential(reference_potential, Assert, not_core):
         args, kwargs = surface.call_args
     Assert.allclose(args[0], reference_potential.ref.output[selection])
     assert kwargs == {"isolevel": 0.2, "color": "yellow", "opacity": 0.6}
+
+
+@pytest.mark.parametrize("selection", ["up", "down"])
+def test_plot_spin_potential(raw_data, selection, Assert, not_core):
+    potential = make_reference_potential(raw_data, "Fe3O4 collinear total")
+    obj = viewer3d.Viewer3d
+    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(obj, "show_cell")
+    cm_surface = patch.object(obj, "show_isosurface")
+    with cm_init as init, cm_cell as cell, cm_surface as surface:
+        potential.plot(selection)
+        init.assert_called_once()
+        cell.assert_called_once()
+        surface.assert_called_once()
+        args, kwargs = surface.call_args
+    Assert.allclose(args[0], potential.ref.output[f"total_{selection}"])
+    assert kwargs == {"isolevel": 0.0, "color": "yellow", "opacity": 0.6}
+
+
+def test_plot_multiple_selections(raw_data, Assert, not_core):
+    potential = make_reference_potential(raw_data, "Fe3O4 collinear all")
+    obj = viewer3d.Viewer3d
+    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(obj, "show_cell")
+    cm_surface = patch.object(obj, "show_isosurface")
+    with cm_init as init, cm_cell as cell, cm_surface as surface:
+        potential.plot("up(total) hartree xc(down)")
+        init.assert_called_once()
+        cell.assert_called_once()
+        calls = surface.call_args_list
+    assert len(calls) == 3
+    args, _ = calls[0]
+    Assert.allclose(args[0], potential.ref.output["total_up"])
+    args, _ = calls[1]
+    Assert.allclose(args[0], potential.ref.output["hartree"])
+    args, _ = calls[2]
+    Assert.allclose(args[0], potential.ref.output["xc_down"])
 
 
 def test_incorrect_selection(reference_potential):
