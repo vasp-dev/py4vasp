@@ -943,7 +943,8 @@ def _Ca3AsBr3_topology():
 
 def _make_arbitrary_data(shape, present=True):
     if present:
-        return raw.VaspData(np.arange(np.prod(shape)).reshape(shape))
+        data = np.random.random(shape) + np.arange(np.prod(shape)).reshape(shape)
+        return raw.VaspData(data)
     else:
         return raw.VaspData(None)
 

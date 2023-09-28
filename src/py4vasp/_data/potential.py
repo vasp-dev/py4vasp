@@ -39,12 +39,22 @@ class Potential(base.Refinery, structure.Mixin):
 
     @base.data_access
     def plot(self, selection="total", *, isolevel=0):
-        _raise_error_if_no_data(self._raw_data.total_potential)
+        self._raise_error_if_selection_incorrect(selection)
+        potential = getattr(self._raw_data, f"{selection}_potential")
+        _raise_error_if_no_data(potential)
         viewer = self._structure.plot()
         options = {"isolevel": isolevel, "color": "yellow", "opacity": 0.6}
-        potential = self._raw_data.total_potential[0].T
-        viewer.show_isosurface(potential, **options)
+        viewer.show_isosurface(potential[0].T, **options)
         return viewer
+
+    def _raise_error_if_selection_incorrect(self, selection):
+        valid_potentials = ("total", "ionic", "xc", "hartree")
+        if selection in valid_potentials:
+            return
+        message = f"""The selection {selection} is not a valid name for a potential. Only
+        the following selections are allowed: {", ".join(valid_potentials)}. Please check
+        for spelling errors"""
+        raise exception.IncorrectUsage(message)
 
 
 def _is_collinear(potential):

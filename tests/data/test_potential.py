@@ -6,6 +6,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
+from py4vasp import exception
 from py4vasp._data import viewer3d
 from py4vasp.data import Potential, Structure
 
@@ -20,6 +21,7 @@ def reference_potential(raw_data, request, included_parts):
     raw_potential = raw_data.potential(f"{request.param} {included_parts}")
     potential = Potential.from_data(raw_potential)
     potential.ref = types.SimpleNamespace()
+    potential.ref.included_parts = included_parts
     potential.ref.output = get_expected_dict(raw_potential)
     return potential
 
@@ -73,6 +75,30 @@ def test_plot_total_potential(reference_potential, Assert, not_core):
         args, kwargs = surface.call_args
     Assert.allclose(args[0], reference_potential.ref.output["total"])
     assert kwargs == {"isolevel": 0.0, "color": "yellow", "opacity": 0.6}
+
+
+def test_plot_selected_potential(reference_potential, Assert, not_core):
+    obj = viewer3d.Viewer3d
+    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(obj, "show_cell")
+    cm_surface = patch.object(obj, "show_isosurface")
+    if reference_potential.ref.included_parts in ("hartree", "ionic", "xc"):
+        selection = reference_potential.ref.included_parts
+    else:
+        selection = "total"
+    with cm_init as init, cm_cell as cell, cm_surface as surface:
+        reference_potential.plot(selection, isolevel=0.2)
+        init.assert_called_once()
+        cell.assert_called_once()
+        surface.assert_called_once()
+        args, kwargs = surface.call_args
+    Assert.allclose(args[0], reference_potential.ref.output[selection])
+    assert kwargs == {"isolevel": 0.2, "color": "yellow", "opacity": 0.6}
+
+
+def test_incorrect_selection(reference_potential):
+    with pytest.raises(exception.IncorrectUsage):
+        reference_potential.plot("random_string")
 
 
 def test_factory_methods(raw_data, check_factory_methods):
