@@ -626,7 +626,7 @@ def _workfunction(direction):
         average_potential=_make_arbitrary_data(shape),
         vacuum_potential=_make_arbitrary_data(shape=(2,)),
         reference_potential=_bandgap("nonpolarized"),
-        fermi_energy=1.0,
+        fermi_energy=1.234,
     )
 
 

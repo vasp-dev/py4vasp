@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from unittest.mock import patch
 
+import numpy as np
 import pytest
 
 from py4vasp import data
@@ -64,6 +65,25 @@ def check_to_image(workfunction, filename_argument, expected_filename):
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
         fig.write_image.assert_called_once_with(workfunction._path / expected_filename)
+
+
+def test_print(workfunction, format_):
+    actual, _ = format_(workfunction)
+    reference = """\
+workfunction along {lattice_vector}:
+    vacuum potential: {vacuum1:.3f} {vacuum2:.3f}
+    valence band maximum: {vbm:.3f}
+    conduction band minimum: {cbm:.3f}
+    Fermi energy: {fermi_energy:.3f}"""
+    reference = reference.format(
+        lattice_vector=workfunction.ref.lattice_vector,
+        vacuum1=workfunction.ref.vacuum_potential[0],
+        vacuum2=workfunction.ref.vacuum_potential[1],
+        vbm=workfunction.ref.vbm,
+        cbm=workfunction.ref.cbm,
+        fermi_energy=workfunction.ref.fermi_energy,
+    )
+    assert actual == {"text/plain": reference}
 
 
 def test_factory_methods(raw_data, check_factory_methods):

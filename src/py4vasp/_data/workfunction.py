@@ -13,6 +13,15 @@ class Workfunction(base.Refinery, graph.Mixin):
     This class provides then the functionality to analyze the resulting potential."""
 
     @base.data_access
+    def __str__(self):
+        data = self.to_dict()
+        return f"""workfunction along {data["direction"]}:
+    vacuum potential: {data["vacuum_potential"][0]:.3f} {data["vacuum_potential"][1]:.3f}
+    valence band maximum: {data["valence_band_maximum"]:.3f}
+    conduction band minimum: {data["conduction_band_minimum"]:.3f}
+    Fermi energy: {data["fermi_energy"]:.3f}"""
+
+    @base.data_access
     def to_dict(self):
         bandgap = data.Bandgap.from_data(self._raw_data.reference_potential)
         return {
