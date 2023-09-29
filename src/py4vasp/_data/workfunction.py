@@ -2,9 +2,10 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import data
 from py4vasp._data import base
+from py4vasp._third_party import graph
 
 
-class Workfunction(base.Refinery):
+class Workfunction(base.Refinery, graph.Mixin):
     """The workfunction of a material describes the energy required to remove an electron
     to the vacuum.
 
@@ -22,3 +23,12 @@ class Workfunction(base.Refinery):
             "conduction_band_minimum": bandgap.conduction_band_minimum(),
             "fermi_energy": self._raw_data.fermi_energy,
         }
+
+    def to_graph(self):
+        data = self.to_dict()
+        series = graph.Series(
+            data["distance"], data["average_potential"], data["direction"]
+        )
+        return graph.Graph(
+            series=series, xlabel="distance (Å)", ylabel="average potential (eV)"
+        )
