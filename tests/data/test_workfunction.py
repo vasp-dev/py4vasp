@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import types
+from unittest.mock import patch
 
 import pytest
 
@@ -41,6 +41,29 @@ def test_plot(workfunction, Assert):
     Assert.allclose(graph.series.x, workfunction.ref.distance)
     Assert.allclose(graph.series.y, workfunction.ref.average_potential)
     assert graph.series.name == workfunction.ref.lattice_vector
+
+
+@patch("py4vasp._data.workfunction.Workfunction.to_graph")
+def test_to_plotly(mock_plot, workfunction):
+    fig = workfunction.to_plotly()
+    mock_plot.assert_called_once_with()
+    graph = mock_plot.return_value
+    graph.to_plotly.assert_called_once()
+    assert fig == graph.to_plotly.return_value
+
+
+def test_to_image(workfunction):
+    check_to_image(workfunction, None, "workfunction.png")
+    custom_filename = "custom.jpg"
+    check_to_image(workfunction, custom_filename, custom_filename)
+
+
+def check_to_image(workfunction, filename_argument, expected_filename):
+    with patch("py4vasp._data.workfunction.Workfunction.to_plotly") as plot:
+        workfunction.to_image("args", filename=filename_argument, key="word")
+        plot.assert_called_once_with("args", key="word")
+        fig = plot.return_value
+        fig.write_image.assert_called_once_with(workfunction._path / expected_filename)
 
 
 def test_factory_methods(raw_data, check_factory_methods):
