@@ -28,7 +28,7 @@ class Workfunction(base.Refinery, graph.Mixin):
         In addition to the vacuum potential, the dictionary contains typical reference
         energies such as the valence band maximum, the conduction band minimum, and the
         Fermi energy. Furthermore you obtain the average potential, so you can use a
-        different algoritm to determine the vacuum potential if desired.
+        different algorithm to determine the vacuum potential if desired.
 
         Returns
         -------
