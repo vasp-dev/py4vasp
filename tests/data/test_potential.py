@@ -143,7 +143,7 @@ def test_incorrect_selection(reference_potential):
 
 
 @pytest.mark.parametrize("selection", ["total", "xc", "ionic", "hartree"])
-def test_empty_potential(raw_data, selection):
+def test_empty_potential(raw_data, selection, not_core):
     raw_potential = raw_data.potential("Sr2TiO4 total")
     raw_potential.total_potential = raw.VaspData(None)
     potential = Potential.from_data(raw_potential)
