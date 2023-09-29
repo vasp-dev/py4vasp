@@ -12,6 +12,7 @@ class Workfunction(base.Refinery, graph.Mixin):
     In VASP you can compute the workfunction by setting the IDIPOL flag in the INCAR file.
     This class provides then the functionality to analyze the resulting potential."""
 
+    @base.data_access
     def to_dict(self):
         bandgap = data.Bandgap.from_data(self._raw_data.reference_potential)
         return {
@@ -24,6 +25,7 @@ class Workfunction(base.Refinery, graph.Mixin):
             "fermi_energy": self._raw_data.fermi_energy,
         }
 
+    @base.data_access
     def to_graph(self):
         data = self.to_dict()
         series = graph.Series(

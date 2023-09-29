@@ -41,3 +41,8 @@ def test_plot(workfunction, Assert):
     Assert.allclose(graph.series.x, workfunction.ref.distance)
     Assert.allclose(graph.series.y, workfunction.ref.average_potential)
     assert graph.series.name == workfunction.ref.lattice_vector
+
+
+def test_factory_methods(raw_data, check_factory_methods):
+    raw_workfunction = raw_data.workfunction("1")
+    check_factory_methods(data.Workfunction, raw_workfunction)
