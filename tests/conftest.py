@@ -311,6 +311,10 @@ class RawDataFactory:
         else:
             raise exception.NotImplemented()
 
+    @staticmethod
+    def workfunction(selection):
+        return _workfunction()
+
 
 @pytest.fixture
 def raw_data():
@@ -392,15 +396,6 @@ def _elastic_modulus():
     shape = (2, axes, axes, axes, axes)
     data = np.arange(np.prod(shape)).reshape(shape)
     return raw.ElasticModulus(clamped_ion=data[0], relaxed_ion=data[1])
-
-
-def _Sr2TiO4_pair_correlation():
-    labels = ("total", "Sr~Sr", "Sr~Ti", "Sr~O", "Ti~Ti", "Ti~O", "O~O")
-    shape = (number_steps, len(labels), number_points)
-    data = np.arange(np.prod(shape)).reshape(shape)
-    return raw.PairCorrelation(
-        distances=np.arange(number_points), function=data, labels=labels
-    )
 
 
 def _phonon_band():
@@ -623,6 +618,10 @@ def _spin_polarized_dispersion():
     return raw.Dispersion(kpoints, eigenvalues)
 
 
+def _workfunction():
+    return None
+
+
 def _Sr2TiO4_born_effective_charges():
     shape = (number_atoms, axes, axes)
     return raw.BornEffectiveCharge(
@@ -715,6 +714,15 @@ def _Sr2TiO4_internal_strain():
     return raw.InternalStrain(
         structure=_Sr2TiO4_structure(),
         internal_strain=np.arange(np.prod(shape)).reshape(shape),
+    )
+
+
+def _Sr2TiO4_pair_correlation():
+    labels = ("total", "Sr~Sr", "Sr~Ti", "Sr~O", "Ti~Ti", "Ti~O", "O~O")
+    shape = (number_steps, len(labels), number_points)
+    data = np.arange(np.prod(shape)).reshape(shape)
+    return raw.PairCorrelation(
+        distances=np.arange(number_points), function=data, labels=labels
     )
 
 
