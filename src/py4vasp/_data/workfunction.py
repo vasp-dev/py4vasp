@@ -23,6 +23,19 @@ class Workfunction(base.Refinery, graph.Mixin):
 
     @base.data_access
     def to_dict(self):
+        """Reports useful information about the workfunction as a dictionary.
+
+        In addition to the vacuum potential, the dictionary contains typical reference
+        energies such as the valence band maximum, the conduction band minimum, and the
+        Fermi energy. Furthermore you obtain the average potential, so you can use a
+        different algoritm to determine the vacuum potential if desired.
+
+        Returns
+        -------
+        dict
+            Contains vacuum potential, average potential and relevant reference energies
+            within the surface.
+        """
         bandgap = data.Bandgap.from_data(self._raw_data.reference_potential)
         return {
             "direction": f"lattice vector {self._raw_data.idipol}",
@@ -36,6 +49,15 @@ class Workfunction(base.Refinery, graph.Mixin):
 
     @base.data_access
     def to_graph(self):
+        """Plot the average potential along the lattice vector selected by IDIPOL.
+
+        Returns
+        -------
+        Graph
+            A plot where the distance in the unit cell along the selected lattice vector
+            is on the x axis and the averaged potential across the plane of the other
+            two lattice vectors is on the y axis.
+        """
         data = self.to_dict()
         series = graph.Series(
             data["distance"], data["average_potential"], data["direction"]
