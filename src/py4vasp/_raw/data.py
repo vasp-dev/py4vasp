@@ -478,9 +478,13 @@ class Workfunction:
     "Describes the minimal energy needed to remove an electron from the crystal to the vacuum."
     idipol: int
     "INCAR tag of VASP describing the direction along which the potential is assessed."
+    distance: VaspData
+    "Distances along the lattice vector selected by IDIPOL"
     average_potential: VaspData
     "Averages the local potential after dipole correction in planes of the other two lattice vectors."
     vacuum_potential: VaspData
     "Potential in the vacuum region on either side of the surface."
     reference_potential: Bandgap
     "Describes the band edges in the surface."
+    fermi_energy: float
+    "Fermi energy obtained by VASP."

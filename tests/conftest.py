@@ -106,7 +106,7 @@ class RawDataFactory:
 
     @staticmethod
     def bandgap(selection):
-        return _band_gap(selection)
+        return _bandgap(selection)
 
     @staticmethod
     def born_effective_charge(selection):
@@ -313,7 +313,7 @@ class RawDataFactory:
 
     @staticmethod
     def workfunction(selection):
-        return _workfunction()
+        return _workfunction(selection)
 
 
 @pytest.fixture
@@ -332,7 +332,7 @@ def _number_components(selection):
         raise exception.NotImplemented()
 
 
-def _band_gap(selection):
+def _bandgap(selection):
     labels = (
         "valence band maximum",
         "conduction band minimum",
@@ -618,8 +618,16 @@ def _spin_polarized_dispersion():
     return raw.Dispersion(kpoints, eigenvalues)
 
 
-def _workfunction():
-    return None
+def _workfunction(direction):
+    shape = (number_points,)
+    return raw.Workfunction(
+        idipol=int(direction),
+        distance=_make_arbitrary_data(shape),
+        average_potential=_make_arbitrary_data(shape),
+        vacuum_potential=_make_arbitrary_data(shape=(2,)),
+        reference_potential=_bandgap("nonpolarized"),
+        fermi_energy=1.0,
+    )
 
 
 def _Sr2TiO4_born_effective_charges():

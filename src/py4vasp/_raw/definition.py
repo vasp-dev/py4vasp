@@ -489,7 +489,9 @@ schema.add(
     raw.Workfunction,
     required=raw.Version(6, 5),
     idipol="input/incar/IDIPOL",
-    average_potential="results/potential/avg_potential_along_IDIPOL",
+    distance="results/potential/distance_along_idipol",
+    average_potential="results/potential/average_potential_along_IDIPOL",
     vacuum_potential="results/potential/vacuum_potential",
     reference_potential=Link("bandgap", DEFAULT_SOURCE),
+    fermi_energy="results/electron_dos/efermi",
 )
