@@ -17,9 +17,10 @@ class Workfunction(base.Refinery, graph.Mixin):
         data = self.to_dict()
         return f"""workfunction along {data["direction"]}:
     vacuum potential: {data["vacuum_potential"][0]:.3f} {data["vacuum_potential"][1]:.3f}
-    valence band maximum: {data["valence_band_maximum"]:.3f}
-    conduction band minimum: {data["conduction_band_minimum"]:.3f}
     Fermi energy: {data["fermi_energy"]:.3f}"""
+
+    # valence band maximum: {data["valence_band_maximum"]:.3f}
+    # conduction band minimum: {data["conduction_band_minimum"]:.3f}
 
     @base.data_access
     def to_dict(self):
@@ -37,13 +38,15 @@ class Workfunction(base.Refinery, graph.Mixin):
             within the surface.
         """
         bandgap = data.Bandgap.from_data(self._raw_data.reference_potential)
+        # vbm and cbm will be uncommented out when the relevant parts of the
+        # code are added to VASP 6.5
         return {
             "direction": f"lattice vector {self._raw_data.idipol}",
             "distance": self._raw_data.distance[:],
             "average_potential": self._raw_data.average_potential[:],
             "vacuum_potential": self._raw_data.vacuum_potential[:],
-            "valence_band_maximum": bandgap.valence_band_maximum(),
-            "conduction_band_minimum": bandgap.conduction_band_minimum(),
+            # "valence_band_maximum": bandgap.valence_band_maximum(),
+            # "conduction_band_minimum": bandgap.conduction_band_minimum(),
             "fermi_energy": self._raw_data.fermi_energy,
         }
 
