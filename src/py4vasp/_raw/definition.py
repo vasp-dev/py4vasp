@@ -484,3 +484,12 @@ schema.add(
     structure=Link("structure", DEFAULT_SOURCE),
     velocities="intermediate/ion_dynamics/ion_velocities",
 )
+#
+schema.add(
+    raw.Workfunction,
+    required=raw.Version(6, 5),
+    idipol="input/incar/IDIPOL",
+    average_potential="results/potential/avg_potential_along_IDIPOL",
+    vacuum_potential="results/potential/vacuum_potential",
+    reference_potential=Link("bandgap", DEFAULT_SOURCE),
+)

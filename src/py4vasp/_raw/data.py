@@ -471,3 +471,16 @@ class Velocity:
     "Structural information to relate the velocities to."
     velocities: VaspData
     "Observed ion velocities."
+
+
+@dataclasses.dataclass
+class Workfunction:
+    "Describes the minimal energy needed to remove an electron from the crystal to the vacuum."
+    idipol: int
+    "INCAR tag of VASP describing the direction along which the potential is assessed."
+    average_potential: VaspData
+    "Averages the local potential after dipole correction in planes of the other two lattice vectors."
+    vacuum_potential: VaspData
+    "Potential in the vacuum region on either side of the surface."
+    reference_potential: Bandgap
+    "Describes the band edges in the surface."
