@@ -137,7 +137,7 @@ def test_plot_multiple_selections(raw_data, Assert, not_core):
     Assert.allclose(args[0], potential.ref.output["xc_down"])
 
 
-def test_incorrect_selection(reference_potential):
+def test_incorrect_selection(reference_potential, not_core):
     with pytest.raises(exception.IncorrectUsage):
         reference_potential.plot("random_string")
 

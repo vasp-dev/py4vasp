@@ -31,6 +31,7 @@ def test_repr():
         Structure,
         System,
         Topology,
+        Workfunction,
     ]
     for class_ in tests:
         instance = class_.from_data("mock_data")
