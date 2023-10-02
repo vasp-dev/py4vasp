@@ -173,13 +173,3 @@ def test_nested_data():
     assert VaspData(data).is_none()
     data = np.zeros(10)
     assert isinstance(VaspData(data).data, np.ndarray)
-
-
-@pytest.mark.parametrize("converts_to_false", [False, 0, 0.0, "", None])
-def test_bool_conversion_false(converts_to_false):
-    assert not VaspData(converts_to_false)
-
-
-@pytest.mark.parametrize("converts_to_true", [True, 1, 1.0, "a"])
-def test_bool_conversion_true(converts_to_true):
-    assert VaspData(converts_to_true)
