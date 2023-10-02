@@ -156,6 +156,36 @@ Fermi energy:    {fermi_energy}"""
         return self._gap("direct", component=0)
 
     @base.data_access
+    @documentation.format(examples=slice_.examples("bandgap", "valence_band_maximum"))
+    def valence_band_maximum(self):
+        """Return the valence band maximum.
+
+        Returns
+        -------
+        np.ndarray
+            The value of the valence band maximum for all selected steps.
+
+        {examples}
+        """
+        return self._get(GAPS["fundamental"].bottom, component=0)
+
+    @base.data_access
+    @documentation.format(
+        examples=slice_.examples("bandgap", "conduction_band_minimum")
+    )
+    def conduction_band_minimum(self):
+        """Return the conduction band minimum.
+
+        Returns
+        -------
+        np.ndarray
+            The value of the conduction band minimum for all selected steps.
+
+        {examples}
+        """
+        return self._get(GAPS["fundamental"].top, component=0)
+
+    @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "to_graph"))
     def to_graph(self, selection="fundamental, direct"):
         """Plot the direct and fundamental bandgap along the trajectory.

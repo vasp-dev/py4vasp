@@ -106,7 +106,7 @@ class RawDataFactory:
 
     @staticmethod
     def bandgap(selection):
-        return _band_gap(selection)
+        return _bandgap(selection)
 
     @staticmethod
     def born_effective_charge(selection):
@@ -311,6 +311,10 @@ class RawDataFactory:
         else:
             raise exception.NotImplemented()
 
+    @staticmethod
+    def workfunction(selection):
+        return _workfunction(selection)
+
 
 @pytest.fixture
 def raw_data():
@@ -328,7 +332,7 @@ def _number_components(selection):
         raise exception.NotImplemented()
 
 
-def _band_gap(selection):
+def _bandgap(selection):
     labels = (
         "valence band maximum",
         "conduction band minimum",
@@ -392,15 +396,6 @@ def _elastic_modulus():
     shape = (2, axes, axes, axes, axes)
     data = np.arange(np.prod(shape)).reshape(shape)
     return raw.ElasticModulus(clamped_ion=data[0], relaxed_ion=data[1])
-
-
-def _Sr2TiO4_pair_correlation():
-    labels = ("total", "Sr~Sr", "Sr~Ti", "Sr~O", "Ti~Ti", "Ti~O", "O~O")
-    shape = (number_steps, len(labels), number_points)
-    data = np.arange(np.prod(shape)).reshape(shape)
-    return raw.PairCorrelation(
-        distances=np.arange(number_points), function=data, labels=labels
-    )
 
 
 def _phonon_band():
@@ -623,6 +618,18 @@ def _spin_polarized_dispersion():
     return raw.Dispersion(kpoints, eigenvalues)
 
 
+def _workfunction(direction):
+    shape = (number_points,)
+    return raw.Workfunction(
+        idipol=int(direction),
+        distance=_make_arbitrary_data(shape),
+        average_potential=_make_arbitrary_data(shape),
+        vacuum_potential=_make_arbitrary_data(shape=(2,)),
+        reference_potential=_bandgap("nonpolarized"),
+        fermi_energy=1.234,
+    )
+
+
 def _Sr2TiO4_born_effective_charges():
     shape = (number_atoms, axes, axes)
     return raw.BornEffectiveCharge(
@@ -715,6 +722,15 @@ def _Sr2TiO4_internal_strain():
     return raw.InternalStrain(
         structure=_Sr2TiO4_structure(),
         internal_strain=np.arange(np.prod(shape)).reshape(shape),
+    )
+
+
+def _Sr2TiO4_pair_correlation():
+    labels = ("total", "Sr~Sr", "Sr~Ti", "Sr~O", "Ti~Ti", "Ti~O", "O~O")
+    shape = (number_steps, len(labels), number_points)
+    data = np.arange(np.prod(shape)).reshape(shape)
+    return raw.PairCorrelation(
+        distances=np.arange(number_points), function=data, labels=labels
     )
 
 
