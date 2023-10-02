@@ -62,9 +62,7 @@ class Workfunction(base.Refinery, graph.Mixin):
             two lattice vectors is on the y axis.
         """
         data = self.to_dict()
-        series = graph.Series(
-            data["distance"], data["average_potential"], data["direction"]
-        )
+        series = graph.Series(data["distance"], data["average_potential"], "potential")
         return graph.Graph(
-            series=series, xlabel="distance (Å)", ylabel="average potential (eV)"
+            series=series, xlabel=f"distance along {data['direction']} (Å)", ylabel="average potential (eV)"
         )

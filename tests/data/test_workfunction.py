@@ -38,11 +38,11 @@ def test_read(workfunction, Assert):
 
 def test_plot(workfunction, Assert):
     graph = workfunction.plot()
-    assert graph.xlabel == "distance (Å)"
+    assert graph.xlabel == f"distance along {workfunction.ref.lattice_vector} (Å)"
     assert graph.ylabel == "average potential (eV)"
     Assert.allclose(graph.series.x, workfunction.ref.distance)
     Assert.allclose(graph.series.y, workfunction.ref.average_potential)
-    assert graph.series.name == workfunction.ref.lattice_vector
+    assert graph.series.name == "potential"
 
 
 @patch("py4vasp._data.workfunction.Workfunction.to_graph")
