@@ -56,6 +56,9 @@ class VaspData(np.lib.mixins.NDArrayOperatorsMixin):
     def __len__(self):
         return len(self.data)
 
+    def __bool__(self):
+        return bool(self._data)
+
     def is_none(self):
         return self._data is None
 
