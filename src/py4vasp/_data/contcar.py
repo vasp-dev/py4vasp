@@ -76,8 +76,15 @@ class CONTCAR(base.Refinery, structure.Mixin):
 
 
 def _cell_lines(cell):
-    yield _float_format(cell.scale, scientific=False).lstrip()
+    yield _float_format(_cell_scale(cell.scale), scientific=False).lstrip()
     yield from _vectors_to_lines(cell.lattice_vectors)
+
+
+def _cell_scale(scale):
+    if not scale.is_none():
+        return scale[()]
+    else:
+        return 1.0
 
 
 def _ion_position_lines(positions, selective_dynamics):
@@ -92,7 +99,8 @@ def _lattice_velocity_lines(velocities, cell):
         return
     yield "Lattice velocities and vectors"
     yield from _vectors_to_lines(velocities, scientific=True)
-    yield from _vectors_to_lines(cell.scale * cell.lattice_vectors, scientific=True)
+    lattice_vectors = _cell_scale(cell.scale) * cell.lattice_vectors
+    yield from _vectors_to_lines(lattice_vectors, scientific=True)
 
 
 def _ion_velocity_lines(velocities):
