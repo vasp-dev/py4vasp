@@ -12,21 +12,23 @@ from py4vasp.data import Potential, Structure
 
 
 @pytest.fixture(params=["total", "ionic", "hartree", "xc", "all"])
-def included_parts(request):
+def included_kinds(request):
     return request.param
 
 
 @pytest.fixture(params=["Sr2TiO4", "Fe3O4 collinear", "Fe3O4 noncollinear"])
-def reference_potential(raw_data, request, included_parts):
-    return make_reference_potential(raw_data, f"{request.param} {included_parts}")
+def reference_potential(raw_data, request, included_kinds):
+    return make_reference_potential(raw_data, request.param, included_kinds)
 
 
-def make_reference_potential(raw_data, selection):
+def make_reference_potential(raw_data, system, included_kinds):
+    selection = f"{system} {included_kinds}"
     raw_potential = raw_data.potential(selection)
     potential = Potential.from_data(raw_potential)
     potential.ref = types.SimpleNamespace()
-    potential.ref.included_parts = included_parts
+    potential.ref.included_kinds = included_kinds
     potential.ref.output = get_expected_dict(raw_potential)
+    potential.ref.string = get_expected_string(raw_potential, included_kinds)
     return potential
 
 
@@ -39,6 +41,27 @@ def get_expected_dict(raw_potential):
         **separate_potential("ionic", raw_potential.ionic_potential),
     }
 
+def get_expected_string(raw_potential, included_parts):
+    if len(raw_potential.total_potential) == 1:
+        header = """\
+nonpolarized potential:
+    structure: Sr2TiO4"""
+    elif len(raw_potential.total_potential) == 2:
+        header = """\
+collinear potential:
+    structure: Fe3O4"""
+    else:
+        header = """\
+noncollinear potential:
+    structure: Fe3O4"""
+    grid = "    grid: 10, 12, 14"
+    if included_parts == "all":
+        available = "    available: total, ionic, xc, hartree"
+    elif included_parts == "total":
+        available = "    available: total"
+    else:
+        available = f"    available: total, {included_parts}"
+    return "\n".join([header, grid, available])
 
 def separate_potential(potential_name, potential):
     if potential.is_none():
@@ -86,8 +109,8 @@ def test_plot_selected_potential(reference_potential, Assert, not_core):
     cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
     cm_cell = patch.object(obj, "show_cell")
     cm_surface = patch.object(obj, "show_isosurface")
-    if reference_potential.ref.included_parts in ("hartree", "ionic", "xc"):
-        selection = reference_potential.ref.included_parts
+    if reference_potential.ref.included_kinds in ("hartree", "ionic", "xc"):
+        selection = reference_potential.ref.included_kinds
     else:
         selection = "total"
     with cm_init as init, cm_cell as cell, cm_surface as surface:
@@ -102,7 +125,7 @@ def test_plot_selected_potential(reference_potential, Assert, not_core):
 
 @pytest.mark.parametrize("selection", ["up", "down"])
 def test_plot_spin_potential(raw_data, selection, Assert, not_core):
-    potential = make_reference_potential(raw_data, "Fe3O4 collinear total")
+    potential = make_reference_potential(raw_data, "Fe3O4 collinear", "total")
     obj = viewer3d.Viewer3d
     cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
     cm_cell = patch.object(obj, "show_cell")
@@ -118,7 +141,7 @@ def test_plot_spin_potential(raw_data, selection, Assert, not_core):
 
 
 def test_plot_multiple_selections(raw_data, Assert, not_core):
-    potential = make_reference_potential(raw_data, "Fe3O4 collinear all")
+    potential = make_reference_potential(raw_data, "Fe3O4 collinear", "all")
     obj = viewer3d.Viewer3d
     cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
     cm_cell = patch.object(obj, "show_cell")
@@ -150,6 +173,10 @@ def test_empty_potential(raw_data, selection):
     with pytest.raises(exception.NoData):
         potential.plot(selection)
 
+
+def test_print(reference_potential, format_):
+    actual, _ = format_(reference_potential)
+    assert actual == {"text/plain": reference_potential.ref.string}
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.potential("Fe3O4 collinear total")

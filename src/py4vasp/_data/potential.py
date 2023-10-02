@@ -4,7 +4,7 @@ import itertools
 
 import numpy as np
 
-from py4vasp import exception
+from py4vasp import data, exception
 from py4vasp._data import base, structure
 from py4vasp._util import import_, select
 
@@ -14,8 +14,33 @@ VALID_KINDS = ("total", "ionic", "xc", "hartree")
 class Potential(base.Refinery, structure.Mixin):
     """The potential"""
 
+    @base.data_access
+    def __str__(self):
+        potential = self._raw_data.total_potential
+        if _is_collinear(potential):
+            description = "collinear potential:"
+        elif _is_noncollinear(potential):
+            description = "noncollinear potential:"
+        else:
+            description = "nonpolarized potential:"
+        topology = data.Topology.from_data(self._raw_data.structure.topology)
+        structure = f"structure: {topology}"
+        grid = f"grid: {potential.shape[3]}, {potential.shape[2]}, {potential.shape[1]}"
+        available = "available: " + ", ".join(
+            kind for kind in VALID_KINDS if not self._get_potential(kind).is_none()
+        )
+        return "\n    ".join([description, structure, grid, available])
+
+    @base.data_access
+    def to_dict(self):
+        _raise_error_if_no_data(self._raw_data.total_potential)
+        result = {"structure": self._structure.read()}
+        items = [self._generate_items(kind) for kind in VALID_KINDS]
+        result.update(itertools.chain(*items))
+        return result
+
     def _read_potential(self, kind):
-        potential = getattr(self._raw_data, f"{kind}_potential")
+        potential = self._get_potential(kind)
         if potential.is_none():
             return
         potential = np.moveaxis(potential, 0, -1).T
@@ -27,14 +52,6 @@ class Potential(base.Refinery, structure.Mixin):
             yield f"{kind}_magnetization", potential[1:]
 
     @base.data_access
-    def to_dict(self):
-        _raise_error_if_no_data(self._raw_data.total_potential)
-        result = {"structure": self._structure.read()}
-        potentials = [self._read_potential(potential) for potential in VALID_KINDS]
-        result.update(itertools.chain(*potentials))
-        return result
-
-    @base.data_access
     def plot(self, selection="total", *, isolevel=0):
         viewer = self._structure.plot()
         options = {"isolevel": isolevel, "color": "yellow", "opacity": 0.6}
@@ -44,7 +61,7 @@ class Potential(base.Refinery, structure.Mixin):
 
     def _add_potential_isosurface(self, viewer, kind, component, options):
         self._raise_error_if_kind_incorrect(kind)
-        potential_data = getattr(self._raw_data, f"{kind}_potential")
+        potential_data = self._get_potential(kind)
         _raise_error_if_no_data(potential_data, kind)
         if component == "up":
             potential = potential_data[0] + potential_data[1]
@@ -53,6 +70,9 @@ class Potential(base.Refinery, structure.Mixin):
         else:
             potential = potential_data[0]
         viewer.show_isosurface(potential.T, **options)
+
+    def _get_potential(self, kind):
+        return getattr(self._raw_data, f"{kind}_potential")
 
     def _raise_error_if_kind_incorrect(self, kind):
         if kind in VALID_KINDS:
