@@ -53,7 +53,7 @@ class Potential(base.Refinery, structure.Mixin):
         result.update(itertools.chain(*items))
         return result
 
-    def _read_potential(self, kind):
+    def _generate_items(self, kind):
         potential = self._get_potential(kind)
         if potential.is_none():
             return
