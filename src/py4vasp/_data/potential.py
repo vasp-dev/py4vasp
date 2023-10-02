@@ -12,7 +12,10 @@ VALID_KINDS = ("total", "ionic", "xc", "hartree")
 
 
 class Potential(base.Refinery, structure.Mixin):
-    """The potential"""
+    """The local potential of the VASP calculation.
+
+    The local potential is defined in real space on the FFT grid. Depending on the setup
+    of the VASP run, different individual contributions can be accessed."""
 
     @base.data_access
     def __str__(self):
@@ -33,6 +36,17 @@ class Potential(base.Refinery, structure.Mixin):
 
     @base.data_access
     def to_dict(self):
+        """Store all available contributions to the potential in a dictionary.
+
+        Returns
+        -------
+        dict
+            The dictionary contains the total potential as well as the potential
+            differences between up and down for collinear or the directional potential
+            for noncollinear calculations. If individual contributions to the potential
+            are available, these are returned, too. Structural information is given for
+            reference.
+        """
         _raise_error_if_no_data(self._raw_data.total_potential)
         result = {"structure": self._structure.read()}
         items = [self._generate_items(kind) for kind in VALID_KINDS]
@@ -53,6 +67,20 @@ class Potential(base.Refinery, structure.Mixin):
 
     @base.data_access
     def plot(self, selection="total", *, isolevel=0):
+        """Plot an isosurface of a selected potential.
+
+        Parameters
+        ----------
+        selection : str
+        Select the kind of potential of which you want the isosurface.
+        isolevel : float
+        Energy level (eV) for which the isosurface is obtained.
+
+        Returns
+        -------
+        Viewer3d
+        A visualization of the potential isosurface within the crystal structure.
+        """
         viewer = self._structure.plot()
         options = {"isolevel": isolevel, "color": "yellow", "opacity": 0.6}
         for kind, component in _parse_selection(selection):

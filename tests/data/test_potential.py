@@ -41,6 +41,7 @@ def get_expected_dict(raw_potential):
         **separate_potential("ionic", raw_potential.ionic_potential),
     }
 
+
 def get_expected_string(raw_potential, included_parts):
     if len(raw_potential.total_potential) == 1:
         header = """\
@@ -62,6 +63,7 @@ noncollinear potential:
     else:
         available = f"    available: total, {included_parts}"
     return "\n".join([header, grid, available])
+
 
 def separate_potential(potential_name, potential):
     if potential.is_none():
@@ -177,6 +179,7 @@ def test_empty_potential(raw_data, selection, not_core):
 def test_print(reference_potential, format_):
     actual, _ = format_(reference_potential)
     assert actual == {"text/plain": reference_potential.ref.string}
+
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.potential("Fe3O4 collinear total")

@@ -96,14 +96,17 @@ class Density(base.Refinery, structure.Mixin):
 
     @base.data_access
     def nonpolarized(self):
+        "Returns whether the density is not spin polarized."
         return len(self._raw_data.charge) == 1
 
     @base.data_access
     def collinear(self):
+        "Returns whether the density has a collinear magnetization."
         return len(self._raw_data.charge) == 2
 
     @base.data_access
     def noncollinear(self):
+        "Returns whether the density has a noncollinear magnetization."
         return len(self._raw_data.charge) == 4
 
     def _plot_charge(self, viewer, **user_options):
