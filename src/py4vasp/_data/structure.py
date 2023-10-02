@@ -101,7 +101,7 @@ class Structure(slice_.Mixin, base.Refinery):
         step = self._get_last_step()
         lines = (
             format_.comment_line(self._topology(), self._step_string()),
-            format_.scaling_factor(self._raw_data.cell.scale),
+            format_.scaling_factor(self._scale()),
             format_.vectors_to_table(self._raw_data.cell.lattice_vectors[step]),
             format_.ion_list(self._topology()),
             format_.coordinate_system(),
@@ -288,7 +288,13 @@ class Structure(slice_.Mixin, base.Refinery):
 
     def _lattice_vectors(self):
         lattice_vectors = _LatticeVectors(self._raw_data.cell.lattice_vectors)
-        return self._raw_data.cell.scale * lattice_vectors[self._get_steps()]
+        return self._scale() * lattice_vectors[self._get_steps()]
+
+    def _scale(self):
+        if not self._raw_data.cell.scale.is_none():
+            return self._raw_data.cell.scale[()]
+        else:
+            return 1.0
 
     def _positions(self):
         return self._raw_data.positions[self._get_steps()]
@@ -341,7 +347,8 @@ class _LatticeVectors(reader.Reader):
 
 
 def _cell_from_ase(structure):
-    return raw.Cell(lattice_vectors=np.array([structure.get_cell()]))
+    lattice_vectors = np.array([structure.get_cell()])
+    return raw.Cell(lattice_vectors, scale=raw.VaspData(1.0))
 
 
 def _replace_or_set_elements(poscar, elements):
