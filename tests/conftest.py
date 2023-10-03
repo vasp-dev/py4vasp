@@ -639,7 +639,7 @@ def _Sr2TiO4_born_effective_charges():
 
 
 def _Sr2TiO4_cell():
-    scale = 6.9229
+    scale = raw.VaspData(6.9229)
     lattice_vectors = [
         [1.0, 0.0, 0.0],
         [0.678112209738693, 0.734958387251008, 0.0],
@@ -805,7 +805,8 @@ def _Fe3O4_cell():
         [-1.3633791448, 0.0, 5.0446102592],
     ]
     scaling = np.linspace(0.98, 1.01, number_steps)
-    return raw.Cell(lattice_vectors=np.multiply.outer(scaling, lattice_vectors))
+    lattice_vectors = np.multiply.outer(scaling, lattice_vectors)
+    return raw.Cell(lattice_vectors, scale=raw.VaspData(None))
 
 
 def _Fe3O4_CONTCAR():
@@ -928,7 +929,7 @@ def _Fe3O4_velocity():
 
 def _Ca3AsBr3_cell():
     return raw.Cell(
-        scale=5.93,
+        scale=raw.VaspData(5.93),
         lattice_vectors=_make_data(np.eye(3)),
     )
 
