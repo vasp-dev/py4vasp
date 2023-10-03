@@ -64,5 +64,7 @@ class Workfunction(base.Refinery, graph.Mixin):
         data = self.to_dict()
         series = graph.Series(data["distance"], data["average_potential"], "potential")
         return graph.Graph(
-            series=series, xlabel=f"distance along {data['direction']} (Å)", ylabel="average potential (eV)"
+            series=series,
+            xlabel=f"distance along {data['direction']} (Å)",
+            ylabel="average potential (eV)",
         )
