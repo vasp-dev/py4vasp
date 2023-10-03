@@ -34,6 +34,8 @@ def setup_bandgap(raw_gap):
     bandgap = data.Bandgap.from_data(raw_gap)
     bandgap.ref = types.SimpleNamespace()
     bandgap.ref.fundamental = raw_gap.values[..., CBM] - raw_gap.values[..., VBM]
+    bandgap.ref.vbm = raw_gap.values[..., VBM]
+    bandgap.ref.cbm = raw_gap.values[..., CBM]
     bandgap.ref.kpoint_vbm = raw_gap.values[..., KPOINT_VBM]
     bandgap.ref.kpoint_cbm = raw_gap.values[..., KPOINT_CBM]
     bandgap.ref.direct = raw_gap.values[..., TOP] - raw_gap.values[..., BOTTOM]
@@ -87,6 +89,22 @@ def test_direct_default(bandgap, steps, Assert):
 def test_fundamental_spin_polarized(spin_polarized, steps, Assert):
     bandgap = spin_polarized if steps == -1 else spin_polarized[steps]
     Assert.allclose(bandgap.direct(), bandgap.ref.direct[steps, 0])
+
+
+def test_valence_band_maximum(bandgap, steps, Assert):
+    if steps != -1:
+        valence_band_maximum = bandgap[steps].valence_band_maximum()
+    else:
+        valence_band_maximum = bandgap.valence_band_maximum()
+    Assert.allclose(valence_band_maximum, bandgap.ref.vbm[steps, 0])
+
+
+def test_conduction_band_minimum(bandgap, steps, Assert):
+    if steps != -1:
+        conduction_band_minimum = bandgap[steps].conduction_band_minimum()
+    else:
+        conduction_band_minimum = bandgap.conduction_band_minimum()
+    Assert.allclose(conduction_band_minimum, bandgap.ref.cbm[steps, 0])
 
 
 def test_plot_default(bandgap, steps, Assert):

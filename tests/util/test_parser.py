@@ -418,7 +418,12 @@ def test_topology(cubic_BN, has_species_name, Assert):
     Assert.allclose(
         expected_topology.number_ion_types, output_topology.number_ion_types
     )
-    assert np.all(expected_topology.ion_types == output_topology.ion_types)
+    if has_species_name:
+        expected_ion_types = expected_topology.ion_types.__array__()
+    else:
+        expected_ion_types = expected_topology.ion_types
+    output_ion_types = output_topology.ion_types.__array__()
+    assert all(expected_ion_types == output_ion_types)
 
 
 def test_error_no_species_provided(cubic_BN):

@@ -41,9 +41,11 @@ from py4vasp._data.phonon_band import PhononBand
 from py4vasp._data.phonon_dos import PhononDos
 from py4vasp._data.piezoelectric_tensor import PiezoelectricTensor
 from py4vasp._data.polarization import Polarization
+from py4vasp._data.potential import Potential
 from py4vasp._data.projector import Projector
 from py4vasp._data.stress import Stress
 from py4vasp._data.structure import Structure
 from py4vasp._data.system import System
 from py4vasp._data.topology import Topology
 from py4vasp._data.velocity import Velocity
+from py4vasp._data.workfunction import Workfunction
