@@ -82,7 +82,7 @@ class Cell:
 
     lattice_vectors: VaspData
     "Lattice vectors defining the unit cell."
-    scale: float = 1.0
+    scale: float
     "Global scaling factor applied to all lattice vectors."
 
 
@@ -390,6 +390,26 @@ class Polarization:
 
 
 @dataclasses.dataclass
+class Potential:
+    """The potential on a real space grid.
+
+    Depending on the options set in the INCAR file, this dataclass can store the total
+    potential, the hartree potential, the ionic potential and the exchange-correlation
+    potential."""
+
+    structure: VaspData
+    """Atomic structure used to generate the potential"""
+    hartree_potential: VaspData
+    """Hartree potential, a contribution to the total potential"""
+    ionic_potential: VaspData
+    """Ionic potential, a contribution to the total potential"""
+    xc_potential: VaspData
+    """Exchange-correlation potential, a contribution to the total potential"""
+    total_potential: VaspData
+    """The total potential = ionic + hartree + xc potentials"""
+
+
+@dataclasses.dataclass
 class Projector:
     """Projectors used for atom and orbital projections.
 
@@ -451,3 +471,20 @@ class Velocity:
     "Structural information to relate the velocities to."
     velocities: VaspData
     "Observed ion velocities."
+
+
+@dataclasses.dataclass
+class Workfunction:
+    "Describes the minimal energy needed to remove an electron from the crystal to the vacuum."
+    idipol: int
+    "INCAR tag of VASP describing the direction along which the potential is assessed."
+    distance: VaspData
+    "Distances along the lattice vector selected by IDIPOL"
+    average_potential: VaspData
+    "Averages the local potential after dipole correction in planes of the other two lattice vectors."
+    vacuum_potential: VaspData
+    "Potential in the vacuum region on either side of the surface."
+    reference_potential: Bandgap
+    "Describes the band edges in the surface."
+    fermi_energy: float
+    "Fermi energy obtained by VASP."

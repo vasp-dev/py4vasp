@@ -71,7 +71,6 @@ schema.add(
 #
 schema.add(
     raw.Cell,
-    required=raw.Version(6, 5),
     scale="intermediate/ion_dynamics/scale",
     lattice_vectors="intermediate/ion_dynamics/lattice_vectors",
 )
@@ -412,6 +411,16 @@ schema.add(
 )
 #
 schema.add(
+    raw.Potential,
+    required=raw.Version(6, 5),
+    structure=Link("structure", DEFAULT_SOURCE),
+    hartree_potential="results/potential/hartree_potential",
+    ionic_potential="results/potential/ionic_potential",
+    xc_potential="results/potential/xc_potential",
+    total_potential="results/potential/total_potential",
+)
+#
+schema.add(
     raw.Projector,
     topology=Link("topology", DEFAULT_SOURCE),
     orbital_types="results/projectors/lchar",
@@ -473,4 +482,15 @@ schema.add(
     required=raw.Version(6, 4),
     structure=Link("structure", DEFAULT_SOURCE),
     velocities="intermediate/ion_dynamics/ion_velocities",
+)
+#
+schema.add(
+    raw.Workfunction,
+    required=raw.Version(6, 5),
+    idipol="input/incar/IDIPOL",
+    distance="results/potential/distance_along_IDIPOL",
+    average_potential="results/potential/average_potential_along_IDIPOL",
+    vacuum_potential="results/potential/vacuum_potential",
+    reference_potential=Link("bandgap", DEFAULT_SOURCE),
+    fermi_energy="results/electron_dos/efermi",
 )

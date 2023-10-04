@@ -83,8 +83,11 @@ def Ca3AsBr3(raw_data):
 def make_structure(raw_structure):
     structure = Structure.from_data(raw_structure)
     structure.ref = types.SimpleNamespace()
-    cell = raw_structure.cell
-    structure.ref.lattice_vectors = cell.scale * cell.lattice_vectors
+    if not raw_structure.cell.scale.is_none():
+        scale = raw_structure.cell.scale[()]
+    else:
+        scale = 1.0
+    structure.ref.lattice_vectors = scale * raw_structure.cell.lattice_vectors
     structure.ref.positions = raw_structure.positions
     return structure
 

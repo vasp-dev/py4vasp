@@ -22,6 +22,7 @@ two_spins = 2
 axes = 3
 complex_ = 2
 number_modes = axes * number_atoms
+grid_dimensions = (14, 12, 10)  # note: order is z, y, x
 
 
 @pytest.fixture(scope="session")
@@ -60,6 +61,14 @@ class _Assert:
             assert np.all(mask_actual == mask_desired)
             assert_array_almost_equal_nulp(actual, desired, 30)
 
+    @staticmethod
+    def same_structure(actual, desired):
+        for key in actual:
+            if key in ("elements", "names"):
+                assert actual[key] == desired[key]
+            else:
+                _Assert.allclose(actual[key], desired[key])
+
 
 def _is_none(data):
     if isinstance(data, raw.VaspData):
@@ -97,7 +106,7 @@ class RawDataFactory:
 
     @staticmethod
     def bandgap(selection):
-        return _band_gap(selection)
+        return _bandgap(selection)
 
     @staticmethod
     def born_effective_charge(selection):
@@ -117,7 +126,13 @@ class RawDataFactory:
 
     @staticmethod
     def density(selection):
-        return _Fe3O4_density(selection)
+        parts = selection.split()
+        if parts[0] == "Sr2TiO4":
+            return _Sr2TiO4_density()
+        elif parts[0] == "Fe3O4":
+            return _Fe3O4_density(parts[1])
+        else:
+            raise exception.NotImplemented()
 
     @staticmethod
     def dielectric_function(selection):
@@ -236,6 +251,16 @@ class RawDataFactory:
         return _phonon_dos()
 
     @staticmethod
+    def potential(selection: str):
+        parts = selection.split()
+        if parts[0] == "Sr2TiO4":
+            return _Sr2TiO4_potential(parts[1])
+        elif parts[0] == "Fe3O4":
+            return _Fe3O4_potential(*parts[1:])
+        else:
+            raise exception.NotImplemented()
+
+    @staticmethod
     def projector(selection):
         if selection == "Sr2TiO4":
             return _Sr2TiO4_projectors(use_orbitals=True)
@@ -286,6 +311,10 @@ class RawDataFactory:
         else:
             raise exception.NotImplemented()
 
+    @staticmethod
+    def workfunction(selection):
+        return _workfunction(selection)
+
 
 @pytest.fixture
 def raw_data():
@@ -303,7 +332,7 @@ def _number_components(selection):
         raise exception.NotImplemented()
 
 
-def _band_gap(selection):
+def _bandgap(selection):
     labels = (
         "valence band maximum",
         "conduction band minimum",
@@ -367,15 +396,6 @@ def _elastic_modulus():
     shape = (2, axes, axes, axes, axes)
     data = np.arange(np.prod(shape)).reshape(shape)
     return raw.ElasticModulus(clamped_ion=data[0], relaxed_ion=data[1])
-
-
-def _Sr2TiO4_pair_correlation():
-    labels = ("total", "Sr~Sr", "Sr~Ti", "Sr~O", "Ti~Ti", "Ti~O", "O~O")
-    shape = (number_steps, len(labels), number_points)
-    data = np.arange(np.prod(shape)).reshape(shape)
-    return raw.PairCorrelation(
-        distances=np.arange(number_points), function=data, labels=labels
-    )
 
 
 def _phonon_band():
@@ -598,6 +618,18 @@ def _spin_polarized_dispersion():
     return raw.Dispersion(kpoints, eigenvalues)
 
 
+def _workfunction(direction):
+    shape = (number_points,)
+    return raw.Workfunction(
+        idipol=int(direction),
+        distance=_make_arbitrary_data(shape),
+        average_potential=_make_arbitrary_data(shape),
+        vacuum_potential=_make_arbitrary_data(shape=(2,)),
+        reference_potential=_bandgap("nonpolarized"),
+        fermi_energy=1.234,
+    )
+
+
 def _Sr2TiO4_born_effective_charges():
     shape = (number_atoms, axes, axes)
     return raw.BornEffectiveCharge(
@@ -607,7 +639,7 @@ def _Sr2TiO4_born_effective_charges():
 
 
 def _Sr2TiO4_cell():
-    scale = 6.9229
+    scale = raw.VaspData(6.9229)
     lattice_vectors = [
         [1.0, 0.0, 0.0],
         [0.678112209738693, 0.734958387251008, 0.0],
@@ -623,6 +655,12 @@ def _Sr2TiO4_CONTCAR():
     structure.cell.lattice_vectors = structure.cell.lattice_vectors[-1]
     structure.positions = structure.positions[-1]
     return raw.CONTCAR(structure=structure, system=b"Sr2TiO4")
+
+
+def _Sr2TiO4_density():
+    structure = _Sr2TiO4_structure()
+    grid = (1, *grid_dimensions)
+    return raw.Density(structure=structure, charge=_make_arbitrary_data(grid))
 
 
 def _Sr2TiO4_dos(projectors):
@@ -687,6 +725,30 @@ def _Sr2TiO4_internal_strain():
     )
 
 
+def _Sr2TiO4_pair_correlation():
+    labels = ("total", "Sr~Sr", "Sr~Ti", "Sr~O", "Ti~Ti", "Ti~O", "O~O")
+    shape = (number_steps, len(labels), number_points)
+    data = np.arange(np.prod(shape)).reshape(shape)
+    return raw.PairCorrelation(
+        distances=np.arange(number_points), function=data, labels=labels
+    )
+
+
+def _Sr2TiO4_potential(included_potential):
+    structure = _Sr2TiO4_structure()
+    shape = (1, *grid_dimensions)
+    include_xc = included_potential in ("xc", "all")
+    include_hartree = included_potential in ("hartree", "all")
+    include_ionic = included_potential in ("ionic", "all")
+    return raw.Potential(
+        structure=structure,
+        total_potential=_make_arbitrary_data(shape),
+        xc_potential=_make_arbitrary_data(shape, present=include_xc),
+        hartree_potential=_make_arbitrary_data(shape, present=include_hartree),
+        ionic_potential=_make_arbitrary_data(shape, present=include_ionic),
+    )
+
+
 def _Sr2TiO4_projectors(use_orbitals):
     orbital_types = "s py pz px dxy dyz dz2 dxz x2-y2 fy3x2 fxyz fyz2 fz3 fxz2 fzx2 fx3"
     return raw.Projector(
@@ -743,7 +805,8 @@ def _Fe3O4_cell():
         [-1.3633791448, 0.0, 5.0446102592],
     ]
     scaling = np.linspace(0.98, 1.01, number_steps)
-    return raw.Cell(lattice_vectors=np.multiply.outer(scaling, lattice_vectors))
+    lattice_vectors = np.multiply.outer(scaling, lattice_vectors)
+    return raw.Cell(lattice_vectors, scale=raw.VaspData(None))
 
 
 def _Fe3O4_CONTCAR():
@@ -765,12 +828,9 @@ def _Fe3O4_CONTCAR():
 
 
 def _Fe3O4_density(selection):
-    parts = selection.split()
-    structure = RawDataFactory.structure(parts[0])
-    grid = (_number_components(parts[1]), 10, 12, 14)
-    return raw.Density(
-        structure=structure, charge=raw.VaspData(np.arange(np.prod(grid)).reshape(grid))
-    )
+    structure = _Fe3O4_structure()
+    grid = (_number_components(selection), *grid_dimensions)
+    return raw.Density(structure=structure, charge=_make_arbitrary_data(grid))
 
 
 def _Fe3O4_dos(projectors):
@@ -799,6 +859,22 @@ def _Fe3O4_forces(randomize):
     else:
         forces = np.arange(np.prod(shape)).reshape(shape)
     return raw.Force(structure=_Fe3O4_structure(), forces=forces)
+
+
+def _Fe3O4_potential(selection, included_potential):
+    structure = _Fe3O4_structure()
+    shape_polarized = (_number_components(selection), *grid_dimensions)
+    shape_trivial = (1, *grid_dimensions)
+    include_xc = included_potential in ("xc", "all")
+    include_hartree = included_potential in ("hartree", "all")
+    include_ionic = included_potential in ("ionic", "all")
+    return raw.Potential(
+        structure=structure,
+        total_potential=_make_arbitrary_data(shape_polarized),
+        xc_potential=_make_arbitrary_data(shape_polarized, present=include_xc),
+        hartree_potential=_make_arbitrary_data(shape_trivial, present=include_hartree),
+        ionic_potential=_make_arbitrary_data(shape_trivial, present=include_ionic),
+    )
 
 
 def _Fe3O4_projectors(use_orbitals):
@@ -853,7 +929,7 @@ def _Fe3O4_velocity():
 
 def _Ca3AsBr3_cell():
     return raw.Cell(
-        scale=5.93,
+        scale=raw.VaspData(5.93),
         lattice_vectors=_make_data(np.eye(3)),
     )
 
@@ -880,6 +956,14 @@ def _Ca3AsBr3_topology():
         number_ion_types=np.array((2, 1, 1, 1, 2)),
         ion_types=np.array(("Ca", "As", "Br", "Ca", "Br"), dtype="S"),
     )
+
+
+def _make_arbitrary_data(shape, present=True):
+    if present:
+        data = np.random.random(shape) + np.arange(np.prod(shape)).reshape(shape)
+        return raw.VaspData(data)
+    else:
+        return raw.VaspData(None)
 
 
 def _make_data(data):
