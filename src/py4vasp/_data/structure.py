@@ -326,6 +326,7 @@ class Structure(slice_.Mixin, base.Refinery):
         else:
             return f" (step {self._steps + 1})"
 
+    @base.data_access
     def __getitem__(self, steps):
         if not self._is_trajectory:
             message = "The structure is not a Trajectory so accessing individual elements is not allowed."
