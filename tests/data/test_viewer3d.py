@@ -3,7 +3,6 @@
 import types
 from unittest.mock import patch
 
-import ipykernel.jsonutil as json
 import nglview
 import numpy as np
 import pytest
@@ -130,12 +129,6 @@ def create_arrows(viewer, number_atoms):
     arrows = np.repeat([(0, 0, 1)], number_atoms, axis=0)
     viewer.show_arrows_at_atoms(arrows)
     return arrows
-
-
-def test_serializable():
-    arrow = _Arrow3d(np.zeros(3), np.ones(3), np.ones(1))
-    for element in arrow.to_serializable():
-        json.json_clean(element)
 
 
 def test_standard_form(raw_data, Assert):

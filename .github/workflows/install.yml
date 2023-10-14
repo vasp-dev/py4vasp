@@ -5,6 +5,8 @@ on:
     - cron: "0 2 * * 6"
   push:
     branches: [master]
+  pull_request:
+    branches: [master]
 
 jobs:
   tests:
@@ -12,56 +14,31 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v4
+    - name: Set up conda
+      uses: conda-incubator/setup-miniconda@v2
       with:
+        auto-update-conda: true
         python-version: 3.8
-    - name: Install from pyproject file
+    - name: Install py4vasp and testing tools
+      shell: bash -el {0}
       run: |
-        python -m pip install --upgrade pip
+        python -m pip install --progress-bar=off --upgrade pip
+        pip install --progress-bar=off .
+        pip install --progress-bar=off pytest hypothesis
+        pip install --progress-bar=off ipykernel
         pip install .
         pip install pytest hypothesis
+    - name: Install mdtraj with conda
+      shell: bash -el {0}
+      run: |
+        conda info
+        conda install -q -c conda-forge mdtraj
     - name: Test with pytest
+      shell: bash -el {0}
       run: |
         pytest --version
         pytest
-
-
-# test-windows:
-#   runs-on: windows-latest
-
-#   steps:
-#   - uses: actions/checkout@v3
-#   - uses: conda-incubator/setup-miniconda@v2
-#     with:
-#       auto-update-conda: true
-#       python-version: 3.8
-#   - name: Install dependencies with conda
-#     run: |
-#       conda info
-#       conda install -c conda-forge mdtraj
-#   - name: Install poetry
-#     run: |
-#       python -m pip install --upgrade pip
-#       pip install poetry
-#       poetry --version
-#   - name: Install py4vasp
-#     run: |
-#       poetry config virtualenvs.create false --local
-#       poetry install
-#   - name: Test with pytest
-#     run: |
-#       poetry run pytest --version
-#       poetry run pytest --cov=py4vasp --cov-report term
-#   - name: Check code style
-#     run: |
-#       poetry run isort --version
-#       poetry run isort --check src
-#       poetry run isort --check tests
-#       poetry run black --version
-#       poetry run black --check src
-#       poetry run black --check tests
