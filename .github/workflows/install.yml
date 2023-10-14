@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: "0 2 * * 6"
   push:
-    branches: [master]
+    branches: [hotfix, master]
   pull_request:
     branches: [master]
 
