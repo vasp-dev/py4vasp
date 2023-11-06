@@ -5,7 +5,8 @@ from typing import Dict
 
 import numpy as np
 
-from py4vasp import Calculations, exception
+import py4vasp
+from py4vasp import exception
 
 
 class MLFFErrorAnalysis:
@@ -71,7 +72,9 @@ class MLFFErrorAnalysis:
             Path to the MLFF data. Accepts wildcards.
         """
         mlff_error_analysis = cls(_internal=True)
-        calculations = Calculations.from_paths(dft_data=dft_data, mlff_data=mlff_data)
+        calculations = py4vasp.Calculations.from_paths(
+            dft_data=dft_data, mlff_data=mlff_data
+        )
         mlff_error_analysis._calculations = calculations
         set_appropriate_attrs(mlff_error_analysis)
         return mlff_error_analysis
@@ -92,7 +95,9 @@ class MLFFErrorAnalysis:
             Path to the MLFF data. Accepts wildcards.
         """
         mlff_error_analysis = cls(_internal=True)
-        calculations = Calculations.from_files(dft_data=dft_data, mlff_data=mlff_data)
+        calculations = py4vasp.Calculations.from_files(
+            dft_data=dft_data, mlff_data=mlff_data
+        )
         mlff_error_analysis._calculations = calculations
         set_appropriate_attrs(mlff_error_analysis)
         return mlff_error_analysis
