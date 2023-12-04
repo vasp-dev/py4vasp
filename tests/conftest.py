@@ -438,13 +438,13 @@ def _polarization():
 
 def _MD_energy(randomize: bool = False):
     labels = (
-        "ion-electron   TOTEN   ",
-        "kinetic energy EKIN    ",
+        "ion-electron   TOTEN",
+        "kinetic energy EKIN",
         "kin. lattice   EKIN_LAT",
-        "temperature    TEIN    ",
-        "nose potential ES      ",
-        "nose kinetic   EPS     ",
-        "total energy   ETOTAL  ",
+        "temperature    TEIN",
+        "nose potential ES",
+        "nose kinetic   EPS",
+        "total energy   ETOTAL",
     )
     return _create_energy(labels, randomize=randomize)
 

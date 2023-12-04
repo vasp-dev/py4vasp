@@ -414,10 +414,10 @@ schema.add(
     raw.Potential,
     required=raw.Version(6, 5),
     structure=Link("structure", DEFAULT_SOURCE),
-    hartree_potential="results/potential/hartree_potential",
-    ionic_potential="results/potential/ionic_potential",
-    xc_potential="results/potential/xc_potential",
-    total_potential="results/potential/total_potential",
+    hartree_potential="results/potential/hartree",
+    ionic_potential="results/potential/ionic",
+    xc_potential="results/potential/xc",
+    total_potential="results/potential/total",
 )
 #
 schema.add(
