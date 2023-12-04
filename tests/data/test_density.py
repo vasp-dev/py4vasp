@@ -80,12 +80,13 @@ def test_charge_plot(reference_density, Assert, not_core):
     cm_cell = patch.object(obj, "show_cell")
     cm_surface = patch.object(obj, "show_isosurface")
     with cm_init as init, cm_cell as cell, cm_surface as surface:
-        reference_density.plot()
+        result = reference_density.plot()
+        assert isinstance(result, viewer3d.Viewer3d)
         init.assert_called_once()
         cell.assert_called_once()
         surface.assert_called_once()
         args, kwargs = surface.call_args
-    Assert.allclose(args[0], reference_density.ref.output["charge"])
+    Assert.allclose(args[0], reference_density.ref.output["charge"].T)
     assert kwargs == {"isolevel": 0.2, "color": "yellow", "opacity": 0.6}
 
 
@@ -107,9 +108,10 @@ def check_plotting_magnetization_density(polarized_density, Assert):
     cm_cell = patch.object(obj, "show_cell")
     cm_surface = patch.object(obj, "show_isosurface")
     with cm_init as init, cm_cell as cell, cm_surface as surface:
-        polarized_density.plot(selection="magnetization", isolevel=0.1, smooth=1)
+        result = polarized_density.plot("magnetization", isolevel=0.1, smooth=1)
+        assert isinstance(result, viewer3d.Viewer3d)
         calls = surface.call_args_list
-    reference_magnetization = polarized_density.ref.output["magnetization"]
+    reference_magnetization = polarized_density.ref.output["magnetization"].T
     if polarized_density.collinear():
         check_collinear_plot(reference_magnetization, calls, Assert)
     elif polarized_density.noncollinear():
@@ -127,7 +129,7 @@ def check_collinear_plot(magnetization, calls, Assert):
 
 
 def check_noncollinear_plot(magnetization, calls, Assert):
-    magnetization = np.linalg.norm(magnetization, axis=0)
+    magnetization = np.linalg.norm(magnetization, axis=-1)
     assert len(calls) == 1
     args, kwargs = calls[0]
     Assert.allclose(args[0], magnetization)

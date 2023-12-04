@@ -86,9 +86,9 @@ class Density(base.Refinery, structure.Mixin):
         _raise_error_if_no_data(self._raw_data.charge)
         viewer = self._structure.plot()
         if selection == "charge":
-            return self._plot_charge(_ViewerWrapper(viewer), **user_options)
+            self._plot_charge(_ViewerWrapper(viewer), **user_options)
         elif selection == "magnetization":
-            return self._plot_magnetism(_ViewerWrapper(viewer), **user_options)
+            self._plot_magnetism(_ViewerWrapper(viewer), **user_options)
         else:
             msg = f"'{selection}' is an unknown option, please use 'charge' or 'magnetization' instead."
             raise exception.IncorrectUsage(msg)
@@ -110,8 +110,7 @@ class Density(base.Refinery, structure.Mixin):
         return len(self._raw_data.charge) == 4
 
     def _plot_charge(self, viewer, **user_options):
-        viewer.show_isosurface(self._raw_data.charge[0].T, **user_options)
-        return viewer
+        viewer.show_isosurface(self._raw_data.charge[0], **user_options)
 
     def _plot_magnetism(self, viewer, **user_options):
         if self.nonpolarized():
@@ -123,15 +122,13 @@ class Density(base.Refinery, structure.Mixin):
 
     def _plot_collinear_magnetism(self, viewer, **user_options):
         _raise_error_if_color_is_specified(**user_options)
-        magnetization = self._raw_data.charge[1].T
+        magnetization = self._raw_data.charge[1]
         viewer.show_isosurface(magnetization, color="blue", **user_options)
         viewer.show_isosurface(-magnetization, color="red", **user_options)
-        return viewer
 
     def _plot_noncollinear_magnetism(self, viewer, **user_options):
-        magnetization = np.linalg.norm(self._raw_data.charge[1:], axis=0).T
+        magnetization = np.linalg.norm(self._raw_data.charge[1:], axis=0)
         viewer.show_isosurface(magnetization, **user_options)
-        return viewer
 
 
 def _raise_is_nonpolarized_error():
