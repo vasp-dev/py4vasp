@@ -4,7 +4,7 @@ import numpy as np
 
 from py4vasp import data, exception
 from py4vasp._data import base, structure
-from py4vasp._util import import_
+from py4vasp._util import import_, select
 
 pretty = import_.optional("IPython.lib.pretty")
 
@@ -18,6 +18,20 @@ class _ViewerWrapper:
         options = {**self._options, **options}
         self._viewer.show_isosurface(data, **options)
 
+_SELECTIONS = {
+        "quantity": {
+            "electronic charge density": ["electronic_charge_density", "charge_density", "charge", "n"],
+            "magnetization": ["magnetization", "mag", "m"],
+            "kinetic energy density": ["kinetic_energy_density", "tau"],
+            "current density": ["paramagnetic_current_density", "current_density", "current", "j"],
+            },
+        "component": {
+            0: ["unity", "sigma_0", "scalar", "0"],
+            3: ["sigma_z", "z", "sigma_3", "3"],
+            1: ["sigma_x", "x", "sigma_1", "1"],
+            2: ["sigma_y", "y", "sigma_2", "2"]
+            }
+}
 
 class Density(base.Refinery, structure.Mixin):
     """The charge and magnetization density.
@@ -27,8 +41,8 @@ class Density(base.Refinery, structure.Mixin):
     """
 
     @base.data_access
-    def __str__(self):
-        _raise_error_if_no_data(self._raw_data.charge)
+    def __str__(self, quantity="electronic charge density"):
+        _raise_error_if_no_data(self._raw_data.charge,quantity)
         grid = self._raw_data.charge.shape[1:]
         topology = data.Topology.from_data(self._raw_data.structure.topology)
         if self.nonpolarized():
@@ -42,7 +56,7 @@ class Density(base.Refinery, structure.Mixin):
     grid: {grid[2]}, {grid[1]}, {grid[0]}"""
 
     @base.data_access
-    def to_dict(self):
+    def to_dict(self, quantity="electronic charge density"):
         """Read the electronic density into a dictionary.
 
         Returns
@@ -51,7 +65,7 @@ class Density(base.Refinery, structure.Mixin):
             Contains the structure information as well as the density represented
             of a grid in the unit cell.
         """
-        _raise_error_if_no_data(self._raw_data.charge)
+        _raise_error_if_no_data(self._raw_data.charge, quantity)
         result = {"structure": self._structure.read()}
         result.update(self._read_density())
         return result
@@ -83,61 +97,104 @@ class Density(base.Refinery, structure.Mixin):
         Viewer3d
             Visualize an isosurface of the density within the 3d structure.
         """
-        _raise_error_if_no_data(self._raw_data.charge)
         viewer = self._structure.plot()
-        if selection == "charge":
-            self._plot_charge(_ViewerWrapper(viewer), **user_options)
-        elif selection == "magnetization":
-            self._plot_magnetism(_ViewerWrapper(viewer), **user_options)
-        else:
-            msg = f"'{selection}' is an unknown option, please use 'charge' or 'magnetization' instead."
-            raise exception.IncorrectUsage(msg)
+        for quantity, component in self._parse_selection(selection):
+            self._add_isosurface(_ViewerWrapper(viewer), quantity, component, **user_options)
         return viewer
 
+    def _add_isosurface(self, viewer, quantity, component, **user_options):
+        density_data = self._get_density(quantity)
+        _raise_error_if_no_data(density_data, quantity)
+        density = density_data[component]
+        if component>0:
+            viewer.show_isosurface(density, color="blue", **user_options)
+            viewer.show_isosurface(-density, color="red", **user_options)
+        else:    
+            viewer.show_isosurface(density, color="yellow", **user_options)
+    
+    def _get_density(self, quantity):
+        if quantity=="electronic charge density" or quantity=="magnetization":
+            density_data = self._raw_data.charge
+        else:
+            _raise_quantity_not_implemented_error(quantity)
+        return density_data
+
     @base.data_access
-    def nonpolarized(self):
+    def is_nonpolarized(self):
         "Returns whether the density is not spin polarized."
         return len(self._raw_data.charge) == 1
 
     @base.data_access
-    def collinear(self):
+    def is_collinear(self):
         "Returns whether the density has a collinear magnetization."
         return len(self._raw_data.charge) == 2
 
     @base.data_access
-    def noncollinear(self):
+    def is_noncollinear(self):
         "Returns whether the density has a noncollinear magnetization."
         return len(self._raw_data.charge) == 4
 
-    def _plot_charge(self, viewer, **user_options):
-        viewer.show_isosurface(self._raw_data.charge[0], **user_options)
+    def _parse_selection(self, selection):
+        tree = select.Tree.from_selection(selection)
+        translated_selections = []
+        for selec_tuple in tree.selections():
+            translated_selections.append(self._translate_selection(selec_tuple))
+        return translated_selections 
+ 
+    def _translate_selection(self, selec_tuple):
+        selec_tuple_string = str(selec_tuple).replace("magnetization", "m")
+        quantity,component = "", -1
+        for q in _SELECTIONS["quantity"]:
+            for choice in _SELECTIONS["quantity"][q]:
+                if choice in selec_tuple_string:
+                    quantity = q
+        for c in _SELECTIONS["component"]:
+            for choice in _SELECTIONS["component"][c]:
+                if choice in selec_tuple_string:
+                    component = c
+        if quantity=="electronic charge density" and component<0:
+            component = 0
+        elif quantity=="electronic charge density" and component>0:
+            quantity="magnetization"
+        if quantity=="magnetization":
+            if self.is_nonpolarized():
+                _raise_is_nonpolarized_error()
+            elif component==0:
+                _raise_error_if_selection_invalid(selec_tuple)
+            elif self.is_collinear() and component<0:
+                component = 1
+            elif self.is_collinear() and component>1:
+                _raise_is_collinear_error()
+            elif self.is_noncollinear() and component<0:
+                _raise_component_not_specified_error(selec_tuple)
+        if quantity!="" and component<0:
+            component = 0
+        elif quantity=="" and component<0:
+            _raise_error_if_selection_invalid(selec_tuple)
+        elif quantity=="" and component==0:
+            quantity="electronic charge density"
+        elif quantity=="" and component>0:
+            quantity="magnetization"
+        return (quantity,component)
 
-    def _plot_magnetism(self, viewer, **user_options):
-        if self.nonpolarized():
-            _raise_is_nonpolarized_error()
-        if self.collinear():
-            return self._plot_collinear_magnetism(viewer, **user_options)
-        if self.noncollinear():
-            return self._plot_noncollinear_magnetism(viewer, **user_options)
+def _raise_quantity_not_implemented_error(quantity):
+    msg = "Plotting of the " + quantity + " is not yet implemented."
+    raise exception.NotImplemented(msg)
 
-    def _plot_collinear_magnetism(self, viewer, **user_options):
-        _raise_error_if_color_is_specified(**user_options)
-        magnetization = self._raw_data.charge[1]
-        viewer.show_isosurface(magnetization, color="blue", **user_options)
-        viewer.show_isosurface(-magnetization, color="red", **user_options)
-
-    def _plot_noncollinear_magnetism(self, viewer, **user_options):
-        magnetization = np.linalg.norm(self._raw_data.charge[1:], axis=0)
-        viewer.show_isosurface(magnetization, **user_options)
-
+def _raise_component_not_specified_error(selec_tuple):
+    msg = "Invalid selection: selection='" + ", ".join(selec_tuple) + "'. For a noncollinear calculation, the density has 4 components which can be represented in a 2x2 matrix. Specify the component of the density in terms of the Pauli matrices: sigma_1, sigma_2, sigma_3."
+    raise exception.IncorrectUsage(msg)
 
 def _raise_is_nonpolarized_error():
     msg = "Density does not contain magnetization. Please rerun VASP with ISPIN = 2 or LNONCOLLINEAR = T to obtain it."
     raise exception.NoData(msg)
 
+def _raise_is_collinear_error():
+    msg = "Density does not contain noncollinear magnetization. Please rerun VASP with LNONCOLLINEAR = T to obtain it."
+    raise exception.NoData(msg)
 
-def _raise_error_if_no_data(data):
-    if data.is_none():
+def _raise_error_if_no_data(data, quantity):
+    if data.is_none() and quantity=="electronic charge density":
         raise exception.NoData(
             "Density data was not found. Note that the density information is written "
             "on the demand to a different file (vaspwave.h5). Please make sure that "
@@ -146,6 +203,9 @@ def _raise_error_if_no_data(data):
             "because this will overwrite the default file behavior."
         )
 
+def _raise_error_if_selection_invalid(selec_tuple):
+    msg = "Invalid selection: selection='" + ", ".join(selec_tuple) + "'"
+    raise exception.IncorrectUsage(msg)
 
 def _raise_error_if_color_is_specified(**user_options):
     if "color" in user_options:
