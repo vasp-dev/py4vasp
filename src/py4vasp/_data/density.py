@@ -4,7 +4,7 @@ import numpy as np
 
 from py4vasp import data, exception
 from py4vasp._data import base, structure
-from py4vasp._util import import_, select
+from py4vasp._util import import_, select, documentation
 
 pretty = import_.optional("IPython.lib.pretty")
 
@@ -33,6 +33,36 @@ _SELECTIONS = {
             }
 }
 
+selections_doc="""\
+        Returns
+        -------
+        Possible quantities and components to choose for the selection of functions on Density.
+
+        Note: Currently only the electronic charge density and (if available) the magnetization are implemented. For plotting the magnetization of a noncollinear calculation (LNONCOLLINEAR=True), the component of the magnetization must also be selected in terms of Pauli matrices: sigma_1, sigma_2, sigma_3.
+
+        Synonyms to access the ...
+        ... electronic charge density: *{}*, *{}*, *{}*, and *{}*
+        ... magnetization: *{}*, *{}*, and *{}*
+        ... 1st component: *{}*, *{}*, *{}*, and *{}*
+        ... 2nd component: *{}*, *{}*, *{}*, and *{}*
+        ... 3rd component: *{}*, *{}*, *{}*, and *{}*
+
+        Nesting: '3(m,tau) m(1,2)'
+
+        Examples
+        --------
+        >>> calc = py4vasp.Calculation.from_path(".")
+        >>> calc.density.to_dict("n")
+        >>> calc.density.plot("magnetization")
+        Using synonyms and nesting
+        >>> calc.density.plot("n m(1,2) mag(sigma_z)")
+        """.format(*_SELECTIONS["quantity"]["electronic charge density"],
+                *_SELECTIONS["quantity"]["magnetization"],
+                *_SELECTIONS["component"][1],
+                *_SELECTIONS["component"][2],
+                *_SELECTIONS["component"][3])
+
+
 class Density(base.Refinery, structure.Mixin):
     """The charge and magnetization density.
 
@@ -41,42 +71,71 @@ class Density(base.Refinery, structure.Mixin):
     """
 
     @base.data_access
-    def __str__(self, quantity="electronic charge density"):
-        _raise_error_if_no_data(self._raw_data.charge,quantity)
+    def __str__(self):
+        _raise_error_if_no_data(self._raw_data.charge, "electronic charge density")
         grid = self._raw_data.charge.shape[1:]
         topology = data.Topology.from_data(self._raw_data.structure.topology)
-        if self.nonpolarized():
-            name = "nonpolarized"
-        elif self.collinear():
-            name = "collinear"
+        if self.is_nonpolarized():
+            name = "Nonpolarized"
+        elif self.is_collinear():
+            name = "Collinear"
         else:
-            name = "noncollinear"
+            name = "Noncollinear"
         return f"""{name} density:
     structure: {pretty.pretty(topology)}
     grid: {grid[2]}, {grid[1]}, {grid[0]}"""
 
+    @documentation.format(selections_doc=selections_doc)
     @base.data_access
-    def to_dict(self, quantity="electronic charge density"):
-        """Read the electronic density into a dictionary.
+    def selections(self):
+        """{selections_doc}"""
+        if not self._raw_data.charge.is_none():
+            if self.is_nonpolarized():
+                return [_SELECTIONS["quantity"]["electronic charge density"][-1]]
+            elif self.is_collinear():
+                quantities = ["electronic charge density", "magnetization"]
+                return [_SELECTIONS["quantity"][q][-1] for q in quantities]
+            elif self.is_noncollinear():
+                return [_SELECTIONS["quantity"]["electronic charge density"][-1],
+                        _SELECTIONS["quantity"]["magnetization"][-1]+"(1,2,3)"]
+        else:
+            return None
+
+    @base.data_access
+    def to_dict(self, selection="charge"):
+        """Read the density into a dictionary.
+
+        Parameters
+        ----------
+        selection : str
+            *charge* (default): Currently only the electronic charge density and (if available) the magnetization are implemented. Both via the keyword *charge*.
 
         Returns
         -------
         dict
             Contains the structure information as well as the density represented
-            of a grid in the unit cell.
+            on a grid in the unit cell.
         """
-        _raise_error_if_no_data(self._raw_data.charge, quantity)
+        quantities_set = set(self._parse_quantity(selection))
+        if "electronic charge density" in quantities_set:
+            _raise_error_if_no_data(self._raw_data.charge, "electronic charge density")
+        if "kinetic energy density" in quantities_set:
+            _raise_quantity_not_implemented_error("Dictonary", "kinetic energy density")
+        if "current density" in quantities_set:
+            _raise_quantity_not_implemented_error("Dictonary", "current density")
         result = {"structure": self._structure.read()}
-        result.update(self._read_density())
+        for quantity in quantities_set:
+            result.update(self._read_density(quantity))
         return result
 
-    def _read_density(self):
-        density = np.moveaxis(self._raw_data.charge, 0, -1).T
-        yield "charge", density[0]
-        if self.collinear():
-            yield "magnetization", density[1]
-        elif self.noncollinear():
-            yield "magnetization", density[1:]
+    def _read_density(self, quantity):
+        if quantity=="electronic charge density":
+            density = np.moveaxis(self._raw_data.charge, 0, -1).T
+            yield "charge", density[0]
+            if self.is_collinear():
+                yield "magnetization", density[1]
+            elif self.is_noncollinear():
+                yield "magnetization", density[1:]
 
     @base.data_access
     def plot(self, selection="charge", **user_options):
@@ -86,7 +145,11 @@ class Density(base.Refinery, structure.Mixin):
         ----------
         selection : str
             Can be either *charge* or *magnetization*, depending on which quantity
-            should be visualized.
+            should be visualized.  For a noncollinear calculation, the density has
+            4 components which can be represented in a 2x2 matrix. Specify the
+            component of the density in terms of the Pauli matrices: sigma_1,
+            sigma_2, sigma_3.
+
         user_options
             Further arguments with keyword that get directly passed on to the
             visualizer. Most importantly, you can set isolevel to adjust the
@@ -96,27 +159,37 @@ class Density(base.Refinery, structure.Mixin):
         -------
         Viewer3d
             Visualize an isosurface of the density within the 3d structure.
+
+        Examples
+        --------
+        >>> calc = py4vasp.Calculation.from_path(".")
+        Plot an isosurface of the electronic charge density
+        >>> calc.density.plot()
+        Plot isosurfaces for positive (blue) and negative (red) magnetization
+        of a spin-polarized calculation (ISPIN=2)
+        >>> calc.density.plot("m")
+        Plot the isosurface for the third component of a noncollinear magnetization
+        >>> calc.density.plot("m(3)")
         """
         viewer = self._structure.plot()
+        # _raise_error_if_no_data(self._raw_data.charge, quantity)
         for quantity, component in self._parse_selection(selection):
             self._add_isosurface(_ViewerWrapper(viewer), quantity, component, **user_options)
         return viewer
 
     def _add_isosurface(self, viewer, quantity, component, **user_options):
-        density_data = self._get_density(quantity)
-        _raise_error_if_no_data(density_data, quantity)
-        density = density_data[component]
+        density_data = self._get_density(quantity, component)
         if component>0:
-            viewer.show_isosurface(density, color="blue", **user_options)
-            viewer.show_isosurface(-density, color="red", **user_options)
-        else:    
-            viewer.show_isosurface(density, color="yellow", **user_options)
-    
-    def _get_density(self, quantity):
-        if quantity=="electronic charge density" or quantity=="magnetization":
-            density_data = self._raw_data.charge
+            viewer.show_isosurface(density_data, color="blue", **user_options)
+            viewer.show_isosurface(-density_data, color="red", **user_options)
         else:
-            _raise_quantity_not_implemented_error(quantity)
+            viewer.show_isosurface(density_data, color="yellow", **user_options)
+
+    def _get_density(self, quantity, component):
+        if quantity=="electronic charge density" or quantity=="magnetization":
+            density_data = self._raw_data.charge[component]
+        else:
+            _raise_quantity_not_implemented_error("Plotting", quantity)
         return density_data
 
     @base.data_access
@@ -139,8 +212,8 @@ class Density(base.Refinery, structure.Mixin):
         translated_selections = []
         for selec_tuple in tree.selections():
             translated_selections.append(self._translate_selection(selec_tuple))
-        return translated_selections 
- 
+        return translated_selections
+
     def _translate_selection(self, selec_tuple):
         selec_tuple_string = str(selec_tuple).replace("magnetization", "m")
         quantity,component = "", -1
@@ -177,12 +250,32 @@ class Density(base.Refinery, structure.Mixin):
             quantity="magnetization"
         return (quantity,component)
 
-def _raise_quantity_not_implemented_error(quantity):
-    msg = "Plotting of the " + quantity + " is not yet implemented."
+    def _parse_quantity(self, selection):
+        tree = select.Tree.from_selection(selection)
+        translated_quantities = []
+        for selec_tuple in tree.selections():
+            translated_quantities.append(self._translate_quantity(selec_tuple))
+        return translated_quantities
+
+    def _translate_quantity(self, selec_tuple):
+        selec_tuple_string = str(selec_tuple).replace("magnetization", "m")
+        quantity = ""
+        for q in _SELECTIONS["quantity"]:
+            for choice in _SELECTIONS["quantity"][q]:
+                if choice in selec_tuple_string:
+                    quantity = q
+        if quantity=="magnetization":
+            quantity="electronic charge density"
+        if quantity=="":
+            _raise_error_if_selection_invalid(selec_tuple)
+        return quantity
+
+def _raise_quantity_not_implemented_error(function_noun, quantity):
+    msg = function_noun + " of the " + quantity + " is not yet implemented."
     raise exception.NotImplemented(msg)
 
 def _raise_component_not_specified_error(selec_tuple):
-    msg = "Invalid selection: selection='" + ", ".join(selec_tuple) + "'. For a noncollinear calculation, the density has 4 components which can be represented in a 2x2 matrix. Specify the component of the density in terms of the Pauli matrices: sigma_1, sigma_2, sigma_3."
+    msg = "Invalid selection: selection='" + ", ".join(selec_tuple) + "'. For a noncollinear calculation, the density has 4 components which can be represented in a 2x2 matrix. Specify the component of the density in terms of the Pauli matrices: sigma_1, sigma_2, sigma_3. E.g.: m(sigma_1)."
     raise exception.IncorrectUsage(msg)
 
 def _raise_is_nonpolarized_error():
