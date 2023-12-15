@@ -43,17 +43,17 @@ def get_expected_dict(charge):
 def get_expected_string(charge):
     if len(charge) == 1:
         return """\
-nonpolarized density:
+Nonpolarized density:
     structure: Sr2TiO4
     grid: 10, 12, 14"""
     elif len(charge) == 2:
         return """\
-collinear density:
+Collinear density:
     structure: Fe3O4
     grid: 10, 12, 14"""
     else:
         return """\
-noncollinear density:
+Noncollinear density:
     structure: Fe3O4
     grid: 10, 12, 14"""
 
