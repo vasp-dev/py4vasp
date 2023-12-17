@@ -91,7 +91,7 @@ def test_charge_plot(reference_density, Assert, not_core):
 
 
 def test_magnetization_plot(reference_density, Assert, not_core):
-    if reference_density.nonpolarized():
+    if reference_density.is_nonpolarized():
         check_accessing_spin_raises_error(reference_density)
     else:
         check_plotting_magnetization_density(reference_density, Assert)
@@ -112,9 +112,9 @@ def check_plotting_magnetization_density(polarized_density, Assert):
         assert isinstance(result, viewer3d.Viewer3d)
         calls = surface.call_args_list
     reference_magnetization = polarized_density.ref.output["magnetization"].T
-    if polarized_density.collinear():
+    if polarized_density.is_collinear():
         check_collinear_plot(reference_magnetization, calls, Assert)
-    elif polarized_density.noncollinear():
+    elif polarized_density.is_noncollinear():
         check_noncollinear_plot(reference_magnetization, calls, Assert)
 
 
