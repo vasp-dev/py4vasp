@@ -120,7 +120,7 @@ def check_plotting_magnetization_density(polarized_density, Assert):
                 result = polarized_density.plot("magnetization("+str(component)+")", isolevel=0.1, smooth=1)
                 assert isinstance(result, viewer3d.Viewer3d)
                 calls = surface.call_args_list
-            reference_magnetization = polarized_density.ref.output["magnetization"][component].T
+            reference_magnetization = polarized_density.ref.output["magnetization"][component-1].T
             check_noncollinear_plot(reference_magnetization, calls, Assert)
 
 
