@@ -180,6 +180,7 @@ class Density(base.Refinery, structure.Mixin):
     def _add_isosurface(self, viewer, quantity, component, **user_options):
         density_data = self._get_density(quantity, component)
         if component>0:
+            _raise_error_if_color_is_specified(**user_options)
             viewer.show_isosurface(density_data, color="blue", **user_options)
             viewer.show_isosurface(-density_data, color="red", **user_options)
         else:
