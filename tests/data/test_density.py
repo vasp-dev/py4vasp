@@ -113,18 +113,18 @@ def check_plotting_magnetization_density(polarized_density, Assert):
             assert isinstance(result, viewer3d.Viewer3d)
             calls = surface.call_args_list
         reference_magnetization = polarized_density.ref.output["magnetization"].T
-        check_collinear_plot(reference_magnetization, calls, Assert)
+        check_magnetization_plot(reference_magnetization, calls, Assert)
     elif polarized_density.is_noncollinear():
         with cm_init as init, cm_cell as cell, cm_surface as surface:
             for component in [1,2,3]:
                 result = polarized_density.plot("magnetization("+str(component)+")", isolevel=0.1, smooth=1)
                 assert isinstance(result, viewer3d.Viewer3d)
                 calls = surface.call_args_list
-            reference_magnetization = polarized_density.ref.output["magnetization"][component-1].T
-            check_noncollinear_plot(reference_magnetization, calls, Assert)
+                reference_magnetization = polarized_density.ref.output["magnetization"][component-1].T
+                check_magnetization_plot(reference_magnetization, calls, Assert)
 
 
-def check_collinear_plot(magnetization, calls, Assert):
+def check_magnetization_plot(magnetization, calls, Assert):
     assert len(calls) == 2
     args, kwargs = calls[0]
     Assert.allclose(args[0], magnetization)
@@ -132,14 +132,6 @@ def check_collinear_plot(magnetization, calls, Assert):
     args, kwargs = calls[1]
     Assert.allclose(args[0], -magnetization)
     assert kwargs == {"isolevel": 0.1, "color": "red", "opacity": 0.6, "smooth": 1}
-
-
-def check_noncollinear_plot(magnetization, calls, Assert):
-    magnetization = np.linalg.norm(magnetization, axis=-1)
-    assert len(calls) == 1
-    args, kwargs = calls[0]
-    Assert.allclose(args[0], magnetization)
-    assert kwargs == {"isolevel": 0.1, "color": "yellow", "opacity": 0.6, "smooth": 1}
 
 
 def test_missing_element(reference_density, Assert, not_core):
