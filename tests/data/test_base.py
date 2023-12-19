@@ -365,4 +365,4 @@ def test_syntax_error_still_raised(mock_schema):
 
 def test_selections(mock_schema):
     example = Example.from_data(RAW_DATA)
-    assert example.selections() == {"source": ["default", "alternative"]}
+    assert example.selections() == {"example": ["default", "alternative"]}

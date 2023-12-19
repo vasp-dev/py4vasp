@@ -132,8 +132,21 @@ class Refinery:
         return self.to_dict(*args, **kwargs)
 
     def selections(self):
-        "Returns possible sources that this particular quantity can be obtained from."
-        return {"source": list(raw.selections(self._data_context.quantity))}
+        """Returns possible alternatives for this particular quantity VASP can produce.
+
+        The returned dictionary contains a single item with the name of the quantity
+        mapping to all possible selections. Each of these selection may be passed to
+        other functions of this quantity to select which output of VASP is used.
+
+        Returns
+        -------
+        dict
+            The key indicates this quantity and the values possible choices for arguments
+            to other functions of this quantity.
+        """
+        return {
+            _quantity(self.__class__): list(raw.selections(self._data_context.quantity))
+        }
 
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
