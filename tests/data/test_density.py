@@ -21,6 +21,16 @@ def collinear_density(raw_data):
     return make_reference_density(raw_data, "Fe3O4 collinear")
 
 
+@pytest.fixture
+def mock_viewer():
+    obj = viewer3d.Viewer3d
+    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
+    cm_cell = patch.object(obj, "show_cell")
+    cm_surface = patch.object(obj, "show_isosurface")
+    with cm_init as init, cm_cell as cell, cm_surface as surface:
+        yield {"init": init, "cell": cell, "surface": surface}
+
+
 def make_reference_density(raw_data, selection):
     raw_density = raw_data.density(selection)
     density = Density.from_data(raw_density)
@@ -74,27 +84,24 @@ def test_empty_density(raw_data):
         density.read()
 
 
-def test_charge_plot(reference_density, Assert, not_core):
-    obj = viewer3d.Viewer3d
-    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(obj, "show_cell")
-    cm_surface = patch.object(obj, "show_isosurface")
-    with cm_init as init, cm_cell as cell, cm_surface as surface:
-        result = reference_density.plot()
-        assert isinstance(result, viewer3d.Viewer3d)
-        init.assert_called_once()
-        cell.assert_called_once()
-        surface.assert_called_once()
-        args, kwargs = surface.call_args
+def test_charge_plot(reference_density, mock_viewer, Assert, not_core):
+    result = reference_density.plot()
+    assert isinstance(result, viewer3d.Viewer3d)
+    mock_viewer["init"].assert_called_once()
+    mock_viewer["cell"].assert_called_once()
+    mock_viewer["surface"].assert_called_once()
+    args, kwargs = mock_viewer["surface"].call_args
     Assert.allclose(args[0], reference_density.ref.output["charge"].T)
     assert kwargs == {"isolevel": 0.2, "color": "yellow", "opacity": 0.6}
 
 
-def test_magnetization_plot(reference_density, Assert, not_core):
+def test_magnetization_plot(reference_density, mock_viewer, Assert, not_core):
     if reference_density.is_nonpolarized():
         check_accessing_spin_raises_error(reference_density)
+    elif reference_density.is_collinear():
+        check_plotting_collinear_density(reference_density, mock_viewer, Assert)
     else:
-        check_plotting_magnetization_density(reference_density, Assert)
+        check_plotting_noncollinear_density(reference_density, mock_viewer, Assert)
 
 
 def check_accessing_spin_raises_error(nonpolarized_density):
@@ -102,30 +109,23 @@ def check_accessing_spin_raises_error(nonpolarized_density):
         nonpolarized_density.plot("magnetization")
 
 
-def check_plotting_magnetization_density(polarized_density, Assert):
-    obj = viewer3d.Viewer3d
-    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(obj, "show_cell")
-    cm_surface = patch.object(obj, "show_isosurface")
-    if polarized_density.is_collinear():
-        with cm_init as init, cm_cell as cell, cm_surface as surface:
-            result = polarized_density.plot("magnetization", isolevel=0.1, smooth=1)
-            assert isinstance(result, viewer3d.Viewer3d)
-            calls = surface.call_args_list
-        reference_magnetization = polarized_density.ref.output["magnetization"].T
-        check_magnetization_plot(reference_magnetization, calls, Assert)
-    elif polarized_density.is_noncollinear():
-        for component in [1, 2, 3]:
-            with cm_init as init, cm_cell as cell, cm_surface as surface:
-                result = polarized_density.plot(
-                    "magnetization(" + str(component) + ")", isolevel=0.1, smooth=1
-                )
-                assert isinstance(result, viewer3d.Viewer3d)
-                calls = surface.call_args_list
-                reference_magnetization = polarized_density.ref.output["magnetization"][
-                    component - 1
-                ].T
-                check_magnetization_plot(reference_magnetization, calls, Assert)
+def check_plotting_collinear_density(collinear_density, mock_viewer, Assert):
+    result = collinear_density.plot("magnetization", isolevel=0.1, smooth=1)
+    assert isinstance(result, viewer3d.Viewer3d)
+    calls = mock_viewer["surface"].call_args_list
+    reference_magnetization = collinear_density.ref.output["magnetization"].T
+    check_magnetization_plot(reference_magnetization, calls, Assert)
+
+
+def check_plotting_noncollinear_density(noncollinear_density, mock_viewer, Assert):
+    for component in range(3):
+        selection = f"magnetization({component + 1})"
+        result = noncollinear_density.plot(selection, isolevel=0.1, smooth=1)
+        assert isinstance(result, viewer3d.Viewer3d)
+        calls = mock_viewer["surface"].call_args_list
+        ref_magnetization = noncollinear_density.ref.output["magnetization"][component]
+        check_magnetization_plot(ref_magnetization.T, calls, Assert)
+        mock_viewer["surface"].reset_mock()
 
 
 def check_magnetization_plot(magnetization, calls, Assert):
@@ -138,12 +138,12 @@ def check_magnetization_plot(magnetization, calls, Assert):
     assert kwargs == {"isolevel": 0.1, "color": "red", "opacity": 0.6, "smooth": 1}
 
 
-def test_missing_element(reference_density, Assert, not_core):
+def test_missing_element(reference_density, not_core):
     with pytest.raises(exception.IncorrectUsage):
         reference_density.plot("unknown tag")
 
 
-def test_color_specified_for_magnetism(collinear_density, Assert, not_core):
+def test_color_specified_for_magnetism(collinear_density, not_core):
     with pytest.raises(exception.NotImplemented):
         collinear_density.plot("magnetization", color="brown")
 
