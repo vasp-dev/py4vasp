@@ -4,7 +4,7 @@ import numpy as np
 
 from py4vasp import data, exception
 from py4vasp._data import base, structure
-from py4vasp._util import documentation, import_, select
+from py4vasp._util import documentation, import_, select, index
 
 pretty = import_.optional("IPython.lib.pretty")
 
@@ -12,12 +12,21 @@ pretty = import_.optional("IPython.lib.pretty")
 class _ViewerWrapper:
     def __init__(self, viewer):
         self._viewer = viewer
-        self._options = {"isolevel": 0.2, "color": "yellow", "opacity": 0.6}
+        self._options = {"isolevel": 0.2, "opacity": 0.6}
 
-    def show_isosurface(self, data, **options):
+    def show_isosurface(self, data, component, **options):
         options = {**self._options, **options}
-        self._viewer.show_isosurface(data, **options)
+        if component == 0:
+            self._viewer.show_isosurface(data, color="yellow", **options)
+        else:
+            _raise_error_if_color_is_specified(**user_options)
+            self._viewer.show_isosurface(data, color="blue", **options)
+            self._viewer.show_isosurface(-data, color="red", **options)
 
+def _raise_error_if_color_is_specified(**user_options):
+    if "color" in user_options:
+        msg = "Specifying the color of a magnetic isosurface is not implemented."
+        raise exception.NotImplemented(msg)
 
 _DEFAULT = 0
 _COMPONENTS = {
@@ -128,8 +137,8 @@ class Density(base.Refinery, structure.Mixin):
 
         Notes
         -----
-        In the special case of collinear calculations *magnetization* is provided as
-        another alias for the 3rd component.
+        In the special case, of collinear calculations *magnetization* and *m* are
+        provided as another alias for the 3rd component of the charge density.
 
         Examples
         --------
@@ -157,7 +166,9 @@ class Density(base.Refinery, structure.Mixin):
         Parameters
         ----------
         selection : str
-            *charge* (default): Currently only the electronic charge density and (if available) the magnetization are implemented. Both via the keyword *charge*.
+            VASP computes different densities depending on the INCAR settings. With this
+            parameter, you can control which one of them is returned. Please use the
+            `selections` routine to get a list of all possible choices.
 
         Returns
         -------
@@ -171,9 +182,7 @@ class Density(base.Refinery, structure.Mixin):
         return result
 
     def _read_density(self):
-        print("selection:", self._selection, bool(self._selection))
         density = np.moveaxis(self._raw_data.charge, 0, -1).T
-        print(density.shape)
         if self._selection:
             yield self._selection, density
         else:
@@ -184,7 +193,7 @@ class Density(base.Refinery, structure.Mixin):
                 yield "magnetization", density[1:]
 
     @base.data_access
-    def plot(self, selection="charge", **user_options):
+    def plot(self, selection="0", **user_options):
         """Plot the selected density as a 3d isosurface within the structure.
 
         Parameters
@@ -217,29 +226,40 @@ class Density(base.Refinery, structure.Mixin):
         Plot the isosurface for the third component of a noncollinear magnetization
         >>> calc.density.plot("m(3)")
         """
+        _raise_error_if_no_data(self._raw_data.charge)
         viewer = self._structure.plot()
-        # _raise_error_if_no_data(self._raw_data.charge, quantity)
-        for quantity, component in self._parse_selection(selection):
-            self._add_isosurface(
-                _ViewerWrapper(viewer), quantity, component, **user_options
-            )
+        wrapper = _ViewerWrapper(viewer)
+        inverse_components = {
+            choice: component
+            for component, choices in _COMPONENTS.items()
+            for choice in choices
+        }
+        selector = index.Selector({0: inverse_components}, self._raw_data.charge)
+        for selection in select.Tree.from_selection(selection).selections():
+            component = inverse_components[selector.label(selection)]
+            wrapper.show_isosurface(selector[selection], component, **user_options)
         return viewer
+        # for quantity, component in self._parse_selection(selection):
+        #     self._add_isosurface(
+        #         _ViewerWrapper(viewer), quantity, component, **user_options
+        #     )
+        # return viewer
 
-    def _add_isosurface(self, viewer, quantity, component, **user_options):
-        density_data = self._get_density(quantity, component)
-        if component > 0:
-            _raise_error_if_color_is_specified(**user_options)
-            viewer.show_isosurface(density_data, color="blue", **user_options)
-            viewer.show_isosurface(-density_data, color="red", **user_options)
-        else:
-            viewer.show_isosurface(density_data, color="yellow", **user_options)
+    # def _add_isosurface(self, viewer, quantity, component, **user_options):
+    #     density_data = self._get_density(quantity, component)
+    #     if component > 0:
+    #         _raise_error_if_color_is_specified(**user_options)
+    #         viewer.show_isosurface(density_data, color="blue", **user_options)
+    #         viewer.show_isosurface(-density_data, color="red", **user_options)
+    #     else:
+    #         viewer.show_isosurface(density_data, color="yellow", **user_options)
 
-    def _get_density(self, quantity, component):
-        if quantity == "electronic charge density" or quantity == "magnetization":
-            density_data = self._raw_data.charge[component]
-        else:
-            _raise_quantity_not_implemented_error("Plotting", quantity)
-        return density_data
+    # def _get_density(self, quantity, component):
+    #     if quantity == "electronic charge density" or quantity == "magnetization":
+    #         density_data = self._raw_data.charge[component]
+    #     else:
+    #         _raise_quantity_not_implemented_error("Plotting", quantity)
+    #     return density_data
 
     @base.data_access
     def is_nonpolarized(self):
@@ -320,9 +340,9 @@ class Density(base.Refinery, structure.Mixin):
         return quantity
 
 
-def _raise_quantity_not_implemented_error(function_noun, quantity):
-    msg = function_noun + " of the " + quantity + " is not yet implemented."
-    raise exception.NotImplemented(msg)
+# def _raise_quantity_not_implemented_error(function_noun, quantity):
+#     msg = function_noun + " of the " + quantity + " is not yet implemented."
+#     raise exception.NotImplemented(msg)
 
 
 def _raise_component_not_specified_error(selec_tuple):
@@ -360,7 +380,3 @@ def _raise_error_if_selection_invalid(selec_tuple):
     raise exception.IncorrectUsage(msg)
 
 
-def _raise_error_if_color_is_specified(**user_options):
-    if "color" in user_options:
-        msg = "Specifying the color of a magnetic isosurface is not implemented."
-        raise exception.NotImplemented(msg)

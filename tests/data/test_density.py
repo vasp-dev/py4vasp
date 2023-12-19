@@ -15,6 +15,7 @@ from py4vasp.data import Density, Structure
 def density_source(request):
     return request.param
 
+
 @pytest.fixture(params=["Sr2TiO4", "Fe3O4 collinear", "Fe3O4 noncollinear"])
 def reference_density(raw_data, density_source, request):
     return make_reference_density(raw_data, request.param, density_source)
@@ -109,16 +110,18 @@ def test_empty_density(empty_density):
 
 
 def test_charge_plot(reference_density, mock_viewer, Assert, not_core):
-    if reference_density.ref.source:
-        # TODO: implement this test
-        return
+    source = reference_density.ref.source
+    if source == "charge":
+        expected_density = reference_density.ref.output["charge"].T
+    else:
+        expected_density = reference_density.ref.output[source][0].T
     result = reference_density.plot()
     assert isinstance(result, viewer3d.Viewer3d)
     mock_viewer["init"].assert_called_once()
     mock_viewer["cell"].assert_called_once()
     mock_viewer["surface"].assert_called_once()
     args, kwargs = mock_viewer["surface"].call_args
-    Assert.allclose(args[0], reference_density.ref.output["charge"].T)
+    Assert.allclose(args[0], expected_density)
     assert kwargs == {"isolevel": 0.2, "color": "yellow", "opacity": 0.6}
 
 
