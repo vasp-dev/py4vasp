@@ -22,6 +22,12 @@ def collinear_density(raw_data):
 
 
 @pytest.fixture
+def empty_density(raw_data):
+    raw_density = raw.Density(raw_data.structure("Sr2TiO4"), charge=raw.VaspData(None))
+    return Density.from_data(raw_density)
+
+
+@pytest.fixture
 def mock_viewer():
     obj = viewer3d.Viewer3d
     cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
@@ -38,6 +44,7 @@ def make_reference_density(raw_data, selection):
     density.ref.structure = Structure.from_data(raw_density.structure).read()
     density.ref.output = get_expected_dict(raw_density.charge)
     density.ref.string = get_expected_string(raw_density.charge)
+    density.ref.selections = get_expected_selections(raw_density.charge)
     return density
 
 
@@ -68,6 +75,15 @@ Noncollinear density:
     grid: 10, 12, 14"""
 
 
+def get_expected_selections(charge):
+    result = {"component": ["0"]}
+    if len(charge) == 2:  # collinear
+        result["component"] += ["3"]
+    if len(charge) == 4:  # noncollinear
+        result["component"] += ["1", "2", "3"]
+    return result
+
+
 def test_read(reference_density, Assert):
     actual = reference_density.read()
     actual_structure = actual.pop("structure")
@@ -77,11 +93,9 @@ def test_read(reference_density, Assert):
         Assert.allclose(actual[key], reference_density.ref.output[key])
 
 
-def test_empty_density(raw_data):
-    raw_density = raw.Density(raw_data.structure("Sr2TiO4"), charge=raw.VaspData(None))
-    density = Density.from_data(raw_density)
+def test_empty_density(empty_density):
     with pytest.raises(exception.NoData):
-        density.read()
+        empty_density.read()
 
 
 def test_charge_plot(reference_density, mock_viewer, Assert, not_core):
@@ -136,6 +150,14 @@ def check_magnetization_plot(magnetization, calls, Assert):
     args, kwargs = calls[1]
     Assert.allclose(args[0], -magnetization)
     assert kwargs == {"isolevel": 0.1, "color": "red", "opacity": 0.6, "smooth": 1}
+
+
+def test_selections(reference_density):
+    assert reference_density.selections() == reference_density.ref.selections
+
+
+def test_selections_empty_density(empty_density):
+    assert empty_density.selections() == {}
 
 
 def test_missing_element(reference_density, not_core):

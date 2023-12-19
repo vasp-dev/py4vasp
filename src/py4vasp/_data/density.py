@@ -19,6 +19,13 @@ class _ViewerWrapper:
         self._viewer.show_isosurface(data, **options)
 
 
+_DEFAULT = -1
+_COMPONENTS = {
+    0: ["unity", "sigma_0", "scalar", "0"],
+    3: ["sigma_z", "z", "sigma_3", "3"],
+    1: ["sigma_x", "x", "sigma_1", "1"],
+    2: ["sigma_y", "y", "sigma_2", "2"],
+}
 _SELECTIONS = {
     "quantity": {
         "electronic charge density": [
@@ -102,19 +109,13 @@ class Density(base.Refinery, structure.Mixin):
     @base.data_access
     def selections(self):
         """{selections_doc}"""
-        if not self._raw_data.charge.is_none():
-            if self.is_nonpolarized():
-                return [_SELECTIONS["quantity"]["electronic charge density"][-1]]
-            elif self.is_collinear():
-                quantities = ["electronic charge density", "magnetization"]
-                return [_SELECTIONS["quantity"][q][-1] for q in quantities]
-            elif self.is_noncollinear():
-                return [
-                    _SELECTIONS["quantity"]["electronic charge density"][-1],
-                    _SELECTIONS["quantity"]["magnetization"][-1] + "(1,2,3)",
-                ]
-        else:
-            return None
+        if self._raw_data.charge.is_none():
+            return {}
+        if self.is_nonpolarized():
+            return {"component": [_COMPONENTS[0][_DEFAULT]]}
+        if self.is_collinear():
+            return {"component": [_COMPONENTS[0][_DEFAULT], _COMPONENTS[3][_DEFAULT]]}
+        return {"component": [_COMPONENTS[i][_DEFAULT] for i in range(4)]}
 
     @base.data_access
     def to_dict(self, selection="charge"):
