@@ -4,7 +4,7 @@ import numpy as np
 
 from py4vasp import data, exception
 from py4vasp._data import base, structure
-from py4vasp._util import documentation, import_, select, index
+from py4vasp._util import documentation, import_, index, select
 
 pretty = import_.optional("IPython.lib.pretty")
 
