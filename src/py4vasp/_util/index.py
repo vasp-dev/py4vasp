@@ -82,12 +82,7 @@ class Selector:
 
     def _make_number_labels(self, maps):
         return {
-            key: self._make_label(
-                map_,
-                key,
-                index,
-                self._data.shape[dim],
-            )
+            key: self._make_label(map_, key, index, self._data.shape[dim])
             for dim, map_ in maps.items()
             for key, index in map_.items()
             if key is not None and key.isdecimal()
@@ -287,7 +282,6 @@ class _Slices:
         return tuple(self._indices)
 
     def label(self, index, axes, number_labels):
-        print(index, axes, number_labels)
         if index == 0:
             factor = "" if self.factor == 1 else "-"
         else:
