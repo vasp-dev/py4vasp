@@ -71,7 +71,7 @@ class Density(base.Refinery, structure.Mixin):
 
     @base.data_access
     def __str__(self):
-        _raise_error_if_no_data(self._raw_data.charge, "electronic charge density")
+        _raise_error_if_no_data(self._raw_data.charge)
         grid = self._raw_data.charge.shape[1:]
         topology = data.Topology.from_data(self._raw_data.structure.topology)
         if self.is_nonpolarized():
@@ -151,7 +151,7 @@ class Density(base.Refinery, structure.Mixin):
         return {**sources, "component": components}
 
     @base.data_access
-    def to_dict(self, selection="charge"):
+    def to_dict(self):
         """Read the density into a dictionary.
 
         Parameters
@@ -165,21 +165,18 @@ class Density(base.Refinery, structure.Mixin):
             Contains the structure information as well as the density represented
             on a grid in the unit cell.
         """
-        quantities_set = set(self._parse_quantity(selection))
-        if "electronic charge density" in quantities_set:
-            _raise_error_if_no_data(self._raw_data.charge, "electronic charge density")
-        if "kinetic energy density" in quantities_set:
-            _raise_quantity_not_implemented_error("Dictonary", "kinetic energy density")
-        if "current density" in quantities_set:
-            _raise_quantity_not_implemented_error("Dictonary", "current density")
+        _raise_error_if_no_data(self._raw_data.charge)
         result = {"structure": self._structure.read()}
-        for quantity in quantities_set:
-            result.update(self._read_density(quantity))
+        result.update(self._read_density())
         return result
 
-    def _read_density(self, quantity):
-        if quantity == "electronic charge density":
-            density = np.moveaxis(self._raw_data.charge, 0, -1).T
+    def _read_density(self):
+        print("selection:", self._selection, bool(self._selection))
+        density = np.moveaxis(self._raw_data.charge, 0, -1).T
+        print(density.shape)
+        if self._selection:
+            yield self._selection, density
+        else:
             yield "charge", density[0]
             if self.is_collinear():
                 yield "magnetization", density[1]
@@ -347,8 +344,8 @@ def _raise_is_collinear_error():
     raise exception.NoData(msg)
 
 
-def _raise_error_if_no_data(data, quantity):
-    if data.is_none() and quantity == "electronic charge density":
+def _raise_error_if_no_data(data):
+    if data.is_none():
         raise exception.NoData(
             "Density data was not found. Note that the density information is written "
             "on the demand to a different file (vaspwave.h5). Please make sure that "
