@@ -122,6 +122,10 @@ class Refinery:
     def _raw_data(self):
         return self._data_context.data
 
+    @property
+    def _selection(self):
+        return self._data_context.selection
+
     @data_access
     def print(self):
         "Print a string representation of this instance."
@@ -144,9 +148,8 @@ class Refinery:
             The key indicates this quantity and the values possible choices for arguments
             to other functions of this quantity.
         """
-        return {
-            _quantity(self.__class__): list(raw.selections(self._data_context.quantity))
-        }
+        sources = list(raw.selections(self._data_context.quantity))
+        return {self._data_context.quantity: sources}
 
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))

@@ -69,6 +69,10 @@ class Example(base.Refinery):
         return selection
 
     @base.data_access
+    def selection_from_property(self):
+        return self._selection
+
+    @base.data_access
     def __str__(self):
         return self._raw_data.content
 
@@ -366,3 +370,11 @@ def test_syntax_error_still_raised(mock_schema):
 def test_selections(mock_schema):
     example = Example.from_data(RAW_DATA)
     assert example.selections() == {"example": ["default", "alternative"]}
+
+
+def test_selection_from_property(mock_access):
+    example = Example.from_data(RAW_DATA)
+    assert example.selection_from_property() is None
+    example = Example.from_path()
+    assert example.selection_from_property() is None
+    assert example.selection_from_property(SELECTION) == SELECTION
