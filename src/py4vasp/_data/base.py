@@ -131,6 +131,10 @@ class Refinery:
         "Convenient wrapper around to_dict. Check that function for examples and optional arguments."
         return self.to_dict(*args, **kwargs)
 
+    def selections(self):
+        "Returns possible sources that this particular quantity can be obtained from."
+        return {"source": list(raw.selections(self._data_context.quantity))}
+
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 

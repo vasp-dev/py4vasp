@@ -361,3 +361,8 @@ def test_syntax_error_still_raised(mock_schema):
     example = Example.from_data(RAW_DATA)
     with pytest.raises(TypeError):
         example.read(1, 2)
+
+
+def test_selections(mock_schema):
+    example = Example.from_data(RAW_DATA)
+    assert example.selections() == {"source": ["default", "alternative"]}
