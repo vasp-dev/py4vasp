@@ -264,27 +264,6 @@ class Density(base.Refinery, structure.Mixin):
             return
         if component > 0 and self.is_nonpolarized():
             _raise_is_nonpolarized_error()
-        # for quantity, component in self._parse_selection(selection):
-        #     self._add_isosurface(
-        #         _ViewerWrapper(viewer), quantity, component, **user_options
-        #     )
-        # return viewer
-
-    # def _add_isosurface(self, viewer, quantity, component, **user_options):
-    #     density_data = self._get_density(quantity, component)
-    #     if component > 0:
-    #         _raise_error_if_color_is_specified(**user_options)
-    #         viewer.show_isosurface(density_data, color="blue", **user_options)
-    #         viewer.show_isosurface(-density_data, color="red", **user_options)
-    #     else:
-    #         viewer.show_isosurface(density_data, color="yellow", **user_options)
-
-    # def _get_density(self, quantity, component):
-    #     if quantity == "electronic charge density" or quantity == "magnetization":
-    #         density_data = self._raw_data.charge[component]
-    #     else:
-    #         _raise_quantity_not_implemented_error("Plotting", quantity)
-    #     return density_data
 
     @base.data_access
     def is_nonpolarized(self):
@@ -300,74 +279,6 @@ class Density(base.Refinery, structure.Mixin):
     def is_noncollinear(self):
         "Returns whether the density has a noncollinear magnetization."
         return len(self._raw_data.charge) == 4
-
-    def _parse_selection(self, selection):
-        tree = select.Tree.from_selection(selection)
-        translated_selections = []
-        for selec_tuple in tree.selections():
-            translated_selections.append(self._translate_selection(selec_tuple))
-        return translated_selections
-
-    def _translate_selection(self, selec_tuple):
-        selec_tuple_string = str(selec_tuple).replace("magnetization", "m")
-        quantity, component = "", -1
-        for q in _SELECTIONS["quantity"]:
-            for choice in _SELECTIONS["quantity"][q]:
-                if choice in selec_tuple_string:
-                    quantity = q
-        for c in _SELECTIONS["component"]:
-            for choice in _SELECTIONS["component"][c]:
-                if choice in selec_tuple_string:
-                    component = c
-        if quantity == "electronic charge density" and component < 0:
-            component = 0
-        elif quantity == "electronic charge density" and component > 0:
-            quantity = "magnetization"
-        if quantity == "magnetization":
-            if self.is_nonpolarized():
-                _raise_is_nonpolarized_error()
-            elif component == 0:
-                _raise_error_if_selection_invalid(selec_tuple)
-            elif self.is_collinear() and component < 0:
-                component = 1
-            elif self.is_collinear() and component > 1:
-                _raise_is_collinear_error()
-            elif self.is_noncollinear() and component < 0:
-                _raise_component_not_specified_error(selec_tuple)
-        if quantity != "" and component < 0:
-            component = 0
-        elif quantity == "" and component < 0:
-            _raise_error_if_selection_invalid(selec_tuple)
-        elif quantity == "" and component == 0:
-            quantity = "electronic charge density"
-        elif quantity == "" and component > 0:
-            quantity = "magnetization"
-        return (quantity, component)
-
-    def _parse_quantity(self, selection):
-        tree = select.Tree.from_selection(selection)
-        translated_quantities = []
-        for selec_tuple in tree.selections():
-            translated_quantities.append(self._translate_quantity(selec_tuple))
-        return translated_quantities
-
-    def _translate_quantity(self, selec_tuple):
-        selec_tuple_string = str(selec_tuple).replace("magnetization", "m")
-        quantity = ""
-        for q in _SELECTIONS["quantity"]:
-            for choice in _SELECTIONS["quantity"][q]:
-                if choice in selec_tuple_string:
-                    quantity = q
-        if quantity == "magnetization":
-            quantity = "electronic charge density"
-        if quantity == "":
-            _raise_error_if_selection_invalid(selec_tuple)
-        return quantity
-
-
-# def _raise_quantity_not_implemented_error(function_noun, quantity):
-#     msg = function_noun + " of the " + quantity + " is not yet implemented."
-#     raise exception.NotImplemented(msg)
 
 
 def _raise_component_not_specified_error(selec_tuple):
@@ -398,8 +309,3 @@ def _raise_error_if_no_data(data):
             'common issue is when you create `Calculation.from_file("vaspout.h5")` '
             "because this will overwrite the default file behavior."
         )
-
-
-def _raise_error_if_selection_invalid(selec_tuple):
-    msg = "Invalid selection: selection='" + ", ".join(selec_tuple) + "'"
-    raise exception.IncorrectUsage(msg)

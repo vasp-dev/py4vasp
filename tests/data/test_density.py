@@ -32,8 +32,8 @@ def collinear_density(raw_data, density_source):
 
 
 @pytest.fixture
-def noncollinear_density(raw_data):
-    return make_reference_density(raw_data, "Fe3O4 noncollinear")
+def noncollinear_density(raw_data, density_source):
+    return make_reference_density(raw_data, "Fe3O4 noncollinear", density_source)
 
 
 @pytest.fixture
@@ -52,7 +52,7 @@ def mock_viewer():
         yield {"init": init, "cell": cell, "surface": surface}
 
 
-def make_reference_density(raw_data, selection, source="charge"):
+def make_reference_density(raw_data, selection, source=None):
     raw_density = raw_data.density(selection)
     density = Density.from_data(raw_density)
     density.ref = types.SimpleNamespace()
@@ -159,30 +159,30 @@ def test_collinear_plot(selection, collinear_density, mock_viewer, Assert, not_c
     assert isinstance(result, viewer3d.Viewer3d)
     calls = mock_viewer["surface"].call_args_list
     check_magnetization_plot(expected_density, calls, Assert)
-    # if reference_density.ref.source:
-    #     # TODO: implement this test
-    #     return
-    # if reference_density.is_nonpolarized():
-    #     check_accessing_spin_raises_error(reference_density)
-    # elif reference_density.is_collinear():
-    #     check_plotting_collinear_density(reference_density, mock_viewer, Assert)
-    # else:
-    #     check_plotting_noncollinear_density(reference_density, mock_viewer, Assert)
 
 
-#
-#
-# def check_plotting_collinear_density(collinear_density, mock_viewer, Assert):
-
-
-def check_plotting_noncollinear_density(noncollinear_density, mock_viewer, Assert):
-    for component in range(3):
-        selection = f"magnetization({component + 1})"
+@pytest.mark.parametrize(
+    "selections",
+    [
+        ("1", "2", "3"),
+        ("sigma_x", "sigma_y", "sigma_z"),
+        ("x", "y", "z"),
+        ("sigma_1", "sigma_2", "sigma_3"),
+    ],
+)
+def test_plotting_noncollinear_density(
+    selections, noncollinear_density, mock_viewer, Assert
+):
+    source = noncollinear_density.ref.source
+    if source == "charge":
+        expected_density = noncollinear_density.ref.output["magnetization"]
+    else:
+        expected_density = noncollinear_density.ref.output[source][1:]
+    for component, selection in enumerate(selections):
         result = noncollinear_density.plot(selection, isolevel=0.1, smooth=1)
         assert isinstance(result, viewer3d.Viewer3d)
         calls = mock_viewer["surface"].call_args_list
-        ref_magnetization = noncollinear_density.ref.output["magnetization"][component]
-        check_magnetization_plot(ref_magnetization.T, calls, Assert)
+        check_magnetization_plot(expected_density[component].T, calls, Assert)
         mock_viewer["surface"].reset_mock()
 
 
