@@ -47,32 +47,6 @@ def _join_with_emphasis(data):
     return ", ".join(emph_data)
 
 
-_SELECTIONS = {
-    "quantity": {
-        "electronic charge density": [
-            "electronic_charge_density",
-            "charge_density",
-            "charge",
-            "n",
-        ],
-        "magnetization": ["magnetization", "mag", "m"],
-        "kinetic energy density": ["kinetic_energy_density", "tau"],
-        "current density": [
-            "paramagnetic_current_density",
-            "current_density",
-            "current",
-            "j",
-        ],
-    },
-    "component": {
-        0: ["unity", "sigma_0", "scalar", "0"],
-        3: ["sigma_z", "z", "sigma_3", "3"],
-        1: ["sigma_x", "x", "sigma_1", "1"],
-        2: ["sigma_y", "y", "sigma_2", "2"],
-    },
-}
-
-
 class Density(base.Refinery, structure.Mixin):
     """The charge and magnetization density.
 
@@ -250,7 +224,7 @@ class Density(base.Refinery, structure.Mixin):
 
     def _index_component(self, component):
         if self.is_collinear():
-            component %= 2
+            component = (0, 2, 3, 1)[component]
         return component
 
     def _add_magnetization_for_charge_and_collinear(self, map_):
@@ -264,6 +238,8 @@ class Density(base.Refinery, structure.Mixin):
             return
         if component > 0 and self.is_nonpolarized():
             _raise_is_nonpolarized_error()
+        if component > 1 and self.is_collinear():
+            _raise_is_collinear_error()
 
     @base.data_access
     def is_nonpolarized(self):

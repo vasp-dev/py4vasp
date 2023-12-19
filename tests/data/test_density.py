@@ -161,6 +161,11 @@ def test_collinear_plot(selection, collinear_density, mock_viewer, Assert, not_c
     check_magnetization_plot(expected_density, calls, Assert)
 
 
+def test_accessing_noncollinear_element_raises_error(collinear_density):
+    with pytest.raises(exception.NoData):
+        collinear_density.plot("1")
+
+
 @pytest.mark.parametrize(
     "selections",
     [
