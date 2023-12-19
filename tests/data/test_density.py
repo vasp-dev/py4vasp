@@ -76,7 +76,7 @@ Noncollinear density:
 
 
 def get_expected_selections(charge):
-    result = {"component": ["0"]}
+    result = {"density": list(raw.selections("density")), "component": ["0"]}
     if len(charge) == 2:  # collinear
         result["component"] += ["3"]
     if len(charge) == 4:  # noncollinear
@@ -157,7 +157,7 @@ def test_selections(reference_density):
 
 
 def test_selections_empty_density(empty_density):
-    assert empty_density.selections() == {}
+    assert empty_density.selections() == {"density": list(raw.selections("density"))}
 
 
 def test_missing_element(reference_density, not_core):

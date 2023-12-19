@@ -19,13 +19,23 @@ class _ViewerWrapper:
         self._viewer.show_isosurface(data, **options)
 
 
-_DEFAULT = -1
+_DEFAULT = 0
 _COMPONENTS = {
-    0: ["unity", "sigma_0", "scalar", "0"],
-    3: ["sigma_z", "z", "sigma_3", "3"],
-    1: ["sigma_x", "x", "sigma_1", "1"],
-    2: ["sigma_y", "y", "sigma_2", "2"],
+    0: ["0", "unity", "sigma_0", "scalar"],
+    1: ["1", "sigma_x", "x", "sigma_1"],
+    2: ["2", "sigma_y", "y", "sigma_2"],
+    3: ["3", "sigma_z", "z", "sigma_3"],
 }
+
+
+def _join_with_emphasis(data):
+    emph_data = [f"*{x}*" for x in data]
+    if len(data) < 3:
+        return " and ".join(emph_data)
+    emph_data.insert(-1, "and")
+    return ", ".join(emph_data)
+
+
 _SELECTIONS = {
     "quantity": {
         "electronic charge density": [
@@ -51,37 +61,6 @@ _SELECTIONS = {
     },
 }
 
-selections_doc = """\
-        Returns
-        -------
-        Possible quantities and components to choose for the selection of functions on Density.
-
-        Note: Currently only the electronic charge density and (if available) the magnetization are implemented. For plotting the magnetization of a noncollinear calculation (LNONCOLLINEAR=True), the component of the magnetization must also be selected in terms of Pauli matrices: sigma_1, sigma_2, sigma_3.
-
-        Synonyms to access the ...
-        ... electronic charge density: *{}*, *{}*, *{}*, and *{}*
-        ... magnetization: *{}*, *{}*, and *{}*
-        ... 1st component: *{}*, *{}*, *{}*, and *{}*
-        ... 2nd component: *{}*, *{}*, *{}*, and *{}*
-        ... 3rd component: *{}*, *{}*, *{}*, and *{}*
-
-        Nesting: '3(m,tau) m(1,2)'
-
-        Examples
-        --------
-        >>> calc = py4vasp.Calculation.from_path(".")
-        >>> calc.density.to_dict("n")
-        >>> calc.density.plot("magnetization")
-        Using synonyms and nesting
-        >>> calc.density.plot("n m(1,2) mag(sigma_z)")
-        """.format(
-    *_SELECTIONS["quantity"]["electronic charge density"],
-    *_SELECTIONS["quantity"]["magnetization"],
-    *_SELECTIONS["component"][1],
-    *_SELECTIONS["component"][2],
-    *_SELECTIONS["component"][3],
-)
-
 
 class Density(base.Refinery, structure.Mixin):
     """The charge and magnetization density.
@@ -105,17 +84,71 @@ class Density(base.Refinery, structure.Mixin):
     structure: {pretty.pretty(topology)}
     grid: {grid[2]}, {grid[1]}, {grid[0]}"""
 
-    @documentation.format(selections_doc=selections_doc)
+    @documentation.format(
+        component0=_join_with_emphasis(_COMPONENTS[0]),
+        component1=_join_with_emphasis(_COMPONENTS[1]),
+        component2=_join_with_emphasis(_COMPONENTS[2]),
+        component3=_join_with_emphasis(_COMPONENTS[3]),
+    )
     @base.data_access
     def selections(self):
-        """{selections_doc}"""
+        """Returns possible densities VASP can produce along with all available components.
+
+        In the dictionary, the key *density* lists all different densities you can access
+        from the VASP output provided you set the relevant INCAR tags. You can combine
+        any of these with any possible choice from the key *component* to further
+        specify the particular output you will receive. If you do not specify a *density*
+        or a *component* the other routines will default to the electronic charge and
+        the 0-th component.
+
+        To nest density and component, please use parentheses, e.g. ``charge(1, 2)`` or
+        ``3(tau)``.
+
+        For convenience, py4vasp accepts the following aliases
+
+        electronic charge density
+            *charge*, *n*, *charge_density*, and *electronic_charge_density*
+
+        0th component
+            {component0}
+
+        1st component
+            {component1}
+
+        2nd component
+            {component2}
+
+        3rd component
+            {component3}
+
+        Returns
+        -------
+        dict
+            Possible densities and components to pass as selection in other functions on density.
+
+        Notes
+        -----
+        In the special case of collinear calculations *magnetization* is provided as
+        another alias for the 3rd component.
+
+        Examples
+        --------
+        >>> calc = py4vasp.Calculation.from_path(".")
+        >>> calc.density.to_dict("n")
+        >>> calc.density.plot("magnetization")
+        Using synonyms and nesting
+        >>> calc.density.plot("n m(1,2) mag(sigma_z)")
+        """
+        sources = super().selections()
         if self._raw_data.charge.is_none():
-            return {}
+            return sources
         if self.is_nonpolarized():
-            return {"component": [_COMPONENTS[0][_DEFAULT]]}
-        if self.is_collinear():
-            return {"component": [_COMPONENTS[0][_DEFAULT], _COMPONENTS[3][_DEFAULT]]}
-        return {"component": [_COMPONENTS[i][_DEFAULT] for i in range(4)]}
+            components = [_COMPONENTS[0][_DEFAULT]]
+        elif self.is_collinear():
+            components = [_COMPONENTS[0][_DEFAULT], _COMPONENTS[3][_DEFAULT]]
+        else:
+            components = [_COMPONENTS[i][_DEFAULT] for i in range(4)]
+        return {**sources, "component": components}
 
     @base.data_access
     def to_dict(self, selection="charge"):
