@@ -22,8 +22,18 @@ def reference_density(raw_data, density_source, request):
 
 
 @pytest.fixture
-def collinear_density(raw_data):
-    return make_reference_density(raw_data, "Fe3O4 collinear")
+def nonpolarized_density(raw_data):
+    return make_reference_density(raw_data, "Sr2TiO4")
+
+
+@pytest.fixture
+def collinear_density(raw_data, density_source):
+    return make_reference_density(raw_data, "Fe3O4 collinear", density_source)
+
+
+@pytest.fixture
+def noncollinear_density(raw_data):
+    return make_reference_density(raw_data, "Fe3O4 noncollinear")
 
 
 @pytest.fixture
@@ -109,13 +119,17 @@ def test_empty_density(empty_density):
         empty_density.read()
 
 
-def test_charge_plot(reference_density, mock_viewer, Assert, not_core):
+@pytest.mark.parametrize("selection", [None, "0", "unity", "sigma_0", "scalar"])
+def test_charge_plot(selection, reference_density, mock_viewer, Assert, not_core):
     source = reference_density.ref.source
     if source == "charge":
         expected_density = reference_density.ref.output["charge"].T
     else:
         expected_density = reference_density.ref.output[source][0].T
-    result = reference_density.plot()
+    if selection:
+        result = reference_density.plot(selection)
+    else:
+        result = reference_density.plot()
     assert isinstance(result, viewer3d.Viewer3d)
     mock_viewer["init"].assert_called_once()
     mock_viewer["cell"].assert_called_once()
@@ -125,29 +139,40 @@ def test_charge_plot(reference_density, mock_viewer, Assert, not_core):
     assert kwargs == {"isolevel": 0.2, "color": "yellow", "opacity": 0.6}
 
 
-def test_magnetization_plot(reference_density, mock_viewer, Assert, not_core):
-    if reference_density.ref.source:
-        # TODO: implement this test
-        return
-    if reference_density.is_nonpolarized():
-        check_accessing_spin_raises_error(reference_density)
-    elif reference_density.is_collinear():
-        check_plotting_collinear_density(reference_density, mock_viewer, Assert)
-    else:
-        check_plotting_noncollinear_density(reference_density, mock_viewer, Assert)
-
-
-def check_accessing_spin_raises_error(nonpolarized_density):
+def test_accessing_spin_raises_error(nonpolarized_density):
     with pytest.raises(exception.NoData):
-        nonpolarized_density.plot("magnetization")
+        nonpolarized_density.plot("3")
 
 
-def check_plotting_collinear_density(collinear_density, mock_viewer, Assert):
-    result = collinear_density.plot("magnetization", isolevel=0.1, smooth=1)
+@pytest.mark.parametrize(
+    "selection", ["3", "sigma_z", "z", "sigma_3", "magnetization", "mag", "m"]
+)
+def test_collinear_plot(selection, collinear_density, mock_viewer, Assert, not_core):
+    source = collinear_density.ref.source
+    if source == "charge":
+        expected_density = collinear_density.ref.output["magnetization"].T
+    else:
+        expected_density = collinear_density.ref.output[source][1].T
+        if selection in ("magnetization", "mag", "m"):
+            return
+    result = collinear_density.plot(selection, isolevel=0.1, smooth=1)
     assert isinstance(result, viewer3d.Viewer3d)
     calls = mock_viewer["surface"].call_args_list
-    reference_magnetization = collinear_density.ref.output["magnetization"].T
-    check_magnetization_plot(reference_magnetization, calls, Assert)
+    check_magnetization_plot(expected_density, calls, Assert)
+    # if reference_density.ref.source:
+    #     # TODO: implement this test
+    #     return
+    # if reference_density.is_nonpolarized():
+    #     check_accessing_spin_raises_error(reference_density)
+    # elif reference_density.is_collinear():
+    #     check_plotting_collinear_density(reference_density, mock_viewer, Assert)
+    # else:
+    #     check_plotting_noncollinear_density(reference_density, mock_viewer, Assert)
+
+
+#
+#
+# def check_plotting_collinear_density(collinear_density, mock_viewer, Assert):
 
 
 def check_plotting_noncollinear_density(noncollinear_density, mock_viewer, Assert):
@@ -184,9 +209,9 @@ def test_missing_element(reference_density, not_core):
         reference_density.plot("unknown tag")
 
 
-def test_color_specified_for_magnetism(collinear_density, not_core):
+def test_color_specified_for_sigma_z(collinear_density, not_core):
     with pytest.raises(exception.NotImplemented):
-        collinear_density.plot("magnetization", color="brown")
+        collinear_density.plot("3", color="brown")
 
 
 def test_print(reference_density, format_):

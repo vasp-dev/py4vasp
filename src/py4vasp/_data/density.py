@@ -19,14 +19,16 @@ class _ViewerWrapper:
         if component == 0:
             self._viewer.show_isosurface(data, color="yellow", **options)
         else:
-            _raise_error_if_color_is_specified(**user_options)
+            _raise_error_if_color_is_specified(**options)
             self._viewer.show_isosurface(data, color="blue", **options)
             self._viewer.show_isosurface(-data, color="red", **options)
+
 
 def _raise_error_if_color_is_specified(**user_options):
     if "color" in user_options:
         msg = "Specifying the color of a magnetic isosurface is not implemented."
         raise exception.NotImplemented(msg)
+
 
 _DEFAULT = 0
 _COMPONENTS = {
@@ -137,8 +139,8 @@ class Density(base.Refinery, structure.Mixin):
 
         Notes
         -----
-        In the special case, of collinear calculations *magnetization* and *m* are
-        provided as another alias for the 3rd component of the charge density.
+        In the special case of collinear calculations, *magnetization*, *mag*, and *m*
+        are another alias for the 3rd component of the charge density.
 
         Examples
         --------
@@ -229,16 +231,39 @@ class Density(base.Refinery, structure.Mixin):
         _raise_error_if_no_data(self._raw_data.charge)
         viewer = self._structure.plot()
         wrapper = _ViewerWrapper(viewer)
-        inverse_components = {
-            choice: component
+        map_ = self._create_map()
+        selector = index.Selector({0: map_}, self._raw_data.charge)
+        for selection in select.Tree.from_selection(selection).selections():
+            component = map_[selector.label(selection)]
+            self._validate_component(component)
+            wrapper.show_isosurface(selector[selection], component, **user_options)
+        return viewer
+
+    def _create_map(self):
+        map_ = {
+            choice: self._index_component(component)
             for component, choices in _COMPONENTS.items()
             for choice in choices
         }
-        selector = index.Selector({0: inverse_components}, self._raw_data.charge)
-        for selection in select.Tree.from_selection(selection).selections():
-            component = inverse_components[selector.label(selection)]
-            wrapper.show_isosurface(selector[selection], component, **user_options)
-        return viewer
+        self._add_magnetization_for_charge_and_collinear(map_)
+        return map_
+
+    def _index_component(self, component):
+        if self.is_collinear():
+            component %= 2
+        return component
+
+    def _add_magnetization_for_charge_and_collinear(self, map_):
+        if self._selection or not self.is_collinear():
+            return
+        for key in ("magnetization", "mag", "m"):
+            map_[key] = 1
+
+    def _validate_component(self, component):
+        if component == 0:
+            return
+        if component > 0 and self.is_nonpolarized():
+            _raise_is_nonpolarized_error()
         # for quantity, component in self._parse_selection(selection):
         #     self._add_isosurface(
         #         _ViewerWrapper(viewer), quantity, component, **user_options
@@ -378,5 +403,3 @@ def _raise_error_if_no_data(data):
 def _raise_error_if_selection_invalid(selec_tuple):
     msg = "Invalid selection: selection='" + ", ".join(selec_tuple) + "'"
     raise exception.IncorrectUsage(msg)
-
-
