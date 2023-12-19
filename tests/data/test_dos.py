@@ -203,7 +203,6 @@ def test_plot_combine_projectors(Fe3O4_projectors, Assert):
     subtraction_up = Fe3O4_projectors.ref.Fe_up - Fe3O4_projectors.ref.p_up
     subtraction_down = Fe3O4_projectors.ref.Fe_down - Fe3O4_projectors.ref.p_down
     names = [d.name for d in data]
-    print(data[names.index("Fe_up + O_d_down")])
     Assert.allclose(data[names.index("Fe_up + O_d_down")].y, addition)
     Assert.allclose(data[names.index("Fe_up - p_up")].y, subtraction_up)
     Assert.allclose(data[names.index("Fe_down - p_down")].y, -subtraction_down)

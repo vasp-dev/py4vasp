@@ -303,7 +303,7 @@ def test_label(selection, label):
         2: {"x": 0, "y": 1, "z": 2, "u~v": 3},
         0: {"total": slice(0, 2), "up": 0, "down": 1},
     }
-    selector = index.Selector(map_, np.zeros((2, 8, 4, 0)))
+    selector = index.Selector(map_, np.zeros((2, 8, 4, 0)), use_number_labels=True)
     assert selector.label(selection) == label
 
 
@@ -326,8 +326,14 @@ def test_label_operations(selection, label):
         2: {"x": 0, "y": 1, "z": 2, "u~v": 3},
         0: {"total": slice(0, 2), "up": 0, "down": 1},
     }
-    selector = index.Selector(map_, np.zeros((2, 8, 4, 0)))
+    selector = index.Selector(map_, np.zeros((2, 8, 4, 0)), use_number_labels=True)
     assert selector.label(selection) == label
+
+
+def test_labels_without_number_labels():
+    map_ = {1: {"A": 0, "0": 0}}
+    selector = index.Selector(map_, np.zeros((10, 10)))
+    assert selector.label(("0",)) == "0"
 
 
 def test_error_when_duplicate_key():
@@ -336,8 +342,9 @@ def test_error_when_duplicate_key():
 
 
 def test_error_when_numbers_are_longer_than_one():
+    map_ = {0: {"A": 1, "1": slice(0, 2)}}
     with pytest.raises(exception._Py4VaspInternalError):
-        index.Selector({0: {"A": 1, "1": slice(0, 2)}}, np.zeros(3))
+        index.Selector(map_, np.zeros(3), use_number_labels=True)
 
 
 @pytest.mark.parametrize(

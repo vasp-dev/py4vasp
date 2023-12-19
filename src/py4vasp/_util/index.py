@@ -53,15 +53,21 @@ class Selector:
         The function used to reduce over the dimensions listed in the map. If not
         specified a summation is performed. Note that the function must have an axis
         argument with the same meaning as `np.sum`.
+    use_number_labels :  bool
+        If set numbers will be replaced by the corresponding label of the slice. If you
+        have e.g. the label *A* corresponding to the first three elements and *1*
+        corresponds to the first element in total, setting this flag will label *1* as
+        *A_1* instead.
     """
 
-    def __init__(self, maps, data, *, reduction=np.sum):
+    def __init__(self, maps, data, *, reduction=np.sum, use_number_labels=False):
         self._data = raw.VaspData(data)
         self._axes = tuple(maps.keys())
         _raise_error_if_duplicate_keys(maps)
         if not self._data.is_none():
             _raise_error_if_map_out_of_bounds(maps.keys(), self._data.ndim)
         self._map = self._make_map(maps)
+        self._use_number_labels = use_number_labels
         self._number_labels = self._make_number_labels(maps)
         self._indices = self._make_default_indices(maps, self._data.ndim)
         self._reduction = reduction
@@ -76,13 +82,20 @@ class Selector:
 
     def _make_number_labels(self, maps):
         return {
-            key: self._make_label(map_, key, index, self._data.shape[dim])
+            key: self._make_label(
+                map_,
+                key,
+                index,
+                self._data.shape[dim],
+            )
             for dim, map_ in maps.items()
             for key, index in map_.items()
             if key is not None and key.isdecimal()
         }
 
     def _make_label(self, map_, number, index, size):
+        if not self._use_number_labels:
+            return number
         indices = range(size)
         index, *rest = list(indices[_make_slice(index)])
         message = f"Integer label {number} maps to more than a single index."
@@ -274,6 +287,7 @@ class _Slices:
         return tuple(self._indices)
 
     def label(self, index, axes, number_labels):
+        print(index, axes, number_labels)
         if index == 0:
             factor = "" if self.factor == 1 else "-"
         else:
