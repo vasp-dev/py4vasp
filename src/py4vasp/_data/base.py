@@ -135,6 +135,7 @@ class Refinery:
         "Convenient wrapper around to_dict. Check that function for examples and optional arguments."
         return self.to_dict(*args, **kwargs)
 
+    @data_access
     def selections(self):
         """Returns possible alternatives for this particular quantity VASP can produce.
 
