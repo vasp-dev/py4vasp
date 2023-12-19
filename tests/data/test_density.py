@@ -139,7 +139,7 @@ def test_charge_plot(selection, reference_density, mock_viewer, Assert, not_core
     assert kwargs == {"isolevel": 0.2, "color": "yellow", "opacity": 0.6}
 
 
-def test_accessing_spin_raises_error(nonpolarized_density):
+def test_accessing_spin_raises_error(nonpolarized_density, not_core):
     with pytest.raises(exception.NoData):
         nonpolarized_density.plot("3")
 
@@ -161,7 +161,7 @@ def test_collinear_plot(selection, collinear_density, mock_viewer, Assert, not_c
     check_magnetization_plot(expected_density, calls, Assert)
 
 
-def test_accessing_noncollinear_element_raises_error(collinear_density):
+def test_accessing_noncollinear_element_raises_error(collinear_density, not_core):
     with pytest.raises(exception.NoData):
         collinear_density.plot("1")
 
@@ -176,7 +176,7 @@ def test_accessing_noncollinear_element_raises_error(collinear_density):
     ],
 )
 def test_plotting_noncollinear_density(
-    selections, noncollinear_density, mock_viewer, Assert
+    selections, noncollinear_density, mock_viewer, Assert, not_core
 ):
     source = noncollinear_density.ref.source
     if source == "charge":
