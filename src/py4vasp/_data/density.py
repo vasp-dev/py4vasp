@@ -59,7 +59,9 @@ class Density(base.Refinery, structure.Mixin):
         _raise_error_if_no_data(self._raw_data.charge)
         grid = self._raw_data.charge.shape[1:]
         topology = data.Topology.from_data(self._raw_data.structure.topology)
-        if self.is_nonpolarized():
+        if self._selection == "tau":
+            name = "Kinetic energy"
+        elif self.is_nonpolarized():
             name = "Nonpolarized"
         elif self.is_collinear():
             name = "Collinear"

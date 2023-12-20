@@ -58,7 +58,7 @@ def make_reference_density(raw_data, selection, source=None):
     density.ref = types.SimpleNamespace()
     density.ref.structure = Structure.from_data(raw_density.structure).read()
     density.ref.output = get_expected_dict(raw_density.charge, source)
-    density.ref.string = get_expected_string(raw_density.charge)
+    density.ref.string = get_expected_string(selection, source)
     density.ref.selections = get_expected_selections(raw_density.charge)
     density._data_context.selection = source
     density.ref.source = source or "charge"
@@ -78,21 +78,16 @@ def get_expected_dict(charge, source):
         return {"charge": charge[0].T, "magnetization": magnetization}
 
 
-def get_expected_string(charge):
-    if len(charge) == 1:
-        return """\
-Nonpolarized density:
-    structure: Sr2TiO4
-    grid: 10, 12, 14"""
-    elif len(charge) == 2:
-        return """\
-Collinear density:
-    structure: Fe3O4
-    grid: 10, 12, 14"""
+def get_expected_string(selection, source):
+    structure, *density = selection.split()
+    if source == "tau":
+        density = "Kinetic energy"
+    elif not density:
+        density = "Nonpolarized"
     else:
-        return """\
-Noncollinear density:
-    structure: Fe3O4
+        density = density[0].capitalize()
+    return f"""{density} density:
+    structure: {structure}
     grid: 10, 12, 14"""
 
 
