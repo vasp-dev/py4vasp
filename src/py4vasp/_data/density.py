@@ -160,7 +160,7 @@ class Density(base.Refinery, structure.Mixin):
         return result
 
     def _read_density(self):
-        density = np.moveaxis(self._raw_data.charge, 0, -1).T
+        density = self.to_numpy()
         if self._selection:
             yield self._selection, density
         else:
@@ -169,6 +169,21 @@ class Density(base.Refinery, structure.Mixin):
                 yield "magnetization", density[1]
             elif self.is_noncollinear():
                 yield "magnetization", density[1:]
+
+    @base.data_access
+    def to_numpy(self):
+        """Convert the density to a numpy array.
+
+        The number of components is 1 for nonpolarized calculations, 2 for collinear
+        calculations, and 4 for noncollinear calculations. Each component is 3
+        dimensional according to the grid VASP uses for the FFTs.
+
+        Returns
+        -------
+        np.ndarray
+            All components of the selected density.
+        """
+        return np.moveaxis(self._raw_data.charge, 0, -1).T
 
     @base.data_access
     def plot(self, selection="0", **user_options):

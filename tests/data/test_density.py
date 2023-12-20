@@ -196,6 +196,26 @@ def check_magnetization_plot(magnetization, calls, Assert):
     assert kwargs == {"isolevel": 0.1, "color": "red", "opacity": 0.6, "smooth": 1}
 
 
+def test_to_numpy(reference_density, Assert):
+    source = reference_density.ref.source
+    if source == "charge":
+        if reference_density.is_nonpolarized():
+            expected_density = [reference_density.ref.output["charge"]]
+        elif reference_density.is_collinear():
+            expected_density = [
+                reference_density.ref.output["charge"],
+                reference_density.ref.output["magnetization"],
+            ]
+        else:
+            expected_density = [
+                reference_density.ref.output["charge"],
+                *reference_density.ref.output["magnetization"],
+            ]
+    else:
+        expected_density = reference_density.ref.output[source]
+    Assert.allclose(reference_density.to_numpy(), expected_density)
+
+
 def test_selections(reference_density):
     assert reference_density.selections() == reference_density.ref.selections
 
