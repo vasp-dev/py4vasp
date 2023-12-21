@@ -5,6 +5,8 @@ from __future__ import annotations
 import dataclasses
 import textwrap
 
+import numpy as np
+
 from py4vasp import exception
 from py4vasp._util import convert
 
@@ -15,7 +17,7 @@ class Schema:
         self._version = version
         self._verified = False
 
-    def add(self, cls, name="default", file=None, required=None, **kwargs):
+    def add(self, cls, name="default", alias=[], file=None, required=None, **kwargs):
         """Add a new quantity to the schema.
 
         The name of the quantity is deduced from the class you pass in, for example
@@ -44,13 +46,20 @@ class Schema:
             You need to specify for all the fields of the class from where in the HDF5
             file they can be obtained.
         """
-        class_name = convert.quantity_name(cls.__name__)
-        self._sources.setdefault(class_name, {})
-        if name in self._sources[class_name]:
-            message = f"{class_name}/{name} already in the schema. Please choose a different name."
-            raise exception.IncorrectUsage(message)
-        self._sources[class_name][name] = Source(cls(**kwargs), file, required)
+        quantity = convert.quantity_name(cls.__name__)
+        self._sources.setdefault(quantity, {})
+        labels = [name] + list(np.atleast_1d(alias))
+        for label in labels:
+            self._raise_error_if_already_in_schema(quantity, label)
+            alias_for = name if label != name else None
+            source = Source(cls(**kwargs), file, required, alias_for)
+            self._sources[quantity][label] = source
         self._verified = False
+
+    def _raise_error_if_already_in_schema(self, quantity, label):
+        if label in self._sources[quantity]:
+            message = f"{quantity}/{label} already in the schema. Please choose a different name."
+            raise exception._Py4VaspInternalError(message)
 
     @property
     def sources(self):
@@ -88,12 +97,14 @@ class Schema:
     def _verify_quantity_is_in_schema(self, key, field):
         message = f"""Verifying the schema failed in link resolution for {key}, because
     {field.quantity} is not defined in the schema."""
-        assert field.quantity in self._sources, message
+        if field.quantity not in self._sources:
+            raise exception._Py4VaspInternalError(message)
 
     def _verify_source_is_defined_for_quantity(self, key, field):
         message = f"""Verifying the schema failed in link resolution for {key}, because
     {field.source} is not a source defined in the schema for the quantity {field.quantity}."""
-        assert field.source in self._sources[field.quantity], message
+        if field.source not in self._sources[field.quantity]:
+            raise exception._Py4VaspInternalError(message)
 
     def __str__(self):
         version = _parse_version(self.version)
@@ -109,6 +120,7 @@ class Source:
     data: Any
     file: str = None
     required: Version = None
+    alias_for: str = None
 
 
 @dataclasses.dataclass

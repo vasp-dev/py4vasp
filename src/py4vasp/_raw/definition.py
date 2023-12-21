@@ -101,6 +101,7 @@ schema.add(
 )
 schema.add(
     raw.Density,
+    alias=["charge", "n", "charge_density", "electronic_charge_density"],
     file="vaspwave.h5",
     structure=Link("structure", DEFAULT_SOURCE),
     charge="charge/charge",

@@ -78,6 +78,24 @@ def test_length():
     assert remove_version(schema.sources) == reference
 
 
+def test_alias():
+    first = Simple("foo1", "bar1")
+    second = Simple("foo2", "bar2")
+    schema = Schema(VERSION)
+    schema.add(Simple, foo=first.foo, bar=first.bar, alias=["first", "other"])
+    schema.add(Simple, name="second", foo=second.foo, bar=second.bar, alias="more")
+    reference = {
+        "simple": {
+            "default": Source(first),
+            "first": Source(first, alias_for="default"),
+            "other": Source(first, alias_for="default"),
+            "second": Source(second),
+            "more": Source(second, alias_for="second"),
+        },
+    }
+    assert remove_version(schema.sources) == reference
+
+
 def remove_version(sources):
     version = sources.pop("version")
     assert version == {"default": Source(VERSION)}
@@ -149,7 +167,7 @@ def test_missing_quantity():
 def test_adding_twice_error():
     schema = Schema(VERSION)
     schema.add(Simple, foo="foo1", bar="bar1")
-    with pytest.raises(exception.IncorrectUsage):
+    with pytest.raises(exception._Py4VaspInternalError):
         schema.add(Simple, foo="foo2", bar="bar2")
 
 
@@ -167,12 +185,12 @@ def test_incomplete_schema():
     schema.add(WithLink, baz=pointer.baz, simple=pointer.simple)
     # test missing quantity
     assert not schema.verified
-    with pytest.raises(AssertionError):
+    with pytest.raises(exception._Py4VaspInternalError):
         schema.verify()
     assert not schema.verified
     # test missing source
     schema.add(Simple, foo=target.foo, bar=target.bar)
     assert not schema.verified
-    with pytest.raises(AssertionError):
+    with pytest.raises(exception._Py4VaspInternalError):
         schema.verify()
     assert not schema.verified
