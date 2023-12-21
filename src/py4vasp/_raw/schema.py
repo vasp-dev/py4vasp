@@ -140,7 +140,8 @@ def _parse_version(version):
     return f"""version:
     major: {version.major}
     minor: {version.minor}
-    patch: {version.patch}"""
+    patch: {version.patch}
+"""
 
 
 def _parse_quantities(quantities):
@@ -148,12 +149,15 @@ def _parse_quantities(quantities):
         if name == "version":
             continue
         sources = (_parse_source(name, *source) for source in sources.items())
-        yield f"{name}:\n" + "\n".join(sources)
+        yield f"{name}:\n" + "\n".join(sources) + "\n"
 
 
 def _parse_source(quantity, source, specification):
-    specs = _parse_specification(specification)
-    return 4 * " " + f"{source}:  &{quantity}-{source}\n" + "\n".join(specs)
+    if specification.alias_for:
+        return 4 * " " + f"{source}: *{quantity}-{specification.alias_for}"
+    else:
+        specs = _parse_specification(specification)
+        return 4 * " " + f"{source}:  &{quantity}-{source}\n" + "\n".join(specs)
 
 
 def _parse_specification(specification):

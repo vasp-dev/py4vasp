@@ -120,25 +120,31 @@ version:
     major: major_dataset
     minor: minor_dataset
     patch: patch_dataset
+
 simple:
     default:  &simple-default
         file: other_file
         foo: foo_dataset
         bar: bar_dataset
+
 optional_argument:
     mandatory:  &optional_argument-mandatory
         mandatory: mandatory1
     default:  &optional_argument-default
         mandatory: mandatory2
         optional: optional
+
 with_link:
     default:  &with_link-default
         required: 1.2.3
         baz: baz_dataset
         simple: *simple-default
+
 with_length:
     default:  &with_length-default
         num_data: length(dataset)
+    alias_name: *with_length-default
+
 complex:
     default:  &complex-default
         opt: *optional_argument-default
@@ -146,7 +152,7 @@ complex:
         length: *with_length-default
     mandatory:  &complex-mandatory
         opt: *optional_argument-mandatory
-        link: *with_link-default\
+        link: *with_link-default
 """
     assert str(schema) == reference
 
