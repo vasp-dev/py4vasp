@@ -67,15 +67,16 @@ class Viewer3d:
             If present the cell is extended by the specified factor along each axis.
         """
         ase = structure.to_ase(supercell)
-        # ngl works with the standard form, so we need to store the positions in the same format
-        standard_cell, transformation = ase.cell.standard_form()
-        ase.set_cell(standard_cell)
+        # # ngl works with the standard form, so we need to store the positions in the same format
+        # standard_cell, transformation = ase.cell.standard_form()
+        # ase.set_cell(standard_cell)
         res = cls(nglview.show_ase(ase))
         res._lengths = tuple(ase.cell.lengths())
         res._angles = tuple(ase.cell.angles())
         res._positions = ase.positions
         res._number_cells = res._calculate_number_cells(supercell)
-        res._transformation = transformation
+        # res._transformation = transformation
+        res._transformation = np.eye(3)
         return res
 
     def _calculate_number_cells(self, supercell):
