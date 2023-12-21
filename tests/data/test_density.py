@@ -6,7 +6,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception, raw
+from py4vasp import _config, exception, raw
 from py4vasp._data import viewer3d
 from py4vasp.data import Density, Structure
 
@@ -131,7 +131,7 @@ def test_charge_plot(selection, reference_density, mock_viewer, Assert, not_core
     mock_viewer["surface"].assert_called_once()
     args, kwargs = mock_viewer["surface"].call_args
     Assert.allclose(args[0], expected_density)
-    assert kwargs == {"isolevel": 0.2, "color": "yellow", "opacity": 0.6}
+    assert kwargs == {"isolevel": 0.2, "color": _config.VASP_CYAN, "opacity": 0.6}
 
 
 def test_accessing_spin_raises_error(nonpolarized_density, not_core):
@@ -201,10 +201,27 @@ def check_magnetization_plot(magnetization, calls, Assert):
     assert len(calls) == 2
     args, kwargs = calls[0]
     Assert.allclose(args[0], magnetization)
-    assert kwargs == {"isolevel": 0.1, "color": "blue", "opacity": 0.6, "smooth": 1}
+    blue = _config.VASP_BLUE
+    assert kwargs == {"isolevel": 0.1, "color": blue, "opacity": 0.6, "smooth": 1}
     args, kwargs = calls[1]
     Assert.allclose(args[0], -magnetization)
-    assert kwargs == {"isolevel": 0.1, "color": "red", "opacity": 0.6, "smooth": 1}
+    red = _config.VASP_RED
+    assert kwargs == {"isolevel": 0.1, "color": red, "opacity": 0.6, "smooth": 1}
+
+
+def test_adding_components(noncollinear_density, mock_viewer, Assert, not_core):
+    source = noncollinear_density.ref.source
+    if source == "charge":
+        expected_density = noncollinear_density.ref.output["magnetization"]
+    else:
+        expected_density = noncollinear_density.ref.output[source][1:]
+    expected_density = expected_density[0] + expected_density[1]
+    result = noncollinear_density.plot("1 + 2", isolevel=0.4)
+    assert isinstance(result, viewer3d.Viewer3d)
+    mock_viewer["surface"].assert_called_once()
+    args, kwargs = mock_viewer["surface"].call_args
+    Assert.allclose(args[0], expected_density.T)
+    assert kwargs == {"isolevel": 0.4, "color": _config.VASP_CYAN, "opacity": 0.6}
 
 
 def test_to_numpy(reference_density, Assert):
@@ -243,6 +260,13 @@ def test_missing_element(reference_density, not_core):
 def test_color_specified_for_sigma_z(collinear_density, not_core):
     with pytest.raises(exception.NotImplemented):
         collinear_density.plot("3", color="brown")
+
+
+@pytest.mark.parametrize("selection", ("m", "mag", "magnetization"))
+def test_magnetization_without_component(selection, raw_data, not_core):
+    data = raw_data.density("Fe3O4 noncollinear")
+    with pytest.raises(exception.IncorrectUsage):
+        Density.from_data(data).plot(selection)
 
 
 def test_print(reference_density, format_):

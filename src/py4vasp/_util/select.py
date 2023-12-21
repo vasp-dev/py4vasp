@@ -130,10 +130,15 @@ class Tree:
                 yield from child.selections(selected + content, filter)
 
     def _operation_selections(self, selected, filter):
-        left_operands = self._children[0].selections(filter=filter)
-        right_operands = self._children[1].selections(filter=filter)
+        left_operands = self._get_operands(self._children[0], filter)
+        right_operands = self._get_operands(self._children[1], filter)
         for left_op, right_op in itertools.product(left_operands, right_operands):
             yield *selected, Operation(left_op, self._content.operator, right_op)
+
+    def _get_operands(self, child, filter):
+        for operand in child.selections(filter=filter):
+            child._raise_error_if_content_and_operator_are_incompatible(operand)
+            yield operand
 
     def to_mermaid(self):
         "Helper routine to visualize the Tree using Mermaid"
@@ -302,6 +307,12 @@ class Tree:
             return
         message = f"The operator {self._content} is not followed by an element."
         raise exception._Py4VaspInternalError(message)
+
+    def _raise_error_if_content_and_operator_are_incompatible(self, operand):
+        if bool(self._content) == bool(operand):
+            return
+        message = f"The operand `{operand}` has a qualitatively different behavior then the content `{self}`. This may occur when a filter would replace the last element."
+        raise exception.IncorrectUsage(message)
 
 
 @dataclasses.dataclass

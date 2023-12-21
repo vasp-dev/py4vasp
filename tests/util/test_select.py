@@ -228,6 +228,12 @@ def test_selection_filter(unfiltered, filtered):
     assert selections(unfiltered, filter={"A"}) == selections(filtered)
 
 
+@pytest.mark.parametrize("selection", ("A + B", "B + A", "A - B", "B - A"))
+def test_incorrect_combination(selection):
+    with pytest.raises(exception.IncorrectUsage):
+        selections(selection, filter={"A"})
+
+
 @pytest.mark.parametrize(
     "input, output",
     [

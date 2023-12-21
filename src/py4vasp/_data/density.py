@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import data, exception
+from py4vasp import _config, data, exception
 from py4vasp._data import base, structure
 from py4vasp._util import documentation, import_, index, select
 
@@ -14,14 +14,14 @@ class _ViewerWrapper:
         self._viewer = viewer
         self._options = {"isolevel": 0.2, "opacity": 0.6}
 
-    def show_isosurface(self, data, component, **options):
+    def show_isosurface(self, data, symmetric, **options):
         options = {**self._options, **options}
-        if component == 0:
-            self._viewer.show_isosurface(data, color="yellow", **options)
-        else:
+        if symmetric:
             _raise_error_if_color_is_specified(**options)
-            self._viewer.show_isosurface(data, color="blue", **options)
-            self._viewer.show_isosurface(-data, color="red", **options)
+            self._viewer.show_isosurface(data, color=_config.VASP_BLUE, **options)
+            self._viewer.show_isosurface(-data, color=_config.VASP_RED, **options)
+        else:
+            self._viewer.show_isosurface(data, color=_config.VASP_CYAN, **options)
 
 
 def _raise_error_if_color_is_specified(**user_options):
@@ -38,6 +38,7 @@ _COMPONENTS = {
     3: ["3", "sigma_z", "z", "sigma_3"],
 }
 _MAGNETIZATION = ("magnetization", "mag", "m")
+
 
 def _join_with_emphasis(data):
     emph_data = [f"*{x}*" for x in data]
@@ -225,16 +226,22 @@ class Density(base.Refinery, structure.Mixin):
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_data.charge)
         tree = select.Tree.from_selection(selection)
-        filter = self._filter_magnetization_for_noncollinear()
-        for selection in tree.selections(filter=filter):
-            component = self._get_component_from_selection(selector, map_, selection)
-            wrapper.show_isosurface(selector[selection], component, **user_options)
+        selections = self._filter_noncollinear_magnetization_from_selections(tree)
+        for selection in selections:
+            label = selector.label(selection)
+            symmetric = self._use_symmetric_isosurface(label, map_)
+            wrapper.show_isosurface(selector[selection], symmetric, **user_options)
         return viewer
 
-    def _filter_magnetization_for_noncollinear(self):
+    def _filter_noncollinear_magnetization_from_selections(self, tree):
         if self._selection or not self.is_noncollinear():
-            return {}
-        return set(_MAGNETIZATION)
+            yield from tree.selections()
+        else:
+            filtered_selections = tree.selections(filter=set(_MAGNETIZATION))
+            for filtered, unfiltered in zip(filtered_selections, tree.selections()):
+                if filtered != unfiltered and len(filtered) != 1:
+                    _raise_component_not_specified_error(unfiltered)
+                yield filtered
 
     def _create_map(self):
         map_ = {
@@ -256,14 +263,13 @@ class Density(base.Refinery, structure.Mixin):
         for key in _MAGNETIZATION:
             map_[key] = 1
 
-
-    def _get_component_from_selection(self, selector, map_, selection):
-        component = map_[selector.label(selection)]
+    def _use_symmetric_isosurface(self, label, map_):
+        component = map_.get(label, -1)
         if component > 0 and self.is_nonpolarized():
             _raise_is_nonpolarized_error()
         if component > 1 and self.is_collinear():
             _raise_is_collinear_error()
-        return component
+        return component > 0
 
     @base.data_access
     def is_nonpolarized(self):
