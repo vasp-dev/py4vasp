@@ -8,6 +8,7 @@ from py4vasp._util import select
 
 def test_empty_tree():
     assert selections(None) == ((),)
+    assert selections("A", filter={"A"}) == ((),)
     assert graph(None) == "graph LR"
 
 
@@ -215,6 +216,19 @@ def test_complex_operation():
 
 
 @pytest.mark.parametrize(
+    "unfiltered, filtered",
+    [
+        ("A(B) B(A)", "B B"),
+        ("A(B C)", "B C"),
+        ("A~B B~A", "A~B B~A"),
+        ("A(B) + C, B - C(A)", "B + C, B - C"),
+    ],
+)
+def test_selection_filter(unfiltered, filtered):
+    assert selections(unfiltered, filter={"A"}) == selections(filtered)
+
+
+@pytest.mark.parametrize(
     "input, output",
     [
         (" ", ""),
@@ -272,9 +286,9 @@ def test_default_constructor_raises_error(selection):
         select.Tree(selection)
 
 
-def selections(selection):
+def selections(selection, filter={}):
     tree = select.Tree.from_selection(selection)
-    return tuple(tree.selections())
+    return tuple(tree.selections(filter=filter))
 
 
 def graph(selection):

@@ -148,7 +148,11 @@ def test_collinear_plot(selection, collinear_density, mock_viewer, Assert, not_c
         expected_density = collinear_density.ref.output["magnetization"].T
     else:
         expected_density = collinear_density.ref.output[source][1].T
-        if selection in ("magnetization", "mag", "m"):
+        if selection in (
+            "magnetization",
+            "mag",
+            "m",
+        ):  # magnetization not allowed for tau
             return
     result = collinear_density.plot(selection, isolevel=0.1, smooth=1)
     assert isinstance(result, viewer3d.Viewer3d)
@@ -168,6 +172,11 @@ def test_accessing_noncollinear_element_raises_error(collinear_density, not_core
         ("sigma_x", "sigma_y", "sigma_z"),
         ("x", "y", "z"),
         ("sigma_1", "sigma_2", "sigma_3"),
+        (
+            "m(1)",
+            "mag(2)",
+            "magnetization(3)",
+        ),  # the magnetization label should be ignored
     ],
 )
 def test_plotting_noncollinear_density(
@@ -178,6 +187,8 @@ def test_plotting_noncollinear_density(
         expected_density = noncollinear_density.ref.output["magnetization"]
     else:
         expected_density = noncollinear_density.ref.output[source][1:]
+        if "(" in selections[0]:  # magnetization not allowed for tau
+            return
     for component, selection in enumerate(selections):
         result = noncollinear_density.plot(selection, isolevel=0.1, smooth=1)
         assert isinstance(result, viewer3d.Viewer3d)

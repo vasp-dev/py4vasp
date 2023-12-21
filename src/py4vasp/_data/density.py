@@ -37,7 +37,7 @@ _COMPONENTS = {
     2: ["2", "sigma_y", "y", "sigma_2"],
     3: ["3", "sigma_z", "z", "sigma_3"],
 }
-
+_MAGNETIZATION = ("magnetization", "mag", "m")
 
 def _join_with_emphasis(data):
     emph_data = [f"*{x}*" for x in data]
@@ -224,11 +224,17 @@ class Density(base.Refinery, structure.Mixin):
         wrapper = _ViewerWrapper(viewer)
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_data.charge)
-        for selection in select.Tree.from_selection(selection).selections():
-            component = map_[selector.label(selection)]
-            self._validate_component(component)
+        tree = select.Tree.from_selection(selection)
+        filter = self._filter_magnetization_for_noncollinear()
+        for selection in tree.selections(filter=filter):
+            component = self._get_component_from_selection(selector, map_, selection)
             wrapper.show_isosurface(selector[selection], component, **user_options)
         return viewer
+
+    def _filter_magnetization_for_noncollinear(self):
+        if self._selection or not self.is_noncollinear():
+            return {}
+        return set(_MAGNETIZATION)
 
     def _create_map(self):
         map_ = {
@@ -247,16 +253,17 @@ class Density(base.Refinery, structure.Mixin):
     def _add_magnetization_for_charge_and_collinear(self, map_):
         if self._selection or not self.is_collinear():
             return
-        for key in ("magnetization", "mag", "m"):
+        for key in _MAGNETIZATION:
             map_[key] = 1
 
-    def _validate_component(self, component):
-        if component == 0:
-            return
+
+    def _get_component_from_selection(self, selector, map_, selection):
+        component = map_[selector.label(selection)]
         if component > 0 and self.is_nonpolarized():
             _raise_is_nonpolarized_error()
         if component > 1 and self.is_collinear():
             _raise_is_collinear_error()
+        return component
 
     @base.data_access
     def is_nonpolarized(self):

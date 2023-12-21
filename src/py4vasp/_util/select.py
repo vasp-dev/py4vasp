@@ -96,7 +96,7 @@ class Tree:
     def __str__(self):
         return str(self._content)
 
-    def selections(self, selected=()):
+    def selections(self, selected=(), filter={}):
         """Core routine generating all user selections parsed.
 
         This will generate one selection at a time so it should be used in a loop or
@@ -108,6 +108,8 @@ class Tree:
             Prior selections obtained from a different source. These selections will
             be added to any additional selection parsed from the user input. If not
             set, if defaults to giving just the user selections.
+        filter : set
+            Remove any element found in the set from the resulting selection.
 
         Yields
         ------
@@ -115,18 +117,21 @@ class Tree:
             Each selection corresponds to one path from the root of the tree to one of
             its leaves.
         """
-        content = (self._content,) if self._content else ()
+        if self._content and self._content not in filter:
+            content = (self._content,)
+        else:
+            content = ()
         if not self._children:
             yield selected + content
         elif self._is_operation:
-            yield from self._operation_selections(selected)
+            yield from self._operation_selections(selected, filter)
         else:
             for child in self._children:
-                yield from child.selections(selected + content)
+                yield from child.selections(selected + content, filter)
 
-    def _operation_selections(self, selected):
-        left_operands = self._children[0].selections()
-        right_operands = self._children[1].selections()
+    def _operation_selections(self, selected, filter):
+        left_operands = self._children[0].selections(filter=filter)
+        right_operands = self._children[1].selections(filter=filter)
         for left_op, right_op in itertools.product(left_operands, right_operands):
             yield *selected, Operation(left_op, self._content.operator, right_op)
 
@@ -307,6 +312,7 @@ class Group:
     separator: str
     "The string separating the members of the group."
     __str__ = lambda self: self.separator.join(self.group)
+    __hash__ = lambda self: hash(str(self))
 
     def __iadd__(self, character):
         self.group[-1] += character
@@ -318,6 +324,7 @@ class _Operator:
     operator: str
     _id: int
     __str__ = lambda self: f"_{self._id}_[{self.operator}]"
+    __hash__ = lambda self: hash(self.operator)
 
 
 @dataclasses.dataclass
