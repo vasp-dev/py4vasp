@@ -6,7 +6,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception, raw
+from py4vasp import _config, exception, raw
 from py4vasp._data import viewer3d
 from py4vasp.data import Potential, Structure
 
@@ -102,8 +102,8 @@ def test_plot_total_potential(reference_potential, Assert, not_core):
         cell.assert_called_once()
         surface.assert_called_once()
         args, kwargs = surface.call_args
-    Assert.allclose(args[0], reference_potential.ref.output["total"])
-    assert kwargs == {"isolevel": 0.0, "color": "yellow", "opacity": 0.6}
+    Assert.allclose(args[0], reference_potential.ref.output["total"].T)
+    assert kwargs == {"isolevel": 0.0, "color": _config.VASP_CYAN, "opacity": 0.6}
 
 
 def test_plot_selected_potential(reference_potential, Assert, not_core):
@@ -121,8 +121,8 @@ def test_plot_selected_potential(reference_potential, Assert, not_core):
         cell.assert_called_once()
         surface.assert_called_once()
         args, kwargs = surface.call_args
-    Assert.allclose(args[0], reference_potential.ref.output[selection])
-    assert kwargs == {"isolevel": 0.2, "color": "yellow", "opacity": 0.6}
+    Assert.allclose(args[0], reference_potential.ref.output[selection].T)
+    assert kwargs == {"isolevel": 0.2, "color": _config.VASP_CYAN, "opacity": 0.6}
 
 
 @pytest.mark.parametrize("selection", ["up", "down"])
@@ -138,8 +138,8 @@ def test_plot_spin_potential(raw_data, selection, Assert, not_core):
         cell.assert_called_once()
         surface.assert_called_once()
         args, kwargs = surface.call_args
-    Assert.allclose(args[0], potential.ref.output[f"total_{selection}"])
-    assert kwargs == {"isolevel": 0.0, "color": "yellow", "opacity": 0.6}
+    Assert.allclose(args[0], potential.ref.output[f"total_{selection}"].T)
+    assert kwargs == {"isolevel": 0.0, "color": _config.VASP_CYAN, "opacity": 0.6}
 
 
 def test_plot_multiple_selections(raw_data, Assert, not_core):
@@ -155,11 +155,11 @@ def test_plot_multiple_selections(raw_data, Assert, not_core):
         calls = surface.call_args_list
     assert len(calls) == 3
     args, _ = calls[0]
-    Assert.allclose(args[0], potential.ref.output["total_up"])
+    Assert.allclose(args[0], potential.ref.output["total_up"].T)
     args, _ = calls[1]
-    Assert.allclose(args[0], potential.ref.output["hartree"])
+    Assert.allclose(args[0], potential.ref.output["hartree"].T)
     args, _ = calls[2]
-    Assert.allclose(args[0], potential.ref.output["xc_down"])
+    Assert.allclose(args[0], potential.ref.output["xc_down"].T)
 
 
 def test_incorrect_selection(reference_potential, not_core):
