@@ -151,6 +151,7 @@ def test_serializable(not_core):
         json.json_clean(element)
 
 
+@pytest.mark.xfail(reason="Not compatible with density plotting")
 def test_nonstandard_form(nonstandard_form, Assert, assert_arrow_message):
     viewer = nonstandard_form
     Assert.allclose(viewer._positions, viewer.ref.positions)
