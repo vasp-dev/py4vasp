@@ -31,16 +31,6 @@ def _raise_error_if_color_is_specified(**user_options):
 
 
 _DEFAULT = 0
-_SELECTIONS = {
-    None: None,
-    "charge": None,
-    "n": None,
-    "charge_density": None,
-    "electronic_charge_density": None,
-    "tau": "tau",
-    "kinetic_energy": "tau",
-    "kinetic_energy_density": "tau",
-}
 _COMPONENTS = {
     0: ["0", "unity", "sigma_0", "scalar"],
     1: ["1", "sigma_x", "x", "sigma_1"],
@@ -106,6 +96,9 @@ class Density(base.Refinery, structure.Mixin):
 
         electronic charge density
             *charge*, *n*, *charge_density*, and *electronic_charge_density*
+
+        kinetic energy density
+            *tau*, *kinetic_energy*, and *kinetic_energy_density*
 
         0th component
             {component0}
@@ -298,7 +291,12 @@ class Density(base.Refinery, structure.Mixin):
 
     @property
     def _selection(self):
-        return _SELECTIONS[super()._selection]
+        selection_map = {
+            "tau": "tau",
+            "kinetic_energy": "tau",
+            "kinetic_energy_density": "tau",
+        }
+        return selection_map.get(super()._selection)
 
 
 def _raise_component_not_specified_error(selec_tuple):
