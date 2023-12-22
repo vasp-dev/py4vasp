@@ -31,6 +31,16 @@ def _raise_error_if_color_is_specified(**user_options):
 
 
 _DEFAULT = 0
+_SELECTIONS = {
+    None: None,
+    "charge": None,
+    "n": None,
+    "charge_density": None,
+    "electronic_charge_density": None,
+    "tau": "tau",
+    "kinetic_energy": "tau",
+    "kinetic_energy_density": "tau",
+}
 _COMPONENTS = {
     0: ["0", "unity", "sigma_0", "scalar"],
     1: ["1", "sigma_x", "x", "sigma_1"],
@@ -285,6 +295,10 @@ class Density(base.Refinery, structure.Mixin):
     def is_noncollinear(self):
         "Returns whether the density has a noncollinear magnetization."
         return len(self._raw_data.charge) == 4
+
+    @property
+    def _selection(self):
+        return _SELECTIONS[super()._selection]
 
 
 def _raise_component_not_specified_error(selec_tuple):

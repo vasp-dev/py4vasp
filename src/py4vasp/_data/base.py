@@ -329,4 +329,5 @@ class _DataAccess(contextlib.AbstractContextManager):
             self._stack.close()
 
     def set_selection(self, selection):
-        self.selection = selection
+        if self._counter == 0:
+            self.selection = selection

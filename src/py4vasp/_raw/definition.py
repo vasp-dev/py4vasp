@@ -106,6 +106,15 @@ schema.add(
     structure=Link("structure", DEFAULT_SOURCE),
     charge="charge/charge",
 )
+schema.add(
+    raw.Density,
+    name="tau",
+    required=raw.Version(6, 5),
+    alias=["kinetic_energy", "kinetic_energy_density"],
+    file="vaspwave.h5",
+    structure=Link("structure", DEFAULT_SOURCE),
+    charge="kinetic_energy_density/values",
+)
 #
 group = "results/linear_response"
 energies = "energies_dielectric_function"
