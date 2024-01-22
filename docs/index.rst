@@ -129,15 +129,24 @@ a look at the tutorials_ for VASP. Many of them use *py4vasp* to plot or analyze
 the data produced by VASP, so this may give you an excellent starting point to learn
 how you can apply *py4vasp* in your research.
 
-.. toctree::
-   :maxdepth: 1
-   :caption: Contents:
+.. currentmodule:: py4vasp
 
-   calculation_package
-   calculation_class
-   control
-   raw
-   exception
+Packages
+--------
+.. autosummary::
+   :toctree: _packages
+   :template: package.rst
+   :recursive:
+
+   calculation
+
+Classes
+-------
+.. autosummary::
+   :toctree: _classes
+   :template: class.rst
+
+   Calculation
 
 ----------------------------------------------------------------------------------------
 
