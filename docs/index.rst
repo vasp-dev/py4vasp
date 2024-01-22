@@ -133,10 +133,10 @@ how you can apply *py4vasp* in your research.
    :maxdepth: 1
    :caption: Contents:
 
-   Calculation
+   calculation_package
+   calculation_class
    control
    raw
-   data
    exception
 
 ----------------------------------------------------------------------------------------
