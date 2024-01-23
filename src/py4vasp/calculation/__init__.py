@@ -79,4 +79,5 @@ def __getattr__(attr):
         cls = getattr(data, convert.to_camelcase(attr))
         return cls.from_path(".")
     else:
-        raise exception.Py4VaspException("TODO: better message")
+        message = f"Could not find {attr} in the possible attributes, please check the spelling"
+        raise exception.MissingAttribute(message)
