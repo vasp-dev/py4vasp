@@ -2,10 +2,11 @@
 
 .. automodule:: {{ fullname }}
 
+Attributes
+----------
 .. autosummary::
   :toctree:
-  :template: module.rst
 
-  {% for module in modules %}
-  {{ module.split(".") | last }}
+  {% for member in members %}
+  {{ member }}
   {% endfor %}

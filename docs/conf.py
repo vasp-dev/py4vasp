@@ -32,6 +32,7 @@ release = "0.9.0"
 # ones.
 extensions = ["sphinx.ext.napoleon", "sphinx_automodapi.automodapi"]
 automodapi_inheritance_diagram = False
+autosummary_ignore_module_all = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
