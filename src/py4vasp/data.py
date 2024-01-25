@@ -24,7 +24,7 @@ from py4vasp.calculation._bandgap import Bandgap
 from py4vasp.calculation._born_effective_charge import BornEffectiveCharge
 from py4vasp.calculation._contcar import CONTCAR
 from py4vasp.calculation._density import Density
-from py4vasp._data.dielectric_function import DielectricFunction
+from py4vasp.calculation._dielectric_function import DielectricFunction
 from py4vasp._data.dielectric_tensor import DielectricTensor
 from py4vasp._data.dispersion import Dispersion
 from py4vasp._data.dos import Dos

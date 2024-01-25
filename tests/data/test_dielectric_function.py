@@ -300,7 +300,7 @@ def check_figure_contains_plots(fig, references, Assert):
         assert data.name == ref.name
 
 
-@patch("py4vasp._data.dielectric_function.DielectricFunction.to_graph")
+@patch("py4vasp.calculation._dielectric_function.DielectricFunction.to_graph")
 def test_electronic_to_plotly(mock_plot, electronic):
     fig = electronic.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
@@ -322,7 +322,9 @@ def test_ionic_to_image(ionic):
 
 
 def check_to_image(dielectric_function, filename_argument, expected_filename):
-    plot_function = "py4vasp._data.dielectric_function.DielectricFunction.to_plotly"
+    plot_function = (
+        "py4vasp.calculation._dielectric_function.DielectricFunction.to_plotly"
+    )
     with patch(plot_function) as plot:
         dielectric_function.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
