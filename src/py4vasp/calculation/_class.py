@@ -3,7 +3,7 @@
 import inspect
 import pathlib
 
-from py4vasp import calculation, control, data, exception
+from py4vasp import calculation, control, exception
 from py4vasp._util import convert
 
 

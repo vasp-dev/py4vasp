@@ -1,12 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import numpy as np
-
-from py4vasp import data
-from py4vasp.calculation import _base
 from py4vasp._third_party import graph
 from py4vasp._util import documentation, index, select
-from py4vasp.calculation import _phonon
+from py4vasp.calculation import _base, _phonon
 
 
 class PhononDos(_base.Refinery, _phonon.Mixin, graph.Mixin):

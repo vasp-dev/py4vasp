@@ -4,12 +4,10 @@ import re
 import warnings
 from typing import NamedTuple, Union
 
-import numpy as np
-
-from py4vasp import data, exception
+from py4vasp import calculation, exception
+from py4vasp._util import convert, documentation, index, select
 from py4vasp.calculation import _base
 from py4vasp.calculation._selection import Selection
-from py4vasp._util import convert, documentation, index, reader, select
 
 selection_doc = """\
 selection : str
@@ -191,7 +189,7 @@ class Projector(_base.Refinery):
             raise exception.IncorrectUsage(message)
 
     def _topology(self):
-        return data.Topology.from_data(self._raw_data.topology)
+        return calculation.topology.from_data(self._raw_data.topology)
 
     def _init_dicts(self):
         if self._raw_data.orbital_types.is_none():

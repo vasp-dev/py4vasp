@@ -1,9 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.calculation import _base
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
-from py4vasp.calculation import _slice
+from py4vasp.calculation import _base, _slice
 
 
 def _selection_string(default):

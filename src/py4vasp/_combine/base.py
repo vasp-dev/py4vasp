@@ -1,11 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import importlib
 import inspect
 import pathlib
 from typing import Dict, List
 
-from py4vasp import data, exception
+from py4vasp import exception
+from py4vasp.calculation import data_all
 
 
 def _match_combine_with_refinement(combine_name: str):
@@ -14,7 +14,7 @@ def _match_combine_with_refinement(combine_name: str):
         "Forces": "Force",
         "Stresses": "Stress",
     }
-    for _, class_ in inspect.getmembers(data, inspect.isclass):
+    for _, class_ in inspect.getmembers(data_all, inspect.isclass):
         if class_.__name__ == combine_to_refinement_name[combine_name]:
             return class_
     else:

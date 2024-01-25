@@ -38,8 +38,9 @@ equivalent:
 
 In the latter example, you can change the path from which the data is extracted.
 """
-from py4vasp import data, exception
+from py4vasp import exception
 from py4vasp._util import convert
+from py4vasp.calculation import data_all
 
 __all__ = (
     "band",
@@ -49,6 +50,7 @@ __all__ = (
     "density",
     "dielectric_function",
     "dielectric_tensor",
+    "dispersion",
     "dos",
     "elastic_modulus",
     "energy",
@@ -76,7 +78,7 @@ __all__ = (
 
 def __getattr__(attr):
     if attr in __all__:
-        cls = getattr(data, convert.to_camelcase(attr))
+        cls = getattr(data_all, convert.to_camelcase(attr))
         return cls.from_path(".")
     else:
         message = f"Could not find {attr} in the possible attributes, please check the spelling"

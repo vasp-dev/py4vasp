@@ -2,10 +2,9 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import data, exception
-from py4vasp.calculation import _base
+from py4vasp import calculation, exception
 from py4vasp._util import import_
-from py4vasp.calculation import _structure
+from py4vasp.calculation import _base, _structure
 
 pretty = import_.optional("IPython.lib.pretty")
 
@@ -31,7 +30,7 @@ class Density(_base.Refinery, _structure.Mixin):
     def __str__(self):
         _raise_error_if_no_data(self._raw_data.charge)
         grid = self._raw_data.charge.shape[1:]
-        topology = data.Topology.from_data(self._raw_data.structure.topology)
+        topology = calculation.topology.from_data(self._raw_data.structure.topology)
         if self.nonpolarized():
             name = "nonpolarized"
         elif self.collinear():

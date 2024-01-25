@@ -4,15 +4,16 @@ import types
 
 import pytest
 
-from py4vasp.data import ForceConstant, Structure
+from py4vasp import calculation
 
 
 @pytest.fixture
 def Sr2TiO4(raw_data):
     raw_force_constants = raw_data.force_constant("Sr2TiO4")
-    force_constants = ForceConstant.from_data(raw_force_constants)
+    force_constants = calculation.force_constant.from_data(raw_force_constants)
     force_constants.ref = types.SimpleNamespace()
-    force_constants.ref.structure = Structure.from_data(raw_force_constants.structure)
+    structure = calculation.structure.from_data(raw_force_constants.structure)
+    force_constants.ref.structure = structure
     force_constants.ref.force_constants = raw_force_constants.force_constants
     return force_constants
 
@@ -68,4 +69,4 @@ atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     z
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.force_constant("Sr2TiO4")
-    check_factory_methods(ForceConstant, data)
+    check_factory_methods(calculation.force_constant, data)

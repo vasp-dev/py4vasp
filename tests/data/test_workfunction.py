@@ -2,10 +2,9 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from unittest.mock import patch
 
-import numpy as np
 import pytest
 
-from py4vasp import data
+from py4vasp import calculation
 
 
 @pytest.fixture(params=[1, 2, 3])
@@ -15,7 +14,7 @@ def workfunction(raw_data, request):
 
 
 def setup_reference(raw_workfunction):
-    workfunction = data.Workfunction.from_data(raw_workfunction)
+    workfunction = calculation.workfunction.from_data(raw_workfunction)
     workfunction.ref = raw_workfunction
     raw_gap = raw_workfunction.reference_potential
     workfunction.ref.lattice_vector = f"lattice vector {raw_workfunction.idipol}"
@@ -89,4 +88,4 @@ workfunction along {lattice_vector}:
 
 def test_factory_methods(raw_data, check_factory_methods):
     raw_workfunction = raw_data.workfunction("1")
-    check_factory_methods(data.Workfunction, raw_workfunction)
+    check_factory_methods(calculation.workfunction, raw_workfunction)

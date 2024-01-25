@@ -6,9 +6,8 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception, raw
+from py4vasp import calculation, exception, raw
 from py4vasp._third_party.viewer import viewer3d
-from py4vasp.data import Potential, Structure
 
 
 @pytest.fixture(params=["total", "ionic", "hartree", "xc", "all"])
@@ -24,7 +23,7 @@ def reference_potential(raw_data, request, included_kinds):
 def make_reference_potential(raw_data, system, included_kinds):
     selection = f"{system} {included_kinds}"
     raw_potential = raw_data.potential(selection)
-    potential = Potential.from_data(raw_potential)
+    potential = calculation.potential.from_data(raw_potential)
     potential.ref = types.SimpleNamespace()
     potential.ref.included_kinds = included_kinds
     potential.ref.output = get_expected_dict(raw_potential)
@@ -34,7 +33,7 @@ def make_reference_potential(raw_data, system, included_kinds):
 
 def get_expected_dict(raw_potential):
     return {
-        "structure": Structure.from_data(raw_potential.structure).read(),
+        "structure": calculation.structure.from_data(raw_potential.structure).read(),
         **separate_potential("total", raw_potential.total_potential),
         **separate_potential("xc", raw_potential.xc_potential),
         **separate_potential("hartree", raw_potential.hartree_potential),
@@ -171,7 +170,7 @@ def test_incorrect_selection(reference_potential, not_core):
 def test_empty_potential(raw_data, selection, not_core):
     raw_potential = raw_data.potential("Sr2TiO4 total")
     raw_potential.total_potential = raw.VaspData(None)
-    potential = Potential.from_data(raw_potential)
+    potential = calculation.potential.from_data(raw_potential)
     with pytest.raises(exception.NoData):
         potential.plot(selection)
 
@@ -183,4 +182,4 @@ def test_print(reference_potential, format_):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.potential("Fe3O4 collinear total")
-    check_factory_methods(Potential, data)
+    check_factory_methods(calculation.potential, data)

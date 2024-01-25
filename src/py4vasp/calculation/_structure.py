@@ -1,16 +1,14 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import io
-from collections import Counter
 from dataclasses import dataclass
 
 import numpy as np
 
-from py4vasp import data, exception, raw
-from py4vasp.calculation import _base
+from py4vasp import calculation, exception, raw
 from py4vasp._third_party.viewer.viewer3d import Viewer3d
 from py4vasp._util import documentation, import_, reader
-from py4vasp.calculation import _slice, _topology
+from py4vasp.calculation import _base, _slice, _topology
 
 ase = import_.optional("ase")
 ase_io = import_.optional("ase.io")
@@ -285,7 +283,7 @@ class Structure(_slice.Mixin, _base.Refinery):
             return 1
 
     def _topology(self):
-        return data.Topology.from_data(self._raw_data.topology)
+        return calculation.topology.from_data(self._raw_data.topology)
 
     def _lattice_vectors(self):
         lattice_vectors = _LatticeVectors(self._raw_data.cell.lattice_vectors)

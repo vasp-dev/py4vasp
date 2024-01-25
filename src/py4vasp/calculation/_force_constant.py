@@ -2,8 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import itertools
 
-from py4vasp.calculation import _base
-from py4vasp.calculation import _structure
+from py4vasp.calculation import _base, _structure
 
 
 class ForceConstant(_base.Refinery, _structure.Mixin):

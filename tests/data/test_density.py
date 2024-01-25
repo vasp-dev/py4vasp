@@ -6,9 +6,8 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception, raw
+from py4vasp import calculation, exception, raw
 from py4vasp._third_party.viewer import viewer3d
-from py4vasp.data import Density, Structure
 
 
 @pytest.fixture(params=["Sr2TiO4", "Fe3O4 collinear", "Fe3O4 noncollinear"])
@@ -23,9 +22,10 @@ def collinear_density(raw_data):
 
 def make_reference_density(raw_data, selection):
     raw_density = raw_data.density(selection)
-    density = Density.from_data(raw_density)
+    density = calculation.density.from_data(raw_density)
     density.ref = types.SimpleNamespace()
-    density.ref.structure = Structure.from_data(raw_density.structure).read()
+    structure = calculation.structure.from_data(raw_density.structure).read()
+    density.ref.structure = structure
     density.ref.output = get_expected_dict(raw_density.charge)
     density.ref.string = get_expected_string(raw_density.charge)
     return density
@@ -69,7 +69,7 @@ def test_read(reference_density, Assert):
 
 def test_empty_density(raw_data):
     raw_density = raw.Density(raw_data.structure("Sr2TiO4"), charge=raw.VaspData(None))
-    density = Density.from_data(raw_density)
+    density = calculation.density.from_data(raw_density)
     with pytest.raises(exception.NoData):
         density.read()
 
@@ -153,4 +153,4 @@ def test_print(reference_density, format_):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.density("Fe3O4 collinear")
-    check_factory_methods(Density, data)
+    check_factory_methods(calculation.density, data)

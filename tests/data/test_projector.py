@@ -5,25 +5,24 @@ from typing import Iterable, NamedTuple
 import numpy as np
 import pytest
 
-from py4vasp import exception
-from py4vasp.calculation._selection import Selection
+from py4vasp import calculation, exception
 from py4vasp._util import select
-from py4vasp.data import Projector
+from py4vasp.calculation._selection import Selection
 
 
 @pytest.fixture
 def Sr2TiO4(raw_data):
-    return Projector.from_data(raw_data.projector("Sr2TiO4"))
+    return calculation.projector.from_data(raw_data.projector("Sr2TiO4"))
 
 
 @pytest.fixture
 def Fe3O4(raw_data):
-    return Projector.from_data(raw_data.projector("Fe3O4"))
+    return calculation.projector.from_data(raw_data.projector("Fe3O4"))
 
 
 @pytest.fixture
 def missing_orbitals(raw_data):
-    return Projector.from_data(raw_data.projector("without_orbitals"))
+    return calculation.projector.from_data(raw_data.projector("without_orbitals"))
 
 
 @pytest.fixture
@@ -199,7 +198,7 @@ def test_missing_orbitals_print(missing_orbitals, format_):
 def test_factory_methods(raw_data, check_factory_methods, projections):
     data = raw_data.projector("Sr2TiO4")
     parameters = {"project": {"selection": "Sr", "projections": projections}}
-    check_factory_methods(Projector, data, parameters)
+    check_factory_methods(calculation.projector, data, parameters)
 
 
 #
@@ -207,7 +206,7 @@ def test_factory_methods(raw_data, check_factory_methods, projections):
 # TODO: remove when deprecated methods are removed
 #
 
-Index = Projector.Index
+Index = calculation.projector.Index
 
 
 class SelectionTestCase(NamedTuple):

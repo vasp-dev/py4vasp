@@ -4,13 +4,13 @@ import types
 
 import pytest
 
-from py4vasp.data import PiezoelectricTensor
+from py4vasp import calculation
 
 
 @pytest.fixture
 def piezoelectric_tensor(raw_data):
     raw_tensor = raw_data.piezoelectric_tensor("default")
-    tensor = PiezoelectricTensor.from_data(raw_tensor)
+    tensor = calculation.piezoelectric_tensor.from_data(raw_tensor)
     tensor.ref = types.SimpleNamespace()
     tensor.ref.clamped_ion = raw_tensor.electron
     tensor.ref.relaxed_ion = raw_tensor.ion + raw_tensor.electron
@@ -43,4 +43,4 @@ Piezoelectric tensor (C/m²)
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.piezoelectric_tensor("default")
-    check_factory_methods(PiezoelectricTensor, data)
+    check_factory_methods(calculation.piezoelectric_tensor, data)

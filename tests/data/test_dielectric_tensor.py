@@ -4,8 +4,7 @@ import types
 
 import pytest
 
-from py4vasp import exception
-from py4vasp.data import DielectricTensor
+from py4vasp import calculation, exception
 
 
 @pytest.fixture
@@ -34,7 +33,7 @@ def nscf_tensor(raw_data):
 
 def make_reference(raw_data, method, expected_description):
     raw_tensor = raw_data.dielectric_tensor(method)
-    tensor = DielectricTensor.from_data(raw_tensor)
+    tensor = calculation.dielectric_tensor.from_data(raw_tensor)
     tensor.ref = types.SimpleNamespace()
     tensor.ref.clamped_ion = raw_tensor.electron
     if raw_tensor.ion.is_none():
@@ -76,7 +75,7 @@ def check_read_dielectric_tensor(dielectric_tensor, Assert):
 def test_unknown_method(raw_data):
     raw_tensor = raw_data.dielectric_tensor("unknown_method with_ion")
     with pytest.raises(exception.NotImplemented):
-        DielectricTensor.from_data(raw_tensor).print()
+        calculation.dielectric_tensor.from_data(raw_tensor).print()
 
 
 def test_print_dft_tensor(dft_tensor, format_):
@@ -124,4 +123,4 @@ Macroscopic static dielectric tensor (dimensionless)
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dielectric_tensor("dft with_ion")
-    check_factory_methods(DielectricTensor, data)
+    check_factory_methods(calculation.dielectric_tensor, data)

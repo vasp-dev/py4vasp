@@ -4,13 +4,13 @@ import types
 
 import pytest
 
-from py4vasp.data import ElasticModulus
+from py4vasp import calculation
 
 
 @pytest.fixture
 def elastic_modulus(raw_data):
     raw_elastic_modulus = raw_data.elastic_modulus("dft")
-    elastic_modulus = ElasticModulus.from_data(raw_elastic_modulus)
+    elastic_modulus = calculation.elastic_modulus.from_data(raw_elastic_modulus)
     elastic_modulus.ref = types.SimpleNamespace()
     elastic_modulus.ref.clamped_ion = raw_elastic_modulus.clamped_ion
     elastic_modulus.ref.relaxed_ion = raw_elastic_modulus.relaxed_ion
@@ -49,4 +49,4 @@ ZX         117.0000    121.0000    125.0000    119.0000    123.0000    121.0000
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.elastic_modulus("dft")
-    check_factory_methods(ElasticModulus, data)
+    check_factory_methods(calculation.elastic_modulus, data)

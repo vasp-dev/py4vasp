@@ -2,14 +2,12 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import data
-from py4vasp.calculation import _base
 from py4vasp._util import documentation, reader
-from py4vasp.calculation import _slice
+from py4vasp.calculation import _base, _slice, _structure
 
 
 @documentation.format(examples=_slice.examples("stress"))
-class Stress(_slice.Mixin, _base.Refinery):
+class Stress(_slice.Mixin, _base.Refinery, _structure.Mixin):
     """The stress acting on the unit cell for selected steps of the simulation.
 
     You can use this class to analyze the stress on the shape of the cell. In
@@ -52,10 +50,6 @@ in kB   {stress_to_string(stress)}
             "stress": self._stress[self._steps],
             "structure": self._structure[self._steps].read(),
         }
-
-    @property
-    def _structure(self):
-        return data.Structure.from_data(self._raw_data.structure)
 
     @property
     def _stress(self):

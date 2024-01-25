@@ -6,15 +6,14 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import calculation, exception
 from py4vasp._util import convert
-from py4vasp.data import Energy
 
 
 @pytest.fixture
 def MD_energy(raw_data):
     raw_energy = raw_data.energy("MD")
-    energy = Energy.from_data(raw_energy)
+    energy = calculation.energy.from_data(raw_energy)
     energy.ref = types.SimpleNamespace()
     energy.ref.number_steps = len(raw_energy.values)
     get_label = lambda x: convert.text_to_string(x).strip()
@@ -137,7 +136,7 @@ def test_selections(MD_energy, raw_data):
         "total_energy",
         "ETOTAL",
     )
-    assert Energy.from_data(raw_data.energy("relax")).selections() == (
+    assert calculation.energy.from_data(raw_data.energy("relax")).selections() == (
         "free_energy",
         "TOTEN",
         "without_entropy",
@@ -172,4 +171,4 @@ def test_print(steps, step_label, MD_energy, format_):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.energy("MD")
-    check_factory_methods(Energy, data)
+    check_factory_methods(calculation.energy, data)

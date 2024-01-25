@@ -7,14 +7,13 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
-from py4vasp.data import DielectricFunction
+from py4vasp import calculation, exception
 
 
 @pytest.fixture
 def electronic(raw_data):
     raw_electronic = raw_data.dielectric_function("electron")
-    electronic = DielectricFunction.from_data(raw_electronic)
+    electronic = calculation.dielectric_function.from_data(raw_electronic)
     electronic.ref = types.SimpleNamespace()
     electronic.ref.energies = raw_electronic.energies
     to_complex = lambda data: data[..., 0] + 1j * data[..., 1]
@@ -26,7 +25,7 @@ def electronic(raw_data):
 @pytest.fixture
 def ionic(raw_data):
     raw_ionic = raw_data.dielectric_function("ion")
-    ionic = DielectricFunction.from_data(raw_ionic)
+    ionic = calculation.dielectric_function.from_data(raw_ionic)
     ionic.ref = types.SimpleNamespace()
     ionic.ref.energies = raw_ionic.energies
     to_complex = lambda data: data[..., 0] + 1j * data[..., 1]
@@ -372,4 +371,4 @@ dielectric function:
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dielectric_function("electron")
-    check_factory_methods(DielectricFunction, data)
+    check_factory_methods(calculation.dielectric_function, data)

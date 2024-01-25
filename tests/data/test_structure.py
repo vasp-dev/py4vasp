@@ -6,9 +6,8 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import calculation, exception
 from py4vasp._third_party.viewer import viewer3d
-from py4vasp.data import Structure
 
 REF_POSCAR = """\
 Sr2TiO4
@@ -81,7 +80,7 @@ def Ca3AsBr3(raw_data):
 
 
 def make_structure(raw_structure):
-    structure = Structure.from_data(raw_structure)
+    structure = calculation.structure.from_data(raw_structure)
     structure.ref = types.SimpleNamespace()
     if not raw_structure.cell.scale.is_none():
         scale = raw_structure.cell.scale[()]
@@ -137,9 +136,10 @@ def test_to_poscar(Sr2TiO4, Ca3AsBr3):
 
 
 def test_from_poscar(Sr2TiO4, Assert, not_core):
-    structure = Structure.from_POSCAR(REF_POSCAR)
+    structure = calculation.structure.from_POSCAR(REF_POSCAR)
     check_Sr2TiO4_structure(structure.read(), Sr2TiO4.ref, -1, Assert)
-    structure = Structure.from_POSCAR(REF_POSCAR, elements=["Ba", "Zr", "S"])
+    elements = ["Ba", "Zr", "S"]
+    structure = calculation.structure.from_POSCAR(REF_POSCAR, elements=elements)
     actual = structure.read()
     Assert.allclose(actual["lattice_vectors"], Sr2TiO4.ref.lattice_vectors[-1])
     Assert.allclose(actual["positions"], Sr2TiO4.ref.positions[-1])
@@ -164,8 +164,8 @@ Direct
    0.5000000000000000    0.0000000000000000    0.5000000000000000
    0.0000000000000000    0.5000000000000000    0.5000000000000000"""
     with pytest.raises(exception.IncorrectUsage):
-        structure = Structure.from_POSCAR(poscar)
-    structure = Structure.from_POSCAR(poscar, elements=["Sr", "Ti", "O"])
+        structure = calculation.structure.from_POSCAR(poscar)
+    structure = calculation.structure.from_POSCAR(poscar, elements=["Sr", "Ti", "O"])
     check_Sr2TiO4_structure(structure.read(), Sr2TiO4.ref, -1, Assert)
 
 
@@ -206,7 +206,7 @@ def test_to_ase_Ca3AsBr3(Ca3AsBr3, Assert, not_core):
 
 
 def test_from_ase(Sr2TiO4, Assert, not_core):
-    structure = Structure.from_ase(Sr2TiO4.to_ase())
+    structure = calculation.structure.from_ase(Sr2TiO4.to_ase())
     check_Sr2TiO4_structure(structure.read(), Sr2TiO4.ref, -1, Assert)
 
 
@@ -223,7 +223,7 @@ def test_to_mdtraj(Sr2TiO4, Assert, not_core):
 def check_Sr2TiO4_mdtraj(trajectory, reference, steps, Assert):
     assert trajectory.n_frames == len(reference.positions[steps])
     assert trajectory.n_atoms == 7
-    unitcell_vectors = Structure.A_to_nm * reference.lattice_vectors[steps]
+    unitcell_vectors = calculation.structure.A_to_nm * reference.lattice_vectors[steps]
     cartesian_positions = [
         pos @ cell for pos, cell in zip(reference.positions[steps], unitcell_vectors)
     ]
@@ -361,4 +361,4 @@ def test_print_Ca3AsBr3(Ca3AsBr3, format_):
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.structure("Sr2TiO4")
     parameters = {"__getitem__": {"steps": slice(None)}}
-    check_factory_methods(Structure, data, parameters)
+    check_factory_methods(calculation.structure, data, parameters)

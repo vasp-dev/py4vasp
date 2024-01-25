@@ -7,8 +7,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
-from py4vasp.data import Magnetism
+from py4vasp import calculation, exception
 
 
 @pytest.fixture(params=[slice(None), slice(1, 3), 0, -1])
@@ -43,7 +42,7 @@ def orbital_moments(raw_data):
 
 def setup_magnetism(raw_data, kind):
     raw_magnetism = raw_data.magnetism(kind)
-    magnetism = Magnetism.from_data(raw_magnetism)
+    magnetism = calculation.magnetism.from_data(raw_magnetism)
     magnetism.ref = types.SimpleNamespace()
     magnetism.ref.kind = kind
     magnetism.ref.charges = raw_magnetism.spin_moments[:, 0]
@@ -167,7 +166,7 @@ def expect_exception(kind, selection):
 
 
 def get_moments(kind, plot_under_test, selection=None):
-    with patch("py4vasp.data.Structure.plot") as plot:
+    with patch("py4vasp.calculation._structure.Structure.plot") as plot:
         plot_under_test()
     plot.assert_called_once()
     viewer = plot.return_value
@@ -192,7 +191,7 @@ def expected_moments(reference, selection, steps):
     if reference.kind == "collinear":
         moments = np.array([[0, 0, m] for m in moments])
     largest_moment = np.max(np.linalg.norm(moments, axis=1))
-    rescale_moments = Magnetism.length_moments / largest_moment
+    rescale_moments = calculation.magnetism.length_moments / largest_moment
     return rescale_moments * moments
 
 
@@ -200,7 +199,7 @@ def test_plot_supercell(example_magnetism):
     if example_magnetism.ref.kind == "charge_only":
         return
     supercell = (3, 2, 1)
-    with patch("py4vasp.data.Structure.plot") as plot:
+    with patch("py4vasp.calculation._structure.Structure.plot") as plot:
         example_magnetism.plot(supercell=supercell)
         plot.assert_called_once_with(supercell)
         viewer = plot.return_value
@@ -248,4 +247,4 @@ def test_incorrect_argument(example_magnetism):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.magnetism("collinear")
-    check_factory_methods(Magnetism, data)
+    check_factory_methods(calculation.magnetism, data)

@@ -6,20 +6,20 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
+from py4vasp import calculation
 from py4vasp._util import convert
-from py4vasp.data import Kpoint, PhononBand, Topology
 
 
 @pytest.fixture
 def phonon_band(raw_data):
     raw_band = raw_data.phonon_band("default")
-    band = PhononBand.from_data(raw_band)
+    band = calculation.phonon_band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
     band.ref.bands = raw_band.dispersion.eigenvalues
     band.ref.modes = convert.to_complex(raw_band.eigenvectors)
     raw_qpoints = raw_band.dispersion.kpoints
-    band.ref.qpoints = Kpoint.from_data(raw_qpoints)
-    band.ref.topology = Topology.from_data(raw_band.topology)
+    band.ref.qpoints = calculation.kpoint.from_data(raw_qpoints)
+    band.ref.topology = calculation.topology.from_data(raw_band.topology)
     Sr = slice(0, 2)
     band.ref.Sr = np.sum(np.abs(band.ref.modes[:, :, Sr, :]), axis=(2, 3))
     Ti = 2
@@ -130,4 +130,4 @@ phonon band data:
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.phonon_band("default")
-    check_factory_methods(PhononBand, data)
+    check_factory_methods(calculation.phonon_band, data)

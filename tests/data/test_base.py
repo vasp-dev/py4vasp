@@ -11,8 +11,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from py4vasp import exception, raw
-from py4vasp.calculation import _base
 from py4vasp._util import select
+from py4vasp.calculation import _base
 
 from .conftest import SELECTION
 

@@ -6,10 +6,15 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
-from py4vasp._third_party.viewer.viewer3d import Viewer3d, _Arrow3d, _x_axis, _y_axis, _z_axis
+from py4vasp import calculation, exception
+from py4vasp._third_party.viewer.viewer3d import (
+    Viewer3d,
+    _Arrow3d,
+    _x_axis,
+    _y_axis,
+    _z_axis,
+)
 from py4vasp._util import import_
-from py4vasp.data import Structure
 
 json = import_.optional("ipykernel.jsonutil")
 nglview = import_.optional("nglview")
@@ -33,7 +38,7 @@ def assert_arrow_message(Assert):
 
 @pytest.fixture
 def viewer3d(raw_data, not_core):
-    structure = Structure.from_data(raw_data.structure("Sr2TiO4"))
+    structure = calculation.structure.from_data(raw_data.structure("Sr2TiO4"))
     return make_viewer(structure)
 
 
@@ -43,7 +48,7 @@ def nonstandard_form(raw_data, not_core):
     x = np.sqrt(0.5)
     raw_structure.cell.lattice_vectors = np.array([[[x, x, 0], [-x, x, 0], [0, 0, 1]]])
     raw_structure.positions += 0.1  # shift to avoid small comparisons
-    viewer = make_viewer(Structure.from_data(raw_structure))
+    viewer = make_viewer(calculation.structure.from_data(raw_structure))
     viewer.ref.transformation = np.array([[x, x, 0], [-x, x, 0], [0, 0, 1]])
     return viewer
 
@@ -121,7 +126,7 @@ def test_arrows(viewer3d, assert_arrow_message):
 
 
 def test_supercell(raw_data, not_core):
-    structure = Structure.from_data(raw_data.structure("Sr2TiO4"))
+    structure = calculation.structure.from_data(raw_data.structure("Sr2TiO4"))
     number_atoms = structure.number_atoms()
     supercell = (1, 2, 3)
     viewer = make_viewer(structure, supercell)
@@ -177,7 +182,7 @@ def rotate(arrow, transformation):
 
 def test_isosurface(raw_data, not_core):
     raw_density = raw_data.density("Fe3O4 collinear")
-    viewer = make_viewer(Structure.from_data(raw_density.structure))
+    viewer = make_viewer(calculation.structure.from_data(raw_density.structure))
     viewer.show_isosurface(raw_density.charge)
     messages = last_messages(viewer, n=1, get_msg_kwargs=True)
     assert_load_file(messages[0], binary=True, default=True)
@@ -190,7 +195,7 @@ def test_isosurface(raw_data, not_core):
 
 
 def test_trajectory(raw_data, not_core):
-    structure = Structure.from_data(raw_data.structure("Sr2TiO4"))
+    structure = calculation.structure.from_data(raw_data.structure("Sr2TiO4"))
     viewer = structure[:].plot()
     viewer.default_messages = 0
     n = count_messages(viewer)

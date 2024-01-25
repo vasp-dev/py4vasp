@@ -6,7 +6,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import data, exception
+from py4vasp import calculation, exception
 
 VBM = 0
 CBM = 1
@@ -31,7 +31,7 @@ def spin_polarized(raw_data):
 
 
 def setup_bandgap(raw_gap):
-    bandgap = data.Bandgap.from_data(raw_gap)
+    bandgap = calculation.bandgap.from_data(raw_gap)
     bandgap.ref = types.SimpleNamespace()
     bandgap.ref.fundamental = raw_gap.values[..., CBM] - raw_gap.values[..., VBM]
     bandgap.ref.vbm = raw_gap.values[..., VBM]
@@ -310,4 +310,4 @@ Fermi energy:               11.401754"""
 
 def test_factory_methods(raw_data, check_factory_methods):
     raw_gap = raw_data.bandgap("default")
-    check_factory_methods(data.Bandgap, raw_gap)
+    check_factory_methods(calculation.bandgap, raw_gap)

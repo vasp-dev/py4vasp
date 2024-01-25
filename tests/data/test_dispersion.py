@@ -5,15 +5,15 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp.data import Dispersion, Kpoint
+from py4vasp import calculation
 
 
 @pytest.fixture(params=["single_band", "spin_polarized", "line", "phonon"])
 def dispersion(raw_data, request):
     raw_dispersion = raw_data.dispersion(request.param)
-    dispersion = Dispersion.from_data(raw_dispersion)
+    dispersion = calculation.dispersion.from_data(raw_dispersion)
     dispersion.ref = types.SimpleNamespace()
-    dispersion.ref.kpoints = Kpoint.from_data(raw_dispersion.kpoints)
+    dispersion.ref.kpoints = calculation.kpoint.from_data(raw_dispersion.kpoints)
     dispersion.ref.eigenvalues = raw_dispersion.eigenvalues
     spin_polarized = request.param == "spin_polarized"
     dispersion.ref.spin_polarized = spin_polarized
@@ -98,4 +98,4 @@ def test_print(dispersion, format_):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dispersion("single_band")
-    check_factory_methods(Dispersion, data)
+    check_factory_methods(calculation.dispersion, data)

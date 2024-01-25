@@ -4,9 +4,8 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._config import VASP_GRAY
-from py4vasp.calculation import _base
 from py4vasp._util import convert, documentation, reader
-from py4vasp.calculation import _slice, _structure
+from py4vasp.calculation import _base, _slice, _structure
 
 
 @documentation.format(examples=_slice.examples("velocity"))

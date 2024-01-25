@@ -5,18 +5,17 @@ from unittest.mock import patch
 
 import pytest
 
-from py4vasp import exception
+from py4vasp import calculation, exception
 from py4vasp._config import VASP_GRAY
 from py4vasp._util import convert
-from py4vasp.data import Structure, Velocity
 
 
 @pytest.fixture
 def Sr2TiO4(raw_data):
     raw_velocity = raw_data.velocity("Sr2TiO4")
-    velocity = Velocity.from_data(raw_velocity)
+    velocity = calculation.velocity.from_data(raw_velocity)
     velocity.ref = types.SimpleNamespace()
-    velocity.ref.structure = Structure.from_data(raw_velocity.structure)
+    velocity.ref.structure = calculation.structure.from_data(raw_velocity.structure)
     velocity.ref.velocities = raw_velocity.velocities
     return velocity
 
@@ -24,9 +23,9 @@ def Sr2TiO4(raw_data):
 @pytest.fixture
 def Fe3O4(raw_data):
     raw_velocity = raw_data.velocity("Fe3O4")
-    velocity = Velocity.from_data(raw_velocity)
+    velocity = calculation.velocity.from_data(raw_velocity)
     velocity.ref = types.SimpleNamespace()
-    velocity.ref.structure = Structure.from_data(raw_velocity.structure)
+    velocity.ref.structure = calculation.structure.from_data(raw_velocity.structure)
     velocity.ref.velocities = raw_velocity.velocities
     return velocity
 
@@ -67,7 +66,7 @@ def test_plot_Fe3O4(Fe3O4, Assert):
 
 
 def check_plot_velocity(velocity, step, Assert):
-    with patch("py4vasp.data.Structure.plot") as plot:
+    with patch("py4vasp.calculation._structure.Structure.plot") as plot:
         if step == -1:
             velocity.plot()
         else:
@@ -132,4 +131,4 @@ def test_print_Sr2TiO4(Sr2TiO4, format_):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.velocity("Fe3O4")
-    check_factory_methods(Velocity, data)
+    check_factory_methods(calculation.velocity, data)

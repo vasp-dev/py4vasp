@@ -1,39 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.data import *
+from py4vasp import calculation
+from py4vasp.calculation.data_all import *
 
 
 def test_repr():
-    tests = [
-        Band,
-        Bandgap,
-        BornEffectiveCharge,
-        CONTCAR,
-        Density,
-        DielectricFunction,
-        DielectricTensor,
-        Dos,
-        ElasticModulus,
-        Energy,
-        Fatband,
-        ForceConstant,
-        Force,
-        InternalStrain,
-        Kpoint,
-        Magnetism,
-        PairCorrelation,
-        PhononBand,
-        PhononDos,
-        PiezoelectricTensor,
-        Polarization,
-        Projector,
-        Stress,
-        Structure,
-        System,
-        Topology,
-        Workfunction,
-    ]
-    for class_ in tests:
-        instance = class_.from_data("mock_data")
+    for name in calculation.__all__:
+        instance = getattr(calculation, name)
         copy = eval(repr(instance))
-        assert copy.__class__ == class_
+        assert copy.__class__ == instance.__class__

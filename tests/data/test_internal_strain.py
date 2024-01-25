@@ -4,15 +4,16 @@ import types
 
 import pytest
 
-from py4vasp.data import InternalStrain, Structure
+from py4vasp import calculation
 
 
 @pytest.fixture
 def Sr2TiO4(raw_data):
     raw_internal_strain = raw_data.internal_strain("Sr2TiO4")
-    internal_strain = InternalStrain.from_data(raw_internal_strain)
+    internal_strain = calculation.internal_strain.from_data(raw_internal_strain)
     internal_strain.ref = types.SimpleNamespace()
-    internal_strain.ref.structure = Structure.from_data(raw_internal_strain.structure)
+    structure = calculation.structure.from_data(raw_internal_strain.structure)
+    internal_strain.ref.structure = structure
     internal_strain.ref.internal_strain = raw_internal_strain.internal_strain
     return internal_strain
 
@@ -61,4 +62,4 @@ Internal strain tensor (eV/Å):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.internal_strain("Sr2TiO4")
-    check_factory_methods(InternalStrain, data)
+    check_factory_methods(calculation.internal_strain, data)

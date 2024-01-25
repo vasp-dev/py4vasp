@@ -1,8 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp import data
-from py4vasp.calculation import _base
+from py4vasp import calculation
 from py4vasp._third_party import graph
+from py4vasp.calculation import _base
 
 
 class Workfunction(_base.Refinery, graph.Mixin):
@@ -37,7 +37,7 @@ class Workfunction(_base.Refinery, graph.Mixin):
             Contains vacuum potential, average potential and relevant reference energies
             within the surface.
         """
-        bandgap = data.Bandgap.from_data(self._raw_data.reference_potential)
+        bandgap = calculation.bandgap.from_data(self._raw_data.reference_potential)
         # vbm and cbm will be uncommented out when the relevant parts of the
         # code are added to VASP 6.5
         return {

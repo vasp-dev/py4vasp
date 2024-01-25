@@ -4,16 +4,15 @@ import types
 
 import pytest
 
-from py4vasp import exception
-from py4vasp.data import Stress, Structure
+from py4vasp import calculation, exception
 
 
 @pytest.fixture
 def Sr2TiO4(raw_data):
     raw_stress = raw_data.stress("Sr2TiO4")
-    stress = Stress.from_data(raw_stress)
+    stress = calculation.stress.from_data(raw_stress)
     stress.ref = types.SimpleNamespace()
-    stress.ref.structure = Structure.from_data(raw_stress.structure)
+    stress.ref.structure = calculation.structure.from_data(raw_stress.structure)
     stress.ref.stress = raw_stress.stress
     return stress
 
@@ -21,9 +20,9 @@ def Sr2TiO4(raw_data):
 @pytest.fixture
 def Fe3O4(raw_data):
     raw_stress = raw_data.stress("Fe3O4")
-    stress = Stress.from_data(raw_stress)
+    stress = calculation.stress.from_data(raw_stress)
     stress.ref = types.SimpleNamespace()
-    stress.ref.structure = Structure.from_data(raw_stress.structure)
+    stress.ref.structure = calculation.structure.from_data(raw_stress.structure)
     stress.ref.stress = raw_stress.stress
     return stress
 
@@ -92,4 +91,4 @@ in kB      18.00000    22.00000    26.00000    20.00000    24.00000    22.00000
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.stress("Sr2TiO4")
-    check_factory_methods(Stress, data)
+    check_factory_methods(calculation.stress, data)

@@ -1,11 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import numpy as np
-
-from py4vasp import data, raw
-from py4vasp.calculation import _base
+from py4vasp import calculation
 from py4vasp._util import convert
-from py4vasp.calculation import _structure
+from py4vasp.calculation import _base, _structure
 
 
 class CONTCAR(_base.Refinery, _structure.Mixin):
@@ -73,7 +70,7 @@ class CONTCAR(_base.Refinery, _structure.Mixin):
         yield from _ion_velocity_lines(self._raw_data.ion_velocities)
 
     def _topology(self):
-        return data.Topology.from_data(self._raw_data.structure.topology)
+        return calculation.topology.from_data(self._raw_data.structure.topology)
 
 
 def _cell_lines(cell):

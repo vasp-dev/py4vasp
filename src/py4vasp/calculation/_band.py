@@ -2,11 +2,10 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import data
-from py4vasp.calculation import _base
+from py4vasp import calculation
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_
-from py4vasp.calculation import _projector
+from py4vasp.calculation import _base, _projector
 
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
@@ -122,11 +121,11 @@ class Band(_base.Refinery, graph.Mixin):
 
     @property
     def _dispersion(self):
-        return data.Dispersion.from_data(self._raw_data.dispersion)
+        return calculation.dispersion.from_data(self._raw_data.dispersion)
 
     @property
     def _projector(self):
-        return data.Projector.from_data(self._raw_data.projectors)
+        return calculation.projector.from_data(self._raw_data.projectors)
 
     def _projections(self, selection, width):
         if selection is None:

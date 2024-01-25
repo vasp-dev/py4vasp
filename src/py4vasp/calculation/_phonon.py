@@ -1,8 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp import data
-from py4vasp.calculation import _base
+from py4vasp import calculation
 from py4vasp._util import select
+from py4vasp.calculation import _base
 
 selection_doc = """\
 selection : str
@@ -37,7 +37,7 @@ class Mixin:
         }
 
     def _topology(self):
-        return data.Topology.from_data(self._raw_data.topology)
+        return calculation.topology.from_data(self._raw_data.topology)
 
     def _init_atom_dict(self):
         return {

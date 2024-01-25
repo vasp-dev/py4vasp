@@ -3,9 +3,8 @@
 import numpy as np
 
 from py4vasp import exception
-from py4vasp.calculation import _base
 from py4vasp._util import documentation
-from py4vasp.calculation import _slice, _structure
+from py4vasp.calculation import _base, _slice, _structure
 
 _index_note = """\
 Notes

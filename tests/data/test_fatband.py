@@ -5,15 +5,15 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp.data import Dispersion, Fatband
+from py4vasp import calculation
 
 
 @pytest.fixture
 def fatband(raw_data):
     raw_fatband = raw_data.fatband("default")
-    fatband = Fatband.from_data(raw_fatband)
+    fatband = calculation.fatband.from_data(raw_fatband)
     fatband.ref = types.SimpleNamespace()
-    fatband.ref.dispersion = Dispersion.from_data(raw_fatband.dispersion)
+    fatband.ref.dispersion = calculation.dispersion.from_data(raw_fatband.dispersion)
     fatbands = raw_fatband.fatbands
     fatband.ref.fatbands = fatbands[:, :, 0] + fatbands[:, :, 1] * 1j
     fatband.ref.fermi_energy = raw_fatband.fermi_energy
@@ -50,4 +50,4 @@ BSE fatband data:
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.fatband("default")
-    check_factory_methods(Fatband, data)
+    check_factory_methods(calculation.fatband, data)

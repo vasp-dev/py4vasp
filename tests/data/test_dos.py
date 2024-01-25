@@ -6,15 +6,13 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
-from py4vasp._util import select
-from py4vasp.data import Dos
+from py4vasp import calculation, exception
 
 
 @pytest.fixture
 def Sr2TiO4(raw_data):
     raw_dos = raw_data.dos("Sr2TiO4")
-    dos = Dos.from_data(raw_dos)
+    dos = calculation.dos.from_data(raw_dos)
     dos.ref = types.SimpleNamespace()
     dos.ref.energies = raw_dos.energies - raw_dos.fermi_energy
     dos.ref.dos = raw_dos.dos[0]
@@ -25,7 +23,7 @@ def Sr2TiO4(raw_data):
 @pytest.fixture
 def Fe3O4(raw_data):
     raw_dos = raw_data.dos("Fe3O4")
-    dos = Dos.from_data(raw_dos)
+    dos = calculation.dos.from_data(raw_dos)
     dos.ref = types.SimpleNamespace()
     dos.ref.energies = raw_dos.energies - raw_dos.fermi_energy
     dos.ref.dos_up = raw_dos.dos[0]
@@ -37,7 +35,7 @@ def Fe3O4(raw_data):
 @pytest.fixture
 def Sr2TiO4_projectors(raw_data):
     raw_dos = raw_data.dos("Sr2TiO4 with_projectors")
-    dos = Dos.from_data(raw_dos)
+    dos = calculation.dos.from_data(raw_dos)
     dos.ref = types.SimpleNamespace()
     dos.ref.s = np.sum(raw_dos.projections[0, :, 0, :], axis=0)
     dos.ref.Sr_p = np.sum(raw_dos.projections[0, 0:2, 1:4, :], axis=(0, 1))
@@ -54,7 +52,7 @@ def Sr2TiO4_projectors(raw_data):
 @pytest.fixture
 def Fe3O4_projectors(raw_data):
     raw_dos = raw_data.dos("Fe3O4 with_projectors")
-    dos = Dos.from_data(raw_dos)
+    dos = calculation.dos.from_data(raw_dos)
     dos.ref = types.SimpleNamespace()
     dos.ref.Fe_up = np.sum(raw_dos.projections[0, 0:3, :, :], axis=(0, 1))
     dos.ref.Fe_down = np.sum(raw_dos.projections[1, 0:3, :, :], axis=(0, 1))
@@ -111,7 +109,7 @@ def test_read_excess_orbital_types(raw_data, Assert):
     """Vasp 6.1 may store more orbital types then projections available. This
     test checks that this does not lead to any issues when an available element
     is used."""
-    dos = Dos.from_data(raw_data.dos("Fe3O4 excess_orbitals"))
+    dos = calculation.dos.from_data(raw_data.dos("Fe3O4 excess_orbitals"))
     actual = dos.read("s p g")
     zero = np.zeros_like(actual["energies"])
     Assert.allclose(actual["g_up"], zero)
@@ -266,4 +264,4 @@ projectors:
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dos("Sr2TiO4")
-    check_factory_methods(Dos, data)
+    check_factory_methods(calculation.dos, data)

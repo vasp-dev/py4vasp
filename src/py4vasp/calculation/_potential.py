@@ -4,10 +4,9 @@ import itertools
 
 import numpy as np
 
-from py4vasp import data, exception
-from py4vasp.calculation import _base
-from py4vasp._util import import_, select
-from py4vasp.calculation import _structure
+from py4vasp import calculation, exception
+from py4vasp._util import select
+from py4vasp.calculation import _base, _structure
 
 VALID_KINDS = ("total", "ionic", "xc", "hartree")
 
@@ -27,7 +26,7 @@ class Potential(_base.Refinery, _structure.Mixin):
             description = "noncollinear potential:"
         else:
             description = "nonpolarized potential:"
-        topology = data.Topology.from_data(self._raw_data.structure.topology)
+        topology = calculation.topology.from_data(self._raw_data.structure.topology)
         structure = f"structure: {topology}"
         grid = f"grid: {potential.shape[3]}, {potential.shape[2]}, {potential.shape[1]}"
         available = "available: " + ", ".join(
