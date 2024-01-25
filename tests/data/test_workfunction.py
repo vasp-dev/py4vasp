@@ -45,7 +45,7 @@ def test_plot(workfunction, Assert):
     assert graph.series.name == "potential"
 
 
-@patch("py4vasp._data.workfunction.Workfunction.to_graph")
+@patch("py4vasp.calculation._workfunction.Workfunction.to_graph")
 def test_to_plotly(mock_plot, workfunction):
     fig = workfunction.to_plotly()
     mock_plot.assert_called_once_with()
@@ -61,7 +61,7 @@ def test_to_image(workfunction):
 
 
 def check_to_image(workfunction, filename_argument, expected_filename):
-    with patch("py4vasp._data.workfunction.Workfunction.to_plotly") as plot:
+    with patch("py4vasp.calculation._workfunction.Workfunction.to_plotly") as plot:
         workfunction.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
