@@ -3,9 +3,10 @@
 import numpy as np
 
 from py4vasp import data
-from py4vasp._data import base, projector
+from py4vasp._data import base
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_
+from py4vasp.calculation import _projector
 
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
@@ -32,8 +33,8 @@ class Band(base.Refinery, graph.Mixin):
 
     @base.data_access
     @documentation.format(
-        selection_doc=projector.selection_doc,
-        examples=projector.selection_examples("band", "to_dict"),
+        selection_doc=_projector.selection_doc,
+        examples=_projector.selection_examples("band", "to_dict"),
     )
     def to_dict(self, selection=None):
         """Read the data into a dictionary.
@@ -64,8 +65,8 @@ class Band(base.Refinery, graph.Mixin):
 
     @base.data_access
     @documentation.format(
-        selection_doc=projector.selection_doc,
-        examples=projector.selection_examples("band", "to_graph"),
+        selection_doc=_projector.selection_doc,
+        examples=_projector.selection_examples("band", "to_graph"),
     )
     def to_graph(self, selection=None, width=0.5):
         """Read the data and generate a graph.
@@ -93,8 +94,8 @@ class Band(base.Refinery, graph.Mixin):
 
     @base.data_access
     @documentation.format(
-        selection_doc=projector.selection_doc,
-        examples=projector.selection_examples("band", "to_frame"),
+        selection_doc=_projector.selection_doc,
+        examples=_projector.selection_examples("band", "to_frame"),
     )
     def to_frame(self, selection=None):
         """Read the data into a DataFrame.

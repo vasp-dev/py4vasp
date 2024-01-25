@@ -1,9 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import data
-from py4vasp._data import base, projector
+from py4vasp._data import base
 from py4vasp._third_party import graph
 from py4vasp._util import documentation, import_
+from py4vasp.calculation import _projector
 
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
@@ -32,8 +33,8 @@ class Dos(base.Refinery, graph.Mixin):
 
     @base.data_access
     @documentation.format(
-        selection_doc=projector.selection_doc,
-        examples=projector.selection_examples("dos", "to_dict"),
+        selection_doc=_projector.selection_doc,
+        examples=_projector.selection_examples("dos", "to_dict"),
     )
     def to_dict(self, selection=None):
         """Read the data into a dictionary.
@@ -59,8 +60,8 @@ class Dos(base.Refinery, graph.Mixin):
 
     @base.data_access
     @documentation.format(
-        selection_doc=projector.selection_doc,
-        examples=projector.selection_examples("dos", "to_graph"),
+        selection_doc=_projector.selection_doc,
+        examples=_projector.selection_examples("dos", "to_graph"),
     )
     def to_graph(self, selection=None):
         """Generate a graph of the selected data reading it from the VASP output.
@@ -88,8 +89,8 @@ class Dos(base.Refinery, graph.Mixin):
 
     @base.data_access
     @documentation.format(
-        selection_doc=projector.selection_doc,
-        examples=projector.selection_examples("dos", "to_frame"),
+        selection_doc=_projector.selection_doc,
+        examples=_projector.selection_examples("dos", "to_frame"),
     )
     def to_frame(self, selection=None):
         """Read the data into a pandas DataFrame.
