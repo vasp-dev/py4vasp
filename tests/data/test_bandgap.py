@@ -164,7 +164,7 @@ def test_plot_incorrect_selection(bandgap, selection):
         bandgap.plot(selection)
 
 
-@patch("py4vasp._data.bandgap.Bandgap.to_graph")
+@patch("py4vasp.calculation._bandgap.Bandgap.to_graph")
 def test_energy_to_plotly(mock_plot, bandgap):
     fig = bandgap.to_plotly()
     mock_plot.assert_called_once_with()
@@ -180,7 +180,7 @@ def test_to_image(bandgap):
 
 
 def check_to_image(bandgap, filename_argument, expected_filename):
-    with patch("py4vasp._data.bandgap.Bandgap.to_plotly") as plot:
+    with patch("py4vasp.calculation._bandgap.Bandgap.to_plotly") as plot:
         bandgap.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
