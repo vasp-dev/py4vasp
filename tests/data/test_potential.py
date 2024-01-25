@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from py4vasp import exception, raw
-from py4vasp._data import viewer3d
+from py4vasp._third_party.viewer import viewer3d
 from py4vasp.data import Potential, Structure
 
 

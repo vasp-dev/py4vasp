@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from py4vasp import data
-from py4vasp._data import viewer3d
+from py4vasp._third_party.viewer import viewer3d
 
 REF_Sr2TiO4 = """\
 Sr2TiO4
