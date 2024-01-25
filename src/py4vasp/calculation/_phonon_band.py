@@ -3,12 +3,13 @@
 import numpy as np
 
 from py4vasp import data
-from py4vasp._data import base, phonon
+from py4vasp._data import base
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
+from py4vasp.calculation import _phonon
 
 
-class PhononBand(base.Refinery, phonon.Mixin, graph.Mixin):
+class PhononBand(base.Refinery, _phonon.Mixin, graph.Mixin):
     """The phonon band structure.
 
     Use this to examine the phonon band structure along a high-symmetry path in the
@@ -41,7 +42,7 @@ class PhononBand(base.Refinery, phonon.Mixin, graph.Mixin):
         }
 
     @base.data_access
-    @documentation.format(selection=phonon.selection_doc)
+    @documentation.format(selection=_phonon.selection_doc)
     def to_graph(self, selection=None, width=1.0):
         """Generate a graph of the phonon bands.
 
