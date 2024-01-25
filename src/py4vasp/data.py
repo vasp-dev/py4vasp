@@ -31,7 +31,7 @@ from py4vasp.calculation._dos import Dos
 from py4vasp.calculation._elastic_modulus import ElasticModulus
 from py4vasp.calculation._energy import Energy
 from py4vasp.calculation._fatband import Fatband
-from py4vasp._data.force import Force
+from py4vasp.calculation._force import Force
 from py4vasp._data.force_constant import ForceConstant
 from py4vasp._data.internal_strain import InternalStrain
 from py4vasp._data.kpoint import Kpoint
