@@ -7,7 +7,7 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from py4vasp import Calculation, control, data, exception
+from py4vasp import Calculation, calculation, control, data, exception
 
 
 @patch("py4vasp._data.base.Refinery.from_path", autospec=True)
@@ -45,23 +45,9 @@ def test_creation_from_file(mock_access, mock_from_file):
 
 @patch("py4vasp.raw.access", autospec=True)
 def test_all_attributes(mock_access):
-    calculation = Calculation.from_path("test_path")
-    special_cases = {
-        "BornEffectiveCharge": "born_effective_charge",
-        "DielectricFunction": "dielectric_function",
-        "DielectricTensor": "dielectric_tensor",
-        "CONTCAR": "CONTCAR",
-        "ElasticModulus": "elastic_modulus",
-        "ForceConstant": "force_constant",
-        "InternalStrain": "internal_strain",
-        "PairCorrelation": "pair_correlation",
-        "PhononBand": "phonon_band",
-        "PhononDos": "phonon_dos",
-        "PiezoelectricTensor": "piezoelectric_tensor",
-    }
-    for name, _ in inspect.getmembers(data, inspect.isclass):
-        attr = special_cases.get(name, name.lower())
-        assert hasattr(calculation, attr)
+    calc = Calculation.from_path("test_path")
+    for name in calculation.__all__:
+        assert hasattr(calc, name)
     mock_access.assert_not_called()
     mock_access.return_value.__enter__.assert_not_called()
 

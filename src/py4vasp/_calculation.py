@@ -3,7 +3,7 @@
 import inspect
 import pathlib
 
-from py4vasp import _data, control, data, exception
+from py4vasp import _data, calculation, control, data, exception
 from py4vasp._util import convert
 
 
@@ -29,8 +29,14 @@ class Calculation:
     :meth:`from_file`. This will ensure that the path to your VASP calculation is
     properly set and all features work as intended.
 
-    Attributes
-    ----------
+    .. autosummary::
+
+       from_file
+       from_path
+       path
+       INCAR
+       KPOINTS
+       POSCAR
     """
 
     def __init__(self, *args, **kwargs):
@@ -114,15 +120,15 @@ instead of the constructor Calculation()."""
 
 
 def _add_all_refinement_classes(calc, add_single_class):
-    for _, class_ in inspect.getmembers(data, inspect.isclass):
-        if issubclass(class_, _data.base.Refinery):
-            calc = add_single_class(calc, class_)
+    for name in calculation.__all__:
+        calc = add_single_class(calc, name)
     return calc
 
 
-def _add_attribute_from_path(calc, class_):
+def _add_attribute_from_path(calc, name):
+    class_ = getattr(data, convert.to_camelcase(name))
     instance = class_.from_path(calc.path())
-    setattr(calc, convert.quantity_name(class_.__name__), instance)
+    setattr(calc, name, instance)
     return calc
 
 
@@ -130,32 +136,16 @@ class _AddAttributeFromFile:
     def __init__(self, file_name):
         self._file_name = file_name
 
-    def __call__(self, calc, class_):
+    def __call__(self, calc, name):
+        class_ = getattr(data, convert.to_camelcase(name))
         instance = class_.from_file(self._file_name)
-        setattr(calc, convert.quantity_name(class_.__name__), instance)
+        setattr(calc, name, instance)
         return calc
 
 
-def _add_to_documentation(calc, class_):
-    functions = inspect.getmembers(class_, inspect.isfunction)
-    method_names = [name for name, _ in functions if not name.startswith("_")]
-    calc.__doc__ += _header_for_class(class_)
-    for name in method_names:
-        calc.__doc__ += _link_to_method(class_.__name__, name)
+def _add_to_documentation(calc, name):
+    calc.__doc__ += f"   py4vasp.calculation.{name}\n    "
     return calc
-
-
-def _header_for_class(class_):
-    first_line = class_.__doc__.split("\n")[0]
-    class_name = class_.__name__
-    return f"""
-    {convert.quantity_name(class_name)}
-        {first_line} (:class:`py4vasp.data.{class_name}`)
-    """
-
-
-def _link_to_method(class_name, method_name):
-    return f"\n        * :meth:`py4vasp.data.{class_name}.{method_name}`"
 
 
 Calculation = _add_all_refinement_classes(Calculation, _add_to_documentation)
