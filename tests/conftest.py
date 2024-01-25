@@ -8,7 +8,6 @@ import pytest
 from numpy.testing import assert_array_almost_equal_nulp
 
 from py4vasp import exception, raw
-from py4vasp._data.base import _DataWrapper
 
 number_steps = 4
 number_atoms = 7

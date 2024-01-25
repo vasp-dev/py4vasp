@@ -7,7 +7,7 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from py4vasp import Calculation, calculation, control, data, exception
+from py4vasp import Calculation, calculation, control, exception
 
 
 @patch("py4vasp._data.base.Refinery.from_path", autospec=True)
