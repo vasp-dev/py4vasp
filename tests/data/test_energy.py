@@ -97,7 +97,7 @@ def test_incorrect_label(MD_energy):
         MD_energy.plot(number_instead_of_string)
 
 
-@patch("py4vasp._data.energy.Energy.to_graph")
+@patch("py4vasp.calculation._energy.Energy.to_graph")
 def test_energy_to_plotly(mock_plot, MD_energy):
     fig = MD_energy.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
@@ -113,7 +113,7 @@ def test_to_image(MD_energy):
 
 
 def check_to_image(MD_energy, filename_argument, expected_filename):
-    with patch("py4vasp._data.energy.Energy.to_plotly") as plot:
+    with patch("py4vasp.calculation._energy.Energy.to_plotly") as plot:
         MD_energy.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value

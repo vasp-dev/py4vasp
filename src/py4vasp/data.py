@@ -29,7 +29,7 @@ from py4vasp.calculation._dielectric_tensor import DielectricTensor
 from py4vasp.calculation._dispersion import Dispersion
 from py4vasp.calculation._dos import Dos
 from py4vasp.calculation._elastic_modulus import ElasticModulus
-from py4vasp._data.energy import Energy
+from py4vasp.calculation._energy import Energy
 from py4vasp._data.fatband import Fatband
 from py4vasp._data.force import Force
 from py4vasp._data.force_constant import ForceConstant
