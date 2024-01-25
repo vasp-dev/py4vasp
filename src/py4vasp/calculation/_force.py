@@ -3,12 +3,13 @@
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._data import base, slice_, structure
+from py4vasp._data import base, slice_
 from py4vasp._util import documentation, reader
+from py4vasp.calculation import _structure
 
 
 @documentation.format(examples=slice_.examples("force"))
-class Force(slice_.Mixin, base.Refinery, structure.Mixin):
+class Force(slice_.Mixin, base.Refinery, _structure.Mixin):
     """The forces acting on the atoms for selected steps of the simulation.
 
     You can use this class to analyze the forces acting on the atoms. In

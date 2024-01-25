@@ -4,12 +4,13 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._config import VASP_GRAY
-from py4vasp._data import base, slice_, structure
+from py4vasp._data import base, slice_
 from py4vasp._util import convert, documentation, reader
+from py4vasp.calculation import _structure
 
 
 @documentation.format(examples=slice_.examples("velocity"))
-class Velocity(slice_.Mixin, base.Refinery, structure.Mixin):
+class Velocity(slice_.Mixin, base.Refinery, _structure.Mixin):
     """The ion velocities for all steps of the calculation.
 
     The velocities are only stored if you set VELOCITY = T in the INCAR file. You can

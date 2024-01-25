@@ -1,9 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp._data import base, structure
+from py4vasp._data import base
+from py4vasp.calculation import _structure
 
 
-class InternalStrain(base.Refinery, structure.Mixin):
+class InternalStrain(base.Refinery, _structure.Mixin):
     """The internal strain
 
     You can use this class to extract the internal strain of a linear

@@ -3,8 +3,9 @@
 import numpy as np
 
 from py4vasp import data, exception
-from py4vasp._data import base, structure
+from py4vasp._data import base
 from py4vasp._util import import_
+from py4vasp.calculation import _structure
 
 pretty = import_.optional("IPython.lib.pretty")
 
@@ -19,7 +20,7 @@ class _ViewerWrapper:
         self._viewer.show_isosurface(data, **options)
 
 
-class Density(base.Refinery, structure.Mixin):
+class Density(base.Refinery, _structure.Mixin):
     """The charge and magnetization density.
 
     You can use this class to extract the density data of the VASP calculation

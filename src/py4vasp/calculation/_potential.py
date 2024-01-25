@@ -5,13 +5,14 @@ import itertools
 import numpy as np
 
 from py4vasp import data, exception
-from py4vasp._data import base, structure
+from py4vasp._data import base
 from py4vasp._util import import_, select
+from py4vasp.calculation import _structure
 
 VALID_KINDS = ("total", "ionic", "xc", "hartree")
 
 
-class Potential(base.Refinery, structure.Mixin):
+class Potential(base.Refinery, _structure.Mixin):
     """The local potential of the VASP calculation.
 
     The local potential is defined in real space on the FFT grid. Depending on the setup

@@ -1,9 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp._data import base, structure
+from py4vasp._data import base
+from py4vasp.calculation import _structure
 
 
-class BornEffectiveCharge(base.Refinery, structure.Mixin):
+class BornEffectiveCharge(base.Refinery, _structure.Mixin):
     """The Born effective charge tensors coupling electric field and atomic displacement.
 
     You can use this class to extract the Born effective charges of a linear

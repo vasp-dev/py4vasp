@@ -3,8 +3,9 @@
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._data import base, slice_, structure
+from py4vasp._data import base, slice_
 from py4vasp._util import documentation
+from py4vasp.calculation import _structure
 
 _index_note = """\
 Notes
@@ -22,7 +23,7 @@ selection : str
 
 
 @documentation.format(examples=slice_.examples("magnetism"))
-class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin):
+class Magnetism(slice_.Mixin, base.Refinery, _structure.Mixin):
     """The magnetic moments and localized charges for selected ionic steps.
 
     This class gives access to the magnetic moments and charges projected on the

@@ -2,10 +2,11 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import itertools
 
-from py4vasp._data import base, structure
+from py4vasp._data import base
+from py4vasp.calculation import _structure
 
 
-class ForceConstant(base.Refinery, structure.Mixin):
+class ForceConstant(base.Refinery, _structure.Mixin):
     """The force constants (second derivatives of atomic displacement).
 
     You can use this class to extract the force constants of a linear

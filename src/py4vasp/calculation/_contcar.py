@@ -3,11 +3,12 @@
 import numpy as np
 
 from py4vasp import data, raw
-from py4vasp._data import base, structure
+from py4vasp._data import base
 from py4vasp._util import convert
+from py4vasp.calculation import _structure
 
 
-class CONTCAR(base.Refinery, structure.Mixin):
+class CONTCAR(base.Refinery, _structure.Mixin):
     """Access the final positions after the VASP calculation.
 
     The CONTCAR contains the final structure of the VASP calculation. It can be used as
