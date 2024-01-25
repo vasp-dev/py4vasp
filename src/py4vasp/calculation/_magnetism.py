@@ -3,7 +3,7 @@
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp._util import documentation
 from py4vasp.calculation import _slice, _structure
 
@@ -23,7 +23,7 @@ selection : str
 
 
 @documentation.format(examples=_slice.examples("magnetism"))
-class Magnetism(_slice.Mixin, base.Refinery, _structure.Mixin):
+class Magnetism(_slice.Mixin, _base.Refinery, _structure.Mixin):
     """The magnetic moments and localized charges for selected ionic steps.
 
     This class gives access to the magnetic moments and charges projected on the
@@ -37,7 +37,7 @@ class Magnetism(_slice.Mixin, base.Refinery, _structure.Mixin):
     length_moments = 1.5
     "Length in Å how a magnetic moment is displayed relative to the largest moment."
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         magmom = "MAGMOM = "
         moments_last_step = self.total_moments()
@@ -51,7 +51,7 @@ class Magnetism(_slice.Mixin, base.Refinery, _structure.Mixin):
             generator = (moments_to_string(vec) for vec in moments_last_step)
             return magmom + separator.join(generator)
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(
         index_note=_index_note, examples=_slice.examples("magnetism", "to_dict")
     )
@@ -74,7 +74,7 @@ class Magnetism(_slice.Mixin, base.Refinery, _structure.Mixin):
             **self._add_spin_and_orbital_moments(),
         }
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(
         selection=_moment_selection, examples=_slice.examples("magnetism", "to_graph")
     )
@@ -105,7 +105,7 @@ class Magnetism(_slice.Mixin, base.Refinery, _structure.Mixin):
             viewer.show_arrows_at_atoms(moments)
         return viewer
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(examples=_slice.examples("magnetism", "charges"))
     def charges(self):
         """Read the charges of the selected steps.
@@ -120,7 +120,7 @@ class Magnetism(_slice.Mixin, base.Refinery, _structure.Mixin):
         self._raise_error_if_steps_out_of_bounds()
         return self._raw_data.spin_moments[self._steps, 0]
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(
         selection=_moment_selection,
         index_note=_index_note,
@@ -152,7 +152,7 @@ class Magnetism(_slice.Mixin, base.Refinery, _structure.Mixin):
         else:
             return self._noncollinear_moments(selection)
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(examples=_slice.examples("magnetism", "total_charges"))
     def total_charges(self):
         """Read the total charges of the selected steps.
@@ -167,7 +167,7 @@ class Magnetism(_slice.Mixin, base.Refinery, _structure.Mixin):
         """
         return _sum_over_orbitals(self.charges())
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(
         selection=_moment_selection,
         index_note=_index_note,

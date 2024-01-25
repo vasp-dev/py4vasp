@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
 from py4vasp.calculation import _slice
@@ -33,7 +33,7 @@ _SELECTIONS = {
 
 
 @documentation.format(examples=_slice.examples("energy"))
-class Energy(_slice.Mixin, base.Refinery, graph.Mixin):
+class Energy(_slice.Mixin, _base.Refinery, graph.Mixin):
     """The energy data for one or several steps of a relaxation or MD simulation.
 
     You can use this class to inspect how the ionic relaxation converges or
@@ -42,7 +42,7 @@ class Energy(_slice.Mixin, base.Refinery, graph.Mixin):
     {examples}
     """
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         text = f"Energies at {self._step_string()}:"
         values = self._raw_data.values[self._last_step_in_slice]
@@ -62,7 +62,7 @@ class Energy(_slice.Mixin, base.Refinery, graph.Mixin):
         else:
             return f"step {self._steps + 1}"
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(
         selection=_selection_string("all energies"),
         examples=_slice.examples("energy", "to_dict"),
@@ -94,7 +94,7 @@ class Energy(_slice.Mixin, base.Refinery, graph.Mixin):
             for label, value in zip(self._raw_data.labels, raw_values)
         }
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(
         selection=_selection_string("the total energy"),
         examples=_slice.examples("energy", "to_graph"),
@@ -122,7 +122,7 @@ class Energy(_slice.Mixin, base.Refinery, graph.Mixin):
             y2label=yaxes.y2label,
         )
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(
         selection=_selection_string("the total energy"),
         examples=_slice.examples("energy", "to_numpy"),
@@ -146,7 +146,7 @@ class Energy(_slice.Mixin, base.Refinery, graph.Mixin):
         tree = select.Tree.from_selection(selection)
         return np.squeeze([values for _, values in self._read_data(tree, self._steps)])
 
-    @base.data_access
+    @_base.data_access
     def selections(self):
         """Returns all possible selections you can use for the other routines.
 

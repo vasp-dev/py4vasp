@@ -3,7 +3,7 @@
 import numpy as np
 
 from py4vasp import data
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_
 from py4vasp.calculation import _projector
@@ -12,7 +12,7 @@ pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
 
 
-class Band(base.Refinery, graph.Mixin):
+class Band(_base.Refinery, graph.Mixin):
     """The electronic band structure.
 
     The most common use case of this class is to produce the electronic band
@@ -22,7 +22,7 @@ class Band(base.Refinery, graph.Mixin):
     **k**-point distances that are calculated are meaningless.
     """
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         return f"""
 {"spin polarized" if self._spin_polarized() else ""} band data:
@@ -31,7 +31,7 @@ class Band(base.Refinery, graph.Mixin):
 {pretty.pretty(self._projector)}
     """.strip()
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(
         selection_doc=_projector.selection_doc,
         examples=_projector.selection_examples("band", "to_dict"),
@@ -63,7 +63,7 @@ class Band(base.Refinery, graph.Mixin):
             "projections": self._read_projections(selection),
         }
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(
         selection_doc=_projector.selection_doc,
         examples=_projector.selection_examples("band", "to_graph"),
@@ -92,7 +92,7 @@ class Band(base.Refinery, graph.Mixin):
         graph.ylabel = "Energy (eV)"
         return graph
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(
         selection_doc=_projector.selection_doc,
         examples=_projector.selection_examples("band", "to_frame"),

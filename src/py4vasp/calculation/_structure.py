@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from py4vasp import data, exception, raw
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp._third_party.viewer.viewer3d import Viewer3d
 from py4vasp._util import documentation, import_, reader
 from py4vasp.calculation import _slice, _topology
@@ -50,7 +50,7 @@ class _Format:
 
 
 @documentation.format(examples=_slice.examples("structure"))
-class Structure(_slice.Mixin, base.Refinery):
+class Structure(_slice.Mixin, _base.Refinery):
     """The structure of the crystal for selected steps of the simulation.
 
     You can use this class to process structural information from the Vasp
@@ -82,12 +82,12 @@ class Structure(_slice.Mixin, base.Refinery):
         )
         return cls.from_data(structure)
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         "Generate a string representing the final structure usable as a POSCAR file."
         return self._create_repr()
 
-    @base.data_access
+    @_base.data_access
     def _repr_html_(self):
         format_ = _Format(
             begin_table="<table>\n<tr><td>",
@@ -110,7 +110,7 @@ class Structure(_slice.Mixin, base.Refinery):
         )
         return "\n".join(lines)
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(examples=_slice.examples("structure", "to_dict"))
     def to_dict(self):
         """Read the structural information into a dictionary.
@@ -131,7 +131,7 @@ class Structure(_slice.Mixin, base.Refinery):
             "names": self._topology().names(),
         }
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(examples=_slice.examples("structure", "to_graph"))
     def plot(self, supercell=None):
         """Generate a 3d representation of the structure(s).
@@ -154,7 +154,7 @@ class Structure(_slice.Mixin, base.Refinery):
         else:
             return self._viewer_from_structure(supercell)
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(examples=_slice.examples("structure", "to_ase"))
     def to_ase(self, supercell=None):
         """Convert the structure to an ase Atoms object.
@@ -198,7 +198,7 @@ class Structure(_slice.Mixin, base.Refinery):
         order = sorted(range(num_atoms_super), key=lambda n: n % num_atoms_prim)
         return structure[order]
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(examples=_slice.examples("structure", "to_mdtraj"))
     def to_mdtraj(self):
         """Convert the trajectory to mdtraj.Trajectory
@@ -221,7 +221,7 @@ class Structure(_slice.Mixin, base.Refinery):
         trajectory.unitcell_vectors = data["lattice_vectors"] * Structure.A_to_nm
         return trajectory
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(examples=_slice.examples("structure", "to_POSCAR"))
     def to_POSCAR(self):
         """Convert the structure(s) to a POSCAR format
@@ -239,7 +239,7 @@ class Structure(_slice.Mixin, base.Refinery):
             message = "Converting multiple structures to a POSCAR is currently not implemented."
             raise exception.NotImplemented(message)
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(examples=_slice.examples("structure", "cartesian_positions"))
     def cartesian_positions(self):
         """Convert the positions from direct coordinates to cartesian ones.
@@ -253,7 +253,7 @@ class Structure(_slice.Mixin, base.Refinery):
         """
         return self._positions() @ self._lattice_vectors()
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(examples=_slice.examples("structure", "volume"))
     def volume(self):
         """Return the volume of the unit cell for the selected steps.
@@ -267,7 +267,7 @@ class Structure(_slice.Mixin, base.Refinery):
         """
         return np.abs(np.linalg.det(self._lattice_vectors()))
 
-    @base.data_access
+    @_base.data_access
     def number_atoms(self):
         """Return the total number of atoms in the structure."""
         if self._is_trajectory:
@@ -275,7 +275,7 @@ class Structure(_slice.Mixin, base.Refinery):
         else:
             return self._raw_data.positions.shape[0]
 
-    @base.data_access
+    @_base.data_access
     def number_steps(self):
         """Return the number of structures in the trajectory."""
         if self._is_trajectory:
@@ -327,7 +327,7 @@ class Structure(_slice.Mixin, base.Refinery):
         else:
             return f" (step {self._steps + 1})"
 
-    @base.data_access
+    @_base.data_access
     def __getitem__(self, steps):
         if not self._is_trajectory:
             message = "The structure is not a Trajectory so accessing individual elements is not allowed."

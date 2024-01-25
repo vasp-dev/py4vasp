@@ -1,9 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp._data import base
+from py4vasp.calculation import _base
 
 
-class Polarization(base.Refinery):
+class Polarization(_base.Refinery):
     """The static polarization of the structure obtained from linear response.
 
     Note that the polarization is only well defined relative to a reference
@@ -12,7 +12,7 @@ class Polarization(base.Refinery):
     side. Therefore you always need to compare changes of polarization.
     """
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         vec_to_string = lambda vec: " ".join(f"{x:11.5f}" for x in vec)
         return f"""
@@ -22,7 +22,7 @@ ionic dipole moment:      {vec_to_string(self._raw_data.ion[:])}
 electronic dipole moment: {vec_to_string(self._raw_data.electron[:])}
 """.strip()
 
-    @base.data_access
+    @_base.data_access
     def to_dict(self):
         """Read electronic and ionic polarization into a dictionary
 

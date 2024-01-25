@@ -1,14 +1,14 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import exception
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp._util import convert
 
 
-class DielectricTensor(base.Refinery):
+class DielectricTensor(_base.Refinery):
     """The static dielectric tensor obtained from linear response."""
 
-    @base.data_access
+    @_base.data_access
     def to_dict(self):
         """Read the dielectric tensor into a dictionary.
 
@@ -25,7 +25,7 @@ class DielectricTensor(base.Refinery):
             "method": convert.text_to_string(self._raw_data.method),
         }
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         data = self.to_dict()
         return f"""

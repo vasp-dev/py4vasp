@@ -4,13 +4,13 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._config import VASP_GRAY
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp._util import convert, documentation, reader
 from py4vasp.calculation import _slice, _structure
 
 
 @documentation.format(examples=_slice.examples("velocity"))
-class Velocity(_slice.Mixin, base.Refinery, _structure.Mixin):
+class Velocity(_slice.Mixin, _base.Refinery, _structure.Mixin):
     """The ion velocities for all steps of the calculation.
 
     The velocities are only stored if you set VELOCITY = T in the INCAR file. You can
@@ -21,7 +21,7 @@ class Velocity(_slice.Mixin, base.Refinery, _structure.Mixin):
 
     velocity_rescale = 200
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         step = self._last_step_in_slice
         velocities = self._vectors_to_string(self._velocity[step])
@@ -36,7 +36,7 @@ class Velocity(_slice.Mixin, base.Refinery, _structure.Mixin):
     def _element_to_string(self, element):
         return f"{element:21.16f}"
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(examples=_slice.examples("velocity", "to_dict"))
     def to_dict(self):
         """Return the structure and ion velocities in a dictionary
@@ -54,7 +54,7 @@ class Velocity(_slice.Mixin, base.Refinery, _structure.Mixin):
             "velocities": self._velocity[self._steps],
         }
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(examples=_slice.examples("velocity", "plot"))
     def plot(self):
         """Plot the velocities as vectors in the structure.

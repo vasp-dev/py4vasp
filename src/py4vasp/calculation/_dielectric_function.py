@@ -4,12 +4,12 @@ import typing
 
 import numpy as np
 
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp._third_party import graph
 from py4vasp._util import convert, index, select
 
 
-class DielectricFunction(base.Refinery, graph.Mixin):
+class DielectricFunction(_base.Refinery, graph.Mixin):
     """The dielectric function resulting from electrons and ions.
 
     You can use this class to extract the dielectric function of a Vasp calculation.
@@ -18,7 +18,7 @@ class DielectricFunction(base.Refinery, graph.Mixin):
     to the 6 independent variables.
     """
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         energies = self._raw_data.energies
         return f"""
@@ -33,7 +33,7 @@ dielectric function:
         else:
             return ""
 
-    @base.data_access
+    @_base.data_access
     def to_dict(self):
         """Read the data into a dictionary.
 
@@ -59,7 +59,7 @@ dielectric function:
     def _has_current_component(self):
         return not self._raw_data.current_current.is_none()
 
-    @base.data_access
+    @_base.data_access
     def to_graph(self, selection=None):
         """Read the data and generate a figure with the selected directions.
 
@@ -83,7 +83,7 @@ dielectric function:
             ylabel="dielectric function ϵ",
         )
 
-    @base.data_access
+    @_base.data_access
     def selections(self):
         "Returns a dictionary of possible selections for component, direction, and complex value."
         components = (

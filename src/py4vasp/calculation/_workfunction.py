@@ -1,18 +1,18 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import data
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp._third_party import graph
 
 
-class Workfunction(base.Refinery, graph.Mixin):
+class Workfunction(_base.Refinery, graph.Mixin):
     """The workfunction of a material describes the energy required to remove an electron
     to the vacuum.
 
     In VASP you can compute the workfunction by setting the IDIPOL flag in the INCAR file.
     This class provides then the functionality to analyze the resulting potential."""
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         data = self.to_dict()
         return f"""workfunction along {data["direction"]}:
@@ -22,7 +22,7 @@ class Workfunction(base.Refinery, graph.Mixin):
     # valence band maximum: {data["valence_band_maximum"]:.3f}
     # conduction band minimum: {data["conduction_band_minimum"]:.3f}
 
-    @base.data_access
+    @_base.data_access
     def to_dict(self):
         """Reports useful information about the workfunction as a dictionary.
 
@@ -50,7 +50,7 @@ class Workfunction(base.Refinery, graph.Mixin):
             "fermi_energy": self._raw_data.fermi_energy,
         }
 
-    @base.data_access
+    @_base.data_access
     def to_graph(self):
         """Plot the average potential along the lattice vector selected by IDIPOL.
 

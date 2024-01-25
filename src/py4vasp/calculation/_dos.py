@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import data
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp._third_party import graph
 from py4vasp._util import documentation, import_
 from py4vasp.calculation import _projector
@@ -10,7 +10,7 @@ pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
 
 
-class Dos(base.Refinery, graph.Mixin):
+class Dos(_base.Refinery, graph.Mixin):
     """The electronic density of states (DOS).
 
     You can use this class to extract the DOS data of a VASP calculation.
@@ -22,7 +22,7 @@ class Dos(base.Refinery, graph.Mixin):
 
     _missing_data_message = "No DOS data found, please verify that LORBIT flag is set."
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         energies = self._raw_data.energies
         return f"""
@@ -31,7 +31,7 @@ class Dos(base.Refinery, graph.Mixin):
 {pretty.pretty(self._projectors())}
     """.strip()
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(
         selection_doc=_projector.selection_doc,
         examples=_projector.selection_examples("dos", "to_dict"),
@@ -58,7 +58,7 @@ class Dos(base.Refinery, graph.Mixin):
             "fermi_energy": self._raw_data.fermi_energy,
         }
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(
         selection_doc=_projector.selection_doc,
         examples=_projector.selection_examples("dos", "to_graph"),
@@ -87,7 +87,7 @@ class Dos(base.Refinery, graph.Mixin):
             ylabel="DOS (1/eV)",
         )
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(
         selection_doc=_projector.selection_doc,
         examples=_projector.selection_examples("dos", "to_frame"),

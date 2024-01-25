@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from py4vasp import exception, raw
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp._util import select
 
 from .conftest import SELECTION
@@ -39,36 +39,36 @@ def mock_access(mock_schema):
         yield access
 
 
-class Example(base.Refinery):
+class Example(_base.Refinery):
     def __post_init__(self):
         self.post_init_called = True
 
-    @base.data_access
+    @_base.data_access
     def to_dict(self):
         "to_dict documentation."
         return self._raw_data.content
 
-    @base.data_access
+    @_base.data_access
     def wrapper(self):
         return self.read()
 
-    @base.data_access
+    @_base.data_access
     def with_arguments(self, mandatory, optional=None):
         return mandatory, optional
 
-    @base.data_access
+    @_base.data_access
     def with_variadic_arguments(self, *args, **kwargs):
         return args, kwargs
 
-    @base.data_access
+    @_base.data_access
     def with_selection_argument(self, selection=DEFAULT_SELECTION):
         return self._raw_data.selection, selection
 
-    @base.data_access
+    @_base.data_access
     def selection_without_default(self, selection):
         return selection
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         return self._raw_data.content
 
@@ -251,8 +251,8 @@ def check_mock(example, mock, *args, **kwargs):
     mock.reset_mock()
 
 
-class CamelCase(base.Refinery):
-    @base.data_access
+class CamelCase(_base.Refinery):
+    @_base.data_access
     def to_dict(self):
         return "convert CamelCase to snake_case"
 

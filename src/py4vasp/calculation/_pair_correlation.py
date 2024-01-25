@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
 from py4vasp.calculation import _slice
@@ -21,7 +21,7 @@ selection : str
 
 
 @documentation.format(examples=_slice.examples("pair_correlation", step="block"))
-class PairCorrelation(_slice.Mixin, base.Refinery, graph.Mixin):
+class PairCorrelation(_slice.Mixin, _base.Refinery, graph.Mixin):
     """The pair-correlation function for one or several blocks of an MD simulation.
 
     Use this class to inspect how the correlation of the position of different
@@ -32,7 +32,7 @@ class PairCorrelation(_slice.Mixin, base.Refinery, graph.Mixin):
     {examples}
     """
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(
         selection=_selection_string("all possibilities are read"),
         examples=_slice.examples("pair_correlation", "to_dict", "block"),
@@ -60,7 +60,7 @@ class PairCorrelation(_slice.Mixin, base.Refinery, graph.Mixin):
             **self._read_data(selection),
         }
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(
         selection=_selection_string("the total pair correlation is used"),
         examples=_slice.examples("pair_correlation", "to_graph", "block"),
@@ -84,7 +84,7 @@ class PairCorrelation(_slice.Mixin, base.Refinery, graph.Mixin):
         series = self._make_series(self.to_dict(selection))
         return graph.Graph(series, xlabel="Distance (Å)", ylabel="Pair correlation")
 
-    @base.data_access
+    @_base.data_access
     def labels(self):
         "Return all possible labels for the selection string."
         return tuple(convert.text_to_string(label) for label in self._raw_data.labels)

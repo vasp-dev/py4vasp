@@ -5,20 +5,20 @@ import itertools
 import numpy as np
 
 from py4vasp import data, exception
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp._util import import_, select
 from py4vasp.calculation import _structure
 
 VALID_KINDS = ("total", "ionic", "xc", "hartree")
 
 
-class Potential(base.Refinery, _structure.Mixin):
+class Potential(_base.Refinery, _structure.Mixin):
     """The local potential of the VASP calculation.
 
     The local potential is defined in real space on the FFT grid. Depending on the setup
     of the VASP run, different individual contributions can be accessed."""
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         potential = self._raw_data.total_potential
         if _is_collinear(potential):
@@ -35,7 +35,7 @@ class Potential(base.Refinery, _structure.Mixin):
         )
         return "\n    ".join([description, structure, grid, available])
 
-    @base.data_access
+    @_base.data_access
     def to_dict(self):
         """Store all available contributions to the potential in a dictionary.
 
@@ -66,7 +66,7 @@ class Potential(base.Refinery, _structure.Mixin):
         elif _is_noncollinear(potential):
             yield f"{kind}_magnetization", potential[1:]
 
-    @base.data_access
+    @_base.data_access
     def plot(self, selection="total", *, isolevel=0):
         """Plot an isosurface of a selected potential.
 

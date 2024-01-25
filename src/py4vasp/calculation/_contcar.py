@@ -3,12 +3,12 @@
 import numpy as np
 
 from py4vasp import data, raw
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp._util import convert
 from py4vasp.calculation import _structure
 
 
-class CONTCAR(base.Refinery, _structure.Mixin):
+class CONTCAR(_base.Refinery, _structure.Mixin):
     """Access the final positions after the VASP calculation.
 
     The CONTCAR contains the final structure of the VASP calculation. It can be used as
@@ -16,7 +16,7 @@ class CONTCAR(base.Refinery, _structure.Mixin):
     CONTCAR might contain additional information about the system such as the ion
     and lattice velocities."""
 
-    @base.data_access
+    @_base.data_access
     def to_dict(self):
         """Extract the structural data and the available additional data to a dictionary.
 
@@ -38,7 +38,7 @@ class CONTCAR(base.Refinery, _structure.Mixin):
         data = getattr(self._raw_data, key)
         return {key: data[:]} if not data.is_none() else {}
 
-    @base.data_access
+    @_base.data_access
     def plot(self, supercell=None):
         """Generate a visualization of the final structure.
 
@@ -54,7 +54,7 @@ class CONTCAR(base.Refinery, _structure.Mixin):
         """
         return self._structure.plot(supercell)
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         return "\n".join(self._line_generator())
 

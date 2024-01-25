@@ -1,14 +1,14 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import data
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp._util import convert
 
 
-class Fatband(base.Refinery):
+class Fatband(_base.Refinery):
     "Access data for producing BSE fatband plots."
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         shape = self._raw_data.bse_index.shape
         return f"""BSE fatband data:
@@ -16,7 +16,7 @@ class Fatband(base.Refinery):
     {shape[3]} valence bands
     {shape[2]} conduction bands"""
 
-    @base.data_access
+    @_base.data_access
     def to_dict(self):
         """Read the data into a dictionary.
 

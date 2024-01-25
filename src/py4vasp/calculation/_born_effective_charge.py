@@ -1,17 +1,17 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp.calculation import _structure
 
 
-class BornEffectiveCharge(base.Refinery, _structure.Mixin):
+class BornEffectiveCharge(_base.Refinery, _structure.Mixin):
     """The Born effective charge tensors coupling electric field and atomic displacement.
 
     You can use this class to extract the Born effective charges of a linear
     response calculation.
     """
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         data = self.to_dict()
         result = """
@@ -28,7 +28,7 @@ ion {ion + 1:4d}   {element}
     3 {vec_to_string(charge_tensor[2])}"""
         return result
 
-    @base.data_access
+    @_base.data_access
     def to_dict(self):
         """Read structure information and Born effective charges into a dictionary.
 

@@ -2,18 +2,18 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import itertools
 
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp.calculation import _structure
 
 
-class ForceConstant(base.Refinery, _structure.Mixin):
+class ForceConstant(_base.Refinery, _structure.Mixin):
     """The force constants (second derivatives of atomic displacement).
 
     You can use this class to extract the force constants of a linear
     response calculation.
     """
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         result = """
 Force constants (eV/Å²):
@@ -30,7 +30,7 @@ atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     z
             result += f"\n{i + 1:6d}   {j + 1:6d}  {string_representation}"
         return result
 
-    @base.data_access
+    @_base.data_access
     def to_dict(self):
         """Read structure information and force constants into a dictionary.
 

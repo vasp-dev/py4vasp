@@ -10,7 +10,7 @@ import pytest
 from py4vasp import Calculation, calculation, control, exception
 
 
-@patch("py4vasp._data.base.Refinery.from_path", autospec=True)
+@patch("py4vasp.calculation._base.Refinery.from_path", autospec=True)
 @patch("py4vasp.raw.access", autospec=True)
 def test_creation_from_path(mock_access, mock_from_path):
     # note: in pytest __file__ defaults to absolute path
@@ -26,7 +26,7 @@ def test_creation_from_path(mock_access, mock_from_path):
     mock_from_path.assert_called()
 
 
-@patch("py4vasp._data.base.Refinery.from_file", autospec=True)
+@patch("py4vasp.calculation._base.Refinery.from_file", autospec=True)
 @patch("py4vasp.raw.access", autospec=True)
 def test_creation_from_file(mock_access, mock_from_file):
     # note: in pytest __file__ defaults to absolute path

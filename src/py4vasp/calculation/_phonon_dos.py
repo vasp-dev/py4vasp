@@ -3,20 +3,20 @@
 import numpy as np
 
 from py4vasp import data
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp._third_party import graph
 from py4vasp._util import documentation, index, select
 from py4vasp.calculation import _phonon
 
 
-class PhononDos(base.Refinery, _phonon.Mixin, graph.Mixin):
+class PhononDos(_base.Refinery, _phonon.Mixin, graph.Mixin):
     """The phonon density of states (DOS).
 
     You can use this class to extract the phonon DOS data of a VASP
     calculation. The DOS can also be resolved by direction and atom.
     """
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         energies = self._raw_data.energies
         topology = self._topology()
@@ -25,7 +25,7 @@ class PhononDos(base.Refinery, _phonon.Mixin, graph.Mixin):
     {3 * topology.number_atoms()} modes
     {topology}"""
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(selection=_phonon.selection_doc)
     def to_dict(self, selection=None):
         """Read the phonon DOS into a dictionary.
@@ -47,7 +47,7 @@ class PhononDos(base.Refinery, _phonon.Mixin, graph.Mixin):
             **self._read_data(selection),
         }
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(selection=_phonon.selection_doc)
     def to_graph(self, selection=None):
         """Generate a graph of the selected DOS.

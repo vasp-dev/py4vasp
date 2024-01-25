@@ -6,7 +6,7 @@ from fractions import Fraction
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp._util import convert, documentation
 
 _kpoints_selection = """\
@@ -16,7 +16,7 @@ selection : str, optional
 """
 
 
-class Kpoint(base.Refinery):
+class Kpoint(_base.Refinery):
     """The **k** points used in the Vasp calculation.
 
     This class provides utility functionality to extract information about the
@@ -25,7 +25,7 @@ class Kpoint(base.Refinery):
     generate a band structure.
     """
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         text = f"""k-points
 {len(self._raw_data.coordinates)}
@@ -34,7 +34,7 @@ reciprocal"""
             text += "\n" + f"{kpoint[0]} {kpoint[1]} {kpoint[2]}  {weight}"
         return text
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(selection=_kpoints_selection)
     def to_dict(self):
         """Read the **k** points data into a dictionary.
@@ -61,7 +61,7 @@ reciprocal"""
             "labels": self.labels(),
         }
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(selection=_kpoints_selection)
     def line_length(self):
         """Get the number of points per line in the Brillouin zone.
@@ -79,7 +79,7 @@ reciprocal"""
             return self._raw_data.number
         return self.number_kpoints()
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(selection=_kpoints_selection)
     def number_lines(self):
         """Get the number of lines in the Brillouin zone.
@@ -95,7 +95,7 @@ reciprocal"""
         """
         return self.number_kpoints() // self.line_length()
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(selection=_kpoints_selection)
     def number_kpoints(self):
         """Get the number of points in the Brillouin zone.
@@ -111,7 +111,7 @@ reciprocal"""
         """
         return len(self._raw_data.coordinates)
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(selection=_kpoints_selection)
     def distances(self):
         """Convert the coordinates of the **k** points into a one dimensional array
@@ -140,7 +140,7 @@ reciprocal"""
         )
         return functools.reduce(concatenate_distances, kpoint_norms)
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(selection=_kpoints_selection)
     def mode(self):
         """Get the **k**-point generation mode specified in the Vasp input file
@@ -173,7 +173,7 @@ reciprocal"""
                 f"Could not understand the mode '{mode}' when refining the raw kpoints data."
             )
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(selection=_kpoints_selection)
     def labels(self):
         """Get any labels given in the input file for specific **k** points.
@@ -195,7 +195,7 @@ reciprocal"""
         else:
             return None
 
-    @base.data_access
+    @_base.data_access
     @documentation.format(selection=_kpoints_selection)
     def path_indices(self, start, finish):
         """Find linear dependent k points between start and finish

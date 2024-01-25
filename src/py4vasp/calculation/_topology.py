@@ -5,7 +5,7 @@ import itertools
 import numpy as np
 
 from py4vasp import raw
-from py4vasp._data import base
+from py4vasp.calculation import _base
 from py4vasp.calculation._selection import Selection
 from py4vasp._util import check, convert, import_, select
 
@@ -15,7 +15,7 @@ pd = import_.optional("pandas")
 _subscript = "_"
 
 
-class Topology(base.Refinery):
+class Topology(_base.Refinery):
     """This class accesses the topology of the crystal.
 
     At the current stage this only provides access to the name of the atoms in
@@ -28,17 +28,17 @@ class Topology(base.Refinery):
         """Generate a Topology from the given ase Atoms object."""
         return cls.from_data(raw_topology_from_ase(structure))
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         number_suffix = lambda number: str(number) if number > 1 else ""
         return self._create_repr(number_suffix)
 
-    @base.data_access
+    @_base.data_access
     def _repr_html_(self):
         number_suffix = lambda number: f"<sub>{number}</sub>" if number > 1 else ""
         return self._create_repr(number_suffix)
 
-    @base.data_access
+    @_base.data_access
     def to_dict(self):
         """Read the topology and convert it to a dictionary.
 
@@ -54,7 +54,7 @@ class Topology(base.Refinery):
         """
         return {**self._default_selection(), **self._specific_selection()}
 
-    @base.data_access
+    @_base.data_access
     def to_frame(self):
         """Convert the topology to a DataFrame
 
@@ -65,7 +65,7 @@ class Topology(base.Refinery):
         """
         return pd.DataFrame({"name": self.names(), "element": self.elements()})
 
-    @base.data_access
+    @_base.data_access
     def to_mdtraj(self):
         """Convert the topology to a mdtraj.Topology."""
         df = self.to_frame()
@@ -75,7 +75,7 @@ class Topology(base.Refinery):
         df["chainID"] = 0
         return mdtraj.Topology.from_dataframe(df)
 
-    @base.data_access
+    @_base.data_access
     def to_POSCAR(self, format_newline=""):
         """Generate the topology lines for the POSCAR file.
 
@@ -97,24 +97,24 @@ class Topology(base.Refinery):
         number_ion_types = " ".join(str(x) for x in self._raw_data.number_ion_types)
         return ion_types + format_newline + "\n" + number_ion_types
 
-    @base.data_access
+    @_base.data_access
     def names(self):
         """Extract the labels of all atoms."""
         atom_dict = self.to_dict()
         return [val.label for val in atom_dict.values() if _subscript in val.label]
 
-    @base.data_access
+    @_base.data_access
     def elements(self):
         """Extract the element of all atoms."""
         repeated_types = (itertools.repeat(*x) for x in self._type_numbers())
         return list(itertools.chain.from_iterable(repeated_types))
 
-    @base.data_access
+    @_base.data_access
     def ion_types(self):
         "Return the type of all ions in the system as string."
         return list(dict.fromkeys(self._ion_types))
 
-    @base.data_access
+    @_base.data_access
     def number_atoms(self):
         "Return the number of atoms in the system."
         return np.sum(self._raw_data.number_ion_types)

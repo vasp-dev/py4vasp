@@ -2,17 +2,17 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp._data import base
+from py4vasp.calculation import _base
 
 
-class PiezoelectricTensor(base.Refinery):
+class PiezoelectricTensor(_base.Refinery):
     """The piezoelectric tensor (second derivatives w.r.t. strain and field)
 
     You can use this class to extract the piezoelectric tensor of a linear
     response calculation.
     """
 
-    @base.data_access
+    @_base.data_access
     def __str__(self):
         data = self.to_dict()
         return f"""Piezoelectric tensor (C/m²)
@@ -21,7 +21,7 @@ class PiezoelectricTensor(base.Refinery):
 {_tensor_to_string(data["clamped_ion"], "clamped-ion")}
 {_tensor_to_string(data["relaxed_ion"], "relaxed-ion")}"""
 
-    @base.data_access
+    @_base.data_access
     def to_dict(self):
         """Read the ionic and electronic contribution to the piezoelectric tensor
         into a dictionary.
