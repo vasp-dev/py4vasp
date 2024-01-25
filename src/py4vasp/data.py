@@ -39,7 +39,7 @@ from py4vasp.calculation._magnetism import Magnetism
 from py4vasp.calculation._pair_correlation import PairCorrelation
 from py4vasp.calculation._phonon_band import PhononBand
 from py4vasp.calculation._phonon_dos import PhononDos
-from py4vasp._data.piezoelectric_tensor import PiezoelectricTensor
+from py4vasp.calculation._piezoelectric_tensor import PiezoelectricTensor
 from py4vasp._data.polarization import Polarization
 from py4vasp._data.potential import Potential
 from py4vasp._data.projector import Projector
