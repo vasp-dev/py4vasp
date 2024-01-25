@@ -6,7 +6,7 @@ import numpy as np
 
 from py4vasp import raw
 from py4vasp._data import base
-from py4vasp._data.selection import Selection
+from py4vasp.calculation._selection import Selection
 from py4vasp._util import check, convert, import_, select
 
 mdtraj = import_.optional("mdtraj")

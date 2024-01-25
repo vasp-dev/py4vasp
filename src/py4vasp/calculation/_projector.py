@@ -8,7 +8,7 @@ import numpy as np
 
 from py4vasp import data, exception
 from py4vasp._data import base
-from py4vasp._data.selection import Selection
+from py4vasp.calculation._selection import Selection
 from py4vasp._util import convert, documentation, index, reader, select
 
 selection_doc = """\
