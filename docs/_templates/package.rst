@@ -6,6 +6,7 @@ Attributes
 ----------
 .. autosummary::
   :toctree:
+  :template: member.rst
 
   {% for member in members %}
   {{ member }}
