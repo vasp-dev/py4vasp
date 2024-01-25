@@ -46,6 +46,6 @@ from py4vasp.calculation._projector import Projector
 from py4vasp.calculation._stress import Stress
 from py4vasp.calculation._structure import Structure
 from py4vasp.calculation._system import System
-from py4vasp._data.topology import Topology
+from py4vasp.calculation._topology import Topology
 from py4vasp._data.velocity import Velocity
 from py4vasp._data.workfunction import Workfunction

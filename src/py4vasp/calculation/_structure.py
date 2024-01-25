@@ -7,9 +7,10 @@ from dataclasses import dataclass
 import numpy as np
 
 from py4vasp import data, exception, raw
-from py4vasp._data import base, slice_, topology
+from py4vasp._data import base, slice_
 from py4vasp._data.viewer3d import Viewer3d
 from py4vasp._util import documentation, import_, reader
+from py4vasp.calculation import _topology
 
 ase = import_.optional("ase")
 ase_io = import_.optional("ase.io")
@@ -75,7 +76,7 @@ class Structure(slice_.Mixin, base.Refinery):
     def from_ase(cls, structure):
         """Generate a structure from the ase Atoms class."""
         structure = raw.Structure(
-            topology=topology.raw_topology_from_ase(structure),
+            topology=_topology.raw_topology_from_ase(structure),
             cell=_cell_from_ase(structure),
             positions=structure.get_scaled_positions()[np.newaxis],
         )
