@@ -36,7 +36,7 @@ from py4vasp.calculation._force_constant import ForceConstant
 from py4vasp.calculation._internal_strain import InternalStrain
 from py4vasp.calculation._kpoint import Kpoint
 from py4vasp.calculation._magnetism import Magnetism
-from py4vasp._data.pair_correlation import PairCorrelation
+from py4vasp.calculation._pair_correlation import PairCorrelation
 from py4vasp._data.phonon_band import PhononBand
 from py4vasp._data.phonon_dos import PhononDos
 from py4vasp._data.piezoelectric_tensor import PiezoelectricTensor

@@ -72,7 +72,7 @@ def test_plot_nonexisting_label(pair_correlation):
         pair_correlation.plot("label does exist")
 
 
-@patch("py4vasp._data.pair_correlation.PairCorrelation.to_graph")
+@patch("py4vasp.calculation._pair_correlation.PairCorrelation.to_graph")
 def test_pair_correlation_to_plotly(mock_plot, pair_correlation):
     fig = pair_correlation.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
@@ -88,7 +88,8 @@ def test_to_image(pair_correlation):
 
 
 def check_to_image(pair_correlation, filename_argument, expected_filename):
-    with patch("py4vasp._data.pair_correlation.PairCorrelation.to_plotly") as plot:
+    function = "py4vasp.calculation._pair_correlation.PairCorrelation.to_plotly"
+    with patch(function) as plot:
         pair_correlation.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
