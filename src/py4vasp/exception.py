@@ -36,7 +36,7 @@ class OutdatedVaspVersion(Py4VaspError):
     used version of Vasp."""
 
 
-class MissingAttribute(Py4VaspError):
+class MissingAttribute(Py4VaspError, AttributeError):
     """Exception raised when py4vasp attribute of Calculation, Batch, ... is used
     that does not exist"""
 

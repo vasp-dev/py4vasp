@@ -78,8 +78,6 @@ def __getattr__(attr):
     if attr in __all__:
         cls = getattr(data, convert.to_camelcase(attr))
         return cls.from_path(".")
-    elif not attr.startswith("_"):
+    else:
         message = f"Could not find {attr} in the possible attributes, please check the spelling"
         raise exception.MissingAttribute(message)
-    else:
-        raise AttributeError(f"module '{__name__}' has no attribute '{attr}'")
