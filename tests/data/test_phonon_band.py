@@ -88,7 +88,7 @@ class FatbandChecker:
         self.Assert.allclose(series.width, width * projection.T)
 
 
-@patch("py4vasp._data.phonon_band.PhononBand.to_graph")
+@patch("py4vasp.calculation._phonon_band.PhononBand.to_graph")
 def test_to_plotly(mock_plot, phonon_band):
     fig = phonon_band.to_plotly("selection", width=0.2)
     mock_plot.assert_called_once_with("selection", width=0.2)
@@ -104,7 +104,7 @@ def test_to_image(phonon_band):
 
 
 def check_to_image(phonon_band, filename_argument, expected_filename):
-    with patch("py4vasp._data.phonon_band.PhononBand.to_plotly") as plot:
+    with patch("py4vasp.calculation._phonon_band.PhononBand.to_plotly") as plot:
         phonon_band.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
