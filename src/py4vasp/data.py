@@ -33,7 +33,7 @@ from py4vasp.calculation._energy import Energy
 from py4vasp.calculation._fatband import Fatband
 from py4vasp.calculation._force import Force
 from py4vasp.calculation._force_constant import ForceConstant
-from py4vasp._data.internal_strain import InternalStrain
+from py4vasp.calculation._internal_strain import InternalStrain
 from py4vasp._data.kpoint import Kpoint
 from py4vasp._data.magnetism import Magnetism
 from py4vasp._data.pair_correlation import PairCorrelation
