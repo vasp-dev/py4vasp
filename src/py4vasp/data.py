@@ -19,7 +19,7 @@ generate plots with tools other than Python. For the specifics, please refer to
 the documentation of the individual classes.
 """
 
-from py4vasp._data.band import Band
+from py4vasp.calculation._band import Band
 from py4vasp._data.bandgap import Bandgap
 from py4vasp._data.born_effective_charge import BornEffectiveCharge
 from py4vasp._data.contcar import CONTCAR
