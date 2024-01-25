@@ -3,13 +3,13 @@
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._data import base, slice_
+from py4vasp._data import base
 from py4vasp._util import documentation, reader
-from py4vasp.calculation import _structure
+from py4vasp.calculation import _slice, _structure
 
 
-@documentation.format(examples=slice_.examples("force"))
-class Force(slice_.Mixin, base.Refinery, _structure.Mixin):
+@documentation.format(examples=_slice.examples("force"))
+class Force(_slice.Mixin, base.Refinery, _structure.Mixin):
     """The forces acting on the atoms for selected steps of the simulation.
 
     You can use this class to analyze the forces acting on the atoms. In
@@ -38,7 +38,7 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         return result
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("force", "to_dict"))
+    @documentation.format(examples=_slice.examples("force", "to_dict"))
     def to_dict(self):
         """Read the forces and associated structural information for one or more
         selected steps of the trajectory.
@@ -57,7 +57,7 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         }
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("force", "to_graph"))
+    @documentation.format(examples=_slice.examples("force", "to_graph"))
     def plot(self):
         """Visualize the forces showing arrows at the atoms.
 

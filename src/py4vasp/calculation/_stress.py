@@ -3,12 +3,13 @@
 import numpy as np
 
 from py4vasp import data
-from py4vasp._data import base, slice_
+from py4vasp._data import base
 from py4vasp._util import documentation, reader
+from py4vasp.calculation import _slice
 
 
-@documentation.format(examples=slice_.examples("stress"))
-class Stress(slice_.Mixin, base.Refinery):
+@documentation.format(examples=_slice.examples("stress"))
+class Stress(_slice.Mixin, base.Refinery):
     """The stress acting on the unit cell for selected steps of the simulation.
 
     You can use this class to analyze the stress on the shape of the cell. In
@@ -34,7 +35,7 @@ in kB   {stress_to_string(stress)}
 """.strip()
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("stress", "to_dict"))
+    @documentation.format(examples=_slice.examples("stress", "to_dict"))
     def to_dict(self):
         """Read the stress and associated structural information for one or more
         selected steps of the trajectory.

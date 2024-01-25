@@ -1,8 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp._data import base, slice_
+from py4vasp._data import base
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
+from py4vasp.calculation import _slice
 
 
 def _selection_string(default):
@@ -19,8 +20,8 @@ selection : str
 """
 
 
-@documentation.format(examples=slice_.examples("pair_correlation", step="block"))
-class PairCorrelation(slice_.Mixin, base.Refinery, graph.Mixin):
+@documentation.format(examples=_slice.examples("pair_correlation", step="block"))
+class PairCorrelation(_slice.Mixin, base.Refinery, graph.Mixin):
     """The pair-correlation function for one or several blocks of an MD simulation.
 
     Use this class to inspect how the correlation of the position of different
@@ -34,7 +35,7 @@ class PairCorrelation(slice_.Mixin, base.Refinery, graph.Mixin):
     @base.data_access
     @documentation.format(
         selection=_selection_string("all possibilities are read"),
-        examples=slice_.examples("pair_correlation", "to_dict", "block"),
+        examples=_slice.examples("pair_correlation", "to_dict", "block"),
     )
     def to_dict(self, selection=None):
         """Read the pair-correlation function and store it in a dictionary.
@@ -62,7 +63,7 @@ class PairCorrelation(slice_.Mixin, base.Refinery, graph.Mixin):
     @base.data_access
     @documentation.format(
         selection=_selection_string("the total pair correlation is used"),
-        examples=slice_.examples("pair_correlation", "to_graph", "block"),
+        examples=_slice.examples("pair_correlation", "to_graph", "block"),
     )
     def to_graph(self, selection="total"):
         """Plot selected pair-correlation functions.

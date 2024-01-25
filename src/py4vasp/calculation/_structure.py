@@ -7,10 +7,10 @@ from dataclasses import dataclass
 import numpy as np
 
 from py4vasp import data, exception, raw
-from py4vasp._data import base, slice_
+from py4vasp._data import base
 from py4vasp._third_party.viewer.viewer3d import Viewer3d
 from py4vasp._util import documentation, import_, reader
-from py4vasp.calculation import _topology
+from py4vasp.calculation import _slice, _topology
 
 ase = import_.optional("ase")
 ase_io = import_.optional("ase.io")
@@ -49,8 +49,8 @@ class _Format:
         return f"{element:21.16f}"
 
 
-@documentation.format(examples=slice_.examples("structure"))
-class Structure(slice_.Mixin, base.Refinery):
+@documentation.format(examples=_slice.examples("structure"))
+class Structure(_slice.Mixin, base.Refinery):
     """The structure of the crystal for selected steps of the simulation.
 
     You can use this class to process structural information from the Vasp
@@ -111,7 +111,7 @@ class Structure(slice_.Mixin, base.Refinery):
         return "\n".join(lines)
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("structure", "to_dict"))
+    @documentation.format(examples=_slice.examples("structure", "to_dict"))
     def to_dict(self):
         """Read the structural information into a dictionary.
 
@@ -132,7 +132,7 @@ class Structure(slice_.Mixin, base.Refinery):
         }
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("structure", "to_graph"))
+    @documentation.format(examples=_slice.examples("structure", "to_graph"))
     def plot(self, supercell=None):
         """Generate a 3d representation of the structure(s).
 
@@ -155,7 +155,7 @@ class Structure(slice_.Mixin, base.Refinery):
             return self._viewer_from_structure(supercell)
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("structure", "to_ase"))
+    @documentation.format(examples=_slice.examples("structure", "to_ase"))
     def to_ase(self, supercell=None):
         """Convert the structure to an ase Atoms object.
 
@@ -199,7 +199,7 @@ class Structure(slice_.Mixin, base.Refinery):
         return structure[order]
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("structure", "to_mdtraj"))
+    @documentation.format(examples=_slice.examples("structure", "to_mdtraj"))
     def to_mdtraj(self):
         """Convert the trajectory to mdtraj.Trajectory
 
@@ -222,7 +222,7 @@ class Structure(slice_.Mixin, base.Refinery):
         return trajectory
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("structure", "to_POSCAR"))
+    @documentation.format(examples=_slice.examples("structure", "to_POSCAR"))
     def to_POSCAR(self):
         """Convert the structure(s) to a POSCAR format
 
@@ -240,7 +240,7 @@ class Structure(slice_.Mixin, base.Refinery):
             raise exception.NotImplemented(message)
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("structure", "cartesian_positions"))
+    @documentation.format(examples=_slice.examples("structure", "cartesian_positions"))
     def cartesian_positions(self):
         """Convert the positions from direct coordinates to cartesian ones.
 
@@ -254,7 +254,7 @@ class Structure(slice_.Mixin, base.Refinery):
         return self._positions() @ self._lattice_vectors()
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("structure", "volume"))
+    @documentation.format(examples=_slice.examples("structure", "volume"))
     def volume(self):
         """Return the volume of the unit cell for the selected steps.
 

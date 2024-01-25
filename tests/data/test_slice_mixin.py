@@ -5,7 +5,7 @@ import inspect
 import pytest
 
 from py4vasp import exception
-from py4vasp._data import slice_
+from py4vasp.calculation import _slice
 from py4vasp._util import documentation
 
 
@@ -16,8 +16,8 @@ class Other:
         self._kwargs = kwargs
 
 
-@documentation.format(examples=slice_.examples("example"))
-class ExampleSlice(slice_.Mixin, Other):
+@documentation.format(examples=_slice.examples("example"))
+class ExampleSlice(_slice.Mixin, Other):
     "{examples}"
 
     def steps(self):
@@ -175,7 +175,7 @@ def test_incorrect_argument():
 
 
 def test_documentation(single_step, last_step):
-    reference = slice_.examples("example")
+    reference = _slice.examples("example")
     assert inspect.getdoc(single_step) == reference
     assert inspect.getdoc(last_step) == reference
 

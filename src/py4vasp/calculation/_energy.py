@@ -2,9 +2,10 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp._data import base, slice_
+from py4vasp._data import base
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
+from py4vasp.calculation import _slice
 
 
 def _selection_string(default):
@@ -31,8 +32,8 @@ _SELECTIONS = {
 }
 
 
-@documentation.format(examples=slice_.examples("energy"))
-class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
+@documentation.format(examples=_slice.examples("energy"))
+class Energy(_slice.Mixin, base.Refinery, graph.Mixin):
     """The energy data for one or several steps of a relaxation or MD simulation.
 
     You can use this class to inspect how the ionic relaxation converges or
@@ -64,7 +65,7 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
     @base.data_access
     @documentation.format(
         selection=_selection_string("all energies"),
-        examples=slice_.examples("energy", "to_dict"),
+        examples=_slice.examples("energy", "to_dict"),
     )
     def to_dict(self, selection=None):
         """Read the energy data and store it in a dictionary.
@@ -96,7 +97,7 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
     @base.data_access
     @documentation.format(
         selection=_selection_string("the total energy"),
-        examples=slice_.examples("energy", "to_graph"),
+        examples=_slice.examples("energy", "to_graph"),
     )
     def to_graph(self, selection="TOTEN"):
         """Read the energy data and generate a figure of the selected components.
@@ -124,7 +125,7 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
     @base.data_access
     @documentation.format(
         selection=_selection_string("the total energy"),
-        examples=slice_.examples("energy", "to_numpy"),
+        examples=_slice.examples("energy", "to_numpy"),
     )
     def to_numpy(self, selection="TOTEN"):
         """Read the energy of the selected steps.

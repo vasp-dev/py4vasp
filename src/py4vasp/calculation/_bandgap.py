@@ -6,9 +6,10 @@ import typing
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._data import base, slice_
+from py4vasp._data import base
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, select
+from py4vasp.calculation import _slice
 
 
 class Gap(typing.NamedTuple):
@@ -24,8 +25,8 @@ GAPS = {
 COMPONENTS = ("independent", "up", "down")
 
 
-@documentation.format(examples=slice_.examples("bandgap"))
-class Bandgap(slice_.Mixin, base.Refinery, graph.Mixin):
+@documentation.format(examples=_slice.examples("bandgap"))
+class Bandgap(_slice.Mixin, base.Refinery, graph.Mixin):
     """Extract information about the band extrema during the relaxation or MD simulation.
 
     Contains utility functions to access the fundamental and direct bandgap as well as
@@ -86,7 +87,7 @@ Fermi energy:    {fermi_energy}"""
         return " " + "   ".join(map(to_string, kpoints))
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("bandgap", "to_dict"))
+    @documentation.format(examples=_slice.examples("bandgap", "to_dict"))
     def to_dict(self):
         """Read the bandgap data from a VASP relaxation or MD trajectory.
 
@@ -122,7 +123,7 @@ Fermi energy:    {fermi_energy}"""
         return ("", "_up", "_down") if self._spin_polarized() else ("",)
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("bandgap", "fundamental"))
+    @documentation.format(examples=_slice.examples("bandgap", "fundamental"))
     def fundamental(self):
         """Return the fundamental bandgap.
 
@@ -139,7 +140,7 @@ Fermi energy:    {fermi_energy}"""
         return self._gap("fundamental", component=0)
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("bandgap", "direct"))
+    @documentation.format(examples=_slice.examples("bandgap", "direct"))
     def direct(self):
         """Return the direct bandgap.
 
@@ -156,7 +157,7 @@ Fermi energy:    {fermi_energy}"""
         return self._gap("direct", component=0)
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("bandgap", "valence_band_maximum"))
+    @documentation.format(examples=_slice.examples("bandgap", "valence_band_maximum"))
     def valence_band_maximum(self):
         """Return the valence band maximum.
 
@@ -171,7 +172,7 @@ Fermi energy:    {fermi_energy}"""
 
     @base.data_access
     @documentation.format(
-        examples=slice_.examples("bandgap", "conduction_band_minimum")
+        examples=_slice.examples("bandgap", "conduction_band_minimum")
     )
     def conduction_band_minimum(self):
         """Return the conduction band minimum.
@@ -186,7 +187,7 @@ Fermi energy:    {fermi_energy}"""
         return self._get(GAPS["fundamental"].top, component=0)
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("bandgap", "to_graph"))
+    @documentation.format(examples=_slice.examples("bandgap", "to_graph"))
     def to_graph(self, selection="fundamental, direct"):
         """Plot the direct and fundamental bandgap along the trajectory.
 
