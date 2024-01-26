@@ -65,3 +65,17 @@ html_static_path = ["_static"]
 
 # remove common py4vasp prefix from index
 modindex_common_prefix = ["py4vasp."]
+
+
+# -- Custom extension of Sphinx ----------------------------------------------
+from docutils import nodes
+
+# defines an INCAR tag
+def tag_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+    url = f"https://www.vasp.at/wiki/index.php/{text}"
+    node = nodes.reference(rawtext, text, refuri=url, **options)
+    return [node], []
+
+def setup(app):
+    app.add_role('tag', tag_role)
+    return
