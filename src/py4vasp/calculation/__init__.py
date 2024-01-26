@@ -38,9 +38,9 @@ equivalent:
 
 In the latter example, you can change the path from which the data is extracted.
 """
+import importlib
 from py4vasp import exception
 from py4vasp._util import convert
-from py4vasp.calculation import data_all
 
 __all__ = (
     "band",
@@ -78,8 +78,9 @@ __all__ = (
 
 def __getattr__(attr):
     if attr in __all__:
-        cls = getattr(data_all, convert.to_camelcase(attr))
-        return cls.from_path(".")
+        module = importlib.import_module(f"py4vasp.calculation._{attr}")
+        class_ = getattr(module, convert.to_camelcase(attr))
+        return class_.from_path(".")
     else:
         message = f"Could not find {attr} in the possible attributes, please check the spelling"
         raise exception.MissingAttribute(message)

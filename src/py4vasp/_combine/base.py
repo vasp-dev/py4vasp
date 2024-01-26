@@ -4,23 +4,23 @@ import inspect
 import pathlib
 from typing import Dict, List
 
-from py4vasp import exception
-from py4vasp.calculation import data_all
+from py4vasp import exception, calculation
 
 
 def _match_combine_with_refinement(combine_name: str):
     combine_to_refinement_name = {
-        "Energies": "Energy",
-        "Forces": "Force",
-        "Stresses": "Stress",
+        "Energies": "energy",
+        "Forces": "force",
+        "Stresses": "stress",
     }
-    for _, class_ in inspect.getmembers(data_all, inspect.isclass):
-        if class_.__name__ == combine_to_refinement_name[combine_name]:
-            return class_
-    else:
-        raise exception.IncorrectUsage(
-            f"Could not find refinement class for {combine_name}."
-        )
+    return getattr(calculation, combine_to_refinement_name[combine_name])
+    # for _, class_ in inspect.getmembers(data_depr, inspect.isclass):
+    #     if class_.__name__ == combine_to_refinement_name[combine_name]:
+    #         return class_
+    # else:
+    #     raise exception.IncorrectUsage(
+    #         f"Could not find refinement class for {combine_name}."
+    #     )
 
 
 class BaseCombine:

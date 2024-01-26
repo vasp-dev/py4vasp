@@ -1,10 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import inspect
 import pathlib
 
 from py4vasp import calculation, control, exception
-from py4vasp._util import convert
 
 
 class Calculation:
@@ -126,7 +124,7 @@ def _add_all_refinement_classes(calc, add_single_class):
 
 
 def _add_attribute_from_path(calc, name):
-    class_ = getattr(data, convert.to_camelcase(name))
+    class_ = getattr(calculation, name)
     instance = class_.from_path(calc.path())
     setattr(calc, name, instance)
     return calc
@@ -137,7 +135,7 @@ class _AddAttributeFromFile:
         self._file_name = file_name
 
     def __call__(self, calc, name):
-        class_ = getattr(data, convert.to_camelcase(name))
+        class_ = getattr(calculation, name)
         instance = class_.from_file(self._file_name)
         setattr(calc, name, instance)
         return calc

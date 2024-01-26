@@ -2,7 +2,6 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from unittest.mock import patch
 
-from py4vasp import calculation
 from py4vasp._third_party.viewer import viewer3d
 from py4vasp.control import POSCAR
 
