@@ -50,7 +50,6 @@ __all__ = (
     "density",
     "dielectric_function",
     "dielectric_tensor",
-    "dispersion",
     "dos",
     "elastic_modulus",
     "energy",
@@ -74,10 +73,10 @@ __all__ = (
     "velocity",
     "workfunction",
 )
-
+_private = ("dispersion",)
 
 def __getattr__(attr):
-    if attr in __all__:
+    if attr in (__all__ + _private):
         module = importlib.import_module(f"py4vasp.calculation._{attr}")
         class_ = getattr(module, convert.to_camelcase(attr))
         return class_.from_path(".")

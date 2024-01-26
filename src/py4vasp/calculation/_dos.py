@@ -10,13 +10,23 @@ pretty = import_.optional("IPython.lib.pretty")
 
 
 class Dos(_base.Refinery, graph.Mixin):
-    """The electronic density of states (DOS).
+    """The density of states (DOS) describes the number of states per energy.
 
-    You can use this class to extract the DOS data of a VASP calculation.
-    Typically you want to run a non self consistent calculation with a
-    denser mesh for a smoother DOS, but the class will work independent
-    of it. If you generated orbital decomposed DOS, you can use this
-    class to select which subset of these orbitals to read or plot.
+    The DOS quantifies the distribution of electronic states within an energy range
+    in a material. It provides information about the number of electronic states at
+    each energy level and offers insights into the material's electronic structure.
+    On-site projections near the atoms (projected DOS) offer a more detailed view.
+    This analysis breaks down the DOS contributions by atom, orbital and spin.
+    Investigating the projected DOS is often a useful step to understand the
+    electronic properties because it shows how different orbitals and elements
+    contribute and influence the material's properties.
+
+    VASP writes the DOS after every calculation and the projected DOS if you set
+    :tag:`LORBIT` in the INCAR file. You can use this class to extract this data.
+    Typically you want to run a non self consistent calculation with a denser
+    mesh for a smoother DOS but the class will work independent of it. If you
+    generated a projected DOS, you can use this class to select which subset of
+    these orbitals to read or plot.
     """
 
     _missing_data_message = "No DOS data found, please verify that LORBIT flag is set."
