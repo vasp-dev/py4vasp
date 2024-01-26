@@ -5,7 +5,7 @@
    .. currentmodule:: py4vasp.calculation
    .. data:: {{ name }}
 
-   .. currentmodule:: py4vasp.data
+   .. currentmodule:: py4vasp.calculation._{{name}}
    .. autoclass:: {%
       if name == "CONTCAR" -%}
          CONTCAR
