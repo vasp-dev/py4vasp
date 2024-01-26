@@ -5,7 +5,7 @@ from py4vasp._util import documentation, index, select
 from py4vasp.calculation import _base, _phonon
 
 
-class PhononDos(_base.Refinery, _phonon.Mixin, graph.Mixin):
+class PhononDos(_phonon.Mixin, _base.Refinery, graph.Mixin):
     """The phonon density of states (DOS).
 
     You can use this class to extract the phonon DOS data of a VASP
@@ -68,7 +68,9 @@ class PhononDos(_base.Refinery, _phonon.Mixin, graph.Mixin):
         if not selection:
             return {}
         maps = {0: self._init_atom_dict(), 1: self._init_direction_dict()}
-        selector = index.Selector(maps, self._raw_data.projections)
+        selector = index.Selector(
+            maps, self._raw_data.projections, use_number_labels=True
+        )
         tree = select.Tree.from_selection(selection)
         return {
             selector.label(selection): selector[selection]
