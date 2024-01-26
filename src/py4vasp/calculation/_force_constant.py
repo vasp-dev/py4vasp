@@ -6,10 +6,16 @@ from py4vasp.calculation import _base, _structure
 
 
 class ForceConstant(_base.Refinery, _structure.Mixin):
-    """The force constants (second derivatives of atomic displacement).
+    """Force constants are the 2nd derivatives of the energy with respect to displacement.
 
-    You can use this class to extract the force constants of a linear
-    response calculation.
+    Force constants quantify the strength of interactions between atoms in a crystal
+    lattice. They describe how the potential energy of the system changes with atomic
+    displacements. Specifically they are the second derivative of the energy with
+    respect to a displacement from their equilibrium positions. Force constants are a
+    key component in determining the vibrational modes of a crystal lattice (phonon
+    dispersion). Phonon calculations involve the computation of these force constants.
+    Keep in mind that they are the second derivative at the equilibrium position so
+    a careful relaxation is required to eliminate the first derivative (i.e. forces).
     """
 
     @_base.data_access

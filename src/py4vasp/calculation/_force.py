@@ -9,11 +9,16 @@ from py4vasp.calculation import _base, _slice, _structure
 
 @documentation.format(examples=_slice.examples("force"))
 class Force(_slice.Mixin, _base.Refinery, _structure.Mixin):
-    """The forces acting on the atoms for selected steps of the simulation.
+    """The forces determine the path of the atoms in a trajectory.
 
-    You can use this class to analyze the forces acting on the atoms. In
-    particular, you can check whether the forces are small at the end of the
-    calculation.
+    You can use this class to analyze the forces acting on the atoms. The forces
+    are the first derivative of the DFT total energy. The forces being small is
+    an important criterion for the convergence of a relaxation calculation. The
+    size of the forces is also related to the maximal time step in MD simulations.
+    When you choose a too large time step, the forces become large and the atoms
+    may move too much in a single step leading to an unstable trajectory. You can
+    use this class to visualize the forces in a trajectory or read the values to
+    analyze them numerically.
 
     {examples}
     """
