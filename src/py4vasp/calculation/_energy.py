@@ -36,7 +36,15 @@ class Energy(_slice.Mixin, _base.Refinery, graph.Mixin):
     """The energy data for one or several steps of a relaxation or MD simulation.
 
     You can use this class to inspect how the ionic relaxation converges or
-    during an MD simulation whether the total energy is conserved.
+    during an MD simulation whether the total energy is conserved. The total
+    energy of the system is one of the most important results to analyze materials.
+    Total energy differences of different atom arrangements reveal which structure
+    is more stable. Even when the number of atoms are different between two
+    systems, you may be able to compare the total energies by adding a corresponding
+    amount of single atom energies. In this case, you need to double check the
+    convergence because some error cancellation does not happen if the number of
+    atoms is changes. Finally, monitoring the total energy can reveal insights
+    about the stability of the thermostat.
 
     {examples}
     """

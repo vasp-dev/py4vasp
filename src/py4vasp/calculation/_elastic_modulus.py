@@ -6,10 +6,16 @@ from py4vasp.calculation import _base
 
 
 class ElasticModulus(_base.Refinery):
-    """The elastic modulus (second derivatives w.r.t. strain)
+    """The elastic modulus is the second derivatives of the energy with respect to strain.
 
-    You can use this class to extract the elastic modulus of a linear response
-    calculation.
+    The elastic modulus, also known as the modulus of elasticity, is a measure of a
+    material's stiffness and its ability to deform elastically in response to an
+    applied force. It quantifies the ratio of stress (force per unit area) to strain
+    (deformation) in a material within its elastic limit. You can use this class to
+    extract the elastic modulus of a linear response calculation. There are two
+    variants of the elastic modulus: (i) in the clamped-ion one, the cell is deformed
+    but the ions are kept in their positions; (ii) in the relaxed-ion one the
+    atoms are allowed to relax when the cell is deformed.
     """
 
     @_base.data_access
