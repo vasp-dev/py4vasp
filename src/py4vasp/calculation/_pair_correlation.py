@@ -21,12 +21,21 @@ selection : str
 
 @documentation.format(examples=_slice.examples("pair_correlation", step="block"))
 class PairCorrelation(_slice.Mixin, _base.Refinery, graph.Mixin):
-    """The pair-correlation function for one or several blocks of an MD simulation.
+    """The pair-correlation function measures the distribution of atoms.
 
-    Use this class to inspect how the correlation of the position of different
-    ions types in an MD simulation. The pair-correlation function gives insight
-    into the structural properties and may help to identify certain orders in
-    the system.
+    A pair-correlation function is a statistical measure to describe the spatial
+    distribution of atoms within a system. Specifically, the pair correlation
+    function quantifies the probability density of finding two particles at specific
+    separation distances. This function is helpful in the study of liquids and solids
+    because it acts as a fingerprint of the system that can be compared to
+    X-ray or neutron scattering experiments. Another use case is the detection
+    of specific phases.
+
+    Use this class to inspect the pair-correlation function computed by VASP for
+    all pairs of ionic types. You can control how often VASP samples the pair
+    correlation function with the :tag:`NBLOCK` tag. If you want to split your
+    trajectory into multiple subsets include the tag :tag:`KBLOCK` in your INCAR
+    file.
 
     {examples}
     """

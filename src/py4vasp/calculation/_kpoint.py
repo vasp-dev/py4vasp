@@ -17,12 +17,26 @@ selection : str, optional
 
 
 class Kpoint(_base.Refinery):
-    """The **k** points used in the Vasp calculation.
+    """The **k**-point mesh used in the VASP calculation.
 
-    This class provides utility functionality to extract information about the
-    **k** points used by Vasp. As such it is mostly used as a helper class for
+    In VASP calculations, **k** points play an important role in discretizing the
+    Brillouin zone of a crystal. For self-consistent DFT calculations, typically a
+    regular grid of **k** points is employed to sample the Brillouin zone. A
+    sufficiently dense **k**-points mesh is critical for the precision of your DFT
+    calculation, so make sure to test the results for different meshes. Denser
+    **k** point meshes provide more accurate results but also demand greater
+    computational resources.
+
+    Another common use case is irregular meshes in non-self-consistent calculations.
+    In particular in band structure analysis, one employs a mesh along specific lines
+    in the Brillouin zone. The line mode involves connecting high-symmetry points and
+    calculating the electronic band structure along these paths.
+
+    This class provides utility functionality to extract information about either of
+    the aforementioned use cases. As such it is mostly used as a helper class for
     other postprocessing classes to extract the required information, e.g., to
-    generate a band structure.
+    generate a band structure. It may also be used to programmatically analyze the
+    selected **k** point mesh or take subsets along high symmetry lines.
     """
 
     @_base.data_access

@@ -4,10 +4,14 @@ from py4vasp.calculation import _base, _structure
 
 
 class InternalStrain(_base.Refinery, _structure.Mixin):
-    """The internal strain
+    """The internal strain is the derivative of energy with respect to displacement and strain.
 
-    You can use this class to extract the internal strain of a linear
-    response calculation.
+    The internal strain tensor characterizes the deformation within a material at
+    a microscopic level. It is a symmetric 3 x 3 matrix per displacement and
+    describes the coupling between the displacement of atoms and the strain on
+    the system. Specifically, it reveals how atoms would move under strain or which
+    stress occurs when the atoms are displaced. VASP computes the internal strain
+    with linear response and this class provides access to the resulting data.
     """
 
     @_base.data_access

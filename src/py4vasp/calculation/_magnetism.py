@@ -23,10 +23,24 @@ selection : str
 
 @documentation.format(examples=_slice.examples("magnetism"))
 class Magnetism(_slice.Mixin, _base.Refinery, _structure.Mixin):
-    """The magnetic moments and localized charges for selected ionic steps.
+    """The local moments describe the charge and magnetization near an atom.
 
-    This class gives access to the magnetic moments and charges projected on the
-    different orbitals on every atom.
+    The projection on local moments is particularly relevant in the context of
+    magnetic materials. It analyzes the electronic states in the vicinity of an
+    atom by projecting the electronic orbitals onto the localized projectors of
+    the PAWs. The local moments help understanding the magnetic ordering, the spin
+    polarization, and the influence of neighboring atoms on the magnetic behavior.
+
+    This class allows to access the computed moments from a VASP calculation.
+    Remember that VASP calculates the projections only if you need to set
+    :tag:`LORBIT` in the INCAR file. If the system is computed without spin
+    polarization, the resulting moments correspond only to the local charges
+    resolved by angular momentum. For collinear calculation, additionally the
+    magnetic moment are computed. In noncollinear calculations, the magnetization
+    becomes a vector. When comparing the results extracted from VASP to experimental
+    observation, please be aware that the finite size of the radius in the projection
+    may influence the observed moments. Hence, there is no one-to-one correspondence
+    to the experimental moments.
 
     {examples}
     """
