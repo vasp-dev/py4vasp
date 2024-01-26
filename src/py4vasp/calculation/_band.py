@@ -12,11 +12,11 @@ pretty = import_.optional("IPython.lib.pretty")
 
 
 class Band(_base.Refinery, graph.Mixin):
-    """The electronic band structure.
+    """The band structure contains the **k** point resolved eigenvalues.
 
     The most common use case of this class is to produce the electronic band
     structure along a path in the Brillouin zone used in a non self consistent
-    Vasp calculation. In some cases you may want to use the `to_dict` function
+    VASP calculation. In some cases you may want to use the `to_dict` function
     just to obtain the eigenvalue and projection data though in that case the
     **k**-point distances that are calculated are meaningless.
     """

@@ -26,10 +26,20 @@ COMPONENTS = ("independent", "up", "down")
 
 @documentation.format(examples=_slice.examples("bandgap"))
 class Bandgap(_slice.Mixin, _base.Refinery, graph.Mixin):
-    """Extract information about the band extrema during the relaxation or MD simulation.
+    """This class describes the band extrema during the relaxation or MD simulation.
 
-    Contains utility functions to access the fundamental and direct bandgap as well as
-    the k-point coordinates at which these are found.
+    The bandgap represents the energy difference between the highest energy electrons
+    in the valence band and the lowest energy electrons in the conduction band of a
+    material. The fundamental gap occurs between the energy states of electrons in the
+    valence and conduction bands irrespective of the **k** point. In contrast, the
+    direct gap means that transition from valence to conduction band does not change
+    the **k** momentum.
+
+    To study bandgap the extrema of the valence and conduction band play an important
+    role. This class reports the valence band maximum as well as the conduction band
+    minimum. For collinear calculations (ISPIN = 2) all values are reported separately
+    for both spins as well as ignoring the spin. This simplifies comparison to
+    experimental data, where the transitions either conserve the spin or not.
 
     {examples}
     """

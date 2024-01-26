@@ -6,7 +6,7 @@ from py4vasp.calculation import _base, _structure
 
 
 class CONTCAR(_base.Refinery, _structure.Mixin):
-    """Access the final positions after the VASP calculation.
+    """CONTCAR contains structural restart-data after a relaxation or MD simulation.
 
     The CONTCAR contains the final structure of the VASP calculation. It can be used as
     input for the next calculation if desired. Depending on the particular setup the

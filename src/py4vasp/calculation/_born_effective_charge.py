@@ -4,10 +4,15 @@ from py4vasp.calculation import _base, _structure
 
 
 class BornEffectiveCharge(_base.Refinery, _structure.Mixin):
-    """The Born effective charge tensors coupling electric field and atomic displacement.
+    """The Born effective charge tensors couple electric field and atomic displacement.
 
     You can use this class to extract the Born effective charges of a linear
-    response calculation.
+    response calculation. The Born effective charges describes the effective charge of
+    an ion in a crystal lattice when subjected to an external electric field.
+    These charges account for the displacement of the ion positions in response to the
+    field, reflecting the distortion of the crystal structure. Born effective charges
+    help understanding the material's response to external stimuli, such as
+    piezoelectric and ferroelectric behavior.
     """
 
     @_base.data_access
