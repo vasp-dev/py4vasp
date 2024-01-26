@@ -49,10 +49,14 @@ def _join_with_emphasis(data):
 
 
 class Density(_base.Refinery, _structure.Mixin):
-    """The charge and magnetization density.
+    """This class accesses various densities (charge, magnetization, ...) of VASP.
 
-    You can use this class to extract the density data of the VASP calculation
-    and to have a quick glance at the resulting density.
+    The charge density is one key quantity optimized by VASP. With this class you
+    can extract the final density and visualize it within the structure of the
+    system. For collinear calculations, one can also consider the magnetization
+    density. For noncollinear calculations, the magnetization density has three
+    components. One may also be interested in the kinetic energy density for
+    metaGGA calculations.
     """
 
     @_base.data_access

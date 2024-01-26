@@ -6,7 +6,13 @@ from py4vasp.calculation import _base
 
 
 class DielectricTensor(_base.Refinery):
-    """The static dielectric tensor obtained from linear response."""
+    """The dielectric tensor is the static limit of the :attr:`dielectric function<py4vasp.calculation.dielectric_function>`.
+
+    The dielectric tensor represents how a material's response to an external electric
+    field varies with direction. It is a symmetric 3x3 matrix, encapsulating the
+    anisotropic nature of a material's dielectric properties. Each element of the
+    tensor corresponds to the dielectric function along a specific crystallographic
+    axis."""
 
     @_base.data_access
     def to_dict(self):

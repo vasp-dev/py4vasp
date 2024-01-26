@@ -8,12 +8,24 @@ from py4vasp.calculation import _base
 
 
 class DielectricFunction(_base.Refinery, graph.Mixin):
-    """The dielectric function resulting from electrons and ions.
+    """The dielectric function describes the material response to an electric field.
 
-    You can use this class to extract the dielectric function of a Vasp calculation.
-    VASP evaluates actually evaluates the (symmetric) dielectric tensor, so all
-    the returned quantities are 3x3 matrices. For plotting purposes this is reduced
-    to the 6 independent variables.
+    The dielectric function is a fundamental concept that describes how a material
+    responds to an external electric field. It is a frequency-dependent complex-valued
+    3x3 matrix that relates the polarization of a material to the applied electric
+    field. The dielectric function is essential in understanding optical properties,
+    such as refractive index and absorption.
+
+    There are many different ways to compute dielectric functions with VASP. This
+    class provides a common interface to all of them. You can pass a `selection`
+    argument to any of the methods of this class to select which dielectric function
+    you are interested in. Please make sure the INCAR file you use is compatible
+    with the setup.
+
+    The 3x3 matrix is symmetric so for the plotting routines, py4vasp uses only the
+    six distinct components (xx, yy, zz, xy, xz, yz). The default is the isotropic
+    dielectric function but you can also select specific components by providing
+    one of the six components as selection.
     """
 
     @_base.data_access
