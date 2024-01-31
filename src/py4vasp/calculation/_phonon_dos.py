@@ -6,10 +6,21 @@ from py4vasp.calculation import _base, _phonon
 
 
 class PhononDos(_phonon.Mixin, _base.Refinery, graph.Mixin):
-    """The phonon density of states (DOS).
+    """The phonon density of states (DOS) describes the number of modes per energy.
 
-    You can use this class to extract the phonon DOS data of a VASP
-    calculation. The DOS can also be resolved by direction and atom.
+    The phonon density of states (DOS) is a representation of the distribution of
+    phonons in a material across different frequencies. It provides a histogram of the
+    number of phonon states per frequency interval. Peaks and features in the DOS reveal
+    the density of vibrational modes at specific frequencies. One can related these
+    properties to study e.g. the heat capacity or the thermal conductivity.
+
+    Projecting the phonon density of states (DOS) onto specific atoms highlights the
+    contribution of each atomic species to the vibrational spectrum. This analysis helps
+    to understand the role of individual elements' impact on the material's thermal and
+    mechanical properties. The projected phonon DOS can guide towards engineering these
+    properties by substitution of specific atoms. Additionally, the atom-specific
+    projection allows for the identification of localized modes or vibrations associated
+    with specific atomic species.
     """
 
     @_base.data_access

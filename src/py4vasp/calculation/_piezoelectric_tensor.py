@@ -6,10 +6,22 @@ from py4vasp.calculation import _base
 
 
 class PiezoelectricTensor(_base.Refinery):
-    """The piezoelectric tensor (second derivatives w.r.t. strain and field)
+    """The piezoelectric tensor is the derivative of the energy with respect to strain and field.
 
-    You can use this class to extract the piezoelectric tensor of a linear
-    response calculation.
+    The piezoelectric tensor represents the coupling between mechanical stress and
+    electrical polarization in a material. VASP computes the piezoelectric tensor with
+    a linear response calculation. The piezoelectric tensor is a 3x3 matrix that relates
+    the three components of stress to the three components of polarization.
+    Specifically, it describes how the application of mechanical stress induces an
+    electric polarization and, conversely, how an applied electric field results in
+    a deformation.
+
+    The piezoelectric tensor helps to characterize the efficiency and anisotropy of the
+    piezoelectric response. A large piezoelectric tensor is useful e.g. for sensors
+    and actuators. Moreover, the tensor's symmetry properties are coupled to the crystal
+    structure and symmetry. Therefore a mismatch of the symmetry properties between
+    calculations and experiment can reveal underlying flaws in the characterization of
+    the crystal structure.
     """
 
     @_base.data_access

@@ -6,7 +6,7 @@ from py4vasp.calculation import _base
 
 
 class ElasticModulus(_base.Refinery):
-    """The elastic modulus is the second derivatives of the energy with respect to strain.
+    """The elastic modulus is the second derivative of the energy with respect to strain.
 
     The elastic modulus, also known as the modulus of elasticity, is a measure of a
     material's stiffness and its ability to deform elastically in response to an

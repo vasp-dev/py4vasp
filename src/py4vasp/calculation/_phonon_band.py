@@ -9,11 +9,22 @@ from py4vasp.calculation import _base, _phonon
 
 
 class PhononBand(_phonon.Mixin, _base.Refinery, graph.Mixin):
-    """The phonon band structure.
+    """The phonon band structure contains the **q**-resolved phonon eigenvalues.
 
-    Use this to examine the phonon band structure along a high-symmetry path in the
-    Brillouin zone. The `to_dict` function allows to extract the raw data to process
-    it further."""
+    The phonon band structure is a graphical representation of the phonons. It
+    illustrates the relationship between the frequency of modes and their corresponding
+    wave vectors in the Brillouin zone. Each line or branch in the band structure
+    represents a specific phonon, and the slope of these branches provides information
+    about their velocity.
+
+    The phonon band structure includes the dispersion relations of phonons, which reveal
+    how vibrational frequencies vary with direction in the crystal lattice. The presence
+    of band gaps or band crossings indicates the material's ability to conduct or
+    insulate heat. Additionally, the branches near the high-symmetry points in the
+    Brillouin zone offer insights into the material's anharmonicity and thermal
+    conductivity. Furthermore, phonons with imaginary frequencies indicate the presence
+    of a structural instability.
+    """
 
     @_base.data_access
     def __str__(self):
