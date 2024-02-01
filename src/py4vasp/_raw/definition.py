@@ -361,6 +361,12 @@ schema.add(
 )
 #
 schema.add(
+    raw.OSZICAR,
+    required=raw.Version(6, 5),
+    convergence_data="intermediate/ion_dynamics/oszicar",
+)
+#
+schema.add(
     raw.Magnetism,
     required=raw.Version(6, 5),
     structure=Link("structure", DEFAULT_SOURCE),
