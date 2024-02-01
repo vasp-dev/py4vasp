@@ -6,12 +6,23 @@ from py4vasp import calculation, control, exception
 
 
 class Calculation:
-    """Manage access to input and output of VASP calculations.
+    """Manage access to input and output of single VASP calculation.
 
-    This is the main user interface if you want to simply investigate the results of VASP
-    calculations. Create a Calculation object associated with the VASP calculation that you
-    run. Then you can access the properties of that calculation via the attributes of the
-    object.
+    The :mod:`calculation` module always reads the VASP calculation from the current
+    working directory. This class gives you a more fine grained control so that you
+    can use a Python script or Jupyter notebook in a different folder or rename the
+    files that VASP produces.
+
+    To create a new instance, you should use the classmethod :meth:`from_path` or
+    :meth:`from_file` and *not* the constructor. This will ensure that the path to
+    your VASP calculation is properly set and all features work as intended.
+    The two methods allow you to read VASP results from a specific folder other
+    than the working directory or a nondefault file name.
+
+    With the Calculation instance, you can access the quantities VASP computes via
+    the attributes of the object. The attributes are the same provided by the
+    :mod:`calculation` module. You can find links to how to use these quantities
+    below.
 
     Examples
     --------
@@ -20,12 +31,6 @@ class Calculation:
     >>> calc.dos.plot()         # to plot the density of states
     >>> calc.magnetism.read()   # to read the magnetic moments
     >>> calc.structure.print()  # to print the structure in a POSCAR format
-
-    Notes
-    -----
-    To create new instances, you should use the classmethod :meth:`from_path` or
-    :meth:`from_file`. This will ensure that the path to your VASP calculation is
-    properly set and all features work as intended.
 
     .. autosummary::
 
