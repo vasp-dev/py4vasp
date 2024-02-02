@@ -122,6 +122,10 @@ class Refinery:
     def _raw_data(self):
         return self._data_context.data
 
+    @property
+    def _selection(self):
+        return self._data_context.selection
+
     @data_access
     def print(self):
         "Print a string representation of this instance."
@@ -130,6 +134,23 @@ class Refinery:
     def read(self, *args, **kwargs):
         "Convenient wrapper around to_dict. Check that function for examples and optional arguments."
         return self.to_dict(*args, **kwargs)
+
+    @data_access
+    def selections(self):
+        """Returns possible alternatives for this particular quantity VASP can produce.
+
+        The returned dictionary contains a single item with the name of the quantity
+        mapping to all possible selections. Each of these selection may be passed to
+        other functions of this quantity to select which output of VASP is used.
+
+        Returns
+        -------
+        dict
+            The key indicates this quantity and the values possible choices for arguments
+            to other functions of this quantity.
+        """
+        sources = list(raw.selections(self._data_context.quantity))
+        return {self._data_context.quantity: sources}
 
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
@@ -308,4 +329,5 @@ class _DataAccess(contextlib.AbstractContextManager):
             self._stack.close()
 
     def set_selection(self, selection):
-        self.selection = selection
+        if self._counter == 0:
+            self.selection = selection

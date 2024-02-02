@@ -101,9 +101,19 @@ schema.add(
 )
 schema.add(
     raw.Density,
+    alias=["charge", "n", "charge_density", "electronic_charge_density"],
     file="vaspwave.h5",
     structure=Link("structure", DEFAULT_SOURCE),
     charge="charge/charge",
+)
+schema.add(
+    raw.Density,
+    name="tau",
+    required=raw.Version(6, 5),
+    alias=["kinetic_energy", "kinetic_energy_density"],
+    file="vaspwave.h5",
+    structure=Link("structure", DEFAULT_SOURCE),
+    charge="kinetic_energy_density/values",
 )
 #
 group = "results/linear_response"
@@ -420,10 +430,10 @@ schema.add(
     raw.Potential,
     required=raw.Version(6, 5),
     structure=Link("structure", DEFAULT_SOURCE),
-    hartree_potential="results/potential/hartree_potential",
-    ionic_potential="results/potential/ionic_potential",
-    xc_potential="results/potential/xc_potential",
-    total_potential="results/potential/total_potential",
+    hartree_potential="results/potential/hartree",
+    ionic_potential="results/potential/ionic",
+    xc_potential="results/potential/xc",
+    total_potential="results/potential/total",
 )
 #
 schema.add(

@@ -12,5 +12,7 @@ go = import_.optional("plotly.graph_objects")
 pio = import_.optional("plotly.io")
 
 if import_.is_imported(go) and import_.is_imported(pio):
-    pio.templates["vasp"] = go.layout.Template(layout={"colorway": VASP_COLORS})
+    axis_format = {"showexponent": "all", "exponentformat": "power"}
+    layout = {"colorway": VASP_COLORS, "xaxis": axis_format, "yaxis": axis_format}
+    pio.templates["vasp"] = go.layout.Template(layout=layout)
     pio.templates.default = "ggplot2+vasp"

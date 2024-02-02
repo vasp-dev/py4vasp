@@ -18,16 +18,16 @@ def _selection_string(default):
 
 
 _SELECTIONS = {
-    "ion-electron   TOTEN   ": ["ion_electron", "TOTEN"],
-    "kinetic energy EKIN    ": ["kinetic_energy", "EKIN"],
+    "ion-electron   TOTEN": ["ion_electron", "TOTEN"],
+    "kinetic energy EKIN": ["kinetic_energy", "EKIN"],
     "kin. lattice   EKIN_LAT": ["kinetic_lattice", "EKIN_LAT"],
-    "temperature    TEIN    ": ["temperature", "TEIN"],
-    "nose potential ES      ": ["nose_potential", "ES"],
-    "nose kinetic   EPS     ": ["nose_kinetic", "EPS"],
-    "total energy   ETOTAL  ": ["total_energy", "ETOTAL"],
-    "free energy    TOTEN   ": ["free_energy", "TOTEN"],
-    "energy without entropy ": ["without_entropy", "ENOENT"],
-    "energy(sigma->0)       ": ["sigma_0", "ESIG0"],
+    "temperature    TEIN": ["temperature", "TEIN"],
+    "nose potential ES": ["nose_potential", "ES"],
+    "nose kinetic   EPS": ["nose_kinetic", "EPS"],
+    "total energy   ETOTAL": ["total_energy", "ETOTAL"],
+    "free energy    TOTEN": ["free_energy", "TOTEN"],
+    "energy without entropy": ["without_entropy", "ENOENT"],
+    "energy(sigma->0)": ["sigma_0", "ESIG0"],
 }
 
 
@@ -168,7 +168,7 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
         return {
             selection: index
             for index, label in enumerate(self._raw_data.labels)
-            for selection in _SELECTIONS.get(convert.text_to_string(label), ())
+            for selection in _SELECTIONS.get(convert.text_to_string(label).strip(), ())
         }
 
     def _make_series(self, yaxes, tree):
@@ -188,9 +188,9 @@ class _YAxes:
         self.y2label = "Temperature (K)" if self.use_both else None
 
     def _is_temperature(self, selection):
-        choices = _SELECTIONS["temperature    TEIN    "]
+        choices = _SELECTIONS["temperature    TEIN"]
         return any(select.contains(selection, choice) for choice in choices)
 
     def use_y2(self, label):
-        choices = _SELECTIONS["temperature    TEIN    "]
+        choices = _SELECTIONS["temperature    TEIN"]
         return self.use_both and label in choices

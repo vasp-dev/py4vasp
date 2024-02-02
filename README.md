@@ -14,31 +14,20 @@ We use the [poetry dependency manager](https://python-poetry.org/) which takes c
 all dependencies and maintains a virtual environment to check the code. If you want to
 test something in the virtual environment, just use e.g. `poetry run jupyter-notebook`.
 
-Using poetry installing and the code requires the following steps. The last step will
-test whether everything worked
+We recommend installing py4vasp in a conda environment to resolve issues related to
+installing `mdtraj` with pip. To do this please use the following steps. The last step
+will test whether everything worked
 ~~~shell
+conda create --name py4vasp-env python=3.8
 git clone git@github.com:vasp-dev/py4vasp.git
 pip install poetry
 poetry install
-poetry run pytest
-~~~
-Note that this will install py4vasp into a virtual environment managed by poetry. This
-isolates the code from all other packages you have installed and makes sure that when
-you modify the code all the relevant dependencies are tracked.
-
-Occasionally, we encountered errors when installing the *mdtraj* dependency in this
-fashion, in particular on MacOS and Windows. If you notice the same behavior, we
-recommend to manage your environment with *conda* and install *py4vasp* in the
-following manner
-~~~shell
-git clone git@github.com:vasp-dev/py4vasp.git
-conda create --name py4vasp-env python=3.8
-conda activate py4vasp-env
-conda install -c conda-forge poetry
 conda install -c conda-forge mdtraj
-poetry install
 poetry run pytest
 ~~~
+Note that this will install py4vasp into the conda environment. This isolates the code
+from all packages you have installed in other conda environments. Using poetry makes
+sure that when you modify the code all the relevant dependencies are tracked.
 
 ## py4vasp core
 
@@ -49,9 +38,15 @@ replace the configurations files in the root folder with the ones in the `core` 
 ~~~shell
 cp core/* .
 ~~~
-Then you can install py4vasp with the same steps as above. Note that some tests will be
-skipped because they require the external packages to run.
-
+Then you can install py4vasp with the same steps as above. Alternatively, since
+py4vasp-core does not use mdtraj, you can also install everything in a virtual environment
+mangaged by poetry
+~~~shell
+pip install poetry
+poetry install
+poetry run pytest
+~~~
+Note that some tests will be skipped because they require the external packages to run.
 If you want to exclude even the development dependencies, you can run
 ~~~shell
 poetry install --without dev
