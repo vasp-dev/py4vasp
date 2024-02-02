@@ -21,7 +21,7 @@ def to_complex(array):
 
 
 def quantity_name(quantity):
-    if quantity == "CONTCAR":
+    if quantity in ["CONTCAR", "OSZICAR"]:
         return quantity
     else:
         return _to_snakecase(quantity)
