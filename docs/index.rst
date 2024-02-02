@@ -145,8 +145,8 @@ how you can apply *py4vasp* in your research.
 
 .. currentmodule:: py4vasp
 
-Packages
---------
+.. rubric:: Packages
+
 .. autosummary::
    :toctree: _packages
    :template: package.rst
@@ -154,8 +154,8 @@ Packages
 
    calculation
 
-Classes
--------
+.. rubric:: Classes
+
 .. autosummary::
    :toctree: _classes
    :template: class.rst

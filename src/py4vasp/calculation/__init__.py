@@ -25,14 +25,12 @@ directory or file for the VASP calculation manually. That class exposes function
 of the modules as methods of attributes, i.e., the two following examples are
 equivalent:
 
-using :mod:`~py4vasp.calculation` module
-""""""""""""""""""""""""""""""""""""""""
+.. rubric:: using :mod:`~py4vasp.calculation` module
 
 >>> from py4vasp import calculation
 >>> calculation.dos.read()
 
-using :class:`~py4vasp.Calculation` class
-"""""""""""""""""""""""""""""""""""""""""
+.. rubric:: using :class:`~py4vasp.Calculation` class
 
 >>> from py4vasp import Calculation
 >>> calc = Calculation.from_path(".")

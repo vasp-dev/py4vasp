@@ -2,8 +2,8 @@
 
 .. automodule:: {{ fullname }}
 
-Attributes
-----------
+.. rubric:: Attributes
+
 .. autosummary::
   :toctree:
   :template: member.rst
