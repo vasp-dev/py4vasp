@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-'''Provide refinement functions for a the raw data of a VASP calculation run in the
+"""Provide refinement functions for a the raw data of a VASP calculation run in the
 current directory.
 
 Usually one is not directly interested in the raw data that is produced but
@@ -37,8 +37,9 @@ equivalent:
 >>> calc.dos.read()
 
 In the latter example, you can change the path from which the data is extracted.
-'''
+"""
 import importlib
+
 from py4vasp import exception
 from py4vasp._util import convert
 
@@ -74,6 +75,7 @@ __all__ = (
     "workfunction",
 )
 _private = ("dispersion",)
+
 
 def __getattr__(attr):
     if attr in (__all__ + _private):

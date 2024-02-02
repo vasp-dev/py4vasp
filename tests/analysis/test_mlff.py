@@ -8,7 +8,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception, calculation
+from py4vasp import calculation, exception
 from py4vasp._analysis.mlff import MLFFErrorAnalysis
 
 

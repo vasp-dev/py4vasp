@@ -6,7 +6,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import calculation, exception, raw, _config
+from py4vasp import _config, calculation, exception, raw
 from py4vasp._third_party.viewer import viewer3d
 
 

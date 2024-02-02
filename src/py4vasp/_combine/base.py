@@ -4,7 +4,7 @@ import inspect
 import pathlib
 from typing import Dict, List
 
-from py4vasp import exception, calculation
+from py4vasp import calculation, exception
 
 
 def _match_combine_with_refinement(combine_name: str):

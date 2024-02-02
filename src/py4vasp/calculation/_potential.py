@@ -4,7 +4,7 @@ import itertools
 
 import numpy as np
 
-from py4vasp import calculation, exception, _config
+from py4vasp import _config, calculation, exception
 from py4vasp._util import select
 from py4vasp.calculation import _base, _structure
 
