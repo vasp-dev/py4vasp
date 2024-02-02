@@ -291,6 +291,8 @@ class Structure(slice_.Mixin, base.Refinery):
         return self._scale() * lattice_vectors[self._get_steps()]
 
     def _scale(self):
+        if isinstance(self._raw_data.cell.scale, (float, np.floating)):
+            return raw.VaspData(self._raw_data.cell.scale)
         if not self._raw_data.cell.scale.is_none():
             return self._raw_data.cell.scale[()]
         else:
