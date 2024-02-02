@@ -4,9 +4,9 @@ import itertools
 
 import numpy as np
 
-from py4vasp import data, exception
+from py4vasp import _config, data, exception
 from py4vasp._data import base, structure
-from py4vasp._util import import_, select
+from py4vasp._util import select
 
 VALID_KINDS = ("total", "ionic", "xc", "hartree")
 
@@ -82,7 +82,7 @@ class Potential(base.Refinery, structure.Mixin):
         A visualization of the potential isosurface within the crystal structure.
         """
         viewer = self._structure.plot()
-        options = {"isolevel": isolevel, "color": "yellow", "opacity": 0.6}
+        options = {"isolevel": isolevel, "color": _config.VASP_CYAN, "opacity": 0.6}
         for kind, component in _parse_selection(selection):
             self._add_potential_isosurface(viewer, kind, component, options)
         return viewer
@@ -97,7 +97,7 @@ class Potential(base.Refinery, structure.Mixin):
             potential = potential_data[0] - potential_data[1]
         else:
             potential = potential_data[0]
-        viewer.show_isosurface(potential.T, **options)
+        viewer.show_isosurface(potential, **options)
 
     def _get_potential(self, kind):
         return getattr(self._raw_data, f"{kind}_potential")

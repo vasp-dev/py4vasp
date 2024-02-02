@@ -78,6 +78,24 @@ def test_length():
     assert remove_version(schema.sources) == reference
 
 
+def test_alias():
+    first = Simple("foo1", "bar1")
+    second = Simple("foo2", "bar2")
+    schema = Schema(VERSION)
+    schema.add(Simple, foo=first.foo, bar=first.bar, alias=["first", "other"])
+    schema.add(Simple, name="second", foo=second.foo, bar=second.bar, alias="more")
+    reference = {
+        "simple": {
+            "default": Source(first),
+            "first": Source(first, alias_for="default"),
+            "other": Source(first, alias_for="default"),
+            "second": Source(second),
+            "more": Source(second, alias_for="second"),
+        },
+    }
+    assert remove_version(schema.sources) == reference
+
+
 def remove_version(sources):
     version = sources.pop("version")
     assert version == {"default": Source(VERSION)}
@@ -102,25 +120,31 @@ version:
     major: major_dataset
     minor: minor_dataset
     patch: patch_dataset
+
 simple:
     default:  &simple-default
         file: other_file
         foo: foo_dataset
         bar: bar_dataset
+
 optional_argument:
     mandatory:  &optional_argument-mandatory
         mandatory: mandatory1
     default:  &optional_argument-default
         mandatory: mandatory2
         optional: optional
+
 with_link:
     default:  &with_link-default
         required: 1.2.3
         baz: baz_dataset
         simple: *simple-default
+
 with_length:
     default:  &with_length-default
         num_data: length(dataset)
+    alias_name: *with_length-default
+
 complex:
     default:  &complex-default
         opt: *optional_argument-default
@@ -128,7 +152,7 @@ complex:
         length: *with_length-default
     mandatory:  &complex-mandatory
         opt: *optional_argument-mandatory
-        link: *with_link-default\
+        link: *with_link-default
 """
     assert str(schema) == reference
 
@@ -149,7 +173,7 @@ def test_missing_quantity():
 def test_adding_twice_error():
     schema = Schema(VERSION)
     schema.add(Simple, foo="foo1", bar="bar1")
-    with pytest.raises(exception.IncorrectUsage):
+    with pytest.raises(exception._Py4VaspInternalError):
         schema.add(Simple, foo="foo2", bar="bar2")
 
 
@@ -167,12 +191,12 @@ def test_incomplete_schema():
     schema.add(WithLink, baz=pointer.baz, simple=pointer.simple)
     # test missing quantity
     assert not schema.verified
-    with pytest.raises(AssertionError):
+    with pytest.raises(exception._Py4VaspInternalError):
         schema.verify()
     assert not schema.verified
     # test missing source
     schema.add(Simple, foo=target.foo, bar=target.bar)
     assert not schema.verified
-    with pytest.raises(AssertionError):
+    with pytest.raises(exception._Py4VaspInternalError):
         schema.verify()
     assert not schema.verified

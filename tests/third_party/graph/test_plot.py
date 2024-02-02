@@ -19,6 +19,8 @@ def test_plot():
     assert plot((x1, y1)) == Graph([series0])
     assert plot((x1, y1), (x2, y2, "label2")) == Graph([series0, series2])
     assert plot((x1, y1), xlabel="xaxis") == Graph([series0], xlabel="xaxis")
+    assert plot(x1, y=y1) == Graph(series0)
+    assert plot(x=x1, y=y1) == Graph(series0)
 
 
 def test_plot_small_dataset():

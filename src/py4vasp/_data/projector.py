@@ -161,7 +161,7 @@ class Projector(base.Refinery):
         maps = self.to_dict()
         maps = {1: maps["atom"], 2: maps["orbital"], 0: maps["spin"]}
         try:
-            return index.Selector(maps, projections)
+            return index.Selector(maps, projections, use_number_labels=True)
         except exception._Py4VaspInternalError as error:
             message = f"""Error reading the projections. Please make sure that the passed
                 projections has the right format, i.e., the indices correspond to spin,

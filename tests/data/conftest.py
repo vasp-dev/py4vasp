@@ -36,7 +36,7 @@ def check_factory_methods(mock_schema, not_core):
 def check_instance_accesses_data(instance, data, parameters, file=None):
     failed = []
     for name, method in inspect.getmembers(instance, inspect.ismethod):
-        if should_test_method(name):
+        if should_test_method(name, parameters):
             kwargs = parameters.get(name, {})
             try:
                 check_method_accesses_data(data, method, file, **kwargs)
@@ -50,7 +50,9 @@ def check_instance_accesses_data(instance, data, parameters, file=None):
         raise AssertionError(message)
 
 
-def should_test_method(name):
+def should_test_method(name, parameters):
+    if name in parameters:
+        return True
     if name in ("__str__", "_repr_html_"):
         return True
     if name.startswith("from") or name.startswith("_"):
