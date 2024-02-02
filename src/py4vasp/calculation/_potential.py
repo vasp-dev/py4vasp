@@ -12,10 +12,22 @@ VALID_KINDS = ("total", "ionic", "xc", "hartree")
 
 
 class Potential(_base.Refinery, _structure.Mixin):
-    """The local potential of the VASP calculation.
+    """The local potential describes the interactions between electrons and ions.
 
-    The local potential is defined in real space on the FFT grid. Depending on the setup
-    of the VASP run, different individual contributions can be accessed."""
+    In DFT calculations, the local potential consists of various contributions, each
+    representing different aspects of the electron-electron and electron-ion
+    interactions. The ionic potential arises from the attraction between electrons and
+    the atomic nuclei. The Hartree potential accounts for the repulsion between
+    electrons resulting from the electron density itself. Additionally, the
+    exchange-correlation (xc) potential approximates the effects of electron exchange
+    and correlation. The accuracy of this approximation directly influences the
+    accuracy of the calculated properties.
+
+    In VASP, the local potential is defined in real space on the FFT grid. You control
+    which potentials are written with the :tag:`WRT_POTENTIAL` tag. This class provides
+    the methods to read and visualize the potential. If you are interested in the
+    average potential, you may also look at the :data:`~py4vasp.calculation.workfunction`.
+    """
 
     @_base.data_access
     def __str__(self):

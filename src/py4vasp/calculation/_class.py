@@ -142,7 +142,7 @@ class _AddAttributeFromFile:
 
 
 def _add_to_documentation(calc, name):
-    calc.__doc__ += f"   py4vasp.calculation.{name}\n    "
+    calc.__doc__ += f"   ~py4vasp.calculation.{name}\n    "
     return calc
 
 

@@ -4,7 +4,13 @@ from py4vasp.calculation import _base
 
 
 class Polarization(_base.Refinery):
-    """The static polarization of the structure obtained from linear response.
+    """The static polarization describes the electric dipole moment per unit volume.
+
+    Static polarization arises in a material in response to a constant external electric
+    field. In VASP, we compute the linear response of the system when applying a
+    :tag:`EFIELD`. Static polarization is a key characteristic of ferroelectric
+    materials that exhibit a spontaneous electric polarization that persists even in
+    the absence of an external electric field.
 
     Note that the polarization is only well defined relative to a reference
     system. The absolute value can change by a polarization quantum if some
