@@ -6,11 +6,17 @@ from py4vasp.calculation import _base
 
 
 class Workfunction(_base.Refinery, graph.Mixin):
-    """The workfunction of a material describes the energy required to remove an electron
-    to the vacuum.
+    """The workfunction describes the energy required to remove an electron to the vacuum.
 
-    In VASP you can compute the workfunction by setting the IDIPOL flag in the INCAR file.
-    This class provides then the functionality to analyze the resulting potential."""
+    The workfunction of a material is the minimum energy required to remove an
+    electron from its most loosely bound state and move it to an energy level just
+    outside the material's surface. In other words, it represents the energy barrier
+    that electrons must overcome to escape the material. The workfunction helps
+    understanding electronic emission phenomena in surface science and materials
+    engineering. In VASP, you can compute the workfunction by setting the :tag:`IDIPOL`
+    flag in the INCAR file. This class provides then the functionality to analyze the
+    resulting potential.
+    """
 
     @_base.data_access
     def __str__(self):

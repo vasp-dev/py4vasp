@@ -10,10 +10,17 @@ from py4vasp.calculation import _base, _slice, _structure
 
 @documentation.format(examples=_slice.examples("velocity"))
 class Velocity(_slice.Mixin, _base.Refinery, _structure.Mixin):
-    """The ion velocities for all steps of the calculation.
+    """The velocities describe the ionic motion during an MD simulation.
 
-    The velocities are only stored if you set VELOCITY = T in the INCAR file. You can
-    read velocities of different steps see the examples below.
+    The velocities of the ions are a metric for the temperature of the system. Most
+    of the time, it is not necessary to consider them explicitly. VASP will set the
+    velocities automatically according to the temperature settings (:tag:`TEBEG` and
+    :tag:`TEEND`) unless you set them explicitly in the POSCAR file. Since the
+    velocities are not something you typically need, VASP will only store them during
+    the simulation if you set :tag:`VELOCITY` = T in the INCAR file. In that case you
+    can read the velocities of each step along the trajectory. If you are only
+    interested in the final velocities, please consider the :data:'~py4vasp.data.CONTCAR`
+    class.
 
     {examples}
     """
