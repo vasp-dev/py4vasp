@@ -8,7 +8,7 @@ from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
 
 
-class PhononBand(base.Refinery, phonon.Mixin, graph.Mixin):
+class PhononBand(phonon.Mixin, base.Refinery, graph.Mixin):
     """The phonon band structure.
 
     Use this to examine the phonon band structure along a high-symmetry path in the
@@ -73,7 +73,7 @@ class PhononBand(base.Refinery, phonon.Mixin, graph.Mixin):
         if not selection:
             return None
         maps = {2: self._init_atom_dict(), 3: self._init_direction_dict()}
-        selector = index.Selector(maps, np.abs(self._modes()))
+        selector = index.Selector(maps, np.abs(self._modes()), use_number_labels=True)
         tree = select.Tree.from_selection(selection)
         return {
             selector.label(selection): width * selector[selection]
