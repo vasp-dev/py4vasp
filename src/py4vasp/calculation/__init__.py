@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-"""Provide refinement functions for a the raw data of a VASP calculation run in the
+'''Provide refinement functions for a the raw data of a VASP calculation run in the
 current directory.
 
 Usually one is not directly interested in the raw data that is produced but
@@ -25,19 +25,21 @@ directory or file for the VASP calculation manually. That class exposes function
 of the modules as methods of attributes, i.e., the two following examples are
 equivalent:
 
-**using `calculation` module:**
+using :mod:`~py4vasp.calculation` module
+""""""""""""""""""""""""""""""""""""""""
 
 >>> from py4vasp import calculation
 >>> calculation.dos.read()
 
-**using `Calculation` class:**
+using :class:`~py4vasp.Calculation` class
+"""""""""""""""""""""""""""""""""""""""""
 
 >>> from py4vasp import Calculation
 >>> calc = Calculation.from_path(".")
 >>> calc.dos.read()
 
 In the latter example, you can change the path from which the data is extracted.
-"""
+'''
 import importlib
 from py4vasp import exception
 from py4vasp._util import convert
