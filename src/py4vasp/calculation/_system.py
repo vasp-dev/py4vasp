@@ -5,7 +5,7 @@ from py4vasp.calculation import _base
 
 
 class System(_base.Refinery):
-    "Extract the system tag from the INCAR file."
+    "The :tag:`SYSTEM` tag in the INCAR file is a title you choose for a VASP calculation."
 
     @_base.data_access
     def __str__(self):

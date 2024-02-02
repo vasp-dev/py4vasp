@@ -69,10 +69,12 @@ _select_all = select.all
 class Projector(_base.Refinery):
     """The projectors used for atom and orbital resolved quantities.
 
-    This is a common class used by all quantities that contains some projected
-    quantity, e.g., the electronic band structure and the DOS. It provides
-    utility functionality to access specific indices of the projected arrays
-    based on a simple mini language specifying the atom or orbital names.
+    This is a utility class that facilitates projecting quantities such as the
+    electronic band structure and the DOS on atoms and orbitals. As a user, you can
+    investigate the available projections with the :meth:`to_dict` or :meth:`selections`
+    methods. The former is useful for scripts, when you need to know which array
+    index corresponds to which orbital or atom. The latter describes the available
+    selections that you can use in the methods that project on orbitals or atoms.
     """
 
     _missing_data_message = "No projectors found, please verify the LORBIT tag is set."

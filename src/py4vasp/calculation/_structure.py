@@ -49,12 +49,23 @@ class _Format:
 
 @documentation.format(examples=_slice.examples("structure"))
 class Structure(_slice.Mixin, _base.Refinery):
-    """The structure of the crystal for selected steps of the simulation.
+    """The structure contains the unit cell and the position of all ions within.
 
-    You can use this class to process structural information from the Vasp
-    calculation. Typically you want to do this to inspect the converged structure
-    after an ionic relaxation or to visualize the changes of the structure along
-    the simulation.
+    The crystal structure is the specific arrangement of ions in a three-dimensional
+    repeating pattern. This spatial arrangement is characterized by the unit cell and
+    the relative position of the ions. The unit cell is repeated periodically in three
+    dimensions to form the crystal. The combination of unit cell and ion positions
+    determines the symmetry of the crystal. This symmetry helps understanding the
+    material properties because some symmetries do not allow for the presence of some
+    properties, e.g., you cannot observe a ferroelectric :data:`~py4vasp.calculation.polarization`
+    in a system with inversion symmetry. Therefore relaxing the crystal structure with
+    VASP is an important first step in analyzing materials properties.
+
+    When you run a relaxation or MD simulation, this class allows to access all
+    individual steps of the trajectory. Typically, you would study the converged
+    structure after an ionic relaxation or to visualize the changes of the structure
+    along the simulation. Moreover, you could take snapshots along the trajectory
+    and further process them by computing more properties.
 
     {examples}
     """

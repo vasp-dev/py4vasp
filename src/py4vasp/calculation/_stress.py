@@ -8,11 +8,17 @@ from py4vasp.calculation import _base, _slice, _structure
 
 @documentation.format(examples=_slice.examples("stress"))
 class Stress(_slice.Mixin, _base.Refinery, _structure.Mixin):
-    """The stress acting on the unit cell for selected steps of the simulation.
+    """The stress describes the force acting on the shape of the unit cell.
 
-    You can use this class to analyze the stress on the shape of the cell. In
-    particular, you can check whether the stress is small at the end of the
-    calculation.
+    The stress refers to the force applied to the cell per unit area. Specifically,
+    VASP computes the stress for a given unit cell and relaxing to vanishing stress
+    determines the predicted ground-state cell. The stress is 3 x 3 matrix; the trace
+    indicates changes to the volume and the rest of the matrix changes the shape of
+    the cell. You can impose an external stress with the tag :tag:`PSTRESS`.
+
+    When you relax the system or in a MD simulation, VASP computes and stores the
+    stress in every iteration. You can use this class to read the stress for specific
+    steps along the trajectory.
 
     {examples}
     """

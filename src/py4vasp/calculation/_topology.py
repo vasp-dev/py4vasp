@@ -16,11 +16,14 @@ _subscript = "_"
 
 
 class Topology(_base.Refinery):
-    """This class accesses the topology of the crystal.
+    """The topology of the crystal describes the ions of a crystal and their connectivity.
 
-    At the current stage this only provides access to the name of the atoms in
-    the unit cell, but one could extend it to identify logical units like the
-    octahedra in perovskites.
+    At the current stage, this class only exposes the name of the atoms in the unit
+    cell. In the future, we could add functionality for the user to group multiple
+    atoms. If you are interested in this feature and have a specific use case in mind,
+    please create an issue on Github_.
+
+    .. _Github: https://github.com/vasp-dev/py4vasp
     """
 
     @classmethod
