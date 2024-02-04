@@ -5,13 +5,13 @@ import types
 
 import pytest
 
-from py4vasp import data
+from py4vasp import calculation
 
 
 @pytest.fixture
 def OSZICAR(raw_data):
     raw_oszicar = raw_data.OSZICAR()
-    oszicar = data.OSZICAR.from_data(raw_oszicar)
+    oszicar = calculation.OSZICAR.from_data(raw_oszicar)
     oszicar.ref = types.SimpleNamespace()
     convergence_data = raw_oszicar.convergence_data
     oszicar.ref.iteration_number = convergence_data[:, 0]

@@ -3,10 +3,10 @@
 
 import numpy as np
 
-from py4vasp import data, exception, raw
-from py4vasp._data import base, slice_, structure
+from py4vasp import exception, raw
 from py4vasp._third_party import graph
 from py4vasp._util import convert
+from py4vasp.calculation import _base, _slice, _structure
 
 INDEXING_OSZICAR = {
     "iteration_number": 0,
@@ -19,10 +19,10 @@ INDEXING_OSZICAR = {
 }
 
 
-class OSZICAR(slice_.Mixin, base.Refinery, graph.Mixin):
+class OSZICAR(_slice.Mixin, _base.Refinery, graph.Mixin):
     """Access the convergence data for each electronic step."""
 
-    @base.data_access
+    @_base.data_access
     def to_dict(self, selection=None):
         return_data = {}
         if selection is None:
