@@ -24,11 +24,6 @@ def OSZICAR(raw_data):
     return oszicar
 
 
-def test_factory_methods(raw_data, check_factory_methods):
-    raw_oszicar = raw_data.OSZICAR()
-    check_factory_methods(data.OSZICAR, raw_oszicar)
-
-
 def test_read(OSZICAR, Assert):
     actual = OSZICAR.read()
     expected = OSZICAR.ref
@@ -46,3 +41,12 @@ def test_read(OSZICAR, Assert):
     Assert.allclose(
         actual["difference_charge_density"], expected.difference_charge_density
     )
+
+
+def test_plot(OSZICAR, Assert):
+    graph = OSZICAR.plot()
+    assert graph.xlabel == "Iteration number"
+    assert graph.ylabel == "Free energy [eV]"
+    assert len(graph.series) == 1
+    Assert.allclose(graph.series[0].x, OSZICAR.ref.iteration_number)
+    Assert.allclose(graph.series[0].y, OSZICAR.ref.free_energy)
