@@ -24,6 +24,11 @@ def OSZICAR(raw_data):
     return oszicar
 
 
+def test_factory_methods(raw_data, check_factory_methods):
+    raw_oszicar = raw_data.OSZICAR()
+    check_factory_methods(data.OSZICAR, raw_oszicar)
+
+
 def test_read(OSZICAR, Assert):
     actual = OSZICAR.read()
     expected = OSZICAR.ref
