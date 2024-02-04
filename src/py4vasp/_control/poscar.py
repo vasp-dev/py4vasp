@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from py4vasp import calculation
 from py4vasp._control import base
-from py4vasp.data import Structure
 
 
 class POSCAR(base.InputFile):
@@ -28,4 +28,4 @@ class POSCAR(base.InputFile):
         Viewer3d
             Visualize the structure as a 3d figure.
         """
-        return Structure.from_POSCAR(self).plot(*args, **kwargs)
+        return calculation.structure.from_POSCAR(self).plot(*args, **kwargs)
