@@ -46,7 +46,7 @@ def test_read(OSZICAR, Assert):
 def test_plot(OSZICAR, Assert):
     graph = OSZICAR.plot()
     assert graph.xlabel == "Iteration number"
-    assert graph.ylabel == "Free energy [eV]"
+    assert graph.ylabel == "Free Energy"
     assert len(graph.series) == 1
     Assert.allclose(graph.series[0].x, OSZICAR.ref.iteration_number)
     Assert.allclose(graph.series[0].y, OSZICAR.ref.free_energy)
