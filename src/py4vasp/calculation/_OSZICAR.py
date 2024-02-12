@@ -88,6 +88,9 @@ select anything and all OSZICAR outputs will be provided."""
         """
         data = self.to_dict()
         series = graph.Series(data["iteration_number"], data[selection], selection)
+        ylabel = " ".join(select.capitalize() for select in selection.split("_"))
         return graph.Graph(
-            series=[series], xlabel="Iteration number", ylabel="Free energy [eV]"
+            series=[series],
+            xlabel="Iteration number",
+            ylabel=ylabel,
         )
