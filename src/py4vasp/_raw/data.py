@@ -45,6 +45,20 @@ class Band:
 
 
 @dataclasses.dataclass
+class Bandgap:
+    """The bandgap of the system.
+
+    Contains the band extrema defining the fundamental and optical band gap and the
+    k-point coordinates where the band gaps are for all steps of a relaxation/MD
+    simulation."""
+
+    labels: VaspData
+    "These labels identify which band data is stored."
+    values: VaspData
+    "The data contained according to the labels."
+
+
+@dataclasses.dataclass
 class BornEffectiveCharge:
     """The Born effective charges resulting form a linear response calculation.
 
@@ -68,8 +82,30 @@ class Cell:
 
     lattice_vectors: VaspData
     "Lattice vectors defining the unit cell."
-    scale: float = 1.0
+    scale: float
     "Global scaling factor applied to all lattice vectors."
+
+
+@dataclasses.dataclass
+class CONTCAR:
+    """The data corresponding to the CONTCAR file.
+
+    The CONTCAR file contains structural information (lattice, positions, topology),
+    relaxation constraints, and data relevant for continuation calculations.
+    """
+
+    structure: Structure
+    "The structure of the system at the end of the calculation."
+    system: str
+    "A comment line describing the system."
+    selective_dynamics: VaspData = NONE()
+    "Specifies in which directions the atoms may move."
+    lattice_velocities: VaspData = NONE()
+    "The current velocities of the lattice vectors."
+    ion_velocities: VaspData = NONE()
+    "The current velocities of the ions."
+    _predictor_corrector: VaspData = NONE()
+    "Internal algorithmic data relevant for restarting calculations."
 
 
 @dataclasses.dataclass
@@ -352,6 +388,26 @@ class Polarization:
 
 
 @dataclasses.dataclass
+class Potential:
+    """The potential on a real space grid.
+
+    Depending on the options set in the INCAR file, this dataclass can store the total
+    potential, the hartree potential, the ionic potential and the exchange-correlation
+    potential."""
+
+    structure: VaspData
+    """Atomic structure used to generate the potential"""
+    hartree_potential: VaspData
+    """Hartree potential, a contribution to the total potential"""
+    ionic_potential: VaspData
+    """Ionic potential, a contribution to the total potential"""
+    xc_potential: VaspData
+    """Exchange-correlation potential, a contribution to the total potential"""
+    total_potential: VaspData
+    """The total potential = ionic + hartree + xc potentials"""
+
+
+@dataclasses.dataclass
 class Projector:
     """Projectors used for atom and orbital projections.
 
@@ -413,6 +469,23 @@ class Velocity:
     "Structural information to relate the velocities to."
     velocities: VaspData
     "Observed ion velocities."
+
+
+@dataclasses.dataclass
+class Workfunction:
+    "Describes the minimal energy needed to remove an electron from the crystal to the vacuum."
+    idipol: int
+    "INCAR tag of VASP describing the direction along which the potential is assessed."
+    distance: VaspData
+    "Distances along the lattice vector selected by IDIPOL"
+    average_potential: VaspData
+    "Averages the local potential after dipole correction in planes of the other two lattice vectors."
+    vacuum_potential: VaspData
+    "Potential in the vacuum region on either side of the surface."
+    reference_potential: Bandgap
+    "Describes the band edges in the surface."
+    fermi_energy: float
+    "Fermi energy obtained by VASP."
 
 @dataclasses.dataclass
 class PartialCharge:

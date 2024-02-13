@@ -37,12 +37,19 @@ def plot(*args, **kwargs):
 
 
 def _parse_series(*args, **kwargs):
+    if series := _parse_multiple_series(*args, **kwargs):
+        return series
+    else:
+        return _parse_single_series(*args, **kwargs)
+
+
+def _parse_multiple_series(*args, **kwargs):
     try:
         return [Series(*arg) for arg in args]
     except TypeError:
-        # A TypeError is raised, if plot(x, y) is called instead of plot((x, y)).
-        # Because we creating the Series may raise another error, we leave the
-        # exception handling first to avoid reraising the TypeError.
-        pass
+        return []
+
+
+def _parse_single_series(*args, **kwargs):
     for_series = {key: val for key, val in kwargs.items() if key in Series._fields}
     return Series(*args, **for_series)

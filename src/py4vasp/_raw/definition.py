@@ -8,7 +8,18 @@ DEFAULT_SOURCE = "default"
 VERSION_DATA = raw.Version("version/major", "version/minor", "version/patch")
 
 schema = Schema(VERSION_DATA)
-#
+
+
+def get_schema():
+    "Return a YAML representation of the schema."
+    return str(schema)
+
+
+def selections(quantity):
+    "Return all possible selections for a particular quantity."
+    return schema.selections(quantity)
+
+
 schema.add(
     raw.Band,
     dispersion=Link("dispersion", DEFAULT_SOURCE),
@@ -38,6 +49,20 @@ schema.add(
 )
 #
 schema.add(
+    raw.Bandgap,
+    required=raw.Version(6, 5),
+    labels="intermediate/electron/band/labels",
+    values="intermediate/electron/band/gap_from_weight",
+)
+schema.add(
+    raw.Bandgap,
+    name="kpoint",
+    required=raw.Version(6, 5),
+    labels="intermediate/electron/band/labels",
+    values="intermediate/electron/band/gap_from_kpoint",
+)
+#
+schema.add(
     raw.BornEffectiveCharge,
     required=raw.Version(6, 3),
     structure=Link("structure", DEFAULT_SOURCE),
@@ -46,8 +71,15 @@ schema.add(
 #
 schema.add(
     raw.Cell,
-    scale="results/positions/scale",
+    scale="intermediate/ion_dynamics/scale",
     lattice_vectors="intermediate/ion_dynamics/lattice_vectors",
+)
+schema.add(
+    raw.Cell,
+    name="final",
+    required=raw.Version(6, 5),
+    scale="results/positions/scale",
+    lattice_vectors="results/positions/lattice_vectors",
 )
 schema.add(
     raw.Cell,
@@ -58,9 +90,30 @@ schema.add(
 )
 #
 schema.add(
+    raw.CONTCAR,
+    required=raw.Version(6, 5),
+    structure=Link("structure", "final"),
+    system="results/positions/system",
+    selective_dynamics="/results/positions/selective_dynamics_ions",
+    lattice_velocities="/results/positions/lattice_velocities",
+    ion_velocities="/results/positions/ion_velocities",
+    _predictor_corrector="NotImplemented",
+)
+schema.add(
     raw.Density,
+    alias=["charge", "n", "charge_density", "electronic_charge_density"],
+    file="vaspwave.h5",
     structure=Link("structure", DEFAULT_SOURCE),
     charge="charge/charge",
+)
+schema.add(
+    raw.Density,
+    name="tau",
+    required=raw.Version(6, 5),
+    alias=["kinetic_energy", "kinetic_energy_density"],
+    file="vaspwave.h5",
+    structure=Link("structure", DEFAULT_SOURCE),
+    charge="kinetic_energy_density/values",
 )
 #
 group = "results/linear_response"
@@ -264,63 +317,65 @@ schema.add(
     internal_strain="results/linear_response/internal_strain",
 )
 #
-input = "input/kpoints"
+input_ = "input/kpoints"
 result = "results/electron_eigenvalues"
 schema.add(
     raw.Kpoint,
-    mode=f"{input}/mode",
-    number=f"{input}/number_kpoints",
+    mode=f"{input_}/mode",
+    number=f"{input_}/number_kpoints",
     coordinates=f"{result}/kpoint_coords",
     weights=f"{result}/kpoints_symmetry_weight",
-    labels=f"{input}/labels_kpoints",
-    label_indices=f"{input}/positions_labels_kpoints",
+    labels=f"{input_}/labels_kpoints",
+    label_indices=f"{input_}/positions_labels_kpoints",
     cell=Link("cell", DEFAULT_SOURCE),
 )
-input = "input/kpoints_opt"
+input_ = "input/kpoints_opt"
 result = "results/electron_eigenvalues_kpoints_opt"
 schema.add(
     raw.Kpoint,
     name="kpoints_opt",
-    mode=f"{input}/mode",
-    number=f"{input}/number_kpoints",
+    mode=f"{input_}/mode",
+    number=f"{input_}/number_kpoints",
     coordinates=f"{result}/kpoint_coords",
     weights=f"{result}/kpoints_symmetry_weight",
-    labels=f"{input}/labels_kpoints",
-    label_indices=f"{input}/positions_labels_kpoints",
+    labels=f"{input_}/labels_kpoints",
+    label_indices=f"{input_}/positions_labels_kpoints",
     cell=Link("cell", DEFAULT_SOURCE),
 )
-input = "input/kpoints_wan"
+input_ = "input/kpoints_wan"
 result = "results/electron_eigenvalues_kpoints_wan"
 schema.add(
     raw.Kpoint,
     name="kpoints_wan",
-    mode=f"{input}/mode",
-    number=f"{input}/number_kpoints",
+    mode=f"{input_}/mode",
+    number=f"{input_}/number_kpoints",
     coordinates=f"{result}/kpoint_coords",
     weights=f"{result}/kpoints_symmetry_weight",
-    labels=f"{input}/labels_kpoints",
-    label_indices=f"{input}/positions_labels_kpoints",
+    labels=f"{input_}/labels_kpoints",
+    label_indices=f"{input_}/positions_labels_kpoints",
     cell=Link("cell", DEFAULT_SOURCE),
 )
-input = "input/qpoints"
+input_ = "input/qpoints"
 result = "results/phonons"
 schema.add(
     raw.Kpoint,
     name="phonon",
     required=raw.Version(6, 4),
-    mode=f"{input}/mode",
-    number=f"{input}/number_kpoints",
+    mode=f"{input_}/mode",
+    number=f"{input_}/number_kpoints",
     coordinates=f"{result}/qpoint_coords",
     weights=f"{result}/qpoints_symmetry_weight",
-    labels=f"{input}/labels_kpoints",
-    label_indices=f"{input}/positions_labels_kpoints",
+    labels=f"{input_}/labels_kpoints",
+    label_indices=f"{input_}/positions_labels_kpoints",
     cell=Link("cell", "phonon"),
 )
 #
 schema.add(
     raw.Magnetism,
+    required=raw.Version(6, 5),
     structure=Link("structure", DEFAULT_SOURCE),
-    moments="intermediate/ion_dynamics/magnetism/moments",
+    spin_moments="intermediate/ion_dynamics/magnetism/spin_moments/values",
+    orbital_moments="intermediate/ion_dynamics/magnetism/orbital_moments/values",
 )
 #
 group = "intermediate/pair_correlation"
@@ -366,6 +421,16 @@ schema.add(
 )
 #
 schema.add(
+    raw.Potential,
+    required=raw.Version(6, 5),
+    structure=Link("structure", DEFAULT_SOURCE),
+    hartree_potential="results/potential/hartree",
+    ionic_potential="results/potential/ionic",
+    xc_potential="results/potential/xc",
+    total_potential="results/potential/total",
+)
+#
+schema.add(
     raw.Projector,
     topology=Link("topology", DEFAULT_SOURCE),
     orbital_types="results/projectors/lchar",
@@ -398,6 +463,14 @@ schema.add(
     cell=Link("cell", DEFAULT_SOURCE),
     positions="intermediate/ion_dynamics/position_ions",
 )
+schema.add(
+    raw.Structure,
+    name="final",
+    required=raw.Version(6, 5),
+    topology=Link("topology", DEFAULT_SOURCE),
+    cell=Link("cell", "final"),
+    positions="results/positions/position_ions",
+)
 #
 schema.add(raw.System, system="input/incar/SYSTEM")
 #
@@ -420,6 +493,18 @@ schema.add(
     structure=Link("structure", DEFAULT_SOURCE),
     velocities="intermediate/ion_dynamics/ion_velocities",
 )
+#
+schema.add(
+    raw.Workfunction,
+    required=raw.Version(6, 5),
+    idipol="input/incar/IDIPOL",
+    distance="results/potential/distance_along_IDIPOL",
+    average_potential="results/potential/average_potential_along_IDIPOL",
+    vacuum_potential="results/potential/vacuum_potential",
+    reference_potential=Link("bandgap", DEFAULT_SOURCE),
+    fermi_energy="results/electron_dos/efermi",
+)
+
 #
 schema.add(
     raw.PartialCharge,

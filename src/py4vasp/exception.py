@@ -36,6 +36,16 @@ class OutdatedVaspVersion(Py4VaspError):
     used version of Vasp."""
 
 
+class MissingAttribute(Py4VaspError, AttributeError):
+    """Exception raised when py4vasp attribute of Calculation, Batch, ... is used
+    that does not exist"""
+
+
+class ModuleNotInstalled(Py4VaspError):
+    """Exception raised when a functionality is used that relies on an optional
+    dependency of py4vasp but that dependency is not installed."""
+
+
 class StopExecution(Py4VaspError):
     """Exception raised when an error occurred in the user interface. This prevents
     further cells from being executed."""
@@ -43,3 +53,13 @@ class StopExecution(Py4VaspError):
     def _render_traceback_(self):
         "This exception is silent and does not produce any traceback."
         pass
+
+
+class ParserError(Py4VaspError):
+    """Exception raised when the parser encounters an error."""
+
+
+class _Py4VaspInternalError(Exception):
+    """This error should not propagate to the user. It should be raised when a local
+    routine encounters unexpected behavior that the routine cannot deal with. Then
+    the calling routine should resolve the error or reraise it as a Py4VaspError."""

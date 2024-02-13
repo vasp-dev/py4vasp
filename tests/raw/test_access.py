@@ -25,7 +25,8 @@ def mock_access(complex_schema):
 
 
 _mock_results = {}
-EXAMPLE_DATA = np.array(1)
+EXAMPLE_ARRAY = np.zeros(3)
+EXAMPLE_SCALAR = np.array(1)
 
 
 def mock_read_result(key):
@@ -33,7 +34,9 @@ def mock_read_result(key):
         mock = MagicMock()
         if "foo" in key:
             mock.ndim = 0
-            mock.__array__ = MagicMock(return_value=EXAMPLE_DATA)
+            mock.__array__ = MagicMock(return_value=EXAMPLE_SCALAR)
+        else:
+            mock.__array__ = MagicMock(return_value=EXAMPLE_ARRAY)
         _mock_results[key] = mock
     return _mock_results[key]
 
@@ -42,7 +45,7 @@ def check_data(actual, key):
     mock = mock_read_result(key)
     if mock.ndim == 0:
         mock.__array__.assert_called_once_with()
-        assert actual == EXAMPLE_DATA
+        assert actual == EXAMPLE_SCALAR
     else:
         assert isinstance(actual, raw.VaspData)
         assert actual[:] == mock.__getitem__.return_value

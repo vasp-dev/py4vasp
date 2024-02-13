@@ -35,6 +35,22 @@ def test_converting_graph_to_plotly():
     assert fig == GRAPH.to_plotly.return_value
 
 
+def test_convert_graph_to_frame():
+    example = ExampleGraph()
+    df = example.to_frame()
+    GRAPH.to_frame.assert_called_once_with()
+    assert df == GRAPH.to_frame.return_value
+
+
+def test_convert_graph_to_csv():
+    example = ExampleGraph()
+    example.to_csv()
+    GRAPH.to_frame.assert_called_once_with()
+    full_path = example._path / "example_graph.csv"
+    df = GRAPH.to_frame.return_value
+    df.to_csv.assert_called_once_with(full_path, index=False)
+
+
 def test_converting_graph_to_image():
     example = ExampleGraph()
     example.to_image()
@@ -42,11 +58,39 @@ def test_converting_graph_to_image():
     fig.write_image.assert_called_once_with(example._path / "example_graph.png")
 
 
+def test_converting_graph_to_csv_with_relative_filename():
+    example = ExampleGraph()
+    example.to_csv(filename="example.csv")
+    full_path = example._path / "example.csv"
+    GRAPH.to_frame.assert_called_once_with()
+    df = GRAPH.to_frame.return_value
+    df.to_csv.assert_called_once_with(full_path, index=False)
+
+
+def test_converting_graph_to_csv_with_absolute_filename():
+    example = ExampleGraph()
+    basedir_path = example._path.absolute()
+    full_path = basedir_path / "example.csv"
+    example.to_csv(filename=full_path)
+    GRAPH.to_frame.assert_called_once_with()
+    df = GRAPH.to_frame.return_value
+    df.to_csv.assert_called_once_with(full_path, index=False)
+
+
 def test_converting_graph_to_image_with_filename():
     example = ExampleGraph()
     example.to_image(filename="example.jpg")
     fig = GRAPH.to_plotly.return_value
     fig.write_image.assert_called_once_with(example._path / "example.jpg")
+
+
+def test_converting_graph_to_image_with_absolute_filename():
+    example = ExampleGraph()
+    basedir_path = example._path.absolute()
+    full_path = basedir_path / "example.jpg"
+    example.to_image(filename=full_path)
+    fig = GRAPH.to_plotly.return_value
+    fig.write_image.assert_called_once_with(full_path)
 
 
 def test_filename_is_keyword_only_argument():

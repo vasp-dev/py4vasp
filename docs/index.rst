@@ -11,9 +11,9 @@ associated with the XML or OUTCAR files.
 
 For these two groups of users, we provide a different level of access. The
 simple routines used in the tutorials will read the data from the file directly
-and then generate the requested plot. For script developers, we provide an
-expert interface where the data is lazily loaded as needed with some greater
-flexibility when the data file is opened and closed.
+and then generate the requested plot. For script developers, we provide interfaces
+to convert the data to Python dictionaries for further processing. If I/O access
+limits the performance, you can lazily load the data only when needed.
 
 Installation
 ------------
@@ -28,15 +28,27 @@ You can then install *py4vasp* from PyPI_ using the pip package installer
 
   pip install py4vasp
 
-This will automatically download *py4vasp* as well as all the required dependencies.
-However, we noticed that this approach is not fail-safe, because the installation
-of the *mdtraj* dependency does not work on all operating systems. So in case
-the simple installation above fails, you may need to use *conda* to install *mdtraj*
+This will automatically download *py4vasp* as well as most of the required dependencies.
+However, we do not install the *mdtraj* dependency by default because it does not
+reliably work with pip. We recommend to install *mdtraj* using conda
 
 .. code-block:: bash
 
   conda install -c conda-forge mdtraj
-  pip install py4vasp
+
+if you need the features that depend on it (plotting a trajectory of structures).
+
+For a minimalistic setup where you use py4vasp as a library, you can install the
+core package
+
+.. code-block:: bash
+
+  pip install py4vasp-core
+
+The core package contains the same source code as the main package and does not
+impact the usage. However, it does not install any of the dependencies of *py4vasp*
+except for *numpy* and *h5py*. Hence, this core package is most suitable for
+script developers that do not need all the visualization features of *py4vasp*.
 
 Alternatively, you can obtain the code from GitHub and install it. This will give you
 the most recent version with all bugfixes. However, some features may only work once
@@ -47,6 +59,7 @@ the next VASP version is released.
   git clone https://github.com/vasp-dev/py4vasp.git
   cd py4vasp
   pip install .
+  conda install -c conda-forge mdtraj
 
 If these commands succeed, you should be able to use *py4vasp*. You can make a quick
 test of your installation running the following command
@@ -75,28 +88,12 @@ The user interface of *py4vasp* is optimized for usage inside a Jupyter_ environ
 (Jupyter notebook or Jupyter lab), though it can be used in regular Python scripts
 as well. To give you an illustrative example of what *py4vasp* can do, we assume
 that you created a Jupyter notebook inside the directory of your VASP calculation.
-Then you access all the results of this calculation with
+In the VASP calculation, you computed the density of states (DOS) with orbital
+projections (:tag:`LORBIT` = 11). You may now want to read the data from your
+VASP calculation to post-process it further with a script. This can be achieved with
 
->>> from py4vasp import Calculation
->>> calc = Calculation.from_path(".")
-
-Naturally, if you created the notebook outside of the calculation directory, you
-would replace the path ``.`` with the directory of the calculation.
-
-The attributes of the calculation correspond to different physical quantities that
-you could have calculated with VASP. If you have an interactive session you can type
-``calc.`` and then hit :kbd:`Tab` to get a list of all possible quantities. However
-only the ones that you computed with VASP will give you any meaningful
-result.
-
-.. _LORBIT: https://www.vasp.at/wiki/index.php/LORBIT
-
-In the following, we will assume that you computed the density of states (DOS) with
-orbital projections (LORBIT_ = 11). You may now want to read the data from your
-VASP calculation to post-process it further with a script. This can be achieved in
-a single line of code
-
->>> dos = calc.dos.read()
+>>> import py4vasp
+>>> dos = py4vasp.calculation.dos.read()
 
 Under the hood, this will access the *vaspout.h5* file, because *py4vasp* knows where
 the output is stored after you ran VASP. It will read the relevant tags from
@@ -104,23 +101,40 @@ the file and store them all in a Python dictionary. If you want to access partic
 orbital projections, let's say the *p* orbitals, you can pass a ``selection = "p"`` as
 an argument to the routine. More generally, you can check how to use a function with
 
->>> help(calc.dos.read)
+>>> help(py4vasp.calculation.dos.read)
 
 The most common use case for the DOS data may be to prepare a plot to get some
 insight into the system of interest. Because of this, we provide an easy wrapper
 for this particular functionality
 
->>> calc.dos.plot()
+>>> py4vasp.calculation.dos.plot()
 
 This will return an interactive figure that you can use to investigate the DOS.
-Note that this requires a browser to work, which means it will open one if you
-execute this inside a script instead of a Jupyter notebook. The *plot* command
-takes the same arguments as the read command.
+The *plot* command takes the same arguments as the read command. Note that this
+requires a browser to work; if you execute this from within a interactive
+environment, it may open a browser for you or you can enforce it by appending
+`.show()`
+
+>>> py4vasp.calculation.dos.plot().show()
 
 The interface for the other quantities is very similar. Every quantity provides
 a *read* function to get the raw data into Python and where it makes sense a
 *plot* function visualizes the data. However, note that in particular, all data
 visualized inside the structure require a Jupyter notebook to work.
+All plots can be converted to csv files `to_csv` of pandas dataframes `to_frame`
+for further refinement.
+
+If your calculation is not in the root directory, you can create your own
+instance
+
+>>> from py4vasp import Calculation
+>>> calc = Calculation.from_path("/path/to/your/VASP/calcualtion")
+
+The attributes of the calculation correspond to different physical quantities that
+you could have calculated with VASP. If you have an interactive session you can type
+``calc.`` and then hit :kbd:`Tab` to get a list of all possible quantities. However
+only the ones that you computed with VASP will give you any meaningful
+result.
 
 .. _tutorials: https://www.vasp.at/tutorials/latest
 
@@ -129,15 +143,24 @@ a look at the tutorials_ for VASP. Many of them use *py4vasp* to plot or analyze
 the data produced by VASP, so this may give you an excellent starting point to learn
 how you can apply *py4vasp* in your research.
 
-.. toctree::
-   :maxdepth: 1
-   :caption: Contents:
+.. currentmodule:: py4vasp
+
+.. rubric:: Packages
+
+.. autosummary::
+   :toctree: _packages
+   :template: package.rst
+   :recursive:
+
+   calculation
+
+.. rubric:: Classes
+
+.. autosummary::
+   :toctree: _classes
+   :template: class.rst
 
    Calculation
-   control
-   raw
-   data
-   exception
 
 ----------------------------------------------------------------------------------------
 
