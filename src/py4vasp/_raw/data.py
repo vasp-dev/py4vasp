@@ -413,3 +413,17 @@ class Velocity:
     "Structural information to relate the velocities to."
     velocities: VaspData
     "Observed ion velocities."
+
+@dataclasses.dataclass
+class PartialCharge:
+    """Electronic partial charge and magnetization density on the fine Fourier grid
+
+    Possibly not only split by spin, but also by band and kpoint."""
+    structure: Structure
+    "The atomic structure to represent the densities."
+    charge: VaspData
+    "The data of electronic charge and magnetization density."
+    kpoints: VaspData
+    "The kpoints at which the partial charge is evaluated."
+    bands: VaspData
+    "The bands at which the partial charge is evaluated."
