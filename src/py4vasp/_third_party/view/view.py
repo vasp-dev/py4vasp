@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from py4vasp._util import import_
+
+ase = import_.optional("ase")
+nglview = import_.optional("nglview")
+
 
 @dataclass
 class View:
@@ -13,4 +18,15 @@ class View:
     positions: array
 
     def to_ngl(self):
-        pass
+        ions_and_ion_types = self.number_ion_types[0], self.ion_types[0]
+        symbols = [
+            ion_type * number_ion_type
+            for ion_type, number_ion_type in zip(*ions_and_ion_types)
+        ]
+        symbols = "".join(symbols)
+        atoms = ase.Atoms(symbols)
+        atoms.set_scaled_positions(self.positions[0])
+        atoms.cell = self.lattice_vectors[0]
+        atoms.set_pbc(True)
+        widget = nglview.show_ase(atoms)
+        return widget

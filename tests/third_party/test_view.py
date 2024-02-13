@@ -4,6 +4,7 @@
 import numpy as np
 
 from py4vasp._third_party.view import View
+from py4vasp.calculation._structure import Structure
 
 
 def test_structure_to_view():
@@ -12,11 +13,30 @@ def test_structure_to_view():
         ion_types=[["Sr", "Ti", "O"]],
         lattice_vectors=[4 * np.eye(3)],
         positions=[
-            [0.0, 0.0, 0.0],
-            [0.5, 0.5, 0.5],
-            [0.0, 0.5, 0.5],
-            [0.5, 0.0, 0.5],
-            [0.5, 0.5, 0.0],
+            [
+                [0.0, 0.0, 0.0],
+                [0.5, 0.5, 0.5],
+                [0.0, 0.5, 0.5],
+                [0.5, 0.0, 0.5],
+                [0.5, 0.5, 0.0],
+            ]
         ],
     )
-    view.to_ngl()
+    expected_pdb_repr = """\
+CRYST1    4.000    4.000    4.000  90.00  90.00  90.00 P 1
+MODEL     1
+ATOM      1   Sr MOL     1       0.000   0.000   0.000  1.00  0.00          SR
+ATOM      2   Ti MOL     1       0.500   0.500   0.500  1.00  0.00          TI
+ATOM      3    O MOL     1       0.000   0.500   0.500  1.00  0.00           O
+ATOM      4    O MOL     1       0.500   0.000   0.500  1.00  0.00           O
+ATOM      5    O MOL     1       0.500   0.500   0.000  1.00  0.00           O
+ENDMDL
+"""
+    widget = view.to_ngl()
+    state = widget.get_state()
+    assert len(state["_ngl_msg_archive"]) == 1
+    output_pdb_repr = state["_ngl_msg_archive"][0]["args"][0]["data"]
+    expected_and_output = output_pdb_repr.split("\n"), expected_pdb_repr.split("\n")
+    for (output_line, expected_line) in zip(*expected_and_output):
+        assert output_line.strip() == expected_line.strip()
+    assert state["_ngl_msg_archive"][0]["kwargs"]["ext"] == "pdb"
