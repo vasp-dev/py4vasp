@@ -9,7 +9,28 @@ class Mixin(abc.ABC):
         pass
 
     def plot(self, *args, **kwargs):
+        """Wrapper around :meth:`to_view` method.
+
+        This method will visualize the quantity in the structure. Please refer to
+        the :meth:`to_view` method for a documentation of the allowed arguments.
+
+        Returns
+        -------
+        View
+            A visualization of the quantity within the crystal structure.
+        """
         return self.to_view(*args, **kwargs)
 
     def to_ngl(self, *args, **kwargs):
+        """Convert the view to an NGL widget.
+
+        This method wraps the :meth:`to_view` method and converts the resulting View
+        to an NGL widget. The :meth:`to_view` method documents all the possible
+        arguments of this function.
+
+        Returns
+        -------
+        NGLWidget
+            A widget to display the structure and other quantities in the unit cell.
+        """
         return self.to_view(*args, **kwargs).to_ngl()
