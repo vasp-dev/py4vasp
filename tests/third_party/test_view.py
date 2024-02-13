@@ -34,10 +34,10 @@ def test_structure_to_view(view):
 CRYST1    4.000    4.000    4.000  90.00  90.00  90.00 P 1
 MODEL     1
 ATOM      1   Sr MOL     1       0.000   0.000   0.000  1.00  0.00          SR
-ATOM      2   Ti MOL     1       0.500   0.500   0.500  1.00  0.00          TI
-ATOM      3    O MOL     1       0.000   0.500   0.500  1.00  0.00           O
-ATOM      4    O MOL     1       0.500   0.000   0.500  1.00  0.00           O
-ATOM      5    O MOL     1       0.500   0.500   0.000  1.00  0.00           O
+ATOM      2   Ti MOL     1       2.000   2.000   2.000  1.00  0.00          TI
+ATOM      3    O MOL     1       0.000   2.000   2.000  1.00  0.00           O
+ATOM      4    O MOL     1       2.000   0.000   2.000  1.00  0.00           O
+ATOM      5    O MOL     1       2.000   2.000   0.000  1.00  0.00           O
 ENDMDL
 """
     widget = view.to_ngl()

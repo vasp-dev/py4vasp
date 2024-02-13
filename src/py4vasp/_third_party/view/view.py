@@ -29,8 +29,8 @@ class View:
         ]
         symbols = "".join(symbols)
         atoms = ase.Atoms(symbols)
-        atoms.set_scaled_positions(self.positions[0])
         atoms.cell = self.lattice_vectors[0]
+        atoms.set_scaled_positions(self.positions[0])
         atoms.set_pbc(True)
         widget = nglview.show_ase(atoms)
         return widget
