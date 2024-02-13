@@ -8,8 +8,8 @@ class Mixin(abc.ABC):
     def to_view(self, *args, **kwargs):
         pass
 
-    def plot(self):
-        return self.to_view()
+    def plot(self, *args, **kwargs):
+        return self.to_view(*args, **kwargs)
 
-    def to_ngl(self):
-        return self.to_view().to_ngl()
+    def to_ngl(self, *args, **kwargs):
+        return self.to_view(*args, **kwargs).to_ngl()

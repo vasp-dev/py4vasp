@@ -105,7 +105,6 @@ class WithArguments(graph.Mixin):
     def to_graph(self, mandatory, optional=None):
         GRAPH.reset_mock()
         GRAPH.arguments = {"mandatory": mandatory, "optional": optional}
-        GRAPH.optional = optional
         return GRAPH
 
 
