@@ -10,3 +10,6 @@ class Mixin(abc.ABC):
 
     def plot(self):
         return self.to_view()
+
+    def to_ngl(self):
+        return self.to_view().to_ngl()
