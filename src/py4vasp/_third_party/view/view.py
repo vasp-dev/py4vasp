@@ -22,15 +22,22 @@ class View:
         widget._ipython_display_()
 
     def to_ngl(self):
-        ions_and_ion_types = self.number_ion_types[0], self.ion_types[0]
-        symbols = [
-            ion_type * number_ion_type
-            for ion_type, number_ion_type in zip(*ions_and_ion_types)
-        ]
-        symbols = "".join(symbols)
-        atoms = ase.Atoms(symbols)
-        atoms.cell = self.lattice_vectors[0]
-        atoms.set_scaled_positions(self.positions[0])
-        atoms.set_pbc(True)
-        widget = nglview.show_ase(atoms)
+        trajectory = []
+        for idx_traj in range(len(self.number_ion_types)):
+            ions_and_ion_types = (
+                self.number_ion_types[idx_traj],
+                self.ion_types[idx_traj],
+            )
+            symbols = [
+                ion_type * number_ion_type
+                for ion_type, number_ion_type in zip(*ions_and_ion_types)
+            ]
+            symbols = "".join(symbols)
+            atoms = ase.Atoms(symbols)
+            atoms.cell = self.lattice_vectors[idx_traj]
+            atoms.set_scaled_positions(self.positions[idx_traj])
+            atoms.set_pbc(True)
+            trajectory.append(atoms)
+        ngl_trajectory = nglview.ASETrajectory(trajectory)
+        widget = nglview.NGLWidget(ngl_trajectory)
         return widget
