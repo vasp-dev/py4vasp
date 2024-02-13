@@ -17,6 +17,10 @@ class View:
     lattice_vectors: array
     positions: array
 
+    def _ipython_display_(self):
+        widget = self.to_ngl()
+        widget._ipython_display_()
+
     def to_ngl(self):
         ions_and_ion_types = self.number_ion_types[0], self.ion_types[0]
         symbols = [
