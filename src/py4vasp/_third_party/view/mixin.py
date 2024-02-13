@@ -7,3 +7,6 @@ class Mixin(abc.ABC):
     @abc.abstractmethod
     def to_view(self, *args, **kwargs):
         pass
+
+    def plot(self):
+        return self.to_view()
