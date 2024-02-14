@@ -2,6 +2,10 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import abc
 
+"""Use the Mixin for all quantities that define an option to produce a structure view.
+This will automatically implement all the common functionality to visualize this data.turn this graphs into
+different formats."""
+
 
 class Mixin(abc.ABC):
     @abc.abstractmethod
