@@ -1,17 +1,21 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
+import io
 from unittest.mock import patch
 
 import numpy as np
 import pytest
 
 from py4vasp._third_party.view import View
+from py4vasp._util import import_
 from py4vasp.calculation._structure import Structure
+
+ase_cube = import_.optional("ase.io.cube")
 
 
 @pytest.fixture(params=[True, False])
-def view(not_core, request):
+def view(request, not_core):
     is_structure = request.param
     if is_structure:
         view = View(
@@ -89,3 +93,28 @@ def test_structure_to_view(view, Assert):
 def test_ipython(mock_display, view):
     display = view._ipython_display_()
     mock_display.assert_called_once()
+
+
+def test_isosurface(raw_data, Assert, not_core):
+    raw_density = raw_data.density("Fe3O4 collinear")
+    structure = Structure.from_data(raw_density.structure)
+    structure_data = structure.read()
+    number_ion_types, ion_types = np.unique(
+        structure_data["elements"], return_counts=True
+    )
+    number_ion_types = np.atleast_2d(number_ion_types)
+    ion_types = np.atleast_2d(ion_types)
+    view = View(
+        number_ion_types=number_ion_types.tolist(),
+        ion_types=ion_types.tolist(),
+        lattice_vectors=structure_data["lattice_vectors"],
+        positions=structure_data["positions"],
+        grid_scalars={"charge": raw_density.charge},
+    )
+    widget = view.show_isosurface("charge")
+    assert widget.get_state()["_ngl_msg_archive"][1]["args"][0]["binary"] == False
+    output_cube = widget.get_state()["_ngl_msg_archive"][1]["args"][0]["data"]
+    output_data = ase_cube.read_cube(io.StringIO(output_cube))["data"]
+    expected_data = raw_density.charge[0, ...].astype(np.float32)
+    assert expected_data.shape == output_data.shape
+    np.allclose(expected_data, output_data)
