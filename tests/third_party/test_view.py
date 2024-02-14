@@ -16,14 +16,12 @@ from py4vasp.calculation._structure import Structure
 ase_cube = import_.optional("ase.io.cube")
 
 
-@pytest.fixture(params=[True, False])
-def view(request, not_core):
-    is_structure = request.param
+def base_input_view(is_structure):
     if is_structure:
-        view = View(
-            elements=[["Sr", "Ti", "O", "O", "O"]],
-            lattice_vectors=[4 * np.eye(3)],
-            positions=[
+        return {
+            "elements": [["Sr", "Ti", "O", "O", "O"]],
+            "lattice_vectors": [4 * np.eye(3)],
+            "positions": [
                 [
                     [0.0, 0.0, 0.0],
                     [0.5, 0.5, 0.5],
@@ -32,7 +30,33 @@ def view(request, not_core):
                     [0.5, 0.5, 0.0],
                 ]
             ],
-        )
+        }
+    else:
+        return {
+            "elements": [["Ga", "As"], ["Ga", "As"]],
+            "lattice_vectors": [
+                2.8 * (np.ones((3, 3)) - np.eye(3)),
+                2.9 * (np.ones((3, 3)) - np.eye(3)),
+            ],
+            "positions": [
+                [
+                    [0.0, 0.0, 0.0],
+                    [0.25, 0.25, 0.25],
+                ],
+                [
+                    [0.0, 0.0, 0.0],
+                    [0.26, 0.24, 0.27],
+                ],
+            ],
+        }
+
+
+@pytest.fixture(params=[True, False])
+def view(request, not_core):
+    is_structure = request.param
+    inputs = base_input_view(is_structure)
+    if is_structure:
+        view = View(**inputs)
         expected_pdb_repr = """\
     CRYST1    4.000    4.000    4.000  90.00  90.00  90.00 P 1
     MODEL     1
@@ -44,23 +68,7 @@ def view(request, not_core):
     ENDMDL
     """
     else:
-        view = View(
-            elements=[["Ga", "As"], ["Ga", "As"]],
-            lattice_vectors=[
-                2.8 * (np.ones((3, 3)) - np.eye(3)),
-                2.9 * (np.ones((3, 3)) - np.eye(3)),
-            ],
-            positions=[
-                [
-                    [0.0, 0.0, 0.0],
-                    [0.25, 0.25, 0.25],
-                ],
-                [
-                    [0.0, 0.0, 0.0],
-                    [0.26, 0.24, 0.27],
-                ],
-            ],
-        )
+        view = View(**inputs)
         expected_pdb_repr = """\
 CRYST1    3.960    3.960    3.960  60.00  60.00  60.00 P 1
 MODEL     1
@@ -75,46 +83,16 @@ ENDMDL
 @pytest.fixture(params=[True, False])
 def view3d(request, not_core):
     is_structure = request.param
+    inputs = base_input_view(is_structure)
     if is_structure:
         charge_grid_scalar = GridQuantity(
             quantity=np.random.rand(1, 12, 10, 8), name="charge"
-        )
-        view = View(
-            elements=[["Sr", "Ti", "O", "O", "O"]],
-            lattice_vectors=[4 * np.eye(3)],
-            positions=[
-                [
-                    [0.0, 0.0, 0.0],
-                    [0.5, 0.5, 0.5],
-                    [0.0, 0.5, 0.5],
-                    [0.5, 0.0, 0.5],
-                    [0.5, 0.5, 0.0],
-                ],
-            ],
-            grid_scalars=[charge_grid_scalar],
         )
     else:
         charge_grid_scalar = GridQuantity(
             quantity=np.random.rand(2, 12, 10, 8), name="charge"
         )
-        view = View(
-            elements=[["Ga", "As"], ["Ga", "As"]],
-            lattice_vectors=[
-                2.8 * (np.ones((3, 3)) - np.eye(3)),
-                2.9 * (np.ones((3, 3)) - np.eye(3)),
-            ],
-            positions=[
-                [
-                    [0.0, 0.0, 0.0],
-                    [0.25, 0.25, 0.25],
-                ],
-                [
-                    [0.0, 0.0, 0.0],
-                    [0.26, 0.24, 0.27],
-                ],
-            ],
-            grid_scalars=[charge_grid_scalar],
-        )
+    view = View(grid_scalars=[charge_grid_scalar], **inputs)
     view.ref = SimpleNamespace()
     view.ref.charge_grid_scalar = charge_grid_scalar
     return view
@@ -143,7 +121,7 @@ def test_ipython(mock_display, view):
     mock_display.assert_called_once()
 
 
-def test_isosurface(view3d, Assert):
+def test_isosurface(view3d):
     widget = view3d.show_isosurface()
     assert widget.get_state()["_ngl_msg_archive"][1]["args"][0]["binary"] == False
     for idx in range(len(view3d.lattice_vectors)):
