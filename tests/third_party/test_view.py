@@ -21,8 +21,7 @@ def view(request, not_core):
     is_structure = request.param
     if is_structure:
         view = View(
-            number_ion_types=[[1, 1, 3]],
-            ion_types=[["Sr", "Ti", "O"]],
+            elements=[["Sr", "Ti", "O", "O", "O"]],
             lattice_vectors=[4 * np.eye(3)],
             positions=[
                 [
@@ -46,8 +45,7 @@ def view(request, not_core):
     """
     else:
         view = View(
-            number_ion_types=[[1, 1], [1, 1]],
-            ion_types=[["Ga", "As"], ["Ga", "As"]],
+            elements=[["Ga", "As"], ["Ga", "As"]],
             lattice_vectors=[
                 2.8 * (np.ones((3, 3)) - np.eye(3)),
                 2.9 * (np.ones((3, 3)) - np.eye(3)),
@@ -82,8 +80,7 @@ def view3d(request, not_core):
             quantity=np.random.rand(1, 12, 10, 8), name="charge"
         )
         view = View(
-            number_ion_types=[[1, 1, 3]],
-            ion_types=[["Sr", "Ti", "O"]],
+            elements=[["Sr", "Ti", "O", "O", "O"]],
             lattice_vectors=[4 * np.eye(3)],
             positions=[
                 [
@@ -101,8 +98,7 @@ def view3d(request, not_core):
             quantity=np.random.rand(2, 12, 10, 8), name="charge"
         )
         view = View(
-            number_ion_types=[[1, 1], [1, 1]],
-            ion_types=[["Ga", "As"], ["Ga", "As"]],
+            elements=[["Ga", "As"], ["Ga", "As"]],
             lattice_vectors=[
                 2.8 * (np.ones((3, 3)) - np.eye(3)),
                 2.9 * (np.ones((3, 3)) - np.eye(3)),

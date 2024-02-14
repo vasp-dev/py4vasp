@@ -29,8 +29,7 @@ class GridQuantity:
 
 @dataclass
 class View:
-    number_ion_types: array
-    ion_types: array
+    elements: array
     lattice_vectors: array
     positions: array
 
@@ -41,15 +40,7 @@ class View:
         widget._ipython_display_()
 
     def _create_atoms(self, idx_traj):
-        ions_and_ion_types = (
-            self.number_ion_types[idx_traj],
-            self.ion_types[idx_traj],
-        )
-        symbols = [
-            ion_type * number_ion_type
-            for ion_type, number_ion_type in zip(*ions_and_ion_types)
-        ]
-        symbols = "".join(symbols)
+        symbols = "".join(self.elements[idx_traj])
         atoms = ase.Atoms(symbols)
         atoms.cell = self.lattice_vectors[idx_traj]
         atoms.set_scaled_positions(self.positions[idx_traj])
@@ -58,7 +49,7 @@ class View:
 
     def to_ngl(self):
         trajectory = []
-        for idx_traj in range(len(self.number_ion_types)):
+        for idx_traj in range(len(self.lattice_vectors)):
             atoms = self._create_atoms(idx_traj)
             trajectory.append(atoms)
         ngl_trajectory = nglview.ASETrajectory(trajectory)
@@ -67,7 +58,7 @@ class View:
 
     def show_isosurface(self):
         widget = self.to_ngl()
-        iter_traj = list(range(len(self.number_ion_types)))
+        iter_traj = list(range(len(self.lattice_vectors)))
         for (grid_scalar, idx_traj) in itertools.product(self.grid_scalars, iter_traj):
             atoms = self._create_atoms(idx_traj)
             data = grid_scalar.quantity[idx_traj]
