@@ -1,14 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from __future__ import annotations
-
 import itertools
 import os
 import tempfile
 from dataclasses import dataclass
-from typing import Dict
+from typing import Sequence
 
 import numpy as np
+import numpy.typing as npt
 
 from py4vasp._util import import_
 
@@ -21,7 +20,7 @@ CUBE_FILENAME = "quantity.cube"
 
 @dataclass
 class GridQuantity:
-    quantity: array
+    quantity: npt.ArrayLike
     """The quantity which is to be plotted as an isosurface"""
     name: str
     """Name of the quantity"""
@@ -29,11 +28,11 @@ class GridQuantity:
 
 @dataclass
 class View:
-    elements: array
-    lattice_vectors: array
-    positions: array
+    elements: npt.ArrayLike
+    lattice_vectors: npt.ArrayLike
+    positions: npt.ArrayLike
 
-    grid_scalars: Dict = None
+    grid_scalars: Sequence[GridQuantity] = None
 
     def _ipython_display_(self):
         widget = self.to_ngl()
