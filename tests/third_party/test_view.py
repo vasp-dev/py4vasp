@@ -111,7 +111,7 @@ def test_structure_to_view(view, Assert):
     expected_and_output = expected_structure_string.split(
         "\n"
     ), output_structure_string.split("\n")
-    for (output_line, expected_line) in zip(*expected_and_output):
+    for output_line, expected_line in zip(*expected_and_output):
         assert output_line.strip() == expected_line.strip()
 
 

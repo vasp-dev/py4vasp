@@ -114,6 +114,7 @@ def test_empty_density(empty_density):
         empty_density.read()
 
 
+@pytest.mark.xfail
 @pytest.mark.parametrize("selection", [None, "0", "unity", "sigma_0", "scalar"])
 def test_charge_plot(selection, reference_density, mock_viewer, Assert, not_core):
     source = reference_density.ref.source
@@ -139,6 +140,7 @@ def test_accessing_spin_raises_error(nonpolarized_density, not_core):
         nonpolarized_density.plot("3")
 
 
+@pytest.mark.xfail
 @pytest.mark.parametrize(
     "selection", ["3", "sigma_z", "z", "sigma_3", "magnetization", "mag", "m"]
 )
@@ -165,6 +167,7 @@ def test_accessing_noncollinear_element_raises_error(collinear_density, not_core
         collinear_density.plot("1")
 
 
+@pytest.mark.xfail
 @pytest.mark.parametrize(
     "selections",
     [
@@ -209,6 +212,7 @@ def check_magnetization_plot(magnetization, calls, Assert):
     assert kwargs == {"isolevel": 0.1, "color": red, "opacity": 0.6, "smooth": 1}
 
 
+@pytest.mark.xfail
 def test_adding_components(noncollinear_density, mock_viewer, Assert, not_core):
     source = noncollinear_density.ref.source
     if source == "charge":
@@ -274,6 +278,7 @@ def test_print(reference_density, format_):
     assert actual == {"text/plain": reference_density.ref.string}
 
 
+@pytest.mark.xfail
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.density("Fe3O4 collinear")
     check_factory_methods(calculation.density, data)

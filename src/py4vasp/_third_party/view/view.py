@@ -61,7 +61,7 @@ class View:
     def show_isosurface(self):
         widget = self.to_ngl()
         iter_traj = list(range(len(self.lattice_vectors)))
-        for (grid_scalar, idx_traj) in itertools.product(self.grid_scalars, iter_traj):
+        for grid_scalar, idx_traj in itertools.product(self.grid_scalars, iter_traj):
             atoms = self._create_atoms(idx_traj)
             data = grid_scalar.quantity[idx_traj]
             with tempfile.TemporaryDirectory() as tmp:
