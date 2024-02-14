@@ -85,16 +85,15 @@ def view3d(request, not_core):
     is_structure = request.param
     inputs = base_input_view(is_structure)
     if is_structure:
-        charge_grid_scalar = GridQuantity(
-            quantity=np.random.rand(1, 12, 10, 8), name="charge"
-        )
+        charge_grid_scalar = GridQuantity(np.random.rand(1, 12, 10, 8), "charge")
+        grid_scalars = [charge_grid_scalar]
     else:
-        charge_grid_scalar = GridQuantity(
-            quantity=np.random.rand(2, 12, 10, 8), name="charge"
-        )
-    view = View(grid_scalars=[charge_grid_scalar], **inputs)
+        charge_grid_scalar = GridQuantity(np.random.rand(2, 12, 10, 8), "charge")
+        potential_grid_scalar = GridQuantity(np.random.rand(2, 12, 10, 8), "potential")
+        grid_scalars = [charge_grid_scalar, potential_grid_scalar]
+    view = View(grid_scalars=grid_scalars, **inputs)
     view.ref = SimpleNamespace()
-    view.ref.charge_grid_scalar = charge_grid_scalar
+    view.ref.grid_scalars = grid_scalars
     return view
 
 
@@ -125,8 +124,10 @@ def test_isosurface(view3d):
     widget = view3d.show_isosurface()
     assert widget.get_state()["_ngl_msg_archive"][1]["args"][0]["binary"] == False
     for idx in range(len(view3d.lattice_vectors)):
-        expected_data = view3d.ref.charge_grid_scalar.quantity[idx]
-        output_cube = widget.get_state()["_ngl_msg_archive"][idx + 1]["args"][0]["data"]
-        output_data = ase_cube.read_cube(io.StringIO(output_cube))["data"]
-        assert expected_data.shape == output_data.shape
-        np.allclose(expected_data, output_data)
+        for grid_scalar in view3d.ref.grid_scalars:
+            expected_data = grid_scalar.quantity[idx]
+            state = widget.get_state()
+            output_cube = state["_ngl_msg_archive"][idx + 1]["args"][0]["data"]
+            output_data = ase_cube.read_cube(io.StringIO(output_cube))["data"]
+            assert expected_data.shape == output_data.shape
+            np.allclose(expected_data, output_data)
