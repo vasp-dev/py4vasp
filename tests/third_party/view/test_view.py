@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from py4vasp._third_party.view import View
-from py4vasp._third_party.view.view import GridQuantity
+from py4vasp._third_party.view.view import GridQuantity, IonArrow
 from py4vasp._util import import_
 from py4vasp.calculation._structure import Structure
 
@@ -97,6 +97,24 @@ def view3d(request, not_core):
     return view
 
 
+@pytest.fixture(params=[True, False])
+def view_arrow(request, not_core):
+    is_structure = request.param
+    inputs = base_input_view(is_structure)
+    number_atoms = len(inputs["elements"][0])
+    if is_structure:
+        force_ion_arrows = IonArrow(np.random.rand(1, number_atoms, 3), "force")
+        ion_arrows = [force_ion_arrows]
+    else:
+        force_ion_arrows = IonArrow(np.random.rand(2, number_atoms, 3), "force")
+        moments_ion_arrows = IonArrow(np.random.rand(2, number_atoms, 3), "moments")
+        ion_arrows = [force_ion_arrows, moments_ion_arrows]
+    view = View(ion_arrows=ion_arrows, **inputs)
+    view.ref = SimpleNamespace()
+    view.ref.ion_arrows = ion_arrows
+    return view
+
+
 def test_structure_to_view(view, Assert):
     widget = view.to_ngl()
     for idx_traj in range(len(view.lattice_vectors)):
@@ -130,3 +148,18 @@ def test_isosurface(view3d):
             output_data = ase_cube.read_cube(io.StringIO(output_cube))["data"]
             assert expected_data.shape == output_data.shape
             np.allclose(expected_data, output_data)
+
+
+def test_ion_arrows(view_arrow):
+    widget = view_arrow.show_arrows_at_atoms()
+    for idx_traj in range(len(view_arrow.lattice_vectors)):
+        for idx_ion, ion_arrow in enumerate(view_arrow.ref.ion_arrows):
+            ion_positions = view_arrow.positions[idx_traj]
+            expected_tail = ion_positions
+            expected_tip = ion_arrow.quantity[idx_traj] + ion_positions
+            idx_msg = idx_traj + 2 * idx_ion + 1
+            msg_archive = widget.get_state()["_ngl_msg_archive"][idx_msg]["args"][1][0]
+            output_tail = msg_archive[1]
+            output_tip = msg_archive[2][idx_traj]
+            assert np.allclose(expected_tip, output_tip)
+            assert np.allclose(expected_tail, output_tail)

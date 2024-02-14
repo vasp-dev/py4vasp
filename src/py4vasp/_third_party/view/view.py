@@ -4,7 +4,7 @@ import itertools
 import os
 import tempfile
 from dataclasses import dataclass
-from typing import Sequence
+from typing import NamedTuple, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -18,6 +18,14 @@ nglview = import_.optional("nglview")
 CUBE_FILENAME = "quantity.cube"
 
 
+class _Arrow3d(NamedTuple):
+    tail: np.ndarray
+    tip: np.ndarray
+
+    def to_serializable(self):
+        return list(self.tail), list(self.tip)
+
+
 @dataclass
 class GridQuantity:
     quantity: npt.ArrayLike
@@ -27,13 +35,25 @@ class GridQuantity:
 
 
 @dataclass
+class IonArrow:
+    quantity: npt.ArrayLike
+    """Vector quantity to be used to draw arrows at the ion positions"""
+    name: str
+    """Name of quantity"""
+
+
+@dataclass
 class View:
     elements: npt.ArrayLike
+    """Elements for all structures in the trajectory"""
     lattice_vectors: npt.ArrayLike
+    """Lattice vectors for all structures in the trajectory"""
     positions: npt.ArrayLike
-
+    """Ion positions for all structures in the trajectory"""
     grid_scalars: Sequence[GridQuantity] = None
-
+    """This sequence stores quantities that are generated on a grid."""
+    ion_arrows: Sequence[IonArrow] = None
+    """This sequence stores arrows at the atom-centers."""
     supercell: npt.ArrayLike = (1, 1, 1)
     "Defines how many multiple of the cell are drawn along each of the coordinate axis."
 
@@ -68,4 +88,14 @@ class View:
                 filename = os.path.join(tmp, CUBE_FILENAME)
                 ase_cube.write_cube(open(filename, "w"), atoms=atoms, data=data)
                 widget.add_component(filename)
+        return widget
+
+    def show_arrows_at_atoms(self):
+        widget = self.to_ngl()
+        iter_traj = list(range(len(self.lattice_vectors)))
+        for arrow, idx_traj in itertools.product(self.ion_arrows, iter_traj):
+            tail = self.positions[idx_traj]
+            tip = arrow.quantity + tail
+            arrow_3d = _Arrow3d(tail, tip)
+            widget.shape.add_arrow(*(arrow_3d.to_serializable()))
         return widget
