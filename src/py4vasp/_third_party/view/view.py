@@ -7,8 +7,7 @@ from dataclasses import dataclass
 
 @dataclass
 class View:
-    number_ion_types: array
-    ion_types: array
+    elements: array
     lattice_vectors: array
     positions: array
 

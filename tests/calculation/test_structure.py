@@ -88,6 +88,8 @@ def make_structure(raw_structure):
         scale = 1.0
     structure.ref.lattice_vectors = scale * raw_structure.cell.lattice_vectors
     structure.ref.positions = raw_structure.positions
+    topology = calculation.topology.from_data(raw_structure.topology)
+    structure.ref.elements = topology.elements()
     return structure
 
 
@@ -100,7 +102,7 @@ def test_read_Sr2TiO4(Sr2TiO4, Assert):
 def check_Sr2TiO4_structure(actual, reference, steps, Assert):
     Assert.allclose(actual["lattice_vectors"], reference.lattice_vectors[steps])
     Assert.allclose(actual["positions"], reference.positions[steps])
-    assert actual["elements"] == ["Sr", "Sr", "Ti", "O", "O", "O", "O"]
+    assert actual["elements"] == reference.elements
     assert actual["names"] == ["Sr_1", "Sr_2", "Ti_1", "O_1", "O_2", "O_3", "O_4"]
 
 
@@ -113,7 +115,7 @@ def test_read_Fe3O4(Fe3O4, Assert):
 def check_Fe3O4_structure(actual, reference, steps, Assert):
     Assert.allclose(actual["lattice_vectors"], reference.lattice_vectors[steps])
     Assert.allclose(actual["positions"], reference.positions[steps])
-    assert actual["elements"] == ["Fe", "Fe", "Fe", "O", "O", "O", "O"]
+    assert actual["elements"] == reference.elements
     assert actual["names"] == ["Fe_1", "Fe_2", "Fe_3", "O_1", "O_2", "O_3", "O_4"]
 
 
@@ -122,7 +124,7 @@ def test_read_Ca3AsBr3(Ca3AsBr3, Assert):
     actual = Ca3AsBr3.read()
     Assert.allclose(actual["lattice_vectors"], Ca3AsBr3.ref.lattice_vectors)
     Assert.allclose(actual["positions"], Ca3AsBr3.ref.positions)
-    assert actual["elements"] == ["Ca", "Ca", "As", "Br", "Ca", "Br", "Br"]
+    assert actual["elements"] == Ca3AsBr3.ref.elements
     assert actual["names"] == ["Ca_1", "Ca_2", "As_1", "Br_1", "Ca_3", "Br_2", "Br_3"]
 
 
@@ -298,30 +300,30 @@ def test_number_steps(Sr2TiO4, Ca3AsBr3):
     assert Ca3AsBr3.number_steps() == 1
 
 
-def test_plot_Sr2TiO4(Sr2TiO4, not_core):
-    check_plot_structure(Sr2TiO4)
+def test_plot_Sr2TiO4(Sr2TiO4, Assert):
+    check_plot_structure(Sr2TiO4, -1, Assert)
     for steps in (slice(None), slice(1, 3), 0):
-        check_plot_structure(Sr2TiO4[steps])
+        check_plot_structure(Sr2TiO4[steps], steps, Assert)
 
 
-def test_plot_Fe3O4(Fe3O4, not_core):
-    check_plot_structure(Fe3O4)
+def test_plot_Fe3O4(Fe3O4, Assert):
+    check_plot_structure(Fe3O4, -1, Assert)
     for steps in (slice(None), slice(1, 3), 0):
-        check_plot_structure(Fe3O4[steps])
+        check_plot_structure(Fe3O4[steps], steps, Assert)
 
 
-def test_plot_Ca3AsBr3(Ca3AsBr3, not_core):
-    check_plot_structure(Ca3AsBr3)
+def test_plot_Ca3AsBr3(Ca3AsBr3, Assert):
+    check_plot_structure(Ca3AsBr3, slice(None), Assert)
 
 
-def check_plot_structure(structure):
-    obj = viewer3d.Viewer3d
-    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(obj, "show_cell")
-    with cm_init as init, cm_cell as cell:
-        structure.plot()
-        init.assert_called_once()
-        cell.assert_called_once()
+def check_plot_structure(structure, steps, Assert):
+    view = structure.plot()
+    assert view.elements.ndim == 2
+    assert np.all(structure.ref.elements == view.elements)
+    assert view.positions.ndim == 3
+    Assert.allclose(structure.ref.positions[steps], view.positions)
+    assert view.lattice_vectors.ndim == 3
+    Assert.allclose(structure.ref.lattice_vectors[steps], view.lattice_vectors)
 
 
 def test_incorrect_step(Sr2TiO4, Ca3AsBr3):
