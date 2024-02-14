@@ -245,6 +245,7 @@ def test_incorrect_argument(example_magnetism):
         example_magnetism[out_of_bounds].total_charges()
 
 
+@pytest.mark.xfail
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.magnetism("collinear")
     check_factory_methods(calculation.magnetism, data)

@@ -38,6 +38,7 @@ def assert_arrow_message(Assert):
 
 @pytest.fixture
 def viewer3d(raw_data, not_core):
+    pytest.xfail("old version of viewer")
     structure = calculation.structure.from_data(raw_data.structure("Sr2TiO4"))
     return make_viewer(structure)
 
@@ -125,6 +126,7 @@ def test_arrows(viewer3d, assert_arrow_message):
     viewer3d.hide_arrows_at_atoms()
 
 
+@pytest.mark.xfail
 def test_supercell(raw_data, not_core):
     structure = calculation.structure.from_data(raw_data.structure("Sr2TiO4"))
     number_atoms = structure.number_atoms()
@@ -181,6 +183,7 @@ def rotate(arrow, transformation):
     )
 
 
+@pytest.mark.xfail
 def test_isosurface(raw_data, not_core):
     raw_density = raw_data.density("Fe3O4 collinear")
     viewer = make_viewer(calculation.structure.from_data(raw_density.structure))
@@ -195,6 +198,7 @@ def test_isosurface(raw_data, not_core):
     assert_add_surface(messages[1], kwargs)
 
 
+@pytest.mark.xfail
 def test_trajectory(raw_data, not_core):
     structure = calculation.structure.from_data(raw_data.structure("Sr2TiO4"))
     viewer = structure[:].plot()

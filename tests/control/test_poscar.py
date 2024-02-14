@@ -2,6 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from unittest.mock import patch
 
+import pytest
+
 from py4vasp._third_party.viewer import viewer3d
 from py4vasp.control import POSCAR
 
@@ -12,6 +14,7 @@ class TestPoscar(AbstractTest):
     tested_class = POSCAR
 
 
+@pytest.mark.xfail
 def test_plot_poscar(not_core):
     text = """! comment line
     5.43

@@ -34,6 +34,9 @@ class View:
 
     grid_scalars: Sequence[GridQuantity] = None
 
+    supercell: npt.ArrayLike = (1, 1, 1)
+    "Defines how many multiple of the cell are drawn along each of the coordinate axis."
+
     def _ipython_display_(self):
         widget = self.to_ngl()
         widget._ipython_display_()
@@ -58,7 +61,7 @@ class View:
     def show_isosurface(self):
         widget = self.to_ngl()
         iter_traj = list(range(len(self.lattice_vectors)))
-        for (grid_scalar, idx_traj) in itertools.product(self.grid_scalars, iter_traj):
+        for grid_scalar, idx_traj in itertools.product(self.grid_scalars, iter_traj):
             atoms = self._create_atoms(idx_traj)
             data = grid_scalar.quantity[idx_traj]
             with tempfile.TemporaryDirectory() as tmp:

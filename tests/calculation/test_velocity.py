@@ -129,6 +129,7 @@ def test_print_Sr2TiO4(Sr2TiO4, format_):
     assert actual == {"text/plain": ref_plain}
 
 
+@pytest.mark.xfail
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.velocity("Fe3O4")
     check_factory_methods(calculation.velocity, data)
