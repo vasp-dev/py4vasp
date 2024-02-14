@@ -2,12 +2,14 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
 import io
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
 import pytest
 
 from py4vasp._third_party.view import View
+from py4vasp._third_party.view.view import GridQuantity
 from py4vasp._util import import_
 from py4vasp.calculation._structure import Structure
 
@@ -72,6 +74,56 @@ ENDMDL
     return view
 
 
+@pytest.fixture(params=[True, False])
+def view3d(request, not_core):
+    is_structure = request.param
+    if is_structure:
+        charge_grid_scalar = GridQuantity(
+            quantity=np.random.rand(1, 12, 10, 8), name="charge"
+        )
+        view = View(
+            number_ion_types=[[1, 1, 3]],
+            ion_types=[["Sr", "Ti", "O"]],
+            lattice_vectors=[4 * np.eye(3)],
+            positions=[
+                [
+                    [0.0, 0.0, 0.0],
+                    [0.5, 0.5, 0.5],
+                    [0.0, 0.5, 0.5],
+                    [0.5, 0.0, 0.5],
+                    [0.5, 0.5, 0.0],
+                ],
+            ],
+            grid_scalars=[charge_grid_scalar],
+        )
+    else:
+        charge_grid_scalar = GridQuantity(
+            quantity=np.random.rand(2, 12, 10, 8), name="charge"
+        )
+        view = View(
+            number_ion_types=[[1, 1], [1, 1]],
+            ion_types=[["Ga", "As"], ["Ga", "As"]],
+            lattice_vectors=[
+                2.8 * (np.ones((3, 3)) - np.eye(3)),
+                2.9 * (np.ones((3, 3)) - np.eye(3)),
+            ],
+            positions=[
+                [
+                    [0.0, 0.0, 0.0],
+                    [0.25, 0.25, 0.25],
+                ],
+                [
+                    [0.0, 0.0, 0.0],
+                    [0.26, 0.24, 0.27],
+                ],
+            ],
+            grid_scalars=[charge_grid_scalar],
+        )
+    view.ref = SimpleNamespace()
+    view.ref.charge_grid_scalar = charge_grid_scalar
+    return view
+
+
 def test_structure_to_view(view, Assert):
     widget = view.to_ngl()
     for idx_traj in range(len(view.lattice_vectors)):
@@ -95,26 +147,12 @@ def test_ipython(mock_display, view):
     mock_display.assert_called_once()
 
 
-def test_isosurface(raw_data, Assert, not_core):
-    raw_density = raw_data.density("Fe3O4 collinear")
-    structure = Structure.from_data(raw_density.structure)
-    structure_data = structure.read()
-    number_ion_types, ion_types = np.unique(
-        structure_data["elements"], return_counts=True
-    )
-    number_ion_types = np.atleast_2d(number_ion_types)
-    ion_types = np.atleast_2d(ion_types)
-    view = View(
-        number_ion_types=number_ion_types.tolist(),
-        ion_types=ion_types.tolist(),
-        lattice_vectors=structure_data["lattice_vectors"],
-        positions=structure_data["positions"],
-        grid_scalars={"charge": raw_density.charge},
-    )
-    widget = view.show_isosurface("charge")
+def test_isosurface(view3d, Assert):
+    widget = view3d.show_isosurface()
     assert widget.get_state()["_ngl_msg_archive"][1]["args"][0]["binary"] == False
-    output_cube = widget.get_state()["_ngl_msg_archive"][1]["args"][0]["data"]
-    output_data = ase_cube.read_cube(io.StringIO(output_cube))["data"]
-    expected_data = raw_density.charge[0, ...].astype(np.float32)
-    assert expected_data.shape == output_data.shape
-    np.allclose(expected_data, output_data)
+    for idx in range(len(view3d.lattice_vectors)):
+        expected_data = view3d.ref.charge_grid_scalar.quantity[idx]
+        output_cube = widget.get_state()["_ngl_msg_archive"][idx + 1]["args"][0]["data"]
+        output_data = ase_cube.read_cube(io.StringIO(output_cube))["data"]
+        assert expected_data.shape == output_data.shape
+        np.allclose(expected_data, output_data)

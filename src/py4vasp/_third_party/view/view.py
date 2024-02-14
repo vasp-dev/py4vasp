@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from __future__ import annotations
 
+import itertools
 import os
 import tempfile
 from dataclasses import dataclass
@@ -16,6 +17,14 @@ ase_cube = import_.optional("ase.io.cube")
 nglview = import_.optional("nglview")
 
 CUBE_FILENAME = "quantity.cube"
+
+
+@dataclass
+class GridQuantity:
+    quantity: array
+    """The quantity which is to be plotted as an isosurface"""
+    name: str
+    """Name of the quantity"""
 
 
 @dataclass
@@ -56,12 +65,14 @@ class View:
         widget = nglview.NGLWidget(ngl_trajectory)
         return widget
 
-    def show_isosurface(self, quantity):
+    def show_isosurface(self):
         widget = self.to_ngl()
-        data = self.grid_scalars[quantity][0, ...].astype(np.float32)
-        atoms = self._create_atoms(-1)
-        with tempfile.TemporaryDirectory() as tmp:
-            filename = os.path.join(tmp, CUBE_FILENAME)
-            ase_cube.write_cube(open(filename, "w"), atoms=atoms, data=data)
-            widget.add_component(filename)
+        iter_traj = list(range(len(self.number_ion_types)))
+        for (grid_scalar, idx_traj) in itertools.product(self.grid_scalars, iter_traj):
+            atoms = self._create_atoms(idx_traj)
+            data = grid_scalar.quantity[idx_traj]
+            with tempfile.TemporaryDirectory() as tmp:
+                filename = os.path.join(tmp, CUBE_FILENAME)
+                ase_cube.write_cube(open(filename, "w"), atoms=atoms, data=data)
+                widget.add_component(filename)
         return widget
