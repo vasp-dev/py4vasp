@@ -108,10 +108,9 @@ def test_structure_to_view(view, Assert):
         Assert.allclose(expected_coordinates, output_coordinates)
     output_structure_string = widget.trajectory_0.get_structure_string()
     expected_structure_string = view.ref
-    expected_and_output = expected_structure_string.split(
-        "\n"
-    ), output_structure_string.split("\n")
-    for output_line, expected_line in zip(*expected_and_output):
+    expected_lines = expected_structure_string.split("\n")
+    output_lines = output_structure_string.split("\n")
+    for output_line, expected_line in zip(expected_lines, output_lines):
         assert output_line.strip() == expected_line.strip()
 
 
