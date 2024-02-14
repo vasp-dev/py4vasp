@@ -10,6 +10,8 @@ class View:
     elements: array
     lattice_vectors: array
     positions: array
+    supercell: array = (1, 1, 1)
+    "Defines how many multiple of the cell are drawn along each of the coordinate axis."
 
     def to_ngl(self):
         pass

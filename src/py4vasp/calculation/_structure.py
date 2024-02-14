@@ -163,6 +163,7 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
             elements=np.atleast_2d(self._topology().elements()),
             lattice_vectors=make_3d(self._lattice_vectors()),
             positions=make_3d(self._positions()),
+            supercell=self._parse_supercell(supercell),
         )
 
     @_base.data_access
@@ -294,6 +295,28 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
             return len(range_[self._slice])
         else:
             return 1
+
+    def _parse_supercell(self, supercell):
+        if supercell is None:
+            return np.ones(3, np.int_)
+        try:
+            integer_supercell = np.round(supercell).astype(np.int_)
+        except TypeError as error:
+            message = (
+                f"Could not convert supercell='{supercell}' to an integer numpy array."
+            )
+            raise exception.IncorrectUsage(message) from error
+        if not np.allclose(supercell, integer_supercell):
+            message = f"supercell='{supercell}' contains noninteger values."
+            raise exception.IncorrectUsage(message)
+        if np.isscalar(integer_supercell):
+            return np.full(3, integer_supercell)
+        if integer_supercell.shape == (3,):
+            return integer_supercell
+        message = (
+            f"supercell='{supercell}' is not a scalar or a three component vector."
+        )
+        raise exception.IncorrectUsage(message)
 
     def _topology(self):
         return calculation.topology.from_data(self._raw_data.topology)
