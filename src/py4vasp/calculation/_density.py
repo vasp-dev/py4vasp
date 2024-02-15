@@ -235,11 +235,7 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         tree = select.Tree.from_selection(selection)
         selections = self._filter_noncollinear_magnetization_from_selections(tree)
         viewer.grid_scalars = [
-            view.GridQuantity(
-                quantity=selector[selection][np.newaxis],
-                label=self._selection or "charge",
-                isosurfaces=self._isosurfaces(selector.label(selection), map_),
-            )
+            self._grid_quantity(selector, selection, map_, user_options)
             for selection in selections
         ]
         return viewer
@@ -274,14 +270,28 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         for key in _MAGNETIZATION:
             map_[key] = 1
 
-    def _isosurfaces(self, label, map_):
-        if self._use_symmetric_isosurface(label, map_):
-            pass
-        else:
-            return [view.Isosurface(isolevel=0.2, color=_config.VASP_CYAN, opacity=0.6)]
+    def _grid_quantity(self, selector, selection, map_, user_options):
+        component_label = selector.label(selection)
+        component = map_.get(component_label, -1)
+        default_label = "charge" if component == 0 else "magnetization"
+        label = self._selection or default_label
+        isosurfaces = self._isosurfaces(component, **user_options)
+        return view.GridQuantity(
+            quantity=selector[selection][np.newaxis],
+            label=label,
+            isosurfaces=isosurfaces,
+        )
 
-    def _use_symmetric_isosurface(self, label, map_):
-        component = map_.get(label, -1)
+    def _isosurfaces(self, component, isolevel=0.2, color=None, opacity=0.6):
+        if self._use_symmetric_isosurface(component):
+            return [
+                view.Isosurface(isolevel, _config.VASP_BLUE, opacity),
+                view.Isosurface(-isolevel, _config.VASP_RED, opacity),
+            ]
+        else:
+            return [view.Isosurface(isolevel, color or _config.VASP_CYAN, opacity)]
+
+    def _use_symmetric_isosurface(self, component):
         if component > 0 and self.is_nonpolarized():
             _raise_is_nonpolarized_error()
         if component > 1 and self.is_collinear():

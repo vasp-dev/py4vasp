@@ -1,7 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
-from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -39,16 +38,6 @@ def noncollinear_density(raw_data, density_source):
 def empty_density(raw_data):
     raw_density = raw.Density(raw_data.structure("Sr2TiO4"), charge=raw.VaspData(None))
     return calculation.density.from_data(raw_density)
-
-
-# @pytest.fixture
-# def mock_viewer():
-#     obj = viewer3d.Viewer3d
-#     cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
-#     cm_cell = patch.object(obj, "show_cell")
-#     cm_surface = patch.object(obj, "show_isosurface")
-#     with cm_init as init, cm_cell as cell, cm_surface as surface:
-#         yield {"init": init, "cell": cell, "surface": surface}
 
 
 def make_reference_density(raw_data, selection, source=None):
@@ -117,7 +106,7 @@ def test_empty_density(empty_density):
 def test_charge_plot(selection, reference_density, Assert):
     source = reference_density.ref.source
     if source == "charge":
-        expected_density = reference_density.ref.output["charge"].T
+        expected_density = reference_density.ref.output[source].T
     else:
         expected_density = reference_density.ref.output[source][0].T
     if selection:
@@ -130,13 +119,12 @@ def test_charge_plot(selection, reference_density, Assert):
     Assert.allclose(structure_view.positions, view.positions)
     assert len(view.grid_scalars) == 1
     grid_scalar = view.grid_scalars[0]
-    assert grid_scalar.label == reference_density.ref.source
+    assert grid_scalar.label == source
     assert grid_scalar.quantity.ndim == 4
     Assert.allclose(grid_scalar.quantity, expected_density)
     assert len(grid_scalar.isosurfaces) == 1
-    assert grid_scalar.isosurfaces[0] == Isosurface(
-        isolevel=0.2, color=_config.VASP_CYAN, opacity=0.6
-    )
+    isosurface = Isosurface(isolevel=0.2, color=_config.VASP_CYAN, opacity=0.6)
+    assert grid_scalar.isosurfaces[0] == isosurface
 
 
 def test_accessing_spin_raises_error(nonpolarized_density, not_core):
@@ -144,14 +132,14 @@ def test_accessing_spin_raises_error(nonpolarized_density, not_core):
         nonpolarized_density.plot("3")
 
 
-@pytest.mark.xfail
 @pytest.mark.parametrize(
     "selection", ["3", "sigma_z", "z", "sigma_3", "magnetization", "mag", "m"]
 )
-def test_collinear_plot(selection, collinear_density, mock_viewer, Assert, not_core):
+def test_collinear_plot(selection, collinear_density, Assert):
     source = collinear_density.ref.source
     if source == "charge":
-        expected_density = collinear_density.ref.output["magnetization"].T
+        source = "magnetization"
+        expected_density = collinear_density.ref.output[source].T
     else:
         expected_density = collinear_density.ref.output[source][1].T
         if selection in (
@@ -160,10 +148,21 @@ def test_collinear_plot(selection, collinear_density, mock_viewer, Assert, not_c
             "m",
         ):  # magnetization not allowed for tau
             return
-    result = collinear_density.plot(selection, isolevel=0.1, smooth=1)
-    assert isinstance(result, viewer3d.Viewer3d)
-    calls = mock_viewer["surface"].call_args_list
-    check_magnetization_plot(expected_density, calls, Assert)
+    view = collinear_density.plot(selection, isolevel=0.1)
+    structure_view = collinear_density.ref.structure.plot()
+    assert np.all(structure_view.elements == view.elements)
+    Assert.allclose(structure_view.lattice_vectors, view.lattice_vectors)
+    Assert.allclose(structure_view.positions, view.positions)
+    assert len(view.grid_scalars) == 1
+    grid_scalar = view.grid_scalars[0]
+    assert grid_scalar.label == source
+    assert grid_scalar.quantity.ndim == 4
+    Assert.allclose(grid_scalar.quantity, expected_density)
+    isosurfaces = [
+        Isosurface(isolevel=0.1, color=_config.VASP_BLUE, opacity=0.6),
+        Isosurface(isolevel=-0.1, color=_config.VASP_RED, opacity=0.6),
+    ]
+    assert grid_scalar.isosurfaces == isosurfaces
 
 
 def test_accessing_noncollinear_element_raises_error(collinear_density, not_core):
