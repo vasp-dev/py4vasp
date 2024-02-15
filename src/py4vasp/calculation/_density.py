@@ -32,8 +32,9 @@ def _raise_error_if_color_is_specified(**user_options):
 
 
 _DEFAULT = 0
+_INTERNAL = "_density"
 _COMPONENTS = {
-    0: ["0", "unity", "sigma_0", "scalar"],
+    0: ["0", "unity", "sigma_0", "scalar", _INTERNAL],
     1: ["1", "sigma_x", "x", "sigma_1"],
     2: ["2", "sigma_y", "y", "sigma_2"],
     3: ["3", "sigma_z", "z", "sigma_3"],
@@ -42,7 +43,7 @@ _MAGNETIZATION = ("magnetization", "mag", "m")
 
 
 def _join_with_emphasis(data):
-    emph_data = [f"*{x}*" for x in data]
+    emph_data = [f"*{x}*" for x in filter(lambda key: key != _INTERNAL, data)]
     if len(data) < 3:
         return " and ".join(emph_data)
     emph_data.insert(-1, "and")
@@ -195,7 +196,7 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         return np.moveaxis(self._raw_data.charge, 0, -1).T
 
     @_base.data_access
-    def to_view(self, selection="0", **user_options):
+    def to_view(self, selection=None, **user_options):
         """Plot the selected density as a 3d isosurface within the structure.
 
         Parameters
@@ -229,6 +230,7 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         >>> calc.density.plot("m(3)")
         """
         _raise_error_if_no_data(self._raw_data.charge)
+        selection = selection or _INTERNAL
         viewer = self._structure.plot()
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_data.charge)
@@ -273,14 +275,20 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
     def _grid_quantity(self, selector, selection, map_, user_options):
         component_label = selector.label(selection)
         component = map_.get(component_label, -1)
-        default_label = "charge" if component == 0 else "magnetization"
-        label = self._selection or default_label
-        isosurfaces = self._isosurfaces(component, **user_options)
+        print(component_label, self._selection, selection)
         return view.GridQuantity(
             quantity=selector[selection][np.newaxis],
-            label=label,
-            isosurfaces=isosurfaces,
+            label=self._label(component_label),
+            isosurfaces=self._isosurfaces(component, **user_options),
         )
+
+    def _label(self, component_label):
+        if component_label == _INTERNAL:
+            return self._selection or "charge"
+        elif self._selection:
+            return f"{self._selection}({component_label})"
+        else:
+            return component_label
 
     def _isosurfaces(self, component, isolevel=0.2, color=None, opacity=0.6):
         if self._use_symmetric_isosurface(component):

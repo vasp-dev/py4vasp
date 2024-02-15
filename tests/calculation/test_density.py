@@ -106,8 +106,10 @@ def test_empty_density(empty_density):
 def test_charge_plot(selection, reference_density, Assert):
     source = reference_density.ref.source
     if source == "charge":
+        expected_label = selection if selection else "charge"
         expected_density = reference_density.ref.output[source].T
     else:
+        expected_label = source + (f"({selection})" if selection else "")
         expected_density = reference_density.ref.output[source][0].T
     if selection:
         view = reference_density.plot(selection)
@@ -119,7 +121,7 @@ def test_charge_plot(selection, reference_density, Assert):
     Assert.allclose(structure_view.positions, view.positions)
     assert len(view.grid_scalars) == 1
     grid_scalar = view.grid_scalars[0]
-    assert grid_scalar.label == source
+    assert grid_scalar.label == expected_label
     assert grid_scalar.quantity.ndim == 4
     Assert.allclose(grid_scalar.quantity, expected_density)
     assert len(grid_scalar.isosurfaces) == 1
@@ -138,15 +140,13 @@ def test_accessing_spin_raises_error(nonpolarized_density, not_core):
 def test_collinear_plot(selection, collinear_density, Assert):
     source = collinear_density.ref.source
     if source == "charge":
-        source = "magnetization"
-        expected_density = collinear_density.ref.output[source].T
+        expected_label = selection
+        expected_density = collinear_density.ref.output["magnetization"].T
     else:
+        expected_label = f"{source}({selection})"
         expected_density = collinear_density.ref.output[source][1].T
-        if selection in (
-            "magnetization",
-            "mag",
-            "m",
-        ):  # magnetization not allowed for tau
+        if selection in ("magnetization","mag","m"):
+            # magnetization not allowed for tau
             return
     view = collinear_density.plot(selection, isolevel=0.1)
     structure_view = collinear_density.ref.structure.plot()
@@ -155,7 +155,7 @@ def test_collinear_plot(selection, collinear_density, Assert):
     Assert.allclose(structure_view.positions, view.positions)
     assert len(view.grid_scalars) == 1
     grid_scalar = view.grid_scalars[0]
-    assert grid_scalar.label == source
+    assert grid_scalar.label == expected_label
     assert grid_scalar.quantity.ndim == 4
     Assert.allclose(grid_scalar.quantity, expected_density)
     isosurfaces = [
@@ -170,7 +170,6 @@ def test_accessing_noncollinear_element_raises_error(collinear_density, not_core
         collinear_density.plot("1")
 
 
-@pytest.mark.xfail
 @pytest.mark.parametrize(
     "selections",
     [
@@ -185,34 +184,36 @@ def test_accessing_noncollinear_element_raises_error(collinear_density, not_core
         ),  # the magnetization label should be ignored
     ],
 )
-def test_plotting_noncollinear_density(
-    selections, noncollinear_density, mock_viewer, Assert, not_core
-):
+def test_plotting_noncollinear_density(selections, noncollinear_density, Assert):
     source = noncollinear_density.ref.source
     if source == "charge":
+        if "(" in selections[0]:  # magnetization filtered from selections
+            expected_labels = ("1", "2", "3")
+        else:
+            expected_labels = selections
+
         expected_density = noncollinear_density.ref.output["magnetization"]
     else:
+        expected_labels = (f"{source}({selection})" for selection in selections)
         expected_density = noncollinear_density.ref.output[source][1:]
         if "(" in selections[0]:  # magnetization not allowed for tau
             return
-    for component, selection in enumerate(selections):
-        result = noncollinear_density.plot(selection, isolevel=0.1, smooth=1)
-        assert isinstance(result, viewer3d.Viewer3d)
-        calls = mock_viewer["surface"].call_args_list
-        check_magnetization_plot(expected_density[component].T, calls, Assert)
-        mock_viewer["surface"].reset_mock()
-
-
-def check_magnetization_plot(magnetization, calls, Assert):
-    assert len(calls) == 2
-    args, kwargs = calls[0]
-    Assert.allclose(args[0], magnetization)
-    blue = _config.VASP_BLUE
-    assert kwargs == {"isolevel": 0.1, "color": blue, "opacity": 0.6, "smooth": 1}
-    args, kwargs = calls[1]
-    Assert.allclose(args[0], -magnetization)
-    red = _config.VASP_RED
-    assert kwargs == {"isolevel": 0.1, "color": red, "opacity": 0.6, "smooth": 1}
+    for selection, density, label in zip(selections, expected_density, expected_labels):
+        view = noncollinear_density.plot(selection, opacity=0.3)
+        structure_view = noncollinear_density.ref.structure.plot()
+        assert np.all(structure_view.elements == view.elements)
+        Assert.allclose(structure_view.lattice_vectors, view.lattice_vectors)
+        Assert.allclose(structure_view.positions, view.positions)
+        assert len(view.grid_scalars) == 1
+        grid_scalar = view.grid_scalars[0]
+        assert grid_scalar.label == label
+        assert grid_scalar.quantity.ndim == 4
+        Assert.allclose(grid_scalar.quantity, density.T)
+        isosurfaces = [
+            Isosurface(isolevel=0.2, color=_config.VASP_BLUE, opacity=0.3),
+            Isosurface(isolevel=-0.2, color=_config.VASP_RED, opacity=0.3),
+        ]
+        assert grid_scalar.isosurfaces == isosurfaces
 
 
 @pytest.mark.xfail
