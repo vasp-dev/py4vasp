@@ -151,8 +151,6 @@ def test_isosurface(view3d):
 
 
 def test_ion_arrows(view_arrow):
-    from pprint import pprint
-
     widget = view_arrow.to_ngl()
     for idx_traj in range(len(view_arrow.lattice_vectors)):
         for idx_ion, ion_arrow in enumerate(view_arrow.ref.ion_arrows):
@@ -160,7 +158,6 @@ def test_ion_arrows(view_arrow):
             expected_tail = ion_positions
             expected_tip = ion_arrow.quantity[idx_ion] + ion_positions
             idx_msg = idx_traj + 2 * idx_ion + 1
-            pprint(widget.get_state()["_ngl_msg_archive"])
             msg_archive = widget.get_state()["_ngl_msg_archive"][idx_msg]["args"][1][0]
             output_tail = msg_archive[1]
             output_tip = msg_archive[2][idx_ion]
