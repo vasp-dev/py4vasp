@@ -138,7 +138,7 @@ def test_ipython(mock_display, view):
 
 
 def test_isosurface(view3d):
-    widget = view3d.show_isosurface()
+    widget = view3d.to_ngl()
     assert widget.get_state()["_ngl_msg_archive"][1]["args"][0]["binary"] == False
     for idx in range(len(view3d.lattice_vectors)):
         for grid_scalar in view3d.ref.grid_scalars:
@@ -151,7 +151,7 @@ def test_isosurface(view3d):
 
 
 def test_ion_arrows(view_arrow):
-    widget = view_arrow.show_arrows_at_atoms()
+    widget = view_arrow.to_ngl()
     for idx_traj in range(len(view_arrow.lattice_vectors)):
         for idx_ion, ion_arrow in enumerate(view_arrow.ref.ion_arrows):
             ion_positions = view_arrow.positions[idx_traj]

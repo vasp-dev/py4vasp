@@ -76,10 +76,13 @@ class View:
             trajectory.append(atoms)
         ngl_trajectory = nglview.ASETrajectory(trajectory)
         widget = nglview.NGLWidget(ngl_trajectory)
+        if self.grid_scalars:
+            self.show_isosurface(widget)
+        if self.ion_arrows:
+            self.show_arrows_at_atoms(widget)
         return widget
 
-    def show_isosurface(self):
-        widget = self.to_ngl()
+    def show_isosurface(self, widget):
         iter_traj = list(range(len(self.lattice_vectors)))
         for grid_scalar, idx_traj in itertools.product(self.grid_scalars, iter_traj):
             atoms = self._create_atoms(idx_traj)
@@ -90,8 +93,7 @@ class View:
                 widget.add_component(filename)
         return widget
 
-    def show_arrows_at_atoms(self):
-        widget = self.to_ngl()
+    def show_arrows_at_atoms(self, widget):
         iter_traj = list(range(len(self.lattice_vectors)))
         for arrow, idx_traj in itertools.product(self.ion_arrows, iter_traj):
             tail = self.positions[idx_traj]
