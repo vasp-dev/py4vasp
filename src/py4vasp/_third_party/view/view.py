@@ -27,19 +27,30 @@ class _Arrow3d(NamedTuple):
 
 
 @dataclass
+class Isosurface:
+    isolevel: float
+    "The isosurface moves through points where the interpolated data has this value."
+    color: str
+    "Color with which the isosurface should be drawn"
+    opacity: float
+    "Amount of light blocked by the isosurface."
+
+
+@dataclass
 class GridQuantity:
     quantity: npt.ArrayLike
     """The quantity which is to be plotted as an isosurface"""
-    name: str
+    label: str
     """Name of the quantity"""
+    isosurfaces: Sequence[Isosurface]
 
 
 @dataclass
 class IonArrow:
     quantity: npt.ArrayLike
     """Vector quantity to be used to draw arrows at the ion positions"""
-    name: str
-    """Name of quantity"""
+    label: str
+    """Name of the quantity"""
 
 
 @dataclass
