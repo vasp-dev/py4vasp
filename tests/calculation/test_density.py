@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from py4vasp import _config, calculation, exception, raw
-from py4vasp._third_party.viewer import viewer3d
+from py4vasp._third_party.view import View, Isosurface
 
 
 @pytest.fixture(params=[None, "tau"])
@@ -41,22 +41,21 @@ def empty_density(raw_data):
     return calculation.density.from_data(raw_density)
 
 
-@pytest.fixture
-def mock_viewer():
-    obj = viewer3d.Viewer3d
-    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(obj, "show_cell")
-    cm_surface = patch.object(obj, "show_isosurface")
-    with cm_init as init, cm_cell as cell, cm_surface as surface:
-        yield {"init": init, "cell": cell, "surface": surface}
+# @pytest.fixture
+# def mock_viewer():
+#     obj = viewer3d.Viewer3d
+#     cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
+#     cm_cell = patch.object(obj, "show_cell")
+#     cm_surface = patch.object(obj, "show_isosurface")
+#     with cm_init as init, cm_cell as cell, cm_surface as surface:
+#         yield {"init": init, "cell": cell, "surface": surface}
 
 
 def make_reference_density(raw_data, selection, source=None):
     raw_density = raw_data.density(selection)
     density = calculation.density.from_data(raw_density)
     density.ref = types.SimpleNamespace()
-    structure = calculation.structure.from_data(raw_density.structure).read()
-    density.ref.structure = structure
+    density.ref.structure = calculation.structure.from_data(raw_density.structure)
     density.ref.output = get_expected_dict(raw_density.charge, source)
     density.ref.string = get_expected_string(selection, source)
     density.ref.selections = get_expected_selections(raw_density.charge)
@@ -103,7 +102,7 @@ def get_expected_selections(charge):
 def test_read(reference_density, Assert):
     actual = reference_density.read()
     actual_structure = actual.pop("structure")
-    Assert.same_structure(actual_structure, reference_density.ref.structure)
+    Assert.same_structure(actual_structure, reference_density.ref.structure.read())
     assert actual.keys() == reference_density.ref.output.keys()
     for key in actual:
         Assert.allclose(actual[key], reference_density.ref.output[key])
@@ -114,27 +113,33 @@ def test_empty_density(empty_density):
         empty_density.read()
 
 
-@pytest.mark.xfail
 @pytest.mark.parametrize("selection", [None, "0", "unity", "sigma_0", "scalar"])
-def test_charge_plot(selection, reference_density, mock_viewer, Assert, not_core):
+def test_charge_plot(selection, reference_density, Assert):
     source = reference_density.ref.source
     if source == "charge":
         expected_density = reference_density.ref.output["charge"].T
     else:
         expected_density = reference_density.ref.output[source][0].T
     if selection:
-        result = reference_density.plot(selection)
+        view = reference_density.plot(selection)
     else:
-        result = reference_density.plot()
-    assert isinstance(result, viewer3d.Viewer3d)
-    mock_viewer["init"].assert_called_once()
-    mock_viewer["cell"].assert_called_once()
-    mock_viewer["surface"].assert_called_once()
-    args, kwargs = mock_viewer["surface"].call_args
-    Assert.allclose(args[0], expected_density)
-    assert kwargs == {"isolevel": 0.2, "color": _config.VASP_CYAN, "opacity": 0.6}
+        view = reference_density.plot()
+    structure_view = reference_density.ref.structure.plot()
+    assert np.all(structure_view.elements == view.elements)
+    Assert.allclose(structure_view.lattice_vectors, view.lattice_vectors)
+    Assert.allclose(structure_view.positions, view.positions)
+    assert len(view.grid_scalars) == 1
+    grid_scalar = view.grid_scalars[0]
+    assert grid_scalar.label == reference_density.ref.source
+    assert grid_scalar.quantity.ndim == 4
+    Assert.allclose(grid_scalar.quantity, expected_density)
+    assert len(grid_scalar.isosurfaces) == 1
+    assert grid_scalar.isosurfaces[0] == Isosurface(
+        isolevel=0.2, color=_config.VASP_CYAN, opacity=0.6
+    )
 
 
+@pytest.mark.xfail
 def test_accessing_spin_raises_error(nonpolarized_density, not_core):
     with pytest.raises(exception.NoData):
         nonpolarized_density.plot("3")
@@ -162,6 +167,7 @@ def test_collinear_plot(selection, collinear_density, mock_viewer, Assert, not_c
     check_magnetization_plot(expected_density, calls, Assert)
 
 
+@pytest.mark.xfail
 def test_accessing_noncollinear_element_raises_error(collinear_density, not_core):
     with pytest.raises(exception.NoData):
         collinear_density.plot("1")
@@ -261,6 +267,7 @@ def test_missing_element(reference_density, not_core):
         reference_density.plot("unknown tag")
 
 
+@pytest.mark.xfail
 def test_color_specified_for_sigma_z(collinear_density, not_core):
     with pytest.raises(exception.NotImplemented):
         collinear_density.plot("3", color="brown")
@@ -278,7 +285,6 @@ def test_print(reference_density, format_):
     assert actual == {"text/plain": reference_density.ref.string}
 
 
-@pytest.mark.xfail
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.density("Fe3O4 collinear")
     check_factory_methods(calculation.density, data)

@@ -3,6 +3,7 @@
 import numpy as np
 
 from py4vasp import _config, calculation, exception
+from py4vasp._third_party import view
 from py4vasp._util import documentation, import_, index, select
 from py4vasp.calculation import _base, _structure
 
@@ -48,7 +49,7 @@ def _join_with_emphasis(data):
     return ", ".join(emph_data)
 
 
-class Density(_base.Refinery, _structure.Mixin):
+class Density(_base.Refinery, _structure.Mixin, view.Mixin):
     """This class accesses various densities (charge, magnetization, ...) of VASP.
 
     The charge density is one key quantity optimized by VASP. With this class you
@@ -194,7 +195,7 @@ class Density(_base.Refinery, _structure.Mixin):
         return np.moveaxis(self._raw_data.charge, 0, -1).T
 
     @_base.data_access
-    def plot(self, selection="0", **user_options):
+    def to_view(self, selection="0", **user_options):
         """Plot the selected density as a 3d isosurface within the structure.
 
         Parameters
@@ -213,7 +214,7 @@ class Density(_base.Refinery, _structure.Mixin):
 
         Returns
         -------
-        Viewer3d
+        View
             Visualize an isosurface of the density within the 3d structure.
 
         Examples
@@ -229,16 +230,26 @@ class Density(_base.Refinery, _structure.Mixin):
         """
         _raise_error_if_no_data(self._raw_data.charge)
         viewer = self._structure.plot()
-        wrapper = _ViewerWrapper(viewer)
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_data.charge)
         tree = select.Tree.from_selection(selection)
         selections = self._filter_noncollinear_magnetization_from_selections(tree)
-        for selection in selections:
-            label = selector.label(selection)
-            symmetric = self._use_symmetric_isosurface(label, map_)
-            wrapper.show_isosurface(selector[selection], symmetric, **user_options)
+        viewer.grid_scalars = [
+            view.GridQuantity(
+                quantity=selector[selection][np.newaxis],
+                label=self._selection or "charge",
+                isosurfaces=[
+                    view.Isosurface(isolevel=0.2, color=_config.VASP_CYAN, opacity=0.6)
+                ],
+            )
+            for selection in selections
+        ]
         return viewer
+        # for selection in selections:
+        #     label = selector.label(selection)
+        #     symmetric = self._use_symmetric_isosurface(label, map_)
+        #     wrapper.show_isosurface(selector[selection], symmetric, **user_options)
+        # return viewer
 
     def _filter_noncollinear_magnetization_from_selections(self, tree):
         if self._selection or not self.is_noncollinear():
