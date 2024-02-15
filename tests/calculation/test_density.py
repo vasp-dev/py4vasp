@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from py4vasp import _config, calculation, exception, raw
-from py4vasp._third_party.view import View, Isosurface
+from py4vasp._third_party.view import Isosurface, View
 
 
 @pytest.fixture(params=[None, "tau"])
@@ -139,7 +139,6 @@ def test_charge_plot(selection, reference_density, Assert):
     )
 
 
-@pytest.mark.xfail
 def test_accessing_spin_raises_error(nonpolarized_density, not_core):
     with pytest.raises(exception.NoData):
         nonpolarized_density.plot("3")
@@ -167,7 +166,6 @@ def test_collinear_plot(selection, collinear_density, mock_viewer, Assert, not_c
     check_magnetization_plot(expected_density, calls, Assert)
 
 
-@pytest.mark.xfail
 def test_accessing_noncollinear_element_raises_error(collinear_density, not_core):
     with pytest.raises(exception.NoData):
         collinear_density.plot("1")

@@ -238,18 +238,11 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
             view.GridQuantity(
                 quantity=selector[selection][np.newaxis],
                 label=self._selection or "charge",
-                isosurfaces=[
-                    view.Isosurface(isolevel=0.2, color=_config.VASP_CYAN, opacity=0.6)
-                ],
+                isosurfaces=self._isosurfaces(selector.label(selection), map_),
             )
             for selection in selections
         ]
         return viewer
-        # for selection in selections:
-        #     label = selector.label(selection)
-        #     symmetric = self._use_symmetric_isosurface(label, map_)
-        #     wrapper.show_isosurface(selector[selection], symmetric, **user_options)
-        # return viewer
 
     def _filter_noncollinear_magnetization_from_selections(self, tree):
         if self._selection or not self.is_noncollinear():
@@ -280,6 +273,12 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
             return
         for key in _MAGNETIZATION:
             map_[key] = 1
+
+    def _isosurfaces(self, label, map_):
+        if self._use_symmetric_isosurface(label, map_):
+            pass
+        else:
+            return [view.Isosurface(isolevel=0.2, color=_config.VASP_CYAN, opacity=0.6)]
 
     def _use_symmetric_isosurface(self, label, map_):
         component = map_.get(label, -1)
