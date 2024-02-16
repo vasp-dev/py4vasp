@@ -42,7 +42,7 @@ class GridQuantity:
     """The quantity which is to be plotted as an isosurface"""
     label: str
     """Name of the quantity"""
-    isosurfaces: Sequence[Isosurface]
+    isosurfaces: Sequence[Isosurface] = None
 
 
 @dataclass
@@ -102,13 +102,14 @@ class View:
                 filename = os.path.join(tmp, CUBE_FILENAME)
                 ase_cube.write_cube(open(filename, "w"), atoms=atoms, data=data)
                 widget.add_component(filename)
-        return widget
 
     def show_arrows_at_atoms(self, widget):
         iter_traj = list(range(len(self.lattice_vectors)))
-        for arrow, idx_traj in itertools.product(self.ion_arrows, iter_traj):
-            tail = self.positions[idx_traj]
-            tip = arrow.quantity + tail
-            arrow_3d = _Arrow3d(tail, tip)
-            widget.shape.add_arrow(*(arrow_3d.to_serializable()))
-        return widget
+        for _arrows, idx_traj in itertools.product(self.ion_arrows, iter_traj):
+            atoms = self._create_atoms(idx_traj)
+            arrows = _arrows.quantity[idx_traj]
+            positions = atoms.get_positions()
+            for arrow, tail in zip(arrows, positions):
+                tip = arrow + tail
+                arrow_3d = _Arrow3d(tail, tip)
+                widget.shape.add_arrow(*(arrow_3d.to_serializable()))

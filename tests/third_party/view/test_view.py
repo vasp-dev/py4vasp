@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
 import io
+import itertools
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -152,14 +153,20 @@ def test_isosurface(view3d):
 
 def test_ion_arrows(view_arrow):
     widget = view_arrow.to_ngl()
-    for idx_traj in range(len(view_arrow.lattice_vectors)):
-        for idx_ion, ion_arrow in enumerate(view_arrow.ref.ion_arrows):
-            ion_positions = view_arrow.positions[idx_traj]
-            expected_tail = ion_positions
-            expected_tip = ion_arrow.quantity[idx_ion] + ion_positions
-            idx_msg = idx_traj + 2 * idx_ion + 1
+    iter_traj = list(range(len(view_arrow.lattice_vectors)))
+    iter_ion_arrows = list(range(len(view_arrow.ref.ion_arrows)))
+    idx_msg = 1  # Start with the assumption that the structure has been tested
+    for idx_ion_arrows, idx_traj in itertools.product(iter_ion_arrows, iter_traj):
+        ion_arrows = view_arrow.ref.ion_arrows[idx_ion_arrows].quantity[idx_traj]
+        ion_positions = (
+            view_arrow.positions[idx_traj] @ view_arrow.lattice_vectors[idx_traj].T
+        )
+        for idx_pos, ion_position in enumerate(ion_positions):
+            expected_tail = ion_position
+            expected_tip = ion_position + ion_arrows[idx_pos]
             msg_archive = widget.get_state()["_ngl_msg_archive"][idx_msg]["args"][1][0]
             output_tail = msg_archive[1]
-            output_tip = msg_archive[2][idx_ion]
+            output_tip = msg_archive[2]
             assert np.allclose(expected_tip, output_tip)
             assert np.allclose(expected_tail, output_tail)
+            idx_msg += 1
