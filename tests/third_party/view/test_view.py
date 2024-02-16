@@ -178,3 +178,23 @@ def test_ion_arrows(view_arrow):
             assert np.allclose(expected_tip, output_tip)
             assert np.allclose(expected_tail, output_tail)
             idx_msg += 1
+
+
+@pytest.mark.parametrize("is_structure", [True, False])
+def test_supercell(is_structure):
+    inputs = base_input_view(is_structure)
+    supercell = (2, 2, 2)
+    inputs["supercell"] = supercell
+    view = View(**inputs)
+    widget = view.to_ngl()
+    for idx_traj in range(len(inputs["lattice_vectors"])):
+        atoms = ase.Atoms(
+            "".join(inputs["elements"][idx_traj]),
+            cell=inputs["lattice_vectors"][idx_traj],
+            scaled_positions=inputs["positions"][idx_traj],
+            pbc=True,
+        )
+        atoms = atoms.repeat(supercell)
+        output_coordinates = widget.trajectory_0.get_coordinates(idx_traj)
+        expected_coordinates = atoms.get_positions()
+        assert np.allclose(expected_coordinates, output_coordinates)

@@ -92,6 +92,7 @@ class View:
         atoms.cell = self.lattice_vectors[idx_traj]
         atoms.set_scaled_positions(self.positions[idx_traj])
         atoms.set_pbc(True)
+        atoms = atoms.repeat(self.supercell)
         return atoms
 
     def to_ngl(self):
