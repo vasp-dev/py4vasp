@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 import types
 
 import numpy as np
@@ -38,6 +39,13 @@ def noncollinear_density(raw_data, density_source):
 def empty_density(raw_data):
     raw_density = raw.Density(raw_data.structure("Sr2TiO4"), charge=raw.VaspData(None))
     return calculation.density.from_data(raw_density)
+
+
+@dataclasses.dataclass
+class Expectation:
+    label: str
+    density: np.ndarray
+    isosurfaces: list
 
 
 def make_reference_density(raw_data, selection, source=None):
@@ -105,31 +113,41 @@ def test_empty_density(empty_density):
 @pytest.mark.parametrize("selection", [None, "0", "unity", "sigma_0", "scalar"])
 def test_charge_plot(selection, reference_density, Assert):
     source = reference_density.ref.source
+    isosurfaces = [Isosurface(isolevel=0.2, color=_config.VASP_CYAN, opacity=0.6)]
     if source == "charge":
-        expected_label = selection if selection else "charge"
-        expected_density = reference_density.ref.output[source].T
+        expected = Expectation(
+            label=selection if selection else "charge",
+            density=reference_density.ref.output[source],
+            isosurfaces=isosurfaces,
+        )
     else:
-        expected_label = source + (f"({selection})" if selection else "")
-        expected_density = reference_density.ref.output[source][0].T
+        expected = Expectation(
+            label=source + (f"({selection})" if selection else ""),
+            density=reference_density.ref.output[source][0],
+            isosurfaces=isosurfaces,
+        )
     if selection:
-        view = reference_density.plot(selection)
+        check_view(reference_density, expected, Assert, selection=selection)
     else:
-        view = reference_density.plot()
-    structure_view = reference_density.ref.structure.plot()
+        check_view(reference_density, expected, Assert)
+
+
+def check_view(density, expected, Assert, **kwargs):
+    view = density.plot(**kwargs)
+    structure_view = density.ref.structure.plot()
     assert np.all(structure_view.elements == view.elements)
     Assert.allclose(structure_view.lattice_vectors, view.lattice_vectors)
     Assert.allclose(structure_view.positions, view.positions)
     assert len(view.grid_scalars) == 1
     grid_scalar = view.grid_scalars[0]
-    assert grid_scalar.label == expected_label
+    assert grid_scalar.label == expected.label
     assert grid_scalar.quantity.ndim == 4
-    Assert.allclose(grid_scalar.quantity, expected_density)
-    assert len(grid_scalar.isosurfaces) == 1
-    isosurface = Isosurface(isolevel=0.2, color=_config.VASP_CYAN, opacity=0.6)
-    assert grid_scalar.isosurfaces[0] == isosurface
+    Assert.allclose(grid_scalar.quantity, expected.density.T)
+    assert len(grid_scalar.isosurfaces) == len(expected.isosurfaces)
+    assert grid_scalar.isosurfaces == expected.isosurfaces
 
 
-def test_accessing_spin_raises_error(nonpolarized_density, not_core):
+def test_accessing_spin_raises_error(nonpolarized_density):
     with pytest.raises(exception.NoData):
         nonpolarized_density.plot("3")
 
@@ -139,33 +157,29 @@ def test_accessing_spin_raises_error(nonpolarized_density, not_core):
 )
 def test_collinear_plot(selection, collinear_density, Assert):
     source = collinear_density.ref.source
-    if source == "charge":
-        expected_label = selection
-        expected_density = collinear_density.ref.output["magnetization"].T
-    else:
-        expected_label = f"{source}({selection})"
-        expected_density = collinear_density.ref.output[source][1].T
-        if selection in ("magnetization", "mag", "m"):
-            # magnetization not allowed for tau
-            return
-    view = collinear_density.plot(selection, isolevel=0.1)
-    structure_view = collinear_density.ref.structure.plot()
-    assert np.all(structure_view.elements == view.elements)
-    Assert.allclose(structure_view.lattice_vectors, view.lattice_vectors)
-    Assert.allclose(structure_view.positions, view.positions)
-    assert len(view.grid_scalars) == 1
-    grid_scalar = view.grid_scalars[0]
-    assert grid_scalar.label == expected_label
-    assert grid_scalar.quantity.ndim == 4
-    Assert.allclose(grid_scalar.quantity, expected_density)
     isosurfaces = [
         Isosurface(isolevel=0.1, color=_config.VASP_BLUE, opacity=0.6),
         Isosurface(isolevel=-0.1, color=_config.VASP_RED, opacity=0.6),
     ]
-    assert grid_scalar.isosurfaces == isosurfaces
+    if source == "charge":
+        expected = Expectation(
+            label=selection,
+            density=collinear_density.ref.output["magnetization"],
+            isosurfaces=isosurfaces,
+        )
+    else:
+        expected = Expectation(
+            label=f"{source}({selection})",
+            density=collinear_density.ref.output[source][1],
+            isosurfaces=isosurfaces,
+        )
+        if selection in ("magnetization", "mag", "m"):
+            # magnetization not allowed for tau
+            return
+    check_view(collinear_density, expected, Assert, selection=selection, isolevel=0.1)
 
 
-def test_accessing_noncollinear_element_raises_error(collinear_density, not_core):
+def test_accessing_noncollinear_element_raises_error(collinear_density):
     with pytest.raises(exception.NoData):
         collinear_density.plot("1")
 
@@ -198,22 +212,14 @@ def test_plotting_noncollinear_density(selections, noncollinear_density, Assert)
         expected_density = noncollinear_density.ref.output[source][1:]
         if "(" in selections[0]:  # magnetization not allowed for tau
             return
+    isosurfaces = [
+        Isosurface(isolevel=0.2, color=_config.VASP_BLUE, opacity=0.3),
+        Isosurface(isolevel=-0.2, color=_config.VASP_RED, opacity=0.3),
+    ]
     for selection, density, label in zip(selections, expected_density, expected_labels):
-        view = noncollinear_density.plot(selection, opacity=0.3)
-        structure_view = noncollinear_density.ref.structure.plot()
-        assert np.all(structure_view.elements == view.elements)
-        Assert.allclose(structure_view.lattice_vectors, view.lattice_vectors)
-        Assert.allclose(structure_view.positions, view.positions)
-        assert len(view.grid_scalars) == 1
-        grid_scalar = view.grid_scalars[0]
-        assert grid_scalar.label == label
-        assert grid_scalar.quantity.ndim == 4
-        Assert.allclose(grid_scalar.quantity, density.T)
-        isosurfaces = [
-            Isosurface(isolevel=0.2, color=_config.VASP_BLUE, opacity=0.3),
-            Isosurface(isolevel=-0.2, color=_config.VASP_RED, opacity=0.3),
-        ]
-        assert grid_scalar.isosurfaces == isosurfaces
+        expected = Expectation(label, density, isosurfaces)
+        kwargs = {"selection": selection, "opacity": 0.3}
+        check_view(noncollinear_density, expected, Assert, **kwargs)
 
 
 def test_adding_components(noncollinear_density, Assert):
@@ -224,19 +230,12 @@ def test_adding_components(noncollinear_density, Assert):
     else:
         expected_label = f"{source}(1 + 2)"
         expected_density = noncollinear_density.ref.output[source][1:]
-    expected_density = expected_density[0] + expected_density[1]
-    view = noncollinear_density.plot("1 + 2", isolevel=0.4)
-    structure_view = noncollinear_density.ref.structure.plot()
-    assert np.all(structure_view.elements == view.elements)
-    Assert.allclose(structure_view.lattice_vectors, view.lattice_vectors)
-    Assert.allclose(structure_view.positions, view.positions)
-    assert len(view.grid_scalars) == 1
-    grid_scalar = view.grid_scalars[0]
-    assert grid_scalar.label == expected_label
-    assert grid_scalar.quantity.ndim == 4
-    Assert.allclose(grid_scalar.quantity, expected_density.T)
-    isosurfaces = [Isosurface(isolevel=0.4, color=_config.VASP_CYAN, opacity=0.6)]
-    assert grid_scalar.isosurfaces == isosurfaces
+    expected = Expectation(
+        label=expected_label,
+        density=expected_density[0] + expected_density[1],
+        isosurfaces=[Isosurface(isolevel=0.4, color=_config.VASP_CYAN, opacity=0.6)],
+    )
+    check_view(noncollinear_density, expected, Assert, selection="1 + 2", isolevel=0.4)
 
 
 def test_to_numpy(reference_density, Assert):
@@ -267,18 +266,18 @@ def test_selections_empty_density(empty_density):
     assert empty_density.selections() == {"density": list(raw.selections("density"))}
 
 
-def test_missing_element(reference_density, not_core):
+def test_missing_element(reference_density):
     with pytest.raises(exception.IncorrectUsage):
         reference_density.plot("unknown tag")
 
 
-def test_color_specified_for_sigma_z(collinear_density, not_core):
+def test_color_specified_for_sigma_z(collinear_density):
     with pytest.raises(exception.NotImplemented):
         collinear_density.plot("3", color="brown")
 
 
 @pytest.mark.parametrize("selection", ("m", "mag", "magnetization"))
-def test_magnetization_without_component(selection, raw_data, not_core):
+def test_magnetization_without_component(selection, raw_data):
     data = raw_data.density("Fe3O4 noncollinear")
     with pytest.raises(exception.IncorrectUsage):
         calculation.density.from_data(data).plot(selection)
