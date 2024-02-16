@@ -272,7 +272,6 @@ def test_missing_element(reference_density, not_core):
         reference_density.plot("unknown tag")
 
 
-@pytest.mark.xfail
 def test_color_specified_for_sigma_z(collinear_density, not_core):
     with pytest.raises(exception.NotImplemented):
         collinear_density.plot("3", color="brown")

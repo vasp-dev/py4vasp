@@ -10,27 +10,6 @@ from py4vasp.calculation import _base, _structure
 pretty = import_.optional("IPython.lib.pretty")
 
 
-class _ViewerWrapper:
-    def __init__(self, viewer):
-        self._viewer = viewer
-        self._options = {"isolevel": 0.2, "opacity": 0.6}
-
-    def show_isosurface(self, data, symmetric, **options):
-        options = {**self._options, **options}
-        if symmetric:
-            _raise_error_if_color_is_specified(**options)
-            self._viewer.show_isosurface(data, color=_config.VASP_BLUE, **options)
-            self._viewer.show_isosurface(-data, color=_config.VASP_RED, **options)
-        else:
-            self._viewer.show_isosurface(data, color=_config.VASP_CYAN, **options)
-
-
-def _raise_error_if_color_is_specified(**user_options):
-    if "color" in user_options:
-        msg = "Specifying the color of a magnetic isosurface is not implemented."
-        raise exception.NotImplemented(msg)
-
-
 _DEFAULT = 0
 _INTERNAL = "_density"
 _COMPONENTS = {
@@ -291,6 +270,7 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
 
     def _isosurfaces(self, component, isolevel=0.2, color=None, opacity=0.6):
         if self._use_symmetric_isosurface(component):
+            _raise_error_if_color_is_specified(color)
             return [
                 view.Isosurface(isolevel, _config.VASP_BLUE, opacity),
                 view.Isosurface(-isolevel, _config.VASP_RED, opacity),
@@ -328,6 +308,12 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
             "kinetic_energy_density": "tau",
         }
         return selection_map.get(super()._selection)
+
+
+def _raise_error_if_color_is_specified(color):
+    if color is not None:
+        msg = "Specifying the color of a magnetic isosurface is not implemented."
+        raise exception.NotImplemented(msg)
 
 
 def _raise_component_not_specified_error(selec_tuple):
