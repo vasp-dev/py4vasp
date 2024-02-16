@@ -100,16 +100,12 @@ def test_read(reference_potential, Assert):
 
 def test_plot_total_potential(reference_potential, Assert):
     view = reference_potential.plot()
-    expected_view = reference_potential.ref.structure.plot()
-    Assert.same_structure_view(view, expected_view)
-    assert len(view.grid_scalars) == 1
-    grid_scalar = view.grid_scalars[0]
-    assert grid_scalar.label == "total potential"
-    assert grid_scalar.quantity.ndim == 4
-    Assert.allclose(grid_scalar.quantity, reference_potential.ref.output["total"].T)
-    assert len(grid_scalar.isosurfaces) == 1
-    isosurface = Isosurface(isolevel=0, color=_config.VASP_CYAN, opacity=0.6)
-    assert grid_scalar.isosurfaces[0] == isosurface
+    expectation = Expectation(
+        label="total potential",
+        potential=reference_potential.ref.output["total"],
+        isosurface=Isosurface(isolevel=0, color=_config.VASP_CYAN, opacity=0.6),
+    )
+    check_view(reference_potential, view, [expectation], Assert)
 
 
 def test_plot_selected_potential(reference_potential, Assert):
@@ -118,32 +114,24 @@ def test_plot_selected_potential(reference_potential, Assert):
     else:
         selection = "total"
     view = reference_potential.plot(selection, isolevel=0.2)
-    expected_view = reference_potential.ref.structure.plot()
-    Assert.same_structure_view(view, expected_view)
-    assert len(view.grid_scalars) == 1
-    grid_scalar = view.grid_scalars[0]
-    assert grid_scalar.label == f"{selection} potential"
-    assert grid_scalar.quantity.ndim == 4
-    Assert.allclose(grid_scalar.quantity, reference_potential.ref.output[selection].T)
-    assert len(grid_scalar.isosurfaces) == 1
-    isosurface = Isosurface(isolevel=0.2, color=_config.VASP_CYAN, opacity=0.6)
-    assert grid_scalar.isosurfaces[0] == isosurface
+    expectation = Expectation(
+        label=f"{selection} potential",
+        potential=reference_potential.ref.output[selection],
+        isosurface=Isosurface(isolevel=0.2, color=_config.VASP_CYAN, opacity=0.6),
+    )
+    check_view(reference_potential, view, [expectation], Assert)
 
 
 @pytest.mark.parametrize("selection", ["up", "down"])
 def test_plot_spin_potential(raw_data, selection, Assert):
     potential = make_reference_potential(raw_data, "Fe3O4 collinear", "total")
     view = potential.plot(selection, opacity=0.3)
-    expected_view = potential.ref.structure.plot()
-    Assert.same_structure_view(view, expected_view)
-    assert len(view.grid_scalars) == 1
-    grid_scalar = view.grid_scalars[0]
-    assert grid_scalar.label == f"total potential({selection})"
-    assert grid_scalar.quantity.ndim == 4
-    Assert.allclose(grid_scalar.quantity, potential.ref.output[f"total_{selection}"].T)
-    assert len(grid_scalar.isosurfaces) == 1
-    isosurface = Isosurface(isolevel=0.0, color=_config.VASP_CYAN, opacity=0.3)
-    assert grid_scalar.isosurfaces[0] == isosurface
+    expectation = Expectation(
+        label=f"total potential({selection})",
+        potential=potential.ref.output[f"total_{selection}"],
+        isosurface=Isosurface(isolevel=0.0, color=_config.VASP_CYAN, opacity=0.3),
+    )
+    check_view(potential, view, [expectation], Assert)
 
 
 def test_plot_multiple_selections(raw_data, Assert):
@@ -167,6 +155,10 @@ def test_plot_multiple_selections(raw_data, Assert):
             isosurface=isosurface,
         ),
     ]
+    check_view(potential, view, expectations, Assert)
+
+
+def check_view(potential, view, expectations, Assert):
     expected_view = potential.ref.structure.plot()
     Assert.same_structure_view(view, expected_view)
     assert len(view.grid_scalars) == len(expectations)
