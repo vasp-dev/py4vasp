@@ -158,8 +158,20 @@ def test_plot_multiple_selections(raw_data, Assert):
     check_view(potential, view, expectations, Assert)
 
 
-def check_view(potential, view, expectations, Assert):
-    expected_view = potential.ref.structure.plot()
+@pytest.mark.parametrize("supercell", [2, (3, 2, 1)])
+def test_plot_supercell(raw_data, supercell, Assert):
+    potential = make_reference_potential(raw_data, "Sr2TiO4", "total")
+    view = potential.plot(supercell=supercell)
+    expectation = Expectation(
+        label="total potential",
+        potential=potential.ref.output[f"total"],
+        isosurface=Isosurface(isolevel=0, color=_config.VASP_CYAN, opacity=0.6),
+    )
+    check_view(potential, view, [expectation], Assert, supercell=supercell)
+
+
+def check_view(potential, view, expectations, Assert, supercell=None):
+    expected_view = potential.ref.structure.plot(supercell)
     Assert.same_structure_view(view, expected_view)
     assert len(view.grid_scalars) == len(expectations)
     for grid_scalar, expected in zip(view.grid_scalars, expectations):

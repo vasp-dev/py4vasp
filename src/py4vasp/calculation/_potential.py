@@ -79,13 +79,17 @@ class Potential(_base.Refinery, _structure.Mixin, view.Mixin):
             yield f"{kind}_magnetization", potential[1:]
 
     @_base.data_access
-    def to_view(self, selection="total", **user_options):
+    def to_view(self, selection="total", supercell=None, **user_options):
         """Plot an isosurface of a selected potential.
 
         Parameters
         ----------
         selection : str
             Select the kind of potential of which you want the isosurface.
+
+        supercell : int or np.ndarray
+            If present the data is replicated the specified number of times along each
+            direction.
 
         user_options
             Further arguments with keyword that get directly passed on to the
@@ -97,7 +101,7 @@ class Potential(_base.Refinery, _structure.Mixin, view.Mixin):
         View
             A visualization of the potential isosurface within the crystal structure.
         """
-        viewer = self._structure.plot()
+        viewer = self._structure.plot(supercell)
         viewer.grid_scalars = [
             self._create_potential_isosurface(kind, component, **user_options)
             for kind, component in _parse_selection(selection)
