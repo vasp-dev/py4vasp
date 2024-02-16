@@ -201,7 +201,7 @@ def test_supercell(is_structure):
 
 
 @pytest.mark.parametrize("is_structure", [True, False])
-def test_supercell(is_structure):
+def test_showcell(is_structure):
     inputs = base_input_view(is_structure)
     inputs["show_cell"] = True
     view = View(**inputs)
