@@ -99,8 +99,8 @@ class Potential(_base.Refinery, _structure.Mixin, view.Mixin):
         """
         viewer = self._structure.plot()
         viewer.grid_scalars = [
-            self._create_potential_isosurface(kind, component)
-            for kind, component in _parse_selection(selection, **user_options)
+            self._create_potential_isosurface(kind, component, **user_options)
+            for kind, component in _parse_selection(selection)
         ]
         return viewer
 
@@ -118,7 +118,7 @@ class Potential(_base.Refinery, _structure.Mixin, view.Mixin):
             potential = potential_data[0]
         return view.GridQuantity(
             quantity=potential[np.newaxis],
-            label=component or "total",
+            label=f"{kind} potential",
             isosurfaces=[view.Isosurface(isolevel, color, opacity)],
         )
 

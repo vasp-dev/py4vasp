@@ -97,7 +97,7 @@ def test_plot_total_potential(reference_potential, Assert):
     Assert.same_structure_view(view, expected_view)
     assert len(view.grid_scalars) == 1
     grid_scalar = view.grid_scalars[0]
-    assert grid_scalar.label == "total"
+    assert grid_scalar.label == "total potential"
     assert grid_scalar.quantity.ndim == 4
     Assert.allclose(grid_scalar.quantity, reference_potential.ref.output["total"].T)
     assert len(grid_scalar.isosurfaces) == 1
@@ -105,24 +105,38 @@ def test_plot_total_potential(reference_potential, Assert):
     assert grid_scalar.isosurfaces[0] == isosurface
 
 
-@pytest.mark.xfail
 def test_plot_selected_potential(reference_potential, Assert):
-    obj = viewer3d.Viewer3d
-    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(obj, "show_cell")
-    cm_surface = patch.object(obj, "show_isosurface")
     if reference_potential.ref.included_kinds in ("hartree", "ionic", "xc"):
         selection = reference_potential.ref.included_kinds
     else:
         selection = "total"
-    with cm_init as init, cm_cell as cell, cm_surface as surface:
-        reference_potential.plot(selection, isolevel=0.2)
-        init.assert_called_once()
-        cell.assert_called_once()
-        surface.assert_called_once()
-        args, kwargs = surface.call_args
-    Assert.allclose(args[0], reference_potential.ref.output[selection].T)
-    assert kwargs == {"isolevel": 0.2, "color": _config.VASP_CYAN, "opacity": 0.6}
+    view = reference_potential.plot(selection, isolevel=0.2)
+    expected_view = reference_potential.ref.structure.plot()
+    Assert.same_structure_view(view, expected_view)
+    assert len(view.grid_scalars) == 1
+    grid_scalar = view.grid_scalars[0]
+    assert grid_scalar.label == f"{selection} potential"
+    assert grid_scalar.quantity.ndim == 4
+    Assert.allclose(grid_scalar.quantity, reference_potential.ref.output[selection].T)
+    assert len(grid_scalar.isosurfaces) == 1
+    isosurface = Isosurface(isolevel=0.2, color=_config.VASP_CYAN, opacity=0.6)
+    assert grid_scalar.isosurfaces[0] == isosurface
+    # obj = viewer3d.Viewer3d
+    # cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
+    # cm_cell = patch.object(obj, "show_cell")
+    # cm_surface = patch.object(obj, "show_isosurface")
+    # if reference_potential.ref.included_kinds in ("hartree", "ionic", "xc"):
+    #     selection = reference_potential.ref.included_kinds
+    # else:
+    #     selection = "total"
+    # with cm_init as init, cm_cell as cell, cm_surface as surface:
+    #     reference_potential.plot(selection, isolevel=0.2)
+    #     init.assert_called_once()
+    #     cell.assert_called_once()
+    #     surface.assert_called_once()
+    #     args, kwargs = surface.call_args
+    # Assert.allclose(args[0], reference_potential.ref.output[selection].T)
+    # assert kwargs == {"isolevel": 0.2, "color": _config.VASP_CYAN, "opacity": 0.6}
 
 
 @pytest.mark.xfail
