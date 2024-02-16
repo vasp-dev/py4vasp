@@ -134,10 +134,11 @@ def test_charge_plot(selection, reference_density, Assert):
 
 def check_view(density, expected, Assert, **kwargs):
     view = density.plot(**kwargs)
-    structure_view = density.ref.structure.plot()
+    structure_view = density.ref.structure.plot(kwargs.get("supercell"))
     assert np.all(structure_view.elements == view.elements)
     Assert.allclose(structure_view.lattice_vectors, view.lattice_vectors)
     Assert.allclose(structure_view.positions, view.positions)
+    Assert.allclose(structure_view.supercell, view.supercell)
     assert len(view.grid_scalars) == 1
     grid_scalar = view.grid_scalars[0]
     assert grid_scalar.label == expected.label
@@ -236,6 +237,25 @@ def test_adding_components(noncollinear_density, Assert):
         isosurfaces=[Isosurface(isolevel=0.4, color=_config.VASP_CYAN, opacity=0.6)],
     )
     check_view(noncollinear_density, expected, Assert, selection="1 + 2", isolevel=0.4)
+
+
+@pytest.mark.parametrize("supercell", [2, (3, 2, 1)])
+def test_plotting_supercell(supercell, reference_density, Assert):
+    source = reference_density.ref.source
+    isosurfaces = [Isosurface(isolevel=0.2, color=_config.VASP_CYAN, opacity=0.6)]
+    if source == "charge":
+        expected = Expectation(
+            label=source,
+            density=reference_density.ref.output[source],
+            isosurfaces=isosurfaces,
+        )
+    else:
+        expected = Expectation(
+            label=source,
+            density=reference_density.ref.output[source][0],
+            isosurfaces=isosurfaces,
+        )
+    check_view(reference_density, expected, Assert, supercell=supercell)
 
 
 def test_to_numpy(reference_density, Assert):

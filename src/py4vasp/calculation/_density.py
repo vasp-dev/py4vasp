@@ -175,7 +175,7 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         return np.moveaxis(self._raw_data.charge, 0, -1).T
 
     @_base.data_access
-    def to_view(self, selection=None, **user_options):
+    def to_view(self, selection=None, supercell=None, **user_options):
         """Plot the selected density as a 3d isosurface within the structure.
 
         Parameters
@@ -186,6 +186,10 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
             4 components which can be represented in a 2x2 matrix. Specify the
             component of the density in terms of the Pauli matrices: sigma_1,
             sigma_2, sigma_3.
+
+        supercell : int or np.ndarray
+            If present the data is replicated the specified number of times along each
+            direction.
 
         user_options
             Further arguments with keyword that get directly passed on to the
@@ -210,7 +214,7 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         """
         _raise_error_if_no_data(self._raw_data.charge)
         selection = selection or _INTERNAL
-        viewer = self._structure.plot()
+        viewer = self._structure.plot(supercell)
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_data.charge)
         tree = select.Tree.from_selection(selection)
