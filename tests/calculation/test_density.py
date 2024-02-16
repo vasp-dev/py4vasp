@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from py4vasp import _config, calculation, exception, raw
-from py4vasp._third_party.view import Isosurface, View
+from py4vasp._third_party.view import Isosurface
 
 
 @pytest.fixture(params=[None, "tau"])
@@ -134,11 +134,8 @@ def test_charge_plot(selection, reference_density, Assert):
 
 def check_view(density, expected, Assert, **kwargs):
     view = density.plot(**kwargs)
-    structure_view = density.ref.structure.plot(kwargs.get("supercell"))
-    assert np.all(structure_view.elements == view.elements)
-    Assert.allclose(structure_view.lattice_vectors, view.lattice_vectors)
-    Assert.allclose(structure_view.positions, view.positions)
-    Assert.allclose(structure_view.supercell, view.supercell)
+    expected_view = density.ref.structure.plot(kwargs.get("supercell"))
+    Assert.same_structure_view(view, expected_view)
     assert len(view.grid_scalars) == 1
     grid_scalar = view.grid_scalars[0]
     assert grid_scalar.label == expected.label
