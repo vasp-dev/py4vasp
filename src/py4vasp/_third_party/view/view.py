@@ -67,6 +67,11 @@ class IonArrow:
     """Name of the quantity"""
 
 
+_x_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((3, 0, 0)), color=[1, 0, 0])
+_y_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((0, 3, 0)), color=[0, 1, 0])
+_z_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((0, 0, 3)), color=[0, 0, 1])
+
+
 @dataclass
 class View:
     elements: npt.ArrayLike
@@ -83,6 +88,7 @@ class View:
     "Defines how many multiple of the cell are drawn along each of the coordinate axis."
     show_cell: bool = True
     """Defines if a cell is shown in ngl."""
+    show_axes: bool = True
 
     def _ipython_display_(self):
         widget = self.to_ngl()
@@ -110,6 +116,14 @@ class View:
             self.show_arrows_at_atoms(widget)
         if self.show_cell:
             widget.add_unitcell()
+        if self.show_axes:
+            _, transformation = atoms.cell.standard_form()
+            x_axis = _rotate(_x_axis, transformation)
+            y_axis = _rotate(_y_axis, transformation)
+            z_axis = _rotate(_z_axis, transformation)
+            widget.shape.add_arrow(*(x_axis.to_serializable()))
+            widget.shape.add_arrow(*(y_axis.to_serializable()))
+            widget.shape.add_arrow(*(z_axis.to_serializable()))
         return widget
 
     def show_isosurface(self, widget):

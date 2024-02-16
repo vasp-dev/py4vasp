@@ -207,3 +207,16 @@ def test_showcell(is_structure):
     view = View(**inputs)
     widget = view.to_ngl()
     assert widget.get_state()["_ngl_msg_archive"][1]["args"][0] == "unitcell"
+
+
+@pytest.mark.parametrize("is_structure", [True, False])
+def test_showaxes(is_structure):
+    inputs = base_input_view(is_structure)
+    inputs["show_axes"] = True
+    view = View(**inputs)
+    widget = view.to_ngl()
+    assert len(widget.get_state()["_ngl_msg_archive"]) > 2
+    for idx_msg, msg in enumerate(widget.get_state()["_ngl_msg_archive"]):
+        if idx_msg > 2:
+            assert msg["args"][1][0][0] == "arrow"
+    assert idx_msg == 4
