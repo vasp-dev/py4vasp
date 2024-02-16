@@ -19,11 +19,25 @@ CUBE_FILENAME = "quantity.cube"
 
 
 class _Arrow3d(NamedTuple):
-    tail: np.ndarray
-    tip: np.ndarray
+    tail: npt.ArrayLike
+    """Tail, which is usually the atom centers"""
+    tip: npt.ArrayLike
+    """Tip, which is usually the atom centers + arrows"""
+    color: npt.ArrayLike = [1, 1, 1]
+    """Color of each arrow"""
+    radius: float = 0.2
 
     def to_serializable(self):
-        return list(self.tail), list(self.tip)
+        return list(self.tail), list(self.tip), list(self.color), self.radius
+
+
+def _rotate(arrow, transformation):
+    return _Arrow3d(
+        transformation @ arrow.tail,
+        transformation @ arrow.tip,
+        arrow.color,
+        arrow.radius,
+    )
 
 
 @dataclass
@@ -107,9 +121,10 @@ class View:
         iter_traj = list(range(len(self.lattice_vectors)))
         for _arrows, idx_traj in itertools.product(self.ion_arrows, iter_traj):
             atoms = self._create_atoms(idx_traj)
+            _, transformation = atoms.cell.standard_form()
             arrows = _arrows.quantity[idx_traj]
             positions = atoms.get_positions()
             for arrow, tail in zip(arrows, positions):
                 tip = arrow + tail
-                arrow_3d = _Arrow3d(tail, tip)
+                arrow_3d = _rotate(_Arrow3d(tail, tip), transformation)
                 widget.shape.add_arrow(*(arrow_3d.to_serializable()))

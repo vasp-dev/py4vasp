@@ -10,10 +10,11 @@ import numpy as np
 import pytest
 
 from py4vasp._third_party.view import View
-from py4vasp._third_party.view.view import GridQuantity, IonArrow
+from py4vasp._third_party.view.view import GridQuantity, IonArrow, _rotate
 from py4vasp._util import import_
 from py4vasp.calculation._structure import Structure
 
+ase = import_.optional("ase")
 ase_cube = import_.optional("ase.io.cube")
 
 
@@ -157,13 +158,20 @@ def test_ion_arrows(view_arrow):
     iter_ion_arrows = list(range(len(view_arrow.ref.ion_arrows)))
     idx_msg = 1  # Start with the assumption that the structure has been tested
     for idx_ion_arrows, idx_traj in itertools.product(iter_ion_arrows, iter_traj):
-        ion_arrows = view_arrow.ref.ion_arrows[idx_ion_arrows].quantity[idx_traj]
-        ion_positions = (
-            view_arrow.positions[idx_traj] @ view_arrow.lattice_vectors[idx_traj].T
+        atoms = ase.Atoms(
+            "".join(view_arrow.elements[idx_traj]),
+            cell=view_arrow.lattice_vectors[idx_traj],
+            scaled_positions=view_arrow.positions[idx_traj],
+            pbc=True,
         )
+        ion_positions = atoms.get_positions()
+        _, transformation = atoms.cell.standard_form()
+        ion_arrows = view_arrow.ref.ion_arrows[idx_ion_arrows].quantity[idx_traj]
         for idx_pos, ion_position in enumerate(ion_positions):
             expected_tail = ion_position
             expected_tip = ion_position + ion_arrows[idx_pos]
+            expected_tail = transformation @ expected_tail
+            expected_tip = transformation @ expected_tip
             msg_archive = widget.get_state()["_ngl_msg_archive"][idx_msg]["args"][1][0]
             output_tail = msg_archive[1]
             output_tip = msg_archive[2]
