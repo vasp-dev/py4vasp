@@ -198,3 +198,12 @@ def test_supercell(is_structure):
         output_coordinates = widget.trajectory_0.get_coordinates(idx_traj)
         expected_coordinates = atoms.get_positions()
         assert np.allclose(expected_coordinates, output_coordinates)
+
+
+@pytest.mark.parametrize("is_structure", [True, False])
+def test_supercell(is_structure):
+    inputs = base_input_view(is_structure)
+    inputs["show_cell"] = True
+    view = View(**inputs)
+    widget = view.to_ngl()
+    assert widget.get_state()["_ngl_msg_archive"][1]["args"][0] == "unitcell"

@@ -81,6 +81,8 @@ class View:
     """This sequence stores arrows at the atom-centers."""
     supercell: npt.ArrayLike = (1, 1, 1)
     "Defines how many multiple of the cell are drawn along each of the coordinate axis."
+    show_cell: bool = True
+    """Defines if a cell is shown in ngl."""
 
     def _ipython_display_(self):
         widget = self.to_ngl()
@@ -106,6 +108,8 @@ class View:
             self.show_isosurface(widget)
         if self.ion_arrows:
             self.show_arrows_at_atoms(widget)
+        if self.show_cell:
+            widget.add_unitcell()
         return widget
 
     def show_isosurface(self, widget):
