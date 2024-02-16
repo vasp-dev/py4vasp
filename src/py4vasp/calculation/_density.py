@@ -3,36 +3,17 @@
 import numpy as np
 
 from py4vasp import _config, calculation, exception
+from py4vasp._third_party import view
 from py4vasp._util import documentation, import_, index, select
 from py4vasp.calculation import _base, _structure
 
 pretty = import_.optional("IPython.lib.pretty")
 
 
-class _ViewerWrapper:
-    def __init__(self, viewer):
-        self._viewer = viewer
-        self._options = {"isolevel": 0.2, "opacity": 0.6}
-
-    def show_isosurface(self, data, symmetric, **options):
-        options = {**self._options, **options}
-        if symmetric:
-            _raise_error_if_color_is_specified(**options)
-            self._viewer.show_isosurface(data, color=_config.VASP_BLUE, **options)
-            self._viewer.show_isosurface(-data, color=_config.VASP_RED, **options)
-        else:
-            self._viewer.show_isosurface(data, color=_config.VASP_CYAN, **options)
-
-
-def _raise_error_if_color_is_specified(**user_options):
-    if "color" in user_options:
-        msg = "Specifying the color of a magnetic isosurface is not implemented."
-        raise exception.NotImplemented(msg)
-
-
 _DEFAULT = 0
+_INTERNAL = "_density"
 _COMPONENTS = {
-    0: ["0", "unity", "sigma_0", "scalar"],
+    0: ["0", "unity", "sigma_0", "scalar", _INTERNAL],
     1: ["1", "sigma_x", "x", "sigma_1"],
     2: ["2", "sigma_y", "y", "sigma_2"],
     3: ["3", "sigma_z", "z", "sigma_3"],
@@ -41,14 +22,14 @@ _MAGNETIZATION = ("magnetization", "mag", "m")
 
 
 def _join_with_emphasis(data):
-    emph_data = [f"*{x}*" for x in data]
+    emph_data = [f"*{x}*" for x in filter(lambda key: key != _INTERNAL, data)]
     if len(data) < 3:
         return " and ".join(emph_data)
     emph_data.insert(-1, "and")
     return ", ".join(emph_data)
 
 
-class Density(_base.Refinery, _structure.Mixin):
+class Density(_base.Refinery, _structure.Mixin, view.Mixin):
     """This class accesses various densities (charge, magnetization, ...) of VASP.
 
     The charge density is one key quantity optimized by VASP. With this class you
@@ -194,7 +175,7 @@ class Density(_base.Refinery, _structure.Mixin):
         return np.moveaxis(self._raw_data.charge, 0, -1).T
 
     @_base.data_access
-    def plot(self, selection="0", **user_options):
+    def to_view(self, selection=None, supercell=None, **user_options):
         """Plot the selected density as a 3d isosurface within the structure.
 
         Parameters
@@ -206,6 +187,10 @@ class Density(_base.Refinery, _structure.Mixin):
             component of the density in terms of the Pauli matrices: sigma_1,
             sigma_2, sigma_3.
 
+        supercell : int or np.ndarray
+            If present the data is replicated the specified number of times along each
+            direction.
+
         user_options
             Further arguments with keyword that get directly passed on to the
             visualizer. Most importantly, you can set isolevel to adjust the
@@ -213,7 +198,7 @@ class Density(_base.Refinery, _structure.Mixin):
 
         Returns
         -------
-        Viewer3d
+        View
             Visualize an isosurface of the density within the 3d structure.
 
         Examples
@@ -228,16 +213,16 @@ class Density(_base.Refinery, _structure.Mixin):
         >>> calc.density.plot("m(3)")
         """
         _raise_error_if_no_data(self._raw_data.charge)
-        viewer = self._structure.plot()
-        wrapper = _ViewerWrapper(viewer)
+        selection = selection or _INTERNAL
+        viewer = self._structure.plot(supercell)
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_data.charge)
         tree = select.Tree.from_selection(selection)
         selections = self._filter_noncollinear_magnetization_from_selections(tree)
-        for selection in selections:
-            label = selector.label(selection)
-            symmetric = self._use_symmetric_isosurface(label, map_)
-            wrapper.show_isosurface(selector[selection], symmetric, **user_options)
+        viewer.grid_scalars = [
+            self._grid_quantity(selector, selection, map_, user_options)
+            for selection in selections
+        ]
         return viewer
 
     def _filter_noncollinear_magnetization_from_selections(self, tree):
@@ -270,8 +255,34 @@ class Density(_base.Refinery, _structure.Mixin):
         for key in _MAGNETIZATION:
             map_[key] = 1
 
-    def _use_symmetric_isosurface(self, label, map_):
-        component = map_.get(label, -1)
+    def _grid_quantity(self, selector, selection, map_, user_options):
+        component_label = selector.label(selection)
+        component = map_.get(component_label, -1)
+        return view.GridQuantity(
+            quantity=selector[selection][np.newaxis],
+            label=self._label(component_label),
+            isosurfaces=self._isosurfaces(component, **user_options),
+        )
+
+    def _label(self, component_label):
+        if component_label == _INTERNAL:
+            return self._selection or "charge"
+        elif self._selection:
+            return f"{self._selection}({component_label})"
+        else:
+            return component_label
+
+    def _isosurfaces(self, component, isolevel=0.2, color=None, opacity=0.6):
+        if self._use_symmetric_isosurface(component):
+            _raise_error_if_color_is_specified(color)
+            return [
+                view.Isosurface(isolevel, _config.VASP_BLUE, opacity),
+                view.Isosurface(-isolevel, _config.VASP_RED, opacity),
+            ]
+        else:
+            return [view.Isosurface(isolevel, color or _config.VASP_CYAN, opacity)]
+
+    def _use_symmetric_isosurface(self, component):
         if component > 0 and self.is_nonpolarized():
             _raise_is_nonpolarized_error()
         if component > 1 and self.is_collinear():
@@ -301,6 +312,12 @@ class Density(_base.Refinery, _structure.Mixin):
             "kinetic_energy_density": "tau",
         }
         return selection_map.get(super()._selection)
+
+
+def _raise_error_if_color_is_specified(color):
+    if color is not None:
+        msg = "Specifying the color of a magnetic isosurface is not implemented."
+        raise exception.NotImplemented(msg)
 
 
 def _raise_component_not_specified_error(selec_tuple):

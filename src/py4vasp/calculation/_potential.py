@@ -5,13 +5,14 @@ import itertools
 import numpy as np
 
 from py4vasp import _config, calculation, exception
+from py4vasp._third_party import view
 from py4vasp._util import select
 from py4vasp.calculation import _base, _structure
 
 VALID_KINDS = ("total", "ionic", "xc", "hartree")
 
 
-class Potential(_base.Refinery, _structure.Mixin):
+class Potential(_base.Refinery, _structure.Mixin, view.Mixin):
     """The local potential describes the interactions between electrons and ions.
 
     In DFT calculations, the local potential consists of various contributions, each
@@ -78,28 +79,38 @@ class Potential(_base.Refinery, _structure.Mixin):
             yield f"{kind}_magnetization", potential[1:]
 
     @_base.data_access
-    def plot(self, selection="total", *, isolevel=0):
+    def to_view(self, selection="total", supercell=None, **user_options):
         """Plot an isosurface of a selected potential.
 
         Parameters
         ----------
         selection : str
-        Select the kind of potential of which you want the isosurface.
-        isolevel : float
-        Energy level (eV) for which the isosurface is obtained.
+            Select the kind of potential of which you want the isosurface.
+
+        supercell : int or np.ndarray
+            If present the data is replicated the specified number of times along each
+            direction.
+
+        user_options
+            Further arguments with keyword that get directly passed on to the
+            visualizer. Most importantly, you can set isolevel (in eV) to adjust the
+            value at which the isosurface is drawn.
 
         Returns
         -------
-        Viewer3d
-        A visualization of the potential isosurface within the crystal structure.
+        View
+            A visualization of the potential isosurface within the crystal structure.
         """
-        viewer = self._structure.plot()
-        options = {"isolevel": isolevel, "color": _config.VASP_CYAN, "opacity": 0.6}
-        for kind, component in _parse_selection(selection):
-            self._add_potential_isosurface(viewer, kind, component, options)
+        viewer = self._structure.plot(supercell)
+        viewer.grid_scalars = [
+            self._create_potential_isosurface(kind, component, **user_options)
+            for kind, component in _parse_selection(selection)
+        ]
         return viewer
 
-    def _add_potential_isosurface(self, viewer, kind, component, options):
+    def _create_potential_isosurface(
+        self, kind, component, isolevel=0, color=_config.VASP_CYAN, opacity=0.6
+    ):
         self._raise_error_if_kind_incorrect(kind)
         potential_data = self._get_potential(kind)
         _raise_error_if_no_data(potential_data, kind)
@@ -109,7 +120,11 @@ class Potential(_base.Refinery, _structure.Mixin):
             potential = potential_data[0] - potential_data[1]
         else:
             potential = potential_data[0]
-        viewer.show_isosurface(potential, **options)
+        return view.GridQuantity(
+            quantity=potential[np.newaxis],
+            label=f"{kind} potential" + (f"({component})" if component else ""),
+            isosurfaces=[view.Isosurface(isolevel, color, opacity)],
+        )
 
     def _get_potential(self, kind):
         return getattr(self._raw_data, f"{kind}_potential")
