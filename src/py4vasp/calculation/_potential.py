@@ -118,7 +118,7 @@ class Potential(_base.Refinery, _structure.Mixin, view.Mixin):
             potential = potential_data[0]
         return view.GridQuantity(
             quantity=potential[np.newaxis],
-            label=f"{kind} potential",
+            label=f"{kind} potential" + (f"({component})" if component else ""),
             isosurfaces=[view.Isosurface(isolevel, color, opacity)],
         )
 

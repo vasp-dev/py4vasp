@@ -121,40 +121,22 @@ def test_plot_selected_potential(reference_potential, Assert):
     assert len(grid_scalar.isosurfaces) == 1
     isosurface = Isosurface(isolevel=0.2, color=_config.VASP_CYAN, opacity=0.6)
     assert grid_scalar.isosurfaces[0] == isosurface
-    # obj = viewer3d.Viewer3d
-    # cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
-    # cm_cell = patch.object(obj, "show_cell")
-    # cm_surface = patch.object(obj, "show_isosurface")
-    # if reference_potential.ref.included_kinds in ("hartree", "ionic", "xc"):
-    #     selection = reference_potential.ref.included_kinds
-    # else:
-    #     selection = "total"
-    # with cm_init as init, cm_cell as cell, cm_surface as surface:
-    #     reference_potential.plot(selection, isolevel=0.2)
-    #     init.assert_called_once()
-    #     cell.assert_called_once()
-    #     surface.assert_called_once()
-    #     args, kwargs = surface.call_args
-    # Assert.allclose(args[0], reference_potential.ref.output[selection].T)
-    # assert kwargs == {"isolevel": 0.2, "color": _config.VASP_CYAN, "opacity": 0.6}
 
 
-@pytest.mark.xfail
 @pytest.mark.parametrize("selection", ["up", "down"])
 def test_plot_spin_potential(raw_data, selection, Assert):
     potential = make_reference_potential(raw_data, "Fe3O4 collinear", "total")
-    obj = viewer3d.Viewer3d
-    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(obj, "show_cell")
-    cm_surface = patch.object(obj, "show_isosurface")
-    with cm_init as init, cm_cell as cell, cm_surface as surface:
-        potential.plot(selection)
-        init.assert_called_once()
-        cell.assert_called_once()
-        surface.assert_called_once()
-        args, kwargs = surface.call_args
-    Assert.allclose(args[0], potential.ref.output[f"total_{selection}"].T)
-    assert kwargs == {"isolevel": 0.0, "color": _config.VASP_CYAN, "opacity": 0.6}
+    view = potential.plot(selection, opacity=0.3)
+    expected_view = potential.ref.structure.plot()
+    Assert.same_structure_view(view, expected_view)
+    assert len(view.grid_scalars) == 1
+    grid_scalar = view.grid_scalars[0]
+    assert grid_scalar.label == f"total potential({selection})"
+    assert grid_scalar.quantity.ndim == 4
+    Assert.allclose(grid_scalar.quantity, potential.ref.output[f"total_{selection}"].T)
+    assert len(grid_scalar.isosurfaces) == 1
+    isosurface = Isosurface(isolevel=0.0, color=_config.VASP_CYAN, opacity=0.3)
+    assert grid_scalar.isosurfaces[0] == isosurface
 
 
 @pytest.mark.xfail
