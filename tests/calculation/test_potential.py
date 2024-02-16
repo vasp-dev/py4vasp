@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from py4vasp import _config, calculation, exception, raw
-from py4vasp._third_party.viewer import viewer3d
+from py4vasp._third_party.view import Isosurface
 
 
 @pytest.fixture(params=["total", "ionic", "hartree", "xc", "all"])
@@ -28,6 +28,7 @@ def make_reference_potential(raw_data, system, included_kinds):
     potential.ref.included_kinds = included_kinds
     potential.ref.output = get_expected_dict(raw_potential)
     potential.ref.string = get_expected_string(raw_potential, included_kinds)
+    potential.ref.structure = calculation.structure.from_data(raw_potential.structure)
     return potential
 
 
@@ -90,24 +91,22 @@ def test_read(reference_potential, Assert):
         Assert.allclose(actual[key], reference_potential.ref.output[key])
 
 
-@pytest.mark.xfail
-def test_plot_total_potential(reference_potential, Assert, not_core):
-    obj = viewer3d.Viewer3d
-    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(obj, "show_cell")
-    cm_surface = patch.object(obj, "show_isosurface")
-    with cm_init as init, cm_cell as cell, cm_surface as surface:
-        reference_potential.plot()
-        init.assert_called_once()
-        cell.assert_called_once()
-        surface.assert_called_once()
-        args, kwargs = surface.call_args
-    Assert.allclose(args[0], reference_potential.ref.output["total"].T)
-    assert kwargs == {"isolevel": 0.0, "color": _config.VASP_CYAN, "opacity": 0.6}
+def test_plot_total_potential(reference_potential, Assert):
+    view = reference_potential.plot()
+    expected_view = reference_potential.ref.structure.plot()
+    Assert.same_structure_view(view, expected_view)
+    assert len(view.grid_scalars) == 1
+    grid_scalar = view.grid_scalars[0]
+    assert grid_scalar.label == "total"
+    assert grid_scalar.quantity.ndim == 4
+    Assert.allclose(grid_scalar.quantity, reference_potential.ref.output["total"].T)
+    assert len(grid_scalar.isosurfaces) == 1
+    isosurface = Isosurface(isolevel=0, color=_config.VASP_CYAN, opacity=0.6)
+    assert grid_scalar.isosurfaces[0] == isosurface
 
 
 @pytest.mark.xfail
-def test_plot_selected_potential(reference_potential, Assert, not_core):
+def test_plot_selected_potential(reference_potential, Assert):
     obj = viewer3d.Viewer3d
     cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
     cm_cell = patch.object(obj, "show_cell")
@@ -128,7 +127,7 @@ def test_plot_selected_potential(reference_potential, Assert, not_core):
 
 @pytest.mark.xfail
 @pytest.mark.parametrize("selection", ["up", "down"])
-def test_plot_spin_potential(raw_data, selection, Assert, not_core):
+def test_plot_spin_potential(raw_data, selection, Assert):
     potential = make_reference_potential(raw_data, "Fe3O4 collinear", "total")
     obj = viewer3d.Viewer3d
     cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
@@ -145,7 +144,7 @@ def test_plot_spin_potential(raw_data, selection, Assert, not_core):
 
 
 @pytest.mark.xfail
-def test_plot_multiple_selections(raw_data, Assert, not_core):
+def test_plot_multiple_selections(raw_data, Assert):
     potential = make_reference_potential(raw_data, "Fe3O4 collinear", "all")
     obj = viewer3d.Viewer3d
     cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
@@ -165,13 +164,13 @@ def test_plot_multiple_selections(raw_data, Assert, not_core):
     Assert.allclose(args[0], potential.ref.output["xc_down"].T)
 
 
-def test_incorrect_selection(reference_potential, not_core):
+def test_incorrect_selection(reference_potential):
     with pytest.raises(exception.IncorrectUsage):
         reference_potential.plot("random_string")
 
 
 @pytest.mark.parametrize("selection", ["total", "xc", "ionic", "hartree"])
-def test_empty_potential(raw_data, selection, not_core):
+def test_empty_potential(raw_data, selection):
     raw_potential = raw_data.potential("Sr2TiO4 total")
     raw_potential.total_potential = raw.VaspData(None)
     potential = calculation.potential.from_data(raw_potential)
@@ -184,7 +183,6 @@ def test_print(reference_potential, format_):
     assert actual == {"text/plain": reference_potential.ref.string}
 
 
-@pytest.mark.xfail
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.potential("Fe3O4 collinear total")
     check_factory_methods(calculation.potential, data)
