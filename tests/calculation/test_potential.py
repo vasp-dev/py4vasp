@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 import types
-from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -18,6 +18,13 @@ def included_kinds(request):
 @pytest.fixture(params=["Sr2TiO4", "Fe3O4 collinear", "Fe3O4 noncollinear"])
 def reference_potential(raw_data, request, included_kinds):
     return make_reference_potential(raw_data, request.param, included_kinds)
+
+
+@dataclasses.dataclass
+class Expectation:
+    label: str
+    potential: np.ndarray
+    isosurface: Isosurface
 
 
 def make_reference_potential(raw_data, system, included_kinds):
@@ -139,25 +146,36 @@ def test_plot_spin_potential(raw_data, selection, Assert):
     assert grid_scalar.isosurfaces[0] == isosurface
 
 
-@pytest.mark.xfail
 def test_plot_multiple_selections(raw_data, Assert):
     potential = make_reference_potential(raw_data, "Fe3O4 collinear", "all")
-    obj = viewer3d.Viewer3d
-    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(obj, "show_cell")
-    cm_surface = patch.object(obj, "show_isosurface")
-    with cm_init as init, cm_cell as cell, cm_surface as surface:
-        potential.plot("up(total) hartree xc(down)")
-        init.assert_called_once()
-        cell.assert_called_once()
-        calls = surface.call_args_list
-    assert len(calls) == 3
-    args, _ = calls[0]
-    Assert.allclose(args[0], potential.ref.output["total_up"].T)
-    args, _ = calls[1]
-    Assert.allclose(args[0], potential.ref.output["hartree"].T)
-    args, _ = calls[2]
-    Assert.allclose(args[0], potential.ref.output["xc_down"].T)
+    view = potential.plot("up(total) hartree xc(down)")
+    isosurface = Isosurface(isolevel=0.0, color=_config.VASP_CYAN, opacity=0.6)
+    expectations = [
+        Expectation(
+            label="total potential(up)",
+            potential=potential.ref.output["total_up"],
+            isosurface=isosurface,
+        ),
+        Expectation(
+            label="hartree potential",
+            potential=potential.ref.output["hartree"],
+            isosurface=isosurface,
+        ),
+        Expectation(
+            label="xc potential(down)",
+            potential=potential.ref.output["xc_down"],
+            isosurface=isosurface,
+        ),
+    ]
+    expected_view = potential.ref.structure.plot()
+    Assert.same_structure_view(view, expected_view)
+    assert len(view.grid_scalars) == len(expectations)
+    for grid_scalar, expected in zip(view.grid_scalars, expectations):
+        assert grid_scalar.label == expected.label
+        assert grid_scalar.quantity.ndim == 4
+        Assert.allclose(grid_scalar.quantity, expected.potential.T)
+        assert len(grid_scalar.isosurfaces) == 1
+        assert grid_scalar.isosurfaces[0] == expected.isosurface
 
 
 def test_incorrect_selection(reference_potential):
