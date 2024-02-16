@@ -275,7 +275,6 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
     def _grid_quantity(self, selector, selection, map_, user_options):
         component_label = selector.label(selection)
         component = map_.get(component_label, -1)
-        print(component_label, self._selection, selection)
         return view.GridQuantity(
             quantity=selector[selection][np.newaxis],
             label=self._label(component_label),

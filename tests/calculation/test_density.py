@@ -145,7 +145,7 @@ def test_collinear_plot(selection, collinear_density, Assert):
     else:
         expected_label = f"{source}({selection})"
         expected_density = collinear_density.ref.output[source][1].T
-        if selection in ("magnetization","mag","m"):
+        if selection in ("magnetization", "mag", "m"):
             # magnetization not allowed for tau
             return
     view = collinear_density.plot(selection, isolevel=0.1)
@@ -216,20 +216,27 @@ def test_plotting_noncollinear_density(selections, noncollinear_density, Assert)
         assert grid_scalar.isosurfaces == isosurfaces
 
 
-@pytest.mark.xfail
-def test_adding_components(noncollinear_density, mock_viewer, Assert, not_core):
+def test_adding_components(noncollinear_density, Assert):
     source = noncollinear_density.ref.source
     if source == "charge":
+        expected_label = "1 + 2"
         expected_density = noncollinear_density.ref.output["magnetization"]
     else:
+        expected_label = f"{source}(1 + 2)"
         expected_density = noncollinear_density.ref.output[source][1:]
     expected_density = expected_density[0] + expected_density[1]
-    result = noncollinear_density.plot("1 + 2", isolevel=0.4)
-    assert isinstance(result, viewer3d.Viewer3d)
-    mock_viewer["surface"].assert_called_once()
-    args, kwargs = mock_viewer["surface"].call_args
-    Assert.allclose(args[0], expected_density.T)
-    assert kwargs == {"isolevel": 0.4, "color": _config.VASP_CYAN, "opacity": 0.6}
+    view = noncollinear_density.plot("1 + 2", isolevel=0.4)
+    structure_view = noncollinear_density.ref.structure.plot()
+    assert np.all(structure_view.elements == view.elements)
+    Assert.allclose(structure_view.lattice_vectors, view.lattice_vectors)
+    Assert.allclose(structure_view.positions, view.positions)
+    assert len(view.grid_scalars) == 1
+    grid_scalar = view.grid_scalars[0]
+    assert grid_scalar.label == expected_label
+    assert grid_scalar.quantity.ndim == 4
+    Assert.allclose(grid_scalar.quantity, expected_density.T)
+    isosurfaces = [Isosurface(isolevel=0.4, color=_config.VASP_CYAN, opacity=0.6)]
+    assert grid_scalar.isosurfaces == isosurfaces
 
 
 def test_to_numpy(reference_density, Assert):
