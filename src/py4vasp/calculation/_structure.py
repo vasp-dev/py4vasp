@@ -75,7 +75,17 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
 
     @classmethod
     def from_POSCAR(cls, poscar, *, elements=None):
-        """Generate a structure from string in POSCAR format."""
+        """Generate a structure from string in POSCAR format.
+
+        Parameters
+        ----------
+        elements : list[str]
+            Name of the elements in the order they appear in the POSCAR file. If the
+            elements are specified in the POSCAR file, this argument is optional and
+            if set it will overwrite the choice in the POSCAR file. Old POSCAR files
+            do not specify the name of the elements; in that case this argument is
+            required.
+        """
         poscar = _replace_or_set_elements(str(poscar), elements)
         poscar = io.StringIO(poscar)
         structure = ase_io.read(poscar, format="vasp")

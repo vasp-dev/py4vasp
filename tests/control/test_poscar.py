@@ -32,3 +32,23 @@ def test_plot_poscar(supercell, Assert):
     Assert.same_structure_view(view, structure_view)
     view = poscar.to_view(supercell) if supercell else poscar.to_view()
     Assert.same_structure_view(view, structure_view)
+
+
+def test_set_elements_in_plot(Assert):
+    text = """! comment line
+    4.0
+    1.0 0.0 0.0
+    0.0 1.0 0.0
+    0.0 0.0 1.0
+    1 1 3
+    Direct
+    0.0 0.0 0.0
+    0.5 0.5 0.5
+    0.0 0.5 0.5
+    0.5 0.0 0.5
+    0.5 0.5 0.0
+    """
+    poscar = POSCAR.from_string(text)
+    elements = ["Sr", "Ti", "O"]
+    structure = calculation.structure.from_POSCAR(text, elements=elements)
+    Assert.same_structure_view(poscar.plot(elements=elements), structure.plot())
