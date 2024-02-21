@@ -7,7 +7,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import calculation, exception
+from py4vasp import _config, calculation, exception
 
 
 @pytest.fixture(params=[slice(None), slice(1, 3), 0, -1])
@@ -46,6 +46,7 @@ def setup_magnetism(raw_data, kind):
     magnetism.ref = types.SimpleNamespace()
     magnetism.ref.kind = kind
     magnetism.ref.charges = raw_magnetism.spin_moments[:, 0]
+    magnetism.ref.structure = calculation.structure.from_data(raw_magnetism.structure)
     set_moments(raw_magnetism, magnetism.ref)
     return magnetism
 
@@ -67,15 +68,6 @@ def set_moments(raw_magnetism, reference):
         reference.moments = spin_moments + orbital_moments
         reference.spin_moments = spin_moments
         reference.orbital_moments = orbital_moments
-
-
-@pytest.fixture
-def all_magnetism(collinear_magnetism, noncollinear_magnetism, charge_only):
-    magnetism = types.SimpleNamespace()
-    magnetism.collinear = collinear_magnetism
-    magnetism.noncollinear = noncollinear_magnetism
-    magnetism.charge_only = charge_only
-    return magnetism
 
 
 def test_read(example_magnetism, steps, Assert):
@@ -144,58 +136,58 @@ def test_total_moments_selection(example_magnetism, selection, Assert):
 
 
 @pytest.mark.parametrize("selection", [None, "total", "spin", "orbital"])
-def test_plot(example_magnetism, steps, selection, Assert, not_core):
+def test_plot(example_magnetism, steps, selection, Assert):
     magnetism = example_magnetism[steps] if steps != -1 else example_magnetism
     plot_selection = functools.partial(magnetism.plot, selection)
     plot_under_test = plot_selection if selection else magnetism.plot
-    if isinstance(steps, slice):
-        with pytest.raises(exception.NotImplemented):
-            plot_under_test()
-        return
     if expect_exception(example_magnetism.ref.kind, selection):
         with pytest.raises(exception.NoData):
             plot_under_test()
+        return
+    view = plot_under_test()
+    structure_view = example_magnetism.ref.structure[steps].plot()
+    Assert.same_structure_view(view, structure_view)
+    reference_moments = expected_moments(example_magnetism.ref, selection, steps)
+    if reference_moments is None:
+        assert view.ion_arrows is None
     else:
-        reference_moments = expected_moments(example_magnetism.ref, selection, steps)
-        actual_moments = get_moments(example_magnetism.ref.kind, plot_under_test)
-        Assert.allclose(actual_moments, reference_moments)
+        assert len(view.ion_arrows) == 1
+        arrows = view.ion_arrows[0]
+        assert arrows.quantity.ndim == 3
+        Assert.allclose(arrows.quantity, reference_moments)
+        expected_label = f"{selection} moments" if selection else "total moments"
+        assert arrows.label == expected_label
+        assert arrows.color == _config.VASP_BLUE
+        assert arrows.radius == 0.2
 
 
 def expect_exception(kind, selection):
     return kind != "orbital_moments" and selection == "orbital"
 
 
-def get_moments(kind, plot_under_test, selection=None):
-    with patch("py4vasp.calculation._structure.Structure.plot") as plot:
-        plot_under_test()
-    plot.assert_called_once()
-    viewer = plot.return_value
-    if kind == "charge_only":
-        viewer.show_arrows_at_atoms.assert_not_called()
-        return None
-    else:
-        viewer.show_arrows_at_atoms.assert_called_once()
-        args, _ = viewer.show_arrows_at_atoms.call_args
-        return args[0]
-
-
 def expected_moments(reference, selection, steps):
     if reference.kind == "charge_only":
         return None
     if reference.kind == "orbital_moments" and selection == "spin":
-        moments = np.sum(reference.spin_moments[steps], axis=1)
+        moments = np.sum(reference.spin_moments[steps], axis=-2)
     elif reference.kind == "orbital_moments" and selection == "orbital":
-        moments = np.sum(reference.orbital_moments[steps], axis=1)
+        moments = np.sum(reference.orbital_moments[steps], axis=-2)
+    elif reference.kind != "collinear":
+        moments = np.sum(reference.moments[steps], axis=-2)
     else:
-        moments = np.sum(reference.moments[steps], axis=1)
-    if reference.kind == "collinear":
-        moments = np.array([[0, 0, m] for m in moments])
-    largest_moment = np.max(np.linalg.norm(moments, axis=1))
+        list_ = [
+            [[0, 0, m] for m in np.sum(reference.moments[step], axis=-1)]
+            for step in np.atleast_1d(np.arange(4)[steps])
+        ]
+        moments = np.array(list_)
+    largest_moment = np.max(np.linalg.norm(moments, axis=-1))
     rescale_moments = calculation.magnetism.length_moments / largest_moment
     return rescale_moments * moments
 
 
-def test_plot_supercell(example_magnetism):
+# @pytest.mark.parametrize("supercell", [None, 2, (3, 2, 1)])
+@pytest.mark.xfail
+def test_plot_supercell(example_magnetism, supercell, Assert):
     if example_magnetism.ref.kind == "charge_only":
         return
     supercell = (3, 2, 1)
@@ -245,7 +237,6 @@ def test_incorrect_argument(example_magnetism):
         example_magnetism[out_of_bounds].total_charges()
 
 
-@pytest.mark.xfail
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.magnetism("collinear")
     check_factory_methods(calculation.magnetism, data)

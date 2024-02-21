@@ -2,7 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import exception
+from py4vasp import _config, exception
+from py4vasp._third_party import view
 from py4vasp._util import documentation
 from py4vasp.calculation import _base, _slice, _structure
 
@@ -22,7 +23,7 @@ selection : str
 
 
 @documentation.format(examples=_slice.examples("magnetism"))
-class Magnetism(_slice.Mixin, _base.Refinery, _structure.Mixin):
+class Magnetism(_slice.Mixin, _base.Refinery, _structure.Mixin, view.Mixin):
     """The local moments describe the charge and magnetization near an atom.
 
     The projection on local moments is particularly relevant in the context of
@@ -89,18 +90,18 @@ class Magnetism(_slice.Mixin, _base.Refinery, _structure.Mixin):
 
     @_base.data_access
     @documentation.format(
-        selection=_moment_selection, examples=_slice.examples("magnetism", "to_graph")
+        selection=_moment_selection, examples=_slice.examples("magnetism", "to_view")
     )
-    def plot(self, selection="total", supercell=None):
+    def to_view(self, selection="total", supercell=None):
         """Visualize the magnetic moments as arrows inside the structure.
 
-        Paramaters
+        Parameters
         ----------
         {selection}
 
         Returns
         -------
-        Viewer3d
+        View
             Contains the atoms and the unit cell as well as an arrow indicating the
             strength of the magnetic moment. If noncollinear magnetism is used
             the moment points in the actual direction; for collinear magnetism
@@ -108,14 +109,16 @@ class Magnetism(_slice.Mixin, _base.Refinery, _structure.Mixin):
 
         {examples}
         """
-        if self._is_slice:
-            raise exception.NotImplemented(
-                "Visualizing magnetic moments for more than one step is not implemented"
-            )
         viewer = self._structure[self._steps].plot(supercell)
         moments = self._prepare_magnetic_moments_for_plotting(selection)
         if moments is not None:
-            viewer.show_arrows_at_atoms(moments)
+            ion_arrows = view.IonArrow(
+                quantity=moments,
+                label=f"{selection} moments",
+                color=_config.VASP_BLUE,
+                radius=0.2,
+            )
+            viewer.ion_arrows = [ion_arrows]
         return viewer
 
     @_base.data_access
@@ -252,6 +255,7 @@ class Magnetism(_slice.Mixin, _base.Refinery, _structure.Mixin):
 
     def _prepare_magnetic_moments_for_plotting(self, selection):
         moments = self.total_moments(selection)
+        moments = self._make_sure_moments_have_timestep_dimension(moments)
         moments = _convert_moment_to_3d_vector(moments)
         max_length_moments = _max_length_moments(moments)
         if max_length_moments > 1e-15:
@@ -259,6 +263,11 @@ class Magnetism(_slice.Mixin, _base.Refinery, _structure.Mixin):
             return rescale_moments * moments
         else:
             return None
+
+    def _make_sure_moments_have_timestep_dimension(self, moments):
+        if not self._is_slice and moments is not None:
+            moments = moments[np.newaxis]
+        return moments
 
     def _raise_error_if_steps_out_of_bounds(self):
         try:
@@ -292,16 +301,17 @@ def _sum_over_orbitals(quantity, is_vector=False):
 
 
 def _convert_moment_to_3d_vector(moments):
-    if moments is not None and moments.ndim == 1:
-        moments = moments.reshape((len(moments), 1))
+    if moments is not None and moments.ndim == 2:
+        moments = moments.reshape((*moments.shape, 1))
         no_new_moments = (0, 0)
         add_zero_for_xy_axis = (2, 0)
-        moments = np.pad(moments, (no_new_moments, add_zero_for_xy_axis))
+        padding = (no_new_moments, no_new_moments, add_zero_for_xy_axis)
+        moments = np.pad(moments, padding)
     return moments
 
 
 def _max_length_moments(moments):
     if moments is not None:
-        return np.max(np.linalg.norm(moments, axis=1))
+        return np.max(np.linalg.norm(moments, axis=2))
     else:
         return 0.0
