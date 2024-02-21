@@ -1,12 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
-from unittest.mock import patch
 
-import numpy as np
 import pytest
 
-from py4vasp import calculation, exception
+from py4vasp import _config, calculation, exception
 
 
 @pytest.fixture
@@ -29,53 +27,48 @@ def Fe3O4(raw_data):
     return forces
 
 
-def test_read_Sr2TiO4(Sr2TiO4, Assert):
-    check_read_structure(Sr2TiO4.read(), Sr2TiO4.ref, -1, Assert)
-    for steps in (slice(None), slice(1, 3), 0):
-        check_read_structure(Sr2TiO4[steps].read(), Sr2TiO4.ref, steps, Assert)
+@pytest.fixture(params=[-1, 0, slice(None), slice(1, 3)])
+def steps(request):
+    return request.param
 
 
-def test_read_Fe3O4(Fe3O4, Assert):
-    check_read_structure(Fe3O4.read(), Fe3O4.ref, -1, Assert)
-    for steps in (slice(None), slice(1, 3), 0):
-        check_read_structure(Fe3O4[steps].read(), Fe3O4.ref, steps, Assert)
+def test_read_Sr2TiO4(Sr2TiO4, steps, Assert):
+    check_read_structure(Sr2TiO4, steps, Assert)
 
 
-def check_read_structure(actual, reference, steps, Assert):
-    reference_structure = reference.structure[steps].read()
+def test_read_Fe3O4(Fe3O4, steps, Assert):
+    check_read_structure(Fe3O4, steps, Assert)
+
+
+def check_read_structure(forces, steps, Assert):
+    actual = forces[steps].read() if steps != -1 else forces.read()
+    reference_structure = forces.ref.structure[steps].read()
     for key in actual["structure"]:
         if key in ("elements", "names"):
             assert actual["structure"][key] == reference_structure[key]
         else:
             Assert.allclose(actual["structure"][key], reference_structure[key])
-    Assert.allclose(actual["forces"], reference.forces[steps])
+    Assert.allclose(actual["forces"], forces.ref.forces[steps])
 
 
-def test_plot_Sr2TiO4(Sr2TiO4, Assert):
-    check_plot_forces(Sr2TiO4, -1, Assert)
-    check_plot_forces(Sr2TiO4, 0, Assert)
-    for steps in (slice(None), slice(1, 3)):
-        with pytest.raises(exception.NotImplemented):
-            Sr2TiO4[steps].plot()
+def test_plot_Sr2TiO4(Sr2TiO4, steps, Assert):
+    check_plot_forces(Sr2TiO4, steps, Assert)
 
 
-def test_plot_Fe3O4(Fe3O4, Assert):
-    check_plot_forces(Fe3O4, -1, Assert)
-    check_plot_forces(Fe3O4, 0, Assert)
+def test_plot_Fe3O4(Fe3O4, steps, Assert):
+    check_plot_forces(Fe3O4, steps, Assert)
 
 
-def check_plot_forces(forces, step, Assert):
-    with patch("py4vasp.calculation._structure.Structure.plot") as plot:
-        if step == -1:
-            forces.plot()
-        else:
-            forces[step].plot()
-        plot.assert_called_once()
-        viewer = plot.return_value
-        viewer.show_arrows_at_atoms.assert_called_once()
-        args, _ = viewer.show_arrows_at_atoms.call_args
-    Assert.allclose(args[0], forces.force_rescale * forces.ref.forces[step])
-    Assert.allclose(args[1], np.array([0.3, 0.15, 0.35]))
+def check_plot_forces(forces, steps, Assert):
+    structure_view = forces.ref.structure.plot()
+    view = forces[steps].plot() if steps != -1 else forces.plot()
+    Assert.same_structure_view(view, structure_view)
+    assert len(view.ion_arrows) == 1
+    arrows = view.ion_arrows[0]
+    Assert.allclose(arrows.quantity, forces.force_rescale * forces.ref.forces[steps])
+    assert arrows.label == "forces"
+    assert arrows.color == _config.VASP_PURPLE
+    assert arrows.radius == 0.2
 
 
 def test_incorrect_access(Sr2TiO4):
@@ -134,7 +127,6 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
     assert actual == {"text/plain": ref_plain}
 
 
-@pytest.mark.xfail
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.force("Fe3O4")
     check_factory_methods(calculation.force, data)

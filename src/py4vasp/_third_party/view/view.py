@@ -65,6 +65,10 @@ class IonArrow:
     """Vector quantity to be used to draw arrows at the ion positions"""
     label: str
     """Name of the quantity"""
+    color: str
+    "Color with which the arrows should be drawn"
+    radius: float
+    "Radius of the arrows"
 
 
 _x_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((3, 0, 0)), color=[1, 0, 0])
