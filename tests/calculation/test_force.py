@@ -9,22 +9,12 @@ from py4vasp import _config, calculation, exception
 
 @pytest.fixture
 def Sr2TiO4(raw_data):
-    raw_forces = raw_data.force("Sr2TiO4")
-    forces = calculation.force.from_data(raw_forces)
-    forces.ref = types.SimpleNamespace()
-    forces.ref.structure = calculation.structure.from_data(raw_forces.structure)
-    forces.ref.forces = raw_forces.forces
-    return forces
+    return create_force_data(raw_data, "Sr2TiO4")
 
 
-@pytest.fixture
-def Fe3O4(raw_data):
-    raw_forces = raw_data.force("Fe3O4")
-    forces = calculation.force.from_data(raw_forces)
-    forces.ref = types.SimpleNamespace()
-    forces.ref.structure = calculation.structure.from_data(raw_forces.structure)
-    forces.ref.forces = raw_forces.forces
-    return forces
+@pytest.fixture(params=["Sr2TiO4", "Fe3O4"])
+def forces(raw_data):
+    return create_force_data(raw_data, "Fe3O4")
 
 
 @pytest.fixture(params=[-1, 0, slice(None), slice(1, 3)])
@@ -32,15 +22,16 @@ def steps(request):
     return request.param
 
 
-def test_read_Sr2TiO4(Sr2TiO4, steps, Assert):
-    check_read_structure(Sr2TiO4, steps, Assert)
+def create_force_data(raw_data, structure):
+    raw_forces = raw_data.force(structure)
+    forces = calculation.force.from_data(raw_forces)
+    forces.ref = types.SimpleNamespace()
+    forces.ref.structure = calculation.structure.from_data(raw_forces.structure)
+    forces.ref.forces = raw_forces.forces
+    return forces
 
 
-def test_read_Fe3O4(Fe3O4, steps, Assert):
-    check_read_structure(Fe3O4, steps, Assert)
-
-
-def check_read_structure(forces, steps, Assert):
+def test_read(forces, steps, Assert):
     actual = forces[steps].read() if steps != -1 else forces.read()
     reference_structure = forces.ref.structure[steps].read()
     for key in actual["structure"]:
@@ -51,15 +42,7 @@ def check_read_structure(forces, steps, Assert):
     Assert.allclose(actual["forces"], forces.ref.forces[steps])
 
 
-def test_plot_Sr2TiO4(Sr2TiO4, steps, Assert):
-    check_plot_forces(Sr2TiO4, steps, Assert)
-
-
-def test_plot_Fe3O4(Fe3O4, steps, Assert):
-    check_plot_forces(Fe3O4, steps, Assert)
-
-
-def check_plot_forces(forces, steps, Assert):
+def test_plot(forces, steps, Assert):
     structure_view = forces.ref.structure.plot()
     view = forces[steps].plot() if steps != -1 else forces.plot()
     Assert.same_structure_view(view, structure_view)
