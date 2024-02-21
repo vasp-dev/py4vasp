@@ -63,8 +63,14 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
 
     @_base.data_access
     @documentation.format(examples=_slice.examples("force", "to_view"))
-    def to_view(self):
+    def to_view(self, supercell=None):
         """Visualize the forces showing arrows at the atoms.
+
+        Parameters
+        ----------
+        supercell : int or np.ndarray
+            If present the structure is replicated the specified number of times
+            along each direction.
 
         Returns
         -------
@@ -74,7 +80,7 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
 
         {examples}
         """
-        viewer = self._structure.plot()
+        viewer = self._structure.plot(supercell)
         forces = self.force_rescale * self._force[self._steps]
         if forces.ndim == 2:
             forces = forces[np.newaxis]

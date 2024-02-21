@@ -42,9 +42,11 @@ def test_read(forces, steps, Assert):
     Assert.allclose(actual["forces"], forces.ref.forces[steps])
 
 
-def test_plot(forces, steps, Assert):
-    structure_view = forces.ref.structure.plot()
-    view = forces[steps].plot() if steps != -1 else forces.plot()
+@pytest.mark.parametrize("supercell", [None, 2, (3, 2, 1)])
+def test_plot(forces, steps, supercell, Assert):
+    structure_view = forces.ref.structure.plot(supercell)
+    plot_method = forces[steps].plot if steps != -1 else forces.plot
+    view = plot_method(supercell) if supercell else plot_method()
     Assert.same_structure_view(view, structure_view)
     assert len(view.ion_arrows) == 1
     arrows = view.ion_arrows[0]
