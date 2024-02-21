@@ -48,6 +48,7 @@ def test_plot(forces, steps, Assert):
     Assert.same_structure_view(view, structure_view)
     assert len(view.ion_arrows) == 1
     arrows = view.ion_arrows[0]
+    assert arrows.quantity.ndim == 3
     Assert.allclose(arrows.quantity, forces.force_rescale * forces.ref.forces[steps])
     assert arrows.label == "forces"
     assert arrows.color == _config.VASP_PURPLE

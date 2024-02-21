@@ -76,6 +76,8 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         """
         viewer = self._structure.plot()
         forces = self.force_rescale * self._force[self._steps]
+        if forces.ndim == 2:
+            forces = forces[np.newaxis]
         ion_arrow = view.IonArrow(
             quantity=forces,
             label="forces",
