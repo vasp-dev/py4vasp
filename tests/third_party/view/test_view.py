@@ -104,12 +104,29 @@ def view_arrow(request, not_core):
     is_structure = request.param
     inputs = base_input_view(is_structure)
     number_atoms = len(inputs["elements"][0])
+    color = "#4C265F"
+    radius = 0.5
     if is_structure:
-        force_ion_arrows = IonArrow(np.random.rand(1, number_atoms, 3), "force")
+        force_ion_arrows = IonArrow(
+            quantity=np.random.rand(1, number_atoms, 3),
+            label="force",
+            color=color,
+            radius=radius,
+        )
         ion_arrows = [force_ion_arrows]
     else:
-        force_ion_arrows = IonArrow(np.random.rand(2, number_atoms, 3), "force")
-        moments_ion_arrows = IonArrow(np.random.rand(2, number_atoms, 3), "moments")
+        force_ion_arrows = IonArrow(
+            quantity=np.random.rand(2, number_atoms, 3),
+            label="force",
+            color=color,
+            radius=radius,
+        )
+        moments_ion_arrows = IonArrow(
+            quantity=np.random.rand(2, number_atoms, 3),
+            label="moments",
+            color=color,
+            radius=radius,
+        )
         ion_arrows = [force_ion_arrows, moments_ion_arrows]
     view = View(ion_arrows=ion_arrows, **inputs)
     view.ref = SimpleNamespace()
@@ -167,6 +184,8 @@ def test_ion_arrows(view_arrow):
         ion_positions = atoms.get_positions()
         _, transformation = atoms.cell.standard_form()
         ion_arrows = view_arrow.ref.ion_arrows[idx_ion_arrows].quantity[idx_traj]
+        expected_color = view_arrow.ref.ion_arrows[idx_ion_arrows].color
+        expected_radius = view_arrow.ref.ion_arrows[idx_ion_arrows].radius
         for idx_pos, ion_position in enumerate(ion_positions):
             expected_tail = ion_position
             expected_tip = ion_position + ion_arrows[idx_pos]
@@ -175,8 +194,12 @@ def test_ion_arrows(view_arrow):
             msg_archive = widget.get_state()["_ngl_msg_archive"][idx_msg]["args"][1][0]
             output_tail = msg_archive[1]
             output_tip = msg_archive[2]
+            output_color = msg_archive[3]
+            output_radius = msg_archive[4]
             assert np.allclose(expected_tip, output_tip)
             assert np.allclose(expected_tail, output_tail)
+            assert expected_color == output_color
+            assert expected_radius == output_radius
             idx_msg += 1
 
 
