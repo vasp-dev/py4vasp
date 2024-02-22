@@ -2,7 +2,6 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import functools
 import types
-from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -147,25 +146,15 @@ def test_plot(example_magnetism, steps, selection, Assert):
     view = plot_under_test()
     structure_view = example_magnetism.ref.structure[steps].plot()
     Assert.same_structure_view(view, structure_view)
-    reference_moments = expected_moments(example_magnetism.ref, selection, steps)
-    if reference_moments is None:
-        assert view.ion_arrows is None
-    else:
-        assert len(view.ion_arrows) == 1
-        arrows = view.ion_arrows[0]
-        assert arrows.quantity.ndim == 3
-        Assert.allclose(arrows.quantity, reference_moments)
-        expected_label = f"{selection} moments" if selection else "total moments"
-        assert arrows.label == expected_label
-        assert arrows.color == _config.VASP_BLUE
-        assert arrows.radius == 0.2
+    reference_moments = expected_moments(example_magnetism.ref, steps, selection)
+    check_view(view, reference_moments, selection, Assert)
 
 
 def expect_exception(kind, selection):
     return kind != "orbital_moments" and selection == "orbital"
 
 
-def expected_moments(reference, selection, steps):
+def expected_moments(reference, steps=-1, selection=None):
     if reference.kind == "charge_only":
         return None
     if reference.kind == "orbital_moments" and selection == "spin":
@@ -185,17 +174,30 @@ def expected_moments(reference, selection, steps):
     return rescale_moments * moments
 
 
-# @pytest.mark.parametrize("supercell", [None, 2, (3, 2, 1)])
-@pytest.mark.xfail
+def check_view(view, reference_moments, selection, Assert):
+    if reference_moments is None:
+        assert view.ion_arrows is None
+    else:
+        assert len(view.ion_arrows) == 1
+        arrows = view.ion_arrows[0]
+        assert arrows.quantity.ndim == 3
+        Assert.allclose(arrows.quantity, reference_moments)
+        expected_label = f"{selection} moments" if selection else "total moments"
+        assert arrows.label == expected_label
+        assert arrows.color == _config.VASP_BLUE
+        assert arrows.radius == 0.2
+
+
+@pytest.mark.parametrize("supercell", [None, 2, (3, 2, 1)])
 def test_plot_supercell(example_magnetism, supercell, Assert):
     if example_magnetism.ref.kind == "charge_only":
         return
-    supercell = (3, 2, 1)
-    with patch("py4vasp.calculation._structure.Structure.plot") as plot:
-        example_magnetism.plot(supercell=supercell)
-        plot.assert_called_once_with(supercell)
-        viewer = plot.return_value
-        viewer.show_arrows_at_atoms.assert_called_once()
+    plot_method = example_magnetism.plot
+    view = plot_method(supercell=supercell) if supercell else plot_method()
+    structure_view = example_magnetism.ref.structure.plot(supercell)
+    Assert.same_structure_view(view, structure_view)
+    reference_moments = expected_moments(example_magnetism.ref)
+    check_view(view, reference_moments, selection="total", Assert=Assert)
 
 
 def test_collinear_print(collinear_magnetism, format_):
