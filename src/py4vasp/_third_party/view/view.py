@@ -157,7 +157,7 @@ supplied with its corresponding grid scalar."""
                 with tempfile.TemporaryDirectory() as tmp:
                     filename = os.path.join(tmp, CUBE_FILENAME)
                     ase_cube.write_cube(open(filename, "w"), atoms=atoms, data=data)
-                    widget.add_component(filename)
+                    component = widget.add_component(filename)
                     if grid_scalar.isosurfaces:
                         for isosurface in grid_scalar.isosurfaces:
                             isosurface_options = {
@@ -165,7 +165,7 @@ supplied with its corresponding grid scalar."""
                                 "color": isosurface.color,
                                 "opacity": isosurface.opacity,
                             }
-                            widget.add_surface(**isosurface_options)
+                            component.add_surface(**isosurface_options)
 
     def show_arrows_at_atoms(self, widget):
         iter_traj = self._iterate_trajectory_frames()
