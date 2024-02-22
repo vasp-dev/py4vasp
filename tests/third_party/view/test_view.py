@@ -92,13 +92,25 @@ def view3d(request, not_core):
         charge_grid_scalar.isosurfaces = [isosurface]
         grid_scalars = [charge_grid_scalar]
     else:
-        charge_grid_scalar = GridQuantity(np.random.rand(2, 12, 10, 8), "charge")
-        potential_grid_scalar = GridQuantity(np.random.rand(2, 12, 10, 8), "potential")
+        charge_grid_scalar = GridQuantity(np.random.rand(1, 12, 10, 8), "charge")
+        potential_grid_scalar = GridQuantity(np.random.rand(1, 12, 10, 8), "potential")
         potential_grid_scalar.isosurfaces = [isosurface]
         grid_scalars = [charge_grid_scalar, potential_grid_scalar]
     view = View(grid_scalars=grid_scalars, **inputs)
     view.ref = SimpleNamespace()
     view.ref.grid_scalars = grid_scalars
+    return view
+
+
+@pytest.fixture
+def view3d_fail(not_core):
+    inputs = base_input_view(is_structure=False)
+    isosurface = Isosurface(isolevel=0.1, color="#2FB5AB", opacity=0.6)
+    charge_grid_scalar = GridQuantity(np.random.rand(2, 12, 10, 8), "charge")
+    potential_grid_scalar = GridQuantity(np.random.rand(2, 12, 10, 8), "potential")
+    potential_grid_scalar.isosurfaces = [isosurface]
+    grid_scalars = [charge_grid_scalar, potential_grid_scalar]
+    view = View(grid_scalars=grid_scalars, **inputs)
     return view
 
 
@@ -164,12 +176,21 @@ def test_isosurface(view3d):
     assert widget.get_state()["_ngl_msg_archive"][1]["args"][0]["binary"] == False
     for idx in range(len(view3d.lattice_vectors)):
         for grid_scalar in view3d.ref.grid_scalars:
-            expected_data = grid_scalar.quantity[idx]
-            state = widget.get_state()
-            output_cube = state["_ngl_msg_archive"][idx + 1]["args"][0]["data"]
-            output_data = ase_cube.read_cube(io.StringIO(output_cube))["data"]
-            assert expected_data.shape == output_data.shape
-            np.allclose(expected_data, output_data)
+            # If you pass in a grid scalar into a trajectory, I presume that you want to view
+            # the isosurface only for the first index of the trajectory. If you have more than one
+            # grid scalar in your data file then you should get an error.
+            if idx == 0:
+                expected_data = grid_scalar.quantity[idx]
+                state = widget.get_state()
+                output_cube = state["_ngl_msg_archive"][idx + 1]["args"][0]["data"]
+                output_data = ase_cube.read_cube(io.StringIO(output_cube))["data"]
+                assert expected_data.shape == output_data.shape
+                np.allclose(expected_data, output_data)
+
+
+@pytest.mark.xfail
+def test_fail_isosurface(view3d_fail):
+    widget = view3d_fail.to_ngl()
 
 
 def test_ion_arrows(view_arrow):

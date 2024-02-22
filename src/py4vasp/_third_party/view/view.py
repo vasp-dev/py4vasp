@@ -9,6 +9,7 @@ from typing import NamedTuple, Sequence
 import numpy as np
 import numpy.typing as npt
 
+from py4vasp import exception
 from py4vasp._util import convert, import_
 
 ase = import_.optional("ase")
@@ -112,9 +113,21 @@ class View:
         atoms = atoms.repeat(self.supercell)
         return atoms
 
+    def _iterate_trajectory_frames(self):
+        if self.grid_scalars:
+            for grid_scalar in self.grid_scalars:
+                if len(self.positions) > 1 and len(grid_scalar.quantity) > 1:
+                    raise exception.NotImplemented(
+                        """\
+Currently isosurfaces are implemented only for cases where there is only one frame in
+the trajectory. Make sure that either only one frame for the positions attribute is
+supplied with its corresponding grid scalar."""
+                    )
+        return range(len(self.positions))
+
     def to_ngl(self):
         trajectory = []
-        for idx_traj in range(len(self.lattice_vectors)):
+        for idx_traj in self._iterate_trajectory_frames():
             atoms = self._create_atoms(idx_traj)
             trajectory.append(atoms)
         ngl_trajectory = nglview.ASETrajectory(trajectory)
@@ -136,25 +149,26 @@ class View:
         return widget
 
     def show_isosurface(self, widget):
-        iter_traj = list(range(len(self.lattice_vectors)))
+        iter_traj = self._iterate_trajectory_frames()
         for grid_scalar, idx_traj in itertools.product(self.grid_scalars, iter_traj):
             atoms = self._create_atoms(idx_traj)
-            data = grid_scalar.quantity[idx_traj]
-            with tempfile.TemporaryDirectory() as tmp:
-                filename = os.path.join(tmp, CUBE_FILENAME)
-                ase_cube.write_cube(open(filename, "w"), atoms=atoms, data=data)
-                widget.add_component(filename)
-                if grid_scalar.isosurfaces:
-                    for isosurface in grid_scalar.isosurfaces:
-                        isosurface_options = {
-                            "isolevel": isosurface.isolevel,
-                            "color": isosurface.color,
-                            "opacity": isosurface.opacity,
-                        }
-                        widget.add_surface(**isosurface_options)
+            if idx_traj == 0:
+                data = grid_scalar.quantity[idx_traj]
+                with tempfile.TemporaryDirectory() as tmp:
+                    filename = os.path.join(tmp, CUBE_FILENAME)
+                    ase_cube.write_cube(open(filename, "w"), atoms=atoms, data=data)
+                    widget.add_component(filename)
+                    if grid_scalar.isosurfaces:
+                        for isosurface in grid_scalar.isosurfaces:
+                            isosurface_options = {
+                                "isolevel": isosurface.isolevel,
+                                "color": isosurface.color,
+                                "opacity": isosurface.opacity,
+                            }
+                            widget.add_surface(**isosurface_options)
 
     def show_arrows_at_atoms(self, widget):
-        iter_traj = list(range(len(self.lattice_vectors)))
+        iter_traj = self._iterate_trajectory_frames()
         for _arrows, idx_traj in itertools.product(self.ion_arrows, iter_traj):
             atoms = self._create_atoms(idx_traj)
             _, transformation = atoms.cell.standard_form()
