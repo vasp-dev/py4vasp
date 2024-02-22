@@ -10,9 +10,9 @@ from py4vasp._config import VASP_GRAY
 from py4vasp._util import convert
 
 
-@pytest.fixture
-def Sr2TiO4(raw_data):
-    raw_velocity = raw_data.velocity("Sr2TiO4")
+@pytest.fixture(params=["Sr2TiO4", "Fe3O4"])
+def velocities(raw_data, request):
+    raw_velocity = raw_data.velocity(request.param)
     velocity = calculation.velocity.from_data(raw_velocity)
     velocity.ref = types.SimpleNamespace()
     velocity.ref.structure = calculation.structure.from_data(raw_velocity.structure)
