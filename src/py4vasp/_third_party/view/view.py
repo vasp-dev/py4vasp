@@ -83,7 +83,7 @@ _z_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((0, 0, 3)), color="#000000")
 
 
 def _recenter(arrow, origin=None):
-    if origin:
+    if origin is not None:
         return _Arrow3d(
             arrow.tail + origin,
             arrow.tip + origin,
@@ -155,9 +155,9 @@ supplied with its corresponding grid scalar."""
             widget.add_unitcell()
         if self.show_axes:
             _, transformation = atoms.cell.standard_form()
-            x_axis = _recenter(_rotate(_x_axis, transformation), self.show_axes_at)
-            y_axis = _recenter(_rotate(_y_axis, transformation), self.show_axes_at)
-            z_axis = _recenter(_rotate(_z_axis, transformation), self.show_axes_at)
+            x_axis = _rotate(_recenter(_x_axis, self.show_axes_at), transformation)
+            y_axis = _rotate(_recenter(_y_axis, self.show_axes_at), transformation)
+            z_axis = _rotate(_recenter(_z_axis, self.show_axes_at), transformation)
             widget.shape.add_arrow(*(x_axis.to_serializable()))
             widget.shape.add_arrow(*(y_axis.to_serializable()))
             widget.shape.add_arrow(*(z_axis.to_serializable()))

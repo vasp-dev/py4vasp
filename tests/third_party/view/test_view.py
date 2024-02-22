@@ -273,12 +273,20 @@ def test_showaxes(is_structure, not_core):
 def test_showaxes_different_origin(is_structure, not_core):
     inputs = base_input_view(is_structure)
     inputs["show_axes"] = True
-    inputs["show_axes_at"] = [0.2, 0.2, 0.2]
+    inputs["show_axes_at"] = np.array([0.2, 0.2, 0.2])
     view = View(**inputs)
     widget = view.to_ngl()
     assert len(widget.get_state()["_ngl_msg_archive"]) > 2
+    atoms = ase.Atoms(
+        "".join(view.elements[0]),
+        cell=view.lattice_vectors[0],
+        scaled_positions=view.positions[0],
+        pbc=True,
+    )
+    _, transformation = atoms.cell.standard_form()
+    # This test assumes that the transformation does not change with the trajectory
     for idx_msg, msg in enumerate(widget.get_state()["_ngl_msg_archive"]):
         if idx_msg > 2:
             assert msg["args"][1][0][0] == "arrow"
-            assert np.allclose(msg["args"][1][0][1], [0.2, 0.2, 0.2])
-    assert idx_msg == 4
+            expected_origin = np.array([0.2, 0.2, 0.2]) @ transformation.T
+            assert np.allclose(msg["args"][1][0][1], expected_origin)
