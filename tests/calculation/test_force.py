@@ -13,8 +13,8 @@ def Sr2TiO4(raw_data):
 
 
 @pytest.fixture(params=["Sr2TiO4", "Fe3O4"])
-def forces(raw_data):
-    return create_force_data(raw_data, "Fe3O4")
+def forces(raw_data, request):
+    return create_force_data(raw_data, request.param)
 
 
 @pytest.fixture(params=[-1, 0, slice(None), slice(1, 3)])
@@ -34,11 +34,7 @@ def create_force_data(raw_data, structure):
 def test_read(forces, steps, Assert):
     actual = forces[steps].read() if steps != -1 else forces.read()
     reference_structure = forces.ref.structure[steps].read()
-    for key in actual["structure"]:
-        if key in ("elements", "names"):
-            assert actual["structure"][key] == reference_structure[key]
-        else:
-            Assert.allclose(actual["structure"][key], reference_structure[key])
+    Assert.same_structure(actual["structure"], reference_structure)
     Assert.allclose(actual["forces"], forces.ref.forces[steps])
 
 
