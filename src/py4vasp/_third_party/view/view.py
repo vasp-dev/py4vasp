@@ -167,6 +167,8 @@ supplied with its corresponding grid scalar."""
         iter_traj = self._iterate_trajectory_frames()
         for grid_scalar, idx_traj in itertools.product(self.grid_scalars, iter_traj):
             atoms = self._create_atoms(idx_traj)
+            cell, _ = atoms.cell.standard_form()
+            atoms.set_cell(cell)
             if idx_traj == 0:
                 data = grid_scalar.quantity[idx_traj]
                 with tempfile.TemporaryDirectory() as tmp:
