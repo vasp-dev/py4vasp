@@ -124,6 +124,10 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
+    def OSZICAR(selection=None):
+        return _example_OSZICAR()
+
+    @staticmethod
     def density(selection):
         parts = selection.split()
         if parts[0] == "Sr2TiO4":
@@ -647,6 +651,14 @@ def _Sr2TiO4_cell():
     return raw.Cell(
         lattice_vectors=np.array(number_steps * [lattice_vectors]), scale=scale
     )
+
+
+def _example_OSZICAR():
+    random_convergence_data = np.random.rand(9, 6)
+    iteration_number = np.arange(1, 10)[:, np.newaxis]
+    convergence_data = np.hstack([iteration_number, random_convergence_data])
+    convergence_data = raw.VaspData(convergence_data)
+    return raw.OSZICAR(convergence_data=convergence_data)
 
 
 def _Sr2TiO4_CONTCAR():

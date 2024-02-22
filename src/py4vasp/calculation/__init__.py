@@ -60,6 +60,7 @@ __all__ = (
     "internal_strain",
     "kpoint",
     "magnetism",
+    "OSZICAR",
     "pair_correlation",
     "phonon_band",
     "phonon_dos",
