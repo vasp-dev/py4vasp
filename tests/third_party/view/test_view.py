@@ -10,8 +10,8 @@ import numpy as np
 import pytest
 
 from py4vasp._third_party.view import View
-from py4vasp._third_party.view.view import GridQuantity, IonArrow, _rotate
-from py4vasp._util import import_
+from py4vasp._third_party.view.view import GridQuantity, IonArrow, Isosurface, _rotate
+from py4vasp._util import convert, import_
 from py4vasp.calculation._structure import Structure
 
 ase = import_.optional("ase")
@@ -86,12 +86,15 @@ ENDMDL
 def view3d(request, not_core):
     is_structure = request.param
     inputs = base_input_view(is_structure)
+    isosurface = Isosurface(isolevel=0.1, color="#2FB5AB", opacity=0.6)
     if is_structure:
         charge_grid_scalar = GridQuantity(np.random.rand(1, 12, 10, 8), "charge")
+        charge_grid_scalar.isosurfaces = [isosurface]
         grid_scalars = [charge_grid_scalar]
     else:
         charge_grid_scalar = GridQuantity(np.random.rand(2, 12, 10, 8), "charge")
         potential_grid_scalar = GridQuantity(np.random.rand(2, 12, 10, 8), "potential")
+        potential_grid_scalar.isosurfaces = [isosurface]
         grid_scalars = [charge_grid_scalar, potential_grid_scalar]
     view = View(grid_scalars=grid_scalars, **inputs)
     view.ref = SimpleNamespace()
@@ -198,13 +201,13 @@ def test_ion_arrows(view_arrow):
             output_radius = msg_archive[4]
             assert np.allclose(expected_tip, output_tip)
             assert np.allclose(expected_tail, output_tail)
-            assert expected_color == output_color
+            assert np.allclose(convert.to_rgb(expected_color), output_color)
             assert expected_radius == output_radius
             idx_msg += 1
 
 
 @pytest.mark.parametrize("is_structure", [True, False])
-def test_supercell(is_structure):
+def test_supercell(is_structure, not_core):
     inputs = base_input_view(is_structure)
     supercell = (2, 2, 2)
     inputs["supercell"] = supercell
@@ -224,7 +227,7 @@ def test_supercell(is_structure):
 
 
 @pytest.mark.parametrize("is_structure", [True, False])
-def test_showcell(is_structure):
+def test_showcell(is_structure, not_core):
     inputs = base_input_view(is_structure)
     inputs["show_cell"] = True
     view = View(**inputs)
@@ -233,7 +236,7 @@ def test_showcell(is_structure):
 
 
 @pytest.mark.parametrize("is_structure", [True, False])
-def test_showaxes(is_structure):
+def test_showaxes(is_structure, not_core):
     inputs = base_input_view(is_structure)
     inputs["show_axes"] = True
     view = View(**inputs)

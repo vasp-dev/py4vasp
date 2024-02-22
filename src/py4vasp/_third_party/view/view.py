@@ -9,7 +9,7 @@ from typing import NamedTuple, Sequence
 import numpy as np
 import numpy.typing as npt
 
-from py4vasp._util import import_
+from py4vasp._util import convert, import_
 
 ase = import_.optional("ase")
 ase_cube = import_.optional("ase.io.cube")
@@ -28,7 +28,7 @@ class _Arrow3d(NamedTuple):
     radius: float = 0.2
 
     def to_serializable(self):
-        return list(self.tail), list(self.tip), self.color, self.radius
+        return list(self.tail), list(self.tip), convert.to_rgb(self.color), self.radius
 
 
 def _rotate(arrow, transformation):
@@ -71,9 +71,9 @@ class IonArrow:
     "Radius of the arrows"
 
 
-_x_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((3, 0, 0)), color=[1, 0, 0])
-_y_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((0, 3, 0)), color=[0, 1, 0])
-_z_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((0, 0, 3)), color=[0, 0, 1])
+_x_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((3, 0, 0)), color="#000000")
+_y_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((0, 3, 0)), color="#000000")
+_z_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((0, 0, 3)), color="#000000")
 
 
 @dataclass
@@ -139,6 +139,14 @@ class View:
                 filename = os.path.join(tmp, CUBE_FILENAME)
                 ase_cube.write_cube(open(filename, "w"), atoms=atoms, data=data)
                 widget.add_component(filename)
+                if grid_scalar.isosurfaces:
+                    for isosurface in grid_scalar.isosurfaces:
+                        isosurface_options = {
+                            "isolevel": isosurface.isolevel,
+                            "color": isosurface.color,
+                            "opacity": isosurface.opacity,
+                        }
+                        widget.add_surface(**isosurface_options)
 
     def show_arrows_at_atoms(self, widget):
         iter_traj = list(range(len(self.lattice_vectors)))
