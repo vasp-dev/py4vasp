@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 
 from py4vasp import calculation, exception
-from py4vasp._third_party.viewer import viewer3d
 
 REF_POSCAR = """\
 Sr2TiO4

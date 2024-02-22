@@ -28,7 +28,12 @@ class _Arrow3d(NamedTuple):
     radius: float = 0.2
 
     def to_serializable(self):
-        return list(self.tail), list(self.tip), convert.to_rgb(self.color), self.radius
+        return (
+            list(self.tail),
+            list(self.tip),
+            list(convert.to_rgb(self.color)),
+            self.radius,
+        )
 
 
 def _rotate(arrow, transformation):
@@ -92,7 +97,7 @@ class View:
     "Defines how many multiple of the cell are drawn along each of the coordinate axis."
     show_cell: bool = True
     """Defines if a cell is shown in ngl."""
-    show_axes: bool = True
+    show_axes: bool = False
 
     def _ipython_display_(self):
         widget = self.to_ngl()
