@@ -170,7 +170,7 @@ supplied with its corresponding grid scalar."""
             cell, _ = atoms.cell.standard_form()
             atoms.set_cell(cell)
             if idx_traj == 0:
-                data = grid_scalar.quantity[idx_traj]
+                data = np.tile(grid_scalar.quantity[idx_traj], self.supercell)
                 with tempfile.TemporaryDirectory() as tmp:
                     filename = os.path.join(tmp, CUBE_FILENAME)
                     ase_cube.write_cube(open(filename, "w"), atoms=atoms, data=data)
