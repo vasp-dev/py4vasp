@@ -174,7 +174,7 @@ supplied with its corresponding grid scalar."""
             _, transformation = atoms.cell.standard_form()
             arrows = _arrows.quantity[idx_traj]
             positions = atoms.get_positions()
-            for arrow, tail in zip(arrows, positions):
+            for arrow, tail in zip(itertools.cycle(arrows), positions):
                 tip = arrow + tail
                 arrow_3d = _rotate(
                     _Arrow3d(tail, tip, color=_arrows.color, radius=_arrows.radius),
