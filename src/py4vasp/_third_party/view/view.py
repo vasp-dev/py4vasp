@@ -82,6 +82,18 @@ _y_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((0, 3, 0)), color="#000000")
 _z_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((0, 0, 3)), color="#000000")
 
 
+def _recenter(arrow, origin=None):
+    if origin:
+        return _Arrow3d(
+            arrow.tail + origin,
+            arrow.tip + origin,
+            arrow.color,
+            arrow.radius,
+        )
+    else:
+        return arrow
+
+
 @dataclass
 class View:
     elements: npt.ArrayLike
@@ -99,6 +111,9 @@ class View:
     show_cell: bool = True
     """Defines if a cell is shown in ngl."""
     show_axes: bool = False
+    """Defines if the axes is shown in the viewer"""
+    show_axes_at: Sequence[float] = None
+    """Defines where the axis is shown, defaults to the origin"""
 
     def _ipython_display_(self):
         widget = self.to_ngl()
@@ -140,9 +155,9 @@ supplied with its corresponding grid scalar."""
             widget.add_unitcell()
         if self.show_axes:
             _, transformation = atoms.cell.standard_form()
-            x_axis = _rotate(_x_axis, transformation)
-            y_axis = _rotate(_y_axis, transformation)
-            z_axis = _rotate(_z_axis, transformation)
+            x_axis = _recenter(_rotate(_x_axis, transformation), self.show_axes_at)
+            y_axis = _recenter(_rotate(_y_axis, transformation), self.show_axes_at)
+            z_axis = _recenter(_rotate(_z_axis, transformation), self.show_axes_at)
             widget.shape.add_arrow(*(x_axis.to_serializable()))
             widget.shape.add_arrow(*(y_axis.to_serializable()))
             widget.shape.add_arrow(*(z_axis.to_serializable()))

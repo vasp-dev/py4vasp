@@ -267,3 +267,18 @@ def test_showaxes(is_structure, not_core):
         if idx_msg > 2:
             assert msg["args"][1][0][0] == "arrow"
     assert idx_msg == 4
+
+
+@pytest.mark.parametrize("is_structure", [True, False])
+def test_showaxes_different_origin(is_structure, not_core):
+    inputs = base_input_view(is_structure)
+    inputs["show_axes"] = True
+    inputs["show_axes_at"] = [0.2, 0.2, 0.2]
+    view = View(**inputs)
+    widget = view.to_ngl()
+    assert len(widget.get_state()["_ngl_msg_archive"]) > 2
+    for idx_msg, msg in enumerate(widget.get_state()["_ngl_msg_archive"]):
+        if idx_msg > 2:
+            assert msg["args"][1][0][0] == "arrow"
+            assert np.allclose(msg["args"][1][0][1], [0.2, 0.2, 0.2])
+    assert idx_msg == 4
