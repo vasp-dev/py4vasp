@@ -65,9 +65,16 @@ select anything and all OSZICAR outputs will be provided."""
         iteration_number = data[:, 0]
         split_index = np.where(iteration_number == 1)[0]
         data = np.vsplit(data, split_index)[1:][self._steps]
-        data = raw.VaspData(data)
+        if isinstance(self._steps, slice):
+            data = [raw.VaspData(_data) for _data in data]
+        else:
+            data = [raw.VaspData(data)]
         data_index = INDEXING_OSZICAR[key]
-        return data[:, data_index] if not data.is_none() else {}
+        return_data = [list(_data[:, data_index]) for _data in data]
+        is_none = [_data.is_none() for _data in data]
+        if len(return_data) == 1:
+            return_data = return_data[0]
+        return return_data if not np.all(is_none) else {}
 
     def to_graph(self, selection="free_energy"):
         """Graph the change in parameter with iteration number.
