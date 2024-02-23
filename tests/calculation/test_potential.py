@@ -97,6 +97,7 @@ def test_read(reference_potential, Assert):
             continue
         Assert.allclose(actual[key], reference_potential.ref.output[key])
 
+
 def test_plot_total_potential(reference_potential, Assert):
     view = reference_potential.plot()
     expectation = Expectation(
