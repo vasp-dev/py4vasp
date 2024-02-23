@@ -1,11 +1,11 @@
 py4vasp
 =======
 
-*py4vasp* is a python interface to extract data from VASP calculations. It is
+*py4vasp* is a Python interface to extract data from VASP calculations. It is
 intended mainly to get a quick look at the data and provide the functionality to
 export it into common formats that can be used by other more sophisticated
 postprocessing tools. The second domain of application is for people that want to
-write python scripts based on the data calculated by VASP. This tool interfaces
+write Python scripts based on the data calculated by VASP. This tool interfaces
 directly with the new HDF5 file format and thereby avoids parsing issues
 associated with the XML or OUTCAR files.
 
@@ -128,7 +128,7 @@ If your calculation is not in the root directory, you can create your own
 instance
 
 >>> from py4vasp import Calculation
->>> calc = Calculation.from_path("/path/to/your/VASP/calcualtion")
+>>> calc = Calculation.from_path("/path/to/your/VASP/calculation")
 
 The attributes of the calculation correspond to different physical quantities that
 you could have calculated with VASP. If you have an interactive session you can type
@@ -169,7 +169,7 @@ how you can apply *py4vasp* in your research.
 
 .. [#environment] To create a separate *py4vasp* from the rest of your packages you
   can create an environment with venv_ or conda_. The advantage of the former is
-  that it comes with your python installation, the latter requires the installation
+  that it comes with your Python installation, the latter requires the installation
   of Miniconda or Anaconda. Nevertheless, it may be a good idea to go with *conda*
   in particular on Windows and macOS, because it can help install dependencies
   of *py4vasp*. Below you find the instructions on how to create the environment
