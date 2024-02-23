@@ -97,7 +97,6 @@ def test_read(reference_potential, Assert):
             continue
         Assert.allclose(actual[key], reference_potential.ref.output[key])
 
-
 def test_plot_total_potential(reference_potential, Assert):
     view = reference_potential.plot()
     expectation = Expectation(
@@ -177,7 +176,7 @@ def check_view(potential, view, expectations, Assert, supercell=None):
     for grid_scalar, expected in zip(view.grid_scalars, expectations):
         assert grid_scalar.label == expected.label
         assert grid_scalar.quantity.ndim == 4
-        Assert.allclose(grid_scalar.quantity, expected.potential.T)
+        Assert.allclose(grid_scalar.quantity, expected.potential)
         assert len(grid_scalar.isosurfaces) == 1
         assert grid_scalar.isosurfaces[0] == expected.isosurface
 

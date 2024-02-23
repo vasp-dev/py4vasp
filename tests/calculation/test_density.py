@@ -140,7 +140,7 @@ def check_view(density, expected, Assert, **kwargs):
     grid_scalar = view.grid_scalars[0]
     assert grid_scalar.label == expected.label
     assert grid_scalar.quantity.ndim == 4
-    Assert.allclose(grid_scalar.quantity, expected.density.T)
+    Assert.allclose(grid_scalar.quantity, expected.density)
     assert len(grid_scalar.isosurfaces) == len(expected.isosurfaces)
     assert grid_scalar.isosurfaces == expected.isosurfaces
 
