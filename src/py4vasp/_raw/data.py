@@ -322,6 +322,8 @@ class OSZICAR:
 
     convergence_data: VaspData
     "All columns of the OSZICAR file stored for all ionic steps."
+    label: VaspData
+    "Label of all the data from the OSZICAR file."
 
 
 @dataclasses.dataclass

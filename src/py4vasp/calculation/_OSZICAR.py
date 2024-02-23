@@ -8,16 +8,6 @@ from py4vasp._third_party import graph
 from py4vasp._util import convert
 from py4vasp.calculation import _base, _slice, _structure
 
-INDEXING_OSZICAR = {
-    "iteration_number": 0,
-    "free_energy": 1,
-    "free_energy_change": 2,
-    "bandstructure_energy_change": 3,
-    "number_hamiltonian_evaluations": 4,
-    "norm_residual": 5,
-    "difference_charge_density": 6,
-}
-
 
 class OSZICAR(_slice.Mixin, _base.Refinery, graph.Mixin):
     """Access the convergence data for each electronic step.
@@ -45,20 +35,19 @@ class OSZICAR(_slice.Mixin, _base.Refinery, graph.Mixin):
         """
         return_data = {}
         if selection is None:
-            keys_to_include = INDEXING_OSZICAR
+            keys_to_include = getattr(self._raw_data, "label")
         else:
-            if keys_to_include not in INDEXING_OSZICAR:
+            if keys_to_include not in getattr(self._raw_data, "label"):
                 message = """\
 Please choose a selection including at least one of the following keywords:
-iteration_number, free_energy, free_energy_change, bandstructure_energy_change,
-number_hamiltonian_evaluations, norm_residual, difference_charge_density. Else do not
-select anything and all OSZICAR outputs will be provided."""
+N, E, dE, deps, ncg, rms, rms(c)"""
                 raise exception.RefinementError(message)
             keys_to_include = selection
-        for key in INDEXING_OSZICAR:
+        for key in keys_to_include:
             return_data[key] = self._read(key)
         return return_data
 
+    @_base.data_access
     def _read(self, key):
         # data represents all of the electronic steps for all ionic steps
         data = getattr(self._raw_data, "convergence_data")
@@ -69,23 +58,20 @@ select anything and all OSZICAR outputs will be provided."""
             data = [raw.VaspData(_data) for _data in data]
         else:
             data = [raw.VaspData(data)]
-        data_index = INDEXING_OSZICAR[key]
+        data_index = np.where(self._raw_data.label == key.strip())[0][0]
         return_data = [list(_data[:, data_index]) for _data in data]
         is_none = [_data.is_none() for _data in data]
         if len(return_data) == 1:
             return_data = return_data[0]
         return return_data if not np.all(is_none) else {}
 
-    def to_graph(self, selection="free_energy"):
+    def to_graph(self, selection="E"):
         """Graph the change in parameter with iteration number.
 
         Parameters
         ----------
         selection: str
-            Choose from either iteration_number, free_energy, free_energy_change,
-            bandstructure_energy_change, number_hamiltonian_evaluations, norm_residual,
-            difference_charge_density to get specific columns of the OSZICAR file. In
-            case no selection is provided, the free energy is plotted.
+            Choose strings consistent with the OSZICAR format
 
         Returns
         -------
@@ -94,7 +80,7 @@ select anything and all OSZICAR outputs will be provided."""
             the x-axis.
         """
         data = self.to_dict()
-        series = graph.Series(data["iteration_number"], data[selection], selection)
+        series = graph.Series(data["N"], data[selection], selection)
         ylabel = " ".join(select.capitalize() for select in selection.split("_"))
         return graph.Graph(
             series=[series],

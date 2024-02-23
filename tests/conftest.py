@@ -658,7 +658,8 @@ def _example_OSZICAR():
     iteration_number = np.arange(1, 10)[:, np.newaxis]
     convergence_data = np.hstack([iteration_number, random_convergence_data])
     convergence_data = raw.VaspData(convergence_data)
-    return raw.OSZICAR(convergence_data=convergence_data)
+    label = raw.VaspData(["N", "E", "dE", "deps", "ncg", "rms", "rms(c)"])
+    return raw.OSZICAR(convergence_data=convergence_data, label=label)
 
 
 def _Sr2TiO4_CONTCAR():
