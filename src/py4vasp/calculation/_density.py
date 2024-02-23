@@ -259,7 +259,7 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         component_label = selector.label(selection)
         component = map_.get(component_label, -1)
         return view.GridQuantity(
-            quantity=selector[selection][np.newaxis],
+            quantity=(selector[selection].T)[np.newaxis],
             label=self._label(component_label),
             isosurfaces=self._isosurfaces(component, **user_options),
         )
