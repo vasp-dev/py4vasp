@@ -131,13 +131,13 @@ def view_arrow(request, not_core):
         ion_arrows = [force_ion_arrows]
     else:
         force_ion_arrows = IonArrow(
-            quantity=np.random.rand(2, number_atoms, 3),
+            quantity=np.random.rand(1, number_atoms, 3),
             label="force",
             color=color,
             radius=radius,
         )
         moments_ion_arrows = IonArrow(
-            quantity=np.random.rand(2, number_atoms, 3),
+            quantity=np.random.rand(1, number_atoms, 3),
             label="moments",
             color=color,
             radius=radius,
@@ -207,6 +207,8 @@ def test_ion_arrows(view_arrow):
         )
         ion_positions = atoms.get_positions()
         _, transformation = atoms.cell.standard_form()
+        if idx_traj != 0:
+            continue
         ion_arrows = view_arrow.ref.ion_arrows[idx_ion_arrows].quantity[idx_traj]
         expected_color = view_arrow.ref.ion_arrows[idx_ion_arrows].color
         expected_radius = view_arrow.ref.ion_arrows[idx_ion_arrows].radius

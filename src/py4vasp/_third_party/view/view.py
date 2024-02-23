@@ -128,69 +128,104 @@ class View:
         atoms = atoms.repeat(self.supercell)
         return atoms
 
+    def _warning_message(self, attribute):
+        for _attribute in attribute:
+            if len(self.positions) > 1 and len(_attribute.quantity) > 1:
+                raise exception.NotImplemented(
+                    """\
+Currently isosurfaces and ion arrows are implemented only for cases where there is only
+one frame in the trajectory. Make sure that either only one frame for the positions
+attribute is supplied with its corresponding grid scalar or ion arrow component."""
+                )
+
     def _iterate_trajectory_frames(self):
         if self.grid_scalars:
-            for grid_scalar in self.grid_scalars:
-                if len(self.positions) > 1 and len(grid_scalar.quantity) > 1:
-                    raise exception.NotImplemented(
-                        """\
-Currently isosurfaces are implemented only for cases where there is only one frame in
-the trajectory. Make sure that either only one frame for the positions attribute is
-supplied with its corresponding grid scalar."""
-                    )
+            self._warning_message(self.grid_scalars)
+        if self.ion_arrows:
+            self._warning_message(self.ion_arrows)
         return range(len(self.positions))
 
     def to_ngl(self):
-        trajectory = []
-        for idx_traj in self._iterate_trajectory_frames():
-            atoms = self._create_atoms(idx_traj)
-            trajectory.append(atoms)
+        """Create a widget with NGL
+
+        This method creates the widget required to view a structure, isosurfaces and
+        arrows at atom centers. The attributes of View are used as a starting point to
+        determine which methods are called (either isosurface, arrows, etc).
+        """
+        trajectory = [self._create_atoms(i) for i in self._iterate_trajectory_frames()]
         ngl_trajectory = nglview.ASETrajectory(trajectory)
         widget = nglview.NGLWidget(ngl_trajectory)
         if self.grid_scalars:
-            self._show_isosurface(widget)
+            self._show_isosurface(widget, trajectory)
         if self.ion_arrows:
-            self._show_arrows_at_atoms(widget)
+            self._show_arrows_at_atoms(widget, trajectory)
         if self.show_cell:
-            widget.add_unitcell()
+            self._show_cell(widget)
         if self.show_axes:
-            _, transformation = atoms.cell.standard_form()
-            x_axis = _rotate(_recenter(_x_axis, self.show_axes_at), transformation)
-            y_axis = _rotate(_recenter(_y_axis, self.show_axes_at), transformation)
-            z_axis = _rotate(_recenter(_z_axis, self.show_axes_at), transformation)
-            widget.shape.add_arrow(*(x_axis.to_serializable()))
-            widget.shape.add_arrow(*(y_axis.to_serializable()))
-            widget.shape.add_arrow(*(z_axis.to_serializable()))
+            self._show_axes(widget, trajectory)
         return widget
 
-    def _show_isosurface(self, widget):
+    def _show_cell(self, widget):
+        widget.add_unitcell()
+
+    def _show_axes(self, widget, trajectory):
+        _, transformation = trajectory[0].cell.standard_form()
+        x_axis = _rotate(_recenter(_x_axis, self.show_axes_at), transformation)
+        y_axis = _rotate(_recenter(_y_axis, self.show_axes_at), transformation)
+        z_axis = _rotate(_recenter(_z_axis, self.show_axes_at), transformation)
+        widget.shape.add_arrow(*(x_axis.to_serializable()))
+        widget.shape.add_arrow(*(y_axis.to_serializable()))
+        widget.shape.add_arrow(*(z_axis.to_serializable()))
+
+    def _skip_if_not_first_trajectory(self, idx_traj):
+        """Boolean to describe if a trajectory is to be skipped.
+
+        Skip anything but the first trajectory for both arrows and densities because the
+        we currently only show this quantity for the first frame of the trajectory based
+        on the nglviewer.
+        """
+        if idx_traj != 0:
+            return True
+        else:
+            return False
+
+    def _set_atoms_in_standard_form(self, atoms):
+        cell, _ = atoms.cell.standard_form()
+        atoms.set_cell(cell)
+
+    def _repeat_isosurface(self, quantity):
+        quantity_repeated = np.tile(quantity, self.supercell)
+        return quantity_repeated
+
+    def _show_isosurface(self, widget, trajectory):
         iter_traj = self._iterate_trajectory_frames()
         for grid_scalar, idx_traj in itertools.product(self.grid_scalars, iter_traj):
-            atoms = self._create_atoms(idx_traj)
-            cell, _ = atoms.cell.standard_form()
-            atoms.set_cell(cell)
-            if idx_traj == 0:
-                data = np.tile(grid_scalar.quantity[idx_traj], self.supercell)
-                with tempfile.TemporaryDirectory() as tmp:
-                    filename = os.path.join(tmp, CUBE_FILENAME)
-                    ase_cube.write_cube(open(filename, "w"), atoms=atoms, data=data)
-                    component = widget.add_component(filename)
-                    if grid_scalar.isosurfaces:
-                        for isosurface in grid_scalar.isosurfaces:
-                            isosurface_options = {
-                                "isolevel": isosurface.isolevel,
-                                "color": isosurface.color,
-                                "opacity": isosurface.opacity,
-                            }
-                            component.add_surface(**isosurface_options)
+            atoms = trajectory[idx_traj]
+            self._set_atoms_in_standard_form(atoms)
+            if self._skip_if_not_first_trajectory(idx_traj):
+                continue
+            quantity = self._repeat_isosurface(grid_scalar.quantity[idx_traj])
+            with tempfile.TemporaryDirectory() as tmp:
+                filename = os.path.join(tmp, CUBE_FILENAME)
+                ase_cube.write_cube(open(filename, "w"), atoms=atoms, data=quantity)
+                component = widget.add_component(filename)
+            if grid_scalar.isosurfaces:
+                for isosurface in grid_scalar.isosurfaces:
+                    isosurface_options = {
+                        "isolevel": isosurface.isolevel,
+                        "color": isosurface.color,
+                        "opacity": isosurface.opacity,
+                    }
+                    component.add_surface(**isosurface_options)
 
-    def _show_arrows_at_atoms(self, widget):
+    def _show_arrows_at_atoms(self, widget, trajectory):
         iter_traj = self._iterate_trajectory_frames()
         for _arrows, idx_traj in itertools.product(self.ion_arrows, iter_traj):
-            atoms = self._create_atoms(idx_traj)
-            _, transformation = atoms.cell.standard_form()
+            _, transformation = trajectory[idx_traj].cell.standard_form()
+            if self._skip_if_not_first_trajectory(idx_traj):
+                continue
             arrows = _arrows.quantity[idx_traj]
-            positions = atoms.get_positions()
+            positions = trajectory[idx_traj].get_positions()
             for arrow, tail in zip(itertools.cycle(arrows), positions):
                 tip = arrow + tail
                 arrow_3d = _rotate(
