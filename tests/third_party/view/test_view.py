@@ -9,10 +9,10 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
+from py4vasp import exception
 from py4vasp._third_party.view import View
-from py4vasp._third_party.view.view import GridQuantity, IonArrow, Isosurface, _rotate
+from py4vasp._third_party.view.view import GridQuantity, IonArrow, Isosurface
 from py4vasp._util import convert, import_
-from py4vasp.calculation._structure import Structure
 
 ase = import_.optional("ase")
 ase_cube = import_.optional("ase.io.cube")
@@ -188,9 +188,9 @@ def test_isosurface(view3d):
                 np.allclose(expected_data, output_data)
 
 
-@pytest.mark.xfail
 def test_fail_isosurface(view3d_fail):
-    widget = view3d_fail.to_ngl()
+    with pytest.raises(exception.NotImplemented):
+        widget = view3d_fail.to_ngl()
 
 
 def test_ion_arrows(view_arrow):

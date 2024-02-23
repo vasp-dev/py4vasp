@@ -119,32 +119,6 @@ class View:
         widget = self.to_ngl()
         widget._ipython_display_()
 
-    def _create_atoms(self, idx_traj):
-        symbols = "".join(self.elements[idx_traj])
-        atoms = ase.Atoms(symbols)
-        atoms.cell = self.lattice_vectors[idx_traj]
-        atoms.set_scaled_positions(self.positions[idx_traj])
-        atoms.set_pbc(True)
-        atoms = atoms.repeat(self.supercell)
-        return atoms
-
-    def _warning_message(self, attribute):
-        for _attribute in attribute:
-            if len(self.positions) > 1 and len(_attribute.quantity) > 1:
-                raise exception.NotImplemented(
-                    """\
-Currently isosurfaces and ion arrows are implemented only for cases where there is only
-one frame in the trajectory. Make sure that either only one frame for the positions
-attribute is supplied with its corresponding grid scalar or ion arrow component."""
-                )
-
-    def _iterate_trajectory_frames(self):
-        if self.grid_scalars:
-            self._warning_message(self.grid_scalars)
-        if self.ion_arrows:
-            self._warning_message(self.ion_arrows)
-        return range(len(self.positions))
-
     def to_ngl(self):
         """Create a widget with NGL
 
@@ -152,6 +126,7 @@ attribute is supplied with its corresponding grid scalar or ion arrow component.
         arrows at atom centers. The attributes of View are used as a starting point to
         determine which methods are called (either isosurface, arrows, etc).
         """
+        self._verify()
         trajectory = [self._create_atoms(i) for i in self._iterate_trajectory_frames()]
         ngl_trajectory = nglview.ASETrajectory(trajectory)
         widget = nglview.NGLWidget(ngl_trajectory)
@@ -165,6 +140,34 @@ attribute is supplied with its corresponding grid scalar or ion arrow component.
             self._show_axes(widget, trajectory)
         return widget
 
+    def _verify(self):
+        self._raise_error_if_present_on_multiple_steps(self.grid_scalars)
+        self._raise_error_if_present_on_multiple_steps(self.ion_arrows)
+
+    def _raise_error_if_present_on_multiple_steps(self, attributes):
+        if not attributes:
+            return
+        for attribute in attributes:
+            if len(attribute.quantity) > 1:
+                raise exception.NotImplemented(
+                    """\
+Currently isosurfaces and ion arrows are implemented only for cases where there is only
+one frame in the trajectory. Make sure that either only one frame for the positions
+attribute is supplied with its corresponding grid scalar or ion arrow component."""
+                )
+
+    def _create_atoms(self, step):
+        symbols = "".join(self.elements[step])
+        atoms = ase.Atoms(symbols)
+        atoms.cell = self.lattice_vectors[step]
+        atoms.set_scaled_positions(self.positions[step])
+        atoms.set_pbc(True)
+        atoms = atoms.repeat(self.supercell)
+        return atoms
+
+    def _iterate_trajectory_frames(self):
+        return range(len(self.positions))
+
     def _show_cell(self, widget):
         widget.add_unitcell()
 
@@ -177,18 +180,6 @@ attribute is supplied with its corresponding grid scalar or ion arrow component.
         widget.shape.add_arrow(*(y_axis.to_serializable()))
         widget.shape.add_arrow(*(z_axis.to_serializable()))
 
-    def _skip_if_not_first_trajectory(self, idx_traj):
-        """Boolean to describe if a trajectory is to be skipped.
-
-        Skip anything but the first trajectory for both arrows and densities because the
-        we currently only show this quantity for the first frame of the trajectory based
-        on the nglviewer.
-        """
-        if idx_traj != 0:
-            return True
-        else:
-            return False
-
     def _set_atoms_in_standard_form(self, atoms):
         cell, _ = atoms.cell.standard_form()
         atoms.set_cell(cell)
@@ -198,34 +189,31 @@ attribute is supplied with its corresponding grid scalar or ion arrow component.
         return quantity_repeated
 
     def _show_isosurface(self, widget, trajectory):
-        iter_traj = self._iterate_trajectory_frames()
-        for grid_scalar, idx_traj in itertools.product(self.grid_scalars, iter_traj):
-            atoms = trajectory[idx_traj]
-            self._set_atoms_in_standard_form(atoms)
-            if self._skip_if_not_first_trajectory(idx_traj):
+        step = 0
+        for grid_scalar in self.grid_scalars:
+            if not grid_scalar.isosurfaces:
                 continue
-            quantity = self._repeat_isosurface(grid_scalar.quantity[idx_traj])
+            atoms = trajectory[step]
+            self._set_atoms_in_standard_form(atoms)
+            quantity = self._repeat_isosurface(grid_scalar.quantity[step])
             with tempfile.TemporaryDirectory() as tmp:
                 filename = os.path.join(tmp, CUBE_FILENAME)
                 ase_cube.write_cube(open(filename, "w"), atoms=atoms, data=quantity)
                 component = widget.add_component(filename)
-            if grid_scalar.isosurfaces:
-                for isosurface in grid_scalar.isosurfaces:
-                    isosurface_options = {
-                        "isolevel": isosurface.isolevel,
-                        "color": isosurface.color,
-                        "opacity": isosurface.opacity,
-                    }
-                    component.add_surface(**isosurface_options)
+            for isosurface in grid_scalar.isosurfaces:
+                isosurface_options = {
+                    "isolevel": isosurface.isolevel,
+                    "color": isosurface.color,
+                    "opacity": isosurface.opacity,
+                }
+                component.add_surface(**isosurface_options)
 
     def _show_arrows_at_atoms(self, widget, trajectory):
-        iter_traj = self._iterate_trajectory_frames()
-        for _arrows, idx_traj in itertools.product(self.ion_arrows, iter_traj):
-            _, transformation = trajectory[idx_traj].cell.standard_form()
-            if self._skip_if_not_first_trajectory(idx_traj):
-                continue
-            arrows = _arrows.quantity[idx_traj]
-            positions = trajectory[idx_traj].get_positions()
+        step = 0
+        for _arrows in self.ion_arrows:
+            _, transformation = trajectory[step].cell.standard_form()
+            arrows = _arrows.quantity[step]
+            positions = trajectory[step].get_positions()
             for arrow, tail in zip(itertools.cycle(arrows), positions):
                 tip = arrow + tail
                 arrow_3d = _rotate(
