@@ -148,9 +148,9 @@ supplied with its corresponding grid scalar."""
         ngl_trajectory = nglview.ASETrajectory(trajectory)
         widget = nglview.NGLWidget(ngl_trajectory)
         if self.grid_scalars:
-            self.show_isosurface(widget)
+            self._show_isosurface(widget)
         if self.ion_arrows:
-            self.show_arrows_at_atoms(widget)
+            self._show_arrows_at_atoms(widget)
         if self.show_cell:
             widget.add_unitcell()
         if self.show_axes:
@@ -163,7 +163,7 @@ supplied with its corresponding grid scalar."""
             widget.shape.add_arrow(*(z_axis.to_serializable()))
         return widget
 
-    def show_isosurface(self, widget):
+    def _show_isosurface(self, widget):
         iter_traj = self._iterate_trajectory_frames()
         for grid_scalar, idx_traj in itertools.product(self.grid_scalars, iter_traj):
             atoms = self._create_atoms(idx_traj)
@@ -184,7 +184,7 @@ supplied with its corresponding grid scalar."""
                             }
                             component.add_surface(**isosurface_options)
 
-    def show_arrows_at_atoms(self, widget):
+    def _show_arrows_at_atoms(self, widget):
         iter_traj = self._iterate_trajectory_frames()
         for _arrows, idx_traj in itertools.product(self.ion_arrows, iter_traj):
             atoms = self._create_atoms(idx_traj)
