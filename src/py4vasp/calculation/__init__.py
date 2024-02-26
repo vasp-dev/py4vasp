@@ -61,6 +61,7 @@ __all__ = (
     "kpoint",
     "magnetism",
     "pair_correlation",
+    "partial_charge",
     "phonon_band",
     "phonon_dos",
     "piezoelectric_tensor",

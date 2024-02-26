@@ -510,8 +510,8 @@ schema.add(
     raw.PartialCharge,
     required=raw.Version(6, 5),
     structure=Link("structure", DEFAULT_SOURCE),
-    partial_charge="results/partial_charge/parchg",
-    bands="results/partial_charge/bands",
-    kpoints="results/partial_charge/kpoints",
-    #grid="results/partial_charge/grid",
+    partial_charge="results/partial_charges/parchg",
+    bands="results/partial_charges/bands",
+    kpoints="results/partial_charges/kpoints",
+    grid="results/partial_charges/grid",
 )

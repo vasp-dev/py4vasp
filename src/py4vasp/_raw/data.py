@@ -306,8 +306,10 @@ class Magnetism:
 
     structure: Structure
     "Structural information about the system."
-    moments: VaspData
+    spin_moments: VaspData
     "Contains the charge and magnetic moments atom and orbital resolved."
+    orbital_moments: VaspData = NONE()
+    "Contains the orbital magnetization for all atoms"
 
 
 @dataclasses.dataclass
@@ -494,9 +496,11 @@ class PartialCharge:
     Possibly not only split by spin, but also by band and kpoint."""
     structure: Structure
     "The atomic structure to represent the densities."
-    charge: VaspData
+    partial_charge: VaspData
     "The data of electronic charge and magnetization density."
     kpoints: VaspData
     "The kpoints at which the partial charge is evaluated."
     bands: VaspData
     "The bands at which the partial charge is evaluated."
+    grid: VaspData
+    "The fine FFT grid at which the partial charge is evaluated."
