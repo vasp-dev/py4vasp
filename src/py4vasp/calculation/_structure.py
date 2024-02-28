@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from py4vasp import calculation, exception, raw
-from py4vasp._third_party.viewer.viewer3d import Viewer3d
+from py4vasp._third_party import view
 from py4vasp._util import documentation, import_, reader
 from py4vasp.calculation import _base, _slice, _topology
 
@@ -48,7 +48,7 @@ class _Format:
 
 
 @documentation.format(examples=_slice.examples("structure"))
-class Structure(_slice.Mixin, _base.Refinery):
+class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
     """The structure contains the unit cell and the position of all ions within.
 
     The crystal structure is the specific arrangement of ions in a three-dimensional
@@ -75,7 +75,17 @@ class Structure(_slice.Mixin, _base.Refinery):
 
     @classmethod
     def from_POSCAR(cls, poscar, *, elements=None):
-        """Generate a structure from string in POSCAR format."""
+        """Generate a structure from string in POSCAR format.
+
+        Parameters
+        ----------
+        elements : list[str]
+            Name of the elements in the order they appear in the POSCAR file. If the
+            elements are specified in the POSCAR file, this argument is optional and
+            if set it will overwrite the choice in the POSCAR file. Old POSCAR files
+            do not specify the name of the elements; in that case this argument is
+            required.
+        """
         poscar = _replace_or_set_elements(str(poscar), elements)
         poscar = io.StringIO(poscar)
         structure = ase_io.read(poscar, format="vasp")
@@ -141,8 +151,8 @@ class Structure(_slice.Mixin, _base.Refinery):
         }
 
     @_base.data_access
-    @documentation.format(examples=_slice.examples("structure", "to_graph"))
-    def plot(self, supercell=None):
+    @documentation.format(examples=_slice.examples("structure", "to_view"))
+    def to_view(self, supercell=None):
         """Generate a 3d representation of the structure(s).
 
         Parameters
@@ -153,15 +163,18 @@ class Structure(_slice.Mixin, _base.Refinery):
 
         Returns
         -------
-        Viewer3d
+        View
             Visualize the structure(s) as a 3d figure.
 
         {examples}
         """
-        if self._is_slice:
-            return self._viewer_from_trajectory()
-        else:
-            return self._viewer_from_structure(supercell)
+        make_3d = lambda array: array if array.ndim == 3 else array[np.newaxis]
+        return view.View(
+            elements=np.atleast_2d(self._topology().elements()),
+            lattice_vectors=make_3d(self._lattice_vectors()),
+            positions=make_3d(self._positions()),
+            supercell=self._parse_supercell(supercell),
+        )
 
     @_base.data_access
     @documentation.format(examples=_slice.examples("structure", "to_ase"))
@@ -293,6 +306,28 @@ class Structure(_slice.Mixin, _base.Refinery):
         else:
             return 1
 
+    def _parse_supercell(self, supercell):
+        if supercell is None:
+            return np.ones(3, np.int_)
+        try:
+            integer_supercell = np.round(supercell).astype(np.int_)
+        except TypeError as error:
+            message = (
+                f"Could not convert supercell='{supercell}' to an integer numpy array."
+            )
+            raise exception.IncorrectUsage(message) from error
+        if not np.allclose(supercell, integer_supercell):
+            message = f"supercell='{supercell}' contains noninteger values."
+            raise exception.IncorrectUsage(message)
+        if np.isscalar(integer_supercell):
+            return np.full(3, integer_supercell)
+        if integer_supercell.shape == (3,):
+            return integer_supercell
+        message = (
+            f"supercell='{supercell}' is not a scalar or a three component vector."
+        )
+        raise exception.IncorrectUsage(message)
+
     def _topology(self):
         return calculation.topology.from_data(self._raw_data.topology)
 
@@ -310,16 +345,6 @@ class Structure(_slice.Mixin, _base.Refinery):
 
     def _positions(self):
         return self._raw_data.positions[self._get_steps()]
-
-    def _viewer_from_structure(self, supercell):
-        viewer = Viewer3d.from_structure(self, supercell=supercell)
-        viewer.show_cell()
-        return viewer
-
-    def _viewer_from_trajectory(self):
-        viewer = Viewer3d.from_trajectory(self)
-        viewer.show_cell()
-        return viewer
 
     def _get_steps(self):
         return self._steps if self._is_trajectory else ()

@@ -1,13 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 import types
-from unittest.mock import patch
 
 import numpy as np
 import pytest
 
 from py4vasp import _config, calculation, exception, raw
-from py4vasp._third_party.viewer import viewer3d
+from py4vasp._third_party.view import Isosurface
 
 
 @pytest.fixture(params=["total", "ionic", "hartree", "xc", "all"])
@@ -20,6 +20,13 @@ def reference_potential(raw_data, request, included_kinds):
     return make_reference_potential(raw_data, request.param, included_kinds)
 
 
+@dataclasses.dataclass
+class Expectation:
+    label: str
+    potential: np.ndarray
+    isosurface: Isosurface
+
+
 def make_reference_potential(raw_data, system, included_kinds):
     selection = f"{system} {included_kinds}"
     raw_potential = raw_data.potential(selection)
@@ -28,6 +35,7 @@ def make_reference_potential(raw_data, system, included_kinds):
     potential.ref.included_kinds = included_kinds
     potential.ref.output = get_expected_dict(raw_potential)
     potential.ref.string = get_expected_string(raw_potential, included_kinds)
+    potential.ref.structure = calculation.structure.from_data(raw_potential.structure)
     return potential
 
 
@@ -90,84 +98,97 @@ def test_read(reference_potential, Assert):
         Assert.allclose(actual[key], reference_potential.ref.output[key])
 
 
-def test_plot_total_potential(reference_potential, Assert, not_core):
-    obj = viewer3d.Viewer3d
-    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(obj, "show_cell")
-    cm_surface = patch.object(obj, "show_isosurface")
-    with cm_init as init, cm_cell as cell, cm_surface as surface:
-        reference_potential.plot()
-        init.assert_called_once()
-        cell.assert_called_once()
-        surface.assert_called_once()
-        args, kwargs = surface.call_args
-    Assert.allclose(args[0], reference_potential.ref.output["total"].T)
-    assert kwargs == {"isolevel": 0.0, "color": _config.VASP_CYAN, "opacity": 0.6}
+def test_plot_total_potential(reference_potential, Assert):
+    view = reference_potential.plot()
+    expectation = Expectation(
+        label="total potential",
+        potential=reference_potential.ref.output["total"],
+        isosurface=Isosurface(isolevel=0, color=_config.VASP_CYAN, opacity=0.6),
+    )
+    check_view(reference_potential, view, [expectation], Assert)
 
 
-def test_plot_selected_potential(reference_potential, Assert, not_core):
-    obj = viewer3d.Viewer3d
-    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(obj, "show_cell")
-    cm_surface = patch.object(obj, "show_isosurface")
+def test_plot_selected_potential(reference_potential, Assert):
     if reference_potential.ref.included_kinds in ("hartree", "ionic", "xc"):
         selection = reference_potential.ref.included_kinds
     else:
         selection = "total"
-    with cm_init as init, cm_cell as cell, cm_surface as surface:
-        reference_potential.plot(selection, isolevel=0.2)
-        init.assert_called_once()
-        cell.assert_called_once()
-        surface.assert_called_once()
-        args, kwargs = surface.call_args
-    Assert.allclose(args[0], reference_potential.ref.output[selection].T)
-    assert kwargs == {"isolevel": 0.2, "color": _config.VASP_CYAN, "opacity": 0.6}
+    view = reference_potential.plot(selection, isolevel=0.2)
+    expectation = Expectation(
+        label=f"{selection} potential",
+        potential=reference_potential.ref.output[selection],
+        isosurface=Isosurface(isolevel=0.2, color=_config.VASP_CYAN, opacity=0.6),
+    )
+    check_view(reference_potential, view, [expectation], Assert)
 
 
 @pytest.mark.parametrize("selection", ["up", "down"])
-def test_plot_spin_potential(raw_data, selection, Assert, not_core):
+def test_plot_spin_potential(raw_data, selection, Assert):
     potential = make_reference_potential(raw_data, "Fe3O4 collinear", "total")
-    obj = viewer3d.Viewer3d
-    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(obj, "show_cell")
-    cm_surface = patch.object(obj, "show_isosurface")
-    with cm_init as init, cm_cell as cell, cm_surface as surface:
-        potential.plot(selection)
-        init.assert_called_once()
-        cell.assert_called_once()
-        surface.assert_called_once()
-        args, kwargs = surface.call_args
-    Assert.allclose(args[0], potential.ref.output[f"total_{selection}"].T)
-    assert kwargs == {"isolevel": 0.0, "color": _config.VASP_CYAN, "opacity": 0.6}
+    view = potential.plot(selection, opacity=0.3)
+    expectation = Expectation(
+        label=f"total potential({selection})",
+        potential=potential.ref.output[f"total_{selection}"],
+        isosurface=Isosurface(isolevel=0.0, color=_config.VASP_CYAN, opacity=0.3),
+    )
+    check_view(potential, view, [expectation], Assert)
 
 
-def test_plot_multiple_selections(raw_data, Assert, not_core):
+def test_plot_multiple_selections(raw_data, Assert):
     potential = make_reference_potential(raw_data, "Fe3O4 collinear", "all")
-    obj = viewer3d.Viewer3d
-    cm_init = patch.object(obj, "__init__", autospec=True, return_value=None)
-    cm_cell = patch.object(obj, "show_cell")
-    cm_surface = patch.object(obj, "show_isosurface")
-    with cm_init as init, cm_cell as cell, cm_surface as surface:
-        potential.plot("up(total) hartree xc(down)")
-        init.assert_called_once()
-        cell.assert_called_once()
-        calls = surface.call_args_list
-    assert len(calls) == 3
-    args, _ = calls[0]
-    Assert.allclose(args[0], potential.ref.output["total_up"].T)
-    args, _ = calls[1]
-    Assert.allclose(args[0], potential.ref.output["hartree"].T)
-    args, _ = calls[2]
-    Assert.allclose(args[0], potential.ref.output["xc_down"].T)
+    view = potential.plot("up(total) hartree xc(down)")
+    isosurface = Isosurface(isolevel=0.0, color=_config.VASP_CYAN, opacity=0.6)
+    expectations = [
+        Expectation(
+            label="total potential(up)",
+            potential=potential.ref.output["total_up"],
+            isosurface=isosurface,
+        ),
+        Expectation(
+            label="hartree potential",
+            potential=potential.ref.output["hartree"],
+            isosurface=isosurface,
+        ),
+        Expectation(
+            label="xc potential(down)",
+            potential=potential.ref.output["xc_down"],
+            isosurface=isosurface,
+        ),
+    ]
+    check_view(potential, view, expectations, Assert)
 
 
-def test_incorrect_selection(reference_potential, not_core):
+@pytest.mark.parametrize("supercell", [2, (3, 2, 1)])
+def test_plot_supercell(raw_data, supercell, Assert):
+    potential = make_reference_potential(raw_data, "Sr2TiO4", "total")
+    view = potential.plot(supercell=supercell)
+    expectation = Expectation(
+        label="total potential",
+        potential=potential.ref.output[f"total"],
+        isosurface=Isosurface(isolevel=0, color=_config.VASP_CYAN, opacity=0.6),
+    )
+    check_view(potential, view, [expectation], Assert, supercell=supercell)
+
+
+def check_view(potential, view, expectations, Assert, supercell=None):
+    expected_view = potential.ref.structure.plot(supercell)
+    Assert.same_structure_view(view, expected_view)
+    assert len(view.grid_scalars) == len(expectations)
+    for grid_scalar, expected in zip(view.grid_scalars, expectations):
+        assert grid_scalar.label == expected.label
+        assert grid_scalar.quantity.ndim == 4
+        Assert.allclose(grid_scalar.quantity, expected.potential)
+        assert len(grid_scalar.isosurfaces) == 1
+        assert grid_scalar.isosurfaces[0] == expected.isosurface
+
+
+def test_incorrect_selection(reference_potential):
     with pytest.raises(exception.IncorrectUsage):
         reference_potential.plot("random_string")
 
 
 @pytest.mark.parametrize("selection", ["total", "xc", "ionic", "hartree"])
-def test_empty_potential(raw_data, selection, not_core):
+def test_empty_potential(raw_data, selection):
     raw_potential = raw_data.potential("Sr2TiO4 total")
     raw_potential.total_potential = raw.VaspData(None)
     potential = calculation.potential.from_data(raw_potential)

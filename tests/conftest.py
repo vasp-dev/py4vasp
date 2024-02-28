@@ -68,6 +68,13 @@ class _Assert:
             else:
                 _Assert.allclose(actual[key], desired[key])
 
+    @staticmethod
+    def same_structure_view(actual, desired):
+        assert np.all(actual.elements == desired.elements)
+        _Assert.allclose(actual.lattice_vectors, desired.lattice_vectors)
+        _Assert.allclose(actual.positions, desired.positions)
+        _Assert.allclose(actual.supercell, desired.supercell)
+
 
 def _is_none(data):
     if isinstance(data, raw.VaspData):
@@ -122,6 +129,10 @@ class RawDataFactory:
             return _Fe3O4_CONTCAR()
         else:
             raise exception.NotImplemented()
+
+    @staticmethod
+    def OSZICAR(selection=None):
+        return _example_OSZICAR()
 
     @staticmethod
     def density(selection):
@@ -647,6 +658,14 @@ def _Sr2TiO4_cell():
     return raw.Cell(
         lattice_vectors=np.array(number_steps * [lattice_vectors]), scale=scale
     )
+
+
+def _example_OSZICAR():
+    random_convergence_data = np.random.rand(9, 6)
+    iteration_number = np.arange(1, 10)[:, np.newaxis]
+    convergence_data = np.hstack([iteration_number, random_convergence_data])
+    convergence_data = raw.VaspData(convergence_data)
+    return raw.OSZICAR(convergence_data=convergence_data)
 
 
 def _Sr2TiO4_CONTCAR():

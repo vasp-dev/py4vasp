@@ -2,14 +2,14 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import exception
-from py4vasp._config import VASP_GRAY
-from py4vasp._util import convert, documentation, reader
+from py4vasp import _config, exception
+from py4vasp._third_party import view
+from py4vasp._util import documentation, reader
 from py4vasp.calculation import _base, _slice, _structure
 
 
 @documentation.format(examples=_slice.examples("velocity"))
-class Velocity(_slice.Mixin, _base.Refinery, _structure.Mixin):
+class Velocity(_slice.Mixin, _base.Refinery, _structure.Mixin, view.Mixin):
     """The velocities describe the ionic motion during an MD simulation.
 
     The velocities of the ions are a metric for the temperature of the system. Most
@@ -61,30 +61,35 @@ class Velocity(_slice.Mixin, _base.Refinery, _structure.Mixin):
         }
 
     @_base.data_access
-    @documentation.format(examples=_slice.examples("velocity", "plot"))
-    def plot(self):
+    @documentation.format(examples=_slice.examples("velocity", "to_view"))
+    def to_view(self, supercell=None):
         """Plot the velocities as vectors in the structure.
 
-        This is currently only implemented for a single step. So selecting multiple
-        steps will raise an error.
+        Parameters
+        ----------
+        supercell : int or np.ndarray
+            If present the structure is replicated the specified number of times
+            along each direction.
 
         Returns
         -------
-        Viewer3d
+        View
             Contains all atoms and the velocities are drawn as vectors.
 
         {examples}
         """
-        self._raise_error_if_slice()
+        viewer = self._structure.plot(supercell)
         velocities = self.velocity_rescale * self._velocity[self._steps]
-        viewer = self._structure.plot()
-        viewer.show_arrows_at_atoms(velocities, convert.to_rgb(VASP_GRAY))
+        if velocities.ndim == 2:
+            velocities = velocities[np.newaxis]
+        ion_arrow = view.IonArrow(
+            quantity=velocities,
+            label="velocities",
+            color=_config.VASP_GRAY,
+            radius=0.2,
+        )
+        viewer.ion_arrows = [ion_arrow]
         return viewer
-
-    def _raise_error_if_slice(self):
-        if self._is_slice:
-            message = "Plotting velocities for multiple steps is not implemented."
-            raise exception.NotImplemented(message)
 
     @property
     def _velocity(self):
