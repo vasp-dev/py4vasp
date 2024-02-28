@@ -501,11 +501,13 @@ class Workfunction:
     fermi_energy: float
     "Fermi energy obtained by VASP."
 
+
 @dataclasses.dataclass
 class PartialCharge:
     """Electronic partial charge and magnetization density on the fine Fourier grid
 
     Possibly not only split by spin, but also by band and kpoint."""
+
     structure: Structure
     "The atomic structure to represent the densities."
     partial_charge: VaspData
