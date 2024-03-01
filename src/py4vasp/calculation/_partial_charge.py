@@ -95,7 +95,8 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         }
 
         self._check_z_orth()
-        self._check_tip_height(tip_height)
+        if mode in stm_modes["constant_height"]:
+            self._check_tip_height(tip_height)
 
         default_params.update(kwargs)
         self.sigma_z = default_params["sigma_z"]
@@ -107,32 +108,21 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         self.smoothed_charge = self._get_stm_data(spin)
 
         if mode in stm_modes["constant_height"]:
-            stm_data = self._constant_height_stm(tip_height, spin)
-            plot_scan(
-                stm_data.xy_grid,
-                [2, 2],
-                stm_data.data,
-                stm_data.mode,
-                stm_data.lattice_vectors,
-                tip_height,
-                0.0,
-            )
-            return stm_data
+            self.STM = self._constant_height_stm(tip_height, spin)
+            return self.STM
         elif mode in stm_modes["constant_current"]:
-            stm_data = self._constant_current_stm(current, spin)
-            plot_scan(
-                stm_data.xy_grid,
-                [2, 2],
-                stm_data.data,
-                stm_data.mode,
-                stm_data.lattice_vectors,
-                0.0,
-                current,
-            )
+            self.STM = self._constant_current_stm(current, spin)
+            return self.STM
         else:
             raise ValueError(
-                f"STM mode {mode} not understood. Use 'constant_height' or 'constant_current'."
+                f"STM mode '{mode}' not understood. Use 'constant_height' or 'constant_current'."
             )
+
+    def plot_STM(self):
+        # check if STM is calculated already
+        if getattr(self, "STM", None) is None:
+            raise ValueError("STM is not calculated yet. Please calculate STM first.")
+        plot_scan(self.STM)
 
     @_base.data_access
     def _constant_current_stm(self, current, spin):
@@ -154,16 +144,9 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
                 cc_scan[i][j] = k
         # normalize the scan
         cc_scan = cc_scan - np.min(cc_scan.flatten())
-
-        return STM_data(
-            cc_scan,
-            "constant_current",
-            0,
-            current,
-            spin,
-            self.lattice_vectors()[:2],
-            grid[:2],
-        )
+        spin_label = "both spin channels" if spin == "both" else f"spin {spin}"
+        label = f"STM for {spin_label} at constant current={current:.1e} A"
+        return STM_data(data=cc_scan, lattice=self.lattice_vectors()[:2], label=label)
 
     @_base.data_access
     def _constant_height_stm(self, tip_height, spin):
@@ -175,14 +158,14 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
                 ch_scan[i][j] = (
                     self.smoothed_charge[i][j][z_index] * self.enhancement_factor
                 )
+        spin_label = "both spin channels" if spin == "both" else f"spin {spin}"
+        label = (
+            f"STM for {spin_label} at constant height={float(tip_height):.2f} Angstrom"
+        )
         return STM_data(
-            ch_scan,
-            "constant_height",
-            tip_height,
-            0,
-            spin,
-            self.lattice_vectors()[:2],
-            grid[:2],
+            data=ch_scan,
+            lattice=self.lattice_vectors()[:2],
+            label=label,
         )
 
     @_base.data_access
@@ -286,7 +269,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
                 ) / 2
             else:
                 raise ValueError(
-                    f"Spin {spin} not understood. Use 'up', 'down' or 'both'."
+                    f"Spin '{spin}' not understood. Use 'up', 'down' or 'both'."
                 )
         else:
             parchg = parchg[:, :, :, 0, band, kpoint]
@@ -327,12 +310,8 @@ class STM_data:
     """
 
     data: np.array
-    mode: str
-    tip_height: float
-    current: float
-    spin: str
-    lattice_vectors: np.array
-    xy_grid: np.array
+    lattice: np.array
+    label: str
 
 
 def min_of_z_charge(
@@ -350,13 +329,8 @@ def min_of_z_charge(
 
 
 def plot_scan(
-    grid,
-    mult_xy,
-    scan,
-    mode,
-    lattice,
-    tip_height,
-    charge_limit,
+    stm_data,
+    mult_xy=[2, 2],
     cmap="copper",
     name="STM",
 ):
@@ -369,20 +343,18 @@ def plot_scan(
 
     """
 
+    grid = stm_data.data.shape
     # make the xy-grid in cartesian coordinates
-    XX, YY = make_cart_grid(grid, lattice, mult_xy)
+    XX, YY = make_cart_grid(grid, stm_data.lattice, mult_xy)
     # multiply the image in the x and y directions
-    scan = multiply_image(scan, mult_xy)
-    if mode == "constant_current":
-        scan = from_grid_to_Angstrom(lattice, grid, scan)
-        scan = scan - np.min(scan.flatten())
+    scan = multiply_image(stm_data.data, mult_xy)
     # plot the STM image
     import matplotlib.pyplot as plt
 
     plt.contourf(XX, YY, scan, 40, cmap=cmap)
     plt.colorbar()
     # use the 2D lattice vectors to plot the xy-unit cell
-    lattice = lattice[:2, :2]
+    lattice = stm_data.lattice
     plt.plot([0, lattice[0, 0]], [0, lattice[0, 1]], "k-", linewidth=2)
     plt.plot([0, lattice[1, 0]], [0, lattice[1, 1]], "k-", linewidth=2)
     plt.plot(
@@ -399,14 +371,11 @@ def plot_scan(
     )
     plt.axis("equal")
     plt.axis("off")
-    if mode == "cc":
-        plt.title(
-            f"Constant current STM image\nat charge density limit = {charge_limit} e/Angstrom^3"
-        )
-        plt.savefig(f"{name}_{mode}_cl_{charge_limit}.png", dpi=300)
+    plt.title(stm_data.label)
+    if "constant current" in stm_data.label:
+        plt.savefig(f"{name}_constant_current.png", dpi=300)
     else:
-        plt.title(f"Constant height={float(tip_height):.2f} Angstrom STM image")
-        plt.savefig(f"{name}_{mode}_th_{tip_height}.png", dpi=300)
+        plt.savefig(f"{name}_constant_height.png", dpi=300)
 
     plt.show()
     plt.clf()
@@ -451,9 +420,3 @@ def multiply_image(scan, mult_xy):
     """Function to multiply the image in the x and y directions"""
     scan = np.tile(scan, (mult_xy[1], mult_xy[0]))
     return scan
-
-
-def from_grid_to_Angstrom(lattice, grid, z_index):
-    """Function to convert the z-coordinate of the minimum of the charge density from grid to Angstrom"""
-    z_start_angstrom = lattice[2, 2] / grid[2] * z_index
-    return z_start_angstrom
