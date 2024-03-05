@@ -12,13 +12,23 @@ from py4vasp import calculation
 @pytest.fixture(
     params=[
         "no splitting no spin",
+        "no splitting no spin Ca3AsBr3",
+        "no splitting no spin Sr2TiO4",
         "split_bands",
         "split_bands and spin_polarized",
+        "split_bands and spin_polarized Ca3AsBr3",
+        "split_bands and spin_polarized Sr2TiO4",
         "split_kpoints",
         "split_kpoints and spin_polarized",
+        "split_kpoints and spin_polarized Ca3AsBr3",
+        "split_kpoints and spin_polarized Sr2TiO4",
         "spin_polarized",
+        "spin_polarized Ca3AsBr3",
+        "spin_polarized Sr2TiO4",
         "split_bands and split_kpoints",
         "split_bands and split_kpoints and spin_polarized",
+        "split_bands and split_kpoints and spin_polarized Ca3AsBr3",
+        "split_bands and split_kpoints and spin_polarized Sr2TiO4",
     ]
 )
 def PartialCharge(raw_data, request):
@@ -79,6 +89,30 @@ def test_read(PartialCharge, Assert):
         actual["partial_charge"], np.squeeze(np.asarray(expected.partial_charge).T)
     )
     Assert.same_structure(actual["structure"], expected.structure.read())
+
+
+def test_topology(PartialCharge):
+    actual = PartialCharge._topology()
+    expected = str(PartialCharge.ref.structure._topology())
+    assert actual == expected
+
+
+def test_bands(PartialCharge, Assert):
+    actual = PartialCharge.bands()
+    expected = PartialCharge.ref.bands
+    Assert.allclose(actual, expected)
+
+
+def test_kpoints(PartialCharge, Assert):
+    actual = PartialCharge.kpoints()
+    expected = PartialCharge.ref.kpoints
+    Assert.allclose(actual, expected)
+
+
+def test_grid(PartialCharge, Assert):
+    actual = PartialCharge.grid()
+    expected = PartialCharge.ref.grid
+    Assert.allclose(actual, expected)
 
 
 def test_non_split_to_array(PolarizedNonSplitPartialCharge, Assert):
@@ -154,12 +188,14 @@ def test_to_stm_split(PolarizedAllSplitPartialCharge, Assert):
         PolarizedAllSplitPartialCharge.to_stm(mode="constant_current")
 
 
-def test_to_stm_nonsplit_no_vacuum(PolarizedNonSplitPartialChargeCa3AsBr3, Assert):
-    error = f"""The tip position at 4.0 is above half of the
-             estimated vacuum thickness {PolarizedNonSplitPartialChargeCa3AsBr3._estimate_vacuum():.2f} Angstrom.
-            You are probably sampling the bottom of your slab, which is not supported."""
+def test_to_stm_nonsplit_no_vacuum(PolarizedNonSplitPartialChargeCa3AsBr3):
+    actual = PolarizedNonSplitPartialChargeCa3AsBr3
+    tip_height = 2.4
+    error = f"""The tip position at {tip_height:.2f} is above half of the
+             estimated vacuum thickness {actual._estimate_vacuum():.2f} Angstrom.
+            You would be sampling the bottom of your slab, which is not supported."""
     with pytest.raises(ValueError, match=error):
-        PolarizedNonSplitPartialChargeCa3AsBr3.to_stm()
+        actual.to_stm(tip_height=tip_height)
 
 
 def test_to_stm_nonsplit_not_orthogonal(PolarizedNonSplitPartialChargeSr2TiO4, Assert):
