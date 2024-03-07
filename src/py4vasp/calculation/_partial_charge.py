@@ -66,7 +66,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         self,
         mode="constant_height",
         tip_height=2.0,
-        current=1e-9,
+        current=1,
         spin="both",
         **kwargs,
     ):
@@ -81,7 +81,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             The height of the STM tip above the surface in Angstrom.
             The default is 2.0 Angstrom. Only used in "constant_height" mode.
         current : float
-            The tunneling current in A. The default is 1e-9.
+            The tunneling current in nA. The default is 1.
             Only used in "constant_current" mode.
         spin : str
             The spin channel to be used. The default is "both".
@@ -137,6 +137,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             self.STM = self._constant_height_stm(tip_height, spin)
             return self.STM
         elif mode.lower() in stm_modes["constant_current"]:
+            current = current * 1e-09  # convert nA to A
             self.STM = self._constant_current_stm(current, spin)
             return self.STM
         else:
@@ -171,8 +172,10 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
                     if spl(k) >= current:
                         break
                 cc_scan[i][j] = k
-        # normalize the scan
-        cc_scan = cc_scan - np.min(cc_scan.flatten())
+        # normalize the data
+        # cc_scan = cc_scan - np.min(cc_scan.flatten())
+        # return the tip height over the surface
+        cc_scan = cc_scan / self.interpolation_factor - self._get_highest_z_coord()
         spin_label = "both spin channels" if spin == "both" else f"spin {spin}"
         topology = self._topology()
         label = (
