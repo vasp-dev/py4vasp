@@ -239,7 +239,7 @@ def test_to_stm_nonsplit_constant_height(PolarizedNonSplitPartialCharge, Assert)
 
 
 def test_to_stm_nonsplit_constant_current(PolarizedNonSplitPartialCharge, Assert):
-    current = 0.5e-08
+    current = 5
     for spin in ["up", "down", "both"]:
         actual = PolarizedNonSplitPartialCharge.to_stm(
             spin=spin, mode="constant_current", current=current
@@ -254,4 +254,4 @@ def test_to_stm_nonsplit_constant_current(PolarizedNonSplitPartialCharge, Assert
         assert type(actual.label) is str
         assert spin in actual.label
         assert "constant current" in actual.label
-        assert f"{current:.1e}" in actual.label
+        assert f"{current * 1e-09:.1e}" in actual.label
