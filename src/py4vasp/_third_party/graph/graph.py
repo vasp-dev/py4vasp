@@ -72,7 +72,7 @@ class Graph(Sequence):
         "Convert the graph to a plotly figure."
         figure = self._make_plotly_figure()
         for trace, options in self._generate_plotly_traces():
-            if options["row"] is None:
+            if options.get("row") is None:
                 figure.add_trace(trace)
             else:
                 figure.add_trace(trace, row=options["row"], col=1)

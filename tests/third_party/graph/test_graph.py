@@ -387,3 +387,4 @@ def test_nonexisting_attribute_raises_error(parabola):
 def test_contour(rectangle_contour, not_core):
     graph = Graph(rectangle_contour)
     fig = graph.to_plotly()
+    assert len(fig.data) == 1
