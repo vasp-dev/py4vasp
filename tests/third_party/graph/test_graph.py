@@ -64,7 +64,17 @@ def rectangle_contour():
     return Contour(
         data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
         lattice=np.diag([4.0, 3.6]),
-        label="cubic contour",
+        label="rectangle contour",
+    )
+
+
+@pytest.fixture
+def tilted_contour():
+    return Contour(
+        data=np.linspace(0, 5, 16 * 20).reshape((16, 20)),
+        lattice=np.array([[2, 3], [2, -3]]),
+        label="tilted contour",
+        supercell=(2, 1),
     )
 
 
@@ -402,3 +412,18 @@ def test_contour_supercell(rectangle_contour, not_core):
     fig = graph.to_plotly()
     assert len(fig.data) == 1
     assert all(fig.data[0].z.shape == supercell * rectangle_contour.data.shape)
+
+
+def test_contour_interpolate(tilted_contour, not_core):
+    graph = Graph(tilted_contour)
+    fig = graph.to_plotly()
+    area_cell = 12.0
+    points_per_area = tilted_contour.data.size / area_cell
+    points_per_line = np.sqrt(points_per_area) * tilted_contour.interpolation_factor
+    lengths = np.array([6, 9])  # this accounts for the 2 x 1 supercell
+    expected_shape = np.ceil(points_per_line * lengths).astype(int)
+    expected_average = np.average(tilted_contour.data)
+    assert len(fig.data) == 1
+    assert all(fig.data[0].z.shape == expected_shape)
+    finite = np.isfinite(fig.data[0].z)
+    assert np.isclose(np.average(fig.data[0].z[finite]), expected_average)

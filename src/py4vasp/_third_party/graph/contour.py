@@ -1,13 +1,17 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
+import itertools
 
 import numpy as np
 import plotly.graph_objects as go
+from scipy.interpolate import griddata
 
 
 @dataclasses.dataclass
 class Contour:
+    interpolation_factor = 2
+
     data: np.array
     lattice: np.array
     label: str
@@ -15,5 +19,30 @@ class Contour:
     "multiple of each lattice to be drawn"
 
     def _generate_traces(self):
-        sc_data = np.tile(self.data, self.supercell)
-        yield go.Heatmap(z=sc_data, name=self.label), {}
+        data = np.tile(self.data, self.supercell)
+        if self._interpolation_required():
+            lattice_supercell = np.diag(self.supercell) @ self.lattice
+            data = self._interpolate_data(lattice_supercell, data)
+        yield go.Heatmap(z=data, name=self.label), {}
+
+    def _interpolation_required(self):
+        return not np.allclose((self.lattice[1, 0], self.lattice[0, 1]), 0)
+
+    def _interpolate_data(self, lattice, data):
+        area_cell = abs(np.cross(lattice[0], lattice[1]))
+        points_per_area = data.size / area_cell
+        points_per_line = np.sqrt(points_per_area) * self.interpolation_factor
+        lengths = np.sum(np.abs(lattice), axis=0)
+        shape = np.ceil(points_per_line * lengths).astype(int)
+        line_mesh_a = np.linspace(0, lattice[0], data.shape[0], endpoint=False)
+        line_mesh_b = np.linspace(0, lattice[1], data.shape[1], endpoint=False)
+        # this order is required so that itertools runs over a first
+        x_in, y_in = np.array(
+            [a + b for b, a in itertools.product(line_mesh_b, line_mesh_a)]
+        ).T
+        z_in = data.flatten()
+        x_out, y_out = np.meshgrid(
+            np.linspace(x_in.min(), x_in.max(), shape[0]),
+            np.linspace(y_in.min(), y_in.max(), shape[1]),
+        )
+        return griddata((x_in, y_in), z_in, (x_out, y_out), method="cubic")
