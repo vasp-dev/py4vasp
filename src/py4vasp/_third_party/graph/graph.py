@@ -76,6 +76,8 @@ class Graph(Sequence):
                 figure.add_trace(trace)
             else:
                 figure.add_trace(trace, row=options["row"], col=1)
+        for shape in self._generate_plotly_shapes():
+            figure.add_shape(**shape)
         return figure
 
     def show(self):
@@ -163,6 +165,10 @@ class Graph(Sequence):
 
     def _hide_axes(self):
         return all(isinstance(series, Contour) for series in self)
+
+    def _generate_plotly_shapes(self):
+        for series in self:
+            yield from series._generate_shapes()
 
     def to_frame(self):
         """Convert graph to a pandas dataframe.

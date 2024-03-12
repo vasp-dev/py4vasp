@@ -123,5 +123,8 @@ class Series:
             "yaxis": "y2" if self.y2 else "y",
         }
 
+    def _generate_shapes(self):
+        return ()
+
 
 Series._fields = tuple(field.name for field in fields(Series))
