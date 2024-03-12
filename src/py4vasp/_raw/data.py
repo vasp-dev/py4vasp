@@ -340,6 +340,24 @@ class PairCorrelation:
 
 
 @dataclasses.dataclass
+class PartialCharge:
+    """Electronic partial charge and magnetization density on the fine Fourier grid
+
+    Possibly not only split by spin, but also by band and kpoint."""
+
+    structure: Structure
+    "The atomic structure to represent the densities."
+    partial_charge: VaspData
+    "The data of electronic charge and magnetization density."
+    kpoints: VaspData
+    "The kpoints at which the partial charge is evaluated."
+    bands: VaspData
+    "The bands at which the partial charge is evaluated."
+    grid: VaspData
+    "The fine FFT grid at which the partial charge is evaluated."
+
+
+@dataclasses.dataclass
 class PhononBand:
     """The band structure of the phonons.
 
@@ -500,21 +518,3 @@ class Workfunction:
     "Describes the band edges in the surface."
     fermi_energy: float
     "Fermi energy obtained by VASP."
-
-
-@dataclasses.dataclass
-class PartialCharge:
-    """Electronic partial charge and magnetization density on the fine Fourier grid
-
-    Possibly not only split by spin, but also by band and kpoint."""
-
-    structure: Structure
-    "The atomic structure to represent the densities."
-    partial_charge: VaspData
-    "The data of electronic charge and magnetization density."
-    kpoints: VaspData
-    "The kpoints at which the partial charge is evaluated."
-    bands: VaspData
-    "The bands at which the partial charge is evaluated."
-    grid: VaspData
-    "The fine FFT grid at which the partial charge is evaluated."
