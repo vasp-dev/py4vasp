@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from py4vasp import exception
-from py4vasp._third_party.graph import Graph, Series
+from py4vasp._third_party.graph import Contour, Graph, Series
 
 
 @pytest.fixture
@@ -373,3 +373,7 @@ def test_nonexisting_attribute_raises_error(parabola):
     graph = Graph(parabola)
     with pytest.raises(AssertionError):
         graph.nonexisting = "not possible"
+
+
+def test_contour(not_core):
+    pass

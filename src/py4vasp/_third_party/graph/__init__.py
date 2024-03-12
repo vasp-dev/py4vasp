@@ -3,6 +3,7 @@
 from py4vasp._config import VASP_COLORS
 from py4vasp._util import import_
 
+from .contour import Contour
 from .graph import Graph
 from .mixin import Mixin
 from .plot import plot
