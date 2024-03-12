@@ -15,4 +15,5 @@ class Contour:
     "multiple of each lattice to be drawn"
 
     def _generate_traces(self):
-        yield go.Heatmap(z=self.data), {}
+        sc_data = np.tile(self.data, self.supercell)
+        yield go.Heatmap(z=sc_data), {}

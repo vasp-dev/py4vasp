@@ -384,7 +384,17 @@ def test_nonexisting_attribute_raises_error(parabola):
         graph.nonexisting = "not possible"
 
 
-def test_contour(rectangle_contour, not_core):
+def test_contour(rectangle_contour, Assert, not_core):
     graph = Graph(rectangle_contour)
     fig = graph.to_plotly()
     assert len(fig.data) == 1
+    Assert.allclose(fig.data[0].z, rectangle_contour.data)
+
+
+def test_contour_supercell(rectangle_contour, not_core):
+    supercell = np.asarray((3, 5))
+    rectangle_contour.supercell = supercell
+    graph = Graph(rectangle_contour)
+    fig = graph.to_plotly()
+    assert len(fig.data) == 1
+    assert all(fig.data[0].z.shape == supercell * rectangle_contour.data.shape)
