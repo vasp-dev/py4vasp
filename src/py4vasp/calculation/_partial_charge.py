@@ -1,11 +1,15 @@
 import dataclasses
 import warnings
+from typing import Union
 
 import numpy as np
 from scipy.interpolate import CubicSpline
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 
+from py4vasp._third_party.graph import Graph
+from py4vasp._third_party.graph.contour import Contour
 from py4vasp.calculation import _base, _structure
+from py4vasp.exception import IncorrectUsage, NoData, NotImplemented
 
 stm_modes = {
     "constant_height": ["constant_height", "ch", "constant height"],
@@ -30,6 +34,32 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
     Since this is postprocessing data for a fixed density, there are no ionic steps
     to separate the data.
     """
+
+    @dataclasses.dataclass
+    class STM_settings:
+        """Settings for the STM simulation.
+
+        sigma_z : float
+            The standard deviation of the Gaussian filter in the z-direction.
+            The default is 4.0.
+        sigma_xy : float
+            The standard deviation of the Gaussian filter in the xy-plane.
+            The default is 4.0.
+        truncate : float
+            The truncation of the Gaussian filter. The default is 3.0.
+        enhancement_factor : float
+            The enhancement factor for the output of the constant heigth
+            STM image. The default is 1000.
+        interpolation_factor : int
+            The interpolation factor for the z-direction in case of
+            constant current mode. The default is 10.
+        """
+
+        sigma_z: float = 4.0
+        sigma_xy: float = 4.0
+        truncate: float = 3.0
+        enhancement_factor: float = 1000
+        interpolation_factor: int = 10
 
     def __str__(self):
         """Return a string representation of the partial charge density."""
@@ -64,101 +94,73 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
 
     def to_stm(
         self,
-        mode="constant_height",
-        tip_height=2.0,
-        current=1,
+        mode: str = "constant_height",
+        tip_height: float = 2.0,
+        current: float = 1.0,
+        supercell: Union[int, np.array] = 2,
         spin="both",
-        **kwargs,
-    ):
-        """Generate STM image data from the partial charge density.
+    ) -> Graph:
+        """Generate stm image data from the partial charge density.
 
         Parameters
         ----------
         mode : str
-            The mode in which the STM is operated. The default is "constant_height".
+            The mode in which the stm is operated. The default is "constant_height".
             The other option is "constant_current".
         tip_height : float
-            The height of the STM tip above the surface in Angstrom.
+            The height of the stm tip above the surface in Angstrom.
             The default is 2.0 Angstrom. Only used in "constant_height" mode.
         current : float
             The tunneling current in nA. The default is 1.
             Only used in "constant_current" mode.
+        supercell : int | np.array
+            The supercell to be used for plotting the STM. The default is 2.
         spin : str
             The spin channel to be used. The default is "both".
             The other options are "up" and "down".
-        kwargs
-            Additional keyword arguments are passed to the STM calculation.
-            Specifically, the following parameters can be set:
-            sigma_z : float
-                The standard deviation of the Gaussian filter in the z-direction.
-                The default is 4.0.
-            sigma_xy : float
-                The standard deviation of the Gaussian filter in the xy-plane.
-                The default is 4.0.
-            truncate : float
-                The truncation of the Gaussian filter. The default is 3.0.
-            enhancement_factor : float
-                The enhancement factor for the output of the constant heigth
-                STM image. The default is 1000.
-            interpolation_factor : int
-                The interpolation factor for the z-direction in case of
-                constant current mode. The default is 10.
-
 
         Returns
         -------
-        STM
-            The STM object contains the data to plot an image as well as the lattice vectors in the xy-plane and a label.
+        Graph
+            The STM image as a graph object. The title is the
+            label of the Contour object.
         """
 
-        default_params = {
-            "sigma_z": 4.0,
-            "sigma_xy": 4.0,
-            "truncate": 3.0,
-            "enhancement_factor": 1000,
-            "interpolation_factor": 10,
-        }
+        if isinstance(supercell, int):
+            supercell = np.asarray([supercell, supercell])
+        elif len(supercell) == 2:
+            supercell = np.asarray(supercell)
+        else:
+            message = """The supercell has to be a single number or a 2D array.
+            The supercell is used to multiply the x and y directions of the lattice."""
+            raise IncorrectUsage(message)
 
         self._check_z_orth()
         if mode.lower() in stm_modes["constant_height"]:
-            self.tip_height = tip_height
-            self._check_tip_height()
-
-        default_params.update(kwargs)
-        self.sigma_z = default_params["sigma_z"]
-        self.sigma_xy = default_params["sigma_xy"]
-        self.truncate = default_params["truncate"]
-        self.enhancement_factor = default_params["enhancement_factor"]
-        self.interpolation_factor = default_params["interpolation_factor"]
+            self._check_tip_height(tip_height)
 
         self.smoothed_charge = self._get_stm_data(spin)
 
         if mode.lower() in stm_modes["constant_height"]:
-            self.STM = self._constant_height_stm(tip_height, spin)
-            return self.STM
+            stm = self._constant_height_stm(tip_height, spin)
         elif mode.lower() in stm_modes["constant_current"]:
             current = current * 1e-09  # convert nA to A
-            self.STM = self._constant_current_stm(current, spin)
-            return self.STM
+            stm = self._constant_current_stm(current, spin)
         else:
-            raise ValueError(
+            raise IncorrectUsage(
                 f"STM mode '{mode}' not understood. Use 'constant_height' or 'constant_current'."
             )
-
-    def plot_STM(self, **kwargs):
-        """Plot the STM image.
-
-        If the STM is not calculated yet, a ValueError is raised.
-        """
-
-        # check if STM is calculated already
-        if getattr(self, "STM", None) is None:
-            raise ValueError("STM is not calculated yet. Please calculate STM first.")
-        plot_scan(self.STM, **kwargs)
+        stm.supercell = supercell
+        return Graph(
+            series=stm,
+            title=stm.label,
+        )
 
     def _constant_current_stm(self, current, spin):
         z_start = min_of_z_charge(
-            self._get_stm_data(spin), sigma=self.sigma_z, truncate=self.truncate
+            self._get_stm_data(spin),
+            sigma=self.STM_settings.sigma_z,
+            truncate=self.STM_settings.truncate,
         )
         grid = self.grid()
         cc_scan = np.zeros((grid[0], grid[1]))
@@ -168,36 +170,38 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
                 # for more accuracy, interpolate each z-line of data with cubic splines
                 spl = CubicSpline(range(grid[2]), self.smoothed_charge[i][j])
 
-                for k in np.arange(z_start, 0, -1 / self.interpolation_factor):
+                for k in np.arange(
+                    z_start, 0, -1 / self.STM_settings.interpolation_factor
+                ):
                     if spl(k) >= current:
                         break
                 cc_scan[i][j] = k
         # normalize the data
         # cc_scan = cc_scan - np.min(cc_scan.flatten())
         # return the tip height over the surface
-        cc_scan = cc_scan / self.interpolation_factor - self._get_highest_z_coord()
+        cc_scan = (
+            cc_scan / self.STM_settings.interpolation_factor
+            - self._get_highest_z_coord()
+        )
         spin_label = "both spin channels" if spin == "both" else f"spin {spin}"
         topology = self._topology()
-        label = (
-            f"STM of {topology} for {spin_label} at constant current={current:.1e} A"
-        )
-        return STM_data(data=cc_scan, lattice=self.lattice_vectors()[:2], label=label)
+        label = f"STM of {topology} for {spin_label} at constant current={current*1e9:.1e} nA"
+        return Contour(data=cc_scan, lattice=self.lattice_vectors()[:2], label=label)
 
     def _constant_height_stm(self, tip_height, spin):
         grid = self.grid()
-        z_index = self._z_index_for_height(
-            self.tip_height + self._get_highest_z_coord()
-        )
+        z_index = self._z_index_for_height(tip_height + self._get_highest_z_coord())
         ch_scan = np.zeros((grid[0], grid[1]))
         for i in range(grid[0]):
             for j in range(grid[1]):
                 ch_scan[i][j] = (
-                    self.smoothed_charge[i][j][z_index] * self.enhancement_factor
+                    self.smoothed_charge[i][j][z_index]
+                    * self.STM_settings.enhancement_factor
                 )
         spin_label = "both spin channels" if spin == "both" else f"spin {spin}"
         topology = self._topology()
-        label = f"STM of {topology} for {spin_label} at constant height={float(self.tip_height):.2f} Angstrom"
-        return STM_data(
+        label = f"STM of {topology} for {spin_label} at constant height={float(tip_height):.2f} Angstrom"
+        return Contour(
             data=ch_scan,
             lattice=self.lattice_vectors()[:2],
             label=label,
@@ -223,26 +227,26 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         z_vector = self.lattice_vectors()[2, 2]
         return z_vector - slab_thickness
 
-    def _check_tip_height(self):
-        if self.tip_height > self._estimate_vacuum() / 2:
-            message = f"""The tip position at {self.tip_height:.2f} is above half of the
+    def _check_tip_height(self, tip_height):
+        if tip_height > self._estimate_vacuum() / 2:
+            message = f"""The tip position at {tip_height:.2f} is above half of the
              estimated vacuum thickness {self._estimate_vacuum():.2f} Angstrom.
             You would be sampling the bottom of your slab, which is not supported."""
-            raise ValueError(message)
+            raise IncorrectUsage(message)
 
     def _check_z_orth(self):
         lv = self.lattice_vectors()
         if lv[0][2] != 0 or lv[1][2] != 0 or lv[2][0] != 0 or lv[2][1] != 0:
             message = """The third lattice vector is not in cartesian z-direction.
             or the first two lattice vectors are not in the xy-plane.
-            The STM calculation is not supported."""
-            raise ValueError(message)
+            STM simulations for such cells are not implemented."""
+            raise NotImplemented(message)
 
     def _get_stm_data(self, spin):
         if 0 not in self.bands() or 0 not in self.kpoints():
             massage = """Simulated STM images are only supported for non-separated bands and k-points.
             Please set LSEPK and LSEPB to .FALSE. in the INCAR file."""
-            raise ValueError(massage)
+            raise NotImplemented(massage)
         chg = self._correct_units(self.to_array(band=0, kpoint=0, spin=spin))
         return self._smooth_stm_data(chg)
 
@@ -255,8 +259,12 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
     def _smooth_stm_data(self, data):
         smoothed_charge = gaussian_filter(
             data,
-            sigma=(self.sigma_xy, self.sigma_xy, self.sigma_z),
-            truncate=self.truncate,
+            sigma=(
+                self.STM_settings.sigma_xy,
+                self.STM_settings.sigma_xy,
+                self.STM_settings.sigma_z,
+            ),
+            truncate=self.STM_settings.truncate,
             mode="wrap",
         )
         return smoothed_charge
@@ -326,9 +334,10 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
                     parchg[:, :, :, 0, band, kpoint] - parchg[:, :, :, 1, band, kpoint]
                 ) / 2
             else:
-                raise ValueError(
-                    f"Spin '{spin}' not understood. Use 'up', 'down' or 'both'."
+                message = (
+                    f"""Spin '{spin}' not understood. Use 'up', 'down' or 'both'."""
                 )
+                raise IncorrectUsage(message)
         else:
             parchg = parchg[:, :, :, 0, band, kpoint]
 
@@ -354,7 +363,9 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             warnings.warn(message, UserWarning)
             return 0
         else:
-            raise ValueError(f"Band {band} not found in the bands array.")
+            message = f"""Band {band} not found in the bands array.
+            Make sure to set IBAND, EINT, and LSEPB correctly in the INCAR file."""
+            raise NoData(message)
 
     @_base.data_access
     def kpoints(self):
@@ -375,20 +386,9 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             warnings.warn(message, UserWarning)
             return 0
         else:
-            raise ValueError(f"K-point {kpoint} not found in the kpoints array.")
-
-
-@dataclasses.dataclass
-class STM_data:
-    """
-    STM data is stored in a 2D array with the same dimensions as the FFT grid.
-    Other information such as the mode, the tip height, the current, spin-channel,
-    and lattice vectors in x and y are stored as well.
-    """
-
-    data: np.array
-    lattice: np.array
-    label: str
+            message = f"""K-point {kpoint} not found in the kpoints array.
+            Make sure to set KPUSE and LSEPK correctly in the INCAR file."""
+            raise NoData(message)
 
 
 def min_of_z_charge(
@@ -405,95 +405,96 @@ def min_of_z_charge(
     return np.argmin(z_charge)
 
 
-def plot_scan(
-    stm_data,
-    mult_xy=[2, 2],
-    levels=40,
-    cmap="copper",
-    name="STM",
-):
-    """
-    Function to plot the STM image to a file.
-
-    The file is named scan_cc or scan_ch.png, depending on mode.
-
-    A contour plot is used with 20 levels. The xy-unit cell is also plotted.
-
-    """
-
-    grid = stm_data.data.shape
-    # make the xy-grid in cartesian coordinates
-    XX, YY = make_cart_grid(grid, stm_data.lattice, mult_xy)
-    # multiply the image in the x and y directions
-    scan = multiply_image(stm_data.data, [mult_xy[1], mult_xy[0]])
-    # plot the STM image
-    import matplotlib.pyplot as plt
-
-    plt.contourf(XX, YY, scan.T, levels, cmap=cmap)
-    plt.colorbar()
-    # use the 2D lattice vectors to plot the xy-unit cell
-    lattice = stm_data.lattice
-    plt.plot([0, lattice[0, 0]], [0, lattice[0, 1]], "k-", linewidth=2)
-    plt.plot([0, lattice[1, 0]], [0, lattice[1, 1]], "k-", linewidth=2)
-    plt.plot(
-        [lattice[0, 0], lattice[0, 0] + lattice[1, 0]],
-        [lattice[0, 1], lattice[0, 1] + lattice[1, 1]],
-        "k-",
-        linewidth=2,
-    )
-    plt.plot(
-        [lattice[1, 0], lattice[0, 0] + lattice[1, 0]],
-        [lattice[1, 1], lattice[0, 1] + lattice[1, 1]],
-        "k-",
-        linewidth=2,
-    )
-    plt.axis("equal")
-    plt.axis("off")
-    plt.title(stm_data.label)
-    if "constant current" in stm_data.label:
-        plt.savefig(f"{name}_constant_current.png", dpi=300)
-    else:
-        plt.savefig(f"{name}_constant_height.png", dpi=300)
-
-    plt.show()
-    plt.clf()
-    return
-
-
-def make_cart_grid(grid, lattice, mult):
-    """Function to convert the grid points to cartesian coordinates and create a meshgrid"""
-    if len(mult) == 2:
-        grid = (grid[0] * mult[0], grid[1] * mult[1])
-        lattice = lattice[:2, :2]
-        # make meshgrid
-        x = np.linspace(0, mult[0], grid[0])
-        y = np.linspace(0, mult[1], grid[1])
-        XX, YY = np.meshgrid(x, y)
-        # convert to cartesian coordinates
-        coordinates = np.dot(np.column_stack((XX.flatten(), YY.flatten())), lattice)
-        # reshape the coordinates to the shape of the meshgrid
-        XX = np.reshape(coordinates[:, 0], XX.shape)
-        YY = np.reshape(coordinates[:, 1], YY.shape)
-        return XX, YY
-    elif len(mult) == 3:
-        grid = (grid[0] * mult[0], grid[1] * mult[1], grid[2] * mult[2])
-        # make meshgrid
-        x = np.linspace(0, mult[0], grid[0])
-        y = np.linspace(0, mult[1], grid[1])
-        z = np.linspace(0, mult[2], grid[2])
-        XX, YY, ZZ = np.meshgrid(x, y, z)
-        # convert to cartesian coordinates
-        coordinates = np.dot(
-            np.column_stack((XX.flatten(), YY.flatten(), ZZ.flatten())), lattice
-        )
-        # reshape the coordinates to the shape of the meshgrid
-        XX = np.reshape(coordinates[:, 0], XX.shape)
-        YY = np.reshape(coordinates[:, 1], YY.shape)
-        ZZ = np.reshape(coordinates[:, 2], ZZ.shape)
-        return XX, YY, ZZ
-
-
-def multiply_image(scan, mult_xy):
-    """Function to multiply the image in the x and y directions"""
-    scan = np.tile(scan, (mult_xy[1], mult_xy[0]))
-    return scan
+#
+# def plot_scan(
+#     stm_data,
+#     mult_xy=[2, 2],
+#     levels=40,
+#     cmap="copper",
+#     name="STM",
+# ):
+#     """
+#     Function to plot the STM image to a file.
+#
+#     The file is named scan_cc or scan_ch.png, depending on mode.
+#
+#     A contour plot is used with 20 levels. The xy-unit cell is also plotted.
+#
+#     """
+#
+#     grid = stm_data.data.shape
+#     # make the xy-grid in cartesian coordinates
+#     XX, YY = make_cart_grid(grid, stm_data.lattice, mult_xy)
+#     # multiply the image in the x and y directions
+#     scan = multiply_image(stm_data.data, [mult_xy[1], mult_xy[0]])
+#     # plot the STM image
+#     import matplotlib.pyplot as plt
+#
+#     plt.contourf(XX, YY, scan.T, levels, cmap=cmap)
+#     plt.colorbar()
+#     # use the 2D lattice vectors to plot the xy-unit cell
+#     lattice = stm_data.lattice
+#     plt.plot([0, lattice[0, 0]], [0, lattice[0, 1]], "k-", linewidth=2)
+#     plt.plot([0, lattice[1, 0]], [0, lattice[1, 1]], "k-", linewidth=2)
+#     plt.plot(
+#         [lattice[0, 0], lattice[0, 0] + lattice[1, 0]],
+#         [lattice[0, 1], lattice[0, 1] + lattice[1, 1]],
+#         "k-",
+#         linewidth=2,
+#     )
+#     plt.plot(
+#         [lattice[1, 0], lattice[0, 0] + lattice[1, 0]],
+#         [lattice[1, 1], lattice[0, 1] + lattice[1, 1]],
+#         "k-",
+#         linewidth=2,
+#     )
+#     plt.axis("equal")
+#     plt.axis("off")
+#     plt.title(stm_data.label)
+#     if "constant current" in stm_data.label:
+#         plt.savefig(f"{name}_constant_current.png", dpi=300)
+#     else:
+#         plt.savefig(f"{name}_constant_height.png", dpi=300)
+#
+#     plt.show()
+#     plt.clf()
+#     return
+#
+#
+# def make_cart_grid(grid, lattice, mult):
+#     """Function to convert the grid points to cartesian coordinates and create a meshgrid"""
+#     if len(mult) == 2:
+#         grid = (grid[0] * mult[0], grid[1] * mult[1])
+#         lattice = lattice[:2, :2]
+#         # make meshgrid
+#         x = np.linspace(0, mult[0], grid[0])
+#         y = np.linspace(0, mult[1], grid[1])
+#         XX, YY = np.meshgrid(x, y)
+#         # convert to cartesian coordinates
+#         coordinates = np.dot(np.column_stack((XX.flatten(), YY.flatten())), lattice)
+#         # reshape the coordinates to the shape of the meshgrid
+#         XX = np.reshape(coordinates[:, 0], XX.shape)
+#         YY = np.reshape(coordinates[:, 1], YY.shape)
+#         return XX, YY
+#     elif len(mult) == 3:
+#         grid = (grid[0] * mult[0], grid[1] * mult[1], grid[2] * mult[2])
+#         # make meshgrid
+#         x = np.linspace(0, mult[0], grid[0])
+#         y = np.linspace(0, mult[1], grid[1])
+#         z = np.linspace(0, mult[2], grid[2])
+#         XX, YY, ZZ = np.meshgrid(x, y, z)
+#         # convert to cartesian coordinates
+#         coordinates = np.dot(
+#             np.column_stack((XX.flatten(), YY.flatten(), ZZ.flatten())), lattice
+#         )
+#         # reshape the coordinates to the shape of the meshgrid
+#         XX = np.reshape(coordinates[:, 0], XX.shape)
+#         YY = np.reshape(coordinates[:, 1], YY.shape)
+#         ZZ = np.reshape(coordinates[:, 2], ZZ.shape)
+#         return XX, YY, ZZ
+#
+#
+# def multiply_image(scan, mult_xy):
+#     """Function to multiply the image in the x and y directions"""
+#     scan = np.tile(scan, (mult_xy[1], mult_xy[0]))
+#     return scan

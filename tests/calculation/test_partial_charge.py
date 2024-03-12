@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from py4vasp import calculation
+from py4vasp.exception import IncorrectUsage, NoData, NotImplemented
 
 
 @pytest.fixture(
@@ -153,16 +154,18 @@ def test_split_to_array(PolarizedAllSplitPartialCharge, Assert):
             Assert.allclose(
                 actual, np.asarray(expected).T[:, :, :, 0, band_index, kpoint_index]
             )
-    error = f"Band {max(bands) + 1} not found in the bands array."
-    with pytest.raises(ValueError, match=error):
+    msg = f"Band {max(bands) + 1} not found in the bands array."
+    with pytest.raises(NoData) as excinfo:
         PolarizedAllSplitPartialCharge.to_array(
             band=max(bands) + 1, kpoint=max(kpoints), spin="up"
         )
-    error = f"K-point {min(kpoints) - 1} not found in the kpoints array."
-    with pytest.raises(ValueError):
+    assert msg in str(excinfo.value)
+    msg = f"K-point {min(kpoints) - 1} not found in the kpoints array."
+    with pytest.raises(NoData) as excinfo:
         PolarizedAllSplitPartialCharge.to_array(
             band=min(bands), kpoint=min(kpoints) - 1, spin="down"
         )
+    assert msg in str(excinfo.value)
 
 
 def test_non_polarized_to_array(NonSplitPartialCharge, Assert):
@@ -182,10 +185,10 @@ def test_split_bands_to_array(NonPolarizedBandSplitPartialCharge, Assert):
 
 
 def test_to_stm_split(PolarizedAllSplitPartialCharge, Assert):
-    error = """Simulated STM images are only supported for non-separated bands and k-points.
-            Please set LSEPK and LSEPB to .FALSE. in the INCAR file."""
-    with pytest.raises(ValueError, match=error):
+    msg = "set LSEPK and LSEPB to .FALSE. in the INCAR file."
+    with pytest.raises(NotImplemented) as excinfo:
         PolarizedAllSplitPartialCharge.to_stm(mode="constant_current")
+    assert msg in str(excinfo.value)
 
 
 def test_to_stm_nonsplit_no_vacuum(PolarizedNonSplitPartialChargeCa3AsBr3):
@@ -194,64 +197,89 @@ def test_to_stm_nonsplit_no_vacuum(PolarizedNonSplitPartialChargeCa3AsBr3):
     error = f"""The tip position at {tip_height:.2f} is above half of the
              estimated vacuum thickness {actual._estimate_vacuum():.2f} Angstrom.
             You would be sampling the bottom of your slab, which is not supported."""
-    with pytest.raises(ValueError, match=error):
+    with pytest.raises(IncorrectUsage, match=error):
         actual.to_stm(tip_height=tip_height)
 
 
 def test_to_stm_nonsplit_not_orthogonal(PolarizedNonSplitPartialChargeSr2TiO4, Assert):
-    error = """The third lattice vector is not in cartesian z-direction.
-            or the first two lattice vectors are not in the xy-plane.
-            The STM calculation is not supported."""
-    with pytest.raises(ValueError, match=error):
+    msg = "STM simulations for such cells are not implemented."
+    with pytest.raises(NotImplemented) as excinfo:
         PolarizedNonSplitPartialChargeSr2TiO4.to_stm()
+    assert msg in str(excinfo.value)
 
 
 def test_to_stm_wrong_spin_nonsplit(PolarizedNonSplitPartialCharge, Assert):
-    error = "Spin 'all' not understood. Use 'up', 'down' or 'both'."
-    with pytest.raises(ValueError, match=error):
+    msg = "Use 'up', 'down' or 'both'."
+    with pytest.raises(IncorrectUsage) as excinfo:
         PolarizedNonSplitPartialCharge.to_stm(spin="all")
+    assert msg in str(excinfo.value)
 
 
 def test_to_stm_wrong_mode(PolarizedNonSplitPartialCharge, Assert):
-    error = (
-        "STM mode 'stm' not understood. Use 'constant_height' or 'constant_current'."
-    )
-    with pytest.raises(ValueError, match=error):
+    with pytest.raises(IncorrectUsage) as excinfo:
         PolarizedNonSplitPartialCharge.to_stm(mode="stm")
+    assert "STM mode" in str(excinfo.value)
 
 
 def test_to_stm_nonsplit_constant_height(PolarizedNonSplitPartialCharge, Assert):
+    supercell = 3
     for spin in ["up", "down", "both"]:
         actual = PolarizedNonSplitPartialCharge.to_stm(
-            spin=spin, mode="constant_height", tip_height=2.0
+            spin=spin, mode="constant_height", tip_height=2.0, supercell=supercell
         )
         expected = PolarizedNonSplitPartialCharge.ref
         # assert data type and shape
-        assert type(actual.data) == np.ndarray
-        assert actual.data.shape == (expected.grid[0], expected.grid[1])
+        assert type(actual.series.data) == np.ndarray
+        assert actual.series.data.shape == (expected.grid[0], expected.grid[1])
         # assert lattice:
-        Assert.allclose(actual.lattice, expected.structure._lattice_vectors()[:2])
-        # assert label
-        assert type(actual.label) is str
-        assert spin in actual.label
-        assert "constant height" in actual.label
-        assert "2.0" in actual.label
+        Assert.allclose(
+            actual.series.lattice, expected.structure._lattice_vectors()[:2]
+        )
+        # assert supercell
+        Assert.allclose(actual.series.supercell, np.asarray([supercell, supercell]))
+        # assert label and title
+        assert type(actual.series.label) is str
+        assert spin in actual.series.label
+        assert "constant height" in actual.series.label
+        assert "2.0" in actual.series.label
+        assert "constant height" in actual.title
+        assert "2.0" in actual.title
 
 
 def test_to_stm_nonsplit_constant_current(PolarizedNonSplitPartialCharge, Assert):
     current = 5
+    supercell = np.asarray([2, 4])
     for spin in ["up", "down", "both"]:
         actual = PolarizedNonSplitPartialCharge.to_stm(
-            spin=spin, mode="constant_current", current=current
+            spin=spin, mode="constant_current", current=current, supercell=supercell
         )
         expected = PolarizedNonSplitPartialCharge.ref
         # assert data type and shape
-        assert type(actual.data) == np.ndarray
-        assert actual.data.shape == (expected.grid[0], expected.grid[1])
+        assert type(actual.series.data) == np.ndarray
+        assert actual.series.data.shape == (expected.grid[0], expected.grid[1])
         # assert lattice:
-        Assert.allclose(actual.lattice, expected.structure._lattice_vectors()[:2])
+        Assert.allclose(
+            actual.series.lattice, expected.structure._lattice_vectors()[:2]
+        )
+        # assert supercell
+        Assert.allclose(actual.series.supercell, supercell)
         # assert label
-        assert type(actual.label) is str
-        assert spin in actual.label
-        assert "constant current" in actual.label
-        assert f"{current * 1e-09:.1e}" in actual.label
+        assert type(actual.series.label) is str
+        assert spin in actual.series.label
+        assert "constant current" in actual.series.label
+        assert f"{current:.1e}" in actual.series.label
+        assert "constant current" in actual.title
+        assert f"{current:.1e}" in actual.title
+
+
+def test_stm_default_settings(PolarizedNonSplitPartialCharge, Assert):
+    actual = PolarizedNonSplitPartialCharge.STM_settings
+    defaults = {
+        "sigma_xy": 4.0,
+        "sigma_z": 4.0,
+        "truncate": 3.0,
+        "enhancement_factor": 1000,
+        "interpolation_factor": 10,
+    }
+    for key, value in defaults.items():
+        assert getattr(actual, key) == value
