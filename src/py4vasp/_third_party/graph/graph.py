@@ -9,6 +9,7 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._config import VASP_COLORS
+from py4vasp._third_party.graph.contour import Contour
 from py4vasp._third_party.graph.series import Series
 from py4vasp._util import import_
 
@@ -107,8 +108,7 @@ class Graph(Sequence):
     def _generate_plotly_traces(self):
         colors = itertools.cycle(VASP_COLORS)
         for series in self:
-            if not series.color:
-                series = replace(series, color=next(colors))
+            series = set_color_if_not_present(series, colors)
             yield from series._generate_traces()
 
     def _make_plotly_figure(self):
@@ -125,7 +125,7 @@ class Graph(Sequence):
             figure = subplots.make_subplots(rows=max_row, cols=1)
             figure.update_layout(showlegend=False)
             return figure
-        elif any(series.y2 for series in self):
+        elif any(has_secondary_y_axis(series) for series in self):
             return subplots.make_subplots(specs=[[{"secondary_y": True}]])
         else:
             return go.Figure()
@@ -213,7 +213,23 @@ class Graph(Sequence):
 
     @property
     def _subplot_on(self):
-        return any(series.subplot for series in self)
+        return any(has_subplot(series) for series in self)
+
+
+def has_subplot(series):
+    return isinstance(series, Series) and series.subplot
+
+
+def has_secondary_y_axis(series):
+    return isinstance(series, Series) and series.y2
+
+
+def set_color_if_not_present(series, color_iterator):
+    if isinstance(series, Contour):
+        return series
+    if not series.color:
+        series = replace(series, color=next(color_iterator))
+    return series
 
 
 Graph._fields = tuple(field.name for field in fields(Graph))

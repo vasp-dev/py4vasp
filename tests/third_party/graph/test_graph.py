@@ -59,6 +59,15 @@ def subplot():
     return Series(x1, y1, subplot=1), Series(x2, y2, subplot=2)
 
 
+@pytest.fixture
+def rectangle_contour():
+    return Contour(
+        data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
+        lattice=np.diag([4.0, 3.6]),
+        label="cubic contour",
+    )
+
+
 def test_basic_graph(parabola, Assert, not_core):
     graph = Graph(parabola)
     fig = graph.to_plotly()
@@ -375,5 +384,6 @@ def test_nonexisting_attribute_raises_error(parabola):
         graph.nonexisting = "not possible"
 
 
-def test_contour(not_core):
-    pass
+def test_contour(rectangle_contour, not_core):
+    graph = Graph(rectangle_contour)
+    fig = graph.to_plotly()

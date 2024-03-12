@@ -10,3 +10,6 @@ class Contour:
     data: np.array
     lattice: np.array
     label: str
+
+    def _generate_traces(self):
+        return []
