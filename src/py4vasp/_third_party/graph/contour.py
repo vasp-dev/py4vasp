@@ -16,4 +16,4 @@ class Contour:
 
     def _generate_traces(self):
         sc_data = np.tile(self.data, self.supercell)
-        yield go.Heatmap(z=sc_data), {}
+        yield go.Heatmap(z=sc_data, name=self.label), {}

@@ -389,6 +389,7 @@ def test_contour(rectangle_contour, Assert, not_core):
     fig = graph.to_plotly()
     assert len(fig.data) == 1
     Assert.allclose(fig.data[0].z, rectangle_contour.data)
+    assert fig.data[0].name == rectangle_contour.label
 
 
 def test_contour_supercell(rectangle_contour, not_core):
