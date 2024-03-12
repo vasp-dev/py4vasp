@@ -6,7 +6,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import _config, exception
 from py4vasp._third_party.graph import Contour, Graph, Series
 
 
@@ -64,7 +64,18 @@ def rectangle_contour():
     return Contour(
         data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
         lattice=np.diag([4.0, 3.6]),
-        label="cubic contour",
+        label="rectangle contour",
+    )
+
+
+@pytest.fixture
+def tilted_contour():
+    return Contour(
+        data=np.linspace(0, 5, 16 * 20).reshape((16, 20)),
+        lattice=np.array([[2, 3], [2, -3]]),
+        label="tilted contour",
+        supercell=(2, 1),
+        show_cell=False,
     )
 
 
@@ -389,7 +400,13 @@ def test_contour(rectangle_contour, Assert, not_core):
     fig = graph.to_plotly()
     assert len(fig.data) == 1
     Assert.allclose(fig.data[0].z, rectangle_contour.data)
+    Assert.allclose(fig.data[0].x, np.linspace(0, 4, 20, endpoint=False))
+    Assert.allclose(fig.data[0].y, np.linspace(0, 3.6, 18, endpoint=False))
     assert fig.data[0].name == rectangle_contour.label
+    # text explicitly that it is False to prevent None passing the test
+    assert fig.layout.xaxis.visible == False
+    assert fig.layout.yaxis.visible == False
+    assert len(fig.layout.shapes) == 1
 
 
 def test_contour_supercell(rectangle_contour, not_core):
@@ -399,3 +416,28 @@ def test_contour_supercell(rectangle_contour, not_core):
     fig = graph.to_plotly()
     assert len(fig.data) == 1
     assert all(fig.data[0].z.shape == supercell * rectangle_contour.data.shape)
+    assert len(fig.data[0].x) == 60
+    assert len(fig.data[0].y) == 90
+    assert len(fig.layout.shapes) == 1
+    unit_cell = fig.layout.shapes[0]
+    assert unit_cell.type == "path"
+    assert unit_cell.path == "M 0 0 L 4.0 0.0 L 4.0 3.6 L 0.0 3.6 Z"
+    assert unit_cell.line.color == _config.VASP_GRAY
+
+
+def test_contour_interpolate(tilted_contour, not_core):
+    graph = Graph(tilted_contour)
+    fig = graph.to_plotly()
+    area_cell = 12.0
+    points_per_area = tilted_contour.data.size / area_cell
+    points_per_line = np.sqrt(points_per_area) * tilted_contour.interpolation_factor
+    lengths = np.array([6, 9])  # this accounts for the 2 x 1 supercell
+    expected_shape = np.ceil(points_per_line * lengths).astype(int)
+    expected_average = np.average(tilted_contour.data)
+    assert len(fig.data) == 1
+    assert all(fig.data[0].z.T.shape == expected_shape)
+    assert fig.data[0].x.size == expected_shape[0]
+    assert fig.data[0].y.size == expected_shape[1]
+    finite = np.isfinite(fig.data[0].z)
+    assert np.isclose(np.average(fig.data[0].z[finite]), expected_average)
+    assert len(fig.layout.shapes) == 0

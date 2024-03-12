@@ -16,4 +16,5 @@ if import_.is_imported(go) and import_.is_imported(pio):
     axis_format = {"showexponent": "all", "exponentformat": "power"}
     layout = {"colorway": VASP_COLORS, "xaxis": axis_format, "yaxis": axis_format}
     pio.templates["vasp"] = go.layout.Template(layout=layout)
+    pio.templates["ggplot2"].layout.shapedefaults = {}
     pio.templates.default = "ggplot2+vasp"

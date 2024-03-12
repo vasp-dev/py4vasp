@@ -76,7 +76,8 @@ class Graph(Sequence):
                 figure.add_trace(trace)
             else:
                 figure.add_trace(trace, row=options["row"], col=1)
-
+        for shape in self._generate_plotly_shapes():
+            figure.add_shape(**shape)
         return figure
 
     def show(self):
@@ -108,7 +109,7 @@ class Graph(Sequence):
     def _generate_plotly_traces(self):
         colors = itertools.cycle(VASP_COLORS)
         for series in self:
-            series = set_color_if_not_present(series, colors)
+            series = _set_color_if_not_present(series, colors)
             yield from series._generate_traces()
 
     def _make_plotly_figure(self):
@@ -120,6 +121,7 @@ class Graph(Sequence):
         return figure
 
     def _figure_with_one_or_two_y_axes(self):
+        has_secondary_y_axis = lambda series: isinstance(series, Series) and series.y2
         if self._subplot_on:
             max_row = max(series.subplot for series in self)
             figure = subplots.make_subplots(rows=max_row, cols=1)
@@ -142,6 +144,8 @@ class Graph(Sequence):
             figure.layout.xaxis.tickmode = "array"
             figure.layout.xaxis.tickvals = tuple(self.xticks.keys())
             figure.layout.xaxis.ticktext = self._xtick_labels()
+        if self._hide_axes():
+            figure.layout.xaxis.visible = False
 
     def _xtick_labels(self):
         # empty labels will be overwritten by plotly so we put a single space in them
@@ -156,6 +160,15 @@ class Graph(Sequence):
             figure.layout.yaxis.title.text = self.ylabel
             if self.y2label:
                 figure.layout.yaxis2.title.text = self.y2label
+        if self._hide_axes():
+            figure.layout.yaxis.visible = False
+
+    def _hide_axes(self):
+        return all(isinstance(series, Contour) for series in self)
+
+    def _generate_plotly_shapes(self):
+        for series in self:
+            yield from series._generate_shapes()
 
     def to_frame(self):
         """Convert graph to a pandas dataframe.
@@ -213,18 +226,11 @@ class Graph(Sequence):
 
     @property
     def _subplot_on(self):
+        has_subplot = lambda series: isinstance(series, Series) and series.subplot
         return any(has_subplot(series) for series in self)
 
 
-def has_subplot(series):
-    return isinstance(series, Series) and series.subplot
-
-
-def has_secondary_y_axis(series):
-    return isinstance(series, Series) and series.y2
-
-
-def set_color_if_not_present(series, color_iterator):
+def _set_color_if_not_present(series, color_iterator):
     if isinstance(series, Contour):
         return series
     if not series.color:
