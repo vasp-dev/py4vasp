@@ -390,6 +390,9 @@ def test_contour(rectangle_contour, Assert, not_core):
     assert len(fig.data) == 1
     Assert.allclose(fig.data[0].z, rectangle_contour.data)
     assert fig.data[0].name == rectangle_contour.label
+    # text explicitly that it is False to prevent None passing the test
+    assert fig.layout.xaxis.visible == False
+    assert fig.layout.yaxis.visible == False
 
 
 def test_contour_supercell(rectangle_contour, not_core):
