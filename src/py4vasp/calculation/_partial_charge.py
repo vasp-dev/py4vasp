@@ -186,7 +186,9 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         spin_label = "both spin channels" if spin == "both" else f"spin {spin}"
         topology = self._topology()
         label = f"STM of {topology} for {spin_label} at constant current={current*1e9:.1e} nA"
-        return Contour(data=cc_scan, lattice=self.lattice_vectors()[:2], label=label)
+        return Contour(
+            data=cc_scan, lattice=self.lattice_vectors()[:2, :2], label=label
+        )
 
     def _constant_height_stm(self, tip_height, spin):
         grid = self.grid()
@@ -203,7 +205,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         label = f"STM of {topology} for {spin_label} at constant height={float(tip_height):.2f} Angstrom"
         return Contour(
             data=ch_scan,
-            lattice=self.lattice_vectors()[:2],
+            lattice=self.lattice_vectors()[:2, :2],
             label=label,
         )
 
