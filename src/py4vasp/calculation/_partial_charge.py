@@ -186,9 +186,6 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         spin_label = "both spin channels" if spin == "both" else f"spin {spin}"
         topology = self._topology()
         label = f"STM of {topology} for {spin_label} at constant current={current*1e9:.1e} nA"
-        self.stm_data = Contour(
-            data=cc_scan, lattice=self.lattice_vectors()[:2, :2], label=label
-        )
         return Contour(
             data=cc_scan, lattice=self.lattice_vectors()[:2, :2], label=label
         )
@@ -206,11 +203,6 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         spin_label = "both spin channels" if spin == "both" else f"spin {spin}"
         topology = self._topology()
         label = f"STM of {topology} for {spin_label} at constant height={float(tip_height):.2f} Angstrom"
-        self.stm_data = Contour(
-            data=ch_scan,
-            lattice=self.lattice_vectors()[:2, :2],
-            label=label,
-        )
         return Contour(
             data=ch_scan,
             lattice=self.lattice_vectors()[:2, :2],
@@ -413,97 +405,3 @@ def min_of_z_charge(
     z_charge = gaussian_filter1d(z_charge, sigma=sigma, truncate=truncate, mode="wrap")
     # return the z-coordinate of the minimum
     return np.argmin(z_charge)
-
-
-def plot_scan(
-    stm_data,
-    mult_xy=[2, 2],
-    levels=40,
-    cmap="copper",
-    name="STM",
-):
-    """
-    Function to plot the STM image to a file.
-
-    The file is named scan_cc or scan_ch.png, depending on mode.
-
-    A contour plot is used with 20 levels. The xy-unit cell is also plotted.
-
-    """
-
-    grid = stm_data.data.shape
-    # make the xy-grid in cartesian coordinates
-    XX, YY = make_cart_grid(grid, stm_data.lattice, mult_xy)
-    # multiply the image in the x and y directions
-    scan = multiply_image(stm_data.data, [mult_xy[1], mult_xy[0]])
-    # plot the STM image
-    import matplotlib.pyplot as plt
-
-    plt.contourf(XX, YY, scan.T, levels, cmap=cmap)
-    plt.colorbar()
-    # use the 2D lattice vectors to plot the xy-unit cell
-    lattice = stm_data.lattice
-    plt.plot([0, lattice[0, 0]], [0, lattice[0, 1]], "k-", linewidth=2)
-    plt.plot([0, lattice[1, 0]], [0, lattice[1, 1]], "k-", linewidth=2)
-    plt.plot(
-        [lattice[0, 0], lattice[0, 0] + lattice[1, 0]],
-        [lattice[0, 1], lattice[0, 1] + lattice[1, 1]],
-        "k-",
-        linewidth=2,
-    )
-    plt.plot(
-        [lattice[1, 0], lattice[0, 0] + lattice[1, 0]],
-        [lattice[1, 1], lattice[0, 1] + lattice[1, 1]],
-        "k-",
-        linewidth=2,
-    )
-    plt.axis("equal")
-    plt.axis("off")
-    plt.title(stm_data.label)
-    if "constant current" in stm_data.label:
-        plt.savefig(f"{name}_constant_current.png", dpi=300)
-    else:
-        plt.savefig(f"{name}_constant_height.png", dpi=300)
-
-    plt.show()
-    plt.clf()
-    return
-
-
-def make_cart_grid(grid, lattice, mult):
-    """Function to convert the grid points to cartesian coordinates and create a meshgrid"""
-    if len(mult) == 2:
-        grid = (grid[0] * mult[0], grid[1] * mult[1])
-        lattice = lattice[:2, :2]
-        # make meshgrid
-        x = np.linspace(0, mult[0], grid[0])
-        y = np.linspace(0, mult[1], grid[1])
-        XX, YY = np.meshgrid(x, y)
-        # convert to cartesian coordinates
-        coordinates = np.dot(np.column_stack((XX.flatten(), YY.flatten())), lattice)
-        # reshape the coordinates to the shape of the meshgrid
-        XX = np.reshape(coordinates[:, 0], XX.shape)
-        YY = np.reshape(coordinates[:, 1], YY.shape)
-        return XX, YY
-    elif len(mult) == 3:
-        grid = (grid[0] * mult[0], grid[1] * mult[1], grid[2] * mult[2])
-        # make meshgrid
-        x = np.linspace(0, mult[0], grid[0])
-        y = np.linspace(0, mult[1], grid[1])
-        z = np.linspace(0, mult[2], grid[2])
-        XX, YY, ZZ = np.meshgrid(x, y, z)
-        # convert to cartesian coordinates
-        coordinates = np.dot(
-            np.column_stack((XX.flatten(), YY.flatten(), ZZ.flatten())), lattice
-        )
-        # reshape the coordinates to the shape of the meshgrid
-        XX = np.reshape(coordinates[:, 0], XX.shape)
-        YY = np.reshape(coordinates[:, 1], YY.shape)
-        ZZ = np.reshape(coordinates[:, 2], ZZ.shape)
-        return XX, YY, ZZ
-
-
-def multiply_image(scan, mult_xy):
-    """Function to multiply the image in the x and y directions"""
-    scan = np.tile(scan, (mult_xy[1], mult_xy[0]))
-    return scan
