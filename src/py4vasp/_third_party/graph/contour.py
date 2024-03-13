@@ -3,10 +3,12 @@
 import dataclasses
 
 import numpy as np
-import plotly.graph_objects as go
-from scipy.interpolate import griddata
 
 from py4vasp import _config
+from py4vasp._util import import_
+
+go = import_.optional("plotly.graph_objects")
+interpolate = import_.optional("scipy.interpolate")
 
 
 @dataclasses.dataclass
@@ -28,7 +30,7 @@ class Contour:
             x, y, z = self._interpolate_data(lattice_supercell, data)
         else:
             x, y, z = self._use_data_without_interpolation(lattice_supercell, data)
-        yield go.Heatmap(x=x, y=y, z=z, name=self.label), {}
+        yield go.Heatmap(x=x, y=y, z=z, name=self.label, colorscale="turbid_r"), {}
 
     def _interpolation_required(self):
         return not np.allclose((self.lattice[1, 0], self.lattice[0, 1]), 0)
@@ -49,7 +51,7 @@ class Contour:
             np.linspace(x_in.min(), x_in.max(), shape[0]),
             np.linspace(y_in.min(), y_in.max(), shape[1]),
         )
-        z_out = griddata((x_in, y_in), z_in, (x_out, y_out), method="cubic")
+        z_out = interpolate.griddata((x_in, y_in), z_in, (x_out, y_out), method="cubic")
         return x_out[0], y_out[:, 0], z_out
 
     def _use_data_without_interpolation(self, lattice, data):

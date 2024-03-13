@@ -8,6 +8,9 @@ import pytest
 
 from py4vasp import _config, exception
 from py4vasp._third_party.graph import Contour, Graph, Series
+from py4vasp._util import import_
+
+px = import_.optional("plotly.express")
 
 
 @pytest.fixture
@@ -413,6 +416,11 @@ def test_contour(rectangle_contour, Assert, not_core):
     Assert.allclose(fig.data[0].x, np.linspace(0, 4, 20, endpoint=False) + 0.1)
     Assert.allclose(fig.data[0].y, np.linspace(0, 3.6, 18, endpoint=False) + 0.1)
     assert fig.data[0].name == rectangle_contour.label
+    expected_colorscale = px.colors.get_colorscale("turbid_r")
+    assert len(fig.data[0].colorscale) == len(expected_colorscale)
+    for actual, expected in zip(fig.data[0].colorscale, expected_colorscale):
+        Assert.allclose(actual[0], expected[0])
+        assert actual[1] == expected[1]
     # text explicitly that it is False to prevent None passing the test
     assert fig.layout.xaxis.visible == False
     assert fig.layout.yaxis.visible == False
