@@ -233,7 +233,7 @@ def test_to_stm_nonsplit_constant_height(PolarizedNonSplitPartialCharge, Assert)
         assert actual.series.data.shape == (expected.grid[0], expected.grid[1])
         # assert lattice:
         Assert.allclose(
-            actual.series.lattice, expected.structure._lattice_vectors()[:2]
+            actual.series.lattice, expected.structure._lattice_vectors()[:2, :2]
         )
         # assert supercell
         Assert.allclose(actual.series.supercell, np.asarray([supercell, supercell]))
@@ -259,7 +259,7 @@ def test_to_stm_nonsplit_constant_current(PolarizedNonSplitPartialCharge, Assert
         assert actual.series.data.shape == (expected.grid[0], expected.grid[1])
         # assert lattice:
         Assert.allclose(
-            actual.series.lattice, expected.structure._lattice_vectors()[:2]
+            actual.series.lattice, expected.structure._lattice_vectors()[:2, :2]
         )
         # assert supercell
         Assert.allclose(actual.series.supercell, supercell)
