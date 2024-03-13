@@ -56,7 +56,8 @@ class Contour:
     def _use_data_without_interpolation(self, lattice, data):
         x = np.linspace(0, lattice[0, 0], data.shape[0], endpoint=False)
         y = np.linspace(0, lattice[1, 1], data.shape[1], endpoint=False)
-        return x, y, data
+        # plotly expects y-x order for data
+        return x, y, data.T
 
     def _generate_shapes(self):
         if not self.show_cell:

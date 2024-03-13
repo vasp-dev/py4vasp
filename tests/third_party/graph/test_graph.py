@@ -399,14 +399,17 @@ def test_contour(rectangle_contour, Assert, not_core):
     graph = Graph(rectangle_contour)
     fig = graph.to_plotly()
     assert len(fig.data) == 1
-    Assert.allclose(fig.data[0].z, rectangle_contour.data)
-    Assert.allclose(fig.data[0].x, np.linspace(0, 4, 20, endpoint=False))
-    Assert.allclose(fig.data[0].y, np.linspace(0, 3.6, 18, endpoint=False))
+    # plotly expects y-x order
+    Assert.allclose(fig.data[0].z, rectangle_contour.data.T)
+    # shift because the points define the centers of the rectangles
+    Assert.allclose(fig.data[0].x, np.linspace(0, 4, 20, endpoint=False)) + 0.1
+    Assert.allclose(fig.data[0].y, np.linspace(0, 3.6, 18, endpoint=False)) + 0.1
     assert fig.data[0].name == rectangle_contour.label
     # text explicitly that it is False to prevent None passing the test
     assert fig.layout.xaxis.visible == False
     assert fig.layout.yaxis.visible == False
     assert len(fig.layout.shapes) == 1
+    check_unit_cell(fig.layout.shapes[0])
 
 
 def test_contour_supercell(rectangle_contour, not_core):
@@ -415,11 +418,15 @@ def test_contour_supercell(rectangle_contour, not_core):
     graph = Graph(rectangle_contour)
     fig = graph.to_plotly()
     assert len(fig.data) == 1
-    assert all(fig.data[0].z.shape == supercell * rectangle_contour.data.shape)
+    # plotly expects y-x order
+    assert all(fig.data[0].z.T.shape == supercell * rectangle_contour.data.shape)
     assert len(fig.data[0].x) == 60
     assert len(fig.data[0].y) == 90
     assert len(fig.layout.shapes) == 1
-    unit_cell = fig.layout.shapes[0]
+    check_unit_cell(fig.layout.shapes[0])
+
+
+def check_unit_cell(unit_cell):
     assert unit_cell.type == "path"
     assert unit_cell.path == "M 0 0 L 4.0 0.0 L 4.0 3.6 L 0.0 3.6 Z"
     assert unit_cell.line.color == _config.VASP_GRAY
@@ -435,6 +442,7 @@ def test_contour_interpolate(tilted_contour, not_core):
     expected_shape = np.ceil(points_per_line * lengths).astype(int)
     expected_average = np.average(tilted_contour.data)
     assert len(fig.data) == 1
+    # plotly expects y-x order
     assert all(fig.data[0].z.T.shape == expected_shape)
     assert fig.data[0].x.size == expected_shape[0]
     assert fig.data[0].y.size == expected_shape[1]
