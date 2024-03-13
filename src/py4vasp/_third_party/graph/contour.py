@@ -39,8 +39,8 @@ class Contour:
         points_per_line = np.sqrt(points_per_area) * self.interpolation_factor
         lengths = np.sum(np.abs(lattice), axis=0)
         shape = np.ceil(points_per_line * lengths).astype(int)
-        line_mesh_a = np.linspace(0, lattice[0], data.shape[0], endpoint=False)
-        line_mesh_b = np.linspace(0, lattice[1], data.shape[1], endpoint=False)
+        line_mesh_a = self._make_mesh(lattice, data, 0)
+        line_mesh_b = self._make_mesh(lattice, data, 1)
         # this order is required so that itertools runs over a first
         x_in, y_in = np.array(
             [a + b for b, a in itertools.product(line_mesh_b, line_mesh_a)]
@@ -54,9 +54,17 @@ class Contour:
         return x_out[0], y_out[:, 0], interpolated_data
 
     def _use_data_without_interpolation(self, lattice, data):
-        x = np.linspace(0, lattice[0, 0], data.shape[0], endpoint=False)
-        y = np.linspace(0, lattice[1, 1], data.shape[1], endpoint=False)
-        return x, y, data
+        x = self._make_mesh(lattice, data, 0)
+        y = self._make_mesh(lattice, data, 1)
+        # plotly expects y-x order for data
+        return x, y, data.T
+
+    def _make_mesh(self, lattice, data, index):
+        vector = index if self._interpolation_required() else (index, index)
+        return (
+            np.linspace(0, lattice[vector], data.shape[index], endpoint=False)
+            + 0.5 * lattice[vector] / data.shape[index]
+        )
 
     def _generate_shapes(self):
         if not self.show_cell:
