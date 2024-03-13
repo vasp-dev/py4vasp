@@ -395,6 +395,14 @@ def test_nonexisting_attribute_raises_error(parabola):
         graph.nonexisting = "not possible"
 
 
+def test_normal_series_does_not_set_contour_layout(parabola, not_core):
+    graph = Graph(parabola)
+    fig = graph.to_plotly()
+    assert fig.layout.xaxis.visible is None
+    assert fig.layout.yaxis.visible is None
+    assert fig.layout.yaxis.scaleanchor is None
+
+
 def test_contour(rectangle_contour, Assert, not_core):
     graph = Graph(rectangle_contour)
     fig = graph.to_plotly()
@@ -402,14 +410,15 @@ def test_contour(rectangle_contour, Assert, not_core):
     # plotly expects y-x order
     Assert.allclose(fig.data[0].z, rectangle_contour.data.T)
     # shift because the points define the centers of the rectangles
-    Assert.allclose(fig.data[0].x, np.linspace(0, 4, 20, endpoint=False)) + 0.1
-    Assert.allclose(fig.data[0].y, np.linspace(0, 3.6, 18, endpoint=False)) + 0.1
+    Assert.allclose(fig.data[0].x, np.linspace(0, 4, 20, endpoint=False) + 0.1)
+    Assert.allclose(fig.data[0].y, np.linspace(0, 3.6, 18, endpoint=False) + 0.1)
     assert fig.data[0].name == rectangle_contour.label
     # text explicitly that it is False to prevent None passing the test
     assert fig.layout.xaxis.visible == False
     assert fig.layout.yaxis.visible == False
     assert len(fig.layout.shapes) == 1
     check_unit_cell(fig.layout.shapes[0])
+    assert fig.layout.yaxis.scaleanchor == "x"
 
 
 def test_contour_supercell(rectangle_contour, not_core):
