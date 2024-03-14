@@ -5,8 +5,8 @@ import dataclasses
 import numpy as np
 
 from py4vasp import _config
-from py4vasp._util import import_
 from py4vasp._third_party.graph import trace
+from py4vasp._util import import_
 
 go = import_.optional("plotly.graph_objects")
 interpolate = import_.optional("scipy.interpolate")

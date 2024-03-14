@@ -5,8 +5,8 @@ from dataclasses import dataclass, fields
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._util import import_
 from py4vasp._third_party.graph import trace
+from py4vasp._util import import_
 
 go = import_.optional("plotly.graph_objects")
 
