@@ -1,7 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import tempfile
 from unittest.mock import MagicMock
 
+import h5py
 import hypothesis.extra.numpy as np_strat
 import hypothesis.strategies as strategy
 import numpy as np
@@ -35,6 +37,13 @@ def array_and_slice(draw):
     array = draw_test_data(draw, shape)
     slice = draw(np_strat.basic_indices(shape))
     return array, slice
+
+
+@strategy.composite
+def complex_array_or_scalar(draw):
+    (complex_shape,), _ = draw(np_strat.mutually_broadcastable_shapes(num_shapes=1))
+    real_shape = (*complex_shape, 2)
+    return draw_test_data(draw, real_shape)
 
 
 def draw_test_data(draw, shape, positive=False):
@@ -173,3 +182,30 @@ def test_nested_data():
     assert VaspData(data).is_none()
     data = np.zeros(10)
     assert isinstance(VaspData(data).data, np.ndarray)
+
+
+@given(data=complex_array_or_scalar())
+def test_complex_from_numpy(data, Assert):
+    data = data.view(np.complex128).reshape(data.shape[:-1])
+    vasp = VaspData(data)
+    assert vasp.ndim == data.ndim
+    assert vasp.size == data.size
+    assert vasp.shape == data.shape
+    assert vasp.dtype == data.dtype
+    assert not vasp.is_none()
+    Assert.allclose(vasp + vasp, data + data)
+    Assert.allclose(3 * vasp, 3 * data)
+    Assert.allclose(np.sin(vasp), np.sin(data))
+    Assert.allclose(np.cos(vasp), np.cos(data))
+    Assert.allclose(np.tan(vasp), np.tan(data))
+
+
+@given(data=complex_array_or_scalar())
+def test_complex_from_dataset(data, Assert):
+    with tempfile.TemporaryFile() as file:
+        h5f = h5py.File(file, "a")
+        h5f["dataset"] = data
+        dataset = h5f["dataset"]
+        dataset.attrs["dtype"] = "complex"
+        h5f.close()
+    assert False
