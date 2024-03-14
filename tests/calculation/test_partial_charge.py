@@ -251,7 +251,10 @@ def test_to_stm_nonsplit_constant_current(PolarizedNonSplitPartialCharge, Assert
     supercell = np.asarray([2, 4])
     for spin in ["up", "down", "both"]:
         actual = PolarizedNonSplitPartialCharge.to_stm(
-            spin=spin, selection="constant_current", current=current, supercell=supercell
+            spin=spin,
+            selection="constant_current",
+            current=current,
+            supercell=supercell,
         )
         expected = PolarizedNonSplitPartialCharge.ref
         # assert data type and shape
@@ -273,7 +276,7 @@ def test_to_stm_nonsplit_constant_current(PolarizedNonSplitPartialCharge, Assert
 
 
 def test_stm_default_settings(PolarizedNonSplitPartialCharge, Assert):
-    actual = PolarizedNonSplitPartialCharge.STM_settings
+    actual = PolarizedNonSplitPartialCharge.stm_settings
     defaults = {
         "sigma_xy": 4.0,
         "sigma_z": 4.0,
@@ -281,5 +284,4 @@ def test_stm_default_settings(PolarizedNonSplitPartialCharge, Assert):
         "enhancement_factor": 1000,
         "interpolation_factor": 10,
     }
-    for key, value in defaults.items():
-        assert getattr(actual, key) == value
+    assert actual == defaults

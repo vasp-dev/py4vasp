@@ -13,8 +13,35 @@ from py4vasp.exception import IncorrectUsage, NoData, NotImplemented
 
 _STM_MODES = {
     "constant_height": ["constant_height", "ch", "height"],
-    "constant_current": ["constant_current", "cc", "current"]
+    "constant_current": ["constant_current", "cc", "current"],
 }
+
+
+@dataclasses.dataclass
+class STM_settings:
+    """Settings for the STM simulation.
+
+    sigma_z : float
+        The standard deviation of the Gaussian filter in the z-direction.
+        The default is 4.0.
+    sigma_xy : float
+        The standard deviation of the Gaussian filter in the xy-plane.
+        The default is 4.0.
+    truncate : float
+        The truncation of the Gaussian filter. The default is 3.0.
+    enhancement_factor : float
+        The enhancement factor for the output of the constant heigth
+        STM image. The default is 1000.
+    interpolation_factor : int
+        The interpolation factor for the z-direction in case of
+        constant current mode. The default is 10.
+    """
+
+    sigma_z: float = 4.0
+    sigma_xy: float = 4.0
+    truncate: float = 3.0
+    enhancement_factor: float = 1000
+    interpolation_factor: int = 10
 
 
 class PartialCharge(_base.Refinery, _structure.Mixin):
@@ -33,31 +60,9 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
     to separate the data.
     """
 
-    @dataclasses.dataclass
-    class STM_settings:
-        """Settings for the STM simulation.
-
-        sigma_z : float
-            The standard deviation of the Gaussian filter in the z-direction.
-            The default is 4.0.
-        sigma_xy : float
-            The standard deviation of the Gaussian filter in the xy-plane.
-            The default is 4.0.
-        truncate : float
-            The truncation of the Gaussian filter. The default is 3.0.
-        enhancement_factor : float
-            The enhancement factor for the output of the constant heigth
-            STM image. The default is 1000.
-        interpolation_factor : int
-            The interpolation factor for the z-direction in case of
-            constant current mode. The default is 10.
-        """
-
-        sigma_z: float = 4.0
-        sigma_xy: float = 4.0
-        truncate: float = 3.0
-        enhancement_factor: float = 1000
-        interpolation_factor: int = 10
+    @property
+    def stm_settings(self):
+        return STM_settings()
 
     @_base.data_access
     def __str__(self):
@@ -88,7 +93,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             **self._read_grid(),
             **self._read_bands(),
             **self._read_kpoints(),
-            **self._read_partial_charge()
+            **self._read_partial_charge(),
         }
 
     def to_stm(
@@ -158,8 +163,8 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
     def _constant_current_stm(self, current, spin):
         z_start = min_of_z_charge(
             self._get_stm_data(spin),
-            sigma=self.STM_settings.sigma_z,
-            truncate=self.STM_settings.truncate,
+            sigma=self.stm_settings.sigma_z,
+            truncate=self.stm_settings.truncate,
         )
         grid = self.grid()
         cc_scan = np.zeros((grid[0], grid[1]))
@@ -170,7 +175,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
                 spl = CubicSpline(range(grid[2]), self.smoothed_charge[i][j])
 
                 for k in np.arange(
-                    z_start, 0, -1 / self.STM_settings.interpolation_factor
+                    z_start, 0, -1 / self.stm_settings.interpolation_factor
                 ):
                     if spl(k) >= current:
                         break
@@ -179,7 +184,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         # cc_scan = cc_scan - np.min(cc_scan.flatten())
         # return the tip height over the surface
         cc_scan = (
-            cc_scan / self.STM_settings.interpolation_factor
+            cc_scan / self.stm_settings.interpolation_factor
             - self._get_highest_z_coord()
         )
         spin_label = "both spin channels" if spin == "both" else f"spin {spin}"
@@ -197,7 +202,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             for j in range(grid[1]):
                 ch_scan[i][j] = (
                     self.smoothed_charge[i][j][z_index]
-                    * self.STM_settings.enhancement_factor
+                    * self.stm_settings.enhancement_factor
                 )
         spin_label = "both spin channels" if spin == "both" else f"spin {spin}"
         topology = self._topology()
@@ -261,11 +266,11 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         smoothed_charge = gaussian_filter(
             data,
             sigma=(
-                self.STM_settings.sigma_xy,
-                self.STM_settings.sigma_xy,
-                self.STM_settings.sigma_z,
+                self.stm_settings.sigma_xy,
+                self.stm_settings.sigma_xy,
+                self.stm_settings.sigma_z,
             ),
-            truncate=self.STM_settings.truncate,
+            truncate=self.stm_settings.truncate,
             mode="wrap",
         )
         return smoothed_charge
