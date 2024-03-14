@@ -165,6 +165,7 @@ class Graph(Sequence):
             figure.layout.yaxis.visible = False
         if self._any_are_contour():
             figure.layout.yaxis.scaleanchor = "x"
+            figure.layout.height = 500
 
     def _all_are_contour(self):
         return all(isinstance(series, Contour) for series in self)
