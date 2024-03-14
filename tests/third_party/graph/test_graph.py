@@ -466,3 +466,12 @@ def test_contour_interpolate(tilted_contour, not_core):
     finite = np.isfinite(fig.data[0].z)
     assert np.isclose(np.average(fig.data[0].z[finite]), expected_average)
     assert len(fig.layout.shapes) == 0
+
+
+def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
+    graph = Graph([rectangle_contour, two_lines])
+    fig = graph.to_plotly()
+    assert len(fig.data) == 3
+    assert fig.layout.xaxis.visible is None
+    assert fig.layout.yaxis.visible is None
+    assert fig.layout.yaxis.scaleanchor == "x"
