@@ -13,14 +13,28 @@ interpolate = import_.optional("scipy.interpolate")
 
 @dataclasses.dataclass
 class Contour:
+    """Represents data on a 2d slice through the unit cell.
+
+    This class creates a visualization of the data within the unit cell based on its
+    configuration. Currently it supports the creation of heatmaps where each datapoint
+    corresponds to one point on the grid.
+    """
+
     interpolation_factor = 2
+    """If the lattice does not align with the cartesian axes, the data is interpolated
+    to by approximately this factor along each line."""
 
     data: np.array
+    "2d grid data in the plane spanned by the lattice vectors."
     lattice: np.array
+    """2 vectors spanning the plane in which the data is represented. Each vector should
+    have two components, so remove any element normal to the plane."""
     label: str
+    "Assign a label to the visualization that may be used to identify one among multiple plots."
     supercell: np.array = (1, 1)
-    "multiple of each lattice to be drawn"
+    "Multiple of each lattice vector to be drawn."
     show_cell: bool = True
+    "Show the unit cell in the resulting visualization."
 
     def _generate_traces(self):
         lattice_supercell = np.diag(self.supercell) @ self.lattice
