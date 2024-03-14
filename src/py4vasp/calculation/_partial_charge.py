@@ -90,12 +90,13 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             information for reference.
         """
 
+        parchg = np.squeeze(self._raw_data.partial_charge[:].T)
         return {
-            **self._read_structure(),
-            **self._read_grid(),
-            **self._read_bands(),
-            **self._read_kpoints(),
-            **self._read_partial_charge(),
+            "structure": self._structure.read(),
+            "grid": self.grid(),
+            "bands": self.bands(),
+            "kpoints": self.kpoints(),
+            "partial_charge": parchg,
         }
 
     def to_stm(
@@ -178,7 +179,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             raise exception.IncorrectUsage(message)
 
     def _constant_current_stm(self, smoothed_charge, current, spin):
-        z_start = min_of_z_charge(
+        z_start = _min_of_z_charge(
             self._get_stm_data(spin),
             sigma=self.stm_settings.sigma_z,
             truncate=self.stm_settings.truncate,
@@ -280,17 +281,14 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         return charge_data / (grid_volume * cell_volume)
 
     def _smooth_stm_data(self, data):
-        smoothed_charge = gaussian_filter(
-            data,
-            sigma=(
-                self.stm_settings.sigma_xy,
-                self.stm_settings.sigma_xy,
-                self.stm_settings.sigma_z,
-            ),
-            truncate=self.stm_settings.truncate,
-            mode="wrap",
+        sigma = (
+            self.stm_settings.sigma_xy,
+            self.stm_settings.sigma_xy,
+            self.stm_settings.sigma_z,
         )
-        return smoothed_charge
+        return gaussian_filter(
+            data, sigma=sigma, truncate=self.stm_settings.truncate, mode="wrap"
+        )
 
     @_base.data_access
     def lattice_vectors(self):
@@ -299,23 +297,6 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
 
     def _spin_polarized(self):
         return self._raw_data.partial_charge.shape[2] == 2
-
-    def _read_grid(self):
-        return {"grid": self.grid()}
-
-    def _read_bands(self):
-        return {"bands": self.bands()}
-
-    def _read_kpoints(self):
-        return {"kpoints": self.kpoints()}
-
-    @_base.data_access
-    def _read_structure(self):
-        return {"structure": self._structure.read()}
-
-    @_base.data_access
-    def _read_partial_charge(self):
-        return {"partial_charge": np.squeeze(self._raw_data.partial_charge[:].T)}
 
     @_base.data_access
     def to_numpy(self, selection="total", band=0, kpoint=0):
@@ -337,31 +318,19 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             The partial charge density as a 3D array.
         """
 
-        parchg = self._raw_data.partial_charge[:].T
-
         band = self._check_band_index(band)
         kpoint = self._check_kpoint_index(kpoint)
 
-        if self._spin_polarized():
-            if selection == "total":
-                parchg = parchg[:, :, :, 0, band, kpoint]
-            elif selection == "up":
-                parchg = (
-                    parchg[:, :, :, 0, band, kpoint] + parchg[:, :, :, 1, band, kpoint]
-                ) / 2
-            elif selection == "down":
-                parchg = (
-                    parchg[:, :, :, 0, band, kpoint] - parchg[:, :, :, 1, band, kpoint]
-                ) / 2
-            else:
-                message = (
-                    f"""Spin '{spin}' not understood. Use 'up', 'down' or 'both'."""
-                )
-                raise exception.IncorrectUsage(message)
-        else:
-            parchg = parchg[:, :, :, 0, band, kpoint]
+        parchg = self._raw_data.partial_charge[:].T
+        if not self._spin_polarized() or selection == "total":
+            return parchg[:, :, :, 0, band, kpoint]
+        if selection == "up":
+            return parchg[:, :, :, :, band, kpoint] @ np.array([0.5, 0.5])
+        if selection == "down":
+            return parchg[:, :, :, :, band, kpoint] @ np.array([0.5, -0.5])
 
-        return parchg
+        message = f"Spin '{selection}' not understood. Use 'up', 'down' or 'total'."
+        raise exception.IncorrectUsage(message)
 
     @_base.data_access
     def bands(self):
@@ -411,11 +380,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             raise exception.NoData(message)
 
 
-def min_of_z_charge(
-    charge,
-    sigma=4,
-    truncate=3.0,
-):
+def _min_of_z_charge(charge, sigma=4, truncate=3.0):
     """Returns the z-coordinate of the minimum of the charge density in the z-direction"""
     # average over the x and y axis
     z_charge = np.mean(charge, axis=(0, 1))
