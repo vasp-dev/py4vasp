@@ -11,6 +11,7 @@ from py4vasp import exception
 from py4vasp._config import VASP_COLORS
 from py4vasp._third_party.graph.contour import Contour
 from py4vasp._third_party.graph.series import Series
+from py4vasp._third_party.graph.trace import Trace
 from py4vasp._util import import_
 
 go = import_.optional("plotly.graph_objects")
@@ -26,7 +27,7 @@ class Graph(Sequence):
     parameters set in this class.
     """
 
-    series: Series or Sequence[Series]
+    series: Trace or Sequence[Trace]
     "One or more series shown in the graph."
     xlabel: str = None
     "Label for the x axis."
@@ -76,8 +77,8 @@ class Graph(Sequence):
                 figure.add_trace(trace)
             else:
                 figure.add_trace(trace, row=options["row"], col=1)
-        for shape in self._generate_plotly_shapes():
-            figure.add_shape(**shape)
+            for shape in options.get("shapes", ()):
+                figure.add_shape(**shape)
         return figure
 
     def show(self):
@@ -110,7 +111,7 @@ class Graph(Sequence):
         colors = itertools.cycle(VASP_COLORS)
         for series in self:
             series = _set_color_if_not_present(series, colors)
-            yield from series._generate_traces()
+            yield from series.to_plotly()
 
     def _make_plotly_figure(self):
         figure = self._figure_with_one_or_two_y_axes()
