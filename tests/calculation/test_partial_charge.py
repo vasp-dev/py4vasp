@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-
+import dataclasses
 import types
 
 import numpy as np
@@ -209,9 +209,9 @@ def test_to_stm_nonsplit_not_orthogonal(PolarizedNonSplitPartialChargeSr2TiO4, A
 
 
 def test_to_stm_wrong_spin_nonsplit(PolarizedNonSplitPartialCharge, Assert):
-    msg = "Use 'up', 'down' or 'both'."
+    msg = "'up', 'down', or 'total'"
     with pytest.raises(IncorrectUsage) as excinfo:
-        PolarizedNonSplitPartialCharge.to_stm(spin="all")
+        PolarizedNonSplitPartialCharge.to_stm(selection="all")
     assert msg in str(excinfo.value)
 
 
@@ -223,9 +223,9 @@ def test_to_stm_wrong_mode(PolarizedNonSplitPartialCharge, Assert):
 
 def test_to_stm_nonsplit_constant_height(PolarizedNonSplitPartialCharge, Assert):
     supercell = 3
-    for spin in ["up", "down", "both"]:
+    for spin in ["up", "down", "total"]:
         actual = PolarizedNonSplitPartialCharge.to_stm(
-            spin=spin, selection="constant_height", tip_height=2.0, supercell=supercell
+            selection=f"constant_height({spin})", tip_height=2.0, supercell=supercell
         )
         expected = PolarizedNonSplitPartialCharge.ref
         # assert data type and shape
@@ -239,7 +239,8 @@ def test_to_stm_nonsplit_constant_height(PolarizedNonSplitPartialCharge, Assert)
         Assert.allclose(actual.series.supercell, np.asarray([supercell, supercell]))
         # assert label and title
         assert type(actual.series.label) is str
-        assert spin in actual.series.label
+        expected = "both spin channels" if spin == "total" else f"spin {spin}"
+        assert expected in actual.series.label
         assert "constant height" in actual.series.label
         assert "2.0" in actual.series.label
         assert "constant height" in actual.title
@@ -249,10 +250,9 @@ def test_to_stm_nonsplit_constant_height(PolarizedNonSplitPartialCharge, Assert)
 def test_to_stm_nonsplit_constant_current(PolarizedNonSplitPartialCharge, Assert):
     current = 5
     supercell = np.asarray([2, 4])
-    for spin in ["up", "down", "both"]:
+    for spin in ["up", "down", "total"]:
         actual = PolarizedNonSplitPartialCharge.to_stm(
-            spin=spin,
-            selection="constant_current",
+            selection=f"{spin}(constant_current)",
             current=current,
             supercell=supercell,
         )
@@ -268,7 +268,8 @@ def test_to_stm_nonsplit_constant_current(PolarizedNonSplitPartialCharge, Assert
         Assert.allclose(actual.series.supercell, supercell)
         # assert label
         assert type(actual.series.label) is str
-        assert spin in actual.series.label
+        expected = "both spin channels" if spin == "total" else f"spin {spin}"
+        assert expected in actual.series.label
         assert "constant current" in actual.series.label
         assert f"{current:.1e}" in actual.series.label
         assert "constant current" in actual.title
@@ -276,7 +277,7 @@ def test_to_stm_nonsplit_constant_current(PolarizedNonSplitPartialCharge, Assert
 
 
 def test_stm_default_settings(PolarizedNonSplitPartialCharge, Assert):
-    actual = PolarizedNonSplitPartialCharge.stm_settings
+    actual = dataclasses.asdict(PolarizedNonSplitPartialCharge.stm_settings)
     defaults = {
         "sigma_xy": 4.0,
         "sigma_z": 4.0,

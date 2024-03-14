@@ -6,15 +6,17 @@ import numpy as np
 from scipy.interpolate import CubicSpline
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 
+from py4vasp import exception
 from py4vasp._third_party.graph import Graph
 from py4vasp._third_party.graph.contour import Contour
+from py4vasp._util import select
 from py4vasp.calculation import _base, _structure
-from py4vasp.exception import IncorrectUsage, NoData, NotImplemented
 
 _STM_MODES = {
     "constant_height": ["constant_height", "ch", "height"],
     "constant_current": ["constant_current", "cc", "current"],
 }
+_SPINS = ("up", "down", "total")
 
 
 @dataclasses.dataclass
@@ -102,15 +104,15 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         tip_height: float = 2.0,
         current: float = 1.0,
         supercell: Union[int, np.array] = 2,
-        spin="both",
     ) -> Graph:
         """Generate stm image data from the partial charge density.
 
         Parameters
         ----------
         selection : str
-            The mode in which the stm is operated. The default is "constant_height".
-            The other option is "constant_current".
+            The mode in which the stm is operated and the spin channel to be used.
+            Possible modes are "constant_height"(default) and "constant_current".
+            Possible spin selections are "total"(default), "up", and "down".
         tip_height : float
             The height of the stm tip above the surface in Angstrom.
             The default is 2.0 Angstrom. Only used in "constant_height" mode.
@@ -119,9 +121,6 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             Only used in "constant_current" mode.
         supercell : int | np.array
             The supercell to be used for plotting the STM. The default is 2.
-        spin : str
-            The spin channel to be used. The default is "both".
-            The other options are "up" and "down".
 
         Returns
         -------
@@ -130,37 +129,55 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             object.
         """
 
+        self._raise_error_if_3rd_lattice_vector_is_not_parallel_to_z()
+        tree = select.Tree.from_selection(selection)
+        for index, selection in enumerate(tree.selections()):
+            if index > 0:
+                message = "Selecting more than one STM is not implemented."
+                raise exception.NotImplemented(message)
+            contour = self._make_contour(selection, tip_height, current)
+        contour.supercell = self._parse_supercell(supercell)
+        return Graph(series=contour, title=contour.label)
+
+    def _parse_supercell(self, supercell):
         if isinstance(supercell, int):
-            supercell = np.asarray([supercell, supercell])
-        elif len(supercell) == 2:
-            supercell = np.asarray(supercell)
-        else:
-            message = """The supercell has to be a single number or a 2D array.
-            The supercell is used to multiply the x and y directions of the lattice."""
-            raise IncorrectUsage(message)
+            return np.asarray([supercell, supercell])
+        if len(supercell) == 2:
+            return np.asarray(supercell)
+        message = """The supercell has to be a single number or a 2D array. \
+        The supercell is used to multiply the x and y directions of the lattice."""
+        raise exception.IncorrectUsage(message)
 
-        self._check_z_orth()
-        if selection.lower() in _STM_MODES["constant_height"]:
-            self._check_tip_height(tip_height)
+    def _make_contour(self, selection, tip_height, current):
+        self._raise_error_if_tip_too_far_away(tip_height)
+        mode = self._parse_mode(selection)
+        spin = self._parse_spin(selection)
+        self._raise_error_if_selection_not_understood(selection, mode, spin)
+        smoothed_charge = self._get_stm_data(spin)
+        if mode == "constant_height" or mode is None:
+            return self._constant_height_stm(smoothed_charge, tip_height, spin)
+        current = current * 1e-09  # convert nA to A
+        return self._constant_current_stm(smoothed_charge, current, spin)
 
-        self.smoothed_charge = self._get_stm_data(spin)
+    def _parse_mode(self, selection):
+        for mode, aliases in _STM_MODES.items():
+            for alias in aliases:
+                if select.contains(selection, alias, ignore_case=True):
+                    return mode
+        return None
 
-        if selection.lower() in _STM_MODES["constant_height"]:
-            stm = self._constant_height_stm(tip_height, spin)
-        elif selection.lower() in _STM_MODES["constant_current"]:
-            current = current * 1e-09  # convert nA to A
-            stm = self._constant_current_stm(current, spin)
-        else:
-            raise IncorrectUsage(
-                f"STM mode '{selection}' not understood. Use 'constant_height' or 'constant_current'."
-            )
-        stm.supercell = supercell
-        return Graph(
-            series=stm,
-            title=stm.label,
-        )
+    def _parse_spin(self, selection):
+        for spin in _SPINS:
+            if select.contains(selection, spin, ignore_case=True):
+                return spin
+        return None
 
-    def _constant_current_stm(self, current, spin):
+    def _raise_error_if_selection_not_understood(self, selection, mode, spin):
+        if len(selection) != int(mode is not None) + int(spin is not None):
+            message = f"STM mode '{selection}' was parsed as mode='{mode}' and spin='{spin}' which could not be used. Please use 'constant_height' or 'constant_current' as mode and 'up', 'down', or 'total' as spin."
+            raise exception.IncorrectUsage(message)
+
+    def _constant_current_stm(self, smoothed_charge, current, spin):
         z_start = min_of_z_charge(
             self._get_stm_data(spin),
             sigma=self.stm_settings.sigma_z,
@@ -172,7 +189,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         for i in range(grid[0]):
             for j in range(grid[1]):
                 # for more accuracy, interpolate each z-line of data with cubic splines
-                spl = CubicSpline(range(grid[2]), self.smoothed_charge[i][j])
+                spl = CubicSpline(range(grid[2]), smoothed_charge[i][j])
 
                 for k in np.arange(
                     z_start, 0, -1 / self.stm_settings.interpolation_factor
@@ -187,24 +204,24 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             cc_scan / self.stm_settings.interpolation_factor
             - self._get_highest_z_coord()
         )
-        spin_label = "both spin channels" if spin == "both" else f"spin {spin}"
+        spin_label = "both spin channels" if spin == "total" else f"spin {spin}"
         topology = self._topology()
         label = f"STM of {topology} for {spin_label} at constant current={current*1e9:.1e} nA"
         return Contour(
             data=cc_scan, lattice=self.lattice_vectors()[:2, :2], label=label
         )
 
-    def _constant_height_stm(self, tip_height, spin):
+    def _constant_height_stm(self, smoothed_charge, tip_height, spin):
         grid = self.grid()
         z_index = self._z_index_for_height(tip_height + self._get_highest_z_coord())
         ch_scan = np.zeros((grid[0], grid[1]))
         for i in range(grid[0]):
             for j in range(grid[1]):
                 ch_scan[i][j] = (
-                    self.smoothed_charge[i][j][z_index]
+                    smoothed_charge[i][j][z_index]
                     * self.stm_settings.enhancement_factor
                 )
-        spin_label = "both spin channels" if spin == "both" else f"spin {spin}"
+        spin_label = "both spin channels" if spin == "total" else f"spin {spin}"
         topology = self._topology()
         label = f"STM of {topology} for {spin_label} at constant height={float(tip_height):.2f} Angstrom"
         return Contour(
@@ -233,26 +250,26 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         z_vector = self.lattice_vectors()[2, 2]
         return z_vector - slab_thickness
 
-    def _check_tip_height(self, tip_height):
+    def _raise_error_if_tip_too_far_away(self, tip_height):
         if tip_height > self._estimate_vacuum() / 2:
             message = f"""The tip position at {tip_height:.2f} is above half of the
              estimated vacuum thickness {self._estimate_vacuum():.2f} Angstrom.
             You would be sampling the bottom of your slab, which is not supported."""
-            raise IncorrectUsage(message)
+            raise exception.IncorrectUsage(message)
 
-    def _check_z_orth(self):
+    def _raise_error_if_3rd_lattice_vector_is_not_parallel_to_z(self):
         lv = self.lattice_vectors()
         if lv[0][2] != 0 or lv[1][2] != 0 or lv[2][0] != 0 or lv[2][1] != 0:
             message = """The third lattice vector is not in cartesian z-direction.
             or the first two lattice vectors are not in the xy-plane.
             STM simulations for such cells are not implemented."""
-            raise NotImplemented(message)
+            raise exception.NotImplemented(message)
 
     def _get_stm_data(self, spin):
         if 0 not in self.bands() or 0 not in self.kpoints():
             massage = """Simulated STM images are only supported for non-separated bands and k-points.
             Please set LSEPK and LSEPB to .FALSE. in the INCAR file."""
-            raise NotImplemented(massage)
+            raise exception.NotImplemented(massage)
         chg = self._correct_units(self.to_array(band=0, kpoint=0, spin=spin))
         return self._smooth_stm_data(chg)
 
@@ -326,7 +343,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         kpoint = self._check_kpoint_index(kpoint)
 
         if self._spin_polarized():
-            if spin == "both":
+            if spin == "both" or spin == "total":
                 parchg = parchg[:, :, :, 0, band, kpoint]
             elif spin == "up":
                 parchg = (
@@ -340,7 +357,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
                 message = (
                     f"""Spin '{spin}' not understood. Use 'up', 'down' or 'both'."""
                 )
-                raise IncorrectUsage(message)
+                raise exception.IncorrectUsage(message)
         else:
             parchg = parchg[:, :, :, 0, band, kpoint]
 
@@ -368,7 +385,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         else:
             message = f"""Band {band} not found in the bands array.
             Make sure to set IBAND, EINT, and LSEPB correctly in the INCAR file."""
-            raise NoData(message)
+            raise exception.NoData(message)
 
     @_base.data_access
     def kpoints(self):
@@ -391,7 +408,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         else:
             message = f"""K-point {kpoint} not found in the kpoints array.
             Make sure to set KPUSE and LSEPK correctly in the INCAR file."""
-            raise NoData(message)
+            raise exception.NoData(message)
 
 
 def min_of_z_charge(
