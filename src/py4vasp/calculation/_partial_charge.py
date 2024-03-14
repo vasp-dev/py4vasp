@@ -59,6 +59,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         enhancement_factor: float = 1000
         interpolation_factor: int = 10
 
+    @_base.data_access
     def __str__(self):
         """Return a string representation of the partial charge density."""
         return f"""
@@ -72,7 +73,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
     def grid(self):
         return self._raw_data.grid[:]
 
-    def to_dict(self, squeeze=True):
+    def to_dict(self):
         """Store the partial charges in a dictionary.
 
         Returns
@@ -87,7 +88,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             **self._read_grid(),
             **self._read_bands(),
             **self._read_kpoints(),
-            **self._read_partial_charge(squeeze=squeeze),
+            **self._read_partial_charge()
         }
 
     def to_stm(
@@ -120,8 +121,8 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         Returns
         -------
         Graph
-            The STM image as a graph object. The title is the
-            label of the Contour object.
+            The STM image as a graph object. The title is the label of the Contour
+            object.
         """
 
         if isinstance(supercell, int):
@@ -291,11 +292,8 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         return {"structure": self._structure.read()}
 
     @_base.data_access
-    def _read_partial_charge(self, squeeze=True):
-        if squeeze:
-            return {"partial_charge": np.squeeze(self._raw_data.partial_charge[:].T)}
-        else:
-            return {"partial_charge": self._raw_data.partial_charge[:].T}
+    def _read_partial_charge(self):
+        return {"partial_charge": np.squeeze(self._raw_data.partial_charge[:].T)}
 
     @_base.data_access
     def to_array(self, band=0, kpoint=0, spin="both"):
