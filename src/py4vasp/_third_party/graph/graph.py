@@ -145,7 +145,7 @@ class Graph(Sequence):
             figure.layout.xaxis.tickmode = "array"
             figure.layout.xaxis.tickvals = tuple(self.xticks.keys())
             figure.layout.xaxis.ticktext = self._xtick_labels()
-        if self._is_contour():
+        if self._all_are_contour():
             figure.layout.xaxis.visible = False
 
     def _xtick_labels(self):
@@ -161,16 +161,16 @@ class Graph(Sequence):
             figure.layout.yaxis.title.text = self.ylabel
             if self.y2label:
                 figure.layout.yaxis2.title.text = self.y2label
-        if self._is_contour():
+        if self._all_are_contour():
             figure.layout.yaxis.visible = False
+        if self._any_are_contour():
             figure.layout.yaxis.scaleanchor = "x"
 
-    def _is_contour(self):
+    def _all_are_contour(self):
         return all(isinstance(series, Contour) for series in self)
 
-    def _generate_plotly_shapes(self):
-        for series in self:
-            yield from series._generate_shapes()
+    def _any_are_contour(self):
+        return any(isinstance(series, Contour) for series in self)
 
     def to_frame(self):
         """Convert graph to a pandas dataframe.
