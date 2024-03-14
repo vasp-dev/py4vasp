@@ -11,18 +11,16 @@ from py4vasp._third_party.graph.contour import Contour
 from py4vasp.calculation import _base, _structure
 from py4vasp.exception import IncorrectUsage, NoData, NotImplemented
 
-stm_modes = {
-    "constant_height": ["constant_height", "ch", "constant height"],
-    "constant_current": [
-        "constant_current",
-        "cc",
-        "constant current",
-    ],
+_STM_MODES = {
+    "constant_height": ["constant_height", "ch", "height"],
+    "constant_current": ["constant_current", "cc", "current"]
 }
 
 
 class PartialCharge(_base.Refinery, _structure.Mixin):
-    """
+    """Partial charges describe the fraction of the charge density in a certain energy,
+    band, or k-point range.
+
     Partial charges are produced by a post-processing VASP run after self-consistent
     convergence is achieved. They are stored in an array of shape
     (ngxf, ngyf, ngzf, ispin, nbands, nkpts). The first three dimensions are the
@@ -94,7 +92,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
 
     def to_stm(
         self,
-        mode: str = "constant_height",
+        selection: str = "constant_height",
         tip_height: float = 2.0,
         current: float = 1.0,
         supercell: Union[int, np.array] = 2,
@@ -104,7 +102,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
 
         Parameters
         ----------
-        mode : str
+        selection : str
             The mode in which the stm is operated. The default is "constant_height".
             The other option is "constant_current".
         tip_height : float
@@ -136,19 +134,19 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             raise IncorrectUsage(message)
 
         self._check_z_orth()
-        if mode.lower() in stm_modes["constant_height"]:
+        if selection.lower() in _STM_MODES["constant_height"]:
             self._check_tip_height(tip_height)
 
         self.smoothed_charge = self._get_stm_data(spin)
 
-        if mode.lower() in stm_modes["constant_height"]:
+        if selection.lower() in _STM_MODES["constant_height"]:
             stm = self._constant_height_stm(tip_height, spin)
-        elif mode.lower() in stm_modes["constant_current"]:
+        elif selection.lower() in _STM_MODES["constant_current"]:
             current = current * 1e-09  # convert nA to A
             stm = self._constant_current_stm(current, spin)
         else:
             raise IncorrectUsage(
-                f"STM mode '{mode}' not understood. Use 'constant_height' or 'constant_current'."
+                f"STM mode '{selection}' not understood. Use 'constant_height' or 'constant_current'."
             )
         stm.supercell = supercell
         return Graph(

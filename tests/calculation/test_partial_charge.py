@@ -187,7 +187,7 @@ def test_split_bands_to_array(NonPolarizedBandSplitPartialCharge, Assert):
 def test_to_stm_split(PolarizedAllSplitPartialCharge, Assert):
     msg = "set LSEPK and LSEPB to .FALSE. in the INCAR file."
     with pytest.raises(NotImplemented) as excinfo:
-        PolarizedAllSplitPartialCharge.to_stm(mode="constant_current")
+        PolarizedAllSplitPartialCharge.to_stm(selection="constant_current")
     assert msg in str(excinfo.value)
 
 
@@ -217,7 +217,7 @@ def test_to_stm_wrong_spin_nonsplit(PolarizedNonSplitPartialCharge, Assert):
 
 def test_to_stm_wrong_mode(PolarizedNonSplitPartialCharge, Assert):
     with pytest.raises(IncorrectUsage) as excinfo:
-        PolarizedNonSplitPartialCharge.to_stm(mode="stm")
+        PolarizedNonSplitPartialCharge.to_stm(selection="stm")
     assert "STM mode" in str(excinfo.value)
 
 
@@ -225,7 +225,7 @@ def test_to_stm_nonsplit_constant_height(PolarizedNonSplitPartialCharge, Assert)
     supercell = 3
     for spin in ["up", "down", "both"]:
         actual = PolarizedNonSplitPartialCharge.to_stm(
-            spin=spin, mode="constant_height", tip_height=2.0, supercell=supercell
+            spin=spin, selection="constant_height", tip_height=2.0, supercell=supercell
         )
         expected = PolarizedNonSplitPartialCharge.ref
         # assert data type and shape
@@ -251,7 +251,7 @@ def test_to_stm_nonsplit_constant_current(PolarizedNonSplitPartialCharge, Assert
     supercell = np.asarray([2, 4])
     for spin in ["up", "down", "both"]:
         actual = PolarizedNonSplitPartialCharge.to_stm(
-            spin=spin, mode="constant_current", current=current, supercell=supercell
+            spin=spin, selection="constant_current", current=current, supercell=supercell
         )
         expected = PolarizedNonSplitPartialCharge.ref
         # assert data type and shape
