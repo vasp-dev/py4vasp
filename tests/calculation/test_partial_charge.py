@@ -116,70 +116,54 @@ def test_grid(PartialCharge, Assert):
     Assert.allclose(actual, expected)
 
 
-def test_non_split_to_array(PolarizedNonSplitPartialCharge, Assert):
-    actual = PolarizedNonSplitPartialCharge.to_array(spin="both")
+def test_non_split_to_numpy(PolarizedNonSplitPartialCharge, Assert):
+    actual = PolarizedNonSplitPartialCharge.to_numpy("total")
     expected = PolarizedNonSplitPartialCharge.ref.partial_charge
-    Assert.allclose(actual, np.asarray(expected).T[:, :, :, 0, 0, 0])
+    Assert.allclose(actual, expected[0, 0, 0].T)
 
-    actual = PolarizedNonSplitPartialCharge.to_array(spin="up")
-    Assert.allclose(
-        actual,
-        0.5
-        * (
-            np.asarray(expected).T[:, :, :, 0, 0, 0]
-            + np.asarray(expected).T[:, :, :, 1, 0, 0]
-        ),
-    )
+    actual = PolarizedNonSplitPartialCharge.to_numpy("up")
+    Assert.allclose(actual, 0.5 * (expected[0, 0, 0].T + expected[0, 0, 1].T))
 
-    actual = PolarizedNonSplitPartialCharge.to_array(spin="down")
-    Assert.allclose(
-        actual,
-        0.5
-        * (
-            np.asarray(expected).T[:, :, :, 0, 0, 0]
-            - np.asarray(expected).T[:, :, :, 1, 0, 0]
-        ),
-    )
+    actual = PolarizedNonSplitPartialCharge.to_numpy("down")
+    Assert.allclose(actual, 0.5 * (expected[0, 0, 0].T - expected[0, 0, 1].T))
 
 
-def test_split_to_array(PolarizedAllSplitPartialCharge, Assert):
+def test_split_to_numpy(PolarizedAllSplitPartialCharge, Assert):
     bands = PolarizedAllSplitPartialCharge.ref.bands
     kpoints = PolarizedAllSplitPartialCharge.ref.kpoints
     for band_index, band in enumerate(bands):
         for kpoint_index, kpoint in enumerate(kpoints):
-            actual = PolarizedAllSplitPartialCharge.to_array(
-                band=band, kpoint=kpoint, spin="both"
+            actual = PolarizedAllSplitPartialCharge.to_numpy(
+                band=band, kpoint=kpoint, selection="total"
             )
             expected = PolarizedAllSplitPartialCharge.ref.partial_charge
-            Assert.allclose(
-                actual, np.asarray(expected).T[:, :, :, 0, band_index, kpoint_index]
-            )
+            Assert.allclose(actual, np.asarray(expected)[kpoint_index, band_index, 0].T)
     msg = f"Band {max(bands) + 1} not found in the bands array."
     with pytest.raises(NoData) as excinfo:
-        PolarizedAllSplitPartialCharge.to_array(
-            band=max(bands) + 1, kpoint=max(kpoints), spin="up"
+        PolarizedAllSplitPartialCharge.to_numpy(
+            band=max(bands) + 1, kpoint=max(kpoints), selection="up"
         )
     assert msg in str(excinfo.value)
     msg = f"K-point {min(kpoints) - 1} not found in the kpoints array."
     with pytest.raises(NoData) as excinfo:
-        PolarizedAllSplitPartialCharge.to_array(
-            band=min(bands), kpoint=min(kpoints) - 1, spin="down"
+        PolarizedAllSplitPartialCharge.to_numpy(
+            band=min(bands), kpoint=min(kpoints) - 1, selection="down"
         )
     assert msg in str(excinfo.value)
 
 
-def test_non_polarized_to_array(NonSplitPartialCharge, Assert):
-    for spin in ["both", "up", "down"]:
-        actual = NonSplitPartialCharge.to_array(spin=spin)
+def test_non_polarized_to_numpy(NonSplitPartialCharge, Assert):
+    for spin in ["total", "up", "down"]:
+        actual = NonSplitPartialCharge.to_numpy(selection=spin)
         expected = NonSplitPartialCharge.ref.partial_charge
         Assert.allclose(actual, np.asarray(expected).T[:, :, :, 0, 0, 0])
 
 
-def test_split_bands_to_array(NonPolarizedBandSplitPartialCharge, Assert):
+def test_split_bands_to_numpy(NonPolarizedBandSplitPartialCharge, Assert):
     bands = NonPolarizedBandSplitPartialCharge.ref.bands
     for spin in ["both", "up", "down"]:
         for band_index, band in enumerate(bands):
-            actual = NonPolarizedBandSplitPartialCharge.to_array(band=band, spin=spin)
+            actual = NonPolarizedBandSplitPartialCharge.to_numpy(spin, band=band)
         expected = NonPolarizedBandSplitPartialCharge.ref.partial_charge
         Assert.allclose(actual, np.asarray(expected).T[:, :, :, 0, band_index, 0])
 

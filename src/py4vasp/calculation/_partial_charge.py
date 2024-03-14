@@ -6,11 +6,11 @@ import numpy as np
 from scipy.interpolate import CubicSpline
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 
-from py4vasp import exception
 from py4vasp._third_party.graph import Graph
 from py4vasp._third_party.graph.contour import Contour
 from py4vasp._util import select
 from py4vasp.calculation import _base, _structure
+from py4vasp import exception
 
 _STM_MODES = {
     "constant_height": ["constant_height", "ch", "height"],
@@ -270,7 +270,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             massage = """Simulated STM images are only supported for non-separated bands and k-points.
             Please set LSEPK and LSEPB to .FALSE. in the INCAR file."""
             raise exception.NotImplemented(massage)
-        chg = self._correct_units(self.to_array(band=0, kpoint=0, spin=spin))
+        chg = self._correct_units(self.to_numpy(spin, band=0, kpoint=0))
         return self._smooth_stm_data(chg)
 
     @_base.data_access
@@ -318,18 +318,18 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         return {"partial_charge": np.squeeze(self._raw_data.partial_charge[:].T)}
 
     @_base.data_access
-    def to_array(self, band=0, kpoint=0, spin="both"):
+    def to_numpy(self, selection="total", band=0, kpoint=0):
         """Return the partial charge density as a 3D array.
 
         Parameters
         ----------
+        selection : str
+            The spin channel to be used. The default is "total".
+            The other options are "up" and "down".
         band : int
             The band index. The default is 0, which means that all bands are summed.
         kpoint : int
             The k-point index. The default is 0, which means that all k-points are summed.
-        spin : str
-            The spin channel to be used. The default is "both".
-            The other options are "up" and "down".
 
         Returns
         -------
@@ -343,13 +343,13 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         kpoint = self._check_kpoint_index(kpoint)
 
         if self._spin_polarized():
-            if spin == "both" or spin == "total":
+            if selection == "total":
                 parchg = parchg[:, :, :, 0, band, kpoint]
-            elif spin == "up":
+            elif selection == "up":
                 parchg = (
                     parchg[:, :, :, 0, band, kpoint] + parchg[:, :, :, 1, band, kpoint]
                 ) / 2
-            elif spin == "down":
+            elif selection == "down":
                 parchg = (
                     parchg[:, :, :, 0, band, kpoint] - parchg[:, :, :, 1, band, kpoint]
                 ) / 2
