@@ -212,7 +212,7 @@ def test_to_stm_wrong_mode(PolarizedNonSplitPartialCharge):
 
 @pytest.mark.parametrize("alias", ("constant_height", "ch", "height"))
 def test_to_stm_nonsplit_constant_height(
-    PolarizedNonSplitPartialCharge, alias, spin, Assert
+    PolarizedNonSplitPartialCharge, alias, spin, Assert, not_core
 ):
     supercell = 3
     actual = PolarizedNonSplitPartialCharge.to_stm(
@@ -235,7 +235,7 @@ def test_to_stm_nonsplit_constant_height(
 
 @pytest.mark.parametrize("alias", ("constant_current", "cc", "current"))
 def test_to_stm_nonsplit_constant_current(
-    PolarizedNonSplitPartialCharge, alias, spin, Assert
+    PolarizedNonSplitPartialCharge, alias, spin, Assert, not_core
 ):
     current = 5
     supercell = np.asarray([2, 4])

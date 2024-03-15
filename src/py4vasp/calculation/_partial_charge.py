@@ -5,14 +5,15 @@ import warnings
 from typing import Union
 
 import numpy as np
-from scipy.interpolate import CubicSpline
-from scipy.ndimage import gaussian_filter, gaussian_filter1d
 
 from py4vasp import exception
 from py4vasp._third_party.graph import Graph
 from py4vasp._third_party.graph.contour import Contour
-from py4vasp._util import select
+from py4vasp._util import select, import_
 from py4vasp.calculation import _base, _structure
+
+interpolate = import_.optional("scipy.interpolate")
+ndimage = import_.optional("scipy.ndimage")
 
 _STM_MODES = {
     "constant_height": ["constant_height", "ch", "height"],
@@ -190,7 +191,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         grid = self.grid()
         z_step = 1 / self.stm_settings.interpolation_factor
         z_grid = np.arange(z_start, 0, -z_step)
-        splines = CubicSpline(range(grid[2]), smoothed_charge, axis=-1)
+        splines = interpolate.CubicSpline(range(grid[2]), smoothed_charge, axis=-1)
         scan = z_grid[np.argmax(splines(z_grid) >= current, axis=-1)]
         scan = z_step * scan - self._get_highest_z_coord()
         spin_label = "both spin channels" if spin == "total" else f"spin {spin}"
@@ -248,7 +249,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             self.stm_settings.sigma_xy,
             self.stm_settings.sigma_z,
         )
-        return gaussian_filter(
+        return ndimage.gaussian_filter(
             data, sigma=sigma, truncate=self.stm_settings.truncate, mode="wrap"
         )
 
@@ -363,6 +364,8 @@ def _min_of_z_charge(charge, sigma=4, truncate=3.0):
     # average over the x and y axis
     z_charge = np.mean(charge, axis=(0, 1))
     # smooth the data using a gaussian filter
-    z_charge = gaussian_filter1d(z_charge, sigma=sigma, truncate=truncate, mode="wrap")
+    z_charge = ndimage.gaussian_filter1d(
+        z_charge, sigma=sigma, truncate=truncate, mode="wrap"
+    )
     # return the z-coordinate of the minimum
     return np.argmin(z_charge)
