@@ -130,7 +130,6 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             object.
         """
 
-        self._raise_error_if_3rd_lattice_vector_is_not_parallel_to_z()
         tree = select.Tree.from_selection(selection)
         for index, selection in enumerate(tree.selections()):
             if index > 0:
@@ -209,30 +208,19 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         topology = self._topology()
         label = f"STM of {topology} for {spin_label} at constant current={current*1e9:.1e} nA"
         return Contour(
-            data=cc_scan, lattice=self.lattice_vectors()[:2, :2], label=label
+            data=cc_scan, lattice=self._in_plane_vectors(), label=label
         )
 
     def _constant_height_stm(self, smoothed_charge, tip_height, spin):
-        grid = self.grid()
-        z_index = self._z_index_for_height(tip_height + self._get_highest_z_coord())
-        ch_scan = np.zeros((grid[0], grid[1]))
-        for i in range(grid[0]):
-            for j in range(grid[1]):
-                ch_scan[i][j] = (
-                    smoothed_charge[i][j][z_index]
-                    * self.stm_settings.enhancement_factor
-                )
+        zz = self._z_index_for_height(tip_height + self._get_highest_z_coord())
+        height_scan = smoothed_charge[:,:,zz] * self.stm_settings.enhancement_factor
         spin_label = "both spin channels" if spin == "total" else f"spin {spin}"
         topology = self._topology()
         label = f"STM of {topology} for {spin_label} at constant height={float(tip_height):.2f} Angstrom"
-        return Contour(
-            data=ch_scan,
-            lattice=self.lattice_vectors()[:2, :2],
-            label=label,
-        )
+        return Contour(data=height_scan, lattice=self._in_plane_vectors(), label=label)
 
     def _z_index_for_height(self, tip_height):
-        return int(tip_height / self.lattice_vectors()[2][2] * self.grid()[2])
+        return int(tip_height / self._out_of_plane_vector() * self.grid()[2])
 
     @_base.data_access
     def _get_highest_z_coord(self):
@@ -248,8 +236,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
 
     def _estimate_vacuum(self):
         slab_thickness = self._get_highest_z_coord() - self._get_lowest_z_coord()
-        z_vector = self.lattice_vectors()[2, 2]
-        return z_vector - slab_thickness
+        return self._out_of_plane_vector() - slab_thickness
 
     def _raise_error_if_tip_too_far_away(self, tip_height):
         if tip_height > self._estimate_vacuum() / 2:
@@ -257,14 +244,6 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
              estimated vacuum thickness {self._estimate_vacuum():.2f} Angstrom.
             You would be sampling the bottom of your slab, which is not supported."""
             raise exception.IncorrectUsage(message)
-
-    def _raise_error_if_3rd_lattice_vector_is_not_parallel_to_z(self):
-        lv = self.lattice_vectors()
-        if lv[0][2] != 0 or lv[1][2] != 0 or lv[2][0] != 0 or lv[2][1] != 0:
-            message = """The third lattice vector is not in cartesian z-direction.
-            or the first two lattice vectors are not in the xy-plane.
-            STM simulations for such cells are not implemented."""
-            raise exception.NotImplemented(message)
 
     def _get_stm_data(self, spin):
         if 0 not in self.bands() or 0 not in self.kpoints():
@@ -290,10 +269,17 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             data, sigma=sigma, truncate=self.stm_settings.truncate, mode="wrap"
         )
 
-    @_base.data_access
-    def lattice_vectors(self):
-        """Return the lattice vectors of the input structure."""
-        return self._structure._lattice_vectors()
+    def _in_plane_vectors(self):
+        """Return the in-plane component of lattice vectors."""
+        lattice_vectors = self._structure._lattice_vectors()
+        _raise_error_if_3rd_lattice_vector_is_not_parallel_to_z(lattice_vectors)
+        return lattice_vectors[:2,:2]
+
+    def _out_of_plane_vector(self):
+        """Return out-of-plane component of lattice vectors."""
+        lattice_vectors = self._structure._lattice_vectors()
+        _raise_error_if_3rd_lattice_vector_is_not_parallel_to_z(lattice_vectors)
+        return lattice_vectors[2, 2]
 
     def _spin_polarized(self):
         return self._raw_data.partial_charge.shape[2] == 2
@@ -379,6 +365,13 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             Make sure to set KPUSE and LSEPK correctly in the INCAR file."""
             raise exception.NoData(message)
 
+def _raise_error_if_3rd_lattice_vector_is_not_parallel_to_z(lattice_vectors):
+    lv = lattice_vectors
+    if lv[0][2] != 0 or lv[1][2] != 0 or lv[2][0] != 0 or lv[2][1] != 0:
+        message = """The third lattice vector is not in cartesian z-direction.
+        or the first two lattice vectors are not in the xy-plane.
+        STM simulations for such cells are not implemented."""
+        raise exception.NotImplemented(message)
 
 def _min_of_z_charge(charge, sigma=4, truncate=3.0):
     """Returns the z-coordinate of the minimum of the charge density in the z-direction"""
