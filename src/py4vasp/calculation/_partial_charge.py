@@ -110,16 +110,16 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         current: float = 1.0,
         supercell: Union[int, np.array] = 2,
     ) -> Graph:
-        """Generate stm image data from the partial charge density.
+        """Generate STM image data from the partial charge density.
 
         Parameters
         ----------
         selection : str
-            The mode in which the stm is operated and the spin channel to be used.
+            The mode in which the STM is operated and the spin channel to be used.
             Possible modes are "constant_height"(default) and "constant_current".
             Possible spin selections are "total"(default), "up", and "down".
         tip_height : float
-            The height of the stm tip above the surface in Angstrom.
+            The height of the STM tip above the surface in Angstrom.
             The default is 2.0 Angstrom. Only used in "constant_height" mode.
         current : float
             The tunneling current in nA. The default is 1.
