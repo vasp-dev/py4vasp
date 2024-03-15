@@ -68,11 +68,17 @@ def PolarizedAllSplitPartialCharge(raw_data):
     )
 
 
+@pytest.fixture(params=["up", "down", "total"])
+def spin(request):
+    return request.param
+
+
 def make_reference_partial_charge(raw_data, selection):
     raw_partial_charge = raw_data.partial_charge(selection=selection)
     parchg = calculation.partial_charge.from_data(raw_partial_charge)
     parchg.ref = types.SimpleNamespace()
     parchg.ref.structure = calculation.structure.from_data(raw_partial_charge.structure)
+    parchg.ref.plane_vectors = parchg.ref.structure._lattice_vectors()[:2, :2]
     parchg.ref.partial_charge = raw_partial_charge.partial_charge
     parchg.ref.bands = raw_partial_charge.bands
     parchg.ref.kpoints = raw_partial_charge.kpoints
@@ -86,9 +92,8 @@ def test_read(PartialCharge, Assert):
     Assert.allclose(actual["bands"], expected.bands)
     Assert.allclose(actual["kpoints"], expected.kpoints)
     Assert.allclose(actual["grid"], expected.grid)
-    Assert.allclose(
-        actual["partial_charge"], np.squeeze(np.asarray(expected.partial_charge).T)
-    )
+    expected_charge = np.squeeze(np.asarray(expected.partial_charge).T)
+    Assert.allclose(actual["partial_charge"], expected_charge)
     Assert.same_structure(actual["structure"], expected.structure.read())
 
 
@@ -138,12 +143,14 @@ def test_split_to_numpy(PolarizedAllSplitPartialCharge, Assert):
             )
             expected = PolarizedAllSplitPartialCharge.ref.partial_charge
             Assert.allclose(actual, np.asarray(expected)[kpoint_index, band_index, 0].T)
+
     msg = f"Band {max(bands) + 1} not found in the bands array."
     with pytest.raises(NoData) as excinfo:
         PolarizedAllSplitPartialCharge.to_numpy(
             band=max(bands) + 1, kpoint=max(kpoints), selection="up"
         )
     assert msg in str(excinfo.value)
+
     msg = f"K-point {min(kpoints) - 1} not found in the kpoints array."
     with pytest.raises(NoData) as excinfo:
         PolarizedAllSplitPartialCharge.to_numpy(
@@ -152,23 +159,21 @@ def test_split_to_numpy(PolarizedAllSplitPartialCharge, Assert):
     assert msg in str(excinfo.value)
 
 
-def test_non_polarized_to_numpy(NonSplitPartialCharge, Assert):
-    for spin in ["total", "up", "down"]:
-        actual = NonSplitPartialCharge.to_numpy(selection=spin)
-        expected = NonSplitPartialCharge.ref.partial_charge
-        Assert.allclose(actual, np.asarray(expected).T[:, :, :, 0, 0, 0])
+def test_non_polarized_to_numpy(NonSplitPartialCharge, spin, Assert):
+    actual = NonSplitPartialCharge.to_numpy(selection=spin)
+    expected = NonSplitPartialCharge.ref.partial_charge
+    Assert.allclose(actual, np.asarray(expected).T[:, :, :, 0, 0, 0])
 
 
-def test_split_bands_to_numpy(NonPolarizedBandSplitPartialCharge, Assert):
+def test_split_bands_to_numpy(NonPolarizedBandSplitPartialCharge, spin, Assert):
     bands = NonPolarizedBandSplitPartialCharge.ref.bands
-    for spin in ["both", "up", "down"]:
-        for band_index, band in enumerate(bands):
-            actual = NonPolarizedBandSplitPartialCharge.to_numpy(spin, band=band)
-        expected = NonPolarizedBandSplitPartialCharge.ref.partial_charge
-        Assert.allclose(actual, np.asarray(expected).T[:, :, :, 0, band_index, 0])
+    for band_index, band in enumerate(bands):
+        actual = NonPolarizedBandSplitPartialCharge.to_numpy(spin, band=band)
+    expected = NonPolarizedBandSplitPartialCharge.ref.partial_charge
+    Assert.allclose(actual, np.asarray(expected).T[:, :, :, 0, band_index, 0])
 
 
-def test_to_stm_split(PolarizedAllSplitPartialCharge, Assert):
+def test_to_stm_split(PolarizedAllSplitPartialCharge):
     msg = "set LSEPK and LSEPB to .FALSE. in the INCAR file."
     with pytest.raises(NotImplemented) as excinfo:
         PolarizedAllSplitPartialCharge.to_stm(selection="constant_current")
@@ -185,82 +190,76 @@ def test_to_stm_nonsplit_no_vacuum(PolarizedNonSplitPartialChargeCa3AsBr3):
         actual.to_stm(tip_height=tip_height)
 
 
-def test_to_stm_nonsplit_not_orthogonal(PolarizedNonSplitPartialChargeSr2TiO4, Assert):
+def test_to_stm_nonsplit_not_orthogonal(PolarizedNonSplitPartialChargeSr2TiO4):
     msg = "STM simulations for such cells are not implemented."
     with pytest.raises(NotImplemented) as excinfo:
         PolarizedNonSplitPartialChargeSr2TiO4.to_stm()
     assert msg in str(excinfo.value)
 
 
-def test_to_stm_wrong_spin_nonsplit(PolarizedNonSplitPartialCharge, Assert):
+def test_to_stm_wrong_spin_nonsplit(PolarizedNonSplitPartialCharge):
     msg = "'up', 'down', or 'total'"
     with pytest.raises(IncorrectUsage) as excinfo:
         PolarizedNonSplitPartialCharge.to_stm(selection="all")
     assert msg in str(excinfo.value)
 
 
-def test_to_stm_wrong_mode(PolarizedNonSplitPartialCharge, Assert):
+def test_to_stm_wrong_mode(PolarizedNonSplitPartialCharge):
     with pytest.raises(IncorrectUsage) as excinfo:
         PolarizedNonSplitPartialCharge.to_stm(selection="stm")
     assert "STM mode" in str(excinfo.value)
 
 
-def test_to_stm_nonsplit_constant_height(PolarizedNonSplitPartialCharge, Assert):
+@pytest.mark.parametrize("alias", ("constant_height", "ch", "height"))
+def test_to_stm_nonsplit_constant_height(
+    PolarizedNonSplitPartialCharge, alias, spin, Assert
+):
     supercell = 3
-    for spin in ["up", "down", "total"]:
-        actual = PolarizedNonSplitPartialCharge.to_stm(
-            selection=f"constant_height({spin})", tip_height=2.0, supercell=supercell
-        )
-        expected = PolarizedNonSplitPartialCharge.ref
-        # assert data type and shape
-        assert type(actual.series.data) == np.ndarray
-        assert actual.series.data.shape == (expected.grid[0], expected.grid[1])
-        # assert lattice:
-        Assert.allclose(
-            actual.series.lattice, expected.structure._lattice_vectors()[:2, :2]
-        )
-        # assert supercell
-        Assert.allclose(actual.series.supercell, np.asarray([supercell, supercell]))
-        # assert label and title
-        assert type(actual.series.label) is str
-        expected = "both spin channels" if spin == "total" else f"spin {spin}"
-        assert expected in actual.series.label
-        assert "constant height" in actual.series.label
-        assert "2.0" in actual.series.label
-        assert "constant height" in actual.title
-        assert "2.0" in actual.title
+    actual = PolarizedNonSplitPartialCharge.to_stm(
+        selection=f"{alias}({spin})", tip_height=2.0, supercell=supercell
+    )
+    expected = PolarizedNonSplitPartialCharge.ref
+    assert type(actual.series.data) == np.ndarray
+    assert actual.series.data.shape == (expected.grid[0], expected.grid[1])
+    Assert.allclose(actual.series.lattice, expected.plane_vectors)
+    Assert.allclose(actual.series.supercell, np.asarray([supercell, supercell]))
+    # check different elements of the label
+    assert type(actual.series.label) is str
+    expected = "both spin channels" if spin == "total" else f"spin {spin}"
+    assert expected in actual.series.label
+    assert "constant height" in actual.series.label
+    assert "2.0" in actual.series.label
+    assert "constant height" in actual.title
+    assert "2.0" in actual.title
 
 
-def test_to_stm_nonsplit_constant_current(PolarizedNonSplitPartialCharge, Assert):
+@pytest.mark.parametrize("alias", ("constant_current", "cc", "current"))
+def test_to_stm_nonsplit_constant_current(
+    PolarizedNonSplitPartialCharge, alias, spin, Assert
+):
     current = 5
     supercell = np.asarray([2, 4])
-    for spin in ["up", "down", "total"]:
-        actual = PolarizedNonSplitPartialCharge.to_stm(
-            selection=f"{spin}(constant_current)",
-            current=current,
-            supercell=supercell,
-        )
-        expected = PolarizedNonSplitPartialCharge.ref
-        # assert data type and shape
-        assert type(actual.series.data) == np.ndarray
-        assert actual.series.data.shape == (expected.grid[0], expected.grid[1])
-        # assert lattice:
-        Assert.allclose(
-            actual.series.lattice, expected.structure._lattice_vectors()[:2, :2]
-        )
-        # assert supercell
-        Assert.allclose(actual.series.supercell, supercell)
-        # assert label
-        assert type(actual.series.label) is str
-        expected = "both spin channels" if spin == "total" else f"spin {spin}"
-        assert expected in actual.series.label
-        assert "constant current" in actual.series.label
-        assert f"{current:.1e}" in actual.series.label
-        assert "constant current" in actual.title
-        assert f"{current:.1e}" in actual.title
+    actual = PolarizedNonSplitPartialCharge.to_stm(
+        selection=f"{spin}({alias})",
+        current=current,
+        supercell=supercell,
+    )
+    expected = PolarizedNonSplitPartialCharge.ref
+    assert type(actual.series.data) == np.ndarray
+    assert actual.series.data.shape == (expected.grid[0], expected.grid[1])
+    Assert.allclose(actual.series.lattice, expected.plane_vectors)
+    Assert.allclose(actual.series.supercell, supercell)
+    # check different elements of the label
+    assert type(actual.series.label) is str
+    expected = "both spin channels" if spin == "total" else f"spin {spin}"
+    assert expected in actual.series.label
+    assert "constant current" in actual.series.label
+    assert f"{current:.1e}" in actual.series.label
+    assert "constant current" in actual.title
+    assert f"{current:.1e}" in actual.title
 
 
-def test_stm_default_settings(PolarizedNonSplitPartialCharge, Assert):
+def test_stm_default_settings(PolarizedNonSplitPartialCharge):
     actual = dataclasses.asdict(PolarizedNonSplitPartialCharge.stm_settings)
     defaults = {
         "sigma_xy": 4.0,
