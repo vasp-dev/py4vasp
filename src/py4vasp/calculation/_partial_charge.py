@@ -82,6 +82,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
     def grid(self):
         return self._raw_data.grid[:]
 
+    @_base.data_access
     def to_dict(self):
         """Store the partial charges in a dictionary.
 
@@ -101,6 +102,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             "partial_charge": parchg,
         }
 
+    @_base.data_access
     def to_stm(
         self,
         selection: str = "constant_height",
@@ -207,15 +209,12 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
     def _z_index_for_height(self, tip_height):
         return int(tip_height / self._out_of_plane_vector() * self.grid()[2])
 
-    @_base.data_access
     def _get_highest_z_coord(self):
         return np.max(self._structure.cartesian_positions()[:, 2])
 
-    @_base.data_access
     def _get_lowest_z_coord(self):
         return np.min(self._structure.cartesian_positions()[:, 2])
 
-    @_base.data_access
     def _topology(self):
         return str(self._structure._topology())
 
@@ -238,7 +237,6 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         chg = self._correct_units(self.to_numpy(spin, band=0, kpoint=0))
         return self._smooth_stm_data(chg)
 
-    @_base.data_access
     def _correct_units(self, charge_data):
         grid_volume = np.prod(self.grid())
         cell_volume = self._structure.volume()

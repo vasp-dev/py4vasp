@@ -269,3 +269,8 @@ def test_stm_default_settings(PolarizedNonSplitPartialCharge):
         "interpolation_factor": 10,
     }
     assert actual == defaults
+
+
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.partial_charge("spin_polarized")
+    check_factory_methods(calculation.partial_charge, data)
