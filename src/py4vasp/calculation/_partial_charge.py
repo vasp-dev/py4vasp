@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
 import warnings
 from typing import Union
@@ -6,11 +8,11 @@ import numpy as np
 from scipy.interpolate import CubicSpline
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 
+from py4vasp import exception
 from py4vasp._third_party.graph import Graph
 from py4vasp._third_party.graph.contour import Contour
 from py4vasp._util import select
 from py4vasp.calculation import _base, _structure
-from py4vasp import exception
 
 _STM_MODES = {
     "constant_height": ["constant_height", "ch", "height"],
@@ -184,36 +186,19 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             truncate=self.stm_settings.truncate,
         )
         grid = self.grid()
-        cc_scan = np.zeros((grid[0], grid[1]))
-        # scan over the x and y grid
-        for i in range(grid[0]):
-            for j in range(grid[1]):
-                # for more accuracy, interpolate each z-line of data with cubic splines
-                spl = CubicSpline(range(grid[2]), smoothed_charge[i][j])
-
-                for k in np.arange(
-                    z_start, 0, -1 / self.stm_settings.interpolation_factor
-                ):
-                    if spl(k) >= current:
-                        break
-                cc_scan[i][j] = k
-        # normalize the data
-        # cc_scan = cc_scan - np.min(cc_scan.flatten())
-        # return the tip height over the surface
-        cc_scan = (
-            cc_scan / self.stm_settings.interpolation_factor
-            - self._get_highest_z_coord()
-        )
+        z_step = 1 / self.stm_settings.interpolation_factor
+        z_grid = np.arange(z_start, 0, -z_step)
+        splines = CubicSpline(range(grid[2]), smoothed_charge, axis=-1)
+        scan = z_grid[np.argmax(splines(z_grid) >= current, axis=-1)]
+        scan = z_step * scan - self._get_highest_z_coord()
         spin_label = "both spin channels" if spin == "total" else f"spin {spin}"
         topology = self._topology()
         label = f"STM of {topology} for {spin_label} at constant current={current*1e9:.1e} nA"
-        return Contour(
-            data=cc_scan, lattice=self._in_plane_vectors(), label=label
-        )
+        return Contour(data=scan, lattice=self._in_plane_vectors(), label=label)
 
     def _constant_height_stm(self, smoothed_charge, tip_height, spin):
         zz = self._z_index_for_height(tip_height + self._get_highest_z_coord())
-        height_scan = smoothed_charge[:,:,zz] * self.stm_settings.enhancement_factor
+        height_scan = smoothed_charge[:, :, zz] * self.stm_settings.enhancement_factor
         spin_label = "both spin channels" if spin == "total" else f"spin {spin}"
         topology = self._topology()
         label = f"STM of {topology} for {spin_label} at constant height={float(tip_height):.2f} Angstrom"
@@ -273,7 +258,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         """Return the in-plane component of lattice vectors."""
         lattice_vectors = self._structure._lattice_vectors()
         _raise_error_if_3rd_lattice_vector_is_not_parallel_to_z(lattice_vectors)
-        return lattice_vectors[:2,:2]
+        return lattice_vectors[:2, :2]
 
     def _out_of_plane_vector(self):
         """Return out-of-plane component of lattice vectors."""
@@ -365,6 +350,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             Make sure to set KPUSE and LSEPK correctly in the INCAR file."""
             raise exception.NoData(message)
 
+
 def _raise_error_if_3rd_lattice_vector_is_not_parallel_to_z(lattice_vectors):
     lv = lattice_vectors
     if lv[0][2] != 0 or lv[1][2] != 0 or lv[2][0] != 0 or lv[2][1] != 0:
@@ -372,6 +358,7 @@ def _raise_error_if_3rd_lattice_vector_is_not_parallel_to_z(lattice_vectors):
         or the first two lattice vectors are not in the xy-plane.
         STM simulations for such cells are not implemented."""
         raise exception.NotImplemented(message)
+
 
 def _min_of_z_charge(charge, sigma=4, truncate=3.0):
     """Returns the z-coordinate of the minimum of the charge density in the z-direction"""
