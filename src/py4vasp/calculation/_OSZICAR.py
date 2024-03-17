@@ -44,7 +44,7 @@ N, E, dE, deps, ncg, rms, rms(c)"""
                 raise exception.RefinementError(message)
             keys_to_include = selection
         for key in keys_to_include:
-            return_data[key] = self._read(key)
+            return_data[key.decode("utf-8")] = self._read(key)
         return return_data
 
     @_base.data_access
