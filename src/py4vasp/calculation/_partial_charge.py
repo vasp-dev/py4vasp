@@ -9,7 +9,7 @@ import numpy as np
 from py4vasp import exception
 from py4vasp._third_party.graph import Graph
 from py4vasp._third_party.graph.contour import Contour
-from py4vasp._util import select, import_
+from py4vasp._util import import_, select
 from py4vasp.calculation import _base, _structure
 
 interpolate = import_.optional("scipy.interpolate")
@@ -196,7 +196,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         scan = z_step * scan - self._get_highest_z_coord()
         spin_label = "both spin channels" if spin == "total" else f"spin {spin}"
         topology = self._topology()
-        label = f"STM of {topology} for {spin_label} at constant current={current*1e9:.1e} nA"
+        label = f"STM of {topology} for {spin_label} at constant current={current*1e9:.2f} nA"
         return Contour(data=scan, lattice=self._in_plane_vectors(), label=label)
 
     def _constant_height_stm(self, smoothed_charge, tip_height, spin):
