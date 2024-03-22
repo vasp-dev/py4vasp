@@ -3,6 +3,7 @@
 
 import types
 
+import numpy as np
 import pytest
 
 from py4vasp import calculation
@@ -14,21 +15,24 @@ def OSZICAR(raw_data):
     oszicar = calculation.OSZICAR.from_data(raw_oszicar)
     oszicar.ref = types.SimpleNamespace()
     convergence_data = raw_oszicar.convergence_data
-    oszicar.ref.N = convergence_data[:, 0]
+    oszicar.ref.N = np.int64(convergence_data[:, 0])
     oszicar.ref.E = convergence_data[:, 1]
     oszicar.ref.dE = convergence_data[:, 2]
     oszicar.ref.deps = convergence_data[:, 3]
     oszicar.ref.ncg = convergence_data[:, 4]
     oszicar.ref.rms = convergence_data[:, 5]
     oszicar.ref.rmsc = convergence_data[:, 6]
+    string_rep = "N\t\tE\t\tdE\t\tdeps\t\tncg\trms\t\trms(c)\n"
+    format_rep = "{0:g}\t{1:0.12E}\t{2:0.6E}\t{3:0.6E}\t{4:g}\t{5:0.3E}\t{6:0.3E}\n"
+    for idx in range(len(convergence_data)):
+        string_rep += format_rep.format(*convergence_data[idx])
+    oszicar.ref.string_rep = str(string_rep)
     return oszicar
 
 
 def test_read(OSZICAR, Assert):
     actual = OSZICAR.read()
     expected = OSZICAR.ref
-    print(actual)
-    print(expected)
     Assert.allclose(actual["N"], expected.N)
     Assert.allclose(actual["E"], expected.E)
     Assert.allclose(actual["dE"], expected.dE)
@@ -45,3 +49,8 @@ def test_plot(OSZICAR, Assert):
     assert len(graph.series) == 1
     Assert.allclose(graph.series[0].x, OSZICAR.ref.N)
     Assert.allclose(graph.series[0].y, OSZICAR.ref.E)
+
+
+def test_print(OSZICAR, format_):
+    actual, _ = format_(OSZICAR)
+    assert actual["text/plain"] == OSZICAR.ref.string_rep

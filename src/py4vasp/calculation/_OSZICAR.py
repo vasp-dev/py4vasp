@@ -5,8 +5,7 @@ import numpy as np
 
 from py4vasp import exception, raw
 from py4vasp._third_party import graph
-from py4vasp._util import convert
-from py4vasp.calculation import _base, _slice, _structure
+from py4vasp.calculation import _base, _slice
 
 
 class OSZICAR(_slice.Mixin, _base.Refinery, graph.Mixin):
@@ -15,6 +14,35 @@ class OSZICAR(_slice.Mixin, _base.Refinery, graph.Mixin):
     The OSZICAR file written out by VASP stores information related to convergence.
     Please check the vasp-wiki (https://www.vasp.at/wiki/index.php/OSZICAR) for more
     details about the exact outputs generated for each combination of INCAR tags."""
+
+    def _more_than_one_ionic_step(self, data):
+        return any(isinstance(_data, list) for _data in data) == True
+
+    @_base.data_access
+    def __str__(self):
+        format_rep = "{0:g}\t{1:0.12E}\t{2:0.6E}\t{3:0.6E}\t{4:g}\t{5:0.3E}\t{6:0.3E}\n"
+        label_rep = "{}\t\t{}\t\t{}\t\t{}\t\t{}\t{}\t\t{}\n"
+        string = ""
+        labels = [label.decode("utf-8") for label in getattr(self._raw_data, "label")]
+        data = self.to_dict()
+        electronic_iterations = data["N"]
+        if not self._more_than_one_ionic_step(electronic_iterations):
+            electronic_iterations = [electronic_iterations]
+        ionic_steps = len(electronic_iterations)
+        for ionic_step in range(ionic_steps):
+            string += label_rep.format(*labels)
+            electronic_steps = len(electronic_iterations[ionic_step])
+            for electronic_step in range(electronic_steps):
+                _data = []
+                for label in self._raw_data.label:
+                    _values_electronic = data[label.decode("utf-8")]
+                    if not self._more_than_one_ionic_step(_values_electronic):
+                        _values_electronic = [_values_electronic]
+                    _value = _values_electronic[ionic_step][electronic_step]
+                    _data.append(_value)
+                _data = [float(_value) for _value in _data]
+                string += format_rep.format(*_data)
+        return string
 
     @_base.data_access
     def to_dict(self, selection=None):

@@ -654,11 +654,15 @@ def _Sr2TiO4_cell():
 
 
 def _example_OSZICAR():
-    random_convergence_data = np.random.rand(9, 6)
+    random_convergence_data = np.random.rand(9, 3)
     iteration_number = np.arange(1, 10)[:, np.newaxis]
-    convergence_data = np.hstack([iteration_number, random_convergence_data])
+    ncg = np.random.randint(4, 10, (9, 1))
+    random_rms = np.random.rand(9, 2)
+    convergence_data = np.hstack(
+        [iteration_number, random_convergence_data, ncg, random_rms]
+    )
     convergence_data = raw.VaspData(convergence_data)
-    label = raw.VaspData(["N", "E", "dE", "deps", "ncg", "rms", "rms(c)"])
+    label = raw.VaspData([b"N", b"E", b"dE", b"deps", b"ncg", b"rms", b"rms(c)"])
     return raw.OSZICAR(convergence_data=convergence_data, label=label)
 
 
