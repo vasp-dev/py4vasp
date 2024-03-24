@@ -115,3 +115,12 @@ N, E, dE, deps, ncg, rms, rms(c)"""
             xlabel="Iteration number",
             ylabel=ylabel,
         )
+
+    @_base.data_access
+    def is_converged(self):
+        difference_energy = self._read(b"dE")
+        if self._more_than_one_ionic_step(difference_energy):
+            last_step_energy = [dE[-1] for dE in difference_energy]
+        else:
+            last_step_energy = difference_energy[-1]
+        return last_step_energy < self._raw_data.EDIFF

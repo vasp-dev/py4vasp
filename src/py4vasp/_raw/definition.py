@@ -383,6 +383,7 @@ schema.add(
     required=raw.Version(6, 5),
     label="intermediate/ion_dynamics/oszicar_label",
     convergence_data="intermediate/ion_dynamics/oszicar",
+    EDIFF="/intermediate/ion_dynamics/EDIFF",
 )
 #
 group = "intermediate/pair_correlation"
