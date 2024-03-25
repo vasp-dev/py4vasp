@@ -1,11 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import calculation
+from py4vasp._third_party import view
 from py4vasp._util import convert
 from py4vasp.calculation import _base, _structure
 
 
-class CONTCAR(_base.Refinery, _structure.Mixin):
+class CONTCAR(_base.Refinery, view.Mixin, _structure.Mixin):
     """CONTCAR contains structural restart-data after a relaxation or MD simulation.
 
     The CONTCAR contains the final structure of the VASP calculation. It can be used as
@@ -36,7 +37,7 @@ class CONTCAR(_base.Refinery, _structure.Mixin):
         return {key: data[:]} if not data.is_none() else {}
 
     @_base.data_access
-    def plot(self, supercell=None):
+    def to_view(self, supercell=None):
         """Generate a visualization of the final structure.
 
         Parameters
@@ -46,7 +47,7 @@ class CONTCAR(_base.Refinery, _structure.Mixin):
 
         Returns
         -------
-        Viewer3d
+        View
             A 3d visualization of the structure.
         """
         return self._structure.plot(supercell)

@@ -68,6 +68,13 @@ class _Assert:
             else:
                 _Assert.allclose(actual[key], desired[key])
 
+    @staticmethod
+    def same_structure_view(actual, desired):
+        assert np.all(actual.elements == desired.elements)
+        _Assert.allclose(actual.lattice_vectors, desired.lattice_vectors)
+        _Assert.allclose(actual.positions, desired.positions)
+        _Assert.allclose(actual.supercell, desired.supercell)
+
 
 def _is_none(data):
     if isinstance(data, raw.VaspData):

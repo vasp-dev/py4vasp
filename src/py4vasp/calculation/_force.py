@@ -2,13 +2,14 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import exception
+from py4vasp import _config
+from py4vasp._third_party import view
 from py4vasp._util import documentation, reader
 from py4vasp.calculation import _base, _slice, _structure
 
 
 @documentation.format(examples=_slice.examples("force"))
-class Force(_slice.Mixin, _base.Refinery, _structure.Mixin):
+class Force(_slice.Mixin, _base.Refinery, _structure.Mixin, view.Mixin):
     """The forces determine the path of the atoms in a trajectory.
 
     You can use this class to analyze the forces acting on the atoms. The forces
@@ -61,33 +62,40 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         }
 
     @_base.data_access
-    @documentation.format(examples=_slice.examples("force", "to_graph"))
-    def plot(self):
+    @documentation.format(examples=_slice.examples("force", "to_view"))
+    def to_view(self, supercell=None):
         """Visualize the forces showing arrows at the atoms.
+
+        Parameters
+        ----------
+        supercell : int or np.ndarray
+            If present the structure is replicated the specified number of times
+            along each direction.
 
         Returns
         -------
-        Viewer3d
+        View
             Shows the structure with cell and all atoms adding arrows to the atoms
             sized according to the strength of the force.
 
         {examples}
         """
-        self._raise_error_if_slice()
+        viewer = self._structure.plot(supercell)
         forces = self.force_rescale * self._force[self._steps]
-        color = [0.3, 0.15, 0.35]
-        fig = self._structure.plot()
-        fig.show_arrows_at_atoms(forces, color)
-        return fig
+        if forces.ndim == 2:
+            forces = forces[np.newaxis]
+        ion_arrow = view.IonArrow(
+            quantity=forces,
+            label="forces",
+            color=_config.VASP_PURPLE,
+            radius=0.2,
+        )
+        viewer.ion_arrows = [ion_arrow]
+        return viewer
 
     @property
     def _force(self):
         return _ForceReader(self._raw_data.forces)
-
-    def _raise_error_if_slice(self):
-        if self._is_slice:
-            message = "Plotting forces for multiple steps is not implemented."
-            raise exception.NotImplemented(message)
 
 
 class _ForceReader(reader.Reader):
