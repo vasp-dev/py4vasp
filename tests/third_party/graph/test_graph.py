@@ -6,8 +6,11 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
-from py4vasp._third_party.graph import Graph, Series
+from py4vasp import _config, exception
+from py4vasp._third_party.graph import Contour, Graph, Series
+from py4vasp._util import import_
+
+px = import_.optional("plotly.express")
 
 
 @pytest.fixture
@@ -57,6 +60,26 @@ def subplot():
     x2 = np.linspace(-3, 3)
     y2 = x2**3
     return Series(x1, y1, subplot=1), Series(x2, y2, subplot=2)
+
+
+@pytest.fixture
+def rectangle_contour():
+    return Contour(
+        data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
+        lattice=np.diag([4.0, 3.6]),
+        label="rectangle contour",
+    )
+
+
+@pytest.fixture
+def tilted_contour():
+    return Contour(
+        data=np.linspace(0, 5, 16 * 20).reshape((16, 20)),
+        lattice=np.array([[2, 3], [2, -3]]),
+        label="tilted contour",
+        supercell=(2, 1),
+        show_cell=False,
+    )
 
 
 def test_basic_graph(parabola, Assert, not_core):
@@ -373,3 +396,82 @@ def test_nonexisting_attribute_raises_error(parabola):
     graph = Graph(parabola)
     with pytest.raises(AssertionError):
         graph.nonexisting = "not possible"
+
+
+def test_normal_series_does_not_set_contour_layout(parabola, not_core):
+    graph = Graph(parabola)
+    fig = graph.to_plotly()
+    assert fig.layout.xaxis.visible is None
+    assert fig.layout.yaxis.visible is None
+    assert fig.layout.yaxis.scaleanchor is None
+
+
+def test_contour(rectangle_contour, Assert, not_core):
+    graph = Graph(rectangle_contour)
+    fig = graph.to_plotly()
+    assert len(fig.data) == 1
+    # plotly expects y-x order
+    Assert.allclose(fig.data[0].z, rectangle_contour.data.T)
+    # shift because the points define the centers of the rectangles
+    Assert.allclose(fig.data[0].x, np.linspace(0, 4, 20, endpoint=False) + 0.1)
+    Assert.allclose(fig.data[0].y, np.linspace(0, 3.6, 18, endpoint=False) + 0.1)
+    assert fig.data[0].name == rectangle_contour.label
+    expected_colorscale = px.colors.get_colorscale("turbid_r")
+    assert len(fig.data[0].colorscale) == len(expected_colorscale)
+    for actual, expected in zip(fig.data[0].colorscale, expected_colorscale):
+        Assert.allclose(actual[0], expected[0])
+        assert actual[1] == expected[1]
+    # text explicitly that it is False to prevent None passing the test
+    assert fig.layout.xaxis.visible == False
+    assert fig.layout.yaxis.visible == False
+    assert len(fig.layout.shapes) == 1
+    check_unit_cell(fig.layout.shapes[0])
+    assert fig.layout.yaxis.scaleanchor == "x"
+
+
+def test_contour_supercell(rectangle_contour, not_core):
+    supercell = np.asarray((3, 5))
+    rectangle_contour.supercell = supercell
+    graph = Graph(rectangle_contour)
+    fig = graph.to_plotly()
+    assert len(fig.data) == 1
+    # plotly expects y-x order
+    assert all(fig.data[0].z.T.shape == supercell * rectangle_contour.data.shape)
+    assert len(fig.data[0].x) == 60
+    assert len(fig.data[0].y) == 90
+    assert len(fig.layout.shapes) == 1
+    check_unit_cell(fig.layout.shapes[0])
+
+
+def check_unit_cell(unit_cell):
+    assert unit_cell.type == "path"
+    assert unit_cell.path == "M 0 0 L 4.0 0.0 L 4.0 3.6 L 0.0 3.6 Z"
+    assert unit_cell.line.color == _config.VASP_GRAY
+
+
+def test_contour_interpolate(tilted_contour, not_core):
+    graph = Graph(tilted_contour)
+    fig = graph.to_plotly()
+    area_cell = 12.0
+    points_per_area = tilted_contour.data.size / area_cell
+    points_per_line = np.sqrt(points_per_area) * tilted_contour.interpolation_factor
+    lengths = np.array([6, 9])  # this accounts for the 2 x 1 supercell
+    expected_shape = np.ceil(points_per_line * lengths).astype(int)
+    expected_average = np.average(tilted_contour.data)
+    assert len(fig.data) == 1
+    # plotly expects y-x order
+    assert all(fig.data[0].z.T.shape == expected_shape)
+    assert fig.data[0].x.size == expected_shape[0]
+    assert fig.data[0].y.size == expected_shape[1]
+    finite = np.isfinite(fig.data[0].z)
+    assert np.isclose(np.average(fig.data[0].z[finite]), expected_average)
+    assert len(fig.layout.shapes) == 0
+
+
+def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
+    graph = Graph([rectangle_contour, two_lines])
+    fig = graph.to_plotly()
+    assert len(fig.data) == 3
+    assert fig.layout.xaxis.visible is None
+    assert fig.layout.yaxis.visible is None
+    assert fig.layout.yaxis.scaleanchor == "x"

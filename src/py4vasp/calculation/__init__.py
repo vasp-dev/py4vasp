@@ -62,6 +62,7 @@ __all__ = (
     "magnetism",
     "OSZICAR",
     "pair_correlation",
+    "partial_charge",
     "phonon_band",
     "phonon_dos",
     "piezoelectric_tensor",

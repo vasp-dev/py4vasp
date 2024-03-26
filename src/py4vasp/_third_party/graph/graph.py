@@ -9,7 +9,9 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._config import VASP_COLORS
+from py4vasp._third_party.graph.contour import Contour
 from py4vasp._third_party.graph.series import Series
+from py4vasp._third_party.graph.trace import Trace
 from py4vasp._util import import_
 
 go = import_.optional("plotly.graph_objects")
@@ -25,7 +27,7 @@ class Graph(Sequence):
     parameters set in this class.
     """
 
-    series: Series or Sequence[Series]
+    series: Trace or Sequence[Trace]
     "One or more series shown in the graph."
     xlabel: str = None
     "Label for the x axis."
@@ -71,11 +73,12 @@ class Graph(Sequence):
         "Convert the graph to a plotly figure."
         figure = self._make_plotly_figure()
         for trace, options in self._generate_plotly_traces():
-            if options["row"] is None:
+            if options.get("row") is None:
                 figure.add_trace(trace)
             else:
                 figure.add_trace(trace, row=options["row"], col=1)
-
+            for shape in options.get("shapes", ()):
+                figure.add_shape(**shape)
         return figure
 
     def show(self):
@@ -107,9 +110,8 @@ class Graph(Sequence):
     def _generate_plotly_traces(self):
         colors = itertools.cycle(VASP_COLORS)
         for series in self:
-            if not series.color:
-                series = replace(series, color=next(colors))
-            yield from series._generate_traces()
+            series = _set_color_if_not_present(series, colors)
+            yield from series.to_plotly()
 
     def _make_plotly_figure(self):
         figure = self._figure_with_one_or_two_y_axes()
@@ -120,12 +122,13 @@ class Graph(Sequence):
         return figure
 
     def _figure_with_one_or_two_y_axes(self):
+        has_secondary_y_axis = lambda series: isinstance(series, Series) and series.y2
         if self._subplot_on:
             max_row = max(series.subplot for series in self)
             figure = subplots.make_subplots(rows=max_row, cols=1)
             figure.update_layout(showlegend=False)
             return figure
-        elif any(series.y2 for series in self):
+        elif any(has_secondary_y_axis(series) for series in self):
             return subplots.make_subplots(specs=[[{"secondary_y": True}]])
         else:
             return go.Figure()
@@ -142,6 +145,8 @@ class Graph(Sequence):
             figure.layout.xaxis.tickmode = "array"
             figure.layout.xaxis.tickvals = tuple(self.xticks.keys())
             figure.layout.xaxis.ticktext = self._xtick_labels()
+        if self._all_are_contour():
+            figure.layout.xaxis.visible = False
 
     def _xtick_labels(self):
         # empty labels will be overwritten by plotly so we put a single space in them
@@ -156,6 +161,17 @@ class Graph(Sequence):
             figure.layout.yaxis.title.text = self.ylabel
             if self.y2label:
                 figure.layout.yaxis2.title.text = self.y2label
+        if self._all_are_contour():
+            figure.layout.yaxis.visible = False
+        if self._any_are_contour():
+            figure.layout.yaxis.scaleanchor = "x"
+            figure.layout.height = 500
+
+    def _all_are_contour(self):
+        return all(isinstance(series, Contour) for series in self)
+
+    def _any_are_contour(self):
+        return any(isinstance(series, Contour) for series in self)
 
     def to_frame(self):
         """Convert graph to a pandas dataframe.
@@ -213,7 +229,16 @@ class Graph(Sequence):
 
     @property
     def _subplot_on(self):
-        return any(series.subplot for series in self)
+        has_subplot = lambda series: isinstance(series, Series) and series.subplot
+        return any(has_subplot(series) for series in self)
+
+
+def _set_color_if_not_present(series, color_iterator):
+    if isinstance(series, Contour):
+        return series
+    if not series.color:
+        series = replace(series, color=next(color_iterator))
+    return series
 
 
 Graph._fields = tuple(field.name for field in fields(Graph))

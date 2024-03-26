@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import importlib.metadata
 import itertools
+import random
 
 import numpy as np
 import pytest
@@ -324,6 +325,10 @@ class RawDataFactory:
     @staticmethod
     def workfunction(selection):
         return _workfunction(selection)
+
+    @staticmethod
+    def partial_charge(selection):
+        return _partial_charge(selection)
 
 
 @pytest.fixture
@@ -668,6 +673,40 @@ def _example_OSZICAR():
     return raw.OSZICAR(convergence_data=convergence_data)
 
 
+def _partial_charge(selection):
+    grid_dim = grid_dimensions
+    if "Ca3AsBr3" in selection:
+        structure = _Ca3AsBr3_structure()
+    elif "Sr2TiO4" in selection:
+        structure = _Sr2TiO4_structure()
+    else:
+        structure = _Graphite_structure()
+        grid_dim = (216, 24, 24)
+    if "split_bands" in selection:
+        bands = raw.VaspData(random.sample(range(1, 51), 3))
+    else:
+        bands = raw.VaspData(np.asarray([0]))
+    if "split_kpoints" in selection:
+        kpoints = raw.VaspData((random.sample(range(1, 26), 5)))
+    else:
+        kpoints = raw.VaspData(np.asarray([0]))
+    if "spin_polarized" in selection:
+        spin_dimension = 2
+    else:
+        spin_dimension = 1
+    grid = raw.VaspData(tuple(reversed(grid_dim)))
+    random_charge = raw.VaspData(
+        np.random.rand(len(kpoints), len(bands), spin_dimension, *grid_dim)
+    )
+    return raw.PartialCharge(
+        structure=structure,
+        bands=bands,
+        kpoints=kpoints,
+        partial_charge=random_charge,
+        grid=grid,
+    )
+
+
 def _Sr2TiO4_CONTCAR():
     structure = _Sr2TiO4_structure()
     structure.cell.lattice_vectors = structure.cell.lattice_vectors[-1]
@@ -783,6 +822,43 @@ def _Sr2TiO4_stress(randomize):
     else:
         stresses = np.arange(np.prod(shape)).reshape(shape)
     return raw.Stress(structure=_Sr2TiO4_structure(), stress=stresses)
+
+
+def _Graphite_structure():
+    # repetitions = (number_steps, 1, 1)
+    positions = [
+        [0.00000000, 0.00000000, 0.00000000],
+        [0.33333333, 0.66666667, 0.00000000],
+        [0.33333333, 0.66666667, 0.15031929],
+        [0.66666667, 0.33333333, 0.15031929],
+        [0.00000000, 0.00000000, 0.30063858],
+        [0.33333333, 0.66666667, 0.30063858],
+        [0.33333333, 0.66666667, 0.45095787],
+        [0.66666667, 0.33333333, 0.45095787],
+        [0.00000000, 0.00000000, 0.60127716],
+        [0.33333333, 0.66666667, 0.60127716],
+    ]
+    return raw.Structure(
+        topology=_Graphite_topology(),
+        cell=_Graphite_cell(),
+        positions=raw.VaspData(positions),
+    )
+
+
+def _Graphite_cell():
+    lattice_vectors = [
+        [2.44104624, 0.00000000, 0.00000000],
+        [-1.22052312, 2.11400806, 0.00000000],
+        [0.00000000, 0.00000000, 22.0000000],
+    ]
+    return raw.Cell(np.asarray(lattice_vectors), scale=raw.VaspData(1.0))
+
+
+def _Graphite_topology():
+    return raw.Topology(
+        number_ion_types=np.array((10,)),
+        ion_types=np.array(("C",), dtype="S"),
+    )
 
 
 def _Sr2TiO4_structure():
