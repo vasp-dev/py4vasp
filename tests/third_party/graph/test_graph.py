@@ -83,7 +83,7 @@ def tilted_contour():
 
 
 @pytest.fixture
-def quiver_plot():
+def complex_quiver():
     return Contour(
         data=np.linspace(-3, 3, 2 * 12 * 10).reshape((2, 12, 10)),
         lattice=np.array([[3, 2], [-3, 2]]),
@@ -487,19 +487,18 @@ def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
     assert fig.layout.yaxis.scaleanchor == "x"
 
 
-def test_quiver_plot(quiver_plot, Assert, not_core):
-    graph = Graph(quiver_plot)
+def test_complex_quiver(complex_quiver, Assert, not_core):
+    graph = Graph(complex_quiver)
     fig = graph.to_plotly()
-    data_size = np.prod(quiver_plot.supercell) * quiver_plot.data.size // 2
+    data_size = np.prod(complex_quiver.supercell) * complex_quiver.data.size // 2
+    step_a = complex_quiver.lattice[0] / complex_quiver.data.shape[1]
+    mesh_a = np.arange(complex_quiver.supercell[0] * complex_quiver.data.shape[1])
+    step_b = complex_quiver.lattice[1] / complex_quiver.data.shape[2]
+    mesh_b = np.arange(complex_quiver.supercell[1] * complex_quiver.data.shape[2])
     expected_positions = np.array(
-        [
-            a * quiver_plot.lattice[0] / quiver_plot.data.shape[1]
-            + b * quiver_plot.lattice[1] / quiver_plot.data.shape[2]
-            for a in np.arange(quiver_plot.supercell[0] * quiver_plot.data.shape[1])
-            for b in np.arange(quiver_plot.supercell[1] * quiver_plot.data.shape[2])
-        ]
+        [a * step_a + b * step_b for a in mesh_a for b in mesh_b]
     )
-    work = quiver_plot.data
+    work = complex_quiver.data
     work = np.block([[work, work], [work, work], [work, work]]).T
     expected_tips = expected_positions + work.reshape(expected_positions.shape)
     expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
