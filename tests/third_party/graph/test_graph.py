@@ -82,6 +82,16 @@ def tilted_contour():
     )
 
 
+@pytest.fixture
+def quiver_plot():
+    return Contour(
+        data=np.linspace(-3, 3, 2 * 12 * 10).reshape((2, 12, 10)),
+        lattice=np.array([[3, 2], [-3, 2]]),
+        label="quiver plot",
+        supercell=(3, 2),
+    )
+
+
 def test_basic_graph(parabola, Assert, not_core):
     graph = Graph(parabola)
     fig = graph.to_plotly()
@@ -475,3 +485,57 @@ def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
     assert fig.layout.xaxis.visible is None
     assert fig.layout.yaxis.visible is None
     assert fig.layout.yaxis.scaleanchor == "x"
+
+
+def test_quiver_plot(quiver_plot, Assert, not_core):
+    graph = Graph(quiver_plot)
+    fig = graph.to_plotly()
+    data_size = np.prod(quiver_plot.supercell) * quiver_plot.data.size // 2
+    expected_positions = np.array(
+        [
+            a * quiver_plot.lattice[0] / quiver_plot.data.shape[1]
+            + b * quiver_plot.lattice[1] / quiver_plot.data.shape[2]
+            for a in np.arange(quiver_plot.supercell[0] * quiver_plot.data.shape[1])
+            for b in np.arange(quiver_plot.supercell[1] * quiver_plot.data.shape[2])
+        ]
+    )
+    work = quiver_plot.data
+    work = np.block([[work, work], [work, work], [work, work]]).T
+    expected_tips = expected_positions + work.reshape(expected_positions.shape)
+    expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
+    #
+    assert len(fig.data) == 1
+    data = fig.data[0]
+    assert data.mode == "lines"
+    # The data contains first a line between each grid point and the tip of the arrow;
+    # each of the lines are separated by a None. The second part is the tip of the arrow
+    # consisting of two lines; again tips are separated by None.
+    assert len(data.x) == len(data.y) == 7 * data_size
+    # first element should be positions
+    slice_ = slice(0, 3 * data_size, 3)
+    actual_positions = np.array((data.x[slice_], data.y[slice_])).T
+    Assert.allclose(actual_positions, expected_positions, tolerance=10)
+    # second element of both parts should be the tip of the arrows
+    slice_ = slice(1, 3 * data_size, 3)
+    actual_tips = np.array((data.x[slice_], data.y[slice_])).T
+    Assert.allclose(actual_tips, expected_tips, tolerance=10)
+    slice_ = slice(3 * data_size + 1, None, 4)
+    actual_tips = np.array((data.x[slice_], data.y[slice_])).T
+    Assert.allclose(actual_tips, expected_tips, tolerance=10)
+    # third element of first part and fourth element of second part should be none
+    slice_ = slice(2, 3 * data_size, 3)
+    assert all(element is None for element in data.x[slice_])
+    assert all(element is None for element in data.y[slice_])
+    slice_ = slice(3 * data_size + 3, None, 4)
+    assert all(element is None for element in data.x[slice_])
+    assert all(element is None for element in data.y[slice_])
+    # the first and third element of the second part contain the barb of the arrow,
+    # which should be close to tip
+    slice_ = slice(3 * data_size, None, 4)
+    first_barb = np.array((data.x[slice_], data.y[slice_])).T
+    actual_barb_length = np.linalg.norm(first_barb - actual_tips, axis=-1)
+    Assert.allclose(actual_barb_length, expected_barb_length)
+    slice_ = slice(3 * data_size + 2, None, 4)
+    second_barb = np.array((data.x[slice_], data.y[slice_])).T
+    actual_barb_length = np.linalg.norm(second_barb - actual_tips, axis=-1)
+    Assert.allclose(actual_barb_length, expected_barb_length)

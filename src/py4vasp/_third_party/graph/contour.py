@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
+import itertools
 
 import numpy as np
 
@@ -8,6 +9,7 @@ from py4vasp import _config
 from py4vasp._third_party.graph import trace
 from py4vasp._util import import_
 
+ff = import_.optional("plotly.figure_factory")
 go = import_.optional("plotly.graph_objects")
 interpolate = import_.optional("scipy.interpolate")
 
@@ -41,12 +43,21 @@ class Contour(trace.Trace):
         lattice_supercell = np.diag(self.supercell) @ self.lattice
         # swap a and b axes because that is the way plotly expects the data
         data = np.tile(self.data, self.supercell).T
-        if self._interpolation_required():
-            x, y, z = self._interpolate_data(lattice_supercell, data)
+        if self._is_heatmap():
+            yield self._make_heatmap(lattice_supercell, data)
         else:
-            x, y, z = self._use_data_without_interpolation(lattice_supercell, data)
+            yield self._make_quiver(lattice_supercell, data)
+
+    def _is_heatmap(self):
+        return self.data.ndim == 2
+
+    def _make_heatmap(self, lattice, data):
+        if self._interpolation_required():
+            x, y, z = self._interpolate_data(lattice, data)
+        else:
+            x, y, z = self._use_data_without_interpolation(lattice, data)
         heatmap = go.Heatmap(x=x, y=y, z=z, name=self.label, colorscale="turbid_r")
-        yield heatmap, self._options()
+        return heatmap, self._options()
 
     def _interpolation_required(self):
         return not np.allclose((self.lattice[1, 0], self.lattice[0, 1]), 0)
@@ -91,3 +102,14 @@ class Contour(trace.Trace):
         path = f"M 0 0 {' '.join(to_corners)} Z"
         unit_cell = {"type": "path", "line": {"color": _config.VASP_GRAY}, "path": path}
         return {"shapes": [unit_cell]}
+
+    def _make_quiver(self, lattice, data):
+        u = data[:, :, 0].flatten()
+        v = data[:, :, 1].flatten()
+        meshes = [
+            np.linspace(np.zeros(2), vector, num_points, endpoint=False)
+            for vector, num_points in zip(lattice, data.shape[1::-1])
+        ]
+        x, y = np.array([sum(points) for points in itertools.product(*meshes)]).T
+        fig = ff.create_quiver(x, y, u, v, scale=1)
+        return fig.data[0], {}
