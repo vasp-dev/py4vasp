@@ -108,7 +108,8 @@ class Contour(trace.Trace):
         v = data[:, :, 1].flatten()
         meshes = [
             np.linspace(np.zeros(2), vector, num_points, endpoint=False)
-            for vector, num_points in zip(lattice, data.shape[1::-1])
+            for vector, num_points in zip(reversed(lattice), data.shape)
+            # remember that b and a axis are swapped
         ]
         x, y = np.array([sum(points) for points in itertools.product(*meshes)]).T
         fig = ff.create_quiver(x, y, u, v, scale=1)

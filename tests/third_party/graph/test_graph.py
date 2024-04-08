@@ -83,6 +83,15 @@ def tilted_contour():
 
 
 @pytest.fixture
+def simple_quiver():
+    return Contour(
+        data=np.array([[(y, x) for x in range(3)] for y in range(5)]).T,
+        lattice=np.diag((3, 5)),
+        label="quiver plot",
+    )
+
+
+@pytest.fixture
 def complex_quiver():
     return Contour(
         data=np.linspace(-3, 3, 2 * 12 * 10).reshape((2, 12, 10)),
@@ -487,6 +496,18 @@ def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
     assert fig.layout.yaxis.scaleanchor == "x"
 
 
+def test_simple_quiver(simple_quiver, Assert, not_core):
+    graph = Graph(simple_quiver)
+    fig = graph.to_plotly()
+    data_size = simple_quiver.data.size // 2
+    assert len(fig.data) == 1
+    actual = split_data(fig.data[0], data_size, Assert)
+    arrows = actual.tips - actual.positions
+    for (x, y), (u, v) in zip(actual.positions, arrows):
+        Assert.allclose(x, v)
+        Assert.allclose(y, u)
+
+
 def test_complex_quiver(complex_quiver, Assert, not_core):
     graph = Graph(complex_quiver)
     fig = graph.to_plotly()
@@ -496,7 +517,7 @@ def test_complex_quiver(complex_quiver, Assert, not_core):
     step_b = complex_quiver.lattice[1] / complex_quiver.data.shape[2]
     mesh_b = np.arange(complex_quiver.supercell[1] * complex_quiver.data.shape[2])
     expected_positions = np.array(
-        [a * step_a + b * step_b for a in mesh_a for b in mesh_b]
+        [a * step_a + b * step_b for b in mesh_b for a in mesh_a]
     )
     work = complex_quiver.data
     work = np.block([[work, work], [work, work], [work, work]]).T
@@ -504,37 +525,50 @@ def test_complex_quiver(complex_quiver, Assert, not_core):
     expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
     #
     assert len(fig.data) == 1
-    data = fig.data[0]
+    actual = split_data(fig.data[0], data_size, Assert)
+    Assert.allclose(actual.positions, expected_positions, tolerance=10)
+    Assert.allclose(actual.tips, expected_tips, tolerance=10)
+    Assert.allclose(actual.barb_length, expected_barb_length)
+
+
+@dataclasses.dataclass
+class ContourData:
+    positions: np.ndarray = None
+    first_tips: np.ndarray = None
+    second_tips: np.ndarray = None
+    first_barb_length: np.ndarray = None
+    second_barb_length: np.ndarray = None
+
+
+def split_data(data, data_size, Assert):
+    actual = ContourData()
     assert data.mode == "lines"
     # The data contains first a line between each grid point and the tip of the arrow;
     # each of the lines are separated by a None. The second part is the tip of the arrow
     # consisting of two lines; again tips are separated by None.
     assert len(data.x) == len(data.y) == 7 * data_size
-    # first element should be positions
+    # first element contains positions
     slice_ = slice(0, 3 * data_size, 3)
-    actual_positions = np.array((data.x[slice_], data.y[slice_])).T
-    Assert.allclose(actual_positions, expected_positions, tolerance=10)
-    # second element of both parts should be the tip of the arrows
+    actual.positions = np.array((data.x[slice_], data.y[slice_])).T
+    # second element of both parts contain the tip of the arrows
     slice_ = slice(1, 3 * data_size, 3)
-    actual_tips = np.array((data.x[slice_], data.y[slice_])).T
-    Assert.allclose(actual_tips, expected_tips, tolerance=10)
+    actual.tips = np.array((data.x[slice_], data.y[slice_])).T
     slice_ = slice(3 * data_size + 1, None, 4)
-    actual_tips = np.array((data.x[slice_], data.y[slice_])).T
-    Assert.allclose(actual_tips, expected_tips, tolerance=10)
-    # third element of first part and fourth element of second part should be none
+    other_tips = np.array((data.x[slice_], data.y[slice_])).T
+    Assert.allclose(other_tips, actual.tips)
+    # third element of first part and fourth element of second part should be None (=separator)
     slice_ = slice(2, 3 * data_size, 3)
     assert all(element is None for element in data.x[slice_])
     assert all(element is None for element in data.y[slice_])
     slice_ = slice(3 * data_size + 3, None, 4)
     assert all(element is None for element in data.x[slice_])
     assert all(element is None for element in data.y[slice_])
-    # the first and third element of the second part contain the barb of the arrow,
-    # which should be close to tip
+    # the first and third element of the second part contain the barb of the arrow
     slice_ = slice(3 * data_size, None, 4)
-    first_barb = np.array((data.x[slice_], data.y[slice_])).T
-    actual_barb_length = np.linalg.norm(first_barb - actual_tips, axis=-1)
-    Assert.allclose(actual_barb_length, expected_barb_length)
+    barb = np.array((data.x[slice_], data.y[slice_])).T
+    actual.barb_length = np.linalg.norm(barb - actual.tips, axis=-1)
     slice_ = slice(3 * data_size + 2, None, 4)
-    second_barb = np.array((data.x[slice_], data.y[slice_])).T
-    actual_barb_length = np.linalg.norm(second_barb - actual_tips, axis=-1)
-    Assert.allclose(actual_barb_length, expected_barb_length)
+    other_barb = np.array((data.x[slice_], data.y[slice_])).T
+    other_barb_length = np.linalg.norm(other_barb - actual.tips, axis=-1)
+    Assert.allclose(other_barb_length, actual.barb_length, tolerance=10)
+    return actual
