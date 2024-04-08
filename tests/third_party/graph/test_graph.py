@@ -444,7 +444,7 @@ def test_contour(rectangle_contour, Assert, not_core):
     assert fig.layout.xaxis.visible == False
     assert fig.layout.yaxis.visible == False
     assert len(fig.layout.shapes) == 1
-    check_unit_cell(fig.layout.shapes[0])
+    check_unit_cell(fig.layout.shapes[0], x="4.0", y="3.6", zero="0.0")
     assert fig.layout.yaxis.scaleanchor == "x"
 
 
@@ -459,12 +459,12 @@ def test_contour_supercell(rectangle_contour, not_core):
     assert len(fig.data[0].x) == 60
     assert len(fig.data[0].y) == 90
     assert len(fig.layout.shapes) == 1
-    check_unit_cell(fig.layout.shapes[0])
+    check_unit_cell(fig.layout.shapes[0], x="4.0", y="3.6", zero="0.0")
 
 
-def check_unit_cell(unit_cell):
+def check_unit_cell(unit_cell, x, y, zero):
     assert unit_cell.type == "path"
-    assert unit_cell.path == "M 0 0 L 4.0 0.0 L 4.0 3.6 L 0.0 3.6 Z"
+    assert unit_cell.path == f"M 0 0 L {x} {zero} L {x} {y} L {zero} {y} Z"
     assert unit_cell.line.color == _config.VASP_GRAY
 
 
@@ -506,6 +506,9 @@ def test_simple_quiver(simple_quiver, Assert, not_core):
     for (x, y), (u, v) in zip(actual.positions, arrows):
         Assert.allclose(x, v)
         Assert.allclose(y, u)
+    assert len(fig.layout.shapes) == 1
+    check_unit_cell(fig.layout.shapes[0], x="3", y="5", zero="0")
+    assert fig.layout.yaxis.scaleanchor == "x"
 
 
 def test_complex_quiver(complex_quiver, Assert, not_core):

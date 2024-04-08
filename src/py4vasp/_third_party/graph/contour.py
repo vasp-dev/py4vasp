@@ -113,4 +113,4 @@ class Contour(trace.Trace):
         ]
         x, y = np.array([sum(points) for points in itertools.product(*meshes)]).T
         fig = ff.create_quiver(x, y, u, v, scale=1)
-        return fig.data[0], {}
+        return fig.data[0], self._options()
