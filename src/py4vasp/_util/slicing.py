@@ -6,5 +6,8 @@ INDICES = {"a": 0, "b": 1, "c": 2}
 
 
 def plane(cell, cut):
-    index = INDICES[cut]
-    return np.delete(np.delete(cell, index, axis=0), index, axis=1)
+    remaining_vectors = np.delete(cell, INDICES[cut], axis=0)
+    for i in range(3):
+        if np.allclose(remaining_vectors[:, i], 0):
+            return np.delete(remaining_vectors, i, axis=1)
+    raise NotImplementedError()
