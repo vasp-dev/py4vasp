@@ -19,8 +19,9 @@ class Contour(trace.Trace):
     """Represents data on a 2d slice through the unit cell.
 
     This class creates a visualization of the data within the unit cell based on its
-    configuration. Currently it supports the creation of heatmaps where each datapoint
-    corresponds to one point on the grid.
+    configuration. Currently it supports the creation of heatmaps and quiver plots.
+    For heatmaps each data point corresponds to one point on the grid. For quiver plots
+    each data point should be a 2d vector within the plane.
     """
 
     interpolation_factor = 2
@@ -28,7 +29,10 @@ class Contour(trace.Trace):
     to by approximately this factor along each line."""
 
     data: np.array
-    "2d grid data in the plane spanned by the lattice vectors."
+    """2d or 3d grid data in the plane spanned by the lattice vectors. If the data is
+    the dimensions should be the ones of the grid, if the data is 3d the first dimension
+    should be a 2 for a vector in the plane of the grid and the other two dimensions
+    should be the grid."""
     lattice: np.array
     """2 vectors spanning the plane in which the data is represented. Each vector should
     have two components, so remove any element normal to the plane."""
