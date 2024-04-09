@@ -6,8 +6,12 @@ INDICES = {"a": 0, "b": 1, "c": 2}
 
 
 def plane(cell, cut):
-    remaining_vectors = np.delete(cell, INDICES[cut], axis=0)
+    old_vectors = np.delete(cell, INDICES[cut], axis=0)
     for i in range(3):
-        if np.allclose(remaining_vectors[:, i], 0):
-            return np.delete(remaining_vectors, i, axis=1)
-    raise NotImplementedError()
+        if np.allclose(old_vectors[:, i], 0):
+            return np.delete(old_vectors, i, axis=1)
+    U, S, _ = np.linalg.svd(old_vectors)
+    new_vectors = U @ np.diag(S)
+    if np.linalg.det(new_vectors) < 0:
+        new_vectors = new_vectors[:, ::-1]
+    return new_vectors

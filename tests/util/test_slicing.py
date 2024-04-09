@@ -20,3 +20,15 @@ def test_unusual_orthorhombic(cut, indices, Assert):
     expected_plane = np.delete(np.delete(cell, indices[0], axis=0), indices[1], axis=1)
     actual_plane = slicing.plane(cell, cut)
     Assert.allclose(actual_plane, expected_plane)
+
+
+@pytest.mark.parametrize("cut, index", [("a", 0), ("b", 1), ("c", 2)])
+def test_nearly_orthorhombic(cut, index, Assert):
+    cell = 0.01 * np.ones((3, 3)) + np.diag((3, 4, 5))
+    expected_plane = np.delete(cell, index, axis=0)
+    # the expected plane is in 3d and the actual plane in 2d should have same angles
+    # and lengths
+    approximate_plane = np.delete(np.delete(cell, index, axis=0), index, axis=1)
+    actual_plane = slicing.plane(cell, cut)
+    Assert.allclose(actual_plane @ actual_plane.T, expected_plane @ expected_plane.T)
+    assert np.max(np.abs(approximate_plane - actual_plane)) < 0.1
