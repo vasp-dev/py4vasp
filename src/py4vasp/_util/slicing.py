@@ -6,35 +6,53 @@ INDICES = {"a": 0, "b": 1, "c": 2}
 
 
 def plane(cell, cut):
-    # old_det = np.linalg.det(cell)
-    old_vectors = np.delete(cell, INDICES[cut], axis=0)
-    # expected = old_vectors @ old_vectors.T
-    # print(old_vectors[0])
-    # print(old_vectors[1])
-    # print(expected)
-    # print(np.cross(old_vectors[0], old_vectors[1]))
-    # for i in range(3):
-    #     if np.allclose(old_vectors[:, i], 0):
-    #         return np.delete(old_vectors, i, axis=1)
-    U, S, Vh = np.linalg.svd(old_vectors, full_matrices=False)
-    print(old_vectors)
-    print(Vh)
-    print("new", old_vectors @ Vh.T)
-    new_vectors = U @ np.diag(S)
-    print(new_vectors)
-    print(U)
-    # if np.abs(U[0,0]) < np.abs(U[1,0]):
-    #     new_vectors = new_vectors[:, ::-1]
-    print(new_vectors)
-    # actual = new_vectors @ new_vectors.T
-    # print(new_vectors[0])
-    # print(new_vectors[1])
-    # print(np.linalg.det(new_vectors))
-    # print(actual)
-    # print(np.allclose(actual, expected))
-    # if not np.allclose(actual, expected):
-    # # print(new_vectors)
-    # # print(np.cross(*new_vectors))
-    # # if np.linalg.det(new_vectors) < 0:
-    # print(new_vectors)
-    return new_vectors
+    """Takes a 2d slice of a 3d cell and projects it onto 2d coordinates.
+
+    For simplicity in the documentation, we will assume that the cut is in the plane of
+    the a and b lattice vector. We use Greek letter α and β to refer to the vectors in
+    the 2d coordinate system. This routine computes the transformation Q such that
+
+    .. math::
+
+        \alpha &= Q a \\
+        \beta  &= Q b
+
+    Here, the matrix Q has a 2 × 3 shape so that the vectors α and β have only 2
+    dimensions. Furthermore, we want that the matrix Q fulfills certain properties,
+    namely that the lengths of the vectors and there angle is not changed. If the
+    vectors lie within e.g. the x-y plane, α and β should be the same as a and b just
+    with the zero for the z component removed.
+
+    Parameters
+    ----------
+    cell : np.ndarray
+        A 3 × 3 array defining the three lattice vectors of the unit cell.
+    cut : str
+        Either "a", "b", or "c" to define which lattice vector is removed to get the slice.
+
+    Returns
+    -------
+    np.ndarray
+        A 2 × 2 array defining the two lattice vectors spanning the plane.
+    """
+    vectors = np.delete(cell, INDICES[cut], axis=0)
+    *_, Q = np.linalg.svd(vectors, full_matrices=False)
+    Q = _make_all_largest_components_positive(Q)
+    Q = _ensure_same_order_as_input_array(Q)
+    return vectors @ Q.T
+
+def _make_all_largest_components_positive(vectors):
+    return np.array([_make_largest_component_positive(vector) for vector in vectors])
+
+def _make_largest_component_positive(vector):
+    if np.max(vector) > -np.min(vector):
+        return vector
+    else:
+        return -vector
+
+def _ensure_same_order_as_input_array(Q):
+    i, j = np.argmax(Q, axis=1)
+    if i <= j:
+        return Q
+    else:
+        return Q[::-1]

@@ -19,8 +19,6 @@ def test_unusual_orthorhombic(cut, indices, Assert):
     cell = np.roll(np.diag((3, 4, 5)), shift=1, axis=0)
     expected_plane = np.delete(np.delete(cell, indices[0], axis=0), indices[1], axis=1)
     actual_plane = slicing.plane(cell, cut)
-    print(expected_plane)
-    print(actual_plane)
     Assert.allclose(actual_plane, expected_plane)
 
 
