@@ -254,9 +254,9 @@ def test_to_stm_nonsplit_constant_current(
     expected = "both spin channels" if spin == "total" else f"spin {spin}"
     assert expected in actual.series.label
     assert "constant current" in actual.series.label
-    assert f"{current:.1e}" in actual.series.label
+    assert f"{current:.2f}" in actual.series.label
     assert "constant current" in actual.title
-    assert f"{current:.1e}" in actual.title
+    assert f"{current:.2f}" in actual.title
 
 
 def test_stm_default_settings(PolarizedNonSplitPartialCharge):
