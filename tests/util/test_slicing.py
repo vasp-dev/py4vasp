@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 
+from py4vasp import exception
 from py4vasp._util import slicing
 
 
@@ -32,3 +33,8 @@ def test_nearly_orthorhombic(cut, index, Assert):
     actual_plane = slicing.plane(cell, cut)
     Assert.allclose(actual_plane @ actual_plane.T, expected_plane @ expected_plane.T)
     assert np.max(np.abs(approximate_plane - actual_plane)) < 0.1
+
+
+def test_raise_error_if_direction_is_not_obvious():
+    with pytest.raises(exception.IncorrectUsage):
+        slicing.plane(np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]]), "a")
