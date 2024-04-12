@@ -36,23 +36,20 @@ def plane(cell, cut):
         A 2 × 2 array defining the two lattice vectors spanning the plane.
     """
     vectors = np.delete(cell, INDICES[cut], axis=0)
-    *_, Q = np.linalg.svd(vectors, full_matrices=False)
-    Q = _make_all_largest_components_positive(Q)
-    Q = _ensure_same_order_as_input_array(Q)
-    return vectors @ Q.T
+    axis = np.cross(*vectors).astype(np.float_)
+    axis /= np.linalg.norm(axis)
+    closest_cartesian_axis = np.argmax(np.abs(axis))
+    cartesian_axis = np.zeros(3)
+    cartesian_axis[closest_cartesian_axis] = np.sign(axis[closest_cartesian_axis])
+    rotation_matrix = _calculate_rotation_matrix((axis, cartesian_axis))
+    new_vectors = vectors @ rotation_matrix.T
+    return np.delete(new_vectors, closest_cartesian_axis, axis=1)
 
-def _make_all_largest_components_positive(vectors):
-    return np.array([_make_largest_component_positive(vector) for vector in vectors])
 
-def _make_largest_component_positive(vector):
-    if np.max(vector) > -np.min(vector):
-        return vector
-    else:
-        return -vector
-
-def _ensure_same_order_as_input_array(Q):
-    i, j = np.argmax(Q, axis=1)
-    if i <= j:
-        return Q
-    else:
-        return Q[::-1]
+def _calculate_rotation_matrix(vectors):
+    cos_angle = np.dot(*vectors)
+    v = np.cross(*vectors)
+    if np.linalg.norm(v) < 1e-10:
+        return np.eye(3)
+    V = np.cross(np.eye(3), v)
+    return np.eye(3) + V + V @ V / (1 + cos_angle)
