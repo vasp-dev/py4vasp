@@ -23,7 +23,7 @@ git clone git@github.com:vasp-dev/py4vasp.git
 conda activate py4vasp-env
 pip install poetry
 poetry install
-conda install -c conda-forge mdtraj
+conda install conda-forge::mdtraj
 poetry run pytest
 ~~~
 Note that this will install py4vasp into the conda environment. This isolates the code
