@@ -35,11 +35,6 @@ def test_nearly_orthorhombic(cut, index, Assert):
     assert np.max(np.abs(approximate_plane - actual_plane)) < 0.1
 
 
-def test_raise_error_if_direction_is_not_obvious():
-    with pytest.raises(exception.IncorrectUsage):
-        slicing.plane(np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]]), "a")
-
-
 XX = np.sqrt(1 - np.sqrt(0.75))
 
 
@@ -85,3 +80,15 @@ def test_no_rotation_nontrivial_cell(cut, index, Assert):
     Assert.allclose(actual_plane[0, 1], 0)
     actual_products = actual_plane @ actual_plane.T
     Assert.allclose(actual_products, expected_products)
+
+
+def test_raise_error_if_normal_is_not_obvious():
+    with pytest.raises(exception.IncorrectUsage):
+        slicing.plane(np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]]), "a")
+
+
+def test_raise_error_for_unknown_choices():
+    with pytest.raises(exception.IncorrectUsage):
+        slicing.plane(np.eye(3), "unknown")
+    with pytest.raises(exception.IncorrectUsage):
+        slicing.plane(np.eye(3), "a", normal="unknown")
