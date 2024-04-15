@@ -5,10 +5,10 @@ import numpy as np
 from py4vasp import exception
 
 INDICES = {"a": 0, "b": 1, "c": 2}
-AXIS = {"x": (1, 0, 0), "+x": (1, 0, 0), "-x": (-1, 0, 0), "y": (0, 1, 0), "+y": (0, 1, 0),
-        "-y": (0, -1, 0), "z": (0, 0, 1), "+z": (0, 0, 1), "-z": (0, 0, -1)}
+AXIS = ("x", "y", "z")
 
-def plane(cell, cut, direction="auto"):
+
+def plane(cell, cut, normal="auto"):
     """Takes a 2d slice of a 3d cell and projects it onto 2d coordinates.
 
     For simplicity in the documentation, we will assume that the cut is in the plane of
@@ -32,7 +32,7 @@ def plane(cell, cut, direction="auto"):
         A 3 × 3 array defining the three lattice vectors of the unit cell.
     cut : str
         Either "a", "b", or "c" to define which lattice vector is removed to get the slice.
-    direction : str
+    normal : str
         Set the Cartesian direction "x", "y", or "c" parallel to which the normal of
         the plane is rotated. Alteratively, set it to "auto" to rotate to the closest
         Cartesian axis.
@@ -45,27 +45,21 @@ def plane(cell, cut, direction="auto"):
     vectors = np.delete(cell, INDICES[cut], axis=0)
     axis = np.cross(*vectors).astype(np.float_)
     axis /= np.linalg.norm(axis)
-    print(axis)
-    index_axis, cartesian_axis = _get_cartesian_axis(axis, direction)
+    index_axis, cartesian_axis = _get_cartesian_axis(axis, normal)
     rotation_matrix = _calculate_rotation_matrix((axis, cartesian_axis))
     new_vectors = vectors @ rotation_matrix.T
     return np.delete(new_vectors, index_axis, axis=1)
 
 
-def _get_cartesian_axis(axis, direction):
-    if direction == "auto":
-        closest_cartesian_axis = np.argmax(np.abs(axis))
-        if np.abs(axis[closest_cartesian_axis]) < 0.8:
-            message = """\
-You did not specify the Cartesian direction to which the normal of the cut plane will
-be rotated to. py4vasp tries to determine the axis automatically but in this case no
-axis is close to the normal of the plane. Please pass the additional argument *direction*
-("x", "y", or "z") to specify to which axis py4vasp should use as normal vector for the
-plane."""
-            raise exception.IncorrectUsage(message)
-        cartesian_axis = np.zeros(3)
-        cartesian_axis[closest_cartesian_axis] = np.sign(axis[closest_cartesian_axis])
-        return closest_cartesian_axis, cartesian_axis
+def _get_cartesian_axis(axis, normal):
+    if normal in AXIS:
+        index = AXIS.index(normal)
+    elif normal == "auto":
+        index = np.argmax(np.abs(axis))
+        _raise_error_if_direction_is_not_obvious(np.abs(axis[index]))
+    cartesian_axis = np.zeros(3)
+    cartesian_axis[index] = np.sign(axis[index])
+    return index, cartesian_axis
 
 
 def _calculate_rotation_matrix(vectors):
@@ -75,3 +69,15 @@ def _calculate_rotation_matrix(vectors):
         return np.eye(3)
     V = np.cross(np.eye(3), v)
     return np.eye(3) + V + V @ V / (1 + cos_angle)
+
+
+def _raise_error_if_direction_is_not_obvious(largest_element):
+    if largest_element > 0.95:
+        return
+    message = """\
+You did not specify the Cartesian direction to which the normal of the cut plane will
+be rotated to. py4vasp tries to determine the axis automatically but in this case no
+axis is close to the normal of the plane. Please pass the additional argument *normal*
+("x", "y", or "z") to specify to which axis py4vasp should use as normal vector for the
+plane."""
+    raise exception.IncorrectUsage(message)

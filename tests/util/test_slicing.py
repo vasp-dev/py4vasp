@@ -39,5 +39,19 @@ def test_raise_error_if_direction_is_not_obvious():
     with pytest.raises(exception.IncorrectUsage):
         slicing.plane(np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]]), "a")
 
-@pytest.mark.parametrize("direction", ["x", ""])
-def test_
+
+XX = np.sqrt(1 - np.sqrt(0.75))
+
+
+@pytest.mark.parametrize(
+    "normal, expected_plane",
+    [
+        ("x", [[XX, 1 + XX], [1 + XX, XX]]),
+        ("y", [[1, 1], [1 + XX, -XX]]),
+        ("z", [[XX + 1, -XX], [1, 1]]),
+    ],
+)
+def test_rotate_to_user_defined_axis(normal, expected_plane, Assert):
+    cell = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
+    actual_plane = slicing.plane(cell, "a", normal)
+    Assert.allclose(actual_plane, expected_plane)
