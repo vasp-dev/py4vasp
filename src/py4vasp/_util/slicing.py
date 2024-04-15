@@ -86,6 +86,7 @@ def _get_index_axis(old_normal, normal):
     else:
         _raise_unknown_normal_error(normal)
 
+
 def _get_new_normal_from_cartesian_axis(old_normal, index):
     new_normal = np.zeros(3)
     # do not use sign function because it is 0 if old_normal[index] == 0
@@ -107,10 +108,8 @@ def _raise_error_if_cut_unknown(cut):
         return
     message = """\
 The selected choice {cut} is invalid. Please select one of the three lattice vectors
-with passing *cut* ("a", "b", or "c").""".format(
-        cut=cut
-    )
-    raise exception.IncorrectUsage(message)
+with passing *cut* ("a", "b", or "c")."""
+    raise exception.IncorrectUsage(message.format(cut=cut))
 
 
 def _raise_error_if_direction_is_not_obvious(largest_element):
@@ -124,9 +123,10 @@ axis is close to the normal of the plane. Please pass the additional argument *n
 plane."""
     raise exception.IncorrectUsage(message)
 
+
 def _raise_unknown_normal_error(normal):
     message = """\
 The selected normal {normal} is invalid. Please select one of the Cartesian axis ("x",
 "y", or "z") or "auto" to specify to which axis the normal is rotated. "auto" will use
-a closeby Cartesian axis if possible.""".format(normal=normal)
-    raise exception.IncorrectUsage(message)
+a closeby Cartesian axis if possible."""
+    raise exception.IncorrectUsage(message.format(normal=normal))
