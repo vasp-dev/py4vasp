@@ -58,7 +58,8 @@ def _get_cartesian_axis(axis, normal):
         index = np.argmax(np.abs(axis))
         _raise_error_if_direction_is_not_obvious(np.abs(axis[index]))
     cartesian_axis = np.zeros(3)
-    cartesian_axis[index] = np.sign(axis[index])
+    # do not use sign function because it is 0 if axis[index] == 0
+    cartesian_axis[index] = 1 if axis[index] >= 0 else -1
     return index, cartesian_axis
 
 

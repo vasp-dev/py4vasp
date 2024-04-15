@@ -55,3 +55,14 @@ def test_rotate_to_user_defined_axis(normal, expected_plane, Assert):
     cell = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
     actual_plane = slicing.plane(cell, "a", normal)
     Assert.allclose(actual_plane, expected_plane)
+
+
+@pytest.mark.parametrize(
+    "normal, rotation",
+    (("x", [[1, 0], [0, 1]]), ("y", [[-1, 0], [0, 1]]), ("z", [[0, 1], [-1, 0]])),
+)
+def test_normal_with_orthonormal_cell(normal, rotation, Assert):
+    cell = np.diag((3, 4, 5))
+    expected_plane = np.dot(np.delete(np.delete(cell, 0, axis=0), 0, axis=1), rotation)
+    actual_plane = slicing.plane(cell, "a", normal)
+    Assert.allclose(actual_plane, expected_plane)
