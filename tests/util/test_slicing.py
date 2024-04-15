@@ -38,3 +38,6 @@ def test_nearly_orthorhombic(cut, index, Assert):
 def test_raise_error_if_direction_is_not_obvious():
     with pytest.raises(exception.IncorrectUsage):
         slicing.plane(np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]]), "a")
+
+@pytest.mark.parametrize("direction", ["x", ""])
+def test_

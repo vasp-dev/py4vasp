@@ -5,7 +5,8 @@ import numpy as np
 from py4vasp import exception
 
 INDICES = {"a": 0, "b": 1, "c": 2}
-
+AXIS = {"x": (1, 0, 0), "+x": (1, 0, 0), "-x": (-1, 0, 0), "y": (0, 1, 0), "+y": (0, 1, 0),
+        "-y": (0, -1, 0), "z": (0, 0, 1), "+z": (0, 0, 1), "-z": (0, 0, -1)}
 
 def plane(cell, cut, direction="auto"):
     """Takes a 2d slice of a 3d cell and projects it onto 2d coordinates.
@@ -44,6 +45,7 @@ def plane(cell, cut, direction="auto"):
     vectors = np.delete(cell, INDICES[cut], axis=0)
     axis = np.cross(*vectors).astype(np.float_)
     axis /= np.linalg.norm(axis)
+    print(axis)
     index_axis, cartesian_axis = _get_cartesian_axis(axis, direction)
     rotation_matrix = _calculate_rotation_matrix((axis, cartesian_axis))
     new_vectors = vectors @ rotation_matrix.T
