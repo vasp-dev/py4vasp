@@ -20,6 +20,7 @@ will test whether everything worked
 ~~~shell
 conda create --name py4vasp-env python=3.8
 git clone git@github.com:vasp-dev/py4vasp.git
+conda activate py4vasp-env
 pip install poetry
 poetry install
 conda install -c conda-forge mdtraj
