@@ -66,3 +66,22 @@ def test_normal_with_orthonormal_cell(normal, rotation, Assert):
     expected_plane = np.dot(np.delete(np.delete(cell, 0, axis=0), 0, axis=1), rotation)
     actual_plane = slicing.plane(cell, "a", normal)
     Assert.allclose(actual_plane, expected_plane)
+
+
+@pytest.mark.parametrize("cut, diagonal", [("a", [4, 5]), ("b", [3, 5]), ("c", [3, 4])])
+def test_no_rotation_orthorhombic_cell(cut, diagonal, Assert):
+    cell = np.diag((3, 4, 5))
+    expected_plane = np.diag(diagonal)
+    actual_plane = slicing.plane(cell, cut, normal=None)
+    Assert.allclose(actual_plane, expected_plane)
+
+
+@pytest.mark.parametrize("cut, index", [("a", 0), ("b", 1), ("c", 2)])
+def test_no_rotation_nontrivial_cell(cut, index, Assert):
+    cell = np.array([[0, 1, 1.1], [0.9, 0, 1.1], [0.9, 1, 0]])
+    vectors = np.delete(cell, index, axis=0)
+    expected_products = vectors @ vectors.T
+    actual_plane = slicing.plane(cell, cut, normal=None)
+    Assert.allclose(actual_plane[0, 1], 0)
+    actual_products = actual_plane @ actual_plane.T
+    Assert.allclose(actual_products, expected_products)

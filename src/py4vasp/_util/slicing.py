@@ -33,7 +33,7 @@ def plane(cell, cut, normal="auto"):
     cut : str
         Either "a", "b", or "c" to define which lattice vector is removed to get the slice.
     normal : str
-        Set the Cartesian direction "x", "y", or "c" parallel to which the normal of
+        Set the Cartesian direction "x", "y", or "z" parallel to which the normal of
         the plane is rotated. Alteratively, set it to "auto" to rotate to the closest
         Cartesian axis.
 
@@ -43,33 +43,39 @@ def plane(cell, cut, normal="auto"):
         A 2 × 2 array defining the two lattice vectors spanning the plane.
     """
     vectors = np.delete(cell, INDICES[cut], axis=0)
-    axis = np.cross(*vectors).astype(np.float_)
-    axis /= np.linalg.norm(axis)
-    index_axis, cartesian_axis = _get_cartesian_axis(axis, normal)
-    rotation_matrix = _calculate_rotation_matrix((axis, cartesian_axis))
+    if normal is not None:
+        return _rotate_normal_to_cartesian_axis(vectors, normal)
+    else:
+        return _rotate_first_vector_to_x_axis(vectors)
+
+
+def _rotate_first_vector_to_x_axis(vectors):
+    u, v = np.linalg.norm(vectors, axis=1)
+    x = np.dot(*vectors) / (u * v)
+    return np.array([[u, 0], [v * x, v * np.sqrt(1 - x**2)]])
+
+
+def _rotate_normal_to_cartesian_axis(vectors, normal):
+    old_normal = _get_old_normal(vectors)
+    index_axis = _get_index_axis(old_normal, normal)
+    new_normal = _get_new_normal_from_cartesian_axis(old_normal, index_axis)
+    rotation_matrix = _get_rotation_matrix((old_normal, new_normal))
     new_vectors = vectors @ rotation_matrix.T
     return np.delete(new_vectors, index_axis, axis=1)
 
 
-def _get_cartesian_axis(axis, normal):
+def _get_old_normal(vectors):
+    old_normal = np.cross(*vectors).astype(np.float_)
+    return old_normal / np.linalg.norm(old_normal)
+
+
+def _get_index_axis(old_normal, normal):
     if normal in AXIS:
-        index = AXIS.index(normal)
+        return AXIS.index(normal)
     elif normal == "auto":
-        index = np.argmax(np.abs(axis))
-        _raise_error_if_direction_is_not_obvious(np.abs(axis[index]))
-    cartesian_axis = np.zeros(3)
-    # do not use sign function because it is 0 if axis[index] == 0
-    cartesian_axis[index] = 1 if axis[index] >= 0 else -1
-    return index, cartesian_axis
-
-
-def _calculate_rotation_matrix(vectors):
-    cos_angle = np.dot(*vectors)
-    v = np.cross(*vectors)
-    if np.linalg.norm(v) < 1e-10:
-        return np.eye(3)
-    V = np.cross(np.eye(3), v)
-    return np.eye(3) + V + V @ V / (1 + cos_angle)
+        index = np.argmax(np.abs(old_normal))
+        _raise_error_if_direction_is_not_obvious(np.abs(old_normal[index]))
+        return index
 
 
 def _raise_error_if_direction_is_not_obvious(largest_element):
@@ -82,3 +88,19 @@ axis is close to the normal of the plane. Please pass the additional argument *n
 ("x", "y", or "z") to specify to which axis py4vasp should use as normal vector for the
 plane."""
     raise exception.IncorrectUsage(message)
+
+
+def _get_new_normal_from_cartesian_axis(old_normal, index):
+    new_normal = np.zeros(3)
+    # do not use sign function because it is 0 if old_normal[index] == 0
+    new_normal[index] = 1 if old_normal[index] >= 0 else -1
+    return new_normal
+
+
+def _get_rotation_matrix(vectors):
+    cos_angle = np.dot(*vectors)
+    v = np.cross(*vectors)
+    if np.linalg.norm(v) < 1e-10:
+        return np.eye(3)
+    V = np.cross(np.eye(3), v)
+    return np.eye(3) + V + V @ V / (1 + cos_angle)
