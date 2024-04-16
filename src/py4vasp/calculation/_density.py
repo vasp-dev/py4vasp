@@ -4,7 +4,7 @@ import numpy as np
 
 from py4vasp import _config, calculation, exception
 from py4vasp._third_party import graph, view
-from py4vasp._util import documentation, import_, index, select
+from py4vasp._util import documentation, import_, index, select, slicing
 from py4vasp.calculation import _base, _structure
 
 pretty = import_.optional("IPython.lib.pretty")
@@ -227,8 +227,9 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
 
     @_base.data_access
     def to_contour(self, *, a=None):
-        index = np.round(a * len(self._raw_data.charge)).astype(np.int_)
-        contour = graph.Contour(self._raw_data.charge[index], "charge")
+        data = slicing.grid_data(self._raw_data.charge[0].T, "a", a)
+        lattice = slicing.plane(self._structure.lattice_vectors(), "a", normal=None)
+        contour = graph.Contour(data, lattice, "charge")
         return graph.Graph(contour)
 
     def _filter_noncollinear_magnetization_from_selections(self, tree):

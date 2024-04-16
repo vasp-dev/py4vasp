@@ -260,6 +260,10 @@ def test_contour_of_slice(nonpolarized_density, Assert):
     slice_ = nonpolarized_density.ref.output["charge"][1]
     assert len(graph) == 1
     Assert.allclose(graph.series.data, slice_)
+    lattice_vectors = nonpolarized_density.ref.structure.lattice_vectors()
+    expected_products = lattice_vectors[1:] @ lattice_vectors[1:].T
+    actual_products = graph.series.lattice @ graph.series.lattice.T
+    Assert.allclose(actual_products, expected_products)
 
 
 # TODO: a, b, c
