@@ -8,6 +8,36 @@ INDICES = {"a": 0, "b": 1, "c": 2}
 AXIS = ("x", "y", "z")
 
 
+def grid_data(data, cut, fraction):
+    """Takes a 2d slice of a 3d grid data.
+
+    Often, we want to generate a 2d slice of a 3d data on a grid. One example would be
+    to visualize a slice through a plane as a contour plot. This routine facilitates
+    this task implementing taking the cut of the 3d data.
+
+    Parameters
+    ----------
+    data : np.ndarray
+        3d data on a grid from which a 2d plane is extracted.
+    cut : str
+        Defines along which dimension of the grid to cut (either "a", "b", or "c").
+    fraction : float
+        Determines which plane of the grid data is used. Periodic boundaries are assumed.
+
+    Returns
+    -------
+    np.ndarray
+        A 2d array where the dimension selected by cut has been removed by selecting
+        the plane according to the specificied fraction.
+    """
+    _raise_error_if_cut_unknown(cut)
+    index = INDICES[cut]
+    length = data.shape[index]
+    slice_ = [slice(None), slice(None), slice(None)]
+    slice_[index] = np.round(length * fraction).astype(np.int_) % length
+    return data[tuple(slice_)]
+
+
 def plane(cell, cut, normal="auto"):
     """Takes a 2d slice of a 3d cell and projects it onto 2d coordinates.
 
@@ -101,6 +131,10 @@ def _get_rotation_matrix(vectors):
         return np.eye(3)
     V = np.cross(np.eye(3), v)
     return np.eye(3) + V + V @ V / (1 + cos_angle)
+
+
+def _get_slice(shape, cut, fraction):
+    return slice_
 
 
 def _raise_error_if_cut_unknown(cut):

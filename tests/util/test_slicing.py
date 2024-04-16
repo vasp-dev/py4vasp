@@ -92,3 +92,20 @@ def test_raise_error_for_unknown_choices():
         slicing.plane(np.eye(3), "unknown")
     with pytest.raises(exception.IncorrectUsage):
         slicing.plane(np.eye(3), "a", normal="unknown")
+
+
+@pytest.mark.parametrize("cut", ("a", "b", "c"))
+@pytest.mark.parametrize("fraction", (-0.4, 0, 0.4, 0.8, 1.2))
+def test_slice_data(cut, fraction, Assert):
+    grid_data = np.random.random((10, 12, 14)) + 0.1
+    if cut == "a":
+        index = np.round(fraction * 10).astype(np.int_) % 10
+        expected_data = grid_data[index, :, :]
+    elif cut == "b":
+        index = np.round(fraction * 12).astype(np.int_) % 12
+        expected_data = grid_data[:, index, :]
+    else:
+        index = np.round(fraction * 14).astype(np.int_) % 14
+        expected_data = grid_data[:, :, index]
+    actual_data = slicing.grid_data(grid_data, cut, fraction)
+    Assert.allclose(actual_data, expected_data)
