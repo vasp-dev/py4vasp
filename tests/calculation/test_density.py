@@ -255,20 +255,31 @@ def test_plotting_supercell(supercell, reference_density, Assert):
     check_view(reference_density, expected, Assert, supercell=supercell)
 
 
-def test_contour_of_slice(nonpolarized_density, Assert):
-    graph = nonpolarized_density.to_contour(a=0.1)
-    slice_ = nonpolarized_density.ref.output["charge"][1]
+@pytest.mark.parametrize(
+    "kwargs, index, position",
+    (({"a": 0.1}, 0, 1), ({"b": 0.7}, 1, 8), ({"c": 1.3}, 2, 4)),
+)
+def test_contour_of_charge(nonpolarized_density, kwargs, index, position, Assert):
+    graph = nonpolarized_density.to_contour(**kwargs)
+    slice_ = [slice(None), slice(None), slice(None)]
+    slice_[index] = position
+    data = nonpolarized_density.ref.output["charge"][tuple(slice_)]
     assert len(graph) == 1
-    Assert.allclose(graph.series.data, slice_)
+    Assert.allclose(graph.series.data, data)
     lattice_vectors = nonpolarized_density.ref.structure.lattice_vectors()
-    expected_products = lattice_vectors[1:] @ lattice_vectors[1:].T
+    lattice_vectors = np.delete(lattice_vectors, index, axis=0)
+    expected_products = lattice_vectors @ lattice_vectors.T
     actual_products = graph.series.lattice @ graph.series.lattice.T
     Assert.allclose(actual_products, expected_products)
 
 
-# TODO: a, b, c
-#       slice missing
-#       a < 0 or a > 1
+def test_incorrect_slice_raises_error(nonpolarized_density):
+    with pytest.raises(exception.IncorrectUsage):
+        nonpolarized_density.to_contour()
+    with pytest.raises(exception.IncorrectUsage):
+        nonpolarized_density.to_contour(a=1, b=2)
+    with pytest.raises(exception.IncorrectUsage):
+        nonpolarized_density.to_contour(3)
 
 
 def test_to_numpy(reference_density, Assert):

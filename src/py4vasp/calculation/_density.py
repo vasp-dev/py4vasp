@@ -225,13 +225,6 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         ]
         return viewer
 
-    @_base.data_access
-    def to_contour(self, *, a=None):
-        data = slicing.grid_data(self._raw_data.charge[0].T, "a", a)
-        lattice = slicing.plane(self._structure.lattice_vectors(), "a", normal=None)
-        contour = graph.Contour(data, lattice, "charge")
-        return graph.Graph(contour)
-
     def _filter_noncollinear_magnetization_from_selections(self, tree):
         if self._selection or not self.is_noncollinear():
             yield from tree.selections()
@@ -297,6 +290,22 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         return component > 0
 
     @_base.data_access
+    def to_contour(self, *, a=None, b=None, c=None):
+        cut, fraction = self._get_cut(a, b, c)
+        data = slicing.grid_data(self._raw_data.charge[0].T, cut, fraction)
+        lattice = slicing.plane(self._structure.lattice_vectors(), cut, normal=None)
+        contour = graph.Contour(data, lattice, "charge")
+        return graph.Graph(contour)
+
+    def _get_cut(self, a, b, c):
+        _raise_error_cut_selection_incorrect(a, b, c)
+        if a is not None:
+            return "a", a
+        if b is not None:
+            return "b", b
+        return "c", c
+
+    @_base.data_access
     def is_nonpolarized(self):
         "Returns whether the density is not spin polarized."
         return len(self._raw_data.charge) == 1
@@ -354,4 +363,21 @@ def _raise_error_if_no_data(data):
             "this file exists and LCHARGH5 = T is set in the INCAR file. Another "
             'common issue is when you create `Calculation.from_file("vaspout.h5")` '
             "because this will overwrite the default file behavior."
+        )
+
+
+def _raise_error_cut_selection_incorrect(*selections):
+    # only a single element may be selected
+    selected_elements = sum(selection is not None for selection in selections)
+    if selected_elements == 0:
+        raise exception.IncorrectUsage(
+            "You have not selected a lattice vector along which the slice should be "
+            "constructed. Please set exactly one of the keyword arguments (a, b, c) "
+            "to a real number that specifies at which fraction of the lattice vector "
+            "the plane is."
+        )
+    if selected_elements > 1:
+        raise exception.IncorrectUsage(
+            "You have selected more than a single element. Please use only one of "
+            "(a, b, c) and not multiple choices."
         )
