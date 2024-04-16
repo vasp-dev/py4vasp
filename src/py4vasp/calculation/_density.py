@@ -3,7 +3,7 @@
 import numpy as np
 
 from py4vasp import _config, calculation, exception
-from py4vasp._third_party import view
+from py4vasp._third_party import graph, view
 from py4vasp._util import documentation, import_, index, select
 from py4vasp.calculation import _base, _structure
 
@@ -224,6 +224,12 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
             for selection in selections
         ]
         return viewer
+
+    @_base.data_access
+    def to_contour(self, *, a=None):
+        index = np.round(a * len(self._raw_data.charge)).astype(np.int_)
+        contour = graph.Contour(self._raw_data.charge[index], "charge")
+        return graph.Graph(contour)
 
     def _filter_noncollinear_magnetization_from_selections(self, tree):
         if self._selection or not self.is_noncollinear():

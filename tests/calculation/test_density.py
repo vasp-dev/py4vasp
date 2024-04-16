@@ -255,6 +255,18 @@ def test_plotting_supercell(supercell, reference_density, Assert):
     check_view(reference_density, expected, Assert, supercell=supercell)
 
 
+def test_contour_of_slice(nonpolarized_density, Assert):
+    graph = nonpolarized_density.to_contour(a=0.1)
+    slice_ = nonpolarized_density.ref.output["charge"][1]
+    assert len(graph) == 1
+    Assert.allclose(graph.series.data, slice_)
+
+
+# TODO: a, b, c
+#       slice missing
+#       a < 0 or a > 1
+
+
 def test_to_numpy(reference_density, Assert):
     source = reference_density.ref.source
     if source == "charge":
@@ -307,4 +319,5 @@ def test_print(reference_density, format_):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.density("Fe3O4 collinear")
-    check_factory_methods(calculation.density, data)
+    parameters = {"to_contour": {"a": 0.3}}
+    check_factory_methods(calculation.density, data, parameters)
