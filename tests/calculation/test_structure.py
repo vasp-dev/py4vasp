@@ -264,6 +264,18 @@ def test_supercell_wrong_size(Sr2TiO4, not_a_supercell, not_core):
         Sr2TiO4.to_ase(not_a_supercell)
 
 
+@pytest.mark.parametrize("steps", [-1, 0, slice(1, 3), slice(None)])
+def test_lattice_vectors(Sr2TiO4, steps, Assert):
+    structure = Sr2TiO4 if steps == -1 else Sr2TiO4[steps]
+    Assert.allclose(structure.lattice_vectors(), Sr2TiO4.ref.lattice_vectors[steps])
+
+
+@pytest.mark.parametrize("steps", [-1, 0, slice(1, 3), slice(None)])
+def test_positions(Sr2TiO4, steps, Assert):
+    structure = Sr2TiO4 if steps == -1 else Sr2TiO4[steps]
+    Assert.allclose(structure.positions(), Sr2TiO4.ref.positions[steps])
+
+
 def test_cartesian_positions(Sr2TiO4, Fe3O4, Ca3AsBr3, Assert, not_core):
     check_cartesian_positions(Sr2TiO4, Assert)
     check_cartesian_positions(Fe3O4, Assert)
