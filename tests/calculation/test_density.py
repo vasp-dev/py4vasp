@@ -271,6 +271,7 @@ def test_contour_of_charge(nonpolarized_density, kwargs, index, position, Assert
     expected_products = lattice_vectors @ lattice_vectors.T
     actual_products = graph.series.lattice @ graph.series.lattice.T
     Assert.allclose(actual_products, expected_products)
+    assert graph.series.label == "charge"
 
 
 def test_incorrect_slice_raises_error(nonpolarized_density):
@@ -280,6 +281,58 @@ def test_incorrect_slice_raises_error(nonpolarized_density):
         nonpolarized_density.to_contour(a=1, b=2)
     with pytest.raises(exception.IncorrectUsage):
         nonpolarized_density.to_contour(3)
+
+
+@pytest.mark.parametrize(
+    "selection", ["3", "sigma_z", "z", "sigma_3", "magnetization", "mag", "m"]
+)
+def test_collinear_to_contour(selection, collinear_density, Assert):
+    source = collinear_density.ref.source
+    if source == "charge":
+        expected_label = selection
+        expected_data = collinear_density.ref.output["magnetization"][:, :, 7]
+    else:
+        expected_label = f"{source}({selection})"
+        expected_data = collinear_density.ref.output[source][1, :, :, 7]
+        if selection in ("magnetization", "mag", "m"):
+            # magnetization not allowed for tau
+            return
+    expected_lattice = collinear_density.ref.structure.lattice_vectors()[:2, :2]
+    graph = collinear_density.to_contour(selection, c=-0.5)
+    assert len(graph) == 1
+    Assert.allclose(graph.series.data, expected_data)
+    Assert.allclose(graph.series.lattice, expected_lattice)
+    assert graph.series.label == expected_label
+
+
+# @pytest.mark.parametrize(
+#     "selections",
+#     [
+#         ("1", "2", "3"),
+#         ("sigma_x", "sigma_y", "sigma_z"),
+#         ("x", "y", "z"),
+#         ("sigma_1", "sigma_2", "sigma_3"),
+#         (
+#             "m(1)",
+#             "mag(2)",
+#             "magnetization(3)",
+#         ),  # the magnetization label should be ignored
+#     ],
+# )
+# def test_contour_with_selection(noncollinear_density, selections, Assert):
+#     source = noncollinear_density.ref.source
+#     if source == "charge":
+#         if "(" in selections[0]:  # magnetization filtered from selections
+#             expected_labels = ("1", "2", "3")
+#         else:
+#             expected_labels = selections
+#
+#         expected_density = noncollinear_density.ref.output["magnetization"]
+#     else:
+#         expected_labels = (f"{source}({selection})" for selection in selections)
+#         expected_density = noncollinear_density.ref.output[source][1:]
+#         if "(" in selections[0]:  # magnetization not allowed for tau
+#             return
 
 
 def test_to_numpy(reference_density, Assert):
