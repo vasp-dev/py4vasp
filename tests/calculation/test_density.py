@@ -305,6 +305,7 @@ def test_collinear_to_contour(selection, collinear_density, Assert):
     Assert.allclose(series.data, expected_data)
     Assert.allclose(series.lattice, expected_lattice)
     assert series.label == expected_label
+    assert series.isolevels
 
 
 @pytest.mark.parametrize(

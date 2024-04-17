@@ -38,6 +38,8 @@ class Contour(trace.Trace):
     have two components, so remove any element normal to the plane."""
     label: str
     "Assign a label to the visualization that may be used to identify one among multiple plots."
+    isolevels: bool = False
+    "Defines whether isolevels should be added or a heatmap is used."
     supercell: np.array = (1, 1)
     "Multiple of each lattice vector to be drawn."
     show_cell: bool = True
@@ -47,21 +49,35 @@ class Contour(trace.Trace):
         lattice_supercell = np.diag(self.supercell) @ self.lattice
         # swap a and b axes because that is the way plotly expects the data
         data = np.tile(self.data, self.supercell).T
-        if self._is_heatmap():
+        if self._is_contour():
+            yield self._make_contour(lattice_supercell, data)
+        elif self._is_heatmap():
             yield self._make_heatmap(lattice_supercell, data)
         else:
             yield self._make_quiver(lattice_supercell, data)
 
+    def _is_contour(self):
+        return self.data.ndim == 2 and self.isolevels
+
     def _is_heatmap(self):
-        return self.data.ndim == 2
+        return self.data.ndim == 2 and not self.isolevels
+
+    def _make_contour(self, lattice, data):
+        x, y, z = self._interpolate_data_if_necessary(lattice, data)
+        contour = go.Contour(x=x, y=y, z=z, name=self.label, autocontour=True)
+        return contour, self._options()
 
     def _make_heatmap(self, lattice, data):
+        x, y, z = self._interpolate_data_if_necessary(lattice, data)
+        heatmap = go.Heatmap(x=x, y=y, z=z, name=self.label, colorscale="turbid_r")
+        return heatmap, self._options()
+
+    def _interpolate_data_if_necessary(self, lattice, data):
         if self._interpolation_required():
             x, y, z = self._interpolate_data(lattice, data)
         else:
             x, y, z = self._use_data_without_interpolation(lattice, data)
-        heatmap = go.Heatmap(x=x, y=y, z=z, name=self.label, colorscale="turbid_r")
-        return heatmap, self._options()
+        return x, y, z
 
     def _interpolation_required(self):
         return not np.allclose((self.lattice[1, 0], self.lattice[0, 1]), 0)

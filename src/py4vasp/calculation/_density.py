@@ -309,7 +309,7 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         density = selector[selection].T
         data = slicing.grid_data(density, cut, fraction)
         label = self._label(selector.label(selection)) or "charge"
-        contour = graph.Contour(data, lattice, label)
+        contour = graph.Contour(data, lattice, label, isolevels=True)
         if supercell is not None:
             contour.supercell = np.ones(2, dtype=np.int_) * supercell
         return contour

@@ -68,6 +68,7 @@ def rectangle_contour():
         data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
         lattice=np.diag([4.0, 3.6]),
         label="rectangle contour",
+        isolevels=True,
     )
 
 
@@ -435,11 +436,7 @@ def test_contour(rectangle_contour, Assert, not_core):
     Assert.allclose(fig.data[0].x, np.linspace(0, 4, 20, endpoint=False) + 0.1)
     Assert.allclose(fig.data[0].y, np.linspace(0, 3.6, 18, endpoint=False) + 0.1)
     assert fig.data[0].name == rectangle_contour.label
-    expected_colorscale = px.colors.get_colorscale("turbid_r")
-    assert len(fig.data[0].colorscale) == len(expected_colorscale)
-    for actual, expected in zip(fig.data[0].colorscale, expected_colorscale):
-        Assert.allclose(actual[0], expected[0])
-        assert actual[1] == expected[1]
+    assert fig.data[0].autocontour
     # text explicitly that it is False to prevent None passing the test
     assert fig.layout.xaxis.visible == False
     assert fig.layout.yaxis.visible == False
@@ -468,7 +465,7 @@ def check_unit_cell(unit_cell, x, y, zero):
     assert unit_cell.line.color == _config.VASP_GRAY
 
 
-def test_contour_interpolate(tilted_contour, not_core):
+def test_contour_interpolate(tilted_contour, Assert, not_core):
     graph = Graph(tilted_contour)
     fig = graph.to_plotly()
     area_cell = 12.0
@@ -485,6 +482,11 @@ def test_contour_interpolate(tilted_contour, not_core):
     finite = np.isfinite(fig.data[0].z)
     assert np.isclose(np.average(fig.data[0].z[finite]), expected_average)
     assert len(fig.layout.shapes) == 0
+    expected_colorscale = px.colors.get_colorscale("turbid_r")
+    assert len(fig.data[0].colorscale) == len(expected_colorscale)
+    for actual, expected in zip(fig.data[0].colorscale, expected_colorscale):
+        Assert.allclose(actual[0], expected[0])
+        assert actual[1] == expected[1]
 
 
 def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
