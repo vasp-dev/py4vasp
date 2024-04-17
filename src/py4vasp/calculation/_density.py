@@ -290,9 +290,11 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         return component > 0
 
     @_base.data_access
-    def to_contour(self, selection=None, *, a=None, b=None, c=None, supercell=None):
+    def to_contour(
+        self, selection=None, *, a=None, b=None, c=None, supercell=None, normal=None
+    ):
         cut, fraction = self._get_cut(a, b, c)
-        lattice = slicing.plane(self._structure.lattice_vectors(), cut, normal=None)
+        lattice = slicing.plane(self._structure.lattice_vectors(), cut, normal)
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_data.charge)
         tree = select.Tree.from_selection(selection)

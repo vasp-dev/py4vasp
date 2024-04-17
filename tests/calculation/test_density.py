@@ -350,6 +350,30 @@ def test_to_contour_supercell(nonpolarized_density, Assert):
     Assert.allclose(graph.series[0].supercell, (2, 1))
 
 
+def test_raise_error_if_normal_not_reasonable(nonpolarized_density):
+    with pytest.raises(exception.IncorrectUsage):
+        # cell is not close to cartesian vectors
+        nonpolarized_density.to_contour(a=0, normal="auto")
+    with pytest.raises(exception.IncorrectUsage):
+        nonpolarized_density.to_contour(a=0, normal="unknown choice")
+
+
+@pytest.mark.parametrize(
+    "normal, rotation",
+    [
+        ("auto", np.eye(2)),
+        ("x", np.array([[0, -1], [1, 0]])),
+        ("y", np.diag((1, -1))),
+        ("z", np.eye(2)),
+    ],
+)
+def test_to_contour_normal_vector(collinear_density, normal, rotation, Assert):
+    graph = collinear_density.to_contour(c=0.5, normal=normal)
+    lattice_vectors = collinear_density.ref.structure.lattice_vectors()
+    expected_lattice = lattice_vectors[:2, :2] @ rotation
+    Assert.allclose(graph.series[0].lattice, expected_lattice)
+
+
 def test_to_numpy(reference_density, Assert):
     source = reference_density.ref.source
     if source == "charge":
