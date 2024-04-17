@@ -290,7 +290,7 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         return component > 0
 
     @_base.data_access
-    def to_contour(self, selection=None, *, a=None, b=None, c=None):
+    def to_contour(self, selection=None, *, a=None, b=None, c=None, supercell=None):
         cut, fraction = self._get_cut(a, b, c)
         lattice = slicing.plane(self._structure.lattice_vectors(), cut, normal=None)
         map_ = self._create_map()
@@ -298,16 +298,19 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         tree = select.Tree.from_selection(selection)
         selections = self._filter_noncollinear_magnetization_from_selections(tree)
         contours = [
-            self._contour(selector, selection, cut, fraction, lattice)
+            self._contour(selector, selection, cut, fraction, lattice, supercell)
             for selection in selections
         ]
         return graph.Graph(contours)
 
-    def _contour(self, selector, selection, cut, fraction, lattice):
+    def _contour(self, selector, selection, cut, fraction, lattice, supercell):
         density = selector[selection].T
         data = slicing.grid_data(density, cut, fraction)
         label = self._label(selector.label(selection)) or "charge"
-        return graph.Contour(data, lattice, label)
+        contour = graph.Contour(data, lattice, label)
+        if supercell is not None:
+            contour.supercell = np.ones(2, dtype=np.int_) * supercell
+        return contour
 
     def _get_cut(self, a, b, c):
         _raise_error_cut_selection_incorrect(a, b, c)

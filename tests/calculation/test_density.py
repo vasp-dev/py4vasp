@@ -343,6 +343,13 @@ def test_noncollinear_to_contour(noncollinear_density, selections, Assert):
         assert series.label == label
 
 
+def test_to_contour_supercell(nonpolarized_density, Assert):
+    graph = nonpolarized_density.to_contour(a=0, supercell=2)
+    Assert.allclose(graph.series[0].supercell, (2, 2))
+    graph = nonpolarized_density.to_contour(a=0, supercell=(2, 1))
+    Assert.allclose(graph.series[0].supercell, (2, 1))
+
+
 def test_to_numpy(reference_density, Assert):
     source = reference_density.ref.source
     if source == "charge":
