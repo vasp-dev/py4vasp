@@ -292,18 +292,22 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
     @_base.data_access
     def to_contour(self, selection=None, *, a=None, b=None, c=None):
         cut, fraction = self._get_cut(a, b, c)
+        lattice = slicing.plane(self._structure.lattice_vectors(), cut, normal=None)
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_data.charge)
         tree = select.Tree.from_selection(selection)
-        for selection in tree.selections():
-            density = selector[selection].T
-            break
-        print(density.shape)
+        selections = self._filter_noncollinear_magnetization_from_selections(tree)
+        contours = [
+            self._contour(selector, selection, cut, fraction, lattice)
+            for selection in selections
+        ]
+        return graph.Graph(contours)
+
+    def _contour(self, selector, selection, cut, fraction, lattice):
+        density = selector[selection].T
         data = slicing.grid_data(density, cut, fraction)
-        lattice = slicing.plane(self._structure.lattice_vectors(), cut, normal=None)
         label = self._label(selector.label(selection)) or "charge"
-        contour = graph.Contour(data, lattice, label)
-        return graph.Graph(contour)
+        return graph.Contour(data, lattice, label)
 
     def _get_cut(self, a, b, c):
         _raise_error_cut_selection_incorrect(a, b, c)
