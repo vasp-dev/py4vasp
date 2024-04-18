@@ -473,7 +473,7 @@ def check_annotations(lattice, annotations, Assert):
     for vector, label, annotation in zip(lattice.vectors, lattice.labels, annotations):
         assert annotation.showarrow == False
         assert annotation.text == label
-        Assert.allclose((annotation.x, annotation.y), vector)
+        Assert.allclose((annotation.x, annotation.y), 0.5 * vector)
         expected_shift = sign * 10 * vector[::-1] / np.linalg.norm(vector)
         Assert.allclose((annotation.xshift, -annotation.yshift), expected_shift)
         sign *= -1

@@ -154,8 +154,8 @@ class Contour(trace.Trace):
             {
                 "text": label,
                 "showarrow": False,
-                "x": vectors[i, 0],
-                "y": vectors[i, 1],
+                "x": 0.5 * vectors[i, 0],
+                "y": 0.5 * vectors[i, 1],
                 **self._shift_label(vectors[i], vectors[1 - i]),
             }
             for i, label in enumerate(self.lattice.labels)
