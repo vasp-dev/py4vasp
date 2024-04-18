@@ -375,6 +375,17 @@ def test_to_contour_normal_vector(collinear_density, normal, rotation, Assert):
     Assert.allclose(graph.series[0].lattice, expected_lattice)
 
 
+def test_to_contour_operation(collinear_density, Assert):
+    graph = collinear_density.to_contour("0 - 3", c=0)
+    source = collinear_density.ref.source
+    output = collinear_density.ref.output
+    if source == "charge":
+        expected_data = output["charge"][:, :, 0] - output["magnetization"][:, :, 0]
+    else:
+        expected_data = output[source][0, :, :, 0] - output[source][1, :, :, 0]
+    Assert.allclose(graph.series[0].data, expected_data)
+
+
 def test_to_numpy(reference_density, Assert):
     source = reference_density.ref.source
     if source == "charge":
