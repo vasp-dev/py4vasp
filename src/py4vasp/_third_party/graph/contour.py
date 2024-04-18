@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from __future__ import annotations
+
 import dataclasses
 import itertools
 
@@ -24,16 +26,18 @@ class Contour(trace.Trace):
     each data point should be a 2d vector within the plane.
     """
 
-    interpolation_factor = 2
+    _interpolation_factor = 2
     """If the lattice does not align with the cartesian axes, the data is interpolated
     to by approximately this factor along each line."""
+    _shift_label_pixels = 10
+    "Shift the labels by this many pixels to avoid overlap."
 
     data: np.array
     """2d or 3d grid data in the plane spanned by the lattice vectors. If the data is
     the dimensions should be the ones of the grid, if the data is 3d the first dimension
     should be a 2 for a vector in the plane of the grid and the other two dimensions
     should be the grid."""
-    lattice: np.array
+    lattice: Lattice
     """2 vectors spanning the plane in which the data is represented. Each vector should
     have two components, so remove any element normal to the plane."""
     label: str
@@ -46,15 +50,15 @@ class Contour(trace.Trace):
     "Show the unit cell in the resulting visualization."
 
     def to_plotly(self):
-        lattice_supercell = np.diag(self.supercell) @ self.lattice
+        lattice_supercell = np.diag(self.supercell) @ self.lattice.vectors
         # swap a and b axes because that is the way plotly expects the data
         data = np.tile(self.data, self.supercell).T
         if self._is_contour():
-            yield self._make_contour(lattice_supercell, data)
+            yield self._make_contour(lattice_supercell, data), self._options()
         elif self._is_heatmap():
-            yield self._make_heatmap(lattice_supercell, data)
+            yield self._make_heatmap(lattice_supercell, data), self._options()
         else:
-            yield self._make_quiver(lattice_supercell, data)
+            yield self._make_quiver(lattice_supercell, data), self._options()
 
     def _is_contour(self):
         return self.data.ndim == 2 and self.isolevels
@@ -64,13 +68,23 @@ class Contour(trace.Trace):
 
     def _make_contour(self, lattice, data):
         x, y, z = self._interpolate_data_if_necessary(lattice, data)
-        contour = go.Contour(x=x, y=y, z=z, name=self.label, autocontour=True)
-        return contour, self._options()
+        return go.Contour(x=x, y=y, z=z, name=self.label, autocontour=True)
 
     def _make_heatmap(self, lattice, data):
         x, y, z = self._interpolate_data_if_necessary(lattice, data)
-        heatmap = go.Heatmap(x=x, y=y, z=z, name=self.label, colorscale="turbid_r")
-        return heatmap, self._options()
+        return go.Heatmap(x=x, y=y, z=z, name=self.label, colorscale="turbid_r")
+
+    def _make_quiver(self, lattice, data):
+        u = data[:, :, 0].flatten()
+        v = data[:, :, 1].flatten()
+        meshes = [
+            np.linspace(np.zeros(2), vector, num_points, endpoint=False)
+            for vector, num_points in zip(reversed(lattice), data.shape)
+            # remember that b and a axis are swapped
+        ]
+        x, y = np.array([sum(points) for points in itertools.product(*meshes)]).T
+        fig = ff.create_quiver(x, y, u, v, scale=1)
+        return fig.data[0]
 
     def _interpolate_data_if_necessary(self, lattice, data):
         if self._interpolation_required():
@@ -80,12 +94,14 @@ class Contour(trace.Trace):
         return x, y, z
 
     def _interpolation_required(self):
-        return not np.allclose((self.lattice[1, 0], self.lattice[0, 1]), 0)
+        y_position_first_vector = self.lattice.vectors[0, 1]
+        x_position_second_vector = self.lattice.vectors[1, 0]
+        return not np.allclose((y_position_first_vector, x_position_second_vector), 0)
 
     def _interpolate_data(self, lattice, data):
         area_cell = abs(np.cross(lattice[0], lattice[1]))
         points_per_area = data.size / area_cell
-        points_per_line = np.sqrt(points_per_area) * self.interpolation_factor
+        points_per_line = np.sqrt(points_per_area) * self._interpolation_factor
         lengths = np.sum(np.abs(lattice), axis=0)
         shape = np.ceil(points_per_line * lengths).astype(int)
         line_mesh_a = self._make_mesh(lattice, data.shape[1], 0)
@@ -114,23 +130,48 @@ class Contour(trace.Trace):
         )
 
     def _options(self):
+        return {
+            "shapes": self._create_unit_cell(),
+            "annotations": self._label_unit_cell_vectors(),
+        }
+
+    def _create_unit_cell(self):
         if not self.show_cell:
-            return {}
+            return ()
         pos_to_str = lambda pos: f"{pos[0]} {pos[1]}"
-        corners = (self.lattice[0], self.lattice[0] + self.lattice[1], self.lattice[1])
+        vectors = self.lattice.vectors
+        corners = (vectors[0], vectors[0] + vectors[1], vectors[1])
         to_corners = (f"L {pos_to_str(corner)}" for corner in corners)
         path = f"M 0 0 {' '.join(to_corners)} Z"
         unit_cell = {"type": "path", "line": {"color": _config.VASP_GRAY}, "path": path}
-        return {"shapes": [unit_cell]}
+        return (unit_cell,)
 
-    def _make_quiver(self, lattice, data):
-        u = data[:, :, 0].flatten()
-        v = data[:, :, 1].flatten()
-        meshes = [
-            np.linspace(np.zeros(2), vector, num_points, endpoint=False)
-            for vector, num_points in zip(reversed(lattice), data.shape)
-            # remember that b and a axis are swapped
+    def _label_unit_cell_vectors(self):
+        if self.lattice.labels is None:
+            return []
+        vectors = self.lattice.vectors
+        return [
+            {
+                "text": label,
+                "showarrow": False,
+                "x": vectors[i, 0],
+                "y": vectors[i, 1],
+                **self._shift_label(vectors[i], vectors[1 - i]),
+            }
+            for i, label in enumerate(self.lattice.labels)
         ]
-        x, y = np.array([sum(points) for points in itertools.product(*meshes)]).T
-        fig = ff.create_quiver(x, y, u, v, scale=1)
-        return fig.data[0], self._options()
+
+    def _shift_label(self, current_vector, other_vector):
+        invert = np.cross(current_vector, other_vector) < 0
+        norm = np.linalg.norm(current_vector)
+        shifts = self._shift_label_pixels * current_vector[::-1] / norm
+        if invert:
+            return {
+                "xshift": -shifts[0],
+                "yshift": shifts[1],
+            }
+        else:
+            return {
+                "xshift": shifts[0],
+                "yshift": -shifts[1],
+            }

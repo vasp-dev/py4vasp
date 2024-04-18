@@ -8,7 +8,7 @@ import pytest
 
 from py4vasp import _config, exception
 from py4vasp._third_party.graph import Contour, Graph, Series
-from py4vasp._util import import_
+from py4vasp._util import import_, slicing
 
 px = import_.optional("plotly.express")
 
@@ -66,7 +66,7 @@ def subplot():
 def rectangle_contour():
     return Contour(
         data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
-        lattice=np.diag([4.0, 3.6]),
+        lattice=slicing.Lattice(np.diag([4.0, 3.6]), ("a", "b")),
         label="rectangle contour",
         isolevels=True,
     )
@@ -76,7 +76,7 @@ def rectangle_contour():
 def tilted_contour():
     return Contour(
         data=np.linspace(0, 5, 16 * 20).reshape((16, 20)),
-        lattice=np.array([[2, 3], [2, -3]]),
+        lattice=slicing.Lattice(np.array([[2, 3], [2, -3]]), ("a", "c")),
         label="tilted contour",
         supercell=(2, 1),
         show_cell=False,
@@ -87,7 +87,7 @@ def tilted_contour():
 def simple_quiver():
     return Contour(
         data=np.array([[(y, x) for x in range(3)] for y in range(5)]).T,
-        lattice=np.diag((3, 5)),
+        lattice=slicing.Lattice(np.diag((3, 5)), ("b", "c")),
         label="quiver plot",
     )
 
@@ -96,7 +96,7 @@ def simple_quiver():
 def complex_quiver():
     return Contour(
         data=np.linspace(-3, 3, 2 * 12 * 10).reshape((2, 12, 10)),
-        lattice=np.array([[3, 2], [-3, 2]]),
+        lattice=slicing.Lattice([[3, 2], [-3, 2]], None),
         label="quiver plot",
         supercell=(3, 2),
     )
@@ -442,10 +442,11 @@ def test_contour(rectangle_contour, Assert, not_core):
     assert fig.layout.yaxis.visible == False
     assert len(fig.layout.shapes) == 1
     check_unit_cell(fig.layout.shapes[0], x="4.0", y="3.6", zero="0.0")
+    check_annotations(rectangle_contour.lattice, fig.layout.annotations, Assert)
     assert fig.layout.yaxis.scaleanchor == "x"
 
 
-def test_contour_supercell(rectangle_contour, not_core):
+def test_contour_supercell(rectangle_contour, Assert, not_core):
     supercell = np.asarray((3, 5))
     rectangle_contour.supercell = supercell
     graph = Graph(rectangle_contour)
@@ -457,6 +458,7 @@ def test_contour_supercell(rectangle_contour, not_core):
     assert len(fig.data[0].y) == 90
     assert len(fig.layout.shapes) == 1
     check_unit_cell(fig.layout.shapes[0], x="4.0", y="3.6", zero="0.0")
+    check_annotations(rectangle_contour.lattice, fig.layout.annotations, Assert)
 
 
 def check_unit_cell(unit_cell, x, y, zero):
@@ -465,12 +467,24 @@ def check_unit_cell(unit_cell, x, y, zero):
     assert unit_cell.line.color == _config.VASP_GRAY
 
 
+def check_annotations(lattice, annotations, Assert):
+    assert len(lattice.labels) == len(annotations)
+    sign = np.sign(np.cross(*lattice.vectors))
+    for vector, label, annotation in zip(lattice.vectors, lattice.labels, annotations):
+        assert annotation.showarrow == False
+        assert annotation.text == label
+        Assert.allclose((annotation.x, annotation.y), vector)
+        expected_shift = sign * 10 * vector[::-1] / np.linalg.norm(vector)
+        Assert.allclose((annotation.xshift, -annotation.yshift), expected_shift)
+        sign *= -1
+
+
 def test_contour_interpolate(tilted_contour, Assert, not_core):
     graph = Graph(tilted_contour)
     fig = graph.to_plotly()
     area_cell = 12.0
     points_per_area = tilted_contour.data.size / area_cell
-    points_per_line = np.sqrt(points_per_area) * tilted_contour.interpolation_factor
+    points_per_line = np.sqrt(points_per_area) * tilted_contour._interpolation_factor
     lengths = np.array([6, 9])  # this accounts for the 2 x 1 supercell
     expected_shape = np.ceil(points_per_line * lengths).astype(int)
     expected_average = np.average(tilted_contour.data)
@@ -487,6 +501,7 @@ def test_contour_interpolate(tilted_contour, Assert, not_core):
     for actual, expected in zip(fig.data[0].colorscale, expected_colorscale):
         Assert.allclose(actual[0], expected[0])
         assert actual[1] == expected[1]
+    check_annotations(tilted_contour.lattice, fig.layout.annotations, Assert)
 
 
 def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
@@ -510,6 +525,7 @@ def test_simple_quiver(simple_quiver, Assert, not_core):
         Assert.allclose(y, u)
     assert len(fig.layout.shapes) == 1
     check_unit_cell(fig.layout.shapes[0], x="3", y="5", zero="0")
+    check_annotations(simple_quiver.lattice, fig.layout.annotations, Assert)
     assert fig.layout.yaxis.scaleanchor == "x"
 
 
@@ -517,9 +533,10 @@ def test_complex_quiver(complex_quiver, Assert, not_core):
     graph = Graph(complex_quiver)
     fig = graph.to_plotly()
     data_size = np.prod(complex_quiver.supercell) * complex_quiver.data.size // 2
-    step_a = complex_quiver.lattice[0] / complex_quiver.data.shape[1]
+    vectors = np.array(complex_quiver.lattice.vectors)
+    step_a = vectors[0] / complex_quiver.data.shape[1]
     mesh_a = np.arange(complex_quiver.supercell[0] * complex_quiver.data.shape[1])
-    step_b = complex_quiver.lattice[1] / complex_quiver.data.shape[2]
+    step_b = vectors[1] / complex_quiver.data.shape[2]
     mesh_b = np.arange(complex_quiver.supercell[1] * complex_quiver.data.shape[2])
     expected_positions = np.array(
         [a * step_a + b * step_b for b in mesh_b for a in mesh_a]
@@ -534,6 +551,7 @@ def test_complex_quiver(complex_quiver, Assert, not_core):
     Assert.allclose(actual.positions, expected_positions, tolerance=10)
     Assert.allclose(actual.tips, expected_tips, tolerance=10)
     Assert.allclose(actual.barb_length, expected_barb_length)
+    assert len(fig.layout.annotations) == 0
 
 
 @dataclasses.dataclass

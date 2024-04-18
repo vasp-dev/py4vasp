@@ -270,7 +270,7 @@ def test_contour_of_charge(nonpolarized_density, kwargs, index, position, Assert
     lattice_vectors = nonpolarized_density.ref.structure.lattice_vectors()
     lattice_vectors = np.delete(lattice_vectors, index, axis=0)
     expected_products = lattice_vectors @ lattice_vectors.T
-    actual_products = series.lattice @ series.lattice.T
+    actual_products = series.lattice.vectors @ series.lattice.vectors.T
     Assert.allclose(actual_products, expected_products)
     assert series.label == "charge"
 
@@ -303,7 +303,7 @@ def test_collinear_to_contour(selection, collinear_density, Assert):
     assert len(graph) == 1
     series = graph.series[0]
     Assert.allclose(series.data, expected_data)
-    Assert.allclose(series.lattice, expected_lattice)
+    Assert.allclose(series.lattice.vectors, expected_lattice)
     assert series.label == expected_label
     assert series.isolevels
 
@@ -340,7 +340,7 @@ def test_noncollinear_to_contour(noncollinear_density, selections, Assert):
     assert len(graph) == len(expected_data)
     for density, label, series in zip(expected_data, expected_labels, graph.series):
         Assert.allclose(series.data, density)
-        Assert.allclose(series.lattice, expected_lattice)
+        Assert.allclose(series.lattice.vectors, expected_lattice)
         assert series.label == label
 
 
@@ -372,7 +372,7 @@ def test_to_contour_normal_vector(collinear_density, normal, rotation, Assert):
     graph = collinear_density.to_contour(c=0.5, normal=normal)
     lattice_vectors = collinear_density.ref.structure.lattice_vectors()
     expected_lattice = lattice_vectors[:2, :2] @ rotation
-    Assert.allclose(graph.series[0].lattice, expected_lattice)
+    Assert.allclose(graph.series[0].lattice.vectors, expected_lattice)
 
 
 def test_to_contour_operation(collinear_density, Assert):

@@ -1,11 +1,23 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
+
 import numpy as np
 
 from py4vasp import exception
 
 INDICES = {"a": 0, "b": 1, "c": 2}
 AXIS = ("x", "y", "z")
+
+
+@dataclasses.dataclass
+class Lattice:
+    "Stores the 2d lattice vectors and their labels"
+    vectors: np.array
+    "Vectors spanning the plane."
+    labels: tuple = None
+    """Labels that could be added to the lattice vectors e.g. in a plot. If set to None
+    no labels are added."""
 
 
 def grid_data(data, cut, fraction):
@@ -80,10 +92,11 @@ def plane(cell, cut, normal="auto"):
     """
     _raise_error_if_cut_unknown(cut)
     vectors = np.delete(cell, INDICES[cut], axis=0)
+    labels = tuple("abc".replace(cut, ""))
     if normal is not None:
-        return _rotate_normal_to_cartesian_axis(vectors, normal)
+        return Lattice(_rotate_normal_to_cartesian_axis(vectors, normal), labels)
     else:
-        return _rotate_first_vector_to_x_axis(vectors)
+        return Lattice(_rotate_first_vector_to_x_axis(vectors), labels)
 
 
 def _rotate_first_vector_to_x_axis(vectors):
