@@ -386,6 +386,25 @@ def test_to_contour_operation(collinear_density, Assert):
     Assert.allclose(graph.series[0].data, expected_data)
 
 
+def test_collinear_to_quiver(collinear_density, Assert):
+    source = collinear_density.ref.source
+    if source == "charge":
+        expected_label = "magnetization"
+        expected_data = collinear_density.ref.output["magnetization"][8]
+    else:
+        expected_label = source
+        expected_data = collinear_density.ref.output[source][1, 8]
+    expected_data = np.array((np.zeros_like(expected_data), expected_data))
+    lattice_vectors = collinear_density.ref.structure.lattice_vectors()[1:]
+    expected_lattice = np.diag(np.linalg.norm(lattice_vectors, axis=1))
+    graph = collinear_density.to_quiver(a=-0.2)
+    assert len(graph) == 1
+    series = graph.series[0]
+    Assert.allclose(series.data, expected_data)
+    Assert.allclose(series.lattice.vectors, expected_lattice)
+    assert series.label == expected_label
+
+
 def test_to_numpy(reference_density, Assert):
     source = reference_density.ref.source
     if source == "charge":

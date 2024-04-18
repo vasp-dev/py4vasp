@@ -307,12 +307,22 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
 
     def _contour(self, selector, selection, cut, fraction, lattice, supercell):
         density = selector[selection].T
-        data = slicing.grid_data(density, cut, fraction)
+        data = slicing.grid_scalar(density, cut, fraction)
         label = self._label(selector.label(selection)) or "charge"
         contour = graph.Contour(data, lattice, label, isolevels=True)
         if supercell is not None:
             contour.supercell = np.ones(2, dtype=np.int_) * supercell
         return contour
+
+    @_base.data_access
+    def to_quiver(self, *, a=None):
+        cut, fraction = self._get_cut(a, b=None, c=None)
+        data = slicing.grid_scalar(self._raw_data.charge[1].T, cut, fraction)
+        data = np.array((np.zeros_like(data), data))
+        lattice = slicing.plane(self._structure.lattice_vectors(), cut, normal=None)
+        label = self._selection or "magnetization"
+        quiver_plots = [graph.Contour(data, lattice, label)]
+        return graph.Graph(quiver_plots)
 
     def _get_cut(self, a, b, c):
         _raise_error_cut_selection_incorrect(a, b, c)

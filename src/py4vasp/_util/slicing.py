@@ -20,7 +20,7 @@ class Lattice:
     no labels are added."""
 
 
-def grid_data(data, cut, fraction):
+def grid_scalar(data, cut, fraction):
     """Takes a 2d slice of a 3d grid data.
 
     Often, we want to generate a 2d slice of a 3d data on a grid. One example would be
