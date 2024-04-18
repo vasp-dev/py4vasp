@@ -143,7 +143,7 @@ class Contour(trace.Trace):
         corners = (vectors[0], vectors[0] + vectors[1], vectors[1])
         to_corners = (f"L {pos_to_str(corner)}" for corner in corners)
         path = f"M 0 0 {' '.join(to_corners)} Z"
-        unit_cell = {"type": "path", "line": {"color": _config.VASP_GRAY}, "path": path}
+        unit_cell = {"type": "path", "line": {"color": _config.VASP_DARK}, "path": path}
         return (unit_cell,)
 
     def _label_unit_cell_vectors(self):
