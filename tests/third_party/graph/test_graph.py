@@ -66,7 +66,7 @@ def subplot():
 def rectangle_contour():
     return Contour(
         data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
-        lattice=slicing.Lattice(np.diag([4.0, 3.6]), ("a", "b")),
+        lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
         label="rectangle contour",
         isolevels=True,
     )
@@ -76,7 +76,7 @@ def rectangle_contour():
 def tilted_contour():
     return Contour(
         data=np.linspace(0, 5, 16 * 20).reshape((16, 20)),
-        lattice=slicing.Lattice(np.array([[2, 3], [2, -3]]), ("a", "c")),
+        lattice=slicing.Plane(np.array([[2, 3], [2, -3]]), cut="b"),
         label="tilted contour",
         supercell=(2, 1),
         show_cell=False,
@@ -87,7 +87,7 @@ def tilted_contour():
 def simple_quiver():
     return Contour(
         data=np.array([[(y, x) for x in range(3)] for y in range(5)]).T,
-        lattice=slicing.Lattice(np.diag((3, 5)), ("b", "c")),
+        lattice=slicing.Plane(np.diag((3, 5)), cut="a"),
         label="quiver plot",
     )
 
@@ -96,7 +96,7 @@ def simple_quiver():
 def complex_quiver():
     return Contour(
         data=np.linspace(-3, 3, 2 * 12 * 10).reshape((2, 12, 10)),
-        lattice=slicing.Lattice([[3, 2], [-3, 2]], None),
+        lattice=slicing.Plane([[3, 2], [-3, 2]]),  # cut not set
         label="quiver plot",
         supercell=(3, 2),
     )
@@ -468,9 +468,10 @@ def check_unit_cell(unit_cell, x, y, zero):
 
 
 def check_annotations(lattice, annotations, Assert):
-    assert len(lattice.labels) == len(annotations)
+    assert len(lattice.vectors) == len(annotations)
     sign = np.sign(np.cross(*lattice.vectors))
-    for vector, label, annotation in zip(lattice.vectors, lattice.labels, annotations):
+    labels = "abc".replace(lattice.cut, "")
+    for vector, label, annotation in zip(lattice.vectors, labels, annotations):
         assert annotation.showarrow == False
         assert annotation.text == label
         Assert.allclose((annotation.x, annotation.y), 0.5 * vector)

@@ -11,16 +11,16 @@ AXIS = ("x", "y", "z")
 
 
 @dataclasses.dataclass
-class Lattice:
-    "Stores the 2d lattice vectors and their labels"
+class Plane:
+    """Defines a plane in 2d produced from cutting the 3d unit cell by removing one
+    lattice vector."""
     vectors: np.array
-    "Vectors spanning the plane."
-    labels: tuple = None
-    """Labels that could be added to the lattice vectors e.g. in a plot. If set to None
-    no labels are added."""
+    "2d vectors spanning the plane."
+    cut: str = None
+    "Lattice vector cut to get the plane, if not set, no labels will be added"
 
 
-def grid_scalar(data, cut, fraction):
+def grid_scalar(data, plane, fraction):
     """Takes a 2d slice of a 3d grid data.
 
     Often, we want to generate a 2d slice of a 3d data on a grid. One example would be
@@ -31,8 +31,8 @@ def grid_scalar(data, cut, fraction):
     ----------
     data : np.ndarray
         3d data on a grid from which a 2d plane is extracted.
-    cut : str
-        Defines along which dimension of the grid to cut (either "a", "b", or "c").
+    plane : Plane
+        Defines the 2d plane to which the data is reduced.
     fraction : float
         Determines which plane of the grid data is used. Periodic boundaries are assumed.
 
@@ -42,8 +42,8 @@ def grid_scalar(data, cut, fraction):
         A 2d array where the dimension selected by cut has been removed by selecting
         the plane according to the specificied fraction.
     """
-    _raise_error_if_cut_unknown(cut)
-    index = INDICES[cut]
+    _raise_error_if_cut_unknown(plane.cut)
+    index = INDICES[plane.cut]
     length = data.shape[index]
     slice_ = [slice(None), slice(None), slice(None)]
     slice_[index] = np.round(length * fraction).astype(np.int_) % length
@@ -87,16 +87,15 @@ def plane(cell, cut, normal="auto"):
 
     Returns
     -------
-    np.ndarray
-        A 2 × 2 array defining the two lattice vectors spanning the plane.
+    Plane
+        A 2d representation of the plane with some information to transform data to it.
     """
     _raise_error_if_cut_unknown(cut)
     vectors = np.delete(cell, INDICES[cut], axis=0)
-    labels = tuple("abc".replace(cut, ""))
     if normal is not None:
-        return Lattice(_rotate_normal_to_cartesian_axis(vectors, normal), labels)
+        return Plane(_rotate_normal_to_cartesian_axis(vectors, normal), cut)
     else:
-        return Lattice(_rotate_first_vector_to_x_axis(vectors), labels)
+        return Plane(_rotate_first_vector_to_x_axis(vectors), cut)
 
 
 def _rotate_first_vector_to_x_axis(vectors):

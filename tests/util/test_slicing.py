@@ -13,7 +13,7 @@ def test_orthorhombic(cut, index, Assert):
     expected_plane = np.delete(np.delete(cell, index, axis=0), index, axis=1)
     actual_plane = slicing.plane(cell, cut)
     Assert.allclose(actual_plane.vectors, expected_plane)
-    assert all(actual_plane.labels == np.delete(("a", "b", "c"), index))
+    assert actual_plane.cut == cut
 
 
 @pytest.mark.parametrize("cut, indices", [("a", (0, 2)), ("b", (1, 0)), ("c", (2, 1))])
@@ -22,7 +22,7 @@ def test_unusual_orthorhombic(cut, indices, Assert):
     expected_plane = np.delete(np.delete(cell, indices[0], axis=0), indices[1], axis=1)
     actual_plane = slicing.plane(cell, cut)
     Assert.allclose(actual_plane.vectors, expected_plane)
-    assert all(actual_plane.labels == np.delete(("a", "b", "c"), indices[0]))
+    assert actual_plane.cut == cut
 
 
 @pytest.mark.parametrize("cut, index", [("a", 0), ("b", 1), ("c", 2)])
@@ -63,7 +63,7 @@ def test_normal_with_orthonormal_cell(normal, rotation, Assert):
     expected_plane = np.dot(np.delete(np.delete(cell, 0, axis=0), 0, axis=1), rotation)
     actual_plane = slicing.plane(cell, "a", normal)
     Assert.allclose(actual_plane.vectors, expected_plane)
-    assert actual_plane.labels == ("b", "c")
+    assert actual_plane.cut == "a"
 
 
 @pytest.mark.parametrize("cut, diagonal", [("a", [4, 5]), ("b", [3, 5]), ("c", [3, 4])])
@@ -110,7 +110,8 @@ def test_slice_grid_scalar(cut, fraction, Assert):
     else:
         index = np.round(fraction * 14).astype(np.int_) % 14
         expected_data = grid_scalar[:, :, index]
-    actual_data = slicing.grid_scalar(grid_scalar, cut, fraction)
+    plane = slicing.Plane(vectors=None, cut=cut)  # vectors should not be necessary
+    actual_data = slicing.grid_scalar(grid_scalar, plane, fraction)
     Assert.allclose(actual_data, expected_data)
 
 

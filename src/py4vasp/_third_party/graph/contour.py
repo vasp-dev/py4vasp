@@ -147,9 +147,10 @@ class Contour(trace.Trace):
         return (unit_cell,)
 
     def _label_unit_cell_vectors(self):
-        if self.lattice.labels is None:
+        if self.lattice.cut is None:
             return []
         vectors = self.lattice.vectors
+        labels = tuple("abc".replace(self.lattice.cut, ""))
         return [
             {
                 "text": label,
@@ -158,7 +159,7 @@ class Contour(trace.Trace):
                 "y": 0.5 * vectors[i, 1],
                 **self._shift_label(vectors[i], vectors[1 - i]),
             }
-            for i, label in enumerate(self.lattice.labels)
+            for i, label in enumerate(labels)
         ]
 
     def _shift_label(self, current_vector, other_vector):
