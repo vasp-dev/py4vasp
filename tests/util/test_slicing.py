@@ -52,6 +52,7 @@ def test_rotate_to_user_defined_axis(normal, expected_plane, Assert):
     cell = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
     actual_plane = slicing.plane(cell, "a", normal)
     Assert.allclose(actual_plane.vectors, expected_plane)
+    Assert.allclose(actual_plane.cell, cell)
 
 
 @pytest.mark.parametrize(
@@ -63,6 +64,7 @@ def test_normal_with_orthonormal_cell(normal, rotation, Assert):
     expected_plane = np.dot(np.delete(np.delete(cell, 0, axis=0), 0, axis=1), rotation)
     actual_plane = slicing.plane(cell, "a", normal)
     Assert.allclose(actual_plane.vectors, expected_plane)
+    Assert.allclose(actual_plane.cell, cell)
     assert actual_plane.cut == "a"
 
 
@@ -110,7 +112,9 @@ def test_slice_grid_scalar(cut, fraction, Assert):
     else:
         index = np.round(fraction * 14).astype(np.int_) % 14
         expected_data = grid_scalar[:, :, index]
-    plane = slicing.Plane(vectors=None, cut=cut)  # vectors should not be necessary
+    plane = slicing.Plane(
+        vectors=None, cut=cut
+    )  # vectors & cell should not be necessary
     actual_data = slicing.grid_scalar(grid_scalar, plane, fraction)
     Assert.allclose(actual_data, expected_data)
 
@@ -128,6 +132,6 @@ def test_slice_grid_vector(cut, fraction, Assert):
     else:
         index = np.round(fraction * 14).astype(np.int_) % 14
         expected_data = grid_vector[:2, :, :, index]
-    plane = slicing.Plane(vectors=[[2, 0], [0, 3]], cut=cut)
+    plane = slicing.Plane(vectors=[[2, 0], [0, 3]], cell=np.eye(3), cut=cut)
     actual_data = slicing.grid_vector(grid_vector, plane, fraction)
     Assert.allclose(actual_data, expected_data)

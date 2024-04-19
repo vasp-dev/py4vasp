@@ -17,6 +17,8 @@ class Plane:
 
     vectors: np.array
     "2d vectors spanning the plane."
+    cell: np.array = None
+    "Lattice vectors of the unit cell."
     cut: str = None
     "Lattice vector cut to get the plane, if not set, no labels will be added"
 
@@ -127,9 +129,9 @@ def plane(cell, cut, normal="auto"):
     _raise_error_if_cut_unknown(cut)
     vectors = np.delete(cell, INDICES[cut], axis=0)
     if normal is not None:
-        return Plane(_rotate_normal_to_cartesian_axis(vectors, normal), cut)
+        return Plane(_rotate_normal_to_cartesian_axis(vectors, normal), cell, cut)
     else:
-        return Plane(_rotate_first_vector_to_x_axis(vectors), cut)
+        return Plane(_rotate_first_vector_to_x_axis(vectors), cell, cut)
 
 
 def _rotate_first_vector_to_x_axis(vectors):
