@@ -663,8 +663,12 @@ def _example_OSZICAR():
     )
     convergence_data = raw.VaspData(convergence_data)
     label = raw.VaspData([b"N", b"E", b"dE", b"deps", b"ncg", b"rms", b"rms(c)"])
-    ediff = 0.5
-    return raw.OSZICAR(convergence_data=convergence_data, label=label, EDIFF=ediff)
+    is_elmin_converged = [0.0]
+    return raw.OSZICAR(
+        convergence_data=convergence_data,
+        label=label,
+        is_elmin_converged=is_elmin_converged,
+    )
 
 
 def _Sr2TiO4_CONTCAR():
