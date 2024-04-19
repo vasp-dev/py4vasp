@@ -400,9 +400,32 @@ def test_collinear_to_quiver(collinear_density, Assert):
     graph = collinear_density.to_quiver(a=-0.2)
     assert len(graph) == 1
     series = graph.series[0]
-    Assert.allclose(series.data, expected_data)
+    Assert.allclose(series.data, 5.0 * expected_data)
     Assert.allclose(series.lattice.vectors, expected_lattice)
     assert series.label == expected_label
+
+
+def test_noncollinear_to_quiver(noncollinear_density, Assert):
+    source = noncollinear_density.ref.source
+    if source == "charge":
+        expected_label = "magnetization"
+        expected_data = noncollinear_density.ref.output["magnetization"][:2, :, :, 6]
+    else:
+        expected_label = source
+        expected_data = noncollinear_density.ref.output[source][1:3, :, :, 6]
+    expected_lattice = noncollinear_density.ref.structure.lattice_vectors()[:2, :2]
+    graph = noncollinear_density.to_quiver(c=1.4)
+    assert len(graph) == 1
+    series = graph.series[0]
+    Assert.allclose(series.data, 5.0 * expected_data)
+    Assert.allclose(series.lattice.vectors, expected_lattice)
+    assert series.label == expected_label
+
+def test_to_quiver_supercell(collinear_density, Assert):
+    graph = collinear_density.to_quiver(a=0, supercell=2)
+    Assert.allclose(graph.series[0].supercell, (2, 2))
+    graph = collinear_density.to_quiver(a=0, supercell=(2, 1))
+    Assert.allclose(graph.series[0].supercell, (2, 1))
 
 
 def test_to_numpy(reference_density, Assert):

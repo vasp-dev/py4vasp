@@ -294,35 +294,40 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         self, selection=None, *, a=None, b=None, c=None, supercell=None, normal=None
     ):
         cut, fraction = self._get_cut(a, b, c)
-        lattice = slicing.plane(self._structure.lattice_vectors(), cut, normal)
+        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_data.charge)
         tree = select.Tree.from_selection(selection)
         selections = self._filter_noncollinear_magnetization_from_selections(tree)
         contours = [
-            self._contour(selector, selection, cut, fraction, lattice, supercell)
+            self._contour(selector, selection, plane, fraction, supercell)
             for selection in selections
         ]
         return graph.Graph(contours)
 
-    def _contour(self, selector, selection, cut, fraction, lattice, supercell):
+    def _contour(self, selector, selection, plane, fraction, supercell):
         density = selector[selection].T
-        data = slicing.grid_scalar(density, cut, fraction)
+        data = slicing.grid_scalar(density, plane, fraction)
         label = self._label(selector.label(selection)) or "charge"
-        contour = graph.Contour(data, lattice, label, isolevels=True)
+        contour = graph.Contour(data, plane, label, isolevels=True)
         if supercell is not None:
             contour.supercell = np.ones(2, dtype=np.int_) * supercell
         return contour
 
     @_base.data_access
-    def to_quiver(self, *, a=None):
-        cut, fraction = self._get_cut(a, b=None, c=None)
-        data = slicing.grid_scalar(self._raw_data.charge[1].T, cut, fraction)
-        data = np.array((np.zeros_like(data), data))
-        lattice = slicing.plane(self._structure.lattice_vectors(), cut, normal=None)
+    def to_quiver(self, *, a=None, b=None, c=None, supercell=None):
+        cut, fraction = self._get_cut(a, b, c)
+        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal=None)
+        if self.is_collinear():
+            data = slicing.grid_scalar(self._raw_data.charge[1].T, plane, fraction)
+            data = np.array((np.zeros_like(data), data))
+        else:
+            data = slicing.grid_vector(self.to_numpy()[1:], plane, fraction)
         label = self._selection or "magnetization"
-        quiver_plots = [graph.Contour(data, lattice, label)]
-        return graph.Graph(quiver_plots)
+        quiver_plot = graph.Contour(5.0 * data, plane, label)
+        if supercell is not None:
+            quiver_plot.supercell = np.ones(2, dtype=np.int_) * supercell
+        return graph.Graph([quiver_plot])
 
     def _get_cut(self, a, b, c):
         _raise_error_cut_selection_incorrect(a, b, c)
