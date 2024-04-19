@@ -115,18 +115,19 @@ def test_slice_grid_scalar(cut, fraction, Assert):
     Assert.allclose(actual_data, expected_data)
 
 
-# @pytest.mark.parametrize("cut", ("a", "b", "c"))
-# @pytest.mark.parametrize("fraction", (-0.4, 0, 0.4, 0.8, 1.2))
-# def test_slice_grid_vector(cut, fraction, Assert):
-#     grid_vector = np.random.random((3, 10, 12, 14)) + 0.1
-#     if cut == "a":
-#         index = np.round(fraction * 10).astype(np.int_) % 10
-#         expected_data = grid_vector[:, index, :, :]
-#     elif cut == "b":
-#         index = np.round(fraction * 12).astype(np.int_) % 12
-#         expected_data = grid_vector[:, :, index, :]
-#     else:
-#         index = np.round(fraction * 14).astype(np.int_) % 14
-#         expected_data = grid_vector[:, :, :, index]
-#     actual_data = slicing.grid_vector(grid_vector, cut, fraction)
-#     Assert.allclose(actual_data, expected_data)
+@pytest.mark.parametrize("cut", ("a", "b", "c"))
+@pytest.mark.parametrize("fraction", (-0.4, 0, 0.4, 0.8, 1.2))
+def test_slice_grid_vector(cut, fraction, Assert):
+    grid_vector = np.random.random((3, 10, 12, 14)) + 0.1
+    if cut == "a":
+        index = np.round(fraction * 10).astype(np.int_) % 10
+        expected_data = grid_vector[1:, index, :, :]
+    elif cut == "b":
+        index = np.round(fraction * 12).astype(np.int_) % 12
+        expected_data = grid_vector[::2, :, index, :]
+    else:
+        index = np.round(fraction * 14).astype(np.int_) % 14
+        expected_data = grid_vector[:2, :, :, index]
+    plane = slicing.Plane(vectors=[[2, 0], [0, 3]], cut=cut)
+    actual_data = slicing.grid_vector(grid_vector, plane, fraction)
+    Assert.allclose(actual_data, expected_data)

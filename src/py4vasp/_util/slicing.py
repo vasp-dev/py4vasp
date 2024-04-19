@@ -14,6 +14,7 @@ AXIS = ("x", "y", "z")
 class Plane:
     """Defines a plane in 2d produced from cutting the 3d unit cell by removing one
     lattice vector."""
+
     vectors: np.array
     "2d vectors spanning the plane."
     cut: str = None
@@ -47,6 +48,39 @@ def grid_scalar(data, plane, fraction):
     length = data.shape[index]
     slice_ = [slice(None), slice(None), slice(None)]
     slice_[index] = np.round(length * fraction).astype(np.int_) % length
+    return data[tuple(slice_)]
+
+
+def grid_vector(data, plane, fraction):
+    """Takes a 2d slice of grid data where every datapoint is a 3d vector.
+
+    Often, we want to generate a 2d slice of data on a grid. One example would be to
+    visualize a slice through a plane as a quiver plot. This routine facilitates this
+    task implementing taking the cut of the 3d data.
+
+    Parameters
+    ----------
+    data : np.ndarray
+        Data on a grid where every point is a vector. The dimensions should be
+        (3d vector, grid_a, grid_b, grid_c) and will be reduced to a 2d vector on a
+        2d grid.
+    plane : Plane
+        Defines the 2d plane to which the data is reduced.
+    fraction : float
+        Determines which plane of the grid data is used. Periodic boundaries are assumed.
+
+    Returns
+    -------
+    np.ndarray
+        A 3d array where the dimension selected by cut has been removed by selecting
+        the plane according to the specificied fraction. The vector is projected onto
+        the plane for visualization.
+    """
+    _raise_error_if_cut_unknown(plane.cut)
+    index = INDICES[plane.cut]
+    length = data.shape[index + 1]  # add 1 to account for the vector dimension
+    slice_ = [np.delete(np.arange(3), index), slice(None), slice(None), slice(None)]
+    slice_[index + 1] = np.round(length * fraction).astype(np.int_) % length
     return data[tuple(slice_)]
 
 
