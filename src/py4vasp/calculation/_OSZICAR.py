@@ -119,4 +119,4 @@ N, E, dE, deps, ncg, rms, rms(c)"""
     @_base.data_access
     def is_converged(self):
         is_elmin_converged = self._raw_data.is_elmin_converged[self._steps]
-        return is_elmin_converged == 0.0
+        return is_elmin_converged == 0

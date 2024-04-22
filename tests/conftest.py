@@ -663,7 +663,7 @@ def _example_OSZICAR():
     )
     convergence_data = raw.VaspData(convergence_data)
     label = raw.VaspData([b"N", b"E", b"dE", b"deps", b"ncg", b"rms", b"rms(c)"])
-    is_elmin_converged = [0.0]
+    is_elmin_converged = [0]
     return raw.OSZICAR(
         convergence_data=convergence_data,
         label=label,
