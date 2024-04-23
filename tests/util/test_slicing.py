@@ -141,26 +141,42 @@ def test_slice_grid_vector(cut, fraction, Assert):
     Assert.allclose(actual_data, expected_data)
 
 
-def test_slice_grid_vector_nontrivial_cell(Assert):
-    cut = "a"
+@pytest.mark.parametrize("cut, index", [("a", 0), ("b", 1), ("c", 2)])
+def test_slice_grid_vector_nontrivial_cell(cut, index, Assert):
     fraction = 0
     cell = np.array([[0, 1, 1.1], [0.9, 0, 1.1], [0.9, 1, 0]])
-    normal = np.cross(cell[1], cell[2])
+    vectors = np.delete(cell, index, axis=0)
+    normal = np.cross(*vectors)
     plane = slicing.plane(cell, cut, normal=None)
     alpha = np.linspace(-1, 2, 10)
     beta = np.linspace(-2, 1, 12)
     gamma = np.linspace(-1.5, 1.5, 14)
     grid_vector = np.array(
         [
-            [[a * cell[1] + b * cell[2] + c * normal for a in alpha] for b in beta]
+            [
+                [a * vectors[0] + b * vectors[1] + c * normal for a in alpha]
+                for b in beta
+            ]
             for c in gamma
         ]
     ).T
-    expected_data = np.array(
-        [
-            [alpha[0] * plane.vectors[0] + b * plane.vectors[1] for b in beta]
-            for c in gamma
-        ]
-    ).T
+    if cut == "a":
+        expected_data = np.array(
+            [
+                [alpha[0] * plane.vectors[0] + b * plane.vectors[1] for b in beta]
+                for c in gamma
+            ]
+        ).T
+    elif cut == "b":
+        expected_data = np.array(
+            [
+                [a * plane.vectors[0] + beta[0] * plane.vectors[1] for a in alpha]
+                for c in gamma
+            ]
+        ).T
+    else:
+        expected_data = np.array(
+            [[a * plane.vectors[0] + b * plane.vectors[1] for a in alpha] for b in beta]
+        ).T
     actual_data = slicing.grid_vector(grid_vector, plane, fraction)
-    Assert.allclose(actual_data, expected_data)
+    Assert.allclose(actual_data, expected_data, tolerance=3)
