@@ -47,7 +47,7 @@ def not_core(is_core):
 
 class _Assert:
     @staticmethod
-    def allclose(actual, desired):
+    def allclose(actual, desired, tolerance=1):
         if _is_none(actual):
             assert _is_none(desired)
         elif getattr(actual, "dtype", None) == np.bool_:
@@ -58,7 +58,7 @@ class _Assert:
             actual, mask_actual = _finite_subset(actual)
             desired, mask_desired = _finite_subset(desired)
             assert np.all(mask_actual == mask_desired)
-            assert_array_almost_equal_nulp(actual, desired, 30)
+            assert_array_almost_equal_nulp(actual, desired, tolerance * 30)
 
     @staticmethod
     def same_structure(actual, desired):
