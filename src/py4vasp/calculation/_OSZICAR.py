@@ -124,4 +124,7 @@ N, E, dE, deps, ncg, rms, rms(c)"""
     @_base.data_access
     def is_converged(self):
         is_elmin_converged = self._raw_data.is_elmin_converged[self._steps]
-        return is_elmin_converged == 0
+        converged = is_elmin_converged == 0
+        if isinstance(converged, bool):
+            converged = np.array([converged])
+        return converged.flatten()

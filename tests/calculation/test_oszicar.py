@@ -22,7 +22,7 @@ def OSZICAR(raw_data):
     oszicar.ref.ncg = convergence_data[:, 4]
     oszicar.ref.rms = convergence_data[:, 5]
     oszicar.ref.rmsc = convergence_data[:, 6]
-    oszicar.ref.is_elmin_converged = raw_oszicar.is_elmin_converged == [0.0]
+    oszicar.ref.is_elmin_converged = [raw_oszicar.is_elmin_converged == [0.0]]
     string_rep = "N\t\tE\t\tdE\t\tdeps\t\tncg\trms\t\trms(c)\n"
     format_rep = "{0:g}\t{1:0.12E}\t{2:0.6E}\t{3:0.6E}\t{4:g}\t{5:0.3E}\t{6:0.3E}\n"
     for idx in range(len(convergence_data)):
@@ -66,7 +66,7 @@ def test_print(OSZICAR, format_):
     assert actual["text/plain"] == OSZICAR.ref.string_rep
 
 
-def test_is_converged(OSZICAR, Assert):
+def test_is_converged(OSZICAR):
     actual = OSZICAR.is_converged()
     expected = OSZICAR.ref.is_elmin_converged
     assert actual == expected
