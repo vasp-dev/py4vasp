@@ -315,9 +315,9 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         return contour
 
     @_base.data_access
-    def to_quiver(self, *, a=None, b=None, c=None, supercell=None):
+    def to_quiver(self, *, a=None, b=None, c=None, supercell=None, normal=None):
         cut, fraction = self._get_cut(a, b, c)
-        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal=None)
+        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
         if self.is_collinear():
             data = slicing.grid_scalar(self._raw_data.charge[1].T, plane, fraction)
             data = np.array((np.zeros_like(data), data))

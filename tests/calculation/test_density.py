@@ -429,6 +429,24 @@ def test_to_quiver_supercell(collinear_density, Assert):
     Assert.allclose(graph.series[0].supercell, (2, 1))
 
 
+@pytest.mark.parametrize(
+    "normal, rotation",
+    [
+        ("auto", np.eye(2)),
+        ("x", np.array([[0, -1], [1, 0]])),
+        ("y", np.diag((1, -1))),
+        ("z", np.eye(2)),
+    ],
+)
+def test_to_quiver_normal_vector(noncollinear_density, normal, rotation, Assert):
+    unrotated_graph = noncollinear_density.to_quiver(c=0.5)
+    rotated_graph = noncollinear_density.to_quiver(c=0.5, normal=normal)
+    expected_lattice = unrotated_graph.series[0].lattice.vectors @ rotation
+    Assert.allclose(rotated_graph.series[0].lattice.vectors, expected_lattice)
+    expected_data = (unrotated_graph.series[0].data.T @ rotation).T
+    Assert.allclose(rotated_graph.series[0].data, expected_data)
+
+
 def test_to_numpy(reference_density, Assert):
     source = reference_density.ref.source
     if source == "charge":
