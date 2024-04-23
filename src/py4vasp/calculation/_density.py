@@ -383,6 +383,73 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
 
     @_base.data_access
     def to_quiver(self, *, a=None, b=None, c=None, supercell=None, normal=None):
+        """Generate a quiver plot of magnetization density.
+
+        You need to specify a plane defined by two of the lattice vectors by selecting
+        a *cut* along the third one. You must only select a single cut and the value
+        should correspond to the fractional length along this third lattice vector.
+        py4vasp will then create a plane from the other two lattice vectors and
+        generate a contour plot within this plane.
+
+        Usually, the first remaining lattice vector is aligned with the x-axis and the
+        second one such that the angle between the vectors is preserved. You can
+        overwrite this choice by defining a normal direction. Then py4vasp will rotate
+        the normal vector of the plane to align with the specified direction. This is
+        particularly useful if the lattice vector you cut is aligned with a Cartesian
+        direction.
+
+        For a collinear calculation, the magnetization density will be aligned with the
+        y axis of the plane. For noncollinear calculations, the magnetization density
+        is projected into the plane.
+
+        Parameters
+        ----------
+        a, b, c : float
+            You must select exactly one of these to specify which of the three lattice
+            vectors you want to remove to form a plane. The assigned value represents
+            the fractional length along this lattice vector, so `a = 0.3` will remove
+            the first lattice vector and then take the grid points at 30% of the length
+            of the first vector in the b-c plane. The fractional height uses periodic
+            boundary conditions.
+
+        supercell : int or np.ndarray
+            Replicate the contour plot periodically a given number of times. If you
+            provide two different numbers, the resulting cell will be the two remaining
+            lattice vectors multiplied by the specific number.
+
+        normal : str or None
+            If not set, py4vasp will align the first remaining lattice vector with the
+            x-axis and the second one such that the angle between the lattice vectors
+            is preserved. You can set it to "x", "y", or "z"; then py4vasp will rotate
+            the plane in such a way that the normal direction aligns with the specified
+            Cartesian axis. This may look better if the normal direction is close to a
+            Cartesian axis. You may also set it to "auto" so that py4vasp chooses a
+            close Cartesian axis if it can find any.
+
+        Returns
+        -------
+        graph
+            A quiver plot in the plane spanned by the 2 remaining lattice vectors.
+
+
+        Examples
+        --------
+
+        Cut a plane at the origin of the third lattice vector.
+
+        >>> calc.density.to_quiver(c=0)
+
+        Replicate a plane in the middle of the second lattice vector 2 times in each
+        direction.
+
+        >>> calc.density.to_quiver(b=0.5, supercell=2)
+
+        Take a slice of the spin components of the kinetic energy density along the
+        first lattice vector and rotate it such that the normal of the plane aligns with
+        the x axis.
+
+        >>> calc.density.to_quiver("tau", a=0.3, normal="x")
+        """
         cut, fraction = self._get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
         if self.is_collinear():
