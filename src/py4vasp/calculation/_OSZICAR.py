@@ -63,17 +63,21 @@ class OSZICAR(_slice.Mixin, _base.Refinery, graph.Mixin):
         """
         return_data = {}
         if selection is None:
-            keys_to_include = getattr(self._raw_data, "label")
+            keys_to_include = self._from_bytes_to_utf(self._raw_data.label)
         else:
-            if keys_to_include not in getattr(self._raw_data, "label"):
+            labels_as_str = self._from_bytes_to_utf(self._raw_data.label)
+            if selection not in labels_as_str:
                 message = """\
 Please choose a selection including at least one of the following keywords:
 N, E, dE, deps, ncg, rms, rms(c)"""
                 raise exception.RefinementError(message)
-            keys_to_include = selection
+            keys_to_include = [selection]
         for key in keys_to_include:
-            return_data[key.decode("utf-8")] = self._read(key)
+            return_data[key] = self._read(key)
         return return_data
+
+    def _from_bytes_to_utf(self, quantity: list):
+        return [_quantity.decode("utf-8") for _quantity in quantity]
 
     @_base.data_access
     def _read(self, key):
@@ -86,7 +90,8 @@ N, E, dE, deps, ncg, rms, rms(c)"""
             data = [raw.VaspData(_data) for _data in data]
         else:
             data = [raw.VaspData(data)]
-        data_index = np.where(self._raw_data.label == key.strip())[0][0]
+        labels = [label.decode("utf-8") for label in self._raw_data.label]
+        data_index = labels.index(key)
         return_data = [list(_data[:, data_index]) for _data in data]
         is_none = [_data.is_none() for _data in data]
         if len(return_data) == 1:

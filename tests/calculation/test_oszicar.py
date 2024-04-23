@@ -43,6 +43,15 @@ def test_read(OSZICAR, Assert):
     Assert.allclose(actual["rms(c)"], expected.rmsc)
 
 
+@pytest.mark.parametrize(
+    "quantity_name", ["N", "E", "dE", "deps", "ncg", "rms", "rms(c)"]
+)
+def test_read_selection(quantity_name, OSZICAR, Assert):
+    actual = OSZICAR.read(quantity_name)
+    expected = getattr(OSZICAR.ref, quantity_name.replace("(", "").replace(")", ""))
+    Assert.allclose(actual[quantity_name], expected)
+
+
 def test_plot(OSZICAR, Assert):
     graph = OSZICAR.plot()
     assert graph.xlabel == "Iteration number"
