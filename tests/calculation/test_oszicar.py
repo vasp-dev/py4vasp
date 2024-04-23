@@ -6,7 +6,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import calculation
+from py4vasp import calculation, exception
 
 
 @pytest.fixture
@@ -50,6 +50,23 @@ def test_read_selection(quantity_name, OSZICAR, Assert):
     actual = OSZICAR.read(quantity_name)
     expected = getattr(OSZICAR.ref, quantity_name.replace("(", "").replace(")", ""))
     Assert.allclose(actual[quantity_name], expected)
+
+
+def test_read_incorrect_selection(OSZICAR):
+    with pytest.raises(exception.RefinementError):
+        OSZICAR.read("forces")
+
+
+def test_slice(OSZICAR, Assert):
+    actual = OSZICAR[0:1].read()
+    expected = OSZICAR.ref
+    Assert.allclose(actual["N"], expected.N)
+    Assert.allclose(actual["E"], expected.E)
+    Assert.allclose(actual["dE"], expected.dE)
+    Assert.allclose(actual["deps"], expected.deps)
+    Assert.allclose(actual["ncg"], expected.ncg)
+    Assert.allclose(actual["rms"], expected.rms)
+    Assert.allclose(actual["rms(c)"], expected.rmsc)
 
 
 def test_plot(OSZICAR, Assert):
