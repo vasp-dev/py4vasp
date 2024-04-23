@@ -421,6 +421,7 @@ def test_noncollinear_to_quiver(noncollinear_density, Assert):
     Assert.allclose(series.lattice.vectors, expected_lattice)
     assert series.label == expected_label
 
+
 def test_to_quiver_supercell(collinear_density, Assert):
     graph = collinear_density.to_quiver(a=0, supercell=2)
     Assert.allclose(graph.series[0].supercell, (2, 2))

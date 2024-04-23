@@ -123,15 +123,44 @@ def test_slice_grid_scalar(cut, fraction, Assert):
 @pytest.mark.parametrize("fraction", (-0.4, 0, 0.4, 0.8, 1.2))
 def test_slice_grid_vector(cut, fraction, Assert):
     grid_vector = np.random.random((3, 10, 12, 14)) + 0.1
+    ignored = 99
     if cut == "a":
         index = np.round(fraction * 10).astype(np.int_) % 10
+        cell = np.diag((ignored, 2, 3))
         expected_data = grid_vector[1:, index, :, :]
     elif cut == "b":
         index = np.round(fraction * 12).astype(np.int_) % 12
         expected_data = grid_vector[::2, :, index, :]
+        cell = np.diag((2, ignored, 3))
     else:
         index = np.round(fraction * 14).astype(np.int_) % 14
         expected_data = grid_vector[:2, :, :, index]
-    plane = slicing.Plane(vectors=[[2, 0], [0, 3]], cell=np.eye(3), cut=cut)
+        cell = np.diag((2, 3, ignored))
+    plane = slicing.Plane(vectors=[[2, 0], [0, 3]], cell=cell, cut=cut)
+    actual_data = slicing.grid_vector(grid_vector, plane, fraction)
+    Assert.allclose(actual_data, expected_data)
+
+
+def test_slice_grid_vector_nontrivial_cell(Assert):
+    cut = "a"
+    fraction = 0
+    cell = np.array([[0, 1, 1.1], [0.9, 0, 1.1], [0.9, 1, 0]])
+    normal = np.cross(cell[1], cell[2])
+    plane = slicing.plane(cell, cut, normal=None)
+    alpha = np.linspace(-1, 2, 10)
+    beta = np.linspace(-2, 1, 12)
+    gamma = np.linspace(-1.5, 1.5, 14)
+    grid_vector = np.array(
+        [
+            [[a * cell[1] + b * cell[2] + c * normal for a in alpha] for b in beta]
+            for c in gamma
+        ]
+    ).T
+    expected_data = np.array(
+        [
+            [alpha[0] * plane.vectors[0] + b * plane.vectors[1] for b in beta]
+            for c in gamma
+        ]
+    ).T
     actual_data = slicing.grid_vector(grid_vector, plane, fraction)
     Assert.allclose(actual_data, expected_data)

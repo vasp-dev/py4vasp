@@ -81,9 +81,33 @@ def grid_vector(data, plane, fraction):
     _raise_error_if_cut_unknown(plane.cut)
     index = INDICES[plane.cut]
     length = data.shape[index + 1]  # add 1 to account for the vector dimension
-    slice_ = [np.delete(np.arange(3), index), slice(None), slice(None), slice(None)]
+    slice_ = [slice(None), slice(None), slice(None), slice(None)]
     slice_[index + 1] = np.round(length * fraction).astype(np.int_) % length
-    return data[tuple(slice_)]
+    return _project_vectors_to_plane(plane, data[tuple(slice_)])
+
+
+def _project_vectors_to_plane(plane, data):
+    # We want to want to project the vector r onto the plane spanned by the vectors
+    # u and v. Let the result be s = a u + b v. We can obtain the projected vector by
+    # minimizing the length |r - s| which leads to two conditions
+    # (r - a u - b v).u = 0
+    # (r - a u - b v).v = 0
+    # solving for a and b yields
+    # a = (v^2 u.r - u.v v.r) / N
+    # b = (u^2 v.r - u.v u.r) / N
+    # N = u^2 v^2 - (u.v)^2
+    u2 = np.dot(plane.vectors[0], plane.vectors[0])
+    v2 = np.dot(plane.vectors[1], plane.vectors[1])
+    uv = np.dot(plane.vectors[0], plane.vectors[1])
+    vectors = np.delete(plane.cell, INDICES[plane.cut], axis=0)
+    ur = np.tensordot(vectors[0], data, axes=(0, 0))
+    vr = np.tensordot(vectors[1], data, axes=(0, 0))
+    N = u2 * v2 - uv**2
+    a = (v2 * ur - uv * vr) / N
+    b = (u2 * vr - uv * ur) / N
+    au = np.multiply.outer(plane.vectors[0], a)
+    bv = np.multiply.outer(plane.vectors[1], b)
+    return au + bv
 
 
 def plane(cell, cut, normal="auto"):
