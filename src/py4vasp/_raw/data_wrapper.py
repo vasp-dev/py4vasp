@@ -39,7 +39,9 @@ class VaspData(np.lib.mixins.NDArrayOperatorsMixin):
         self._repr_data = repr(data)
         if not hasattr(data, "__array__"):
             data = np.array(data)
-        if data.ndim == 0:
+        if getattr(data, "attrs", {}).get("dtype") == "complex":
+            self._data = _ComplexWrapper(data)
+        elif data.ndim == 0:
             self._data = _parse_scalar(data)
         else:
             self._data = data
@@ -99,3 +101,28 @@ def _parse_scalar(data):
     if data.dtype.type == np.bytes_:
         data = data[()].decode()
     return np.array(data)
+
+
+class _ComplexWrapper(np.lib.mixins.NDArrayOperatorsMixin):
+    def __init__(self, data):
+        self._data = data
+
+    def __array__(self, *args, **kwargs):
+        array = np.array(self._data, *args, **kwargs)
+        return array.view(np.complex128).reshape(self.shape)
+
+    @property
+    def ndim(self):
+        return self._data.ndim - 1
+
+    @property
+    def size(self):
+        return self._data.size // 2
+
+    @property
+    def shape(self):
+        return self._data.shape[:-1]
+
+    @property
+    def dtype(self):
+        return np.complex128

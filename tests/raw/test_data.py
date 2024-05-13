@@ -3,7 +3,6 @@
 import tempfile
 from unittest.mock import MagicMock
 
-import h5py
 import hypothesis.extra.numpy as np_strat
 import hypothesis.strategies as strategy
 import numpy as np
@@ -200,12 +199,29 @@ def test_complex_from_numpy(data, Assert):
     Assert.allclose(np.tan(vasp), np.tan(data))
 
 
+class MockComplex(np.ndarray):
+    attrs = {"dtype": "complex"}
+
 @given(data=complex_array_or_scalar())
 def test_complex_from_dataset(data, Assert):
-    with tempfile.TemporaryFile() as file:
-        h5f = h5py.File(file, "a")
-        h5f["dataset"] = data
-        dataset = h5f["dataset"]
-        dataset.attrs["dtype"] = "complex"
-        h5f.close()
-    assert False
+    view = data.view(np.complex128).reshape(data.shape[:-1])
+    mock_complex = MockComplex(shape=data.shape, buffer=data.data)
+    vasp = VaspData(mock_complex)
+    assert vasp.ndim == view.ndim
+    assert vasp.size == view.size
+    assert vasp.shape == view.shape
+    assert vasp.dtype == view.dtype
+    assert not vasp.is_none()
+    Assert.allclose(vasp + vasp, view + view)
+    Assert.allclose(3 * vasp, 3 * view)
+    Assert.allclose(np.sin(vasp), np.sin(view))
+    # make sure no copies are created
+    copy = mock_complex.copy()
+    Assert.allclose(vasp , view )
+
+    # with tempfile.TemporaryFile() as file:
+    #     h5f = h5py.File(file, "a")
+    #     h5f["dataset"] = data
+    #     dataset = h5f["dataset"]
+    #     dataset.attrs["dtype"] = "complex"
+    #     h5f.close()
