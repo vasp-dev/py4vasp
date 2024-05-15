@@ -202,6 +202,7 @@ def test_complex_from_numpy(data, Assert):
 class MockComplex(np.ndarray):
     attrs = {"dtype": "complex"}
 
+
 @given(data=complex_array_or_scalar())
 def test_complex_from_dataset(data, Assert):
     view = data.view(np.complex128).reshape(data.shape[:-1])
@@ -215,13 +216,10 @@ def test_complex_from_dataset(data, Assert):
     Assert.allclose(vasp + vasp, view + view)
     Assert.allclose(3 * vasp, 3 * view)
     Assert.allclose(np.sin(vasp), np.sin(view))
-    # make sure no copies are created
-    copy = mock_complex.copy()
-    Assert.allclose(vasp , view )
-
-    # with tempfile.TemporaryFile() as file:
-    #     h5f = h5py.File(file, "a")
-    #     h5f["dataset"] = data
-    #     dataset = h5f["dataset"]
-    #     dataset.attrs["dtype"] = "complex"
-    #     h5f.close()
+    Assert.allclose(vasp.astype(np.complex64), view.astype(np.complex64))
+    assert repr(vasp) == f"VaspData({repr(mock_complex)})"
+    # make sure no copies are created, i.e., when I modify the original data, the
+    # VaspData changes accordingly
+    copy = view.copy()
+    mock_complex += 1.0
+    Assert.allclose(vasp, copy + (1 + 1j))

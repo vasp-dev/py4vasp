@@ -126,3 +126,6 @@ class _ComplexWrapper(np.lib.mixins.NDArrayOperatorsMixin):
     @property
     def dtype(self):
         return np.complex128
+
+    def astype(self, *args, **kwargs):
+        return np.array(self).astype(*args, **kwargs)
