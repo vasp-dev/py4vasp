@@ -34,7 +34,7 @@ class ParsePoscar:
         be a Cell object. The reciprocal lattice vectors are computed without
         the (2pi) factor.
         """
-        lattice_vectors = cell.lattice_vectors.data * cell.scale
+        lattice_vectors = cell.lattice_vectors * cell.scale
         volume = cls._get_volume(lattice_vectors)
         b1 = np.cross(lattice_vectors[1], lattice_vectors[2]) / volume
         b2 = np.cross(lattice_vectors[2], lattice_vectors[0]) / volume
@@ -147,7 +147,7 @@ class ParsePoscar:
         specified in Cartesian coordinates, then the positions are converted
         to direct coordinates.
         """
-        number_of_species = self.topology.number_ion_types.data.sum()
+        number_of_species = self.topology.number_ion_types[:].sum()
         idx_start = 6
         if self.has_selective_dynamics:
             idx_start += 1
@@ -196,7 +196,7 @@ class ParsePoscar:
         is 'Lattice velocities and vectors', then it is assumed that the POSCAR
         file has lattice velocities.
         """
-        num_species = self.topology.number_ion_types.data.sum()
+        num_species = self.topology.number_ion_types[:].sum()
         idx_start = 7 + num_species
         if self.has_selective_dynamics:
             idx_start += 1
@@ -219,7 +219,7 @@ class ParsePoscar:
         If the velocities are specified in Direct coordinates, then the velocities
         are converted to Cartesian coordinates.
         """
-        num_species = self.topology.number_ion_types.data.sum()
+        num_species = self.topology.number_ion_types[:].sum()
         idx_start = 7 + num_species
         if not self.has_lattice_velocities:
             raise ParserError("No lattice velocities found in POSCAR.")
@@ -235,9 +235,9 @@ class ParsePoscar:
     @classmethod
     def _convert_direct_to_cartesian(cls, cell, x, scale=True):
         if scale:
-            lattice_vectors = cell.lattice_vectors.data * cell.scale
+            lattice_vectors = cell.lattice_vectors * cell.scale
         else:
-            lattice_vectors = np.array(cell.lattice_vectors.data)
+            lattice_vectors = np.array(cell.lattice_vectors)
 
         cartesian_positions = x @ lattice_vectors.T
         return cartesian_positions
@@ -251,7 +251,7 @@ class ParsePoscar:
         (assumed to be Cartesian). If the header is not one of these, then
         it is assumed that the POSCAR file does not have ion velocities.
         """
-        num_species = self.topology.number_ion_types.data.sum()
+        num_species = self.topology.number_ion_types[:].sum()
         idx_start = 7 + num_species
         if self.has_selective_dynamics:
             idx_start += 1
@@ -276,7 +276,7 @@ class ParsePoscar:
         If the velocities are specified in Direct coordinates, then the velocities
         are converted to Cartesian coordinates.
         """
-        num_species = self.topology.number_ion_types.data.sum()
+        num_species = self.topology.number_ion_types[:].sum()
         if not self.has_ion_velocities:
             raise ParserError("No ion velocities found in POSCAR.")
         idx_start = 7 + num_species

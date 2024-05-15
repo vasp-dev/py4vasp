@@ -47,22 +47,21 @@ class VaspData(np.lib.mixins.NDArrayOperatorsMixin):
             self._data = data
 
     def __array__(self, *args, **kwargs):
-        return np.array(self.data, *args, **kwargs)
+        return np.array(self._get_data(), *args, **kwargs)
 
     def __getitem__(self, key):
-        return self.data[key]
+        return self._get_data()[key]
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self._repr_data})"
 
     def __len__(self):
-        return len(self.data)
+        return len(self._get_data())
 
     def is_none(self):
         return self._data is None
 
-    @property
-    def data(self):
+    def _get_data(self):
         if self.is_none():
             message = """\
                 Could not find data in output, please make sure that the provided input
@@ -75,26 +74,26 @@ class VaspData(np.lib.mixins.NDArrayOperatorsMixin):
     @property
     def ndim(self):
         "The number of dimensions of the data."
-        return self.data.ndim
+        return self._get_data().ndim
 
     @property
     def size(self):
         "The total number of elements of the data."
-        return self.data.size
+        return self._get_data().size
 
     @property
     def shape(self):
         "The shape of the data. Empty tuple for scalar data."
-        return self.data.shape
+        return self._get_data().shape
 
     @property
     def dtype(self):
         "Describes the type of the contained data."
-        return self.data.dtype
+        return self._get_data().dtype
 
     def astype(self, *args, **kwargs):
         "Copy of the array, cast to a specified type."
-        return self.data.astype(*args, **kwargs)
+        return self._get_data().astype(*args, **kwargs)
 
 
 def _parse_scalar(data):

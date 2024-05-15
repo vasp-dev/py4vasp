@@ -159,7 +159,7 @@ def test_scalar_data():
 def test_scalar_string():
     reference = "text stored in file"
     vasp = VaspData(np.array(reference.encode()))
-    assert vasp.data == reference
+    assert vasp[()] == reference
 
 
 def test_list_data(Assert):
@@ -177,10 +177,12 @@ def test_list_data(Assert):
 
 
 def test_nested_data():
-    data = VaspData(None)
-    assert VaspData(data).is_none()
-    data = np.zeros(10)
-    assert isinstance(VaspData(data).data, np.ndarray)
+    data = VaspData(VaspData(None))
+    assert data.is_none()
+    assert repr(data) == "VaspData(None)"
+    zeros = np.zeros(10)
+    data = VaspData(VaspData(zeros))
+    assert repr(data) == f"VaspData({repr(zeros)})"
 
 
 @given(data=complex_array_or_scalar())
