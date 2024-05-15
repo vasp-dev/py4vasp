@@ -134,6 +134,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             The STM image as a graph object. The title is the label of the Contour
             object.
         """
+        _raise_error_if_vacuum_too_small(self._estimate_vacuum())
 
         tree = select.Tree.from_selection(selection)
         for index, selection in enumerate(tree.selections()):
@@ -190,7 +191,10 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         )
         grid = self.grid()
         z_step = 1 / self.stm_settings.interpolation_factor
-        z_grid = np.arange(z_start, 0, -z_step)
+        # roll smoothed charge so that we are not bothered by the boundary of the
+        # unit cell if the slab is not centered
+        smoothed_charge = np.roll(smoothed_charge, -z_start, axis=2)
+        z_grid = np.arange(grid[2], 0, -z_step)
         splines = interpolate.CubicSpline(range(grid[2]), smoothed_charge, axis=-1)
         scan = z_grid[np.argmax(splines(z_grid) >= current, axis=-1)]
         scan = z_step * scan - self._get_highest_z_coord()
@@ -208,18 +212,28 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         return Contour(data=height_scan, lattice=self._in_plane_vectors(), label=label)
 
     def _z_index_for_height(self, tip_height):
-        return int(tip_height / self._out_of_plane_vector() * self.grid()[2])
+        """Return the z-index of the tip height in the charge density grid."""
+        # In case the surface is very up in the unit cell, we have to wrap around
+        return round(
+            np.mod(
+                tip_height / self._out_of_plane_vector() * self.grid()[2],
+                self.grid()[2],
+            )
+        )
 
     def _get_highest_z_coord(self):
-        return np.max(self._structure.cartesian_positions()[:, 2])
+        cart_coords = _get_sanitized_cartesian_positions(self._structure)
+        return np.max(cart_coords[:, 2])
 
     def _get_lowest_z_coord(self):
-        return np.min(self._structure.cartesian_positions()[:, 2])
+        cart_coords = _get_sanitized_cartesian_positions(self._structure)
+        return np.min(cart_coords[:, 2])
 
     def _topology(self):
         return str(self._structure._topology())
 
     def _estimate_vacuum(self):
+        _raise_error_if_vacuum_not_along_z(self._structure)
         slab_thickness = self._get_highest_z_coord() - self._get_lowest_z_coord()
         return self._out_of_plane_vector() - slab_thickness
 
@@ -256,13 +270,13 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
     def _in_plane_vectors(self):
         """Return the in-plane component of lattice vectors."""
         lattice_vectors = self._structure._lattice_vectors()
-        _raise_error_if_3rd_lattice_vector_is_not_parallel_to_z(lattice_vectors)
+        _raise_error_if_vacuum_not_along_z(self._structure)
         return lattice_vectors[:2, :2]
 
     def _out_of_plane_vector(self):
         """Return out-of-plane component of lattice vectors."""
         lattice_vectors = self._structure._lattice_vectors()
-        _raise_error_if_3rd_lattice_vector_is_not_parallel_to_z(lattice_vectors)
+        _raise_error_if_vacuum_not_along_z(self._structure)
         return lattice_vectors[2, 2]
 
     def _spin_polarized(self):
@@ -350,13 +364,46 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             raise exception.NoData(message)
 
 
-def _raise_error_if_3rd_lattice_vector_is_not_parallel_to_z(lattice_vectors):
-    lv = lattice_vectors
-    if lv[0][2] != 0 or lv[1][2] != 0 or lv[2][0] != 0 or lv[2][1] != 0:
-        message = """The third lattice vector is not in cartesian z-direction.
-        or the first two lattice vectors are not in the xy-plane.
-        STM simulations for such cells are not implemented."""
+def _raise_error_if_vacuum_too_small(vacuum_thickness, min_vacuum=5.0):
+    """Raise an error if the vacuum region is too small."""
+
+    if vacuum_thickness < min_vacuum:
+        message = f"""The vacuum region in your cell is too small for STM simulations.
+        The minimum vacuum thickness for STM simulations is {min_vacuum} Angstrom."""
+        raise exception.IncorrectUsage(message)
+
+
+def _raise_error_if_vacuum_not_along_z(structure):
+    """Raise an error if the vacuum region is not along the z-direction."""
+    frac_pos = _get_sanitized_fractional_positions(structure)
+    delta_x = np.max(frac_pos[:, 0]) - np.min(frac_pos[:, 0])
+    delta_y = np.max(frac_pos[:, 1]) - np.min(frac_pos[:, 1])
+    delta_z = np.max(frac_pos[:, 2]) - np.min(frac_pos[:, 2])
+
+    if delta_z > delta_x or delta_z > delta_y:
+        message = """The vacuum region in your cell is not located along
+        the third lattice vector.
+        STM simulations for such cells are not implemented.
+        Please make sure that your vacuum is along the z-direction
+        and the surface you want to sample is facing 'upwards'."""
         raise exception.NotImplemented(message)
+
+
+def _get_sanitized_fractional_positions(structure):
+    """Return the fractional positions of the atoms in the structure."""
+    frac_pos = structure._positions()
+    # Make sure that all fractional positions are between 0 and 1.
+    # Otherwise, add 1 or subtract 1 to get the correct fractional position.
+    while np.any(frac_pos < 0.0) or np.any(frac_pos >= 1.0):
+        frac_pos = np.where(frac_pos < 0.0, frac_pos + 1.0, frac_pos)
+        frac_pos = np.where(frac_pos >= 1.0, frac_pos - 1.0, frac_pos)
+    return frac_pos
+
+
+def _get_sanitized_cartesian_positions(structure):
+    """Return the cartesian positions of the atoms in the structure."""
+    frac_pos = _get_sanitized_fractional_positions(structure)
+    return np.dot(frac_pos, structure._lattice_vectors())
 
 
 def _min_of_z_charge(charge, sigma=4, truncate=3.0):

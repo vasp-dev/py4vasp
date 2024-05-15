@@ -15,6 +15,7 @@ from py4vasp.exception import IncorrectUsage, NoData, NotImplemented
         "no splitting no spin",
         "no splitting no spin Ca3AsBr3",
         "no splitting no spin Sr2TiO4",
+        "no splitting no spin CaAs3_110",
         "split_bands",
         "split_bands and spin_polarized",
         "split_bands and spin_polarized Ca3AsBr3",
@@ -49,6 +50,16 @@ def PolarizedNonSplitPartialCharge(raw_data):
 @pytest.fixture
 def PolarizedNonSplitPartialChargeCa3AsBr3(raw_data):
     return make_reference_partial_charge(raw_data, "spin_polarized Ca3AsBr3")
+
+
+@pytest.fixture
+def NonSplitPartialChargeCaAs3_110(raw_data):
+    return make_reference_partial_charge(raw_data, "CaAs3_110")
+
+
+@pytest.fixture
+def NonSplitPartialChargeNi_100(raw_data):
+    return make_reference_partial_charge(raw_data, "Ni100")
 
 
 @pytest.fixture
@@ -180,9 +191,9 @@ def test_to_stm_split(PolarizedAllSplitPartialCharge):
     assert msg in str(excinfo.value)
 
 
-def test_to_stm_nonsplit_no_vacuum(PolarizedNonSplitPartialChargeCa3AsBr3):
-    actual = PolarizedNonSplitPartialChargeCa3AsBr3
-    tip_height = 2.4
+def test_to_stm_nonsplit_tip_to_high(NonSplitPartialCharge):
+    actual = NonSplitPartialCharge
+    tip_height = 8.4
     error = f"""The tip position at {tip_height:.2f} is above half of the
              estimated vacuum thickness {actual._estimate_vacuum():.2f} Angstrom.
             You would be sampling the bottom of your slab, which is not supported."""
@@ -190,9 +201,11 @@ def test_to_stm_nonsplit_no_vacuum(PolarizedNonSplitPartialChargeCa3AsBr3):
         actual.to_stm(tip_height=tip_height)
 
 
-def test_to_stm_nonsplit_not_orthogonal(PolarizedNonSplitPartialChargeSr2TiO4):
-    msg = "STM simulations for such cells are not implemented."
-    with pytest.raises(NotImplemented) as excinfo:
+def test_to_stm_nonsplit_not_orthogonal_no_vacuum(
+    PolarizedNonSplitPartialChargeSr2TiO4,
+):
+    msg = "The vacuum region in your cell is too small for STM simulations."
+    with pytest.raises(IncorrectUsage) as excinfo:
         PolarizedNonSplitPartialChargeSr2TiO4.to_stm()
     assert msg in str(excinfo.value)
 
@@ -208,6 +221,14 @@ def test_to_stm_wrong_mode(PolarizedNonSplitPartialCharge):
     with pytest.raises(IncorrectUsage) as excinfo:
         PolarizedNonSplitPartialCharge.to_stm(selection="stm")
     assert "STM mode" in str(excinfo.value)
+
+
+def test_wrong_vacuum_direction(NonSplitPartialChargeNi_100):
+    msg = """The vacuum region in your cell is not located along
+        the third lattice vector."""
+    with pytest.raises(NotImplemented) as excinfo:
+        NonSplitPartialChargeNi_100.to_stm()
+    assert msg in str(excinfo.value)
 
 
 @pytest.mark.parametrize("alias", ("constant_height", "ch", "height"))
@@ -245,6 +266,32 @@ def test_to_stm_nonsplit_constant_current(
         supercell=supercell,
     )
     expected = PolarizedNonSplitPartialCharge.ref
+    assert type(actual.series.data) == np.ndarray
+    assert actual.series.data.shape == (expected.grid[0], expected.grid[1])
+    Assert.allclose(actual.series.lattice, expected.plane_vectors)
+    Assert.allclose(actual.series.supercell, supercell)
+    # check different elements of the label
+    assert type(actual.series.label) is str
+    expected = "both spin channels" if spin == "total" else f"spin {spin}"
+    assert expected in actual.series.label
+    assert "constant current" in actual.series.label
+    assert f"{current:.2f}" in actual.series.label
+    assert "constant current" in actual.title
+    assert f"{current:.2f}" in actual.title
+
+
+@pytest.mark.parametrize("alias", ("constant_current", "cc", "current"))
+def test_to_stm_nonsplit_constant_current_non_ortho(
+    NonSplitPartialChargeCaAs3_110, alias, spin, Assert, not_core
+):
+    current = 5
+    supercell = np.asarray([2, 4])
+    actual = NonSplitPartialChargeCaAs3_110.to_stm(
+        selection=f"{spin}({alias})",
+        current=current,
+        supercell=supercell,
+    )
+    expected = NonSplitPartialChargeCaAs3_110.ref
     assert type(actual.series.data) == np.ndarray
     assert actual.series.data.shape == (expected.grid[0], expected.grid[1])
     Assert.allclose(actual.series.lattice, expected.plane_vectors)
