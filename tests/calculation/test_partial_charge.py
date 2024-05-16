@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from py4vasp import calculation
+from py4vasp._util.slicing import plane
 from py4vasp.exception import IncorrectUsage, NoData, NotImplemented
 
 
@@ -89,7 +90,11 @@ def make_reference_partial_charge(raw_data, selection):
     parchg = calculation.partial_charge.from_data(raw_partial_charge)
     parchg.ref = types.SimpleNamespace()
     parchg.ref.structure = calculation.structure.from_data(raw_partial_charge.structure)
-    parchg.ref.plane_vectors = parchg.ref.structure.lattice_vectors()[:2, :2]
+    parchg.ref.plane_vectors = plane(
+        cell=parchg.ref.structure.lattice_vectors(),
+        cut="c",
+        normal="z",
+    )
     parchg.ref.partial_charge = raw_partial_charge.partial_charge
     parchg.ref.bands = raw_partial_charge.bands
     parchg.ref.kpoints = raw_partial_charge.kpoints
@@ -242,7 +247,7 @@ def test_to_stm_nonsplit_constant_height(
     expected = PolarizedNonSplitPartialCharge.ref
     assert type(actual.series.data) == np.ndarray
     assert actual.series.data.shape == (expected.grid[0], expected.grid[1])
-    Assert.allclose(actual.series.lattice, expected.plane_vectors)
+    Assert.allclose(actual.series.lattice.vectors, expected.plane_vectors.vectors)
     Assert.allclose(actual.series.supercell, np.asarray([supercell, supercell]))
     # check different elements of the label
     assert type(actual.series.label) is str
@@ -268,7 +273,7 @@ def test_to_stm_nonsplit_constant_current(
     expected = PolarizedNonSplitPartialCharge.ref
     assert type(actual.series.data) == np.ndarray
     assert actual.series.data.shape == (expected.grid[0], expected.grid[1])
-    Assert.allclose(actual.series.lattice, expected.plane_vectors)
+    Assert.allclose(actual.series.lattice.vectors, expected.plane_vectors.vectors)
     Assert.allclose(actual.series.supercell, supercell)
     # check different elements of the label
     assert type(actual.series.label) is str
@@ -294,7 +299,7 @@ def test_to_stm_nonsplit_constant_current_non_ortho(
     expected = NonSplitPartialChargeCaAs3_110.ref
     assert type(actual.series.data) == np.ndarray
     assert actual.series.data.shape == (expected.grid[0], expected.grid[1])
-    Assert.allclose(actual.series.lattice, expected.plane_vectors)
+    Assert.allclose(actual.series.lattice.vectors, expected.plane_vectors.vectors)
     Assert.allclose(actual.series.supercell, supercell)
     # check different elements of the label
     assert type(actual.series.label) is str

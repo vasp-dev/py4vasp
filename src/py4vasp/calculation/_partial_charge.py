@@ -10,6 +10,7 @@ from py4vasp import exception
 from py4vasp._third_party.graph import Graph
 from py4vasp._third_party.graph.contour import Contour
 from py4vasp._util import import_, select
+from py4vasp._util.slicing import plane
 from py4vasp.calculation import _base, _structure
 
 interpolate = import_.optional("scipy.interpolate")
@@ -201,7 +202,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         spin_label = "both spin channels" if spin == "total" else f"spin {spin}"
         topology = self._topology()
         label = f"STM of {topology} for {spin_label} at constant current={current*1e9:.2f} nA"
-        return Contour(data=scan, lattice=self._in_plane_vectors(), label=label)
+        return Contour(data=scan, lattice=self._get_stm_plane(), label=label)
 
     def _constant_height_stm(self, smoothed_charge, tip_height, spin):
         zz = self._z_index_for_height(tip_height + self._get_highest_z_coord())
@@ -209,7 +210,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         spin_label = "both spin channels" if spin == "total" else f"spin {spin}"
         topology = self._topology()
         label = f"STM of {topology} for {spin_label} at constant height={float(tip_height):.2f} Angstrom"
-        return Contour(data=height_scan, lattice=self._in_plane_vectors(), label=label)
+        return Contour(data=height_scan, lattice=self._get_stm_plane(), label=label)
 
     def _z_index_for_height(self, tip_height):
         """Return the z-index of the tip height in the charge density grid."""
@@ -267,11 +268,22 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             data, sigma=sigma, truncate=self.stm_settings.truncate, mode="wrap"
         )
 
-    def _in_plane_vectors(self):
-        """Return the in-plane component of lattice vectors."""
-        lattice_vectors = self._structure.lattice_vectors()
-        _raise_error_if_vacuum_not_along_z(self._structure)
-        return lattice_vectors[:2, :2]
+    def _get_stm_plane(self):
+        """Return lattice plane spanned by a and b vectors"""
+        # lv = self._structure.lattice_vectors()
+        # _raise_error_if_vacuum_not_along_z(self._structure)
+        # l0 = np.linalg.norm(lv[0]) / np.linalg.norm(lv[0,:2]) * lv[0,:2]
+        # l1 = np.linalg.norm(lv[1]) / np.linalg.norm(lv[1,:2]) * lv[1,:2]
+        # from py4vasp._util.slicing import Plane
+        # return Plane(vectors=np.vstack((l0, l1)),
+        #             cell=lv,
+        #             cut="c",
+        #             )
+        return plane(
+            cell=self._structure.lattice_vectors(),
+            cut="c",
+            normal="z",
+        )
 
     def _out_of_plane_vector(self):
         """Return out-of-plane component of lattice vectors."""
