@@ -48,7 +48,7 @@ def not_core(is_core):
 
 class _Assert:
     @staticmethod
-    def allclose(actual, desired):
+    def allclose(actual, desired, tolerance=1):
         if _is_none(actual):
             assert _is_none(desired)
         elif getattr(actual, "dtype", None) == np.bool_:
@@ -59,7 +59,7 @@ class _Assert:
             actual, mask_actual = _finite_subset(actual)
             desired, mask_desired = _finite_subset(desired)
             assert np.all(mask_actual == mask_desired)
-            assert_array_almost_equal_nulp(actual, desired, 30)
+            assert_array_almost_equal_nulp(actual, desired, tolerance * 30)
 
     @staticmethod
     def same_structure(actual, desired):
@@ -666,11 +666,21 @@ def _Sr2TiO4_cell():
 
 
 def _example_OSZICAR():
-    random_convergence_data = np.random.rand(9, 6)
+    random_convergence_data = np.random.rand(9, 3)
     iteration_number = np.arange(1, 10)[:, np.newaxis]
-    convergence_data = np.hstack([iteration_number, random_convergence_data])
+    ncg = np.random.randint(4, 10, (9, 1))
+    random_rms = np.random.rand(9, 2)
+    convergence_data = np.hstack(
+        [iteration_number, random_convergence_data, ncg, random_rms]
+    )
     convergence_data = raw.VaspData(convergence_data)
-    return raw.OSZICAR(convergence_data=convergence_data)
+    label = raw.VaspData([b"N", b"E", b"dE", b"deps", b"ncg", b"rms", b"rms(c)"])
+    is_elmin_converged = [0]
+    return raw.OSZICAR(
+        convergence_data=convergence_data,
+        label=label,
+        is_elmin_converged=is_elmin_converged,
+    )
 
 
 def _partial_charge(selection):

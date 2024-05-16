@@ -269,13 +269,13 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
 
     def _in_plane_vectors(self):
         """Return the in-plane component of lattice vectors."""
-        lattice_vectors = self._structure._lattice_vectors()
+        lattice_vectors = self._structure.lattice_vectors()
         _raise_error_if_vacuum_not_along_z(self._structure)
         return lattice_vectors[:2, :2]
 
     def _out_of_plane_vector(self):
         """Return out-of-plane component of lattice vectors."""
-        lattice_vectors = self._structure._lattice_vectors()
+        lattice_vectors = self._structure.lattice_vectors()
         _raise_error_if_vacuum_not_along_z(self._structure)
         return lattice_vectors[2, 2]
 
@@ -391,7 +391,7 @@ def _raise_error_if_vacuum_not_along_z(structure):
 
 def _get_sanitized_fractional_positions(structure):
     """Return the fractional positions of the atoms in the structure."""
-    frac_pos = structure._positions()
+    frac_pos = structure.positions()
     # Make sure that all fractional positions are between 0 and 1.
     # Otherwise, add 1 or subtract 1 to get the correct fractional position.
     while np.any(frac_pos < 0.0) or np.any(frac_pos >= 1.0):
@@ -403,7 +403,7 @@ def _get_sanitized_fractional_positions(structure):
 def _get_sanitized_cartesian_positions(structure):
     """Return the cartesian positions of the atoms in the structure."""
     frac_pos = _get_sanitized_fractional_positions(structure)
-    return np.dot(frac_pos, structure._lattice_vectors())
+    return np.dot(frac_pos, structure.lattice_vectors())
 
 
 def _min_of_z_charge(charge, sigma=4, truncate=3.0):

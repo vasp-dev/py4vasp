@@ -3,9 +3,10 @@
 
 import types
 
+import numpy as np
 import pytest
 
-from py4vasp import calculation
+from py4vasp import calculation, exception
 
 
 @pytest.fixture
@@ -14,39 +15,75 @@ def OSZICAR(raw_data):
     oszicar = calculation.OSZICAR.from_data(raw_oszicar)
     oszicar.ref = types.SimpleNamespace()
     convergence_data = raw_oszicar.convergence_data
-    oszicar.ref.iteration_number = convergence_data[:, 0]
-    oszicar.ref.free_energy = convergence_data[:, 1]
-    oszicar.ref.free_energy_change = convergence_data[:, 2]
-    oszicar.ref.bandstructure_energy_change = convergence_data[:, 3]
-    oszicar.ref.number_hamiltonian_evaluations = convergence_data[:, 4]
-    oszicar.ref.norm_residual = convergence_data[:, 5]
-    oszicar.ref.difference_charge_density = convergence_data[:, 6]
+    oszicar.ref.N = np.int64(convergence_data[:, 0])
+    oszicar.ref.E = convergence_data[:, 1]
+    oszicar.ref.dE = convergence_data[:, 2]
+    oszicar.ref.deps = convergence_data[:, 3]
+    oszicar.ref.ncg = convergence_data[:, 4]
+    oszicar.ref.rms = convergence_data[:, 5]
+    oszicar.ref.rmsc = convergence_data[:, 6]
+    oszicar.ref.is_elmin_converged = [raw_oszicar.is_elmin_converged == [0.0]]
+    string_rep = "N\t\tE\t\tdE\t\tdeps\t\tncg\trms\t\trms(c)\n"
+    format_rep = "{0:g}\t{1:0.12E}\t{2:0.6E}\t{3:0.6E}\t{4:g}\t{5:0.3E}\t{6:0.3E}\n"
+    for idx in range(len(convergence_data)):
+        string_rep += format_rep.format(*convergence_data[idx])
+    oszicar.ref.string_rep = str(string_rep)
     return oszicar
 
 
 def test_read(OSZICAR, Assert):
     actual = OSZICAR.read()
     expected = OSZICAR.ref
-    Assert.allclose(actual["iteration_number"], expected.iteration_number)
-    Assert.allclose(actual["free_energy"], expected.free_energy)
-    Assert.allclose(actual["free_energy_change"], expected.free_energy_change)
-    Assert.allclose(
-        actual["bandstructure_energy_change"], expected.bandstructure_energy_change
-    )
-    Assert.allclose(
-        actual["number_hamiltonian_evaluations"],
-        expected.number_hamiltonian_evaluations,
-    )
-    Assert.allclose(actual["norm_residual"], expected.norm_residual)
-    Assert.allclose(
-        actual["difference_charge_density"], expected.difference_charge_density
-    )
+    Assert.allclose(actual["N"], expected.N)
+    Assert.allclose(actual["E"], expected.E)
+    Assert.allclose(actual["dE"], expected.dE)
+    Assert.allclose(actual["deps"], expected.deps)
+    Assert.allclose(actual["ncg"], expected.ncg)
+    Assert.allclose(actual["rms"], expected.rms)
+    Assert.allclose(actual["rms(c)"], expected.rmsc)
+
+
+@pytest.mark.parametrize(
+    "quantity_name", ["N", "E", "dE", "deps", "ncg", "rms", "rms(c)"]
+)
+def test_read_selection(quantity_name, OSZICAR, Assert):
+    actual = OSZICAR.read(quantity_name)
+    expected = getattr(OSZICAR.ref, quantity_name.replace("(", "").replace(")", ""))
+    Assert.allclose(actual[quantity_name], expected)
+
+
+def test_read_incorrect_selection(OSZICAR):
+    with pytest.raises(exception.RefinementError):
+        OSZICAR.read("forces")
+
+
+def test_slice(OSZICAR, Assert):
+    actual = OSZICAR[0:1].read()
+    expected = OSZICAR.ref
+    Assert.allclose(actual["N"], expected.N)
+    Assert.allclose(actual["E"], expected.E)
+    Assert.allclose(actual["dE"], expected.dE)
+    Assert.allclose(actual["deps"], expected.deps)
+    Assert.allclose(actual["ncg"], expected.ncg)
+    Assert.allclose(actual["rms"], expected.rms)
+    Assert.allclose(actual["rms(c)"], expected.rmsc)
 
 
 def test_plot(OSZICAR, Assert):
     graph = OSZICAR.plot()
     assert graph.xlabel == "Iteration number"
-    assert graph.ylabel == "Free Energy"
+    assert graph.ylabel == "E"
     assert len(graph.series) == 1
-    Assert.allclose(graph.series[0].x, OSZICAR.ref.iteration_number)
-    Assert.allclose(graph.series[0].y, OSZICAR.ref.free_energy)
+    Assert.allclose(graph.series[0].x, OSZICAR.ref.N)
+    Assert.allclose(graph.series[0].y, OSZICAR.ref.E)
+
+
+def test_print(OSZICAR, format_):
+    actual, _ = format_(OSZICAR)
+    assert actual["text/plain"] == OSZICAR.ref.string_rep
+
+
+def test_is_converged(OSZICAR):
+    actual = OSZICAR.is_converged()
+    expected = OSZICAR.ref.is_elmin_converged
+    assert actual == expected

@@ -79,6 +79,8 @@ class Graph(Sequence):
                 figure.add_trace(trace, row=options["row"], col=1)
             for shape in options.get("shapes", ()):
                 figure.add_shape(**shape)
+            for annotation in options.get("annotations", ()):
+                figure.add_annotation(**annotation)
         return figure
 
     def show(self):

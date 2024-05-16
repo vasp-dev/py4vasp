@@ -89,7 +89,7 @@ def make_reference_partial_charge(raw_data, selection):
     parchg = calculation.partial_charge.from_data(raw_partial_charge)
     parchg.ref = types.SimpleNamespace()
     parchg.ref.structure = calculation.structure.from_data(raw_partial_charge.structure)
-    parchg.ref.plane_vectors = parchg.ref.structure._lattice_vectors()[:2, :2]
+    parchg.ref.plane_vectors = parchg.ref.structure.lattice_vectors()[:2, :2]
     parchg.ref.partial_charge = raw_partial_charge.partial_charge
     parchg.ref.bands = raw_partial_charge.bands
     parchg.ref.kpoints = raw_partial_charge.kpoints

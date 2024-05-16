@@ -144,8 +144,8 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
         {examples}
         """
         return {
-            "lattice_vectors": self._lattice_vectors(),
-            "positions": self._positions(),
+            "lattice_vectors": self.lattice_vectors(),
+            "positions": self.positions(),
             "elements": self._topology().elements(),
             "names": self._topology().names(),
         }
@@ -171,8 +171,8 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
         make_3d = lambda array: array if array.ndim == 3 else array[np.newaxis]
         return view.View(
             elements=np.atleast_2d(self._topology().elements()),
-            lattice_vectors=make_3d(self._lattice_vectors()),
-            positions=make_3d(self._positions()),
+            lattice_vectors=make_3d(self.lattice_vectors()),
+            positions=make_3d(self.positions()),
             supercell=self._parse_supercell(supercell),
         )
 
@@ -262,6 +262,32 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
             raise exception.NotImplemented(message)
 
     @_base.data_access
+    def lattice_vectors(self):
+        """Return the lattice vectors spanning the unit cell
+
+        Returns
+        -------
+        np.ndarray
+            Lattice vectors of the unit cell in Å.
+        """
+        lattice_vectors = _LatticeVectors(self._raw_data.cell.lattice_vectors)
+        return self._scale() * lattice_vectors[self._get_steps()]
+
+    @_base.data_access
+    def positions(self):
+        """Return the direct coordinates of all ions in the unit cell.
+
+        Direct or fractional coordinates measure the position of the ions in terms of
+        the lattice vectors. Hence they are dimensionless quantities.
+
+        Returns
+        -------
+        np.ndarray
+            Positions of all ions in terms of the lattice vectors.
+        """
+        return self._raw_data.positions[self._get_steps()]
+
+    @_base.data_access
     @documentation.format(examples=_slice.examples("structure", "cartesian_positions"))
     def cartesian_positions(self):
         """Convert the positions from direct coordinates to cartesian ones.
@@ -273,7 +299,7 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
 
         {examples}
         """
-        return self._positions() @ self._lattice_vectors()
+        return self.positions() @ self.lattice_vectors()
 
     @_base.data_access
     @documentation.format(examples=_slice.examples("structure", "volume"))
@@ -287,7 +313,7 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
 
         {examples}
         """
-        return np.abs(np.linalg.det(self._lattice_vectors()))
+        return np.abs(np.linalg.det(self.lattice_vectors()))
 
     @_base.data_access
     def number_atoms(self):
@@ -331,10 +357,6 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
     def _topology(self):
         return calculation.topology.from_data(self._raw_data.topology)
 
-    def _lattice_vectors(self):
-        lattice_vectors = _LatticeVectors(self._raw_data.cell.lattice_vectors)
-        return self._scale() * lattice_vectors[self._get_steps()]
-
     def _scale(self):
         if isinstance(self._raw_data.cell.scale, np.float_):
             return self._raw_data.cell.scale
@@ -342,9 +364,6 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
             return self._raw_data.cell.scale[()]
         else:
             return 1.0
-
-    def _positions(self):
-        return self._raw_data.positions[self._get_steps()]
 
     def _get_steps(self):
         return self._steps if self._is_trajectory else ()
