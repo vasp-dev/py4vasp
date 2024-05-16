@@ -193,12 +193,12 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         grid = self.grid()
         z_step = 1 / self.stm_settings.interpolation_factor
         # roll smoothed charge so that we are not bothered by the boundary of the
-        # unit cell if the slab is not centered
+        # unit cell if the slab is not centered. z_start is now the first index
         smoothed_charge = np.roll(smoothed_charge, -z_start, axis=2)
         z_grid = np.arange(grid[2], 0, -z_step)
         splines = interpolate.CubicSpline(range(grid[2]), smoothed_charge, axis=-1)
         scan = z_grid[np.argmax(splines(z_grid) >= current, axis=-1)]
-        scan = z_step * scan - self._get_highest_z_coord()
+        scan = z_step * (scan - scan.min())
         spin_label = "both spin channels" if spin == "total" else f"spin {spin}"
         topology = self._topology()
         label = f"STM of {topology} for {spin_label} at constant current={current*1e9:.2f} nA"
@@ -221,6 +221,10 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
                 self.grid()[2],
             )
         )
+
+    def _height_from_z_index(self, z_index):
+        """Return the height of the z-index in the charge density grid."""
+        return z_index * self._out_of_plane_vector() / self.grid()[2]
 
     def _get_highest_z_coord(self):
         cart_coords = _get_sanitized_cartesian_positions(self._structure)
