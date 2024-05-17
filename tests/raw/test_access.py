@@ -60,6 +60,7 @@ def check_data(actual, key, Assert):
         assert actual[:] == mock.__getitem__.return_value
         Assert.allclose(actual, EXAMPLE_ARRAY)
 
+
 def test_access_quantity(mock_access, Assert):
     quantity = "optional_argument"
     mock_file, sources = mock_access

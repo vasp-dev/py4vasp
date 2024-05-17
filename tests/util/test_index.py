@@ -153,6 +153,24 @@ def test_select_pair(selection, indices):
 
 
 @pytest.mark.parametrize(
+    "selection, function",
+    [
+        (("real",), np.real),
+        (("Re",), np.real),
+        (("imag",), np.imag),
+        (("Im",), np.imag),
+        (("abs",), np.abs),
+        ((), np.array),
+    ],
+)
+def test_select_from_complex(selection, function, Assert):
+    values = np.arange(10) + 1j * np.arange(10) ** 2
+    map_ = {}
+    selector = index.Selector(map_, values)
+    Assert.allclose(selector[selection], function(values))
+
+
+@pytest.mark.parametrize(
     "selection, expected",
     [
         ((make_operation("A", "+", "B"),), 5),

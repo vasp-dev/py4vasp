@@ -25,6 +25,10 @@ like in this example or a `slice`. The first two selections will return `data[:,
 and `data[:,1,1]`, respectively. The last selection is equivalent to
 `np.sum(data[:,:,2], axis=-1)` because we sum over all dimensions mentioned as keys
 in `maps`.
+
+For complex arrays, the index selector automatically adds "real", "Re", "imag", "Im",
+and "abs" to select the corresponding parts of the complex array. If none of these is
+present, the complex value is returned.
 """
 import dataclasses
 import itertools
@@ -33,6 +37,14 @@ import numpy as np
 
 from py4vasp import exception, raw
 from py4vasp._util import select
+
+COMPLEX_MAP = {
+    "real": (None, np.real),
+    "Re": (None, np.real),
+    "imag": (None, np.imag),
+    "Im": (None, np.imag),
+    "abs": (None, np.abs),
+}
 
 
 class Selector:
@@ -67,6 +79,8 @@ class Selector:
         if not self._data.is_none():
             _raise_error_if_map_out_of_bounds(maps.keys(), self._data.ndim)
         self._map = self._make_map(maps)
+        if self._data.dtype == np.complex_:
+            self._map.update(COMPLEX_MAP)
         self._use_number_labels = use_number_labels
         self._number_labels = self._make_number_labels(maps)
         self._indices = self._make_default_indices(maps, self._data.ndim)
@@ -118,7 +132,8 @@ class Selector:
         selection : tuple
             A selection ideally produced by `py4vasp._util.selection.Tree`. The elements
             of the tuple should correspond to labels in the maps used to initialize this
-            class or mathematical operations of them.
+            class or mathematical operations of them. For complex arrays, additionally
+            you can use "real", "Re", "imag", "Im", or "abs".
 
         Returns
         -------
@@ -128,7 +143,10 @@ class Selector:
             i.e., ndim of the result = ndim of data - len(maps).
         """
         return sum(
-            slices.factor * self._reduction(self._data[slices.indices], axis=self._axes)
+            slices.factor
+            * self._reduction(
+                slices.function(self._data[slices.indices]), axis=self._axes
+            )
             for slices in self._get_all_slices(selection)
         )
 
@@ -257,6 +275,7 @@ class _Slices:
         self._indices = indices.copy()
         self._keys = [""] * len(indices)
         self.factor = 1
+        self.function = np.array
 
     @classmethod
     def from_merge(cls, left, right):
@@ -268,9 +287,12 @@ class _Slices:
         slices.factor = left.factor * right.factor
         return slices
 
-    def set(self, dimension, slice_, key):
-        self._indices[dimension] = slice_
-        self._keys[dimension] = key
+    def set(self, dimension, slice_or_function, key):
+        if dimension is None:
+            self.function = slice_or_function
+        else:
+            self._indices[dimension] = slice_or_function
+            self._keys[dimension] = key
         return self
 
     def set_operator(self, operator):
