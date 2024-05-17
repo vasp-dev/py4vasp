@@ -108,6 +108,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
     def to_stm(
         self,
         selection: str = "constant_height",
+        *,
         tip_height: float = 2.0,
         current: float = 1.0,
         supercell: Union[int, np.array] = 2,
