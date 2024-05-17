@@ -1,6 +1,5 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import tempfile
 from unittest.mock import MagicMock
 
 import hypothesis.extra.numpy as np_strat
@@ -34,15 +33,19 @@ def array_or_scalar(draw):
 def array_and_slice(draw):
     shape = draw(np_strat.array_shapes())
     array = draw_test_data(draw, shape)
-    slice = draw(np_strat.basic_indices(shape))
-    return array, slice
+    slice_ = draw(np_strat.basic_indices(shape))
+    return array, slice_
 
 
 @strategy.composite
 def complex_array_or_scalar(draw):
     (complex_shape,), _ = draw(np_strat.mutually_broadcastable_shapes(num_shapes=1))
     real_shape = (*complex_shape, 2)
-    return draw_test_data(draw, real_shape)
+    if len(complex_shape) == 0:
+        slice_ = ()
+    else:
+        slice_ = draw(np_strat.basic_indices(complex_shape))
+    return draw_test_data(draw, real_shape), slice_
 
 
 def draw_test_data(draw, shape, positive=False):
@@ -116,9 +119,9 @@ def test_conversion(data, Assert):
 
 @given(array_slice=array_and_slice())
 def test_slices(array_slice, Assert):
-    array, slice = array_slice
+    array, slice_ = array_slice
     vasp = VaspData(array)
-    Assert.allclose(vasp[slice], array[slice])
+    Assert.allclose(vasp[slice_], array[slice_])
 
 
 @pytest.mark.parametrize(
@@ -185,8 +188,9 @@ def test_nested_data():
     assert repr(data) == f"VaspData({repr(zeros)})"
 
 
-@given(data=complex_array_or_scalar())
-def test_complex_from_numpy(data, Assert):
+@given(array_slice=complex_array_or_scalar())
+def test_complex_from_numpy(array_slice, Assert):
+    data, slice_ = array_slice
     data = data.view(np.complex128).reshape(data.shape[:-1])
     vasp = VaspData(data)
     assert vasp.ndim == data.ndim
@@ -199,14 +203,18 @@ def test_complex_from_numpy(data, Assert):
     Assert.allclose(np.sin(vasp), np.sin(data))
     Assert.allclose(np.cos(vasp), np.cos(data))
     Assert.allclose(np.tan(vasp), np.tan(data))
+    Assert.allclose(vasp.astype(np.complex64), data.astype(np.complex64))
+    assert repr(vasp) == f"VaspData({repr(data)})"
+    Assert.allclose(vasp[slice_], data[slice_])
 
 
 class MockComplex(np.ndarray):
     attrs = {"dtype": "complex"}
 
 
-@given(data=complex_array_or_scalar())
-def test_complex_from_dataset(data, Assert):
+@given(array_slice=complex_array_or_scalar())
+def test_complex_from_dataset(array_slice, Assert):
+    data, slice_ = array_slice
     view = data.view(np.complex128).reshape(data.shape[:-1])
     mock_complex = MockComplex(shape=data.shape, buffer=data.data)
     vasp = VaspData(mock_complex)
@@ -220,6 +228,7 @@ def test_complex_from_dataset(data, Assert):
     Assert.allclose(np.sin(vasp), np.sin(view))
     Assert.allclose(vasp.astype(np.complex64), view.astype(np.complex64))
     assert repr(vasp) == f"VaspData({repr(mock_complex)})"
+    Assert.allclose(vasp[slice_], view[slice_])
     # make sure no copies are created, i.e., when I modify the original data, the
     # VaspData changes accordingly
     copy = view.copy()

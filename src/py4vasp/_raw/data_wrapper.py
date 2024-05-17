@@ -107,8 +107,14 @@ class _ComplexWrapper(np.lib.mixins.NDArrayOperatorsMixin):
         self._data = data
 
     def __array__(self, *args, **kwargs):
-        array = np.array(self._data, *args, **kwargs)
-        return array.view(np.complex128).reshape(self.shape)
+        return self._cast_complex(np.array(self._data, *args, **kwargs))
+
+    def __getitem__(self, key):
+        keys = *np.atleast_1d(key), slice(None)
+        return self._cast_complex(self._data[keys])
+
+    def _cast_complex(self, array):
+        return array.view(np.complex128).reshape(array.shape[:-1])
 
     @property
     def ndim(self):
