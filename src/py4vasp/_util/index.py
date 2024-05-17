@@ -274,8 +274,8 @@ class _Slices:
         self._default = indices
         self._indices = indices.copy()
         self._keys = [""] * len(indices)
+        self._function = None
         self.factor = 1
-        self.function = np.array
 
     @classmethod
     def from_merge(cls, left, right):
@@ -284,12 +284,13 @@ class _Slices:
         slices._default = left._default
         slices._indices = _merge_indices(left._default, left._indices, right._indices)
         slices._keys = _merge_keys(left._keys, right._keys)
+        slices._function = left._function or right._function
         slices.factor = left.factor * right.factor
         return slices
 
     def set(self, dimension, slice_or_function, key):
         if dimension is None:
-            self.function = slice_or_function
+            self._function = slice_or_function
         else:
             self._indices[dimension] = slice_or_function
             self._keys[dimension] = key
@@ -302,6 +303,10 @@ class _Slices:
     @property
     def indices(self):
         return tuple(self._indices)
+
+    @property
+    def function(self):
+        return self._function or np.array
 
     def label(self, index, axes, number_labels):
         if index == 0:

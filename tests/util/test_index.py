@@ -173,6 +173,23 @@ def test_select_from_complex(selection, function, Assert):
 @pytest.mark.parametrize(
     "selection, expected",
     [
+        (("A", "real"), 1.0),
+        (("imag", "B"), 4.0),
+        (("C", "abs"), np.sqrt(90.0)),
+        (("D",), 4.0 + 16.0j),
+        (("Re",), 45.0),
+    ],
+)
+def test_combine_select_and_complex(selection, expected, Assert):
+    values = np.arange(10) + 1j * np.arange(10) ** 2
+    map_ = {0: {"A": 1, "B": 2, "C": 3, "D": 4}}
+    selector = index.Selector(map_, values)
+    Assert.allclose(selector[selection], expected)
+
+
+@pytest.mark.parametrize(
+    "selection, expected",
+    [
         ((make_operation("A", "+", "B"),), 5),
         ((make_operation("C", "-", "D"),), -7),
         ((make_operation("E", "+", "E"),), 50),
