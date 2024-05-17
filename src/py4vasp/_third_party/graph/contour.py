@@ -37,9 +37,10 @@ class Contour(trace.Trace):
     the dimensions should be the ones of the grid, if the data is 3d the first dimension
     should be a 2 for a vector in the plane of the grid and the other two dimensions
     should be the grid."""
-    lattice: Lattice
-    """2 vectors spanning the plane in which the data is represented. Each vector should
-    have two components, so remove any element normal to the plane."""
+    lattice: Plane
+    """Lattice plane in which the data is represented spanned by 2 vectors.
+    Each vector should have two components, so remove any element normal to
+    the plane. Can be generated with the 'plane' function in py4vasp._util.slicing."""
     label: str
     "Assign a label to the visualization that may be used to identify one among multiple plots."
     isolevels: bool = False

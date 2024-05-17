@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import importlib.metadata
 import itertools
+import random
 
 import numpy as np
 import pytest
@@ -324,6 +325,10 @@ class RawDataFactory:
     @staticmethod
     def workfunction(selection):
         return _workfunction(selection)
+
+    @staticmethod
+    def partial_charge(selection):
+        return _partial_charge(selection)
 
 
 @pytest.fixture
@@ -678,6 +683,45 @@ def _example_OSZICAR():
     )
 
 
+def _partial_charge(selection):
+    grid_dim = grid_dimensions
+    if "CaAs3_110" in selection:
+        structure = _CaAs3_110_structure()
+        grid_dim = (240, 40, 32)
+    elif "Sr2TiO4" in selection:
+        structure = _Sr2TiO4_structure()
+    elif "Ca3AsBr3" in selection:
+        structure = _Ca3AsBr3_structure()
+    elif "Ni100" in selection:
+        structure = _Ni100_structure()
+    else:
+        structure = _Graphite_structure()
+        grid_dim = (216, 24, 24)
+    if "split_bands" in selection:
+        bands = raw.VaspData(random.sample(range(1, 51), 3))
+    else:
+        bands = raw.VaspData(np.asarray([0]))
+    if "split_kpoints" in selection:
+        kpoints = raw.VaspData((random.sample(range(1, 26), 5)))
+    else:
+        kpoints = raw.VaspData(np.asarray([0]))
+    if "spin_polarized" in selection:
+        spin_dimension = 2
+    else:
+        spin_dimension = 1
+    grid = raw.VaspData(tuple(reversed(grid_dim)))
+    random_charge = raw.VaspData(
+        np.random.rand(len(kpoints), len(bands), spin_dimension, *grid_dim)
+    )
+    return raw.PartialCharge(
+        structure=structure,
+        bands=bands,
+        kpoints=kpoints,
+        partial_charge=random_charge,
+        grid=grid,
+    )
+
+
 def _Sr2TiO4_CONTCAR():
     structure = _Sr2TiO4_structure()
     structure.cell.lattice_vectors = structure.cell.lattice_vectors[-1]
@@ -793,6 +837,126 @@ def _Sr2TiO4_stress(randomize):
     else:
         stresses = np.arange(np.prod(shape)).reshape(shape)
     return raw.Stress(structure=_Sr2TiO4_structure(), stress=stresses)
+
+
+def _Graphite_structure():
+    # repetitions = (number_steps, 1, 1)
+    positions = [
+        [0.00000000, 0.00000000, 0.00000000],
+        [0.33333333, 0.66666667, 0.00000000],
+        [0.33333333, 0.66666667, 0.15031929],
+        [0.66666667, 0.33333333, 0.15031929],
+        [0.00000000, 0.00000000, 0.30063858],
+        [0.33333333, 0.66666667, 0.30063858],
+        [0.33333333, 0.66666667, 0.45095787],
+        [0.66666667, 0.33333333, 0.45095787],
+        [0.00000000, 0.00000000, 0.60127716],
+        [0.33333333, 0.66666667, 0.60127716],
+    ]
+    return raw.Structure(
+        topology=_Graphite_topology(),
+        cell=_Graphite_cell(),
+        positions=raw.VaspData(positions),
+    )
+
+
+def _Graphite_cell():
+    lattice_vectors = [
+        [2.44104624, 0.00000000, 0.00000000],
+        [-1.22052312, 2.11400806, 0.00000000],
+        [0.00000000, 0.00000000, 22.0000000],
+    ]
+    return raw.Cell(np.asarray(lattice_vectors), scale=raw.VaspData(1.0))
+
+
+def _Graphite_topology():
+    return raw.Topology(
+        number_ion_types=np.array((10,)),
+        ion_types=np.array(("C",), dtype="S"),
+    )
+
+
+def _Ni100_structure():
+    # repetitions = (number_steps, 1, 1)
+    positions = [
+        [0.00000000, 0.00000000, 0.00000000],
+        [0.50000000, 0.10000000, 0.50000000],
+        [0.00000000, 0.20000000, 0.00000000],
+        [0.50000000, 0.30000000, 0.50000000],
+        [0.00000000, 0.40000000, 0.00000000],
+    ]
+    return raw.Structure(
+        topology=_Ni100_topology(),
+        cell=_Ni100_cell(),
+        positions=raw.VaspData(positions),
+    )
+
+
+def _Ni100_cell():
+    lattice_vectors = [
+        [2.496086836, 0.00000000, 0.00000000],
+        [-1.22052312, 35.2999992371, 0.00000000],
+        [0.00000000, 0.00000000, 2.4960868359],
+    ]
+    return raw.Cell(np.asarray(lattice_vectors), scale=raw.VaspData(1.0))
+
+
+def _Ni100_topology():
+    return raw.Topology(
+        number_ion_types=np.array((5,)),
+        ion_types=np.array(("Ni",), dtype="S"),
+    )
+
+
+def _CaAs3_110_structure():
+    # repetitions = (number_steps, 1, 1)
+    positions = [
+        [0.20000458, 0.51381288, 0.73110298],
+        [0.79999542, 0.48618711, 0.66008269],
+        [0.20000458, 0.51381288, 0.93991731],
+        [0.70000458, 0.01381289, 0.83551014],
+        [0.79999542, 0.48618711, 0.86889702],
+        [0.29999541, 0.98618712, 0.76448986],
+        [0.08920607, 0.11201309, 0.67393241],
+        [0.91079393, 0.88798690, 0.71725325],
+        [0.57346071, 0.83596581, 0.70010722],
+        [0.42653929, 0.16403419, 0.69107845],
+        [0.72035614, 0.40406032, 0.73436505],
+        [0.27964386, 0.59593968, 0.65682062],
+        [0.08920607, 0.11201309, 0.88274675],
+        [0.58920607, 0.61201310, 0.77833958],
+        [0.91079393, 0.88798690, 0.92606759],
+        [0.41079393, 0.38798690, 0.82166042],
+        [0.57346071, 0.83596581, 0.90892155],
+        [0.07346071, 0.33596581, 0.80451438],
+        [0.42653929, 0.16403419, 0.89989278],
+        [0.92653929, 0.66403419, 0.79548562],
+        [0.72035614, 0.40406032, 0.94317938],
+        [0.22035614, 0.90406032, 0.83877221],
+        [0.27964386, 0.59593968, 0.86563495],
+        [0.77964386, 0.09593968, 0.76122779],
+    ]
+    return raw.Structure(
+        topology=_CaAs3_110_topology(),
+        cell=_CaAs3_110_cell(),
+        positions=raw.VaspData(positions),
+    )
+
+
+def _CaAs3_110_cell():
+    lattice_vectors = [
+        [5.65019183, 0.00000000, 1.90320681],
+        [0.85575829, 7.16802977, 0.65250675],
+        [0.00000000, 0.00000000, 44.41010402],
+    ]
+    return raw.Cell(np.asarray(lattice_vectors), scale=raw.VaspData(1.0))
+
+
+def _CaAs3_110_topology():
+    return raw.Topology(
+        number_ion_types=np.array((6, 18)),
+        ion_types=np.array(("Ca", "As"), dtype="S"),
+    )
 
 
 def _Sr2TiO4_structure():

@@ -9,7 +9,9 @@ authors = [
     "Orest Dubay <orest-d@users.noreply.github.com>",
     "Jonathan Lahnsteiner <jonathan.lahnsteiner@gmx.at>",
     "Eisuke Kawashima <e-kwsm@users.noreply.github.com>",
-    "Sudarshan Vijay <sudarshan.vijay@protonmail.com>"
+    "Sudarshan Vijay <sudarshan.vijay@protonmail.com>",
+    "Marie-Therese Huebsch <marie-therese.huebsch@vasp.at>",
+    "Michael Wolloch <michael.wolloch@vasp.at>",
 ]
 license = "Apache-2.0"
 readme = "README.md"

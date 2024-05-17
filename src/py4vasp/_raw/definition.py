@@ -395,6 +395,16 @@ schema.add(
     labels=f"{group}/labels",
 )
 #
+schema.add(
+    raw.PartialCharge,
+    required=raw.Version(6, 5),
+    structure=Link("structure", DEFAULT_SOURCE),
+    partial_charge="results/partial_charges/parchg",
+    bands="results/partial_charges/bands",
+    kpoints="results/partial_charges/kpoints",
+    grid="results/partial_charges/grid",
+)
+#
 group = "results/phonons"
 schema.add(
     raw.PhononBand,
