@@ -275,15 +275,6 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
 
     def _get_stm_plane(self):
         """Return lattice plane spanned by a and b vectors"""
-        # lv = self._structure.lattice_vectors()
-        # _raise_error_if_vacuum_not_along_z(self._structure)
-        # l0 = np.linalg.norm(lv[0]) / np.linalg.norm(lv[0,:2]) * lv[0,:2]
-        # l1 = np.linalg.norm(lv[1]) / np.linalg.norm(lv[1,:2]) * lv[1,:2]
-        # from py4vasp._util.slicing import Plane
-        # return Plane(vectors=np.vstack((l0, l1)),
-        #             cell=lv,
-        #             cut="c",
-        #             )
         return plane(
             cell=self._structure.lattice_vectors(),
             cut="c",
