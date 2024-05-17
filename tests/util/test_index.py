@@ -313,9 +313,13 @@ def test_operation_with_custom_reduction(selection, expected, Assert):
         (("up",), "up"),
         (("A",), "A"),
         (("x",), "x"),
+        (("real",), "Re"),
+        (("Re",), "Re"),
         (("down", "B"), "B_down"),
         (("B", "y"), "B_y"),
         (("z", "up"), "z_up"),
+        (("imag", "A"), "Im(A)"),
+        (("x", "Im"), "Im(x)"),
         (("1",), "A_1"),
         (("5",), "B_2"),
         (("8",), "8"),  # use number of no matching label
@@ -327,6 +331,8 @@ def test_operation_with_custom_reduction(selection, expected, Assert):
         (("z", make_range("1", "5")), "1:5_z"),
         ((make_operation("A", "+", "B"),), "A + B"),
         ((make_operation("x", "-", "up"),), "x - up"),
+        # ((make_operation("1", "-", "5"), "abs"), "abs(A_1 - B_2)"),
+        # ((make_operation("Re", "+", "Im"),), "Re + Im"),
         ((select.Operation((), "+", "1"),), "A_1"),
         ((select.Operation((), "-", "x"),), "-x"),
     ],
@@ -338,7 +344,8 @@ def test_label(selection, label):
         2: {"x": 0, "y": 1, "z": 2, "u~v": 3},
         0: {"total": slice(0, 2), "up": 0, "down": 1},
     }
-    selector = index.Selector(map_, np.zeros((2, 8, 4, 0)), use_number_labels=True)
+    data = np.zeros((2, 8, 4, 0), dtype=np.complex_)
+    selector = index.Selector(map_, data, use_number_labels=True)
     assert selector.label(selection) == label
 
 

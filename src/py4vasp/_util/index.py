@@ -313,7 +313,8 @@ class _Slices:
             factor = "" if self.factor == 1 else "-"
         else:
             factor = "+ " if self.factor == 1 else "- "
-        return factor + "_".join(self._parse_keys(axes, number_labels))
+        label = factor + "_".join(self._parse_keys(axes, number_labels))
+        return self._wrap_with_function_label(label)
 
     def _parse_keys(self, axes, number_labels):
         for axis in axes:
@@ -326,6 +327,20 @@ class _Slices:
         if key.isdecimal():
             return number_labels[key]
         return key
+
+    def _wrap_with_function_label(self, label):
+        if not self._function:
+            return label
+        if self._function == np.real:
+            function_label = "Re"
+        elif self._function == np.imag:
+            function_label = "Im"
+        elif self._function == np.abs:
+            function_label = "abs"
+        else:
+            message = f"A label for {self._function} is not implemented."
+            raise exception.NotImplemented(message)
+        return f"{function_label}({label})" if label else function_label
 
 
 def _merge_keys(left_keys, right_keys):
