@@ -66,10 +66,6 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
     to separate the data.
     """
 
-    @property
-    def stm_settings(self):
-        return STM_settings()
-
     @_base.data_access
     def __str__(self):
         """Return a string representation of the partial charge density."""
@@ -112,6 +108,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         tip_height: float = 2.0,
         current: float = 1.0,
         supercell: Union[int, np.array] = 2,
+        stm_settings: STM_settings = STM_settings(),
     ) -> Graph:
         """Generate STM image data from the partial charge density.
 
@@ -129,6 +126,9 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             Only used in "constant_current" mode.
         supercell : int | np.array
             The supercell to be used for plotting the STM. The default is 2.
+        stm_settings : STM_settings
+            Settings for the STM simulation concerning smoothening parameters
+            and interpolation. The default is STM_settings().
 
         Returns
         -------
@@ -137,6 +137,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             object.
         """
         _raise_error_if_vacuum_too_small(self._estimate_vacuum())
+        self.stm_settings = stm_settings
 
         tree = select.Tree.from_selection(selection)
         for index, selection in enumerate(tree.selections()):

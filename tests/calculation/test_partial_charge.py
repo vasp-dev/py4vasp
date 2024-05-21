@@ -8,6 +8,7 @@ import pytest
 
 from py4vasp import calculation
 from py4vasp._util.slicing import plane
+from py4vasp.calculation._partial_charge import STM_settings
 from py4vasp.exception import IncorrectUsage, NoData, NotImplemented
 
 
@@ -312,6 +313,7 @@ def test_to_stm_nonsplit_constant_current_non_ortho(
 
 
 def test_stm_default_settings(PolarizedNonSplitPartialCharge):
+    PolarizedNonSplitPartialCharge.to_stm()
     actual = dataclasses.asdict(PolarizedNonSplitPartialCharge.stm_settings)
     defaults = {
         "sigma_xy": 4.0,
@@ -321,6 +323,20 @@ def test_stm_default_settings(PolarizedNonSplitPartialCharge):
         "interpolation_factor": 10,
     }
     assert actual == defaults
+
+
+def test_stm_updated_settings(PolarizedNonSplitPartialCharge):
+    new_settings = {
+        "sigma_xy": 3.0,
+        "sigma_z": 3.0,
+        "truncate": 2.0,
+        "enhancement_factor": 2000,
+        "interpolation_factor": 20,
+    }
+    settings = STM_settings(**new_settings)
+    PolarizedNonSplitPartialCharge.to_stm(stm_settings=settings)
+    actual = dataclasses.asdict(PolarizedNonSplitPartialCharge.stm_settings)
+    assert actual == new_settings
 
 
 def test_factory_methods(raw_data, check_factory_methods):
