@@ -66,6 +66,16 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
     to separate the data.
     """
 
+    @property
+    def stm_settings(self):
+        if not hasattr(self, "_stm_settings"):
+            self._stm_settings = STM_settings()
+        return self._stm_settings
+
+    @stm_settings.setter
+    def stm_settings(self, stm_settings: STM_settings):
+        self._stm_settings = stm_settings
+
     @_base.data_access
     def __str__(self):
         """Return a string representation of the partial charge density."""
@@ -137,7 +147,9 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             object.
         """
         _raise_error_if_vacuum_too_small(self._estimate_vacuum())
+        print("stm_settings passed here are: ", stm_settings)
         self.stm_settings = stm_settings
+        print("stm_settings are now: ", self.stm_settings)
 
         tree = select.Tree.from_selection(selection)
         for index, selection in enumerate(tree.selections()):
