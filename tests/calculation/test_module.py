@@ -2,13 +2,21 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import pytest
 
-from py4vasp import calculation, exception
+from py4vasp import Calculation, calculation, exception
 
 
 def test_access_of_attributes():
-    for key in calculation.__all__:
+    calc = Calculation.from_path(".")
+    for key in filter(attribute_included, dir(calc)):
         getattr(calculation, key)
-    calculation.dos  # access one random quantity to make sure that __all__ includes some keys
+
+
+def attribute_included(attr):
+    if attr.startswith("_"):  # do not include private attributes
+        return False
+    if attr.startswith("from"):  # do not include classmethods
+        return False
+    return True
 
 
 def test_nonexisting_attribute():
