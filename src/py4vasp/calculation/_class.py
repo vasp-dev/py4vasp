@@ -123,7 +123,7 @@ instead of the constructor Calculation()."""
 
 
 def _add_all_refinement_classes(calc, add_single_class):
-    for name in calculation.__all__:
+    for name in calculation._quantities:
         calc = add_single_class(calc, name)
     return calc
 
@@ -155,7 +155,7 @@ Calculation = _add_all_refinement_classes(Calculation, _add_to_documentation)
 
 
 def _add_input_files(calc):
-    calc._INCAR = control.INCAR(calc.path())
-    calc._KPOINTS = control.KPOINTS(calc.path())
-    calc._POSCAR = control.POSCAR(calc.path())
+    for name in calculation._input_files:
+        file_ = getattr(control, name)(calc.path())
+        setattr(calc, f"_{name}", file_)
     return calc
