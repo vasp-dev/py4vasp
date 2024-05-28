@@ -42,6 +42,7 @@ def test_hex_to_rgb(Assert):
         [44, 104, 252],
         [168, 44, 53],
         [128, 128, 128],
+        [33, 37, 41],
     ]
     expected = np.array(colors) / 255
     actual = np.array([to_rgb(color) for color in VASP_COLORS])

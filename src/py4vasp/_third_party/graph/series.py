@@ -5,13 +5,14 @@ from dataclasses import dataclass, fields
 import numpy as np
 
 from py4vasp import exception
+from py4vasp._third_party.graph import trace
 from py4vasp._util import import_
 
 go = import_.optional("plotly.graph_objects")
 
 
 @dataclass
-class Series:
+class Series(trace.Trace):
     """Represents a single series in a graph.
 
     Typically this corresponds to a single line of x-y data with an optional name used
@@ -55,7 +56,7 @@ class Series:
         assert not self._frozen or hasattr(self, key)
         super().__setattr__(key, value)
 
-    def _generate_traces(self):
+    def to_plotly(self):
         first_trace = True
         for item in enumerate(np.atleast_2d(np.array(self.y))):
             yield self._make_trace(*item, first_trace), {"row": self.subplot}
@@ -122,6 +123,9 @@ class Series:
             "showlegend": first_trace,
             "yaxis": "y2" if self.y2 else "y",
         }
+
+    def _generate_shapes(self):
+        return ()
 
 
 Series._fields = tuple(field.name for field in fields(Series))

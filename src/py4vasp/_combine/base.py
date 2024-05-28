@@ -1,26 +1,26 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import importlib
 import inspect
 import pathlib
 from typing import Dict, List
 
-from py4vasp import data, exception
+from py4vasp import calculation, exception
 
 
 def _match_combine_with_refinement(combine_name: str):
     combine_to_refinement_name = {
-        "Energies": "Energy",
-        "Forces": "Force",
-        "Stresses": "Stress",
+        "Energies": "energy",
+        "Forces": "force",
+        "Stresses": "stress",
     }
-    for _, class_ in inspect.getmembers(data, inspect.isclass):
-        if class_.__name__ == combine_to_refinement_name[combine_name]:
-            return class_
-    else:
-        raise exception.IncorrectUsage(
-            f"Could not find refinement class for {combine_name}."
-        )
+    return getattr(calculation, combine_to_refinement_name[combine_name])
+    # for _, class_ in inspect.getmembers(data_depr, inspect.isclass):
+    #     if class_.__name__ == combine_to_refinement_name[combine_name]:
+    #         return class_
+    # else:
+    #     raise exception.IncorrectUsage(
+    #         f"Could not find refinement class for {combine_name}."
+    #     )
 
 
 class BaseCombine:

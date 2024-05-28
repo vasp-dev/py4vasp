@@ -6,8 +6,11 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
-from py4vasp._third_party.graph import Graph, Series
+from py4vasp import _config, exception
+from py4vasp._third_party.graph import Contour, Graph, Series
+from py4vasp._util import import_, slicing
+
+px = import_.optional("plotly.express")
 
 
 @pytest.fixture
@@ -57,6 +60,46 @@ def subplot():
     x2 = np.linspace(-3, 3)
     y2 = x2**3
     return Series(x1, y1, subplot=1), Series(x2, y2, subplot=2)
+
+
+@pytest.fixture
+def rectangle_contour():
+    return Contour(
+        data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
+        lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
+        label="rectangle contour",
+        isolevels=True,
+    )
+
+
+@pytest.fixture
+def tilted_contour():
+    return Contour(
+        data=np.linspace(0, 5, 16 * 20).reshape((16, 20)),
+        lattice=slicing.Plane(np.array([[2, 3], [2, -3]]), cut="b"),
+        label="tilted contour",
+        supercell=(2, 1),
+        show_cell=False,
+    )
+
+
+@pytest.fixture
+def simple_quiver():
+    return Contour(
+        data=np.array([[(y, x) for x in range(3)] for y in range(5)]).T,
+        lattice=slicing.Plane(np.diag((3, 5)), cut="a"),
+        label="quiver plot",
+    )
+
+
+@pytest.fixture
+def complex_quiver():
+    return Contour(
+        data=np.linspace(-3, 3, 2 * 12 * 10).reshape((2, 12, 10)),
+        lattice=slicing.Plane([[3, 2], [-3, 2]]),  # cut not set
+        label="quiver plot",
+        supercell=(3, 2),
+    )
 
 
 def test_basic_graph(parabola, Assert, not_core):
@@ -373,3 +416,183 @@ def test_nonexisting_attribute_raises_error(parabola):
     graph = Graph(parabola)
     with pytest.raises(AssertionError):
         graph.nonexisting = "not possible"
+
+
+def test_normal_series_does_not_set_contour_layout(parabola, not_core):
+    graph = Graph(parabola)
+    fig = graph.to_plotly()
+    assert fig.layout.xaxis.visible is None
+    assert fig.layout.yaxis.visible is None
+    assert fig.layout.yaxis.scaleanchor is None
+
+
+def test_contour(rectangle_contour, Assert, not_core):
+    graph = Graph(rectangle_contour)
+    fig = graph.to_plotly()
+    assert len(fig.data) == 1
+    # plotly expects y-x order
+    Assert.allclose(fig.data[0].z, rectangle_contour.data.T)
+    # shift because the points define the centers of the rectangles
+    Assert.allclose(fig.data[0].x, np.linspace(0, 4, 20, endpoint=False) + 0.1)
+    Assert.allclose(fig.data[0].y, np.linspace(0, 3.6, 18, endpoint=False) + 0.1)
+    assert fig.data[0].name == rectangle_contour.label
+    assert fig.data[0].autocontour
+    # text explicitly that it is False to prevent None passing the test
+    assert fig.layout.xaxis.visible == False
+    assert fig.layout.yaxis.visible == False
+    assert len(fig.layout.shapes) == 1
+    check_unit_cell(fig.layout.shapes[0], x="4.0", y="3.6", zero="0.0")
+    check_annotations(rectangle_contour.lattice, fig.layout.annotations, Assert)
+    assert fig.layout.yaxis.scaleanchor == "x"
+
+
+def test_contour_supercell(rectangle_contour, Assert, not_core):
+    supercell = np.asarray((3, 5))
+    rectangle_contour.supercell = supercell
+    graph = Graph(rectangle_contour)
+    fig = graph.to_plotly()
+    assert len(fig.data) == 1
+    # plotly expects y-x order
+    assert all(fig.data[0].z.T.shape == supercell * rectangle_contour.data.shape)
+    assert len(fig.data[0].x) == 60
+    assert len(fig.data[0].y) == 90
+    assert len(fig.layout.shapes) == 1
+    check_unit_cell(fig.layout.shapes[0], x="4.0", y="3.6", zero="0.0")
+    check_annotations(rectangle_contour.lattice, fig.layout.annotations, Assert)
+
+
+def check_unit_cell(unit_cell, x, y, zero):
+    assert unit_cell.type == "path"
+    assert unit_cell.path == f"M 0 0 L {x} {zero} L {x} {y} L {zero} {y} Z"
+    assert unit_cell.line.color == _config.VASP_DARK
+
+
+def check_annotations(lattice, annotations, Assert):
+    assert len(lattice.vectors) == len(annotations)
+    sign = np.sign(np.cross(*lattice.vectors))
+    labels = "abc".replace(lattice.cut, "")
+    for vector, label, annotation in zip(lattice.vectors, labels, annotations):
+        assert annotation.showarrow == False
+        assert annotation.text == label
+        Assert.allclose((annotation.x, annotation.y), 0.5 * vector)
+        expected_shift = sign * 10 * vector[::-1] / np.linalg.norm(vector)
+        Assert.allclose((annotation.xshift, -annotation.yshift), expected_shift)
+        sign *= -1
+
+
+def test_contour_interpolate(tilted_contour, Assert, not_core):
+    graph = Graph(tilted_contour)
+    fig = graph.to_plotly()
+    area_cell = 12.0
+    points_per_area = tilted_contour.data.size / area_cell
+    points_per_line = np.sqrt(points_per_area) * tilted_contour._interpolation_factor
+    lengths = np.array([6, 9])  # this accounts for the 2 x 1 supercell
+    expected_shape = np.ceil(points_per_line * lengths).astype(int)
+    expected_average = np.average(tilted_contour.data)
+    assert len(fig.data) == 1
+    # plotly expects y-x order
+    assert all(fig.data[0].z.T.shape == expected_shape)
+    assert fig.data[0].x.size == expected_shape[0]
+    assert fig.data[0].y.size == expected_shape[1]
+    finite = np.isfinite(fig.data[0].z)
+    assert np.isclose(np.average(fig.data[0].z[finite]), expected_average)
+    assert len(fig.layout.shapes) == 0
+    expected_colorscale = px.colors.get_colorscale("turbid_r")
+    assert len(fig.data[0].colorscale) == len(expected_colorscale)
+    for actual, expected in zip(fig.data[0].colorscale, expected_colorscale):
+        Assert.allclose(actual[0], expected[0])
+        assert actual[1] == expected[1]
+    check_annotations(tilted_contour.lattice, fig.layout.annotations, Assert)
+
+
+def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
+    graph = Graph([rectangle_contour, two_lines])
+    fig = graph.to_plotly()
+    assert len(fig.data) == 3
+    assert fig.layout.xaxis.visible is None
+    assert fig.layout.yaxis.visible is None
+    assert fig.layout.yaxis.scaleanchor == "x"
+
+
+def test_simple_quiver(simple_quiver, Assert, not_core):
+    graph = Graph(simple_quiver)
+    fig = graph.to_plotly()
+    data_size = simple_quiver.data.size // 2
+    assert len(fig.data) == 1
+    actual = split_data(fig.data[0], data_size, Assert)
+    arrows = actual.tips - actual.positions
+    for (x, y), (u, v) in zip(actual.positions, arrows):
+        Assert.allclose(x, v)
+        Assert.allclose(y, u)
+    assert len(fig.layout.shapes) == 1
+    check_unit_cell(fig.layout.shapes[0], x="3", y="5", zero="0")
+    check_annotations(simple_quiver.lattice, fig.layout.annotations, Assert)
+    assert fig.layout.yaxis.scaleanchor == "x"
+
+
+def test_complex_quiver(complex_quiver, Assert, not_core):
+    graph = Graph(complex_quiver)
+    fig = graph.to_plotly()
+    data_size = np.prod(complex_quiver.supercell) * complex_quiver.data.size // 2
+    vectors = np.array(complex_quiver.lattice.vectors)
+    step_a = vectors[0] / complex_quiver.data.shape[1]
+    mesh_a = np.arange(complex_quiver.supercell[0] * complex_quiver.data.shape[1])
+    step_b = vectors[1] / complex_quiver.data.shape[2]
+    mesh_b = np.arange(complex_quiver.supercell[1] * complex_quiver.data.shape[2])
+    expected_positions = np.array(
+        [a * step_a + b * step_b for b in mesh_b for a in mesh_a]
+    )
+    work = complex_quiver.data
+    work = np.block([[work, work], [work, work], [work, work]]).T
+    expected_tips = expected_positions + work.reshape(expected_positions.shape)
+    expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
+    #
+    assert len(fig.data) == 1
+    actual = split_data(fig.data[0], data_size, Assert)
+    Assert.allclose(actual.positions, expected_positions, tolerance=10)
+    Assert.allclose(actual.tips, expected_tips, tolerance=10)
+    Assert.allclose(actual.barb_length, expected_barb_length)
+    assert len(fig.layout.annotations) == 0
+
+
+@dataclasses.dataclass
+class ContourData:
+    positions: np.ndarray = None
+    first_tips: np.ndarray = None
+    second_tips: np.ndarray = None
+    first_barb_length: np.ndarray = None
+    second_barb_length: np.ndarray = None
+
+
+def split_data(data, data_size, Assert):
+    actual = ContourData()
+    assert data.mode == "lines"
+    # The data contains first a line between each grid point and the tip of the arrow;
+    # each of the lines are separated by a None. The second part is the tip of the arrow
+    # consisting of two lines; again tips are separated by None.
+    assert len(data.x) == len(data.y) == 7 * data_size
+    # first element contains positions
+    slice_ = slice(0, 3 * data_size, 3)
+    actual.positions = np.array((data.x[slice_], data.y[slice_])).T
+    # second element of both parts contain the tip of the arrows
+    slice_ = slice(1, 3 * data_size, 3)
+    actual.tips = np.array((data.x[slice_], data.y[slice_])).T
+    slice_ = slice(3 * data_size + 1, None, 4)
+    other_tips = np.array((data.x[slice_], data.y[slice_])).T
+    Assert.allclose(other_tips, actual.tips)
+    # third element of first part and fourth element of second part should be None (=separator)
+    slice_ = slice(2, 3 * data_size, 3)
+    assert all(element is None for element in data.x[slice_])
+    assert all(element is None for element in data.y[slice_])
+    slice_ = slice(3 * data_size + 3, None, 4)
+    assert all(element is None for element in data.x[slice_])
+    assert all(element is None for element in data.y[slice_])
+    # the first and third element of the second part contain the barb of the arrow
+    slice_ = slice(3 * data_size, None, 4)
+    barb = np.array((data.x[slice_], data.y[slice_])).T
+    actual.barb_length = np.linalg.norm(barb - actual.tips, axis=-1)
+    slice_ = slice(3 * data_size + 2, None, 4)
+    other_barb = np.array((data.x[slice_], data.y[slice_])).T
+    other_barb_length = np.linalg.norm(other_barb - actual.tips, axis=-1)
+    Assert.allclose(other_barb_length, actual.barb_length, tolerance=10)
+    return actual

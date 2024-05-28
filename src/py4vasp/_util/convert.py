@@ -21,7 +21,7 @@ def to_complex(array):
 
 
 def quantity_name(quantity):
-    if quantity == "CONTCAR":
+    if quantity in ["CONTCAR", "OSZICAR"]:
         return quantity
     else:
         return _to_snakecase(quantity)
@@ -44,6 +44,35 @@ def _to_snakecase(word: str) -> str:
     word = re.sub(r"([a-z\d])([A-Z])", r"\1_\2", word)
     word = word.replace("-", "_")
     return word.lower()
+
+
+# NOTE: to_camelcase is the function camelize from the inflection package
+#       (Copyright (C) 2012-2020 Janne Vanhala)
+def to_camelcase(string: str, uppercase_first_letter: bool = True) -> str:
+    """
+    Convert strings to CamelCase.
+
+    Examples::
+
+        >>> camelize("device_type")
+        'DeviceType'
+        >>> camelize("device_type", False)
+        'deviceType'
+
+    :func:`camelize` can be thought of as a inverse of :func:`underscore`,
+    although there are some cases where that does not hold::
+
+        >>> camelize(underscore("IOError"))
+        'IoError'
+
+    :param uppercase_first_letter: if set to `True` :func:`camelize` converts
+        strings to UpperCamelCase. If set to `False` :func:`camelize` produces
+        lowerCamelCase. Defaults to `True`.
+    """
+    if uppercase_first_letter:
+        return re.sub(r"(?:^|_)(.)", lambda m: m.group(1).upper(), string)
+    else:
+        return string[0].lower() + camelize(string)[1:]
 
 
 def to_rgb(hex):

@@ -18,11 +18,11 @@
 # -- Project information -----------------------------------------------------
 
 project = "py4vasp"
-copyright = "2023, VASP Software GmbH"
+copyright = "2024, VASP Software GmbH"
 author = "VASP Software GmbH"
 
 # The full version, including alpha/beta/rc tags
-release = "0.7.1"
+release = "0.9.0"
 
 
 # -- General configuration ---------------------------------------------------
@@ -32,6 +32,7 @@ release = "0.7.1"
 # ones.
 extensions = ["sphinx.ext.napoleon", "sphinx_automodapi.automodapi"]
 automodapi_inheritance_diagram = False
+autosummary_ignore_module_all = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -64,3 +65,19 @@ html_static_path = ["_static"]
 
 # remove common py4vasp prefix from index
 modindex_common_prefix = ["py4vasp."]
+
+
+# -- Custom extension of Sphinx ----------------------------------------------
+from docutils import nodes
+
+
+# defines an INCAR tag
+def tag_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+    url = f"https://www.vasp.at/wiki/index.php/{text}"
+    node = nodes.reference(rawtext, text, refuri=url, **options)
+    return [node], []
+
+
+def setup(app):
+    app.add_role("tag", tag_role)
+    return
