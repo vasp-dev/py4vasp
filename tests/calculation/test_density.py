@@ -255,6 +255,198 @@ def test_plotting_supercell(supercell, reference_density, Assert):
     check_view(reference_density, expected, Assert, supercell=supercell)
 
 
+@pytest.mark.parametrize(
+    "kwargs, index, position",
+    (({"a": 0.1}, 0, 1), ({"b": 0.7}, 1, 8), ({"c": 1.3}, 2, 4)),
+)
+def test_contour_of_charge(nonpolarized_density, kwargs, index, position, Assert):
+    graph = nonpolarized_density.to_contour(**kwargs)
+    slice_ = [slice(None), slice(None), slice(None)]
+    slice_[index] = position
+    data = nonpolarized_density.ref.output["charge"][tuple(slice_)]
+    assert len(graph) == 1
+    series = graph.series[0]
+    Assert.allclose(series.data, data)
+    lattice_vectors = nonpolarized_density.ref.structure.lattice_vectors()
+    lattice_vectors = np.delete(lattice_vectors, index, axis=0)
+    expected_products = lattice_vectors @ lattice_vectors.T
+    actual_products = series.lattice.vectors @ series.lattice.vectors.T
+    Assert.allclose(actual_products, expected_products)
+    assert series.label == "charge"
+
+
+def test_incorrect_slice_raises_error(nonpolarized_density):
+    with pytest.raises(exception.IncorrectUsage):
+        nonpolarized_density.to_contour()
+    with pytest.raises(exception.IncorrectUsage):
+        nonpolarized_density.to_contour(a=1, b=2)
+    with pytest.raises(exception.IncorrectUsage):
+        nonpolarized_density.to_contour(3)
+
+
+@pytest.mark.parametrize(
+    "selection", ["3", "sigma_z", "z", "sigma_3", "magnetization", "mag", "m"]
+)
+def test_collinear_to_contour(selection, collinear_density, Assert):
+    source = collinear_density.ref.source
+    if source == "charge":
+        expected_label = selection
+        expected_data = collinear_density.ref.output["magnetization"][:, :, 7]
+    else:
+        expected_label = f"{source}({selection})"
+        expected_data = collinear_density.ref.output[source][1, :, :, 7]
+        if selection in ("magnetization", "mag", "m"):
+            # magnetization not allowed for tau
+            return
+    expected_lattice = collinear_density.ref.structure.lattice_vectors()[:2, :2]
+    graph = collinear_density.to_contour(selection, c=-0.5)
+    assert len(graph) == 1
+    series = graph.series[0]
+    Assert.allclose(series.data, expected_data)
+    Assert.allclose(series.lattice.vectors, expected_lattice)
+    assert series.label == expected_label
+    assert series.isolevels
+
+
+@pytest.mark.parametrize(
+    "selections",
+    [
+        ("1", "2", "3"),
+        ("sigma_x", "sigma_y", "sigma_z"),
+        ("x", "y", "z"),
+        ("sigma_1", "sigma_2", "sigma_3"),
+        (
+            "m(1)",
+            "mag(2)",
+            "magnetization(3)",
+        ),  # the magnetization label should be ignored
+    ],
+)
+def test_noncollinear_to_contour(noncollinear_density, selections, Assert):
+    source = noncollinear_density.ref.source
+    if source == "charge":
+        if "(" in selections[0]:  # magnetization filtered from selections
+            expected_labels = ("1", "2", "3")
+        else:
+            expected_labels = selections
+        expected_data = noncollinear_density.ref.output["magnetization"][:, :, 5, :]
+    else:
+        expected_labels = (f"{source}({selection})" for selection in selections)
+        expected_data = noncollinear_density.ref.output[source][1:, :, 5, :]
+        if "(" in selections[0]:  # magnetization not allowed for tau
+            return
+    graph = noncollinear_density.to_contour(" ".join(selections), b=0.4)
+    expected_lattice = noncollinear_density.ref.structure.lattice_vectors()[::2, ::2]
+    assert len(graph) == len(expected_data)
+    for density, label, series in zip(expected_data, expected_labels, graph.series):
+        Assert.allclose(series.data, density)
+        Assert.allclose(series.lattice.vectors, expected_lattice)
+        assert series.label == label
+
+
+def test_to_contour_supercell(nonpolarized_density, Assert):
+    graph = nonpolarized_density.to_contour(a=0, supercell=2)
+    Assert.allclose(graph.series[0].supercell, (2, 2))
+    graph = nonpolarized_density.to_contour(a=0, supercell=(2, 1))
+    Assert.allclose(graph.series[0].supercell, (2, 1))
+
+
+def test_raise_error_if_normal_not_reasonable(nonpolarized_density):
+    with pytest.raises(exception.IncorrectUsage):
+        # cell is not close to cartesian vectors
+        nonpolarized_density.to_contour(a=0, normal="auto")
+    with pytest.raises(exception.IncorrectUsage):
+        nonpolarized_density.to_contour(a=0, normal="unknown choice")
+
+
+@pytest.mark.parametrize(
+    "normal, rotation",
+    [
+        ("auto", np.eye(2)),
+        ("x", np.array([[0, -1], [1, 0]])),
+        ("y", np.diag((1, -1))),
+        ("z", np.eye(2)),
+    ],
+)
+def test_to_contour_normal_vector(collinear_density, normal, rotation, Assert):
+    graph = collinear_density.to_contour(c=0.5, normal=normal)
+    lattice_vectors = collinear_density.ref.structure.lattice_vectors()
+    expected_lattice = lattice_vectors[:2, :2] @ rotation
+    Assert.allclose(graph.series[0].lattice.vectors, expected_lattice)
+
+
+def test_to_contour_operation(collinear_density, Assert):
+    graph = collinear_density.to_contour("0 - 3", c=0)
+    source = collinear_density.ref.source
+    output = collinear_density.ref.output
+    if source == "charge":
+        expected_data = output["charge"][:, :, 0] - output["magnetization"][:, :, 0]
+    else:
+        expected_data = output[source][0, :, :, 0] - output[source][1, :, :, 0]
+    Assert.allclose(graph.series[0].data, expected_data)
+
+
+def test_collinear_to_quiver(collinear_density, Assert):
+    source = collinear_density.ref.source
+    if source == "charge":
+        expected_label = "magnetization"
+        expected_data = collinear_density.ref.output["magnetization"][8]
+    else:
+        expected_label = source
+        expected_data = collinear_density.ref.output[source][1, 8]
+    expected_data = np.array((np.zeros_like(expected_data), expected_data))
+    lattice_vectors = collinear_density.ref.structure.lattice_vectors()[1:]
+    expected_lattice = np.diag(np.linalg.norm(lattice_vectors, axis=1))
+    graph = collinear_density.to_quiver(a=-0.2)
+    assert len(graph) == 1
+    series = graph.series[0]
+    Assert.allclose(series.data, 5.0 * expected_data)
+    Assert.allclose(series.lattice.vectors, expected_lattice)
+    assert series.label == expected_label
+
+
+def test_noncollinear_to_quiver(noncollinear_density, Assert):
+    source = noncollinear_density.ref.source
+    if source == "charge":
+        expected_label = "magnetization"
+        expected_data = noncollinear_density.ref.output["magnetization"][:2, :, :, 6]
+    else:
+        expected_label = source
+        expected_data = noncollinear_density.ref.output[source][1:3, :, :, 6]
+    expected_lattice = noncollinear_density.ref.structure.lattice_vectors()[:2, :2]
+    graph = noncollinear_density.to_quiver(c=1.4)
+    assert len(graph) == 1
+    series = graph.series[0]
+    Assert.allclose(series.data, 5.0 * expected_data)
+    Assert.allclose(series.lattice.vectors, expected_lattice)
+    assert series.label == expected_label
+
+
+def test_to_quiver_supercell(collinear_density, Assert):
+    graph = collinear_density.to_quiver(a=0, supercell=2)
+    Assert.allclose(graph.series[0].supercell, (2, 2))
+    graph = collinear_density.to_quiver(a=0, supercell=(2, 1))
+    Assert.allclose(graph.series[0].supercell, (2, 1))
+
+
+@pytest.mark.parametrize(
+    "normal, rotation",
+    [
+        ("auto", np.eye(2)),
+        ("x", np.array([[0, -1], [1, 0]])),
+        ("y", np.diag((1, -1))),
+        ("z", np.eye(2)),
+    ],
+)
+def test_to_quiver_normal_vector(noncollinear_density, normal, rotation, Assert):
+    unrotated_graph = noncollinear_density.to_quiver(c=0.5)
+    rotated_graph = noncollinear_density.to_quiver(c=0.5, normal=normal)
+    expected_lattice = unrotated_graph.series[0].lattice.vectors @ rotation
+    Assert.allclose(rotated_graph.series[0].lattice.vectors, expected_lattice)
+    expected_data = (unrotated_graph.series[0].data.T @ rotation).T
+    Assert.allclose(rotated_graph.series[0].data, expected_data)
+
+
 def test_to_numpy(reference_density, Assert):
     source = reference_density.ref.source
     if source == "charge":
@@ -307,4 +499,5 @@ def test_print(reference_density, format_):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.density("Fe3O4 collinear")
-    check_factory_methods(calculation.density, data)
+    parameters = {"to_contour": {"a": 0.3}}
+    check_factory_methods(calculation.density, data, parameters)

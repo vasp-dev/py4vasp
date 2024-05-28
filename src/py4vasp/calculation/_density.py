@@ -3,8 +3,8 @@
 import numpy as np
 
 from py4vasp import _config, calculation, exception
-from py4vasp._third_party import view
-from py4vasp._util import documentation, import_, index, select
+from py4vasp._third_party import graph, view
+from py4vasp._util import documentation, import_, index, select, slicing
 from py4vasp.calculation import _base, _structure
 
 pretty = import_.optional("IPython.lib.pretty")
@@ -19,6 +19,45 @@ _COMPONENTS = {
     3: ["3", "sigma_z", "z", "sigma_3"],
 }
 _MAGNETIZATION = ("magnetization", "mag", "m")
+
+_PLANE = """\
+You need to specify a plane defined by two of the lattice vectors by selecting
+a *cut* along the third one. You must only select a single cut and the value
+should correspond to the fractional length along this third lattice vector.
+py4vasp will then create a plane from the other two lattice vectors and
+generate a contour plot within this plane.
+
+Usually, the first remaining lattice vector is aligned with the x-axis and the
+second one such that the angle between the vectors is preserved. You can
+overwrite this choice by defining a normal direction. Then py4vasp will rotate
+the normal vector of the plane to align with the specified direction. This is
+particularly useful if the lattice vector you cut is aligned with a Cartesian
+direction.
+"""
+
+_COMMON_PARAMETERS = """\
+a, b, c : float
+    You must select exactly one of these to specify which of the three lattice
+    vectors you want to remove to form a plane. The assigned value represents
+    the fractional length along this lattice vector, so `a = 0.3` will remove
+    the first lattice vector and then take the grid points at 30% of the length
+    of the first vector in the b-c plane. The fractional height uses periodic
+    boundary conditions.
+
+supercell : int or np.ndarray
+    Replicate the contour plot periodically a given number of times. If you
+    provide two different numbers, the resulting cell will be the two remaining
+    lattice vectors multiplied by the specific number.
+
+normal : str or None
+    If not set, py4vasp will align the first remaining lattice vector with the
+    x-axis and the second one such that the angle between the lattice vectors
+    is preserved. You can set it to "x", "y", or "z"; then py4vasp will rotate
+    the plane in such a way that the normal direction aligns with the specified
+    Cartesian axis. This may look better if the normal direction is close to a
+    Cartesian axis. You may also set it to "auto" so that py4vasp chooses a
+    close Cartesian axis if it can find any.
+"""
 
 
 def _join_with_emphasis(data):
@@ -290,6 +329,128 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         return component > 0
 
     @_base.data_access
+    @documentation.format(plane=_PLANE, common_parameters=_COMMON_PARAMETERS)
+    def to_contour(
+        self, selection=None, *, a=None, b=None, c=None, supercell=None, normal=None
+    ):
+        """Generate a contour plot of the selected component of the density.
+
+        {plane}
+
+        Parameters
+        ----------
+        selection : str
+            Select which component of the density you want to visualize. Please use the
+            `selections` method to get all available choices.
+
+        {common_parameters}
+
+        Returns
+        -------
+        graph
+            A contour plot in the plane spanned by the 2 remaining lattice vectors.
+
+
+        Examples
+        --------
+
+        Cut a plane through the magnetization density at the origin of the third lattice
+        vector.
+
+        >>> calc.density.to_contour("3", c=0)
+
+        Replicate a plane in the middle of the second lattice vector 2 times in each
+        direction.
+
+        >>> calc.density.to_contour(b=0.5, supercell=2)
+
+        Take a slice of the kinetic energy density along the first lattice vector and
+        rotate it such that the normal of the plane aligns with the x axis.
+
+        >>> calc.density.to_contour("tau", a=0.3, normal="x")
+        """
+        cut, fraction = self._get_cut(a, b, c)
+        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
+        map_ = self._create_map()
+        selector = index.Selector({0: map_}, self._raw_data.charge)
+        tree = select.Tree.from_selection(selection)
+        selections = self._filter_noncollinear_magnetization_from_selections(tree)
+        contours = [
+            self._contour(selector, selection, plane, fraction, supercell)
+            for selection in selections
+        ]
+        return graph.Graph(contours)
+
+    def _contour(self, selector, selection, plane, fraction, supercell):
+        density = selector[selection].T
+        data = slicing.grid_scalar(density, plane, fraction)
+        label = self._label(selector.label(selection)) or "charge"
+        contour = graph.Contour(data, plane, label, isolevels=True)
+        if supercell is not None:
+            contour.supercell = np.ones(2, dtype=np.int_) * supercell
+        return contour
+
+    @_base.data_access
+    @documentation.format(plane=_PLANE, common_parameters=_COMMON_PARAMETERS)
+    def to_quiver(self, *, a=None, b=None, c=None, supercell=None, normal=None):
+        """Generate a quiver plot of magnetization density.
+
+        {plane}
+
+        For a collinear calculation, the magnetization density will be aligned with the
+        y axis of the plane. For noncollinear calculations, the magnetization density
+        is projected into the plane.
+
+        Parameters
+        ----------
+        {common_parameters}
+
+        Returns
+        -------
+        graph
+            A quiver plot in the plane spanned by the 2 remaining lattice vectors.
+
+
+        Examples
+        --------
+
+        Cut a plane at the origin of the third lattice vector.
+
+        >>> calc.density.to_quiver(c=0)
+
+        Replicate a plane in the middle of the second lattice vector 2 times in each
+        direction.
+
+        >>> calc.density.to_quiver(b=0.5, supercell=2)
+
+        Take a slice of the spin components of the kinetic energy density along the
+        first lattice vector and rotate it such that the normal of the plane aligns with
+        the x axis.
+
+        >>> calc.density.to_quiver("tau", a=0.3, normal="x")
+        """
+        cut, fraction = self._get_cut(a, b, c)
+        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
+        if self.is_collinear():
+            data = slicing.grid_scalar(self._raw_data.charge[1].T, plane, fraction)
+            data = np.array((np.zeros_like(data), data))
+        else:
+            data = slicing.grid_vector(self.to_numpy()[1:], plane, fraction)
+        label = self._selection or "magnetization"
+        quiver_plot = graph.Contour(5.0 * data, plane, label)
+        if supercell is not None:
+            quiver_plot.supercell = np.ones(2, dtype=np.int_) * supercell
+        return graph.Graph([quiver_plot])
+
+    def _get_cut(self, a, b, c):
+        _raise_error_cut_selection_incorrect(a, b, c)
+        if a is not None:
+            return "a", a
+        if b is not None:
+            return "b", b
+        return "c", c
+
+    @_base.data_access
     def is_nonpolarized(self):
         "Returns whether the density is not spin polarized."
         return len(self._raw_data.charge) == 1
@@ -347,4 +508,21 @@ def _raise_error_if_no_data(data):
             "this file exists and LCHARGH5 = T is set in the INCAR file. Another "
             'common issue is when you create `Calculation.from_file("vaspout.h5")` '
             "because this will overwrite the default file behavior."
+        )
+
+
+def _raise_error_cut_selection_incorrect(*selections):
+    # only a single element may be selected
+    selected_elements = sum(selection is not None for selection in selections)
+    if selected_elements == 0:
+        raise exception.IncorrectUsage(
+            "You have not selected a lattice vector along which the slice should be "
+            "constructed. Please set exactly one of the keyword arguments (a, b, c) "
+            "to a real number that specifies at which fraction of the lattice vector "
+            "the plane is."
+        )
+    if selected_elements > 1:
+        raise exception.IncorrectUsage(
+            "You have selected more than a single element. Please use only one of "
+            "(a, b, c) and not multiple choices."
         )

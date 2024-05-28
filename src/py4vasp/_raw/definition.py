@@ -381,7 +381,9 @@ schema.add(
 schema.add(
     raw.OSZICAR,
     required=raw.Version(6, 5),
+    label="intermediate/ion_dynamics/oszicar_label",
     convergence_data="intermediate/ion_dynamics/oszicar",
+    is_elmin_converged="/intermediate/ion_dynamics/electronic_step_converged",
 )
 #
 group = "intermediate/pair_correlation"
@@ -391,6 +393,16 @@ schema.add(
     distances=f"{group}/distances",
     function=f"{group}/function",
     labels=f"{group}/labels",
+)
+#
+schema.add(
+    raw.PartialCharge,
+    required=raw.Version(6, 5),
+    structure=Link("structure", DEFAULT_SOURCE),
+    partial_charge="results/partial_charges/parchg",
+    bands="results/partial_charges/bands",
+    kpoints="results/partial_charges/kpoints",
+    grid="results/partial_charges/grid",
 )
 #
 group = "results/phonons"

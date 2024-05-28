@@ -39,11 +39,13 @@ equivalent:
 In the latter example, you can change the path from which the data is extracted.
 """
 import importlib
+import pathlib
 
-from py4vasp import exception
+from py4vasp import control, exception
 from py4vasp._util import convert
 
-__all__ = (
+_input_files = ("INCAR", "KPOINTS", "POSCAR")
+_quantities = (
     "band",
     "bandgap",
     "born_effective_charge",
@@ -62,6 +64,7 @@ __all__ = (
     "magnetism",
     "OSZICAR",
     "pair_correlation",
+    "partial_charge",
     "phonon_band",
     "phonon_dos",
     "piezoelectric_tensor",
@@ -76,13 +79,20 @@ __all__ = (
     "workfunction",
 )
 _private = ("dispersion",)
+__all__ = _quantities + _input_files
+
+
+path = pathlib.Path(".")
 
 
 def __getattr__(attr):
-    if attr in (__all__ + _private):
+    if attr in (_quantities + _private):
         module = importlib.import_module(f"py4vasp.calculation._{attr}")
         class_ = getattr(module, convert.to_camelcase(attr))
         return class_.from_path(".")
+    elif attr in (_input_files):
+        class_ = getattr(control, attr)
+        return class_(".")
     else:
         message = f"Could not find {attr} in the possible attributes, please check the spelling"
         raise exception.MissingAttribute(message)

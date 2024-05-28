@@ -8,7 +8,10 @@ authors = [
     "Henrique Miranda <miranda.henrique@gmail.com>",
     "Orest Dubay <orest-d@users.noreply.github.com>",
     "Jonathan Lahnsteiner <jonathan.lahnsteiner@gmx.at>",
-    "Eisuke Kawashima <e-kwsm@users.noreply.github.com>"
+    "Eisuke Kawashima <e-kwsm@users.noreply.github.com>",
+    "Sudarshan Vijay <sudarshan.vijay@protonmail.com>",
+    "Marie-Therese Huebsch <marie-therese.huebsch@vasp.at>",
+    "Michael Wolloch <michael.wolloch@vasp.at>",
 ]
 license = "Apache-2.0"
 readme = "README.md"
@@ -21,7 +24,7 @@ repository = "https://github.com/vasp-dev/py4vasp"
 
 
 [tool.poetry.dependencies]
-python = ">=3.8"
+python = ">=3.9"
 numpy = ">=1.23"
 h5py = ">=3.7.0"
 

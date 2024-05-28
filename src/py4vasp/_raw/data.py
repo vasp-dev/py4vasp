@@ -322,6 +322,10 @@ class OSZICAR:
 
     convergence_data: VaspData
     "All columns of the OSZICAR file stored for all ionic steps."
+    label: VaspData
+    "Label of all the data from the OSZICAR file."
+    is_elmin_converged: VaspData
+    "Is the electronic minimization step converged?"
 
 
 @dataclasses.dataclass
@@ -337,6 +341,24 @@ class PairCorrelation:
     "The total and the element-resolved pair-correlation functions."
     labels: VaspData
     "Describes which indices correspond to which element pair."
+
+
+@dataclasses.dataclass
+class PartialCharge:
+    """Electronic partial charge and magnetization density on the fine Fourier grid
+
+    Possibly not only split by spin, but also by band and kpoint."""
+
+    structure: Structure
+    "The atomic structure to represent the densities."
+    partial_charge: VaspData
+    "The data of electronic charge and magnetization density."
+    kpoints: VaspData
+    "The kpoints at which the partial charge is evaluated."
+    bands: VaspData
+    "The bands at which the partial charge is evaluated."
+    grid: VaspData
+    "The fine FFT grid at which the partial charge is evaluated."
 
 
 @dataclasses.dataclass
