@@ -31,6 +31,12 @@ class Dos(_base.Refinery, graph.Mixin):
 
     _missing_data_message = "No DOS data found, please verify that LORBIT flag is set."
 
+    def eigenvalues(self):
+        ...
+
+    def occupations(self):
+        ...
+
     @_base.data_access
     def __str__(self):
         energies = self._raw_data.energies
@@ -132,7 +138,9 @@ class Dos(_base.Refinery, graph.Mixin):
         return {
             **self._read_energies(),
             **self._read_total_dos(),
-            **self._projectors().project(selection, self._raw_data.projections),
+            "projections": self._projectors().project(
+                selection, self._raw_data.projections
+            ),
         }
 
     def _read_energies(self):

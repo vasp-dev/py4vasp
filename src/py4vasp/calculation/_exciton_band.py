@@ -5,10 +5,10 @@ from py4vasp._util import convert
 from py4vasp.calculation import _base
 
 
-class Fatband(_base.Refinery):
+class ExcitonBand(_base.Refinery):
     """BSE fatbands illustrate the excitonic properties of materials.
 
-    The Bethe-Salpeter Equation (BSE) accounts for electron-hole interactions
+    The Bethe-Salpeter equation (BSE) accounts for electron-hole interactions
     involved in excitonic processes. For systems, where excitonic excitations
     matter the BSE method is an important tool. In the context of electronic
     band structure calculations, fatbands represent a visual representation

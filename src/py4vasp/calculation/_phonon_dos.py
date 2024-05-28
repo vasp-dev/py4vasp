@@ -51,7 +51,7 @@ class PhononDos(_phonon.Mixin, _base.Refinery, graph.Mixin):
         return {
             "energies": self._raw_data.energies[:],
             "total": self._raw_data.dos[:],
-            **self._read_data(selection),
+            "projections": self._read_data(selection),
         }
 
     @_base.data_access

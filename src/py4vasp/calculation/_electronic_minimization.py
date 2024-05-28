@@ -8,7 +8,7 @@ from py4vasp._third_party import graph
 from py4vasp.calculation import _base, _slice
 
 
-class OSZICAR(_slice.Mixin, _base.Refinery, graph.Mixin):
+class ElectronicMinimization(_slice.Mixin, _base.Refinery, graph.Mixin):
     """Access the convergence data for each electronic step.
 
     The OSZICAR file written out by VASP stores information related to convergence.

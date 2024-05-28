@@ -108,9 +108,9 @@ schema.add(
 )
 schema.add(
     raw.Density,
-    name="tau",
+    name="kinetic_energy",
     required=raw.Version(6, 5),
-    alias=["kinetic_energy", "kinetic_energy_density"],
+    alias=["tau", "kinetic_energy_density"],
     file="vaspwave.h5",
     structure=Link("structure", DEFAULT_SOURCE),
     charge="kinetic_energy_density/values",
