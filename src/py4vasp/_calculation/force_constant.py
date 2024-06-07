@@ -2,10 +2,10 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import itertools
 
-from py4vasp.calculation import _base, _structure
+from py4vasp._calculation import base, structure
 
 
-class ForceConstant(_base.Refinery, _structure.Mixin):
+class ForceConstant(base.Refinery, structure.Mixin):
     """Force constants are the 2nd derivatives of the energy with respect to displacement.
 
     Force constants quantify the strength of interactions between atoms in a crystal
@@ -18,7 +18,7 @@ class ForceConstant(_base.Refinery, _structure.Mixin):
     a careful relaxation is required to eliminate the first derivative (i.e. forces).
     """
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         result = """
 Force constants (eV/Å²):
@@ -35,7 +35,7 @@ atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     z
             result += f"\n{i + 1:6d}   {j + 1:6d}  {string_representation}"
         return result
 
-    @_base.data_access
+    @base.data_access
     def to_dict(self):
         """Read structure information and force constants into a dictionary.
 

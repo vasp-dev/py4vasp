@@ -3,10 +3,10 @@
 from py4vasp import calculation
 from py4vasp._third_party import view
 from py4vasp._util import convert
-from py4vasp.calculation import _base, _structure
+from py4vasp._calculation import base, structure
 
 
-class CONTCAR(_base.Refinery, view.Mixin, _structure.Mixin):
+class CONTCAR(base.Refinery, view.Mixin, structure.Mixin):
     """CONTCAR contains structural restart-data after a relaxation or MD simulation.
 
     The CONTCAR contains the final structure of the VASP calculation. It can be used as
@@ -14,7 +14,7 @@ class CONTCAR(_base.Refinery, view.Mixin, _structure.Mixin):
     CONTCAR might contain additional information about the system such as the ion
     and lattice velocities."""
 
-    @_base.data_access
+    @base.data_access
     def to_dict(self):
         """Extract the structural data and the available additional data to a dictionary.
 
@@ -36,7 +36,7 @@ class CONTCAR(_base.Refinery, view.Mixin, _structure.Mixin):
         data = getattr(self._raw_data, key)
         return {key: data[:]} if not data.is_none() else {}
 
-    @_base.data_access
+    @base.data_access
     def to_view(self, supercell=None):
         """Generate a visualization of the final structure.
 
@@ -52,7 +52,7 @@ class CONTCAR(_base.Refinery, view.Mixin, _structure.Mixin):
         """
         return self._structure.plot(supercell)
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         return "\n".join(self._line_generator())
 
@@ -71,7 +71,7 @@ class CONTCAR(_base.Refinery, view.Mixin, _structure.Mixin):
         yield from _ion_velocity_lines(self._raw_data.ion_velocities)
 
     def _topology(self):
-        return calculation.topology.from_data(self._raw_data.structure.topology)
+        return calculation._topology.from_data(self._raw_data.structure.topology)
 
 
 def _cell_lines(cell):

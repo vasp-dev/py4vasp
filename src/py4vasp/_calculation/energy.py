@@ -4,7 +4,7 @@ import numpy as np
 
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
-from py4vasp.calculation import _base, _slice
+from py4vasp._calculation import base, slice_
 
 
 def _selection_string(default):
@@ -31,8 +31,8 @@ _SELECTIONS = {
 }
 
 
-@documentation.format(examples=_slice.examples("energy"))
-class Energy(_slice.Mixin, _base.Refinery, graph.Mixin):
+@documentation.format(examples=slice_.examples("energy"))
+class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
     """The energy data for one or several steps of a relaxation or MD simulation.
 
     You can use this class to inspect how the ionic relaxation converges or
@@ -49,7 +49,7 @@ class Energy(_slice.Mixin, _base.Refinery, graph.Mixin):
     {examples}
     """
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         text = f"Energies at {self._step_string()}:"
         values = self._raw_data.values[self._last_step_in_slice]
@@ -69,10 +69,10 @@ class Energy(_slice.Mixin, _base.Refinery, graph.Mixin):
         else:
             return f"step {self._steps + 1}"
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(
         selection=_selection_string("all energies"),
-        examples=_slice.examples("energy", "to_dict"),
+        examples=slice_.examples("energy", "to_dict"),
     )
     def to_dict(self, selection=None):
         """Read the energy data and store it in a dictionary.
@@ -101,10 +101,10 @@ class Energy(_slice.Mixin, _base.Refinery, graph.Mixin):
             for label, value in zip(self._raw_data.labels, raw_values)
         }
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(
         selection=_selection_string("the total energy"),
-        examples=_slice.examples("energy", "to_graph"),
+        examples=slice_.examples("energy", "to_graph"),
     )
     def to_graph(self, selection="TOTEN"):
         """Read the energy data and generate a figure of the selected components.
@@ -129,10 +129,10 @@ class Energy(_slice.Mixin, _base.Refinery, graph.Mixin):
             y2label=yaxes.y2label,
         )
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(
         selection=_selection_string("the total energy"),
-        examples=_slice.examples("energy", "to_numpy"),
+        examples=slice_.examples("energy", "to_numpy"),
     )
     def to_numpy(self, selection="TOTEN"):
         """Read the energy of the selected steps.
@@ -153,7 +153,7 @@ class Energy(_slice.Mixin, _base.Refinery, graph.Mixin):
         tree = select.Tree.from_selection(selection)
         return np.squeeze([values for _, values in self._read_data(tree, self._steps)])
 
-    @_base.data_access
+    @base.data_access
     def selections(self):
         """Returns all possible selections you can use for the other routines.
 

@@ -5,7 +5,7 @@ import numpy as np
 from py4vasp import _config, calculation, exception
 from py4vasp._third_party import graph, view
 from py4vasp._util import documentation, import_, index, select, slicing
-from py4vasp.calculation import _base, _structure
+from py4vasp._calculation import base, structure
 
 pretty = import_.optional("IPython.lib.pretty")
 
@@ -68,7 +68,7 @@ def _join_with_emphasis(data):
     return ", ".join(emph_data)
 
 
-class Density(_base.Refinery, _structure.Mixin, view.Mixin):
+class Density(base.Refinery, structure.Mixin, view.Mixin):
     """This class accesses various densities (charge, magnetization, ...) of VASP.
 
     The charge density is one key quantity optimized by VASP. With this class you
@@ -79,11 +79,11 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
     metaGGA calculations.
     """
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         _raise_error_if_no_data(self._raw_data.charge)
         grid = self._raw_data.charge.shape[1:]
-        topology = calculation.topology.from_data(self._raw_data.structure.topology)
+        topology = calculation._topology.from_data(self._raw_data.structure.topology)
         if self._selection == "tau":
             name = "Kinetic energy"
         elif self.is_nonpolarized():
@@ -102,7 +102,7 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         component2=_join_with_emphasis(_COMPONENTS[2]),
         component3=_join_with_emphasis(_COMPONENTS[3]),
     )
-    @_base.data_access
+    @base.data_access
     def selections(self):
         """Returns possible densities VASP can produce along with all available components.
 
@@ -165,7 +165,7 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
             components = [_COMPONENTS[i][_DEFAULT] for i in range(4)]
         return {**sources, "component": components}
 
-    @_base.data_access
+    @base.data_access
     def to_dict(self):
         """Read the density into a dictionary.
 
@@ -198,7 +198,7 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
             elif self.is_noncollinear():
                 yield "magnetization", density[1:]
 
-    @_base.data_access
+    @base.data_access
     def to_numpy(self):
         """Convert the density to a numpy array.
 
@@ -213,7 +213,7 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         """
         return np.moveaxis(self._raw_data.charge, 0, -1).T
 
-    @_base.data_access
+    @base.data_access
     def to_view(self, selection=None, supercell=None, **user_options):
         """Plot the selected density as a 3d isosurface within the structure.
 
@@ -328,7 +328,7 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
             _raise_is_collinear_error()
         return component > 0
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(plane=_PLANE, common_parameters=_COMMON_PARAMETERS)
     def to_contour(
         self, selection=None, *, a=None, b=None, c=None, supercell=None, normal=None
@@ -390,7 +390,7 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
             contour.supercell = np.ones(2, dtype=np.int_) * supercell
         return contour
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(plane=_PLANE, common_parameters=_COMMON_PARAMETERS)
     def to_quiver(self, *, a=None, b=None, c=None, supercell=None, normal=None):
         """Generate a quiver plot of magnetization density.
@@ -450,17 +450,17 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
             return "b", b
         return "c", c
 
-    @_base.data_access
+    @base.data_access
     def is_nonpolarized(self):
         "Returns whether the density is not spin polarized."
         return len(self._raw_data.charge) == 1
 
-    @_base.data_access
+    @base.data_access
     def is_collinear(self):
         "Returns whether the density has a collinear magnetization."
         return len(self._raw_data.charge) == 2
 
-    @_base.data_access
+    @base.data_access
     def is_noncollinear(self):
         "Returns whether the density has a noncollinear magnetization."
         return len(self._raw_data.charge) == 4

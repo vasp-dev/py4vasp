@@ -5,7 +5,7 @@ import numpy as np
 from py4vasp import _config, exception
 from py4vasp._third_party import view
 from py4vasp._util import documentation
-from py4vasp.calculation import _base, _slice, _structure
+from py4vasp._calculation import base, slice_, structure
 
 _index_note = """\
 Notes
@@ -22,8 +22,8 @@ selection : str
 """
 
 
-@documentation.format(examples=_slice.examples("magnetism"))
-class Magnetism(_slice.Mixin, _base.Refinery, _structure.Mixin, view.Mixin):
+@documentation.format(examples=slice_.examples("magnetism"))
+class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     """The local moments describe the charge and magnetization near an atom.
 
     The projection on local moments is particularly relevant in the context of
@@ -51,7 +51,7 @@ class Magnetism(_slice.Mixin, _base.Refinery, _structure.Mixin, view.Mixin):
     length_moments = 1.5
     "Length in Å how a magnetic moment is displayed relative to the largest moment."
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         magmom = "MAGMOM = "
         moments_last_step = self.total_moments()
@@ -65,9 +65,9 @@ class Magnetism(_slice.Mixin, _base.Refinery, _structure.Mixin, view.Mixin):
             generator = (moments_to_string(vec) for vec in moments_last_step)
             return magmom + separator.join(generator)
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(
-        index_note=_index_note, examples=_slice.examples("magnetism", "to_dict")
+        index_note=_index_note, examples=slice_.examples("magnetism", "to_dict")
     )
     def to_dict(self):
         """Read the charges and magnetization data into a dictionary.
@@ -88,9 +88,9 @@ class Magnetism(_slice.Mixin, _base.Refinery, _structure.Mixin, view.Mixin):
             **self._add_spin_and_orbital_moments(),
         }
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(
-        selection=_moment_selection, examples=_slice.examples("magnetism", "to_view")
+        selection=_moment_selection, examples=slice_.examples("magnetism", "to_view")
     )
     def to_view(self, selection="total", supercell=None):
         """Visualize the magnetic moments as arrows inside the structure.
@@ -121,8 +121,8 @@ class Magnetism(_slice.Mixin, _base.Refinery, _structure.Mixin, view.Mixin):
             viewer.ion_arrows = [ion_arrows]
         return viewer
 
-    @_base.data_access
-    @documentation.format(examples=_slice.examples("magnetism", "charges"))
+    @base.data_access
+    @documentation.format(examples=slice_.examples("magnetism", "charges"))
     def charges(self):
         """Read the charges of the selected steps.
 
@@ -136,11 +136,11 @@ class Magnetism(_slice.Mixin, _base.Refinery, _structure.Mixin, view.Mixin):
         self._raise_error_if_steps_out_of_bounds()
         return self._raw_data.spin_moments[self._steps, 0]
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(
         selection=_moment_selection,
         index_note=_index_note,
-        examples=_slice.examples("magnetism", "moments"),
+        examples=slice_.examples("magnetism", "moments"),
     )
     def moments(self, selection="total"):
         """Read the magnetic moments of the selected steps.
@@ -168,8 +168,8 @@ class Magnetism(_slice.Mixin, _base.Refinery, _structure.Mixin, view.Mixin):
         else:
             return self._noncollinear_moments(selection)
 
-    @_base.data_access
-    @documentation.format(examples=_slice.examples("magnetism", "total_charges"))
+    @base.data_access
+    @documentation.format(examples=slice_.examples("magnetism", "total_charges"))
     def total_charges(self):
         """Read the total charges of the selected steps.
 
@@ -183,11 +183,11 @@ class Magnetism(_slice.Mixin, _base.Refinery, _structure.Mixin, view.Mixin):
         """
         return _sum_over_orbitals(self.charges())
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(
         selection=_moment_selection,
         index_note=_index_note,
-        examples=_slice.examples("magnetism", "total_moments"),
+        examples=slice_.examples("magnetism", "total_moments"),
     )
     def total_moments(self, selection="total"):
         """Read the total magnetic moments of the selected steps.

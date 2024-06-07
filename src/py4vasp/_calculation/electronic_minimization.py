@@ -5,10 +5,10 @@ import numpy as np
 
 from py4vasp import exception, raw
 from py4vasp._third_party import graph
-from py4vasp.calculation import _base, _slice
+from py4vasp._calculation import base, slice_
 
 
-class OSZICAR(_slice.Mixin, _base.Refinery, graph.Mixin):
+class ElectronicMinimization(slice_.Mixin, base.Refinery, graph.Mixin):
     """Access the convergence data for each electronic step.
 
     The OSZICAR file written out by VASP stores information related to convergence.
@@ -18,7 +18,7 @@ class OSZICAR(_slice.Mixin, _base.Refinery, graph.Mixin):
     def _more_than_one_ionic_step(self, data):
         return any(isinstance(_data, list) for _data in data) == True
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         format_rep = "{0:g}\t{1:0.12E}\t{2:0.6E}\t{3:0.6E}\t{4:g}\t{5:0.3E}\t{6:0.3E}\n"
         label_rep = "{}\t\t{}\t\t{}\t\t{}\t\t{}\t{}\t\t{}\n"
@@ -44,7 +44,7 @@ class OSZICAR(_slice.Mixin, _base.Refinery, graph.Mixin):
                 string += format_rep.format(*_data)
         return string
 
-    @_base.data_access
+    @base.data_access
     def to_dict(self, selection=None):
         """Extract convergence data from the HDF5 file and make it available in a dict
 
@@ -79,7 +79,7 @@ N, E, dE, deps, ncg, rms, rms(c)"""
     def _from_bytes_to_utf(self, quantity: list):
         return [_quantity.decode("utf-8") for _quantity in quantity]
 
-    @_base.data_access
+    @base.data_access
     def _read(self, key):
         # data represents all of the electronic steps for all ionic steps
         data = getattr(self._raw_data, "convergence_data")
@@ -121,7 +121,7 @@ N, E, dE, deps, ncg, rms, rms(c)"""
             ylabel=ylabel,
         )
 
-    @_base.data_access
+    @base.data_access
     def is_converged(self):
         is_elmin_converged = self._raw_data.is_elmin_converged[self._steps]
         converged = is_elmin_converged == 0

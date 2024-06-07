@@ -5,11 +5,11 @@ import numpy as np
 from py4vasp import _config
 from py4vasp._third_party import view
 from py4vasp._util import documentation, reader
-from py4vasp.calculation import _base, _slice, _structure
+from py4vasp._calculation import base, slice_, structure
 
 
-@documentation.format(examples=_slice.examples("force"))
-class Force(_slice.Mixin, _base.Refinery, _structure.Mixin, view.Mixin):
+@documentation.format(examples=slice_.examples("force"))
+class Force(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     """The forces determine the path of the atoms in a trajectory.
 
     You can use this class to analyze the forces acting on the atoms. The forces
@@ -27,7 +27,7 @@ class Force(_slice.Mixin, _base.Refinery, _structure.Mixin, view.Mixin):
     force_rescale = 1.5
     "Scaling constant to convert forces to Å."
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         "Convert the forces to a format similar to the OUTCAR file."
         result = """
@@ -42,8 +42,8 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
             result += f"\n{position_to_string(position)}    {force_to_string(force)}"
         return result
 
-    @_base.data_access
-    @documentation.format(examples=_slice.examples("force", "to_dict"))
+    @base.data_access
+    @documentation.format(examples=slice_.examples("force", "to_dict"))
     def to_dict(self):
         """Read the forces and associated structural information for one or more
         selected steps of the trajectory.
@@ -61,8 +61,8 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
             "forces": self._force[self._steps],
         }
 
-    @_base.data_access
-    @documentation.format(examples=_slice.examples("force", "to_view"))
+    @base.data_access
+    @documentation.format(examples=slice_.examples("force", "to_view"))
     def to_view(self, supercell=None):
         """Visualize the forces showing arrows at the atoms.
 

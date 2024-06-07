@@ -285,6 +285,14 @@ schema.add(
     relaxed_ion=f"{group}/relaxed_ion_elastic_modulus",
 )
 #
+schema.add(
+    raw.ElectronicMinimization,
+    required=raw.Version(6, 5),
+    label="intermediate/ion_dynamics/oszicar_label",
+    convergence_data="intermediate/ion_dynamics/oszicar",
+    is_elmin_converged="/intermediate/ion_dynamics/electronic_step_converged",
+)
+#
 group = "results/linear_response"
 schema.add(
     raw.Fatband,
@@ -376,14 +384,6 @@ schema.add(
     structure=Link("structure", DEFAULT_SOURCE),
     spin_moments="intermediate/ion_dynamics/magnetism/spin_moments/values",
     orbital_moments="intermediate/ion_dynamics/magnetism/orbital_moments/values",
-)
-#
-schema.add(
-    raw.OSZICAR,
-    required=raw.Version(6, 5),
-    label="intermediate/ion_dynamics/oszicar_label",
-    convergence_data="intermediate/ion_dynamics/oszicar",
-    is_elmin_converged="/intermediate/ion_dynamics/electronic_step_converged",
 )
 #
 group = "intermediate/pair_correlation"

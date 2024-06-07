@@ -2,10 +2,10 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import exception
 from py4vasp._util import convert
-from py4vasp.calculation import _base
+from py4vasp._calculation import base
 
 
-class DielectricTensor(_base.Refinery):
+class DielectricTensor(base.Refinery):
     """The dielectric tensor is the static limit of the :attr:`dielectric function<py4vasp.calculation.dielectric_function>`.
 
     The dielectric tensor represents how a material's response to an external electric
@@ -14,7 +14,7 @@ class DielectricTensor(_base.Refinery):
     tensor corresponds to the dielectric function along a specific crystallographic
     axis."""
 
-    @_base.data_access
+    @base.data_access
     def to_dict(self):
         """Read the dielectric tensor into a dictionary.
 
@@ -31,7 +31,7 @@ class DielectricTensor(_base.Refinery):
             "method": convert.text_to_string(self._raw_data.method),
         }
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         data = self.to_dict()
         return f"""

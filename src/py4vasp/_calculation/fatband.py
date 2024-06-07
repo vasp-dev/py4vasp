@@ -2,10 +2,10 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import calculation
 from py4vasp._util import convert
-from py4vasp.calculation import _base
+from py4vasp._calculation import base
 
 
-class Fatband(_base.Refinery):
+class Fatband(base.Refinery):
     """BSE fatbands illustrate the excitonic properties of materials.
 
     The Bethe-Salpeter Equation (BSE) accounts for electron-hole interactions
@@ -18,7 +18,7 @@ class Fatband(_base.Refinery):
     in materials.
     """
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         shape = self._raw_data.bse_index.shape
         return f"""BSE fatband data:
@@ -26,7 +26,7 @@ class Fatband(_base.Refinery):
     {shape[3]} valence bands
     {shape[2]} conduction bands"""
 
-    @_base.data_access
+    @base.data_access
     def to_dict(self):
         """Read the data into a dictionary.
 
@@ -55,4 +55,4 @@ class Fatband(_base.Refinery):
 
     @property
     def _dispersion(self):
-        return calculation.dispersion.from_data(self._raw_data.dispersion)
+        return calculation._dispersion.from_data(self._raw_data.dispersion)

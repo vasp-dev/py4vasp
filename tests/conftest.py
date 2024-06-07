@@ -132,10 +132,6 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
-    def OSZICAR(selection=None):
-        return _example_OSZICAR()
-
-    @staticmethod
     def density(selection):
         parts = selection.split()
         if parts[0] == "Sr2TiO4":
@@ -189,6 +185,10 @@ class RawDataFactory:
     @staticmethod
     def elastic_modulus(selection):
         return _elastic_modulus()
+
+    @staticmethod
+    def electronic_minimization(selection=None):
+        return _electronic_minimization()
 
     @staticmethod
     def energy(selection, randomize: bool = False):
@@ -665,7 +665,7 @@ def _Sr2TiO4_cell():
     )
 
 
-def _example_OSZICAR():
+def _electronic_minimization():
     random_convergence_data = np.random.rand(9, 3)
     iteration_number = np.arange(1, 10)[:, np.newaxis]
     ncg = np.random.randint(4, 10, (9, 1))
@@ -676,7 +676,7 @@ def _example_OSZICAR():
     convergence_data = raw.VaspData(convergence_data)
     label = raw.VaspData([b"N", b"E", b"dE", b"deps", b"ncg", b"rms", b"rms(c)"])
     is_elmin_converged = [0]
-    return raw.OSZICAR(
+    return raw.ElectronicMinimization(
         convergence_data=convergence_data,
         label=label,
         is_elmin_converged=is_elmin_converged,

@@ -4,10 +4,10 @@ import numpy as np
 
 from py4vasp._third_party import graph
 from py4vasp._util import convert, index, select
-from py4vasp.calculation import _base
+from py4vasp._calculation import base
 
 
-class DielectricFunction(_base.Refinery, graph.Mixin):
+class DielectricFunction(base.Refinery, graph.Mixin):
     """The dielectric function describes the material response to an electric field.
 
     The dielectric function is a fundamental concept that describes how a material
@@ -28,7 +28,7 @@ class DielectricFunction(_base.Refinery, graph.Mixin):
     one of the six components as selection.
     """
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         energies = self._raw_data.energies
         return f"""
@@ -43,7 +43,7 @@ dielectric function:
         else:
             return ""
 
-    @_base.data_access
+    @base.data_access
     def to_dict(self):
         """Read the data into a dictionary.
 
@@ -69,7 +69,7 @@ dielectric function:
     def _has_current_component(self):
         return not self._raw_data.current_current.is_none()
 
-    @_base.data_access
+    @base.data_access
     def to_graph(self, selection=None):
         """Read the data and generate a figure with the selected directions.
 
@@ -93,7 +93,7 @@ dielectric function:
             ylabel="dielectric function ϵ",
         )
 
-    @_base.data_access
+    @base.data_access
     def selections(self):
         "Returns a dictionary of possible selections for component, direction, and complex value."
         components = (

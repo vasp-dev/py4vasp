@@ -3,13 +3,13 @@
 from py4vasp import calculation
 from py4vasp._third_party import graph
 from py4vasp._util import documentation, import_
-from py4vasp.calculation import _base, _projector
+from py4vasp._calculation import base, projector
 
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
 
 
-class Dos(_base.Refinery, graph.Mixin):
+class Dos(base.Refinery, graph.Mixin):
     """The density of states (DOS) describes the number of states per energy.
 
     The DOS quantifies the distribution of electronic states within an energy range
@@ -31,7 +31,7 @@ class Dos(_base.Refinery, graph.Mixin):
 
     _missing_data_message = "No DOS data found, please verify that LORBIT flag is set."
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         energies = self._raw_data.energies
         return f"""
@@ -40,10 +40,10 @@ class Dos(_base.Refinery, graph.Mixin):
 {pretty.pretty(self._projectors())}
     """.strip()
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(
-        selection_doc=_projector.selection_doc,
-        examples=_projector.selection_examples("dos", "to_dict"),
+        selection_doc=projector.selection_doc,
+        examples=projector.selection_examples("dos", "to_dict"),
     )
     def to_dict(self, selection=None):
         """Read the data into a dictionary.
@@ -67,10 +67,10 @@ class Dos(_base.Refinery, graph.Mixin):
             "fermi_energy": self._raw_data.fermi_energy,
         }
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(
-        selection_doc=_projector.selection_doc,
-        examples=_projector.selection_examples("dos", "to_graph"),
+        selection_doc=projector.selection_doc,
+        examples=projector.selection_examples("dos", "to_graph"),
     )
     def to_graph(self, selection=None):
         """Generate a graph of the selected data reading it from the VASP output.
@@ -96,10 +96,10 @@ class Dos(_base.Refinery, graph.Mixin):
             ylabel="DOS (1/eV)",
         )
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(
-        selection_doc=_projector.selection_doc,
-        examples=_projector.selection_examples("dos", "to_frame"),
+        selection_doc=projector.selection_doc,
+        examples=projector.selection_examples("dos", "to_frame"),
     )
     def to_frame(self, selection=None):
         """Read the data into a pandas DataFrame.

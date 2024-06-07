@@ -2,10 +2,10 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp.calculation import _base
+from py4vasp._calculation import base
 
 
-class ElasticModulus(_base.Refinery):
+class ElasticModulus(base.Refinery):
     """The elastic modulus is the second derivative of the energy with respect to strain.
 
     The elastic modulus, also known as the modulus of elasticity, is a measure of a
@@ -18,7 +18,7 @@ class ElasticModulus(_base.Refinery):
     atoms are allowed to relax when the cell is deformed.
     """
 
-    @_base.data_access
+    @base.data_access
     def to_dict(self):
         """Read the clamped-ion and relaxed-ion elastic modulus into a dictionary.
 
@@ -32,7 +32,7 @@ class ElasticModulus(_base.Refinery):
             "relaxed_ion": self._raw_data.relaxed_ion[:],
         }
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         return f"""Elastic modulus (kBar)
 Direction    XX          YY          ZZ          XY          YZ          ZX

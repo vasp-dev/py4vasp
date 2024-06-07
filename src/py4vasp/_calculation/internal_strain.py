@@ -1,9 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.calculation import _base, _structure
+from py4vasp._calculation import base, structure
 
 
-class InternalStrain(_base.Refinery, _structure.Mixin):
+class InternalStrain(base.Refinery, structure.Mixin):
     """The internal strain is the derivative of energy with respect to displacement and strain.
 
     The internal strain tensor characterizes the deformation within a material at
@@ -14,7 +14,7 @@ class InternalStrain(_base.Refinery, _structure.Mixin):
     with linear response and this class provides access to the resulting data.
     """
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         result = """
 Internal strain tensor (eV/Å):
@@ -28,7 +28,7 @@ Internal strain tensor (eV/Å):
                 ion_string = "    "
         return result.strip()
 
-    @_base.data_access
+    @base.data_access
     def to_dict(self):
         """Read the internal strain to a dictionary.
 
