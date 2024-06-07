@@ -6,8 +6,8 @@ from typing import NamedTuple, Union
 
 from py4vasp import calculation, exception
 from py4vasp._util import convert, documentation, index, select
-from py4vasp.calculation import _base
-from py4vasp.calculation._selection import Selection
+from py4vasp._calculation import base
+from py4vasp._calculation.selection import Selection
 
 selection_doc = """\
 selection : str
@@ -66,7 +66,7 @@ _range = re.compile(r"^(\d+)" + re.escape(select.range_separator) + r"(\d+)$")
 _select_all = select.all
 
 
-class Projector(_base.Refinery):
+class Projector(base.Refinery):
     """The projectors used for atom and orbital resolved quantities.
 
     This is a utility class that facilitates projecting quantities such as the
@@ -79,7 +79,7 @@ class Projector(_base.Refinery):
 
     _missing_data_message = "No projectors found, please verify the LORBIT tag is set."
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         if self._raw_data.orbital_types.is_none():
             return "no projectors"
@@ -87,7 +87,7 @@ class Projector(_base.Refinery):
     atoms: {", ".join(self._topology().ion_types())}
     orbitals: {", ".join(self._orbital_types())}"""
 
-    @_base.data_access
+    @base.data_access
     def to_dict(self, selection=None, projections=None):
         """Return a map from labels to indices in the arrays produced by VASP.
 
@@ -115,7 +115,7 @@ class Projector(_base.Refinery):
         warnings.warn(message, DeprecationWarning, stacklevel=2)
         return self.project(selection, projections)
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(selection_doc=selection_doc)
     def project(self, selection, projections):
         """Select a certain subset of the given projections and return them with a
@@ -146,7 +146,7 @@ class Projector(_base.Refinery):
             for selection in self._parse_selection(selection)
         }
 
-    @_base.data_access
+    @base.data_access
     def selections(self):
         """Return a dictionary describing what options are available to specify the
         atom, orbital, and spin."""
@@ -191,7 +191,7 @@ class Projector(_base.Refinery):
             raise exception.IncorrectUsage(message)
 
     def _topology(self):
-        return calculation.topology.from_data(self._raw_data.topology)
+        return calculation._topology.from_data(self._raw_data.topology)
 
     def _init_dicts(self):
         if self._raw_data.orbital_types.is_none():
@@ -261,7 +261,7 @@ class Projector(_base.Refinery):
         spin: Union[str, Selection]
         "Label of the spin component or a Selection object to read the corresponding data."
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(separator=select.range_separator)
     def select(
         self,
@@ -307,7 +307,7 @@ class Projector(_base.Refinery):
             spin=dicts["spin"][spin],
         )
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(selection_doc=selection_doc)
     def parse_selection(self, selection=_select_all):
         """Generate all possible indices where the projected information is stored.

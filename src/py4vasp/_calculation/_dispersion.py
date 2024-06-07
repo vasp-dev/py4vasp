@@ -4,22 +4,22 @@ import numpy as np
 
 import py4vasp._third_party.graph as _graph
 from py4vasp import calculation
-from py4vasp.calculation import _base
+from py4vasp._calculation import base
 
 
-class Dispersion(_base.Refinery):
+class Dispersion(base.Refinery):
     """Generic class for all dispersions (electrons, phonons).
 
     Provides some utility functionalities common to all dispersions to avoid duplication
     of code."""
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         return f"""band data:
     {self._kpoints.number_kpoints()} k-points
     {self._raw_data.eigenvalues.shape[-1]} bands"""
 
-    @_base.data_access
+    @base.data_access
     def to_dict(self):
         """Read the dispersion into a dictionary.
 
@@ -39,7 +39,7 @@ class Dispersion(_base.Refinery):
     def _kpoints(self):
         return calculation.kpoint.from_data(self._raw_data.kpoints)
 
-    @_base.data_access
+    @base.data_access
     def plot(self, projections=None):
         """Generate a graph of the dispersion.
 

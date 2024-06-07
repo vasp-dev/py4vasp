@@ -8,7 +8,7 @@ import numpy as np
 from py4vasp import calculation, exception, raw
 from py4vasp._third_party import view
 from py4vasp._util import documentation, import_, reader
-from py4vasp.calculation import _base, _slice, _topology
+from py4vasp._calculation import base, slice_, _topology
 
 ase = import_.optional("ase")
 ase_io = import_.optional("ase.io")
@@ -47,8 +47,8 @@ class _Format:
         return f"{element:21.16f}"
 
 
-@documentation.format(examples=_slice.examples("structure"))
-class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
+@documentation.format(examples=slice_.examples("structure"))
+class Structure(slice_.Mixin, base.Refinery, view.Mixin):
     """The structure contains the unit cell and the position of all ions within.
 
     The crystal structure is the specific arrangement of ions in a three-dimensional
@@ -101,12 +101,12 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
         )
         return cls.from_data(structure)
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         "Generate a string representing the final structure usable as a POSCAR file."
         return self._create_repr()
 
-    @_base.data_access
+    @base.data_access
     def _repr_html_(self):
         format_ = _Format(
             begin_table="<table>\n<tr><td>",
@@ -129,8 +129,8 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
         )
         return "\n".join(lines)
 
-    @_base.data_access
-    @documentation.format(examples=_slice.examples("structure", "to_dict"))
+    @base.data_access
+    @documentation.format(examples=slice_.examples("structure", "to_dict"))
     def to_dict(self):
         """Read the structural information into a dictionary.
 
@@ -150,8 +150,8 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
             "names": self._topology().names(),
         }
 
-    @_base.data_access
-    @documentation.format(examples=_slice.examples("structure", "to_view"))
+    @base.data_access
+    @documentation.format(examples=slice_.examples("structure", "to_view"))
     def to_view(self, supercell=None):
         """Generate a 3d representation of the structure(s).
 
@@ -176,8 +176,8 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
             supercell=self._parse_supercell(supercell),
         )
 
-    @_base.data_access
-    @documentation.format(examples=_slice.examples("structure", "to_ase"))
+    @base.data_access
+    @documentation.format(examples=slice_.examples("structure", "to_ase"))
     def to_ase(self, supercell=None):
         """Convert the structure to an ase Atoms object.
 
@@ -220,8 +220,8 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
         order = sorted(range(num_atoms_super), key=lambda n: n % num_atoms_prim)
         return structure[order]
 
-    @_base.data_access
-    @documentation.format(examples=_slice.examples("structure", "to_mdtraj"))
+    @base.data_access
+    @documentation.format(examples=slice_.examples("structure", "to_mdtraj"))
     def to_mdtraj(self):
         """Convert the trajectory to mdtraj.Trajectory
 
@@ -243,8 +243,8 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
         trajectory.unitcell_vectors = data["lattice_vectors"] * Structure.A_to_nm
         return trajectory
 
-    @_base.data_access
-    @documentation.format(examples=_slice.examples("structure", "to_POSCAR"))
+    @base.data_access
+    @documentation.format(examples=slice_.examples("structure", "to_POSCAR"))
     def to_POSCAR(self):
         """Convert the structure(s) to a POSCAR format
 
@@ -261,7 +261,7 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
             message = "Converting multiple structures to a POSCAR is currently not implemented."
             raise exception.NotImplemented(message)
 
-    @_base.data_access
+    @base.data_access
     def lattice_vectors(self):
         """Return the lattice vectors spanning the unit cell
 
@@ -273,7 +273,7 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
         lattice_vectors = _LatticeVectors(self._raw_data.cell.lattice_vectors)
         return self._scale() * lattice_vectors[self._get_steps()]
 
-    @_base.data_access
+    @base.data_access
     def positions(self):
         """Return the direct coordinates of all ions in the unit cell.
 
@@ -287,8 +287,8 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
         """
         return self._raw_data.positions[self._get_steps()]
 
-    @_base.data_access
-    @documentation.format(examples=_slice.examples("structure", "cartesian_positions"))
+    @base.data_access
+    @documentation.format(examples=slice_.examples("structure", "cartesian_positions"))
     def cartesian_positions(self):
         """Convert the positions from direct coordinates to cartesian ones.
 
@@ -301,8 +301,8 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
         """
         return self.positions() @ self.lattice_vectors()
 
-    @_base.data_access
-    @documentation.format(examples=_slice.examples("structure", "volume"))
+    @base.data_access
+    @documentation.format(examples=slice_.examples("structure", "volume"))
     def volume(self):
         """Return the volume of the unit cell for the selected steps.
 
@@ -315,7 +315,7 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
         """
         return np.abs(np.linalg.det(self.lattice_vectors()))
 
-    @_base.data_access
+    @base.data_access
     def number_atoms(self):
         """Return the total number of atoms in the structure."""
         if self._is_trajectory:
@@ -323,7 +323,7 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
         else:
             return self._raw_data.positions.shape[0]
 
-    @_base.data_access
+    @base.data_access
     def number_steps(self):
         """Return the number of structures in the trajectory."""
         if self._is_trajectory:
@@ -355,7 +355,7 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
         raise exception.IncorrectUsage(message)
 
     def _topology(self):
-        return calculation.topology.from_data(self._raw_data.topology)
+        return calculation._topology.from_data(self._raw_data.topology)
 
     def _scale(self):
         if isinstance(self._raw_data.cell.scale, np.float_):
@@ -380,7 +380,7 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
         else:
             return f" (step {self._steps + 1})"
 
-    @_base.data_access
+    @base.data_access
     def __getitem__(self, steps):
         if not self._is_trajectory:
             message = "The structure is not a Trajectory so accessing individual elements is not allowed."

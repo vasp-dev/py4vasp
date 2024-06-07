@@ -7,7 +7,7 @@ import pytest
 
 from py4vasp import calculation, exception
 from py4vasp._util import select
-from py4vasp.calculation._selection import Selection
+from py4vasp._calculation.selection import Selection
 
 
 @pytest.fixture

@@ -5,13 +5,13 @@ import numpy as np
 from py4vasp import calculation
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_
-from py4vasp.calculation import _base, _projector
+from py4vasp._calculation import base, projector
 
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
 
 
-class Band(_base.Refinery, graph.Mixin):
+class Band(base.Refinery, graph.Mixin):
     """The band structure contains the **k** point resolved eigenvalues.
 
     The most common use case of this class is to produce the electronic band
@@ -21,19 +21,19 @@ class Band(_base.Refinery, graph.Mixin):
     **k**-point distances that are calculated are meaningless.
     """
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         return f"""
 {"spin polarized" if self._spin_polarized() else ""} band data:
     {self._raw_data.dispersion.eigenvalues.shape[1]} k-points
     {self._raw_data.dispersion.eigenvalues.shape[2]} bands
-{pretty.pretty(self._projector)}
+{pretty.pretty(self._projector())}
     """.strip()
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(
-        selection_doc=_projector.selection_doc,
-        examples=_projector.selection_examples("band", "to_dict"),
+        selection_doc=projector.selection_doc,
+        examples=projector.selection_examples("band", "to_dict"),
     )
     def to_dict(self, selection=None):
         """Read the data into a dictionary.
@@ -52,7 +52,7 @@ class Band(_base.Refinery, graph.Mixin):
 
         {examples}
         """
-        dispersion = self._dispersion.read()
+        dispersion = self._dispersion().read()
         return {
             "kpoint_distances": dispersion["kpoint_distances"],
             "kpoint_labels": dispersion["kpoint_labels"],
@@ -62,10 +62,10 @@ class Band(_base.Refinery, graph.Mixin):
             "projections": self._read_projections(selection),
         }
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(
-        selection_doc=_projector.selection_doc,
-        examples=_projector.selection_examples("band", "to_graph"),
+        selection_doc=projector.selection_doc,
+        examples=projector.selection_examples("band", "to_graph"),
     )
     def to_graph(self, selection=None, width=0.5):
         """Read the data and generate a graph.
@@ -86,15 +86,15 @@ class Band(_base.Refinery, graph.Mixin):
         {examples}
         """
         projections = self._projections(selection, width)
-        graph = self._dispersion.plot(projections)
+        graph = self._dispersion().plot(projections)
         graph = self._shift_series_by_fermi_energy(graph)
         graph.ylabel = "Energy (eV)"
         return graph
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(
-        selection_doc=_projector.selection_doc,
-        examples=_projector.selection_examples("band", "to_frame"),
+        selection_doc=projector.selection_doc,
+        examples=projector.selection_examples("band", "to_frame"),
     )
     def to_frame(self, selection=None):
         """Read the data into a DataFrame.
@@ -119,11 +119,9 @@ class Band(_base.Refinery, graph.Mixin):
     def _spin_polarized(self):
         return len(self._raw_data.dispersion.eigenvalues) == 2
 
-    @property
     def _dispersion(self):
-        return calculation.dispersion.from_data(self._raw_data.dispersion)
+        return calculation._dispersion.from_data(self._raw_data.dispersion)
 
-    @property
     def _projector(self):
         return calculation.projector.from_data(self._raw_data.projectors)
 
@@ -138,7 +136,7 @@ class Band(_base.Refinery, graph.Mixin):
         }
 
     def _read_projections(self, selection):
-        return self._projector.project(selection, self._raw_data.projections)
+        return self._projector().project(selection, self._raw_data.projections)
 
     def _read_occupations(self):
         if self._spin_polarized():

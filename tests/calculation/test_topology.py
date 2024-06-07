@@ -4,7 +4,7 @@ import pytest
 
 from py4vasp import calculation, exception
 from py4vasp._util import import_, select
-from py4vasp.calculation._selection import Selection
+from py4vasp._calculation.selection import Selection
 
 ase = import_.optional("ase")
 pd = import_.optional("pandas")
@@ -55,7 +55,7 @@ class Base:
 
     def test_from_ase(self, not_core):
         structure = ase.Atoms("".join(self.elements))
-        topology = calculation.topology.from_ase(structure)
+        topology = calculation._topology.from_ase(structure)
         assert topology.elements() == self.elements
         assert str(topology) == str(self.topology)
 
@@ -71,7 +71,7 @@ class Base:
 class TestSr2TiO4(Base):
     @pytest.fixture(autouse=True)
     def _setup(self, raw_data):
-        self.topology = calculation.topology.from_data(raw_data.topology("Sr2TiO4"))
+        self.topology = calculation._topology.from_data(raw_data.topology("Sr2TiO4"))
         self.names = ["Sr_1", "Sr_2", "Ti_1", "O_1", "O_2", "O_3", "O_4"]
         self.elements = 2 * ["Sr"] + ["Ti"] + 4 * ["O"]
 
@@ -101,7 +101,7 @@ class TestCa3AsBr3(Base):
     @pytest.fixture(autouse=True)
     def _setup(self, raw_data):
         raw_topology = raw_data.topology("Ca2AsBr-CaBr2")
-        self.topology = calculation.topology.from_data(raw_topology)
+        self.topology = calculation._topology.from_data(raw_topology)
         self.names = ["Ca_1", "Ca_2", "As_1", "Br_1", "Ca_3", "Br_2", "Br_3"]
         self.elements = ["Ca", "Ca", "As", "Br", "Ca", "Br", "Br"]
 
@@ -124,4 +124,4 @@ class TestCa3AsBr3(Base):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.topology("Sr2TiO4")
-    check_factory_methods(calculation.topology, data)
+    check_factory_methods(calculation._topology, data)

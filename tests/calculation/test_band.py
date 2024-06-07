@@ -293,7 +293,7 @@ def test_plot_incorrect_width(with_projectors):
         with_projectors.plot("Sr", width="not a number")
 
 
-@patch("py4vasp.calculation._band.Band.to_graph")
+@patch("py4vasp._calculation.band.Band.to_graph")
 def test_to_plotly(mock_plot, single_band):
     fig = single_band.to_plotly("selection", width=0.2)
     mock_plot.assert_called_once_with("selection", width=0.2)
@@ -309,7 +309,7 @@ def test_to_image(single_band):
 
 
 def check_to_image(single_band, filename_argument, expected_filename):
-    with patch("py4vasp.calculation._band.Band.to_plotly") as plot:
+    with patch("py4vasp._calculation.band.Band.to_plotly") as plot:
         single_band.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
