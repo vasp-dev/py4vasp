@@ -169,8 +169,10 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
         {examples}
         """
         make_3d = lambda array: array if array.ndim == 3 else array[np.newaxis]
+        number_steps = len(self.positions())
+        elements = np.tile(self._topology().elements(), (number_steps, 1))
         return view.View(
-            elements=np.atleast_2d(self._topology().elements()),
+            elements=np.atleast_2d(elements),
             lattice_vectors=make_3d(self.lattice_vectors()),
             positions=make_3d(self.positions()),
             supercell=self._parse_supercell(supercell),
