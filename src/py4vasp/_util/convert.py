@@ -46,11 +46,10 @@ def _to_snakecase(word: str) -> str:
     return word.lower()
 
 
-# NOTE: to_camelcase is the function camelize from the inflection package
+# NOTE: to_camelcase is based on the function camelize from the inflection package
 #       (Copyright (C) 2012-2020 Janne Vanhala)
 def to_camelcase(string: str, uppercase_first_letter: bool = True) -> str:
-    """
-    Convert strings to CamelCase.
+    """Convert strings to CamelCase.
 
     Examples::
 
@@ -70,7 +69,7 @@ def to_camelcase(string: str, uppercase_first_letter: bool = True) -> str:
         lowerCamelCase. Defaults to `True`.
     """
     if uppercase_first_letter:
-        return re.sub(r"(?:^|_)(.)", lambda m: m.group(1).upper(), string)
+        return re.sub(r"(?:_|^)(.)", lambda m: m.group(1).upper(), string)
     else:
         return string[0].lower() + camelize(string)[1:]
 

@@ -50,9 +50,9 @@ class MLFFErrorAnalysis:
         self.dft = SimpleNamespace()
 
     @classmethod
-    def _from_data(cls, _calculations):
+    def _from_data(cls, batch):
         mlff_error_analysis = cls(_internal=True)
-        mlff_error_analysis._calculations = _calculations
+        mlff_error_analysis._batch = batch
         set_appropriate_attrs(mlff_error_analysis)
         return mlff_error_analysis
 
@@ -72,10 +72,8 @@ class MLFFErrorAnalysis:
             Path to the MLFF data. Accepts wildcards.
         """
         mlff_error_analysis = cls(_internal=True)
-        calculations = py4vasp.Calculations.from_paths(
-            dft_data=dft_data, mlff_data=mlff_data
-        )
-        mlff_error_analysis._calculations = calculations
+        batch = py4vasp.Batch.from_paths(dft_data=dft_data, mlff_data=mlff_data)
+        mlff_error_analysis._batch = batch
         set_appropriate_attrs(mlff_error_analysis)
         return mlff_error_analysis
 
@@ -95,10 +93,8 @@ class MLFFErrorAnalysis:
             Path to the MLFF data. Accepts wildcards.
         """
         mlff_error_analysis = cls(_internal=True)
-        calculations = py4vasp.Calculations.from_files(
-            dft_data=dft_data, mlff_data=mlff_data
-        )
-        mlff_error_analysis._calculations = calculations
+        batch = py4vasp.Batch.from_files(dft_data=dft_data, mlff_data=mlff_data)
+        mlff_error_analysis._batch = batch
         set_appropriate_attrs(mlff_error_analysis)
         return mlff_error_analysis
 
@@ -213,7 +209,7 @@ def set_number_of_configurations(cls):
     cls : MLFFErrorAnalysis
         An instance of MLFFErrorAnalysis.
     """
-    number_of_calculations = cls._calculations.number_of_calculations()
+    number_of_calculations = cls._batch.number_of_calculations()
     cls.dft.nconfig = number_of_calculations["dft_data"]
     cls.mlff.nconfig = number_of_calculations["mlff_data"]
 
@@ -229,7 +225,7 @@ def set_number_of_ions(cls):
     cls : MLFFErrorAnalysis
         An instance of MLFFErrorAnalysis.
     """
-    force_data = cls._calculations.forces.read()
+    force_data = cls._batch.forces.read()
     structures_dft = _dict_to_list(force_data["dft_data"], "structure")
     structures_mlff = _dict_to_list(force_data["mlff_data"], "structure")
     elements_dft = _dict_to_array(structures_dft, "elements")
@@ -252,11 +248,11 @@ def set_paths_and_files(cls):
     cls : MLFFErrorAnalysis
         An instance of MLFFErrorAnalysis.
     """
-    paths = cls._calculations.paths()
+    paths = cls._batch.paths()
     cls.dft.paths = paths["dft_data"]
     cls.mlff.paths = paths["mlff_data"]
-    if hasattr(cls._calculations, "_files"):
-        files = cls._calculations.files()
+    if hasattr(cls._batch, "_files"):
+        files = cls._batch.files()
         cls.dft.files = files["dft_data"]
         cls.mlff.files = files["mlff_data"]
 
@@ -273,7 +269,7 @@ def set_energies(cls):
         An instance of MLFFErrorAnalysis.
     """
     tag = "free energy    TOTEN"
-    energies_data = cls._calculations.energies.read()
+    energies_data = cls._batch.energies.read()
     cls.mlff.energies = _dict_to_array(energies_data["mlff_data"], tag)
     cls.dft.energies = _dict_to_array(energies_data["dft_data"], tag)
 
@@ -298,7 +294,7 @@ def set_force_related_attributes(cls):
     cls : MLFFErrorAnalysis
         An instance of MLFFErrorAnalysis.
     """
-    force_data = cls._calculations.forces.read()
+    force_data = cls._batch.forces.read()
     cls.dft.forces = _dict_to_array(force_data["dft_data"], "forces")
     cls.mlff.forces = _dict_to_array(force_data["mlff_data"], "forces")
     dft_structures = _dict_to_list(force_data["dft_data"], "structure")
@@ -320,6 +316,6 @@ def set_stresses(cls):
     cls : MLFFErrorAnalysis
         An instance of MLFFErrorAnalysis.
     """
-    stress_data = cls._calculations.stresses.read()
+    stress_data = cls._batch.stresses.read()
     cls.dft.stresses = _dict_to_array(stress_data["dft_data"], "stress")
     cls.mlff.stresses = _dict_to_array(stress_data["mlff_data"], "stress")

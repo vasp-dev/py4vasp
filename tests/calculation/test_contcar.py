@@ -61,7 +61,7 @@ Cartesian
 def CONTCAR(raw_data, request):
     selection = request.param
     raw_contcar = raw_data.CONTCAR(selection)
-    contcar = calculation.CONTCAR.from_data(raw_contcar)
+    contcar = calculation._CONTCAR.from_data(raw_contcar)
     contcar.ref = types.SimpleNamespace()
     structure = calculation.structure.from_data(raw_data.structure(selection))[-1]
     contcar.ref.structure = structure
@@ -116,4 +116,4 @@ def test_print(CONTCAR, format_):
 
 def test_factory_methods(raw_data, check_factory_methods):
     raw_contcar = raw_data.CONTCAR("Sr2TiO4")
-    check_factory_methods(calculation.CONTCAR, raw_contcar)
+    check_factory_methods(calculation._CONTCAR, raw_contcar)

@@ -132,10 +132,6 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
-    def OSZICAR(selection=None):
-        return _example_OSZICAR()
-
-    @staticmethod
     def density(selection):
         parts = selection.split()
         if parts[0] == "Sr2TiO4":
@@ -189,6 +185,10 @@ class RawDataFactory:
     @staticmethod
     def elastic_modulus(selection):
         return _elastic_modulus()
+
+    @staticmethod
+    def electronic_minimization(selection=None):
+        return _electronic_minimization()
 
     @staticmethod
     def energy(selection, randomize: bool = False):
@@ -327,8 +327,8 @@ class RawDataFactory:
         return _workfunction(selection)
 
     @staticmethod
-    def partial_charge(selection):
-        return _partial_charge(selection)
+    def partial_density(selection):
+        return _partial_density(selection)
 
 
 @pytest.fixture
@@ -665,7 +665,7 @@ def _Sr2TiO4_cell():
     )
 
 
-def _example_OSZICAR():
+def _electronic_minimization():
     random_convergence_data = np.random.rand(9, 3)
     iteration_number = np.arange(1, 10)[:, np.newaxis]
     ncg = np.random.randint(4, 10, (9, 1))
@@ -676,14 +676,14 @@ def _example_OSZICAR():
     convergence_data = raw.VaspData(convergence_data)
     label = raw.VaspData([b"N", b"E", b"dE", b"deps", b"ncg", b"rms", b"rms(c)"])
     is_elmin_converged = [0]
-    return raw.OSZICAR(
+    return raw.ElectronicMinimization(
         convergence_data=convergence_data,
         label=label,
         is_elmin_converged=is_elmin_converged,
     )
 
 
-def _partial_charge(selection):
+def _partial_density(selection):
     grid_dim = grid_dimensions
     if "CaAs3_110" in selection:
         structure = _CaAs3_110_structure()
@@ -713,7 +713,7 @@ def _partial_charge(selection):
     random_charge = raw.VaspData(
         np.random.rand(len(kpoints), len(bands), spin_dimension, *grid_dim)
     )
-    return raw.PartialCharge(
+    return raw.PartialDensity(
         structure=structure,
         bands=bands,
         kpoints=kpoints,
