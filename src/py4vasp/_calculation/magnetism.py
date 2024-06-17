@@ -228,11 +228,8 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         return self._raw_data.spin_moments[self._steps, 1]
 
     def _noncollinear_moments(self, selection):
-        spin_moments = self._raw_data.spin_moments[self._steps, 1:]
-        if self._has_orbital_moments:
-            orbital_moments = self._raw_data.orbital_moments[self._steps]
-        else:
-            orbital_moments = np.zeros_like(spin_moments)
+        spin_moments = self._spin_moments()
+        orbital_moments = self._orbital_moments(spin_moments)
         if selection == "orbital":
             moments = orbital_moments
         elif selection == "spin":
@@ -242,11 +239,21 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         direction_axis = 1 if moments.ndim == 4 else 0
         return np.moveaxis(moments, direction_axis, -1)
 
+    def _spin_moments(self):
+        return self._raw_data.spin_moments[self._steps, 1:]
+
+    def _orbital_moments(self, spin_moments):
+        if not self._has_orbital_moments:
+            return np.zeros_like(spin_moments)
+        zero_s_moments = np.zeros((*spin_moments.shape[:-1], 1))
+        orbital_moments = self._raw_data.orbital_moments[self._steps]
+        return np.concatenate((zero_s_moments, orbital_moments), axis=-1)
+
     def _add_spin_and_orbital_moments(self):
         if not self._has_orbital_moments:
             return {}
-        spin_moments = self._raw_data.spin_moments[self._steps, 1:]
-        orbital_moments = self._raw_data.orbital_moments[self._steps]
+        spin_moments = self._spin_moments()
+        orbital_moments = self._orbital_moments(spin_moments)
         direction_axis = 1 if spin_moments.ndim == 4 else 0
         return {
             "spin_moments": np.moveaxis(spin_moments, direction_axis, -1),
