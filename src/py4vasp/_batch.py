@@ -8,17 +8,17 @@ from py4vasp import combine, exception
 from py4vasp._util import convert
 
 
-class Calculations:
-    """A class to handle multiple Calculations all at once.
+class Batch:
+    """A class to handle batch of multiple calculations at once.
 
     This class combines the functionality of the Calculation class for more than one
-    calculation. Create a Calculations object using either a wildcard for a set of
+    calculation. Create a Batch object using either a wildcard for a set of
     paths or files or pass in paths and files directly. Then you can access the
     properties of all calculations via the attributes of the object.
 
     Examples
     --------
-    >>> calcs = Calculations.from_paths(calc1="path_to_calc1", calc2="path_to_calc2")
+    >>> calcs = Batch.from_paths(calc1="path_to_calc1", calc2="path_to_calc2")
     >>> calcs.energies.read() # returns a dictionary with the energies of calc1 and calc2
     >>> calcs.forces.read()   # returns a dictionary with the forces of calc1 and calc2
     >>> calcs.stresses.read() # returns a dictionary with the stresses of calc1 and calc2
@@ -34,8 +34,8 @@ class Calculations:
     def __init__(self, *args, **kwargs):
         if not kwargs.get("_internal"):
             message = """\
-Please setup new CompareCalculations instance using the classmethod CompareCalculations.from_paths()
-or CompareCalculations.from_files() instead of the constructor CompareCalculations()."""
+Please setup new Batch instance using the classmethod Batch.from_paths()
+or Batch.from_files() instead of the constructor Batch()."""
             raise exception.IncorrectUsage(message)
 
     def _path_finder(**kwargs):
@@ -53,7 +53,7 @@ Please provide a path to a VASP calculation as a string or pathlib.Path."""
 
     @classmethod
     def from_paths(cls, **kwargs):
-        """Set up a Calculations object for paths.
+        """Set up a Batch object for paths.
 
         Setup a calculation for paths by passing in a dictionary with the name of the
         calculation as key and the path to the calculation as value.
@@ -75,7 +75,7 @@ Please provide a path to a VASP calculation as a string or pathlib.Path."""
 
     @classmethod
     def from_files(cls, **kwargs):
-        """Set up a Calculations object from files.
+        """Set up a Batch object from files.
 
         Setup a calculation for files by passing in a dictionary with the name of the
         calculation as key and the path to the calculation as value. Note that this
