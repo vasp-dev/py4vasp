@@ -97,7 +97,7 @@ def make_structure(raw_structure):
         scale = 1.0
     structure.ref.lattice_vectors = scale * raw_structure.cell.lattice_vectors
     structure.ref.positions = raw_structure.positions
-    topology = calculation.topology.from_data(raw_structure.topology)
+    topology = calculation._topology.from_data(raw_structure.topology)
     structure.ref.elements = topology.elements()
     return structure
 

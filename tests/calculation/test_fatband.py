@@ -13,7 +13,7 @@ def fatband(raw_data):
     raw_fatband = raw_data.fatband("default")
     fatband = calculation.fatband.from_data(raw_fatband)
     fatband.ref = types.SimpleNamespace()
-    fatband.ref.dispersion = calculation.dispersion.from_data(raw_fatband.dispersion)
+    fatband.ref.dispersion = calculation._dispersion.from_data(raw_fatband.dispersion)
     fatbands = raw_fatband.fatbands
     fatband.ref.fatbands = fatbands[:, :, 0] + fatbands[:, :, 1] * 1j
     fatband.ref.fermi_energy = raw_fatband.fermi_energy

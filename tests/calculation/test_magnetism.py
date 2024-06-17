@@ -63,7 +63,8 @@ def set_moments(raw_magnetism, reference):
         reference.moments = np.moveaxis(raw_magnetism.spin_moments[:, 1:4], 1, 3)
     else:
         spin_moments = np.moveaxis(raw_magnetism.spin_moments[:, 1:4], 1, 3)
-        orbital_moments = np.moveaxis(raw_magnetism.orbital_moments[:, 1:4], 1, 3)
+        orbital_moments = np.zeros_like(spin_moments).astype(np.float64)
+        orbital_moments[:, :, 1:] += np.moveaxis(raw_magnetism.orbital_moments, 1, 3)
         reference.moments = spin_moments + orbital_moments
         reference.spin_moments = spin_moments
         reference.orbital_moments = orbital_moments

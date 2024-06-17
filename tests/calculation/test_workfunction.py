@@ -30,8 +30,8 @@ def test_read(workfunction, Assert):
     Assert.allclose(actual["average_potential"], workfunction.ref.average_potential)
     Assert.allclose(actual["vacuum_potential"], workfunction.ref.vacuum_potential)
     # Uncomment out these lines when vbm and cbm are added to VASP 6.5
-    # Assert.allclose(actual["valence_band_maximum"], workfunction.ref.vbm)
-    # Assert.allclose(actual["conduction_band_minimum"], workfunction.ref.cbm)
+    Assert.allclose(actual["valence_band_maximum"], workfunction.ref.vbm)
+    Assert.allclose(actual["conduction_band_minimum"], workfunction.ref.cbm)
     Assert.allclose(actual["fermi_energy"], workfunction.ref.fermi_energy)
 
 
@@ -44,7 +44,7 @@ def test_plot(workfunction, Assert):
     assert graph.series.name == "potential"
 
 
-@patch("py4vasp.calculation._workfunction.Workfunction.to_graph")
+@patch("py4vasp._calculation.workfunction.Workfunction.to_graph")
 def test_to_plotly(mock_plot, workfunction):
     fig = workfunction.to_plotly()
     mock_plot.assert_called_once_with()
@@ -60,7 +60,7 @@ def test_to_image(workfunction):
 
 
 def check_to_image(workfunction, filename_argument, expected_filename):
-    with patch("py4vasp.calculation._workfunction.Workfunction.to_plotly") as plot:
+    with patch("py4vasp._calculation.workfunction.Workfunction.to_plotly") as plot:
         workfunction.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
@@ -72,18 +72,18 @@ def test_print(workfunction, format_):
     reference = """\
 workfunction along {lattice_vector}:
     vacuum potential: {vacuum1:.3f} {vacuum2:.3f}
-    Fermi energy: {fermi_energy:.3f}"""
+    Fermi energy: {fermi_energy:.3f}
+    valence band maximum: {vbm:.3f}
+    conduction band minimum: {cbm:.3f}"""
     reference = reference.format(
         lattice_vector=workfunction.ref.lattice_vector,
         vacuum1=workfunction.ref.vacuum_potential[0],
         vacuum2=workfunction.ref.vacuum_potential[1],
         fermi_energy=workfunction.ref.fermi_energy,
+        vbm=workfunction.ref.vbm,
+        cbm=workfunction.ref.cbm,
     )
     assert actual == {"text/plain": reference}
-    # valence band maximum: {vbm:.3f}
-    # conduction band minimum: {cbm:.3f}
-    # vbm=workfunction.ref.vbm,
-    # cbm=workfunction.ref.cbm,
 
 
 def test_factory_methods(raw_data, check_factory_methods):
