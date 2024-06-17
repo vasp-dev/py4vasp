@@ -327,8 +327,8 @@ class RawDataFactory:
         return _workfunction(selection)
 
     @staticmethod
-    def partial_charge(selection):
-        return _partial_charge(selection)
+    def partial_density(selection):
+        return _partial_density(selection)
 
 
 @pytest.fixture
@@ -683,7 +683,7 @@ def _electronic_minimization():
     )
 
 
-def _partial_charge(selection):
+def _partial_density(selection):
     grid_dim = grid_dimensions
     if "CaAs3_110" in selection:
         structure = _CaAs3_110_structure()
@@ -713,7 +713,7 @@ def _partial_charge(selection):
     random_charge = raw.VaspData(
         np.random.rand(len(kpoints), len(bands), spin_dimension, *grid_dim)
     )
-    return raw.PartialCharge(
+    return raw.PartialDensity(
         structure=structure,
         bands=bands,
         kpoints=kpoints,

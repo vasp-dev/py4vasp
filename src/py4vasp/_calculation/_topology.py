@@ -5,9 +5,9 @@ import itertools
 import numpy as np
 
 from py4vasp import raw
-from py4vasp._util import check, convert, import_, select
 from py4vasp._calculation import base
 from py4vasp._calculation.selection import Selection
+from py4vasp._util import check, convert, import_, select
 
 mdtraj = import_.optional("mdtraj")
 pd = import_.optional("pandas")

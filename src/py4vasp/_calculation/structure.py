@@ -6,9 +6,9 @@ from dataclasses import dataclass
 import numpy as np
 
 from py4vasp import calculation, exception, raw
+from py4vasp._calculation import _topology, base, slice_
 from py4vasp._third_party import view
 from py4vasp._util import documentation, import_, reader
-from py4vasp._calculation import base, slice_, _topology
 
 ase = import_.optional("ase")
 ase_io = import_.optional("ase.io")

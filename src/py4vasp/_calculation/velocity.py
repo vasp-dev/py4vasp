@@ -3,13 +3,13 @@
 import numpy as np
 
 from py4vasp import _config, exception
+from py4vasp._calculation import base, slice_, structure
 from py4vasp._third_party import view
 from py4vasp._util import documentation, reader
-from py4vasp.calculation import _base, _slice, _structure
 
 
-@documentation.format(examples=_slice.examples("velocity"))
-class Velocity(_slice.Mixin, _base.Refinery, _structure.Mixin, view.Mixin):
+@documentation.format(examples=slice_.examples("velocity"))
+class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     """The velocities describe the ionic motion during an MD simulation.
 
     The velocities of the ions are a metric for the temperature of the system. Most
@@ -27,7 +27,7 @@ class Velocity(_slice.Mixin, _base.Refinery, _structure.Mixin, view.Mixin):
 
     velocity_rescale = 200
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         step = self._last_step_in_slice
         velocities = self._vectors_to_string(self._velocity[step])
@@ -42,8 +42,8 @@ class Velocity(_slice.Mixin, _base.Refinery, _structure.Mixin, view.Mixin):
     def _element_to_string(self, element):
         return f"{element:21.16f}"
 
-    @_base.data_access
-    @documentation.format(examples=_slice.examples("velocity", "to_dict"))
+    @base.data_access
+    @documentation.format(examples=slice_.examples("velocity", "to_dict"))
     def to_dict(self):
         """Return the structure and ion velocities in a dictionary
 
@@ -60,8 +60,8 @@ class Velocity(_slice.Mixin, _base.Refinery, _structure.Mixin, view.Mixin):
             "velocities": self._velocity[self._steps],
         }
 
-    @_base.data_access
-    @documentation.format(examples=_slice.examples("velocity", "to_view"))
+    @base.data_access
+    @documentation.format(examples=slice_.examples("velocity", "to_view"))
     def to_view(self, supercell=None):
         """Plot the velocities as vectors in the structure.
 

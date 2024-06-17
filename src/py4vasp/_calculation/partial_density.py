@@ -7,11 +7,11 @@ from typing import Union
 import numpy as np
 
 from py4vasp import exception
+from py4vasp._calculation import base, structure
 from py4vasp._third_party.graph import Graph
 from py4vasp._third_party.graph.contour import Contour
 from py4vasp._util import import_, select
 from py4vasp._util.slicing import plane
-from py4vasp.calculation import _base, _structure
 
 interpolate = import_.optional("scipy.interpolate")
 ndimage = import_.optional("scipy.ndimage")
@@ -50,7 +50,7 @@ class STM_settings:
     interpolation_factor: int = 10
 
 
-class PartialCharge(_base.Refinery, _structure.Mixin):
+class PartialDensity(base.Refinery, structure.Mixin):
     """Partial charges describe the fraction of the charge density in a certain energy,
     band, or k-point range.
 
@@ -70,7 +70,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
     def stm_settings(self):
         return STM_settings()
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         """Return a string representation of the partial charge density."""
         return f"""
@@ -80,11 +80,11 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         {"summed over all contributing k-points" if 0 in self.kpoints() else f" separated for k-points: {self.kpoints()}"}
         """.strip()
 
-    @_base.data_access
+    @base.data_access
     def grid(self):
         return self._raw_data.grid[:]
 
-    @_base.data_access
+    @base.data_access
     def to_dict(self):
         """Store the partial charges in a dictionary.
 
@@ -101,10 +101,10 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             "grid": self.grid(),
             "bands": self.bands(),
             "kpoints": self.kpoints(),
-            "partial_charge": parchg,
+            "partial_density": parchg,
         }
 
-    @_base.data_access
+    @base.data_access
     def to_stm(
         self,
         selection: str = "constant_height",
@@ -290,7 +290,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
     def _spin_polarized(self):
         return self._raw_data.partial_charge.shape[2] == 2
 
-    @_base.data_access
+    @base.data_access
     def to_numpy(self, selection="total", band=0, kpoint=0):
         """Return the partial charge density as a 3D array.
 
@@ -324,7 +324,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         message = f"Spin '{selection}' not understood. Use 'up', 'down' or 'total'."
         raise exception.IncorrectUsage(message)
 
-    @_base.data_access
+    @base.data_access
     def bands(self):
         """Return the band array listing the contributing bands.
 
@@ -348,7 +348,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             Make sure to set IBAND, EINT, and LSEPB correctly in the INCAR file."""
             raise exception.NoData(message)
 
-    @_base.data_access
+    @base.data_access
     def kpoints(self):
         """Return the k-points array listing the contributing k-points.
 

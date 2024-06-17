@@ -3,12 +3,12 @@
 import numpy as np
 
 from py4vasp import calculation
+from py4vasp._calculation import base, phonon
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
-from py4vasp.calculation import _base, _phonon
 
 
-class PhononBand(_phonon.Mixin, _base.Refinery, graph.Mixin):
+class PhononBand(phonon.Mixin, base.Refinery, graph.Mixin):
     """The phonon band structure contains the **q**-resolved phonon eigenvalues.
 
     The phonon band structure is a graphical representation of the phonons. It
@@ -26,14 +26,14 @@ class PhononBand(_phonon.Mixin, _base.Refinery, graph.Mixin):
     of a structural instability.
     """
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         return f"""phonon band data:
     {self._raw_data.dispersion.eigenvalues.shape[0]} q-points
     {self._raw_data.dispersion.eigenvalues.shape[1]} modes
     {self._topology()}"""
 
-    @_base.data_access
+    @base.data_access
     def to_dict(self):
         """Read the phonon band structure into a dictionary.
 
@@ -51,8 +51,8 @@ class PhononBand(_phonon.Mixin, _base.Refinery, graph.Mixin):
             "modes": self._modes(),
         }
 
-    @_base.data_access
-    @documentation.format(selection=_phonon.selection_doc)
+    @base.data_access
+    @documentation.format(selection=phonon.selection_doc)
     def to_graph(self, selection=None, width=1.0):
         """Generate a graph of the phonon bands.
 
@@ -75,7 +75,7 @@ class PhononBand(_phonon.Mixin, _base.Refinery, graph.Mixin):
         return graph
 
     def _dispersion(self):
-        return calculation.dispersion.from_data(self._raw_data.dispersion)
+        return calculation._dispersion.from_data(self._raw_data.dispersion)
 
     def _modes(self):
         return convert.to_complex(self._raw_data.eigenvectors[:])

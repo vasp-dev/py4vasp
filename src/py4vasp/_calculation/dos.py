@@ -1,9 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import calculation
+from py4vasp._calculation import base, projector
 from py4vasp._third_party import graph
 from py4vasp._util import documentation, import_
-from py4vasp._calculation import base, projector
 
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")

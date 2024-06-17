@@ -215,6 +215,7 @@ class ElectronicMinimization:
     is_elmin_converged: VaspData
     "Is the electronic minimization step converged?"
 
+
 @dataclasses.dataclass
 class Energy:
     """Various energies during ionic relaxation or MD simulation.
@@ -343,7 +344,7 @@ class PairCorrelation:
 
 
 @dataclasses.dataclass
-class PartialCharge:
+class PartialDensity:
     """Electronic partial charge and magnetization density on the fine Fourier grid
 
     Possibly not only split by spin, but also by band and kpoint."""

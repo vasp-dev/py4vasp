@@ -3,9 +3,9 @@
 import numpy as np
 
 from py4vasp import _config, calculation, exception
+from py4vasp._calculation import base, structure
 from py4vasp._third_party import graph, view
 from py4vasp._util import documentation, import_, index, select, slicing
-from py4vasp._calculation import base, structure
 
 pretty = import_.optional("IPython.lib.pretty")
 

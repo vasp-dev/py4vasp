@@ -62,19 +62,19 @@ QUANTITIES = (
     "internal_strain",
     "kpoint",
     "magnetism",
-    # "pair_correlation",
-    # "partial_charge",
-    # "phonon_band",
-    # "phonon_dos",
-    # "piezoelectric_tensor",
-    # "polarization",
-    # "potential",
+    "pair_correlation",
+    "partial_density",
+    "phonon_band",
+    "phonon_dos",
+    "piezoelectric_tensor",
+    "polarization",
+    "potential",
     "projector",
-    # "stress",
+    "stress",
     "structure",
-    # "system",
-    # "velocity",
-    # "workfunction",
+    "system",
+    "velocity",
+    "workfunction",
     "_CONTCAR",
     "_dispersion",
     "_topology",
@@ -230,19 +230,25 @@ def _add_to_documentation(calc, name):
     calc.__doc__ += f"   ~py4vasp.calculation.{name}\n    "
     return calc
 
+
 def _add_input_files(calc):
     for name in INPUT_FILES:
         file_ = getattr(control, name)(calc.path())
         setattr(calc, f"_{name}", file_)
     return calc
 
+
 Calculation = _add_all_refinement_classes(Calculation, _add_to_documentation)
+
 
 class DefaultCalculationFactory:
     def __getattr__(self, attr):
         calc = Calculation.from_path(".")
         return getattr(calc, attr)
+
     def __setattr__(self, attr, value):
         calc = Calculation.from_path(".")
         return setattr(calc, attr, value)
+
+
 calculation = DefaultCalculationFactory()

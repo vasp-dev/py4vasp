@@ -1,8 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from py4vasp._calculation import base, slice_
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
-from py4vasp.calculation import _base, _slice
 
 
 def _selection_string(default):
@@ -19,8 +19,8 @@ selection : str
 """
 
 
-@documentation.format(examples=_slice.examples("pair_correlation", step="block"))
-class PairCorrelation(_slice.Mixin, _base.Refinery, graph.Mixin):
+@documentation.format(examples=slice_.examples("pair_correlation", step="block"))
+class PairCorrelation(slice_.Mixin, base.Refinery, graph.Mixin):
     """The pair-correlation function measures the distribution of atoms.
 
     A pair-correlation function is a statistical measure to describe the spatial
@@ -40,10 +40,10 @@ class PairCorrelation(_slice.Mixin, _base.Refinery, graph.Mixin):
     {examples}
     """
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(
         selection=_selection_string("all possibilities are read"),
-        examples=_slice.examples("pair_correlation", "to_dict", "block"),
+        examples=slice_.examples("pair_correlation", "to_dict", "block"),
     )
     def to_dict(self, selection=None):
         """Read the pair-correlation function and store it in a dictionary.
@@ -68,10 +68,10 @@ class PairCorrelation(_slice.Mixin, _base.Refinery, graph.Mixin):
             **self._read_data(selection),
         }
 
-    @_base.data_access
+    @base.data_access
     @documentation.format(
         selection=_selection_string("the total pair correlation is used"),
-        examples=_slice.examples("pair_correlation", "to_graph", "block"),
+        examples=slice_.examples("pair_correlation", "to_graph", "block"),
     )
     def to_graph(self, selection="total"):
         """Plot selected pair-correlation functions.
@@ -92,7 +92,7 @@ class PairCorrelation(_slice.Mixin, _base.Refinery, graph.Mixin):
         series = self._make_series(self.to_dict(selection))
         return graph.Graph(series, xlabel="Distance (Å)", ylabel="Pair correlation")
 
-    @_base.data_access
+    @base.data_access
     def labels(self):
         "Return all possible labels for the selection string."
         return tuple(convert.text_to_string(label) for label in self._raw_data.labels)

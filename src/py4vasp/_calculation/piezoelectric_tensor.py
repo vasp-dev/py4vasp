@@ -2,10 +2,10 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp.calculation import _base
+from py4vasp._calculation import base
 
 
-class PiezoelectricTensor(_base.Refinery):
+class PiezoelectricTensor(base.Refinery):
     """The piezoelectric tensor is the derivative of the energy with respect to strain and field.
 
     The piezoelectric tensor represents the coupling between mechanical stress and
@@ -24,7 +24,7 @@ class PiezoelectricTensor(_base.Refinery):
     the crystal structure.
     """
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         data = self.to_dict()
         return f"""Piezoelectric tensor (C/m²)
@@ -33,7 +33,7 @@ class PiezoelectricTensor(_base.Refinery):
 {_tensor_to_string(data["clamped_ion"], "clamped-ion")}
 {_tensor_to_string(data["relaxed_ion"], "relaxed-ion")}"""
 
-    @_base.data_access
+    @base.data_access
     def to_dict(self):
         """Read the ionic and electronic contribution to the piezoelectric tensor
         into a dictionary.

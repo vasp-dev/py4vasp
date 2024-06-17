@@ -21,7 +21,7 @@ def attribute_included(attr):
 
 def test_assigning_to_input_file(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    expected ="SYSTEM = demo INCAR file"
+    expected = "SYSTEM = demo INCAR file"
     calculation.INCAR = expected
     with open("INCAR", "r") as file:
         actual = file.read()

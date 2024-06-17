@@ -3,8 +3,8 @@
 import pytest
 
 from py4vasp import calculation, exception
-from py4vasp._util import import_, select
 from py4vasp._calculation.selection import Selection
+from py4vasp._util import import_, select
 
 ase = import_.optional("ase")
 pd = import_.optional("pandas")

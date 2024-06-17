@@ -5,14 +5,14 @@ import itertools
 import numpy as np
 
 from py4vasp import _config, calculation, exception
+from py4vasp._calculation import base, structure
 from py4vasp._third_party import view
 from py4vasp._util import select
-from py4vasp.calculation import _base, _structure
 
 VALID_KINDS = ("total", "ionic", "xc", "hartree")
 
 
-class Potential(_base.Refinery, _structure.Mixin, view.Mixin):
+class Potential(base.Refinery, structure.Mixin, view.Mixin):
     """The local potential describes the interactions between electrons and ions.
 
     In DFT calculations, the local potential consists of various contributions, each
@@ -30,7 +30,7 @@ class Potential(_base.Refinery, _structure.Mixin, view.Mixin):
     average potential, you may also look at the :data:`~py4vasp.calculation.workfunction`.
     """
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         potential = self._raw_data.total_potential
         if _is_collinear(potential):
@@ -39,7 +39,7 @@ class Potential(_base.Refinery, _structure.Mixin, view.Mixin):
             description = "noncollinear potential:"
         else:
             description = "nonpolarized potential:"
-        topology = calculation.topology.from_data(self._raw_data.structure.topology)
+        topology = calculation._topology.from_data(self._raw_data.structure.topology)
         structure = f"structure: {topology}"
         grid = f"grid: {potential.shape[3]}, {potential.shape[2]}, {potential.shape[1]}"
         available = "available: " + ", ".join(
@@ -47,7 +47,7 @@ class Potential(_base.Refinery, _structure.Mixin, view.Mixin):
         )
         return "\n    ".join([description, structure, grid, available])
 
-    @_base.data_access
+    @base.data_access
     def to_dict(self):
         """Store all available contributions to the potential in a dictionary.
 
@@ -78,7 +78,7 @@ class Potential(_base.Refinery, _structure.Mixin, view.Mixin):
         elif _is_noncollinear(potential):
             yield f"{kind}_magnetization", potential[1:]
 
-    @_base.data_access
+    @base.data_access
     def to_view(self, selection="total", supercell=None, **user_options):
         """Plot an isosurface of a selected potential.
 

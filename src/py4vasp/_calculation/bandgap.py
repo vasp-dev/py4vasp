@@ -6,9 +6,9 @@ import typing
 import numpy as np
 
 from py4vasp import exception
+from py4vasp._calculation import base, slice_
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, select
-from py4vasp._calculation import base, slice_
 
 
 class Gap(typing.NamedTuple):

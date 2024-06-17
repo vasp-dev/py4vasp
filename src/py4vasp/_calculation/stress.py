@@ -2,12 +2,12 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
+from py4vasp._calculation import base, slice_, structure
 from py4vasp._util import documentation, reader
-from py4vasp.calculation import _base, _slice, _structure
 
 
-@documentation.format(examples=_slice.examples("stress"))
-class Stress(_slice.Mixin, _base.Refinery, _structure.Mixin):
+@documentation.format(examples=slice_.examples("stress"))
+class Stress(slice_.Mixin, base.Refinery, structure.Mixin):
     """The stress describes the force acting on the shape of the unit cell.
 
     The stress refers to the force applied to the cell per unit area. Specifically,
@@ -23,7 +23,7 @@ class Stress(_slice.Mixin, _base.Refinery, _structure.Mixin):
     {examples}
     """
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         "Convert the stress to a format similar to the OUTCAR file."
         step = self._last_step_in_slice
@@ -38,8 +38,8 @@ Total   {stress_to_string(stress / eV_to_kB)}
 in kB   {stress_to_string(stress)}
 """.strip()
 
-    @_base.data_access
-    @documentation.format(examples=_slice.examples("stress", "to_dict"))
+    @base.data_access
+    @documentation.format(examples=slice_.examples("stress", "to_dict"))
     def to_dict(self):
         """Read the stress and associated structural information for one or more
         selected steps of the trajectory.

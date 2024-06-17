@@ -3,7 +3,7 @@
 import numpy as np
 
 from py4vasp._config import VASP_COLORS
-from py4vasp._util.convert import text_to_string, to_complex, to_rgb, to_camelcase
+from py4vasp._util.convert import text_to_string, to_camelcase, to_complex, to_rgb
 
 
 def test_text_to_string():

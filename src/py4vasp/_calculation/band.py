@@ -3,9 +3,9 @@
 import numpy as np
 
 from py4vasp import calculation
+from py4vasp._calculation import base, projector
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_
-from py4vasp._calculation import base, projector
 
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")

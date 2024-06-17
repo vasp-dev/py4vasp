@@ -3,9 +3,9 @@
 import numpy as np
 
 from py4vasp import _config
+from py4vasp._calculation import base, slice_, structure
 from py4vasp._third_party import view
 from py4vasp._util import documentation, reader
-from py4vasp._calculation import base, slice_, structure
 
 
 @documentation.format(examples=slice_.examples("force"))

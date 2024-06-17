@@ -4,8 +4,8 @@
 import numpy as np
 
 from py4vasp import exception, raw
-from py4vasp._third_party import graph
 from py4vasp._calculation import base, slice_
+from py4vasp._third_party import graph
 
 
 class ElectronicMinimization(slice_.Mixin, base.Refinery, graph.Mixin):

@@ -1,8 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import calculation
+from py4vasp._calculation import base
 from py4vasp._util import select
-from py4vasp.calculation import _base
 
 selection_doc = """\
 selection : str
@@ -27,7 +27,7 @@ selection : str
 class Mixin:
     "Provide functionality common to Phonon classes."
 
-    @_base.data_access
+    @base.data_access
     def selections(self):
         "Return a dictionary specifying which atoms and directions can be used as selection."
         atoms = self._init_atom_dict().keys()
@@ -37,7 +37,7 @@ class Mixin:
         }
 
     def _topology(self):
-        return calculation.topology.from_data(self._raw_data.topology)
+        return calculation._topology.from_data(self._raw_data.topology)
 
     def _init_atom_dict(self):
         return {

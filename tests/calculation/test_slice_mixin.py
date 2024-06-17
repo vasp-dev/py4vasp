@@ -5,8 +5,8 @@ import inspect
 import pytest
 
 from py4vasp import exception
-from py4vasp._util import documentation
 from py4vasp._calculation import slice_
+from py4vasp._util import documentation
 
 
 class Other:

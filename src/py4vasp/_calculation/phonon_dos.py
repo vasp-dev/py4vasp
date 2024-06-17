@@ -1,11 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from py4vasp._calculation import base, phonon
 from py4vasp._third_party import graph
 from py4vasp._util import documentation, index, select
-from py4vasp.calculation import _base, _phonon
 
 
-class PhononDos(_phonon.Mixin, _base.Refinery, graph.Mixin):
+class PhononDos(phonon.Mixin, base.Refinery, graph.Mixin):
     """The phonon density of states (DOS) describes the number of modes per energy.
 
     The phonon density of states (DOS) is a representation of the distribution of
@@ -23,7 +23,7 @@ class PhononDos(_phonon.Mixin, _base.Refinery, graph.Mixin):
     with specific atomic species.
     """
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         energies = self._raw_data.energies
         topology = self._topology()
@@ -32,8 +32,8 @@ class PhononDos(_phonon.Mixin, _base.Refinery, graph.Mixin):
     {3 * topology.number_atoms()} modes
     {topology}"""
 
-    @_base.data_access
-    @documentation.format(selection=_phonon.selection_doc)
+    @base.data_access
+    @documentation.format(selection=phonon.selection_doc)
     def to_dict(self, selection=None):
         """Read the phonon DOS into a dictionary.
 
@@ -54,8 +54,8 @@ class PhononDos(_phonon.Mixin, _base.Refinery, graph.Mixin):
             **self._read_data(selection),
         }
 
-    @_base.data_access
-    @documentation.format(selection=_phonon.selection_doc)
+    @base.data_access
+    @documentation.format(selection=phonon.selection_doc)
     def to_graph(self, selection=None):
         """Generate a graph of the selected DOS.
 

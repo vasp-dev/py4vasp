@@ -6,8 +6,8 @@ from fractions import Fraction
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._util import convert, documentation
 from py4vasp._calculation import base
+from py4vasp._util import convert, documentation
 
 _kpoints_selection = """\
 selection : str, optional

@@ -1,9 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp.calculation import _base
+from py4vasp._calculation import base
 
 
-class Polarization(_base.Refinery):
+class Polarization(base.Refinery):
     """The static polarization describes the electric dipole moment per unit volume.
 
     Static polarization arises in a material in response to a constant external electric
@@ -18,7 +18,7 @@ class Polarization(_base.Refinery):
     side. Therefore you always need to compare changes of polarization.
     """
 
-    @_base.data_access
+    @base.data_access
     def __str__(self):
         vec_to_string = lambda vec: " ".join(f"{x:11.5f}" for x in vec)
         return f"""
@@ -28,7 +28,7 @@ ionic dipole moment:      {vec_to_string(self._raw_data.ion[:])}
 electronic dipole moment: {vec_to_string(self._raw_data.electron[:])}
 """.strip()
 
-    @_base.data_access
+    @base.data_access
     def to_dict(self):
         """Read electronic and ionic polarization into a dictionary
 

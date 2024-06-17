@@ -396,7 +396,7 @@ schema.add(
 )
 #
 schema.add(
-    raw.PartialCharge,
+    raw.PartialDensity,
     required=raw.Version(6, 5),
     structure=Link("structure", DEFAULT_SOURCE),
     partial_charge="results/partial_charges/parchg",

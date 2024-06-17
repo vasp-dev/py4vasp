@@ -5,9 +5,9 @@ import warnings
 from typing import NamedTuple, Union
 
 from py4vasp import calculation, exception
-from py4vasp._util import convert, documentation, index, select
 from py4vasp._calculation import base
 from py4vasp._calculation.selection import Selection
+from py4vasp._util import convert, documentation, index, select
 
 selection_doc = """\
 selection : str
