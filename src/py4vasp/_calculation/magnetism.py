@@ -230,7 +230,7 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     def _noncollinear_moments(self, selection):
         spin_moments = self._raw_data.spin_moments[self._steps, 1:]
         if self._has_orbital_moments:
-            orbital_moments = self._raw_data.orbital_moments[self._steps, 1:]
+            orbital_moments = self._raw_data.orbital_moments[self._steps]
         else:
             orbital_moments = np.zeros_like(spin_moments)
         if selection == "orbital":
@@ -246,7 +246,7 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         if not self._has_orbital_moments:
             return {}
         spin_moments = self._raw_data.spin_moments[self._steps, 1:]
-        orbital_moments = self._raw_data.orbital_moments[self._steps, 1:]
+        orbital_moments = self._raw_data.orbital_moments[self._steps]
         direction_axis = 1 if spin_moments.ndim == 4 else 0
         return {
             "spin_moments": np.moveaxis(spin_moments, direction_axis, -1),

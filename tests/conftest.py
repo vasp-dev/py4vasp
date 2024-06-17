@@ -543,7 +543,10 @@ def _magnetism(selection):
         spin_moments=_make_data(np.arange(np.prod(shape)).reshape(shape)),
     )
     if selection == "orbital_moments":
-        magnetism.orbital_moments = _make_data(np.sqrt(magnetism.spin_moments))
+        remove_charge_component = magnetism.spin_moments[:, 1:]
+        magnetism.orbital_moments = _make_data(np.sqrt(remove_charge_component))
+        print("spin_moments", magnetism.spin_moments.shape)
+        print("orb_moments", magnetism.orbital_moments.shape)
     return magnetism
 
 
