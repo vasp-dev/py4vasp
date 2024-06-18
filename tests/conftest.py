@@ -9,6 +9,9 @@ import pytest
 from numpy.testing import assert_array_almost_equal_nulp
 
 from py4vasp import exception, raw
+from py4vasp._util import import_
+
+stats = import_.optional("scipy.stats")
 
 number_steps = 4
 number_atoms = 7
@@ -26,24 +29,23 @@ grid_dimensions = (14, 12, 10)  # note: order is z, y, x
 
 
 @pytest.fixture(scope="session")
-def is_core():
+def only_core():
+    if not _is_core():
+        pytest.skip("This test checks py4vasp-core functionality not used by py4vasp.")
+
+
+@pytest.fixture(scope="session")
+def not_core():
+    if _is_core():
+        pytest.skip("This test requires features not present in py4vasp-core.")
+
+
+def _is_core():
     try:
         importlib.metadata.distribution("py4vasp-core")
         return True
     except importlib.metadata.PackageNotFoundError:
         return False
-
-
-@pytest.fixture()
-def only_core(is_core):
-    if not is_core:
-        pytest.skip("This test checks py4vasp-core functionality not used by py4vasp.")
-
-
-@pytest.fixture()
-def not_core(is_core):
-    if is_core:
-        pytest.skip("This test requires features not present in py4vasp-core.")
 
 
 class _Assert:
@@ -710,14 +712,22 @@ def _partial_charge(selection):
     else:
         spin_dimension = 1
     grid = raw.VaspData(tuple(reversed(grid_dim)))
-    random_charge = raw.VaspData(
-        np.random.rand(len(kpoints), len(bands), spin_dimension, *grid_dim)
-    )
+    gaussian_charge = np.zeros((len(kpoints), len(bands), spin_dimension, *grid_dim))
+    if not _is_core():
+        cov = grid_dim[0] / 10  # standard deviation
+        z = np.arange(grid_dim[0])  # z range
+        for gy in range(grid_dim[1]):
+            for gx in range(grid_dim[2]):
+                m = int(grid_dim[0] / 2) + gy / 10 + gx / 10
+                val = stats.multivariate_normal(mean=m, cov=cov).pdf(z)
+                # Fill the gaussian_charge array
+                gaussian_charge[:, :, :, :, gy, gx] = val
+    gaussian_charge = raw.VaspData(gaussian_charge)
     return raw.PartialCharge(
         structure=structure,
         bands=bands,
         kpoints=kpoints,
-        partial_charge=random_charge,
+        partial_charge=gaussian_charge,
         grid=grid,
     )
 
