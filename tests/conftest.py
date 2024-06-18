@@ -29,24 +29,23 @@ grid_dimensions = (14, 12, 10)  # note: order is z, y, x
 
 
 @pytest.fixture(scope="session")
-def is_core():
+def only_core():
+    if not _is_core():
+        pytest.skip("This test checks py4vasp-core functionality not used by py4vasp.")
+
+
+@pytest.fixture(scope="session")
+def not_core():
+    if _is_core():
+        pytest.skip("This test requires features not present in py4vasp-core.")
+
+
+def _is_core():
     try:
         importlib.metadata.distribution("py4vasp-core")
         return True
     except importlib.metadata.PackageNotFoundError:
         return False
-
-
-@pytest.fixture()
-def only_core(is_core):
-    if not is_core:
-        pytest.skip("This test checks py4vasp-core functionality not used by py4vasp.")
-
-
-@pytest.fixture()
-def not_core(is_core):
-    if is_core:
-        pytest.skip("This test requires features not present in py4vasp-core.")
 
 
 class _Assert:
@@ -714,14 +713,15 @@ def _partial_charge(selection):
         spin_dimension = 1
     grid = raw.VaspData(tuple(reversed(grid_dim)))
     gaussian_charge = np.zeros((len(kpoints), len(bands), spin_dimension, *grid_dim))
-    cov = grid_dim[0] / 10  # standard deviation
-    z = np.arange(grid_dim[0])  # z range
-    for gy in range(grid_dim[1]):
-        for gx in range(grid_dim[2]):
-            m = int(grid_dim[0] / 2) + gy / 10 + gx / 10
-            val = stats.multivariate_normal(mean=m, cov=cov).pdf(z)
-            # Fill the gaussian_charge array
-            gaussian_charge[:, :, :, :, gy, gx] = val
+    if not _is_core():
+        cov = grid_dim[0] / 10  # standard deviation
+        z = np.arange(grid_dim[0])  # z range
+        for gy in range(grid_dim[1]):
+            for gx in range(grid_dim[2]):
+                m = int(grid_dim[0] / 2) + gy / 10 + gx / 10
+                val = stats.multivariate_normal(mean=m, cov=cov).pdf(z)
+                # Fill the gaussian_charge array
+                gaussian_charge[:, :, :, :, gy, gx] = val
     gaussian_charge = raw.VaspData(gaussian_charge)
     return raw.PartialCharge(
         structure=structure,
