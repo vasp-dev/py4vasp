@@ -68,13 +68,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
 
     @property
     def stm_settings(self):
-        if not hasattr(self, "_stm_settings"):
-            self._stm_settings = STM_settings()
-        return self._stm_settings
-
-    @stm_settings.setter
-    def stm_settings(self, stm_settings: STM_settings):
-        self._stm_settings = stm_settings
+        return STM_settings()
 
     @_base.data_access
     def __str__(self):
@@ -147,14 +141,13 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             object.
         """
         _raise_error_if_vacuum_too_small(self._estimate_vacuum())
-        self.stm_settings = stm_settings
 
         tree = select.Tree.from_selection(selection)
         for index, selection in enumerate(tree.selections()):
             if index > 0:
                 message = "Selecting more than one STM is not implemented."
                 raise exception.NotImplemented(message)
-            contour = self._make_contour(selection, tip_height, current)
+            contour = self._make_contour(selection, tip_height, current, stm_settings)
         contour.supercell = self._parse_supercell(supercell)
         return Graph(series=contour, title=contour.label)
 
@@ -167,16 +160,18 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         The supercell is used to multiply the x and y directions of the lattice."""
         raise exception.IncorrectUsage(message)
 
-    def _make_contour(self, selection, tip_height, current):
+    def _make_contour(self, selection, tip_height, current, stm_settings):
         self._raise_error_if_tip_too_far_away(tip_height)
         mode = self._parse_mode(selection)
         spin = self._parse_spin(selection)
         self._raise_error_if_selection_not_understood(selection, mode, spin)
-        smoothed_charge = self._get_stm_data(spin)
+        smoothed_charge = self._get_stm_data(spin, stm_settings)
         if mode == "constant_height" or mode is None:
-            return self._constant_height_stm(smoothed_charge, tip_height, spin)
+            return self._constant_height_stm(
+                smoothed_charge, tip_height, spin, stm_settings
+            )
         current = current * 1e-09  # convert nA to A
-        return self._constant_current_stm(smoothed_charge, current, spin)
+        return self._constant_current_stm(smoothed_charge, current, spin, stm_settings)
 
     def _parse_mode(self, selection):
         for mode, aliases in _STM_MODES.items():
@@ -196,14 +191,14 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             message = f"STM mode '{selection}' was parsed as mode='{mode}' and spin='{spin}' which could not be used. Please use 'constant_height' or 'constant_current' as mode and 'up', 'down', or 'total' as spin."
             raise exception.IncorrectUsage(message)
 
-    def _constant_current_stm(self, smoothed_charge, current, spin):
+    def _constant_current_stm(self, smoothed_charge, current, spin, stm_settings):
         z_start = _min_of_z_charge(
-            self._get_stm_data(spin),
-            sigma=self.stm_settings.sigma_z,
-            truncate=self.stm_settings.truncate,
+            self._get_stm_data(spin, stm_settings),
+            sigma=stm_settings.sigma_z,
+            truncate=stm_settings.truncate,
         )
         grid = self.grid()
-        z_step = 1 / self.stm_settings.interpolation_factor
+        z_step = 1 / stm_settings.interpolation_factor
         # roll smoothed charge so that we are not bothered by the boundary of the
         # unit cell if the slab is not centered. z_start is now the first index
         smoothed_charge = np.roll(smoothed_charge, -z_start, axis=2)
@@ -216,9 +211,9 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
         label = f"STM of {topology} for {spin_label} at constant current={current*1e9:.2f} nA"
         return Contour(data=scan, lattice=self._get_stm_plane(), label=label)
 
-    def _constant_height_stm(self, smoothed_charge, tip_height, spin):
+    def _constant_height_stm(self, smoothed_charge, tip_height, spin, stm_settings):
         zz = self._z_index_for_height(tip_height + self._get_highest_z_coord())
-        height_scan = smoothed_charge[:, :, zz] * self.stm_settings.enhancement_factor
+        height_scan = smoothed_charge[:, :, zz] * stm_settings.enhancement_factor
         spin_label = "both spin channels" if spin == "total" else f"spin {spin}"
         topology = self._topology()
         label = f"STM of {topology} for {spin_label} at constant height={float(tip_height):.2f} Angstrom"
@@ -261,27 +256,27 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
             You would be sampling the bottom of your slab, which is not supported."""
             raise exception.IncorrectUsage(message)
 
-    def _get_stm_data(self, spin):
+    def _get_stm_data(self, spin, stm_settings):
         if 0 not in self.bands() or 0 not in self.kpoints():
             massage = """Simulated STM images are only supported for non-separated bands and k-points.
             Please set LSEPK and LSEPB to .FALSE. in the INCAR file."""
             raise exception.NotImplemented(massage)
         chg = self._correct_units(self.to_numpy(spin, band=0, kpoint=0))
-        return self._smooth_stm_data(chg)
+        return self._smooth_stm_data(chg, stm_settings)
 
     def _correct_units(self, charge_data):
         grid_volume = np.prod(self.grid())
         cell_volume = self._structure.volume()
         return charge_data / (grid_volume * cell_volume)
 
-    def _smooth_stm_data(self, data):
+    def _smooth_stm_data(self, data, stm_settings):
         sigma = (
-            self.stm_settings.sigma_xy,
-            self.stm_settings.sigma_xy,
-            self.stm_settings.sigma_z,
+            stm_settings.sigma_xy,
+            stm_settings.sigma_xy,
+            stm_settings.sigma_z,
         )
         return ndimage.gaussian_filter(
-            data, sigma=sigma, truncate=self.stm_settings.truncate, mode="wrap"
+            data, sigma=sigma, truncate=stm_settings.truncate, mode="wrap"
         )
 
     def _get_stm_plane(self):

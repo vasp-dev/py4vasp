@@ -325,30 +325,40 @@ def test_stm_default_settings(PolarizedNonSplitPartialCharge):
     assert actual == defaults
 
 
-def test_stm_updated_settings(PolarizedNonSplitPartialCharge):
-    defaults = {
-        "sigma_xy": 4.0,
-        "sigma_z": 4.0,
-        "truncate": 3.0,
-        "enhancement_factor": 1000,
-        "interpolation_factor": 10,
-    }
-    new_settings = {
-        "sigma_xy": 3.0,
-        "sigma_z": 5.0,
-        "truncate": 2.0,
-        "enhancement_factor": 2000,
-        "interpolation_factor": 20,
-    }
-    settings = PolarizedNonSplitPartialCharge.stm_settings
-    print(type(settings))
-    default_settings = dataclasses.asdict(settings)
-    assert default_settings == defaults
-    settings = STM_settings(**new_settings)
-    print(settings)
-    PolarizedNonSplitPartialCharge.to_stm(stm_settings=settings)
-    updated_settings = dataclasses.asdict(PolarizedNonSplitPartialCharge.stm_settings)
-    assert updated_settings == new_settings
+def test_smoothening_change(PolarizedNonSplitPartialCharge):
+    mod_settings = STM_settings(sigma_xy=2.0, sigma_z=2.0, truncate=1.0)
+    data = PolarizedNonSplitPartialCharge.to_numpy("total", band=0, kpoint=0)
+    default_smoothed_density = PolarizedNonSplitPartialCharge._smooth_stm_data(
+        data=data, stm_settings=STM_settings()
+    )
+    new_smoothed_density = PolarizedNonSplitPartialCharge._smooth_stm_data(
+        data=data, stm_settings=mod_settings
+    )
+    assert not np.allclose(default_smoothed_density, new_smoothed_density)
+
+
+def test_enhancement_setting_change(PolarizedNonSplitPartialCharge, Assert):
+    enhance_settings = STM_settings(
+        enhancement_factor=STM_settings().enhancement_factor / 2.0
+    )
+    graph_def = PolarizedNonSplitPartialCharge.to_stm("constant_height")
+    graph_less_enhanced = PolarizedNonSplitPartialCharge.to_stm(
+        "constant_height", stm_settings=enhance_settings
+    )
+    Assert.allclose(graph_def.series.data, graph_less_enhanced.series.data * 2)
+
+
+def test_interpolation_setting_change(PolarizedNonSplitPartialCharge):
+    interp_settings = STM_settings(
+        interpolation_factor=STM_settings().interpolation_factor / 4.0
+    )
+    graph_def = PolarizedNonSplitPartialCharge.to_stm("constant_current", current=0.01)
+    graph_less_interp_points = PolarizedNonSplitPartialCharge.to_stm(
+        "constant_current", current=11, stm_settings=interp_settings
+    )
+    print(graph_def.series.data)
+    print(graph_less_interp_points.series.data)
+    assert not np.allclose(graph_def.series.data, graph_less_interp_points.series.data)
 
 
 def test_factory_methods(raw_data, check_factory_methods):
