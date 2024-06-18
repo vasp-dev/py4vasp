@@ -312,8 +312,7 @@ def test_to_stm_nonsplit_constant_current_non_ortho(
     assert f"{current:.2f}" in actual.title
 
 
-def test_stm_default_settings(PolarizedNonSplitPartialCharge):
-    PolarizedNonSplitPartialCharge.to_stm()
+def test_stm_settings(PolarizedNonSplitPartialCharge):
     actual = dataclasses.asdict(PolarizedNonSplitPartialCharge.stm_settings)
     defaults = {
         "sigma_xy": 4.0,
@@ -323,6 +322,15 @@ def test_stm_default_settings(PolarizedNonSplitPartialCharge):
         "interpolation_factor": 10,
     }
     assert actual == defaults
+    modified = STM_settings(
+        sigma_xy=2.0,
+        sigma_z=2.0,
+        truncate=1.0,
+        enhancement_factor=500,
+        interpolation_factor=5,
+    )
+    graph = PolarizedNonSplitPartialCharge.to_stm(stm_settings=modified)
+    assert graph.series.settings == modified
 
 
 def test_smoothening_change(PolarizedNonSplitPartialCharge):
@@ -352,12 +360,10 @@ def test_interpolation_setting_change(PolarizedNonSplitPartialCharge):
     interp_settings = STM_settings(
         interpolation_factor=STM_settings().interpolation_factor / 4.0
     )
-    graph_def = PolarizedNonSplitPartialCharge.to_stm("constant_current", current=0.01)
+    graph_def = PolarizedNonSplitPartialCharge.to_stm("constant_current", current=1)
     graph_less_interp_points = PolarizedNonSplitPartialCharge.to_stm(
-        "constant_current", current=11, stm_settings=interp_settings
+        "constant_current", current=1, stm_settings=interp_settings
     )
-    print(graph_def.series.data)
-    print(graph_less_interp_points.series.data)
     assert not np.allclose(graph_def.series.data, graph_less_interp_points.series.data)
 
 

@@ -7,6 +7,7 @@ import random
 import numpy as np
 import pytest
 from numpy.testing import assert_array_almost_equal_nulp
+from scipy.stats import multivariate_normal
 
 from py4vasp import exception, raw
 
@@ -710,14 +711,21 @@ def _partial_charge(selection):
     else:
         spin_dimension = 1
     grid = raw.VaspData(tuple(reversed(grid_dim)))
-    random_charge = raw.VaspData(
-        np.random.rand(len(kpoints), len(bands), spin_dimension, *grid_dim)
-    )
+    gaussian_charge = np.zeros((len(kpoints), len(bands), spin_dimension, *grid_dim))
+    cov = grid_dim[0] / 10  # standard deviation
+    z = np.arange(grid_dim[0])  # z range
+    for gy in range(grid_dim[1]):
+        for gx in range(grid_dim[2]):
+            m = int(grid_dim[0] / 2) + gy / 10 + gx / 10
+            val = multivariate_normal(mean=m, cov=cov).pdf(z)
+            # Fill the gaussian_charge array
+            gaussian_charge[:, :, :, :, gy, gx] = val
+    gaussian_charge = raw.VaspData(gaussian_charge)
     return raw.PartialCharge(
         structure=structure,
         bands=bands,
         kpoints=kpoints,
-        partial_charge=random_charge,
+        partial_charge=gaussian_charge,
         grid=grid,
     )
 

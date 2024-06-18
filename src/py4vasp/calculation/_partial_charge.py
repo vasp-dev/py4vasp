@@ -149,6 +149,7 @@ class PartialCharge(_base.Refinery, _structure.Mixin):
                 raise exception.NotImplemented(message)
             contour = self._make_contour(selection, tip_height, current, stm_settings)
         contour.supercell = self._parse_supercell(supercell)
+        contour.settings = stm_settings
         return Graph(series=contour, title=contour.label)
 
     def _parse_supercell(self, supercell):
