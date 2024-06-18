@@ -147,6 +147,7 @@ class View:
         self._raise_error_if_present_on_multiple_steps(self.grid_scalars)
         self._raise_error_if_present_on_multiple_steps(self.ion_arrows)
         self._raise_error_if_number_steps_inconsistent()
+        self._raise_error_if_any_shape_is_incorrect()
 
     def _raise_error_if_present_on_multiple_steps(self, attributes):
         if not attributes:
@@ -170,6 +171,17 @@ attribute is supplied with its corresponding grid scalar or ion arrow component.
             f"{len(self.positions)}) should have a leading dimension of the number of"
             "steps."
         )
+
+    def _raise_error_if_any_shape_is_incorrect(self):
+        number_elements = len(self.elements[0])
+        _, number_positions, vector_size = np.shape(self.positions)
+        if number_elements != number_positions:
+            raise exception.IncorrectUsage(f"Number of elements ({number_elements}) inconsistent with number of positions ({number_positions}).")
+        if vector_size != 3:
+            raise exception.IncorrectUsage(f"Positions must have three components and not {vector_size}.")
+        cell_shape = np.shape(self.lattice_vectors)[1:]
+        if any(length != 3 for length in cell_shape):
+            raise exception.IncorrectUsage(f"Lattice vectors must be a 3x3 unit cell but have the shape {cell_shape}.")
 
     def _create_atoms(self, step):
         symbols = "".join(self.elements[step])
