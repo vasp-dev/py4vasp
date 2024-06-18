@@ -9,8 +9,6 @@ import pytest
 from py4vasp import calculation
 from py4vasp._util.slicing import plane
 from py4vasp.calculation._partial_charge import STM_settings
-
-# from py4vasp.calculation._partial_charge import STM_settings
 from py4vasp.exception import IncorrectUsage, NoData, NotImplemented
 
 

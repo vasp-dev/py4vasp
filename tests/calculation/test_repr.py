@@ -7,7 +7,7 @@ from py4vasp._util import convert
 
 
 def test_repr():
-    for name in calculation.__all__:
+    for name in calculation._quantities:
         instance = getattr(calculation, name)
         class_name = convert.to_camelcase(name)
         module = importlib.import_module(f"py4vasp.calculation._{name}")
