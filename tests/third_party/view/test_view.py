@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
+import copy
 import io
 import itertools
 from types import SimpleNamespace
@@ -103,15 +104,14 @@ def view3d(request, not_core):
 
 
 @pytest.fixture
-def view3d_fail(not_core):
+def view_multiple_grid_scalars(not_core):
     inputs = base_input_view(is_structure=False)
     isosurface = Isosurface(isolevel=0.1, color="#2FB5AB", opacity=0.6)
     charge_grid_scalar = GridQuantity(np.random.rand(2, 12, 10, 8), "charge")
     potential_grid_scalar = GridQuantity(np.random.rand(2, 12, 10, 8), "potential")
     potential_grid_scalar.isosurfaces = [isosurface]
     grid_scalars = [charge_grid_scalar, potential_grid_scalar]
-    view = View(grid_scalars=grid_scalars, **inputs)
-    return view
+    return View(**inputs), grid_scalars
 
 
 @pytest.fixture(params=[True, False])
@@ -188,9 +188,11 @@ def test_isosurface(view3d):
                 np.allclose(expected_data, output_data)
 
 
-def test_fail_isosurface(view3d_fail):
+def test_fail_isosurface(view_multiple_grid_scalars):
+    view, grid_scalars = view_multiple_grid_scalars
     with pytest.raises(exception.NotImplemented):
-        widget = view3d_fail.to_ngl()
+        view.grid_scalars = grid_scalars
+        widget = view.to_ngl()
 
 
 def test_ion_arrows(view_arrow):
@@ -292,3 +294,29 @@ def test_showaxes_different_origin(is_structure, not_core):
             assert msg["args"][1][0][0] == "arrow"
             expected_origin = np.array([0.2, 0.2, 0.2]) @ transformation.T
             assert np.allclose(msg["args"][1][0][1], expected_origin)
+
+
+def test_different_number_of_steps_raises_error(view):
+    too_many_elements = [element for element in view.elements] + [view.elements[0]]
+    with pytest.raises(exception.IncorrectUsage):
+        View(too_many_elements, view.lattice_vectors, view.positions)
+    with pytest.raises(exception.IncorrectUsage):
+        broken_view = copy.copy(view)
+        broken_view.elements = too_many_elements
+        broken_view.to_ngl()
+    #
+    too_many_cells = [cell for cell in view.lattice_vectors] + [view.lattice_vectors[0]]
+    with pytest.raises(exception.IncorrectUsage):
+        View(view.elements, too_many_cells, view.positions)
+    with pytest.raises(exception.IncorrectUsage):
+        broken_view = copy.copy(view)
+        broken_view.lattice_vectors = too_many_cells
+        broken_view.to_ngl()
+    #
+    too_many_positions = [position for position in view.positions] + [view.positions[0]]
+    with pytest.raises(exception.IncorrectUsage):
+        View(view.elements, view.lattice_vectors, too_many_positions)
+    with pytest.raises(exception.IncorrectUsage):
+        broken_view = copy.copy(view)
+        broken_view.positions = too_many_positions
+        broken_view.to_ngl()

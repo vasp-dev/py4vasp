@@ -115,6 +115,9 @@ class View:
     show_axes_at: Sequence[float] = None
     """Defines where the axis is shown, defaults to the origin"""
 
+    def __post_init__(self):
+        self._verify()
+
     def _ipython_display_(self):
         widget = self.to_ngl()
         widget._ipython_display_()
@@ -143,6 +146,7 @@ class View:
     def _verify(self):
         self._raise_error_if_present_on_multiple_steps(self.grid_scalars)
         self._raise_error_if_present_on_multiple_steps(self.ion_arrows)
+        self._raise_error_if_number_steps_inconsistent()
 
     def _raise_error_if_present_on_multiple_steps(self, attributes):
         if not attributes:
@@ -155,6 +159,16 @@ Currently isosurfaces and ion arrows are implemented only for cases where there 
 one frame in the trajectory. Make sure that either only one frame for the positions
 attribute is supplied with its corresponding grid scalar or ion arrow component."""
                 )
+
+    def _raise_error_if_number_steps_inconsistent(self):
+        if len(self.elements) == len(self.lattice_vectors) == len(self.positions):
+            return
+        raise exception.IncorrectUsage(
+            "The shape of the arrays is inconsistent. Each of 'elements' (length = " f"{len(self.elements)}), 'lattice_vectors' (length = "
+            f"{len(self.lattice_vectors)}), and 'positions' (length = "
+            f"{len(self.positions)}) should have a leading dimension of the number of"
+            "steps."
+        )
 
     def _create_atoms(self, step):
         symbols = "".join(self.elements[step])
