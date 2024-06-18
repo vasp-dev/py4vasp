@@ -164,7 +164,8 @@ attribute is supplied with its corresponding grid scalar or ion arrow component.
         if len(self.elements) == len(self.lattice_vectors) == len(self.positions):
             return
         raise exception.IncorrectUsage(
-            "The shape of the arrays is inconsistent. Each of 'elements' (length = " f"{len(self.elements)}), 'lattice_vectors' (length = "
+            "The shape of the arrays is inconsistent. Each of 'elements' (length = "
+            f"{len(self.elements)}), 'lattice_vectors' (length = "
             f"{len(self.lattice_vectors)}), and 'positions' (length = "
             f"{len(self.positions)}) should have a leading dimension of the number of"
             "steps."
