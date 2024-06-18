@@ -321,11 +321,12 @@ def test_different_number_of_steps_raises_error(view):
         broken_view.positions = too_many_positions
         broken_view.to_ngl()
 
+
 def test_incorrect_shape_raises_error(view):
     different_number_atoms = np.zeros((len(view.positions), 7, 3))
     with pytest.raises(exception.IncorrectUsage):
         View(view.elements, view.lattice_vectors, different_number_atoms)
-    not_a_three_component_vector = np.array(view.positions)[:,:,:2]
+    not_a_three_component_vector = np.array(view.positions)[:, :, :2]
     with pytest.raises(exception.IncorrectUsage):
         View(view.elements, view.lattice_vectors, not_a_three_component_vector)
     incorrect_unit_cell = np.zeros((len(view.lattice_vectors), 2, 4))
