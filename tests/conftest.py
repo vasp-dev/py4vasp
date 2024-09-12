@@ -26,24 +26,23 @@ grid_dimensions = (14, 12, 10)  # note: order is z, y, x
 
 
 @pytest.fixture(scope="session")
-def is_core():
+def only_core():
+    if not _is_core():
+        pytest.skip("This test checks py4vasp-core functionality not used by py4vasp.")
+
+
+@pytest.fixture(scope="session")
+def not_core():
+    if _is_core():
+        pytest.skip("This test requires features not present in py4vasp-core.")
+
+
+def _is_core():
     try:
         importlib.metadata.distribution("py4vasp-core")
         return True
     except importlib.metadata.PackageNotFoundError:
         return False
-
-
-@pytest.fixture()
-def only_core(is_core):
-    if not is_core:
-        pytest.skip("This test checks py4vasp-core functionality not used by py4vasp.")
-
-
-@pytest.fixture()
-def not_core(is_core):
-    if is_core:
-        pytest.skip("This test requires features not present in py4vasp-core.")
 
 
 class _Assert:
@@ -710,9 +709,11 @@ def _partial_charge(selection):
     else:
         spin_dimension = 1
     grid = raw.VaspData(tuple(reversed(grid_dim)))
-    random_charge = raw.VaspData(
-        np.random.rand(len(kpoints), len(bands), spin_dimension, *grid_dim)
-    )
+    charge_shape = (len(kpoints), len(bands), spin_dimension, *grid_dim)
+    if not _is_core():
+        random_charge = raw.VaspData(np.random.rand(*charge_shape))
+    else:
+        random_charge = np.zeros(charge_shape)
     return raw.PartialCharge(
         structure=structure,
         bands=bands,
