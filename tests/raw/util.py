@@ -3,6 +3,7 @@
 import dataclasses
 
 from py4vasp import raw
+from py4vasp._raw import schema
 
 VERSION = raw.Version("major_dataset", "minor_dataset", "patch_dataset")
 
@@ -28,6 +29,11 @@ class WithLink:
 @dataclasses.dataclass
 class WithLength:
     num_data: int
+
+
+@dataclasses.dataclass
+class Sequence(schema.Sequence):
+    dataset: str
 
 
 @dataclasses.dataclass

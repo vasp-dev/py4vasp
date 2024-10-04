@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import pytest
-from util import VERSION, OptionalArgument, Simple, WithLength, WithLink
+from util import VERSION, OptionalArgument, Sequence, Simple, WithLength, WithLink
 
 from py4vasp import exception, raw
 from py4vasp._raw.schema import Length, Link, Schema, Source
@@ -93,6 +93,17 @@ def test_alias():
             "more": Source(second, alias_for="second"),
         },
     }
+    assert remove_version(schema.sources) == reference
+
+
+def test_sequence():
+    sequence = Sequence("size", "dataset{}")
+    first_sequence = sequence[0]
+    assert len(first_sequence) == first_sequence.size == 1
+    assert first_sequence.dataset == "dataset1"
+    schema = Schema(VERSION)
+    schema.add(Sequence, size=sequence.size, dataset=sequence.dataset)
+    reference = {"sequence": {"default": Source(sequence)}}
     assert remove_version(schema.sources) == reference
 
 
