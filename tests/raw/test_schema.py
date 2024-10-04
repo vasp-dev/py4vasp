@@ -156,14 +156,21 @@ with_length:
         num_data: length(dataset)
     alias_name: *with_length-default
 
+sequence:
+    default:  &sequence-default
+        size: allowed_indices
+        dataset: common{}
+
 complex:
     default:  &complex-default
         opt: *optional_argument-default
         link: *with_link-default
+        sequence: *sequence-default
         length: *with_length-default
     mandatory:  &complex-mandatory
         opt: *optional_argument-mandatory
         link: *with_link-default
+        sequence: *sequence-default
 """
     assert str(schema) == reference
 

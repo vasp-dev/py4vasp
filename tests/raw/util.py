@@ -40,4 +40,5 @@ class Sequence(schema.Sequence):
 class Complex:
     opt: OptionalArgument
     link: WithLink
+    sequence: Sequence
     length: WithLength = None
