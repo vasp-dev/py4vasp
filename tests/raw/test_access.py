@@ -25,8 +25,8 @@ def mock_access(complex_schema):
 
 
 _mock_results = {}
-EXAMPLE_ARRAY = np.zeros(3)
-EXAMPLE_SCALAR = np.array(1)
+EXAMPLE_ARRAY = np.zeros(4)
+EXAMPLE_SCALAR = np.array(3)
 
 
 def mock_read_result(key):
@@ -93,6 +93,20 @@ def test_access_with_link(mock_access):
         check_data(with_link.baz, source.data.baz)
         assert with_link.simple.foo == reference.foo
         assert with_link.simple.bar[:] == reference.bar[:]
+
+
+def test_access_sequence(mock_access):
+    quantity = "sequence"
+    mock_file, sources = mock_access
+    source = sources[quantity]["default"]
+    with raw.access(quantity) as sequence:
+        assert sequence.size == len(sequence) == EXAMPLE_SCALAR
+        check_single_file_access(mock_file, DEFAULT_FILE, source)
+        for i, element in enumerate(sequence):
+            assert element.size == len(element) == 1
+            check_data(element.common, source.data.common)
+            variable = source.data.variable.format(i)
+            check_data(element.variable, variable)
 
 
 def linked_quantity_reference(mock_access, file=None):
@@ -231,7 +245,9 @@ def expected_calls(source):
 def expected_call(data, field):
     key = getattr(data, field.name)
     if isinstance(key, str):
-        yield call(key)
+        distinct_keys = {key.format(i) for i in range(EXAMPLE_SCALAR)}
+        for distinct_key in distinct_keys:
+            yield call(distinct_key)
 
 
 def test_access_nonexisting_file(mock_access):

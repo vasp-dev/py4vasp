@@ -33,7 +33,8 @@ class WithLength:
 
 @dataclasses.dataclass
 class Sequence(schema.Sequence):
-    dataset: str
+    common: str
+    variable: str
 
 
 @dataclasses.dataclass

@@ -9,7 +9,7 @@ import h5py
 
 from py4vasp import exception, raw
 from py4vasp._raw.definition import DEFAULT_FILE, DEFAULT_SOURCE, schema
-from py4vasp._raw.schema import Length, Link, error_message
+from py4vasp._raw.schema import Length, Link, Sequence, error_message
 
 
 @contextlib.contextmanager
@@ -114,6 +114,8 @@ class _State:
             raise exception.OutdatedVaspVersion(message)
 
     def _get_datasets(self, h5f, data):
+        if isinstance(data, Sequence):
+            return self._parse_sequence(h5f, data)
         return {
             field.name: self._get_dataset(h5f, getattr(data, field.name))
             for field in dataclasses.fields(data)
@@ -133,6 +135,22 @@ class _State:
         result = raw.VaspData(dataset)
         if _is_scalar(result):
             result = result[()]
+        return result
+
+    def _parse_sequence(self, h5f, data):
+        size = self._get_dataset(h5f, data.size)
+        result = {"size": size}
+        for field in dataclasses.fields(data):
+            if field.name == "size":
+                continue
+            key = getattr(data, field.name)
+            if key.format(0) == key:
+                result[field.name] = self._get_dataset(h5f, key)
+            else:
+                result[field.name] = []
+                for i in range(size):
+                    key_i = key.format(i)
+                    result[field.name].append(self._get_dataset(h5f, key_i))
         return result
 
 

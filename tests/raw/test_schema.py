@@ -97,12 +97,11 @@ def test_alias():
 
 
 def test_sequence():
-    sequence = Sequence("size", "dataset{}")
-    first_sequence = sequence[0]
-    assert len(first_sequence) == first_sequence.size == 1
-    assert first_sequence.dataset == "dataset1"
+    sequence = Sequence("size", "common_data", "variable_data{}")
     schema = Schema(VERSION)
-    schema.add(Sequence, size=sequence.size, dataset=sequence.dataset)
+    schema.add(
+        Sequence, size=sequence.size, common=sequence.common, variable=sequence.variable
+    )
     reference = {"sequence": {"default": Source(sequence)}}
     assert remove_version(schema.sources) == reference
 
@@ -158,8 +157,9 @@ with_length:
 
 sequence:
     default:  &sequence-default
-        size: allowed_indices
-        dataset: common{}
+        size: foo_sequence
+        common: common_data
+        variable: variable_data{}
 
 complex:
     default:  &complex-default

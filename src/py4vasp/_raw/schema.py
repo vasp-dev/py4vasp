@@ -144,13 +144,9 @@ class Sequence(abc.Sequence):
     def __len__(self):
         return self.size
 
-    def __iter__(self):
-        for i in range(self.size):
-            yield self[i]
-
     def __getitem__(self, index):
         elements = {
-            key: value.format(index + 1)
+            key: value[index] if isinstance(value, list) else value
             for key, value in dataclasses.asdict(self).items()
             if key != "size"
         }
