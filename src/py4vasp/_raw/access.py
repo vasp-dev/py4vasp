@@ -114,14 +114,17 @@ class _State:
             raise exception.OutdatedVaspVersion(message)
 
     def _get_datasets(self, h5f, data):
-        if isinstance(data, Sequence):
-            return self._parse_sequence(h5f, data)
-        return {
-            field.name: self._get_dataset(h5f, getattr(data, field.name))
+        size = self._get_dataset(h5f, data.size) if isinstance(data, Sequence) else None
+        result = {
+            field.name: self._get_dataset(h5f, getattr(data, field.name), size)
             for field in dataclasses.fields(data)
+            if field.name != "size"
         }
+        if size is not None:
+            result["size"] = size
+        return result
 
-    def _get_dataset(self, h5f, key):
+    def _get_dataset(self, h5f, key, size=None):
         if key is None:
             return raw.VaspData(None)
         if isinstance(key, Link):
@@ -129,28 +132,15 @@ class _State:
         if isinstance(key, Length):
             dataset = h5f.get(key.dataset)
             return len(dataset) if dataset else None
-        return self._parse_dataset(h5f.get(key))
+        if key.format(0) == key or size is None:
+            return self._parse_dataset(h5f.get(key))
+        for i in range(size):
+            return [self._parse_dataset(h5f.get(key.format(i))) for i in range(size)]
 
     def _parse_dataset(self, dataset):
         result = raw.VaspData(dataset)
         if _is_scalar(result):
             result = result[()]
-        return result
-
-    def _parse_sequence(self, h5f, data):
-        size = self._get_dataset(h5f, data.size)
-        result = {"size": size}
-        for field in dataclasses.fields(data):
-            if field.name == "size":
-                continue
-            key = getattr(data, field.name)
-            if key.format(0) == key:
-                result[field.name] = self._get_dataset(h5f, key)
-            else:
-                result[field.name] = []
-                for i in range(size):
-                    key_i = key.format(i)
-                    result[field.name].append(self._get_dataset(h5f, key_i))
         return result
 
 
