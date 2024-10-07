@@ -522,3 +522,21 @@ schema.add(
     reference_potential=Link("bandgap", DEFAULT_SOURCE),
     fermi_energy="results/electron_dos/efermi",
 )
+
+# TODO: temporarily put this here for testing, should be put at the proper position after finalizing the schema
+group = "/results/electron_phonon/electrons"
+schema.add(
+    raw.ElphSelfEnergy,
+    required=raw.Version(6, 5),
+    size=f"{group}/self_energy_meta/id_size",
+    eigenvalues=f"{group}/eigenvalues/eigenvalues",
+    debye_waller=f"{group}/self_energy_{{}}/selfen_dw",
+    fan=f"{group}/self_energy_{{}}/selfen_fan",
+)
+schema.add(
+    raw.ElphTransport,
+    required=raw.Version(6, 5),
+    size=f"{group}/transport_meta/id_size",
+    mobility=f"{group}/transport_{{}}/mobility",
+    transport_function=f"{group}/transport_{{}}/transport_function",
+)

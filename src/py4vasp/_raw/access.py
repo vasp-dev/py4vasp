@@ -135,7 +135,9 @@ class _State:
         if key.format(0) == key or size is None:
             return self._parse_dataset(h5f.get(key))
         for i in range(size):
-            return [self._parse_dataset(h5f.get(key.format(i))) for i in range(size)]
+            # convert to Fortran index
+            get_dataset = lambda i: h5f.get(key.format(i + 1))
+            return [self._parse_dataset(get_dataset(i)) for i in range(size)]
 
     def _parse_dataset(self, dataset):
         result = raw.VaspData(dataset)

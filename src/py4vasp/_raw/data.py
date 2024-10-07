@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 
+from py4vasp._raw import schema
 from py4vasp._raw.data_wrapper import VaspData
 
 
@@ -522,3 +523,19 @@ class Workfunction:
     "Describes the band edges in the surface."
     fermi_energy: float
     "Fermi energy obtained by VASP."
+
+
+# TODO: temporarily put this here for testing, should be put at the proper position after finalizing the schema
+
+
+@dataclasses.dataclass
+class ElphSelfEnergy(schema.Sequence):
+    eigenvalues: VaspData
+    debye_waller: VaspData
+    fan: VaspData
+
+
+@dataclasses.dataclass
+class ElphTransport(schema.Sequence):
+    mobility: VaspData
+    transport_function: VaspData

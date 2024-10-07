@@ -105,7 +105,7 @@ def test_access_sequence(mock_access):
         for i, element in enumerate(sequence):
             assert element.size == len(element) == 1
             check_data(element.common, source.data.common)
-            variable = source.data.variable.format(i)
+            variable = source.data.variable.format(i + 1)  # convert to Fortran index
             check_data(element.variable, variable)
 
 
@@ -245,7 +245,8 @@ def expected_calls(source):
 def expected_call(data, field):
     key = getattr(data, field.name)
     if isinstance(key, str):
-        distinct_keys = {key.format(i) for i in range(EXAMPLE_SCALAR)}
+        # convert to Fortran index
+        distinct_keys = {key.format(i + 1) for i in range(EXAMPLE_SCALAR)}
         for distinct_key in distinct_keys:
             yield call(distinct_key)
 
