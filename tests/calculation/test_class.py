@@ -50,6 +50,14 @@ def test_all_attributes(mock_access):
     mock_access.assert_not_called()
     mock_access.return_value.__enter__.assert_not_called()
 
+@patch("py4vasp.raw.access", autospec=True)
+def test_nested_attributes(mock_access):
+    calc = Calculation.from_path("test_path")
+    for name, quantities in calculation._nested.items():
+        namespace = getattr(calc, name)
+        assert all(hasattr(namespace, quantity) for quantity in quantities)
+    mock_access.assert_not_called()
+    mock_access.return_value.__enter__.assert_not_called()
 
 def test_input_files_from_path():
     with patch("py4vasp._control.base.InputFile.__init__", return_value=None) as mock:
