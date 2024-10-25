@@ -6,6 +6,11 @@ from py4vasp.calculation import _base, _slice
 class ElectronPhononSelfEnergy(_slice.Mixin, _base.Refinery):
     "Placeholder for electron phonon self energy"
 
+    @_base.data_access
+    def __str__(self):
+        return "electron phonon self energy"
+
+    @_base.data_access
     def to_dict(self):
         return {
             "eigenvalues": self._raw_data.eigenvalues[:],

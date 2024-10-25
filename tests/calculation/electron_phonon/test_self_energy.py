@@ -33,3 +33,13 @@ def test_read(self_energy, sample, Assert):
     Assert.allclose(actual["eigenvalues"], self_energy.ref.eigenvalues)
     Assert.allclose(actual["debye_waller"], self_energy.ref.debye_waller[slice_])
     Assert.allclose(actual["fan"], self_energy.ref.fan[slice_])
+
+
+def test_print(self_energy, format_):
+    actual, _ = format_(self_energy)
+    assert actual["text/plain"] == "electron phonon self energy"
+
+
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.electron_phonon.self_energy("default")
+    check_factory_methods(calculation.electron_phonon.self_energy, data)
