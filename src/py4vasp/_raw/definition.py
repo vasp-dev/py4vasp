@@ -526,7 +526,7 @@ schema.add(
 # TODO: temporarily put this here for testing, should be put at the proper position after finalizing the schema
 group = "/results/electron_phonon/electrons"
 schema.add(
-    raw.ElphSelfEnergy,
+    raw.ElectronPhononSelfEnergy,
     required=raw.Version(6, 5),
     size=f"{group}/self_energy_meta/id_size",
     eigenvalues=f"{group}/eigenvalues/eigenvalues",
@@ -534,7 +534,7 @@ schema.add(
     fan=f"{group}/self_energy_{{}}/selfen_fan",
 )
 schema.add(
-    raw.ElphTransport,
+    raw.ElectronPhononTransport,
     required=raw.Version(6, 5),
     size=f"{group}/transport_meta/id_size",
     mobility=f"{group}/transport_{{}}/mobility",

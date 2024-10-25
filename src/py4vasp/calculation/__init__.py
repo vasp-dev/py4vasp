@@ -40,6 +40,7 @@ In the latter example, you can change the path from which the data is extracted.
 """
 import importlib
 import pathlib
+import types
 
 from py4vasp import control, exception
 from py4vasp._util import convert
@@ -78,8 +79,11 @@ _quantities = (
     "velocity",
     "workfunction",
 )
+_nested = {
+    "electron_phonon": ("self_energy",),
+}
 _private = ("dispersion",)
-__all__ = _quantities + _input_files
+__all__ = _quantities + tuple(_nested) + _input_files
 
 
 path = pathlib.Path(".")
@@ -87,12 +91,27 @@ path = pathlib.Path(".")
 
 def __getattr__(attr):
     if attr in (_quantities + _private):
-        module = importlib.import_module(f"py4vasp.calculation._{attr}")
-        class_ = getattr(module, convert.to_camelcase(attr))
-        return class_.from_path(".")
-    elif attr in (_input_files):
+        return _setup_instance_from_current_path(attr)
+    elif attr in _nested:
+        return _make_nested_namespace(attr)
+    elif attr in _input_files:
         class_ = getattr(control, attr)
         return class_(".")
     else:
         message = f"Could not find {attr} in the possible attributes, please check the spelling"
         raise exception.MissingAttribute(message)
+
+
+def _make_nested_namespace(name):
+    namespace = types.SimpleNamespace()
+    for quantity in _nested[name]:
+        fullname = f"{name}_{quantity}"
+        instance = _setup_instance_from_current_path(fullname)
+        setattr(namespace, quantity, instance)
+    return namespace
+
+
+def _setup_instance_from_current_path(name):
+    module = importlib.import_module(f"py4vasp.calculation._{name}")
+    class_ = getattr(module, convert.to_camelcase(name))
+    return class_.from_path(".")

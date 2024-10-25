@@ -529,13 +529,13 @@ class Workfunction:
 
 
 @dataclasses.dataclass
-class ElphSelfEnergy(schema.Sequence):
+class ElectronPhononSelfEnergy(schema.Sequence):
     eigenvalues: VaspData
     debye_waller: VaspData
     fan: VaspData
 
 
 @dataclasses.dataclass
-class ElphTransport(schema.Sequence):
+class ElectronPhononTransport(schema.Sequence):
     mobility: VaspData
     transport_function: VaspData

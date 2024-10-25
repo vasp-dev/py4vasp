@@ -97,7 +97,15 @@ def Assert():
     return _Assert
 
 
+class ElectronPhononFactory:
+    @staticmethod
+    def self_energy(selection):
+        return _electron_phonon_self_energy(selection)
+
+
 class RawDataFactory:
+    electron_phonon = ElectronPhononFactory()
+
     @staticmethod
     def band(selection):
         band, *options = selection.split()
@@ -1157,6 +1165,15 @@ def _Ca3AsBr3_topology():
     return raw.Topology(
         number_ion_types=np.array((2, 1, 1, 1, 2)),
         ion_types=np.array(("Ca", "As", "Br", "Ca", "Br"), dtype="S"),
+    )
+
+
+def _electron_phonon_self_energy(selection):
+    return raw.ElectronPhononSelfEnergy(
+        size=3,
+        eigenvalues=_make_data([]),
+        debye_waller=[_make_data([]), _make_data([]), _make_data([])],
+        fan=[_make_data([]), _make_data([]), _make_data([])],
     )
 
 
