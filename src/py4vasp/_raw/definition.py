@@ -528,7 +528,7 @@ group = "/results/electron_phonon/electrons"
 schema.add(
     raw.ElectronPhononSelfEnergy,
     required=raw.Version(6, 5),
-    size=f"{group}/self_energy_meta/id_size",
+    size=f"{group}/self_energy_meta/ncalculators",
     eigenvalues=f"{group}/eigenvalues/eigenvalues",
     debye_waller=f"{group}/self_energy_{{}}/selfen_dw",
     fan=f"{group}/self_energy_{{}}/selfen_fan",
@@ -536,7 +536,7 @@ schema.add(
 schema.add(
     raw.ElectronPhononTransport,
     required=raw.Version(6, 5),
-    size=f"{group}/transport_meta/id_size",
+    size=f"{group}/transport_meta/ncalculators",
     mobility=f"{group}/transport_{{}}/mobility",
     transport_function=f"{group}/transport_{{}}/transport_function",
 )
