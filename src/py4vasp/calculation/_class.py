@@ -130,6 +130,7 @@ def _add_all_refinement_classes(calc, add_single_class):
         calc = _add_namespace(calc, name, add_single_class)
     return calc
 
+
 def _add_namespace(calc, name, add_single_class):
     source = getattr(calculation, name)
     namespace = types.SimpleNamespace()
@@ -138,6 +139,7 @@ def _add_namespace(calc, name, add_single_class):
         namespace = add_single_class(quantity, source, target=namespace)
     setattr(calc, name, namespace)
     return calc
+
 
 def _add_attribute_from_path(name, source, target):
     class_ = getattr(source, name)

@@ -35,7 +35,7 @@ You can also select specific {step}s or a subset of {step}s as follows
 class Mixin:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._set_steps_and_slice(-1)
+        self._set_steps_and_slice()
         self._original = True
 
     def __getitem__(self, steps):
@@ -44,7 +44,8 @@ class Mixin:
         new._original = False
         return new._set_steps_and_slice(steps)
 
-    def _set_steps_and_slice(self, steps):
+    def _set_steps_and_slice(self, steps=None):
+        steps = self._default_steps() if steps is None else steps
         self._steps = steps
         self._is_slice = isinstance(steps, slice)
         if self._is_slice:
@@ -54,6 +55,10 @@ class Mixin:
         else:
             self._slice = _create_slice_for_current_step_if_possible(steps)
         return self
+
+    # override this method to implement a different default step choice
+    def _default_steps(self):
+        return -1
 
     @property
     def _last_step_in_slice(self):

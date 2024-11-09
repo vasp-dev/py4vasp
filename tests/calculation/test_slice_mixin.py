@@ -183,3 +183,18 @@ def test_documentation(single_step, last_step):
 def test_nested_slices(subset_of_steps):
     with pytest.raises(exception.NotImplemented):
         subset_of_steps[:]
+
+
+class DiffentDefault(_slice.Mixin, Other):
+    def _default_steps(self):
+        return slice(None)
+
+    def steps(self):
+        return self._steps
+
+
+def test_different_default():
+    different_default = DiffentDefault()
+    assert different_default.steps() == slice(None)
+    assert different_default[-1].steps() == -1
+    assert different_default[2:6].steps() == slice(2, 6)
