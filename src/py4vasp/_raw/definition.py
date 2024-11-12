@@ -531,6 +531,7 @@ schema.add(
     size=f"{group}/self_energy_meta/ncalculators",
     eigenvalues=f"{group}/eigenvalues/eigenvalues",
     debye_waller=f"{group}/self_energy_{{}}/selfen_dw",
+    bks_idx=f"{group}/self_energy_{{}}/bks_idx",
     fan=f"{group}/self_energy_{{}}/selfen_fan",
 )
 schema.add(
