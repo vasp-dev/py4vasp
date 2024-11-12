@@ -379,7 +379,7 @@ schema.add(
 )
 #
 schema.add(
-    raw.OSZICAR,
+    raw.ElectronicMinimization,
     required=raw.Version(6, 5),
     label="intermediate/ion_dynamics/oszicar_label",
     convergence_data="intermediate/ion_dynamics/oszicar",
