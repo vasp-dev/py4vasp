@@ -533,7 +533,7 @@ class ElectronPhononSelfEnergy(schema.Sequence):
     eigenvalues: VaspData
     debye_waller: VaspData
     fan: VaspData
-
+    bks_idx: VaspData
 
 @dataclasses.dataclass
 class ElectronPhononTransport(schema.Sequence):

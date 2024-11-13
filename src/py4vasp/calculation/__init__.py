@@ -80,7 +80,7 @@ _quantities = (
     "workfunction",
 )
 _nested = {
-    "electron_phonon": ("self_energy",),
+    "electron_phonon": ("self_energy","transport",),
 }
 _private = ("dispersion",)
 __all__ = _quantities + tuple(_nested) + _input_files
