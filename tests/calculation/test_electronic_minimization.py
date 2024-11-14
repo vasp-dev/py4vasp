@@ -10,9 +10,9 @@ from py4vasp import calculation, exception
 
 
 @pytest.fixture
-def OSZICAR(raw_data):
-    raw_oszicar = raw_data.OSZICAR()
-    oszicar = calculation.OSZICAR.from_data(raw_oszicar)
+def ElectronicMinimization(raw_data):
+    raw_oszicar = raw_data.electronic_minimization()
+    oszicar = calculation.electronic_minimization.from_data(raw_oszicar)
     oszicar.ref = types.SimpleNamespace()
     convergence_data = raw_oszicar.convergence_data
     oszicar.ref.N = np.int64(convergence_data[:, 0])
@@ -31,9 +31,9 @@ def OSZICAR(raw_data):
     return oszicar
 
 
-def test_read(OSZICAR, Assert):
-    actual = OSZICAR.read()
-    expected = OSZICAR.ref
+def test_read(ElectronicMinimization, Assert):
+    actual = ElectronicMinimization.read()
+    expected = ElectronicMinimization.ref
     Assert.allclose(actual["N"], expected.N)
     Assert.allclose(actual["E"], expected.E)
     Assert.allclose(actual["dE"], expected.dE)
@@ -46,20 +46,22 @@ def test_read(OSZICAR, Assert):
 @pytest.mark.parametrize(
     "quantity_name", ["N", "E", "dE", "deps", "ncg", "rms", "rms(c)"]
 )
-def test_read_selection(quantity_name, OSZICAR, Assert):
-    actual = OSZICAR.read(quantity_name)
-    expected = getattr(OSZICAR.ref, quantity_name.replace("(", "").replace(")", ""))
+def test_read_selection(quantity_name, ElectronicMinimization, Assert):
+    actual = ElectronicMinimization.read(quantity_name)
+    expected = getattr(
+        ElectronicMinimization.ref, quantity_name.replace("(", "").replace(")", "")
+    )
     Assert.allclose(actual[quantity_name], expected)
 
 
-def test_read_incorrect_selection(OSZICAR):
+def test_read_incorrect_selection(ElectronicMinimization):
     with pytest.raises(exception.RefinementError):
-        OSZICAR.read("forces")
+        ElectronicMinimization.read("forces")
 
 
-def test_slice(OSZICAR, Assert):
-    actual = OSZICAR[0:1].read()
-    expected = OSZICAR.ref
+def test_slice(ElectronicMinimization, Assert):
+    actual = ElectronicMinimization[0:1].read()
+    expected = ElectronicMinimization.ref
     Assert.allclose(actual["N"], expected.N)
     Assert.allclose(actual["E"], expected.E)
     Assert.allclose(actual["dE"], expected.dE)
@@ -69,21 +71,21 @@ def test_slice(OSZICAR, Assert):
     Assert.allclose(actual["rms(c)"], expected.rmsc)
 
 
-def test_plot(OSZICAR, Assert):
-    graph = OSZICAR.plot()
+def test_plot(ElectronicMinimization, Assert):
+    graph = ElectronicMinimization.plot()
     assert graph.xlabel == "Iteration number"
     assert graph.ylabel == "E"
     assert len(graph.series) == 1
-    Assert.allclose(graph.series[0].x, OSZICAR.ref.N)
-    Assert.allclose(graph.series[0].y, OSZICAR.ref.E)
+    Assert.allclose(graph.series[0].x, ElectronicMinimization.ref.N)
+    Assert.allclose(graph.series[0].y, ElectronicMinimization.ref.E)
 
 
-def test_print(OSZICAR, format_):
-    actual, _ = format_(OSZICAR)
-    assert actual["text/plain"] == OSZICAR.ref.string_rep
+def test_print(ElectronicMinimization, format_):
+    actual, _ = format_(ElectronicMinimization)
+    assert actual["text/plain"] == ElectronicMinimization.ref.string_rep
 
 
-def test_is_converged(OSZICAR):
-    actual = OSZICAR.is_converged()
-    expected = OSZICAR.ref.is_elmin_converged
+def test_is_converged(ElectronicMinimization):
+    actual = ElectronicMinimization.is_converged()
+    expected = ElectronicMinimization.ref.is_elmin_converged
     assert actual == expected

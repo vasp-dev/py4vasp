@@ -62,7 +62,7 @@ _quantities = (
     "internal_strain",
     "kpoint",
     "magnetism",
-    "OSZICAR",
+    "electronic_minimization",
     "pair_correlation",
     "partial_charge",
     "phonon_band",
