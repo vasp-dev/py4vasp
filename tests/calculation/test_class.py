@@ -51,6 +51,7 @@ def test_all_attributes(mock_access):
     mock_access.return_value.__enter__.assert_not_called()
 
 
+@pytest.mark.skip("Input files are not included in current release.")
 def test_input_files_from_path():
     with patch("py4vasp._control.base.InputFile.__init__", return_value=None) as mock:
         calculation = Calculation.from_path("test_path")
@@ -59,6 +60,7 @@ def test_input_files_from_path():
     check_all_input_files(calculation)
 
 
+@pytest.mark.skip("Input files are not included in current release.")
 def test_input_files_from_file():
     with patch("py4vasp._control.base.InputFile.__init__", return_value=None) as mock:
         calculation = Calculation.from_file("test_file")

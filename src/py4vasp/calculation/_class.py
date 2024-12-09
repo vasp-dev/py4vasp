@@ -94,32 +94,33 @@ instead of the constructor Calculation()."""
         "Return the path in which the calculation is run."
         return self._path
 
-    @property
-    def INCAR(self):
-        "The INCAR file of the VASP calculation."
-        return self._INCAR
-
-    @INCAR.setter
-    def INCAR(self, incar):
-        self._INCAR.write(str(incar))
-
-    @property
-    def KPOINTS(self):
-        "The KPOINTS file of the VASP calculation."
-        return self._KPOINTS
-
-    @KPOINTS.setter
-    def KPOINTS(self, kpoints):
-        self._KPOINTS.write(str(kpoints))
-
-    @property
-    def POSCAR(self):
-        "The POSCAR file of the VASP calculation."
-        return self._POSCAR
-
-    @POSCAR.setter
-    def POSCAR(self, poscar):
-        self._POSCAR.write(str(poscar))
+    # Input files are not in current release
+    # @property
+    # def INCAR(self):
+    #     "The INCAR file of the VASP calculation."
+    #     return self._INCAR
+    #
+    # @INCAR.setter
+    # def INCAR(self, incar):
+    #     self._INCAR.write(str(incar))
+    #
+    # @property
+    # def KPOINTS(self):
+    #     "The KPOINTS file of the VASP calculation."
+    #     return self._KPOINTS
+    #
+    # @KPOINTS.setter
+    # def KPOINTS(self, kpoints):
+    #     self._KPOINTS.write(str(kpoints))
+    #
+    # @property
+    # def POSCAR(self):
+    #     "The POSCAR file of the VASP calculation."
+    #     return self._POSCAR
+    #
+    # @POSCAR.setter
+    # def POSCAR(self, poscar):
+    #     self._POSCAR.write(str(poscar))
 
 
 def _add_all_refinement_classes(calc, add_single_class):
@@ -155,6 +156,8 @@ Calculation = _add_all_refinement_classes(Calculation, _add_to_documentation)
 
 
 def _add_input_files(calc):
+    return calc
+    # Input files are not in current release
     for name in calculation._input_files:
         file_ = getattr(control, name)(calc.path())
         setattr(calc, f"_{name}", file_)
