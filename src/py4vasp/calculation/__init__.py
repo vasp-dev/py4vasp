@@ -79,7 +79,7 @@ _quantities = (
     "workfunction",
 )
 _private = ("dispersion",)
-__all__ = _quantities + _input_files
+__all__ = _quantities  # + _input_files
 
 
 path = pathlib.Path(".")
@@ -90,9 +90,9 @@ def __getattr__(attr):
         module = importlib.import_module(f"py4vasp.calculation._{attr}")
         class_ = getattr(module, convert.to_camelcase(attr))
         return class_.from_path(".")
-    elif attr in (_input_files):
-        class_ = getattr(control, attr)
-        return class_(".")
+    #    elif attr in (_input_files):
+    #        class_ = getattr(control, attr)
+    #        return class_(".")
     else:
         message = f"Could not find {attr} in the possible attributes, please check the spelling"
         raise exception.MissingAttribute(message)

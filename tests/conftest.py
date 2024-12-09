@@ -712,7 +712,8 @@ def _partial_charge(selection):
     else:
         spin_dimension = 1
     grid = raw.VaspData(tuple(reversed(grid_dim)))
-    gaussian_charge = np.zeros((len(kpoints), len(bands), spin_dimension, *grid_dim))
+    charge_shape = (len(kpoints), len(bands), spin_dimension, *grid_dim)
+    gaussian_charge = np.zeros(charge_shape)
     if not _is_core():
         cov = grid_dim[0] / 10  # standard deviation
         z = np.arange(grid_dim[0])  # z range
