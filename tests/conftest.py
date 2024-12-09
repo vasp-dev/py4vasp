@@ -9,6 +9,9 @@ import pytest
 from numpy.testing import assert_array_almost_equal_nulp
 
 from py4vasp import exception, raw
+from py4vasp._util import import_
+
+stats = import_.optional("scipy.stats")
 
 number_steps = 4
 number_atoms = 7
@@ -131,8 +134,8 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
-    def OSZICAR(selection=None):
-        return _example_OSZICAR()
+    def electronic_minimization(selection=None):
+        return _example_electronic_minimization()
 
     @staticmethod
     def density(selection):
@@ -664,7 +667,7 @@ def _Sr2TiO4_cell():
     )
 
 
-def _example_OSZICAR():
+def _example_electronic_minimization():
     random_convergence_data = np.random.rand(9, 3)
     iteration_number = np.arange(1, 10)[:, np.newaxis]
     ncg = np.random.randint(4, 10, (9, 1))
@@ -675,7 +678,7 @@ def _example_OSZICAR():
     convergence_data = raw.VaspData(convergence_data)
     label = raw.VaspData([b"N", b"E", b"dE", b"deps", b"ncg", b"rms", b"rms(c)"])
     is_elmin_converged = [0]
-    return raw.OSZICAR(
+    return raw.ElectronicMinimization(
         convergence_data=convergence_data,
         label=label,
         is_elmin_converged=is_elmin_converged,
@@ -710,15 +713,22 @@ def _partial_charge(selection):
         spin_dimension = 1
     grid = raw.VaspData(tuple(reversed(grid_dim)))
     charge_shape = (len(kpoints), len(bands), spin_dimension, *grid_dim)
+    gaussian_charge = np.zeros(charge_shape)
     if not _is_core():
-        random_charge = raw.VaspData(np.random.rand(*charge_shape))
-    else:
-        random_charge = np.zeros(charge_shape)
+        cov = grid_dim[0] / 10  # standard deviation
+        z = np.arange(grid_dim[0])  # z range
+        for gy in range(grid_dim[1]):
+            for gx in range(grid_dim[2]):
+                m = int(grid_dim[0] / 2) + gy / 10 + gx / 10
+                val = stats.multivariate_normal(mean=m, cov=cov).pdf(z)
+                # Fill the gaussian_charge array
+                gaussian_charge[:, :, :, :, gy, gx] = val
+    gaussian_charge = raw.VaspData(gaussian_charge)
     return raw.PartialCharge(
         structure=structure,
         bands=bands,
         kpoints=kpoints,
-        partial_charge=random_charge,
+        partial_charge=gaussian_charge,
         grid=grid,
     )
 
