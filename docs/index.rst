@@ -144,6 +144,7 @@ how you can apply *py4vasp* in your research.
    :recursive:
 
    calculation
+   exception
 
 .. rubric:: Classes
 
