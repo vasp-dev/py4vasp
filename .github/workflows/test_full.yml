@@ -36,7 +36,7 @@ jobs:
       shell: bash -el {0}
       run: |
         conda info
-        conda install -q -c conda-forge mdtraj<1.10.2
+        conda install -q -c conda-forge "mdtraj<1.10.2"
     - name: Test with pytest
       shell: bash -el {0}
       run: |
