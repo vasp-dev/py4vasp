@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import copy
 
-from py4vasp._config import VASP_BLUE, VASP_COLORS, VASP_GRAY, VASP_RED
+from py4vasp._config import VASP_COLORS
 from py4vasp._util import import_
 
 from .contour import Contour
@@ -17,9 +17,13 @@ pio = import_.optional("plotly.io")
 if import_.is_imported(go) and import_.is_imported(pio):
     axis_format = {"showexponent": "all", "exponentformat": "power"}
     contour = copy.copy(pio.templates["ggplot2"].data.contour[0])
-    contour.colorscale = [[0, VASP_BLUE], [0.5, VASP_GRAY], [1, VASP_RED]]
+    begin_blue = [0, VASP_COLORS["blue"]]
+    middle_gray = [0.5, VASP_COLORS["gray"]]
+    end_red = [1, VASP_COLORS["red"]]
+    contour.colorscale = [begin_blue, middle_gray, end_red]
     data = {"contour": (contour,)}
-    layout = {"colorway": VASP_COLORS, "xaxis": axis_format, "yaxis": axis_format}
+    colorway = list(VASP_COLORS.values())
+    layout = {"colorway": colorway, "xaxis": axis_format, "yaxis": axis_format}
     pio.templates["vasp"] = go.layout.Template(data=data, layout=layout)
     pio.templates["ggplot2"].layout.shapedefaults = {}
     pio.templates.default = "ggplot2+vasp"

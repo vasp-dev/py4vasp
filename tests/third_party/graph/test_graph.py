@@ -464,7 +464,7 @@ def test_contour_supercell(rectangle_contour, Assert, not_core):
 def check_unit_cell(unit_cell, x, y, zero):
     assert unit_cell.type == "path"
     assert unit_cell.path == f"M 0 0 L {x} {zero} L {x} {y} L {zero} {y} Z"
-    assert unit_cell.line.color == _config.VASP_DARK
+    assert unit_cell.line.color == _config.VASP_COLORS["dark"]
 
 
 def check_annotations(lattice, annotations, Assert):

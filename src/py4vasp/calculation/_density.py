@@ -315,11 +315,12 @@ class Density(_base.Refinery, _structure.Mixin, view.Mixin):
         if self._use_symmetric_isosurface(component):
             _raise_error_if_color_is_specified(color)
             return [
-                view.Isosurface(isolevel, _config.VASP_BLUE, opacity),
-                view.Isosurface(-isolevel, _config.VASP_RED, opacity),
+                view.Isosurface(isolevel, _config.VASP_COLORS["blue"], opacity),
+                view.Isosurface(-isolevel, _config.VASP_COLORS["red"], opacity),
             ]
         else:
-            return [view.Isosurface(isolevel, color or _config.VASP_CYAN, opacity)]
+            color = color or _config.VASP_COLORS["cyan"]
+            return [view.Isosurface(isolevel, color, opacity)]
 
     def _use_symmetric_isosurface(self, component):
         if component > 0 and self.is_nonpolarized():

@@ -100,10 +100,11 @@ def test_read(reference_potential, Assert):
 
 def test_plot_total_potential(reference_potential, Assert):
     view = reference_potential.plot()
+    color = _config.VASP_COLORS["cyan"]
     expectation = Expectation(
         label="total potential",
         potential=reference_potential.ref.output["total"],
-        isosurface=Isosurface(isolevel=0, color=_config.VASP_CYAN, opacity=0.6),
+        isosurface=Isosurface(isolevel=0, color=color, opacity=0.6),
     )
     check_view(reference_potential, view, [expectation], Assert)
 
@@ -114,10 +115,11 @@ def test_plot_selected_potential(reference_potential, Assert):
     else:
         selection = "total"
     view = reference_potential.plot(selection, isolevel=0.2)
+    color = _config.VASP_COLORS["cyan"]
     expectation = Expectation(
         label=f"{selection} potential",
         potential=reference_potential.ref.output[selection],
-        isosurface=Isosurface(isolevel=0.2, color=_config.VASP_CYAN, opacity=0.6),
+        isosurface=Isosurface(isolevel=0.2, color=color, opacity=0.6),
     )
     check_view(reference_potential, view, [expectation], Assert)
 
@@ -126,10 +128,11 @@ def test_plot_selected_potential(reference_potential, Assert):
 def test_plot_spin_potential(raw_data, selection, Assert):
     potential = make_reference_potential(raw_data, "Fe3O4 collinear", "total")
     view = potential.plot(selection, opacity=0.3)
+    color = _config.VASP_COLORS["cyan"]
     expectation = Expectation(
         label=f"total potential({selection})",
         potential=potential.ref.output[f"total_{selection}"],
-        isosurface=Isosurface(isolevel=0.0, color=_config.VASP_CYAN, opacity=0.3),
+        isosurface=Isosurface(isolevel=0.0, color=color, opacity=0.3),
     )
     check_view(potential, view, [expectation], Assert)
 
@@ -137,7 +140,8 @@ def test_plot_spin_potential(raw_data, selection, Assert):
 def test_plot_multiple_selections(raw_data, Assert):
     potential = make_reference_potential(raw_data, "Fe3O4 collinear", "all")
     view = potential.plot("up(total) hartree xc(down)")
-    isosurface = Isosurface(isolevel=0.0, color=_config.VASP_CYAN, opacity=0.6)
+    color = _config.VASP_COLORS["cyan"]
+    isosurface = Isosurface(isolevel=0.0, color=color, opacity=0.6)
     expectations = [
         Expectation(
             label="total potential(up)",
@@ -162,10 +166,11 @@ def test_plot_multiple_selections(raw_data, Assert):
 def test_plot_supercell(raw_data, supercell, Assert):
     potential = make_reference_potential(raw_data, "Sr2TiO4", "total")
     view = potential.plot(supercell=supercell)
+    color = _config.VASP_COLORS["cyan"]
     expectation = Expectation(
         label="total potential",
         potential=potential.ref.output[f"total"],
-        isosurface=Isosurface(isolevel=0, color=_config.VASP_CYAN, opacity=0.6),
+        isosurface=Isosurface(isolevel=0, color=color, opacity=0.6),
     )
     check_view(potential, view, [expectation], Assert, supercell=supercell)
 
