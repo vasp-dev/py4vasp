@@ -360,7 +360,7 @@ class Structure(_slice.Mixin, _base.Refinery, view.Mixin):
         return calculation.topology.from_data(self._raw_data.topology)
 
     def _scale(self):
-        if isinstance(self._raw_data.cell.scale, np.float_):
+        if isinstance(self._raw_data.cell.scale, np.float64):
             return self._raw_data.cell.scale
         if not self._raw_data.cell.scale.is_none():
             return self._raw_data.cell.scale[()]
