@@ -85,7 +85,7 @@ class Velocity(_slice.Mixin, _base.Refinery, _structure.Mixin, view.Mixin):
         ion_arrow = view.IonArrow(
             quantity=velocities,
             label="velocities",
-            color=_config.VASP_GRAY,
+            color=_config.VASP_COLORS["gray"],
             radius=0.2,
         )
         viewer.ion_arrows = [ion_arrow]

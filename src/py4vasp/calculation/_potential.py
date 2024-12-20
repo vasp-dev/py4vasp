@@ -109,7 +109,7 @@ class Potential(_base.Refinery, _structure.Mixin, view.Mixin):
         return viewer
 
     def _create_potential_isosurface(
-        self, kind, component, isolevel=0, color=_config.VASP_CYAN, opacity=0.6
+        self, kind, component, isolevel=0, color=None, opacity=0.6
     ):
         self._raise_error_if_kind_incorrect(kind)
         potential_data = self._get_potential(kind)
@@ -120,6 +120,7 @@ class Potential(_base.Refinery, _structure.Mixin, view.Mixin):
             potential = potential_data[0] - potential_data[1]
         else:
             potential = potential_data[0]
+        color = color or _config.VASP_COLORS["cyan"]
         return view.GridQuantity(
             quantity=potential.T[np.newaxis],
             label=f"{kind} potential" + (f"({component})" if component else ""),

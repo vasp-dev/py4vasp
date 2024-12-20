@@ -174,7 +174,7 @@ def _rotate_normal_to_cartesian_axis(vectors, normal):
 
 
 def _get_old_normal(vectors):
-    old_normal = np.cross(*vectors).astype(np.float_)
+    old_normal = np.cross(*vectors).astype(np.float64)
     return old_normal / np.linalg.norm(old_normal)
 
 

@@ -4,9 +4,6 @@ latest:
         - dirhtml/_packages/py4vasp.calculation
         - dirhtml/_classes/py4vasp.Calculation
         - dirhtml/_packages/py4vasp.calculation.*
-    - raw:
-        - dirhtml/raw
-        - dirhtml/api/py4vasp.raw.*
     - exception:
         - dirhtml/exception
         - dirhtml/api/py4vasp.exception.*

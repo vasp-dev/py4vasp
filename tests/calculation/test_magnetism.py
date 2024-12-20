@@ -184,7 +184,7 @@ def check_view(view, reference_moments, selection, Assert):
         Assert.allclose(arrows.quantity, reference_moments)
         expected_label = f"{selection} moments" if selection else "total moments"
         assert arrows.label == expected_label
-        assert arrows.color == _config.VASP_BLUE
+        assert arrows.color == _config.VASP_COLORS["blue"]
         assert arrows.radius == 0.2
 
 
