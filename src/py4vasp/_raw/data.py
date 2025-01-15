@@ -214,6 +214,15 @@ class Energy:
 
 
 @dataclasses.dataclass
+class Exciton:
+    "The exciton charge density on the real space grid."
+    structure: Structure
+    "The atomic structure to represent the densities."
+    exciton_charge: VaspData
+    "The data of electronic charge and magnetization density."
+
+
+@dataclasses.dataclass
 class Fatband:
     """Contains the BSE data required to produce a fatband plot."""
 

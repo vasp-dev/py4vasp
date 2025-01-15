@@ -88,6 +88,13 @@ schema.add(
     scale="results/phonons/primitive/scale",
     lattice_vectors="results/phonons/primitive/lattice_vectors",
 )
+schema.add(
+    raw.Cell,
+    name="exciton",
+    required=raw.Version(6, 5),
+    scale="results/supercell/scale",
+    lattice_vectors="results/supercell/lattice_vectors",
+)
 #
 schema.add(
     raw.CONTCAR,
@@ -283,6 +290,16 @@ schema.add(
     required=raw.Version(6, 3),
     clamped_ion=f"{group}/clamped_ion_elastic_modulus",
     relaxed_ion=f"{group}/relaxed_ion_elastic_modulus",
+)
+#
+group = "results/linear_response"
+schema.add(
+    raw.Exciton,
+    required=raw.Version(6, 5),
+    file="vaspout.h5",
+    structure=Link("structure", "exciton"),
+    #structure=Link("structure", DEFAULT_SOURCE),
+    exciton_charge=f"{group}/exciton_charge",
 )
 #
 group = "results/linear_response"
@@ -489,6 +506,14 @@ schema.add(
     cell=Link("cell", "final"),
     positions="results/positions/position_ions",
 )
+schema.add(
+    raw.Structure,
+    name="exciton",
+    required=raw.Version(6, 5),
+    cell=Link("cell", "exciton"),
+    topology=Link("topology", "exciton"),
+    positions="results/supercell/position_ions",
+)
 #
 schema.add(raw.System, system="input/incar/SYSTEM")
 #
@@ -503,6 +528,13 @@ schema.add(
     required=raw.Version(6, 4),
     ion_types="results/phonons/primitive/ion_types",
     number_ion_types="results/phonons/primitive/number_ion_types",
+)
+schema.add(
+    raw.Topology,
+    name="exciton",
+    required=raw.Version(6, 4),
+    ion_types="results/supercell/ion_types",
+    number_ion_types="results/supercell/number_ion_types",
 )
 #
 schema.add(

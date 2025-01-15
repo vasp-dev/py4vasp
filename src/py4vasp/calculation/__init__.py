@@ -56,6 +56,7 @@ _quantities = (
     "dos",
     "elastic_modulus",
     "energy",
+    "exciton",
     "fatband",
     "force",
     "force_constant",
