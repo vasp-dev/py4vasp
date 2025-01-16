@@ -3,8 +3,8 @@
 import numpy as np
 
 from py4vasp import _config, calculation, exception
-from py4vasp._third_party import graph, view
-from py4vasp._util import documentation, import_, index, select, slicing
+from py4vasp._third_party import view
+from py4vasp._util import documentation, import_, index, select
 from py4vasp.calculation import _base, _structure
 
 pretty = import_.optional("IPython.lib.pretty")
@@ -13,11 +13,10 @@ pretty = import_.optional("IPython.lib.pretty")
 _INTERNAL = "1"
 
 class Exciton(_base.Refinery, _structure.Mixin, view.Mixin):
-    """This class accesses exciton densities of VASP.
+    """This class accesses exciton charge densities of VASP.
 
-    The exciton charge density can be calculation in the BSE/TDHf calculation.
-    With this class you can extract exciton charge densities.
-
+    The exciton charge densities can be calculated via the BSE/TDHF algorithm in
+    VASP. With this class you can extract these charge densities.
     """
 
     @_base.data_access
@@ -116,7 +115,7 @@ class Exciton(_base.Refinery, _structure.Mixin, view.Mixin):
         excitons=self._raw_data.exciton_charge.shape[0]
         map_ = {
             str(choice): choice-1
-            for choice in range(1,excitons)
+            for choice in range(1,excitons+1)
         }
         return map_
 

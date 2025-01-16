@@ -298,7 +298,6 @@ schema.add(
     required=raw.Version(6, 5),
     file="vaspout.h5",
     structure=Link("structure", "exciton"),
-    #structure=Link("structure", DEFAULT_SOURCE),
     exciton_charge=f"{group}/exciton_charge",
 )
 #
@@ -532,7 +531,7 @@ schema.add(
 schema.add(
     raw.Topology,
     name="exciton",
-    required=raw.Version(6, 4),
+    required=raw.Version(6, 5),
     ion_types="results/supercell/ion_types",
     number_ion_types="results/supercell/number_ion_types",
 )

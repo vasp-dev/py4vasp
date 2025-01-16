@@ -219,7 +219,7 @@ class Exciton:
     structure: Structure
     "The atomic structure to represent the densities."
     exciton_charge: VaspData
-    "The data of electronic charge and magnetization density."
+    "The data of exciton charge density."
 
 
 @dataclasses.dataclass
