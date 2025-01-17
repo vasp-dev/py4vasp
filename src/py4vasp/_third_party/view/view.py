@@ -200,12 +200,12 @@ attribute is supplied with its corresponding grid scalar or ion arrow component.
         atoms.cell = self.lattice_vectors[step]
         atoms.set_scaled_positions(self.positions[step])
         atoms.set_pbc(True)
-        atoms = atoms.repeat(self.supercell)
         if(self.shift):
             translation = np.sum(atoms.cell,axis=0)
             translation = [translation[i]*self.shift[i] for i in range(3)]
             atoms.positions += translation
             atoms.wrap()
+        atoms = atoms.repeat(self.supercell)
         return atoms
 
     def _iterate_trajectory_frames(self):
@@ -236,9 +236,10 @@ attribute is supplied with its corresponding grid scalar or ion arrow component.
         for grid_scalar in self.grid_scalars:
             if not grid_scalar.isosurfaces:
                 continue
-            quantity = self._repeat_isosurface(grid_scalar.quantity[step])
+            quantity = grid_scalar.quantity[step]
             if(self.shift):
                 quantity = np.roll(quantity,[int(quantity.shape[i]*self.shift[i]) for i in range(3)] ,axis=(0,1,2))
+            quantity = self._repeat_isosurface(quantity)
             atoms = trajectory[step]
             self._set_atoms_in_standard_form(atoms)
             with tempfile.TemporaryDirectory() as tmp:
