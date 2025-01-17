@@ -134,12 +134,12 @@ class View:
         determine which methods are called (either isosurface, arrows, etc).
         """
         self._verify()
-        trajectory = [self._create_atoms(i,self.shift) for i in self._iterate_trajectory_frames()]
+        trajectory = [self._create_atoms(i) for i in self._iterate_trajectory_frames()]
         ngl_trajectory = nglview.ASETrajectory(trajectory)
         widget = nglview.NGLWidget(ngl_trajectory)
         widget.camera = self.camera
         if self.grid_scalars:
-            self._show_isosurface(widget, trajectory, self.shift)
+            self._show_isosurface(widget, trajectory)
         if self.ion_arrows:
             self._show_arrows_at_atoms(widget, trajectory)
         if self.show_cell:
@@ -194,16 +194,16 @@ attribute is supplied with its corresponding grid scalar or ion arrow component.
                 f"Lattice vectors must be a 3x3 unit cell but have the shape {cell_shape}."
             )
 
-    def _create_atoms(self, step, shift):
+    def _create_atoms(self, step):
         symbols = "".join(self.elements[step])
         atoms = ase.Atoms(symbols)
         atoms.cell = self.lattice_vectors[step]
         atoms.set_scaled_positions(self.positions[step])
         atoms.set_pbc(True)
         atoms = atoms.repeat(self.supercell)
-        if(shift):
+        if(self.shift):
             translation = np.sum(atoms.cell,axis=0)
-            translation = [translation[i]*shift[i] for i in range(3)]
+            translation = [translation[i]*self.shift[i] for i in range(3)]
             atoms.positions += translation
             atoms.wrap()
         return atoms
@@ -231,14 +231,14 @@ attribute is supplied with its corresponding grid scalar or ion arrow component.
         quantity_repeated = np.tile(quantity, self.supercell)
         return quantity_repeated
 
-    def _show_isosurface(self, widget, trajectory, shift):
+    def _show_isosurface(self, widget, trajectory):
         step = 0
         for grid_scalar in self.grid_scalars:
             if not grid_scalar.isosurfaces:
                 continue
             quantity = self._repeat_isosurface(grid_scalar.quantity[step])
-            if(shift):
-                quantity = np.roll(quantity,[int(quantity.shape[i]*shift[i]) for i in range(3)] ,axis=(0,1,2))
+            if(self.shift):
+                quantity = np.roll(quantity,[int(quantity.shape[i]*self.shift[i]) for i in range(3)] ,axis=(0,1,2))
             atoms = trajectory[step]
             self._set_atoms_in_standard_form(atoms)
             with tempfile.TemporaryDirectory() as tmp:
