@@ -65,7 +65,7 @@ class Exciton(_base.Refinery, _structure.Mixin, view.Mixin):
         return np.moveaxis(self._raw_data.exciton_charge, 0, -1).T
 
     @_base.data_access
-    def to_view(self, selection=None, supercell=None, **user_options):
+    def to_view(self, selection=None, supercell=None, center=False, **user_options):
         """Plot the selected exciton density as a 3d isosurface within the structure.
 
         Parameters
@@ -109,6 +109,8 @@ class Exciton(_base.Refinery, _structure.Mixin, view.Mixin):
             self._grid_quantity(selector, selection, map_, user_options)
             for selection in selections
         ]
+        if center: 
+            viewer.shift = (0.5,0.5,0.5)
         return viewer
 
     def _create_map(self):
