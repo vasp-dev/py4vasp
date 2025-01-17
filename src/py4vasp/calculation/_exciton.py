@@ -42,16 +42,8 @@ class Exciton(_base.Refinery, _structure.Mixin, view.Mixin):
         """
         _raise_error_if_no_data(self._raw_data.exciton_charge)
         result = {"structure": self._structure.read()}
-        result.update(self._read_density())
+        result.update({"charge": self.to_numpy()})
         return result
-
-    def _read_density(self):
-        density = self.to_numpy()
-        if self._selection:
-            yield self._selection, density
-        else:
-            yield "charge", density
-
 
     @_base.data_access
     def to_numpy(self):
@@ -92,7 +84,7 @@ class Exciton(_base.Refinery, _structure.Mixin, view.Mixin):
         >>> calc = py4vasp.Calculation.from_path(".")
         Plot an isosurface of the first exciton charge density
         >>> calc.exciton.plot()
-        Plot an isosurface of the thired exciton charge density
+        Plot an isosurface of the third exciton charge density
         >>> calc.density.plot("3")
         Plot an isosurface of the sum of first and second exciton charge
         densities
@@ -144,6 +136,6 @@ def _raise_error_if_no_data(data):
     if data.is_none():
         raise exception.NoData(
             "Exciton charge density was not found. Note that the exciton density is"
-            "written to vaspout.h5 if the tgas LCHARGH5=T or LH5=T are set in"
+            "written to vaspout.h5 if the tags LCHARGH5=T or LH5=T are set in"
             "the INCAR file"
         )
