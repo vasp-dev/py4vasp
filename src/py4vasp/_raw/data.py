@@ -214,7 +214,7 @@ class Energy:
 
 
 @dataclasses.dataclass
-class Exciton:
+class ExcitonDensity:
     "The exciton charge density on the real space grid."
     structure: Structure
     "The atomic structure to represent the densities."

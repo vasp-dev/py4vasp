@@ -12,7 +12,7 @@ pretty = import_.optional("IPython.lib.pretty")
 
 _INTERNAL = "1"
 
-class Exciton(_base.Refinery, _structure.Mixin, view.Mixin):
+class ExcitonDensity(_base.Refinery, _structure.Mixin, view.Mixin):
     """This class accesses exciton charge densities of VASP.
 
     The exciton charge densities can be calculated via the BSE/TDHF algorithm in
@@ -83,12 +83,12 @@ class Exciton(_base.Refinery, _structure.Mixin, view.Mixin):
         --------
         >>> calc = py4vasp.Calculation.from_path(".")
         Plot an isosurface of the first exciton charge density
-        >>> calc.exciton.plot()
+        >>> calc.exciton.density.plot()
         Plot an isosurface of the third exciton charge density
-        >>> calc.density.plot("3")
+        >>> calc.exciton.density.plot("3")
         Plot an isosurface of the sum of first and second exciton charge
         densities
-        >>> calc.density.plot("1+2")
+        >>> calc.exciton.density.plot("1+2")
         """
         _raise_error_if_no_data(self._raw_data.exciton_charge)
         selection = selection or _INTERNAL

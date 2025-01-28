@@ -294,7 +294,7 @@ schema.add(
 #
 group = "results/linear_response"
 schema.add(
-    raw.Exciton,
+    raw.ExcitonDensity,
     required=raw.Version(6, 5),
     file="vaspout.h5",
     structure=Link("structure", "exciton"),
