@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 
 from py4vasp import calculation
-from py4vasp._util.slicing import plane
 from py4vasp._calculation.partial_density import STM_settings
+from py4vasp._util.slicing import plane
 from py4vasp.exception import IncorrectUsage, NoData, NotImplemented
 
 
@@ -184,7 +184,9 @@ def test_non_polarized_to_numpy(NonSplitPartialDensity, spin, Assert, not_core):
     Assert.allclose(actual, np.asarray(expected).T[:, :, :, 0, 0, 0])
 
 
-def test_split_bands_to_numpy(NonPolarizedBandSplitPartialDensity, spin, Assert, not_core):
+def test_split_bands_to_numpy(
+    NonPolarizedBandSplitPartialDensity, spin, Assert, not_core
+):
     bands = NonPolarizedBandSplitPartialDensity.ref.bands
     for band_index, band in enumerate(bands):
         actual = NonPolarizedBandSplitPartialDensity.to_numpy(spin, band=band)
