@@ -713,9 +713,18 @@ def _partial_density(selection):
     else:
         spin_dimension = 1
     grid = raw.VaspData(tuple(reversed(grid_dim)))
-    random_charge = raw.VaspData(
-        np.random.rand(len(kpoints), len(bands), spin_dimension, *grid_dim)
-    )
+    charge_shape = (len(kpoints), len(bands), spin_dimension, *grid_dim)
+    gaussian_charge = np.zeros(charge_shape)
+    if not _is_core():
+        cov = grid_dim[0] / 10  # standard deviation
+        z = np.arange(grid_dim[0])  # z range
+        for gy in range(grid_dim[1]):
+            for gx in range(grid_dim[2]):
+                m = int(grid_dim[0] / 2) + gy / 10 + gx / 10
+                val = stats.multivariate_normal(mean=m, cov=cov).pdf(z)
+                # Fill the gaussian_charge array
+                gaussian_charge[:, :, :, :, gy, gx] = val
+    gaussian_charge = raw.VaspData(gaussian_charge)
     return raw.PartialDensity(
         structure=structure,
         bands=bands,

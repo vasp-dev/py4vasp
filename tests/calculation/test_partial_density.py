@@ -8,7 +8,7 @@ import pytest
 
 from py4vasp import calculation
 from py4vasp._util.slicing import plane
-from py4vasp.calculation._partial_charge import STM_settings
+from py4vasp._calculation.partial_density import STM_settings
 from py4vasp.exception import IncorrectUsage, NoData, NotImplemented
 
 
@@ -332,39 +332,39 @@ def test_stm_default_settings(PolarizedNonSplitPartialDensity, not_core):
         enhancement_factor=500,
         interpolation_factor=5,
     )
-    graph = PolarizedNonSplitPartialCharge.to_stm(stm_settings=modified)
+    graph = PolarizedNonSplitPartialDensity.to_stm(stm_settings=modified)
     assert graph.series.settings == modified
 
 
-def test_smoothening_change(PolarizedNonSplitPartialCharge, not_core):
+def test_smoothening_change(PolarizedNonSplitPartialDensity, not_core):
     mod_settings = STM_settings(sigma_xy=2.0, sigma_z=2.0, truncate=1.0)
-    data = PolarizedNonSplitPartialCharge.to_numpy("total", band=0, kpoint=0)
-    default_smoothed_density = PolarizedNonSplitPartialCharge._smooth_stm_data(
+    data = PolarizedNonSplitPartialDensity.to_numpy("total", band=0, kpoint=0)
+    default_smoothed_density = PolarizedNonSplitPartialDensity._smooth_stm_data(
         data=data, stm_settings=STM_settings()
     )
-    new_smoothed_density = PolarizedNonSplitPartialCharge._smooth_stm_data(
+    new_smoothed_density = PolarizedNonSplitPartialDensity._smooth_stm_data(
         data=data, stm_settings=mod_settings
     )
     assert not np.allclose(default_smoothed_density, new_smoothed_density)
 
 
-def test_enhancement_setting_change(PolarizedNonSplitPartialCharge, Assert, not_core):
+def test_enhancement_setting_change(PolarizedNonSplitPartialDensity, Assert, not_core):
     enhance_settings = STM_settings(
         enhancement_factor=STM_settings().enhancement_factor / 2.0
     )
-    graph_def = PolarizedNonSplitPartialCharge.to_stm("constant_height")
-    graph_less_enhanced = PolarizedNonSplitPartialCharge.to_stm(
+    graph_def = PolarizedNonSplitPartialDensity.to_stm("constant_height")
+    graph_less_enhanced = PolarizedNonSplitPartialDensity.to_stm(
         "constant_height", stm_settings=enhance_settings
     )
     Assert.allclose(graph_def.series.data, graph_less_enhanced.series.data * 2)
 
 
-def test_interpolation_setting_change(PolarizedNonSplitPartialCharge, not_core):
+def test_interpolation_setting_change(PolarizedNonSplitPartialDensity, not_core):
     interp_settings = STM_settings(
         interpolation_factor=STM_settings().interpolation_factor / 4.0
     )
-    graph_def = PolarizedNonSplitPartialCharge.to_stm("constant_current", current=1)
-    graph_less_interp_points = PolarizedNonSplitPartialCharge.to_stm(
+    graph_def = PolarizedNonSplitPartialDensity.to_stm("constant_current", current=1)
+    graph_less_interp_points = PolarizedNonSplitPartialDensity.to_stm(
         "constant_current", current=1, stm_settings=interp_settings
     )
     assert not np.allclose(graph_def.series.data, graph_less_interp_points.series.data)
