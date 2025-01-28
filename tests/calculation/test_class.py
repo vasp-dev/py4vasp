@@ -6,10 +6,10 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from py4vasp import Calculation, calculation, control, exception
+from py4vasp import Calculation, _calculation, control, exception
 
 
-@patch("py4vasp.calculation._base.Refinery.from_path", autospec=True)
+@patch("py4vasp._calculation.base.Refinery.from_path", autospec=True)
 @patch("py4vasp.raw.access", autospec=True)
 def test_creation_from_path(mock_access, mock_from_path):
     # note: in pytest __file__ defaults to absolute path
@@ -25,7 +25,7 @@ def test_creation_from_path(mock_access, mock_from_path):
     mock_from_path.assert_called()
 
 
-@patch("py4vasp.calculation._base.Refinery.from_file", autospec=True)
+@patch("py4vasp._calculation.base.Refinery.from_file", autospec=True)
 @patch("py4vasp.raw.access", autospec=True)
 def test_creation_from_file(mock_access, mock_from_file):
     # note: in pytest __file__ defaults to absolute path
@@ -45,7 +45,7 @@ def test_creation_from_file(mock_access, mock_from_file):
 @patch("py4vasp.raw.access", autospec=True)
 def test_all_attributes(mock_access):
     calc = Calculation.from_path("test_path")
-    for name in calculation.__all__:
+    for name in _calculation.QUANTITIES:  #  + _calculation.INPUT_FILES:
         assert hasattr(calc, name)
     mock_access.assert_not_called()
     mock_access.return_value.__enter__.assert_not_called()

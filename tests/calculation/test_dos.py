@@ -206,7 +206,7 @@ def test_plot_combine_projectors(Fe3O4_projectors, Assert):
     Assert.allclose(data[names.index("Fe_down - p_down")].y, -subtraction_down)
 
 
-@patch("py4vasp.calculation._dos.Dos.to_graph")
+@patch("py4vasp._calculation.dos.Dos.to_graph")
 def test_Sr2TiO4_to_plotly(mock_plot, Sr2TiO4):
     fig = Sr2TiO4.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
@@ -222,7 +222,7 @@ def test_Sr2TiO4_to_image(Sr2TiO4):
 
 
 def check_to_image(Sr2TiO4, filename_argument, expected_filename):
-    with patch("py4vasp.calculation._dos.Dos.to_plotly") as plot:
+    with patch("py4vasp._calculation.dos.Dos.to_plotly") as plot:
         Sr2TiO4.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
