@@ -83,7 +83,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
     def __str__(self):
         _raise_error_if_no_data(self._raw_data.charge)
         grid = self._raw_data.charge.shape[1:]
-        topology = calculation.topology.from_data(self._raw_data.structure.topology)
+        topology = calculation._topology.from_data(self._raw_data.structure.topology)
         if self._selection == "kinetic_energy":
             name = "Kinetic energy"
         elif self.is_nonpolarized():
