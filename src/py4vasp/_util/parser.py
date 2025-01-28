@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from py4vasp._raw.data import CONTCAR, Cell, Structure, Stoichiometry
+from py4vasp._raw.data import CONTCAR, Cell, Stoichiometry, Structure
 from py4vasp._raw.data_wrapper import VaspData
 from py4vasp.exception import ParserError
 

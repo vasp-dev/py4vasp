@@ -71,7 +71,9 @@ class Base:
 class TestSr2TiO4(Base):
     @pytest.fixture(autouse=True)
     def _setup(self, raw_data):
-        self.stoichiometry = calculation._stoichiometry.from_data(raw_data.stoichiometry("Sr2TiO4"))
+        self.stoichiometry = calculation._stoichiometry.from_data(
+            raw_data.stoichiometry("Sr2TiO4")
+        )
         self.names = ["Sr_1", "Sr_2", "Ti_1", "O_1", "O_2", "O_3", "O_4"]
         self.elements = 2 * ["Sr"] + ["Ti"] + 4 * ["O"]
 

@@ -6,7 +6,7 @@ from typing import List, Sequence
 import numpy as np
 import pytest
 
-from py4vasp._raw.data import CONTCAR, Cell, Structure, Stoichiometry
+from py4vasp._raw.data import CONTCAR, Cell, Stoichiometry, Structure
 from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._util.parser import ParsePoscar
 from py4vasp.exception import ParserError
