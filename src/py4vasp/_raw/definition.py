@@ -295,12 +295,12 @@ schema.add(
 #
 group = "results/linear_response"
 schema.add(
-    raw.Fatband,
+    raw.ExcitonEigenvector,
     required=raw.Version(6, 4),
     dispersion=Link("dispersion", DEFAULT_SOURCE),
     fermi_energy=f"{group}/efermi",
     bse_index=f"{group}/bse_index",
-    fatbands=f"{group}/bse_fatbands",
+    eigenvectors=f"{group}/bse_fatbands",
     first_valence_band=f"{group}/bse_vbmin",
     first_conduction_band=f"{group}/bse_cbmin",
 )

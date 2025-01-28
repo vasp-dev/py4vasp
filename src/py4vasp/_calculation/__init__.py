@@ -56,7 +56,7 @@ QUANTITIES = (
     "elastic_modulus",
     "electronic_minimization",
     "energy",
-    "fatband",
+    "exciton_eigenvector",
     "force",
     "force_constant",
     "internal_strain",

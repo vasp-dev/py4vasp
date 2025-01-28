@@ -230,8 +230,8 @@ class Energy:
 
 
 @dataclasses.dataclass
-class Fatband:
-    """Contains the BSE data required to produce a fatband plot."""
+class ExcitonEigenvector:
+    """Contains the BSE data required to produce a plot of eigenvector contributions."""
 
     dispersion: Dispersion
     "The **k** points and the eigenvalues of the band structure."
@@ -239,8 +239,8 @@ class Fatband:
     "The Fermi energy of the system."
     bse_index: VaspData
     "The connection between spin, band and **k**-point indices to an index of the optical transitions."
-    fatbands: VaspData
-    "Component of the eigenvector, norm can be used for plotting fatbands."
+    eigenvectors: VaspData
+    "Component of the eigenvector, norm can be used for plotting eigenvectors."
     first_valence_band: int
     "Index of the first valence band."
     first_conduction_band: int
