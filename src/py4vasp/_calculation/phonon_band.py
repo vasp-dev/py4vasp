@@ -31,7 +31,7 @@ class PhononBand(phonon.Mixin, base.Refinery, graph.Mixin):
         return f"""phonon band data:
     {self._raw_data.dispersion.eigenvalues.shape[0]} q-points
     {self._raw_data.dispersion.eigenvalues.shape[1]} modes
-    {self._topology()}"""
+    {self._stoichiometry()}"""
 
     @base.data_access
     def to_dict(self):

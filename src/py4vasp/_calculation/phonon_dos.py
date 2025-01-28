@@ -26,11 +26,11 @@ class PhononDos(phonon.Mixin, base.Refinery, graph.Mixin):
     @base.data_access
     def __str__(self):
         energies = self._raw_data.energies
-        topology = self._topology()
+        stoichiometry = self._stoichiometry()
         return f"""phonon DOS:
     [{energies[0]:0.2f}, {energies[-1]:0.2f}] mesh with {len(energies)} points
-    {3 * topology.number_atoms()} modes
-    {topology}"""
+    {3 * stoichiometry.number_atoms()} modes
+    {stoichiometry}"""
 
     @base.data_access
     @documentation.format(selection=phonon.selection_doc)

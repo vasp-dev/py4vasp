@@ -12,22 +12,22 @@ pd = import_.optional("pandas")
 
 class Base:
     def test_read(self):
-        topology = self.topology.read()
-        assert topology[select.all] == Selection(indices=slice(0, 7))
+        stoichiometry = self.stoichiometry.read()
+        assert stoichiometry[select.all] == Selection(indices=slice(0, 7))
         for i, name in enumerate(self.names):
             expected = Selection(indices=slice(i, i + 1), label=name)
-            assert topology[str(i + 1)] == expected
-        self.check_ion_indices(topology)
+            assert stoichiometry[str(i + 1)] == expected
+        self.check_ion_indices(stoichiometry)
 
     def test_to_frame(self, not_core):
-        actual = self.topology.to_frame()
+        actual = self.stoichiometry.to_frame()
         ref_data = {"name": self.names, "element": self.elements}
         reference = pd.DataFrame(ref_data)
         assert reference.equals(actual)
 
     def test_to_mdtraj(self, not_core):
-        actual, _ = self.topology.to_mdtraj().to_dataframe()
-        num_atoms = self.topology.number_atoms()
+        actual, _ = self.stoichiometry.to_mdtraj().to_dataframe()
+        num_atoms = self.stoichiometry.number_atoms()
         ref_data = {
             "serial": num_atoms * (None,),
             "name": self.names,
@@ -41,23 +41,23 @@ class Base:
         assert reference.equals(actual)
 
     def test_elements(self):
-        assert self.topology.elements() == self.elements
+        assert self.stoichiometry.elements() == self.elements
 
     def test_ion_types(self):
-        assert self.topology.ion_types() == self.unique_elements
+        assert self.stoichiometry.ion_types() == self.unique_elements
 
     def test_names(self):
-        actual = self.topology.names()
+        actual = self.stoichiometry.names()
         assert actual == self.names
 
     def test_number_atoms(self):
-        assert self.topology.number_atoms() == 7
+        assert self.stoichiometry.number_atoms() == 7
 
     def test_from_ase(self, not_core):
         structure = ase.Atoms("".join(self.elements))
-        topology = calculation._topology.from_ase(structure)
-        assert topology.elements() == self.elements
-        assert str(topology) == str(self.topology)
+        stoichiometry = calculation._stoichiometry.from_ase(structure)
+        assert stoichiometry.elements() == self.elements
+        assert str(stoichiometry) == str(self.stoichiometry)
 
     @property
     def unique_elements(self):
@@ -71,23 +71,23 @@ class Base:
 class TestSr2TiO4(Base):
     @pytest.fixture(autouse=True)
     def _setup(self, raw_data):
-        self.topology = calculation._topology.from_data(raw_data.topology("Sr2TiO4"))
+        self.stoichiometry = calculation._stoichiometry.from_data(raw_data.stoichiometry("Sr2TiO4"))
         self.names = ["Sr_1", "Sr_2", "Ti_1", "O_1", "O_2", "O_3", "O_4"]
         self.elements = 2 * ["Sr"] + ["Ti"] + 4 * ["O"]
 
-    def check_ion_indices(self, topology):
-        assert topology["Sr"] == Selection(indices=slice(0, 2), label="Sr")
-        assert topology["Ti"] == Selection(indices=slice(2, 3), label="Ti")
-        assert topology["O"] == Selection(indices=slice(3, 7), label="O")
+    def check_ion_indices(self, stoichiometry):
+        assert stoichiometry["Sr"] == Selection(indices=slice(0, 2), label="Sr")
+        assert stoichiometry["Ti"] == Selection(indices=slice(2, 3), label="Ti")
+        assert stoichiometry["O"] == Selection(indices=slice(3, 7), label="O")
 
     def test_to_poscar(self):
-        assert self.topology.to_POSCAR() == "Sr Ti O\n2 1 4"
-        assert self.topology.to_POSCAR(".format.") == "Sr Ti O.format.\n2 1 4"
+        assert self.stoichiometry.to_POSCAR() == "Sr Ti O\n2 1 4"
+        assert self.stoichiometry.to_POSCAR(".format.") == "Sr Ti O.format.\n2 1 4"
         with pytest.raises(exception.IncorrectUsage):
-            self.topology.to_POSCAR(None)
+            self.stoichiometry.to_POSCAR(None)
 
     def test_print(self, format_):
-        actual, _ = format_(self.topology)
+        actual, _ = format_(self.stoichiometry)
         reference = {
             "text/plain": "Sr2TiO4",
             "text/html": "Sr<sub>2</sub>TiO<sub>4</sub>",
@@ -100,21 +100,21 @@ class TestCa3AsBr3(Base):
 
     @pytest.fixture(autouse=True)
     def _setup(self, raw_data):
-        raw_topology = raw_data.topology("Ca2AsBr-CaBr2")
-        self.topology = calculation._topology.from_data(raw_topology)
+        raw_stoichiometry = raw_data.stoichiometry("Ca2AsBr-CaBr2")
+        self.stoichiometry = calculation._stoichiometry.from_data(raw_stoichiometry)
         self.names = ["Ca_1", "Ca_2", "As_1", "Br_1", "Ca_3", "Br_2", "Br_3"]
         self.elements = ["Ca", "Ca", "As", "Br", "Ca", "Br", "Br"]
 
-    def check_ion_indices(self, topology):
-        assert topology["Ca"] == Selection(indices=[0, 1, 4], label="Ca")
-        assert topology["As"] == Selection(indices=slice(2, 3), label="As")
-        assert topology["Br"] == Selection(indices=[3, 5, 6], label="Br")
+    def check_ion_indices(self, stoichiometry):
+        assert stoichiometry["Ca"] == Selection(indices=[0, 1, 4], label="Ca")
+        assert stoichiometry["As"] == Selection(indices=slice(2, 3), label="As")
+        assert stoichiometry["Br"] == Selection(indices=[3, 5, 6], label="Br")
 
     def test_to_poscar(self):
-        assert self.topology.to_POSCAR() == "Ca As Br Ca Br\n2 1 1 1 2"
+        assert self.stoichiometry.to_POSCAR() == "Ca As Br Ca Br\n2 1 1 1 2"
 
     def test_print(self, format_):
-        actual, _ = format_(self.topology)
+        actual, _ = format_(self.stoichiometry)
         reference = {
             "text/plain": "Ca3AsBr3",
             "text/html": "Ca<sub>3</sub>AsBr<sub>3</sub>",
@@ -123,5 +123,5 @@ class TestCa3AsBr3(Base):
 
 
 def test_factory_methods(raw_data, check_factory_methods):
-    data = raw_data.topology("Sr2TiO4")
-    check_factory_methods(calculation._topology, data)
+    data = raw_data.stoichiometry("Sr2TiO4")
+    check_factory_methods(calculation._stoichiometry, data)

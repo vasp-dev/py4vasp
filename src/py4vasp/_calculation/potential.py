@@ -39,8 +39,10 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
             description = "noncollinear potential:"
         else:
             description = "nonpolarized potential:"
-        topology = calculation._topology.from_data(self._raw_data.structure.topology)
-        structure = f"structure: {topology}"
+        stoichiometry = calculation._stoichiometry.from_data(
+            self._raw_data.structure.stoichiometry
+        )
+        structure = f"structure: {stoichiometry}"
         grid = f"grid: {potential.shape[3]}, {potential.shape[2]}, {potential.shape[1]}"
         available = "available: " + ", ".join(
             kind for kind in VALID_KINDS if not self._get_potential(kind).is_none()

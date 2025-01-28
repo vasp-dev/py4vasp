@@ -410,7 +410,7 @@ schema.add(
     raw.PhononBand,
     required=raw.Version(6, 4),
     dispersion=Link("dispersion", "phonon"),
-    topology=Link("topology", "phonon"),
+    stoichiometry=Link("stoichiometry", "phonon"),
     eigenvectors=f"{group}/eigenvectors",
 )
 schema.add(
@@ -418,7 +418,7 @@ schema.add(
     required=raw.Version(6, 4),
     energies=f"{group}/dos_mesh",
     dos=f"{group}/dos",
-    topology=Link("topology", "phonon"),
+    stoichiometry=Link("stoichiometry", "phonon"),
     projections=f"{group}/dospar",
 )
 #
@@ -450,23 +450,36 @@ schema.add(
 #
 schema.add(
     raw.Projector,
-    topology=Link("topology", DEFAULT_SOURCE),
+    stoichiometry=Link("stoichiometry", DEFAULT_SOURCE),
     orbital_types="results/projectors/lchar",
     number_spins=Length("results/electron_eigenvalues/eigenvalues"),
 )
 schema.add(
     raw.Projector,
     name="kpoints_opt",
-    topology=Link("topology", DEFAULT_SOURCE),
+    stoichiometry=Link("stoichiometry", DEFAULT_SOURCE),
     orbital_types="results/projectors_kpoints_opt/lchar",
     number_spins=Length("results/electron_eigenvalues/eigenvalues"),
 )
 schema.add(
     raw.Projector,
     name="kpoints_wan",
-    topology=Link("topology", DEFAULT_SOURCE),
+    stoichiometry=Link("stoichiometry", DEFAULT_SOURCE),
     orbital_types="results/projectors_kpoints_wan/lchar",
     number_spins=Length("results/electron_eigenvalues/eigenvalues"),
+)
+#
+schema.add(
+    raw.Stoichiometry,
+    ion_types="results/positions/ion_types",
+    number_ion_types="results/positions/number_ion_types",
+)
+schema.add(
+    raw.Stoichiometry,
+    name="phonon",
+    required=raw.Version(6, 4),
+    ion_types="results/phonons/primitive/ion_types",
+    number_ion_types="results/phonons/primitive/number_ion_types",
 )
 #
 schema.add(
@@ -477,7 +490,7 @@ schema.add(
 #
 schema.add(
     raw.Structure,
-    topology=Link("topology", DEFAULT_SOURCE),
+    stoichiometry=Link("stoichiometry", DEFAULT_SOURCE),
     cell=Link("cell", DEFAULT_SOURCE),
     positions="intermediate/ion_dynamics/position_ions",
 )
@@ -485,25 +498,12 @@ schema.add(
     raw.Structure,
     name="final",
     required=raw.Version(6, 5),
-    topology=Link("topology", DEFAULT_SOURCE),
+    stoichiometry=Link("stoichiometry", DEFAULT_SOURCE),
     cell=Link("cell", "final"),
     positions="results/positions/position_ions",
 )
 #
 schema.add(raw.System, system="input/incar/SYSTEM")
-#
-schema.add(
-    raw.Topology,
-    ion_types="results/positions/ion_types",
-    number_ion_types="results/positions/number_ion_types",
-)
-schema.add(
-    raw.Topology,
-    name="phonon",
-    required=raw.Version(6, 4),
-    ion_types="results/phonons/primitive/ion_types",
-    number_ion_types="results/phonons/primitive/number_ion_types",
-)
 #
 schema.add(
     raw.Velocity,

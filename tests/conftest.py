@@ -305,13 +305,13 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
-    def topology(selection):
+    def stoichiometry(selection):
         if selection == "Sr2TiO4":
-            return _Sr2TiO4_topology()
+            return _Sr2TiO4_stoichiometry()
         elif selection == "Fe3O4":
-            return _Fe3O4_topology()
+            return _Fe3O4_stoichiometry()
         elif selection == "Ca2AsBr-CaBr2":  # test duplicate entries
-            return _Ca3AsBr3_topology()
+            return _Ca3AsBr3_stoichiometry()
         else:
             raise exception.NotImplemented()
 
@@ -420,7 +420,7 @@ def _phonon_band():
     shape = (*dispersion.eigenvalues.shape, number_atoms, axes, complex_)
     return raw.PhononBand(
         dispersion=dispersion,
-        topology=_Sr2TiO4_topology(),
+        stoichiometry=_Sr2TiO4_stoichiometry(),
         eigenvectors=np.linspace(0, 1, np.prod(shape)).reshape(shape),
     )
 
@@ -440,7 +440,7 @@ def _phonon_dos():
     upper_ratio = np.array(list(reversed(lower_ratio)))
     ratio = np.linspace(lower_ratio, upper_ratio, number_points).T
     projections = np.multiply(ratio, dos)
-    return raw.PhononDos(energies, dos, projections, _Sr2TiO4_topology())
+    return raw.PhononDos(energies, dos, projections, _Sr2TiO4_stoichiometry())
 
 
 def _piezoelectric_tensor():
@@ -836,7 +836,7 @@ def _Sr2TiO4_potential(included_potential):
 def _Sr2TiO4_projectors(use_orbitals):
     orbital_types = "s py pz px dxy dyz dz2 dxz x2-y2 fy3x2 fxyz fyz2 fz3 fxz2 fzx2 fx3"
     return raw.Projector(
-        topology=_Sr2TiO4_topology(),
+        stoichiometry=_Sr2TiO4_stoichiometry(),
         orbital_types=_make_orbital_types(use_orbitals, orbital_types),
         number_spins=1,
     )
@@ -866,7 +866,7 @@ def _Graphite_structure():
         [0.33333333, 0.66666667, 0.60127716],
     ]
     return raw.Structure(
-        topology=_Graphite_topology(),
+        stoichiometry=_Graphite_stoichiometry(),
         cell=_Graphite_cell(),
         positions=raw.VaspData(positions),
     )
@@ -881,8 +881,8 @@ def _Graphite_cell():
     return raw.Cell(np.asarray(lattice_vectors), scale=raw.VaspData(1.0))
 
 
-def _Graphite_topology():
-    return raw.Topology(
+def _Graphite_stoichiometry():
+    return raw.Stoichiometry(
         number_ion_types=np.array((10,)),
         ion_types=np.array(("C",), dtype="S"),
     )
@@ -898,7 +898,7 @@ def _Ni100_structure():
         [0.00000000, 0.40000000, 0.00000000],
     ]
     return raw.Structure(
-        topology=_Ni100_topology(),
+        stoichiometry=_Ni100_stoichiometry(),
         cell=_Ni100_cell(),
         positions=raw.VaspData(positions),
     )
@@ -913,8 +913,8 @@ def _Ni100_cell():
     return raw.Cell(np.asarray(lattice_vectors), scale=raw.VaspData(1.0))
 
 
-def _Ni100_topology():
-    return raw.Topology(
+def _Ni100_stoichiometry():
+    return raw.Stoichiometry(
         number_ion_types=np.array((5,)),
         ion_types=np.array(("Ni",), dtype="S"),
     )
@@ -949,7 +949,7 @@ def _CaAs3_110_structure():
         [0.77964386, 0.09593968, 0.76122779],
     ]
     return raw.Structure(
-        topology=_CaAs3_110_topology(),
+        stoichiometry=_CaAs3_110_stoichiometry(),
         cell=_CaAs3_110_cell(),
         positions=raw.VaspData(positions),
     )
@@ -964,8 +964,8 @@ def _CaAs3_110_cell():
     return raw.Cell(np.asarray(lattice_vectors), scale=raw.VaspData(1.0))
 
 
-def _CaAs3_110_topology():
-    return raw.Topology(
+def _CaAs3_110_stoichiometry():
+    return raw.Stoichiometry(
         number_ion_types=np.array((6, 18)),
         ion_types=np.array(("Ca", "As"), dtype="S"),
     )
@@ -983,14 +983,14 @@ def _Sr2TiO4_structure():
         [0.00000, 0.50000, 0.5],
     ]
     return raw.Structure(
-        topology=_Sr2TiO4_topology(),
+        stoichiometry=_Sr2TiO4_stoichiometry(),
         cell=_Sr2TiO4_cell(),
         positions=np.tile(positions, repetitions),
     )
 
 
-def _Sr2TiO4_topology():
-    return raw.Topology(
+def _Sr2TiO4_stoichiometry():
+    return raw.Stoichiometry(
         number_ion_types=np.array((2, 1, 4)),
         ion_types=np.array(("Sr", "Ti", "O "), dtype="S"),
     )
@@ -1083,7 +1083,7 @@ def _Fe3O4_potential(selection, included_potential):
 
 def _Fe3O4_projectors(use_orbitals):
     return raw.Projector(
-        topology=_Fe3O4_topology(),
+        stoichiometry=_Fe3O4_stoichiometry(),
         orbital_types=_make_orbital_types(use_orbitals, "s p d f"),
         number_spins=2,
     )
@@ -1113,14 +1113,14 @@ def _Fe3O4_structure():
     ]
     shift = np.linspace(-0.02, 0.01, number_steps)
     return raw.Structure(
-        topology=_Fe3O4_topology(),
+        stoichiometry=_Fe3O4_stoichiometry(),
         cell=_Fe3O4_cell(),
         positions=np.add.outer(shift, positions),
     )
 
 
-def _Fe3O4_topology():
-    return raw.Topology(
+def _Fe3O4_stoichiometry():
+    return raw.Stoichiometry(
         number_ion_types=np.array((3, 4)), ion_types=np.array(("Fe", "O "), dtype="S")
     )
 
@@ -1149,14 +1149,14 @@ def _Ca3AsBr3_structure():
         [0.5, 0.5, 0.0],  # Br_3
     ]
     return raw.Structure(
-        topology=_Ca3AsBr3_topology(),
+        stoichiometry=_Ca3AsBr3_stoichiometry(),
         cell=_Ca3AsBr3_cell(),
         positions=_make_data(positions),
     )
 
 
-def _Ca3AsBr3_topology():
-    return raw.Topology(
+def _Ca3AsBr3_stoichiometry():
+    return raw.Stoichiometry(
         number_ion_types=np.array((2, 1, 1, 1, 2)),
         ion_types=np.array(("Ca", "As", "Br", "Ca", "Br"), dtype="S"),
     )

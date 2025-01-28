@@ -36,13 +36,13 @@ class Mixin:
             "direction": ["x", "y", "z"],
         }
 
-    def _topology(self):
-        return calculation._topology.from_data(self._raw_data.topology)
+    def _stoichiometry(self):
+        return calculation._stoichiometry.from_data(self._raw_data.stoichiometry)
 
     def _init_atom_dict(self):
         return {
             key: value.indices
-            for key, value in self._topology().read().items()
+            for key, value in self._stoichiometry().read().items()
             if key != select.all
         }
 

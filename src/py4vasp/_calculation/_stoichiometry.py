@@ -15,21 +15,13 @@ pd = import_.optional("pandas")
 _subscript = "_"
 
 
-class Topology(base.Refinery):
-    """The topology of the crystal describes the ions of a crystal and their connectivity.
-
-    At the current stage, this class only exposes the name of the atoms in the unit
-    cell. In the future, we could add functionality for the user to group multiple
-    atoms. If you are interested in this feature and have a specific use case in mind,
-    please create an issue on Github_.
-
-    .. _Github: https://github.com/vasp-dev/py4vasp
-    """
+class Stoichiometry(base.Refinery):
+    """The stoichiometry of the crystal describes how many ions of each type exist in a crystal."""
 
     @classmethod
     def from_ase(cls, structure):
-        """Generate a Topology from the given ase Atoms object."""
-        return cls.from_data(raw_topology_from_ase(structure))
+        """Generate a stoichiometry from the given ase Atoms object."""
+        return cls.from_data(raw_stoichiometry_from_ase(structure))
 
     @base.data_access
     def __str__(self):
@@ -43,7 +35,7 @@ class Topology(base.Refinery):
 
     @base.data_access
     def to_dict(self):
-        """Read the topology and convert it to a dictionary.
+        """Read the stoichiometry and convert it to a dictionary.
 
         Returns
         -------
@@ -59,7 +51,7 @@ class Topology(base.Refinery):
 
     @base.data_access
     def to_frame(self):
-        """Convert the topology to a DataFrame
+        """Convert the stoichiometry to a DataFrame
 
         Returns
         -------
@@ -70,7 +62,7 @@ class Topology(base.Refinery):
 
     @base.data_access
     def to_mdtraj(self):
-        """Convert the topology to a mdtraj.Topology."""
+        """Convert the stoichiometry to a mdtraj.Topology."""
         df = self.to_frame()
         df["serial"] = None
         df["resSeq"] = 0
@@ -80,7 +72,7 @@ class Topology(base.Refinery):
 
     @base.data_access
     def to_POSCAR(self, format_newline=""):
-        """Generate the topology lines for the POSCAR file.
+        """Generate the stoichiometry lines for the POSCAR file.
 
         Parameters
         ----------
@@ -156,8 +148,8 @@ class Topology(base.Refinery):
         return (clean_string(ion_type) for ion_type in self._raw_data.ion_types)
 
 
-def raw_topology_from_ase(structure):
-    """Convert the given ase Atoms object to a raw.Topology."""
+def raw_stoichiometry_from_ase(structure):
+    """Convert the given ase Atoms object to a raw.Stoichiometry."""
     number_ion_types = []
     ion_types = []
     for element in structure.symbols:
@@ -166,7 +158,7 @@ def raw_topology_from_ase(structure):
         else:
             ion_types.append(element)
             number_ion_types.append(1)
-    return raw.Topology(number_ion_types, ion_types)
+    return raw.Stoichiometry(number_ion_types, ion_types)
 
 
 def _merge_to_slice_if_possible(selections):

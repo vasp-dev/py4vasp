@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from py4vasp import calculation, exception, raw
-from py4vasp._calculation import _topology, base, slice_
+from py4vasp._calculation import _stoichiometry, base, slice_
 from py4vasp._third_party import view
 from py4vasp._util import documentation, import_, reader
 
@@ -23,14 +23,14 @@ class _Format:
     end_table: str = ""
     newline: str = ""
 
-    def comment_line(self, topology, step_string):
-        return f"{topology}{step_string}{self.newline}"
+    def comment_line(self, stoichiometry, step_string):
+        return f"{stoichiometry}{step_string}{self.newline}"
 
     def scaling_factor(self, scale):
         return f"{self._element_to_string(scale)}{self.newline}".lstrip()
 
-    def ion_list(self, topology):
-        return f"{topology.to_POSCAR(self.newline)}{self.newline}"
+    def ion_list(self, stoichiometry):
+        return f"{stoichiometry.to_POSCAR(self.newline)}{self.newline}"
 
     def coordinate_system(self):
         return f"Direct{self.newline}"
@@ -95,7 +95,7 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
     def from_ase(cls, structure):
         """Generate a structure from the ase Atoms class."""
         structure = raw.Structure(
-            topology=_topology.raw_topology_from_ase(structure),
+            stoichiometry=_stoichiometry.raw_stoichiometry_from_ase(structure),
             cell=_cell_from_ase(structure),
             positions=structure.get_scaled_positions()[np.newaxis],
         )
@@ -120,10 +120,10 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
     def _create_repr(self, format_=_Format()):
         step = self._get_last_step()
         lines = (
-            format_.comment_line(self._topology(), self._step_string()),
+            format_.comment_line(self._stoichiometry(), self._step_string()),
             format_.scaling_factor(self._scale()),
             format_.vectors_to_table(self._raw_data.cell.lattice_vectors[step]),
-            format_.ion_list(self._topology()),
+            format_.ion_list(self._stoichiometry()),
             format_.coordinate_system(),
             format_.vectors_to_table(self._raw_data.positions[step]),
         )
@@ -146,8 +146,8 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         return {
             "lattice_vectors": self.lattice_vectors(),
             "positions": self.positions(),
-            "elements": self._topology().elements(),
-            "names": self._topology().names(),
+            "elements": self._stoichiometry().elements(),
+            "names": self._stoichiometry().names(),
         }
 
     @base.data_access
@@ -170,7 +170,7 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         """
         make_3d = lambda array: array if array.ndim == 3 else array[np.newaxis]
         positions = make_3d(self.positions())
-        elements = np.tile(self._topology().elements(), (len(positions), 1))
+        elements = np.tile(self._stoichiometry().elements(), (len(positions), 1))
         return view.View(
             elements=elements,
             lattice_vectors=make_3d(self.lattice_vectors()),
@@ -241,7 +241,7 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
             raise exception.NotImplemented(message)
         data = self.to_dict()
         xyz = data["positions"] @ data["lattice_vectors"] * self.A_to_nm
-        trajectory = mdtraj.Trajectory(xyz, self._topology().to_mdtraj())
+        trajectory = mdtraj.Trajectory(xyz, self._stoichiometry().to_mdtraj())
         trajectory.unitcell_vectors = data["lattice_vectors"] * Structure.A_to_nm
         return trajectory
 
@@ -356,8 +356,8 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         )
         raise exception.IncorrectUsage(message)
 
-    def _topology(self):
-        return calculation._topology.from_data(self._raw_data.topology)
+    def _stoichiometry(self):
+        return calculation._stoichiometry.from_data(self._raw_data.stoichiometry)
 
     def _scale(self):
         if isinstance(self._raw_data.cell.scale, np.float64):

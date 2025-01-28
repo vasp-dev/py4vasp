@@ -6,7 +6,7 @@ from typing import List, Sequence
 import numpy as np
 import pytest
 
-from py4vasp._raw.data import CONTCAR, Cell, Structure, Topology
+from py4vasp._raw.data import CONTCAR, Cell, Structure, Stoichiometry
 from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._util.parser import ParsePoscar
 from py4vasp.exception import ParserError
@@ -401,7 +401,7 @@ def test_negative_scaling_factor(cubic_BN, poscar_creator, Assert):
 
 
 @pytest.mark.parametrize("has_species_name", [True, False])
-def test_topology(cubic_BN, has_species_name, Assert):
+def test_stoichiometry(cubic_BN, has_species_name, Assert):
     poscar_string, componentwise_inputs, arguments = cubic_BN(
         has_species_name=has_species_name
     )
@@ -411,25 +411,25 @@ def test_topology(cubic_BN, has_species_name, Assert):
         VaspData(species_names) if species_names else arguments["species_name"].split()
     )
     expected_ions_per_species = VaspData(ions_per_species)
-    expected_topology = Topology(
+    expected_stoichiometry = Stoichiometry(
         number_ion_types=expected_ions_per_species, ion_types=expected_species_names
     )
-    output_topology = ParsePoscar(poscar_string, **arguments).topology
+    output_stoichiometry = ParsePoscar(poscar_string, **arguments).stoichiometry
     Assert.allclose(
-        expected_topology.number_ion_types, output_topology.number_ion_types
+        expected_stoichiometry.number_ion_types, output_stoichiometry.number_ion_types
     )
     if has_species_name:
-        expected_ion_types = expected_topology.ion_types.__array__()
+        expected_ion_types = expected_stoichiometry.ion_types.__array__()
     else:
-        expected_ion_types = expected_topology.ion_types
-    output_ion_types = output_topology.ion_types.__array__()
+        expected_ion_types = expected_stoichiometry.ion_types
+    output_ion_types = output_stoichiometry.ion_types.__array__()
     assert all(expected_ion_types == output_ion_types)
 
 
 def test_error_no_species_provided(cubic_BN):
     poscar_string, *_ = cubic_BN(has_species_name=False)
     with pytest.raises(ParserError):
-        ParsePoscar(poscar_string).topology
+        ParsePoscar(poscar_string).stoichiometry
 
 
 @pytest.mark.parametrize("has_selective_dynamics", [True, False])

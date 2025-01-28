@@ -74,7 +74,7 @@ class PartialDensity(base.Refinery, structure.Mixin):
     def __str__(self):
         """Return a string representation of the partial charge density."""
         return f"""
-        {"spin polarized" if self._spin_polarized() else ""} partial charge density of {self._topology()}:
+        {"spin polarized" if self._spin_polarized() else ""} partial charge density of {self._stoichiometry()}:
         on fine FFT grid: {self.grid()}
         {"summed over all contributing bands" if 0 in self.bands() else f" separated for bands: {self.bands()}"}
         {"summed over all contributing k-points" if 0 in self.kpoints() else f" separated for k-points: {self.kpoints()}"}
@@ -208,16 +208,16 @@ class PartialDensity(base.Refinery, structure.Mixin):
         scan = z_grid[np.argmax(splines(z_grid) >= current, axis=-1)]
         scan = z_step * (scan - scan.min())
         spin_label = "both spin channels" if spin == "total" else f"spin {spin}"
-        topology = self._topology()
-        label = f"STM of {topology} for {spin_label} at constant current={current*1e9:.2f} nA"
+        stoichiometry = self._stoichiometry()
+        label = f"STM of {stoichiometry} for {spin_label} at constant current={current*1e9:.2f} nA"
         return Contour(data=scan, lattice=self._get_stm_plane(), label=label)
 
     def _constant_height_stm(self, smoothed_charge, tip_height, spin, stm_settings):
         zz = self._z_index_for_height(tip_height + self._get_highest_z_coord())
         height_scan = smoothed_charge[:, :, zz] * stm_settings.enhancement_factor
         spin_label = "both spin channels" if spin == "total" else f"spin {spin}"
-        topology = self._topology()
-        label = f"STM of {topology} for {spin_label} at constant height={float(tip_height):.2f} Angstrom"
+        stoichiometry = self._stoichiometry()
+        label = f"STM of {stoichiometry} for {spin_label} at constant height={float(tip_height):.2f} Angstrom"
         return Contour(data=height_scan, lattice=self._get_stm_plane(), label=label)
 
     def _z_index_for_height(self, tip_height):
@@ -242,8 +242,8 @@ class PartialDensity(base.Refinery, structure.Mixin):
         cart_coords = _get_sanitized_cartesian_positions(self._structure)
         return np.min(cart_coords[:, 2])
 
-    def _topology(self):
-        return str(self._structure._topology())
+    def _stoichiometry(self):
+        return str(self._structure._stoichiometry())
 
     def _estimate_vacuum(self):
         _raise_error_if_vacuum_not_along_z(self._structure)

@@ -90,7 +90,7 @@ class Cell:
 class CONTCAR:
     """The data corresponding to the CONTCAR file.
 
-    The CONTCAR file contains structural information (lattice, positions, topology),
+    The CONTCAR file contains structural information (lattice, positions, stoichiometry),
     relaxation constraints, and data relevant for continuation calculations.
     """
 
@@ -366,11 +366,11 @@ class PhononBand:
     """The band structure of the phonons.
 
     Contains the eigenvalues and eigenvectors at specifics **q** points in the Brillouin
-    zone. Includes the topology to map atoms onto specific modes."""
+    zone. Includes the stoichiometry to map atoms onto specific modes."""
 
     dispersion: Dispersion
     "The **q** points and the eigenvalues."
-    topology: Topology
+    stoichiometry: Stoichiometry
     "The atom types in the crystal."
     eigenvectors: VaspData
     "The eigenvectors of the phonon modes."
@@ -389,7 +389,7 @@ class PhononDos:
     "Dos at the energies D(E)."
     projections: VaspData
     "Projection of the DOS onto contribution of specific atoms."
-    topology: Topology
+    stoichiometry: Stoichiometry
     "The atom types in the crystal."
 
 
@@ -451,12 +451,21 @@ class Projector:
     and orbitals. This class reports the atoms and orbitals included in the projection.
     """
 
-    topology: Topology
-    "The topology of the system used, i.e., which elements are contained."
+    stoichiometry: Stoichiometry
+    "The stoichiometry of the system used, i.e., which elements are contained."
     orbital_types: VaspData
     "Character indicating the orbital angular momentum."
     number_spins: int
     "Indicates whether the calculation is spin polarized or not."
+
+
+@dataclasses.dataclass
+class Stoichiometry:
+    "Contains the type of ions in the system and how many of each type exist."
+    number_ion_types: VaspData
+    "Amount of ions of a particular type."
+    ion_types: VaspData
+    "Element of a particular type."
 
 
 @dataclasses.dataclass
@@ -475,8 +484,8 @@ class Structure:
     Reports what ions are in the system and the positions of all ions as well as the
     unit cell for all steps in a relaxation in a MD run."""
 
-    topology: Topology
-    "The topology of the system used, i.e., which elements are contained."
+    stoichiometry: Stoichiometry
+    "The stoichiometry of the system used, i.e., which elements are contained."
     cell: Cell
     "Unit cell of the crystal or simulation cell for molecules."
     positions: VaspData
@@ -487,15 +496,6 @@ class Structure:
 class System:
     "The name of the system set in the input."
     system: str
-
-
-@dataclasses.dataclass
-class Topology:
-    "Contains the type of ions in the system and how many of each type exist."
-    number_ion_types: VaspData
-    "Amount of ions of a particular type."
-    ion_types: VaspData
-    "Element of a particular type."
 
 
 @dataclasses.dataclass

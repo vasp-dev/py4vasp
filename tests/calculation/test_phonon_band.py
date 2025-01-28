@@ -19,7 +19,8 @@ def phonon_band(raw_data):
     band.ref.modes = convert.to_complex(raw_band.eigenvectors)
     raw_qpoints = raw_band.dispersion.kpoints
     band.ref.qpoints = calculation.kpoint.from_data(raw_qpoints)
-    band.ref.topology = calculation._topology.from_data(raw_band.topology)
+    raw_stoichiometry = raw_band.stoichiometry
+    band.ref.stoichiometry = calculation._stoichiometry.from_data(raw_stoichiometry)
     Sr = slice(0, 2)
     band.ref.Sr = np.sum(np.abs(band.ref.modes[:, :, Sr, :]), axis=(2, 3))
     Ti = 2

@@ -77,7 +77,7 @@ QUANTITIES = (
     "workfunction",
     "_CONTCAR",
     "_dispersion",
-    "_topology",
+    "_stoichiometry",
 )
 
 

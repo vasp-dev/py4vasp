@@ -62,7 +62,7 @@ class CONTCAR(base.Refinery, view.Mixin, structure.Mixin):
         selective_dynamics = self._raw_data.selective_dynamics
         yield convert.text_to_string(self._raw_data.system)
         yield from _cell_lines(cell)
-        yield self._topology().to_POSCAR()
+        yield self._stoichiometry().to_POSCAR()
         if not selective_dynamics.is_none():
             yield "Selective dynamics"
         yield "Direct"
@@ -70,8 +70,10 @@ class CONTCAR(base.Refinery, view.Mixin, structure.Mixin):
         yield from _lattice_velocity_lines(self._raw_data.lattice_velocities, cell)
         yield from _ion_velocity_lines(self._raw_data.ion_velocities)
 
-    def _topology(self):
-        return calculation._topology.from_data(self._raw_data.structure.topology)
+    def _stoichiometry(self):
+        return calculation._stoichiometry.from_data(
+            self._raw_data.structure.stoichiometry
+        )
 
 
 def _cell_lines(cell):

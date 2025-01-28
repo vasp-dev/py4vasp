@@ -84,7 +84,7 @@ class Projector(base.Refinery):
         if self._raw_data.orbital_types.is_none():
             return "no projectors"
         return f"""projectors:
-    atoms: {", ".join(self._topology().ion_types())}
+    atoms: {", ".join(self._stoichiometry().ion_types())}
     orbitals: {", ".join(self._orbital_types())}"""
 
     @base.data_access
@@ -190,8 +190,8 @@ class Projector(base.Refinery):
             message = "Projectors are not available, rerun Vasp setting LORBIT >= 10."
             raise exception.IncorrectUsage(message)
 
-    def _topology(self):
-        return calculation._topology.from_data(self._raw_data.topology)
+    def _stoichiometry(self):
+        return calculation._stoichiometry.from_data(self._raw_data.stoichiometry)
 
     def _init_dicts(self):
         if self._raw_data.orbital_types.is_none():
@@ -204,7 +204,7 @@ class Projector(base.Refinery):
     def _init_atom_dict(self):
         return {
             key: value.indices
-            for key, value in self._topology().read().items()
+            for key, value in self._stoichiometry().read().items()
             if key != _select_all
         }
 
@@ -347,7 +347,7 @@ class Projector(base.Refinery):
         }
 
     def _init_atom_dict_old(self):
-        return self._topology().read()
+        return self._stoichiometry().read()
 
     def _init_orbital_dict_old(self):
         self._raise_error_if_orbitals_missing()

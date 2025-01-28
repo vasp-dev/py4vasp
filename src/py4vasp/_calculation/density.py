@@ -83,7 +83,8 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
     def __str__(self):
         _raise_error_if_no_data(self._raw_data.charge)
         grid = self._raw_data.charge.shape[1:]
-        topology = calculation._topology.from_data(self._raw_data.structure.topology)
+        raw_stoichiometry = self._raw_data.structure.stoichiometry
+        stoichiometry = calculation._stoichiometry.from_data(raw_stoichiometry)
         if self._selection == "kinetic_energy":
             name = "Kinetic energy"
         elif self.is_nonpolarized():
@@ -93,7 +94,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         else:
             name = "Noncollinear"
         return f"""{name} density:
-    structure: {pretty.pretty(topology)}
+    structure: {pretty.pretty(stoichiometry)}
     grid: {grid[2]}, {grid[1]}, {grid[0]}"""
 
     @documentation.format(

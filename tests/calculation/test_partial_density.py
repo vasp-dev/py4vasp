@@ -116,9 +116,9 @@ def test_read(PartialDensity, Assert, not_core):
     Assert.same_structure(actual["structure"], expected.structure.read())
 
 
-def test_topology(PartialDensity, not_core):
-    actual = PartialDensity._topology()
-    expected = str(PartialDensity.ref.structure._topology())
+def test_stoichiometry(PartialDensity, not_core):
+    actual = PartialDensity._stoichiometry()
+    expected = str(PartialDensity.ref.structure._stoichiometry())
     assert actual == expected
 
 
