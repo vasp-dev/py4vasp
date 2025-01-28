@@ -50,7 +50,7 @@ def test_plot(velocities, steps, supercell, Assert):
     expected_velocities = velocities.velocity_rescale * velocities.ref.velocities[steps]
     Assert.allclose(arrows.quantity, expected_velocities)
     assert arrows.label == "velocities"
-    assert arrows.color == _config.VASP_GRAY
+    assert arrows.color == _config.VASP_COLORS["gray"]
     assert arrows.radius == 0.2
 
 

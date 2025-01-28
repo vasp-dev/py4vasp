@@ -9,6 +9,9 @@ import pytest
 from numpy.testing import assert_array_almost_equal_nulp
 
 from py4vasp import exception, raw
+from py4vasp._util import import_
+
+stats = import_.optional("scipy.stats")
 
 number_steps = 4
 number_atoms = 7
@@ -26,24 +29,23 @@ grid_dimensions = (14, 12, 10)  # note: order is z, y, x
 
 
 @pytest.fixture(scope="session")
-def is_core():
+def only_core():
+    if not _is_core():
+        pytest.skip("This test checks py4vasp-core functionality not used by py4vasp.")
+
+
+@pytest.fixture(scope="session")
+def not_core():
+    if _is_core():
+        pytest.skip("This test requires features not present in py4vasp-core.")
+
+
+def _is_core():
     try:
         importlib.metadata.distribution("py4vasp-core")
         return True
     except importlib.metadata.PackageNotFoundError:
         return False
-
-
-@pytest.fixture()
-def only_core(is_core):
-    if not is_core:
-        pytest.skip("This test checks py4vasp-core functionality not used by py4vasp.")
-
-
-@pytest.fixture()
-def not_core(is_core):
-    if is_core:
-        pytest.skip("This test requires features not present in py4vasp-core.")
 
 
 class _Assert:
@@ -718,7 +720,7 @@ def _partial_density(selection):
         structure=structure,
         bands=bands,
         kpoints=kpoints,
-        partial_charge=random_charge,
+        partial_charge=gaussian_charge,
         grid=grid,
     )
 

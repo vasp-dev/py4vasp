@@ -10,7 +10,7 @@ from py4vasp import _config, calculation, exception, raw
 from py4vasp._third_party.view import Isosurface
 
 
-@pytest.fixture(params=[None, "tau"])
+@pytest.fixture(params=[None, "kinetic_energy"])
 def density_source(request):
     return request.param
 
@@ -76,7 +76,7 @@ def get_expected_dict(charge, source):
 
 def get_expected_string(selection, source):
     structure, *density = selection.split()
-    if source == "tau":
+    if source == "kinetic_energy":
         density = "Kinetic energy"
     elif not density:
         density = "Nonpolarized"
@@ -113,7 +113,8 @@ def test_empty_density(empty_density):
 @pytest.mark.parametrize("selection", [None, "0", "unity", "sigma_0", "scalar"])
 def test_charge_plot(selection, reference_density, Assert):
     source = reference_density.ref.source
-    isosurfaces = [Isosurface(isolevel=0.2, color=_config.VASP_CYAN, opacity=0.6)]
+    color = _config.VASP_COLORS["cyan"]
+    isosurfaces = [Isosurface(isolevel=0.2, color=color, opacity=0.6)]
     if source == "charge":
         expected = Expectation(
             label=selection if selection else "charge",
@@ -156,8 +157,8 @@ def test_accessing_spin_raises_error(nonpolarized_density):
 def test_collinear_plot(selection, collinear_density, Assert):
     source = collinear_density.ref.source
     isosurfaces = [
-        Isosurface(isolevel=0.1, color=_config.VASP_BLUE, opacity=0.6),
-        Isosurface(isolevel=-0.1, color=_config.VASP_RED, opacity=0.6),
+        Isosurface(isolevel=0.1, color=_config.VASP_COLORS["blue"], opacity=0.6),
+        Isosurface(isolevel=-0.1, color=_config.VASP_COLORS["red"], opacity=0.6),
     ]
     if source == "charge":
         expected = Expectation(
@@ -172,7 +173,7 @@ def test_collinear_plot(selection, collinear_density, Assert):
             isosurfaces=isosurfaces,
         )
         if selection in ("magnetization", "mag", "m"):
-            # magnetization not allowed for tau
+            # magnetization not allowed for kinetic_energy
             return
     check_view(collinear_density, expected, Assert, selection=selection, isolevel=0.1)
 
@@ -208,11 +209,11 @@ def test_plotting_noncollinear_density(selections, noncollinear_density, Assert)
     else:
         expected_labels = (f"{source}({selection})" for selection in selections)
         expected_density = noncollinear_density.ref.output[source][1:]
-        if "(" in selections[0]:  # magnetization not allowed for tau
+        if "(" in selections[0]:  # magnetization not allowed for kinetic_energy
             return
     isosurfaces = [
-        Isosurface(isolevel=0.2, color=_config.VASP_BLUE, opacity=0.3),
-        Isosurface(isolevel=-0.2, color=_config.VASP_RED, opacity=0.3),
+        Isosurface(isolevel=0.2, color=_config.VASP_COLORS["blue"], opacity=0.3),
+        Isosurface(isolevel=-0.2, color=_config.VASP_COLORS["red"], opacity=0.3),
     ]
     for selection, density, label in zip(selections, expected_density, expected_labels):
         expected = Expectation(label, density, isosurfaces)
@@ -228,10 +229,11 @@ def test_adding_components(noncollinear_density, Assert):
     else:
         expected_label = f"{source}(1 + 2)"
         expected_density = noncollinear_density.ref.output[source][1:]
+    color = _config.VASP_COLORS["cyan"]
     expected = Expectation(
         label=expected_label,
         density=expected_density[0] + expected_density[1],
-        isosurfaces=[Isosurface(isolevel=0.4, color=_config.VASP_CYAN, opacity=0.6)],
+        isosurfaces=[Isosurface(isolevel=0.4, color=color, opacity=0.6)],
     )
     check_view(noncollinear_density, expected, Assert, selection="1 + 2", isolevel=0.4)
 
@@ -239,7 +241,8 @@ def test_adding_components(noncollinear_density, Assert):
 @pytest.mark.parametrize("supercell", [2, (3, 2, 1)])
 def test_plotting_supercell(supercell, reference_density, Assert):
     source = reference_density.ref.source
-    isosurfaces = [Isosurface(isolevel=0.2, color=_config.VASP_CYAN, opacity=0.6)]
+    color = _config.VASP_COLORS["cyan"]
+    isosurfaces = [Isosurface(isolevel=0.2, color=color, opacity=0.6)]
     if source == "charge":
         expected = Expectation(
             label=source,
@@ -296,7 +299,7 @@ def test_collinear_to_contour(selection, collinear_density, Assert):
         expected_label = f"{source}({selection})"
         expected_data = collinear_density.ref.output[source][1, :, :, 7]
         if selection in ("magnetization", "mag", "m"):
-            # magnetization not allowed for tau
+            # magnetization not allowed for kinetic_energy
             return
     expected_lattice = collinear_density.ref.structure.lattice_vectors()[:2, :2]
     graph = collinear_density.to_contour(selection, c=-0.5)
@@ -333,7 +336,7 @@ def test_noncollinear_to_contour(noncollinear_density, selections, Assert):
     else:
         expected_labels = (f"{source}({selection})" for selection in selections)
         expected_data = noncollinear_density.ref.output[source][1:, :, 5, :]
-        if "(" in selections[0]:  # magnetization not allowed for tau
+        if "(" in selections[0]:  # magnetization not allowed for kinetic_energy
             return
     graph = noncollinear_density.to_contour(" ".join(selections), b=0.4)
     expected_lattice = noncollinear_density.ref.structure.lattice_vectors()[::2, ::2]

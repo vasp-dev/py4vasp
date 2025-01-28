@@ -87,7 +87,7 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         ion_arrow = view.IonArrow(
             quantity=forces,
             label="forces",
-            color=_config.VASP_PURPLE,
+            color=_config.VASP_COLORS["purple"],
             radius=0.2,
         )
         viewer.ion_arrows = [ion_arrow]

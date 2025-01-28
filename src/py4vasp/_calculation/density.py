@@ -83,8 +83,8 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
     def __str__(self):
         _raise_error_if_no_data(self._raw_data.charge)
         grid = self._raw_data.charge.shape[1:]
-        topology = calculation._topology.from_data(self._raw_data.structure.topology)
-        if self._selection == "tau":
+        topology = calculation.topology.from_data(self._raw_data.structure.topology)
+        if self._selection == "kinetic_energy":
             name = "Kinetic energy"
         elif self.is_nonpolarized():
             name = "Nonpolarized"
@@ -114,7 +114,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         the 0-th component.
 
         To nest density and component, please use parentheses, e.g. ``charge(1, 2)`` or
-        ``3(tau)``.
+        ``3(kinetic_energy)``.
 
         For convenience, py4vasp accepts the following aliases
 
@@ -122,7 +122,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
             *charge*, *n*, *charge_density*, and *electronic_charge_density*
 
         kinetic energy density
-            *tau*, *kinetic_energy*, and *kinetic_energy_density*
+            *kinetic_energy*, *kinetic_energy*, and *kinetic_energy_density*
 
         0th component
             {component0}
@@ -315,11 +315,12 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         if self._use_symmetric_isosurface(component):
             _raise_error_if_color_is_specified(color)
             return [
-                view.Isosurface(isolevel, _config.VASP_BLUE, opacity),
-                view.Isosurface(-isolevel, _config.VASP_RED, opacity),
+                view.Isosurface(isolevel, _config.VASP_COLORS["blue"], opacity),
+                view.Isosurface(-isolevel, _config.VASP_COLORS["red"], opacity),
             ]
         else:
-            return [view.Isosurface(isolevel, color or _config.VASP_CYAN, opacity)]
+            color = color or _config.VASP_COLORS["cyan"]
+            return [view.Isosurface(isolevel, color, opacity)]
 
     def _use_symmetric_isosurface(self, component):
         if component > 0 and self.is_nonpolarized():
@@ -367,7 +368,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         Take a slice of the kinetic energy density along the first lattice vector and
         rotate it such that the normal of the plane aligns with the x axis.
 
-        >>> calc.density.to_contour("tau", a=0.3, normal="x")
+        >>> calc.density.to_contour("kinetic_energy", a=0.3, normal="x")
         """
         cut, fraction = self._get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
@@ -427,7 +428,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         first lattice vector and rotate it such that the normal of the plane aligns with
         the x axis.
 
-        >>> calc.density.to_quiver("tau", a=0.3, normal="x")
+        >>> calc.density.to_quiver("kinetic_energy", a=0.3, normal="x")
         """
         cut, fraction = self._get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
@@ -468,9 +469,8 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
     @property
     def _selection(self):
         selection_map = {
-            "tau": "tau",
-            "kinetic_energy": "tau",
-            "kinetic_energy_density": "tau",
+            "kinetic_energy": "kinetic_energy",
+            "kinetic_energy_density": "kinetic_energy",
         }
         return selection_map.get(super()._selection)
 

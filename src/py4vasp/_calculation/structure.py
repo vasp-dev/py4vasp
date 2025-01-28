@@ -169,10 +169,12 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         {examples}
         """
         make_3d = lambda array: array if array.ndim == 3 else array[np.newaxis]
+        positions = make_3d(self.positions())
+        elements = np.tile(self._topology().elements(), (len(positions), 1))
         return view.View(
-            elements=np.atleast_2d(self._topology().elements()),
+            elements=elements,
             lattice_vectors=make_3d(self.lattice_vectors()),
-            positions=make_3d(self.positions()),
+            positions=positions,
             supercell=self._parse_supercell(supercell),
         )
 
@@ -358,7 +360,7 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         return calculation._topology.from_data(self._raw_data.topology)
 
     def _scale(self):
-        if isinstance(self._raw_data.cell.scale, np.float_):
+        if isinstance(self._raw_data.cell.scale, np.float64):
             return self._raw_data.cell.scale
         if not self._raw_data.cell.scale.is_none():
             return self._raw_data.cell.scale[()]

@@ -115,7 +115,7 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
             ion_arrows = view.IonArrow(
                 quantity=moments,
                 label=f"{selection} moments",
-                color=_config.VASP_BLUE,
+                color=_config.VASP_COLORS["blue"],
                 radius=0.2,
             )
             viewer.ion_arrows = [ion_arrows]

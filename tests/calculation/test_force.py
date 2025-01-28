@@ -49,7 +49,7 @@ def test_plot(forces, steps, supercell, Assert):
     assert arrows.quantity.ndim == 3
     Assert.allclose(arrows.quantity, forces.force_rescale * forces.ref.forces[steps])
     assert arrows.label == "forces"
-    assert arrows.color == _config.VASP_PURPLE
+    assert arrows.color == _config.VASP_COLORS["purple"]
     assert arrows.radius == 0.2
 
 
