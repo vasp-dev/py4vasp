@@ -45,7 +45,7 @@ def test_creation_from_file(mock_access, mock_from_file):
 @patch("py4vasp.raw.access", autospec=True)
 def test_all_attributes(mock_access):
     calc = Calculation.from_path("test_path")
-    for name in _calculation.QUANTITIES + _calculation.INPUT_FILES:
+    for name in _calculation.QUANTITIES: #  + _calculation.INPUT_FILES:
         assert hasattr(calc, name)
     mock_access.assert_not_called()
     mock_access.return_value.__enter__.assert_not_called()

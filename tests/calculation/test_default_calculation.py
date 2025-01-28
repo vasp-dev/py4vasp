@@ -19,6 +19,7 @@ def attribute_included(attr):
     return True
 
 
+@pytest.mark.skip("Input files are not included in current release.")
 def test_assigning_to_input_file(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     expected = "SYSTEM = demo INCAR file"
