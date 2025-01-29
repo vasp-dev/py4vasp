@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from py4vasp import calculation, exception, raw
+from py4vasp import exception, raw
 from py4vasp._calculation import _stoichiometry, base, slice_
 from py4vasp._third_party import view
 from py4vasp._util import documentation, import_, reader
@@ -357,7 +357,7 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         raise exception.IncorrectUsage(message)
 
     def _stoichiometry(self):
-        return calculation._stoichiometry.from_data(self._raw_data.stoichiometry)
+        return _stoichiometry.Stoichiometry.from_data(self._raw_data.stoichiometry)
 
     def _scale(self):
         if isinstance(self._raw_data.cell.scale, np.float64):

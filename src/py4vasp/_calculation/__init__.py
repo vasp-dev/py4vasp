@@ -1,45 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-"""Provide refinement functions for a the raw data of a VASP calculation run in the
-current directory.
-
-Usually one is not directly interested in the raw data that is produced but
-wants to produce either a figure for a publication or some post-processing of
-the data. This package contains multiple modules that enable these kinds of
-workflows by extracting the relevant data from the HDF5 file and transforming
-them into an accessible format. The modules also provide plotting functionality
-to get a quick insight about the data, which can then be refined either within
-python or a different tool to obtain publication-quality figures.
-
-Generally, all modules provide a `read` function that extracts the data from the
-HDF5 file and puts it into a Python dictionary. Where it makes sense in addition
-a `plot` function is available that converts the data into a figure for Jupyter
-notebooks. In addition, data conversion routines `to_X` may be available
-transforming the data into another format or file, which may be useful to
-generate plots with tools other than Python. For the specifics, please refer to
-the documentation of the individual modules.
-
-The raw data is read from the current directory. The :class:`~py4vasp.Calculation`
-class provides a more flexible interface with which you can determine the source
-directory or file for the VASP calculation manually. That class exposes functions
-of the modules as methods of attributes, i.e., the two following examples are
-equivalent:
-
-.. rubric:: using :mod:`~py4vasp.calculation` module
-
->>> from py4vasp import calculation
->>> calculation.dos.read()
-
-.. rubric:: using :class:`~py4vasp.Calculation` class
-
->>> from py4vasp import Calculation
->>> calc = Calculation.from_path(".")
->>> calc.dos.read()
-
-In the latter example, you can change the path from which the data is extracted.
-"""
 import importlib
 import pathlib
+import types
 
 from py4vasp import control, exception
 from py4vasp._util import convert
@@ -56,7 +19,6 @@ QUANTITIES = (
     "elastic_modulus",
     "electronic_minimization",
     "energy",
-    "exciton_eigenvector",
     "force",
     "force_constant",
     "internal_strain",
@@ -79,12 +41,13 @@ QUANTITIES = (
     "_dispersion",
     "_stoichiometry",
 )
+GROUPS = {"exciton": ("eigenvector",)}
 
 
 class Calculation:
-    """Manage access to input and output of single VASP calculation.
+    """Provide refinement functions for a the raw data of a VASP calculation run in any directory.
 
-    The :mod:`calculation` module always reads the VASP calculation from the current
+    The :data:`~py4vasp.calculation` object always reads the VASP calculation from the current
     working directory. This class gives you a more fine grained control so that you
     can use a Python script or Jupyter notebook in a different folder or rename the
     files that VASP produces.
@@ -97,7 +60,7 @@ class Calculation:
 
     With the Calculation instance, you can access the quantities VASP computes via
     the attributes of the object. The attributes are the same provided by the
-    :mod:`calculation` module. You can find links to how to use these quantities
+    :data:`~py4vasp.calculation` object. You can find links to how to use these quantities
     below.
 
     Examples
@@ -109,13 +72,12 @@ class Calculation:
     >>> calc.structure.print()  # to print the structure in a POSCAR format
 
     .. autosummary::
+       :toctree: _calculation
+       :nosignatures:
 
        from_file
        from_path
        path
-       INCAR
-       KPOINTS
-       POSCAR
     """
 
     def __init__(self, *args, **kwargs):
@@ -141,8 +103,8 @@ instead of the constructor Calculation()."""
         """
         calc = cls(_internal=True)
         calc._path = pathlib.Path(path_name).expanduser().resolve()
-        calc = _add_all_refinement_classes(calc, _add_attribute_from_path)
-        return _add_input_files(calc)
+        calc._file = None
+        return calc
 
     @classmethod
     def from_file(cls, file_name):
@@ -163,8 +125,8 @@ instead of the constructor Calculation()."""
         """
         calc = cls(_internal=True)
         calc._path = pathlib.Path(file_name).expanduser().resolve().parent
-        calc = _add_all_refinement_classes(calc, _AddAttributeFromFile(file_name))
-        return _add_input_files(calc)
+        calc._file = file_name
+        return calc
 
     def path(self):
         "Return the path in which the calculation is run."
@@ -199,52 +161,68 @@ instead of the constructor Calculation()."""
     #     self._POSCAR.write(str(poscar))
 
 
-def _add_all_refinement_classes(calc, add_single_class):
-    for name in QUANTITIES:
-        calc = add_single_class(calc, name)
+def _add_all_refinement_classes(calc):
+    for quantity in QUANTITIES:
+        calc = _add_property(calc, quantity)
     return calc
 
 
-def _add_attribute_from_path(calc, name):
-    class_name = convert.to_camelcase(name)
-    module = importlib.import_module(f"py4vasp._calculation.{name}")
+def _add_property(calc, quantity):
+    class_name = convert.to_camelcase(quantity)
+    module = importlib.import_module(f"py4vasp._calculation.{quantity}")
     class_ = getattr(module, class_name)
-    instance = class_.from_path(calc.path())
-    setattr(calc, name, instance)
+
+    def get_quantity(self):
+        if self._file is None:
+            return class_.from_path(self._path)
+        else:
+            return class_.from_file(self._file)
+
+    print(quantity, get_quantity)
+    setattr(calc, quantity, property(get_quantity, doc=class_.__doc__))
     return calc
 
 
-class _AddAttributeFromFile:
-    def __init__(self, file_name):
-        self._file_name = file_name
-
-    def __call__(self, calc, name):
-        class_name = convert.to_camelcase(name)
-        module = importlib.import_module(f"py4vasp._calculation.{name}")
-        class_ = getattr(module, class_name)
-        instance = class_.from_file(self._file_name)
-        setattr(calc, name, instance)
-        return calc
-
-
-def _add_to_documentation(calc, name):
-    calc.__doc__ += f"   ~py4vasp.calculation.{name}\n    "
-    return calc
-
-
-def _add_input_files(calc):
-    return calc
-    # Input files are not in current release
-    for name in INPUT_FILES:
-        file_ = getattr(control, name)(calc.path())
-        setattr(calc, f"_{name}", file_)
-    return calc
-
-
-Calculation = _add_all_refinement_classes(Calculation, _add_to_documentation)
+Calculation = _add_all_refinement_classes(Calculation)
 
 
 class DefaultCalculationFactory:
+    """Provide refinement functions for a the raw data of a VASP calculation run in the
+    current directory.
+
+    Usually one is not directly interested in the raw data that is produced but
+    wants to produce either a figure for a publication or some post-processing of
+    the data. `calculation` contains multiple quantities that enable these kinds of
+    workflows by extracting the relevant data from the HDF5 file and transforming
+    them into an accessible format.
+
+    Generally, all quantities provide a `read` function that extracts the data from the
+    HDF5 file and puts it into a Python dictionary. Where it makes sense in addition
+    a `plot` function is available that converts the data into a figure for Jupyter
+    notebooks. In addition, data conversion routines `to_X` may be available
+    transforming the data into another format or file, which may be useful to
+    generate plots with tools other than Python. For the specifics, please refer to
+    the documentation of the individual quantities.
+
+    `calculation` reads the raw data from the current directory and from the default
+    VASP output files. With the :class:`~py4vasp.Calculation` class, you can tailor
+    the location of the files to your needs. Both have access to the same quantities,
+    i.e., the two following examples are equivalent:
+
+    .. rubric:: using :data:`~py4vasp.calculation` object
+
+    >>> from py4vasp import calculation
+    >>> calculation.dos.read()
+
+    .. rubric:: using :class:`~py4vasp.Calculation` class
+
+    >>> from py4vasp import Calculation
+    >>> calc = Calculation.from_path(".")
+    >>> calc.dos.read()
+
+    In the latter example, you can change the path from which the data is extracted.
+    """
+
     def __getattr__(self, attr):
         calc = Calculation.from_path(".")
         return getattr(calc, attr)
@@ -254,4 +232,6 @@ class DefaultCalculationFactory:
         return setattr(calc, attr, value)
 
 
+# we use a factory instead of an instance of Calculation here so that changing the
+# directory works -> calculation will always point to the current directory
 calculation = DefaultCalculationFactory()

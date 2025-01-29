@@ -1,6 +1,5 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp import calculation
 from py4vasp._calculation import base, projector
 from py4vasp._third_party import graph
 from py4vasp._util import documentation, import_
@@ -126,7 +125,7 @@ class Dos(base.Refinery, graph.Mixin):
         return self._raw_data.dos.shape[0] == 2
 
     def _projectors(self):
-        return calculation.projector.from_data(self._raw_data.projectors)
+        return projector.Projector.from_data(self._raw_data.projectors)
 
     def _read_data(self, selection):
         return {

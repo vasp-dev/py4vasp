@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp import calculation
+from py4vasp import _calculation
 from py4vasp._calculation import base
 from py4vasp._util import convert
 
@@ -54,4 +54,4 @@ class ExcitonEigenvector(base.Refinery):
 
     @property
     def _dispersion(self):
-        return calculation._dispersion.from_data(self._raw_data.dispersion)
+        return _calculation._dispersion.from_data(self._raw_data.dispersion)

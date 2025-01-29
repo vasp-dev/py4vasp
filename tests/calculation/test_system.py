@@ -4,7 +4,8 @@ import string
 
 import pytest
 
-from py4vasp import calculation, raw
+from py4vasp import raw
+from py4vasp._calculation.system import System
 from py4vasp._util.convert import text_to_string
 
 
@@ -25,7 +26,7 @@ def test_system_read(string_format, byte_format):
 
 def check_system_read(raw_system):
     expected = {"system": text_to_string(raw_system.system)}
-    assert calculation.system.from_data(raw_system).read() == expected
+    assert System.from_data(raw_system).read() == expected
 
 
 def test_system_print(string_format, byte_format, format_):
@@ -34,10 +35,10 @@ def test_system_print(string_format, byte_format, format_):
 
 
 def check_system_print(raw_system, format_):
-    system = calculation.system.from_data(raw_system)
+    system = System.from_data(raw_system)
     actual, _ = format_(system)
     assert actual["text/plain"] == text_to_string(raw_system.system)
 
 
 def test_factory_methods(string_format, check_factory_methods):
-    check_factory_methods(calculation.system, string_format)
+    check_factory_methods(System, string_format)

@@ -6,21 +6,21 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import calculation
+from py4vasp import _calculation
 from py4vasp._util import convert
 
 
 @pytest.fixture
 def phonon_band(raw_data):
     raw_band = raw_data.phonon_band("default")
-    band = calculation.phonon_band.from_data(raw_band)
+    band = _calculation.phonon_band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
     band.ref.bands = raw_band.dispersion.eigenvalues
     band.ref.modes = convert.to_complex(raw_band.eigenvectors)
     raw_qpoints = raw_band.dispersion.kpoints
-    band.ref.qpoints = calculation.kpoint.from_data(raw_qpoints)
+    band.ref.qpoints = _calculation.kpoint.from_data(raw_qpoints)
     raw_stoichiometry = raw_band.stoichiometry
-    band.ref.stoichiometry = calculation._stoichiometry.from_data(raw_stoichiometry)
+    band.ref.stoichiometry = _calculation._stoichiometry.from_data(raw_stoichiometry)
     Sr = slice(0, 2)
     band.ref.Sr = np.sum(np.abs(band.ref.modes[:, :, Sr, :]), axis=(2, 3))
     Ti = 2
@@ -131,4 +131,4 @@ phonon band data:
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.phonon_band("default")
-    check_factory_methods(calculation.phonon_band, data)
+    check_factory_methods(_calculation.phonon_band, data)

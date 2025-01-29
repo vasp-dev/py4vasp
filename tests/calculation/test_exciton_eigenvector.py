@@ -5,15 +5,17 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import calculation
+from py4vasp import _calculation
 
 
 @pytest.fixture
 def exciton_eigenvector(raw_data):
     raw_eigenvector = raw_data.exciton_eigenvector("default")
-    eigenvector = calculation.exciton_eigenvector.from_data(raw_eigenvector)
+    eigenvector = _calculation.exciton.eigenvector.from_data(raw_eigenvector)
     eigenvector.ref = types.SimpleNamespace()
-    eigenvector.ref.dispersion = calculation._dispersion.from_data(raw_eigenvector.dispersion)
+    eigenvector.ref.dispersion = _calculation._dispersion.from_data(
+        raw_eigenvector.dispersion
+    )
     eigenvectors = raw_eigenvector.eigenvectors
     eigenvector.ref.eigenvectors = eigenvectors[:, :, 0] + eigenvectors[:, :, 1] * 1j
     eigenvector.ref.fermi_energy = raw_eigenvector.fermi_energy
@@ -35,7 +37,9 @@ def test_eigenvector_read(exciton_eigenvector, Assert):
     Assert.allclose(actual["eigenvectors"], exciton_eigenvector.ref.eigenvectors)
     Assert.allclose(actual["fermi_energy"], exciton_eigenvector.ref.fermi_energy)
     assert actual["first_valence_band"] == exciton_eigenvector.ref.first_valence_band
-    assert actual["first_conduction_band"] == exciton_eigenvector.ref.first_conduction_band
+    assert (
+        actual["first_conduction_band"] == exciton_eigenvector.ref.first_conduction_band
+    )
 
 
 def test_eigenvector_print(exciton_eigenvector, format_):
@@ -50,4 +54,4 @@ BSE eigenvector data:
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.exciton_eigenvector("default")
-    check_factory_methods(calculation.exciton_eigenvector, data)
+    check_factory_methods(_calculation.exciton.eigenvector, data)

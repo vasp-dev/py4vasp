@@ -36,5 +36,5 @@ class POSCAR(base.InputFile, view.Mixin):
         View
             Visualize the structure as a 3d figure.
         """
-        structure = py4vasp.calculation.structure.from_POSCAR(self, elements=elements)
+        structure = py4vasp._calculation.structure.from_POSCAR(self, elements=elements)
         return structure.plot(supercell)

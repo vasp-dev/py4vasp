@@ -6,13 +6,13 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import calculation
+from py4vasp import _calculation
 
 
 @pytest.fixture
 def phonon_dos(raw_data):
     raw_dos = raw_data.phonon_dos("default")
-    dos = calculation.phonon_dos.from_data(raw_dos)
+    dos = _calculation.phonon_dos.from_data(raw_dos)
     dos.ref = types.SimpleNamespace()
     dos.ref.energies = raw_dos.energies
     dos.ref.total_dos = raw_dos.dos
@@ -107,4 +107,4 @@ phonon DOS:
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.phonon_dos("default")
-    check_factory_methods(calculation.phonon_dos, data)
+    check_factory_methods(_calculation.phonon_dos, data)

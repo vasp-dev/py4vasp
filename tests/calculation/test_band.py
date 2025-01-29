@@ -6,19 +6,22 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import calculation, exception
+from py4vasp import exception
+from py4vasp._calculation.band import Band
+from py4vasp._calculation.kpoint import Kpoint
+from py4vasp._calculation.projector import Projector
 
 
 @pytest.fixture
 def single_band(raw_data):
     raw_band = raw_data.band("single")
-    band = calculation.band.from_data(raw_band)
+    band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
     band.ref.fermi_energy = 0.0
     band.ref.bands = raw_band.dispersion.eigenvalues[0]
     band.ref.occupations = raw_band.occupations[0]
     raw_kpoints = raw_band.dispersion.kpoints
-    band.ref.kpoints = calculation.kpoint.from_data(raw_kpoints)
+    band.ref.kpoints = Kpoint.from_data(raw_kpoints)
     formatter = {"float": lambda x: f"{x:.2f}"}
     kpoint_to_string = lambda vec: np.array2string(vec, formatter=formatter) + " 1"
     band.ref.index = [kpoint_to_string(kpoint) for kpoint in raw_kpoints.coordinates]
@@ -28,7 +31,7 @@ def single_band(raw_data):
 @pytest.fixture
 def multiple_bands(raw_data):
     raw_band = raw_data.band("multiple")
-    band = calculation.band.from_data(raw_band)
+    band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
     band.ref.fermi_energy = raw_band.fermi_energy
     band.ref.bands = raw_band.dispersion.eigenvalues[0] - raw_band.fermi_energy
@@ -39,7 +42,7 @@ def multiple_bands(raw_data):
 @pytest.fixture
 def with_projectors(raw_data):
     raw_band = raw_data.band("multiple with_projectors")
-    band = calculation.band.from_data(raw_band)
+    band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
     band.ref.bands = raw_band.dispersion.eigenvalues[0] - raw_band.fermi_energy
     band.ref.Sr = np.sum(raw_band.projections[0, 0:2, :, :, :], axis=(0, 1))
@@ -50,25 +53,25 @@ def with_projectors(raw_data):
 @pytest.fixture
 def line_no_labels(raw_data):
     raw_band = raw_data.band("line no_labels")
-    band = calculation.band.from_data(raw_band)
+    band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
-    band.ref.kpoints = calculation.kpoint.from_data(raw_band.dispersion.kpoints)
+    band.ref.kpoints = Kpoint.from_data(raw_band.dispersion.kpoints)
     return band
 
 
 @pytest.fixture
 def line_with_labels(raw_data):
     raw_band = raw_data.band("line with_labels")
-    band = calculation.band.from_data(raw_band)
+    band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
-    band.ref.kpoints = calculation.kpoint.from_data(raw_band.dispersion.kpoints)
+    band.ref.kpoints = Kpoint.from_data(raw_band.dispersion.kpoints)
     return band
 
 
 @pytest.fixture
 def spin_polarized(raw_data):
     raw_band = raw_data.band("spin_polarized")
-    band = calculation.band.from_data(raw_band)
+    band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
     assert raw_band.fermi_energy == 0
     band.ref.bands_up = raw_band.dispersion.eigenvalues[0]
@@ -81,7 +84,7 @@ def spin_polarized(raw_data):
 @pytest.fixture
 def spin_projectors(raw_data):
     raw_band = raw_data.band("spin_polarized with_projectors")
-    band = calculation.band.from_data(raw_band)
+    band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
     band.ref.bands_up = raw_band.dispersion.eigenvalues[0]
     band.ref.bands_down = raw_band.dispersion.eigenvalues[1]
@@ -91,7 +94,7 @@ def spin_projectors(raw_data):
     band.ref.Fe_d_down = np.sum(raw_band.projections[1, 0:3, 2, :, :], axis=0)
     band.ref.O_up = np.sum(raw_band.projections[0, 3:7, :, :, :], axis=(0, 1))
     band.ref.O_down = np.sum(raw_band.projections[1, 3:7, :, :, :], axis=(0, 1))
-    projector = calculation.projector.from_data(raw_band.projectors)
+    projector = Projector.from_data(raw_band.projectors)
     band.ref.projectors_string = str(projector)
     return band
 
@@ -154,7 +157,7 @@ def test_more_projections_style(raw_data, Assert):
     test checks that this does not lead to any issues when an available element
     is used."""
     raw_band = raw_data.band("spin_polarized excess_orbitals")
-    band = calculation.band.from_data(raw_band).read("Fe g")
+    band = Band.from_data(raw_band).read("Fe g")
     zero = np.zeros_like(band["projections"]["Fe_up"])
     Assert.allclose(band["projections"]["g_up"], zero)
     Assert.allclose(band["projections"]["g_down"], zero)
@@ -293,7 +296,7 @@ def test_plot_incorrect_width(with_projectors):
         with_projectors.plot("Sr", width="not a number")
 
 
-@patch("py4vasp._calculation.band.Band.to_graph")
+@patch.object(Band, "to_graph")
 def test_to_plotly(mock_plot, single_band):
     fig = single_band.to_plotly("selection", width=0.2)
     mock_plot.assert_called_once_with("selection", width=0.2)
@@ -309,7 +312,7 @@ def test_to_image(single_band):
 
 
 def check_to_image(single_band, filename_argument, expected_filename):
-    with patch("py4vasp._calculation.band.Band.to_plotly") as plot:
+    with patch.object(Band, "to_plotly") as plot:
         single_band.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
@@ -362,4 +365,4 @@ spin polarized band data:
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.band("multiple")
-    check_factory_methods(calculation.band, data)
+    check_factory_methods(Band, data)

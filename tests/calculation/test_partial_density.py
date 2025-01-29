@@ -6,8 +6,8 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import calculation
-from py4vasp._calculation.partial_density import STM_settings
+from py4vasp._calculation.partial_density import PartialDensity, STM_settings
+from py4vasp._calculation.structure import Structure
 from py4vasp._util.slicing import plane
 from py4vasp.exception import IncorrectUsage, NoData, NotImplemented
 
@@ -35,7 +35,7 @@ from py4vasp.exception import IncorrectUsage, NoData, NotImplemented
         "split_bands and split_kpoints and spin_polarized Sr2TiO4",
     ]
 )
-def PartialDensity(raw_data, request):
+def AnyPartialDensity(raw_data, request):
     return make_reference_partial_density(raw_data, request.param)
 
 
@@ -88,11 +88,9 @@ def spin(request):
 
 def make_reference_partial_density(raw_data, selection):
     raw_partial_density = raw_data.partial_density(selection=selection)
-    parchg = calculation.partial_density.from_data(raw_partial_density)
+    parchg = PartialDensity.from_data(raw_partial_density)
     parchg.ref = types.SimpleNamespace()
-    parchg.ref.structure = calculation.structure.from_data(
-        raw_partial_density.structure
-    )
+    parchg.ref.structure = Structure.from_data(raw_partial_density.structure)
     parchg.ref.plane_vectors = plane(
         cell=parchg.ref.structure.lattice_vectors(),
         cut="c",
@@ -105,9 +103,9 @@ def make_reference_partial_density(raw_data, selection):
     return parchg
 
 
-def test_read(PartialDensity, Assert, not_core):
-    actual = PartialDensity.read()
-    expected = PartialDensity.ref
+def test_read(AnyPartialDensity, Assert, not_core):
+    actual = AnyPartialDensity.read()
+    expected = AnyPartialDensity.ref
     Assert.allclose(actual["bands"], expected.bands)
     Assert.allclose(actual["kpoints"], expected.kpoints)
     Assert.allclose(actual["grid"], expected.grid)
@@ -116,27 +114,27 @@ def test_read(PartialDensity, Assert, not_core):
     Assert.same_structure(actual["structure"], expected.structure.read())
 
 
-def test_stoichiometry(PartialDensity, not_core):
-    actual = PartialDensity._stoichiometry()
-    expected = str(PartialDensity.ref.structure._stoichiometry())
+def test_stoichiometry(AnyPartialDensity, not_core):
+    actual = AnyPartialDensity._stoichiometry()
+    expected = str(AnyPartialDensity.ref.structure._stoichiometry())
     assert actual == expected
 
 
-def test_bands(PartialDensity, Assert, not_core):
-    actual = PartialDensity.bands()
-    expected = PartialDensity.ref.bands
+def test_bands(AnyPartialDensity, Assert, not_core):
+    actual = AnyPartialDensity.bands()
+    expected = AnyPartialDensity.ref.bands
     Assert.allclose(actual, expected)
 
 
-def test_kpoints(PartialDensity, Assert, not_core):
-    actual = PartialDensity.kpoints()
-    expected = PartialDensity.ref.kpoints
+def test_kpoints(AnyPartialDensity, Assert, not_core):
+    actual = AnyPartialDensity.kpoints()
+    expected = AnyPartialDensity.ref.kpoints
     Assert.allclose(actual, expected)
 
 
-def test_grid(PartialDensity, Assert, not_core):
-    actual = PartialDensity.grid()
-    expected = PartialDensity.ref.grid
+def test_grid(AnyPartialDensity, Assert, not_core):
+    actual = AnyPartialDensity.grid()
+    expected = AnyPartialDensity.ref.grid
     Assert.allclose(actual, expected)
 
 
@@ -374,4 +372,4 @@ def test_interpolation_setting_change(PolarizedNonSplitPartialDensity, not_core)
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.partial_density("spin_polarized")
-    check_factory_methods(calculation.partial_density, data)
+    check_factory_methods(PartialDensity, data)

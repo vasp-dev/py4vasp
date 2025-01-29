@@ -14,7 +14,7 @@ def _match_combine_with_refinement(combine_name: str):
         "Forces": "force",
         "Stresses": "stress",
     }
-    return getattr(py4vasp.calculation, combine_to_refinement_name[combine_name])
+    return getattr(py4vasp._calculation, combine_to_refinement_name[combine_name])
     # for _, class_ in inspect.getmembers(data_depr, inspect.isclass):
     #     if class_.__name__ == combine_to_refinement_name[combine_name]:
     #         return class_

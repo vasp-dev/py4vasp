@@ -1,7 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp import calculation
-from py4vasp._calculation import base
+from py4vasp._calculation import bandgap, base
 from py4vasp._third_party import graph
 
 
@@ -42,14 +41,14 @@ class Workfunction(base.Refinery, graph.Mixin):
             Contains vacuum potential, average potential and relevant reference energies
             within the surface.
         """
-        bandgap = calculation.bandgap.from_data(self._raw_data.reference_potential)
+        gap = bandgap.Bandgap.from_data(self._raw_data.reference_potential)
         return {
             "direction": f"lattice vector {self._raw_data.idipol}",
             "distance": self._raw_data.distance[:],
             "average_potential": self._raw_data.average_potential[:],
             "vacuum_potential": self._raw_data.vacuum_potential[:],
-            "valence_band_maximum": bandgap.valence_band_maximum(),
-            "conduction_band_minimum": bandgap.conduction_band_minimum(),
+            "valence_band_maximum": gap.valence_band_maximum(),
+            "conduction_band_minimum": gap.conduction_band_minimum(),
             "fermi_energy": self._raw_data.fermi_energy,
         }
 

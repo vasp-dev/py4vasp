@@ -1,7 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp import calculation
-from py4vasp._calculation import base, structure
+from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import view
 from py4vasp._util import convert
 
@@ -71,7 +70,7 @@ class CONTCAR(base.Refinery, view.Mixin, structure.Mixin):
         yield from _ion_velocity_lines(self._raw_data.ion_velocities)
 
     def _stoichiometry(self):
-        return calculation._stoichiometry.from_data(
+        return _stoichiometry.Stoichiometry.from_data(
             self._raw_data.structure.stoichiometry
         )
 
