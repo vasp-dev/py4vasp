@@ -43,6 +43,7 @@ QUANTITIES = (
 )
 GROUPS = {"exciton": ("eigenvector",)}
 
+__all__ = QUANTITIES
 
 class Calculation:
     """Provide refinement functions for a the raw data of a VASP calculation run in any directory.
@@ -70,14 +71,6 @@ class Calculation:
     >>> calc.dos.plot()         # to plot the density of states
     >>> calc.magnetism.read()   # to read the magnetic moments
     >>> calc.structure.print()  # to print the structure in a POSCAR format
-
-    .. autosummary::
-       :toctree: _calculation
-       :nosignatures:
-
-       from_file
-       from_path
-       path
     """
 
     def __init__(self, *args, **kwargs):
@@ -168,6 +161,9 @@ def _add_all_refinement_classes(calc):
 
 
 def _add_property(calc, quantity):
+    # Be careful when refactoring this code, if the class_ is in a scope where it gets
+    # changed like in the _add_all_refinement_classes routine, it may overwrite the
+    # previous setting and all properties point to the same quantity.
     class_name = convert.to_camelcase(quantity)
     module = importlib.import_module(f"py4vasp._calculation.{quantity}")
     class_ = getattr(module, class_name)
@@ -178,7 +174,6 @@ def _add_property(calc, quantity):
         else:
             return class_.from_file(self._file)
 
-    print(quantity, get_quantity)
     setattr(calc, quantity, property(get_quantity, doc=class_.__doc__))
     return calc
 

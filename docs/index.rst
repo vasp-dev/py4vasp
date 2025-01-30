@@ -134,32 +134,24 @@ a look at the tutorials_ for VASP. Many of them use *py4vasp* to plot or analyze
 the data produced by VASP, so this may give you an excellent starting point to learn
 how you can apply *py4vasp* in your research.
 
-.. currentmodule:: py4vasp
+.. rubric:: Optional dependencies
 
-.. rubric:: Packages
-
-.. autosummary::
-   :toctree: _packages
-   :template: package.rst
-   :recursive:
-
-   calculation
-   exception
-
-.. rubric:: Classes
-
-.. autosummary::
-   :toctree: _classes
-   :template: class.rst
-
-   Calculation
-
-
-Optional dependencies
----------------------
 You can install mdtraj if you want to analyze molecular dynamics trajectories
 beyond the pair correlation function. We recommend using conda for the installation
 which we found to be more robust than pip.
+
+.. toctree::
+   :hidden:
+
+   calculation
+   generate
+
+.. currentmodule:: py4vasp
+
+.. autosummary::
+
+   calculation
+   Calculation
 
 
 ----------------------------------------------------------------------------------------
