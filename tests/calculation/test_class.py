@@ -52,6 +52,11 @@ def test_all_attributes(mock_access):
     calc = Calculation.from_path("test_path")
     for name in _calculation.QUANTITIES:  #  + _calculation.INPUT_FILES:
         assert hasattr(calc, name)
+    for group, quantities in _calculation.GROUPS.items():
+        assert hasattr(calc, group)
+        namespace = getattr(calc, group)
+        for quantity in quantities:
+            assert hasattr(namespace, quantity)
     mock_access.assert_not_called()
     mock_access.return_value.__enter__.assert_not_called()
 

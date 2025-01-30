@@ -156,11 +156,17 @@ instead of the constructor Calculation()."""
 
 def _add_all_refinement_classes(calc):
     for quantity in QUANTITIES:
-        calc = _add_property(calc, quantity)
+        setattr(calc, quantity, _make_property(quantity))
+    for group, quantities in GROUPS.items():
+        namespace = types.SimpleNamespace()
+        for quantity in quantities:
+            full_name = f"{group}_{quantity}"
+            setattr(namespace, quantity, _make_property(full_name))
+        setattr(calc, group, namespace)
     return calc
 
 
-def _add_property(calc, quantity):
+def _make_property(quantity):
     # Be careful when refactoring this code, if the class_ is in a scope where it gets
     # changed like in the _add_all_refinement_classes routine, it may overwrite the
     # previous setting and all properties point to the same quantity.
@@ -174,8 +180,7 @@ def _add_property(calc, quantity):
         else:
             return class_.from_file(self._file)
 
-    setattr(calc, quantity, property(get_quantity, doc=class_.__doc__))
-    return calc
+    return property(get_quantity, doc=class_.__doc__)
 
 
 Calculation = _add_all_refinement_classes(Calculation)

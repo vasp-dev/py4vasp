@@ -5,16 +5,16 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import _calculation
+from py4vasp._calculation._dispersion import Dispersion
+from py4vasp._calculation.exciton_eigenvector import ExcitonEigenvector
 
 
 @pytest.fixture
 def exciton_eigenvector(raw_data):
     raw_eigenvector = raw_data.exciton_eigenvector("default")
-    eigenvector = _calculation.exciton.eigenvector.from_data(raw_eigenvector)
+    eigenvector = ExcitonEigenvector.from_data(raw_eigenvector)
     eigenvector.ref = types.SimpleNamespace()
-    eigenvector.ref.dispersion = _calculation._dispersion.from_data(
-        raw_eigenvector.dispersion
+    eigenvector.ref.dispersion = Dispersion.from_data(        raw_eigenvector.dispersion
     )
     eigenvectors = raw_eigenvector.eigenvectors
     eigenvector.ref.eigenvectors = eigenvectors[:, :, 0] + eigenvectors[:, :, 1] * 1j
@@ -54,4 +54,4 @@ BSE eigenvector data:
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.exciton_eigenvector("default")
-    check_factory_methods(_calculation.exciton.eigenvector, data)
+    check_factory_methods(ExcitonEigenvector, data)
