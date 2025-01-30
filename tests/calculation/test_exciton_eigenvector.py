@@ -14,8 +14,7 @@ def exciton_eigenvector(raw_data):
     raw_eigenvector = raw_data.exciton_eigenvector("default")
     eigenvector = ExcitonEigenvector.from_data(raw_eigenvector)
     eigenvector.ref = types.SimpleNamespace()
-    eigenvector.ref.dispersion = Dispersion.from_data(        raw_eigenvector.dispersion
-    )
+    eigenvector.ref.dispersion = Dispersion.from_data(raw_eigenvector.dispersion)
     eigenvectors = raw_eigenvector.eigenvectors
     eigenvector.ref.eigenvectors = eigenvectors[:, :, 0] + eigenvectors[:, :, 1] * 1j
     eigenvector.ref.fermi_energy = raw_eigenvector.fermi_energy

@@ -26,8 +26,6 @@ QUANTITIES = (
     "magnetism",
     "pair_correlation",
     "partial_density",
-    "phonon_band",
-    "phonon_dos",
     "piezoelectric_tensor",
     "polarization",
     "potential",
@@ -41,9 +39,13 @@ QUANTITIES = (
     "_dispersion",
     "_stoichiometry",
 )
-GROUPS = {"exciton": ("eigenvector",)}
+GROUPS = {
+    "exciton": ("eigenvector",),
+    "phonon": ("band", "dos"),
+}
 
 __all__ = QUANTITIES
+
 
 class Calculation:
     """Provide refinement functions for a the raw data of a VASP calculation run in any directory.

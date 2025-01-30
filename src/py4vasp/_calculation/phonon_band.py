@@ -2,8 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import _calculation
-from py4vasp._calculation import base, phonon
+from py4vasp._calculation import _dispersion, base, phonon
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
 
@@ -75,7 +74,7 @@ class PhononBand(phonon.Mixin, base.Refinery, graph.Mixin):
         return graph
 
     def _dispersion(self):
-        return _calculation._dispersion.from_data(self._raw_data.dispersion)
+        return _dispersion.Dispersion.from_data(self._raw_data.dispersion)
 
     def _modes(self):
         return convert.to_complex(self._raw_data.eigenvectors[:])

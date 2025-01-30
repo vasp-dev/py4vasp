@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp._calculation import base, _dispersion
+from py4vasp._calculation import _dispersion, base
 from py4vasp._util import convert
 
 
