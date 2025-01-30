@@ -1,10 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import copy
 import importlib
 import pathlib
-import types
 
-from py4vasp import control, exception
+from py4vasp import exception
 from py4vasp._util import convert
 
 INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
@@ -160,11 +160,7 @@ def _add_all_refinement_classes(calc):
     for quantity in QUANTITIES:
         setattr(calc, quantity, _make_property(quantity))
     for group, quantities in GROUPS.items():
-        namespace = types.SimpleNamespace()
-        for quantity in quantities:
-            full_name = f"{group}_{quantity}"
-            setattr(namespace, quantity, _make_property(full_name))
-        setattr(calc, group, namespace)
+        setattr(calc, group, _make_group(group, quantities))
     return calc
 
 
@@ -183,6 +179,24 @@ def _make_property(quantity):
             return class_.from_file(self._file)
 
     return property(get_quantity, doc=class_.__doc__)
+
+
+def _make_group(group_name, quantities):
+    # The Group class for each group is constructed on the fly. Alternatively you could
+    # create a Group for every instance needed and construct the required properties as
+    # needed. It is important that they are distinct classes.
+    def get_group(self):
+        class Group:
+            def __init__(self, calculation):
+                self._path = calculation._path
+                self._file = calculation._file
+
+        for quantity in quantities:
+            full_name = f"{group_name}_{quantity}"
+            setattr(Group, quantity, _make_property(full_name))
+        return Group(self)
+
+    return property(get_group)
 
 
 Calculation = _add_all_refinement_classes(Calculation)

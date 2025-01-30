@@ -8,7 +8,10 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import _calculation, exception
+from py4vasp import exception
+from py4vasp._calculation.energy import Energy
+from py4vasp._calculation.stress import Stress
+from py4vasp._calculation.force import Force
 from py4vasp._analysis.mlff import MLFFErrorAnalysis
 
 
@@ -61,15 +64,15 @@ def mock_calculations(raw_data):
     data = defaultdict(lambda: defaultdict(list))
     for datatype in ["dft_data", "mlff_data"]:
         raw_energy = raw_data.energy("relax", randomize=True)
-        energy = _calculation.energy.from_data(raw_energy)
+        energy = Energy.from_data(raw_energy)
         energy_data = energy.read()
         data["_energies"][datatype].append(energy_data)
         raw_force = raw_data.force("Sr2TiO4", randomize=True)
-        force = _calculation.force.from_data(raw_force)
+        force = Force.from_data(raw_force)
         force_data = force.read()
         data["_forces"][datatype].append(force_data)
         raw_stress = raw_data.stress("Sr2TiO4", randomize=True)
-        stress = _calculation.stress.from_data(raw_stress)
+        stress = Stress.from_data(raw_stress)
         stress_data = stress.read()
         data["_stresses"][datatype].append(stress_data)
         data["_paths"][datatype].append(Path(__file__) / "calc")
@@ -84,15 +87,15 @@ def mock_multiple_calculations(raw_data):
     for datatype in ["dft_data", "mlff_data"]:
         for i in range(4):
             raw_energy = raw_data.energy("relax", randomize=True)
-            energy = _calculation.energy.from_data(raw_energy)
+            energy = Energy.from_data(raw_energy)
             energy_data = energy.read()
             data["_energies"][datatype].append(energy_data)
             raw_force = raw_data.force("Sr2TiO4", randomize=True)
-            force = _calculation.force.from_data(raw_force)
+            force = Force.from_data(raw_force)
             force_data = force.read()
             data["_forces"][datatype].append(force_data)
             raw_stress = raw_data.stress("Sr2TiO4", randomize=True)
-            stress = _calculation.stress.from_data(raw_stress)
+            stress = Stress.from_data(raw_stress)
             stress_data = stress.read()
             data["_stresses"][datatype].append(stress_data)
             data["_paths"][datatype].append(Path(__file__) / "calc")
@@ -106,7 +109,7 @@ def mock_calculations_incorrect(raw_data):
     data = defaultdict(lambda: defaultdict(list))
     for datatype in ["dft_data", "mlff_data"]:
         raw_energy = raw_data.energy("relax", randomize=True)
-        energy = _calculation.energy.from_data(raw_energy)
+        energy = Energy.from_data(raw_energy)
         energy_data = energy.read()
         data["_energies"][datatype].append(energy_data)
         if datatype == "mlff_data":
@@ -114,11 +117,11 @@ def mock_calculations_incorrect(raw_data):
         else:
             species = "Fe3O4"
         raw_force = raw_data.force(species, randomize=True)
-        force = _calculation.force.from_data(raw_force)
+        force = Force.from_data(raw_force)
         force_data = force.read()
         data["_forces"][datatype].append(force_data)
         raw_stress = raw_data.stress("Sr2TiO4", randomize=True)
-        stress = _calculation.stress.from_data(raw_stress)
+        stress = Stress.from_data(raw_stress)
         stress_data = stress.read()
         data["_stresses"][datatype].append(stress_data)
         data["_paths"][datatype].append(Path(__file__) / "calc")
