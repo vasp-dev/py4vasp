@@ -2,8 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import _config, calculation, exception
-from py4vasp._calculation import base, structure
+from py4vasp import _config, exception
+from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import graph, view
 from py4vasp._util import documentation, import_, index, select, slicing
 
@@ -84,7 +84,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         _raise_error_if_no_data(self._raw_data.charge)
         grid = self._raw_data.charge.shape[1:]
         raw_stoichiometry = self._raw_data.structure.stoichiometry
-        stoichiometry = calculation._stoichiometry.from_data(raw_stoichiometry)
+        stoichiometry = _stoichiometry.Stoichiometry.from_data(raw_stoichiometry)
         if self._selection == "kinetic_energy":
             name = "Kinetic energy"
         elif self.is_nonpolarized():

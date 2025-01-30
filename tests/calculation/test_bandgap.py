@@ -6,7 +6,8 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import calculation, exception
+from py4vasp import exception
+from py4vasp._calculation.bandgap import Bandgap
 
 VBM = 0
 CBM = 1
@@ -31,7 +32,7 @@ def spin_polarized(raw_data):
 
 
 def setup_bandgap(raw_gap):
-    bandgap = calculation.bandgap.from_data(raw_gap)
+    bandgap = Bandgap.from_data(raw_gap)
     bandgap.ref = types.SimpleNamespace()
     bandgap.ref.fundamental = raw_gap.values[..., CBM] - raw_gap.values[..., VBM]
     bandgap.ref.vbm = raw_gap.values[..., VBM]
@@ -164,7 +165,7 @@ def test_plot_incorrect_selection(bandgap, selection):
         bandgap.plot(selection)
 
 
-@patch("py4vasp._calculation.bandgap.Bandgap.to_graph")
+@patch.object(Bandgap, "to_graph")
 def test_bandgap_to_plotly(mock_plot, bandgap):
     fig = bandgap.to_plotly()
     mock_plot.assert_called_once_with()
@@ -180,7 +181,7 @@ def test_to_image(bandgap):
 
 
 def check_to_image(bandgap, filename_argument, expected_filename):
-    with patch("py4vasp._calculation.bandgap.Bandgap.to_plotly") as plot:
+    with patch.object(Bandgap, "to_plotly") as plot:
         bandgap.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
@@ -310,4 +311,4 @@ Fermi energy:               11.401754"""
 
 def test_factory_methods(raw_data, check_factory_methods):
     raw_gap = raw_data.bandgap("default")
-    check_factory_methods(calculation.bandgap, raw_gap)
+    check_factory_methods(Bandgap, raw_gap)

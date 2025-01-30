@@ -4,8 +4,8 @@ import itertools
 
 import numpy as np
 
-from py4vasp import _config, calculation, exception
-from py4vasp._calculation import base, structure
+from py4vasp import _config, exception
+from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import view
 from py4vasp._util import select
 
@@ -39,7 +39,7 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
             description = "noncollinear potential:"
         else:
             description = "nonpolarized potential:"
-        stoichiometry = calculation._stoichiometry.from_data(
+        stoichiometry = _stoichiometry.Stoichiometry.from_data(
             self._raw_data.structure.stoichiometry
         )
         structure = f"structure: {stoichiometry}"

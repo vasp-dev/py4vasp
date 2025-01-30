@@ -3,8 +3,8 @@
 import numpy as np
 
 import py4vasp._third_party.graph as _graph
-from py4vasp import calculation
-from py4vasp._calculation import base
+from py4vasp import _calculation
+from py4vasp._calculation import base, kpoint
 
 
 class Dispersion(base.Refinery):
@@ -37,7 +37,7 @@ class Dispersion(base.Refinery):
 
     @property
     def _kpoints(self):
-        return calculation.kpoint.from_data(self._raw_data.kpoints)
+        return kpoint.Kpoint.from_data(self._raw_data.kpoints)
 
     @base.data_access
     def plot(self, projections=None):

@@ -6,6 +6,7 @@ from typing import Dict, List
 
 import py4vasp
 from py4vasp import exception
+from py4vasp._util import convert
 
 
 def _match_combine_with_refinement(combine_name: str):
@@ -14,7 +15,10 @@ def _match_combine_with_refinement(combine_name: str):
         "Forces": "force",
         "Stresses": "stress",
     }
-    return getattr(py4vasp.calculation, combine_to_refinement_name[combine_name])
+    quantity = combine_to_refinement_name[combine_name]
+    module = getattr(py4vasp._calculation, quantity)
+    class_name = convert.to_camelcase(quantity)
+    return getattr(module, class_name)
     # for _, class_ in inspect.getmembers(data_depr, inspect.isclass):
     #     if class_.__name__ == combine_to_refinement_name[combine_name]:
     #         return class_

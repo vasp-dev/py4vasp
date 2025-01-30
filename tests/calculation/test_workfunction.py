@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from py4vasp import calculation
+from py4vasp._calculation.workfunction import Workfunction
 
 
 @pytest.fixture(params=[1, 2, 3])
@@ -14,7 +14,7 @@ def workfunction(raw_data, request):
 
 
 def setup_reference(raw_workfunction):
-    workfunction = calculation.workfunction.from_data(raw_workfunction)
+    workfunction = Workfunction.from_data(raw_workfunction)
     workfunction.ref = raw_workfunction
     raw_gap = raw_workfunction.reference_potential
     workfunction.ref.lattice_vector = f"lattice vector {raw_workfunction.idipol}"
@@ -44,7 +44,7 @@ def test_plot(workfunction, Assert):
     assert graph.series.name == "potential"
 
 
-@patch("py4vasp._calculation.workfunction.Workfunction.to_graph")
+@patch.object(Workfunction, "to_graph")
 def test_to_plotly(mock_plot, workfunction):
     fig = workfunction.to_plotly()
     mock_plot.assert_called_once_with()
@@ -60,7 +60,7 @@ def test_to_image(workfunction):
 
 
 def check_to_image(workfunction, filename_argument, expected_filename):
-    with patch("py4vasp._calculation.workfunction.Workfunction.to_plotly") as plot:
+    with patch.object(Workfunction, "to_plotly") as plot:
         workfunction.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
@@ -88,4 +88,4 @@ workfunction along {lattice_vector}:
 
 def test_factory_methods(raw_data, check_factory_methods):
     raw_workfunction = raw_data.workfunction("1")
-    check_factory_methods(calculation.workfunction, raw_workfunction)
+    check_factory_methods(Workfunction, raw_workfunction)

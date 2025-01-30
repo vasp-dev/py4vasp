@@ -202,8 +202,8 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
-    def fatband(selection):
-        return _Sr2TiO4_fatband()
+    def exciton_eigenvector(selection):
+        return _Sr2TiO4_exciton_eigenvector()
 
     @staticmethod
     def force_constant(selection):
@@ -763,19 +763,19 @@ def _Sr2TiO4_dos(projectors):
     return raw_dos
 
 
-def _Sr2TiO4_fatband():
+def _Sr2TiO4_exciton_eigenvector():
     dispersion = _multiple_bands_dispersion()
     number_kpoints = len(dispersion.kpoints.coordinates)
     shape = (single_spin, number_kpoints, number_conduction_bands, number_valence_bands)
     bse_index = np.arange(np.prod(shape)).reshape(shape)
     number_transitions = bse_index.size
     shape = (number_eigenvectors, number_transitions, complex_)
-    fatbands = np.random.uniform(0, 20, shape)
-    return raw.Fatband(
+    eigenvectors = np.random.uniform(0, 20, shape)
+    return raw.ExcitonEigenvector(
         dispersion=dispersion,
         fermi_energy=0.2,
         bse_index=raw.VaspData(bse_index),
-        fatbands=raw.VaspData(fatbands),
+        eigenvectors=raw.VaspData(eigenvectors),
         first_valence_band=raw.VaspData(np.array([1])),
         first_conduction_band=raw.VaspData(np.array([3])),
     )
