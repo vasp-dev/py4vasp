@@ -72,6 +72,7 @@ from docutils import nodes
 from docutils.parsers.rst import Directive
 from docutils.statemachine import ViewList
 from jinja2 import Template
+
 from py4vasp import _calculation, _util
 
 

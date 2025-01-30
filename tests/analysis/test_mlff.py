@@ -9,10 +9,10 @@ import numpy as np
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation.energy import Energy
-from py4vasp._calculation.stress import Stress
-from py4vasp._calculation.force import Force
 from py4vasp._analysis.mlff import MLFFErrorAnalysis
+from py4vasp._calculation.energy import Energy
+from py4vasp._calculation.force import Force
+from py4vasp._calculation.stress import Stress
 
 
 class BaseCalculations:
