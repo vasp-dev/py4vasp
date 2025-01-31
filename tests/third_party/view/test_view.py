@@ -87,16 +87,19 @@ ENDMDL
 def view3d(request, not_core):
     is_structure = request.param
     inputs = base_input_view(is_structure)
-    isosurface = Isosurface(isolevel=0.1, color="#2FB5AB", opacity=0.6)
+    isosurface1 = Isosurface(isolevel=0.1, color="#2FB5AB", opacity=0.6)
+    isosurface2 = Isosurface(isolevel=0.2, color="#2FB5AB", opacity=0.6)
     if is_structure:
-        charge_grid_scalar = GridQuantity(np.random.rand(1, 12, 10, 8), "charge")
-        charge_grid_scalar.isosurfaces = [isosurface]
-        grid_scalars = [charge_grid_scalar]
+        two_isosurfaces = GridQuantity(np.random.rand(1, 12, 10, 8), "isosurfaces")
+        two_isosurfaces.isosurfaces = [isosurface1, isosurface2]
+        grid_scalars = [two_isosurfaces]
     else:
-        charge_grid_scalar = GridQuantity(np.random.rand(1, 12, 10, 8), "charge")
-        potential_grid_scalar = GridQuantity(np.random.rand(1, 12, 10, 8), "potential")
-        potential_grid_scalar.isosurfaces = [isosurface]
-        grid_scalars = [charge_grid_scalar, potential_grid_scalar]
+        no_isosurface = GridQuantity(np.random.rand(1, 12, 10, 8), "no isosurface")
+        grid_scalar1 = GridQuantity(np.random.rand(1, 12, 10, 8), "first")
+        grid_scalar1.isosurfaces = [isosurface1]
+        grid_scalar2 = GridQuantity(np.random.rand(1, 12, 10, 8), "second")
+        grid_scalar2.isosurfaces = [isosurface2]
+        grid_scalars = [no_isosurface, grid_scalar1, grid_scalar2]
     view = View(grid_scalars=grid_scalars, **inputs)
     view.ref = SimpleNamespace()
     view.ref.grid_scalars = grid_scalars
@@ -182,19 +185,55 @@ def test_camera(view, camera):
 
 def test_isosurface(view3d):
     widget = view3d.to_ngl()
-    assert widget.get_state()["_ngl_msg_archive"][2]["args"][0]["binary"] == False
-    for idx in range(len(view3d.lattice_vectors)):
-        for grid_scalar in view3d.ref.grid_scalars:
-            # If you pass in a grid scalar into a trajectory, I presume that you want to view
-            # the isosurface only for the first index of the trajectory. If you have more than one
-            # grid scalar in your data file then you should get an error.
-            if idx == 0:
-                expected_data = grid_scalar.quantity[idx]
-                state = widget.get_state()
-                output_cube = state["_ngl_msg_archive"][idx + 2]["args"][0]["data"]
-                output_data = ase_cube.read_cube(io.StringIO(output_cube))["data"]
-                assert expected_data.shape == output_data.shape
-                np.allclose(expected_data, output_data)
+    message_archive = widget.get_state()["_ngl_msg_archive"]
+    current_message = 2  # first two are for loading structure and setting camera
+    step = 0
+    # If you pass in a grid scalar into a trajectory, I presume that you want to view
+    # the isosurface only for the first index of the trajectory. If you have more than one
+    # grid scalar in your data file then you should get an error.
+    for grid_scalar in view3d.ref.grid_scalars:
+        if not grid_scalar.isosurfaces:
+            continue
+        expected_data = grid_scalar.quantity[step]
+        assert message_archive[current_message]["methodName"] == "loadFile"
+        output_cube = message_archive[current_message]["args"][0]["data"]
+        output_data = ase_cube.read_cube(io.StringIO(output_cube))["data"]
+        assert expected_data.shape == output_data.shape
+        assert np.allclose(expected_data, output_data)
+        current_message += 1
+        #
+        for isosurface in grid_scalar.isosurfaces:
+            assert message_archive[current_message]["methodName"] == "addRepresentation"
+            expected_arguments = {
+                "isolevel": isosurface.isolevel,
+                "color": isosurface.color,
+                "opacity": isosurface.opacity,
+            }
+            for key, val in expected_arguments.items():
+                assert message_archive[current_message]["kwargs"][key] == val
+            current_message += 1
+    assert message_archive[current_message]["methodName"] != "loadFile"
+
+
+def test_shifted_isosurface(view3d):
+    view3d.shift = np.array([0.2, 0.4, 0.6])
+    expected_shift = [2, 4, 5]
+    widget = view3d.to_ngl()
+    message_archive = widget.get_state()["_ngl_msg_archive"]
+    current_message = 2  # first two are for loading structure and setting camera
+    step = 0
+    for grid_scalar in view3d.ref.grid_scalars:
+        if not grid_scalar.isosurfaces:
+            continue
+        expected_data = grid_scalar.quantity[step]
+        expected_data = np.roll(expected_data, expected_shift, axis=(0, 1, 2))
+        assert message_archive[current_message]["methodName"] == "loadFile"
+        output_cube = message_archive[current_message]["args"][0]["data"]
+        output_data = ase_cube.read_cube(io.StringIO(output_cube))["data"]
+        assert expected_data.shape == output_data.shape
+        assert np.allclose(expected_data, output_data)
+        current_message += len(grid_scalar.isosurfaces) + 1
+    assert message_archive[current_message]["methodName"] != "loadFile"
 
 
 def test_fail_isosurface(view_multiple_grid_scalars):
