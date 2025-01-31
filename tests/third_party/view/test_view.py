@@ -171,6 +171,15 @@ def test_ipython(mock_display, view):
     mock_display.assert_called_once()
 
 
+@pytest.mark.parametrize("camera", ("orthographic", "perspective"))
+def test_camera(view, camera):
+    view.camera = camera
+    widget = view.to_ngl()
+    camera_message = widget.get_state()["_ngl_msg_archive"][1]
+    assert camera_message["methodName"] == "setParameters"
+    assert camera_message["kwargs"] == {"cameraType": camera}
+
+
 def test_isosurface(view3d):
     widget = view3d.to_ngl()
     assert widget.get_state()["_ngl_msg_archive"][2]["args"][0]["binary"] == False
