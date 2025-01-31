@@ -134,10 +134,6 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
-    def electronic_minimization(selection=None):
-        return _example_electronic_minimization()
-
-    @staticmethod
     def density(selection):
         parts = selection.split()
         if parts[0] == "Sr2TiO4":
@@ -193,6 +189,10 @@ class RawDataFactory:
         return _elastic_modulus()
 
     @staticmethod
+    def electronic_minimization(selection=None):
+        return _electronic_minimization()
+
+    @staticmethod
     def energy(selection, randomize: bool = False):
         if selection == "MD":
             return _MD_energy(randomize)
@@ -202,8 +202,8 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
-    def fatband(selection):
-        return _Sr2TiO4_fatband()
+    def exciton_eigenvector(selection):
+        return _Sr2TiO4_exciton_eigenvector()
 
     @staticmethod
     def force_constant(selection):
@@ -305,13 +305,13 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
-    def topology(selection):
+    def stoichiometry(selection):
         if selection == "Sr2TiO4":
-            return _Sr2TiO4_topology()
+            return _Sr2TiO4_stoichiometry()
         elif selection == "Fe3O4":
-            return _Fe3O4_topology()
+            return _Fe3O4_stoichiometry()
         elif selection == "Ca2AsBr-CaBr2":  # test duplicate entries
-            return _Ca3AsBr3_topology()
+            return _Ca3AsBr3_stoichiometry()
         else:
             raise exception.NotImplemented()
 
@@ -329,8 +329,8 @@ class RawDataFactory:
         return _workfunction(selection)
 
     @staticmethod
-    def partial_charge(selection):
-        return _partial_charge(selection)
+    def partial_density(selection):
+        return _partial_density(selection)
 
 
 @pytest.fixture
@@ -420,7 +420,7 @@ def _phonon_band():
     shape = (*dispersion.eigenvalues.shape, number_atoms, axes, complex_)
     return raw.PhononBand(
         dispersion=dispersion,
-        topology=_Sr2TiO4_topology(),
+        stoichiometry=_Sr2TiO4_stoichiometry(),
         eigenvectors=np.linspace(0, 1, np.prod(shape)).reshape(shape),
     )
 
@@ -440,7 +440,7 @@ def _phonon_dos():
     upper_ratio = np.array(list(reversed(lower_ratio)))
     ratio = np.linspace(lower_ratio, upper_ratio, number_points).T
     projections = np.multiply(ratio, dos)
-    return raw.PhononDos(energies, dos, projections, _Sr2TiO4_topology())
+    return raw.PhononDos(energies, dos, projections, _Sr2TiO4_stoichiometry())
 
 
 def _piezoelectric_tensor():
@@ -545,7 +545,8 @@ def _magnetism(selection):
         spin_moments=_make_data(np.arange(np.prod(shape)).reshape(shape)),
     )
     if selection == "orbital_moments":
-        magnetism.orbital_moments = _make_data(np.sqrt(magnetism.spin_moments))
+        remove_charge_and_s_component = magnetism.spin_moments[:, 1:, :, 1:]
+        magnetism.orbital_moments = _make_data(np.sqrt(remove_charge_and_s_component))
     return magnetism
 
 
@@ -667,7 +668,7 @@ def _Sr2TiO4_cell():
     )
 
 
-def _example_electronic_minimization():
+def _electronic_minimization():
     random_convergence_data = np.random.rand(9, 3)
     iteration_number = np.arange(1, 10)[:, np.newaxis]
     ncg = np.random.randint(4, 10, (9, 1))
@@ -685,7 +686,7 @@ def _example_electronic_minimization():
     )
 
 
-def _partial_charge(selection):
+def _partial_density(selection):
     grid_dim = grid_dimensions
     if "CaAs3_110" in selection:
         structure = _CaAs3_110_structure()
@@ -724,7 +725,7 @@ def _partial_charge(selection):
                 # Fill the gaussian_charge array
                 gaussian_charge[:, :, :, :, gy, gx] = val
     gaussian_charge = raw.VaspData(gaussian_charge)
-    return raw.PartialCharge(
+    return raw.PartialDensity(
         structure=structure,
         bands=bands,
         kpoints=kpoints,
@@ -762,19 +763,19 @@ def _Sr2TiO4_dos(projectors):
     return raw_dos
 
 
-def _Sr2TiO4_fatband():
+def _Sr2TiO4_exciton_eigenvector():
     dispersion = _multiple_bands_dispersion()
     number_kpoints = len(dispersion.kpoints.coordinates)
     shape = (single_spin, number_kpoints, number_conduction_bands, number_valence_bands)
     bse_index = np.arange(np.prod(shape)).reshape(shape)
     number_transitions = bse_index.size
     shape = (number_eigenvectors, number_transitions, complex_)
-    fatbands = np.random.uniform(0, 20, shape)
-    return raw.Fatband(
+    eigenvectors = np.random.uniform(0, 20, shape)
+    return raw.ExcitonEigenvector(
         dispersion=dispersion,
         fermi_energy=0.2,
         bse_index=raw.VaspData(bse_index),
-        fatbands=raw.VaspData(fatbands),
+        eigenvectors=raw.VaspData(eigenvectors),
         first_valence_band=raw.VaspData(np.array([1])),
         first_conduction_band=raw.VaspData(np.array([3])),
     )
@@ -835,7 +836,7 @@ def _Sr2TiO4_potential(included_potential):
 def _Sr2TiO4_projectors(use_orbitals):
     orbital_types = "s py pz px dxy dyz dz2 dxz x2-y2 fy3x2 fxyz fyz2 fz3 fxz2 fzx2 fx3"
     return raw.Projector(
-        topology=_Sr2TiO4_topology(),
+        stoichiometry=_Sr2TiO4_stoichiometry(),
         orbital_types=_make_orbital_types(use_orbitals, orbital_types),
         number_spins=1,
     )
@@ -865,7 +866,7 @@ def _Graphite_structure():
         [0.33333333, 0.66666667, 0.60127716],
     ]
     return raw.Structure(
-        topology=_Graphite_topology(),
+        stoichiometry=_Graphite_stoichiometry(),
         cell=_Graphite_cell(),
         positions=raw.VaspData(positions),
     )
@@ -880,8 +881,8 @@ def _Graphite_cell():
     return raw.Cell(np.asarray(lattice_vectors), scale=raw.VaspData(1.0))
 
 
-def _Graphite_topology():
-    return raw.Topology(
+def _Graphite_stoichiometry():
+    return raw.Stoichiometry(
         number_ion_types=np.array((10,)),
         ion_types=np.array(("C",), dtype="S"),
     )
@@ -897,7 +898,7 @@ def _Ni100_structure():
         [0.00000000, 0.40000000, 0.00000000],
     ]
     return raw.Structure(
-        topology=_Ni100_topology(),
+        stoichiometry=_Ni100_stoichiometry(),
         cell=_Ni100_cell(),
         positions=raw.VaspData(positions),
     )
@@ -912,8 +913,8 @@ def _Ni100_cell():
     return raw.Cell(np.asarray(lattice_vectors), scale=raw.VaspData(1.0))
 
 
-def _Ni100_topology():
-    return raw.Topology(
+def _Ni100_stoichiometry():
+    return raw.Stoichiometry(
         number_ion_types=np.array((5,)),
         ion_types=np.array(("Ni",), dtype="S"),
     )
@@ -948,7 +949,7 @@ def _CaAs3_110_structure():
         [0.77964386, 0.09593968, 0.76122779],
     ]
     return raw.Structure(
-        topology=_CaAs3_110_topology(),
+        stoichiometry=_CaAs3_110_stoichiometry(),
         cell=_CaAs3_110_cell(),
         positions=raw.VaspData(positions),
     )
@@ -963,8 +964,8 @@ def _CaAs3_110_cell():
     return raw.Cell(np.asarray(lattice_vectors), scale=raw.VaspData(1.0))
 
 
-def _CaAs3_110_topology():
-    return raw.Topology(
+def _CaAs3_110_stoichiometry():
+    return raw.Stoichiometry(
         number_ion_types=np.array((6, 18)),
         ion_types=np.array(("Ca", "As"), dtype="S"),
     )
@@ -982,14 +983,14 @@ def _Sr2TiO4_structure():
         [0.00000, 0.50000, 0.5],
     ]
     return raw.Structure(
-        topology=_Sr2TiO4_topology(),
+        stoichiometry=_Sr2TiO4_stoichiometry(),
         cell=_Sr2TiO4_cell(),
         positions=np.tile(positions, repetitions),
     )
 
 
-def _Sr2TiO4_topology():
-    return raw.Topology(
+def _Sr2TiO4_stoichiometry():
+    return raw.Stoichiometry(
         number_ion_types=np.array((2, 1, 4)),
         ion_types=np.array(("Sr", "Ti", "O "), dtype="S"),
     )
@@ -1082,7 +1083,7 @@ def _Fe3O4_potential(selection, included_potential):
 
 def _Fe3O4_projectors(use_orbitals):
     return raw.Projector(
-        topology=_Fe3O4_topology(),
+        stoichiometry=_Fe3O4_stoichiometry(),
         orbital_types=_make_orbital_types(use_orbitals, "s p d f"),
         number_spins=2,
     )
@@ -1112,14 +1113,14 @@ def _Fe3O4_structure():
     ]
     shift = np.linspace(-0.02, 0.01, number_steps)
     return raw.Structure(
-        topology=_Fe3O4_topology(),
+        stoichiometry=_Fe3O4_stoichiometry(),
         cell=_Fe3O4_cell(),
         positions=np.add.outer(shift, positions),
     )
 
 
-def _Fe3O4_topology():
-    return raw.Topology(
+def _Fe3O4_stoichiometry():
+    return raw.Stoichiometry(
         number_ion_types=np.array((3, 4)), ion_types=np.array(("Fe", "O "), dtype="S")
     )
 
@@ -1148,14 +1149,14 @@ def _Ca3AsBr3_structure():
         [0.5, 0.5, 0.0],  # Br_3
     ]
     return raw.Structure(
-        topology=_Ca3AsBr3_topology(),
+        stoichiometry=_Ca3AsBr3_stoichiometry(),
         cell=_Ca3AsBr3_cell(),
         positions=_make_data(positions),
     )
 
 
-def _Ca3AsBr3_topology():
-    return raw.Topology(
+def _Ca3AsBr3_stoichiometry():
+    return raw.Stoichiometry(
         number_ion_types=np.array((2, 1, 1, 1, 2)),
         ion_types=np.array(("Ca", "As", "Br", "Ca", "Br"), dtype="S"),
     )

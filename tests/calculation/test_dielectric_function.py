@@ -7,13 +7,14 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import calculation, exception
+from py4vasp import exception
+from py4vasp._calculation.dielectric_function import DielectricFunction
 
 
 @pytest.fixture
 def electronic(raw_data):
     raw_electronic = raw_data.dielectric_function("electron")
-    electronic = calculation.dielectric_function.from_data(raw_electronic)
+    electronic = DielectricFunction.from_data(raw_electronic)
     electronic.ref = types.SimpleNamespace()
     electronic.ref.energies = raw_electronic.energies
     to_complex = lambda data: data[..., 0] + 1j * data[..., 1]
@@ -25,7 +26,7 @@ def electronic(raw_data):
 @pytest.fixture
 def ionic(raw_data):
     raw_ionic = raw_data.dielectric_function("ion")
-    ionic = calculation.dielectric_function.from_data(raw_ionic)
+    ionic = DielectricFunction.from_data(raw_ionic)
     ionic.ref = types.SimpleNamespace()
     ionic.ref.energies = raw_ionic.energies
     to_complex = lambda data: data[..., 0] + 1j * data[..., 1]
@@ -299,7 +300,7 @@ def check_figure_contains_plots(fig, references, Assert):
         assert data.name == ref.name
 
 
-@patch("py4vasp.calculation._dielectric_function.DielectricFunction.to_graph")
+@patch.object(DielectricFunction, "to_graph")
 def test_electronic_to_plotly(mock_plot, electronic):
     fig = electronic.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
@@ -321,10 +322,7 @@ def test_ionic_to_image(ionic):
 
 
 def check_to_image(dielectric_function, filename_argument, expected_filename):
-    plot_function = (
-        "py4vasp.calculation._dielectric_function.DielectricFunction.to_plotly"
-    )
-    with patch(plot_function) as plot:
+    with patch.object(DielectricFunction, "to_plotly") as plot:
         dielectric_function.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
@@ -371,4 +369,4 @@ dielectric function:
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dielectric_function("electron")
-    check_factory_methods(calculation.dielectric_function, data)
+    check_factory_methods(DielectricFunction, data)

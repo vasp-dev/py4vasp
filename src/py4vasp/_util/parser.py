@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from py4vasp._raw.data import CONTCAR, Cell, Structure, Topology
+from py4vasp._raw.data import CONTCAR, Cell, Stoichiometry, Structure
 from py4vasp._raw.data_wrapper import VaspData
 from py4vasp.exception import ParserError
 
@@ -114,10 +114,10 @@ class ParsePoscar:
             return False
 
     @property
-    def topology(self):
-        """The topology from the POSCAR file.
+    def stoichiometry(self):
+        """The stoichiometry from the POSCAR file.
 
-        Parses the topology from the POSCAR file. The topology is parsed as is
+        Parses the stoichiometry from the POSCAR file. The stoichiometry is parsed as is
         and the species names are reported in the Topology object. If the species
         names are not specified in the POSCAR file, then the species names must
         be supplied as an argument.
@@ -134,8 +134,7 @@ class ParsePoscar:
             number_of_species = self.split_poscar[5].split()
         number_of_species = VaspData(np.array(number_of_species, dtype=int))
         species_name = VaspData(np.array(species_name))
-        topology = Topology(number_ion_types=number_of_species, ion_types=species_name)
-        return topology
+        return Stoichiometry(number_ion_types=number_of_species, ion_types=species_name)
 
     @property
     def ion_positions_and_selective_dynamics(self):
@@ -147,7 +146,7 @@ class ParsePoscar:
         specified in Cartesian coordinates, then the positions are converted
         to direct coordinates.
         """
-        number_of_species = self.topology.number_ion_types.data.sum()
+        number_of_species = self.stoichiometry.number_ion_types.data.sum()
         idx_start = 6
         if self.has_selective_dynamics:
             idx_start += 1
@@ -196,7 +195,7 @@ class ParsePoscar:
         is 'Lattice velocities and vectors', then it is assumed that the POSCAR
         file has lattice velocities.
         """
-        num_species = self.topology.number_ion_types.data.sum()
+        num_species = self.stoichiometry.number_ion_types.data.sum()
         idx_start = 7 + num_species
         if self.has_selective_dynamics:
             idx_start += 1
@@ -219,7 +218,7 @@ class ParsePoscar:
         If the velocities are specified in Direct coordinates, then the velocities
         are converted to Cartesian coordinates.
         """
-        num_species = self.topology.number_ion_types.data.sum()
+        num_species = self.stoichiometry.number_ion_types.data.sum()
         idx_start = 7 + num_species
         if not self.has_lattice_velocities:
             raise ParserError("No lattice velocities found in POSCAR.")
@@ -251,7 +250,7 @@ class ParsePoscar:
         (assumed to be Cartesian). If the header is not one of these, then
         it is assumed that the POSCAR file does not have ion velocities.
         """
-        num_species = self.topology.number_ion_types.data.sum()
+        num_species = self.stoichiometry.number_ion_types.data.sum()
         idx_start = 7 + num_species
         if self.has_selective_dynamics:
             idx_start += 1
@@ -276,7 +275,7 @@ class ParsePoscar:
         If the velocities are specified in Direct coordinates, then the velocities
         are converted to Cartesian coordinates.
         """
-        num_species = self.topology.number_ion_types.data.sum()
+        num_species = self.stoichiometry.number_ion_types.data.sum()
         if not self.has_ion_velocities:
             raise ParserError("No ion velocities found in POSCAR.")
         idx_start = 7 + num_species
@@ -307,7 +306,7 @@ class ParsePoscar:
         """
         ion_positions, selective_dynamics = self.ion_positions_and_selective_dynamics
         structure = Structure(
-            topology=self.topology,
+            stoichiometry=self.stoichiometry,
             cell=self.cell,
             positions=ion_positions,
         )
