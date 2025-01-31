@@ -243,7 +243,7 @@ def test_fail_isosurface(view_multiple_grid_scalars):
         widget = view.to_ngl()
 
 
-def test_ion_arrows(view_arrow):
+def test_ion_arrows(view_arrow, Assert):
     widget = view_arrow.to_ngl()
     iter_traj = list(range(len(view_arrow.lattice_vectors)))
     iter_ion_arrows = list(range(len(view_arrow.ref.ion_arrows)))
@@ -272,12 +272,32 @@ def test_ion_arrows(view_arrow):
             output_tip = msg_archive[2]
             output_color = msg_archive[3]
             output_radius = msg_archive[4]
-            assert np.allclose(expected_tip, output_tip)
-            assert np.allclose(expected_tail, output_tail)
-            assert np.allclose(convert.to_rgb(expected_color), output_color)
+            Assert.allclose(expected_tip, output_tip)
+            Assert.allclose(expected_tail, output_tail)
+            Assert.allclose(convert.to_rgb(expected_color), output_color)
             assert expected_radius == output_radius
             idx_msg += 1
 
+def test_shifted_ion_arrows(view_arrow, Assert):
+    view_arrow.shift = [-0.3, 0.3, 0.6]
+    widget = view_arrow.to_ngl()
+    for idx_traj in range(len(view_arrow.lattice_vectors)):
+        positions = view_arrow.positions[idx_traj]
+        shifted_positions = np.mod(positions + np.array(view_arrow.shift), 1)
+        print(positions, shifted_positions)
+        lattice_vectors = view_arrow.lattice_vectors[idx_traj].T
+        expected_coordinates = shifted_positions @ lattice_vectors.T
+        output_coordinates = widget.trajectory_0.get_coordinates(idx_traj)
+        print("expected", expected_coordinates)
+        print("actual", output_coordinates)
+        Assert.allclose(expected_coordinates, output_coordinates)
+    # output_structure_string = widget.trajectory_0.get_structure_string()
+    # expected_structure_string = view.ref
+    # expected_lines = expected_structure_string.split("\n")
+    # output_lines = output_structure_string.split("\n")
+    # for output_line, expected_line in zip(expected_lines, output_lines):
+    #     assert output_line.strip() == expected_line.strip()
+    assert False
 
 @pytest.mark.parametrize("is_structure", [True, False])
 def test_supercell(is_structure, not_core):

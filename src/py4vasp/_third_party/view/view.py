@@ -199,6 +199,7 @@ attribute is supplied with its corresponding grid scalar or ion arrow component.
         atoms = ase.Atoms(symbols)
         atoms.cell = self.lattice_vectors[step]
         atoms.set_scaled_positions(self.positions[step])
+        print(f"{np.array(self.positions).shape=}")
         atoms.set_pbc(True)
         if self.shift is not None:
             translation = np.sum(atoms.cell, axis=0)
