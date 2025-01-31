@@ -173,7 +173,7 @@ def test_ipython(mock_display, view):
 
 def test_isosurface(view3d):
     widget = view3d.to_ngl()
-    assert widget.get_state()["_ngl_msg_archive"][1]["args"][0]["binary"] == False
+    assert widget.get_state()["_ngl_msg_archive"][2]["args"][0]["binary"] == False
     for idx in range(len(view3d.lattice_vectors)):
         for grid_scalar in view3d.ref.grid_scalars:
             # If you pass in a grid scalar into a trajectory, I presume that you want to view
@@ -182,7 +182,7 @@ def test_isosurface(view3d):
             if idx == 0:
                 expected_data = grid_scalar.quantity[idx]
                 state = widget.get_state()
-                output_cube = state["_ngl_msg_archive"][idx + 1]["args"][0]["data"]
+                output_cube = state["_ngl_msg_archive"][idx + 2]["args"][0]["data"]
                 output_data = ase_cube.read_cube(io.StringIO(output_cube))["data"]
                 assert expected_data.shape == output_data.shape
                 np.allclose(expected_data, output_data)
@@ -199,7 +199,7 @@ def test_ion_arrows(view_arrow):
     widget = view_arrow.to_ngl()
     iter_traj = list(range(len(view_arrow.lattice_vectors)))
     iter_ion_arrows = list(range(len(view_arrow.ref.ion_arrows)))
-    idx_msg = 1  # Start with the assumption that the structure has been tested
+    idx_msg = 2  # Start with the assumption that the structure has been tested
     for idx_ion_arrows, idx_traj in itertools.product(iter_ion_arrows, iter_traj):
         atoms = ase.Atoms(
             "".join(view_arrow.elements[idx_traj]),
@@ -257,7 +257,7 @@ def test_showcell(is_structure, not_core):
     inputs["show_cell"] = True
     view = View(**inputs)
     widget = view.to_ngl()
-    assert widget.get_state()["_ngl_msg_archive"][1]["args"][0] == "unitcell"
+    assert widget.get_state()["_ngl_msg_archive"][2]["args"][0] == "unitcell"
 
 
 @pytest.mark.parametrize("is_structure", [True, False])
@@ -268,9 +268,9 @@ def test_showaxes(is_structure, not_core):
     widget = view.to_ngl()
     assert len(widget.get_state()["_ngl_msg_archive"]) > 2
     for idx_msg, msg in enumerate(widget.get_state()["_ngl_msg_archive"]):
-        if idx_msg > 2:
+        if idx_msg > 3:
             assert msg["args"][1][0][0] == "arrow"
-    assert idx_msg == 4
+    assert idx_msg == 5
 
 
 @pytest.mark.parametrize("is_structure", [True, False])
