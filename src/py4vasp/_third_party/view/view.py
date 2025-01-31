@@ -116,7 +116,7 @@ class View:
     """Defines where the axis is shown, defaults to the origin"""
     shift: npt.ArrayLike = None
     """Defines the shift of the origin"""
-    camera: str = 'orthographic'
+    camera: str = "orthographic"
     """Defines the camera view type"""
 
     def __post_init__(self):
@@ -200,9 +200,9 @@ attribute is supplied with its corresponding grid scalar or ion arrow component.
         atoms.cell = self.lattice_vectors[step]
         atoms.set_scaled_positions(self.positions[step])
         atoms.set_pbc(True)
-        if(self.shift):
-            translation = np.sum(atoms.cell,axis=0)
-            translation = [translation[i]*self.shift[i] for i in range(3)]
+        if self.shift:
+            translation = np.sum(atoms.cell, axis=0)
+            translation = [translation[i] * self.shift[i] for i in range(3)]
             atoms.positions += translation
             atoms.wrap()
         atoms = atoms.repeat(self.supercell)
@@ -237,8 +237,12 @@ attribute is supplied with its corresponding grid scalar or ion arrow component.
             if not grid_scalar.isosurfaces:
                 continue
             quantity = grid_scalar.quantity[step]
-            if(self.shift):
-                quantity = np.roll(quantity,[int(quantity.shape[i]*self.shift[i]) for i in range(3)] ,axis=(0,1,2))
+            if self.shift:
+                quantity = np.roll(
+                    quantity,
+                    [int(quantity.shape[i] * self.shift[i]) for i in range(3)],
+                    axis=(0, 1, 2),
+                )
             quantity = self._repeat_isosurface(quantity)
             atoms = trajectory[step]
             self._set_atoms_in_standard_form(atoms)

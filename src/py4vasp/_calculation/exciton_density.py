@@ -3,14 +3,15 @@
 import numpy as np
 
 from py4vasp import _config, calculation, exception
+from py4vasp._calculation import base, structure
 from py4vasp._third_party import view
 from py4vasp._util import import_, index, select
-from py4vasp._calculation import base, structure
 
 pretty = import_.optional("IPython.lib.pretty")
 
 
 _INTERNAL = "1"
+
 
 class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
     """This class accesses exciton charge densities of VASP.
@@ -102,15 +103,12 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
             for selection in selections
         ]
         if center:
-            viewer.shift = (0.5,0.5,0.5)
+            viewer.shift = (0.5, 0.5, 0.5)
         return viewer
 
     def _create_map(self):
-        excitons=self._raw_data.exciton_charge.shape[0]
-        map_ = {
-            str(choice): choice-1
-            for choice in range(1,excitons+1)
-        }
+        excitons = self._raw_data.exciton_charge.shape[0]
+        map_ = {str(choice): choice - 1 for choice in range(1, excitons + 1)}
         return map_
 
     def _grid_quantity(self, selector, selection, map_, user_options):
