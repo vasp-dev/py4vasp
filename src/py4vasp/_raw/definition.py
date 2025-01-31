@@ -201,7 +201,7 @@ schema.add(
 schema.add(
     raw.DielectricFunction,
     name="xas",
-    required=raw.Version(6, 4),
+    required=raw.Version(6, 5, 1),
     energies=f"{group}/XAS_{energies}",
     dielectric_function=f"{group}/XAS{values}",
     current_current=None,
