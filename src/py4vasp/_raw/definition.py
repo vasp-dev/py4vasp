@@ -198,6 +198,14 @@ schema.add(
     dielectric_function=f"{group}/tctc{values}",
     current_current=None,
 )
+schema.add(
+    raw.DielectricFunction,
+    name="xas",
+    required=raw.Version(6, 4),
+    energies=f"{group}/XAS_{energies}",
+    dielectric_function=f"{group}/XAS{values}",
+    current_current=None,
+)
 group = "results/linear_response_kpoints_opt"
 schema.add(
     raw.DielectricFunction,
