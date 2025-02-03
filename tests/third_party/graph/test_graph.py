@@ -555,6 +555,15 @@ def test_complex_quiver(complex_quiver, Assert, not_core):
     assert len(fig.layout.annotations) == 0
 
 
+def test_width_and_height(parabola):
+    fig = Graph(parabola).to_plotly()
+    assert fig.layout.width is None
+    assert fig.layout.height is None
+    fig = Graph(parabola, xsize=800, ysize=600).to_plotly()
+    assert fig.layout.width == 800
+    assert fig.layout.height == 600
+
+
 @dataclasses.dataclass
 class ContourData:
     positions: np.ndarray = None
@@ -596,3 +605,7 @@ def split_data(data, data_size, Assert):
     other_barb_length = np.linalg.norm(other_barb - actual.tips, axis=-1)
     Assert.allclose(other_barb_length, actual.barb_length, tolerance=10)
     return actual
+
+
+def test_no_common_names():
+    assert set(Graph._fields).intersection(Series._fields) == set()

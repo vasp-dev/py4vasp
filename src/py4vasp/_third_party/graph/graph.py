@@ -33,10 +33,14 @@ class Graph(Sequence):
     "Label for the x axis."
     xticks: dict = None
     "A dictionary specifying positions and labels where ticks are placed on the x axis."
+    xsize: int = None
+    "Width of the resulting figure."
     ylabel: str = None
     "Label for the y axis."
     y2label: str = None
     "Label for the secondary y axis."
+    ysize: int = None
+    "Height of the resulting figure."
     title: str = None
     "Title of the graph."
     _frozen = False
@@ -120,6 +124,8 @@ class Graph(Sequence):
         self._set_xaxis_options(figure)
         self._set_yaxis_options(figure)
         figure.layout.title.text = self.title
+        figure.layout.width = self.xsize
+        figure.layout.height = self.ysize
         figure.layout.legend.itemsizing = "constant"
         return figure
 
