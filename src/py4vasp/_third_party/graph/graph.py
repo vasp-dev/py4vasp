@@ -33,13 +33,13 @@ class Graph(Sequence):
     "Label for the x axis."
     xticks: dict = None
     "A dictionary specifying positions and labels where ticks are placed on the x axis."
-    xsize: int = None
+    xsize: int = 720
     "Width of the resulting figure."
     ylabel: str = None
     "Label for the y axis."
     y2label: str = None
     "Label for the secondary y axis."
-    ysize: int = None
+    ysize: int = 540
     "Height of the resulting figure."
     title: str = None
     "Title of the graph."
@@ -124,7 +124,8 @@ class Graph(Sequence):
         self._set_xaxis_options(figure)
         self._set_yaxis_options(figure)
         figure.layout.title.text = self.title
-        figure.layout.width = self.xsize
+        if self.xsize:
+            figure.layout.width = self.xsize
         figure.layout.height = self.ysize
         figure.layout.legend.itemsizing = "constant"
         return figure
@@ -173,7 +174,6 @@ class Graph(Sequence):
             figure.layout.yaxis.visible = False
         if self._any_are_contour():
             figure.layout.yaxis.scaleanchor = "x"
-            figure.layout.height = 500
 
     def _all_are_contour(self):
         return all(isinstance(series, Contour) for series in self)

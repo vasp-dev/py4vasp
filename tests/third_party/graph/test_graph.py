@@ -251,12 +251,16 @@ def test_title(parabola, not_core):
 
 
 def test_merging_of_fields_of_graph(sine, parabola):
-    init_all_fields = {field.name: field.name for field in dataclasses.fields(Graph)}
-    init_all_fields.pop("series")
+    skipped_fields = ("series", "xsize", "ysize")
+    init_all_fields = {
+        field.name: field.name
+        for field in dataclasses.fields(Graph)
+        if field.name not in skipped_fields
+    }
     graph1 = Graph(sine, **init_all_fields)
     graph2 = Graph(parabola)
     for field in dataclasses.fields(Graph):
-        if field.name == "series":
+        if field.name in skipped_fields:
             continue
         # if only one side is defined, use that one
         graph = graph1 + graph2
@@ -557,8 +561,8 @@ def test_complex_quiver(complex_quiver, Assert, not_core):
 
 def test_width_and_height(parabola):
     fig = Graph(parabola).to_plotly()
-    assert fig.layout.width is None
-    assert fig.layout.height is None
+    assert fig.layout.width == 720
+    assert fig.layout.height == 540
     fig = Graph(parabola, xsize=800, ysize=600).to_plotly()
     assert fig.layout.width == 800
     assert fig.layout.height == 600
