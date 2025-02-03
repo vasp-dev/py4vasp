@@ -31,12 +31,16 @@ class Graph(Sequence):
     "One or more series shown in the graph."
     xlabel: str = None
     "Label for the x axis."
+    xrange: tuple = None
+    "Reduce the x axis to this interval."
     xticks: dict = None
     "A dictionary specifying positions and labels where ticks are placed on the x axis."
     xsize: int = 720
     "Width of the resulting figure."
     ylabel: str = None
     "Label for the y axis."
+    yrange: tuple = None
+    "Reduce the y axis to this interval."
     y2label: str = None
     "Label for the secondary y axis."
     ysize: int = 540
@@ -154,6 +158,8 @@ class Graph(Sequence):
             figure.layout.xaxis.tickmode = "array"
             figure.layout.xaxis.tickvals = tuple(self.xticks.keys())
             figure.layout.xaxis.ticktext = self._xtick_labels()
+        if self.xrange:
+            figure.layout.xaxis.range = self.xrange
         if self._all_are_contour():
             figure.layout.xaxis.visible = False
 
@@ -170,6 +176,8 @@ class Graph(Sequence):
             figure.layout.yaxis.title.text = self.ylabel
             if self.y2label:
                 figure.layout.yaxis2.title.text = self.y2label
+        if self.yrange:
+            figure.layout.yaxis.range = self.yrange
         if self._all_are_contour():
             figure.layout.yaxis.visible = False
         if self._any_are_contour():
