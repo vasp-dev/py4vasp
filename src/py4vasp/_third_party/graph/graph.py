@@ -103,8 +103,8 @@ class Graph(Sequence):
 
     def _make_label(self, series, new_label):
         if len(self) > 1:
-            new_label = f"{new_label} {series.name}"
-        return replace(series, name=new_label)
+            new_label = f"{new_label} {series.label}"
+        return replace(series, label=new_label)
 
     def _ipython_display_(self):
         self.to_plotly()._ipython_display_()
@@ -220,8 +220,8 @@ class Graph(Sequence):
         return df
 
     def _name_column(self, series, suffix, idx=None):
-        if series.name:
-            text_suffix = series.name.replace(" ", "_") + f".{suffix}"
+        if series.label:
+            text_suffix = series.label.replace(" ", "_") + f".{suffix}"
         else:
             text_suffix = "series_" + str(uuid.uuid1())
         if series.y.ndim == 1 or idx is None:

@@ -15,7 +15,7 @@ go = import_.optional("plotly.graph_objects")
 class Series(trace.Trace):
     """Represents a single series in a graph.
 
-    Typically this corresponds to a single line of x-y data with an optional name used
+    Typically this corresponds to a single line of x-y data with an optional label used
     in the legend of the figure. The look of the series is modified by some of the other
     optional arguments.
     """
@@ -25,7 +25,7 @@ class Series(trace.Trace):
     y: np.ndarray
     """The y coordinates of the series. If the data is 2-dimensional multiple lines are
     generated with a common entry in the legend."""
-    name: str = None
+    label: str = None
     "A label for the series used in the legend."
     width: np.ndarray = None
     "When a width is set, the series will be visualized as an area instead of a line."
@@ -55,6 +55,14 @@ class Series(trace.Trace):
         # handled by setting slots=True when creating the dataclass
         assert not self._frozen or hasattr(self, key)
         super().__setattr__(key, value)
+
+    def __eq__(self, other):
+        if not isinstance(other, Series):
+            return NotImplemented
+        return all(
+            np.array_equal(getattr(self, field.name), getattr(other, field.name))
+            for field in fields(self)
+        )
 
     def to_plotly(self):
         first_trace = True
@@ -118,8 +126,8 @@ class Series(trace.Trace):
 
     def _common_options(self, first_trace):
         return {
-            "name": self.name,
-            "legendgroup": self.name,
+            "name": self.label,
+            "legendgroup": self.label,
             "showlegend": first_trace,
             "yaxis": "y2" if self.y2 else "y",
         }
