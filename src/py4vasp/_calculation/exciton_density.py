@@ -10,7 +10,7 @@ from py4vasp._util import import_, index, select
 pretty = import_.optional("IPython.lib.pretty")
 
 
-_INTERNAL = "1"
+_DEFAULT_SELECTION = "1"
 
 
 class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
@@ -70,6 +70,10 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
             If present the data is replicated the specified number of times along each
             direction.
 
+        center : bool
+            Shift the origin of the unit cell to the center. This is helpful if you
+            the exciton is at the corner of the cell.
+
         user_options
             Further arguments with keyword that get directly passed on to the
             visualizer. Most importantly, you can set isolevel to adjust the
@@ -92,38 +96,29 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
         >>> calc.exciton.density.plot("1+2")
         """
         _raise_error_if_no_data(self._raw_data.exciton_charge)
-        selection = selection or _INTERNAL
+        selection = selection or _DEFAULT_SELECTION
         viewer = self._structure.plot(supercell)
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_data.exciton_charge)
         tree = select.Tree.from_selection(selection)
-        selections = tree.selections()
         viewer.grid_scalars = [
             self._grid_quantity(selector, selection, map_, user_options)
-            for selection in selections
+            for selection in tree.selections()
         ]
         if center:
             viewer.shift = (0.5, 0.5, 0.5)
         return viewer
 
     def _create_map(self):
-        excitons = self._raw_data.exciton_charge.shape[0]
-        map_ = {str(choice): choice - 1 for choice in range(1, excitons + 1)}
-        return map_
+        num_excitons = self._raw_data.exciton_charge.shape[0]
+        return {str(choice + 1): choice for choice in range(num_excitons)}
 
     def _grid_quantity(self, selector, selection, map_, user_options):
-        component_label = selector.label(selection)
         return view.GridQuantity(
             quantity=(selector[selection].T)[np.newaxis],
-            label=self._label(component_label),
+            label=selector.label(selection),
             isosurfaces=self._isosurfaces(**user_options),
         )
-
-    def _label(self, component_label):
-        if self._selection:
-            return f"{self._selection}({component_label})"
-        else:
-            return component_label
 
     def _isosurfaces(self, isolevel=0.8, color=None, opacity=0.6):
         color = color or _config.VASP_COLORS["cyan"]
