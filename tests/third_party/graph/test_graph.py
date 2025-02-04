@@ -16,26 +16,26 @@ px = import_.optional("plotly.express")
 @pytest.fixture
 def parabola():
     x = np.linspace(0, 2, 50)
-    return Series(x=x, y=x**2, name="parabola")
+    return Series(x=x, y=x**2, label="parabola")
 
 
 @pytest.fixture
 def sine():
     x = np.linspace(0, np.pi, 50)
-    return Series(x=x, y=np.sin(x), name="sine", marker="o")
+    return Series(x=x, y=np.sin(x), label="sine", marker="o")
 
 
 @pytest.fixture
 def two_lines():
     x = np.linspace(0, 3, 30)
     y = np.linspace((0, 4), (1, 3), 30).T
-    return Series(x=x, y=y, name="two lines")
+    return Series(x=x, y=y, label="two lines")
 
 
 @pytest.fixture
 def fatband():
     x = np.linspace(-1, 1, 40)
-    return Series(x=x, y=np.abs(x), width=x**2, name="fatband")
+    return Series(x=x, y=np.abs(x), width=x**2, label="fatband")
 
 
 @pytest.fixture
@@ -43,7 +43,7 @@ def two_fatbands():
     x = np.linspace(0, 3, 30)
     y = np.array((x**2, x**3))
     width = np.sqrt(y)
-    return Series(x=x, y=y, width=width, name="two fatbands")
+    return Series(x=x, y=y, width=width, label="two fatbands")
 
 
 @pytest.fixture
@@ -120,7 +120,7 @@ def test_two_series(parabola, sine, Assert, not_core):
 def compare_series(converted, original, Assert):
     Assert.allclose(converted.x, original.x)
     Assert.allclose(converted.y, original.y)
-    assert converted.name == original.name
+    assert converted.name == original.label
 
 
 def test_axis_label(parabola, not_core):
@@ -143,7 +143,7 @@ def test_secondary_yaxis(parabola, sine, Assert, not_core):
 
 
 def check_legend_group(converted, original, first_trace):
-    assert converted.legendgroup == original.name
+    assert converted.legendgroup == original.label
     assert converted.showlegend == first_trace
 
 
@@ -153,7 +153,7 @@ def test_two_lines(two_lines, Assert, not_core):
     assert len(fig.data) == 2
     first_trace = True
     for converted, y in zip(fig.data, two_lines.y):
-        original = Series(x=two_lines.x, y=y, name=two_lines.name)
+        original = Series(x=two_lines.x, y=y, label=two_lines.label)
         compare_series(converted, original, Assert)
         check_legend_group(converted, original, first_trace)
         if first_trace:
@@ -169,7 +169,7 @@ def compare_series_with_width(converted, original, Assert):
     expected = Series(
         x=np.concatenate((original.x, original.x[::-1])),
         y=np.concatenate((lower, upper[::-1])),
-        name=original.name,
+        label=original.label,
     )
     compare_series(converted, expected, Assert)
     assert converted.mode == "none"
@@ -190,7 +190,7 @@ def test_two_fatbands(two_fatbands, Assert, not_core):
     assert len(fig.data) == 2
     first_trace = True
     for converted, y, w in zip(fig.data, two_fatbands.y, two_fatbands.width):
-        original = Series(x=two_fatbands.x, y=y, width=w, name=two_fatbands.name)
+        original = Series(x=two_fatbands.x, y=y, width=w, label=two_fatbands.label)
         compare_series_with_width(converted, original, Assert)
         check_legend_group(converted, original, first_trace)
         if first_trace:
@@ -227,7 +227,7 @@ def test_two_fatband_with_marker(two_fatbands, Assert, not_core):
     assert fig.layout.legend.itemsizing == "constant"
     assert len(fig.data) == 2
     for converted, y, w in zip(fig.data, two_fatbands.y, two_fatbands.width):
-        original = Series(x=two_fatbands.x, y=y, name=two_fatbands.name)
+        original = Series(x=two_fatbands.x, y=y, label=two_fatbands.label)
         compare_series(converted, original, Assert)
         assert converted.mode == "markers"
         Assert.allclose(converted.marker.size, w)
@@ -251,12 +251,16 @@ def test_title(parabola, not_core):
 
 
 def test_merging_of_fields_of_graph(sine, parabola):
-    init_all_fields = {field.name: field.name for field in dataclasses.fields(Graph)}
-    init_all_fields.pop("series")
+    skipped_fields = ("series", "xsize", "ysize")
+    init_all_fields = {
+        field.name: field.name
+        for field in dataclasses.fields(Graph)
+        if field.name not in skipped_fields
+    }
     graph1 = Graph(sine, **init_all_fields)
     graph2 = Graph(parabola)
     for field in dataclasses.fields(Graph):
-        if field.name == "series":
+        if field.name in skipped_fields:
             continue
         # if only one side is defined, use that one
         graph = graph1 + graph2
@@ -314,8 +318,8 @@ def test_add_label_to_single_line(parabola, Assert):
     assert len(graph.series) == 1
     Assert.allclose(graph.series[0].x, parabola.x)
     Assert.allclose(graph.series[0].y, parabola.y)
-    assert graph.series[0].name == "new label"
-    assert parabola.name == "parabola"
+    assert graph.series[0].label == "new label"
+    assert parabola.label == "parabola"
 
 
 def test_add_label_to_multiple_lines(parabola, sine, Assert):
@@ -323,10 +327,10 @@ def test_add_label_to_multiple_lines(parabola, sine, Assert):
     assert len(graph.series) == 2
     Assert.allclose(graph.series[0].x, parabola.x)
     Assert.allclose(graph.series[0].y, parabola.y)
-    assert graph.series[0].name == "new label parabola"
+    assert graph.series[0].label == "new label parabola"
     Assert.allclose(graph.series[1].x, sine.x)
     Assert.allclose(graph.series[1].y, sine.y)
-    assert graph.series[1].name == "new label sine"
+    assert graph.series[1].label == "new label sine"
 
 
 def test_convert_parabola_to_frame(parabola, Assert, not_core):
@@ -555,6 +559,25 @@ def test_complex_quiver(complex_quiver, Assert, not_core):
     assert len(fig.layout.annotations) == 0
 
 
+def test_width_and_height(parabola, not_core):
+    fig = Graph(parabola).to_plotly()
+    assert fig.layout.width == 720
+    assert fig.layout.height == 540
+    fig = Graph(parabola, xsize=800, ysize=600).to_plotly()
+    assert fig.layout.width == 800
+    assert fig.layout.height == 600
+
+
+def test_range_for_x_and_y_axis(parabola, Assert, not_core):
+    fig = Graph(parabola).to_plotly()
+    assert fig.layout.xaxis.range is None
+    assert fig.layout.yaxis.range is None
+    graph = Graph(parabola, xrange=[-1.5, 7.2], yrange=(2.1, 4.3))
+    fig = graph.to_plotly()
+    Assert.allclose(fig.layout.xaxis.range, graph.xrange)
+    Assert.allclose(fig.layout.yaxis.range, graph.yrange)
+
+
 @dataclasses.dataclass
 class ContourData:
     positions: np.ndarray = None
@@ -596,3 +619,7 @@ def split_data(data, data_size, Assert):
     other_barb_length = np.linalg.norm(other_barb - actual.tips, axis=-1)
     Assert.allclose(other_barb_length, actual.barb_length, tolerance=10)
     return actual
+
+
+def test_no_common_names():
+    assert set(Graph._fields).intersection(Series._fields) == set()

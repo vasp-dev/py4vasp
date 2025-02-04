@@ -153,6 +153,6 @@ def test_multiple_graphs_merged_by_plot():
     example = MultipleGraphs()
     result = example.plot()
     assert len(result) == 3
-    assert result[0].name == "first"
-    assert result[1].name == "second foo"
-    assert result[2].name == "second bar"
+    assert result[0].label == "first"
+    assert result[1].label == "second foo"
+    assert result[2].label == "second bar"
