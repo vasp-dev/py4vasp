@@ -196,16 +196,10 @@ attribute is supplied with its corresponding grid scalar or ion arrow component.
 
     def _create_atoms(self, step):
         symbols = "".join(self.elements[step])
-        atoms = ase.Atoms(symbols)
-        atoms.cell = self.lattice_vectors[step]
-        atoms.set_scaled_positions(self.positions[step])
-        print(f"{np.array(self.positions).shape=}")
-        atoms.set_pbc(True)
-        if self.shift is not None:
-            translation = np.sum(atoms.cell, axis=0)
-            translation = [translation[i] * self.shift[i] for i in range(3)]
-            atoms.positions += translation
-            atoms.wrap()
+        atoms = ase.Atoms(symbols, cell=self.lattice_vectors[step], pbc=True)
+        shift = np.zeros(3) if self.shift is None else self.shift
+        atoms.set_scaled_positions(np.add(self.positions[step], shift))
+        atoms.wrap()
         atoms = atoms.repeat(self.supercell)
         return atoms
 

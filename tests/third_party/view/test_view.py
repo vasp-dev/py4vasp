@@ -278,26 +278,42 @@ def test_ion_arrows(view_arrow, Assert):
             assert expected_radius == output_radius
             idx_msg += 1
 
+
 def test_shifted_ion_arrows(view_arrow, Assert):
     view_arrow.shift = [-0.3, 0.3, 0.6]
     widget = view_arrow.to_ngl()
-    for idx_traj in range(len(view_arrow.lattice_vectors)):
+    iter_traj = list(range(len(view_arrow.lattice_vectors)))
+    iter_ion_arrows = list(range(len(view_arrow.ref.ion_arrows)))
+    idx_msg = 2  # Start with the assumption that the structure has been tested
+    for idx_ion_arrows, idx_traj in itertools.product(iter_ion_arrows, iter_traj):
         positions = view_arrow.positions[idx_traj]
         shifted_positions = np.mod(positions + np.array(view_arrow.shift), 1)
-        print(positions, shifted_positions)
         lattice_vectors = view_arrow.lattice_vectors[idx_traj].T
         expected_coordinates = shifted_positions @ lattice_vectors.T
         output_coordinates = widget.trajectory_0.get_coordinates(idx_traj)
-        print("expected", expected_coordinates)
-        print("actual", output_coordinates)
         Assert.allclose(expected_coordinates, output_coordinates)
-    # output_structure_string = widget.trajectory_0.get_structure_string()
-    # expected_structure_string = view.ref
-    # expected_lines = expected_structure_string.split("\n")
-    # output_lines = output_structure_string.split("\n")
-    # for output_line, expected_line in zip(expected_lines, output_lines):
-    #     assert output_line.strip() == expected_line.strip()
-    assert False
+        _, transformation = ase.cell.Cell(lattice_vectors).standard_form()
+        if idx_traj != 0:
+            continue
+        ion_arrows = view_arrow.ref.ion_arrows[idx_ion_arrows].quantity[idx_traj]
+        expected_color = view_arrow.ref.ion_arrows[idx_ion_arrows].color
+        expected_radius = view_arrow.ref.ion_arrows[idx_ion_arrows].radius
+        for idx_pos, ion_position in enumerate(output_coordinates):
+            expected_tail = ion_position
+            expected_tip = ion_position + ion_arrows[idx_pos]
+            expected_tail = transformation @ expected_tail
+            expected_tip = transformation @ expected_tip
+            msg_archive = widget.get_state()["_ngl_msg_archive"][idx_msg]["args"][1][0]
+            output_tail = msg_archive[1]
+            output_tip = msg_archive[2]
+            output_color = msg_archive[3]
+            output_radius = msg_archive[4]
+            Assert.allclose(expected_tip, output_tip)
+            Assert.allclose(expected_tail, output_tail)
+            Assert.allclose(convert.to_rgb(expected_color), output_color)
+            assert expected_radius == output_radius
+            idx_msg += 1
+
 
 @pytest.mark.parametrize("is_structure", [True, False])
 def test_supercell(is_structure, not_core):
