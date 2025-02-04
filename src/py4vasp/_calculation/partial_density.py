@@ -299,7 +299,7 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
         return self._raw_data.partial_charge.shape[2] == 2
 
     @base.data_access
-    def to_view(self, selection="total"):
+    def to_view(self, selection="total", supercell=None, **user_options):
         """Plot the selected partial density as a 3d isosurface within the structure.
 
         Parameters
@@ -321,12 +321,9 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
         View
             Visualize an isosurface of the density within the 3d structure.
         """
-        supercell = None
         viewer = self._structure.plot(supercell)
         partial_charge = self.to_numpy(selection)
-        isosurface = view.Isosurface(
-            isolevel=0.2, color=_config.VASP_COLORS["cyan"], opacity=0.6
-        )
+        isosurface = self._setup_isosurface(**user_options)
         grid_quantity = view.GridQuantity(
             quantity=partial_charge[np.newaxis],
             label=selection,
@@ -334,6 +331,10 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
         )
         viewer.grid_scalars = [grid_quantity]
         return viewer
+
+    def _setup_isosurface(self, isolevel=0.2, color=None, opacity=0.6):
+        color = color or _config.VASP_COLORS["cyan"]
+        return view.Isosurface(isolevel=isolevel, color=color, opacity=opacity)
 
     @base.data_access
     def to_numpy(self, selection="total", band=0, kpoint=0):

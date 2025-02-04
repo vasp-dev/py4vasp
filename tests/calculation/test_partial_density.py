@@ -163,6 +163,17 @@ def test_plot(PolarizedNonSplitPartialDensity, selection, Assert, not_core):
     assert isosurface.opacity == 0.6
 
 
+def test_plot_with_options(NonSplitPartialDensity, Assert, not_core):
+    view = NonSplitPartialDensity.plot(supercell=(1, 2, 3), isolevel=0.6, color="red")
+    Assert.allclose(view.supercell, (1, 2, 3))
+    assert len(view.grid_scalars) == 1
+    grid_scalar = view.grid_scalars[0]
+    assert len(grid_scalar.isosurfaces) == 1
+    isosurface = grid_scalar.isosurfaces[0]
+    assert isosurface.isolevel == 0.6
+    assert isosurface.color == "red"
+
+
 def test_non_split_to_numpy(PolarizedNonSplitPartialDensity, Assert, not_core):
     actual = PolarizedNonSplitPartialDensity.to_numpy("total")
     expected = PolarizedNonSplitPartialDensity.ref.partial_density
