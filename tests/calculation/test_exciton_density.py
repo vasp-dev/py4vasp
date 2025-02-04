@@ -83,3 +83,14 @@ def test_plot_centered(exciton_density, Assert):
 def test_plot_supercell(exciton_density, supercell, Assert):
     view = exciton_density.plot(supercell=supercell)
     Assert.allclose(view.supercell, supercell)
+
+
+def test_plot_user_options(exciton_density):
+    view = exciton_density.plot(isolevel=0.4, color="red", opacity=0.5)
+    assert len(view.grid_scalars) == 1
+    grid_scalar = view.grid_scalars[0]
+    assert len(grid_scalar.isosurfaces) == 1
+    isosurface = grid_scalar.isosurfaces[0]
+    assert isosurface.isolevel == 0.4
+    assert isosurface.color == "red"
+    assert isosurface.opacity == 0.5
