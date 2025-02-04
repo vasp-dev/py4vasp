@@ -128,7 +128,10 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
 def _raise_error_if_no_data(data):
     if data.is_none():
         raise exception.NoData(
-            "Exciton charge density was not found. Note that the exciton density is"
-            "written to vaspout.h5 if the tags LCHARGH5=T or LH5=T are set in"
-            "the INCAR file"
+            "Exciton charge density was not found. Note that in order to calculate the"
+            "exciton charge density the number of eigenvectors has to be selected with"
+            "the tag NBSEEIG and the position of the hole or the electron has to be"
+            "provided with the tag BSEHOLE or BSEELECTRON, correspondingly. The exciton"
+            "density is written to vaspout.h5 if the tags LCHARGH5=T or LH5=T are set"
+            "in the INCAR file, otherwise the charge density is written to CHG.XXX files."
         )

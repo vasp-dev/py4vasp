@@ -42,6 +42,11 @@ def test_missing_data(empty_density):
         empty_density.read()
 
 
+def test_to_numpy(exciton_density, Assert):
+    actual = exciton_density.to_numpy()
+    Assert.allclose(actual, exciton_density.ref.density)
+
+
 @pytest.mark.parametrize("selection, indices", [(None, 0), ("2", 1), ("1, 3", (0, 2))])
 def test_plot_selection(exciton_density, selection, indices, Assert):
     indices = np.atleast_1d(indices)
