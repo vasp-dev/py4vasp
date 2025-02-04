@@ -567,6 +567,7 @@ def test_width_and_height(parabola):
     assert fig.layout.width == 800
     assert fig.layout.height == 600
 
+
 def test_range_for_x_and_y_axis(parabola, Assert):
     fig = Graph(parabola).to_plotly()
     assert fig.layout.xaxis.range is None
@@ -575,6 +576,7 @@ def test_range_for_x_and_y_axis(parabola, Assert):
     fig = graph.to_plotly()
     Assert.allclose(fig.layout.xaxis.range, graph.xrange)
     Assert.allclose(fig.layout.yaxis.range, graph.yrange)
+
 
 @dataclasses.dataclass
 class ContourData:
