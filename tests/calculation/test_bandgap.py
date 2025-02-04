@@ -124,11 +124,11 @@ def check_default_graph(bandgap, steps, Assert, graph):
     assert graph.ylabel == "bandgap (eV)"
     assert len(graph.series) == 2
     fundamental = graph.series[0]
-    assert fundamental.name == "fundamental"
+    assert fundamental.label == "fundamental"
     Assert.allclose(fundamental.x, xx)
     Assert.allclose(fundamental.y, bandgap.ref.fundamental[steps, 0])
     direct = graph.series[1]
-    assert direct.name == "direct"
+    assert direct.label == "direct"
     Assert.allclose(direct.x, xx)
     Assert.allclose(direct.y, bandgap.ref.direct[steps, 0])
 
@@ -136,7 +136,7 @@ def check_default_graph(bandgap, steps, Assert, graph):
 def test_plot_selection_default(bandgap, steps, Assert):
     graph = bandgap.plot("direct") if steps == -1 else bandgap[steps].plot("direct")
     assert len(graph.series) == 1
-    assert graph.series[0].name == "direct"
+    assert graph.series[0].label == "direct"
     Assert.allclose(graph.series[0].y, bandgap.ref.direct[steps, 0])
 
 
@@ -146,16 +146,16 @@ def test_plot_selection_spin_polarized(spin_polarized, steps, Assert):
     graph = bandgap.plot(selection)
     assert len(graph.series) == 4
     fundamental_up = graph.series[0]
-    assert fundamental_up.name == "fundamental_up"
+    assert fundamental_up.label == "fundamental_up"
     Assert.allclose(fundamental_up.y, bandgap.ref.fundamental[steps, 1])
     direct_up = graph.series[1]
-    assert direct_up.name == "direct_up"
+    assert direct_up.label == "direct_up"
     Assert.allclose(direct_up.y, bandgap.ref.direct[steps, 1])
     fundamental_down = graph.series[2]
-    assert fundamental_down.name == "fundamental_down"
+    assert fundamental_down.label == "fundamental_down"
     Assert.allclose(fundamental_down.y, bandgap.ref.fundamental[steps, 2])
     direct = graph.series[3]
-    assert direct.name == "direct"
+    assert direct.label == "direct"
     Assert.allclose(direct.y, bandgap.ref.direct[steps, 0])
 
 

@@ -14,11 +14,8 @@ def test_plot():
     series2 = Series(x2, y2, "label2")
     assert plot(x1, y1) == Graph(series0)
     assert plot(x1, y1, "label1") == Graph(series1)
-    assert plot(x1, y1, name="label1") == Graph(series1)
+    assert plot(x1, y1, label="label1") == Graph(series1)
     assert plot(x1, y1, xlabel="xaxis") == Graph(series0, xlabel="xaxis")
-    assert plot((x1, y1)) == Graph([series0])
-    assert plot((x1, y1), (x2, y2, "label2")) == Graph([series0, series2])
-    assert plot((x1, y1), xlabel="xaxis") == Graph([series0], xlabel="xaxis")
     assert plot(x1, y=y1) == Graph(series0)
     assert plot(x=x1, y=y1) == Graph(series0)
 
@@ -36,8 +33,6 @@ def test_plot_inconsistent_length():
     y = np.zeros(20)
     with pytest.raises(exception.IncorrectUsage):
         plot(x, y)
-    with pytest.raises(exception.IncorrectUsage):
-        plot((x, y))
 
 
 def test_fatband_inconsistent_length():

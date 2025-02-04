@@ -41,7 +41,7 @@ def test_plot(workfunction, Assert):
     assert graph.ylabel == "average potential (eV)"
     Assert.allclose(graph.series.x, workfunction.ref.distance)
     Assert.allclose(graph.series.y, workfunction.ref.average_potential)
-    assert graph.series.name == "potential"
+    assert graph.series.label == "potential"
 
 
 @patch.object(Workfunction, "to_graph")

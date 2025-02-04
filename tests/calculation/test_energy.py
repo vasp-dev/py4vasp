@@ -64,7 +64,7 @@ def test_plot(selection, labels, subset, steps, MD_energy, Assert):
     for series, label, yy in zip(graph.series, labels, MD_energy.ref.values[subset]):
         Assert.allclose(series.x, xx[steps])
         Assert.allclose(series.y, yy[steps])
-        assert series.name == label
+        assert series.label == label
 
 
 @pytest.mark.parametrize(

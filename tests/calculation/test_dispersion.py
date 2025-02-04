@@ -18,7 +18,7 @@ def dispersion(raw_data, request):
     dispersion.ref.eigenvalues = raw_dispersion.eigenvalues
     spin_polarized = request.param == "spin_polarized"
     dispersion.ref.spin_polarized = spin_polarized
-    dispersion.ref.names = ("up", "down") if spin_polarized else ("bands",)
+    dispersion.ref.labels = ("up", "down") if spin_polarized else ("bands",)
     dispersion.ref.xticks = expected_xticks(request.param)
     return dispersion
 
@@ -47,13 +47,13 @@ def test_read_dispersion(dispersion, Assert):
 
 def test_plot_dispersion(dispersion, Assert):
     graph = dispersion.plot()
-    assert len(graph.series) == len(dispersion.ref.names)
+    assert len(graph.series) == len(dispersion.ref.labels)
     check_xticks(graph.xticks, dispersion.ref, Assert)
     bands = np.atleast_3d(dispersion.ref.eigenvalues.T)
-    for component, (series, name) in enumerate(zip(graph.series, dispersion.ref.names)):
+    for index, (series, label) in enumerate(zip(graph.series, dispersion.ref.labels)):
         Assert.allclose(series.x, dispersion.ref.kpoints.distances())
-        Assert.allclose(series.y, bands[:, :, component])
-        assert series.name == name
+        Assert.allclose(series.y, bands[:, :, index])
+        assert series.label == label
         assert series.width is None
 
 
@@ -81,11 +81,11 @@ def test_plot_dispersion_with_projections(dispersion, Assert):
     assert len(graph.series) == len(projections)
     check_xticks(graph.xticks, dispersion.ref, Assert)
     bands = np.atleast_3d(dispersion.ref.eigenvalues.T)
-    for series, (name, width) in zip(graph.series, projections.items()):
-        component = 1 if "down" in name else 0
+    for series, (label, width) in zip(graph.series, projections.items()):
+        component = 1 if "down" in label else 0
         Assert.allclose(series.x, dispersion.ref.kpoints.distances())
         Assert.allclose(series.y, bands[:, :, component])
-        assert series.name == name
+        assert series.label == label
         Assert.allclose(series.width, width.T)
 
 

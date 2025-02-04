@@ -179,7 +179,7 @@ def test_Fe3O4_projectors_plot(Fe3O4_projectors, Assert):
     fig = Fe3O4_projectors.plot("Fe p O(d)")
     data = fig.series
     assert len(data) == 8  # (total + 3 selections) x 2 (spin resolution)
-    names = [d.name for d in data]
+    names = [d.label for d in data]
     Fe_up = names.index("Fe_up")
     Assert.allclose(data[Fe_up].y, Fe3O4_projectors.ref.Fe_up)
     Fe_down = names.index("Fe_down")
@@ -201,7 +201,7 @@ def test_plot_combine_projectors(Fe3O4_projectors, Assert):
     addition = Fe3O4_projectors.ref.Fe_up + Fe3O4_projectors.ref.O_d_down
     subtraction_up = Fe3O4_projectors.ref.Fe_up - Fe3O4_projectors.ref.p_up
     subtraction_down = Fe3O4_projectors.ref.Fe_down - Fe3O4_projectors.ref.p_down
-    names = [d.name for d in data]
+    names = [d.label for d in data]
     Assert.allclose(data[names.index("Fe_up + O_d_down")].y, addition)
     Assert.allclose(data[names.index("Fe_up - p_up")].y, subtraction_up)
     Assert.allclose(data[names.index("Fe_down - p_down")].y, -subtraction_down)

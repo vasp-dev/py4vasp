@@ -236,16 +236,16 @@ def test_spin_projectors_plot(spin_projectors, Assert):
     width = 0.05
     fig = spin_projectors.plot("O", width)
     assert len(fig.series) == 2
-    assert fig.series[0].name == "O_up"
+    assert fig.series[0].label == "O_up"
     check_data(fig.series[0], width, reference.bands_up, reference.O_up, Assert)
-    assert fig.series[1].name == "O_down"
+    assert fig.series[1].label == "O_down"
     check_data(fig.series[1], width, reference.bands_down, reference.O_down, Assert)
 
 
 def check_figure(fig, width, reference, Assert):
     assert len(fig.series) == 2
-    assert fig.series[0].name == "Sr"
-    assert fig.series[1].name == "p"
+    assert fig.series[0].label == "Sr"
+    assert fig.series[1].label == "p"
     check_data(fig.series[0], width, reference.bands, reference.Sr, Assert)
     check_data(fig.series[1], width, reference.bands, reference.p, Assert)
 
@@ -260,9 +260,9 @@ def check_data(series, width, band, projection, Assert):
 def test_spin_polarized_plot(spin_polarized, Assert):
     fig = spin_polarized.plot()
     assert len(fig.series) == 2
-    assert fig.series[0].name == "up"
+    assert fig.series[0].label == "up"
     Assert.allclose(fig.series[0].y, spin_polarized.ref.bands_up.T)
-    assert fig.series[1].name == "down"
+    assert fig.series[1].label == "down"
     Assert.allclose(fig.series[1].y, spin_polarized.ref.bands_down.T)
 
 

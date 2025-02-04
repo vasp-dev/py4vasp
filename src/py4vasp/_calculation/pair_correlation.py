@@ -115,7 +115,7 @@ class PairCorrelation(slice_.Mixin, base.Refinery, graph.Mixin):
     def _make_series(self, selected_data):
         distances = selected_data["distances"]
         return [
-            graph.Series(x=distances, y=data, name=label)
+            graph.Series(x=distances, y=data, label=label)
             for label, data in selected_data.items()
             if label != "distances"
         ]

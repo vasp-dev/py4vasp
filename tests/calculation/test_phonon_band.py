@@ -85,7 +85,7 @@ class FatbandChecker:
             self.check_series(*item, width)
 
     def check_series(self, series, projection, label, width):
-        assert series.name == label
+        assert series.label == label
         self.Assert.allclose(series.x, self.distances)
         self.Assert.allclose(series.y, self.bands.T)
         self.Assert.allclose(series.width, width * projection.T)

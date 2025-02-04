@@ -61,7 +61,7 @@ def test_phonon_dos_plot_selection(phonon_dos, Assert):
 
 
 def check_series(series, reference, label, Assert):
-    assert series.name == label
+    assert series.label == label
     Assert.allclose(series.y, reference)
 
 
