@@ -22,7 +22,14 @@ STRUCTURE_SrTiO3 = raw.Structure(
         [[0, 0, 0], [0.5, 0.5, 0.5], [0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]
     ),
 )
-EXAMPLE_CONTCARS = (raw.CONTCAR(structure=STRUCTURE_SrTiO3, system="Cubic SrTiO3"),)
+EXAMPLE_CONTCARS = (
+    raw.CONTCAR(structure=STRUCTURE_SrTiO3, system="Cubic SrTiO3"),
+    raw.CONTCAR(
+        structure=STRUCTURE_SrTiO3,
+        system="With selective dynamics",
+        selective_dynamics=raw.VaspData(np.random.choice([True, False], size=(5, 3))),
+    ),
+)
 
 
 @pytest.mark.parametrize("raw_contcar", EXAMPLE_CONTCARS)
@@ -31,6 +38,7 @@ def test_parse_poscar(raw_contcar, Assert):
     actual = parse.POSCAR(poscar_string)
     check_structure_is_same(actual.structure, raw_contcar.structure, Assert)
     assert actual.system == raw_contcar.system
+    Assert.allclose(actual.selective_dynamics, raw_contcar.selective_dynamics)
 
 
 def check_structure_is_same(actual, expected, Assert):
