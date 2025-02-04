@@ -6,10 +6,47 @@ from typing import List, Sequence
 import numpy as np
 import pytest
 
-from py4vasp._raw.data import CONTCAR, Cell, Stoichiometry, Structure
+from py4vasp import raw
+from py4vasp._calculation._CONTCAR import CONTCAR
+from py4vasp._util import parse
+
+from py4vasp._raw.data import Cell, Stoichiometry, Structure
 from py4vasp._raw.data_wrapper import VaspData
-from py4vasp._util.parser import ParsePoscar
+from py4vasp._util.parse import ParsePoscar
 from py4vasp.exception import ParserError
+
+STRUCTURE_SrTiO3 = raw.Structure(
+    raw.Stoichiometry(number_ion_types=[1, 1, 3], ion_types=["Sr", "Ti", "O"]),
+    raw.Cell(lattice_vectors=np.eye(3), scale=raw.VaspData(4.0)),
+    positions=np.array(
+        [[0, 0, 0], [0.5, 0.5, 0.5], [0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]
+    ),
+)
+EXAMPLE_CONTCARS = (raw.CONTCAR(structure=STRUCTURE_SrTiO3, system="Cubic SrTiO3"),)
+
+
+@pytest.mark.parametrize("raw_contcar", EXAMPLE_CONTCARS)
+def test_parse_poscar(raw_contcar, Assert):
+    poscar_string = str(CONTCAR.from_data(raw_contcar))
+    actual = parse.POSCAR(poscar_string)
+    check_structure_is_same(actual.structure, raw_contcar.structure, Assert)
+    assert actual.system == raw_contcar.system
+
+
+def check_structure_is_same(actual, expected, Assert):
+    check_stoichiometry_is_same(actual.stoichiometry, expected.stoichiometry)
+    check_cell_is_same(actual.cell, expected.cell, Assert)
+    Assert.allclose(actual.positions, expected.positions)
+
+
+def check_stoichiometry_is_same(actual, expected):
+    assert np.array_equal(actual.number_ion_types, expected.number_ion_types)
+    assert np.array_equal(actual.ion_types, expected.ion_types)
+
+
+def check_cell_is_same(actual, expected, Assert):
+    Assert.allclose(actual.lattice_vectors, expected.lattice_vectors)
+    Assert.allclose(actual.scale, expected.scale)
 
 
 @pytest.fixture
@@ -547,7 +584,7 @@ def test_to_contcar(cubic_BN, has_species_name, Assert):
         has_ion_velocities=True,
     )
     output_contcar = ParsePoscar(poscar_string, **arguments).to_contcar()
-    assert isinstance(output_contcar, CONTCAR)
+    assert isinstance(output_contcar, raw.CONTCAR)
     assert isinstance(output_contcar.structure, Structure)
     assert isinstance(output_contcar.selective_dynamics, VaspData)
     assert isinstance(output_contcar.lattice_velocities, VaspData)

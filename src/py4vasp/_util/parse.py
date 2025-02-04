@@ -8,6 +8,10 @@ from py4vasp._raw.data_wrapper import VaspData
 from py4vasp.exception import ParserError
 
 
+def POSCAR(string):
+    return ParsePoscar(string).to_contcar()
+
+
 @dataclass
 class ParsePoscar:
     poscar: str
