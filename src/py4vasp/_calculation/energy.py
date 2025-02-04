@@ -182,7 +182,7 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
     def _make_series(self, yaxes, tree):
         steps = np.arange(len(self._raw_data.values))[self._slice] + 1
         return [
-            graph.Series(x=steps, y=values, name=label, y2=yaxes.use_y2(label))
+            graph.Series(x=steps, y=values, label=label, y2=yaxes.use_y2(label))
             for label, values in self._read_data(tree, self._slice)
         ]
 
