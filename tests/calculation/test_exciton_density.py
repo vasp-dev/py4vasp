@@ -104,3 +104,8 @@ exciton charge density:
     grid: 10, 12, 14
     excitons: 3"""
     assert actual == {"text/plain": expected_text}
+
+
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.exciton_density()
+    check_factory_methods(ExcitonDensity, data)
