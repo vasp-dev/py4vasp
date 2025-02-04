@@ -6,8 +6,9 @@ from typing import Union
 
 import numpy as np
 
-from py4vasp import exception
+from py4vasp import _config, exception
 from py4vasp._calculation import base, structure
+from py4vasp._third_party import view
 from py4vasp._third_party.graph import Graph
 from py4vasp._third_party.graph.contour import Contour
 from py4vasp._util import import_, select
@@ -50,7 +51,7 @@ class STM_settings:
     interpolation_factor: int = 10
 
 
-class PartialDensity(base.Refinery, structure.Mixin):
+class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
     """Partial charges describe the fraction of the charge density in a certain energy,
     band, or k-point range.
 
@@ -296,6 +297,43 @@ class PartialDensity(base.Refinery, structure.Mixin):
 
     def _spin_polarized(self):
         return self._raw_data.partial_charge.shape[2] == 2
+
+    @base.data_access
+    def to_view(self, selection="total"):
+        """Plot the selected partial density as a 3d isosurface within the structure.
+
+        Parameters
+        ----------
+        selection : str
+            Can be *total*, *up* or *down*.
+
+        supercell : int or np.ndarray
+            If present the data is replicated the specified number of times along each
+            direction.
+
+        user_options
+            Further arguments with keyword that get directly passed on to the
+            visualizer. Most importantly, you can set isolevel to adjust the
+            value at which the isosurface is drawn.
+
+        Returns
+        -------
+        View
+            Visualize an isosurface of the density within the 3d structure.
+        """
+        supercell = None
+        viewer = self._structure.plot(supercell)
+        partial_charge = self.to_numpy(selection)
+        isosurface = view.Isosurface(
+            isolevel=0.2, color=_config.VASP_COLORS["cyan"], opacity=0.6
+        )
+        grid_quantity = view.GridQuantity(
+            quantity=partial_charge[np.newaxis],
+            label=selection,
+            isosurfaces=[isosurface],
+        )
+        viewer.grid_scalars = [grid_quantity]
+        return viewer
 
     @base.data_access
     def to_numpy(self, selection="total", band=0, kpoint=0):

@@ -6,6 +6,7 @@ import types
 import numpy as np
 import pytest
 
+from py4vasp import _config
 from py4vasp._calculation.partial_density import PartialDensity, STM_settings
 from py4vasp._calculation.structure import Structure
 from py4vasp._util.slicing import plane
@@ -136,6 +137,30 @@ def test_grid(AnyPartialDensity, Assert, not_core):
     actual = AnyPartialDensity.grid()
     expected = AnyPartialDensity.ref.grid
     Assert.allclose(actual, expected)
+
+
+@pytest.mark.parametrize("selection", (None, "total", "up", "down"))
+def test_plot(PolarizedNonSplitPartialDensity, selection, Assert, not_core):
+    if selection is not None:
+        view = PolarizedNonSplitPartialDensity.plot(selection)
+        expected_density = PolarizedNonSplitPartialDensity.to_numpy(selection)
+        expected_label = selection
+    else:
+        view = PolarizedNonSplitPartialDensity.plot()
+        expected_density = PolarizedNonSplitPartialDensity.to_numpy()
+        expected_label = "total"
+    reference = PolarizedNonSplitPartialDensity.ref
+    Assert.same_structure_view(view, reference.structure.plot())
+    assert len(view.grid_scalars) == 1
+    grid_scalar = view.grid_scalars[0]
+    assert grid_scalar.label == expected_label
+    assert grid_scalar.quantity.ndim == 4
+    Assert.allclose(grid_scalar.quantity, expected_density)
+    assert len(grid_scalar.isosurfaces) == 1
+    isosurface = grid_scalar.isosurfaces[0]
+    assert isosurface.isolevel == 0.2
+    assert isosurface.color == _config.VASP_COLORS["cyan"]
+    assert isosurface.opacity == 0.6
 
 
 def test_non_split_to_numpy(PolarizedNonSplitPartialDensity, Assert, not_core):
