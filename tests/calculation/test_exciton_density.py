@@ -77,3 +77,9 @@ def test_plot_centered(exciton_density, Assert):
     assert view.shift is None
     view = exciton_density.plot(center=True)
     Assert.allclose(view.shift, 0.5)
+
+
+@pytest.mark.parametrize("supercell", (2, (3, 1, 2)))
+def test_plot_supercell(exciton_density, supercell, Assert):
+    view = exciton_density.plot(supercell=supercell)
+    Assert.allclose(view.supercell, supercell)
