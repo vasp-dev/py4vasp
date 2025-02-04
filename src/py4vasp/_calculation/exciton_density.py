@@ -42,7 +42,7 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
             charge density represented on a grid in the supercell.
         """
         _raise_error_if_no_data(self._raw_data.exciton_charge)
-        result = {"structure": self.structure.read()}
+        result = {"structure": self._structure.read()}
         result.update({"charge": self.to_numpy()})
         return result
 
