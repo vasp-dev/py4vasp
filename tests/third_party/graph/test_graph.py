@@ -559,7 +559,7 @@ def test_complex_quiver(complex_quiver, Assert, not_core):
     assert len(fig.layout.annotations) == 0
 
 
-def test_width_and_height(parabola):
+def test_width_and_height(parabola, not_core):
     fig = Graph(parabola).to_plotly()
     assert fig.layout.width == 720
     assert fig.layout.height == 540
@@ -568,7 +568,7 @@ def test_width_and_height(parabola):
     assert fig.layout.height == 600
 
 
-def test_range_for_x_and_y_axis(parabola, Assert):
+def test_range_for_x_and_y_axis(parabola, Assert, not_core):
     fig = Graph(parabola).to_plotly()
     assert fig.layout.xaxis.range is None
     assert fig.layout.yaxis.range is None
