@@ -2,8 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import _config, calculation, exception
-from py4vasp._calculation import base, structure
+from py4vasp import _config, exception
+from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import view
 from py4vasp._util import import_, index, select
 
@@ -24,12 +24,12 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
     def __str__(self):
         _raise_error_if_no_data(self._raw_data.exciton_charge)
         grid = self._raw_data.exciton_charge.shape[1:]
-        excitons = self._raw_data.exciton_charge.shape[0]
-        topology = calculation.topology.from_data(self._raw_data.structure.topology)
+        raw_stoichiometry = self._raw_data.structure.stoichiometry
+        stoichiometry = _stoichiometry.Stoichiometry.from_data(raw_stoichiometry)
         return f"""exciton charge density:
-    structure: {pretty.pretty(topology)}
+    structure: {pretty.pretty(stoichiometry)}
     grid: {grid[2]}, {grid[1]}, {grid[0]}
-    excitons : {excitons}"""
+    excitons: {len(self._raw_data.exciton_charge)}"""
 
     @base.data_access
     def to_dict(self):

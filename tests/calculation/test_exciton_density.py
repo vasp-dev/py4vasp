@@ -94,3 +94,13 @@ def test_plot_user_options(exciton_density):
     assert isosurface.isolevel == 0.4
     assert isosurface.color == "red"
     assert isosurface.opacity == 0.5
+
+
+def test_print(exciton_density, format_):
+    actual, _ = format_(exciton_density)
+    expected_text = """\
+exciton charge density:
+    structure: Sr2TiO4
+    grid: 10, 12, 14
+    excitons: 3"""
+    assert actual == {"text/plain": expected_text}
