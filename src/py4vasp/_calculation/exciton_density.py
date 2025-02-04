@@ -93,7 +93,7 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
         """
         _raise_error_if_no_data(self._raw_data.exciton_charge)
         selection = selection or _INTERNAL
-        viewer = self.structure.plot(supercell)
+        viewer = self._structure.plot(supercell)
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_data.exciton_charge)
         tree = select.Tree.from_selection(selection)
