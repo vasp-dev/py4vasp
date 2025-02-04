@@ -61,3 +61,19 @@ def test_plot_selection(exciton_density, selection, indices, Assert):
         assert isosurface.isolevel == 0.8
         assert isosurface.color == _config.VASP_COLORS["cyan"]
         assert isosurface.opacity == 0.6
+
+
+def test_plot_addition(exciton_density, Assert):
+    view = exciton_density.plot("1 + 3")
+    assert len(view.grid_scalars) == 1
+    grid_scalar = view.grid_scalars[0]
+    selected_exciton = exciton_density.ref.density[0] + exciton_density.ref.density[2]
+    assert grid_scalar.label == "1 + 3"
+    Assert.allclose(grid_scalar.quantity, selected_exciton)
+
+
+def test_plot_centered(exciton_density, Assert):
+    view = exciton_density.plot()
+    assert view.shift is None
+    view = exciton_density.plot(center=True)
+    Assert.allclose(view.shift, 0.5)
