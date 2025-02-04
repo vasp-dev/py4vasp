@@ -20,6 +20,7 @@ number_bands = 3
 number_valence_bands = 2
 number_conduction_bands = 1
 number_eigenvectors = 5
+number_excitons = 3
 single_spin = 1
 two_spins = 2
 axes = 3
@@ -200,6 +201,10 @@ class RawDataFactory:
             return _relax_energy(randomize)
         else:
             raise exception.NotImplemented()
+
+    @staticmethod
+    def exciton_density():
+        return _Sr2TiO4_exciton_density()
 
     @staticmethod
     def exciton_eigenvector(selection):
@@ -761,6 +766,14 @@ def _Sr2TiO4_dos(projectors):
         shape = (single_spin, number_atoms, number_orbitals, number_points)
         raw_dos.projections = np.random.random(shape)
     return raw_dos
+
+
+def _Sr2TiO4_exciton_density():
+    shape = (number_excitons, *grid_dimensions)
+    exciton_charge = _make_arbitrary_data(shape)
+    return raw.ExcitonDensity(
+        structure=_Sr2TiO4_structure(), exciton_charge=exciton_charge
+    )
 
 
 def _Sr2TiO4_exciton_eigenvector():

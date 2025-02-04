@@ -230,6 +230,15 @@ class Energy:
 
 
 @dataclasses.dataclass
+class ExcitonDensity:
+    "The exciton charge density on the real space grid."
+    structure: Structure
+    "The atomic structure to represent the densities."
+    exciton_charge: VaspData
+    "The data of exciton charge density."
+
+
+@dataclasses.dataclass
 class ExcitonEigenvector:
     """Contains the BSE data required to produce a plot of eigenvector contributions."""
 

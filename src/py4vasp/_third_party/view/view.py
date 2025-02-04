@@ -114,6 +114,10 @@ class View:
     """Defines if the axes is shown in the viewer"""
     show_axes_at: Sequence[float] = None
     """Defines where the axis is shown, defaults to the origin"""
+    shift: npt.ArrayLike = None
+    """Defines the shift of the origin"""
+    camera: str = "orthographic"
+    """Defines the camera view type (orthographic or perspective)"""
 
     def __post_init__(self):
         self._verify()
@@ -133,6 +137,7 @@ class View:
         trajectory = [self._create_atoms(i) for i in self._iterate_trajectory_frames()]
         ngl_trajectory = nglview.ASETrajectory(trajectory)
         widget = nglview.NGLWidget(ngl_trajectory)
+        widget.camera = self.camera
         if self.grid_scalars:
             self._show_isosurface(widget, trajectory)
         if self.ion_arrows:
@@ -191,10 +196,10 @@ attribute is supplied with its corresponding grid scalar or ion arrow component.
 
     def _create_atoms(self, step):
         symbols = "".join(self.elements[step])
-        atoms = ase.Atoms(symbols)
-        atoms.cell = self.lattice_vectors[step]
-        atoms.set_scaled_positions(self.positions[step])
-        atoms.set_pbc(True)
+        atoms = ase.Atoms(symbols, cell=self.lattice_vectors[step], pbc=True)
+        shift = np.zeros(3) if self.shift is None else self.shift
+        atoms.set_scaled_positions(np.add(self.positions[step], shift))
+        atoms.wrap()
         atoms = atoms.repeat(self.supercell)
         return atoms
 
@@ -226,9 +231,11 @@ attribute is supplied with its corresponding grid scalar or ion arrow component.
         for grid_scalar in self.grid_scalars:
             if not grid_scalar.isosurfaces:
                 continue
+            quantity = grid_scalar.quantity[step]
+            quantity = self._shift_quantity(quantity)
+            quantity = self._repeat_isosurface(quantity)
             atoms = trajectory[step]
             self._set_atoms_in_standard_form(atoms)
-            quantity = self._repeat_isosurface(grid_scalar.quantity[step])
             with tempfile.TemporaryDirectory() as tmp:
                 filename = os.path.join(tmp, CUBE_FILENAME)
                 ase_cube.write_cube(open(filename, "w"), atoms=atoms, data=quantity)
@@ -240,6 +247,12 @@ attribute is supplied with its corresponding grid scalar or ion arrow component.
                     "opacity": isosurface.opacity,
                 }
                 component.add_surface(**isosurface_options)
+
+    def _shift_quantity(self, quantity):
+        if self.shift is None:
+            return quantity
+        shift_indices = np.round(quantity.shape * self.shift).astype(np.int32)
+        return np.roll(quantity, shift_indices, axis=(0, 1, 2))
 
     def _show_arrows_at_atoms(self, widget, trajectory):
         step = 0

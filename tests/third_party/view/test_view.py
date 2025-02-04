@@ -87,16 +87,19 @@ ENDMDL
 def view3d(request, not_core):
     is_structure = request.param
     inputs = base_input_view(is_structure)
-    isosurface = Isosurface(isolevel=0.1, color="#2FB5AB", opacity=0.6)
+    isosurface1 = Isosurface(isolevel=0.1, color="#2FB5AB", opacity=0.6)
+    isosurface2 = Isosurface(isolevel=0.2, color="#2FB5AB", opacity=0.6)
     if is_structure:
-        charge_grid_scalar = GridQuantity(np.random.rand(1, 12, 10, 8), "charge")
-        charge_grid_scalar.isosurfaces = [isosurface]
-        grid_scalars = [charge_grid_scalar]
+        two_isosurfaces = GridQuantity(np.random.rand(1, 12, 10, 8), "isosurfaces")
+        two_isosurfaces.isosurfaces = [isosurface1, isosurface2]
+        grid_scalars = [two_isosurfaces]
     else:
-        charge_grid_scalar = GridQuantity(np.random.rand(1, 12, 10, 8), "charge")
-        potential_grid_scalar = GridQuantity(np.random.rand(1, 12, 10, 8), "potential")
-        potential_grid_scalar.isosurfaces = [isosurface]
-        grid_scalars = [charge_grid_scalar, potential_grid_scalar]
+        no_isosurface = GridQuantity(np.random.rand(1, 12, 10, 8), "no isosurface")
+        grid_scalar1 = GridQuantity(np.random.rand(1, 12, 10, 8), "first")
+        grid_scalar1.isosurfaces = [isosurface1]
+        grid_scalar2 = GridQuantity(np.random.rand(1, 12, 10, 8), "second")
+        grid_scalar2.isosurfaces = [isosurface2]
+        grid_scalars = [no_isosurface, grid_scalar1, grid_scalar2]
     view = View(grid_scalars=grid_scalars, **inputs)
     view.ref = SimpleNamespace()
     view.ref.grid_scalars = grid_scalars
@@ -171,21 +174,66 @@ def test_ipython(mock_display, view):
     mock_display.assert_called_once()
 
 
+@pytest.mark.parametrize("camera", ("orthographic", "perspective"))
+def test_camera(view, camera):
+    view.camera = camera
+    widget = view.to_ngl()
+    camera_message = widget.get_state()["_ngl_msg_archive"][1]
+    assert camera_message["methodName"] == "setParameters"
+    assert camera_message["kwargs"] == {"cameraType": camera}
+
+
 def test_isosurface(view3d):
     widget = view3d.to_ngl()
-    assert widget.get_state()["_ngl_msg_archive"][1]["args"][0]["binary"] == False
-    for idx in range(len(view3d.lattice_vectors)):
-        for grid_scalar in view3d.ref.grid_scalars:
-            # If you pass in a grid scalar into a trajectory, I presume that you want to view
-            # the isosurface only for the first index of the trajectory. If you have more than one
-            # grid scalar in your data file then you should get an error.
-            if idx == 0:
-                expected_data = grid_scalar.quantity[idx]
-                state = widget.get_state()
-                output_cube = state["_ngl_msg_archive"][idx + 1]["args"][0]["data"]
-                output_data = ase_cube.read_cube(io.StringIO(output_cube))["data"]
-                assert expected_data.shape == output_data.shape
-                np.allclose(expected_data, output_data)
+    message_archive = widget.get_state()["_ngl_msg_archive"]
+    current_message = 2  # first two are for loading structure and setting camera
+    step = 0
+    # If you pass in a grid scalar into a trajectory, I presume that you want to view
+    # the isosurface only for the first index of the trajectory. If you have more than one
+    # grid scalar in your data file then you should get an error.
+    for grid_scalar in view3d.ref.grid_scalars:
+        if not grid_scalar.isosurfaces:
+            continue
+        expected_data = grid_scalar.quantity[step]
+        assert message_archive[current_message]["methodName"] == "loadFile"
+        output_cube = message_archive[current_message]["args"][0]["data"]
+        output_data = ase_cube.read_cube(io.StringIO(output_cube))["data"]
+        assert expected_data.shape == output_data.shape
+        assert np.allclose(expected_data, output_data)
+        current_message += 1
+        #
+        for isosurface in grid_scalar.isosurfaces:
+            assert message_archive[current_message]["methodName"] == "addRepresentation"
+            expected_arguments = {
+                "isolevel": isosurface.isolevel,
+                "color": isosurface.color,
+                "opacity": isosurface.opacity,
+            }
+            for key, val in expected_arguments.items():
+                assert message_archive[current_message]["kwargs"][key] == val
+            current_message += 1
+    assert message_archive[current_message]["methodName"] != "loadFile"
+
+
+def test_shifted_isosurface(view3d):
+    view3d.shift = np.array([0.2, 0.4, 0.6])
+    expected_shift = [2, 4, 5]
+    widget = view3d.to_ngl()
+    message_archive = widget.get_state()["_ngl_msg_archive"]
+    current_message = 2  # first two are for loading structure and setting camera
+    step = 0
+    for grid_scalar in view3d.ref.grid_scalars:
+        if not grid_scalar.isosurfaces:
+            continue
+        expected_data = grid_scalar.quantity[step]
+        expected_data = np.roll(expected_data, expected_shift, axis=(0, 1, 2))
+        assert message_archive[current_message]["methodName"] == "loadFile"
+        output_cube = message_archive[current_message]["args"][0]["data"]
+        output_data = ase_cube.read_cube(io.StringIO(output_cube))["data"]
+        assert expected_data.shape == output_data.shape
+        assert np.allclose(expected_data, output_data)
+        current_message += len(grid_scalar.isosurfaces) + 1
+    assert message_archive[current_message]["methodName"] != "loadFile"
 
 
 def test_fail_isosurface(view_multiple_grid_scalars):
@@ -195,11 +243,11 @@ def test_fail_isosurface(view_multiple_grid_scalars):
         widget = view.to_ngl()
 
 
-def test_ion_arrows(view_arrow):
+def test_ion_arrows(view_arrow, Assert):
     widget = view_arrow.to_ngl()
     iter_traj = list(range(len(view_arrow.lattice_vectors)))
     iter_ion_arrows = list(range(len(view_arrow.ref.ion_arrows)))
-    idx_msg = 1  # Start with the assumption that the structure has been tested
+    idx_msg = 2  # Start with the assumption that the structure has been tested
     for idx_ion_arrows, idx_traj in itertools.product(iter_ion_arrows, iter_traj):
         atoms = ase.Atoms(
             "".join(view_arrow.elements[idx_traj]),
@@ -224,9 +272,45 @@ def test_ion_arrows(view_arrow):
             output_tip = msg_archive[2]
             output_color = msg_archive[3]
             output_radius = msg_archive[4]
-            assert np.allclose(expected_tip, output_tip)
-            assert np.allclose(expected_tail, output_tail)
-            assert np.allclose(convert.to_rgb(expected_color), output_color)
+            Assert.allclose(expected_tip, output_tip)
+            Assert.allclose(expected_tail, output_tail)
+            Assert.allclose(convert.to_rgb(expected_color), output_color)
+            assert expected_radius == output_radius
+            idx_msg += 1
+
+
+def test_shifted_ion_arrows(view_arrow, Assert):
+    view_arrow.shift = [-0.3, 0.3, 0.6]
+    widget = view_arrow.to_ngl()
+    iter_traj = list(range(len(view_arrow.lattice_vectors)))
+    iter_ion_arrows = list(range(len(view_arrow.ref.ion_arrows)))
+    idx_msg = 2  # Start with the assumption that the structure has been tested
+    for idx_ion_arrows, idx_traj in itertools.product(iter_ion_arrows, iter_traj):
+        positions = view_arrow.positions[idx_traj]
+        shifted_positions = np.mod(positions + np.array(view_arrow.shift), 1)
+        lattice_vectors = view_arrow.lattice_vectors[idx_traj].T
+        expected_coordinates = shifted_positions @ lattice_vectors.T
+        output_coordinates = widget.trajectory_0.get_coordinates(idx_traj)
+        Assert.allclose(expected_coordinates, output_coordinates)
+        _, transformation = ase.cell.Cell(lattice_vectors).standard_form()
+        if idx_traj != 0:
+            continue
+        ion_arrows = view_arrow.ref.ion_arrows[idx_ion_arrows].quantity[idx_traj]
+        expected_color = view_arrow.ref.ion_arrows[idx_ion_arrows].color
+        expected_radius = view_arrow.ref.ion_arrows[idx_ion_arrows].radius
+        for idx_pos, ion_position in enumerate(output_coordinates):
+            expected_tail = ion_position
+            expected_tip = ion_position + ion_arrows[idx_pos]
+            expected_tail = transformation @ expected_tail
+            expected_tip = transformation @ expected_tip
+            msg_archive = widget.get_state()["_ngl_msg_archive"][idx_msg]["args"][1][0]
+            output_tail = msg_archive[1]
+            output_tip = msg_archive[2]
+            output_color = msg_archive[3]
+            output_radius = msg_archive[4]
+            Assert.allclose(expected_tip, output_tip)
+            Assert.allclose(expected_tail, output_tail)
+            Assert.allclose(convert.to_rgb(expected_color), output_color)
             assert expected_radius == output_radius
             idx_msg += 1
 
@@ -257,7 +341,7 @@ def test_showcell(is_structure, not_core):
     inputs["show_cell"] = True
     view = View(**inputs)
     widget = view.to_ngl()
-    assert widget.get_state()["_ngl_msg_archive"][1]["args"][0] == "unitcell"
+    assert widget.get_state()["_ngl_msg_archive"][2]["args"][0] == "unitcell"
 
 
 @pytest.mark.parametrize("is_structure", [True, False])
@@ -268,9 +352,9 @@ def test_showaxes(is_structure, not_core):
     widget = view.to_ngl()
     assert len(widget.get_state()["_ngl_msg_archive"]) > 2
     for idx_msg, msg in enumerate(widget.get_state()["_ngl_msg_archive"]):
-        if idx_msg > 2:
+        if idx_msg > 3:
             assert msg["args"][1][0][0] == "arrow"
-    assert idx_msg == 4
+    assert idx_msg == 5
 
 
 @pytest.mark.parametrize("is_structure", [True, False])
