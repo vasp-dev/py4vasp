@@ -22,6 +22,21 @@ STRUCTURE_SrTiO3 = raw.Structure(
         [[0, 0, 0], [0.5, 0.5, 0.5], [0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]
     ),
 )
+STRUCTURE_ZnS = raw.Structure(
+    raw.Stoichiometry(number_ion_types=[2, 2], ion_types=["Zn", "S"]),
+    raw.Cell(
+        lattice_vectors=np.array([[1.9, -3.3, 0.0], [1.9, 3.3, 0.0], [0, 0, 6.2]]),
+        scale=raw.VaspData(1.0),
+    ),
+    positions=np.array(
+        [
+            [1 / 3, 2 / 3, 0.0],
+            [2 / 3, 1 / 3, 0.5],
+            [1 / 3, 2 / 3, 0.375],
+            [2 / 3, 1 / 3, 0.875],
+        ]
+    ),
+)
 EXAMPLE_CONTCARS = (
     raw.CONTCAR(structure=STRUCTURE_SrTiO3, system="Cubic SrTiO3"),
     raw.CONTCAR(
@@ -39,6 +54,7 @@ EXAMPLE_CONTCARS = (
         system="With ion velocities",
         ion_velocities=raw.VaspData(0.1 + 0.1 * STRUCTURE_SrTiO3.positions),
     ),
+    raw.CONTCAR(structure=STRUCTURE_ZnS, system="Hexagonal ZnS"),
 )
 
 
