@@ -29,17 +29,23 @@ EXAMPLE_CONTCARS = (
         system="With selective dynamics",
         selective_dynamics=raw.VaspData(np.random.choice([True, False], size=(5, 3))),
     ),
+    raw.CONTCAR(
+        structure=STRUCTURE_SrTiO3,
+        system="With lattice velocities",
+        lattice_velocities=raw.VaspData(np.linspace(0, 0.2, 9).reshape(3, 3)),
+    ),
 )
 
 
 @pytest.mark.parametrize("raw_contcar", EXAMPLE_CONTCARS)
 def test_parse_poscar(raw_contcar, Assert):
     poscar_string = str(CONTCAR.from_data(raw_contcar))
+    print(poscar_string)
     actual = parse.POSCAR(poscar_string)
     check_structure_is_same(actual.structure, raw_contcar.structure, Assert)
     assert actual.system == raw_contcar.system
     Assert.allclose(actual.selective_dynamics, raw_contcar.selective_dynamics)
-
+    Assert.allclose(actual.lattice_velocities, raw_contcar.lattice_velocities)
 
 def check_structure_is_same(actual, expected, Assert):
     check_stoichiometry_is_same(actual.stoichiometry, expected.stoichiometry)
