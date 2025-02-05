@@ -251,7 +251,8 @@ attribute is supplied with its corresponding grid scalar or ion arrow component.
     def _shift_quantity(self, quantity):
         if self.shift is None:
             return quantity
-        shift_indices = np.round(quantity.shape * self.shift).astype(np.int32)
+        new_grid_center = np.multiply(quantity.shape, self.shift)
+        shift_indices = np.round(new_grid_center).astype(np.int32)
         return np.roll(quantity, shift_indices, axis=(0, 1, 2))
 
     def _show_arrows_at_atoms(self, widget, trajectory):

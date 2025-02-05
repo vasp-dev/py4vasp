@@ -106,7 +106,7 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
             for selection in tree.selections()
         ]
         if center:
-            viewer.shift = (0.5, 0.5, 0.5)
+            viewer.shift = np.array([0.5, 0.5, 0.5])
         return viewer
 
     def _create_map(self):
