@@ -34,6 +34,11 @@ EXAMPLE_CONTCARS = (
         system="With lattice velocities",
         lattice_velocities=raw.VaspData(np.linspace(0, 0.2, 9).reshape(3, 3)),
     ),
+    raw.CONTCAR(
+        structure=STRUCTURE_SrTiO3,
+        system="With ion velocities",
+        ion_velocities=raw.VaspData(0.1 + 0.1 * STRUCTURE_SrTiO3.positions),
+    ),
 )
 
 
@@ -46,6 +51,8 @@ def test_parse_poscar(raw_contcar, Assert):
     assert actual.system == raw_contcar.system
     Assert.allclose(actual.selective_dynamics, raw_contcar.selective_dynamics)
     Assert.allclose(actual.lattice_velocities, raw_contcar.lattice_velocities)
+    Assert.allclose(actual.ion_velocities, raw_contcar.ion_velocities)
+
 
 def check_structure_is_same(actual, expected, Assert):
     check_stoichiometry_is_same(actual.stoichiometry, expected.stoichiometry)
