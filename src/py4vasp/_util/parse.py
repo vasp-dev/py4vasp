@@ -8,8 +8,8 @@ from py4vasp._raw.data_wrapper import VaspData
 from py4vasp.exception import ParserError
 
 
-def POSCAR(string):
-    return ParsePoscar(string).to_contcar()
+def POSCAR(string, ion_types=None):
+    return ParsePoscar(string, ion_types).to_contcar()
 
 
 @dataclass
@@ -134,7 +134,7 @@ class ParsePoscar:
                 )
             number_of_species = self.split_poscar[6].split()
         else:
-            species_name = np.array(self.species_name.split())
+            species_name = np.array(self.species_name)
             number_of_species = self.split_poscar[5].split()
         number_of_species = VaspData(np.array(number_of_species, dtype=int))
         species_name = VaspData(np.array(species_name))
@@ -160,25 +160,23 @@ class ParsePoscar:
         positions_and_selective_dyn = self.split_poscar[
             idx_start + 1 : idx_start + 1 + number_of_species
         ]
-        if type_positions == "Direct":
+        if type_positions[0] in "cCkK":
+            cartesian_positions = np.array(
+                [x.split()[0:3] for x in positions_and_selective_dyn], dtype=float
+            )
+            cell = self.cell
+            scaling_factor = self.scaling_factor
+            if np.all(scaling_factor < 0):
+                scaling_factor = cell.scale
+            cartesian_positions = cartesian_positions * scaling_factor
+            reciprocal_lattice_vectors = self.get_reciprocal_lattice_vectors(cell)
+            direct_positions = cartesian_positions @ reciprocal_lattice_vectors.T
+            positions = np.remainder(direct_positions, 1)
+        else:
             positions = np.array(
                 [x.split()[0:3] for x in positions_and_selective_dyn], dtype=float
             )
             positions = VaspData(positions)
-        elif type_positions == "Cartesian":
-            cartesian_positions = np.array(
-                [x.split()[0:3] for x in positions_and_selective_dyn], dtype=float
-            )
-            scaling_factor = self.scaling_factor
-            cartesian_positions = cartesian_positions * scaling_factor
-            reciprocal_lattice_vectors = self.get_reciprocal_lattice_vectors(self.cell)
-            direct_positions = cartesian_positions @ reciprocal_lattice_vectors.T
-            positions = np.remainder(direct_positions, 1)
-        else:
-            raise ParserError(
-                "The type of positions is not specified in the right format. Choose\
-                either 'Direct' or 'Cartesian'."
-            )
         if self.has_selective_dynamics:
             selective_dynamics = [x.split()[3:6] for x in positions_and_selective_dyn]
             selective_dynamics = [
@@ -208,10 +206,7 @@ class ParsePoscar:
         if len(self.split_poscar) <= idx_start:
             return False
         lattice_velocities_header = self.split_poscar[idx_start]
-        if lattice_velocities_header == "Lattice velocities and vectors":
-            return True
-        else:
-            return False
+        return lattice_velocities_header[0] in "lL"
 
     @property
     def lattice_velocities(self):
@@ -241,7 +236,7 @@ class ParsePoscar:
             lattice_vectors = cell.lattice_vectors.data * cell.scale
         else:
             lattice_vectors = np.array(cell.lattice_vectors.data)
-
+        print(f"trafo {lattice_vectors=}")
         cartesian_positions = x @ lattice_vectors.T
         return cartesian_positions
 
@@ -262,13 +257,14 @@ class ParsePoscar:
             idx_start += 1
         if self.has_lattice_velocities:
             idx_start += 8
-        if len(self.split_poscar) <= idx_start:
-            return False
-        ion_velocities_header = self.split_poscar[idx_start]
-        if ion_velocities_header in ["", "Cartesian", "Direct"]:
-            return True
-        else:
-            return False
+        return len(self.split_poscar) > idx_start
+        # if len(self.split_poscar) <= idx_start:
+        #     return False
+        # ion_velocities_header = self.split_poscar[idx_start]
+        # if ion_velocities_header in ["", "Cartesian", "Direct"]:
+        #     return True
+        # else:
+        #     return False
 
     @property
     def ion_velocities(self):
@@ -292,11 +288,15 @@ class ParsePoscar:
         coordinate_system = self.split_poscar[idx_start]
         ion_velocities = self.split_poscar[idx_start + 1 : idx_start + 1 + num_species]
         ion_velocities = [x.split() for x in ion_velocities]
-        if coordinate_system == "Direct":
+        print(f"lattice velocities {self.has_lattice_velocities}")
+        print(f"velocity coordinates {coordinate_system=}")
+        print(f"{ion_velocities=}")
+        if not coordinate_system[0] in "cCkK":
             ion_velocities = self._convert_direct_to_cartesian(
                 self.cell, np.array(ion_velocities, dtype=float), scale=False
             )
             ion_velocities = ion_velocities.tolist()
+        print(f"{ion_velocities=}")
         ion_velocities = VaspData(np.array(ion_velocities, dtype=float))
         return ion_velocities
 

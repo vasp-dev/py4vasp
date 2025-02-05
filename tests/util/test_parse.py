@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import copy
+from dataclasses import dataclass
 from typing import List, Sequence
 
 import numpy as np
@@ -8,9 +9,11 @@ import pytest
 
 from py4vasp import raw
 from py4vasp._calculation._CONTCAR import CONTCAR
+from py4vasp._calculation._stoichiometry import Stoichiometry
+from py4vasp._calculation.structure import Structure
 from py4vasp._util import parse
 
-from py4vasp._raw.data import Cell, Stoichiometry, Structure
+from py4vasp._raw.data import Cell
 from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._util.parse import ParsePoscar
 from py4vasp.exception import ParserError
@@ -37,6 +40,14 @@ STRUCTURE_ZnS = raw.Structure(
         ]
     ),
 )
+STRUCTURE_BN = raw.Structure(
+    raw.Stoichiometry(number_ion_types=[1, 1], ion_types=["B", "N"]),
+    raw.Cell(
+        lattice_vectors=np.array([[0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]),
+        scale=raw.VaspData(3.63),
+    ),
+    positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
+)
 EXAMPLE_CONTCARS = (
     raw.CONTCAR(structure=STRUCTURE_SrTiO3, system="Cubic SrTiO3"),
     raw.CONTCAR(
@@ -55,24 +66,34 @@ EXAMPLE_CONTCARS = (
         ion_velocities=raw.VaspData(0.1 + 0.1 * STRUCTURE_SrTiO3.positions),
     ),
     raw.CONTCAR(structure=STRUCTURE_ZnS, system="Hexagonal ZnS"),
+    raw.CONTCAR(
+        structure=STRUCTURE_ZnS,
+        system="With velocities",
+        lattice_velocities=raw.VaspData(np.linspace(-1, 1, 9).reshape(3, 3)),
+        ion_velocities=raw.VaspData(0.2 - 0.1 * STRUCTURE_ZnS.positions),
+    ),
 )
 
 
 @pytest.mark.parametrize("raw_contcar", EXAMPLE_CONTCARS)
 def test_parse_poscar(raw_contcar, Assert):
     poscar_string = str(CONTCAR.from_data(raw_contcar))
-    print(poscar_string)
     actual = parse.POSCAR(poscar_string)
-    check_structure_is_same(actual.structure, raw_contcar.structure, Assert)
-    assert actual.system == raw_contcar.system
-    Assert.allclose(actual.selective_dynamics, raw_contcar.selective_dynamics)
-    Assert.allclose(actual.lattice_velocities, raw_contcar.lattice_velocities)
-    Assert.allclose(actual.ion_velocities, raw_contcar.ion_velocities)
+    exact_match = True
+    check_contcar_is_same(actual, raw_contcar, exact_match, Assert)
 
 
-def check_structure_is_same(actual, expected, Assert):
+def check_contcar_is_same(actual, expected, exact_match, Assert):
+    check_structure_is_same(actual.structure, expected.structure, exact_match, Assert)
+    assert actual.system == expected.system
+    Assert.allclose(actual.selective_dynamics, expected.selective_dynamics)
+    Assert.allclose(actual.lattice_velocities, expected.lattice_velocities)
+    Assert.allclose(actual.ion_velocities, expected.ion_velocities)
+
+
+def check_structure_is_same(actual, expected, exact_match, Assert):
     check_stoichiometry_is_same(actual.stoichiometry, expected.stoichiometry)
-    check_cell_is_same(actual.cell, expected.cell, Assert)
+    check_cell_is_same(actual.cell, expected.cell, exact_match, Assert)
     Assert.allclose(actual.positions, expected.positions)
 
 
@@ -81,9 +102,177 @@ def check_stoichiometry_is_same(actual, expected):
     assert np.array_equal(actual.ion_types, expected.ion_types)
 
 
-def check_cell_is_same(actual, expected, Assert):
-    Assert.allclose(actual.lattice_vectors, expected.lattice_vectors)
-    Assert.allclose(actual.scale, expected.scale)
+def check_cell_is_same(actual, expected, exact_match, Assert):
+    if exact_match:
+        Assert.allclose(actual.lattice_vectors, expected.lattice_vectors)
+        Assert.allclose(actual.scale, expected.scale)
+    else:
+        actual_lattice_vectors = actual.lattice_vectors * actual.scale
+        expected_lattice_vectors = expected.lattice_vectors * expected.scale
+        Assert.allclose(actual_lattice_vectors, expected_lattice_vectors)
+
+
+@dataclass
+class GeneralPOSCAR(raw.CONTCAR):
+    scaling_factor: str = "default"
+    show_ion_types: bool = True
+    ion_coordinate_system: str = "direct"
+    velocity_coordinate_system: str = "cartesian"
+    string_format: str = "default"
+
+    def __str__(self):
+        return "\n".join(self._line_generator())
+
+    def _line_generator(self):
+        yield self.system
+        yield from self._cell_lines()
+        yield from self._stoichiometry_lines()
+        yield from self._selective_dynamic_line()
+        yield from self._ion_position_lines()
+        yield from self._lattice_velocity_lines()
+        yield from self._ion_velocity_lines()
+
+    def _cell_lines(self):
+        yield from self._to_string(self._scale(first_line=True))
+        structure = Structure.from_data(self.structure)
+        yield from self._to_string(structure.lattice_vectors() / self._scale())
+
+    def _stoichiometry_lines(self):
+        if self.show_ion_types:
+            stoichiometry = Stoichiometry.from_data(self.structure.stoichiometry)
+            yield stoichiometry.to_POSCAR()
+        else:
+            yield from self._to_string(self.structure.stoichiometry.number_ion_types)
+
+    def _selective_dynamic_line(self):
+        if self.selective_dynamics.is_none():
+            return
+        yield self._formatted_string("selective_dynamics")
+
+    def _ion_position_lines(self):
+        yield self._formatted_string(self.ion_coordinate_system)
+        if self.ion_coordinate_system[0] in "cCkK":
+            structure = Structure.from_data(self.structure)
+            positions = structure.cartesian_positions() / self._scale()
+        else:
+            positions = self.structure.positions
+        if self.selective_dynamics.is_none():
+            yield from self._to_string(positions)
+        else:
+            for line in zip(positions, self.selective_dynamics):
+                row = np.array(line, dtype=np.object_).flatten()
+                yield from self._to_string(row)
+
+    def _lattice_velocity_lines(self):
+        if self.lattice_velocities.is_none():
+            return
+        yield self._formatted_string("lattice velocities and vectors")
+        yield "1"  # lattice vectors initialized
+        yield from self._to_string(self.lattice_velocities)
+        structure = Structure.from_data(self.structure)
+        yield from self._to_string(structure.lattice_vectors())
+
+    def _ion_velocity_lines(self):
+        if self.ion_velocities.is_none():
+            return
+        yield self._formatted_string(self.velocity_coordinate_system)
+        if self.velocity_coordinate_system[0] in "cCkK":
+            velocities = self.ion_velocities
+        else:
+            structure = Structure.from_data(self.structure)
+            print(f"setup {structure.lattice_vectors()=}")
+            inverse_lattice_vectors = np.linalg.inv(structure.lattice_vectors())
+            velocities = self.ion_velocities @ inverse_lattice_vectors
+        yield from self._to_string(velocities)
+
+    def _scale(self, first_line=False):
+        if self.scaling_factor == "default":
+            return self.structure.cell.scale
+        elif self.scaling_factor == "one":
+            return 1.0
+        elif self.scaling_factor == "split":
+            return [2.0, 3.0, 4.0]
+        elif self.scaling_factor == "volume":
+            structure = Structure.from_data(self.structure)
+            if first_line:
+                return -structure.volume()
+            else:
+                return 1 / 1.1
+        else:
+            raise NotImplemented
+
+    def _to_string(self, rows):
+        rows = np.atleast_1d(rows)
+        if rows.ndim > 1:
+            for row in rows:
+                yield from self._to_string(row)
+        else:
+            to_str = lambda x: ("T" if x else "F") if isinstance(x, bool) else str(x)
+            yield " ".join(to_str(value) for value in rows)
+
+    def _formatted_string(self, string):
+        if self.string_format == "default":
+            return string
+        elif self.string_format == "capitalize":
+            return string.capitalize()
+        elif self.string_format == "first letter":
+            return string[0]
+        else:
+            raise NotImplemented
+
+
+EXAMPLE_POSCARS = (
+    GeneralPOSCAR(
+        structure=STRUCTURE_BN,
+        system="Cubic BN",
+        show_ion_types=False,
+        selective_dynamics=raw.VaspData([[True, True, False], [False, True, True]]),
+        ion_velocities=raw.VaspData(np.array([[0.2, 0.4, -0.2], [0.4, 0.6, -0.3]])),
+        velocity_coordinate_system="fractional",
+    ),
+    GeneralPOSCAR(
+        structure=STRUCTURE_BN,
+        system="Cubic BN",
+        selective_dynamics=raw.VaspData([[True, True, False], [False, True, True]]),
+        string_format="capitalize",
+        lattice_velocities=raw.VaspData(
+            np.array([[0.0, -0.6, 0.2], [0.1, 0.3, -0.2], [0.2, -0.4, 0.4]])
+        ),
+        ion_coordinate_system="cartesian",
+        scaling_factor="split",
+    ),
+    GeneralPOSCAR(
+        structure=STRUCTURE_BN,
+        system="Cubic BN",
+        show_ion_types=False,
+        ion_coordinate_system="cartesian",
+        lattice_velocities=raw.VaspData(
+            np.array([[0.0, -0.6, 0.2], [0.1, 0.3, -0.2], [0.2, -0.4, 0.4]])
+        ),
+        scaling_factor="one",
+    ),
+    GeneralPOSCAR(
+        structure=STRUCTURE_BN,
+        system="Cubic BN",
+        ion_coordinate_system="cartesian",
+        string_format="first letter",
+        ion_velocities=raw.VaspData(np.array([[0.2, 0.4, -0.2], [0.4, 0.6, -0.3]])),
+        scaling_factor="volume",
+    ),
+)
+
+
+@pytest.mark.parametrize("raw_poscar", EXAMPLE_POSCARS)
+def test_parse_general_poscar(raw_poscar, Assert):
+    poscar_string = str(raw_poscar)
+    print(poscar_string)
+    if raw_poscar.show_ion_types:
+        actual = parse.POSCAR(poscar_string)
+    else:
+        ion_types = raw_poscar.structure.stoichiometry.ion_types
+        actual = parse.POSCAR(poscar_string, ion_types)
+    exact_match = False
+    check_contcar_is_same(actual, raw_poscar, exact_match, Assert)
 
 
 @pytest.fixture
@@ -283,7 +472,7 @@ def cubic_BN(poscar_creator):
         ]
         arguments = {}
         if not has_species_name:
-            arguments["species_name"] = "B N"
+            arguments["species_name"] = ("B", "N")
         return poscar_input_string, expected_output, arguments
 
     return _cubic_BN
@@ -482,10 +671,10 @@ def test_stoichiometry(cubic_BN, has_species_name, Assert):
     species_names = componentwise_inputs[3]
     ions_per_species = componentwise_inputs[4]
     expected_species_names = (
-        VaspData(species_names) if species_names else arguments["species_name"].split()
+        VaspData(species_names) if species_names else arguments["species_name"]
     )
     expected_ions_per_species = VaspData(ions_per_species)
-    expected_stoichiometry = Stoichiometry(
+    expected_stoichiometry = raw.Stoichiometry(
         number_ion_types=expected_ions_per_species, ion_types=expected_species_names
     )
     output_stoichiometry = ParsePoscar(poscar_string, **arguments).stoichiometry
@@ -622,6 +811,6 @@ def test_to_contcar(cubic_BN, has_species_name, Assert):
     )
     output_contcar = ParsePoscar(poscar_string, **arguments).to_contcar()
     assert isinstance(output_contcar, raw.CONTCAR)
-    assert isinstance(output_contcar.structure, Structure)
+    assert isinstance(output_contcar.structure, raw.Structure)
     assert isinstance(output_contcar.selective_dynamics, VaspData)
     assert isinstance(output_contcar.lattice_velocities, VaspData)

@@ -103,7 +103,7 @@ class CONTCAR:
     lattice_velocities: VaspData = NONE()
     "The current velocities of the lattice vectors."
     ion_velocities: VaspData = NONE()
-    "The current velocities of the ions."
+    "The current velocities of the ions in Cartesian coordinates."
     _predictor_corrector: VaspData = NONE()
     "Internal algorithmic data relevant for restarting calculations."
 
