@@ -98,6 +98,7 @@ def _lattice_velocity_lines(velocities, cell):
     if velocities.is_none():
         return
     yield "Lattice velocities and vectors"
+    yield "1"  # lattice vectors initialized
     yield from _vectors_to_lines(velocities, scientific=True)
     lattice_vectors = _cell_scale(cell.scale) * cell.lattice_vectors
     yield from _vectors_to_lines(lattice_vectors, scientific=True)
