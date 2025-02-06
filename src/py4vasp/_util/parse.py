@@ -40,7 +40,7 @@ def POSCAR(poscar_string, ion_types=None):
 @dataclass
 class PoscarParser:
     poscar_lines: List[str]
-    species_name: str or None = None
+    ion_types: List[str] or None = None
 
     def parse_lines(self):
         remaining_lines = iter(self.poscar_lines)
@@ -102,20 +102,20 @@ class PoscarParser:
         names are not specified in the POSCAR file, then the species names must
         be supplied as an argument.
         """
-        if self.species_name is None:
-            species_name = next(remaining_lines).split()
-            if not all(s.isalpha() for s in species_name):
-                raise exception.ParserError(
-                    "Either supply species as an argument or in the POSCAR file."
-                )
-            number_of_species = next(remaining_lines).split()
+        possible_ion_types = next(remaining_lines)
+        has_ion_types = all(type.isalpha() for type in possible_ion_types.split())
+        if not has_ion_types and self.ion_types is None:
+            message = "If ion types are not in the POSCAR file, you must provide it as an argument for the parser."
+            raise exception.ParserError(message)
+        if has_ion_types:
+            ion_types = possible_ion_types.split()
         else:
-            species_name = np.array(self.species_name)
-            number_of_species = next(remaining_lines).split()
-        number_of_species = VaspData(np.array(number_of_species, dtype=int))
-        species_name = VaspData(np.array(species_name))
+            remaining_lines = _put_back(remaining_lines, possible_ion_types)
+            ion_types = self.ion_types
+        number_ion_types = np.array(next(remaining_lines).split(), dtype=np.int32)
         result["stoichiometry"] = raw.Stoichiometry(
-            number_ion_types=number_of_species, ion_types=species_name
+            number_ion_types=VaspData(number_ion_types),
+            ion_types=VaspData(np.array(ion_types)),
         )
         return result, remaining_lines
 
