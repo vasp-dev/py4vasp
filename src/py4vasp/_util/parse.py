@@ -193,11 +193,9 @@ class PoscarParser:
         if init_lattice_velocities.strip() != "1":
             message = "Only init lattice velocities = 1 is implemented!"
             raise exception.ParserError(message)
-        lattice_velocities = [next(remaining_lines) for _ in range(6)]
-        lattice_velocities = [x.split() for x in lattice_velocities[:3]]
-        result["lattice_velocities"] = VaspData(
-            np.array(lattice_velocities, dtype=float)
-        )
+        lattice_velocities = [next(remaining_lines).split() for _ in range(6)]
+        lattice_velocities = np.array(lattice_velocities[:3], np.float64)
+        result["lattice_velocities"] = VaspData(lattice_velocities)
         return result, remaining_lines
 
     def _parse_ion_velocities(self, result, remaining_lines):
@@ -219,19 +217,18 @@ class PoscarParser:
             return result, remaining_lines
         coordinate_system = possible_coordinate_system
         number_ions = np.sum(result["stoichiometry"].number_ion_types)
-        ion_velocities = [next(remaining_lines) for _ in range(number_ions)]
-        ion_velocities = [x.split() for x in ion_velocities]
+        ion_velocities = [next(remaining_lines).split() for _ in range(number_ions)]
+        ion_velocities = np.array(ion_velocities, dtype=np.float64)
         if not coordinate_system[0] in "cCkK ":
             # I'm not sure this implementation is correct, in VASP there is a factor of
             # POTIM to convert between Cartesian to fractional coordinates. Since this
             # case is not common, let's raise an error instead
             ion_velocities = self._convert_direct_to_cartesian(
-                result["cell"], np.array(ion_velocities, dtype=float), scale=False
+                result["cell"], ion_velocities, scale=False
             )
-            ion_velocities = ion_velocities.tolist()
             message = "Velocities can only be parsed in Cartesian coordinates."
             raise exception.ParserError(message)
-        result["ion_velocities"] = VaspData(np.array(ion_velocities, dtype=float))
+        result["ion_velocities"] = VaspData(ion_velocities)
         return result, remaining_lines
 
     @staticmethod
