@@ -1,4 +1,4 @@
-import re
+import itertools
 from dataclasses import dataclass
 from typing import List
 
@@ -38,6 +38,10 @@ def POSCAR(poscar_string, ion_types=None):
     return raw.CONTCAR(**contcar_content)
 
 
+def _put_back(iterator, item):
+    return itertools.chain([item], iterator)
+
+
 @dataclass
 class PoscarParser:
     poscar_lines: List[str]
@@ -50,8 +54,11 @@ class PoscarParser:
         self.cell = self._cell(self.scaling_factor, remaining_lines)
         yield "cell", self.cell
         self.stoichiometry = self._stoichiometry(remaining_lines)
+        number_ions = np.sum(self.stoichiometry.number_ion_types)
         yield "stoichiometry", self.stoichiometry
-        ion_positions, selective_dynamics = self.ion_positions_and_selective_dynamics
+        ion_positions, selective_dynamics = self._ion_positions_and_selective_dynamics(
+            number_ions, self.scaling_factor, self.cell, remaining_lines
+        )
         yield "positions", ion_positions
         if self.has_selective_dynamics:
             yield "selective_dynamics", selective_dynamics
@@ -133,6 +140,52 @@ class PoscarParser:
         species_name = VaspData(np.array(species_name))
         return Stoichiometry(number_ion_types=number_of_species, ion_types=species_name)
 
+    def _ion_positions_and_selective_dynamics(
+        self, number_ions, scaling_factor, cell, remaining_lines
+    ):
+        """The ion positions and selective dynamics from the POSCAR file.
+
+        Checks if the POSCAR file has selective dynamics. The check is done
+        by looking at the 7th line of the POSCAR file. If the first letter
+        is 'S' or 's', then it is assumed that the POSCAR file has selective
+        dynamics.
+
+        Parses the ion positions and selective dynamics from the POSCAR file.
+        The ion positions and selective dynamics are parsed as is and the
+        positions are reported in the Structure object. If the positions are
+        specified in Cartesian coordinates, then the positions are converted
+        to direct coordinates.
+        """
+        possible_selective_dynamics = next(remaining_lines)
+        has_selective_dynamics = possible_selective_dynamics[0] in "sS"
+        if not has_selective_dynamics:
+            remaining_lines = _put_back(remaining_lines, possible_selective_dynamics)
+        coordinate_system = next(remaining_lines)
+
+        def parse_line(line, positions, selective_dynamics):
+            parts = line.split()
+            positions.append(np.array(parts[:3], dtype=np.float64))
+            selective_dynamics.append(np.array([x == "T" for x in parts[3:]]))
+
+        positions = []
+        selective_dynamics = []
+        for _ in range(number_ions):
+            parse_line(next(remaining_lines), positions, selective_dynamics)
+        if coordinate_system[0] in "cCkK":
+            if np.all(scaling_factor < 0):
+                scaling_factor = cell.scale
+            cartesian_positions = np.array(positions) * scaling_factor
+            reciprocal_lattice_vectors = self.get_reciprocal_lattice_vectors(cell)
+            direct_positions = cartesian_positions @ reciprocal_lattice_vectors.T
+            positions = np.remainder(direct_positions, 1)
+        else:
+            positions = np.array(positions)
+        if self.has_selective_dynamics:
+            selective_dynamics = np.array(selective_dynamics)
+        else:
+            selective_dynamics = None
+        return VaspData(positions), VaspData(selective_dynamics)
+
     @classmethod
     def _get_volume(cls, lattice_vectors):
         return np.dot(
@@ -171,54 +224,6 @@ class PoscarParser:
             return True
         else:
             return False
-
-    @property
-    def ion_positions_and_selective_dynamics(self):
-        """The ion positions and selective dynamics from the POSCAR file.
-
-        Parses the ion positions and selective dynamics from the POSCAR file.
-        The ion positions and selective dynamics are parsed as is and the
-        positions are reported in the Structure object. If the positions are
-        specified in Cartesian coordinates, then the positions are converted
-        to direct coordinates.
-        """
-        number_of_species = self.stoichiometry.number_ion_types.data.sum()
-        idx_start = 6
-        if self.has_selective_dynamics:
-            idx_start += 1
-        if self.species_name is None:
-            idx_start += 1
-        type_positions = self.poscar_lines[idx_start]
-        positions_and_selective_dyn = self.poscar_lines[
-            idx_start + 1 : idx_start + 1 + number_of_species
-        ]
-        if type_positions[0] in "cCkK":
-            cartesian_positions = np.array(
-                [x.split()[0:3] for x in positions_and_selective_dyn], dtype=float
-            )
-            cell = self.cell
-            scaling_factor = self.scaling_factor
-            if np.all(scaling_factor < 0):
-                scaling_factor = cell.scale
-            cartesian_positions = cartesian_positions * scaling_factor
-            reciprocal_lattice_vectors = self.get_reciprocal_lattice_vectors(cell)
-            direct_positions = cartesian_positions @ reciprocal_lattice_vectors.T
-            positions = np.remainder(direct_positions, 1)
-        else:
-            positions = np.array(
-                [x.split()[0:3] for x in positions_and_selective_dyn], dtype=float
-            )
-            positions = VaspData(positions)
-        if self.has_selective_dynamics:
-            selective_dynamics = [x.split()[3:6] for x in positions_and_selective_dyn]
-            selective_dynamics = [
-                [True if x == "T" else False for x in y] for y in selective_dynamics
-            ]
-        else:
-            selective_dynamics = False
-        selective_dynamics = VaspData(selective_dynamics)
-
-        return positions, selective_dynamics
 
     @property
     def has_lattice_velocities(self):
