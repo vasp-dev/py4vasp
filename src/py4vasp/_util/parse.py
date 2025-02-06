@@ -46,8 +46,10 @@ class PoscarParser:
     def parse_lines(self):
         remaining_lines = iter(self.poscar_lines)
         yield "system", next(remaining_lines)
-        self.cell = self._cell(remaining_lines)
+        self.scaling_factor = self._scaling_factor(remaining_lines)
+        self.cell = self._cell(self.scaling_factor, remaining_lines)
         yield "cell", self.cell
+        self.stoichiometry = self._stoichiometry(remaining_lines)
         yield "stoichiometry", self.stoichiometry
         ion_positions, selective_dynamics = self.ion_positions_and_selective_dynamics
         yield "positions", ion_positions
@@ -57,32 +59,6 @@ class PoscarParser:
             yield "lattice_velocities", self.lattice_velocities
         if self.has_ion_velocities:
             yield "ion_velocities", self.ion_velocities
-
-    def _cell(self, remaining_lines):
-        """The cell from the POSCAR file.
-
-        Parses the cell from the POSCAR file. The cell is parsed as is and
-        the scaling factor is reported in the Cell object. In case volume scaling
-        is used, the scaling factor is computed to make sure that the volume of
-        the final cell is the same.
-        """
-        scaling_factor = self.scaling_factor = self._scaling_factor(remaining_lines)
-        lattice_vectors = np.array(
-            [next(remaining_lines).split() for _ in range(3)], dtype=float
-        )
-        if scaling_factor.ndim == 1:
-            scaled_lattice_vectors = lattice_vectors * scaling_factor
-            cell = Cell(lattice_vectors=VaspData(scaled_lattice_vectors), scale=1.0)
-        else:
-            if scaling_factor > 0:
-                cell = Cell(lattice_vectors=lattice_vectors, scale=scaling_factor)
-            else:
-                volume = self._get_volume(lattice_vectors)
-                cell = Cell(
-                    lattice_vectors=lattice_vectors,
-                    scale=(abs(scaling_factor) / volume) ** (1 / 3),
-                )
-        return cell
 
     def _scaling_factor(self, remaining_lines):
         """The scaling factor from the POSCAR file.
@@ -109,6 +85,53 @@ class PoscarParser:
                     "The scaling factor for the cell is either negative or zero."
                 )
         return scaling_factor
+
+    def _cell(self, scaling_factor, remaining_lines):
+        """The cell from the POSCAR file.
+
+        Parses the cell from the POSCAR file. The cell is parsed as is and
+        the scaling factor is reported in the Cell object. In case volume scaling
+        is used, the scaling factor is computed to make sure that the volume of
+        the final cell is the same.
+        """
+        lattice_vectors = np.array(
+            [next(remaining_lines).split() for _ in range(3)], dtype=float
+        )
+        if scaling_factor.ndim == 1:
+            scaled_lattice_vectors = lattice_vectors * scaling_factor
+            cell = Cell(lattice_vectors=VaspData(scaled_lattice_vectors), scale=1.0)
+        else:
+            if scaling_factor > 0:
+                cell = Cell(lattice_vectors=lattice_vectors, scale=scaling_factor)
+            else:
+                volume = self._get_volume(lattice_vectors)
+                cell = Cell(
+                    lattice_vectors=lattice_vectors,
+                    scale=(abs(scaling_factor) / volume) ** (1 / 3),
+                )
+        return cell
+
+    def _stoichiometry(self, remaining_lines):
+        """The stoichiometry from the POSCAR file.
+
+        Parses the stoichiometry from the POSCAR file. The stoichiometry is parsed as is
+        and the species names are reported in the Topology object. If the species
+        names are not specified in the POSCAR file, then the species names must
+        be supplied as an argument.
+        """
+        if self.species_name is None:
+            species_name = next(remaining_lines).split()
+            if not all(s.isalpha() for s in species_name):
+                raise exception.ParserError(
+                    "Either supply species as an argument or in the POSCAR file."
+                )
+            number_of_species = next(remaining_lines).split()
+        else:
+            species_name = np.array(self.species_name)
+            number_of_species = next(remaining_lines).split()
+        number_of_species = VaspData(np.array(number_of_species, dtype=int))
+        species_name = VaspData(np.array(species_name))
+        return Stoichiometry(number_ion_types=number_of_species, ion_types=species_name)
 
     @classmethod
     def _get_volume(cls, lattice_vectors):
@@ -148,29 +171,6 @@ class PoscarParser:
             return True
         else:
             return False
-
-    @property
-    def stoichiometry(self):
-        """The stoichiometry from the POSCAR file.
-
-        Parses the stoichiometry from the POSCAR file. The stoichiometry is parsed as is
-        and the species names are reported in the Topology object. If the species
-        names are not specified in the POSCAR file, then the species names must
-        be supplied as an argument.
-        """
-        if self.species_name is None:
-            species_name = self.poscar_lines[5].split()
-            if not all(s.isalpha() for s in species_name):
-                raise exception.ParserError(
-                    "Either supply species as an argument or in the POSCAR file."
-                )
-            number_of_species = self.poscar_lines[6].split()
-        else:
-            species_name = np.array(self.species_name)
-            number_of_species = self.poscar_lines[5].split()
-        number_of_species = VaspData(np.array(number_of_species, dtype=int))
-        species_name = VaspData(np.array(species_name))
-        return Stoichiometry(number_ion_types=number_of_species, ion_types=species_name)
 
     @property
     def ion_positions_and_selective_dynamics(self):
