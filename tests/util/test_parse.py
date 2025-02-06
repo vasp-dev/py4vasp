@@ -17,99 +17,6 @@ from py4vasp._util import parse
 from py4vasp._util.parse import ParsePoscar
 from py4vasp.exception import ParserError
 
-STRUCTURE_SrTiO3 = raw.Structure(
-    raw.Stoichiometry(number_ion_types=[1, 1, 3], ion_types=["Sr", "Ti", "O"]),
-    raw.Cell(lattice_vectors=np.eye(3), scale=raw.VaspData(4.0)),
-    positions=np.array(
-        [[0, 0, 0], [0.5, 0.5, 0.5], [0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]
-    ),
-)
-STRUCTURE_ZnS = raw.Structure(
-    raw.Stoichiometry(number_ion_types=[2, 2], ion_types=["Zn", "S"]),
-    raw.Cell(
-        lattice_vectors=np.array([[1.9, -3.3, 0.0], [1.9, 3.3, 0.0], [0, 0, 6.2]]),
-        scale=raw.VaspData(1.0),
-    ),
-    positions=np.array(
-        [
-            [1 / 3, 2 / 3, 0.0],
-            [2 / 3, 1 / 3, 0.5],
-            [1 / 3, 2 / 3, 0.375],
-            [2 / 3, 1 / 3, 0.875],
-        ]
-    ),
-)
-STRUCTURE_BN = raw.Structure(
-    raw.Stoichiometry(number_ion_types=[1, 1], ion_types=["B", "N"]),
-    raw.Cell(
-        lattice_vectors=np.array([[0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]),
-        scale=raw.VaspData(3.63),
-    ),
-    positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
-)
-EXAMPLE_CONTCARS = (
-    raw.CONTCAR(structure=STRUCTURE_SrTiO3, system="Cubic SrTiO3"),
-    raw.CONTCAR(
-        structure=STRUCTURE_SrTiO3,
-        system="With selective dynamics",
-        selective_dynamics=raw.VaspData(np.random.choice([True, False], size=(5, 3))),
-    ),
-    raw.CONTCAR(
-        structure=STRUCTURE_SrTiO3,
-        system="With lattice velocities",
-        lattice_velocities=raw.VaspData(np.linspace(0, 0.2, 9).reshape(3, 3)),
-    ),
-    raw.CONTCAR(
-        structure=STRUCTURE_SrTiO3,
-        system="With ion velocities",
-        ion_velocities=raw.VaspData(0.1 + 0.1 * STRUCTURE_SrTiO3.positions),
-    ),
-    raw.CONTCAR(structure=STRUCTURE_ZnS, system="Hexagonal ZnS"),
-    raw.CONTCAR(
-        structure=STRUCTURE_ZnS,
-        system="With velocities",
-        lattice_velocities=raw.VaspData(np.linspace(-1, 1, 9).reshape(3, 3)),
-        ion_velocities=raw.VaspData(0.2 - 0.1 * STRUCTURE_ZnS.positions),
-    ),
-)
-
-
-@pytest.mark.parametrize("raw_contcar", EXAMPLE_CONTCARS)
-def test_parse_poscar(raw_contcar, Assert):
-    poscar_string = str(CONTCAR.from_data(raw_contcar))
-    actual = parse.POSCAR(poscar_string)
-    exact_match = True
-    check_contcar_is_same(actual, raw_contcar, exact_match, Assert)
-
-
-def check_contcar_is_same(actual, expected, exact_match, Assert):
-    check_structure_is_same(actual.structure, expected.structure, exact_match, Assert)
-    assert actual.system == expected.system
-    Assert.allclose(actual.selective_dynamics, expected.selective_dynamics)
-    Assert.allclose(actual.lattice_velocities, expected.lattice_velocities)
-    Assert.allclose(actual.ion_velocities, expected.ion_velocities)
-
-
-def check_structure_is_same(actual, expected, exact_match, Assert):
-    check_stoichiometry_is_same(actual.stoichiometry, expected.stoichiometry)
-    check_cell_is_same(actual.cell, expected.cell, exact_match, Assert)
-    Assert.allclose(actual.positions, expected.positions)
-
-
-def check_stoichiometry_is_same(actual, expected):
-    assert np.array_equal(actual.number_ion_types, expected.number_ion_types)
-    assert np.array_equal(actual.ion_types, expected.ion_types)
-
-
-def check_cell_is_same(actual, expected, exact_match, Assert):
-    if exact_match:
-        Assert.allclose(actual.lattice_vectors, expected.lattice_vectors)
-        Assert.allclose(actual.scale, expected.scale)
-    else:
-        actual_lattice_vectors = actual.lattice_vectors * actual.scale
-        expected_lattice_vectors = expected.lattice_vectors * expected.scale
-        Assert.allclose(actual_lattice_vectors, expected_lattice_vectors)
-
 
 @dataclass
 class GeneralPOSCAR(raw.CONTCAR):
@@ -217,7 +124,60 @@ class GeneralPOSCAR(raw.CONTCAR):
             raise NotImplemented
 
 
+STRUCTURE_SrTiO3 = raw.Structure(
+    raw.Stoichiometry(number_ion_types=[1, 1, 3], ion_types=["Sr", "Ti", "O"]),
+    raw.Cell(lattice_vectors=np.eye(3), scale=raw.VaspData(4.0)),
+    positions=np.array(
+        [[0, 0, 0], [0.5, 0.5, 0.5], [0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]
+    ),
+)
+STRUCTURE_ZnS = raw.Structure(
+    raw.Stoichiometry(number_ion_types=[2, 2], ion_types=["Zn", "S"]),
+    raw.Cell(
+        lattice_vectors=np.array([[1.9, -3.3, 0.0], [1.9, 3.3, 0.0], [0, 0, 6.2]]),
+        scale=raw.VaspData(1.0),
+    ),
+    positions=np.array(
+        [
+            [1 / 3, 2 / 3, 0.0],
+            [2 / 3, 1 / 3, 0.5],
+            [1 / 3, 2 / 3, 0.375],
+            [2 / 3, 1 / 3, 0.875],
+        ]
+    ),
+)
+STRUCTURE_BN = raw.Structure(
+    raw.Stoichiometry(number_ion_types=[1, 1], ion_types=["B", "N"]),
+    raw.Cell(
+        lattice_vectors=np.array([[0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]),
+        scale=raw.VaspData(3.63),
+    ),
+    positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
+)
 EXAMPLE_POSCARS = (
+    raw.CONTCAR(structure=STRUCTURE_SrTiO3, system="Cubic SrTiO3"),
+    raw.CONTCAR(
+        structure=STRUCTURE_SrTiO3,
+        system="With selective dynamics",
+        selective_dynamics=raw.VaspData(np.random.choice([True, False], size=(5, 3))),
+    ),
+    raw.CONTCAR(
+        structure=STRUCTURE_SrTiO3,
+        system="With lattice velocities",
+        lattice_velocities=raw.VaspData(np.linspace(0, 0.2, 9).reshape(3, 3)),
+    ),
+    raw.CONTCAR(
+        structure=STRUCTURE_SrTiO3,
+        system="With ion velocities",
+        ion_velocities=raw.VaspData(0.1 + 0.1 * STRUCTURE_SrTiO3.positions),
+    ),
+    raw.CONTCAR(structure=STRUCTURE_ZnS, system="Hexagonal ZnS"),
+    raw.CONTCAR(
+        structure=STRUCTURE_ZnS,
+        system="With velocities",
+        lattice_velocities=raw.VaspData(np.linspace(-1, 1, 9).reshape(3, 3)),
+        ion_velocities=raw.VaspData(0.2 - 0.1 * STRUCTURE_ZnS.positions),
+    ),
     GeneralPOSCAR(
         structure=STRUCTURE_BN,
         system="Cubic BN",
@@ -260,14 +220,47 @@ EXAMPLE_POSCARS = (
 
 @pytest.mark.parametrize("raw_poscar", EXAMPLE_POSCARS)
 def test_parse_general_poscar(raw_poscar, Assert):
-    poscar_string = str(raw_poscar)
-    if raw_poscar.show_ion_types:
+    is_general_poscar = isinstance(raw_poscar, GeneralPOSCAR)
+    if is_general_poscar:
+        poscar_string = str(raw_poscar)
+    else:
+        poscar_string = str(CONTCAR.from_data(raw_poscar))
+    if not is_general_poscar or raw_poscar.show_ion_types:
         actual = parse.POSCAR(poscar_string)
     else:
         ion_types = raw_poscar.structure.stoichiometry.ion_types
         actual = parse.POSCAR(poscar_string, ion_types)
-    exact_match = False
-    check_contcar_is_same(actual, raw_poscar, exact_match, Assert)
+    exact_match = not is_general_poscar
+    check_poscar_is_same(actual, raw_poscar, exact_match, Assert)
+
+
+def check_poscar_is_same(actual, expected, exact_match, Assert):
+    check_structure_is_same(actual.structure, expected.structure, exact_match, Assert)
+    assert actual.system == expected.system
+    Assert.allclose(actual.selective_dynamics, expected.selective_dynamics)
+    Assert.allclose(actual.lattice_velocities, expected.lattice_velocities)
+    Assert.allclose(actual.ion_velocities, expected.ion_velocities)
+
+
+def check_structure_is_same(actual, expected, exact_match, Assert):
+    check_stoichiometry_is_same(actual.stoichiometry, expected.stoichiometry)
+    check_cell_is_same(actual.cell, expected.cell, exact_match, Assert)
+    Assert.allclose(actual.positions, expected.positions)
+
+
+def check_stoichiometry_is_same(actual, expected):
+    assert np.array_equal(actual.number_ion_types, expected.number_ion_types)
+    assert np.array_equal(actual.ion_types, expected.ion_types)
+
+
+def check_cell_is_same(actual, expected, exact_match, Assert):
+    if exact_match:
+        Assert.allclose(actual.lattice_vectors, expected.lattice_vectors)
+        Assert.allclose(actual.scale, expected.scale)
+    else:
+        actual_lattice_vectors = actual.lattice_vectors * actual.scale
+        expected_lattice_vectors = expected.lattice_vectors * expected.scale
+        Assert.allclose(actual_lattice_vectors, expected_lattice_vectors)
 
 
 @pytest.fixture
