@@ -37,10 +37,6 @@ def POSCAR(poscar_string, ion_types=None):
     return raw.CONTCAR(**contcar_content)
 
 
-def _put_back(iterator, item):
-    return itertools.chain([item], iterator)
-
-
 @dataclass
 class PoscarParser:
     poscar_lines: List[str]
@@ -49,27 +45,16 @@ class PoscarParser:
     def parse_lines(self):
         remaining_lines = iter(self.poscar_lines)
         result = {"system": next(remaining_lines)}
-        scaling_factor, remaining_lines = self._parse_scaling_factor(remaining_lines)
-        cell, remaining_lines = self._parse_cell(scaling_factor, remaining_lines)
-        result["cell"] = cell
-        self.stoichiometry, remaining_lines = self._stoichiometry(remaining_lines)
-        number_ions = np.sum(self.stoichiometry.number_ion_types)
-        result["stoichiometry"] = self.stoichiometry
-        ion_positions, selective_dynamics, remaining_lines = (
-            self._ion_positions_and_selective_dynamics(
-                number_ions, scaling_factor, cell, remaining_lines
-            )
-        )
-        result["positions"] = ion_positions
-        if self.has_selective_dynamics:
-            result["selective_dynamics"] = selective_dynamics
-        if self.has_lattice_velocities:
-            result["lattice_velocities"] = self.lattice_velocities
-        if self.has_ion_velocities:
-            result["ion_velocities"] = self.ion_velocities(cell)
+        result, remaining_lines = self._parse_scaling_factor(result, remaining_lines)
+        result, remaining_lines = self._parse_cell(result, remaining_lines)
+        result, remaining_lines = self._parse_stoichiometry(result, remaining_lines)
+        result, remaining_lines = self._parse_ion_lines(result, remaining_lines)
+        result, remaining_lines = self._parse_lattice_velocity(result, remaining_lines)
+        result, remaining_lines = self._parse_ion_velocities(result, remaining_lines)
+        del result["scaling_factor"]  # remove unnessary element
         return result
 
-    def _parse_scaling_factor(self, remaining_lines):
+    def _parse_scaling_factor(self, result, remaining_lines):
         """The scaling factor from the POSCAR file.
 
         Parses the scaling factor, deciding it the scaling factor is a single
@@ -93,9 +78,10 @@ class PoscarParser:
                 raise exception.ParserError(
                     "The scaling factor for the cell is either negative or zero."
                 )
-        return scaling_factor, remaining_lines
+        result["scaling_factor"] = scaling_factor
+        return result, remaining_lines
 
-    def _parse_cell(self, scaling_factor, remaining_lines):
+    def _parse_cell(self, result, remaining_lines):
         """The cell from the POSCAR file.
 
         Parses the cell from the POSCAR file. The cell is parsed as is and
@@ -103,6 +89,7 @@ class PoscarParser:
         is used, the scaling factor is computed to make sure that the volume of
         the final cell is the same.
         """
+        scaling_factor = result["scaling_factor"]
         lattice_vectors = np.array(
             [next(remaining_lines).split() for _ in range(3)], dtype=float
         )
@@ -118,9 +105,10 @@ class PoscarParser:
                     lattice_vectors=lattice_vectors,
                     scale=(abs(scaling_factor) / volume) ** (1 / 3),
                 )
-        return cell, remaining_lines
+        result["cell"] = cell
+        return result, remaining_lines
 
-    def _stoichiometry(self, remaining_lines):
+    def _parse_stoichiometry(self, result, remaining_lines):
         """The stoichiometry from the POSCAR file.
 
         Parses the stoichiometry from the POSCAR file. The stoichiometry is parsed as is
@@ -140,16 +128,12 @@ class PoscarParser:
             number_of_species = next(remaining_lines).split()
         number_of_species = VaspData(np.array(number_of_species, dtype=int))
         species_name = VaspData(np.array(species_name))
-        return (
-            raw.Stoichiometry(
-                number_ion_types=number_of_species, ion_types=species_name
-            ),
-            remaining_lines,
+        result["stoichiometry"] = raw.Stoichiometry(
+            number_ion_types=number_of_species, ion_types=species_name
         )
+        return result, remaining_lines
 
-    def _ion_positions_and_selective_dynamics(
-        self, number_ions, scaling_factor, cell, remaining_lines
-    ):
+    def _parse_ion_lines(self, result, remaining_lines):
         """The ion positions and selective dynamics from the POSCAR file.
 
         Checks if the POSCAR file has selective dynamics. The check is done
@@ -163,44 +147,105 @@ class PoscarParser:
         specified in Cartesian coordinates, then the positions are converted
         to direct coordinates.
         """
+        number_ions = np.sum(result["stoichiometry"].number_ion_types)
         possible_selective_dynamics = next(remaining_lines)
         has_selective_dynamics = possible_selective_dynamics[0] in "sS"
         if not has_selective_dynamics:
             remaining_lines = _put_back(remaining_lines, possible_selective_dynamics)
         coordinate_system = next(remaining_lines)
-
-        def parse_line(line, positions, selective_dynamics):
-            parts = line.split()
-            positions.append(np.array(parts[:3], dtype=np.float64))
-            selective_dynamics.append(np.array([x == "T" for x in parts[3:]]))
-
         positions = []
         selective_dynamics = []
         for _ in range(number_ions):
-            parse_line(next(remaining_lines), positions, selective_dynamics)
+            self._parse_ion_line(next(remaining_lines), positions, selective_dynamics)
         if coordinate_system[0] in "cCkK":
+            cell = result["cell"]
+            scaling_factor = result["scaling_factor"]
             if np.all(scaling_factor < 0):
                 scaling_factor = cell.scale
             cartesian_positions = np.array(positions) * scaling_factor
-            reciprocal_lattice_vectors = self.get_reciprocal_lattice_vectors(cell)
+            reciprocal_lattice_vectors = self._get_reciprocal_lattice_vectors(cell)
             direct_positions = cartesian_positions @ reciprocal_lattice_vectors.T
             positions = np.remainder(direct_positions, 1)
         else:
             positions = np.array(positions)
-        if self.has_selective_dynamics:
-            selective_dynamics = np.array(selective_dynamics)
-        else:
-            selective_dynamics = None
-        return VaspData(positions), VaspData(selective_dynamics), remaining_lines
+        result["positions"] = VaspData(positions)
+        if has_selective_dynamics:
+            result["selective_dynamics"] = VaspData(np.array(selective_dynamics))
+        return result, remaining_lines
 
-    @classmethod
-    def _get_volume(cls, lattice_vectors):
-        return np.dot(
-            lattice_vectors[0], np.cross(lattice_vectors[1], lattice_vectors[2])
+    @staticmethod
+    def _parse_ion_line(line, positions, selective_dynamics):
+        parts = line.split()
+        positions.append(np.array(parts[:3], dtype=np.float64))
+        selective_dynamics.append(np.array([x == "T" for x in parts[3:]]))
+
+    def _parse_lattice_velocity(self, result, remaining_lines):
+        """The lattice velocities from the POSCAR file.
+
+        Checks if the POSCAR file has lattice velocities. The check is done
+        by looking at the line after the positions. If that line
+        is 'Lattice velocities and vectors', then it is assumed that the POSCAR
+        file has lattice velocities.
+
+        Parses the lattice velocities from the POSCAR file. The lattice velocities
+        are parsed as is and the velocities are reported in the Structure object.
+        If the velocities are specified in Direct coordinates, then the velocities
+        are converted to Cartesian coordinates.
+        """
+        try:
+            possible_lattice_velocities = next(remaining_lines)
+        except StopIteration:  # lattice velocity is optional
+            return result, remaining_lines
+        if not possible_lattice_velocities[0] in "lL":
+            remaining_lines = _put_back(remaining_lines, possible_lattice_velocities)
+            return result, remaining_lines
+        init_lattice_velocities = next(remaining_lines)
+        if init_lattice_velocities.strip() != "1":
+            message = "Only init lattice velocities = 1 is implemented!"
+            raise exception.ParserError(message)
+        lattice_velocities = [next(remaining_lines) for _ in range(6)]
+        lattice_velocities = [x.split() for x in lattice_velocities[:3]]
+        result["lattice_velocities"] = VaspData(
+            np.array(lattice_velocities, dtype=float)
         )
+        return result, remaining_lines
 
-    @classmethod
-    def get_reciprocal_lattice_vectors(cls, cell):
+    def _parse_ion_velocities(self, result, remaining_lines):
+        """The ion velocities from the POSCAR file.
+
+        Checks if the POSCAR file has ion velocities. The header for the ion
+        velocities can be either 'Cartesian' or 'Direct' or an empty line
+        (assumed to be Cartesian). If the header is not one of these, then
+        it is assumed that the POSCAR file does not have ion velocities.
+
+        Parses the ion velocities from the POSCAR file. The ion velocities
+        are parsed as is and the velocities are reported in the Structure object.
+        If the velocities are specified in Direct coordinates, then the velocities
+        are converted to Cartesian coordinates.
+        """
+        try:
+            possible_coordinate_system = next(remaining_lines)
+        except StopIteration:  # velocities are optional
+            return result, remaining_lines
+        coordinate_system = possible_coordinate_system
+        number_ions = np.sum(result["stoichiometry"].number_ion_types)
+        ion_velocities = [next(remaining_lines) for _ in range(number_ions)]
+        ion_velocities = [x.split() for x in ion_velocities]
+        if not coordinate_system[0] in "cCkK ":
+            # I'm not sure this implementation is correct, in VASP there is a factor of
+            # POTIM to convert between Cartesian to fractional coordinates. Since this
+            # case is not common, let's raise an error instead
+            ion_velocities = self._convert_direct_to_cartesian(
+                result["cell"], np.array(ion_velocities, dtype=float), scale=False
+            )
+            ion_velocities = ion_velocities.tolist()
+            message = "Velocities can only be parsed in Cartesian coordinates."
+            raise exception.ParserError(message)
+        result["ion_velocities"] = VaspData(np.array(ion_velocities, dtype=float))
+        return result, remaining_lines
+
+    @staticmethod
+    def _get_reciprocal_lattice_vectors(cell):
         """Get the reciprocal lattice vectors from the cell.
 
         Computes the reciprocal lattice vectors from the cell. The cell must
@@ -208,74 +253,18 @@ class PoscarParser:
         the (2pi) factor.
         """
         lattice_vectors = cell.lattice_vectors.data * cell.scale
-        volume = cls._get_volume(lattice_vectors)
+        volume = PoscarParser._get_volume(lattice_vectors)
         b1 = np.cross(lattice_vectors[1], lattice_vectors[2]) / volume
         b2 = np.cross(lattice_vectors[2], lattice_vectors[0]) / volume
         b3 = np.cross(lattice_vectors[0], lattice_vectors[1]) / volume
         return np.array([b1, b2, b3])
 
-    @property
-    def has_selective_dynamics(self):
-        """Checks if the POSCAR file has selective dynamics.
+    @staticmethod
+    def _get_volume(lattice_vectors):
+        return lattice_vectors[0] @ np.cross(lattice_vectors[1], lattice_vectors[2])
 
-        Checks if the POSCAR file has selective dynamics. The check is done
-        by looking at the 7th line of the POSCAR file. If the first letter
-        is 'S' or 's', then it is assumed that the POSCAR file has selective
-        dynamics.
-        """
-        if self.species_name is None:
-            possible_selective_dynamics = self.poscar_lines[7]
-        else:
-            possible_selective_dynamics = self.poscar_lines[6]
-        if possible_selective_dynamics[0] in ["S", "s"]:
-            return True
-        else:
-            return False
-
-    @property
-    def has_lattice_velocities(self):
-        """Checks if the POSCAR file has lattice velocities.
-
-        Checks if the POSCAR file has lattice velocities. The check is done
-        by looking at the 7th line of the POSCAR file. If that line
-        is 'Lattice velocities and vectors', then it is assumed that the POSCAR
-        file has lattice velocities.
-        """
-        num_species = self.stoichiometry.number_ion_types.data.sum()
-        idx_start = 7 + num_species
-        if self.has_selective_dynamics:
-            idx_start += 1
-        if self.species_name is None:
-            idx_start += 1
-        if len(self.poscar_lines) <= idx_start:
-            return False
-        lattice_velocities_header = self.poscar_lines[idx_start]
-        return lattice_velocities_header[0] in "lL"
-
-    @property
-    def lattice_velocities(self):
-        """The lattice velocities from the POSCAR file.
-
-        Parses the lattice velocities from the POSCAR file. The lattice velocities
-        are parsed as is and the velocities are reported in the Structure object.
-        If the velocities are specified in Direct coordinates, then the velocities
-        are converted to Cartesian coordinates.
-        """
-        num_species = self.stoichiometry.number_ion_types.data.sum()
-        idx_start = 7 + num_species
-        if not self.has_lattice_velocities:
-            raise exception.ParserError("No lattice velocities found in POSCAR.")
-        if self.has_selective_dynamics:
-            idx_start += 1
-        if self.species_name is None:
-            idx_start += 1
-        lattice_velocities = self.poscar_lines[idx_start + 2 : idx_start + 2 + 3]
-        lattice_velocities = [x.split() for x in lattice_velocities]
-        lattice_velocities = VaspData(np.array(lattice_velocities, dtype=float))
-        return lattice_velocities
-
-    @classmethod
-    def _convert_direct_to_cartesian(cls, cell, x, scale=True):
+    @staticmethod
+    def _convert_direct_to_cartesian(cell, x, scale=True):
         if scale:
             lattice_vectors = cell.lattice_vectors.data * cell.scale
         else:
@@ -283,62 +272,6 @@ class PoscarParser:
         cartesian_positions = x @ lattice_vectors.T
         return cartesian_positions
 
-    @property
-    def has_ion_velocities(self):
-        """Checks if the POSCAR file has ion velocities.
 
-        Checks if the POSCAR file has ion velocities. The header for the ion
-        velocities can be either 'Cartesian' or 'Direct' or an empty line
-        (assumed to be Cartesian). If the header is not one of these, then
-        it is assumed that the POSCAR file does not have ion velocities.
-        """
-        num_species = self.stoichiometry.number_ion_types.data.sum()
-        idx_start = 7 + num_species
-        if self.has_selective_dynamics:
-            idx_start += 1
-        if self.species_name is None:
-            idx_start += 1
-        if self.has_lattice_velocities:
-            idx_start += 8
-        return len(self.poscar_lines) > idx_start
-        # if len(self.poscar_lines) <= idx_start:
-        #     return False
-        # ion_velocities_header = self.poscar_lines[idx_start]
-        # if ion_velocities_header in ["", "Cartesian", "Direct"]:
-        #     return True
-        # else:
-        #     return False
-
-    def ion_velocities(self, cell):
-        """The ion velocities from the POSCAR file.
-
-        Parses the ion velocities from the POSCAR file. The ion velocities
-        are parsed as is and the velocities are reported in the Structure object.
-        If the velocities are specified in Direct coordinates, then the velocities
-        are converted to Cartesian coordinates.
-        """
-        num_species = self.stoichiometry.number_ion_types.data.sum()
-        if not self.has_ion_velocities:
-            raise exception.ParserError("No ion velocities found in POSCAR.")
-        idx_start = 7 + num_species
-        if self.has_selective_dynamics:
-            idx_start += 1
-        if self.species_name is None:
-            idx_start += 1
-        if self.has_lattice_velocities:
-            idx_start += 8
-        coordinate_system = self.poscar_lines[idx_start]
-        ion_velocities = self.poscar_lines[idx_start + 1 : idx_start + 1 + num_species]
-        ion_velocities = [x.split() for x in ion_velocities]
-        if not coordinate_system[0] in "cCkK ":
-            # I'm not sure this implementation is correct, in VASP there is a factor of
-            # POTIM to convert between Cartesian to fractional coordinates. Since this
-            # case is not common, let's raise an error instead
-            ion_velocities = self._convert_direct_to_cartesian(
-                cell, np.array(ion_velocities, dtype=float), scale=False
-            )
-            ion_velocities = ion_velocities.tolist()
-            message = "Velocities can only be parsed in Cartesian coordinates."
-            raise exception.ParserError(message)
-        ion_velocities = VaspData(np.array(ion_velocities, dtype=float))
-        return ion_velocities
+def _put_back(iterator, item):
+    return itertools.chain([item], iterator)

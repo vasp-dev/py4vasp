@@ -207,7 +207,7 @@ EXAMPLE_POSCARS = (
         string_format="first letter",
     ),
     GeneralPOSCAR(
-        structure=STRUCTURE_SrTiO3,
+        structure=STRUCTURE_BN,
         system="Empty ion velocity string",
         ion_velocities=raw.VaspData(np.array([[0.2, 0.4, -0.2], [0.4, 0.6, -0.3]])),
         velocity_coordinate_system=" ",
