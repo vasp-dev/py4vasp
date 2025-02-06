@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass
+from typing import List
 
 import numpy as np
 
@@ -29,7 +30,7 @@ def POSCAR(poscar_string, ion_types=None):
     CONTCAR
         A CONTCAR object with the data in the string.
     """
-    parser = PoscarParser(poscar_string, ion_types)
+    parser = PoscarParser(poscar_string.splitlines(), ion_types)
     contcar_content = dict(parser.parse_lines())
     structure_keys = ["stoichiometry", "cell", "positions"]
     structure_content = {key: contcar_content.pop(key) for key in structure_keys}
@@ -39,11 +40,8 @@ def POSCAR(poscar_string, ion_types=None):
 
 @dataclass
 class PoscarParser:
-    poscar: str
+    poscar_lines: List[str]
     species_name: str or None = None
-
-    def __post_init__(self):
-        self.split_poscar = self.poscar.splitlines()
 
     def parse_lines(self):
         yield "system", self.comment_line
@@ -60,7 +58,7 @@ class PoscarParser:
 
     @property
     def comment_line(self):
-        return self.split_poscar[0]
+        return self.poscar_lines[0]
 
     @classmethod
     def _get_volume(cls, lattice_vectors):
@@ -93,7 +91,7 @@ class PoscarParser:
         a single scaling is computed to make sure that the volume of the final
         cell is the same.
         """
-        scaling_factor = self.split_poscar[1]
+        scaling_factor = self.poscar_lines[1]
         if len(scaling_factor.split()) not in [1, 3]:
             raise exception.ParserError(
                 "The scaling factor is not specified in the right format."
@@ -121,7 +119,7 @@ class PoscarParser:
         """
         scaling_factor = self.scaling_factor
         lattice_vectors = np.array(
-            [x.split() for x in self.split_poscar[2:5]], dtype=float
+            [x.split() for x in self.poscar_lines[2:5]], dtype=float
         )
         if scaling_factor.ndim == 1:
             scaled_lattice_vectors = lattice_vectors * scaling_factor
@@ -147,9 +145,9 @@ class PoscarParser:
         dynamics.
         """
         if self.species_name is None:
-            possible_selective_dynamics = self.split_poscar[7]
+            possible_selective_dynamics = self.poscar_lines[7]
         else:
-            possible_selective_dynamics = self.split_poscar[6]
+            possible_selective_dynamics = self.poscar_lines[6]
         if possible_selective_dynamics[0] in ["S", "s"]:
             return True
         else:
@@ -165,15 +163,15 @@ class PoscarParser:
         be supplied as an argument.
         """
         if self.species_name is None:
-            species_name = self.split_poscar[5].split()
+            species_name = self.poscar_lines[5].split()
             if not all(s.isalpha() for s in species_name):
                 raise exception.ParserError(
                     "Either supply species as an argument or in the POSCAR file."
                 )
-            number_of_species = self.split_poscar[6].split()
+            number_of_species = self.poscar_lines[6].split()
         else:
             species_name = np.array(self.species_name)
-            number_of_species = self.split_poscar[5].split()
+            number_of_species = self.poscar_lines[5].split()
         number_of_species = VaspData(np.array(number_of_species, dtype=int))
         species_name = VaspData(np.array(species_name))
         return Stoichiometry(number_ion_types=number_of_species, ion_types=species_name)
@@ -194,8 +192,8 @@ class PoscarParser:
             idx_start += 1
         if self.species_name is None:
             idx_start += 1
-        type_positions = self.split_poscar[idx_start]
-        positions_and_selective_dyn = self.split_poscar[
+        type_positions = self.poscar_lines[idx_start]
+        positions_and_selective_dyn = self.poscar_lines[
             idx_start + 1 : idx_start + 1 + number_of_species
         ]
         if type_positions[0] in "cCkK":
@@ -241,9 +239,9 @@ class PoscarParser:
             idx_start += 1
         if self.species_name is None:
             idx_start += 1
-        if len(self.split_poscar) <= idx_start:
+        if len(self.poscar_lines) <= idx_start:
             return False
-        lattice_velocities_header = self.split_poscar[idx_start]
+        lattice_velocities_header = self.poscar_lines[idx_start]
         return lattice_velocities_header[0] in "lL"
 
     @property
@@ -263,7 +261,7 @@ class PoscarParser:
             idx_start += 1
         if self.species_name is None:
             idx_start += 1
-        lattice_velocities = self.split_poscar[idx_start + 2 : idx_start + 2 + 3]
+        lattice_velocities = self.poscar_lines[idx_start + 2 : idx_start + 2 + 3]
         lattice_velocities = [x.split() for x in lattice_velocities]
         lattice_velocities = VaspData(np.array(lattice_velocities, dtype=float))
         return lattice_velocities
@@ -294,10 +292,10 @@ class PoscarParser:
             idx_start += 1
         if self.has_lattice_velocities:
             idx_start += 8
-        return len(self.split_poscar) > idx_start
-        # if len(self.split_poscar) <= idx_start:
+        return len(self.poscar_lines) > idx_start
+        # if len(self.poscar_lines) <= idx_start:
         #     return False
-        # ion_velocities_header = self.split_poscar[idx_start]
+        # ion_velocities_header = self.poscar_lines[idx_start]
         # if ion_velocities_header in ["", "Cartesian", "Direct"]:
         #     return True
         # else:
@@ -322,8 +320,8 @@ class PoscarParser:
             idx_start += 1
         if self.has_lattice_velocities:
             idx_start += 8
-        coordinate_system = self.split_poscar[idx_start]
-        ion_velocities = self.split_poscar[idx_start + 1 : idx_start + 1 + num_species]
+        coordinate_system = self.poscar_lines[idx_start]
+        ion_velocities = self.poscar_lines[idx_start + 1 : idx_start + 1 + num_species]
         ion_velocities = [x.split() for x in ion_velocities]
         if not coordinate_system[0] in "cCkK ":
             # I'm not sure this implementation is correct, in VASP there is a factor of
