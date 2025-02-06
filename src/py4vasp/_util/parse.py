@@ -3,9 +3,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from py4vasp import exception
 from py4vasp._raw.data import CONTCAR, Cell, Stoichiometry, Structure
 from py4vasp._raw.data_wrapper import VaspData
-from py4vasp.exception import ParserError
 
 
 def POSCAR(string, ion_types=None):
@@ -57,7 +57,7 @@ class ParsePoscar:
         """
         scaling_factor = self.split_poscar[1]
         if len(scaling_factor.split()) not in [1, 3]:
-            raise ParserError(
+            raise exception.ParserError(
                 "The scaling factor is not specified in the right format."
             )
         scaling_factor = np.array(scaling_factor.split(), dtype=float)
@@ -67,7 +67,7 @@ class ParsePoscar:
             scaling_factor = scaling_factor[0]
         if scaling_factor.ndim == 1:
             if np.any(scaling_factor <= 0):
-                raise ParserError(
+                raise exception.ParserError(
                     "The scaling factor for the cell is either negative or zero."
                 )
         return scaling_factor
@@ -129,7 +129,7 @@ class ParsePoscar:
         if self.species_name is None:
             species_name = self.split_poscar[5].split()
             if not all(s.isalpha() for s in species_name):
-                raise ParserError(
+                raise exception.ParserError(
                     "Either supply species as an argument or in the POSCAR file."
                 )
             number_of_species = self.split_poscar[6].split()
@@ -220,7 +220,7 @@ class ParsePoscar:
         num_species = self.stoichiometry.number_ion_types.data.sum()
         idx_start = 7 + num_species
         if not self.has_lattice_velocities:
-            raise ParserError("No lattice velocities found in POSCAR.")
+            raise exception.ParserError("No lattice velocities found in POSCAR.")
         if self.has_selective_dynamics:
             idx_start += 1
         if self.species_name is None:
@@ -276,7 +276,7 @@ class ParsePoscar:
         """
         num_species = self.stoichiometry.number_ion_types.data.sum()
         if not self.has_ion_velocities:
-            raise ParserError("No ion velocities found in POSCAR.")
+            raise exception.ParserError("No ion velocities found in POSCAR.")
         idx_start = 7 + num_species
         if self.has_selective_dynamics:
             idx_start += 1
