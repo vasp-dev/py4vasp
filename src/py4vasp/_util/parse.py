@@ -90,9 +90,13 @@ class PoscarParser:
             scaling_factor = 1
         elif scaling_factor < 0:
             volume_ratio = abs(scaling_factor) / self._get_volume(lattice_vectors)
-            scaling_factor = volume_ratio ** (1 / 3)
+            result["scaling_factor"] = scaling_factor = volume_ratio ** (1 / 3)
         result["cell"] = raw.Cell(VaspData(lattice_vectors), scaling_factor)
         return result, remaining_lines
+
+    @staticmethod
+    def _get_volume(lattice_vectors):
+        return np.abs(np.linalg.det(lattice_vectors))
 
     def _parse_stoichiometry(self, result, remaining_lines):
         """The stoichiometry from the POSCAR file.
@@ -133,27 +137,19 @@ class PoscarParser:
         specified in Cartesian coordinates, then the positions are converted
         to direct coordinates.
         """
-        number_ions = np.sum(result["stoichiometry"].number_ion_types)
         possible_selective_dynamics = next(remaining_lines)
         has_selective_dynamics = possible_selective_dynamics[0] in "sS"
         if not has_selective_dynamics:
             remaining_lines = _put_back(remaining_lines, possible_selective_dynamics)
+
         coordinate_system = next(remaining_lines)
+        number_ions = np.sum(result["stoichiometry"].number_ion_types)
         positions = []
         selective_dynamics = []
         for _ in range(number_ions):
             self._parse_ion_line(next(remaining_lines), positions, selective_dynamics)
-        if coordinate_system[0] in "cCkK":
-            cell = result["cell"]
-            scaling_factor = result["scaling_factor"]
-            if np.all(scaling_factor < 0):
-                scaling_factor = cell.scale
-            cartesian_positions = np.array(positions) * scaling_factor
-            reciprocal_lattice_vectors = self._get_reciprocal_lattice_vectors(cell)
-            direct_positions = cartesian_positions @ reciprocal_lattice_vectors.T
-            positions = np.remainder(direct_positions, 1)
-        else:
-            positions = np.array(positions)
+
+        positions = self._to_fractional(result, positions, coordinate_system)
         result["positions"] = VaspData(positions)
         if has_selective_dynamics:
             result["selective_dynamics"] = VaspData(np.array(selective_dynamics))
@@ -164,6 +160,14 @@ class PoscarParser:
         parts = line.split()
         positions.append(np.array(parts[:3], dtype=np.float64))
         selective_dynamics.append(np.array([x == "T" for x in parts[3:]]))
+
+    def _to_fractional(self, result, positions, coordinate_system):
+        if not coordinate_system[0] in "cCkK":
+            return np.array(positions)
+        cartesian_positions = np.array(positions) * result["scaling_factor"]
+        inverse_lattice_vectors = self._get_inverse_lattice_vectors(result["cell"])
+        direct_positions = cartesian_positions @ inverse_lattice_vectors
+        return np.remainder(direct_positions, 1)
 
     def _parse_lattice_velocity(self, result, remaining_lines):
         """The lattice velocities from the POSCAR file.
@@ -231,23 +235,14 @@ class PoscarParser:
         return result, remaining_lines
 
     @staticmethod
-    def _get_reciprocal_lattice_vectors(cell):
-        """Get the reciprocal lattice vectors from the cell.
+    def _get_inverse_lattice_vectors(cell):
+        """Get the inverse of lattice vectors from the cell.
 
-        Computes the reciprocal lattice vectors from the cell. The cell must
-        be a Cell object. The reciprocal lattice vectors are computed without
-        the (2pi) factor.
+        The inverse of the lattice vectors are related to the reciprocal lattice vectors
+        up to a factor of 2 * pi.
         """
         lattice_vectors = cell.lattice_vectors.data * cell.scale
-        volume = PoscarParser._get_volume(lattice_vectors)
-        b1 = np.cross(lattice_vectors[1], lattice_vectors[2]) / volume
-        b2 = np.cross(lattice_vectors[2], lattice_vectors[0]) / volume
-        b3 = np.cross(lattice_vectors[0], lattice_vectors[1]) / volume
-        return np.array([b1, b2, b3])
-
-    @staticmethod
-    def _get_volume(lattice_vectors):
-        return lattice_vectors[0] @ np.cross(lattice_vectors[1], lattice_vectors[2])
+        return np.linalg.inv(lattice_vectors)
 
     @staticmethod
     def _convert_direct_to_cartesian(cell, x, scale=True):
