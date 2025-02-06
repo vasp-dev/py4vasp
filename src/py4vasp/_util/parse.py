@@ -5,7 +5,6 @@ from typing import List
 import numpy as np
 
 from py4vasp import exception, raw
-from py4vasp._raw.data import Cell, Stoichiometry
 from py4vasp._raw.data_wrapper import VaspData
 
 
@@ -31,7 +30,7 @@ def POSCAR(poscar_string, ion_types=None):
         A CONTCAR object with the data in the string.
     """
     parser = PoscarParser(poscar_string.splitlines(), ion_types)
-    contcar_content = dict(parser.parse_lines())
+    contcar_content = parser.parse_lines()
     structure_keys = ["stoichiometry", "cell", "positions"]
     structure_content = {key: contcar_content.pop(key) for key in structure_keys}
     contcar_content["structure"] = raw.Structure(**structure_content)
@@ -49,25 +48,28 @@ class PoscarParser:
 
     def parse_lines(self):
         remaining_lines = iter(self.poscar_lines)
-        yield "system", next(remaining_lines)
-        self.scaling_factor = self._scaling_factor(remaining_lines)
-        self.cell = self._cell(self.scaling_factor, remaining_lines)
-        yield "cell", self.cell
-        self.stoichiometry = self._stoichiometry(remaining_lines)
+        result = {"system": next(remaining_lines)}
+        scaling_factor, remaining_lines = self._parse_scaling_factor(remaining_lines)
+        cell, remaining_lines = self._parse_cell(scaling_factor, remaining_lines)
+        result["cell"] = cell
+        self.stoichiometry, remaining_lines = self._stoichiometry(remaining_lines)
         number_ions = np.sum(self.stoichiometry.number_ion_types)
-        yield "stoichiometry", self.stoichiometry
-        ion_positions, selective_dynamics = self._ion_positions_and_selective_dynamics(
-            number_ions, self.scaling_factor, self.cell, remaining_lines
+        result["stoichiometry"] = self.stoichiometry
+        ion_positions, selective_dynamics, remaining_lines = (
+            self._ion_positions_and_selective_dynamics(
+                number_ions, scaling_factor, cell, remaining_lines
+            )
         )
-        yield "positions", ion_positions
+        result["positions"] = ion_positions
         if self.has_selective_dynamics:
-            yield "selective_dynamics", selective_dynamics
+            result["selective_dynamics"] = selective_dynamics
         if self.has_lattice_velocities:
-            yield "lattice_velocities", self.lattice_velocities
+            result["lattice_velocities"] = self.lattice_velocities
         if self.has_ion_velocities:
-            yield "ion_velocities", self.ion_velocities
+            result["ion_velocities"] = self.ion_velocities(cell)
+        return result
 
-    def _scaling_factor(self, remaining_lines):
+    def _parse_scaling_factor(self, remaining_lines):
         """The scaling factor from the POSCAR file.
 
         Parses the scaling factor, deciding it the scaling factor is a single
@@ -91,9 +93,9 @@ class PoscarParser:
                 raise exception.ParserError(
                     "The scaling factor for the cell is either negative or zero."
                 )
-        return scaling_factor
+        return scaling_factor, remaining_lines
 
-    def _cell(self, scaling_factor, remaining_lines):
+    def _parse_cell(self, scaling_factor, remaining_lines):
         """The cell from the POSCAR file.
 
         Parses the cell from the POSCAR file. The cell is parsed as is and
@@ -106,17 +108,17 @@ class PoscarParser:
         )
         if scaling_factor.ndim == 1:
             scaled_lattice_vectors = lattice_vectors * scaling_factor
-            cell = Cell(lattice_vectors=VaspData(scaled_lattice_vectors), scale=1.0)
+            cell = raw.Cell(lattice_vectors=VaspData(scaled_lattice_vectors), scale=1.0)
         else:
             if scaling_factor > 0:
-                cell = Cell(lattice_vectors=lattice_vectors, scale=scaling_factor)
+                cell = raw.Cell(lattice_vectors=lattice_vectors, scale=scaling_factor)
             else:
                 volume = self._get_volume(lattice_vectors)
-                cell = Cell(
+                cell = raw.Cell(
                     lattice_vectors=lattice_vectors,
                     scale=(abs(scaling_factor) / volume) ** (1 / 3),
                 )
-        return cell
+        return cell, remaining_lines
 
     def _stoichiometry(self, remaining_lines):
         """The stoichiometry from the POSCAR file.
@@ -138,7 +140,12 @@ class PoscarParser:
             number_of_species = next(remaining_lines).split()
         number_of_species = VaspData(np.array(number_of_species, dtype=int))
         species_name = VaspData(np.array(species_name))
-        return Stoichiometry(number_ion_types=number_of_species, ion_types=species_name)
+        return (
+            raw.Stoichiometry(
+                number_ion_types=number_of_species, ion_types=species_name
+            ),
+            remaining_lines,
+        )
 
     def _ion_positions_and_selective_dynamics(
         self, number_ions, scaling_factor, cell, remaining_lines
@@ -184,7 +191,7 @@ class PoscarParser:
             selective_dynamics = np.array(selective_dynamics)
         else:
             selective_dynamics = None
-        return VaspData(positions), VaspData(selective_dynamics)
+        return VaspData(positions), VaspData(selective_dynamics), remaining_lines
 
     @classmethod
     def _get_volume(cls, lattice_vectors):
@@ -302,8 +309,7 @@ class PoscarParser:
         # else:
         #     return False
 
-    @property
-    def ion_velocities(self):
+    def ion_velocities(self, cell):
         """The ion velocities from the POSCAR file.
 
         Parses the ion velocities from the POSCAR file. The ion velocities
@@ -329,7 +335,7 @@ class PoscarParser:
             # POTIM to convert between Cartesian to fractional coordinates. Since this
             # case is not common, let's raise an error instead
             ion_velocities = self._convert_direct_to_cartesian(
-                self.cell, np.array(ion_velocities, dtype=float), scale=False
+                cell, np.array(ion_velocities, dtype=float), scale=False
             )
             ion_velocities = ion_velocities.tolist()
             message = "Velocities can only be parsed in Cartesian coordinates."
