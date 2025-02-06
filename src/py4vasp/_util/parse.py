@@ -44,7 +44,9 @@ class PoscarParser:
     species_name: str or None = None
 
     def parse_lines(self):
-        yield "system", self.comment_line
+        remaining_lines = iter(self.poscar_lines)
+        yield "system", next(remaining_lines)
+        self.cell = self._cell(remaining_lines)
         yield "cell", self.cell
         yield "stoichiometry", self.stoichiometry
         ion_positions, selective_dynamics = self.ion_positions_and_selective_dynamics
@@ -56,9 +58,57 @@ class PoscarParser:
         if self.has_ion_velocities:
             yield "ion_velocities", self.ion_velocities
 
-    @property
-    def comment_line(self):
-        return self.poscar_lines[0]
+    def _cell(self, remaining_lines):
+        """The cell from the POSCAR file.
+
+        Parses the cell from the POSCAR file. The cell is parsed as is and
+        the scaling factor is reported in the Cell object. In case volume scaling
+        is used, the scaling factor is computed to make sure that the volume of
+        the final cell is the same.
+        """
+        scaling_factor = self.scaling_factor = self._scaling_factor(remaining_lines)
+        lattice_vectors = np.array(
+            [next(remaining_lines).split() for _ in range(3)], dtype=float
+        )
+        if scaling_factor.ndim == 1:
+            scaled_lattice_vectors = lattice_vectors * scaling_factor
+            cell = Cell(lattice_vectors=VaspData(scaled_lattice_vectors), scale=1.0)
+        else:
+            if scaling_factor > 0:
+                cell = Cell(lattice_vectors=lattice_vectors, scale=scaling_factor)
+            else:
+                volume = self._get_volume(lattice_vectors)
+                cell = Cell(
+                    lattice_vectors=lattice_vectors,
+                    scale=(abs(scaling_factor) / volume) ** (1 / 3),
+                )
+        return cell
+
+    def _scaling_factor(self, remaining_lines):
+        """The scaling factor from the POSCAR file.
+
+        Parses the scaling factor, deciding it the scaling factor is a single
+        number (all dimensions) or a vector (each dimension). If the scaling
+        if a negative number, then it is interpreted as a volume and the
+        a single scaling is computed to make sure that the volume of the final
+        cell is the same.
+        """
+        scaling_factor = next(remaining_lines)
+        if len(scaling_factor.split()) not in [1, 3]:
+            raise exception.ParserError(
+                "The scaling factor is not specified in the right format."
+            )
+        scaling_factor = np.array(scaling_factor.split(), dtype=float)
+        if scaling_factor.ndim == 0 or (
+            scaling_factor.ndim == 1 and len(scaling_factor) == 1
+        ):
+            scaling_factor = scaling_factor[0]
+        if scaling_factor.ndim == 1:
+            if np.any(scaling_factor <= 0):
+                raise exception.ParserError(
+                    "The scaling factor for the cell is either negative or zero."
+                )
+        return scaling_factor
 
     @classmethod
     def _get_volume(cls, lattice_vectors):
@@ -80,60 +130,6 @@ class PoscarParser:
         b2 = np.cross(lattice_vectors[2], lattice_vectors[0]) / volume
         b3 = np.cross(lattice_vectors[0], lattice_vectors[1]) / volume
         return np.array([b1, b2, b3])
-
-    @property
-    def scaling_factor(self):
-        """The scaling factor from the POSCAR file.
-
-        Parses the scaling factor, deciding it the scaling factor is a single
-        number (all dimensions) or a vector (each dimension). If the scaling
-        if a negative number, then it is interpreted as a volume and the
-        a single scaling is computed to make sure that the volume of the final
-        cell is the same.
-        """
-        scaling_factor = self.poscar_lines[1]
-        if len(scaling_factor.split()) not in [1, 3]:
-            raise exception.ParserError(
-                "The scaling factor is not specified in the right format."
-            )
-        scaling_factor = np.array(scaling_factor.split(), dtype=float)
-        if scaling_factor.ndim == 0 or (
-            scaling_factor.ndim == 1 and len(scaling_factor) == 1
-        ):
-            scaling_factor = scaling_factor[0]
-        if scaling_factor.ndim == 1:
-            if np.any(scaling_factor <= 0):
-                raise exception.ParserError(
-                    "The scaling factor for the cell is either negative or zero."
-                )
-        return scaling_factor
-
-    @property
-    def cell(self):
-        """The cell from the POSCAR file.
-
-        Parses the cell from the POSCAR file. The cell is parsed as is and
-        the scaling factor is reported in the Cell object. In case volume scaling
-        is used, the scaling factor is computed to make sure that the volume of
-        the final cell is the same.
-        """
-        scaling_factor = self.scaling_factor
-        lattice_vectors = np.array(
-            [x.split() for x in self.poscar_lines[2:5]], dtype=float
-        )
-        if scaling_factor.ndim == 1:
-            scaled_lattice_vectors = lattice_vectors * scaling_factor
-            cell = Cell(lattice_vectors=VaspData(scaled_lattice_vectors), scale=1.0)
-        else:
-            if scaling_factor > 0:
-                cell = Cell(lattice_vectors=lattice_vectors, scale=scaling_factor)
-            else:
-                volume = self._get_volume(lattice_vectors)
-                cell = Cell(
-                    lattice_vectors=lattice_vectors,
-                    scale=(abs(scaling_factor) / volume) ** (1 / 3),
-                )
-        return cell
 
     @property
     def has_selective_dynamics(self):
