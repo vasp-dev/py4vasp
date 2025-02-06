@@ -236,7 +236,6 @@ class ParsePoscar:
             lattice_vectors = cell.lattice_vectors.data * cell.scale
         else:
             lattice_vectors = np.array(cell.lattice_vectors.data)
-        print(f"trafo {lattice_vectors=}")
         cartesian_positions = x @ lattice_vectors.T
         return cartesian_positions
 
@@ -288,15 +287,16 @@ class ParsePoscar:
         coordinate_system = self.split_poscar[idx_start]
         ion_velocities = self.split_poscar[idx_start + 1 : idx_start + 1 + num_species]
         ion_velocities = [x.split() for x in ion_velocities]
-        print(f"lattice velocities {self.has_lattice_velocities}")
-        print(f"velocity coordinates {coordinate_system=}")
-        print(f"{ion_velocities=}")
-        if not coordinate_system[0] in "cCkK":
+        if not coordinate_system[0] in "cCkK ":
+            # I'm not sure this implementation is correct, in VASP there is a factor of
+            # POTIM to convert between Cartesian to fractional coordinates. Since this
+            # case is not common, let's raise an error instead
             ion_velocities = self._convert_direct_to_cartesian(
                 self.cell, np.array(ion_velocities, dtype=float), scale=False
             )
             ion_velocities = ion_velocities.tolist()
-        print(f"{ion_velocities=}")
+            message = "Velocities can only be parsed in Cartesian coordinates."
+            raise exception.ParserError(message)
         ion_velocities = VaspData(np.array(ion_velocities, dtype=float))
         return ion_velocities
 
