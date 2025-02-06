@@ -221,17 +221,25 @@ EXAMPLE_POSCARS = (
 @pytest.mark.parametrize("raw_poscar", EXAMPLE_POSCARS)
 def test_parse_general_poscar(raw_poscar, Assert):
     is_general_poscar = isinstance(raw_poscar, GeneralPOSCAR)
-    if is_general_poscar:
-        poscar_string = str(raw_poscar)
-    else:
-        poscar_string = str(CONTCAR.from_data(raw_poscar))
-    if not is_general_poscar or raw_poscar.show_ion_types:
-        actual = parse.POSCAR(poscar_string)
-    else:
-        ion_types = raw_poscar.structure.stoichiometry.ion_types
-        actual = parse.POSCAR(poscar_string, ion_types)
+    poscar_string = create_poscar_string(raw_poscar, is_general_poscar)
+    ion_types = determine_ion_types(raw_poscar, is_general_poscar)
+    actual = parse.POSCAR(poscar_string, ion_types)
     exact_match = not is_general_poscar
     check_poscar_is_same(actual, raw_poscar, exact_match, Assert)
+
+
+def create_poscar_string(raw_poscar, is_general_poscar):
+    if is_general_poscar:
+        return str(raw_poscar)
+    else:
+        return str(CONTCAR.from_data(raw_poscar))
+
+
+def determine_ion_types(raw_poscar, is_general_poscar):
+    if is_general_poscar and not raw_poscar.show_ion_types:
+        return raw_poscar.structure.stoichiometry.ion_types
+    else:
+        return None  # if ion types are in POSCAR we don't need to provide it to parser
 
 
 def check_poscar_is_same(actual, expected, exact_match, Assert):
