@@ -64,20 +64,13 @@ class PoscarParser:
         cell is the same.
         """
         scaling_factor = next(remaining_lines)
-        if len(scaling_factor.split()) not in [1, 3]:
-            raise exception.ParserError(
-                "The scaling factor is not specified in the right format."
-            )
-        scaling_factor = np.array(scaling_factor.split(), dtype=float)
-        if scaling_factor.ndim == 0 or (
-            scaling_factor.ndim == 1 and len(scaling_factor) == 1
-        ):
-            scaling_factor = scaling_factor[0]
-        if scaling_factor.ndim == 1:
-            if np.any(scaling_factor <= 0):
-                raise exception.ParserError(
-                    "The scaling factor for the cell is either negative or zero."
-                )
+        scaling_factor = np.squeeze(scaling_factor.split()).astype(np.float64)
+        if scaling_factor.size not in [1, 3]:
+            message = "The scaling factor should be one or three numbers"
+            raise exception.ParserError(message)
+        if scaling_factor.ndim == 1 and np.any(scaling_factor <= 0):
+            message = "A negative scaling factor is only allowed for a single value."
+            raise exception.ParserError(message)
         result["scaling_factor"] = scaling_factor
         return result, remaining_lines
 
@@ -89,23 +82,16 @@ class PoscarParser:
         is used, the scaling factor is computed to make sure that the volume of
         the final cell is the same.
         """
+        lattice_vectors = [next(remaining_lines).split() for _ in range(3)]
+        lattice_vectors = np.array(lattice_vectors, dtype=np.float64)
         scaling_factor = result["scaling_factor"]
-        lattice_vectors = np.array(
-            [next(remaining_lines).split() for _ in range(3)], dtype=float
-        )
         if scaling_factor.ndim == 1:
-            scaled_lattice_vectors = lattice_vectors * scaling_factor
-            cell = raw.Cell(lattice_vectors=VaspData(scaled_lattice_vectors), scale=1.0)
-        else:
-            if scaling_factor > 0:
-                cell = raw.Cell(lattice_vectors=lattice_vectors, scale=scaling_factor)
-            else:
-                volume = self._get_volume(lattice_vectors)
-                cell = raw.Cell(
-                    lattice_vectors=lattice_vectors,
-                    scale=(abs(scaling_factor) / volume) ** (1 / 3),
-                )
-        result["cell"] = cell
+            lattice_vectors *= scaling_factor
+            scaling_factor = 1
+        elif scaling_factor < 0:
+            volume_ratio = abs(scaling_factor) / self._get_volume(lattice_vectors)
+            scaling_factor = volume_ratio ** (1 / 3)
+        result["cell"] = raw.Cell(VaspData(lattice_vectors), scaling_factor)
         return result, remaining_lines
 
     def _parse_stoichiometry(self, result, remaining_lines):
