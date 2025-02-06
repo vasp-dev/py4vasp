@@ -3,13 +3,47 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from py4vasp import exception
-from py4vasp._raw.data import CONTCAR, Cell, Stoichiometry, Structure
+from py4vasp import exception, raw
+from py4vasp._raw.data import Cell, Stoichiometry
 from py4vasp._raw.data_wrapper import VaspData
 
 
 def POSCAR(string, ion_types=None):
-    return ParsePoscar(string, ion_types).to_contcar()
+    """Converts a string POSCAR file to a CONTCAR object.
+
+    The CONTCAR object contains the Structure object and the system
+    name (comment line), and the optional arguments selective_dynamics,
+    lattice_velocities, and ion_velocities. The optional arguments are
+    only included if they are present in the POSCAR file.
+
+    Parameters
+    ----------
+    string : str
+        A string in POSCAR format.
+    ion_types : Sequence or None
+        If the POSCAR file does not set the ion types you need to provide the ion
+        types as an arguments
+
+    Returns
+    -------
+    CONTCAR
+        A CONTCAR object with the data in the string.
+    """
+    parser = ParsePoscar(string, ion_types)
+    ion_positions, selective_dynamics = parser.ion_positions_and_selective_dynamics
+    structure = raw.Structure(
+        stoichiometry=parser.stoichiometry,
+        cell=parser.cell,
+        positions=ion_positions,
+    )
+    optional = {}
+    if parser.has_selective_dynamics:
+        optional["selective_dynamics"] = selective_dynamics
+    if parser.has_lattice_velocities:
+        optional["lattice_velocities"] = parser.lattice_velocities
+    if parser.has_ion_velocities:
+        optional["ion_velocities"] = parser.ion_velocities
+    return raw.CONTCAR(structure=structure, system=parser.comment_line, **optional)
 
 
 @dataclass
@@ -299,28 +333,3 @@ class ParsePoscar:
             raise exception.ParserError(message)
         ion_velocities = VaspData(np.array(ion_velocities, dtype=float))
         return ion_velocities
-
-    def to_contcar(self):
-        """Converts a string POSCAR file to a CONTCAR object.
-
-        The CONTCAR object contains the Structure object and the system
-        name (comment line), and the optional arguments selective_dynamics,
-        lattice_velocities, and ion_velocities. The optional arguments are
-        only included if they are present in the POSCAR file.
-        """
-        ion_positions, selective_dynamics = self.ion_positions_and_selective_dynamics
-        structure = Structure(
-            stoichiometry=self.stoichiometry,
-            cell=self.cell,
-            positions=ion_positions,
-        )
-        optional = {}
-        if self.has_selective_dynamics:
-            optional["selective_dynamics"] = selective_dynamics
-        if self.has_lattice_velocities:
-            optional["lattice_velocities"] = self.lattice_velocities
-        if self.has_ion_velocities:
-            optional["ion_velocities"] = self.ion_velocities
-
-        contcar = CONTCAR(structure=structure, system=self.comment_line, **optional)
-        return contcar
