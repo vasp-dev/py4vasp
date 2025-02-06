@@ -8,7 +8,7 @@ from py4vasp._raw.data import Cell, Stoichiometry
 from py4vasp._raw.data_wrapper import VaspData
 
 
-def POSCAR(string, ion_types=None):
+def POSCAR(poscar_string, ion_types=None):
     """Converts a string POSCAR file to a CONTCAR object.
 
     The CONTCAR object contains the Structure object and the system
@@ -18,7 +18,7 @@ def POSCAR(string, ion_types=None):
 
     Parameters
     ----------
-    string : str
+    poscar_string : str
         A string in POSCAR format.
     ion_types : Sequence or None
         If the POSCAR file does not set the ion types you need to provide the ion
@@ -29,30 +29,34 @@ def POSCAR(string, ion_types=None):
     CONTCAR
         A CONTCAR object with the data in the string.
     """
-    parser = ParsePoscar(string, ion_types)
-    ion_positions, selective_dynamics = parser.ion_positions_and_selective_dynamics
-    structure = raw.Structure(
-        stoichiometry=parser.stoichiometry,
-        cell=parser.cell,
-        positions=ion_positions,
-    )
-    optional = {}
-    if parser.has_selective_dynamics:
-        optional["selective_dynamics"] = selective_dynamics
-    if parser.has_lattice_velocities:
-        optional["lattice_velocities"] = parser.lattice_velocities
-    if parser.has_ion_velocities:
-        optional["ion_velocities"] = parser.ion_velocities
-    return raw.CONTCAR(structure=structure, system=parser.comment_line, **optional)
+    parser = PoscarParser(poscar_string, ion_types)
+    contcar_content = dict(parser.parse_lines())
+    structure_keys = ["stoichiometry", "cell", "positions"]
+    structure_content = {key: contcar_content.pop(key) for key in structure_keys}
+    contcar_content["structure"] = raw.Structure(**structure_content)
+    return raw.CONTCAR(**contcar_content)
 
 
 @dataclass
-class ParsePoscar:
+class PoscarParser:
     poscar: str
     species_name: str or None = None
 
     def __post_init__(self):
         self.split_poscar = self.poscar.splitlines()
+
+    def parse_lines(self):
+        yield "system", self.comment_line
+        yield "cell", self.cell
+        yield "stoichiometry", self.stoichiometry
+        ion_positions, selective_dynamics = self.ion_positions_and_selective_dynamics
+        yield "positions", ion_positions
+        if self.has_selective_dynamics:
+            yield "selective_dynamics", selective_dynamics
+        if self.has_lattice_velocities:
+            yield "lattice_velocities", self.lattice_velocities
+        if self.has_ion_velocities:
+            yield "ion_velocities", self.ion_velocities
 
     @property
     def comment_line(self):
