@@ -132,7 +132,7 @@ def _flag_to_line(flag):
 
 def _float_format(number, scientific):
     if scientific:
-        return f"{number:22.14e}"
+        return f"{number:16.8e}"
     else:
         return f"{number:21.16f}"
 

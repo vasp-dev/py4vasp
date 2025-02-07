@@ -287,8 +287,15 @@ def check_poscar_is_same(actual, expected, exact_match, Assert):
     check_structure_is_same(actual.structure, expected.structure, exact_match, Assert)
     assert actual.system == expected.system
     Assert.allclose(actual.selective_dynamics, expected.selective_dynamics)
-    Assert.allclose(actual.lattice_velocities, expected.lattice_velocities)
-    Assert.allclose(actual.ion_velocities, expected.ion_velocities)
+    # velocities are written in a lower precision
+    Assert.allclose(
+        actual.lattice_velocities.astype(np.float32),
+        expected.lattice_velocities.astype(np.float32),
+    )
+    Assert.allclose(
+        actual.ion_velocities.astype(np.float32),
+        expected.ion_velocities.astype(np.float32),
+    )
 
 
 def check_structure_is_same(actual, expected, exact_match, Assert):

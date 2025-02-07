@@ -112,6 +112,7 @@ def test_plot(CONTCAR, supercell, Assert):
 
 def test_print(CONTCAR, format_):
     actual, _ = format_(CONTCAR)
+    print(actual["text/plain"])
     assert actual["text/plain"] == CONTCAR.ref.string
     assert actual == {"text/plain": CONTCAR.ref.string}
 
