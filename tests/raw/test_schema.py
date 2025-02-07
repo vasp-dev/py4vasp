@@ -138,6 +138,7 @@ simple:
         foo: foo_dataset
         bar: bar_dataset
     factory:  &simple-factory
+        file: other_file
         data_factory: complex_schema.<locals>.make_data
 
 optional_argument:

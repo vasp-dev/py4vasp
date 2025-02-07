@@ -64,10 +64,10 @@ class _State:
         source = self._get_source(quantity, source)
         filename = self._file or source.file or DEFAULT_FILE
         path = self._path / pathlib.Path(filename)
-        h5f = self._open_file(path)
-        self._check_version(h5f, source.required, quantity)
-        datasets = self._get_datasets(h5f, source.data)
-        return dataclasses.replace(source.data, **datasets)
+        if source.data is not None:
+            return self._access_data_from_hdf5(quantity, source, path)
+        else:
+            return source.data_factory(path)
 
     def _get_source(self, quantity, source):
         source = source or DEFAULT_SOURCE
@@ -76,6 +76,12 @@ class _State:
         except KeyError as error:
             message = error_message(schema, quantity, source)
             raise exception.FileAccessError(message) from error
+
+    def _access_data_from_hdf5(self, quantity, source, path):
+        h5f = self._open_file(path)
+        self._check_version(h5f, source.required, quantity)
+        datasets = self._get_datasets(h5f, source.data)
+        return dataclasses.replace(source.data, **datasets)
 
     def _open_file(self, filename):
         if filename in self._files:
