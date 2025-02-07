@@ -9,6 +9,9 @@ from py4vasp._raw.schema import Length, Link, Schema, Source
 
 @pytest.fixture
 def complex_schema():
+    def make_data(source):
+        pass
+
     simple = Simple("foo_dataset", "bar_dataset")
     filename = "other_file"
     only_mandatory = OptionalArgument("mandatory1")
@@ -34,10 +37,13 @@ def complex_schema():
     schema.add(WithLength, alias="alias_name", num_data=length.num_data)
     schema.add(Complex, opt=first.opt, link=first.link, length=first.length)
     schema.add(Complex, name=name, opt=second.opt, link=second.link)
+    schema.add(Simple, name="factory", data_factory=make_data)
+    other_file_source = Source(simple, file=filename)
+    data_factory_source = Source(None, data_factory=make_data)
     alias_source = Source(length, alias_for="default")
     reference = {
         "version": {"default": Source(VERSION)},
-        "simple": {"default": Source(simple, file=filename)},
+        "simple": {"default": other_file_source, "factory": data_factory_source},
         "optional_argument": {"default": Source(both), name: Source(only_mandatory)},
         "with_link": {"default": Source(pointer, required=version)},
         "with_length": {"default": Source(length), "alias_name": alias_source},

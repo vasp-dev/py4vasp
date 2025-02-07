@@ -96,6 +96,17 @@ def test_alias():
     assert remove_version(schema.sources) == reference
 
 
+def test_custom_data_source():
+    def make_data(source):
+        pass
+
+    schema = Schema(VERSION)
+    schema.add(Simple, file="filename", data_factory=make_data)
+    data_factory_source = Source(data=None, file="filename", data_factory=make_data)
+    reference = {"simple": {"default": data_factory_source}}
+    assert remove_version(schema.sources) == reference
+
+
 def remove_version(sources):
     version = sources.pop("version")
     assert version == {"default": Source(VERSION)}
@@ -126,6 +137,8 @@ simple:
         file: other_file
         foo: foo_dataset
         bar: bar_dataset
+    factory:  &simple-factory
+        data_factory: complex_schema.<locals>.make_data
 
 optional_argument:
     mandatory:  &optional_argument-mandatory
