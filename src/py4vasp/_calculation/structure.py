@@ -264,6 +264,37 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
             raise exception.NotImplemented(message)
 
     @base.data_access
+    def to_lammps(self):
+        cell = ase.cell.Cell(self.lattice_vectors())
+        cell, transformation = cell.standard_form()
+        positions = self.cartesian_positions() @ transformation
+        elements = self._stoichiometry().elements()
+        ion_types = self._stoichiometry().ion_types()
+        ion_type_labels = [ion_types.index(x) + 1 for x in elements]
+        position_lines = "\n".join(
+            f"{i + 1} {ion_type_labels[i]} {self._format_number(position)}"
+            for i, position in enumerate(positions)
+        )
+        return f"""\
+Configuration 1: system "{self._stoichiometry()}"
+
+{self.number_atoms()} atoms
+{len(self._raw_data.stoichiometry.ion_types)} atom types
+
+0.0 {self._format_number(cell[0,0])} xlo xhi
+0.0 {self._format_number(cell[1,1])} ylo yhi
+0.0 {self._format_number(cell[2,2])} zlo zhi
+{self._format_number((cell[1,0], cell[2,0], cell[2,1]))} xy xz yz
+
+Atoms # atomic
+
+{position_lines}"""
+
+    def _format_number(self, number):
+        number = np.atleast_1d(number)
+        return " ".join(f"{x:24.16E}" for x in number)
+
+    @base.data_access
     def lattice_vectors(self):
         """Return the lattice vectors spanning the unit cell
 
