@@ -253,6 +253,10 @@ class RawDataFactory:
         return _Sr2TiO4_pair_correlation()
 
     @staticmethod
+    def partial_density(selection):
+        return _partial_density(selection)
+
+    @staticmethod
     def piezoelectric_tensor(selection):
         return _piezoelectric_tensor()
 
@@ -306,6 +310,8 @@ class RawDataFactory:
             return _Fe3O4_structure()
         elif selection == "Ca3AsBr3":
             return _Ca3AsBr3_structure()
+        elif selection == "ZnS":
+            return _ZnS_structure()
         else:
             raise exception.NotImplemented()
 
@@ -332,10 +338,6 @@ class RawDataFactory:
     @staticmethod
     def workfunction(selection):
         return _workfunction(selection)
-
-    @staticmethod
-    def partial_density(selection):
-        return _partial_density(selection)
 
 
 @pytest.fixture
@@ -1172,6 +1174,24 @@ def _Ca3AsBr3_stoichiometry():
     return raw.Stoichiometry(
         number_ion_types=np.array((2, 1, 1, 1, 2)),
         ion_types=np.array(("Ca", "As", "Br", "Ca", "Br"), dtype="S"),
+    )
+
+
+def _ZnS_structure():
+    return raw.Structure(
+        raw.Stoichiometry(number_ion_types=[2, 2], ion_types=["Zn", "S"]),
+        raw.Cell(
+            lattice_vectors=np.array([[1.9, -3.3, 0.0], [1.9, 3.3, 0.0], [0, 0, 6.2]]),
+            scale=raw.VaspData(1.0),
+        ),
+        positions=np.array(
+            [
+                [1 / 3, 2 / 3, 0.0],
+                [2 / 3, 1 / 3, 0.5],
+                [1 / 3, 2 / 3, 0.375],
+                [2 / 3, 1 / 3, 0.875],
+            ]
+        ),
     )
 
 

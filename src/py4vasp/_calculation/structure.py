@@ -264,10 +264,9 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
             raise exception.NotImplemented(message)
 
     @base.data_access
-    def to_lammps(self):
-        cell = ase.cell.Cell(self.lattice_vectors())
-        cell, transformation = cell.standard_form()
-        positions = self.cartesian_positions() @ transformation
+    def to_lammps(self, standard_form=True):
+        cell_string, transformation = self._cell_and_transformation(standard_form)
+        positions = self.cartesian_positions() @ transformation.T
         elements = self._stoichiometry().elements()
         ion_types = self._stoichiometry().ion_types()
         ion_type_labels = [ion_types.index(x) + 1 for x in elements]
@@ -281,14 +280,30 @@ Configuration 1: system "{self._stoichiometry()}"
 {self.number_atoms()} atoms
 {len(self._raw_data.stoichiometry.ion_types)} atom types
 
-0.0 {self._format_number(cell[0,0])} xlo xhi
-0.0 {self._format_number(cell[1,1])} ylo yhi
-0.0 {self._format_number(cell[2,2])} zlo zhi
-{self._format_number((cell[1,0], cell[2,0], cell[2,1]))} xy xz yz
+{cell_string}
 
 Atoms # atomic
 
 {position_lines}"""
+
+    def _cell_and_transformation(self, standard_form):
+        if standard_form:
+            cell = ase.cell.Cell(self.lattice_vectors())
+            cell, transformation = cell.standard_form()
+            cell_string = f"""\
+0.0 {self._format_number(cell[0,0])} xlo xhi
+0.0 {self._format_number(cell[1,1])} ylo yhi
+0.0 {self._format_number(cell[2,2])} zlo zhi
+{self._format_number((cell[1,0], cell[2,0], cell[2,1]))} xy xz yz"""
+        else:
+            lattice_vectors = self.lattice_vectors()
+            cell_string = f"""\
+{self._format_number(lattice_vectors[0])} avec
+{self._format_number(lattice_vectors[1])} bvec
+{self._format_number(lattice_vectors[2])} cvec
+0.0 0.0 0.0 abc origin"""
+            transformation = np.eye(3)
+        return cell_string, transformation
 
     def _format_number(self, number):
         number = np.atleast_1d(number)
