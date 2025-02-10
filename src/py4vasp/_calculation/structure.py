@@ -264,7 +264,23 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
             raise exception.NotImplemented(message)
 
     @base.data_access
+    @documentation.format(examples=slice_.examples("structure", "to_lammps"))
     def to_lammps(self, standard_form=True):
+        """Convert the structure to LAMMPS format
+
+        Parameters
+        ----------
+        standard_form : bool
+            Determines whether the structure is standardize, i.e., the lattice vectors
+            are a triagonal matrix.
+
+        Returns
+        -------
+        str
+            Returns a string describing the structure for LAMMPS
+
+        {examples}
+        """
         cell_string, transformation = self._cell_and_transformation(standard_form)
         positions = self.cartesian_positions() @ transformation.T
         elements = self._stoichiometry().elements()
