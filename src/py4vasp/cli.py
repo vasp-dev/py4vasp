@@ -38,4 +38,8 @@ def convert(quantity, format, path, selection):
     if format.lower() != "lammps":
         raise click.UsageError(f"Converting {quantity} to {format} is not implemented.")
     calculation = py4vasp.Calculation.from_path(path)
-    print(calculation.structure.to_lammps())
+    if selection is None:
+        result = calculation.structure.to_lammps()
+    else:
+        result = calculation.structure.to_lammps(selection=selection)
+    print(result)

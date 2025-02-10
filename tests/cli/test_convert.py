@@ -42,3 +42,26 @@ def test_convert_wrong_format(mock_calculation):
     result = runner.invoke(cli, ["convert", "structure", "not_implemented"])
     assert result.exit_code != 0
     mock_calculation.from_path.assert_not_called()
+
+
+@pytest.mark.parametrize("position", ("first", "middle", "last"))
+@pytest.mark.parametrize("selection", (("-s", "choice"), ("--selection", "choice")))
+def test_convert_selection(mock_calculation, position, selection):
+    runner = CliRunner()
+    if position == "first":
+        result = runner.invoke(cli, ["convert", *selection, "structure", "lammps"])
+    elif position == "middle":
+        result = runner.invoke(cli, ["convert", "structure", *selection, "lammps"])
+    elif position == "last":
+        result = runner.invoke(cli, ["convert", "structure", "lammps", *selection])
+    else:
+        raise NotImplementedError
+    print(result.output)
+    assert result.exit_code == 0
+    expected_path = pathlib.Path.cwd()
+    constructor = mock_calculation.from_path
+    constructor.assert_called_once_with(expected_path)
+    structure = constructor.return_value.structure
+    structure.to_lammps.assert_called_once_with(selection="choice")
+    converted = structure.to_lammps.return_value
+    assert f"{converted}\n" == result.output
