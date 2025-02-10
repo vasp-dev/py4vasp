@@ -542,7 +542,7 @@ schema.add(
     stoichiometry=Link("stoichiometry", "exciton"),
     positions="results/supercell/position_ions",
 )
-schema.add(raw.Structure, name="POSCAR", file="POSCAR", data_factory=read.structure)
+schema.add(raw.Structure, name="poscar", file="POSCAR", data_factory=read.structure)
 #
 schema.add(raw.System, system="input/incar/SYSTEM")
 #

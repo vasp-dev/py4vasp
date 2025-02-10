@@ -91,7 +91,7 @@ class PoscarParser:
         elif scaling_factor < 0:
             volume_ratio = abs(scaling_factor) / self._get_volume(lattice_vectors)
             result["scaling_factor"] = scaling_factor = volume_ratio ** (1 / 3)
-        result["cell"] = raw.Cell(VaspData(lattice_vectors), scaling_factor)
+        result["cell"] = raw.Cell(VaspData(lattice_vectors), VaspData(scaling_factor))
         return result, remaining_lines
 
     @staticmethod

@@ -56,7 +56,6 @@ def test_convert_selection(mock_calculation, position, selection):
         result = runner.invoke(cli, ["convert", "structure", "lammps", *selection])
     else:
         raise NotImplementedError
-    print(result.output)
     assert result.exit_code == 0
     expected_path = pathlib.Path.cwd()
     constructor = mock_calculation.from_path
