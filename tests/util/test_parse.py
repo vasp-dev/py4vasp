@@ -266,7 +266,7 @@ def test_parse_general_poscar(raw_poscar, Assert):
     ion_types = determine_ion_types(raw_poscar, is_general_poscar)
     actual = parse.POSCAR(poscar_string, ion_types)
     exact_match = not is_general_poscar
-    check_poscar_is_same(actual, raw_poscar, exact_match, Assert)
+    Assert.same_raw_contcar(actual, raw_poscar, exact_match)
 
 
 def create_poscar_string(raw_poscar, is_general_poscar):
@@ -281,42 +281,6 @@ def determine_ion_types(raw_poscar, is_general_poscar):
         return raw_poscar.structure.stoichiometry.ion_types
     else:
         return None  # if ion types are in POSCAR we don't need to provide it to parser
-
-
-def check_poscar_is_same(actual, expected, exact_match, Assert):
-    check_structure_is_same(actual.structure, expected.structure, exact_match, Assert)
-    assert actual.system == expected.system
-    Assert.allclose(actual.selective_dynamics, expected.selective_dynamics)
-    # velocities are written in a lower precision
-    Assert.allclose(
-        actual.lattice_velocities.astype(np.float32),
-        expected.lattice_velocities.astype(np.float32),
-    )
-    Assert.allclose(
-        actual.ion_velocities.astype(np.float32),
-        expected.ion_velocities.astype(np.float32),
-    )
-
-
-def check_structure_is_same(actual, expected, exact_match, Assert):
-    check_stoichiometry_is_same(actual.stoichiometry, expected.stoichiometry)
-    check_cell_is_same(actual.cell, expected.cell, exact_match, Assert)
-    Assert.allclose(actual.positions, expected.positions)
-
-
-def check_stoichiometry_is_same(actual, expected):
-    assert np.array_equal(actual.number_ion_types, expected.number_ion_types)
-    assert np.array_equal(actual.ion_types, expected.ion_types)
-
-
-def check_cell_is_same(actual, expected, exact_match, Assert):
-    if exact_match:
-        Assert.allclose(actual.lattice_vectors, expected.lattice_vectors)
-        Assert.allclose(actual.scale, expected.scale)
-    else:
-        actual_lattice_vectors = actual.lattice_vectors * actual.scale
-        expected_lattice_vectors = expected.lattice_vectors * expected.scale
-        Assert.allclose(actual_lattice_vectors, expected_lattice_vectors)
 
 
 @pytest.mark.parametrize("scaling_factor", ("missing", "too many", "negative"))

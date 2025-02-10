@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import py4vasp._raw.data as raw
+from py4vasp._raw import read
 from py4vasp._raw.schema import Length, Link, Schema
 
 DEFAULT_FILE = "vaspout.h5"
@@ -106,6 +107,8 @@ schema.add(
     ion_velocities="/results/positions/ion_velocities",
     _predictor_corrector="NotImplemented",
 )
+schema.add(raw.CONTCAR, name="CONTCAR", file="CONTCAR", data_factory=read.CONTCAR)
+#
 schema.add(
     raw.Density,
     alias=["charge", "n", "charge_density", "electronic_charge_density"],
@@ -539,10 +542,7 @@ schema.add(
     stoichiometry=Link("stoichiometry", "exciton"),
     positions="results/supercell/position_ions",
 )
-# schema.add(
-#     raw.Structure,
-#     name="POSCAR",
-# )
+schema.add(raw.Structure, name="POSCAR", file="POSCAR", data_factory=read.structure)
 #
 schema.add(raw.System, system="input/incar/SYSTEM")
 #

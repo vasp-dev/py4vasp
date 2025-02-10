@@ -79,6 +79,45 @@ class _Assert:
         _Assert.allclose(actual.positions, desired.positions)
         _Assert.allclose(actual.supercell, desired.supercell)
 
+    @staticmethod
+    def same_raw_contcar(actual, desired, exact_match=True):
+        # exact_match requires cell to be identical and not just equivalent
+        _Assert.same_raw_structure(actual.structure, desired.structure, exact_match)
+        assert actual.system == desired.system
+        _Assert.allclose(actual.selective_dynamics, desired.selective_dynamics)
+        # velocities use a lower precision when writing
+        _Assert.allclose(
+            actual.lattice_velocities.astype(np.float32),
+            desired.lattice_velocities.astype(np.float32),
+        )
+        _Assert.allclose(
+            actual.ion_velocities.astype(np.float32),
+            desired.ion_velocities.astype(np.float32),
+        )
+
+    @staticmethod
+    def same_raw_structure(actual, desired, exact_match=True):
+        # exact_match requires cell to be identical and not just equivalent
+        _Assert.same_raw_stoichiometry(actual.stoichiometry, desired.stoichiometry)
+        _Assert.same_raw_cell(actual.cell, desired.cell, exact_match)
+        _Assert.allclose(actual.positions, desired.positions)
+
+    @staticmethod
+    def same_raw_stoichiometry(actual, desired):
+        assert np.array_equal(actual.number_ion_types, desired.number_ion_types)
+        assert np.array_equal(actual.ion_types, desired.ion_types)
+
+    @staticmethod
+    def same_raw_cell(actual, desired, exact_match=True):
+        # exact_match requires cell to be identical and not just equivalent
+        if exact_match:
+            _Assert.allclose(actual.lattice_vectors, desired.lattice_vectors)
+            _Assert.allclose(actual.scale, desired.scale)
+        else:
+            actual_lattice_vectors = actual.lattice_vectors * actual.scale
+            desired_lattice_vectors = desired.lattice_vectors * desired.scale
+            _Assert.allclose(actual_lattice_vectors, desired_lattice_vectors)
+
 
 def _is_none(data):
     if isinstance(data, raw.VaspData):

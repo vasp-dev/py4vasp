@@ -35,7 +35,7 @@ def test_read_structure(tmp_path, Assert):
     with open(filename, "w") as file:
         file.write(str(Structure.from_data(STRUCTURE_ZnS)))
     structure = read.structure(filename)
-    check_structure_is_same(structure, STRUCTURE_ZnS, Assert)
+    Assert.same_raw_structure(structure, STRUCTURE_ZnS)
 
 
 def test_read_contcar(tmp_path, Assert):
@@ -43,35 +43,4 @@ def test_read_contcar(tmp_path, Assert):
     with open(filename, "w") as file:
         file.write(str(CONTCAR.from_data(EXAMPLE_CONTCAR)))
     contcar = read.CONTCAR(filename)
-    check_contcar_is_same(contcar, EXAMPLE_CONTCAR, Assert)
-
-
-def check_contcar_is_same(actual, expected, Assert):
-    check_structure_is_same(actual.structure, expected.structure, Assert)
-    assert actual.system == expected.system
-    Assert.allclose(actual.selective_dynamics, expected.selective_dynamics)
-    # velocities are written in a lower precision
-    Assert.allclose(
-        actual.lattice_velocities.astype(np.float32),
-        expected.lattice_velocities.astype(np.float32),
-    )
-    Assert.allclose(
-        actual.ion_velocities.astype(np.float32),
-        expected.ion_velocities.astype(np.float32),
-    )
-
-
-def check_structure_is_same(actual, expected, Assert):
-    check_stoichiometry_is_same(actual.stoichiometry, expected.stoichiometry)
-    check_cell_is_same(actual.cell, expected.cell, Assert)
-    Assert.allclose(actual.positions, expected.positions)
-
-
-def check_stoichiometry_is_same(actual, expected):
-    assert np.array_equal(actual.number_ion_types, expected.number_ion_types)
-    assert np.array_equal(actual.ion_types, expected.ion_types)
-
-
-def check_cell_is_same(actual, expected, Assert):
-    Assert.allclose(actual.lattice_vectors, expected.lattice_vectors)
-    Assert.allclose(actual.scale, expected.scale)
+    Assert.same_raw_contcar(contcar, EXAMPLE_CONTCAR)
