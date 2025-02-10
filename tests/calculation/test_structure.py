@@ -426,11 +426,11 @@ def test_incorrect_step(Sr2TiO4, Ca3AsBr3):
         Ca3AsBr3[0]
 
 
-def test_Sr2TiO4_to_lammps(Sr2TiO4):
+def test_Sr2TiO4_to_lammps(Sr2TiO4, not_core):
     assert Sr2TiO4.to_lammps() == REF_LAMMPS
 
 
-def test_ZnS_to_lammps(ZnS):
+def test_ZnS_to_lammps(ZnS, not_core):
     assert re.match(REF_LAMMPS_ZnS, ZnS.to_lammps())
     assert ZnS.to_lammps(standard_form=False) == REF_LAMMPS_ZnS_general
 
