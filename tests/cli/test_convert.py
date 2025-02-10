@@ -19,7 +19,6 @@ def mock_calculation():
 def test_convert_lammps(mock_calculation, lammps):
     runner = CliRunner()
     result = runner.invoke(cli, ["convert", "structure", lammps])
-    print(result.output)
     assert result.exit_code == 0
     expected_path = pathlib.Path.cwd()
     constructor = mock_calculation.from_path
@@ -28,3 +27,18 @@ def test_convert_lammps(mock_calculation, lammps):
     structure.to_lammps.assert_called_once_with()
     converted = structure.to_lammps.return_value
     assert f"{converted}\n" == result.output
+
+
+def test_convert_wrong_quantity():
+    runner = CliRunner()
+    result = runner.invoke(cli, ["convert", "not_implemented"])
+    assert result.exit_code != 0
+    assert "Invalid value" in result.output
+    assert "not_implemented" in result.output
+
+
+def test_convert_wrong_format(mock_calculation):
+    runner = CliRunner()
+    result = runner.invoke(cli, ["convert", "structure", "not_implemented"])
+    assert result.exit_code != 0
+    mock_calculation.from_path.assert_not_called()

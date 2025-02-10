@@ -5,6 +5,7 @@ import pathlib
 import click
 
 import py4vasp
+from py4vasp import exception
 
 
 @click.group()
@@ -34,5 +35,7 @@ def convert(quantity, format, path, selection):
     Specify which QUANTITY you want to convert into which FORMAT.
     """
     path = path or pathlib.Path.cwd()
+    if format.lower() != "lammps":
+        raise click.UsageError(f"Converting {quantity} to {format} is not implemented.")
     calculation = py4vasp.Calculation.from_path(path)
     print(calculation.structure.to_lammps())
