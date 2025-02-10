@@ -34,10 +34,13 @@ def convert(quantity, format, path, selection):
 
     Specify which QUANTITY you want to convert into which FORMAT.
     """
-    path = path or pathlib.Path.cwd()
     if format.lower() != "lammps":
         raise click.UsageError(f"Converting {quantity} to {format} is not implemented.")
-    calculation = py4vasp.Calculation.from_path(path)
+    path = pathlib.Path.cwd() if path is None else pathlib.Path(path)
+    if path.is_file():
+        calculation = py4vasp.Calculation.from_file(path)
+    else:
+        calculation = py4vasp.Calculation.from_path(path)
     if selection is None:
         result = calculation.structure.to_lammps()
     else:

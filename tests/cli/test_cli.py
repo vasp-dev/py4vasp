@@ -48,14 +48,7 @@ def test_convert_wrong_format(mock_calculation):
 @pytest.mark.parametrize("selection", (("-s", "choice"), ("--selection", "choice")))
 def test_convert_selection(mock_calculation, position, selection):
     runner = CliRunner()
-    if position == "first":
-        result = runner.invoke(cli, ["convert", *selection, "structure", "lammps"])
-    elif position == "middle":
-        result = runner.invoke(cli, ["convert", "structure", *selection, "lammps"])
-    elif position == "last":
-        result = runner.invoke(cli, ["convert", "structure", "lammps", *selection])
-    else:
-        raise NotImplementedError
+    result = invoke_runner_with_options(runner, position, selection)
     assert result.exit_code == 0
     expected_path = pathlib.Path.cwd()
     constructor = mock_calculation.from_path
@@ -64,3 +57,38 @@ def test_convert_selection(mock_calculation, position, selection):
     structure.to_lammps.assert_called_once_with(selection="choice")
     converted = structure.to_lammps.return_value
     assert f"{converted}\n" == result.output
+
+
+@pytest.mark.parametrize("position", ("first", "middle", "last"))
+@pytest.mark.parametrize("argument", ("-f", "--from"))
+@pytest.mark.parametrize("path", ("dirname", "filename"))
+def test_convert_path(mock_calculation, position, argument, path, tmp_path):
+    expected_path = tmp_path / path
+    if path == "dirname":
+        expected_path.mkdir()
+    else:
+        expected_path.touch()
+    runner = CliRunner()
+    result = invoke_runner_with_options(runner, position, (argument, expected_path))
+    print(result.output)
+    assert result.exit_code == 0
+    if path == "filename":
+        constructor = mock_calculation.from_file
+    else:
+        constructor = mock_calculation.from_path
+    constructor.assert_called_once_with(expected_path)
+    structure = constructor.return_value.structure
+    structure.to_lammps.assert_called_once_with()
+    converted = structure.to_lammps.return_value
+    assert f"{converted}\n" == result.output
+
+
+def invoke_runner_with_options(runner, position, options):
+    if position == "first":
+        return runner.invoke(cli, ["convert", *options, "structure", "lammps"])
+    elif position == "middle":
+        return runner.invoke(cli, ["convert", "structure", *options, "lammps"])
+    elif position == "last":
+        return runner.invoke(cli, ["convert", "structure", "lammps", *options])
+    else:
+        raise NotImplementedError
