@@ -9,5 +9,12 @@ def cli():
 
 
 @cli.command()
-def convert():
+@click.argument("source", type=click.Choice(("structure",)), metavar="SOURCE")
+@click.argument("destination", type=click.STRING)
+def convert(source):
+    """Convert a quantity to a different format.
+
+    SOURCE is the name of the quantity that you want to convert.
+    DESTINATION is the target format to which you want to convert.
+    """
     pass

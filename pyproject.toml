@@ -50,6 +50,7 @@ sphinx = ">=5.0.2"
 sphinx-automodapi = ">=0.14.1"
 
 [tool.poetry.scripts]
+py4vasp = "py4vasp.cli:cli"
 error-analysis = "py4vasp.scripts.error_analysis:main"
 
 [tool.isort]
