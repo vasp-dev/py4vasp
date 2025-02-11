@@ -139,9 +139,12 @@ class Stoichiometry(base.Refinery):
         """
         error_message = "The formatting information must be a string."
         check.raise_error_if_not_string(format_newline, error_message)
-        ion_types = " ".join(self._ion_types(ion_types))
         number_ion_types = " ".join(str(x) for x in self._raw_data.number_ion_types)
-        return ion_types + format_newline + "\n" + number_ion_types
+        if ion_types is None and check.is_none(self._raw_data.ion_types):
+            return number_ion_types
+        else:
+            ion_types = " ".join(self._ion_types(ion_types))
+            return ion_types + format_newline + "\n" + number_ion_types
 
     @base.data_access
     @documentation.format(ion_types=ion_types_documentation)

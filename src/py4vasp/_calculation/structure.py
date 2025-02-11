@@ -23,14 +23,14 @@ class _Format:
     end_table: str = ""
     newline: str = ""
 
-    def comment_line(self, stoichiometry, step_string):
-        return f"{stoichiometry}{step_string}{self.newline}"
+    def comment_line(self, stoichiometry, step_string, ion_types):
+        return f"{stoichiometry.to_string(ion_types)}{step_string}{self.newline}"
 
     def scaling_factor(self, scale):
         return f"{self._element_to_string(scale)}{self.newline}".lstrip()
 
-    def ion_list(self, stoichiometry):
-        return f"{stoichiometry.to_POSCAR(self.newline)}{self.newline}"
+    def ion_list(self, stoichiometry, ion_types):
+        return f"{stoichiometry.to_POSCAR(self.newline, ion_types)}{self.newline}"
 
     def coordinate_system(self):
         return f"Direct{self.newline}"
@@ -117,22 +117,29 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         )
         return self._create_repr(format_)
 
-    def _create_repr(self, format_=_Format()):
+    def _create_repr(self, format_=_Format(), ion_types=None):
         step = self._get_last_step()
         lines = (
-            format_.comment_line(self._stoichiometry(), self._step_string()),
+            format_.comment_line(self._stoichiometry(), self._step_string(), ion_types),
             format_.scaling_factor(self._scale()),
             format_.vectors_to_table(self._raw_data.cell.lattice_vectors[step]),
-            format_.ion_list(self._stoichiometry()),
+            format_.ion_list(self._stoichiometry(), ion_types),
             format_.coordinate_system(),
             format_.vectors_to_table(self._raw_data.positions[step]),
         )
         return "\n".join(lines)
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("structure", "to_dict"))
-    def to_dict(self):
+    @documentation.format(
+        examples=slice_.examples("structure", "to_dict"),
+        ion_types=_stoichiometry.ion_types_documentation,
+    )
+    def to_dict(self, ion_types=None):
         """Read the structural information into a dictionary.
+
+        Parameters
+        ----------
+        {ion_types}
 
         Returns
         -------
@@ -146,13 +153,16 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         return {
             "lattice_vectors": self.lattice_vectors(),
             "positions": self.positions(),
-            "elements": self._stoichiometry().elements(),
-            "names": self._stoichiometry().names(),
+            "elements": self._stoichiometry().elements(ion_types),
+            "names": self._stoichiometry().names(ion_types),
         }
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("structure", "to_view"))
-    def to_view(self, supercell=None):
+    @documentation.format(
+        examples=slice_.examples("structure", "to_view"),
+        ion_types=_stoichiometry.ion_types_documentation,
+    )
+    def to_view(self, supercell=None, ion_types=None):
         """Generate a 3d representation of the structure(s).
 
         Parameters
@@ -170,17 +180,21 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         """
         make_3d = lambda array: array if array.ndim == 3 else array[np.newaxis]
         positions = make_3d(self.positions())
-        elements = np.tile(self._stoichiometry().elements(), (len(positions), 1))
+        elements_single_step = self._stoichiometry().elements(ion_types)
+        elements_all_steps = np.tile(elements_single_step, (len(positions), 1))
         return view.View(
-            elements=elements,
+            elements=elements_all_steps,
             lattice_vectors=make_3d(self.lattice_vectors()),
             positions=positions,
             supercell=self._parse_supercell(supercell),
         )
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("structure", "to_ase"))
-    def to_ase(self, supercell=None):
+    @documentation.format(
+        examples=slice_.examples("structure", "to_ase"),
+        ion_types=_stoichiometry.ion_types_documentation,
+    )
+    def to_ase(self, supercell=None, ion_types=None):
         """Convert the structure to an ase Atoms object.
 
         Parameters
@@ -188,6 +202,7 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         supercell : int or np.ndarray
             If present the structure is replicated the specified number of times
             along each direction.
+        {ion_types}
 
         Returns
         -------
@@ -201,7 +216,7 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
                 "Converting multiple structures to ASE trajectories is not implemented."
             )
             raise exception.NotImplemented(message)
-        data = self.to_dict()
+        data = self.to_dict(ion_types)
         structure = ase.Atoms(
             symbols=data["elements"],
             cell=data["lattice_vectors"],
@@ -223,8 +238,11 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         return structure[order]
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("structure", "to_mdtraj"))
-    def to_mdtraj(self):
+    @documentation.format(
+        examples=slice_.examples("structure", "to_mdtraj"),
+        ion_types=_stoichiometry.ion_types_documentation,
+    )
+    def to_mdtraj(self, ion_types=None):
         """Convert the trajectory to mdtraj.Trajectory
 
         Returns
@@ -239,16 +257,23 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         if not self._is_slice:
             message = "Converting a single structure to mdtraj is not implemented."
             raise exception.NotImplemented(message)
-        data = self.to_dict()
+        data = self.to_dict(ion_types)
         xyz = data["positions"] @ data["lattice_vectors"] * self.A_to_nm
-        trajectory = mdtraj.Trajectory(xyz, self._stoichiometry().to_mdtraj())
+        trajectory = mdtraj.Trajectory(xyz, self._stoichiometry().to_mdtraj(ion_types))
         trajectory.unitcell_vectors = data["lattice_vectors"] * Structure.A_to_nm
         return trajectory
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("structure", "to_POSCAR"))
-    def to_POSCAR(self):
+    @documentation.format(
+        examples=slice_.examples("structure", "to_POSCAR"),
+        ion_types=_stoichiometry.ion_types_documentation,
+    )
+    def to_POSCAR(self, ion_types=None):
         """Convert the structure(s) to a POSCAR format
+
+        Parameters
+        ----------
+        {ion_types}
 
         Returns
         -------
@@ -258,7 +283,7 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         {examples}
         """
         if not self._is_slice:
-            return self._create_repr()
+            return self._create_repr(ion_types=ion_types)
         else:
             message = "Converting multiple structures to a POSCAR is currently not implemented."
             raise exception.NotImplemented(message)
@@ -284,20 +309,14 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         if self._is_slice:
             message = "Converting multiple structures to LAMMPS is not implemented."
             raise exception.NotImplemented(message)
+        number_ion_types = self._raw_data.stoichiometry.number_ion_types
         cell_string, transformation = self._cell_and_transformation(standard_form)
-        positions = self.cartesian_positions() @ transformation.T
-        elements = self._stoichiometry().elements()
-        ion_types = self._stoichiometry().ion_types()
-        ion_type_labels = [ion_types.index(x) + 1 for x in elements]
-        position_lines = "\n".join(
-            f"{i + 1} {ion_type_labels[i]} {self._format_number(position)}"
-            for i, position in enumerate(positions)
-        )
+        position_lines = self._position_lines(number_ion_types, transformation)
         return f"""\
 Configuration 1: system "{self._stoichiometry()}"
 
 {self.number_atoms()} atoms
-{len(self._raw_data.stoichiometry.ion_types)} atom types
+{len(number_ion_types)} atom types
 
 {cell_string}
 
@@ -323,6 +342,18 @@ Atoms # atomic
 0.0 0.0 0.0 abc origin"""
             transformation = np.eye(3)
         return cell_string, transformation
+
+    def _position_lines(self, number_ion_types, transformation):
+        positions = self.cartesian_positions() @ transformation.T
+        ion_type_labels = [
+            str(ion_type + 1)
+            for ion_type, number in enumerate(number_ion_types)
+            for _ in range(number)
+        ]
+        return "\n".join(
+            f"{i + 1} {ion_type_labels[i]} {self._format_number(position)}"
+            for i, position in enumerate(positions)
+        )
 
     def _format_number(self, number):
         number = np.atleast_1d(number)

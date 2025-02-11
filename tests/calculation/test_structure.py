@@ -9,6 +9,7 @@ import pytest
 from py4vasp import exception
 from py4vasp._calculation._stoichiometry import Stoichiometry
 from py4vasp._calculation.structure import Structure
+from py4vasp._util import check
 
 REF_POSCAR = """\
 Sr2TiO4
@@ -48,7 +49,7 @@ Direct<br>
 <tr><td>   0.0000000000000000</td><td>   0.5000000000000000</td><td>   0.5000000000000000</td></tr>
 </table>"""
 
-REF_LAMMPS = r"""Configuration 1: system "Sr2TiO4"
+REF_LAMMPS = r"""Configuration 1: system ".*2.*4"
 
 7 atoms
 3 atom types
@@ -119,9 +120,9 @@ Direct
    0.5000000000000000    0.5000000000000000    0.0000000000000000"""
 
 
-@pytest.fixture
-def Sr2TiO4(raw_data):
-    return make_structure(raw_data.structure("Sr2TiO4"))
+@pytest.fixture(params=("Sr2TiO4", "Sr2TiO4 without ion types"))
+def Sr2TiO4(request, raw_data):
+    return make_structure(raw_data.structure(request.param))
 
 
 @pytest.fixture
@@ -158,15 +159,21 @@ def make_structure(raw_structure):
         scale = 1.0
     structure.ref.lattice_vectors = scale * raw_structure.cell.lattice_vectors
     structure.ref.positions = raw_structure.positions
+    if check.is_none(raw_structure.stoichiometry.ion_types):
+        structure.ion_type_arg = {"ion_types": ("Sr", "Ti", "O")}
+    else:
+        structure.ion_type_arg = {}
     stoichiometry = Stoichiometry.from_data(raw_structure.stoichiometry)
-    structure.ref.elements = stoichiometry.elements()
+    structure.ref.elements = stoichiometry.elements(**structure.ion_type_arg)
     return structure
 
 
 def test_read_Sr2TiO4(Sr2TiO4, Assert):
-    check_Sr2TiO4_structure(Sr2TiO4.read(), Sr2TiO4.ref, -1, Assert)
+    actual = Sr2TiO4.read(**Sr2TiO4.ion_type_arg)
+    check_Sr2TiO4_structure(actual, Sr2TiO4.ref, -1, Assert)
     for steps in (slice(None), slice(1, 3), 0):
-        check_Sr2TiO4_structure(Sr2TiO4[steps].read(), Sr2TiO4.ref, steps, Assert)
+        actual = Sr2TiO4[steps].read(**Sr2TiO4.ion_type_arg)
+        check_Sr2TiO4_structure(actual, Sr2TiO4.ref, steps, Assert)
 
 
 def check_Sr2TiO4_structure(actual, reference, steps, Assert):
@@ -199,8 +206,9 @@ def test_read_Ca3AsBr3(Ca3AsBr3, Assert):
 
 
 def test_to_poscar(Sr2TiO4, Ca3AsBr3):
-    assert Sr2TiO4.to_POSCAR() == REF_POSCAR
-    assert Sr2TiO4[0].to_POSCAR() == REF_POSCAR.replace("Sr2TiO4", "Sr2TiO4 (step 1)")
+    assert Sr2TiO4.to_POSCAR(**Sr2TiO4.ion_type_arg) == REF_POSCAR
+    expected_poscar = REF_POSCAR.replace("Sr2TiO4", "Sr2TiO4 (step 1)")
+    assert Sr2TiO4[0].to_POSCAR(**Sr2TiO4.ion_type_arg) == expected_poscar
     for steps in (slice(None), slice(1, 3)):
         with pytest.raises(exception.NotImplemented):
             Sr2TiO4[steps].to_POSCAR()
@@ -242,11 +250,11 @@ Direct
 
 
 def test_to_ase_Sr2TiO4(Sr2TiO4, Assert, not_core):
-    check_Sr2TiO4_ase(Sr2TiO4.to_ase(), Sr2TiO4.ref, -1, Assert)
-    check_Sr2TiO4_ase(Sr2TiO4[0].to_ase(), Sr2TiO4.ref, 0, Assert)
+    check_Sr2TiO4_ase(Sr2TiO4.to_ase(**Sr2TiO4.ion_type_arg), Sr2TiO4.ref, -1, Assert)
+    check_Sr2TiO4_ase(Sr2TiO4[0].to_ase(**Sr2TiO4.ion_type_arg), Sr2TiO4.ref, 0, Assert)
     for steps in (slice(None), slice(1, 3)):
         with pytest.raises(exception.NotImplemented):
-            Sr2TiO4[steps].to_ase()
+            Sr2TiO4[steps].to_ase(**Sr2TiO4.ion_type_arg)
 
 
 def check_Sr2TiO4_ase(structure, reference, steps, Assert):
@@ -278,18 +286,18 @@ def test_to_ase_Ca3AsBr3(Ca3AsBr3, Assert, not_core):
 
 
 def test_from_ase(Sr2TiO4, Assert, not_core):
-    structure = Structure.from_ase(Sr2TiO4.to_ase())
+    structure = Structure.from_ase(Sr2TiO4.to_ase(**Sr2TiO4.ion_type_arg))
     check_Sr2TiO4_structure(structure.read(), Sr2TiO4.ref, -1, Assert)
 
 
 def test_to_mdtraj(Sr2TiO4, Assert, not_core):
     for steps in (slice(None), slice(1, 3)):
-        trajectory = Sr2TiO4[steps].to_mdtraj()
+        trajectory = Sr2TiO4[steps].to_mdtraj(**Sr2TiO4.ion_type_arg)
         check_Sr2TiO4_mdtraj(trajectory, Sr2TiO4.ref, steps, Assert)
     with pytest.raises(exception.NotImplemented):
-        Sr2TiO4[0].to_mdtraj()
+        Sr2TiO4[0].to_mdtraj(**Sr2TiO4.ion_type_arg)
     with pytest.raises(exception.NotImplemented):
-        Sr2TiO4.to_mdtraj()
+        Sr2TiO4.to_mdtraj(**Sr2TiO4.ion_type_arg)
 
 
 def check_Sr2TiO4_mdtraj(trajectory, reference, steps, Assert):
@@ -306,7 +314,7 @@ def check_Sr2TiO4_mdtraj(trajectory, reference, steps, Assert):
 def test_supercell_scale_all(Sr2TiO4, Assert, not_core):
     number_atoms = 7
     scale = 2
-    supercell = Sr2TiO4.to_ase(supercell=scale)
+    supercell = Sr2TiO4.to_ase(supercell=scale, **Sr2TiO4.ion_type_arg)
     assert len(supercell) == number_atoms * scale**3
     Assert.allclose(supercell.cell.array, scale * Sr2TiO4.ref.lattice_vectors)
     assert list(supercell.symbols) == 16 * ["Sr"] + 8 * ["Ti"] + 32 * ["O"]
@@ -315,7 +323,7 @@ def test_supercell_scale_all(Sr2TiO4, Assert, not_core):
 def test_supercell_scale_individual(Sr2TiO4, Assert, not_core):
     number_atoms = 7
     scale = (2, 1, 3)
-    supercell = Sr2TiO4.to_ase(supercell=scale)
+    supercell = Sr2TiO4.to_ase(supercell=scale, **Sr2TiO4.ion_type_arg)
     assert len(supercell) == number_atoms * np.prod(scale)
     Assert.allclose(supercell.cell.array, np.diag(scale) @ Sr2TiO4.ref.lattice_vectors)
 
@@ -337,8 +345,12 @@ def test_positions(Sr2TiO4, steps, Assert):
     Assert.allclose(structure.positions(), Sr2TiO4.ref.positions[steps])
 
 
-def test_cartesian_positions(Sr2TiO4, Fe3O4, Ca3AsBr3, Assert, not_core):
-    check_cartesian_positions(Sr2TiO4, Assert)
+def test_Sr2TiO4_cartesian_positions(Sr2TiO4, Assert, not_core):
+    expected = Sr2TiO4.to_ase(**Sr2TiO4.ion_type_arg).get_positions()
+    Assert.allclose(Sr2TiO4.cartesian_positions(), expected)
+
+
+def test_cartesian_positions(Fe3O4, Ca3AsBr3, Assert, not_core):
     check_cartesian_positions(Fe3O4, Assert)
     check_cartesian_positions(Fe3O4[0], Assert)
     check_cartesian_positions(Ca3AsBr3, Assert)
@@ -397,7 +409,12 @@ def test_plot_Ca3AsBr3(Ca3AsBr3, Assert):
 
 
 def check_plot_structure(structure, steps, Assert, supercell=None):
-    view = structure.plot(supercell) if supercell else structure.plot()
+    arguments = {}
+    if supercell:
+        arguments["supercell"] = supercell
+    if hasattr(structure, "ion_type_arg"):
+        arguments.update(structure.ion_type_arg)
+    view = structure.plot(**arguments)
     assert view.elements.ndim == 2
     assert np.all(structure.ref.elements == view.elements)
     assert view.positions.ndim == 3
@@ -427,6 +444,7 @@ def test_incorrect_step(Sr2TiO4, Ca3AsBr3):
 
 
 def test_Sr2TiO4_to_lammps(Sr2TiO4, not_core):
+    print(Sr2TiO4.to_lammps())
     assert re.match(REF_LAMMPS, Sr2TiO4.to_lammps())
     with pytest.raises(exception.NotImplemented):
         Sr2TiO4[:].to_lammps()
@@ -439,6 +457,7 @@ def test_ZnS_to_lammps(ZnS, not_core):
 
 def test_print_final(Sr2TiO4, format_):
     actual, _ = format_(Sr2TiO4)
+    reference = get_reference_output(None, **Sr2TiO4.ion_type_arg)
     assert actual == {"text/plain": REF_POSCAR, "text/html": REF_HTML}
 
 
@@ -455,6 +474,9 @@ def test_print_trajectory(Sr2TiO4, format_):
     ref_plain = REF_POSCAR.replace("Sr2TiO4", "Sr2TiO4 from step 2 to 4")
     ref_html = REF_HTML.replace("Sr2TiO4", "Sr2TiO4 from step 2 to 4")
     assert actual == {"text/plain": ref_plain, "text/html": ref_html}
+
+def get_reference_output(steps, ion_types=None):
+    pass
 
 
 def test_print_Ca3AsBr3(Ca3AsBr3, format_):
