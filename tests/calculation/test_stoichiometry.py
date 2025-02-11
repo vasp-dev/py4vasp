@@ -61,6 +61,10 @@ class Base:
         if not hasattr(self, "overwrite_ion_types"):
             assert str(stoichiometry) == str(self.stoichiometry)
 
+    def test_to_string(self):
+        actual = self.stoichiometry.to_string(**self.ion_types)
+        assert actual == self.string_format
+
     def test_to_poscar(self):
         poscar_string = self.stoichiometry.to_POSCAR(**self.ion_types)
         assert poscar_string == self.poscar_string
@@ -92,6 +96,7 @@ class TestSr2TiO4(Base):
         self.names = ["Sr_1", "Sr_2", "Ti_1", "O_1", "O_2", "O_3", "O_4"]
         self.elements = 2 * ["Sr"] + ["Ti"] + 4 * ["O"]
         self.poscar_string = "Sr Ti O\n2 1 4"
+        self.string_format = "Sr2TiO4"
         self.format_output = {
             "text/plain": "Sr2TiO4",
             "text/html": "Sr<sub>2</sub>TiO<sub>4</sub>",
@@ -118,6 +123,7 @@ class TestCa3AsBr3(Base):
         self.names = ["Ca_1", "Ca_2", "As_1", "Br_1", "Ca_3", "Br_2", "Br_3"]
         self.elements = ["Ca", "Ca", "As", "Br", "Ca", "Br", "Br"]
         self.poscar_string = "Ca As Br Ca Br\n2 1 1 1 2"
+        self.string_format = "Ca3AsBr3"
         self.format_output = {
             "text/plain": "Ca3AsBr3",
             "text/html": "Ca<sub>3</sub>AsBr<sub>3</sub>",
@@ -140,6 +146,7 @@ class TestBa2MnO4(Base):
         self.names = ["Ba_1", "Ba_2", "Mn_1", "O_1", "O_2", "O_3", "O_4"]
         self.elements = 2 * ["Ba"] + ["Mn"] + 4 * ["O"]
         self.poscar_string = "Ba Mn O\n2 1 4"
+        self.string_format = "Ba2MnO4"
         if request.param == "Sr2TiO4":
             self.format_output = {
                 "text/plain": "Sr2TiO4",
@@ -167,7 +174,7 @@ def test_ion_types_required(method, raw_data):
         getattr(stoichiometry, method)()
 
 
-@pytest.mark.parametrize("method", ("number_atoms", "__str__"))
+@pytest.mark.parametrize("method", ("number_atoms", "__str__", "to_string"))
 def test_ion_types_not_required(method, raw_data):
     raw_stoichiometry = raw_data.stoichiometry("Sr2TiO4 without ion types")
     stoichiometry = Stoichiometry.from_data(raw_stoichiometry)

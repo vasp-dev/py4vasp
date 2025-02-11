@@ -30,9 +30,28 @@ class Stoichiometry(base.Refinery):
 
     @base.data_access
     def __str__(self):
+        return self.to_string()
+
+    @base.data_access
+    @documentation.format(ion_types=ion_types_documentation)
+    def to_string(self, ion_types=None):
+        """Convert the stoichiometry into a string.
+
+        This method is equivalent to calling str() on the stoichiometry except that it
+        allows to overwrite the ion types.
+
+        Parameters
+        ----------
+        {ion_types}
+
+        Returns
+        -------
+        str
+            String representation of the stoichiometry.
+        """
         number_suffix = lambda number: str(number) if number > 1 else ""
         dummy_type = lambda index: f"({chr(ord('A') + index)})"
-        return self._create_repr(number_suffix, dummy_type)
+        return self._create_repr(number_suffix, dummy_type, ion_types)
 
     @base.data_access
     def _repr_html_(self):
@@ -179,12 +198,12 @@ class Stoichiometry(base.Refinery):
         "Return the number of atoms in the system."
         return np.sum(self._raw_data.number_ion_types)
 
-    def _create_repr(self, number_suffix, dummy_type):
+    def _create_repr(self, number_suffix, dummy_type, ion_types=None):
         ion_string = lambda ion, number: f"{ion}{number_suffix(number)}"
-        if check.is_none(self._raw_data.ion_types):
+        if ion_types is None and check.is_none(self._raw_data.ion_types):
             number_ion_types = range(len(self._raw_data.number_ion_types))
             ion_types = [dummy_type(i) for i in number_ion_types]
-        else:
+        elif ion_types is None:
             ion_types = self._raw_data.ion_types
         total_type_numbers = self._total_type_numbers(ion_types)
         return "".join(ion_string(*item) for item in total_type_numbers.items())
