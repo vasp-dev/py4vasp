@@ -281,6 +281,9 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
 
         {examples}
         """
+        if self._is_slice:
+            message = "Converting multiple structures to LAMMPS is not implemented."
+            raise exception.NotImplemented(message)
         cell_string, transformation = self._cell_and_transformation(standard_form)
         positions = self.cartesian_positions() @ transformation.T
         elements = self._stoichiometry().elements()
