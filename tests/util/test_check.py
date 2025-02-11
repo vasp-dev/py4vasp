@@ -1,9 +1,20 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import exception, raw
 from py4vasp._util import check
+
+
+@pytest.mark.parametrize("is_none", (None, raw.VaspData(None)))
+def test_check_is_none(is_none):
+    assert check.is_none(is_none)
+
+
+@pytest.mark.parametrize("is_not_none", (np.zeros(3), [1, 2], (2, 3), "text", 2))
+def test_check_is_not_none(is_not_none):
+    assert not check.is_none(is_not_none)
 
 
 def test_error_if_not_string():
