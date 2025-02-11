@@ -7,12 +7,17 @@ import numpy as np
 from py4vasp import exception, raw
 from py4vasp._calculation import base
 from py4vasp._calculation.selection import Selection
-from py4vasp._util import check, convert, import_, select
+from py4vasp._util import check, convert, documentation, import_, select
 
 mdtraj = import_.optional("mdtraj")
 pd = import_.optional("pandas")
 
 _subscript = "_"
+
+
+ion_types_documentation = """\
+ion_types : Sequence
+    Overwrite the ion types present in the raw data."""
 
 
 class Stoichiometry(base.Refinery):
@@ -36,13 +41,13 @@ class Stoichiometry(base.Refinery):
         return self._create_repr(number_suffix, dummy_type)
 
     @base.data_access
+    @documentation.format(ion_types=ion_types_documentation)
     def to_dict(self, ion_types=None):
         """Read the stoichiometry and convert it to a dictionary.
 
         Parameters
         ----------
-        ion_types : Sequence
-            Overwrite the ion types present in the raw data.
+        {ion_types}
 
         Returns
         -------
@@ -57,13 +62,13 @@ class Stoichiometry(base.Refinery):
         return {**self._default_selection(), **self._specific_selection(ion_types)}
 
     @base.data_access
+    @documentation.format(ion_types=ion_types_documentation)
     def to_frame(self, ion_types=None):
         """Convert the stoichiometry to a DataFrame
 
         Parameters
         ----------
-        ion_types : Sequence
-            Overwrite the ion types present in the raw data.
+        {ion_types}
 
         Returns
         -------
@@ -75,13 +80,13 @@ class Stoichiometry(base.Refinery):
         )
 
     @base.data_access
+    @documentation.format(ion_types=ion_types_documentation)
     def to_mdtraj(self, ion_types=None):
         """Convert the stoichiometry to a mdtraj.Topology.
 
         Parameters
         ----------
-        ion_types : Sequence
-            Overwrite the ion types present in the raw data.
+        {ion_types}
 
         Returns
         -------
@@ -96,6 +101,7 @@ class Stoichiometry(base.Refinery):
         return mdtraj.Topology.from_dataframe(df)
 
     @base.data_access
+    @documentation.format(ion_types=ion_types_documentation)
     def to_POSCAR(self, format_newline="", ion_types=None):
         """Generate the stoichiometry lines for the POSCAR file.
 
@@ -104,8 +110,7 @@ class Stoichiometry(base.Refinery):
         format_newline : str
             If you want to display the POSCAR file in a particular way, you can
             use an additional string to add formatting.
-        ion_types : Sequence
-            Overwrite the ion types present in the raw data.
+        {ion_types}
 
         Returns
         -------
@@ -120,13 +125,13 @@ class Stoichiometry(base.Refinery):
         return ion_types + format_newline + "\n" + number_ion_types
 
     @base.data_access
+    @documentation.format(ion_types=ion_types_documentation)
     def names(self, ion_types=None):
         """Extract the labels of all atoms.
 
         Parameters
         ----------
-        ion_types : Sequence
-            Overwrite the ion types present in the raw data.
+        {ion_types}
 
         Returns
         -------
@@ -137,13 +142,13 @@ class Stoichiometry(base.Refinery):
         return [val.label for val in atom_dict.values() if _subscript in val.label]
 
     @base.data_access
+    @documentation.format(ion_types=ion_types_documentation)
     def elements(self, ion_types=None):
         """Extract the element of all atoms.
 
         Parameters
         ----------
-        ion_types : Sequence
-            Overwrite the ion types present in the raw data.
+        {ion_types}
 
         Returns
         -------
@@ -154,13 +159,13 @@ class Stoichiometry(base.Refinery):
         return list(itertools.chain.from_iterable(repeated_types))
 
     @base.data_access
+    @documentation.format(ion_types=ion_types_documentation)
     def ion_types(self, ion_types=None):
         """Return the type of all ions in the system as string.
 
         Parameters
         ----------
-        ion_types : Sequence
-            Overwrite the ion types present in the raw data.
+        {ion_types}
 
         Returns
         -------
