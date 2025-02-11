@@ -3,11 +3,11 @@
 from py4vasp._util import parse
 
 
-def structure(filename):
-    contcar = CONTCAR(filename)
+def structure(filename, ion_types=None):
+    contcar = CONTCAR(filename, ion_types)
     return contcar.structure
 
 
-def CONTCAR(filename):
+def CONTCAR(filename, ion_types=None):
     with open(filename, "r") as file:
-        return parse.POSCAR(file.read())
+        return parse.POSCAR(file.read(), ion_types)

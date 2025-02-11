@@ -38,6 +38,18 @@ def test_read_structure(tmp_path, Assert):
     Assert.same_raw_structure(structure, STRUCTURE_ZnS)
 
 
+def test_read_without_elements(tmp_path, Assert):
+    poscar_string = str(Structure.from_data(STRUCTURE_ZnS))
+    line_with_elements = 5
+    lines = poscar_string.splitlines()
+    filtered_lines = [line for i, line in enumerate(lines) if i != line_with_elements]
+    filename = tmp_path / "POSCAR"
+    with open(filename, "w") as file:
+        file.write("\n".join(filtered_lines))
+    structure = read.structure(filename, ion_types=["Zn", "S"])
+    Assert.same_raw_structure(structure, STRUCTURE_ZnS)
+
+
 def test_read_contcar(tmp_path, Assert):
     filename = tmp_path / "POSCAR"
     with open(filename, "w") as file:
