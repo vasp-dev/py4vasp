@@ -8,7 +8,7 @@ from py4vasp import exception, raw
 from py4vasp._raw.data_wrapper import VaspData
 
 
-def POSCAR(poscar_string, ion_types=None):
+def POSCAR(poscar_string):
     """Converts a string POSCAR file to a CONTCAR object.
 
     The CONTCAR object contains the Structure object and the system
@@ -20,16 +20,13 @@ def POSCAR(poscar_string, ion_types=None):
     ----------
     poscar_string : str
         A string in POSCAR format.
-    ion_types : Sequence or None
-        If the POSCAR file does not set the ion types you need to provide the ion
-        types as an arguments
 
     Returns
     -------
     CONTCAR
         A CONTCAR object with the data in the string.
     """
-    parser = PoscarParser(poscar_string.splitlines(), ion_types)
+    parser = PoscarParser(poscar_string.splitlines())
     contcar_content = parser.parse_lines()
     structure_keys = ["stoichiometry", "cell", "positions"]
     structure_content = {key: contcar_content.pop(key) for key in structure_keys}
@@ -40,7 +37,6 @@ def POSCAR(poscar_string, ion_types=None):
 @dataclass
 class PoscarParser:
     poscar_lines: List[str]
-    ion_types: List[str] or None = None
 
     def parse_lines(self):
         remaining_lines = iter(self.poscar_lines)
@@ -108,18 +104,15 @@ class PoscarParser:
         """
         possible_ion_types = next(remaining_lines)
         has_ion_types = all(type.isalpha() for type in possible_ion_types.split())
-        if not has_ion_types and self.ion_types is None:
-            message = "If ion types are not in the POSCAR file, you must provide it as an argument for the parser."
-            raise exception.ParserError(message)
         if has_ion_types:
-            ion_types = possible_ion_types.split()
+            ion_types = np.array(possible_ion_types.split())
         else:
             remaining_lines = _put_back(remaining_lines, possible_ion_types)
-            ion_types = self.ion_types
+            ion_types = None
         number_ion_types = np.array(next(remaining_lines).split(), dtype=np.int32)
         result["stoichiometry"] = raw.Stoichiometry(
             number_ion_types=VaspData(number_ion_types),
-            ion_types=VaspData(np.array(ion_types)),
+            ion_types=VaspData(ion_types),
         )
         return result, remaining_lines
 

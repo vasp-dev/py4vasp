@@ -9,7 +9,6 @@ from py4vasp import exception, raw
 from py4vasp._calculation._CONTCAR import CONTCAR
 from py4vasp._calculation._stoichiometry import Stoichiometry
 from py4vasp._calculation.structure import Structure
-from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._util import parse
 
 
@@ -133,160 +132,124 @@ class GeneralPOSCAR(raw.CONTCAR):
             raise NotImplemented
 
 
-STRUCTURE_SrTiO3 = raw.Structure(
-    raw.Stoichiometry(number_ion_types=[1, 1, 3], ion_types=["Sr", "Ti", "O"]),
-    raw.Cell(lattice_vectors=np.eye(3), scale=raw.VaspData(4.0)),
-    positions=np.array(
-        [[0, 0, 0], [0.5, 0.5, 0.5], [0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]
-    ),
+@pytest.fixture(
+    params=[
+        ("Cubic SrTiO3", "SrTiO3"),
+        ("With selective dynamics", "SrTiO3"),
+        ("With lattice velocities", "SrTiO3"),
+        ("With ion velocities", "SrTiO3"),
+        ("With velocities", "ZnS"),
+        ("Without ion types", "BN"),
+        ("Capitalize keywords", "BN"),
+        ("First letter only", "SrTiO3"),
+        ("Empty ion velocity string", "BN"),
+        ("Multiple scaling factors", "BN"),
+        ("Volume scaling factor", "SrTiO3"),
+        ("Scaling factor set to 1", "BN"),
+        ("Cartesian ion positions", "ZnS"),
+        ("Complex example with ion types", "BN"),
+        ("Complex example without ion types", "BN"),
+    ]
 )
-STRUCTURE_ZnS = raw.Structure(
-    raw.Stoichiometry(number_ion_types=[2, 2], ion_types=["Zn", "S"]),
-    raw.Cell(
-        lattice_vectors=np.array([[1.9, -3.3, 0.0], [1.9, 3.3, 0.0], [0, 0, 6.2]]),
-        scale=raw.VaspData(1.0),
-    ),
-    positions=np.array(
-        [
-            [1 / 3, 2 / 3, 0.0],
-            [2 / 3, 1 / 3, 0.5],
-            [1 / 3, 2 / 3, 0.375],
-            [2 / 3, 1 / 3, 0.875],
-        ]
-    ),
-)
-STRUCTURE_BN = raw.Structure(
-    raw.Stoichiometry(number_ion_types=[1, 1], ion_types=["B", "N"]),
-    raw.Cell(
-        lattice_vectors=np.array([[0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]),
-        scale=raw.VaspData(3.63),
-    ),
-    positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
-)
-EXAMPLE_POSCARS = (
-    raw.CONTCAR(structure=STRUCTURE_SrTiO3, system="Cubic SrTiO3"),
-    raw.CONTCAR(
-        structure=STRUCTURE_SrTiO3,
-        system="With selective dynamics",
-        selective_dynamics=raw.VaspData(np.random.choice([True, False], size=(5, 3))),
-    ),
-    raw.CONTCAR(
-        structure=STRUCTURE_SrTiO3,
-        system="With lattice velocities",
-        lattice_velocities=raw.VaspData(np.linspace(0, 0.2, 9).reshape(3, 3)),
-    ),
-    raw.CONTCAR(
-        structure=STRUCTURE_SrTiO3,
-        system="With ion velocities",
-        ion_velocities=raw.VaspData(0.1 + 0.1 * STRUCTURE_SrTiO3.positions),
-    ),
-    raw.CONTCAR(structure=STRUCTURE_ZnS, system="Hexagonal ZnS"),
-    raw.CONTCAR(
-        structure=STRUCTURE_ZnS,
-        system="With velocities",
-        lattice_velocities=raw.VaspData(np.linspace(-1, 1, 9).reshape(3, 3)),
-        ion_velocities=raw.VaspData(0.2 - 0.1 * STRUCTURE_ZnS.positions),
-    ),
-    GeneralPOSCAR(
-        structure=STRUCTURE_BN,
-        system="Without ion types",
-        show_ion_types=False,
-    ),
-    GeneralPOSCAR(
-        structure=STRUCTURE_BN,
-        system="Capitalize keywords",
-        selective_dynamics=raw.VaspData([[True, True, False], [False, True, True]]),
-        string_format="capitalize",
-    ),
-    GeneralPOSCAR(
-        structure=STRUCTURE_SrTiO3,
-        system="First letter only",
-        lattice_velocities=raw.VaspData(
-            np.array([[0.0, -0.6, 0.2], [0.1, 0.3, -0.2], [0.2, -0.4, 0.4]])
-        ),
-        string_format="first letter",
-    ),
-    GeneralPOSCAR(
-        structure=STRUCTURE_BN,
-        system="Empty ion velocity string",
-        ion_velocities=raw.VaspData(np.array([[0.2, 0.4, -0.2], [0.4, 0.6, -0.3]])),
-        velocity_coordinate_system=" ",
-    ),
-    GeneralPOSCAR(
-        structure=STRUCTURE_BN,
-        system="Multiple scaling factors",
-        scaling_factor="split",
-    ),
-    GeneralPOSCAR(
-        structure=STRUCTURE_SrTiO3,
-        system="Volume scaling factor",
-        scaling_factor="volume",
-    ),
-    GeneralPOSCAR(
-        structure=STRUCTURE_BN,
-        system="Scaling factor set to 1",
-        scaling_factor="one",
-    ),
-    GeneralPOSCAR(
-        structure=STRUCTURE_ZnS,
-        system="Cartesian ion positions",
-        ion_coordinate_system="cartesian",
-    ),
-    GeneralPOSCAR(
-        structure=STRUCTURE_BN,
-        system="complex example with ion types",
-        selective_dynamics=raw.VaspData([[True, True, False], [False, True, True]]),
-        string_format="capitalize",
-        lattice_velocities=raw.VaspData(
-            np.array([[0.0, -0.6, 0.2], [0.1, 0.3, -0.2], [0.2, -0.4, 0.4]])
-        ),
-        ion_velocities=raw.VaspData(np.array([[0.2, 0.4, -0.2], [0.4, 0.6, -0.3]])),
-        scaling_factor="split",
-    ),
-    GeneralPOSCAR(
-        structure=STRUCTURE_BN,
-        system="complex example without ion types",
-        show_ion_types=False,
-        ion_coordinate_system="cartesian",
-        selective_dynamics=raw.VaspData([[True, True, False], [False, True, True]]),
-        string_format="first letter",
-        lattice_velocities=raw.VaspData(
-            np.array([[0.0, -0.6, 0.2], [0.1, 0.3, -0.2], [0.2, -0.4, 0.4]])
-        ),
-        ion_velocities=raw.VaspData(np.array([[0.2, 0.4, -0.2], [0.4, 0.6, -0.3]])),
-        scaling_factor="volume",
-    ),
-)
+def example_poscar(raw_data, request):
+    system, selection = request.param
+    raw_structure = raw_data.structure(selection)
+    common_part = {"structure": raw_structure, "system": system}
+    if system in ("Cubic SrTiO3", "Hexagonal ZnS"):
+        return raw.CONTCAR(**common_part)
+    elif system == "With selective dynamics":
+        selective_dynamics = raw.VaspData(np.random.choice([True, False], size=(5, 3)))
+        return raw.CONTCAR(**common_part, selective_dynamics=selective_dynamics)
+    elif system == "With lattice velocities":
+        lattice_velocities = raw.VaspData(np.linspace(0, 0.2, 9).reshape(3, 3))
+        return raw.CONTCAR(**common_part, lattice_velocities=lattice_velocities)
+    elif system == "With ion velocities":
+        ion_velocities = raw.VaspData(0.1 + 0.1 * raw_structure.positions)
+        return raw.CONTCAR(**common_part, ion_velocities=ion_velocities)
+    elif system == "With velocities":
+        return raw.CONTCAR(
+            **common_part,
+            lattice_velocities=raw.VaspData(np.linspace(-1, 1, 9).reshape(3, 3)),
+            ion_velocities=raw.VaspData(0.2 - 0.1 * raw_structure.positions),
+        )
+    elif system == "Without ion types":
+        raw_structure.stoichiometry.ion_types = raw.VaspData(None)
+        return GeneralPOSCAR(**common_part, show_ion_types=False)
+    elif system == "Capitalize keywords":
+        return GeneralPOSCAR(
+            **common_part,
+            selective_dynamics=raw.VaspData([[True, True, False], [False, True, True]]),
+            string_format="capitalize",
+        )
+    elif system == "First letter only":
+        return GeneralPOSCAR(
+            **common_part,
+            lattice_velocities=raw.VaspData(
+                np.array([[0.0, -0.6, 0.2], [0.1, 0.3, -0.2], [0.2, -0.4, 0.4]])
+            ),
+            string_format="first letter",
+        )
+    elif system == "Empty ion velocity string":
+        ion_velocities = raw.VaspData(np.array([[0.2, 0.4, -0.2], [0.4, 0.6, -0.3]]))
+        return GeneralPOSCAR(
+            **common_part, ion_velocities=ion_velocities, velocity_coordinate_system=" "
+        )
+    elif system == "Multiple scaling factors":
+        return GeneralPOSCAR(**common_part, scaling_factor="split")
+    elif system == "Volume scaling factor":
+        return GeneralPOSCAR(**common_part, scaling_factor="volume")
+    elif system == "Scaling factor set to 1":
+        return GeneralPOSCAR(**common_part, scaling_factor="one")
+    elif system == "Cartesian ion positions":
+        return GeneralPOSCAR(**common_part, ion_coordinate_system="cartesian")
+    elif system == "Complex example with ion types":
+        return GeneralPOSCAR(
+            **common_part,
+            selective_dynamics=raw.VaspData([[True, True, False], [False, True, True]]),
+            string_format="capitalize",
+            lattice_velocities=raw.VaspData(
+                np.array([[0.0, -0.6, 0.2], [0.1, 0.3, -0.2], [0.2, -0.4, 0.4]])
+            ),
+            ion_velocities=raw.VaspData(np.array([[0.2, 0.4, -0.2], [0.4, 0.6, -0.3]])),
+            scaling_factor="split",
+        )
+    elif system == "Complex example without ion types":
+        raw_structure.stoichiometry.ion_types = raw.VaspData(None)
+        return GeneralPOSCAR(
+            **common_part,
+            show_ion_types=False,
+            ion_coordinate_system="cartesian",
+            selective_dynamics=raw.VaspData([[True, True, False], [False, True, True]]),
+            string_format="first letter",
+            lattice_velocities=raw.VaspData(
+                np.array([[0.0, -0.6, 0.2], [0.1, 0.3, -0.2], [0.2, -0.4, 0.4]])
+            ),
+            ion_velocities=raw.VaspData(np.array([[0.2, 0.4, -0.2], [0.4, 0.6, -0.3]])),
+            scaling_factor="volume",
+        )
+    else:
+        raise NotImplementedError
 
 
-@pytest.mark.parametrize("raw_poscar", EXAMPLE_POSCARS)
-def test_parse_general_poscar(raw_poscar, Assert):
-    is_general_poscar = isinstance(raw_poscar, GeneralPOSCAR)
-    poscar_string = create_poscar_string(raw_poscar, is_general_poscar)
-    ion_types = determine_ion_types(raw_poscar, is_general_poscar)
-    actual = parse.POSCAR(poscar_string, ion_types)
+def test_parse_general_poscar(example_poscar, Assert):
+    is_general_poscar = isinstance(example_poscar, GeneralPOSCAR)
+    poscar_string = create_poscar_string(example_poscar, is_general_poscar)
+    actual = parse.POSCAR(poscar_string)
     exact_match = not is_general_poscar
-    Assert.same_raw_contcar(actual, raw_poscar, exact_match)
+    Assert.same_raw_contcar(actual, example_poscar, exact_match)
 
 
-def create_poscar_string(raw_poscar, is_general_poscar):
+def create_poscar_string(example_poscar, is_general_poscar):
     if is_general_poscar:
-        return str(raw_poscar)
+        return str(example_poscar)
     else:
-        return str(CONTCAR.from_data(raw_poscar))
-
-
-def determine_ion_types(raw_poscar, is_general_poscar):
-    if is_general_poscar and not raw_poscar.show_ion_types:
-        return raw_poscar.structure.stoichiometry.ion_types
-    else:
-        return None  # if ion types are in POSCAR we don't need to provide it to parser
+        return str(CONTCAR.from_data(example_poscar))
 
 
 @pytest.mark.parametrize("scaling_factor", ("missing", "too many", "negative"))
-def test_error_in_scaling_factor(scaling_factor):
+def test_error_in_scaling_factor(raw_data, scaling_factor):
     raw_poscar = GeneralPOSCAR(
-        structure=STRUCTURE_ZnS,
+        structure=raw_data.structure("ZnS"),
         system="wrong scaling factor",
         scaling_factor=scaling_factor,
     )
@@ -295,18 +258,9 @@ def test_error_in_scaling_factor(scaling_factor):
         parse.POSCAR(poscar_string)
 
 
-def test_error_no_species_provided():
+def test_error_velocities_in_fractional_coordinates(raw_data):
     raw_poscar = GeneralPOSCAR(
-        structure=STRUCTURE_BN, system="missing ion types", show_ion_types=False
-    )
-    poscar_string = str(raw_poscar)
-    with pytest.raises(exception.ParserError):
-        parse.POSCAR(poscar_string)
-
-
-def test_error_velocities_in_fractional_coordinates():
-    raw_poscar = GeneralPOSCAR(
-        structure=STRUCTURE_BN,
+        structure=raw_data.structure("BN"),
         system="fractional velocities",
         velocity_coordinate_system="fractional",
         ion_velocities=raw.VaspData(np.array([[0.2, 0.4, -0.2], [0.4, 0.6, -0.3]])),
