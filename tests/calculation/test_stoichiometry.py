@@ -157,6 +157,23 @@ class TestBa2MnO4(Base):
         assert stoichiometry["O"] == Selection(indices=slice(3, 7), label="O")
 
 
+@pytest.mark.parametrize(
+    "method", ("to_dict", "to_frame", "to_mdtraj", "to_POSCAR", "names", "elements")
+)
+def test_ion_types_required(method, raw_data):
+    raw_stoichiometry = raw_data.stoichiometry("Sr2TiO4 without ion types")
+    stoichiometry = Stoichiometry.from_data(raw_stoichiometry)
+    with pytest.raises(exception.IncorrectUsage):
+        getattr(stoichiometry, method)()
+
+
+@pytest.mark.parametrize("method", ("number_atoms", "__str__"))
+def test_ion_types_not_required(method, raw_data):
+    raw_stoichiometry = raw_data.stoichiometry("Sr2TiO4 without ion types")
+    stoichiometry = Stoichiometry.from_data(raw_stoichiometry)
+    getattr(stoichiometry, method)()  # make sure this does not raise an error
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.stoichiometry("Sr2TiO4")
     check_factory_methods(Stoichiometry, data)

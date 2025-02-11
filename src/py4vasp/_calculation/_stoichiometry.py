@@ -4,7 +4,7 @@ import itertools
 
 import numpy as np
 
-from py4vasp import raw
+from py4vasp import exception, raw
 from py4vasp._calculation import base
 from py4vasp._calculation.selection import Selection
 from py4vasp._util import check, convert, import_, select
@@ -210,6 +210,9 @@ class Stoichiometry(base.Refinery):
 
     def _ion_types(self, ion_types):
         ion_types = self._raw_data.ion_types if ion_types is None else ion_types
+        if check.is_none(ion_types):
+            message = "If the ion types are not defined, you must pass them as argument to the function."
+            raise exception.IncorrectUsage(message)
         clean_string = lambda ion_type: convert.text_to_string(ion_type).strip()
         return (clean_string(ion_type) for ion_type in ion_types)
 
