@@ -357,6 +357,8 @@ class RawDataFactory:
             return _SrTiO3_structure()
         elif selection == "Sr2TiO4":
             return _Sr2TiO4_structure()
+        elif selection == "Sr2TiO4 without ion types":
+            return _Sr2TiO4_structure(has_ion_types=False)
         elif selection == "ZnS":
             return _ZnS_structure()
         else:
@@ -366,6 +368,8 @@ class RawDataFactory:
     def stoichiometry(selection):
         if selection == "Sr2TiO4":
             return _Sr2TiO4_stoichiometry()
+        elif selection == "Sr2TiO4 without ion types":
+            return _Sr2TiO4_stoichiometry(has_ion_types=False)
         elif selection == "Fe3O4":
             return _Fe3O4_stoichiometry()
         elif selection == "Ca2AsBr-CaBr2":  # test duplicate entries
@@ -1033,7 +1037,7 @@ def _CaAs3_110_stoichiometry():
     )
 
 
-def _Sr2TiO4_structure():
+def _Sr2TiO4_structure(has_ion_types=True):
     repetitions = (number_steps, 1, 1)
     positions = [
         [0.64529, 0.64529, 0.0],
@@ -1045,17 +1049,23 @@ def _Sr2TiO4_structure():
         [0.00000, 0.50000, 0.5],
     ]
     return raw.Structure(
-        stoichiometry=_Sr2TiO4_stoichiometry(),
+        stoichiometry=_Sr2TiO4_stoichiometry(has_ion_types),
         cell=_Sr2TiO4_cell(),
         positions=np.tile(positions, repetitions),
     )
 
 
-def _Sr2TiO4_stoichiometry():
-    return raw.Stoichiometry(
-        number_ion_types=np.array((2, 1, 4)),
-        ion_types=np.array(("Sr", "Ti", "O "), dtype="S"),
-    )
+def _Sr2TiO4_stoichiometry(has_ion_types=True):
+    if has_ion_types:
+        return raw.Stoichiometry(
+            number_ion_types=np.array((2, 1, 4)),
+            ion_types=raw.VaspData(np.array(("Sr", "Ti", "O "), dtype="S")),
+        )
+    else:
+        return raw.Stoichiometry(
+            number_ion_types=raw.VaspData(np.array((2, 1, 4))),
+            ion_types=raw.VaspData(None),
+        )
 
 
 def _Sr2TiO4_velocity():
