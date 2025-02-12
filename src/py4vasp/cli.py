@@ -37,6 +37,17 @@ def convert(quantity, format, path, selection):
     if format.lower() != "lammps":
         raise click.UsageError(f"Converting {quantity} to {format} is not implemented.")
     path = pathlib.Path.cwd() if path is None else pathlib.Path(path)
+    try:
+        result = _convert_to_lammps(path, selection)
+    except exception.Py4VaspError as error:
+        print("in error block")
+        raise click.ClickException(*error.args) from error
+    except Exception as error:
+        print(f"other error {error}")
+    print(result)
+
+
+def _convert_to_lammps(path, selection):
     if path.is_file():
         calculation = py4vasp.Calculation.from_file(path)
     else:
@@ -45,4 +56,4 @@ def convert(quantity, format, path, selection):
         result = calculation.structure.to_lammps()
     else:
         result = calculation.structure.to_lammps(selection=selection)
-    print(result)
+    return result

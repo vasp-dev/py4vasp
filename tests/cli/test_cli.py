@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
 
+from py4vasp import exception
 from py4vasp.cli import cli
 
 
@@ -87,3 +88,12 @@ def test_convert_wrong_format(mock_calculation):
     result = runner.invoke(cli, ["convert", "structure", "not_implemented"])
     assert result.exit_code != 0
     mock_calculation.from_path.assert_not_called()
+
+
+def test_error_in_py4vasp(mock_calculation):
+    runner = CliRunner()
+    error_message = "Custom error message."
+    mock_calculation.from_path.side_effect = exception.Py4VaspError(error_message)
+    result = runner.invoke(cli, ["convert", "structure", "lammps"])
+    assert result.exit_code != 0
+    assert error_message in result.output
