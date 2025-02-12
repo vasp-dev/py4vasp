@@ -71,7 +71,7 @@ def to_camelcase(string: str, uppercase_first_letter: bool = True) -> str:
     if uppercase_first_letter:
         return re.sub(r"(?:_|^)(.)", lambda m: m.group(1).upper(), string)
     else:
-        return string[0].lower() + camelize(string)[1:]
+        return string[0].lower() + to_camelcase(string)[1:]
 
 
 def to_rgb(hex):

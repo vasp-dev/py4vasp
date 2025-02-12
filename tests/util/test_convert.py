@@ -56,3 +56,4 @@ def test_camelcase():
     assert to_camelcase("foo_bar_baz") == "FooBarBaz"
     assert to_camelcase("_foo") == "Foo"
     assert to_camelcase("_foo_bar") == "FooBar"
+    assert to_camelcase("foo_bar", uppercase_first_letter=False) == "fooBar"
