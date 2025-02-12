@@ -177,7 +177,7 @@ def test_poscar_string_without_types(without_types):
 @pytest.mark.parametrize(
     "method", ("to_dict", "to_frame", "to_mdtraj", "names", "elements")
 )
-def test_ion_types_required(method, without_types):
+def test_ion_types_required(method, without_types, not_core):
     with pytest.raises(exception.IncorrectUsage):
         getattr(without_types, method)()
 
