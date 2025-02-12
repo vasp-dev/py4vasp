@@ -40,10 +40,7 @@ def convert(quantity, format, path, selection):
     try:
         result = _convert_to_lammps(path, selection)
     except exception.Py4VaspError as error:
-        print("in error block")
         raise click.ClickException(*error.args) from error
-    except Exception as error:
-        print(f"other error {error}")
     print(result)
 
 
