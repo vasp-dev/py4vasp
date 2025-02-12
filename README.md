@@ -18,10 +18,10 @@ We recommend installing py4vasp in a conda environment to resolve issues related
 installing `mdtraj` with pip. To do this please use the following steps. The last step
 will test whether everything worked
 ~~~shell
-conda create --name py4vasp-env python=3.8
+conda create --name py4vasp-env python=3.9
 git clone git@github.com:vasp-dev/py4vasp.git
 conda activate py4vasp-env
-pip install poetry
+pip install "poetry<2"
 cd py4vasp
 poetry install
 conda install -c conda-forge mdtraj
