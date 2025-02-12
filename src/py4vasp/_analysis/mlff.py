@@ -45,6 +45,8 @@ class MLFFErrorAnalysis:
     ... )
     """
 
+    TOTAL_ENERGY = "TOTEN"
+
     def __init__(self, *args, **kwargs):
         self.mlff = SimpleNamespace()
         self.dft = SimpleNamespace()
@@ -268,8 +270,8 @@ def set_energies(cls):
     cls : MLFFErrorAnalysis
         An instance of MLFFErrorAnalysis.
     """
-    tag = "free energy    TOTEN"
-    energies_data = cls._batch.energies.read()
+    tag = MLFFErrorAnalysis.TOTAL_ENERGY
+    energies_data = cls._batch.energies.read(tag)
     cls.mlff.energies = _dict_to_array(energies_data["mlff_data"], tag)
     cls.dft.energies = _dict_to_array(energies_data["dft_data"], tag)
 

@@ -16,7 +16,7 @@ from py4vasp._calculation.stress import Stress
 
 
 class BaseCalculations:
-    def read(self):
+    def read(self, *args, **kwargs):
         return self._data
 
 
@@ -65,7 +65,7 @@ def mock_calculations(raw_data):
     for datatype in ["dft_data", "mlff_data"]:
         raw_energy = raw_data.energy("relax", randomize=True)
         energy = Energy.from_data(raw_energy)
-        energy_data = energy.read()
+        energy_data = energy.read(MLFFErrorAnalysis.TOTAL_ENERGY)
         data["_energies"][datatype].append(energy_data)
         raw_force = raw_data.force("Sr2TiO4", randomize=True)
         force = Force.from_data(raw_force)
@@ -88,7 +88,7 @@ def mock_multiple_calculations(raw_data):
         for i in range(4):
             raw_energy = raw_data.energy("relax", randomize=True)
             energy = Energy.from_data(raw_energy)
-            energy_data = energy.read()
+            energy_data = energy.read(MLFFErrorAnalysis.TOTAL_ENERGY)
             data["_energies"][datatype].append(energy_data)
             raw_force = raw_data.force("Sr2TiO4", randomize=True)
             force = Force.from_data(raw_force)
@@ -110,7 +110,7 @@ def mock_calculations_incorrect(raw_data):
     for datatype in ["dft_data", "mlff_data"]:
         raw_energy = raw_data.energy("relax", randomize=True)
         energy = Energy.from_data(raw_energy)
-        energy_data = energy.read()
+        energy_data = energy.read(MLFFErrorAnalysis.TOTAL_ENERGY)
         data["_energies"][datatype].append(energy_data)
         if datatype == "mlff_data":
             species = "Sr2TiO4"
@@ -202,8 +202,9 @@ def _iter_properties(tag, data, return_array=True):
 def test_attributes_from_data(mocker, request):
     mock_calculations = request.getfixturevalue(mocker)
     energies_dict = mock_calculations.energies.read()
-    mlff_energies = _iter_properties("free energy    TOTEN", energies_dict["mlff_data"])
-    dft_energies = _iter_properties("free energy    TOTEN", energies_dict["dft_data"])
+    tag = MLFFErrorAnalysis.TOTAL_ENERGY
+    mlff_energies = _iter_properties(tag, energies_dict["mlff_data"])
+    dft_energies = _iter_properties(tag, energies_dict["dft_data"])
     forces_dict = mock_calculations.forces.read()
     mlff_forces = _iter_properties("forces", forces_dict["mlff_data"])
     dft_forces = _iter_properties("forces", forces_dict["dft_data"])
