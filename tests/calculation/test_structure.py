@@ -455,28 +455,32 @@ def test_ZnS_to_lammps(ZnS, not_core):
     assert ZnS.to_lammps(standard_form=False) == REF_LAMMPS_ZnS_general
 
 
-def test_print_final(Sr2TiO4, format_):
-    actual, _ = format_(Sr2TiO4)
-    reference = get_reference_output(None, **Sr2TiO4.ion_type_arg)
-    assert actual == {"text/plain": REF_POSCAR, "text/html": REF_HTML}
+@pytest.mark.parametrize("steps", (None, 0, slice(1, 3)))
+def test_print_final(Sr2TiO4, steps, format_):
+    if steps is None:
+        structure = Sr2TiO4
+    else:
+        structure = Sr2TiO4[steps]
+    actual, _ = format_(structure)
+    reference = get_reference_output(steps, **Sr2TiO4.ion_type_arg)
+    assert actual == reference
 
-
-def test_print_specific(Sr2TiO4, format_):
-    actual, _ = format_(Sr2TiO4[0])
-    ref_plain = REF_POSCAR.replace("Sr2TiO4", "Sr2TiO4 (step 1)")
-    ref_html = REF_HTML.replace("Sr2TiO4", "Sr2TiO4 (step 1)")
-    assert actual["text/plain"] == ref_plain
-    assert actual == {"text/plain": ref_plain, "text/html": ref_html}
-
-
-def test_print_trajectory(Sr2TiO4, format_):
-    actual, _ = format_(Sr2TiO4[1:3])
-    ref_plain = REF_POSCAR.replace("Sr2TiO4", "Sr2TiO4 from step 2 to 4")
-    ref_html = REF_HTML.replace("Sr2TiO4", "Sr2TiO4 from step 2 to 4")
-    assert actual == {"text/plain": ref_plain, "text/html": ref_html}
 
 def get_reference_output(steps, ion_types=None):
-    pass
+    if steps == 0:
+        step_string = " (step 1)"
+    elif steps == slice(1, 3):
+        step_string = " from step 2 to 4"
+    else:
+        step_string = ""
+    ref_plain = REF_POSCAR.replace("Sr2TiO4", f"Sr2TiO4{step_string}")
+    ref_html = REF_HTML.replace("Sr2TiO4", f"Sr2TiO4{step_string}")
+    if ion_types is not None:
+        ref_plain = ref_plain.replace("Sr2TiO4", "(A)2(B)(C)4")
+        ref_plain = ref_plain.replace("Sr Ti O\n", "")
+        ref_html = ref_html.replace("Sr2TiO4", "(A)2(B)(C)4")
+        ref_html = ref_html.replace("Sr Ti O<br>\n", "")
+    return {"text/plain": ref_plain, "text/html": ref_html}
 
 
 def test_print_Ca3AsBr3(Ca3AsBr3, format_):

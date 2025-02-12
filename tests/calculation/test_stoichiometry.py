@@ -10,10 +10,12 @@ from py4vasp._util import import_, select
 ase = import_.optional("ase")
 pd = import_.optional("pandas")
 
+
 @pytest.fixture
 def without_types(raw_data):
     raw_stoichiometry = raw_data.stoichiometry("Sr2TiO4 without ion types")
     return Stoichiometry.from_data(raw_stoichiometry)
+
 
 class Base:
     def test_read(self):
@@ -171,6 +173,7 @@ class TestBa2MnO4(Base):
 def test_poscar_string_without_types(without_types):
     assert without_types.to_POSCAR() == "2 1 4"
 
+
 @pytest.mark.parametrize(
     "method", ("to_dict", "to_frame", "to_mdtraj", "names", "elements")
 )
@@ -179,7 +182,9 @@ def test_ion_types_required(method, without_types):
         getattr(without_types, method)()
 
 
-@pytest.mark.parametrize("method", ("number_atoms", "__str__", "to_string", "to_POSCAR"))
+@pytest.mark.parametrize(
+    "method", ("number_atoms", "__str__", "to_string", "to_POSCAR")
+)
 def test_ion_types_not_required(method, raw_data):
     raw_stoichiometry = raw_data.stoichiometry("Sr2TiO4 without ion types")
     stoichiometry = Stoichiometry.from_data(raw_stoichiometry)
