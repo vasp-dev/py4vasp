@@ -4,15 +4,20 @@ import itertools
 
 import numpy as np
 
-from py4vasp import raw
+from py4vasp import exception, raw
 from py4vasp._calculation import base
 from py4vasp._calculation.selection import Selection
-from py4vasp._util import check, convert, import_, select
+from py4vasp._util import check, convert, documentation, import_, select
 
 mdtraj = import_.optional("mdtraj")
 pd = import_.optional("pandas")
 
 _subscript = "_"
+
+
+ion_types_documentation = """\
+ion_types : Sequence
+    Overwrite the ion types present in the raw data."""
 
 
 class Stoichiometry(base.Refinery):
@@ -25,17 +30,43 @@ class Stoichiometry(base.Refinery):
 
     @base.data_access
     def __str__(self):
+        return self.to_string()
+
+    @base.data_access
+    @documentation.format(ion_types=ion_types_documentation)
+    def to_string(self, ion_types=None):
+        """Convert the stoichiometry into a string.
+
+        This method is equivalent to calling str() on the stoichiometry except that it
+        allows to overwrite the ion types.
+
+        Parameters
+        ----------
+        {ion_types}
+
+        Returns
+        -------
+        str
+            String representation of the stoichiometry.
+        """
         number_suffix = lambda number: str(number) if number > 1 else ""
-        return self._create_repr(number_suffix)
+        dummy_type = lambda index: f"({chr(ord('A') + index)})"
+        return self._create_repr(number_suffix, dummy_type, ion_types)
 
     @base.data_access
     def _repr_html_(self):
         number_suffix = lambda number: f"<sub>{number}</sub>" if number > 1 else ""
-        return self._create_repr(number_suffix)
+        dummy_type = lambda index: f"<em>{chr(ord('A') + index)}</em>"
+        return self._create_repr(number_suffix, dummy_type)
 
     @base.data_access
-    def to_dict(self):
+    @documentation.format(ion_types=ion_types_documentation)
+    def to_dict(self, ion_types=None):
         """Read the stoichiometry and convert it to a dictionary.
+
+        Parameters
+        ----------
+        {ion_types}
 
         Returns
         -------
@@ -47,23 +78,41 @@ class Stoichiometry(base.Refinery):
             strings to atom-indices integers. These access strings are used
             throughout all of the refinement classes.
         """
-        return {**self._default_selection(), **self._specific_selection()}
+        return {**self._default_selection(), **self._specific_selection(ion_types)}
 
     @base.data_access
-    def to_frame(self):
+    @documentation.format(ion_types=ion_types_documentation)
+    def to_frame(self, ion_types=None):
         """Convert the stoichiometry to a DataFrame
+
+        Parameters
+        ----------
+        {ion_types}
 
         Returns
         -------
         pd.DataFrame
             The dataframe matches atom label and element type.
         """
-        return pd.DataFrame({"name": self.names(), "element": self.elements()})
+        return pd.DataFrame(
+            {"name": self.names(ion_types), "element": self.elements(ion_types)}
+        )
 
     @base.data_access
-    def to_mdtraj(self):
-        """Convert the stoichiometry to a mdtraj.Topology."""
-        df = self.to_frame()
+    @documentation.format(ion_types=ion_types_documentation)
+    def to_mdtraj(self, ion_types=None):
+        """Convert the stoichiometry to a mdtraj.Topology.
+
+        Parameters
+        ----------
+        {ion_types}
+
+        Returns
+        -------
+        mdtraj.Topology
+            Converts the stoichiometry into an object that can be used for mdtraj.
+        """
+        df = self.to_frame(ion_types)
         df["serial"] = None
         df["resSeq"] = 0
         df["resName"] = "crystal"
@@ -71,7 +120,8 @@ class Stoichiometry(base.Refinery):
         return mdtraj.Topology.from_dataframe(df)
 
     @base.data_access
-    def to_POSCAR(self, format_newline=""):
+    @documentation.format(ion_types=ion_types_documentation)
+    def to_POSCAR(self, format_newline="", ion_types=None):
         """Generate the stoichiometry lines for the POSCAR file.
 
         Parameters
@@ -79,6 +129,7 @@ class Stoichiometry(base.Refinery):
         format_newline : str
             If you want to display the POSCAR file in a particular way, you can
             use an additional string to add formatting.
+        {ion_types}
 
         Returns
         -------
@@ -88,39 +139,81 @@ class Stoichiometry(base.Refinery):
         """
         error_message = "The formatting information must be a string."
         check.raise_error_if_not_string(format_newline, error_message)
-        ion_types = " ".join(self._ion_types)
         number_ion_types = " ".join(str(x) for x in self._raw_data.number_ion_types)
-        return ion_types + format_newline + "\n" + number_ion_types
+        if ion_types is None and check.is_none(self._raw_data.ion_types):
+            return number_ion_types
+        else:
+            ion_types = " ".join(self._ion_types(ion_types))
+            return ion_types + format_newline + "\n" + number_ion_types
 
     @base.data_access
-    def names(self):
-        """Extract the labels of all atoms."""
-        atom_dict = self.to_dict()
+    @documentation.format(ion_types=ion_types_documentation)
+    def names(self, ion_types=None):
+        """Extract the labels of all atoms.
+
+        Parameters
+        ----------
+        {ion_types}
+
+        Returns
+        -------
+        list
+            List of unique string labeling each ion.
+        """
+        atom_dict = self.to_dict(ion_types)
         return [val.label for val in atom_dict.values() if _subscript in val.label]
 
     @base.data_access
-    def elements(self):
-        """Extract the element of all atoms."""
-        repeated_types = (itertools.repeat(*x) for x in self._type_numbers())
+    @documentation.format(ion_types=ion_types_documentation)
+    def elements(self, ion_types=None):
+        """Extract the element of all atoms.
+
+        Parameters
+        ----------
+        {ion_types}
+
+        Returns
+        -------
+        list
+            List of strings specifying the element of each ion.
+        """
+        repeated_types = (itertools.repeat(*x) for x in self._type_numbers(ion_types))
         return list(itertools.chain.from_iterable(repeated_types))
 
     @base.data_access
-    def ion_types(self):
-        "Return the type of all ions in the system as string."
-        return list(dict.fromkeys(self._ion_types))
+    @documentation.format(ion_types=ion_types_documentation)
+    def ion_types(self, ion_types=None):
+        """Return the type of all ions in the system as string.
+
+        Parameters
+        ----------
+        {ion_types}
+
+        Returns
+        -------
+        list
+            List of unique elements.
+        """
+        return list(dict.fromkeys(self._ion_types(ion_types)))
 
     @base.data_access
     def number_atoms(self):
         "Return the number of atoms in the system."
         return np.sum(self._raw_data.number_ion_types)
 
-    def _create_repr(self, number_suffix):
+    def _create_repr(self, number_suffix, dummy_type, ion_types=None):
         ion_string = lambda ion, number: f"{ion}{number_suffix(number)}"
-        return "".join(ion_string(*item) for item in self._total_type_numbers().items())
+        if ion_types is None and check.is_none(self._raw_data.ion_types):
+            number_ion_types = range(len(self._raw_data.number_ion_types))
+            ion_types = [dummy_type(i) for i in number_ion_types]
+        elif ion_types is None:
+            ion_types = self._raw_data.ion_types
+        total_type_numbers = self._total_type_numbers(ion_types)
+        return "".join(ion_string(*item) for item in total_type_numbers.items())
 
-    def _total_type_numbers(self):
+    def _total_type_numbers(self, ion_types):
         result = {}
-        for ion_type, number in self._type_numbers():
+        for ion_type, number in self._type_numbers(ion_types):
             result.setdefault(ion_type, 0)
             result[ion_type] += number
         return result
@@ -129,9 +222,9 @@ class Stoichiometry(base.Refinery):
         num_atoms = self.number_atoms()
         return {select.all: Selection(indices=slice(0, num_atoms))}
 
-    def _specific_selection(self):
+    def _specific_selection(self, ion_types):
         result = {}
-        for i, element in enumerate(self.elements()):
+        for i, element in enumerate(self.elements(ion_types)):
             result.setdefault(element, Selection(indices=[], label=element))
             result[element].indices.append(i)
             # create labels like Si_1, Si_2, Si_3 (starting at 1)
@@ -139,13 +232,16 @@ class Stoichiometry(base.Refinery):
             result[str(i + 1)] = Selection(indices=[i], label=label)
         return _merge_to_slice_if_possible(result)
 
-    def _type_numbers(self):
-        return zip(self._ion_types, self._raw_data.number_ion_types)
+    def _type_numbers(self, ion_types):
+        return zip(self._ion_types(ion_types), self._raw_data.number_ion_types)
 
-    @property
-    def _ion_types(self):
+    def _ion_types(self, ion_types):
+        ion_types = self._raw_data.ion_types if ion_types is None else ion_types
+        if check.is_none(ion_types):
+            message = "If the ion types are not defined, you must pass them as argument to the function."
+            raise exception.IncorrectUsage(message)
         clean_string = lambda ion_type: convert.text_to_string(ion_type).strip()
-        return (clean_string(ion_type) for ion_type in self._raw_data.ion_types)
+        return (clean_string(ion_type) for ion_type in ion_types)
 
 
 def raw_stoichiometry_from_ase(structure):

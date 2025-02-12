@@ -132,6 +132,12 @@ def test_missing_data(function):
     assert vasp.is_none()
 
 
+def test_astype_with_none():
+    vasp = VaspData(None)
+    converted = vasp.astype(np.float32)
+    assert converted.is_none()
+
+
 def test_scalar_data():
     reference = 1
     mock = MagicMock()

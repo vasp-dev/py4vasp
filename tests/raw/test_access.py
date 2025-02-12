@@ -24,6 +24,13 @@ def mock_access(complex_schema):
             yield mock_file, sources
 
 
+@pytest.fixture
+def mock_schema(complex_schema):
+    schema, sources = complex_schema
+    with patch("py4vasp._raw.access.schema", schema):
+        yield sources
+
+
 _mock_results = {}
 EXAMPLE_ARRAY = np.zeros(3)
 EXAMPLE_SCALAR = np.array(1)
@@ -196,6 +203,19 @@ def test_access_length(mock_access):
     mock_get.side_effect = (None,)
     with raw.access(quantity) as with_length:
         assert with_length.num_data is None
+
+
+def test_access_data_factory(mock_schema, tmp_path):
+    quantity = "simple"
+    selection = "factory"
+    source = mock_schema[quantity][selection]
+    with raw.access(quantity, path=tmp_path, selection=selection) as raw_data:
+        assert raw_data.foo == "custom_factory"
+        assert raw_data.bar == tmp_path / source.file
+    filename = tmp_path / "overwrite_file"
+    with raw.access(quantity, file=filename, selection=selection) as raw_data:
+        assert raw_data.foo == "custom_factory"
+        assert raw_data.bar == filename
 
 
 def test_access_version(mock_access):

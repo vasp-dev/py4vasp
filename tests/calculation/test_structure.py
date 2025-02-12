@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import re
 import types
 
 import numpy as np
@@ -8,6 +9,7 @@ import pytest
 from py4vasp import exception
 from py4vasp._calculation._stoichiometry import Stoichiometry
 from py4vasp._calculation.structure import Structure
+from py4vasp._util import check
 
 REF_POSCAR = """\
 Sr2TiO4
@@ -47,6 +49,60 @@ Direct<br>
 <tr><td>   0.0000000000000000</td><td>   0.5000000000000000</td><td>   0.5000000000000000</td></tr>
 </table>"""
 
+REF_LAMMPS = r"""Configuration 1: system ".*2.*4"
+
+7 atoms
+3 atom types
+
+0.0   6.9229000000000003E\+00 xlo xhi
+0.0   5.0880434191000035E\+00 ylo yhi
+0.0   2.7773292841999986E\+00 zlo zhi
+  4.6945030167999979E\+00  -5.8086962205000017E\+00  -2.5440193935999971E\+00 xy xz yz
+
+Atoms # atomic
+
+1 1   7.49659399271087\d\dE\+00   3.28326353791104\d\dE\+00   0.0000000000000000E\+00
+2 1   4.12080902408912\d\dE\+00   1.80477988118896\d\dE\+00   0.0000000000000000E\+00
+3 2   0.00000000000000\d\dE\+00   0.00000000000000\d\dE\+00   0.0000000000000000E\+00
+4 3   9.77929751148190\d\dE\+00   4.28301318933000\d\dE\+00   0.0000000000000000E\+00
+5 3   1.83822167934826\d\dE\+00   8.05081110204193\d\dE\-01   0.0000000000000000E\+00
+6 3   5.57101889749999\d\dE\-01  -1.27200969679999\d\dE\+00   1.3886646420999993E\+00
+7 3  -5.57096601850001\d\dE\-01   1.27201201275000\d\dE\+00   1.3886646420999993E\+00"""
+
+REF_LAMMPS_ZnS = r"""Configuration 1: system "Zn2S2"
+
+4 atoms
+2 atom types
+
+0.0   3.8078865529319543E\+00 xlo xhi
+0.0   3.2931653361218416E\+00 ylo yhi
+0.0   6.2000000000000002E\+00 zlo zhi
+ -1.9118216624375599E\+00  -0.0000000000000000E\+00   0.0000000000000000E\+00 xy xz yz
+
+Atoms # atomic
+
+1 1  -5.25225731438871\d\dE\-03   2.19544355741456\d\dE\+00   0.0000000000000000E\+00
+2 1   1.90131714780878\d\dE\+00   1.09772177870728\d\dE\+00   3.1000000000000001E\+00
+3 2  -5.25225731438871\d\dE\-03   2.19544355741456\d\dE\+00   2.3250000000000002E\+00
+4 2   1.90131714780878\d\dE\+00   1.09772177870728\d\dE\+00   5.4249999999999998E\+00"""
+
+REF_LAMMPS_ZnS_general = """Configuration 1: system "Zn2S2"
+
+4 atoms
+2 atom types
+
+  1.8999999999999999E+00  -3.2999999999999998E+00   0.0000000000000000E+00 avec
+  1.8999999999999999E+00   3.2999999999999998E+00   0.0000000000000000E+00 bvec
+  0.0000000000000000E+00   0.0000000000000000E+00   6.2000000000000002E+00 cvec
+0.0 0.0 0.0 abc origin
+
+Atoms # atomic
+
+1 1   1.8999999999999999E+00   1.0999999999999999E+00   0.0000000000000000E+00
+2 1   1.8999999999999999E+00  -1.0999999999999999E+00   3.1000000000000001E+00
+3 2   1.8999999999999999E+00   1.0999999999999999E+00   2.3250000000000002E+00
+4 2   1.8999999999999999E+00  -1.0999999999999999E+00   5.4249999999999998E+00"""
+
 REF_Ca3AsBr3 = """Ca3AsBr3
 5.9299999999999997
    1.0000000000000000    0.0000000000000000    0.0000000000000000
@@ -64,9 +120,9 @@ Direct
    0.5000000000000000    0.5000000000000000    0.0000000000000000"""
 
 
-@pytest.fixture
-def Sr2TiO4(raw_data):
-    return make_structure(raw_data.structure("Sr2TiO4"))
+@pytest.fixture(params=("Sr2TiO4", "Sr2TiO4 without ion types"))
+def Sr2TiO4(request, raw_data):
+    return make_structure(raw_data.structure(request.param))
 
 
 @pytest.fixture
@@ -77,6 +133,11 @@ def Fe3O4(raw_data):
 @pytest.fixture
 def Ca3AsBr3(raw_data):
     return make_structure(raw_data.structure("Ca3AsBr3"))
+
+
+@pytest.fixture
+def ZnS(raw_data):
+    return make_structure(raw_data.structure("ZnS"))
 
 
 @pytest.fixture(params=[None, 2, (3, 2, 1)])
@@ -98,15 +159,21 @@ def make_structure(raw_structure):
         scale = 1.0
     structure.ref.lattice_vectors = scale * raw_structure.cell.lattice_vectors
     structure.ref.positions = raw_structure.positions
+    if check.is_none(raw_structure.stoichiometry.ion_types):
+        structure.ion_type_arg = {"ion_types": ("Sr", "Ti", "O")}
+    else:
+        structure.ion_type_arg = {}
     stoichiometry = Stoichiometry.from_data(raw_structure.stoichiometry)
-    structure.ref.elements = stoichiometry.elements()
+    structure.ref.elements = stoichiometry.elements(**structure.ion_type_arg)
     return structure
 
 
 def test_read_Sr2TiO4(Sr2TiO4, Assert):
-    check_Sr2TiO4_structure(Sr2TiO4.read(), Sr2TiO4.ref, -1, Assert)
+    actual = Sr2TiO4.read(**Sr2TiO4.ion_type_arg)
+    check_Sr2TiO4_structure(actual, Sr2TiO4.ref, -1, Assert)
     for steps in (slice(None), slice(1, 3), 0):
-        check_Sr2TiO4_structure(Sr2TiO4[steps].read(), Sr2TiO4.ref, steps, Assert)
+        actual = Sr2TiO4[steps].read(**Sr2TiO4.ion_type_arg)
+        check_Sr2TiO4_structure(actual, Sr2TiO4.ref, steps, Assert)
 
 
 def check_Sr2TiO4_structure(actual, reference, steps, Assert):
@@ -139,8 +206,9 @@ def test_read_Ca3AsBr3(Ca3AsBr3, Assert):
 
 
 def test_to_poscar(Sr2TiO4, Ca3AsBr3):
-    assert Sr2TiO4.to_POSCAR() == REF_POSCAR
-    assert Sr2TiO4[0].to_POSCAR() == REF_POSCAR.replace("Sr2TiO4", "Sr2TiO4 (step 1)")
+    assert Sr2TiO4.to_POSCAR(**Sr2TiO4.ion_type_arg) == REF_POSCAR
+    expected_poscar = REF_POSCAR.replace("Sr2TiO4", "Sr2TiO4 (step 1)")
+    assert Sr2TiO4[0].to_POSCAR(**Sr2TiO4.ion_type_arg) == expected_poscar
     for steps in (slice(None), slice(1, 3)):
         with pytest.raises(exception.NotImplemented):
             Sr2TiO4[steps].to_POSCAR()
@@ -182,11 +250,11 @@ Direct
 
 
 def test_to_ase_Sr2TiO4(Sr2TiO4, Assert, not_core):
-    check_Sr2TiO4_ase(Sr2TiO4.to_ase(), Sr2TiO4.ref, -1, Assert)
-    check_Sr2TiO4_ase(Sr2TiO4[0].to_ase(), Sr2TiO4.ref, 0, Assert)
+    check_Sr2TiO4_ase(Sr2TiO4.to_ase(**Sr2TiO4.ion_type_arg), Sr2TiO4.ref, -1, Assert)
+    check_Sr2TiO4_ase(Sr2TiO4[0].to_ase(**Sr2TiO4.ion_type_arg), Sr2TiO4.ref, 0, Assert)
     for steps in (slice(None), slice(1, 3)):
         with pytest.raises(exception.NotImplemented):
-            Sr2TiO4[steps].to_ase()
+            Sr2TiO4[steps].to_ase(**Sr2TiO4.ion_type_arg)
 
 
 def check_Sr2TiO4_ase(structure, reference, steps, Assert):
@@ -218,18 +286,18 @@ def test_to_ase_Ca3AsBr3(Ca3AsBr3, Assert, not_core):
 
 
 def test_from_ase(Sr2TiO4, Assert, not_core):
-    structure = Structure.from_ase(Sr2TiO4.to_ase())
+    structure = Structure.from_ase(Sr2TiO4.to_ase(**Sr2TiO4.ion_type_arg))
     check_Sr2TiO4_structure(structure.read(), Sr2TiO4.ref, -1, Assert)
 
 
 def test_to_mdtraj(Sr2TiO4, Assert, not_core):
     for steps in (slice(None), slice(1, 3)):
-        trajectory = Sr2TiO4[steps].to_mdtraj()
+        trajectory = Sr2TiO4[steps].to_mdtraj(**Sr2TiO4.ion_type_arg)
         check_Sr2TiO4_mdtraj(trajectory, Sr2TiO4.ref, steps, Assert)
     with pytest.raises(exception.NotImplemented):
-        Sr2TiO4[0].to_mdtraj()
+        Sr2TiO4[0].to_mdtraj(**Sr2TiO4.ion_type_arg)
     with pytest.raises(exception.NotImplemented):
-        Sr2TiO4.to_mdtraj()
+        Sr2TiO4.to_mdtraj(**Sr2TiO4.ion_type_arg)
 
 
 def check_Sr2TiO4_mdtraj(trajectory, reference, steps, Assert):
@@ -246,7 +314,7 @@ def check_Sr2TiO4_mdtraj(trajectory, reference, steps, Assert):
 def test_supercell_scale_all(Sr2TiO4, Assert, not_core):
     number_atoms = 7
     scale = 2
-    supercell = Sr2TiO4.to_ase(supercell=scale)
+    supercell = Sr2TiO4.to_ase(supercell=scale, **Sr2TiO4.ion_type_arg)
     assert len(supercell) == number_atoms * scale**3
     Assert.allclose(supercell.cell.array, scale * Sr2TiO4.ref.lattice_vectors)
     assert list(supercell.symbols) == 16 * ["Sr"] + 8 * ["Ti"] + 32 * ["O"]
@@ -255,7 +323,7 @@ def test_supercell_scale_all(Sr2TiO4, Assert, not_core):
 def test_supercell_scale_individual(Sr2TiO4, Assert, not_core):
     number_atoms = 7
     scale = (2, 1, 3)
-    supercell = Sr2TiO4.to_ase(supercell=scale)
+    supercell = Sr2TiO4.to_ase(supercell=scale, **Sr2TiO4.ion_type_arg)
     assert len(supercell) == number_atoms * np.prod(scale)
     Assert.allclose(supercell.cell.array, np.diag(scale) @ Sr2TiO4.ref.lattice_vectors)
 
@@ -277,8 +345,12 @@ def test_positions(Sr2TiO4, steps, Assert):
     Assert.allclose(structure.positions(), Sr2TiO4.ref.positions[steps])
 
 
-def test_cartesian_positions(Sr2TiO4, Fe3O4, Ca3AsBr3, Assert, not_core):
-    check_cartesian_positions(Sr2TiO4, Assert)
+def test_Sr2TiO4_cartesian_positions(Sr2TiO4, Assert, not_core):
+    expected = Sr2TiO4.to_ase(**Sr2TiO4.ion_type_arg).get_positions()
+    Assert.allclose(Sr2TiO4.cartesian_positions(), expected)
+
+
+def test_cartesian_positions(Fe3O4, Ca3AsBr3, Assert, not_core):
     check_cartesian_positions(Fe3O4, Assert)
     check_cartesian_positions(Fe3O4[0], Assert)
     check_cartesian_positions(Ca3AsBr3, Assert)
@@ -337,7 +409,12 @@ def test_plot_Ca3AsBr3(Ca3AsBr3, Assert):
 
 
 def check_plot_structure(structure, steps, Assert, supercell=None):
-    view = structure.plot(supercell) if supercell else structure.plot()
+    arguments = {}
+    if supercell:
+        arguments["supercell"] = supercell
+    if hasattr(structure, "ion_type_arg"):
+        arguments.update(structure.ion_type_arg)
+    view = structure.plot(**arguments)
     assert view.elements.ndim == 2
     assert np.all(structure.ref.elements == view.elements)
     assert view.positions.ndim == 3
@@ -366,24 +443,44 @@ def test_incorrect_step(Sr2TiO4, Ca3AsBr3):
         Ca3AsBr3[0]
 
 
-def test_print_final(Sr2TiO4, format_):
-    actual, _ = format_(Sr2TiO4)
-    assert actual == {"text/plain": REF_POSCAR, "text/html": REF_HTML}
+def test_Sr2TiO4_to_lammps(Sr2TiO4, not_core):
+    print(Sr2TiO4.to_lammps())
+    assert re.match(REF_LAMMPS, Sr2TiO4.to_lammps())
+    with pytest.raises(exception.NotImplemented):
+        Sr2TiO4[:].to_lammps()
 
 
-def test_print_specific(Sr2TiO4, format_):
-    actual, _ = format_(Sr2TiO4[0])
-    ref_plain = REF_POSCAR.replace("Sr2TiO4", "Sr2TiO4 (step 1)")
-    ref_html = REF_HTML.replace("Sr2TiO4", "Sr2TiO4 (step 1)")
-    assert actual["text/plain"] == ref_plain
-    assert actual == {"text/plain": ref_plain, "text/html": ref_html}
+def test_ZnS_to_lammps(ZnS, not_core):
+    assert re.match(REF_LAMMPS_ZnS, ZnS.to_lammps())
+    assert ZnS.to_lammps(standard_form=False) == REF_LAMMPS_ZnS_general
 
 
-def test_print_trajectory(Sr2TiO4, format_):
-    actual, _ = format_(Sr2TiO4[1:3])
-    ref_plain = REF_POSCAR.replace("Sr2TiO4", "Sr2TiO4 from step 2 to 4")
-    ref_html = REF_HTML.replace("Sr2TiO4", "Sr2TiO4 from step 2 to 4")
-    assert actual == {"text/plain": ref_plain, "text/html": ref_html}
+@pytest.mark.parametrize("steps", (None, 0, slice(1, 3)))
+def test_print_final(Sr2TiO4, steps, format_):
+    if steps is None:
+        structure = Sr2TiO4
+    else:
+        structure = Sr2TiO4[steps]
+    actual, _ = format_(structure)
+    reference = get_reference_output(steps, **Sr2TiO4.ion_type_arg)
+    assert actual == reference
+
+
+def get_reference_output(steps, ion_types=None):
+    if steps == 0:
+        step_string = " (step 1)"
+    elif steps == slice(1, 3):
+        step_string = " from step 2 to 4"
+    else:
+        step_string = ""
+    ref_plain = REF_POSCAR.replace("Sr2TiO4", f"Sr2TiO4{step_string}")
+    ref_html = REF_HTML.replace("Sr2TiO4", f"Sr2TiO4{step_string}")
+    if ion_types is not None:
+        ref_plain = ref_plain.replace("Sr2TiO4", "(A)2(B)(C)4")
+        ref_plain = ref_plain.replace("Sr Ti O\n", "")
+        ref_html = ref_html.replace("Sr2TiO4", "(A)2(B)(C)4")
+        ref_html = ref_html.replace("Sr Ti O<br>\n", "")
+    return {"text/plain": ref_plain, "text/html": ref_html}
 
 
 def test_print_Ca3AsBr3(Ca3AsBr3, format_):

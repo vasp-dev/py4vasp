@@ -205,10 +205,6 @@ def _get_rotation_matrix(vectors):
     return np.eye(3) + V + V @ V / (1 + cos_angle)
 
 
-def _get_slice(shape, cut, fraction):
-    return slice_
-
-
 def _raise_error_if_cut_unknown(cut):
     if cut in INDICES:
         return

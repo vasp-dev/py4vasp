@@ -54,9 +54,13 @@ class _Assert:
     def allclose(actual, desired, tolerance=1):
         if _is_none(actual):
             assert _is_none(desired)
-        elif getattr(actual, "dtype", None) == np.bool_:
-            assert desired.dtype == np.bool_
-            assert np.all(actual == desired)
+            return
+        actual = np.array(actual)
+        desired = np.array(desired)
+        type_ = actual.dtype.type
+        if type_ in (np.bool_, np.str_):
+            assert type_ == desired.dtype.type
+            assert np.array_equal(actual, desired)
         else:
             actual, desired = np.broadcast_arrays(actual, desired)
             actual, mask_actual = _finite_subset(actual)
@@ -78,6 +82,45 @@ class _Assert:
         _Assert.allclose(actual.lattice_vectors, desired.lattice_vectors)
         _Assert.allclose(actual.positions, desired.positions)
         _Assert.allclose(actual.supercell, desired.supercell)
+
+    @staticmethod
+    def same_raw_contcar(actual, desired, exact_match=True):
+        # exact_match requires cell to be identical and not just equivalent
+        _Assert.same_raw_structure(actual.structure, desired.structure, exact_match)
+        assert actual.system == desired.system
+        _Assert.allclose(actual.selective_dynamics, desired.selective_dynamics)
+        # velocities use a lower precision when writing
+        _Assert.allclose(
+            actual.lattice_velocities.astype(np.float32),
+            desired.lattice_velocities.astype(np.float32),
+        )
+        _Assert.allclose(
+            actual.ion_velocities.astype(np.float32),
+            desired.ion_velocities.astype(np.float32),
+        )
+
+    @staticmethod
+    def same_raw_structure(actual, desired, exact_match=True):
+        # exact_match requires cell to be identical and not just equivalent
+        _Assert.same_raw_stoichiometry(actual.stoichiometry, desired.stoichiometry)
+        _Assert.same_raw_cell(actual.cell, desired.cell, exact_match)
+        _Assert.allclose(actual.positions, desired.positions)
+
+    @staticmethod
+    def same_raw_stoichiometry(actual, desired):
+        _Assert.allclose(actual.number_ion_types, desired.number_ion_types)
+        _Assert.allclose(actual.ion_types, desired.ion_types)
+
+    @staticmethod
+    def same_raw_cell(actual, desired, exact_match=True):
+        # exact_match requires cell to be identical and not just equivalent
+        if exact_match:
+            _Assert.allclose(actual.lattice_vectors, desired.lattice_vectors)
+            _Assert.allclose(actual.scale, desired.scale)
+        else:
+            actual_lattice_vectors = actual.lattice_vectors * actual.scale
+            desired_lattice_vectors = desired.lattice_vectors * desired.scale
+            _Assert.allclose(actual_lattice_vectors, desired_lattice_vectors)
 
 
 def _is_none(data):
@@ -253,6 +296,10 @@ class RawDataFactory:
         return _Sr2TiO4_pair_correlation()
 
     @staticmethod
+    def partial_density(selection):
+        return _partial_density(selection)
+
+    @staticmethod
     def piezoelectric_tensor(selection):
         return _piezoelectric_tensor()
 
@@ -300,12 +347,20 @@ class RawDataFactory:
 
     @staticmethod
     def structure(selection):
-        if selection == "Sr2TiO4":
-            return _Sr2TiO4_structure()
-        elif selection == "Fe3O4":
-            return _Fe3O4_structure()
+        if selection == "BN":
+            return _BN_structure()
         elif selection == "Ca3AsBr3":
             return _Ca3AsBr3_structure()
+        elif selection == "Fe3O4":
+            return _Fe3O4_structure()
+        elif selection == "SrTiO3":
+            return _SrTiO3_structure()
+        elif selection == "Sr2TiO4":
+            return _Sr2TiO4_structure()
+        elif selection == "Sr2TiO4 without ion types":
+            return _Sr2TiO4_structure(has_ion_types=False)
+        elif selection == "ZnS":
+            return _ZnS_structure()
         else:
             raise exception.NotImplemented()
 
@@ -313,6 +368,8 @@ class RawDataFactory:
     def stoichiometry(selection):
         if selection == "Sr2TiO4":
             return _Sr2TiO4_stoichiometry()
+        elif selection == "Sr2TiO4 without ion types":
+            return _Sr2TiO4_stoichiometry(has_ion_types=False)
         elif selection == "Fe3O4":
             return _Fe3O4_stoichiometry()
         elif selection == "Ca2AsBr-CaBr2":  # test duplicate entries
@@ -332,10 +389,6 @@ class RawDataFactory:
     @staticmethod
     def workfunction(selection):
         return _workfunction(selection)
-
-    @staticmethod
-    def partial_density(selection):
-        return _partial_density(selection)
 
 
 @pytest.fixture
@@ -984,7 +1037,7 @@ def _CaAs3_110_stoichiometry():
     )
 
 
-def _Sr2TiO4_structure():
+def _Sr2TiO4_structure(has_ion_types=True):
     repetitions = (number_steps, 1, 1)
     positions = [
         [0.64529, 0.64529, 0.0],
@@ -996,17 +1049,23 @@ def _Sr2TiO4_structure():
         [0.00000, 0.50000, 0.5],
     ]
     return raw.Structure(
-        stoichiometry=_Sr2TiO4_stoichiometry(),
+        stoichiometry=_Sr2TiO4_stoichiometry(has_ion_types),
         cell=_Sr2TiO4_cell(),
         positions=np.tile(positions, repetitions),
     )
 
 
-def _Sr2TiO4_stoichiometry():
-    return raw.Stoichiometry(
-        number_ion_types=np.array((2, 1, 4)),
-        ion_types=np.array(("Sr", "Ti", "O "), dtype="S"),
-    )
+def _Sr2TiO4_stoichiometry(has_ion_types=True):
+    if has_ion_types:
+        return raw.Stoichiometry(
+            number_ion_types=np.array((2, 1, 4)),
+            ion_types=raw.VaspData(np.array(("Sr", "Ti", "O "), dtype="S")),
+        )
+    else:
+        return raw.Stoichiometry(
+            number_ion_types=raw.VaspData(np.array((2, 1, 4))),
+            ion_types=raw.VaspData(None),
+        )
 
 
 def _Sr2TiO4_velocity():
@@ -1172,6 +1231,53 @@ def _Ca3AsBr3_stoichiometry():
     return raw.Stoichiometry(
         number_ion_types=np.array((2, 1, 1, 1, 2)),
         ion_types=np.array(("Ca", "As", "Br", "Ca", "Br"), dtype="S"),
+    )
+
+
+def _ZnS_structure():
+    return raw.Structure(
+        raw.Stoichiometry(number_ion_types=[2, 2], ion_types=["Zn", "S"]),
+        raw.Cell(
+            lattice_vectors=np.array([[1.9, -3.3, 0.0], [1.9, 3.3, 0.0], [0, 0, 6.2]]),
+            scale=raw.VaspData(1.0),
+        ),
+        positions=np.array(
+            [
+                [1 / 3, 2 / 3, 0.0],
+                [2 / 3, 1 / 3, 0.5],
+                [1 / 3, 2 / 3, 0.375],
+                [2 / 3, 1 / 3, 0.875],
+            ]
+        ),
+    )
+
+
+def _SrTiO3_structure():
+    return raw.Structure(
+        raw.Stoichiometry(number_ion_types=[1, 1, 3], ion_types=["Sr", "Ti", "O"]),
+        raw.Cell(lattice_vectors=np.eye(3), scale=raw.VaspData(4.0)),
+        positions=np.array(
+            [
+                [0, 0, 0],
+                [0.5, 0.5, 0.5],
+                [0.0, 0.5, 0.5],
+                [0.5, 0.0, 0.5],
+                [0.5, 0.5, 0.0],
+            ]
+        ),
+    )
+
+
+def _BN_structure():
+    return raw.Structure(
+        raw.Stoichiometry(number_ion_types=[1, 1], ion_types=["B", "N"]),
+        raw.Cell(
+            lattice_vectors=np.array(
+                [[0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]
+            ),
+            scale=raw.VaspData(3.63),
+        ),
+        positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
     )
 
 
