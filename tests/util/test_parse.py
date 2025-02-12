@@ -51,7 +51,7 @@ class GeneralPOSCAR(raw.CONTCAR):
 
     def _ion_position_lines(self):
         yield self._formatted_string(self.ion_coordinate_system)
-        if self.ion_coordinate_system[0] in "cCkK":
+        if parse.first_char(self.ion_coordinate_system) in "cCkK":
             structure = Structure.from_data(self.structure)
             positions = structure.cartesian_positions() / self._scale()
         else:
@@ -76,7 +76,7 @@ class GeneralPOSCAR(raw.CONTCAR):
         if self.ion_velocities.is_none():
             return
         yield self._formatted_string(self.velocity_coordinate_system)
-        if self.velocity_coordinate_system[0] in "cCkK ":
+        if parse.first_char(self.velocity_coordinate_system) in "cCkK ":
             velocities = self.ion_velocities
         else:
             # TODO: check that this conversion is appropriate
@@ -127,7 +127,7 @@ class GeneralPOSCAR(raw.CONTCAR):
         elif self.string_format == "capitalize":
             return string.capitalize()
         elif self.string_format == "first letter":
-            return string[0]
+            return parse.first_char(string)
         else:
             raise NotImplemented
 
@@ -142,10 +142,12 @@ class GeneralPOSCAR(raw.CONTCAR):
         ("Without ion types", "BN"),
         ("Capitalize keywords", "BN"),
         ("First letter only", "SrTiO3"),
+        ("Ion velocity string is space", "BN"),
         ("Empty ion velocity string", "BN"),
         ("Multiple scaling factors", "BN"),
         ("Volume scaling factor", "SrTiO3"),
         ("Scaling factor set to 1", "BN"),
+        ("Ion coordinates empty", "ZnS"),
         ("Cartesian ion positions", "ZnS"),
         ("Complex example with ion types", "BN"),
         ("Complex example without ion types", "BN"),
@@ -189,10 +191,15 @@ def example_poscar(raw_data, request):
             ),
             string_format="first letter",
         )
-    elif system == "Empty ion velocity string":
+    elif system == "Ion velocity string is space":
         ion_velocities = raw.VaspData(np.array([[0.2, 0.4, -0.2], [0.4, 0.6, -0.3]]))
         return GeneralPOSCAR(
             **common_part, ion_velocities=ion_velocities, velocity_coordinate_system=" "
+        )
+    elif system == "Empty ion velocity string":
+        ion_velocities = raw.VaspData(np.array([[0.2, 0.4, -0.2], [0.4, 0.6, -0.3]]))
+        return GeneralPOSCAR(
+            **common_part, ion_velocities=ion_velocities, velocity_coordinate_system=""
         )
     elif system == "Multiple scaling factors":
         return GeneralPOSCAR(**common_part, scaling_factor="split")
@@ -200,6 +207,8 @@ def example_poscar(raw_data, request):
         return GeneralPOSCAR(**common_part, scaling_factor="volume")
     elif system == "Scaling factor set to 1":
         return GeneralPOSCAR(**common_part, scaling_factor="one")
+    elif system == "Ion coordinates empty":
+        return GeneralPOSCAR(**common_part, ion_coordinate_system="")
     elif system == "Cartesian ion positions":
         return GeneralPOSCAR(**common_part, ion_coordinate_system="cartesian")
     elif system == "Complex example with ion types":
@@ -268,3 +277,8 @@ def test_error_velocities_in_fractional_coordinates(raw_data):
     poscar_string = str(raw_poscar)
     with pytest.raises(exception.ParserError):
         parse.POSCAR(poscar_string)
+
+
+@pytest.mark.parametrize("string, expected", (("", " "), (" ", " "), ("foo", "f")))
+def test_first_char(string, expected):
+    assert parse.first_char(string) == expected

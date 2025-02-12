@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import itertools
 from dataclasses import dataclass
 from typing import List
@@ -131,7 +133,7 @@ class PoscarParser:
         to direct coordinates.
         """
         possible_selective_dynamics = next(remaining_lines)
-        has_selective_dynamics = possible_selective_dynamics[0] in "sS"
+        has_selective_dynamics = first_char(possible_selective_dynamics) in "sS"
         if not has_selective_dynamics:
             remaining_lines = _put_back(remaining_lines, possible_selective_dynamics)
 
@@ -155,7 +157,7 @@ class PoscarParser:
         selective_dynamics.append(np.array([x == "T" for x in parts[3:]]))
 
     def _to_fractional(self, result, positions, coordinate_system):
-        if not coordinate_system[0] in "cCkK":
+        if not first_char(coordinate_system) in "cCkK":
             return np.array(positions)
         cartesian_positions = np.array(positions) * result["scaling_factor"]
         inverse_lattice_vectors = self._get_inverse_lattice_vectors(result["cell"])
@@ -179,7 +181,7 @@ class PoscarParser:
             possible_lattice_velocities = next(remaining_lines)
         except StopIteration:  # lattice velocity is optional
             return result, remaining_lines
-        if not possible_lattice_velocities[0] in "lL":
+        if not first_char(possible_lattice_velocities) in "lL":
             remaining_lines = _put_back(remaining_lines, possible_lattice_velocities)
             return result, remaining_lines
         init_lattice_velocities = next(remaining_lines)
@@ -212,7 +214,7 @@ class PoscarParser:
         number_ions = np.sum(result["stoichiometry"].number_ion_types)
         ion_velocities = [next(remaining_lines).split() for _ in range(number_ions)]
         ion_velocities = np.array(ion_velocities, dtype=np.float64)
-        if not coordinate_system[0] in "cCkK ":
+        if not first_char(coordinate_system) in "cCkK ":
             # I'm not sure this implementation is correct, in VASP there is a factor of
             # POTIM to convert between Cartesian to fractional coordinates. Since this
             # case is not common, let's raise an error instead
@@ -246,3 +248,8 @@ class PoscarParser:
 
 def _put_back(iterator, item):
     return itertools.chain([item], iterator)
+
+
+def first_char(string):
+    "Return first character of string of ' ' if string is empty"
+    return " " if len(string) == 0 else string[0]
