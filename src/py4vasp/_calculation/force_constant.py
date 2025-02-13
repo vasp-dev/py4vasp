@@ -2,6 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import itertools
 
+import numpy as np
+
 from py4vasp._calculation import base, structure
 
 
@@ -52,3 +54,9 @@ atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     z
             "structure": self._structure.read(),
             "force_constants": self._raw_data.force_constants[:],
         }
+
+    @base.data_access
+    def eigenvectors(self):
+        """Compute the eigenvectors of the force constant matrix."""
+        _, eigenvectors = np.linalg.eigh(self._raw_data.force_constants)
+        return eigenvectors.T.reshape(len(eigenvectors), -1, 3)

@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
 
+import numpy as np
 import pytest
 
 from py4vasp._calculation.force_constant import ForceConstant
@@ -66,6 +67,11 @@ atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     z
      7        7   396.0000  407.0000  418.0000  407.0000  418.0000  429.0000  418.0000  429.0000  440.0000
 """.strip()
     assert actual == {"text/plain": reference}
+
+
+def test_eigenvectors(Sr2TiO4, Assert):
+    _, eigenvectors = np.linalg.eigh(Sr2TiO4.ref.force_constants.T)
+    Assert.allclose(Sr2TiO4.eigenvectors(), eigenvectors)
 
 
 def test_factory_methods(raw_data, check_factory_methods):
