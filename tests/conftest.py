@@ -506,7 +506,14 @@ def _phonon_dos():
 
 
 def _phonon_mode():
-    return None
+    frequencies = np.random.rand(number_modes)
+    frequencies.sort()
+    eigenvectors, *_ = np.linalg.svd(np.random.rand(number_modes, number_modes))
+    return raw.PhononMode(
+        structure=_Sr2TiO4_structure(),
+        frequencies=frequencies[::1],
+        eigenvectors=eigenvectors,
+    )
 
 
 def _piezoelectric_tensor():
