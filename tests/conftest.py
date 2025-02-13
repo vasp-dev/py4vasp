@@ -506,13 +506,10 @@ def _phonon_dos():
 
 
 def _phonon_mode():
-    frequencies = np.random.rand(number_modes)
-    frequencies.sort()
-    eigenvectors, *_ = np.linalg.svd(np.random.rand(number_modes, number_modes))
     return raw.PhononMode(
         structure=_Sr2TiO4_structure(),
-        frequencies=frequencies[::1],
-        eigenvectors=eigenvectors,
+        frequencies=np.sqrt(np.linspace(0.1, -0.02, number_modes, dtype=np.complex128)),
+        eigenvectors=_make_unitary_matrix(number_modes),
     )
 
 
@@ -1295,6 +1292,13 @@ def _BN_structure():
         ),
         positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
     )
+
+
+def _make_unitary_matrix(n, seed=None):
+    rng = np.random.default_rng(seed)
+    matrix = rng.standard_normal((n, n))
+    unitary_matrix, _ = np.linalg.qr(matrix)
+    return raw.VaspData(unitary_matrix)
 
 
 def _make_arbitrary_data(shape, present=True):
