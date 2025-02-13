@@ -13,6 +13,7 @@ class PhononMode(base.Refinery, structure.Mixin):
     Low-frequency modes correspond to long-wavelength vibrations, while
     high-frequency modes involve more localized atomic motion."""
 
+    @base.data_access
     def to_dict(self):
         """Read structure data and properties of the phonon mode into a dictionary.
 

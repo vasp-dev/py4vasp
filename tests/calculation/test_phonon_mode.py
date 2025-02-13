@@ -24,3 +24,8 @@ def test_read(phonon_mode, Assert):
     Assert.same_structure(actual["structure"], phonon_mode.ref.structure.read())
     Assert.allclose(actual["frequencies"], phonon_mode.ref.frequencies)
     Assert.allclose(actual["eigenvectors"], phonon_mode.ref.eigenvectors)
+
+
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.phonon_mode("Sr2TiO4")
+    check_factory_methods(PhononMode, data)
