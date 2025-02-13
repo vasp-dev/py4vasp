@@ -862,10 +862,10 @@ def _Sr2TiO4_exciton_eigenvector():
 
 def _Sr2TiO4_force_constants():
     shape = (axes * number_atoms, axes * number_atoms)
-    force_constants = np.arange(np.prod(shape)).reshape(shape)
+    force_constants = _make_arbitrary_data(shape, seed=51609352)
     return raw.ForceConstant(
         structure=_Sr2TiO4_structure(),
-        force_constants=0.5 * (force_constants + force_constants.T),
+        force_constants=0.5 * (force_constants + force_constants[:].T),
     )
 
 
@@ -1302,9 +1302,10 @@ def _make_unitary_matrix(n, seed=None):
     return raw.VaspData(unitary_matrix)
 
 
-def _make_arbitrary_data(shape, present=True):
+def _make_arbitrary_data(shape, present=True, seed=None):
     if present:
-        data = np.random.random(shape) + np.arange(np.prod(shape)).reshape(shape)
+        rng = np.random.default_rng(seed)
+        data = 10 * rng.standard_normal(shape)
         return raw.VaspData(data)
     else:
         return raw.VaspData(None)

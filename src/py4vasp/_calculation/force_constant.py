@@ -58,5 +58,28 @@ atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     z
     @base.data_access
     def eigenvectors(self):
         """Compute the eigenvectors of the force constant matrix."""
-        _, eigenvectors = np.linalg.eigh(self._raw_data.force_constants)
-        return eigenvectors.T.reshape(len(eigenvectors), -1, 3)
+        return self._diagonalize()[1]
+
+    def _diagonalize(self):
+        eigenvalues, eigenvectors = np.linalg.eigh(-self._raw_data.force_constants)
+        return eigenvalues, eigenvectors.T.reshape(len(eigenvectors), -1, 3)
+
+    @base.data_access
+    def to_molden(self):
+        A_to_bohr = 0.529177210544
+        eigenvalues, eigenvectors = self._diagonalize()
+        print(eigenvalues)
+        print(self._structure.cartesian_positions() * A_to_bohr)
+        print(self._structure._stoichiometry().elements())
+        frequencies = "\n".join(f"{x:12.6f}" for x in eigenvalues)
+        coordinates = "\n".join(str(line) for line in zip(self._structure._stoichiometry().elements(), self._structure.cartesian_positions() * A_to_bohr))
+        vibrations = ""
+        return f"""\
+[Molden Format]
+[FREQ]
+{frequencies}
+[FR-COORD]
+{coordinates}
+[FR-NORM-COORD]
+{vibrations}
+"""
