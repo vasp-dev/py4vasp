@@ -28,6 +28,11 @@ class PhononMode(base.Refinery, structure.Mixin):
         """
         return {
             "structure": self._structure.read(),
-            "frequencies": self._raw_data.frequencies[:],
+            "frequencies": self.frequencies(),
             "eigenvectors": self._raw_data.eigenvectors[:],
         }
+
+    @base.data_access
+    def frequencies(self):
+        "Read the phonon frequencies as a numpy array."
+        return self._raw_data.frequencies[:]
