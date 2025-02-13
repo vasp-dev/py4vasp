@@ -452,7 +452,7 @@ schema.add(
     raw.PhononMode,
     required=raw.Version(6, 5, 2),
     structure=Link("structure", "default"),
-    frequencies=f"{group}/frequencies",
+    frequencies=f"{group}/eigenvalues",
     eigenvectors=f"{group}/eigenvectors",
 )
 #

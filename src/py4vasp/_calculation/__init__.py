@@ -41,7 +41,7 @@ QUANTITIES = (
 )
 GROUPS = {
     "exciton": ("density", "eigenvector"),
-    "phonon": ("band", "dos"),
+    "phonon": ("band", "dos", "mode"),
 }
 
 __all__ = QUANTITIES

@@ -3,6 +3,7 @@
 import numpy as np
 
 from py4vasp._calculation import base, structure
+from py4vasp._util import convert
 
 
 class PhononMode(base.Refinery, structure.Mixin):
@@ -62,4 +63,4 @@ class PhononMode(base.Refinery, structure.Mixin):
     @base.data_access
     def frequencies(self):
         "Read the phonon frequencies as a numpy array."
-        return self._raw_data.frequencies[:]
+        return convert.to_complex(self._raw_data.frequencies[:])

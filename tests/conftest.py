@@ -506,9 +506,10 @@ def _phonon_dos():
 
 
 def _phonon_mode():
+    frequencies = np.sqrt(np.linspace(0.1, -0.02, number_modes, dtype=np.complex128))
     return raw.PhononMode(
         structure=_Sr2TiO4_structure(),
-        frequencies=np.sqrt(np.linspace(0.1, -0.02, number_modes, dtype=np.complex128)),
+        frequencies=frequencies.view(np.float64).reshape(-1, 2),
         eigenvectors=_make_unitary_matrix(number_modes),
     )
 

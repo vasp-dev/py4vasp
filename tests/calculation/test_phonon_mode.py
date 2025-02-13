@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
 
+import numpy as np
 import pytest
 
 from py4vasp._calculation.phonon_mode import PhononMode
@@ -14,7 +15,7 @@ def phonon_mode(raw_data):
     mode = PhononMode.from_data(raw_mode)
     mode.ref = types.SimpleNamespace()
     mode.ref.structure = Structure.from_data(raw_mode.structure)
-    mode.ref.frequencies = raw_mode.frequencies
+    mode.ref.frequencies = raw_mode.frequencies.flatten().view(np.complex128)
     mode.ref.eigenvectors = raw_mode.eigenvectors
     return mode
 
