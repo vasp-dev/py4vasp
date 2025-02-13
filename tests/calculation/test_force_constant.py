@@ -23,11 +23,7 @@ def Sr2TiO4(raw_data):
 def test_Sr2TiO4_read(Sr2TiO4, Assert):
     actual = Sr2TiO4.read()
     reference_structure = Sr2TiO4.ref.structure.read()
-    for key in actual["structure"]:
-        if key in ("elements", "names"):
-            assert actual["structure"][key] == reference_structure[key]
-        else:
-            Assert.allclose(actual["structure"][key], reference_structure[key])
+    Assert.same_structure(actual["structure"], reference_structure)
     Assert.allclose(actual["force_constants"], Sr2TiO4.ref.force_constants)
 
 
@@ -71,7 +67,8 @@ atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     z
 
 def test_eigenvectors(Sr2TiO4, Assert):
     _, eigenvectors = np.linalg.eigh(Sr2TiO4.ref.force_constants.T)
-    Assert.allclose(Sr2TiO4.eigenvectors(), eigenvectors)
+    expected_vectors = eigenvectors.T.reshape(len(eigenvectors), -1, 3)
+    Assert.allclose(Sr2TiO4.eigenvectors(), expected_vectors)
 
 
 def test_factory_methods(raw_data, check_factory_methods):
