@@ -403,6 +403,18 @@ class PhononDos:
 
 
 @dataclasses.dataclass
+class PhononMode:
+    """The mode describes how the ions move under the presence of a phonon."""
+
+    structure: Structure
+    "The underlying structure in which the phonon mode is present."
+    frequencies: VaspData
+    "The phonon frequency of all the modes."
+    eigenvectors: VaspData
+    "The displacement patterns associated with the phonon modes."
+
+
+@dataclasses.dataclass
 class PiezoelectricTensor:
     """The piezoelectric tensor calculated in a linear response calculation.
 

@@ -447,6 +447,15 @@ schema.add(
     projections=f"{group}/dospar",
 )
 #
+group = "results/linear_response/dynmat"
+schema.add(
+    raw.PhononMode,
+    required=raw.Version(6, 5, 2),
+    structure=Link("structure", "default"),
+    frequencies=f"{group}/frequencies",
+    eigenvectors=f"{group}/eigenvectors",
+)
+#
 group = "results/linear_response"
 schema.add(
     raw.PiezoelectricTensor,
