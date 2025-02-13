@@ -316,6 +316,10 @@ class RawDataFactory:
         return _phonon_dos()
 
     @staticmethod
+    def phonon_mode(selection):
+        return _phonon_mode()
+
+    @staticmethod
     def potential(selection: str):
         parts = selection.split()
         if parts[0] == "Sr2TiO4":
@@ -499,6 +503,10 @@ def _phonon_dos():
     ratio = np.linspace(lower_ratio, upper_ratio, number_points).T
     projections = np.multiply(ratio, dos)
     return raw.PhononDos(energies, dos, projections, _Sr2TiO4_stoichiometry())
+
+
+def _phonon_mode():
+    return None
 
 
 def _piezoelectric_tensor():
@@ -849,9 +857,10 @@ def _Sr2TiO4_exciton_eigenvector():
 
 def _Sr2TiO4_force_constants():
     shape = (axes * number_atoms, axes * number_atoms)
+    force_constants = np.arange(np.prod(shape)).reshape(shape)
     return raw.ForceConstant(
         structure=_Sr2TiO4_structure(),
-        force_constants=np.arange(np.prod(shape)).reshape(shape),
+        force_constants=0.5 * (force_constants + force_constants.T),
     )
 
 
