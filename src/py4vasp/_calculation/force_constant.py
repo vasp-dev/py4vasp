@@ -70,7 +70,14 @@ atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     z
 
     def _diagonalize(self):
         eigenvalues, eigenvectors = np.linalg.eigh(-self._raw_data.force_constants)
-        return eigenvalues, eigenvectors.T.reshape(len(eigenvectors), -1, 3)
+        eigenvectors = eigenvectors.T
+        if check.is_none(self._raw_data.selective_dynamics):
+            return eigenvalues, eigenvectors.reshape(len(eigenvectors), -1, 3)
+        number_ions = self._structure.number_atoms()
+        unpacked_eigenvectors = np.zeros((len(eigenvectors), number_ions, 3))
+        selective_dynamics = self._raw_data.selective_dynamics[:].astype(np.bool_)
+        unpacked_eigenvectors[:, selective_dynamics] = eigenvectors
+        return eigenvalues, unpacked_eigenvectors
 
     @base.data_access
     def to_molden(self):
@@ -132,7 +139,6 @@ class _StringFormatter:
     def __post_init__(self):
         self.indices = -np.ones(self.selective_dynamics.shape, dtype=np.int32)
         self.indices[self.selective_dynamics] = np.arange(len(self.force_constants))
-        print(self.indices)
 
     def __str__(self):
         return "\n".join(self.line_generator())
