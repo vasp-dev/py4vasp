@@ -9,14 +9,18 @@ from py4vasp._calculation.force_constant import ForceConstant
 from py4vasp._calculation.structure import Structure
 
 
-@pytest.fixture
-def Sr2TiO4(raw_data):
-    raw_force_constants = raw_data.force_constant("Sr2TiO4")
+@pytest.fixture(params=("all atoms", "selective dynamics"))
+def Sr2TiO4(raw_data, request):
+    raw_force_constants = raw_data.force_constant(f"Sr2TiO4 {request.param}")
     force_constants = ForceConstant.from_data(raw_force_constants)
     force_constants.ref = types.SimpleNamespace()
     structure = Structure.from_data(raw_force_constants.structure)
     force_constants.ref.structure = structure
     force_constants.ref.force_constants = raw_force_constants.force_constants
+    if request.param == "all atoms":
+        force_constants.ref.selective_dynamics = None
+    else:
+        force_constants.ref.selective_dynamics = raw_force_constants.selective_dynamics
     return force_constants
 
 
@@ -25,6 +29,10 @@ def test_Sr2TiO4_read(Sr2TiO4, Assert):
     reference_structure = Sr2TiO4.ref.structure.read()
     Assert.same_structure(actual["structure"], reference_structure)
     Assert.allclose(actual["force_constants"], Sr2TiO4.ref.force_constants)
+    if Sr2TiO4.ref.selective_dynamics is None:
+        assert "selective_dynamics" not in actual
+    else:
+        Assert.allclose(actual["selective_dynamics"], Sr2TiO4.ref.selective_dynamics)
 
 
 def test_Sr2TiO4_print(Sr2TiO4, format_):
@@ -280,5 +288,5 @@ vibration 21
 
 
 def test_factory_methods(raw_data, check_factory_methods):
-    data = raw_data.force_constant("Sr2TiO4")
+    data = raw_data.force_constant("Sr2TiO4 all atoms")
     check_factory_methods(ForceConstant, data)

@@ -277,6 +277,8 @@ class ForceConstant:
     "Structural information about the system to inform about the atoms the force constants relate to."
     force_constants: VaspData
     "The values of the force constants."
+    selective_dynamics: VaspData = NONE()
+    "Specifies in which directions the atoms may move."
 
 
 @dataclasses.dataclass

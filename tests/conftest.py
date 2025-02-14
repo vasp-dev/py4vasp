@@ -255,8 +255,10 @@ class RawDataFactory:
 
     @staticmethod
     def force_constant(selection):
-        if selection == "Sr2TiO4":
-            return _Sr2TiO4_force_constants()
+        if selection == "Sr2TiO4 all atoms":
+            return _Sr2TiO4_force_constants(use_selective_dynamics=False)
+        if selection == "Sr2TiO4 selective dynamics":
+            return _Sr2TiO4_force_constants(use_selective_dynamics=True)
         else:
             raise exception.NotImplemented()
 
@@ -860,12 +862,18 @@ def _Sr2TiO4_exciton_eigenvector():
     )
 
 
-def _Sr2TiO4_force_constants():
+def _Sr2TiO4_force_constants(use_selective_dynamics):
     shape = (axes * number_atoms, axes * number_atoms)
     force_constants = _make_arbitrary_data(shape, seed=51609352)
+    if use_selective_dynamics:
+        even_numbers = np.arange(axes * number_atoms) % 2 == 0
+        selective_dynamics = even_numbers.reshape(number_atoms, axes)
+    else:
+        selective_dynamics = _make_arbitrary_data(None, present=False)
     return raw.ForceConstant(
         structure=_Sr2TiO4_structure(),
         force_constants=0.5 * (force_constants + force_constants[:].T),
+        selective_dynamics=selective_dynamics,
     )
 
 

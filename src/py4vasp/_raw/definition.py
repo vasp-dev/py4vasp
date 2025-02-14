@@ -341,6 +341,7 @@ schema.add(
     required=raw.Version(6, 3),
     structure=Link("structure", DEFAULT_SOURCE),
     force_constants="results/linear_response/force_constants",
+    selective_dynamics="/results/positions/selective_dynamics_ions",
 )
 #
 schema.add(

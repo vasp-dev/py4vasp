@@ -5,6 +5,7 @@ import itertools
 import numpy as np
 
 from py4vasp._calculation import base, structure
+from py4vasp._util import check
 
 
 class ForceConstant(base.Refinery, structure.Mixin):
@@ -53,7 +54,14 @@ atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     z
         return {
             "structure": self._structure.read(),
             "force_constants": self._raw_data.force_constants[:],
+            **self._read_selective_dynamics(),
         }
+
+    def _read_selective_dynamics(self):
+        if not check.is_none(self._raw_data.selective_dynamics):
+            return {"selective_dynamics": self._raw_data.selective_dynamics[:]}
+        else:
+            return {}
 
     @base.data_access
     def eigenvectors(self):
