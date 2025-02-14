@@ -14,6 +14,7 @@ authors = [
     "Michael Wolloch <michael.wolloch@vasp.at>",
     "Andreas Singraber <andreas.singraber@vasp.at>",
     "Alexey Tal <alexey.tal@vasp.at>",
+    "Tomáš Bučko <tomas.bucko@uniba.sk>",
 ]
 license = "Apache-2.0"
 readme = "README.md"

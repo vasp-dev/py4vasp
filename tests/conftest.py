@@ -255,8 +255,10 @@ class RawDataFactory:
 
     @staticmethod
     def force_constant(selection):
-        if selection == "Sr2TiO4":
-            return _Sr2TiO4_force_constants()
+        if selection == "Sr2TiO4 all atoms":
+            return _Sr2TiO4_force_constants(use_selective_dynamics=False)
+        if selection == "Sr2TiO4 selective dynamics":
+            return _Sr2TiO4_force_constants(use_selective_dynamics=True)
         else:
             raise exception.NotImplemented()
 
@@ -314,6 +316,10 @@ class RawDataFactory:
     @staticmethod
     def phonon_dos(selection):
         return _phonon_dos()
+
+    @staticmethod
+    def phonon_mode(selection):
+        return _phonon_mode()
 
     @staticmethod
     def potential(selection: str):
@@ -499,6 +505,15 @@ def _phonon_dos():
     ratio = np.linspace(lower_ratio, upper_ratio, number_points).T
     projections = np.multiply(ratio, dos)
     return raw.PhononDos(energies, dos, projections, _Sr2TiO4_stoichiometry())
+
+
+def _phonon_mode():
+    frequencies = np.sqrt(np.linspace(0.1, -0.02, number_modes, dtype=np.complex128))
+    return raw.PhononMode(
+        structure=_Sr2TiO4_structure(),
+        frequencies=frequencies.view(np.float64).reshape(-1, 2),
+        eigenvectors=_make_unitary_matrix(number_modes),
+    )
 
 
 def _piezoelectric_tensor():
@@ -847,11 +862,19 @@ def _Sr2TiO4_exciton_eigenvector():
     )
 
 
-def _Sr2TiO4_force_constants():
+def _Sr2TiO4_force_constants(use_selective_dynamics):
     shape = (axes * number_atoms, axes * number_atoms)
+    force_constants = _make_arbitrary_data(shape, seed=51609352)
+    if use_selective_dynamics:
+        mask = 3 * [True] + 5 * [False] + 5 * [True] + 6 * [False] + 2 * [True]
+        force_constants = force_constants[mask][:, mask]
+        selective_dynamics = np.reshape(mask, (number_atoms, axes))
+    else:
+        selective_dynamics = _make_arbitrary_data(None, present=False)
     return raw.ForceConstant(
         structure=_Sr2TiO4_structure(),
-        force_constants=np.arange(np.prod(shape)).reshape(shape),
+        force_constants=0.5 * (force_constants + force_constants[:].T),
+        selective_dynamics=selective_dynamics,
     )
 
 
@@ -1281,9 +1304,17 @@ def _BN_structure():
     )
 
 
-def _make_arbitrary_data(shape, present=True):
+def _make_unitary_matrix(n, seed=None):
+    rng = np.random.default_rng(seed)
+    matrix = rng.standard_normal((n, n))
+    unitary_matrix, _ = np.linalg.qr(matrix)
+    return raw.VaspData(unitary_matrix)
+
+
+def _make_arbitrary_data(shape, present=True, seed=None):
     if present:
-        data = np.random.random(shape) + np.arange(np.prod(shape)).reshape(shape)
+        rng = np.random.default_rng(seed)
+        data = 10 * rng.standard_normal(shape)
         return raw.VaspData(data)
     else:
         return raw.VaspData(None)

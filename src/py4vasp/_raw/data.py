@@ -277,6 +277,8 @@ class ForceConstant:
     "Structural information about the system to inform about the atoms the force constants relate to."
     force_constants: VaspData
     "The values of the force constants."
+    selective_dynamics: VaspData = NONE()
+    "Specifies in which directions the atoms may move."
 
 
 @dataclasses.dataclass
@@ -400,6 +402,18 @@ class PhononDos:
     "Projection of the DOS onto contribution of specific atoms."
     stoichiometry: Stoichiometry
     "The atom types in the crystal."
+
+
+@dataclasses.dataclass
+class PhononMode:
+    """The mode describes how the ions move under the presence of a phonon."""
+
+    structure: Structure
+    "The underlying structure in which the phonon mode is present."
+    frequencies: VaspData
+    "The phonon frequency of all the modes."
+    eigenvectors: VaspData
+    "The displacement patterns associated with the phonon modes."
 
 
 @dataclasses.dataclass

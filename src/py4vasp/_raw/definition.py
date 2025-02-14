@@ -341,6 +341,7 @@ schema.add(
     required=raw.Version(6, 3),
     structure=Link("structure", DEFAULT_SOURCE),
     force_constants="results/linear_response/force_constants",
+    selective_dynamics="/results/positions/selective_dynamics_ions",
 )
 #
 schema.add(
@@ -445,6 +446,15 @@ schema.add(
     dos=f"{group}/dos",
     stoichiometry=Link("stoichiometry", "phonon"),
     projections=f"{group}/dospar",
+)
+#
+group = "results/linear_response/dynmat"
+schema.add(
+    raw.PhononMode,
+    required=raw.Version(6, 5, 2),
+    structure=Link("structure", "default"),
+    frequencies=f"{group}/eigenvalues",
+    eigenvectors=f"{group}/eigenvectors",
 )
 #
 group = "results/linear_response"
