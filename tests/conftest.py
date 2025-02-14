@@ -866,8 +866,9 @@ def _Sr2TiO4_force_constants(use_selective_dynamics):
     shape = (axes * number_atoms, axes * number_atoms)
     force_constants = _make_arbitrary_data(shape, seed=51609352)
     if use_selective_dynamics:
-        even_numbers = np.arange(axes * number_atoms) % 2 == 0
-        selective_dynamics = even_numbers.reshape(number_atoms, axes)
+        mask = 3 * [True] + 5 * [False] + 5 * [True] + 6 * [False] + 2 * [True]
+        force_constants = force_constants[mask][:, mask]
+        selective_dynamics = np.reshape(mask, (number_atoms, axes))
     else:
         selective_dynamics = _make_arbitrary_data(None, present=False)
     return raw.ForceConstant(

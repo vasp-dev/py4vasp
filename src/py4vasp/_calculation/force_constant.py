@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 import itertools
 
 import numpy as np
@@ -28,15 +29,14 @@ Force constants (eV/Å²):
 atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     zi,xj     zi,yj     zi,zj
 ----------------------------------------------------------------------------------------------------------
 """.strip()
-        number_atoms = self._structure.number_atoms()
+        number_ions = self._structure.number_atoms()
         force_constants = self._raw_data.force_constants[:]
         force_constants = 0.5 * (force_constants + force_constants.T)
-        slice_ = lambda x: slice(3 * x, 3 * (x + 1))
-        for i, j in itertools.combinations_with_replacement(range(number_atoms), 2):
-            subsection = force_constants[slice_(i), slice_(j)]
-            string_representation = " ".join(f"{x:9.4f}" for x in subsection.flatten())
-            result += f"\n{i + 1:6d}   {j + 1:6d}  {string_representation}"
-        return result
+        if check.is_none(self._raw_data.selective_dynamics):
+            selective_dynamics = np.ones((number_ions, 3), dtype=np.bool_)
+        else:
+            selective_dynamics = self._raw_data.selective_dynamics[:]
+        return str(_StringFormatter(number_ions, force_constants, selective_dynamics))
 
     @base.data_access
     def to_dict(self):
@@ -121,3 +121,51 @@ atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     z
 
     def _format_vector(self, vector):
         return " ".join(f"{x:12.6f}" for x in vector)
+
+
+@dataclasses.dataclass
+class _StringFormatter:
+    number_ions: int
+    force_constants: np.ndarray
+    selective_dynamics: np.ndarray
+
+    def __post_init__(self):
+        self.indices = -np.ones(self.selective_dynamics.shape, dtype=np.int32)
+        self.indices[self.selective_dynamics] = np.arange(len(self.force_constants))
+        print(self.indices)
+
+    def __str__(self):
+        return "\n".join(self.line_generator())
+
+    def line_generator(self):
+        yield "Force constants (eV/Å²):"
+        yield "atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     zi,xj     zi,yj     zi,zj"
+        yield "----------------------------------------------------------------------------------------------------------"
+        for ion in range(self.number_ions):
+            yield from self._ion_to_string(ion)
+
+    def _ion_to_string(self, ion):
+        if not any(self.selective_dynamics[ion]):
+            yield f"{ion + 1:6d}   frozen"
+            return
+        for jon in range(ion, self.number_ions):
+            if not any(self.selective_dynamics[jon]):
+                continue
+            yield self._ion_pair_to_string(ion, jon)
+
+    def _ion_pair_to_string(self, ion, jon):
+        return (
+            f"{ion + 1:6d}   {jon + 1:6d}  {self._force_constants_to_string(ion, jon)}"
+        )
+
+    def _force_constants_to_string(self, ion, jon):
+        return " ".join(
+            self._force_constant_to_string(self.indices[ion, i], self.indices[jon, j])
+            for i, j in itertools.product(range(3), repeat=2)
+        )
+
+    def _force_constant_to_string(self, index, jndex):
+        if index >= 0 and jndex >= 0:
+            return f"{self.force_constants[index, jndex]:9.4f}"
+        else:
+            return "   frozen"

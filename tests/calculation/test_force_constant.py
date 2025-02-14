@@ -21,6 +21,8 @@ def Sr2TiO4(raw_data, request):
         force_constants.ref.selective_dynamics = None
     else:
         force_constants.ref.selective_dynamics = raw_force_constants.selective_dynamics
+    force_constants.ref.format_output = get_format_output(request.param)
+    force_constants.ref.molden_string = get_molden_string(request.param)
     return force_constants
 
 
@@ -37,8 +39,12 @@ def test_Sr2TiO4_read(Sr2TiO4, Assert):
 
 def test_Sr2TiO4_print(Sr2TiO4, format_):
     actual, _ = format_(Sr2TiO4)
-    print(actual["text/plain"])
-    reference = """\
+    assert actual == Sr2TiO4.ref.format_output
+
+
+def get_format_output(selection):
+    if selection == "all atoms":
+        output = """\
 Force constants (eV/Å²):
 atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     zi,xj     zi,yj     zi,zj
 ----------------------------------------------------------------------------------------------------------
@@ -70,7 +76,29 @@ atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     z
      6        6     2.4011    2.4964    5.6668    2.4964    3.9908    9.0345    5.6668    9.0345    4.2216
      6        7     4.6091  -10.1320  -15.2478    3.5288   -6.7502   -4.4871   -1.0869    0.4111    0.7146
      7        7     7.3257  -10.8380    6.9277  -10.8380   13.3171   -9.1961    6.9277   -9.1961    0.8190"""
-    assert actual == {"text/plain": reference}
+    else:
+        output = """\
+Force constants (eV/Å²):
+atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     zi,xj     zi,yj     zi,zj
+----------------------------------------------------------------------------------------------------------
+     1        1    -7.6209  -12.7444   -6.8500  -12.7444    3.0199   -1.7746   -6.8500   -1.7746    9.8872
+     1        3     frozen    frozen    7.1060    frozen    frozen   -1.6131    frozen    frozen   -6.0829
+     1        4    -6.3750  -13.4549   16.0141    1.3898   11.4429    1.7273    1.0368   -3.7287   -0.1421
+     1        5     1.9381    frozen    frozen   10.3378    frozen    frozen    2.0115    frozen    frozen
+     1        7     frozen    1.2330  -17.3469    frozen    4.4415    3.5973    frozen  -15.3936    2.4955
+     2   frozen
+     3        3     frozen    frozen    frozen    frozen    frozen    frozen    frozen    frozen   -9.1394
+     3        4     frozen    frozen    frozen    frozen    frozen    frozen   -5.8659    9.7352    2.2344
+     3        5     frozen    frozen    frozen    frozen    frozen    frozen    2.5816    frozen    frozen
+     3        7     frozen    frozen    frozen    frozen    frozen    frozen    frozen   -7.8676   11.1858
+     4        4    -7.5699    1.5580   -9.0859    1.5580    4.9797   -7.5134   -9.0859   -7.5134    0.9011
+     4        5    -0.5171    frozen    frozen  -11.1244    frozen    frozen    3.8899    frozen    frozen
+     4        7     frozen  -12.9006   -2.2232    frozen   -6.1506   -4.5992    frozen   11.7996   -6.5990
+     5        5     0.3066    frozen    frozen    frozen    frozen    frozen    frozen    frozen    frozen
+     5        7     frozen   -2.7163    0.3955    frozen    frozen    frozen    frozen    frozen    frozen
+     6   frozen
+     7        7     frozen    frozen    frozen    frozen   13.3171   -9.1961    frozen   -9.1961    0.8190"""
+    return {"text/plain": output}
 
 
 def test_eigenvectors(Sr2TiO4, Assert):
@@ -81,8 +109,12 @@ def test_eigenvectors(Sr2TiO4, Assert):
 
 def test_to_molden(Sr2TiO4, Assert):
     molden_string = Sr2TiO4.to_molden()
-    print(molden_string)
-    expected_output = """\
+    assert molden_string == Sr2TiO4.ref.molden_string
+
+
+def get_molden_string(selection):
+    if selection == "all atoms":
+        return """\
 [Molden Format]
 [FREQ]
   -62.791407
@@ -284,7 +316,8 @@ vibration 21
     0.010019    -0.205744    -0.167992
    -0.296240    -0.269946    -0.203851
 """
-    assert molden_string == expected_output
+    else:
+        return ""
 
 
 def test_factory_methods(raw_data, check_factory_methods):
