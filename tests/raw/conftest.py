@@ -29,7 +29,7 @@ def complex_schema():
     version = raw.Version(1, 2, 3)
     length = WithLength(Length("dataset"))
     sequence = Sequence(
-        size="foo_sequence", common="common_data", variable="variable_data{}"
+        valid_indices="foo_sequence", common="common_data", variable="variable_data{}"
     )
     first = Complex(
         Link("optional_argument", "default"),
@@ -52,7 +52,10 @@ def complex_schema():
     other_file_source = Source(simple, file=filename)
     data_factory_source = Source(None, file=filename, data_factory=make_data)
     schema.add(
-        Sequence, size=sequence.size, common=sequence.common, variable=sequence.variable
+        Sequence,
+        valid_indices=sequence.valid_indices,
+        common=sequence.common,
+        variable=sequence.variable,
     )
     schema.add(
         Complex,

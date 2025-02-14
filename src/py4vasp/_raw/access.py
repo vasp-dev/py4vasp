@@ -120,17 +120,21 @@ class _State:
             raise exception.OutdatedVaspVersion(message)
 
     def _get_datasets(self, h5f, data):
-        size = self._get_dataset(h5f, data.size) if isinstance(data, Sequence) else None
+        valid_indices = (
+            self._get_dataset(h5f, data.valid_indices)
+            if isinstance(data, Sequence)
+            else None
+        )
         result = {
-            field.name: self._get_dataset(h5f, getattr(data, field.name), size)
+            field.name: self._get_dataset(h5f, getattr(data, field.name), valid_indices)
             for field in dataclasses.fields(data)
-            if field.name != "size"
+            if field.name != "valid_indices"
         }
-        if size is not None:
-            result["size"] = size
+        if valid_indices is not None:
+            result["valid_indices"] = valid_indices
         return result
 
-    def _get_dataset(self, h5f, key, size=None):
+    def _get_dataset(self, h5f, key, valid_indices=None):
         if key is None:
             return raw.VaspData(None)
         if isinstance(key, Link):
@@ -138,12 +142,11 @@ class _State:
         if isinstance(key, Length):
             dataset = h5f.get(key.dataset)
             return len(dataset) if dataset else None
-        if key.format(0) == key or size is None:
+        if key.format(0) == key or valid_indices is None:
             return self._parse_dataset(h5f.get(key))
-        for i in range(size):
-            # convert to Fortran index
-            get_dataset = lambda i: h5f.get(key.format(i + 1))
-            return [self._parse_dataset(get_dataset(i)) for i in range(size)]
+        # convert to Fortran index
+        get_dataset = lambda i: h5f.get(key.format(i + 1))
+        return [self._parse_dataset(get_dataset(i)) for i in range(valid_indices)]
 
     def _parse_dataset(self, dataset):
         result = raw.VaspData(dataset)

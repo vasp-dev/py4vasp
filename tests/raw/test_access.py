@@ -107,10 +107,10 @@ def test_access_sequence(mock_access):
     mock_file, sources = mock_access
     source = sources[quantity]["default"]
     with raw.access(quantity) as sequence:
-        assert sequence.size == len(sequence) == EXAMPLE_SCALAR
+        assert sequence.valid_indices == len(sequence) == EXAMPLE_SCALAR
         check_single_file_access(mock_file, DEFAULT_FILE, source)
         for i, element in enumerate(sequence):
-            assert element.size == len(element) == 1
+            assert element.valid_indices == len(element) == 1
             check_data(element.common, source.data.common)
             variable = source.data.variable.format(i + 1)  # convert to Fortran index
             check_data(element.variable, variable)

@@ -108,10 +108,13 @@ def test_custom_data_source():
 
 
 def test_sequence():
-    sequence = Sequence("size", "common_data", "variable_data{}")
+    sequence = Sequence("valid_indices", "common_data", "variable_data{}")
     schema = Schema(VERSION)
     schema.add(
-        Sequence, size=sequence.size, common=sequence.common, variable=sequence.variable
+        Sequence,
+        valid_indices=sequence.valid_indices,
+        common=sequence.common,
+        variable=sequence.variable,
     )
     reference = {"sequence": {"default": Source(sequence)}}
     assert remove_version(schema.sources) == reference
@@ -171,7 +174,7 @@ with_length:
 
 sequence:
     default:  &sequence-default
-        size: foo_sequence
+        valid_indices: foo_sequence
         common: common_data
         variable: variable_data{}
 
