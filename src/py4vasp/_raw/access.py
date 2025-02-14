@@ -9,7 +9,7 @@ import h5py
 
 from py4vasp import exception, raw
 from py4vasp._raw.definition import DEFAULT_FILE, DEFAULT_SOURCE, schema
-from py4vasp._raw.schema import Length, Link, error_message
+from py4vasp._raw.schema import Length, Link, Sequence, error_message
 
 
 @contextlib.contextmanager
@@ -120,12 +120,17 @@ class _State:
             raise exception.OutdatedVaspVersion(message)
 
     def _get_datasets(self, h5f, data):
-        return {
-            field.name: self._get_dataset(h5f, getattr(data, field.name))
+        size = self._get_dataset(h5f, data.size) if isinstance(data, Sequence) else None
+        result = {
+            field.name: self._get_dataset(h5f, getattr(data, field.name), size)
             for field in dataclasses.fields(data)
+            if field.name != "size"
         }
+        if size is not None:
+            result["size"] = size
+        return result
 
-    def _get_dataset(self, h5f, key):
+    def _get_dataset(self, h5f, key, size=None):
         if key is None:
             return raw.VaspData(None)
         if isinstance(key, Link):
@@ -133,7 +138,12 @@ class _State:
         if isinstance(key, Length):
             dataset = h5f.get(key.dataset)
             return len(dataset) if dataset else None
-        return self._parse_dataset(h5f.get(key))
+        if key.format(0) == key or size is None:
+            return self._parse_dataset(h5f.get(key))
+        for i in range(size):
+            # convert to Fortran index
+            get_dataset = lambda i: h5f.get(key.format(i + 1))
+            return [self._parse_dataset(get_dataset(i)) for i in range(size)]
 
     def _parse_dataset(self, dataset):
         result = raw.VaspData(dataset)

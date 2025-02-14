@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import textwrap
+from collections import abc
 
 import numpy as np
 
@@ -157,6 +158,22 @@ class Link:
 class Length:
     dataset: str
     __str__ = lambda self: f"length({self.dataset})"
+
+
+@dataclasses.dataclass
+class Sequence(abc.Sequence):
+    size: int
+
+    def __len__(self):
+        return self.size
+
+    def __getitem__(self, index):
+        elements = {
+            key: value[index] if isinstance(value, list) else value
+            for key, value in dataclasses.asdict(self).items()
+            if key != "size"
+        }
+        return dataclasses.replace(self, size=1, **elements)
 
 
 def _parse_version(version):
