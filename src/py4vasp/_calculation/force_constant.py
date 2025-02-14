@@ -66,20 +66,50 @@ atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     z
 
     @base.data_access
     def to_molden(self):
-        A_to_bohr = 0.529177210544
+        """Convert the eigenvectors of the force constant into molden format.
+
+        Keep in mind that the eigenvectors indicate the direction of the forces and do
+        not take into account the masses of the atom.
+
+        Returns
+        -------
+        str
+            String describing the structure and eigenvectors in molden format.
+        """
         eigenvalues, eigenvectors = self._diagonalize()
-        print(eigenvalues)
-        print(self._structure.cartesian_positions() * A_to_bohr)
-        print(self._structure._stoichiometry().elements())
         frequencies = "\n".join(f"{x:12.6f}" for x in eigenvalues)
-        coordinates = "\n".join(str(line) for line in zip(self._structure._stoichiometry().elements(), self._structure.cartesian_positions() * A_to_bohr))
-        vibrations = ""
         return f"""\
 [Molden Format]
 [FREQ]
 {frequencies}
 [FR-COORD]
-{coordinates}
+{self._format_coordinates()}
 [FR-NORM-COORD]
-{vibrations}
+{self._format_eigenvectors(eigenvectors)}
 """
+
+    def _format_coordinates(self):
+        A_to_bohr = 0.529177210544
+        element_positions = zip(
+            self._structure._stoichiometry().elements(),
+            self._structure.cartesian_positions() / A_to_bohr,
+        )
+        return "\n".join(
+            f"{element:2} {self._format_vector(position)}"
+            for element, position in element_positions
+        )
+
+    def _format_eigenvectors(self, eigenvectors):
+        return "\n".join(
+            self._format_eigenvector(index, eigenvector)
+            for index, eigenvector in enumerate(eigenvectors)
+        )
+
+    def _format_eigenvector(self, index, eigenvector):
+        eigenvector_string = "\n".join(
+            self._format_vector(vector) for vector in eigenvector
+        )
+        return f"vibration {index + 1}\n{eigenvector_string}"
+
+    def _format_vector(self, vector):
+        return " ".join(f"{x:12.6f}" for x in vector)
