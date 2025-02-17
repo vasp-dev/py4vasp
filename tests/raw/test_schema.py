@@ -177,6 +177,10 @@ sequence:
         valid_indices: foo_sequence
         common: common_data
         variable: variable_data{}
+    my_list:  &sequence-my_list
+        valid_indices: list_sequence
+        common: common
+        variable: variable_data_{}
 
 complex:
     default:  &complex-default
@@ -187,7 +191,7 @@ complex:
     mandatory:  &complex-mandatory
         opt: *optional_argument-mandatory
         link: *with_link-default
-        sequence: *sequence-default
+        sequence: *sequence-my_list
 """
     assert str(schema) == reference
 

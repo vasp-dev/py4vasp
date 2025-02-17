@@ -11,6 +11,7 @@ from util import VERSION
 import py4vasp.raw as raw
 from py4vasp import exception
 from py4vasp._raw.definition import DEFAULT_FILE
+from py4vasp._raw.schema import Sequence
 
 
 @pytest.fixture
@@ -34,14 +35,18 @@ def mock_schema(complex_schema):
 _mock_results = {}
 EXAMPLE_ARRAY = np.zeros(4)
 EXAMPLE_SCALAR = np.array(3)
+EXAMPLE_INDICES = np.array((b"one", b"two", b"three"))
 
 
 def mock_read_result(key):
+    print(key)
     if key not in _mock_results:
         mock = MagicMock()
         if "foo" in key:
             mock.ndim = 0
             mock.__array__ = MagicMock(return_value=EXAMPLE_SCALAR)
+        elif "list" in key:
+            mock = EXAMPLE_INDICES
         else:
             mock.__array__ = MagicMock(return_value=EXAMPLE_ARRAY)
         _mock_results[key] = mock
@@ -102,17 +107,28 @@ def test_access_with_link(mock_access):
         assert with_link.simple.bar[:] == reference.bar[:]
 
 
-def test_access_sequence(mock_access):
+@pytest.mark.parametrize("selection", (None, "my_list"))
+def test_access_sequence(mock_access, selection):
+    if selection is None:
+        expected_indices = range(EXAMPLE_SCALAR)
+    else:
+        expected_indices = EXAMPLE_INDICES
     quantity = "sequence"
     mock_file, sources = mock_access
-    source = sources[quantity]["default"]
-    with raw.access(quantity) as sequence:
-        assert sequence.valid_indices == len(sequence) == EXAMPLE_SCALAR
+    source = sources[quantity][selection or "default"]
+    with raw.access(quantity, selection=selection) as sequence:
+        assert len(sequence.valid_indices) == len(sequence)
+        assert all(np.atleast_1d(sequence.valid_indices == expected_indices))
         check_single_file_access(mock_file, DEFAULT_FILE, source)
-        for i, element in enumerate(sequence):
-            assert element.valid_indices == len(element) == 1
+        for element, index in zip(sequence, sequence.valid_indices):
+            assert len(element) == 1
+            assert element.valid_indices == [index]
             check_data(element.common, source.data.common)
-            variable = source.data.variable.format(i + 1)  # convert to Fortran index
+            if selection is None:
+                index = str(index + 1)  # convert Python to Fortran index
+            else:
+                index = index.decode()
+            variable = source.data.variable.format(index)
             check_data(element.variable, variable)
 
 
@@ -264,11 +280,17 @@ def expected_calls(source):
 
 def expected_call(data, field):
     key = getattr(data, field.name)
-    if isinstance(key, str):
+    if not isinstance(key, str):
+        return
+    if not isinstance(data, Sequence):
+        distinct_keys = {key}
+    elif data.valid_indices == "list_sequence":
+        distinct_keys = {key.format(index.decode()) for index in EXAMPLE_INDICES}
+    else:
         # convert to Fortran index
-        distinct_keys = {key.format(i + 1) for i in range(EXAMPLE_SCALAR)}
-        for distinct_key in distinct_keys:
-            yield call(distinct_key)
+        distinct_keys = {key.format(index + 1) for index in range(EXAMPLE_SCALAR)}
+    for key in distinct_keys:
+        yield call(key)
 
 
 def test_access_nonexisting_file(mock_access):

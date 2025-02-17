@@ -177,7 +177,7 @@ class Sequence(abc.Sequence):
             for key, value in dataclasses.asdict(self).items()
             if key != "valid_indices"
         }
-        return dataclasses.replace(self, valid_indices=1, **elements)
+        return dataclasses.replace(self, valid_indices=[index], **elements)
 
 
 def _parse_version(version):

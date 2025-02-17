@@ -10,6 +10,7 @@ import h5py
 from py4vasp import exception, raw
 from py4vasp._raw.definition import DEFAULT_FILE, DEFAULT_SOURCE, schema
 from py4vasp._raw.schema import Length, Link, Sequence, error_message
+from py4vasp._util import convert
 
 
 @contextlib.contextmanager
@@ -120,11 +121,7 @@ class _State:
             raise exception.OutdatedVaspVersion(message)
 
     def _get_datasets(self, h5f, data):
-        valid_indices = (
-            self._get_dataset(h5f, data.valid_indices)
-            if isinstance(data, Sequence)
-            else None
-        )
+        valid_indices = self._get_valid_indices(h5f, data)
         result = {
             field.name: self._get_dataset(h5f, getattr(data, field.name), valid_indices)
             for field in dataclasses.fields(data)
@@ -133,6 +130,15 @@ class _State:
         if valid_indices is not None:
             result["valid_indices"] = valid_indices
         return result
+
+    def _get_valid_indices(self, h5f, data):
+        if not isinstance(data, Sequence):
+            return None
+        valid_indices = self._get_dataset(h5f, data.valid_indices)
+        if valid_indices.ndim == 0:
+            return range(valid_indices)
+        else:
+            return valid_indices
 
     def _get_dataset(self, h5f, key, valid_indices=None):
         if key is None:
@@ -143,13 +149,17 @@ class _State:
             dataset = h5f.get(key.dataset)
             return len(dataset) if dataset else None
         if key.format(0) == key or valid_indices is None:
-            return self._parse_dataset(h5f.get(key))
-        # convert to Fortran index
-        get_dataset = lambda i: h5f.get(key.format(i + 1))
-        return [self._parse_dataset(get_dataset(i)) for i in range(valid_indices)]
+            return self._parse_dataset(h5f, key)
+        return [self._parse_dataset(h5f, key, index) for index in valid_indices]
 
-    def _parse_dataset(self, dataset):
-        result = raw.VaspData(dataset)
+    def _parse_dataset(self, h5f, key, index=None):
+        if index is not None:
+            if isinstance(index, int):
+                index = index + 1  # convert to Fortran index
+            else:
+                index = convert.text_to_string(index)
+            key = key.format(index)
+        result = raw.VaspData(h5f.get(key))
         if _is_scalar(result):
             result = result[()]
         return result
