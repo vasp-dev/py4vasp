@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import pytest
-from util import VERSION, OptionalArgument, Simple, WithLength, WithLink
+from util import VERSION, Mapping, OptionalArgument, Simple, WithLength, WithLink
 
 from py4vasp import exception, raw
 from py4vasp._raw.schema import Length, Link, Schema, Source
@@ -107,6 +107,19 @@ def test_custom_data_source():
     assert remove_version(schema.sources) == reference
 
 
+def test_mapping():
+    mapping = Mapping("valid_indices", "common_data", "variable_data{}")
+    schema = Schema(VERSION)
+    schema.add(
+        Mapping,
+        valid_indices=mapping.valid_indices,
+        common=mapping.common,
+        variable=mapping.variable,
+    )
+    reference = {"mapping": {"default": Source(mapping)}}
+    assert remove_version(schema.sources) == reference
+
+
 def remove_version(sources):
     version = sources.pop("version")
     assert version == {"default": Source(VERSION)}
@@ -159,14 +172,26 @@ with_length:
         num_data: length(dataset)
     alias_name: *with_length-default
 
+mapping:
+    default:  &mapping-default
+        valid_indices: foo_mapping
+        common: common_data
+        variable: variable_data{}
+    my_list:  &mapping-my_list
+        valid_indices: list_mapping
+        common: common
+        variable: variable_data_{}
+
 complex:
     default:  &complex-default
         opt: *optional_argument-default
         link: *with_link-default
+        mapping: *mapping-default
         length: *with_length-default
     mandatory:  &complex-mandatory
         opt: *optional_argument-mandatory
         link: *with_link-default
+        mapping: *mapping-my_list
 """
     assert str(schema) == reference
 
