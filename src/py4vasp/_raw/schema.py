@@ -187,6 +187,7 @@ class Mapping(abc.Mapping):
             if getattr(self, field.name) is not None
         }
 
+
 def _parse_version(version):
     return f"""version:
     major: {version.major}
