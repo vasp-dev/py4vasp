@@ -412,6 +412,14 @@ schema.add(
     orbital_moments="intermediate/ion_dynamics/magnetism/orbital_moments/values",
 )
 #
+schema.add(
+    raw.NMRCurrent,
+    required=raw.Version(6, 5, 1),
+    valid_indices="/results/nmrcurb_meta/directions",
+    structure=Link("structure", DEFAULT_SOURCE),
+    nmr_current="/results/nmrcurb{}/values",
+)
+#
 group = "intermediate/pair_correlation"
 schema.add(
     raw.PairCorrelation,

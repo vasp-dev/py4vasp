@@ -294,6 +294,10 @@ class RawDataFactory:
         return _magnetism(selection)
 
     @staticmethod
+    def nmr_current(selection):
+        return _nmr_current(selection)
+
+    @staticmethod
     def pair_correlation(selection):
         return _Sr2TiO4_pair_correlation()
 
@@ -1301,6 +1305,16 @@ def _BN_structure():
             scale=raw.VaspData(3.63),
         ),
         positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
+    )
+
+
+def _nmr_current(selection):
+    if selection == "all":
+        valid_indices = ("x", "y", "z")
+    else:
+        valid_indices = [selection]
+    return raw.NMRCurrent(
+        valid_indices=valid_indices, structure=_Sr2TiO4_structure(), nmr_current=None
     )
 
 

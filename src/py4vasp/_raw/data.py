@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 
+from py4vasp._raw import schema
 from py4vasp._raw.data_wrapper import VaspData
 
 
@@ -337,6 +338,20 @@ class Magnetism:
     "Contains the charge and magnetic moments atom and orbital resolved."
     orbital_moments: VaspData = NONE()
     "Contains the orbital magnetization for all atoms"
+
+
+@dataclasses.dataclass
+class NMRCurrent(schema.Mapping):
+    """The NMR current evaluated on a grid in the unit cell.
+
+    You may have multiple currents for different directions which you can set by the
+    *valid_indices* variable. The NMR current should be a list of the same size as the
+    valid_indices."""
+
+    structure: Structure
+    "The structure for which the NMR current was calculated."
+    nmr_current: VaspData
+    "The NMR current on a grid in the unit cell."
 
 
 @dataclasses.dataclass
