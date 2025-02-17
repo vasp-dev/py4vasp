@@ -6,8 +6,8 @@ import pytest
 from util import (
     VERSION,
     Complex,
+    Mapping,
     OptionalArgument,
-    Sequence,
     Simple,
     WithLength,
     WithLink,
@@ -30,22 +30,22 @@ def complex_schema():
     pointer = WithLink("baz_dataset", Link("simple", "default"))
     version = raw.Version(1, 2, 3)
     length = WithLength(Length("dataset"))
-    sequence = Sequence(
-        valid_indices="foo_sequence", common="common_data", variable="variable_data{}"
+    mapping = Mapping(
+        valid_indices="foo_mapping", common="common_data", variable="variable_data{}"
     )
-    list_ = Sequence(
-        valid_indices="list_sequence", common="common", variable="variable_data_{}"
+    list_ = Mapping(
+        valid_indices="list_mapping", common="common", variable="variable_data_{}"
     )
     first = Complex(
         Link("optional_argument", "default"),
         Link("with_link", "default"),
-        Link("sequence", "default"),
+        Link("mapping", "default"),
         Link("with_length", "default"),
     )
     second = Complex(
         Link("optional_argument", name),
         Link("with_link", "default"),
-        Link("sequence", "my_list"),
+        Link("mapping", "my_list"),
     )
     schema = Schema(VERSION)
     schema.add(Simple, file=filename, **as_dict(simple))
@@ -54,8 +54,8 @@ def complex_schema():
     schema.add(OptionalArgument, **as_dict(both))
     schema.add(WithLink, required=version, **as_dict(pointer))
     schema.add(WithLength, alias="alias_name", **as_dict(length))
-    schema.add(Sequence, **as_dict(sequence))
-    schema.add(Sequence, name="my_list", **as_dict(list_))
+    schema.add(Mapping, **as_dict(mapping))
+    schema.add(Mapping, name="my_list", **as_dict(list_))
     schema.add(Complex, **as_dict(first))
     schema.add(Complex, name=name, **as_dict(second))
     other_file_source = Source(simple, file=filename)
@@ -67,7 +67,7 @@ def complex_schema():
         "optional_argument": {"default": Source(both), name: Source(only_mandatory)},
         "with_link": {"default": Source(pointer, required=version)},
         "with_length": {"default": Source(length), "alias_name": alias_source},
-        "sequence": {"default": Source(sequence), "my_list": Source(list_)},
+        "mapping": {"default": Source(mapping), "my_list": Source(list_)},
         "complex": {"default": Source(first), name: Source(second)},
     }
     return schema, reference

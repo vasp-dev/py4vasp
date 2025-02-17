@@ -32,7 +32,7 @@ class WithLength:
 
 
 @dataclasses.dataclass
-class Sequence(schema.Sequence):
+class Mapping(schema.Mapping):
     common: str
     variable: str
 
@@ -41,5 +41,5 @@ class Sequence(schema.Sequence):
 class Complex:
     opt: OptionalArgument
     link: WithLink
-    sequence: Sequence
+    mapping: Mapping
     length: WithLength = None

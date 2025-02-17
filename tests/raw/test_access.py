@@ -11,7 +11,7 @@ from util import VERSION
 import py4vasp.raw as raw
 from py4vasp import exception
 from py4vasp._raw.definition import DEFAULT_FILE
-from py4vasp._raw.schema import Sequence
+from py4vasp._raw.schema import Mapping
 
 
 @pytest.fixture
@@ -39,7 +39,6 @@ EXAMPLE_INDICES = np.array((b"one", b"two", b"three"))
 
 
 def mock_read_result(key):
-    print(key)
     if key not in _mock_results:
         mock = MagicMock()
         if "foo" in key:
@@ -108,26 +107,24 @@ def test_access_with_link(mock_access):
 
 
 @pytest.mark.parametrize("selection", (None, "my_list"))
-def test_access_sequence(mock_access, selection):
+def test_access_mapping(mock_access, selection):
     if selection is None:
         expected_indices = range(EXAMPLE_SCALAR)
     else:
-        expected_indices = EXAMPLE_INDICES
-    quantity = "sequence"
+        expected_indices = tuple(index.decode() for index in EXAMPLE_INDICES)
+    quantity = "mapping"
     mock_file, sources = mock_access
     source = sources[quantity][selection or "default"]
-    with raw.access(quantity, selection=selection) as sequence:
-        assert len(sequence.valid_indices) == len(sequence)
-        assert all(np.atleast_1d(sequence.valid_indices == expected_indices))
+    with raw.access(quantity, selection=selection) as mapping:
+        assert len(mapping.valid_indices) == len(mapping)
+        assert all(np.atleast_1d(mapping.valid_indices == expected_indices))
         check_single_file_access(mock_file, DEFAULT_FILE, source)
-        for element, index in zip(sequence, sequence.valid_indices):
+        for index, element in mapping.items():
             assert len(element) == 1
             assert element.valid_indices == [index]
             check_data(element.common, source.data.common)
             if selection is None:
                 index = str(index + 1)  # convert Python to Fortran index
-            else:
-                index = index.decode()
             variable = source.data.variable.format(index)
             check_data(element.variable, variable)
 
@@ -282,9 +279,9 @@ def expected_call(data, field):
     key = getattr(data, field.name)
     if not isinstance(key, str):
         return
-    if not isinstance(data, Sequence):
+    if not isinstance(data, Mapping):
         distinct_keys = {key}
-    elif data.valid_indices == "list_sequence":
+    elif data.valid_indices == "list_mapping":
         distinct_keys = {key.format(index.decode()) for index in EXAMPLE_INDICES}
     else:
         # convert to Fortran index

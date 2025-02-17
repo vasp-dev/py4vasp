@@ -161,23 +161,23 @@ class Length:
 
 
 @dataclasses.dataclass
-class Sequence(abc.Sequence):
-    valid_indices: int or Sequence
+class Mapping(abc.Mapping):
+    valid_indices: Sequence
 
     def __len__(self):
-        valid_indices = np.array(self.valid_indices)
-        if valid_indices.ndim == 0:
-            return valid_indices
-        else:
-            return len(valid_indices)
+        return len(self.valid_indices)
 
-    def __getitem__(self, index):
+    def __iter__(self):
+        return iter(self.valid_indices)
+
+    def __getitem__(self, key):
+        index = self.valid_indices.index(key)
         elements = {
             key: value[index] if isinstance(value, list) else value
             for key, value in dataclasses.asdict(self).items()
             if key != "valid_indices"
         }
-        return dataclasses.replace(self, valid_indices=[index], **elements)
+        return dataclasses.replace(self, valid_indices=[key], **elements)
 
 
 def _parse_version(version):

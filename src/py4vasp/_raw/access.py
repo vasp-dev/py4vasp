@@ -9,7 +9,7 @@ import h5py
 
 from py4vasp import exception, raw
 from py4vasp._raw.definition import DEFAULT_FILE, DEFAULT_SOURCE, schema
-from py4vasp._raw.schema import Length, Link, Sequence, error_message
+from py4vasp._raw.schema import Length, Link, Mapping, error_message
 from py4vasp._util import convert
 
 
@@ -132,13 +132,13 @@ class _State:
         return result
 
     def _get_valid_indices(self, h5f, data):
-        if not isinstance(data, Sequence):
+        if not isinstance(data, Mapping):
             return None
         valid_indices = self._get_dataset(h5f, data.valid_indices)
         if valid_indices.ndim == 0:
             return range(valid_indices)
         else:
-            return valid_indices
+            return tuple(convert.text_to_string(index) for index in valid_indices)
 
     def _get_dataset(self, h5f, key, valid_indices=None):
         if key is None:
@@ -156,8 +156,6 @@ class _State:
         if index is not None:
             if isinstance(index, int):
                 index = index + 1  # convert to Fortran index
-            else:
-                index = convert.text_to_string(index)
             key = key.format(index)
         result = raw.VaspData(h5f.get(key))
         if _is_scalar(result):
