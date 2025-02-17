@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
+
 import pytest
 from util import (
     VERSION,
@@ -43,30 +45,17 @@ def complex_schema():
         Link("sequence", "default"),
     )
     schema = Schema(VERSION)
-    schema.add(Simple, file=filename, foo=simple.foo, bar=simple.bar)
-    schema.add(OptionalArgument, name=name, mandatory=only_mandatory.mandatory)
-    schema.add(OptionalArgument, mandatory=both.mandatory, optional=both.optional)
-    schema.add(WithLink, required=version, baz=pointer.baz, simple=pointer.simple)
-    schema.add(WithLength, alias="alias_name", num_data=length.num_data)
+    schema.add(Simple, file=filename, **as_dict(simple))
     schema.add(Simple, name="factory", file=filename, data_factory=make_data)
+    schema.add(OptionalArgument, name=name, **as_dict(only_mandatory))
+    schema.add(OptionalArgument, **as_dict(both))
+    schema.add(WithLink, required=version, **as_dict(pointer))
+    schema.add(WithLength, alias="alias_name", **as_dict(length))
+    schema.add(Sequence, **as_dict(sequence))
+    schema.add(Complex, **as_dict(first))
+    schema.add(Complex, name=name, **as_dict(second))
     other_file_source = Source(simple, file=filename)
     data_factory_source = Source(None, file=filename, data_factory=make_data)
-    schema.add(
-        Sequence,
-        valid_indices=sequence.valid_indices,
-        common=sequence.common,
-        variable=sequence.variable,
-    )
-    schema.add(
-        Complex,
-        opt=first.opt,
-        link=first.link,
-        sequence=first.sequence,
-        length=first.length,
-    )
-    schema.add(
-        Complex, name=name, opt=second.opt, link=second.link, sequence=second.sequence
-    )
     alias_source = Source(length, alias_for="default")
     reference = {
         "version": {"default": Source(VERSION)},
@@ -78,3 +67,12 @@ def complex_schema():
         "complex": {"default": Source(first), name: Source(second)},
     }
     return schema, reference
+
+
+def as_dict(dataclass):
+    # shallow copy of dataclass to dictionary
+    return {
+        field.name: getattr(dataclass, field.name)
+        for field in dataclasses.fields(dataclass)
+        if getattr(dataclass, field.name) is not None
+    }
