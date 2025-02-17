@@ -11,17 +11,29 @@ from py4vasp._calculation.structure import Structure
 
 @pytest.fixture(params=("all", "x", "y", "z"))
 def nmr_current(request, raw_data):
-    raw_current = raw_data.nmr_current(request.param)
+    return make_reference_current(request.param, raw_data)
+
+
+@pytest.fixture(params=("x", "y", "z"))
+def single_nmr_current(request, raw_data):
+    return make_reference_current(request.param, raw_data)
+
+
+def make_reference_current(selection, raw_data):
+    raw_current = raw_data.nmr_current(selection)
     current = NMRCurrent.from_data(raw_current)
     current.ref = types.SimpleNamespace()
     current.ref.structure = Structure.from_data(raw_current.structure)
-    if request.param in ("x", "all"):
+    if selection in ("x", "all"):
         current.ref.current_Bx = np.transpose(raw_current.nmr_current[0])
-    if request.param in ("y", "all"):
+    if selection in ("y", "all"):
         index_y = raw_current.valid_indices.index("y")
         current.ref.current_By = np.transpose(raw_current.nmr_current[index_y])
-    if request.param in ("z", "all"):
+    if selection in ("z", "all"):
         current.ref.current_Bz = np.transpose(raw_current.nmr_current[-1])
+    if selection != "all":
+        current.ref.single_current = getattr(current.ref, f"current_B{selection}")
+        current.ref.direction = selection
     return current
 
 
@@ -37,6 +49,20 @@ def test_read(nmr_current, Assert):
             assert label not in actual
 
 
+def test_to_quiver(single_nmr_current, Assert):
+    expected_data = single_nmr_current.ref.single_current[:, :, 10, :2]
+    expected_lattice_vectors = single_nmr_current.ref.structure.lattice_vectors()[
+        :2, :2
+    ]
+    graph = single_nmr_current.to_quiver(c=0.7)
+    assert len(graph) == 1
+    series = graph.series[0]
+    Assert.allclose(series.data, np.moveaxis(expected_data, -1, 0))
+    Assert.allclose(series.lattice.vectors, expected_lattice_vectors)
+    assert series.label == f"nmr_current_B{single_nmr_current.ref.direction}"
+
+
 def test_factory_methods(raw_data, check_factory_methods):
-    data = raw_data.nmr_current("all")
-    check_factory_methods(NMRCurrent, data)
+    data = raw_data.nmr_current("x")
+    parameters = {"to_quiver": {"a": 0.3}}
+    check_factory_methods(NMRCurrent, data, parameters)

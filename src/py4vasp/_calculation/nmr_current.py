@@ -1,7 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
+import numpy as np
+
+from py4vasp import exception
 from py4vasp._calculation import base, structure
+from py4vasp._third_party import graph
+from py4vasp._util import slicing
 
 
 class NMRCurrent(base.Refinery, structure.Mixin):
@@ -31,3 +36,38 @@ class NMRCurrent(base.Refinery, structure.Mixin):
             f"nmr_current_B{key}": data.nmr_current[:].T
             for key, data in self._raw_data.items()
         }
+
+    @base.data_access
+    def to_quiver(self, *, a=None, b=None, c=None):
+        cut, fraction = self._get_cut(a, b, c)
+        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal=None)
+        nmr_current = self._read_nmr_current()
+        (label, data), *_ = nmr_current.items()
+        sliced_data = slicing.grid_vector(np.moveaxis(data, -1, 0), plane, fraction)
+        quiver_plot = graph.Contour(sliced_data, plane, label)
+        return graph.Graph([quiver_plot])
+
+    def _get_cut(self, a, b, c):
+        _raise_error_cut_selection_incorrect(a, b, c)
+        if a is not None:
+            return "a", a
+        if b is not None:
+            return "b", b
+        return "c", c
+
+
+def _raise_error_cut_selection_incorrect(*selections):
+    # only a single element may be selected
+    selected_elements = sum(selection is not None for selection in selections)
+    if selected_elements == 0:
+        raise exception.IncorrectUsage(
+            "You have not selected a lattice vector along which the slice should be "
+            "constructed. Please set exactly one of the keyword arguments (a, b, c) "
+            "to a real number that specifies at which fraction of the lattice vector "
+            "the plane is."
+        )
+    if selected_elements > 1:
+        raise exception.IncorrectUsage(
+            "You have selected more than a single element. Please use only one of "
+            "(a, b, c) and not multiple choices."
+        )

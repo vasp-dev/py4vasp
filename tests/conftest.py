@@ -1317,7 +1317,7 @@ def _nmr_current(selection):
     nmr_current = [_make_arbitrary_data(shape) for _ in valid_indices]
     return raw.NMRCurrent(
         valid_indices=valid_indices,
-        structure=_Sr2TiO4_structure(),
+        structure=_Fe3O4_structure(),
         nmr_current=nmr_current,
     )
 
