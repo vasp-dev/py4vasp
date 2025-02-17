@@ -1313,8 +1313,12 @@ def _nmr_current(selection):
         valid_indices = ("x", "y", "z")
     else:
         valid_indices = [selection]
+    shape = (axes, *grid_dimensions)
+    nmr_current = [_make_arbitrary_data(shape) for _ in valid_indices]
     return raw.NMRCurrent(
-        valid_indices=valid_indices, structure=_Sr2TiO4_structure(), nmr_current=None
+        valid_indices=valid_indices,
+        structure=_Sr2TiO4_structure(),
+        nmr_current=nmr_current,
     )
 
 

@@ -16,4 +16,18 @@ class NMRCurrent(base.Refinery, structure.Mixin):
 
     @base.data_access
     def to_dict(self):
-        return {"structure": self._structure.read()}
+        """Read the NMR current and structural information into a Python dictionary.
+
+        Returns
+        -------
+        dict
+            Contains the NMR current data for all magnetic fields selected in the INCAR
+            file as well as structural data.
+        """
+        return {"structure": self._structure.read(), **self._read_nmr_current()}
+
+    def _read_nmr_current(self):
+        return {
+            f"nmr_current_B{key}": data.nmr_current[:].T
+            for key, data in self._raw_data.items()
+        }
