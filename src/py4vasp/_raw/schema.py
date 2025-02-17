@@ -174,11 +174,18 @@ class Mapping(abc.Mapping):
         index = self.valid_indices.index(key)
         elements = {
             key: value[index] if isinstance(value, list) else value
-            for key, value in dataclasses.asdict(self).items()
+            for key, value in self._as_dict().items()
             if key != "valid_indices"
         }
         return dataclasses.replace(self, valid_indices=[key], **elements)
 
+    def _as_dict(self):
+        # shallow copy of dataclass to dictionary
+        return {
+            field.name: getattr(self, field.name)
+            for field in dataclasses.fields(self)
+            if getattr(self, field.name) is not None
+        }
 
 def _parse_version(version):
     return f"""version:
