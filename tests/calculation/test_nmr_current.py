@@ -102,6 +102,20 @@ def test_to_quiver_selection(all_nmr_current, selection, Assert):
     Assert.allclose(series.lattice.vectors, expected_lattice_vectors)
     assert series.label == f"nmr_current_B{selection}"
 
+@pytest.mark.parametrize(
+    "kwargs, index, position",
+    (({"a": 0.1}, 0, 1), ({"b": 0.7}, 1, 8), ({"c": 1.3}, 2, 4)),
+)
+def test_to_contour(nmr_current, kwargs, index, position, Assert):
+    graph = nmr_current.to_contour(**kwargs)
+    slice_ = [slice(None), slice(None), slice(None)]
+    slice_[index] = position
+    vector_data = nmr_current.ref.default_current[tuple(slice_)]
+    scalar_data = np.linalg.norm(vector_data, axis=-1)
+    assert len(graph) == 1
+    series = graph.series[0]
+    Assert.allclose(series.data, scalar_data)
+
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.nmr_current("x")

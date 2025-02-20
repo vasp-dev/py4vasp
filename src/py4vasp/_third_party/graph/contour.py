@@ -97,6 +97,7 @@ class Contour(trace.Trace):
         u = subsampled_data[:, :, 0].flatten()
         v = subsampled_data[:, :, 1].flatten()
         fig = ff.create_quiver(x, y, u, v, scale=1)
+        fig.data[0].line.color = _config.VASP_COLORS["dark"]
         return fig.data[0]
 
     def _limit_number_of_arrows(self, data_size):

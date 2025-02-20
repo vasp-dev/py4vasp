@@ -542,6 +542,7 @@ def test_simple_quiver(simple_quiver, Assert, not_core):
     check_unit_cell(fig.layout.shapes[0], x="3", y="5", zero="0")
     check_annotations(simple_quiver.lattice, fig.layout.annotations, Assert)
     assert fig.layout.yaxis.scaleanchor == "x"
+    assert fig.data[0].line.color == _config.VASP_COLORS["dark"]
 
 
 @pytest.mark.parametrize("max_number_arrows", (None, 1025, 680))

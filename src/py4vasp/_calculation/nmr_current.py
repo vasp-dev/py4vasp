@@ -34,8 +34,18 @@ class NmrCurrent(base.Refinery, structure.Mixin):
     def _read_nmr_currents(self):
         return dict(self._read_nmr_current(key) for key in self._raw_data)
 
-    def _read_nmr_current(self, key):
+    def _read_nmr_current(self, key=None):
+        key = key or self._raw_data.valid_indices[-1]
         return f"nmr_current_B{key}", self._raw_data[key].nmr_current[:].T
+
+    @base.data_access
+    def to_contour(self, *, a=None, b=None, c=None):
+        cut, fraction = self._get_cut(a, b, c)
+        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal=None)
+        label, grid_vector = self._read_nmr_current("x")
+        grid_scalar = np.linalg.norm(grid_vector, axis=-1)
+        grid_scalar = slicing.grid_scalar(grid_scalar, plane, fraction)
+        return graph.Graph([graph.Contour(grid_scalar, plane, label, isolevels=True)])
 
     @base.data_access
     @documentation.format(plane=slicing.PLANE, parameters=slicing.PARAMETERS)
@@ -87,7 +97,6 @@ class NmrCurrent(base.Refinery, structure.Mixin):
         """
         cut, fraction = self._get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
-        selection = selection or self._raw_data.valid_indices[-1]
         label, data = self._read_nmr_current(selection)
         sliced_data = slicing.grid_vector(np.moveaxis(data, -1, 0), plane, fraction)
         quiver_plot = graph.Contour(0.003 * sliced_data, plane, label)
