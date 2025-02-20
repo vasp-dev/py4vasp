@@ -49,6 +49,8 @@ class Contour(trace.Trace):
     "Multiple of each lattice vector to be drawn."
     show_cell: bool = True
     "Show the unit cell in the resulting visualization."
+    max_number_arrows: int = 1024
+    "Subsample the data until the number of arrows falls below this limit."
 
     def to_plotly(self):
         lattice_supercell = np.diag(self.supercell) @ self.lattice.vectors
@@ -75,24 +77,37 @@ class Contour(trace.Trace):
         x, y, z = self._interpolate_data_if_necessary(lattice, data)
         return go.Heatmap(x=x, y=y, z=z, name=self.label, colorscale="turbid_r")
 
-    def _make_quiver(self, lattice, data):
-        u = data[:, :, 0].flatten()
-        v = data[:, :, 1].flatten()
-        meshes = [
-            np.linspace(np.zeros(2), vector, num_points, endpoint=False)
-            for vector, num_points in zip(reversed(lattice), data.shape)
-            # remember that b and a axis are swapped
-        ]
-        x, y = np.array([sum(points) for points in itertools.product(*meshes)]).T
-        fig = ff.create_quiver(x, y, u, v, scale=1)
-        return fig.data[0]
-
     def _interpolate_data_if_necessary(self, lattice, data):
         if self._interpolation_required():
             x, y, z = self._interpolate_data(lattice, data)
         else:
             x, y, z = self._use_data_without_interpolation(lattice, data)
         return x, y, z
+
+    def _make_quiver(self, lattice, data):
+        subsamples = self._limit_number_of_arrows(data.size)
+        # remember that b and a axis are swapped
+        vectors = reversed(lattice)
+        meshes = [
+            np.linspace(np.zeros(2), vector, num_points, endpoint=False)[::subsample]
+            for vector, num_points, subsample in zip(vectors, data.shape, subsamples)
+        ]
+        subsampled_data = data[:: subsamples[0], :: subsamples[1]]
+        x, y = np.array([sum(points) for points in itertools.product(*meshes)]).T
+        u = subsampled_data[:, :, 0].flatten()
+        v = subsampled_data[:, :, 1].flatten()
+        fig = ff.create_quiver(x, y, u, v, scale=1)
+        return fig.data[0]
+
+    def _limit_number_of_arrows(self, data_size):
+        subsamples = [1, 1]
+        data_size /= 2  # ignore dimension of arrow
+        while data_size / np.prod(subsamples) > self.max_number_arrows:
+            if subsamples[0] <= subsamples[1]:
+                subsamples[0] += 1
+            else:
+                subsamples[1] += 1
+        return subsamples
 
     def _interpolation_required(self):
         y_position_first_vector = self.lattice.vectors[0, 1]
