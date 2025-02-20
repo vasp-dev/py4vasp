@@ -14,26 +14,25 @@ def nmr_current(request, raw_data):
     return make_reference_current(request.param, raw_data)
 
 
-@pytest.fixture(params=("x", "y", "z"))
-def single_nmr_current(request, raw_data):
-    return make_reference_current(request.param, raw_data)
-
-
 def make_reference_current(selection, raw_data):
     raw_current = raw_data.nmr_current(selection)
     current = NmrCurrent.from_data(raw_current)
     current.ref = types.SimpleNamespace()
     current.ref.structure = Structure.from_data(raw_current.structure)
+    # the effect is that all is equivalent to z for plotting
     if selection in ("x", "all"):
         current.ref.current_Bx = np.transpose(raw_current.nmr_current[0])
+        current.ref.single_current = current.ref.current_Bx
+        current.ref.direction = "x"
     if selection in ("y", "all"):
         index_y = raw_current.valid_indices.index("y")
         current.ref.current_By = np.transpose(raw_current.nmr_current[index_y])
+        current.ref.single_current = current.ref.current_By
+        current.ref.direction = "y"
     if selection in ("z", "all"):
         current.ref.current_Bz = np.transpose(raw_current.nmr_current[-1])
-    if selection != "all":
-        current.ref.single_current = getattr(current.ref, f"current_B{selection}")
-        current.ref.direction = selection
+        current.ref.single_current = current.ref.current_Bz
+        current.ref.direction = "z"
     return current
 
 
@@ -49,22 +48,22 @@ def test_read(nmr_current, Assert):
             assert label not in actual
 
 
-def test_to_quiver(single_nmr_current, Assert):
-    expected_data = single_nmr_current.ref.single_current[:, :, 10, :2]
-    reference_structure = single_nmr_current.ref.structure
+def test_to_quiver(nmr_current, Assert):
+    expected_data = nmr_current.ref.single_current[:, :, 10, :2]
+    reference_structure = nmr_current.ref.structure
     expected_lattice_vectors = reference_structure.lattice_vectors()[:2, :2]
-    graph = single_nmr_current.to_quiver(c=0.7)
+    graph = nmr_current.to_quiver(c=0.7)
     assert len(graph) == 1
     series = graph.series[0]
     Assert.allclose(series.data, 0.003 * np.moveaxis(expected_data, -1, 0))
     Assert.allclose(series.lattice.vectors, expected_lattice_vectors)
-    assert series.label == f"nmr_current_B{single_nmr_current.ref.direction}"
+    assert series.label == f"nmr_current_B{nmr_current.ref.direction}"
 
 
-def test_to_quiver_supercell(single_nmr_current, Assert):
-    graph = single_nmr_current.to_quiver(a=0, supercell=2)
+def test_to_quiver_supercell(nmr_current, Assert):
+    graph = nmr_current.to_quiver(a=0, supercell=2)
     Assert.allclose(graph.series[0].supercell, (2, 2))
-    graph = single_nmr_current.to_quiver(a=0, supercell=(2, 1))
+    graph = nmr_current.to_quiver(a=0, supercell=(2, 1))
     Assert.allclose(graph.series[0].supercell, (2, 1))
 
 
@@ -77,9 +76,9 @@ def test_to_quiver_supercell(single_nmr_current, Assert):
         ("z", np.eye(2)),
     ],
 )
-def test_to_quiver_normal(single_nmr_current, normal, rotation, Assert):
-    unrotated_graph = single_nmr_current.to_quiver(c=0.5)
-    rotated_graph = single_nmr_current.to_quiver(c=0.5, normal=normal)
+def test_to_quiver_normal(nmr_current, normal, rotation, Assert):
+    unrotated_graph = nmr_current.to_quiver(c=0.5)
+    rotated_graph = nmr_current.to_quiver(c=0.5, normal=normal)
     expected_lattice = unrotated_graph.series[0].lattice.vectors @ rotation
     Assert.allclose(rotated_graph.series[0].lattice.vectors, expected_lattice)
     expected_data = (unrotated_graph.series[0].data.T @ rotation).T

@@ -82,7 +82,7 @@ class NmrCurrent(base.Refinery, structure.Mixin):
         cut, fraction = self._get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
         nmr_current = self._read_nmr_current()
-        (label, data), *_ = nmr_current.items()
+        *_, (label, data) = nmr_current.items()
         sliced_data = slicing.grid_vector(np.moveaxis(data, -1, 0), plane, fraction)
         quiver_plot = graph.Contour(0.003 * sliced_data, plane, label)
         if supercell is not None:
