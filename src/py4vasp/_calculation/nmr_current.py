@@ -39,7 +39,7 @@ class NmrCurrent(base.Refinery, structure.Mixin):
 
     @base.data_access
     @documentation.format(plane=slicing.PLANE, parameters=slicing.PARAMETERS)
-    def to_quiver(self, *, a=None, b=None, c=None, supercell=None):
+    def to_quiver(self, *, a=None, b=None, c=None, normal=None, supercell=None):
         """Generate a quiver plot of NMR current.
 
         {plane}
@@ -80,7 +80,7 @@ class NmrCurrent(base.Refinery, structure.Mixin):
         >>> calc.nmr_current.to_quiver(a=0.3, normal="x")
         """
         cut, fraction = self._get_cut(a, b, c)
-        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal=None)
+        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
         nmr_current = self._read_nmr_current()
         (label, data), *_ = nmr_current.items()
         sliced_data = slicing.grid_vector(np.moveaxis(data, -1, 0), plane, fraction)
