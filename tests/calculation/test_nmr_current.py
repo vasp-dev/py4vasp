@@ -61,6 +61,13 @@ def test_to_quiver(single_nmr_current, Assert):
     assert series.label == f"nmr_current_B{single_nmr_current.ref.direction}"
 
 
+def test_to_quiver_supercell(single_nmr_current, Assert):
+    graph = single_nmr_current.to_quiver(a=0, supercell=2)
+    Assert.allclose(graph.series[0].supercell, (2, 2))
+    graph = single_nmr_current.to_quiver(a=0, supercell=(2, 1))
+    Assert.allclose(graph.series[0].supercell, (2, 1))
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.nmr_current("x")
     parameters = {"to_quiver": {"a": 0.3}}

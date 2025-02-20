@@ -6,7 +6,7 @@ import numpy as np
 from py4vasp import exception
 from py4vasp._calculation import base, structure
 from py4vasp._third_party import graph
-from py4vasp._util import slicing
+from py4vasp._util import documentation, slicing
 
 
 class NmrCurrent(base.Refinery, structure.Mixin):
@@ -38,13 +38,55 @@ class NmrCurrent(base.Refinery, structure.Mixin):
         }
 
     @base.data_access
-    def to_quiver(self, *, a=None, b=None, c=None):
+    @documentation.format(plane=slicing.PLANE, parameters=slicing.PARAMETERS)
+    def to_quiver(self, *, a=None, b=None, c=None, supercell=None):
+        """Generate a quiver plot of NMR current.
+
+        {plane}
+
+        For a collinear calculation, the magnetization density will be aligned with the
+        y axis of the plane. For noncollinear calculations, the magnetization density
+        is projected into the plane.
+
+        Parameters
+        ----------
+        {parameters}
+
+        supercell : int or np.ndarray
+            Replicate the contour plot periodically a given number of times. If you
+            provide two different numbers, the resulting cell will be the two remaining
+            lattice vectors multiplied by the specific number.
+
+        Returns
+        -------
+        graph
+            A quiver plot in the plane spanned by the 2 remaining lattice vectors.
+
+        Examples
+        --------
+
+        Cut a plane at the origin of the third lattice vector.
+
+        >>> calc.nmr_current.to_quiver(c=0)
+
+        Replicate a plane in the middle of the second lattice vector 2 times in each
+        direction.
+
+        >>> calc.nmr_current.to_quiver(b=0.5, supercell=2)
+
+        Take a slice along the first lattice vector and rotate it such that the normal
+        of the plane aligns with the x axis.
+
+        >>> calc.nmr_current.to_quiver(a=0.3, normal="x")
+        """
         cut, fraction = self._get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal=None)
         nmr_current = self._read_nmr_current()
         (label, data), *_ = nmr_current.items()
         sliced_data = slicing.grid_vector(np.moveaxis(data, -1, 0), plane, fraction)
         quiver_plot = graph.Contour(0.003 * sliced_data, plane, label)
+        if supercell is not None:
+            quiver_plot.supercell = np.ones(2, dtype=np.int_) * supercell
         return graph.Graph([quiver_plot])
 
     def _get_cut(self, a, b, c):
