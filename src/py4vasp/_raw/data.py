@@ -111,16 +111,16 @@ class CONTCAR:
 
 @dataclasses.dataclass
 class CurrentDensity(schema.Mapping):
-    """The NMR current evaluated on a grid in the unit cell.
+    """The current density evaluated on a grid in the unit cell.
 
-    You may have multiple currents for different directions which you can set by the
-    *valid_indices* variable. The NMR current should be a list of the same size as the
-    valid_indices."""
+    You may have multiple currents densities which you can set by the *valid_indices*
+    variable. The current_density list should have the same size as the valid_indices.
+    """
 
     structure: Structure
-    "The structure for which the NMR current was calculated."
+    "The structure for which the current density was calculated."
     current_density: VaspData
-    "The NMR current on a grid in the unit cell."
+    "The current density on a grid in the unit cell."
 
 
 @dataclasses.dataclass

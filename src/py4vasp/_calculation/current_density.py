@@ -10,24 +10,20 @@ from py4vasp._util import documentation, slicing
 
 
 class CurrentDensity(base.Refinery, structure.Mixin):
-    """The NMR (Nuclear Magnetic Resonance) current refers to the electrical response
-    induced in a detection coil by the precessing magnetic moments of nuclear spins in a
-    sample. When the nuclei are exposed to a strong external magnetic field and excited
-    by a radiofrequency pulse, they generate an oscillating magnetization that induces
-    a weak but detectable voltage in the coil. This signal, known as the free induction
-    decay (FID), contains information about the chemical environment, molecular
-    structure, and dynamics of the sample.
+    """Represents current density on the grid in the unit cell.
+
+    A current density j is a vectorial quantity (j_x, j_y, j_z) on every grid point.
+    It describes how the current flows at every point in space.
     """
 
     @base.data_access
     def to_dict(self):
-        """Read the NMR current and structural information into a Python dictionary.
+        """Read the current density and structural information into a Python dictionary.
 
         Returns
         -------
         dict
-            Contains the NMR current data for all magnetic fields selected in the INCAR
-            file as well as structural data.
+            Contains all available current density data as well as structural information.
         """
         return {"structure": self._structure.read(), **self._read_current_densities()}
 
@@ -52,19 +48,15 @@ class CurrentDensity(base.Refinery, structure.Mixin):
     def to_quiver(
         self, selection=None, *, a=None, b=None, c=None, normal=None, supercell=None
     ):
-        """Generate a quiver plot of NMR current.
+        """Generate a quiver plot of current density.
 
         {plane}
 
-        For a collinear calculation, the magnetization density will be aligned with the
-        y axis of the plane. For noncollinear calculations, the magnetization density
-        is projected into the plane.
 
         Parameters
         ----------
-        selection : Direction of the magnetic field for which the NMR current is read.
-            If only a single direction is computed, it will default to that direction,
-            otherwise to the "z" axis.
+        selection : Selects which of the possible available currents is used. Check the
+            `selections` method for all available choices.
 
         {parameters}
 
