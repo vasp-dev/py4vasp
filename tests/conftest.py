@@ -178,6 +178,10 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
+    def current_density(selection):
+        return _current_density(selection)
+
+    @staticmethod
     def density(selection):
         parts = selection.split()
         if parts[0] == "Sr2TiO4":
@@ -292,10 +296,6 @@ class RawDataFactory:
     @staticmethod
     def magnetism(selection):
         return _magnetism(selection)
-
-    @staticmethod
-    def nmr_current(selection):
-        return _nmr_current(selection)
 
     @staticmethod
     def pair_correlation(selection):
@@ -1308,17 +1308,17 @@ def _BN_structure():
     )
 
 
-def _nmr_current(selection):
+def _current_density(selection):
     if selection == "all":
         valid_indices = ("x", "y", "z")
     else:
         valid_indices = [selection]
     shape = (axes, *grid_dimensions)
-    nmr_current = [_make_arbitrary_data(shape) for _ in valid_indices]
-    return raw.NmrCurrent(
+    current_density = [_make_arbitrary_data(shape) for _ in valid_indices]
+    return raw.CurrentDensity(
         valid_indices=valid_indices,
         structure=_Fe3O4_structure(),
-        nmr_current=nmr_current,
+        current_density=current_density,
     )
 
 

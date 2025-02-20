@@ -9,7 +9,7 @@ from py4vasp._third_party import graph
 from py4vasp._util import documentation, slicing
 
 
-class NmrCurrent(base.Refinery, structure.Mixin):
+class CurrentDensity(base.Refinery, structure.Mixin):
     """The NMR (Nuclear Magnetic Resonance) current refers to the electrical response
     induced in a detection coil by the precessing magnetic moments of nuclear spins in a
     sample. When the nuclei are exposed to a strong external magnetic field and excited
@@ -29,20 +29,20 @@ class NmrCurrent(base.Refinery, structure.Mixin):
             Contains the NMR current data for all magnetic fields selected in the INCAR
             file as well as structural data.
         """
-        return {"structure": self._structure.read(), **self._read_nmr_currents()}
+        return {"structure": self._structure.read(), **self._read_current_densities()}
 
-    def _read_nmr_currents(self):
-        return dict(self._read_nmr_current(key) for key in self._raw_data)
+    def _read_current_densities(self):
+        return dict(self._read_current_density(key) for key in self._raw_data)
 
-    def _read_nmr_current(self, key=None):
+    def _read_current_density(self, key=None):
         key = key or self._raw_data.valid_indices[-1]
-        return f"nmr_current_B{key}", self._raw_data[key].nmr_current[:].T
+        return f"current_{key}", self._raw_data[key].current_density[:].T
 
     @base.data_access
     def to_contour(self, *, a=None, b=None, c=None):
         cut, fraction = self._get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal=None)
-        label, grid_vector = self._read_nmr_current("x")
+        label, grid_vector = self._read_current_density()
         grid_scalar = np.linalg.norm(grid_vector, axis=-1)
         grid_scalar = slicing.grid_scalar(grid_scalar, plane, fraction)
         return graph.Graph([graph.Contour(grid_scalar, plane, label, isolevels=True)])
@@ -83,21 +83,21 @@ class NmrCurrent(base.Refinery, structure.Mixin):
 
         Cut a plane at the origin of the third lattice vector.
 
-        >>> calc.nmr_current.to_quiver(c=0)
+        >>> calc.current_density.to_quiver(c=0)
 
         Replicate a plane in the middle of the second lattice vector 2 times in each
         direction.
 
-        >>> calc.nmr_current.to_quiver(b=0.5, supercell=2)
+        >>> calc.current_density.to_quiver(b=0.5, supercell=2)
 
         Take a slice along the first lattice vector and rotate it such that the normal
         of the plane aligns with the x axis.
 
-        >>> calc.nmr_current.to_quiver(a=0.3, normal="x")
+        >>> calc.current_density.to_quiver(a=0.3, normal="x")
         """
         cut, fraction = self._get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
-        label, data = self._read_nmr_current(selection)
+        label, data = self._read_current_density(selection)
         sliced_data = slicing.grid_vector(np.moveaxis(data, -1, 0), plane, fraction)
         quiver_plot = graph.Contour(0.003 * sliced_data, plane, label)
         if supercell is not None:
