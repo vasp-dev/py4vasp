@@ -9,7 +9,7 @@ from py4vasp._third_party import graph
 from py4vasp._util import slicing
 
 
-class NMRCurrent(base.Refinery, structure.Mixin):
+class NmrCurrent(base.Refinery, structure.Mixin):
     """The NMR (Nuclear Magnetic Resonance) current refers to the electrical response
     induced in a detection coil by the precessing magnetic moments of nuclear spins in a
     sample. When the nuclei are exposed to a strong external magnetic field and excited
@@ -44,7 +44,7 @@ class NMRCurrent(base.Refinery, structure.Mixin):
         nmr_current = self._read_nmr_current()
         (label, data), *_ = nmr_current.items()
         sliced_data = slicing.grid_vector(np.moveaxis(data, -1, 0), plane, fraction)
-        quiver_plot = graph.Contour(sliced_data, plane, label)
+        quiver_plot = graph.Contour(0.003 * sliced_data, plane, label)
         return graph.Graph([quiver_plot])
 
     def _get_cut(self, a, b, c):

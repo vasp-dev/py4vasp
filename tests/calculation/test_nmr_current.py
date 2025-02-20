@@ -5,7 +5,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp._calculation.nmr_current import NMRCurrent
+from py4vasp._calculation.nmr_current import NmrCurrent
 from py4vasp._calculation.structure import Structure
 
 
@@ -21,7 +21,7 @@ def single_nmr_current(request, raw_data):
 
 def make_reference_current(selection, raw_data):
     raw_current = raw_data.nmr_current(selection)
-    current = NMRCurrent.from_data(raw_current)
+    current = NmrCurrent.from_data(raw_current)
     current.ref = types.SimpleNamespace()
     current.ref.structure = Structure.from_data(raw_current.structure)
     if selection in ("x", "all"):
@@ -51,13 +51,12 @@ def test_read(nmr_current, Assert):
 
 def test_to_quiver(single_nmr_current, Assert):
     expected_data = single_nmr_current.ref.single_current[:, :, 10, :2]
-    expected_lattice_vectors = single_nmr_current.ref.structure.lattice_vectors()[
-        :2, :2
-    ]
+    reference_structure = single_nmr_current.ref.structure
+    expected_lattice_vectors = reference_structure.lattice_vectors()[:2, :2]
     graph = single_nmr_current.to_quiver(c=0.7)
     assert len(graph) == 1
     series = graph.series[0]
-    Assert.allclose(series.data, np.moveaxis(expected_data, -1, 0))
+    Assert.allclose(series.data, 0.003 * np.moveaxis(expected_data, -1, 0))
     Assert.allclose(series.lattice.vectors, expected_lattice_vectors)
     assert series.label == f"nmr_current_B{single_nmr_current.ref.direction}"
 
@@ -65,4 +64,4 @@ def test_to_quiver(single_nmr_current, Assert):
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.nmr_current("x")
     parameters = {"to_quiver": {"a": 0.3}}
-    check_factory_methods(NMRCurrent, data, parameters)
+    check_factory_methods(NmrCurrent, data, parameters)

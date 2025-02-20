@@ -413,7 +413,7 @@ schema.add(
 )
 #
 schema.add(
-    raw.NMRCurrent,
+    raw.NmrCurrent,
     required=raw.Version(6, 5, 1),
     valid_indices="/results/nmrcurb_meta/directions",
     structure=Link("structure", DEFAULT_SOURCE),

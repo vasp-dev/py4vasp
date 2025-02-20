@@ -1315,7 +1315,7 @@ def _nmr_current(selection):
         valid_indices = [selection]
     shape = (axes, *grid_dimensions)
     nmr_current = [_make_arbitrary_data(shape) for _ in valid_indices]
-    return raw.NMRCurrent(
+    return raw.NmrCurrent(
         valid_indices=valid_indices,
         structure=_Fe3O4_structure(),
         nmr_current=nmr_current,

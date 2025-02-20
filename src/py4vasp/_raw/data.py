@@ -341,7 +341,7 @@ class Magnetism:
 
 
 @dataclasses.dataclass
-class NMRCurrent(schema.Mapping):
+class NmrCurrent(schema.Mapping):
     """The NMR current evaluated on a grid in the unit cell.
 
     You may have multiple currents for different directions which you can set by the

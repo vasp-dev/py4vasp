@@ -24,6 +24,7 @@ QUANTITIES = (
     "internal_strain",
     "kpoint",
     "magnetism",
+    "nmr_current",
     "pair_correlation",
     "partial_density",
     "piezoelectric_tensor",
