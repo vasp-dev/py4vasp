@@ -29,17 +29,19 @@ class NmrCurrent(base.Refinery, structure.Mixin):
             Contains the NMR current data for all magnetic fields selected in the INCAR
             file as well as structural data.
         """
-        return {"structure": self._structure.read(), **self._read_nmr_current()}
+        return {"structure": self._structure.read(), **self._read_nmr_currents()}
 
-    def _read_nmr_current(self):
-        return {
-            f"nmr_current_B{key}": data.nmr_current[:].T
-            for key, data in self._raw_data.items()
-        }
+    def _read_nmr_currents(self):
+        return dict(self._read_nmr_current(key) for key in self._raw_data)
+
+    def _read_nmr_current(self, key):
+        return f"nmr_current_B{key}", self._raw_data[key].nmr_current[:].T
 
     @base.data_access
     @documentation.format(plane=slicing.PLANE, parameters=slicing.PARAMETERS)
-    def to_quiver(self, *, a=None, b=None, c=None, normal=None, supercell=None):
+    def to_quiver(
+        self, selection=None, *, a=None, b=None, c=None, normal=None, supercell=None
+    ):
         """Generate a quiver plot of NMR current.
 
         {plane}
@@ -50,6 +52,10 @@ class NmrCurrent(base.Refinery, structure.Mixin):
 
         Parameters
         ----------
+        selection : Direction of the magnetic field for which the NMR current is read.
+            If only a single direction is computed, it will default to that direction,
+            otherwise to the "z" axis.
+
         {parameters}
 
         supercell : int or np.ndarray
@@ -81,8 +87,8 @@ class NmrCurrent(base.Refinery, structure.Mixin):
         """
         cut, fraction = self._get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
-        nmr_current = self._read_nmr_current()
-        *_, (label, data) = nmr_current.items()
+        selection = selection or self._raw_data.valid_indices[-1]
+        label, data = self._read_nmr_current(selection)
         sliced_data = slicing.grid_vector(np.moveaxis(data, -1, 0), plane, fraction)
         quiver_plot = graph.Contour(0.003 * sliced_data, plane, label)
         if supercell is not None:
