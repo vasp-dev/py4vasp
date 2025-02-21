@@ -121,13 +121,15 @@ atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     z
         )
 
     def _format_eigenvector(self, index, eigenvector):
+        sign = np.sign(eigenvector.flatten()[np.argmax(np.abs(eigenvector))])
         eigenvector_string = "\n".join(
-            self._format_vector(vector) for vector in eigenvector
+            self._format_vector(sign * vector) for vector in eigenvector
         )
         return f"vibration {index + 1}\n{eigenvector_string}"
 
     def _format_vector(self, vector):
-        return " ".join(f"{x:12.6f}" for x in vector)
+        replace_nearly_zeros = lambda x: 0 if np.isclose(x, 0, atol=1e-9) else x
+        return " ".join(f"{replace_nearly_zeros(x):12.6f}" for x in vector)
 
 
 @dataclasses.dataclass
