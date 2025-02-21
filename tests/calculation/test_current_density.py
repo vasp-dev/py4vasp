@@ -5,6 +5,7 @@ import types
 import numpy as np
 import pytest
 
+from py4vasp import exception
 from py4vasp._calculation.current_density import CurrentDensity
 from py4vasp._calculation.structure import Structure
 
@@ -116,6 +117,14 @@ def test_to_contour(current_density, kwargs, index, position, Assert):
     assert len(graph) == 1
     series = graph.series[0]
     Assert.allclose(series.data, scalar_data)
+
+
+@pytest.mark.parametrize("args, kwargs", ([(), {}], [(), {"a": 1, "b":2}], [(3,), {}]))
+def test_incorrect_slice_raises_error(current_density, args, kwargs):
+    with pytest.raises(exception.IncorrectUsage):
+        current_density.to_contour(*args, **kwargs)
+    with pytest.raises(exception.IncorrectUsage):
+        current_density.to_quiver(*args, **kwargs)
 
 
 def test_factory_methods(raw_data, check_factory_methods):
