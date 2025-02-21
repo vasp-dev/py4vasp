@@ -6,6 +6,7 @@ import dataclasses
 from collections import abc
 
 from py4vasp import exception
+from py4vasp._util import suggest
 
 
 @dataclasses.dataclass
@@ -32,9 +33,10 @@ class Mapping(abc.Mapping):
             return self.valid_indices.index(key)
         except ValueError:
             message = f"""\
-Could not find the selection {key} in the valid selections. Please check for possible
-spelling errors. The following selections are possible: \
-{", ".join(str(index) for index in self.valid_indices)}."""
+Could not find the selection "{key}" in the valid selections. \
+{suggest.did_you_mean(key, self.valid_indices)}\
+Please check for possible spelling errors. The following selections are possible: \
+{", ".join(f'"{index}"' for index in self.valid_indices)}."""
             raise exception.IncorrectUsage(message)
 
     def _as_dict(self):

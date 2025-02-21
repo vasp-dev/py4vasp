@@ -4,7 +4,7 @@ from py4vasp._util import suggest
 
 
 def test_similar_selection():
-    assert suggest.did_you_mean("bar", ["foo", "baz"]) == 'Did you mean "baz"?'
+    assert suggest.did_you_mean("bar", ["foo", "baz"]) == 'Did you mean "baz"? '
 
 
 def test_no_similar_selection():
