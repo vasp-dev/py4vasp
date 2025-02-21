@@ -5,6 +5,8 @@ from __future__ import annotations
 import dataclasses
 from collections import abc
 
+from py4vasp import exception
+
 
 @dataclasses.dataclass
 class Mapping(abc.Mapping):
@@ -17,13 +19,23 @@ class Mapping(abc.Mapping):
         return iter(self.valid_indices)
 
     def __getitem__(self, key):
-        index = self.valid_indices.index(key)
+        index = self.try_to_find_key_in_valid_indices(key)
         elements = {
             key: value[index] if isinstance(value, list) else value
             for key, value in self._as_dict().items()
             if key != "valid_indices"
         }
         return dataclasses.replace(self, valid_indices=[key], **elements)
+
+    def try_to_find_key_in_valid_indices(self, key):
+        try:
+            return self.valid_indices.index(key)
+        except ValueError:
+            message = f"""\
+Could not find the selection {key} in the valid selections. Please check for possible
+spelling errors. The following selections are possible: \
+{", ".join(str(index) for index in self.valid_indices)}."""
+            raise exception.IncorrectUsage(message)
 
     def _as_dict(self):
         # shallow copy of dataclass to dictionary
