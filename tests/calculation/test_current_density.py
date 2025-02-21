@@ -146,6 +146,24 @@ def test_to_contour_normal(current_density, normal_vector, Assert):
     Assert.allclose(graph.series[0].lattice.vectors, expected_lattice)
 
 
+@pytest.mark.parametrize("selection", ("x", "y", "z"))
+def test_to_contour_selection(multiple_current_densities, selection, Assert):
+    expected_data = getattr(multiple_current_densities.ref, f"current_{selection}")
+    print("x\n", multiple_current_densities.ref.current_x[:3, :3, -1])
+    print("y\n", multiple_current_densities.ref.current_y[:3, :3, -1])
+    print("z\n", multiple_current_densities.ref.current_z[:3, :3, -1])
+    print(f"expected {selection}\n", expected_data[:3, :3, -1])
+    expected_data = np.linalg.norm(expected_data[:, :, -1], axis=-1)
+    reference_structure = multiple_current_densities.ref.structure
+    expected_lattice_vectors = reference_structure.lattice_vectors()[:2, :2]
+    graph = multiple_current_densities.to_contour(selection, c=-0.1)
+    assert len(graph) == 1
+    series = graph.series[0]
+    Assert.allclose(series.data, expected_data)
+    Assert.allclose(series.lattice.vectors, expected_lattice_vectors)
+    assert series.label == f"current_{selection}"
+
+
 @pytest.mark.parametrize("args, kwargs", ([(), {}], [(), {"a": 1, "b": 2}], [(3,), {}]))
 def test_incorrect_slice_raises_error(current_density, args, kwargs):
     with pytest.raises(exception.IncorrectUsage):
@@ -156,5 +174,4 @@ def test_incorrect_slice_raises_error(current_density, args, kwargs):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.current_density("x")
-    parameters = {"to_quiver": {"a": 0.3}}
-    check_factory_methods(CurrentDensity, data, parameters)
+    check_factory_methods(CurrentDensity, data)
