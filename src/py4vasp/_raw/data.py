@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 
-from py4vasp._raw import schema
+from py4vasp._raw import mapping
 from py4vasp._raw.data_wrapper import VaspData
 
 
@@ -110,7 +110,7 @@ class CONTCAR:
 
 
 @dataclasses.dataclass
-class CurrentDensity(schema.Mapping):
+class CurrentDensity(mapping.Mapping):
     """The current density evaluated on a grid in the unit cell.
 
     You may have multiple currents densities which you can set by the *valid_indices*

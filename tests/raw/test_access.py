@@ -11,7 +11,7 @@ from util import VERSION
 import py4vasp.raw as raw
 from py4vasp import exception
 from py4vasp._raw.definition import DEFAULT_FILE
-from py4vasp._raw.schema import Mapping
+from py4vasp._raw.mapping import Mapping
 
 
 @pytest.fixture

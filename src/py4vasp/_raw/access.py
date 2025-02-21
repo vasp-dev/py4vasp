@@ -9,7 +9,8 @@ import h5py
 
 from py4vasp import exception, raw
 from py4vasp._raw.definition import DEFAULT_FILE, DEFAULT_SOURCE, schema
-from py4vasp._raw.schema import Length, Link, Mapping, error_message
+from py4vasp._raw.mapping import Mapping
+from py4vasp._raw.schema import Length, Link, error_message
 from py4vasp._util import convert
 
 
