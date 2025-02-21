@@ -93,6 +93,16 @@ def simple_quiver():
 
 
 @pytest.fixture
+def dense_quiver():
+    return Contour(
+        data=np.linspace(-4, 2, 2 * 41 * 25).reshape((2, 41, 25)),
+        lattice=slicing.Plane(np.diag((4, 2)), cut="b"),
+        supercell=(2, 3),
+        label="quiver plot",
+    )
+
+
+@pytest.fixture
 def complex_quiver():
     return Contour(
         data=np.linspace(-3, 3, 2 * 12 * 10).reshape((2, 12, 10)),
@@ -532,25 +542,54 @@ def test_simple_quiver(simple_quiver, Assert, not_core):
     check_unit_cell(fig.layout.shapes[0], x="3", y="5", zero="0")
     check_annotations(simple_quiver.lattice, fig.layout.annotations, Assert)
     assert fig.layout.yaxis.scaleanchor == "x"
+    assert fig.data[0].line.color == _config.VASP_COLORS["dark"]
+
+
+@pytest.mark.parametrize("max_number_arrows", (None, 1025, 680))
+def test_dense_quiver(dense_quiver, max_number_arrows, Assert, not_core):
+    if max_number_arrows is not None:
+        dense_quiver.max_number_arrows = max_number_arrows
+    else:
+        assert dense_quiver.max_number_arrows == 1024
+    if max_number_arrows is None:
+        expected_shape = (28, 25)
+        subsampling = (3, 3)
+    elif max_number_arrows == 1025:
+        expected_shape = (41, 25)
+        subsampling = (2, 3)
+    elif max_number_arrows == 680:
+        expected_shape = (28, 19)
+        subsampling = (3, 4)
+    else:
+        raise NotImplemented
+    graph = Graph(dense_quiver)
+    work = dense_quiver.data
+    work = np.block([[work, work, work], [work, work, work]]).T
+    # remember that a and b are transposed
+    work = work[:: subsampling[1], :: subsampling[0]]
+    expected_positions = compute_positions(dense_quiver, subsampling)
+    expected_tips = expected_positions + work.reshape(expected_positions.shape)
+    expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
+    data_size = np.prod(expected_shape)
+    #
+    fig = graph.to_plotly()
+    assert len(fig.data) == 1
+    actual = split_data(fig.data[0], data_size, Assert)
+    Assert.allclose(actual.positions, expected_positions)
+    Assert.allclose(actual.tips, expected_tips, tolerance=10)
+    Assert.allclose(actual.barb_length, expected_barb_length)
 
 
 def test_complex_quiver(complex_quiver, Assert, not_core):
     graph = Graph(complex_quiver)
-    fig = graph.to_plotly()
-    data_size = np.prod(complex_quiver.supercell) * complex_quiver.data.size // 2
-    vectors = np.array(complex_quiver.lattice.vectors)
-    step_a = vectors[0] / complex_quiver.data.shape[1]
-    mesh_a = np.arange(complex_quiver.supercell[0] * complex_quiver.data.shape[1])
-    step_b = vectors[1] / complex_quiver.data.shape[2]
-    mesh_b = np.arange(complex_quiver.supercell[1] * complex_quiver.data.shape[2])
-    expected_positions = np.array(
-        [a * step_a + b * step_b for b in mesh_b for a in mesh_a]
-    )
     work = complex_quiver.data
     work = np.block([[work, work], [work, work], [work, work]]).T
+    expected_positions = compute_positions(complex_quiver)
     expected_tips = expected_positions + work.reshape(expected_positions.shape)
     expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
+    data_size = np.prod(complex_quiver.supercell) * complex_quiver.data.size // 2
     #
+    fig = graph.to_plotly()
     assert len(fig.data) == 1
     actual = split_data(fig.data[0], data_size, Assert)
     Assert.allclose(actual.positions, expected_positions, tolerance=10)
@@ -585,6 +624,17 @@ class ContourData:
     second_tips: np.ndarray = None
     first_barb_length: np.ndarray = None
     second_barb_length: np.ndarray = None
+
+
+def compute_positions(contour, subsampling=(1, 1)):
+    step_a = np.divide(contour.lattice.vectors[0], contour.data.shape[1])
+    step_b = np.divide(contour.lattice.vectors[1], contour.data.shape[2])
+    shape = np.multiply(contour.supercell, contour.data.shape[1:])
+    print(shape)
+    # remember that the data is transposed
+    range_a = range(0, shape[0], subsampling[0])
+    range_b = range(0, shape[1], subsampling[1])
+    return np.array([a * step_a + b * step_b for b in range_b for a in range_a])
 
 
 def split_data(data, data_size, Assert):

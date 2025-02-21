@@ -7,8 +7,12 @@ from py4vasp._raw.definition import schema
 
 
 def test_all_quantities_have_default():
-    for source in schema.sources.values():
-        assert "default" in source
+    for quantity, source in schema.sources.items():
+        if quantity == "current_density":
+            # currently no default current density is implemented
+            assert "default" not in source
+        else:
+            assert "default" in source
 
 
 def test_schema_is_valid():

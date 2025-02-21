@@ -110,6 +110,15 @@ schema.add(
 schema.add(raw.CONTCAR, name="CONTCAR", file="CONTCAR", data_factory=read.CONTCAR)
 #
 schema.add(
+    raw.CurrentDensity,
+    name="nmr",
+    required=raw.Version(6, 5, 1),
+    valid_indices="/results/nmrcurb_meta/directions",
+    structure=Link("structure", DEFAULT_SOURCE),
+    current_density="/results/nmrcurb{}/values",
+)
+#
+schema.add(
     raw.Density,
     alias=["charge", "n", "charge_density", "electronic_charge_density"],
     file="vaspwave.h5",

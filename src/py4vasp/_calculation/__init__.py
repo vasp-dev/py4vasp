@@ -12,6 +12,7 @@ QUANTITIES = (
     "band",
     "bandgap",
     "born_effective_charge",
+    "current_density",
     "density",
     "dielectric_function",
     "dielectric_tensor",

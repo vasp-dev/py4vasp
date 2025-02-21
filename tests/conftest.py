@@ -178,6 +178,10 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
+    def current_density(selection):
+        return _current_density(selection)
+
+    @staticmethod
     def density(selection):
         parts = selection.split()
         if parts[0] == "Sr2TiO4":
@@ -1301,6 +1305,20 @@ def _BN_structure():
             scale=raw.VaspData(3.63),
         ),
         positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
+    )
+
+
+def _current_density(selection):
+    if selection == "all":
+        valid_indices = ("x", "y", "z")
+    else:
+        valid_indices = [selection]
+    shape = (axes, *grid_dimensions)
+    current_density = [_make_arbitrary_data(shape) for _ in valid_indices]
+    return raw.CurrentDensity(
+        valid_indices=valid_indices,
+        structure=_Fe3O4_structure(),
+        current_density=current_density,
     )
 
 
