@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-""" Parse a string to a Tree of selections.
+"""Parse a string to a Tree of selections.
 
 In many cases, a user may want to select a certain subset of quantities to be refined.
 Examples include selecting the projected DOS or a particular component of the energy.
@@ -318,6 +318,7 @@ class Tree:
 @dataclasses.dataclass
 class Group:
     "A user selection where multiple elements should be treated together."
+
     group: list
     "The individual members of the group."
     separator: str
@@ -341,6 +342,7 @@ class _Operator:
 @dataclasses.dataclass
 class Operation:
     "A mathematical operation like addition and subtraction."
+
     left_operand: tuple
     "The selection on the left-hand side of the operation."
     operator: str

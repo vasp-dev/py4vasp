@@ -15,6 +15,7 @@ def NONE():
 @dataclasses.dataclass(order=True, frozen=True)
 class Version:
     "The version number of VASP."
+
     major: int
     "The major version number."
     minor: int = 0
@@ -126,6 +127,7 @@ class CurrentDensity(mapping.Mapping):
 @dataclasses.dataclass
 class Density:
     "The electronic charge and magnetization density on the Fourier grid."
+
     structure: Structure
     "The atomic structure to represent the densities."
     charge: VaspData
@@ -247,6 +249,7 @@ class Energy:
 @dataclasses.dataclass
 class ExcitonDensity:
     "The exciton charge density on the real space grid."
+
     structure: Structure
     "The atomic structure to represent the densities."
     exciton_charge: VaspData
@@ -500,6 +503,7 @@ class Projector:
 @dataclasses.dataclass
 class Stoichiometry:
     "Contains the type of ions in the system and how many of each type exist."
+
     number_ion_types: VaspData
     "Amount of ions of a particular type."
     ion_types: VaspData
@@ -509,6 +513,7 @@ class Stoichiometry:
 @dataclasses.dataclass
 class Stress:
     "The stress acting on the unit cell at all steps."
+
     structure: Structure
     "Structural information about the system to inform about the unit cell."
     stress: VaspData
@@ -533,12 +538,14 @@ class Structure:
 @dataclasses.dataclass
 class System:
     "The name of the system set in the input."
+
     system: str
 
 
 @dataclasses.dataclass
 class Velocity:
     "Contains the ion velocities along the trajectory."
+
     structure: Structure
     "Structural information to relate the velocities to."
     velocities: VaspData
@@ -548,6 +555,7 @@ class Velocity:
 @dataclasses.dataclass
 class Workfunction:
     "Describes the minimal energy needed to remove an electron from the crystal to the vacuum."
+
     idipol: int
     "INCAR tag of VASP describing the direction along which the potential is assessed."
     distance: VaspData

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 @dataclass
 class Selection:
     "Helper class specifying which indices to extract their label."
+
     indices: Iterable[int]
     "Indices from which the specified quantity is read."
     label: str = ""

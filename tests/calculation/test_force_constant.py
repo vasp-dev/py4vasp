@@ -109,12 +109,15 @@ def test_eigenvectors(Sr2TiO4, Assert):
     else:
         expected_vectors = np.zeros((len(eigenvectors), 7, 3))
         expected_vectors[:, selective_dynamics] = eigenvectors.T[::-1]
-    Assert.allclose(Sr2TiO4.eigenvectors(), expected_vectors, tolerance=10)
+    actual_vectors = Sr2TiO4.eigenvectors()
+    for actual, expected in zip(actual_vectors, expected_vectors):
+        sign_actual = np.sign(actual.flatten()[np.argmax(np.abs(actual))])
+        sign_expected = np.sign(expected.flatten()[np.argmax(np.abs(expected))])
+        Assert.allclose(sign_actual * actual, sign_expected * expected, tolerance=10)
 
 
 def test_to_molden(Sr2TiO4, Assert):
     molden_string = Sr2TiO4.to_molden()
-    print(molden_string)
     assert molden_string == Sr2TiO4.ref.molden_string
 
 

@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-""" Select indices from an array based on a map.
+"""Select indices from an array based on a map.
 
 In multiple cases, VASP produces multiple outputs and the user wants to select one of
 its components e.g. plotting the p DOS. This module provides the Selector class that
