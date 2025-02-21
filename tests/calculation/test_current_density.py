@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 import types
 
 import numpy as np
@@ -18,6 +19,24 @@ def current_density(request, raw_data):
 @pytest.fixture
 def multiple_current_densities(raw_data):
     return make_reference_current("all", raw_data)
+
+
+@dataclasses.dataclass
+class Normal:
+    normal: str
+    expected_rotation: np.ndarray
+
+
+@pytest.fixture(
+    params=[
+        Normal(normal="auto", expected_rotation=np.eye(2)),
+        Normal(normal="x", expected_rotation=np.array([[0, -1], [1, 0]])),
+        Normal(normal="y", expected_rotation=np.diag((1, -1))),
+        Normal(normal="z", expected_rotation=np.eye(2)),
+    ]
+)
+def normal_vector(request):
+    return request.param
 
 
 def make_reference_current(selection, raw_data):
@@ -73,18 +92,10 @@ def test_to_quiver_supercell(current_density, Assert):
     Assert.allclose(graph.series[0].supercell, (2, 1))
 
 
-@pytest.mark.parametrize(
-    "normal, rotation",
-    [
-        ("auto", np.eye(2)),
-        ("x", np.array([[0, -1], [1, 0]])),
-        ("y", np.diag((1, -1))),
-        ("z", np.eye(2)),
-    ],
-)
-def test_to_quiver_normal(current_density, normal, rotation, Assert):
+def test_to_quiver_normal(current_density, normal_vector, Assert):
     unrotated_graph = current_density.to_quiver(c=0.5)
-    rotated_graph = current_density.to_quiver(c=0.5, normal=normal)
+    rotated_graph = current_density.to_quiver(c=0.5, normal=normal_vector.normal)
+    rotation = normal_vector.expected_rotation
     expected_lattice = unrotated_graph.series[0].lattice.vectors @ rotation
     Assert.allclose(rotated_graph.series[0].lattice.vectors, expected_lattice)
     expected_data = (unrotated_graph.series[0].data.T @ rotation).T
@@ -125,6 +136,14 @@ def test_to_contour_supercell(current_density, Assert):
     Assert.allclose(graph.series[0].supercell, (2, 2))
     graph = current_density.to_contour(b=0, supercell=(2, 1))
     Assert.allclose(graph.series[0].supercell, (2, 1))
+
+
+def test_to_contour_normal(current_density, normal_vector, Assert):
+    graph = current_density.to_contour(c=0.5, normal=normal_vector.normal)
+    rotation = normal_vector.expected_rotation
+    lattice_vectors = current_density.ref.structure.lattice_vectors()
+    expected_lattice = lattice_vectors[:2, :2] @ rotation
+    Assert.allclose(graph.series[0].lattice.vectors, expected_lattice)
 
 
 @pytest.mark.parametrize("args, kwargs", ([(), {}], [(), {"a": 1, "b": 2}], [(3,), {}]))

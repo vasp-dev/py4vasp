@@ -35,9 +35,9 @@ class CurrentDensity(base.Refinery, structure.Mixin):
         return f"current_{key}", self._raw_data[key].current_density[:].T
 
     @base.data_access
-    def to_contour(self, *, a=None, b=None, c=None, supercell=None):
+    def to_contour(self, *, a=None, b=None, c=None, normal=None, supercell=None):
         cut, fraction = self._get_cut(a, b, c)
-        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal=None)
+        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
         label, grid_vector = self._read_current_density()
         grid_scalar = np.linalg.norm(grid_vector, axis=-1)
         grid_scalar = slicing.grid_scalar(grid_scalar, plane, fraction)
