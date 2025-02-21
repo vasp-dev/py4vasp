@@ -104,6 +104,7 @@ def test_to_quiver_selection(multiple_current_densities, selection, Assert):
     Assert.allclose(series.lattice.vectors, expected_lattice_vectors)
     assert series.label == f"current_{selection}"
 
+
 @pytest.mark.parametrize(
     "kwargs, index, position",
     (({"a": 0.1}, 0, 1), ({"b": 0.7}, 1, 8), ({"c": 1.3}, 2, 4)),
@@ -119,7 +120,14 @@ def test_to_contour(current_density, kwargs, index, position, Assert):
     Assert.allclose(series.data, scalar_data)
 
 
-@pytest.mark.parametrize("args, kwargs", ([(), {}], [(), {"a": 1, "b":2}], [(3,), {}]))
+def test_to_contour_supercell(current_density, Assert):
+    graph = current_density.to_contour(b=0, supercell=2)
+    Assert.allclose(graph.series[0].supercell, (2, 2))
+    graph = current_density.to_contour(b=0, supercell=(2, 1))
+    Assert.allclose(graph.series[0].supercell, (2, 1))
+
+
+@pytest.mark.parametrize("args, kwargs", ([(), {}], [(), {"a": 1, "b": 2}], [(3,), {}]))
 def test_incorrect_slice_raises_error(current_density, args, kwargs):
     with pytest.raises(exception.IncorrectUsage):
         current_density.to_contour(*args, **kwargs)
