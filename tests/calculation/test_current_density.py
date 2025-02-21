@@ -58,6 +58,12 @@ def make_reference_current_density(selection, raw_data):
         current.ref.current_z = np.transpose(raw_current.current_density[-1])
         current.ref.default_current = current.ref.current_z
         current.ref.default_direction = "z"
+    selections = "x, y, z" if selection == "all" else selection
+    current.ref.string = f"""\
+current density:
+    structure: Fe3O4
+    grid: 10, 12, 14
+    selections: {selections}"""
     return current
 
 
@@ -158,6 +164,11 @@ def test_to_contour_selection(multiple_current_densities, selection, Assert):
     Assert.allclose(series.data, expected_data)
     Assert.allclose(series.lattice.vectors, expected_lattice_vectors)
     assert series.label == f"current_{selection}"
+
+
+def test_print(current_density, format_):
+    actual, _ = format_(current_density)
+    assert actual == {"text/plain": current_density.ref.string}
 
 
 @pytest.mark.parametrize("args, kwargs", ([(), {}], [(), {"a": 1, "b": 2}], [(3,), {}]))

@@ -4,9 +4,11 @@
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._calculation import base, structure
+from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import graph
-from py4vasp._util import documentation, slicing
+from py4vasp._util import documentation, import_, slicing
+
+pretty = import_.optional("IPython.lib.pretty")
 
 _COMMON_PARAMETERS = f"""\
 selection : Selects which of the possible available currents is used. Check the
@@ -25,6 +27,18 @@ class CurrentDensity(base.Refinery, structure.Mixin):
     A current density j is a vectorial quantity (j_x, j_y, j_z) on every grid point.
     It describes how the current flows at every point in space.
     """
+
+    @base.data_access
+    def __str__(self):
+        raw_stoichiometry = self._raw_data.structure.stoichiometry
+        stoichiometry = _stoichiometry.Stoichiometry.from_data(raw_stoichiometry)
+        key = self._raw_data.valid_indices[-1]
+        grid = self._raw_data[key].current_density.shape[1:]
+        return f"""\
+current density:
+    structure: {pretty.pretty(stoichiometry)}
+    grid: {grid[2]}, {grid[1]}, {grid[0]}
+    selections: {", ".join(str(index) for index in self._raw_data.valid_indices)}"""
 
     @base.data_access
     def to_dict(self):
