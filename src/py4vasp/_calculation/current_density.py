@@ -8,6 +8,16 @@ from py4vasp._calculation import base, structure
 from py4vasp._third_party import graph
 from py4vasp._util import documentation, slicing
 
+_COMMON_PARAMETERS = f"""\
+selection : Selects which of the possible available currents is used. Check the
+    `selections` method for all available choices.
+
+{slicing.PARAMETERS}
+supercell : int or np.ndarray
+    Replicate the contour plot periodically a given number of times. If you
+    provide two different numbers, the resulting cell will be the two remaining
+    lattice vectors multiplied by the specific number."""
+
 
 class CurrentDensity(base.Refinery, structure.Mixin):
     """Represents current density on the grid in the unit cell.
@@ -35,9 +45,40 @@ class CurrentDensity(base.Refinery, structure.Mixin):
         return f"current_{key}", self._raw_data[key].current_density[:].T
 
     @base.data_access
+    @documentation.format(plane=slicing.PLANE, parameters=_COMMON_PARAMETERS)
     def to_contour(
         self, selection=None, *, a=None, b=None, c=None, normal=None, supercell=None
     ):
+        """Generate a contour plot of current density.
+
+        {plane}
+
+        Parameters
+        ----------
+        {parameters}
+
+        Returns
+        -------
+        graph
+            A current density plot in the plane spanned by the 2 remaining lattice vectors.
+
+        Examples
+        --------
+
+        Cut a plane at the origin of the third lattice vector.
+
+        >>> calc.current_density.to_contour(c=0)
+
+        Replicate a plane in the middle of the second lattice vector 2 times in each
+        direction.
+
+        >>> calc.current_density.to_contour(b=0.5, supercell=2)
+
+        Take a slice along the first lattice vector and rotate it such that the normal
+        of the plane aligns with the x axis.
+
+        >>> calc.current_density.to_contour(a=0.3, normal="x")
+        """
         cut, fraction = self._get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
         label, grid_vector = self._read_current_density(selection)
@@ -49,7 +90,7 @@ class CurrentDensity(base.Refinery, structure.Mixin):
         return graph.Graph([contour_plot])
 
     @base.data_access
-    @documentation.format(plane=slicing.PLANE, parameters=slicing.PARAMETERS)
+    @documentation.format(plane=slicing.PLANE, parameters=_COMMON_PARAMETERS)
     def to_quiver(
         self, selection=None, *, a=None, b=None, c=None, normal=None, supercell=None
     ):
@@ -60,15 +101,7 @@ class CurrentDensity(base.Refinery, structure.Mixin):
 
         Parameters
         ----------
-        selection : Selects which of the possible available currents is used. Check the
-            `selections` method for all available choices.
-
         {parameters}
-
-        supercell : int or np.ndarray
-            Replicate the contour plot periodically a given number of times. If you
-            provide two different numbers, the resulting cell will be the two remaining
-            lattice vectors multiplied by the specific number.
 
         Returns
         -------
