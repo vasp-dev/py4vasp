@@ -55,7 +55,7 @@ def mock_read_result(key):
 def check_data(actual, key):
     mock = mock_read_result(key)
     if mock.ndim == 0:
-        mock.__array__.assert_called_once_with()
+        mock.__array__.assert_called_once()
         assert actual == EXAMPLE_SCALAR
     else:
         assert isinstance(actual, raw.VaspData)
