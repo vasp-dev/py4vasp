@@ -142,7 +142,7 @@ def test_scalar_data():
     reference = 1
     mock = MagicMock()
     mock.ndim = 0
-    mock.__array__ = lambda: np.array(reference)
+    mock.__array__ = lambda *args, **kwargs: np.array(reference)
     vasp = VaspData(mock)
     assert vasp == reference
     assert np.array(vasp) == reference
