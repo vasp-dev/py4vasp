@@ -18,6 +18,23 @@ class Band(base.Refinery, graph.Mixin):
     VASP calculation. In some cases you may want to use the `to_dict` function
     just to obtain the eigenvalue and projection data though in that case the
     **k**-point distances that are calculated are meaningless.
+
+    Examples
+    --------
+
+    To produce band structure plot use, please check the `to_graph` function for
+    a more detailed documentation.
+
+    >>> calculation.band.plot()
+
+    For your own postprocessing, you can read the band data into a Python dictionary
+
+    >>> calculation.band.read()
+
+    These methods take additional selections, if you used VASP with :tag:`LORBIT`.
+    You can inspect possible choices with
+
+    >>> calculation.band.selections()
     """
 
     @base.data_access
@@ -37,6 +54,11 @@ class Band(base.Refinery, graph.Mixin):
     def to_dict(self, selection=None):
         """Read the data into a dictionary.
 
+        You may use this data for your own postprocessing tools. Sometimes you may
+        want to choose different representations of the electronic band structure or
+        you want to use the electronic eigenvalues and occupations to compute integrals
+        over the Brillouin zone.
+
         Parameters
         ----------
         {selection_doc}
@@ -48,6 +70,13 @@ class Band(base.Refinery, graph.Mixin):
             eigenvalues shifted to bring the Fermi energy to 0. If available
             and a selection is passed, the projections of these bands on the
             selected projectors are included.
+
+        Examples
+        --------
+        Return the **k** points, the electronic eigenvalues, and the Fermi energy as
+        a Python dictionary
+
+        >>> calculation.band.to_dict()
 
         {examples}
         """
@@ -69,11 +98,23 @@ class Band(base.Refinery, graph.Mixin):
     def to_graph(self, selection=None, width=0.5):
         """Read the data and generate a graph.
 
+        On the x axis, we show the **k** points as distances from the previous ones.
+        This representation makes sense, if you selected a line mode in the KPOINTS
+        file. When you provide labels for the **k** points those will be added in the
+        plot. We show all bands included in the calculation :tag:`NBANDS`.
+
+        If you used the code with :tag:`LORBIT`, you can also plot the projected band
+        structure. Here, each band will have a linewidth proportional to the projection
+        of the band on reference orbitals. The maximum width is adjustable with an
+        argument.
+
         Parameters
         ----------
         {selection_doc}
         width : float
-            Specifies the width of the fatbands if a selection of projections is specified.
+            Specifies the width (in eV) of the fatbands if a selection of projections is
+            specified. If the projection amounts to 100%, the line will be drawn with
+            this width.
 
         Returns
         -------
@@ -82,7 +123,19 @@ class Band(base.Refinery, graph.Mixin):
             is provided the width of the bands represents the projections of the
             bands onto the specified projectors.
 
+        Examples
+        --------
+        Plot the band structure with possible **k** point labels if they have been
+        provided in the KPOINTS file
+
+        >>> calculation.band.to_graph()
+
         {examples}
+
+        If you use projections, you can also adjust the width of the lines. Passing
+        the argument `width=1.0` increases the maximum linewidth to 1 eV
+
+        >>> calculation.band.to_graph("d", width=1.0)
         """
         projections = self._projections(selection, width)
         graph = self._dispersion().plot(projections)
@@ -109,11 +162,17 @@ class Band(base.Refinery, graph.Mixin):
             bands. If a selection string is given, in addition the orbital projections
             on these bands are returned.
 
+        Examples
+        --------
         {examples}
         """
         index = self._setup_dataframe_index()
         data = self._extract_relevant_data(selection)
         return pd.DataFrame(data, index)
+
+    @base.data_access
+    def selections(self):
+        return {**super().selections(), **self._projector().read()}
 
     def _spin_polarized(self):
         return len(self._raw_data.dispersion.eigenvalues) == 2

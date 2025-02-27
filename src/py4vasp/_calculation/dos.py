@@ -59,6 +59,8 @@ class Dos(base.Refinery, graph.Mixin):
             spin-polarized calculations. If available and a selection is passed,
             the orbital resolved DOS for the selected orbitals is included.
 
+        Examples
+        --------
         {examples}
         """
         return {
@@ -86,6 +88,8 @@ class Dos(base.Refinery, graph.Mixin):
             towards negative values. If a selection is given the orbital-resolved
             DOS is given for the specified projectors.
 
+        Examples
+        --------
         {examples}
         """
         data = self._read_data(selection)
@@ -115,6 +119,8 @@ class Dos(base.Refinery, graph.Mixin):
             spin-polarized calculations. If available and a selection is passed,
             the orbital resolved DOS for the selected orbitals is included.
 
+        Examples
+        --------
         {examples}
         """
         df = pd.DataFrame(self._read_data(selection))

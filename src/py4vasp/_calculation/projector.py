@@ -39,8 +39,7 @@ selection : str
 
 
 def selection_examples(quantity, method):
-    return f"""Examples
---------
+    return f"""\
 Select the p orbitals of the first atom in the POSCAR file:
 
 >>> calculation.{quantity}.{method}(selection="1(p)")
