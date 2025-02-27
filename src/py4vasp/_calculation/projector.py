@@ -34,7 +34,7 @@ selection : str
 
     If you are unsure about the specific projections that are available, you can use
 
-    >>> calc.projector.selections()
+    >>> calculation.projector.selections()
 
     to get a list of all available ones.
 """
@@ -45,19 +45,19 @@ def selection_examples(instance_name, function_name):
 --------
 Select the p orbitals of the first atom in the POSCAR file:
 
->>> calc.{instance_name}.{function_name}(selection="1(p)")
+>>> calculation.{instance_name}.{function_name}(selection="1(p)")
 
 Select the d orbitals of Mn, Co, and Fe:
 
->>> calc.{instance_name}.{function_name}("d(Mn, Co, Fe)")
+>>> calculation.{instance_name}.{function_name}("d(Mn, Co, Fe)")
 
 Select the spin-up contribution of the first three atoms combined
 
->>> calc.{instance_name}.{function_name}("up(1{select.range_separator}3)")
+>>> calculation.{instance_name}.{function_name}("up(1{select.range_separator}3)")
 
 Add the contribution of three d orbitals
 
->>> calc.{instance_name}.{function_name}("dxy + dxz + dyz")
+>>> calculation.{instance_name}.{function_name}("dxy + dxz + dyz")
 """
 
 

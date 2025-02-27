@@ -70,10 +70,10 @@ class Calculation:
     Examples
     --------
 
-    >>> calc = Calculation.from_path("path_to_your_calculation")
-    >>> calc.dos.plot()         # to plot the density of states
-    >>> calc.magnetism.read()   # to read the magnetic moments
-    >>> calc.structure.print()  # to print the structure in a POSCAR format
+    >>> calculation = Calculation.from_path("path_to_your_calculation")
+    >>> calculation.dos.plot()         # to plot the density of states
+    >>> calculation.magnetism.read()   # to read the magnetic moments
+    >>> calculation.structure.print()  # to print the structure in a POSCAR format
     """
 
     def __init__(self, *args, **kwargs):
@@ -234,8 +234,8 @@ class DefaultCalculationFactory:
     .. rubric:: using :class:`~py4vasp.Calculation` class
 
     >>> from py4vasp import Calculation
-    >>> calc = Calculation.from_path(".")
-    >>> calc.dos.read()
+    >>> calculation = Calculation.from_path(".")
+    >>> calculation.dos.read()
 
     In the latter example, you can change the path from which the data is extracted.
     """

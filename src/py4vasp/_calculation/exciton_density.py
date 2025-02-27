@@ -86,14 +86,14 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
 
         Examples
         --------
-        >>> calc = py4vasp.Calculation.from_path(".")
+        >>> calculation = py4vasp.Calculation.from_path(".")
         Plot an isosurface of the first exciton charge density
-        >>> calc.exciton.density.plot()
+        >>> calculation.exciton.density.plot()
         Plot an isosurface of the third exciton charge density
-        >>> calc.exciton.density.plot("3")
+        >>> calculation.exciton.density.plot("3")
         Plot an isosurface of the sum of first and second exciton charge
         densities
-        >>> calc.exciton.density.plot("1+2")
+        >>> calculation.exciton.density.plot("1+2")
         """
         _raise_error_if_no_data(self._raw_data.exciton_charge)
         selection = selection or _DEFAULT_SELECTION

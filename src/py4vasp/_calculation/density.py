@@ -117,11 +117,11 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
 
         Examples
         --------
-        >>> calc = py4vasp.Calculation.from_path(".")
-        >>> calc.density.to_dict("n")
-        >>> calc.density.plot("magnetization")
+        >>> calculation = py4vasp.Calculation.from_path(".")
+        >>> calculation.density.to_dict("n")
+        >>> calculation.density.plot("magnetization")
         Using synonyms and nesting
-        >>> calc.density.plot("n m(1,2) mag(sigma_z)")
+        >>> calculation.density.plot("n m(1,2) mag(sigma_z)")
         """
         sources = super().selections()
         if self._raw_data.charge.is_none():
@@ -211,14 +211,14 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
 
         Examples
         --------
-        >>> calc = py4vasp.Calculation.from_path(".")
+        >>> calculation = py4vasp.Calculation.from_path(".")
         Plot an isosurface of the electronic charge density
-        >>> calc.density.plot()
+        >>> calculation.density.plot()
         Plot isosurfaces for positive (blue) and negative (red) magnetization
         of a spin-polarized calculation (ISPIN=2)
-        >>> calc.density.plot("m")
+        >>> calculation.density.plot("m")
         Plot the isosurface for the third component of a noncollinear magnetization
-        >>> calc.density.plot("m(3)")
+        >>> calculation.density.plot("m(3)")
         """
         _raise_error_if_no_data(self._raw_data.charge)
         selection = selection or _INTERNAL
@@ -327,17 +327,17 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         Cut a plane through the magnetization density at the origin of the third lattice
         vector.
 
-        >>> calc.density.to_contour("3", c=0)
+        >>> calculation.density.to_contour("3", c=0)
 
         Replicate a plane in the middle of the second lattice vector 2 times in each
         direction.
 
-        >>> calc.density.to_contour(b=0.5, supercell=2)
+        >>> calculation.density.to_contour(b=0.5, supercell=2)
 
         Take a slice of the kinetic energy density along the first lattice vector and
         rotate it such that the normal of the plane aligns with the x axis.
 
-        >>> calc.density.to_contour("kinetic_energy", a=0.3, normal="x")
+        >>> calculation.density.to_contour("kinetic_energy", a=0.3, normal="x")
         """
         cut, fraction = self._get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
@@ -386,18 +386,18 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
 
         Cut a plane at the origin of the third lattice vector.
 
-        >>> calc.density.to_quiver(c=0)
+        >>> calculation.density.to_quiver(c=0)
 
         Replicate a plane in the middle of the second lattice vector 2 times in each
         direction.
 
-        >>> calc.density.to_quiver(b=0.5, supercell=2)
+        >>> calculation.density.to_quiver(b=0.5, supercell=2)
 
         Take a slice of the spin components of the kinetic energy density along the
         first lattice vector and rotate it such that the normal of the plane aligns with
         the x axis.
 
-        >>> calc.density.to_quiver("kinetic_energy", a=0.3, normal="x")
+        >>> calculation.density.to_quiver("kinetic_energy", a=0.3, normal="x")
         """
         cut, fraction = self._get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
