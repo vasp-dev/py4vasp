@@ -107,7 +107,7 @@ def test_single_band_read(single_band, Assert):
     Assert.allclose(band["occupations"], single_band.ref.occupations)
     Assert.allclose(band["kpoint_distances"], single_band.ref.kpoints.distances())
     assert band["kpoint_labels"] == single_band.ref.kpoints.labels()
-    assert len(band["projections"]) == 0
+    assert "projections" not in band
 
 
 def test_multiple_bands_read(multiple_bands, Assert):
@@ -119,8 +119,8 @@ def test_multiple_bands_read(multiple_bands, Assert):
 
 def test_with_projectors_read(with_projectors, Assert):
     band = with_projectors.read("Sr p")
-    Assert.allclose(band["projections"]["Sr"], with_projectors.ref.Sr)
-    Assert.allclose(band["projections"]["p"], with_projectors.ref.p)
+    Assert.allclose(band["Sr"], with_projectors.ref.Sr)
+    Assert.allclose(band["p"], with_projectors.ref.p)
 
 
 def test_line_with_labels_read(line_with_labels, Assert):
@@ -139,18 +139,18 @@ def test_spin_polarized_read(spin_polarized, Assert):
 
 def test_spin_projectors_read(spin_projectors, Assert):
     band = spin_projectors.read(selection="s Fe(d)")
-    Assert.allclose(band["projections"]["s_up"], spin_projectors.ref.s_up)
-    Assert.allclose(band["projections"]["s_down"], spin_projectors.ref.s_down)
-    Assert.allclose(band["projections"]["Fe_d_up"], spin_projectors.ref.Fe_d_up)
-    Assert.allclose(band["projections"]["Fe_d_down"], spin_projectors.ref.Fe_d_down)
+    Assert.allclose(band["s_up"], spin_projectors.ref.s_up)
+    Assert.allclose(band["s_down"], spin_projectors.ref.s_down)
+    Assert.allclose(band["Fe_d_up"], spin_projectors.ref.Fe_d_up)
+    Assert.allclose(band["Fe_d_down"], spin_projectors.ref.Fe_d_down)
 
 
 def test_combining_projections(with_projectors, Assert):
     band = with_projectors.read("Sr + p, Sr - p")
     addition = with_projectors.ref.Sr + with_projectors.ref.p
     subtraction = with_projectors.ref.Sr - with_projectors.ref.p
-    Assert.allclose(band["projections"]["Sr + p"], addition)
-    Assert.allclose(band["projections"]["Sr - p"], subtraction)
+    Assert.allclose(band["Sr + p"], addition)
+    Assert.allclose(band["Sr - p"], subtraction)
 
 
 def test_more_projections_style(raw_data, Assert):
@@ -159,9 +159,9 @@ def test_more_projections_style(raw_data, Assert):
     is used."""
     raw_band = raw_data.band("spin_polarized excess_orbitals")
     band = Band.from_data(raw_band).read("Fe g")
-    zero = np.zeros_like(band["projections"]["Fe_up"])
-    Assert.allclose(band["projections"]["g_up"], zero)
-    Assert.allclose(band["projections"]["g_down"], zero)
+    zero = np.zeros_like(band["Fe_up"])
+    Assert.allclose(band["g_up"], zero)
+    Assert.allclose(band["g_down"], zero)
 
 
 def test_single_polarized_to_frame(single_band, Assert, not_core):

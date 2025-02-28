@@ -87,7 +87,7 @@ class Band(base.Refinery, graph.Mixin):
             "fermi_energy": self._raw_data.fermi_energy,
             **self._shift_dispersion_by_fermi_energy(dispersion),
             **self._read_occupations(),
-            "projections": self._read_projections(selection),
+            **self._read_projections(selection),
         }
 
     @base.data_access
