@@ -20,16 +20,16 @@ If you access {access}, the result will depend on {depend_on} that
 you selected with the [] operator. Without any selection the results from the
 final {step} will be used.
 
->>> calc.{instance_name}.{function_name}()
+>>> calculation.{instance_name}.{function_name}()
 
 To select the results for all {step}s, you don't specify the array boundaries.
 
->>> calc.{instance_name}[:].{function_name}()
+>>> calculation.{instance_name}[:].{function_name}()
 
 You can also select specific {step}s or a subset of {step}s as follows
 
->>> calc.{instance_name}[5].{function_name}()
->>> calc.{instance_name}[1:6].{function_name}()""".strip()
+>>> calculation.{instance_name}[5].{function_name}()
+>>> calculation.{instance_name}[1:6].{function_name}()""".strip()
 
 
 class Mixin:

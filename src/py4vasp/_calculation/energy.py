@@ -13,7 +13,7 @@ def _selection_string(default):
     this will default to selecting {default}. Separate distinct labels by commas or
     whitespace. You can add or subtract different contributions e.g. `TOTEN + EKIN`.
     For a complete list of all possible selections, please use
-    >>> calc.energy.selections()
+    >>> calculation.energy.selections()
 """
 
 
