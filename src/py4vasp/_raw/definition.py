@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import py4vasp._raw.data as raw
+from py4vasp._raw import read
 from py4vasp._raw.schema import Length, Link, Schema
 
 DEFAULT_FILE = "vaspout.h5"
@@ -88,6 +89,13 @@ schema.add(
     scale="results/phonons/primitive/scale",
     lattice_vectors="results/phonons/primitive/lattice_vectors",
 )
+schema.add(
+    raw.Cell,
+    name="exciton",
+    required=raw.Version(6, 5),
+    scale="results/supercell/scale",
+    lattice_vectors="results/supercell/lattice_vectors",
+)
 #
 schema.add(
     raw.CONTCAR,
@@ -99,6 +107,17 @@ schema.add(
     ion_velocities="/results/positions/ion_velocities",
     _predictor_corrector="NotImplemented",
 )
+schema.add(raw.CONTCAR, name="CONTCAR", file="CONTCAR", data_factory=read.CONTCAR)
+#
+schema.add(
+    raw.CurrentDensity,
+    name="nmr",
+    required=raw.Version(6, 5, 1),
+    valid_indices="/results/nmrcurb_meta/directions",
+    structure=Link("structure", DEFAULT_SOURCE),
+    current_density="/results/nmrcurb{}/values",
+)
+#
 schema.add(
     raw.Density,
     alias=["charge", "n", "charge_density", "electronic_charge_density"],
@@ -198,6 +217,14 @@ schema.add(
     dielectric_function=f"{group}/tctc{values}",
     current_current=None,
 )
+schema.add(
+    raw.DielectricFunction,
+    name="xas",
+    required=raw.Version(6, 5, 1),
+    energies=f"{group}/XAS_{energies}",
+    dielectric_function=f"{group}/XAS{values}",
+    current_current=None,
+)
 group = "results/linear_response_kpoints_opt"
 schema.add(
     raw.DielectricFunction,
@@ -285,14 +312,29 @@ schema.add(
     relaxed_ion=f"{group}/relaxed_ion_elastic_modulus",
 )
 #
+schema.add(
+    raw.ElectronicMinimization,
+    required=raw.Version(6, 5),
+    label="intermediate/ion_dynamics/oszicar_label",
+    convergence_data="intermediate/ion_dynamics/oszicar",
+    is_elmin_converged="/intermediate/ion_dynamics/electronic_step_converged",
+)
+#
 group = "results/linear_response"
 schema.add(
-    raw.Fatband,
+    raw.ExcitonDensity,
+    required=raw.Version(6, 5),
+    file="vaspout.h5",
+    structure=Link("structure", "exciton"),
+    exciton_charge=f"{group}/exciton_charge",
+)
+schema.add(
+    raw.ExcitonEigenvector,
     required=raw.Version(6, 4),
     dispersion=Link("dispersion", DEFAULT_SOURCE),
     fermi_energy=f"{group}/efermi",
     bse_index=f"{group}/bse_index",
-    fatbands=f"{group}/bse_fatbands",
+    eigenvectors=f"{group}/bse_fatbands",
     first_valence_band=f"{group}/bse_vbmin",
     first_conduction_band=f"{group}/bse_cbmin",
 )
@@ -308,6 +350,7 @@ schema.add(
     required=raw.Version(6, 3),
     structure=Link("structure", DEFAULT_SOURCE),
     force_constants="results/linear_response/force_constants",
+    selective_dynamics="/results/positions/selective_dynamics_ions",
 )
 #
 schema.add(
@@ -378,14 +421,6 @@ schema.add(
     orbital_moments="intermediate/ion_dynamics/magnetism/orbital_moments/values",
 )
 #
-schema.add(
-    raw.ElectronicMinimization,
-    required=raw.Version(6, 5),
-    label="intermediate/ion_dynamics/oszicar_label",
-    convergence_data="intermediate/ion_dynamics/oszicar",
-    is_elmin_converged="/intermediate/ion_dynamics/electronic_step_converged",
-)
-#
 group = "intermediate/pair_correlation"
 schema.add(
     raw.PairCorrelation,
@@ -396,7 +431,7 @@ schema.add(
 )
 #
 schema.add(
-    raw.PartialCharge,
+    raw.PartialDensity,
     required=raw.Version(6, 5),
     structure=Link("structure", DEFAULT_SOURCE),
     partial_charge="results/partial_charges/parchg",
@@ -410,7 +445,7 @@ schema.add(
     raw.PhononBand,
     required=raw.Version(6, 4),
     dispersion=Link("dispersion", "phonon"),
-    topology=Link("topology", "phonon"),
+    stoichiometry=Link("stoichiometry", "phonon"),
     eigenvectors=f"{group}/eigenvectors",
 )
 schema.add(
@@ -418,8 +453,17 @@ schema.add(
     required=raw.Version(6, 4),
     energies=f"{group}/dos_mesh",
     dos=f"{group}/dos",
-    topology=Link("topology", "phonon"),
+    stoichiometry=Link("stoichiometry", "phonon"),
     projections=f"{group}/dospar",
+)
+#
+group = "results/linear_response/dynmat"
+schema.add(
+    raw.PhononMode,
+    required=raw.Version(6, 5, 2),
+    structure=Link("structure", "default"),
+    frequencies=f"{group}/eigenvalues",
+    eigenvectors=f"{group}/eigenvectors",
 )
 #
 group = "results/linear_response"
@@ -450,23 +494,43 @@ schema.add(
 #
 schema.add(
     raw.Projector,
-    topology=Link("topology", DEFAULT_SOURCE),
+    stoichiometry=Link("stoichiometry", DEFAULT_SOURCE),
     orbital_types="results/projectors/lchar",
     number_spins=Length("results/electron_eigenvalues/eigenvalues"),
 )
 schema.add(
     raw.Projector,
     name="kpoints_opt",
-    topology=Link("topology", DEFAULT_SOURCE),
+    stoichiometry=Link("stoichiometry", DEFAULT_SOURCE),
     orbital_types="results/projectors_kpoints_opt/lchar",
     number_spins=Length("results/electron_eigenvalues/eigenvalues"),
 )
 schema.add(
     raw.Projector,
     name="kpoints_wan",
-    topology=Link("topology", DEFAULT_SOURCE),
+    stoichiometry=Link("stoichiometry", DEFAULT_SOURCE),
     orbital_types="results/projectors_kpoints_wan/lchar",
     number_spins=Length("results/electron_eigenvalues/eigenvalues"),
+)
+#
+schema.add(
+    raw.Stoichiometry,
+    ion_types="results/positions/ion_types",
+    number_ion_types="results/positions/number_ion_types",
+)
+schema.add(
+    raw.Stoichiometry,
+    name="phonon",
+    required=raw.Version(6, 4),
+    ion_types="results/phonons/primitive/ion_types",
+    number_ion_types="results/phonons/primitive/number_ion_types",
+)
+schema.add(
+    raw.Stoichiometry,
+    name="exciton",
+    required=raw.Version(6, 5),
+    ion_types="results/supercell/ion_types",
+    number_ion_types="results/supercell/number_ion_types",
 )
 #
 schema.add(
@@ -477,7 +541,7 @@ schema.add(
 #
 schema.add(
     raw.Structure,
-    topology=Link("topology", DEFAULT_SOURCE),
+    stoichiometry=Link("stoichiometry", DEFAULT_SOURCE),
     cell=Link("cell", DEFAULT_SOURCE),
     positions="intermediate/ion_dynamics/position_ions",
 )
@@ -485,25 +549,21 @@ schema.add(
     raw.Structure,
     name="final",
     required=raw.Version(6, 5),
-    topology=Link("topology", DEFAULT_SOURCE),
+    stoichiometry=Link("stoichiometry", DEFAULT_SOURCE),
     cell=Link("cell", "final"),
     positions="results/positions/position_ions",
 )
+schema.add(
+    raw.Structure,
+    name="exciton",
+    required=raw.Version(6, 5),
+    cell=Link("cell", "exciton"),
+    stoichiometry=Link("stoichiometry", "exciton"),
+    positions="results/supercell/position_ions",
+)
+schema.add(raw.Structure, name="poscar", file="POSCAR", data_factory=read.structure)
 #
 schema.add(raw.System, system="input/incar/SYSTEM")
-#
-schema.add(
-    raw.Topology,
-    ion_types="results/positions/ion_types",
-    number_ion_types="results/positions/number_ion_types",
-)
-schema.add(
-    raw.Topology,
-    name="phonon",
-    required=raw.Version(6, 4),
-    ion_types="results/phonons/primitive/ion_types",
-    number_ion_types="results/phonons/primitive/number_ion_types",
-)
 #
 schema.add(
     raw.Velocity,

@@ -2,7 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """Deals with the possible exceptions in py4vasp.
 
-The design goal is that all foreseeable exceptions in py4vasp issue an exception of the Py4VaspException class. Any other kind of exception would indicate a bug in the code. If possible the part standard users interact with should not raise any exception, but should give advice on how to overcome the issue."""
+The design goal is that all foreseeable exceptions in py4vasp issue an exception of the Py4VaspException class. Any other kind of exception would indicate a bug in the code. If possible the part standard users interact with should not raise any exception, but should give advice on how to overcome the issue.
+"""
 
 
 class Py4VaspError(Exception):
@@ -34,11 +35,6 @@ class FileAccessError(Py4VaspError):
 class OutdatedVaspVersion(Py4VaspError):
     """Exception raised when the py4vasp features used are not available in the
     used version of Vasp."""
-
-
-class MissingAttribute(Py4VaspError, AttributeError):
-    """Exception raised when py4vasp attribute of Calculation, Batch, ... is used
-    that does not exist"""
 
 
 class ModuleNotInstalled(Py4VaspError):

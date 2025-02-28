@@ -11,6 +11,7 @@ from util import VERSION
 import py4vasp.raw as raw
 from py4vasp import exception
 from py4vasp._raw.definition import DEFAULT_FILE
+from py4vasp._raw.mapping import Mapping
 
 
 @pytest.fixture
@@ -24,9 +25,17 @@ def mock_access(complex_schema):
             yield mock_file, sources
 
 
+@pytest.fixture
+def mock_schema(complex_schema):
+    schema, sources = complex_schema
+    with patch("py4vasp._raw.access.schema", schema):
+        yield sources
+
+
 _mock_results = {}
-EXAMPLE_ARRAY = np.zeros(3)
-EXAMPLE_SCALAR = np.array(1)
+EXAMPLE_ARRAY = np.zeros(4)
+EXAMPLE_SCALAR = np.array(3)
+EXAMPLE_INDICES = np.array((b"one", b"two", b"three"))
 
 
 def mock_read_result(key):
@@ -35,6 +44,8 @@ def mock_read_result(key):
         if "foo" in key:
             mock.ndim = 0
             mock.__array__ = MagicMock(return_value=EXAMPLE_SCALAR)
+        elif "list" in key:
+            mock = EXAMPLE_INDICES
         else:
             mock.__array__ = MagicMock(return_value=EXAMPLE_ARRAY)
         _mock_results[key] = mock
@@ -44,7 +55,7 @@ def mock_read_result(key):
 def check_data(actual, key):
     mock = mock_read_result(key)
     if mock.ndim == 0:
-        mock.__array__.assert_called_once_with()
+        mock.__array__.assert_called_once()
         assert actual == EXAMPLE_SCALAR
     else:
         assert isinstance(actual, raw.VaspData)
@@ -93,6 +104,29 @@ def test_access_with_link(mock_access):
         check_data(with_link.baz, source.data.baz)
         assert with_link.simple.foo == reference.foo
         assert with_link.simple.bar[:] == reference.bar[:]
+
+
+@pytest.mark.parametrize("selection", (None, "my_list"))
+def test_access_mapping(mock_access, selection):
+    if selection is None:
+        expected_indices = range(EXAMPLE_SCALAR)
+    else:
+        expected_indices = tuple(index.decode() for index in EXAMPLE_INDICES)
+    quantity = "mapping"
+    mock_file, sources = mock_access
+    source = sources[quantity][selection or "default"]
+    with raw.access(quantity, selection=selection) as mapping:
+        assert len(mapping.valid_indices) == len(mapping)
+        assert all(np.atleast_1d(mapping.valid_indices == expected_indices))
+        check_single_file_access(mock_file, DEFAULT_FILE, source)
+        for index, element in mapping.items():
+            assert len(element) == 1
+            assert element.valid_indices == [index]
+            check_data(element.common, source.data.common)
+            if selection is None:
+                index = str(index + 1)  # convert Python to Fortran index
+            variable = source.data.variable.format(index)
+            check_data(element.variable, variable)
 
 
 def linked_quantity_reference(mock_access, file=None):
@@ -198,6 +232,19 @@ def test_access_length(mock_access):
         assert with_length.num_data is None
 
 
+def test_access_data_factory(mock_schema, tmp_path):
+    quantity = "simple"
+    selection = "factory"
+    source = mock_schema[quantity][selection]
+    with raw.access(quantity, path=tmp_path, selection=selection) as raw_data:
+        assert raw_data.foo == "custom_factory"
+        assert raw_data.bar == tmp_path / source.file
+    filename = tmp_path / "overwrite_file"
+    with raw.access(quantity, file=filename, selection=selection) as raw_data:
+        assert raw_data.foo == "custom_factory"
+        assert raw_data.bar == filename
+
+
 def test_access_version(mock_access):
     quantity = "version"
     mock_file, sources = mock_access
@@ -230,7 +277,16 @@ def expected_calls(source):
 
 def expected_call(data, field):
     key = getattr(data, field.name)
-    if isinstance(key, str):
+    if not isinstance(key, str):
+        return
+    if not isinstance(data, Mapping):
+        distinct_keys = {key}
+    elif data.valid_indices == "list_mapping":
+        distinct_keys = {key.format(index.decode()) for index in EXAMPLE_INDICES}
+    else:
+        # convert to Fortran index
+        distinct_keys = {key.format(index + 1) for index in range(EXAMPLE_SCALAR)}
+    for key in distinct_keys:
         yield call(key)
 
 

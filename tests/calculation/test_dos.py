@@ -6,13 +6,14 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import calculation, exception
+from py4vasp import exception
+from py4vasp._calculation.dos import Dos
 
 
 @pytest.fixture
 def Sr2TiO4(raw_data):
     raw_dos = raw_data.dos("Sr2TiO4")
-    dos = calculation.dos.from_data(raw_dos)
+    dos = Dos.from_data(raw_dos)
     dos.ref = types.SimpleNamespace()
     dos.ref.energies = raw_dos.energies - raw_dos.fermi_energy
     dos.ref.dos = raw_dos.dos[0]
@@ -23,7 +24,7 @@ def Sr2TiO4(raw_data):
 @pytest.fixture
 def Fe3O4(raw_data):
     raw_dos = raw_data.dos("Fe3O4")
-    dos = calculation.dos.from_data(raw_dos)
+    dos = Dos.from_data(raw_dos)
     dos.ref = types.SimpleNamespace()
     dos.ref.energies = raw_dos.energies - raw_dos.fermi_energy
     dos.ref.dos_up = raw_dos.dos[0]
@@ -35,7 +36,7 @@ def Fe3O4(raw_data):
 @pytest.fixture
 def Sr2TiO4_projectors(raw_data):
     raw_dos = raw_data.dos("Sr2TiO4 with_projectors")
-    dos = calculation.dos.from_data(raw_dos)
+    dos = Dos.from_data(raw_dos)
     dos.ref = types.SimpleNamespace()
     dos.ref.s = np.sum(raw_dos.projections[0, :, 0, :], axis=0)
     dos.ref.Sr_p = np.sum(raw_dos.projections[0, 0:2, 1:4, :], axis=(0, 1))
@@ -52,7 +53,7 @@ def Sr2TiO4_projectors(raw_data):
 @pytest.fixture
 def Fe3O4_projectors(raw_data):
     raw_dos = raw_data.dos("Fe3O4 with_projectors")
-    dos = calculation.dos.from_data(raw_dos)
+    dos = Dos.from_data(raw_dos)
     dos.ref = types.SimpleNamespace()
     dos.ref.Fe_up = np.sum(raw_dos.projections[0, 0:3, :, :], axis=(0, 1))
     dos.ref.Fe_down = np.sum(raw_dos.projections[1, 0:3, :, :], axis=(0, 1))
@@ -109,7 +110,7 @@ def test_read_excess_orbital_types(raw_data, Assert):
     """Vasp 6.1 may store more orbital types then projections available. This
     test checks that this does not lead to any issues when an available element
     is used."""
-    dos = calculation.dos.from_data(raw_data.dos("Fe3O4 excess_orbitals"))
+    dos = Dos.from_data(raw_data.dos("Fe3O4 excess_orbitals"))
     actual = dos.read("s p g")
     zero = np.zeros_like(actual["energies"])
     Assert.allclose(actual["g_up"], zero)
@@ -178,7 +179,7 @@ def test_Fe3O4_projectors_plot(Fe3O4_projectors, Assert):
     fig = Fe3O4_projectors.plot("Fe p O(d)")
     data = fig.series
     assert len(data) == 8  # (total + 3 selections) x 2 (spin resolution)
-    names = [d.name for d in data]
+    names = [d.label for d in data]
     Fe_up = names.index("Fe_up")
     Assert.allclose(data[Fe_up].y, Fe3O4_projectors.ref.Fe_up)
     Fe_down = names.index("Fe_down")
@@ -200,13 +201,13 @@ def test_plot_combine_projectors(Fe3O4_projectors, Assert):
     addition = Fe3O4_projectors.ref.Fe_up + Fe3O4_projectors.ref.O_d_down
     subtraction_up = Fe3O4_projectors.ref.Fe_up - Fe3O4_projectors.ref.p_up
     subtraction_down = Fe3O4_projectors.ref.Fe_down - Fe3O4_projectors.ref.p_down
-    names = [d.name for d in data]
+    names = [d.label for d in data]
     Assert.allclose(data[names.index("Fe_up + O_d_down")].y, addition)
     Assert.allclose(data[names.index("Fe_up - p_up")].y, subtraction_up)
     Assert.allclose(data[names.index("Fe_down - p_down")].y, -subtraction_down)
 
 
-@patch("py4vasp.calculation._dos.Dos.to_graph")
+@patch.object(Dos, "to_graph")
 def test_Sr2TiO4_to_plotly(mock_plot, Sr2TiO4):
     fig = Sr2TiO4.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
@@ -222,7 +223,7 @@ def test_Sr2TiO4_to_image(Sr2TiO4):
 
 
 def check_to_image(Sr2TiO4, filename_argument, expected_filename):
-    with patch("py4vasp.calculation._dos.Dos.to_plotly") as plot:
+    with patch.object(Dos, "to_plotly") as plot:
         Sr2TiO4.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
@@ -263,4 +264,4 @@ projectors:
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dos("Sr2TiO4")
-    check_factory_methods(calculation.dos, data)
+    check_factory_methods(Dos, data)

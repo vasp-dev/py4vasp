@@ -4,13 +4,14 @@ from unittest.mock import patch
 
 import pytest
 
-from py4vasp import calculation, exception
+from py4vasp import exception
+from py4vasp._calculation.pair_correlation import PairCorrelation
 
 
 @pytest.fixture
 def pair_correlation(raw_data):
     raw_pair_correlation = raw_data.pair_correlation("Sr2TiO4")
-    pair_correlation = calculation.pair_correlation.from_data(raw_pair_correlation)
+    pair_correlation = PairCorrelation.from_data(raw_pair_correlation)
     pair_correlation.ref = raw_pair_correlation
     return pair_correlation
 
@@ -39,7 +40,7 @@ def test_plot_default(pair_correlation, Assert):
 def check_plot_default(pair_correlation, fig, steps, Assert):
     assert fig.xlabel == "Distance (Å)"
     assert fig.ylabel == "Pair correlation"
-    assert fig.series[0].name == "total"
+    assert fig.series[0].label == "total"
     Assert.allclose(fig.series[0].x, pair_correlation.ref.distances)
     Assert.allclose(fig.series[0].y, pair_correlation.ref.function[steps, 0])
 
@@ -56,8 +57,8 @@ def check_plot_selection(pair_correlation, fig, steps, Assert):
     assert fig.xlabel == "Distance (Å)"
     assert fig.ylabel == "Pair correlation"
     expected = {"Sr~Ti": 2, "Ti~O": 5}  # note the reordering of the label
-    for series, (name, index) in zip(fig.series, expected.items()):
-        assert series.name == name
+    for series, (label, index) in zip(fig.series, expected.items()):
+        assert series.label == label
         Assert.allclose(series.x, pair_correlation.ref.distances)
         Assert.allclose(series.y, pair_correlation.ref.function[steps, index])
 
@@ -71,7 +72,7 @@ def test_plot_nonexisting_label(pair_correlation):
         pair_correlation.plot("label does exist")
 
 
-@patch("py4vasp.calculation._pair_correlation.PairCorrelation.to_graph")
+@patch.object(PairCorrelation, "to_graph")
 def test_pair_correlation_to_plotly(mock_plot, pair_correlation):
     fig = pair_correlation.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
@@ -87,8 +88,7 @@ def test_to_image(pair_correlation):
 
 
 def check_to_image(pair_correlation, filename_argument, expected_filename):
-    function = "py4vasp.calculation._pair_correlation.PairCorrelation.to_plotly"
-    with patch(function) as plot:
+    with patch.object(PairCorrelation, "to_plotly") as plot:
         pair_correlation.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
@@ -98,4 +98,4 @@ def check_to_image(pair_correlation, filename_argument, expected_filename):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.pair_correlation("Sr2TiO4")
-    check_factory_methods(calculation.pair_correlation, data)
+    check_factory_methods(PairCorrelation, data)

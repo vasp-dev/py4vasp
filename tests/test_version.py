@@ -12,7 +12,7 @@ def test_version():
 
 def get_version_from_toml_file():
     root_dir = pathlib.Path(__file__).parent.parent
-    with open(root_dir / "pyproject.toml") as toml_file:
+    with open(root_dir / "pyproject.toml", "r", encoding="utf-8") as toml_file:
         return version_from_lines(toml_file)
 
 

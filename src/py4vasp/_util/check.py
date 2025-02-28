@@ -3,7 +3,13 @@
 import inspect
 import numbers
 
-from py4vasp import exception
+from py4vasp import exception, raw
+
+
+def is_none(obj):
+    if isinstance(obj, raw.VaspData):
+        return obj.is_none()
+    return obj is None
 
 
 def raise_error_if_not_string(test_if_string, error_message):

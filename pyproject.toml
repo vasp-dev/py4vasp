@@ -12,6 +12,9 @@ authors = [
     "Sudarshan Vijay <sudarshan.vijay@protonmail.com>",
     "Marie-Therese Huebsch <marie-therese.huebsch@vasp.at>",
     "Michael Wolloch <michael.wolloch@vasp.at>",
+    "Andreas Singraber <andreas.singraber@vasp.at>",
+    "Alexey Tal <alexey.tal@vasp.at>",
+    "Tomáš Bučko <tomas.bucko@uniba.sk>",
 ]
 license = "Apache-2.0"
 readme = "README.md"
@@ -24,7 +27,7 @@ repository = "https://github.com/vasp-dev/py4vasp"
 
 [tool.poetry.dependencies]
 python = ">=3.9"
-numpy = "^1.23"
+numpy = ">=1.23"
 h5py = ">=3.7.0"
 pandas = ">=1.4.3"
 nglview = ">=3.0.5"
@@ -33,6 +36,7 @@ plotly = ">=5.9.0"
 kaleido = ">=0.2.1,<0.2.1.post1 || >0.2.1.post1"
 ipython = "^8.12"
 scipy = ">=1.12.0"
+click = ">=8.1.8"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.1.2"
@@ -49,6 +53,7 @@ sphinx = ">=5.0.2"
 sphinx-automodapi = ">=0.14.1"
 
 [tool.poetry.scripts]
+py4vasp = "py4vasp.cli:cli"
 error-analysis = "py4vasp.scripts.error_analysis:main"
 
 [tool.isort]
