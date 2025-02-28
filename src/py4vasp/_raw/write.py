@@ -19,7 +19,7 @@ def write(h5f, raw_data):
 def _write_dataset(h5f, target, data):
     if isinstance(target, Link):
         write(h5f, data)
-    elif isinstance(target, Length):
+    elif isinstance(target, Length) or target in h5f:
         pass
     else:
         h5f[target] = data

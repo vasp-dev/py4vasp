@@ -72,19 +72,23 @@ class Calculation:
 
     Generate a new calculation object
 
-    >>> calculation = Calculation.from_path("path_to_your_calculation")
+    >>> calculation = Calculation.from_path("path/to/calculation")
 
     Plot the density of states (DOS) of a calculation
 
     >>> calculation.dos.plot()
+    Graph(series=[Series(x=array(...), y=array(...), label='total', ...)],
+        xlabel='Energy (eV)', ..., ylabel='DOS (1/eV)', ...)
 
-    Read the local magnetic moments into a Python dictionary
+    Read the energies for a structure relaxation run into a Python dictionary
 
-    >>> calculation.magnetism.read()
+    >>> calculation.energy[:].read()
+    {'free energy    TOTEN': array(...), 'energy without entropy': array(...),
+        'energy(sigma->0)': array(...)}
 
-    Print the structure in a POSCAR format
+    Convert the structure to a POSCAR format
 
-    >>> calculation.structure.print()
+    >>> poscar_string = calculation.structure.to_POSCAR()
     """
 
     def __init__(self, *args, **kwargs):
@@ -124,7 +128,7 @@ instead of the constructor Calculation()."""
 
         Create a new Calculation object from a specific path.
 
-        >>> calculation = Calculation.from_path("path_to_your_calculation")
+        >>> calculation = Calculation.from_path("path/to/calculation")
 
         You can also pass in pathlib Path objects or anything else that can be converted
         into it.
@@ -175,7 +179,7 @@ instead of the constructor Calculation()."""
         Sometime you rename the VASP output as a backup. Then the `from_file` constructor
         is your only option.
 
-        >>> calculation = Calculation.from_file("/path/to/file/backup.h5")
+        >>> calculation = Calculation.from_file("path/to/file/backup.h5")
         """
         calc = cls(_internal=True)
         calc._path = pathlib.Path(file_name).expanduser().resolve().parent
