@@ -26,6 +26,23 @@ class Dos(base.Refinery, graph.Mixin):
     mesh for a smoother DOS but the class will work independent of it. If you
     generated a projected DOS, you can use this class to select which subset of
     these orbitals to read or plot.
+
+    Examples
+    --------
+
+    If you want to visualize the total DOS, you can use the `plot` method. This will
+    show the different spin components if :tag:`ISPIN` = 2
+
+    >>> calculation.dos.plot()
+
+    If you need the raw data, you can read the DOS into a Python dictionary
+
+    >>> calculation.dos.read()
+
+    These methods also accept selections for specific orbitals if you used VASP with
+    :tag:`LORBIT`. You can get a list of the allowed choices with
+
+    >>> calculation.dos.selections()
     """
 
     _missing_data_message = "No DOS data found, please verify that LORBIT flag is set."
@@ -45,7 +62,16 @@ class Dos(base.Refinery, graph.Mixin):
         examples=projector.selection_examples("dos", "to_dict"),
     )
     def to_dict(self, selection=None):
-        """Read the data into a dictionary.
+        """Read the DOS into a dictionary.
+
+        You will always get an "energies" component that describes the energy mesh for
+        the density of states. The energies are shifted with respect to VASP such that
+        the Fermi energy is at 0. py4vasp returns also the original "fermi_energy" so
+        you can revert this if you want. If :tag:`ISPIN` = 2, you will get the total
+        DOS spin resolved as "up" and "down" component. Otherwise, you will get just
+        the "total" DOS. When you set :tag:`LORBIT` in the INCAR file and pass in a
+        selection, you will obtain the projected DOS with a label corresponding to the
+        projection.
 
         Parameters
         ----------
@@ -61,6 +87,12 @@ class Dos(base.Refinery, graph.Mixin):
 
         Examples
         --------
+        To obtain the total DOS along with the energy mesh and the Fermi energy you
+        do not need any arguments. For :tag:`ISPIN` = 2, this will "up" and "down"
+        DOS as two separate entries.
+
+        >>> calculation.dos.to_dict()
+
         {examples}
         """
         return {
@@ -74,7 +106,14 @@ class Dos(base.Refinery, graph.Mixin):
         examples=projector.selection_examples("dos", "to_graph"),
     )
     def to_graph(self, selection=None):
-        """Generate a graph of the selected data reading it from the VASP output.
+        """Read the DOS and convert it into a graph.
+
+        The x axis is the energy mesh used in the calculation shifted such that the
+        Fermi energy is at 0. On the y axis, we show the DOS. For :tag:`ISPIN = 2, the
+        different spin components are shown with opposite sign: "up" with a positive
+        sign and "down" with a negative one. If you used :tag:`LORBIT` in your VASP
+        calculation and you pass in a selection, py4vasp will add additional lines
+        corresponding to the selected projections.
 
         Parameters
         ----------
@@ -90,6 +129,11 @@ class Dos(base.Refinery, graph.Mixin):
 
         Examples
         --------
+        For the total DOS, you do not need any arguments. py4vasp will automatically
+        use two separate lines, if you used :tag:`ISPIN` = 2 in the VASP calculation
+
+        >>> calculation.dos.to_graph()
+
         {examples}
         """
         data = self._read_data(selection)
