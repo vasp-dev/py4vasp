@@ -401,7 +401,7 @@ class RawDataFactory:
         return _workfunction(selection)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def raw_data():
     return RawDataFactory
 

@@ -288,12 +288,14 @@ class DefaultCalculationFactory:
 
     >>> from py4vasp import calculation
     >>> calculation.dos.read()
+    {'energies': array(...), 'total': array(...), 'fermi_energy': ...}
 
     .. rubric:: using :class:`~py4vasp.Calculation` class
 
     >>> from py4vasp import Calculation
     >>> calculation = Calculation.from_path(".")
     >>> calculation.dos.read()
+    {'energies': array(...), 'total': array(...), 'fermi_energy': ...}
 
     In the latter example, you can change the path from which the data is extracted.
     """

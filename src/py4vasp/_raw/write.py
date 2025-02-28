@@ -3,7 +3,7 @@
 import dataclasses
 
 from py4vasp._raw.definition import DEFAULT_SOURCE, schema
-from py4vasp._raw.schema import Link
+from py4vasp._raw.schema import Length, Link
 from py4vasp._util import convert
 
 
@@ -19,5 +19,7 @@ def write(h5f, raw_data):
 def _write_dataset(h5f, target, data):
     if isinstance(target, Link):
         write(h5f, data)
+    elif isinstance(target, Length):
+        pass
     else:
         h5f[target] = data
