@@ -18,9 +18,7 @@ def chemical_shift(raw_data):
     nics.ref = types.SimpleNamespace()
     transposed_nics = np.array(raw_nics.nics).T
     nics.ref.structure = Structure.from_data(raw_nics.structure)
-    nics.ref.output = {
-        "nics": transposed_nics.reshape((10,12,14,3,3)),
-    }
+    nics.ref.output = {"nics": transposed_nics.reshape((10, 12, 14, 3, 3))}
     return nics
 
 

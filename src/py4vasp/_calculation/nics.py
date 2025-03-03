@@ -39,5 +39,5 @@ class Nics(base.Refinery, structure.Mixin):
         """
         transposed_nics = np.array(self._raw_data.nics).T
         curr_shape = transposed_nics.shape
-        transposed_nics = transposed_nics.reshape((*curr_shape[:-1],3,3))
+        transposed_nics = transposed_nics.reshape((*curr_shape[:-1], 3, 3))
         return transposed_nics
