@@ -358,6 +358,16 @@ class Magnetism:
 
 
 @dataclasses.dataclass
+class Nics:
+    """The nucleus-independent chemical shift."""
+
+    structure: Structure
+    "Structural information about the system."
+    nics: VaspData
+    "The tensor holding NICS data."
+
+
+@dataclasses.dataclass
 class PairCorrelation:
     """The pair-correlation function calculated during a MD simulation.
 
