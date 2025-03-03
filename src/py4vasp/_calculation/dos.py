@@ -43,6 +43,8 @@ class Dos(base.Refinery, graph.Mixin):
     :tag:`LORBIT`. You can get a list of the allowed choices with
 
     >>> calculation.dos.selections()
+    {'band': ['default', 'kpoints_opt', 'kpoints_wan'],
+    'atom': {...}, 'orbital': {...}, 'spin': {...}}
     """
 
     _missing_data_message = "No DOS data found, please verify that LORBIT flag is set."
@@ -53,7 +55,7 @@ class Dos(base.Refinery, graph.Mixin):
         return f"""
 {"spin polarized" if self._spin_polarized() else ""} Dos:
     energies: [{energies[0]:0.2f}, {energies[-1]:0.2f}] {len(energies)} points
-{pretty.pretty(self._projectors())}
+{pretty.pretty(self._projector())}
     """.strip()
 
     @base.data_access
@@ -171,17 +173,21 @@ class Dos(base.Refinery, graph.Mixin):
         df.fermi_energy = self._raw_data.fermi_energy
         return df
 
+    @base.data_access
+    def selections(self):
+        return {**super().selections(), **self._projector().selections()}
+
     def _spin_polarized(self):
         return self._raw_data.dos.shape[0] == 2
 
-    def _projectors(self):
+    def _projector(self):
         return projector.Projector.from_data(self._raw_data.projectors)
 
     def _read_data(self, selection):
         return {
             **self._read_energies(),
             **self._read_total_dos(),
-            **self._projectors().project(selection, self._raw_data.projections),
+            **self._projector().project(selection, self._raw_data.projections),
         }
 
     def _read_energies(self):
