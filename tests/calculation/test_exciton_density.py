@@ -18,7 +18,6 @@ def exciton_density(raw_data):
     density.ref.structure = Structure.from_data(raw_density.structure)
     expected_charge = [component.T for component in raw_density.exciton_charge]
     density.ref.density = np.array(expected_charge)
-    print(density.ref.density.shape)
     return density
 
 

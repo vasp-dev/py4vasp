@@ -141,7 +141,9 @@ class Refinery:
 
         The returned dictionary contains a single item with the name of the quantity
         mapping to all possible selections. Each of these selection may be passed to
-        other functions of this quantity to select which output of VASP is used.
+        other functions of this quantity to select which output of VASP is used. Some
+        quantities provide additional elements which can be passed as selection for
+        other routines.
 
         Returns
         -------

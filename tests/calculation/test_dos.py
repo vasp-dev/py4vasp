@@ -8,6 +8,7 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._calculation.dos import Dos
+from py4vasp._calculation.projector import Projector
 
 
 @pytest.fixture
@@ -61,6 +62,7 @@ def Fe3O4_projectors(raw_data):
     dos.ref.p_down = np.sum(raw_dos.projections[1, :, 1, :], axis=0)
     dos.ref.O_d_up = np.sum(raw_dos.projections[0, 3:7, 2, :], axis=0)
     dos.ref.O_d_down = np.sum(raw_dos.projections[1, 3:7, 2, :], axis=0)
+    dos.ref.selections = Projector.from_data(raw_dos.projectors).selections()
     return dos
 
 
@@ -228,6 +230,12 @@ def check_to_image(Sr2TiO4, filename_argument, expected_filename):
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
         fig.write_image.assert_called_once_with(Sr2TiO4._path / expected_filename)
+
+
+def test_dos_selections(Fe3O4_projectors):
+    actual = Fe3O4_projectors.selections()
+    actual.pop("dos")  # remove dos selections
+    assert actual == Fe3O4_projectors.ref.selections
 
 
 def test_Sr2TiO4_print(Sr2TiO4, format_):
