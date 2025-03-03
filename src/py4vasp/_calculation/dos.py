@@ -105,10 +105,7 @@ class Dos(base.Refinery, graph.Mixin):
         }
 
     @base.data_access
-    @documentation.format(
-        selection_doc=projector.selection_doc,
-        examples=projector.selection_examples("dos", "to_graph"),
-    )
+    @documentation.format(        selection_doc=projector.selection_doc    )
     def to_graph(self, selection=None):
         """Read the DOS and convert it into a graph.
 
@@ -137,8 +134,29 @@ class Dos(base.Refinery, graph.Mixin):
         use two separate lines, if you used :tag:`ISPIN` = 2 in the VASP calculation
 
         >>> calculation.dos.to_graph()
+        Graph(series=[Series(x=array(...), y=array(...), label='total', ...)],
+            xlabel='Energy (eV)', ..., ylabel='DOS (1/eV)', ...)
 
-        {examples}
+        Select the p orbitals of the first atom in the POSCAR file:
+
+        >>> calculation.dos.to_graph(selection="1(p)")
+        Graph(series=[Series(..., label='total', ...), Series(..., label='Sr_1_p', ...)], ...)
+
+        Select the d orbitals of Sr and Ti:
+
+        >>> calculation.dos.to_graph("d(Sr, Ti)")
+        Graph(series=[Series(..., label='total', ...), Series(..., label='Sr_d', ...),
+            Series(..., label='Ti_d', ...)], ...)
+
+        Select the spin-up contribution of the first three atoms combined
+
+        >>> calculation.dos.to_graph("up(1:3)")  # doctest: +SKIP
+        Graph(series=[Series(..., label='total', ...), Series(..., label='1:3_up', ...)], ...)
+
+        Add the contribution of three d orbitals
+
+        >>> calculation.dos.to_graph("dxy + dxz + dyz")
+        Graph(series=[Series(..., label='total', ...), Series(..., label='dxy + dxz + dyz', ...)], ...)
         """
         data = self._read_data(selection)
         return graph.Graph(
