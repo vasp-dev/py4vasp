@@ -33,6 +33,7 @@ selection : str
     If you are unsure about the specific projections that are available, you can use
 
     >>> calculation.projector.selections()
+    {'atom': [...], 'orbital': [...], 'spin': [...]}
 
     to get a list of all available ones.
 """
@@ -44,9 +45,9 @@ Select the p orbitals of the first atom in the POSCAR file:
 
 >>> calculation.{quantity}.{method}(selection="1(p)")
 
-Select the d orbitals of Mn, Co, and Fe:
+Select the d orbitals of Sr and Ti:
 
->>> calculation.{quantity}.{method}("d(Mn, Co, Fe)")
+>>> calculation.{quantity}.{method}("d(Sr, Ti)")
 
 Select the spin-up contribution of the first three atoms combined
 
