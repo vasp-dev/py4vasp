@@ -35,6 +35,8 @@ class Band(base.Refinery, graph.Mixin):
     You can inspect possible choices with
 
     >>> calculation.band.selections()
+    {'band': ['default', 'kpoints_opt', 'kpoints_wan'],
+    'atom': {...}, 'orbital': {...}, 'spin': {...}}
     """
 
     @base.data_access
@@ -172,7 +174,7 @@ class Band(base.Refinery, graph.Mixin):
 
     @base.data_access
     def selections(self):
-        return {**super().selections(), **self._projector().read()}
+        return {**super().selections(), **self._projector().selections()}
 
     def _spin_polarized(self):
         return len(self._raw_data.dispersion.eigenvalues) == 2
