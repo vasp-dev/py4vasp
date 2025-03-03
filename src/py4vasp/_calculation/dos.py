@@ -34,17 +34,19 @@ class Dos(base.Refinery, graph.Mixin):
     show the different spin components if :tag:`ISPIN` = 2
 
     >>> calculation.dos.plot()
+    Graph(series=[Series(x=array(...), y=array(...), label='total', ...)],
+        xlabel='Energy (eV)', ..., ylabel='DOS (1/eV)', ...)
 
     If you need the raw data, you can read the DOS into a Python dictionary
 
     >>> calculation.dos.read()
+    {'energies': array(...), 'total': array(...), 'fermi_energy': ...}
 
     These methods also accept selections for specific orbitals if you used VASP with
     :tag:`LORBIT`. You can get a list of the allowed choices with
 
     >>> calculation.dos.selections()
-    {'band': ['default', 'kpoints_opt', 'kpoints_wan'],
-    'atom': {...}, 'orbital': {...}, 'spin': {...}}
+    {'dos': ['default', 'kpoints_opt'], 'atom': [...], 'orbital': [...], 'spin': [...]}
     """
 
     _missing_data_message = "No DOS data found, please verify that LORBIT flag is set."

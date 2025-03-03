@@ -6,7 +6,7 @@ import pathlib
 import h5py
 import pytest
 
-from py4vasp import _calculation, calculation
+from py4vasp import _calculation
 from py4vasp._raw.definition import DEFAULT_FILE
 from py4vasp._raw.write import write
 
@@ -33,7 +33,7 @@ def setup_doctest(raw_data, tmp_path_factory):
 
 def get_examples():
     finder = doctest.DocTestFinder()
-    examples = finder.find(_calculation)
+    examples = finder.find(_calculation)  # + finder.find(_calculation.dos)
     return [example for example in examples if interesting_example(example)]
 
 
@@ -44,7 +44,6 @@ def interesting_example(example):
     skipped_suffixes = (
         "band",
         "bandgap",
-        "dos",
         "energy",
         "force",
         "magnetism",
