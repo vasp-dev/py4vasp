@@ -475,6 +475,15 @@ def test_contour_supercell(rectangle_contour, Assert, not_core):
     check_annotations(rectangle_contour.lattice, fig.layout.annotations, Assert)
 
 
+@pytest.mark.parametrize("show_contour_values", [True, False, None])
+def test_contour_show_contour_values(rectangle_contour, show_contour_values, not_core):
+    rectangle_contour.show_contour_values = show_contour_values
+    graph = Graph(rectangle_contour)
+    fig = graph.to_plotly()
+    assert len(fig.data) == 1
+    assert fig.data[0].contours.showlabels == show_contour_values
+
+
 def check_unit_cell(unit_cell, x, y, zero):
     assert unit_cell.type == "path"
     assert unit_cell.path == f"M 0 0 L {x} {zero} L {x} {y} L {zero} {y} Z"

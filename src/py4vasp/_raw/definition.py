@@ -421,6 +421,13 @@ schema.add(
     orbital_moments="intermediate/ion_dynamics/magnetism/orbital_moments/values",
 )
 #
+schema.add(
+    raw.Nics,
+    required=raw.Version(6, 5),
+    structure=Link("structure", DEFAULT_SOURCE),
+    nics="results/nics/values",
+)
+#
 group = "intermediate/pair_correlation"
 schema.add(
     raw.PairCorrelation,

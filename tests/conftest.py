@@ -298,6 +298,10 @@ class RawDataFactory:
         return _magnetism(selection)
 
     @staticmethod
+    def nics(selection):
+        return _Sr2TiO4_nics()
+
+    @staticmethod
     def pair_correlation(selection):
         return _Sr2TiO4_pair_correlation()
 
@@ -900,6 +904,12 @@ def _Sr2TiO4_internal_strain():
         structure=_Sr2TiO4_structure(),
         internal_strain=np.arange(np.prod(shape)).reshape(shape),
     )
+
+
+def _Sr2TiO4_nics():
+    structure = _Sr2TiO4_structure()
+    grid = (9, *grid_dimensions)
+    return raw.Nics(structure=structure, nics=_make_arbitrary_data(grid))
 
 
 def _Sr2TiO4_pair_correlation():

@@ -11,7 +11,8 @@ from py4vasp._util import documentation, import_, slicing
 pretty = import_.optional("IPython.lib.pretty")
 
 _COMMON_PARAMETERS = f"""\
-selection : Selects which of the possible available currents is used. Check the
+selection : str or None
+    Selects which of the possible available currents is used. Check the
     `selections` method for all available choices.
 
 {slicing.PARAMETERS}
@@ -93,7 +94,7 @@ current density:
 
         >>> calc.current_density.to_contour(a=0.3, normal="x")
         """
-        cut, fraction = self._get_cut(a, b, c)
+        cut, fraction = slicing.get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
         label, grid_vector = self._read_current_density(selection)
         grid_scalar = np.linalg.norm(grid_vector, axis=-1)
@@ -139,7 +140,7 @@ current density:
 
         >>> calc.current_density.to_quiver(a=0.3, normal="x")
         """
-        cut, fraction = self._get_cut(a, b, c)
+        cut, fraction = slicing.get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
         label, data = self._read_current_density(selection)
         sliced_data = slicing.grid_vector(np.moveaxis(data, -1, 0), plane, fraction)
@@ -147,28 +148,3 @@ current density:
         if supercell is not None:
             quiver_plot.supercell = np.ones(2, dtype=np.int_) * supercell
         return graph.Graph([quiver_plot])
-
-    def _get_cut(self, a, b, c):
-        _raise_error_cut_selection_incorrect(a, b, c)
-        if a is not None:
-            return "a", a
-        if b is not None:
-            return "b", b
-        return "c", c
-
-
-def _raise_error_cut_selection_incorrect(*selections):
-    # only a single element may be selected
-    selected_elements = sum(selection is not None for selection in selections)
-    if selected_elements == 0:
-        raise exception.IncorrectUsage(
-            "You have not selected a lattice vector along which the slice should be "
-            "constructed. Please set exactly one of the keyword arguments (a, b, c) "
-            "to a real number that specifies at which fraction of the lattice vector "
-            "the plane is."
-        )
-    if selected_elements > 1:
-        raise exception.IncorrectUsage(
-            "You have selected more than a single element. Please use only one of "
-            "(a, b, c) and not multiple choices."
-        )

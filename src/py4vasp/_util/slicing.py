@@ -55,6 +55,32 @@ class Plane:
     "Lattice vector cut to get the plane, if not set, no labels will be added"
 
 
+def get_cut(a, b, c):
+    raise_error_cut_selection_incorrect(a, b, c)
+    if a is not None:
+        return "a", a
+    if b is not None:
+        return "b", b
+    return "c", c
+
+
+def raise_error_cut_selection_incorrect(*selections):
+    # only a single element may be selected
+    selected_elements = sum(selection is not None for selection in selections)
+    if selected_elements == 0:
+        raise exception.IncorrectUsage(
+            "You have not selected a lattice vector along which the slice should be "
+            "constructed. Please set exactly one of the keyword arguments (a, b, c) "
+            "to a real number that specifies at which fraction of the lattice vector "
+            "the plane is."
+        )
+    if selected_elements > 1:
+        raise exception.IncorrectUsage(
+            "You have selected more than a single element. Please use only one of "
+            "(a, b, c) and not multiple choices."
+        )
+
+
 def grid_scalar(data, plane, fraction):
     """Takes a 2d slice of a 3d grid data.
 

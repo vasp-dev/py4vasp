@@ -10,6 +10,7 @@ import numpy as np
 from py4vasp import _config
 from py4vasp._third_party.graph import trace
 from py4vasp._util import import_
+from py4vasp._util.slicing import Plane
 
 ff = import_.optional("plotly.figure_factory")
 go = import_.optional("plotly.graph_objects")
@@ -45,6 +46,8 @@ class Contour(trace.Trace):
     "Assign a label to the visualization that may be used to identify one among multiple plots."
     isolevels: bool = False
     "Defines whether isolevels should be added or a heatmap is used."
+    show_contour_values: bool = None
+    "Defines whether contour values should be shown along contour plot lines."
     supercell: np.array = (1, 1)
     "Multiple of each lattice vector to be drawn."
     show_cell: bool = True
@@ -71,7 +74,14 @@ class Contour(trace.Trace):
 
     def _make_contour(self, lattice, data):
         x, y, z = self._interpolate_data_if_necessary(lattice, data)
-        return go.Contour(x=x, y=y, z=z, name=self.label, autocontour=True)
+        return go.Contour(
+            x=x,
+            y=y,
+            z=z,
+            name=self.label,
+            autocontour=True,
+            contours={"showlabels": self.show_contour_values},
+        )
 
     def _make_heatmap(self, lattice, data):
         x, y, z = self._interpolate_data_if_necessary(lattice, data)
