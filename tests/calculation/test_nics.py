@@ -144,7 +144,7 @@ def test_to_contour(chemical_shift, kwargs, index, position, Assert, selection):
     assert len(graph) == len(scalar_data)
     for series, e, s in zip(graph, scalar_data, selection_list):
         assert series.label == (
-            f"{s if s else "isotropic"} NICS contour ({list(kwargs.keys())[0]})"
+            f"{s if s else 'isotropic'} NICS contour ({list(kwargs.keys())[0]})"
         )
         Assert.allclose(series.data, e)
 

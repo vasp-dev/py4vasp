@@ -19,7 +19,7 @@ class Nics(base.Refinery, structure.Mixin, view.Mixin):
 
     @base.data_access
     def to_dict(self):
-        """Read nics into a dictionary.
+        """Read NICS into a dictionary.
 
         Parameters
         ----------
@@ -105,7 +105,7 @@ nucleus-independent chemical shift:
 
     @base.data_access
     def to_view(self, selection=None, supercell=None, **user_options):
-        """Plot the selected density as a 3d isosurface within the structure.
+        """Plot the selected chemical shift as a 3d isosurface within the structure.
 
         Parameters
         ----------
@@ -127,7 +127,7 @@ nucleus-independent chemical shift:
         Returns
         -------
         View
-            Visualize an isosurface of the density within the 3d structure.
+            Visualize an isosurface of the selected chemical shift within the 3d structure.
         """
         selection = selection or _DEFAULT_SELECTION
         viewer = self._structure.plot(supercell)
@@ -182,7 +182,10 @@ nucleus-independent chemical shift:
         for k, v in selected_data.items():
             grid_scalar = slicing.grid_scalar(v, plane, fraction)
             contour_plot = graph.Contour(
-                grid_scalar, plane, f"{k} NICS contour ({cut})", isolevels=True
+                grid_scalar,
+                plane,
+                f"{k} NICS contour ({cut})",
+                isolevels=True,
             )
             if supercell is not None:
                 contour_plot.supercell = np.ones(2, dtype=np.int_) * supercell
