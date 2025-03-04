@@ -5,6 +5,7 @@
 import numpy as np
 
 from py4vasp._calculation import base, structure
+from py4vasp._util import index, select
 
 
 class Nics(base.Refinery, structure.Mixin):
@@ -28,9 +29,29 @@ class Nics(base.Refinery, structure.Mixin):
         }
         return result
 
+    def _init_directions_dict(self):
+        return {
+            "isotropic": [0, 4, 8],
+            "xx": 0,
+            "xy": 1,
+            "xz": 2,
+            "yx": 3,
+            "yy": 4,
+            "yz": 5,
+            "zx": 6,
+            "zy": 7,
+            "zz": 8,
+        }
+
     @base.data_access
-    def to_numpy(self):
+    def to_numpy(self, selection=None):
         """Convert NICS to a numpy array.
+
+        Parameters
+        ----------
+        selection : str or None
+            The tensor element(s) to extract.
+            Can be None (in which case the whole tensor is returned), isotropic, or one of "xx", "xy", ...
 
         Returns
         -------
@@ -39,5 +60,14 @@ class Nics(base.Refinery, structure.Mixin):
         """
         transposed_nics = np.array(self._raw_data.nics).T
         curr_shape = transposed_nics.shape
-        transposed_nics = transposed_nics.reshape((*curr_shape[:-1], 3, 3))
+        if selection is None:
+            transposed_nics = transposed_nics.reshape((*curr_shape[:-1], 3, 3))
+        else:
+            selector = index.Selector(
+                {3: self._init_directions_dict()}, transposed_nics, reduction=np.average
+            )
+            tree = select.Tree.from_selection(selection)
+            transposed_nics = np.squeeze(
+                [selector[selection] for selection in tree.selections()]
+            )
         return transposed_nics
