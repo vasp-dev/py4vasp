@@ -132,3 +132,18 @@ def test_to_numpy(selection, chemical_shift, Assert):
     tensor = chemical_shift.ref.output["nics"]
     element = get_3d_tensor_element_from_grid(tensor, selection or "3x3")
     Assert.allclose(chemical_shift.to_numpy(selection), element)
+
+
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.nics("Sr2TiO4")
+    check_factory_methods(Nics, data)
+
+
+def test_print(chemical_shift, format_):
+    actual, _ = format_(chemical_shift)
+    expected_text = """\
+nucleus-independent chemical shift:
+    structure: Sr2TiO4
+    grid: 10, 12, 14
+    tensor shape: 3x3"""
+    assert actual == {"text/plain": expected_text}

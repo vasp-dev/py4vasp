@@ -5,9 +5,11 @@
 import numpy as np
 
 from py4vasp import _config
-from py4vasp._calculation import base, structure
+from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import view
-from py4vasp._util import index, select
+from py4vasp._util import import_, index, select
+
+pretty = import_.optional("IPython.lib.pretty")
 
 _DEFAULT_SELECTION: str = "isotropic"
 
@@ -32,6 +34,17 @@ class Nics(base.Refinery, structure.Mixin, view.Mixin):
             "nics": self.to_numpy(),
         }
         return result
+
+    @base.data_access
+    def __str__(self):
+        grid = self._raw_data.nics.shape[1:]
+        raw_stoichiometry = self._raw_data.structure.stoichiometry
+        stoichiometry = _stoichiometry.Stoichiometry.from_data(raw_stoichiometry)
+        return f"""\
+nucleus-independent chemical shift:
+    structure: {pretty.pretty(stoichiometry)}
+    grid: {grid[2]}, {grid[1]}, {grid[0]}
+    tensor shape: 3x3"""
 
     @staticmethod
     def _init_directions_dict():
@@ -99,6 +112,8 @@ class Nics(base.Refinery, structure.Mixin, view.Mixin):
         selection : str
             Axis along which to plot.
             Can be one of "xx", "xy", ...
+            Can also be "isotropic" to plot the trace.
+            If selection is None, it defaults to "isotropic".
 
         supercell : int or np.ndarray
             If present the data is replicated the specified number of times along each
