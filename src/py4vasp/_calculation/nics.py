@@ -6,8 +6,8 @@ import numpy as np
 
 from py4vasp import _config
 from py4vasp._calculation import _stoichiometry, base, structure
-from py4vasp._third_party import view
-from py4vasp._util import import_, index, select
+from py4vasp._third_party import graph, view
+from py4vasp._util import documentation, import_, index, select, slicing
 
 pretty = import_.optional("IPython.lib.pretty")
 
@@ -109,7 +109,7 @@ nucleus-independent chemical shift:
 
         Parameters
         ----------
-        selection : str
+        selection : str or None
             Axis along which to plot.
             Can be one of "xx", "xy", ...
             Can also be "isotropic" to plot the trace.
@@ -143,3 +143,48 @@ nucleus-independent chemical shift:
             for k, v in selected_data.items()
         ]
         return viewer
+
+    @base.data_access
+    @documentation.format(plane=slicing.PLANE, parameters=slicing.PARAMETERS)
+    def to_contour(
+        self, selection=None, *, a=None, b=None, c=None, normal=None, supercell=None
+    ):
+        """Generate a contour plot of chemical shift.
+
+        {plane}
+
+        Parameters
+        ----------
+        {parameters}
+
+        selection : str or None
+            Axis along which to plot.
+            Can be one of "xx", "xy", ...
+            Can also be "isotropic" to plot the trace.
+            If selection is None, it defaults to "isotropic".
+
+        supercell : int or np.ndarray
+            If present the data is replicated the specified number of times along each
+            direction.
+
+        Returns
+        -------
+        graph
+            A chemical shift plot in the plane spanned by the 2 remaining lattice vectors.
+        """
+        selection = selection or _DEFAULT_SELECTION
+        cut, fraction = slicing.get_cut(a, b, c)
+        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
+        selected_data = Nics._read_selected_data(
+            np.array(self._raw_data.nics).T, selection
+        )
+        contour_plots = []
+        for k, v in selected_data.items():
+            grid_scalar = slicing.grid_scalar(v, plane, fraction)
+            contour_plot = graph.Contour(
+                grid_scalar, plane, f"{k} NICS contour ({cut})", isolevels=True
+            )
+            if supercell is not None:
+                contour_plot.supercell = np.ones(2, dtype=np.int_) * supercell
+            contour_plots.append(contour_plot)
+        return graph.Graph(contour_plots)

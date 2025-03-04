@@ -24,6 +24,24 @@ def chemical_shift(raw_data):
     return nics
 
 
+@dataclasses.dataclass
+class Normal:
+    normal: str
+    expected_rotation: np.ndarray
+
+
+@pytest.fixture(
+    params=[
+        Normal(normal="auto", expected_rotation=np.eye(2)),
+        Normal(normal="x", expected_rotation=np.array([[0, -1], [1, 0]])),
+        Normal(normal="y", expected_rotation=np.diag((1, -1))),
+        Normal(normal="z", expected_rotation=np.eye(2)),
+    ]
+)
+def normal_vector(request):
+    return request.param
+
+
 def test_read(chemical_shift, Assert):
     actual = chemical_shift.read()
     actual_structure = actual.pop("structure")
@@ -105,6 +123,45 @@ def test_plot_user_options(chemical_shift):
     for idx, isosurface in enumerate(grid_scalar.isosurfaces):
         assert isosurface.isolevel == (-1.0) ** (idx) * 0.9
         assert isosurface.opacity == 0.2
+
+
+@pytest.mark.parametrize(
+    "kwargs, index, position",
+    (({"a": 0.1}, 0, 1), ({"b": 0.7}, 1, 8), ({"c": 1.3}, 2, 4)),
+)
+def test_to_contour(chemical_shift, kwargs, index, position, Assert, selection):
+    graph = chemical_shift.to_contour(selection=selection, **kwargs)
+    slice_ = [slice(None), slice(None), slice(None)]
+    slice_[index] = position
+    tensor = chemical_shift.ref.output["nics"]
+    scalar_data = get_3d_tensor_element_from_grid(tensor, selection)
+    if not (isinstance(scalar_data, list)):
+        scalar_data = [scalar_data[tuple(slice_)]]
+        selection_list = [selection]
+    else:
+        scalar_data = [s[tuple(slice_)] for s in scalar_data]
+        selection_list = str.split(selection)
+    assert len(graph) == len(scalar_data)
+    for series, e, s in zip(graph, scalar_data, selection_list):
+        assert series.label == (
+            f"{s if s else "isotropic"} NICS contour ({list(kwargs.keys())[0]})"
+        )
+        Assert.allclose(series.data, e)
+
+
+def test_to_contour_supercell(chemical_shift, Assert):
+    graph = chemical_shift.to_contour(b=0, supercell=2)
+    Assert.allclose(graph.series[0].supercell, (2, 2))
+    graph = chemical_shift.to_contour(b=0, supercell=(2, 1))
+    Assert.allclose(graph.series[0].supercell, (2, 1))
+
+
+def test_to_contour_normal(chemical_shift, normal_vector, Assert):
+    graph = chemical_shift.to_contour(c=0.5, normal=normal_vector.normal)
+    rotation = normal_vector.expected_rotation
+    lattice_vectors = chemical_shift.ref.structure.lattice_vectors()
+    expected_lattice = lattice_vectors[:2, :2] @ rotation
+    Assert.allclose(graph.series[0].lattice.vectors, expected_lattice)
 
 
 @pytest.fixture(

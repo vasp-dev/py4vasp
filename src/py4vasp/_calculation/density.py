@@ -339,7 +339,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
 
         >>> calc.density.to_contour("kinetic_energy", a=0.3, normal="x")
         """
-        cut, fraction = self._get_cut(a, b, c)
+        cut, fraction = slicing.get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_data.charge)
@@ -399,7 +399,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
 
         >>> calc.density.to_quiver("kinetic_energy", a=0.3, normal="x")
         """
-        cut, fraction = self._get_cut(a, b, c)
+        cut, fraction = slicing.get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
         if self.is_collinear():
             data = slicing.grid_scalar(self._raw_data.charge[1].T, plane, fraction)
@@ -411,14 +411,6 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         if supercell is not None:
             quiver_plot.supercell = np.ones(2, dtype=np.int_) * supercell
         return graph.Graph([quiver_plot])
-
-    def _get_cut(self, a, b, c):
-        _raise_error_cut_selection_incorrect(a, b, c)
-        if a is not None:
-            return "a", a
-        if b is not None:
-            return "b", b
-        return "c", c
 
     @base.data_access
     def is_nonpolarized(self):
@@ -477,21 +469,4 @@ def _raise_error_if_no_data(data):
             "this file exists and LCHARGH5 = T is set in the INCAR file. Another "
             'common issue is when you create `Calculation.from_file("vaspout.h5")` '
             "because this will overwrite the default file behavior."
-        )
-
-
-def _raise_error_cut_selection_incorrect(*selections):
-    # only a single element may be selected
-    selected_elements = sum(selection is not None for selection in selections)
-    if selected_elements == 0:
-        raise exception.IncorrectUsage(
-            "You have not selected a lattice vector along which the slice should be "
-            "constructed. Please set exactly one of the keyword arguments (a, b, c) "
-            "to a real number that specifies at which fraction of the lattice vector "
-            "the plane is."
-        )
-    if selected_elements > 1:
-        raise exception.IncorrectUsage(
-            "You have selected more than a single element. Please use only one of "
-            "(a, b, c) and not multiple choices."
         )
