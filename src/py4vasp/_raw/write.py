@@ -4,10 +4,11 @@ import dataclasses
 
 from py4vasp._raw.definition import DEFAULT_SOURCE, schema
 from py4vasp._raw.schema import Length, Link
-from py4vasp._util import convert
+from py4vasp._util import check, convert
 
 
 def write(h5f, raw_data):
+    print(f"print {raw_data=}")
     quantity = convert.quantity_name(raw_data.__class__.__name__)
     source = schema.sources[quantity][DEFAULT_SOURCE]
     for field in dataclasses.fields(source.data):
@@ -19,7 +20,7 @@ def write(h5f, raw_data):
 def _write_dataset(h5f, target, data):
     if isinstance(target, Link):
         write(h5f, data)
-    elif isinstance(target, Length) or target in h5f:
-        pass
+    elif check.is_none(data) or isinstance(target, Length) or target in h5f:
+        return
     else:
         h5f[target] = data

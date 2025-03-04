@@ -26,17 +26,21 @@ class Band(base.Refinery, graph.Mixin):
     a more detailed documentation.
 
     >>> calculation.band.plot()
+    Graph(series=[Series(x=array(...), y=array(...), label='bands', ...)],
+        ..., xticks={...}, ..., ylabel='Energy (eV)', ...)
 
     For your own postprocessing, you can read the band data into a Python dictionary
 
     >>> calculation.band.read()
+    {'kpoint_distances': array(...), 'kpoint_labels': ..., 'fermi_energy': ...,
+        'bands': array(...), 'occupations': array(...)}
 
     These methods take additional selections, if you used VASP with :tag:`LORBIT`.
     You can inspect possible choices with
 
     >>> calculation.band.selections()
     {'band': ['default', 'kpoints_opt', 'kpoints_wan'],
-    'atom': {...}, 'orbital': {...}, 'spin': {...}}
+        'atom': [...], 'orbital': [...], 'spin': [...]}
     """
 
     @base.data_access
