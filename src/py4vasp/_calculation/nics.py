@@ -76,6 +76,8 @@ nucleus-independent chemical shift:
     def to_numpy(self, selection=None):
         """Convert NICS to a numpy array.
 
+        The resulting shape will be the NICS grid data with respect to the selection.
+
         Parameters
         ----------
         selection : str or None
@@ -128,6 +130,19 @@ nucleus-independent chemical shift:
         -------
         View
             Visualize an isosurface of the selected chemical shift within the 3d structure.
+
+        Examples
+        --------
+        >>> from py4vasp import calculation
+
+        Plot the isotropic chemical shift as a 3d isosurface.
+        >>> calculation.nics.plot()
+
+        Plot the chemical shift with "xx" selection as a 3d isosurface.
+        >>> calculation.nics.plot(selection="xx")
+
+        Plot the isotropic chemical shift with specified isolevel as a 3d isosurface.
+        >>> calculation.nics.plot(isolevel=0.6)
         """
         selection = selection or _DEFAULT_SELECTION
         viewer = self._structure.plot(supercell)
@@ -171,6 +186,33 @@ nucleus-independent chemical shift:
         -------
         graph
             A chemical shift plot in the plane spanned by the 2 remaining lattice vectors.
+
+        Examples
+        --------
+        >>> from py4vasp import calculation
+
+        Cut a plane through the isotropic chemical shift at the origin of the third lattice
+        vector.
+
+        >>> calculation.nics.to_contour(c=0)
+
+        Replicate a plane in the middle of the second lattice vector 2 times in each
+        direction.
+
+        >>> calculation.nics.to_contour(b=0.5, supercell=2)
+
+        Take a slice of the chemical shift with "xy" selection along the first lattice
+        vector and
+        rotate it such that the plane normal aligns with the x axis.
+
+        >>> calculation.nics.to_contour(a=0.3, selection=0.3, normal="x")
+
+        Cut a plan through the isotropic chemical shift at the origin of the third lattice
+        vector, then show isosurface level values along contour lines.
+
+        >>> plot = calculation.nics.to_contour(c=0, selection=0.3, normal="x")
+        >>> plot.series[0].show_contour_values = True
+        >>> plot.show()
         """
         selection = selection or _DEFAULT_SELECTION
         cut, fraction = slicing.get_cut(a, b, c)
