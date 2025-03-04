@@ -7,8 +7,10 @@ import types
 import numpy as np
 import pytest
 
+from py4vasp import _config
 from py4vasp._calculation.nics import Nics
 from py4vasp._calculation.structure import Structure
+from py4vasp._third_party import view
 
 
 @pytest.fixture
@@ -31,9 +33,9 @@ def test_read(chemical_shift, Assert):
 
 
 def get_3d_tensor_element_from_grid(tensor, element: str):
-    if element == None:
+    if element == "3x3":
         return tensor
-    elif element == "xx":
+    if element == "xx":
         return tensor[:, :, :, 0, 0]
     elif element == "xy":
         return tensor[:, :, :, 0, 1]
@@ -51,11 +53,11 @@ def get_3d_tensor_element_from_grid(tensor, element: str):
         return tensor[:, :, :, 2, 1]
     elif element == "zz":
         return tensor[:, :, :, 2, 2]
-    elif element == "xx+yy":
+    elif element == "xx + yy":
         return tensor[:, :, :, 0, 0] + tensor[:, :, :, 1, 1]
     elif element == "xx yy":
         return [tensor[:, :, :, 0, 0], tensor[:, :, :, 1, 1]]
-    elif element == "isotropic":
+    elif element in [None, "isotropic"]:
         tensor_sum = (
             tensor[:, :, :, 0, 0] + tensor[:, :, :, 1, 1] + tensor[:, :, :, 2, 2]
         )
@@ -66,9 +68,47 @@ def get_3d_tensor_element_from_grid(tensor, element: str):
         )
 
 
-@pytest.mark.parametrize(
-    "selection",
-    [
+def test_plot(chemical_shift, selection, Assert):
+    tensor = chemical_shift.ref.output["nics"]
+    element = get_3d_tensor_element_from_grid(tensor, selection)
+    structure_view = chemical_shift.plot(selection)
+    expected_view = chemical_shift.ref.structure.plot()
+    Assert.same_structure_view(structure_view, expected_view)
+    if not (isinstance(element, list)):
+        element = [element]
+        selection_list = [selection]
+    else:
+        selection_list = str.split(selection)
+    assert len(structure_view.grid_scalars) == len(element)
+    for grid_scalar, e, s in zip(structure_view.grid_scalars, element, selection_list):
+        assert grid_scalar.label == (f"{s} NICS" if s else "isotropic NICS")
+        assert grid_scalar.quantity.ndim == 4
+        Assert.allclose(grid_scalar.quantity, e)
+        assert len(grid_scalar.isosurfaces) == 2
+        assert grid_scalar.isosurfaces == [
+            view.Isosurface(1.0, _config.VASP_COLORS["blue"], 0.6),
+            view.Isosurface(-1.0, _config.VASP_COLORS["red"], 0.6),
+        ]
+
+
+@pytest.mark.parametrize("supercell", (2, (3, 1, 2)))
+def test_plot_supercell(chemical_shift, supercell, Assert):
+    view = chemical_shift.plot(supercell=supercell)
+    Assert.allclose(view.supercell, supercell)
+
+
+def test_plot_user_options(chemical_shift):
+    view = chemical_shift.plot(isolevel=0.9, opacity=0.2)
+    assert len(view.grid_scalars) == 1
+    grid_scalar = view.grid_scalars[0]
+    assert len(grid_scalar.isosurfaces) == 2
+    for idx, isosurface in enumerate(grid_scalar.isosurfaces):
+        assert isosurface.isolevel == (-1.0) ** (idx) * 0.9
+        assert isosurface.opacity == 0.2
+
+
+@pytest.fixture(
+    params=[
         None,
         "xx",
         "xy",
@@ -79,12 +119,16 @@ def get_3d_tensor_element_from_grid(tensor, element: str):
         "zx",
         "zy",
         "zz",
-        "xx+yy",
+        "xx + yy",
         "xx yy",
         "isotropic",
     ],
 )
+def selection(request):
+    return request.param
+
+
 def test_to_numpy(selection, chemical_shift, Assert):
     tensor = chemical_shift.ref.output["nics"]
-    element = get_3d_tensor_element_from_grid(tensor, selection)
+    element = get_3d_tensor_element_from_grid(tensor, selection or "3x3")
     Assert.allclose(chemical_shift.to_numpy(selection), element)
