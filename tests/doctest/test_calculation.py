@@ -17,7 +17,7 @@ def setup_doctest(raw_data, tmp_path_factory, not_core):
     # create hdf5 file
     filename = tmp_path / DEFAULT_FILE
     raw_dos = raw_data.dos("Sr2TiO4 with_projectors")
-    raw_band = raw_data.band("line")
+    raw_band = raw_data.band("multiple with_projectors")
     raw_structure = raw_data.structure("Sr2TiO4")
     raw_energy = raw_data.energy("relax", randomize=True)
     with h5py.File(filename, "w") as h5f:
@@ -35,7 +35,11 @@ def setup_doctest(raw_data, tmp_path_factory, not_core):
 
 def get_examples():
     finder = doctest.DocTestFinder()
-    examples = finder.find(_calculation) + finder.find(_calculation.dos)
+    examples = (
+        finder.find(_calculation)
+        + finder.find(_calculation.dos)
+        + finder.find(_calculation.band)
+    )
     return [example for example in examples if interesting_example(example)]
 
 
