@@ -182,7 +182,10 @@ nucleus-independent chemical shift:
         for k, v in selected_data.items():
             grid_scalar = slicing.grid_scalar(v, plane, fraction)
             contour_plot = graph.Contour(
-                grid_scalar, plane, f"{k} NICS contour ({cut})", isolevels=True
+                grid_scalar,
+                plane,
+                f"{k} NICS contour ({cut})",
+                isolevels=True,
             )
             if supercell is not None:
                 contour_plot.supercell = np.ones(2, dtype=np.int_) * supercell
