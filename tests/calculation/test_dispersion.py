@@ -41,7 +41,11 @@ def expected_xticks(selection):
 def test_read_dispersion(dispersion, Assert):
     actual = dispersion.read()
     Assert.allclose(actual["kpoint_distances"], dispersion.ref.kpoints.distances())
-    assert actual["kpoint_labels"] == dispersion.ref.kpoints.labels()
+    kpoint_labels = dispersion.ref.kpoints.labels()
+    if kpoint_labels is None:
+        assert "kpoint_labels" not in actual
+    else:
+        assert actual["kpoint_labels"] == kpoint_labels
     Assert.allclose(actual["eigenvalues"], dispersion.ref.eigenvalues)
 
 

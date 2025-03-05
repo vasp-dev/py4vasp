@@ -20,11 +20,7 @@ def single_band(raw_data):
     band.ref.fermi_energy = 0.0
     band.ref.bands = raw_band.dispersion.eigenvalues[0]
     band.ref.occupations = raw_band.occupations[0]
-    raw_kpoints = raw_band.dispersion.kpoints
-    band.ref.kpoints = Kpoint.from_data(raw_kpoints)
-    formatter = {"float": lambda x: f"{x:.2f}"}
-    kpoint_to_string = lambda vec: np.array2string(vec, formatter=formatter) + " 1"
-    band.ref.index = [kpoint_to_string(kpoint) for kpoint in raw_kpoints.coordinates]
+    band.ref.kpoints = Kpoint.from_data(raw_band.dispersion.kpoints)
     return band
 
 
@@ -36,6 +32,7 @@ def multiple_bands(raw_data):
     band.ref.fermi_energy = raw_band.fermi_energy
     band.ref.bands = raw_band.dispersion.eigenvalues[0] - raw_band.fermi_energy
     band.ref.occupations = raw_band.occupations[0]
+    band.ref.kpoints = Kpoint.from_data(raw_band.dispersion.kpoints)
     return band
 
 
@@ -47,7 +44,6 @@ def with_projectors(raw_data):
     band.ref.bands = raw_band.dispersion.eigenvalues[0] - raw_band.fermi_energy
     band.ref.Sr = np.sum(raw_band.projections[0, 0:2, :, :, :], axis=(0, 1))
     band.ref.p = np.sum(raw_band.projections[0, :, 1:4, :, :], axis=(0, 1))
-    band.ref.selections = Projector.from_data(raw_band.projectors).selections()
     return band
 
 
@@ -106,7 +102,7 @@ def test_single_band_read(single_band, Assert):
     Assert.allclose(band["bands"], single_band.ref.bands)
     Assert.allclose(band["occupations"], single_band.ref.occupations)
     Assert.allclose(band["kpoint_distances"], single_band.ref.kpoints.distances())
-    assert band["kpoint_labels"] == single_band.ref.kpoints.labels()
+    assert "kpoint_labels" not in band
     assert "projections" not in band
 
 
@@ -166,19 +162,26 @@ def test_more_projections_style(raw_data, Assert):
 
 def test_single_polarized_to_frame(single_band, Assert, not_core):
     actual = single_band.to_frame()
-    assert all(actual.index == single_band.ref.index)
     Assert.allclose(actual.bands, single_band.ref.bands[:, 0])
     Assert.allclose(actual.occupations, single_band.ref.occupations[:, 0])
+    Assert.allclose(actual.kpoint_distances, single_band.ref.kpoints.distances())
 
 
 def test_multiple_bands_to_frame(multiple_bands, Assert, not_core):
     actual = multiple_bands.to_frame()
-    assert actual.index[0] == "[0.00 0.00 0.12] 1"
-    assert actual.index[1] == "2"
-    assert actual.index[2] == "3"
-    assert actual.index[3] == "[0.00 0.00 0.38] 1"
     Assert.allclose(actual.bands, multiple_bands.ref.bands.T.flatten())
     Assert.allclose(actual.occupations, multiple_bands.ref.occupations.T.flatten())
+    kpoint_distances = np.repeat(multiple_bands.ref.kpoints.distances(), repeats=3)
+    Assert.allclose(actual.kpoint_distances, kpoint_distances)
+
+
+def test_line_with_labels_to_frame(line_with_labels, Assert, not_core):
+    actual = line_with_labels.to_frame()
+    kpoint_distances = np.repeat(line_with_labels.ref.kpoints.distances(), repeats=3)
+    kpoint_labels = np.repeat(line_with_labels.ref.kpoints.labels(), repeats=3)
+    actual_kpoint_labels = np.array(actual.kpoint_labels).astype(np.str_)
+    Assert.allclose(actual.kpoint_distances, kpoint_distances)
+    Assert.allclose(actual_kpoint_labels, kpoint_labels)
 
 
 def test_with_projectors_to_frame(with_projectors, Assert, not_core):
@@ -318,12 +321,6 @@ def check_to_image(single_band, filename_argument, expected_filename):
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
         fig.write_image.assert_called_once_with(single_band._path / expected_filename)
-
-
-def test_band_selections(with_projectors):
-    actual = with_projectors.selections()
-    actual.pop("band")  # remove band selections
-    assert actual == with_projectors.ref.selections
 
 
 def test_multiple_bands_print(multiple_bands, format_):

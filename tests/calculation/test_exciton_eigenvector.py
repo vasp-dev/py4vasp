@@ -29,7 +29,7 @@ def test_eigenvector_read(exciton_eigenvector, Assert):
     actual = exciton_eigenvector.read()
     dispersion = exciton_eigenvector.ref.dispersion.read()
     Assert.allclose(actual["kpoint_distances"], dispersion["kpoint_distances"])
-    assert np.all(actual["kpoint_labels"] == dispersion["kpoint_labels"])
+    assert "kpoint_labels" not in actual
     bands = dispersion["eigenvalues"] - exciton_eigenvector.ref.fermi_energy
     Assert.allclose(actual["bands"], bands)
     assert np.all(actual["bse_index"] == exciton_eigenvector.ref.bse_index)

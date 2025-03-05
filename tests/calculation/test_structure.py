@@ -444,7 +444,6 @@ def test_incorrect_step(Sr2TiO4, Ca3AsBr3):
 
 
 def test_Sr2TiO4_to_lammps(Sr2TiO4, not_core):
-    print(Sr2TiO4.to_lammps())
     assert re.match(REF_LAMMPS, Sr2TiO4.to_lammps())
     with pytest.raises(exception.NotImplemented):
         Sr2TiO4[:].to_lammps()

@@ -53,10 +53,7 @@ class Band(base.Refinery, graph.Mixin):
     """.strip()
 
     @base.data_access
-    @documentation.format(
-        selection_doc=projector.selection_doc,
-        examples=projector.selection_examples("band", "to_dict"),
-    )
+    @documentation.format(selection_doc=projector.selection_doc)
     def to_dict(self, selection=None):
         """Read the data into a dictionary.
 
@@ -119,20 +116,17 @@ class Band(base.Refinery, graph.Mixin):
             'bands': array(...), 'occupations': array(...)}}
         """
         dispersion = self._dispersion().read()
+        eigenvalues = dispersion.pop("eigenvalues")
         return {
-            "kpoint_distances": dispersion["kpoint_distances"],
-            "kpoint_labels": dispersion["kpoint_labels"],
+            **dispersion,
             "fermi_energy": self._raw_data.fermi_energy,
-            **self._shift_dispersion_by_fermi_energy(dispersion),
+            **self._shift_dispersion_by_fermi_energy(eigenvalues),
             **self._read_occupations(),
             **self._read_projections(selection),
         }
 
     @base.data_access
-    @documentation.format(
-        selection_doc=projector.selection_doc,
-        examples=projector.selection_examples("band", "to_graph"),
-    )
+    @documentation.format(selection_doc=projector.selection_doc)
     def to_graph(self, selection=None, width=0.5):
         """Read the data and generate a graph.
 
@@ -226,9 +220,7 @@ class Band(base.Refinery, graph.Mixin):
         --------
         {examples}
         """
-        index = self._setup_dataframe_index()
-        data = self._extract_relevant_data(selection)
-        return pd.DataFrame(data, index)
+        return pd.DataFrame(self._extract_relevant_data(selection))
 
     @base.data_access
     def selections(self):
@@ -265,8 +257,8 @@ class Band(base.Refinery, graph.Mixin):
         else:
             return {"occupations": self._raw_data.occupations[0]}
 
-    def _shift_dispersion_by_fermi_energy(self, dispersion):
-        shifted = dispersion["eigenvalues"] - self._raw_data.fermi_energy
+    def _shift_dispersion_by_fermi_energy(self, eigenvalues):
+        shifted = eigenvalues - self._raw_data.fermi_energy
         if len(shifted) == 2:
             return {"bands_up": shifted[0], "bands_down": shifted[1]}
         else:
@@ -277,14 +269,8 @@ class Band(base.Refinery, graph.Mixin):
             series.y = series.y - self._raw_data.fermi_energy
         return graph
 
-    def _setup_dataframe_index(self):
-        return [
-            _index_string(kpoint, band)
-            for kpoint in self._raw_data.dispersion.kpoints.coordinates
-            for band in range(self._raw_data.dispersion.eigenvalues.shape[2])
-        ]
-
     def _extract_relevant_data(self, selection):
+        need_to_be_repeated = ("kpoint_distances", "kpoint_labels")
         relevant_keys = (
             "bands",
             "bands_up",
@@ -295,18 +281,13 @@ class Band(base.Refinery, graph.Mixin):
         )
         data = {}
         for key, value in self.to_dict().items():
+            if key in need_to_be_repeated:
+                data[key] = np.repeat(value, self._raw_data.occupations[0].shape[-1])
             if key in relevant_keys:
                 data[key] = _to_series(value)
         for key, value in self._read_projections(selection).items():
             data[key] = _to_series(value)
         return data
-
-
-def _index_string(kpoint, band):
-    if band == 0:
-        return np.array2string(kpoint, formatter={"float": lambda x: f"{x:.2f}"}) + " 1"
-    else:
-        return str(band + 1)
 
 
 def _to_series(array):

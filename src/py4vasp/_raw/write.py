@@ -8,7 +8,6 @@ from py4vasp._util import check, convert
 
 
 def write(h5f, raw_data):
-    print(f"print {raw_data=}")
     quantity = convert.quantity_name(raw_data.__class__.__name__)
     source = schema.sources[quantity][DEFAULT_SOURCE]
     for field in dataclasses.fields(source.data):
