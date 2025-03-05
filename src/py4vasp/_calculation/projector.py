@@ -39,26 +39,6 @@ selection : str
 """
 
 
-def selection_examples(quantity, method):
-    return f"""\
-Select the p orbitals of the first atom in the POSCAR file:
-
->>> calculation.{quantity}.{method}(selection="1(p)")
-
-Select the d orbitals of Sr and Ti:
-
->>> calculation.{quantity}.{method}("d(Sr, Ti)")
-
-Select the spin-up contribution of the first three atoms combined
-
->>> calculation.{quantity}.{method}("up(1{select.range_separator}3)")
-
-Add the contribution of three d orbitals
-
->>> calculation.{quantity}.{method}("dxy + dxz + dyz")
-"""
-
-
 class Projector(base.Refinery):
     """The projectors used for atom and orbital resolved quantities.
 
