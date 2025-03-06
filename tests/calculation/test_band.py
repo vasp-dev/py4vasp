@@ -44,6 +44,7 @@ def with_projectors(raw_data):
     band.ref.bands = raw_band.dispersion.eigenvalues[0] - raw_band.fermi_energy
     band.ref.Sr = np.sum(raw_band.projections[0, 0:2, :, :, :], axis=(0, 1))
     band.ref.p = np.sum(raw_band.projections[0, :, 1:4, :, :], axis=(0, 1))
+    band.ref.selections = Projector.from_data(raw_band.projectors).selections()
     return band
 
 
@@ -321,6 +322,12 @@ def check_to_image(single_band, filename_argument, expected_filename):
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
         fig.write_image.assert_called_once_with(single_band._path / expected_filename)
+
+
+def test_band_selections(with_projectors):
+    actual = with_projectors.selections()
+    actual.pop("band")  # remove band selections
+    assert actual == with_projectors.ref.selections
 
 
 def test_multiple_bands_print(multiple_bands, format_):
