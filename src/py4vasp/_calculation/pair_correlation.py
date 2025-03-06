@@ -15,7 +15,7 @@ selection : str
     distinct labels by commas or whitespace. For a complete list of all
     possible selections, please use
 
-    >>> calc.pair_correlation.labels()
+    >>> calculation.pair_correlation.labels()
 """
 
 

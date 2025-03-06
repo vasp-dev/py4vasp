@@ -3,7 +3,6 @@
 import numpy as np
 
 import py4vasp._third_party.graph as _graph
-from py4vasp import _calculation
 from py4vasp._calculation import base, kpoint
 
 
@@ -29,9 +28,11 @@ class Dispersion(base.Refinery):
             Contains the **k**-point distances and associated labels as well as the
             eigenvalues of all the bands.
         """
+        kpoint_labels = self._kpoints.labels()
+        labels_dict = {} if kpoint_labels is None else {"kpoint_labels": kpoint_labels}
         return {
             "kpoint_distances": self._kpoints.distances(),
-            "kpoint_labels": self._kpoints.labels(),
+            **labels_dict,
             "eigenvalues": self._raw_data.eigenvalues[:],
         }
 
@@ -119,10 +120,11 @@ def _degenerate_ticks_and_labels(data, line_length):
 
 
 def _tick_labels(data):
-    if data["kpoint_labels"] is None:
+    kpoint_labels = data.get("kpoint_labels")
+    if kpoint_labels is None:
         return np.zeros(len(data["kpoint_distances"]), str)
     else:
-        return np.array(data["kpoint_labels"])
+        return np.array(kpoint_labels)
 
 
 def _use_labels_and_line_edges(labels, line_length):

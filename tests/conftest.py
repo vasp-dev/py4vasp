@@ -58,7 +58,7 @@ class _Assert:
         actual = np.array(actual)
         desired = np.array(desired)
         type_ = actual.dtype.type
-        if type_ in (np.bool_, np.str_):
+        if type_ in (np.bool_, np.str_, np.bytes_):
             assert type_ == desired.dtype.type
             assert np.array_equal(actual, desired)
         else:
@@ -405,7 +405,7 @@ class RawDataFactory:
         return _workfunction(selection)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def raw_data():
     return RawDataFactory
 

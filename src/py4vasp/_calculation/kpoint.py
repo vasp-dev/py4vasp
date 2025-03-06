@@ -66,13 +66,15 @@ reciprocal"""
             used to generate the **k** points, the line length (if line mode was
             used), and any labels set for specific points.
         """
+        labels = self.labels()
+        labels_dict = {} if labels is None else {"labels": labels}
         return {
             "mode": self.mode(),
             "line_length": self.line_length(),
             "number_kpoints": self.number_kpoints(),
             "coordinates": self._raw_data.coordinates[:],
             "weights": self._raw_data.weights[:],
-            "labels": self.labels(),
+            **labels_dict,
         }
 
     @base.data_access

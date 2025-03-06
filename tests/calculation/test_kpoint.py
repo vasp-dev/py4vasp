@@ -100,7 +100,7 @@ def test_read(explicit_kpoints, Assert):
 
 
 def test_no_labels_read(grid_kpoints):
-    assert grid_kpoints.read()["labels"] is None
+    assert "labels" not in grid_kpoints.read()
 
 
 def test_mode(raw_data):

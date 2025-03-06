@@ -40,10 +40,12 @@ class ExcitonEigenvector(base.Refinery):
         """
         eigenvectors = convert.to_complex(self._raw_data.eigenvectors[:])
         dispersion = self._dispersion.read()
+        shifted_eigenvalues = (
+            dispersion.pop("eigenvalues") - self._raw_data.fermi_energy
+        )
         return {
-            "kpoint_distances": dispersion["kpoint_distances"],
-            "kpoint_labels": dispersion["kpoint_labels"],
-            "bands": dispersion["eigenvalues"] - self._raw_data.fermi_energy,
+            **dispersion,
+            "bands": shifted_eigenvalues,
             "bse_index": self._raw_data.bse_index[:] - 1,
             "eigenvectors": eigenvectors,
             "fermi_energy": self._raw_data.fermi_energy,

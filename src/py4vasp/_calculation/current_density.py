@@ -82,17 +82,17 @@ current density:
 
         Cut a plane at the origin of the third lattice vector.
 
-        >>> calc.current_density.to_contour(c=0)
+        >>> calculation.current_density.to_contour(c=0)
 
         Replicate a plane in the middle of the second lattice vector 2 times in each
         direction.
 
-        >>> calc.current_density.to_contour(b=0.5, supercell=2)
+        >>> calculation.current_density.to_contour(b=0.5, supercell=2)
 
         Take a slice along the first lattice vector and rotate it such that the normal
         of the plane aligns with the x axis.
 
-        >>> calc.current_density.to_contour(a=0.3, normal="x")
+        >>> calculation.current_density.to_contour(a=0.3, normal="x")
         """
         cut, fraction = slicing.get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
@@ -128,17 +128,17 @@ current density:
 
         Cut a plane at the origin of the third lattice vector.
 
-        >>> calc.current_density.to_quiver(c=0)
+        >>> calculation.current_density.to_quiver(c=0)
 
         Replicate a plane in the middle of the second lattice vector 2 times in each
         direction.
 
-        >>> calc.current_density.to_quiver(b=0.5, supercell=2)
+        >>> calculation.current_density.to_quiver(b=0.5, supercell=2)
 
         Take a slice along the first lattice vector and rotate it such that the normal
         of the plane aligns with the x axis.
 
-        >>> calc.current_density.to_quiver(a=0.3, normal="x")
+        >>> calculation.current_density.to_quiver(a=0.3, normal="x")
         """
         cut, fraction = slicing.get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)

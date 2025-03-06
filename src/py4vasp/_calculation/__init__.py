@@ -71,10 +71,25 @@ class Calculation:
     Examples
     --------
 
-    >>> calc = Calculation.from_path("path_to_your_calculation")
-    >>> calc.dos.plot()         # to plot the density of states
-    >>> calc.magnetism.read()   # to read the magnetic moments
-    >>> calc.structure.print()  # to print the structure in a POSCAR format
+    Generate a new calculation object
+
+    >>> calculation = Calculation.from_path("path/to/calculation")
+
+    Plot the density of states (DOS) of a calculation
+
+    >>> calculation.dos.plot()
+    Graph(series=[Series(x=array(...), y=array(...), label='total', ...)],
+        xlabel='Energy (eV)', ..., ylabel='DOS (1/eV)', ...)
+
+    Read the energies for a structure relaxation run into a Python dictionary
+
+    >>> calculation.energy[:].read()
+    {'free energy    TOTEN': array(...), 'energy without entropy': array(...),
+        'energy(sigma->0)': array(...)}
+
+    Convert the structure to a POSCAR format
+
+    >>> poscar_string = calculation.structure.to_POSCAR()
     """
 
     def __init__(self, *args, **kwargs):
@@ -88,6 +103,17 @@ instead of the constructor Calculation()."""
     def from_path(cls, path_name):
         """Set up a Calculation for a particular path and so that all files are opened there.
 
+        py4vasp knows to which files the relevant information is written. It will
+        automatically open the files as necessary and extract the required data from
+        them. Then the raw data is refined according to the selected methods.
+
+        Importantly, the creation of the Calculation object does not require that the
+        VASP calculation was already finished. It does not even need the path to exist.
+        All data is lazily loaded at the moment when it is needed. This also means that
+        if you change the data, e.g. by rerunning VASP in the same path, py4vasp will
+        directly read the new results. If you want to keep the old results, please run
+        the new calculation in a new path.
+
         Parameters
         ----------
         path_name : str or pathlib.Path
@@ -97,6 +123,18 @@ instead of the constructor Calculation()."""
         -------
         Calculation
             A calculation associated with the given path.
+
+        Examples
+        --------
+
+        Create a new Calculation object from a specific path.
+
+        >>> calculation = Calculation.from_path("path/to/calculation")
+
+        You can also pass in pathlib Path objects or anything else that can be converted
+        into it.
+
+        >>> calculation = Calculation.from_path(pathlib.Path.cwd())
         """
         calc = cls(_internal=True)
         calc._path = pathlib.Path(path_name).expanduser().resolve()
@@ -108,7 +146,17 @@ instead of the constructor Calculation()."""
         """Set up a Calculation from a particular file.
 
         Typically this limits the amount of information, you have access to, so prefer
-        creating the instance with the :meth:`from_path` if possible.
+        creating the instance with the :meth:`from_path` if possible. Most data is
+        found in the vaspout.h5 file, so if you renamed it for backup purposes most
+        functions of py4vasp will work, when you pass it into this constructor.
+
+        Please keep in mind that creating a new Calculation will not read any data.
+        You can create an instance for a specific file and create or modify it
+        afterwards. py4vasp access the data in the moment when it is needed e.g. to
+        generate a plot or read it to a dictionary. However, this also means that you
+        need to make sure to keep track of any changes, because the Calculation object
+        is always a representation of the current contents of the file not the ones
+        at creation of the Calculation object.
 
         Parameters
         ----------
@@ -119,6 +167,20 @@ instead of the constructor Calculation()."""
         -------
         Calculation
             A calculation accessing the data in the given file.
+
+        Examples
+        --------
+
+        Create a new Calculation object to the vaspout.h5 file. For the most parts this
+        is equivalent to the :meth:`from_path` method so you should typically use that
+        instead.
+
+        >>> calculation = Calculation.from_file("vaspout.h5")
+
+        Sometime you rename the VASP output as a backup. Then the `from_file` constructor
+        is your only option.
+
+        >>> calculation = Calculation.from_file("path/to/file/backup.h5")
         """
         calc = cls(_internal=True)
         calc._path = pathlib.Path(file_name).expanduser().resolve().parent
@@ -231,12 +293,14 @@ class DefaultCalculationFactory:
 
     >>> from py4vasp import calculation
     >>> calculation.dos.read()
+    {'energies': array(...), 'total': array(...), 'fermi_energy': ...}
 
     .. rubric:: using :class:`~py4vasp.Calculation` class
 
     >>> from py4vasp import Calculation
-    >>> calc = Calculation.from_path(".")
-    >>> calc.dos.read()
+    >>> calculation = Calculation.from_path(".")
+    >>> calculation.dos.read()
+    {'energies': array(...), 'total': array(...), 'fermi_energy': ...}
 
     In the latter example, you can change the path from which the data is extracted.
     """

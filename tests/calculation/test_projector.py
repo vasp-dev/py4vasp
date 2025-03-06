@@ -178,6 +178,10 @@ def test_selections_Fe3O4(Fe3O4):
     }
 
 
+def test_selections_missing_orbitals(missing_orbitals):
+    assert missing_orbitals.selections() == {}
+
+
 def test_print(Sr2TiO4, format_):
     actual, _ = format_(Sr2TiO4)
     reference = """
