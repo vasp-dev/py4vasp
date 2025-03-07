@@ -7,7 +7,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import _config
+from py4vasp import _config, exception
 from py4vasp._calculation.nics import Nics
 from py4vasp._calculation.structure import Structure
 from py4vasp._third_party import view
@@ -220,6 +220,13 @@ def test_to_numpy_points(nics_at_points, selection, Assert):
     tensor = nics_at_points.ref.output["nics"]
     element = get_3d_tensor_element_from_grid(tensor, selection or "3x3")
     Assert.allclose(nics_at_points.to_numpy(selection), element)
+
+
+def test_nics_with_points_not_with_plotting_routines(nics_at_points):
+    with pytest.raises(exception.IncorrectUsage):
+        nics_at_points.plot()
+    with pytest.raises(exception.IncorrectUsage):
+        nics_at_points.to_contour(a=0)
 
 
 def test_print(nics_on_a_grid, format_):

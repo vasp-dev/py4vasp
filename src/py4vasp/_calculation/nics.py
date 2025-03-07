@@ -4,7 +4,7 @@
 
 import numpy as np
 
-from py4vasp import _config
+from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import graph, view
 from py4vasp._util import check, documentation, import_, index, select, slicing
@@ -146,6 +146,7 @@ nucleus-independent chemical shift:
         Plot the isotropic chemical shift with specified isolevel as a 3d isosurface.
         >>> calculation.nics.plot(isolevel=0.6)
         """
+        self._raise_error_if_used_in_points_mode()
         selection = selection or _DEFAULT_SELECTION
         viewer = self._structure.plot(supercell)
         viewer.grid_scalars = [
@@ -222,6 +223,7 @@ nucleus-independent chemical shift:
         >>> plot.series[0].show_contour_values = True
         >>> plot.show()
         """
+        self._raise_error_if_used_in_points_mode()
         selection = selection or _DEFAULT_SELECTION
         cut, fraction = slicing.get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
@@ -238,3 +240,10 @@ nucleus-independent chemical shift:
         if supercell is not None:
             contour_plot.supercell = np.ones(2, dtype=np.int_) * supercell
         return contour_plot
+
+    def _raise_error_if_used_in_points_mode(self):
+        if check.is_none(self._raw_data.positions):
+            return
+        raise exception.IncorrectUsage(
+            "You set LNICSALL = .FALSE. in the INCAR file. This mode is incompatible with the plotting routines."
+        )
