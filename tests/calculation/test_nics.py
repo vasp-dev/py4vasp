@@ -33,7 +33,11 @@ def nics_at_points(raw_data):
     nics = Nics.from_data(raw_nics)
     nics.ref = types.SimpleNamespace()
     nics.ref.structure = Structure.from_data(raw_nics.structure)
-    nics.ref.output = {"method": "positions", "nics": raw_nics.nics_points}
+    nics.ref.output = {
+        "method": "positions",
+        "nics": raw_nics.nics_points,
+        "positions": raw_nics.positions,
+    }
     return nics
 
 
@@ -92,6 +96,7 @@ def test_read_points(nics_at_points, Assert):
     assert actual.keys() == nics_at_points.ref.output.keys()
     assert actual["method"] == nics_at_points.ref.output["method"]
     Assert.allclose(actual["nics"], nics_at_points.ref.output["nics"])
+    Assert.allclose(actual["positions"], nics_at_points.ref.output["positions"])
 
 
 def get_3d_tensor_element_from_grid(tensor, element: str):

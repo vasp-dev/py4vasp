@@ -43,11 +43,15 @@ nucleus-independent chemical shift:
         result = {
             "structure": self._structure.read(),
             "nics": self.to_numpy(),
-            "method": (
-                "grid" if check.is_none(self._raw_data.positions) else "positions"
-            ),
+            **self._get_method_and_positions(),
         }
         return result
+
+    def _get_method_and_positions(self):
+        if check.is_none(self._raw_data.positions):
+            return {"method": "grid"}
+        else:
+            return {"method": "positions", "positions": self._raw_data.positions[:]}
 
     @staticmethod
     def _init_directions_dict():
@@ -76,7 +80,7 @@ nucleus-independent chemical shift:
             return {None: nics_data.reshape(new_shape)}
         tree = select.Tree.from_selection(selection)
         selector = index.Selector(
-            {3: Nics._init_directions_dict()}, nics_data, reduction=np.average
+            {3: self._init_directions_dict()}, nics_data, reduction=np.average
         )
         return {
             selector.label(selection): selector[selection]
