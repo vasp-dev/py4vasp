@@ -1179,12 +1179,19 @@ def _Fe3O4_forces(randomize):
 
 def _Fe3O4_nics():
     structure = _Fe3O4_structure()
+    seed_nics = 4782838
+    seed_pos = 6375861
     positions_shape = (axes, number_points)
     nics_shape = (number_points, axes, axes)
+    nics_data = np.array(_make_arbitrary_data(nics_shape, seed=seed_nics))
+    # intentionally make values very small to check their output
+    nics_data[4, 1, 0] = 1e-108
+    nics_data[9, 0, 2] = -1e-15  # should be rounded
+    nics_data[11, 2, 1] = 1e-14  # should still be there
     return raw.Nics(
         structure=structure,
-        nics_points=_make_arbitrary_data(nics_shape),
-        positions=_make_arbitrary_data(positions_shape),
+        nics_points=raw.VaspData(nics_data),
+        positions=_make_arbitrary_data(positions_shape, seed=seed_pos),
     )
 
 

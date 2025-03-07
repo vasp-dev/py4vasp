@@ -19,14 +19,38 @@ class Nics(base.Refinery, structure.Mixin, view.Mixin):
 
     @base.data_access
     def __str__(self):
-        grid = self._raw_data.nics_grid.shape[1:]
         raw_stoichiometry = self._raw_data.structure.stoichiometry
         stoichiometry = _stoichiometry.Stoichiometry.from_data(raw_stoichiometry)
+        if self._data_is_on_grid:
+            data_string = self._grid_to_string()
+        else:
+            data_string = self._points_to_string()
         return f"""\
 nucleus-independent chemical shift:
     structure: {pretty.pretty(stoichiometry)}
+{data_string}"""
+
+    def _grid_to_string(self):
+        grid = self._raw_data.nics_grid.shape[1:]
+        return f"""\
     grid: {grid[2]}, {grid[1]}, {grid[0]}
     tensor shape: 3x3"""
+
+    def _points_to_string(self):
+        positions = self._raw_data.positions[:].T
+        tensors = self.to_numpy()
+        return "\n\n".join(self._format_nics(*item) for item in zip(positions, tensors))
+
+    def _format_nics(self, position, tensor):
+        position_string = " ".join(f"{x:10.6f}" for x in position)
+        newline_with_indent = "\n        "
+        tensor = np.round(tensor, 14)
+        tensor_string = newline_with_indent.join(
+            "   ".join(f"{x:+.6e}" for x in column) for column in tensor
+        )
+        return f"""\
+    NICS at {position_string}: |
+        {tensor_string}"""
 
     @base.data_access
     def to_dict(self):
@@ -48,10 +72,14 @@ nucleus-independent chemical shift:
         return result
 
     def _get_method_and_positions(self):
-        if check.is_none(self._raw_data.positions):
+        if self._data_is_on_grid:
             return {"method": "grid"}
         else:
-            return {"method": "positions", "positions": self._raw_data.positions[:]}
+            return {"method": "positions", "positions": self._raw_data.positions[:].T}
+
+    @property
+    def _data_is_on_grid(self):
+        return check.is_none(self._raw_data.positions)
 
     @base.data_access
     def to_numpy(self, selection=None):
@@ -74,7 +102,7 @@ nucleus-independent chemical shift:
         return np.squeeze(list(selected_data.values()))
 
     def _read_selected_data(self, selection):
-        if check.is_none(self._raw_data.positions):
+        if self._data_is_on_grid:
             # transpose because it is written like that in the hdf5 file
             nics_data = np.array(self._raw_data.nics_grid).T
         else:
@@ -242,7 +270,7 @@ nucleus-independent chemical shift:
         return contour_plot
 
     def _raise_error_if_used_in_points_mode(self):
-        if check.is_none(self._raw_data.positions):
+        if self._data_is_on_grid:
             return
         raise exception.IncorrectUsage(
             "You set LNICSALL = .FALSE. in the INCAR file. This mode is incompatible with the plotting routines."
