@@ -53,40 +53,6 @@ nucleus-independent chemical shift:
         else:
             return {"method": "positions", "positions": self._raw_data.positions[:]}
 
-    @staticmethod
-    def _init_directions_dict():
-        return {
-            "isotropic": [0, 4, 8],
-            "xx": 0,
-            "xy": 1,
-            "xz": 2,
-            "yx": 3,
-            "yy": 4,
-            "yz": 5,
-            "zx": 6,
-            "zy": 7,
-            "zz": 8,
-        }
-
-    def _read_selected_data(self, selection):
-        if check.is_none(self._raw_data.positions):
-            # transpose because it is written like that in the hdf5 file
-            nics_data = np.array(self._raw_data.nics_grid).T
-        else:
-            nics_data = np.array(self._raw_data.nics_points)
-            nics_data = nics_data.reshape((len(nics_data), 9))
-        if selection is None:
-            new_shape = (*nics_data.shape[:-1], 3, 3)
-            return {None: nics_data.reshape(new_shape)}
-        tree = select.Tree.from_selection(selection)
-        # last dimension is direction
-        maps = {nics_data.ndim - 1: self._init_directions_dict()}
-        selector = index.Selector(maps, nics_data, reduction=np.average)
-        return {
-            selector.label(selection): selector[selection]
-            for selection in tree.selections()
-        }
-
     @base.data_access
     def to_numpy(self, selection=None):
         """Convert NICS to a numpy array.
@@ -107,11 +73,39 @@ nucleus-independent chemical shift:
         selected_data = self._read_selected_data(selection)
         return np.squeeze(list(selected_data.values()))
 
-    def _isosurfaces(self, isolevel=1.0, opacity=0.6):
-        return [
-            view.Isosurface(isolevel, _config.VASP_COLORS["blue"], opacity),
-            view.Isosurface(-isolevel, _config.VASP_COLORS["red"], opacity),
-        ]
+    def _read_selected_data(self, selection):
+        if check.is_none(self._raw_data.positions):
+            # transpose because it is written like that in the hdf5 file
+            nics_data = np.array(self._raw_data.nics_grid).T
+        else:
+            nics_data = np.array(self._raw_data.nics_points)
+            nics_data = nics_data.reshape((len(nics_data), 9))
+        if selection is None:
+            new_shape = (*nics_data.shape[:-1], 3, 3)
+            return {None: nics_data.reshape(new_shape)}
+        tree = select.Tree.from_selection(selection)
+        # last dimension is direction
+        maps = {nics_data.ndim - 1: self._init_directions_dict()}
+        selector = index.Selector(maps, nics_data, reduction=np.average)
+        return {
+            selector.label(selection): selector[selection]
+            for selection in tree.selections()
+        }
+
+    @staticmethod
+    def _init_directions_dict():
+        return {
+            "isotropic": [0, 4, 8],
+            "xx": 0,
+            "xy": 1,
+            "xz": 2,
+            "yx": 3,
+            "yy": 4,
+            "yz": 5,
+            "zx": 6,
+            "zy": 7,
+            "zz": 8,
+        }
 
     @base.data_access
     def to_view(self, selection=None, supercell=None, **user_options):
@@ -154,16 +148,24 @@ nucleus-independent chemical shift:
         """
         selection = selection or _DEFAULT_SELECTION
         viewer = self._structure.plot(supercell)
-        selected_data = self._read_selected_data(selection)
         viewer.grid_scalars = [
-            view.GridQuantity(
-                quantity=(v)[np.newaxis],
-                label=f"{k} NICS",
-                isosurfaces=self._isosurfaces(**user_options),
-            )
-            for k, v in selected_data.items()
+            self._make_grid_quantity(*item, user_options)
+            for item in self._read_selected_data(selection).items()
         ]
         return viewer
+
+    def _make_grid_quantity(self, key, quantity, user_options):
+        return view.GridQuantity(
+            quantity=quantity[np.newaxis],
+            label=f"{key} NICS",
+            isosurfaces=self._isosurfaces(**user_options),
+        )
+
+    def _isosurfaces(self, isolevel=1.0, opacity=0.6):
+        return [
+            view.Isosurface(isolevel, _config.VASP_COLORS["blue"], opacity),
+            view.Isosurface(-isolevel, _config.VASP_COLORS["red"], opacity),
+        ]
 
     @base.data_access
     @documentation.format(plane=slicing.PLANE, parameters=slicing.PARAMETERS)
@@ -223,17 +225,16 @@ nucleus-independent chemical shift:
         selection = selection or _DEFAULT_SELECTION
         cut, fraction = slicing.get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
-        selected_data = self._read_selected_data(selection)
-        contour_plots = []
-        for k, v in selected_data.items():
-            grid_scalar = slicing.grid_scalar(v, plane, fraction)
-            contour_plot = graph.Contour(
-                grid_scalar,
-                plane,
-                f"{k} NICS contour ({cut})",
-                isolevels=True,
-            )
-            if supercell is not None:
-                contour_plot.supercell = np.ones(2, dtype=np.int_) * supercell
-            contour_plots.append(contour_plot)
+        contour_plots = [
+            self._make_contour(*item, plane, fraction, supercell)
+            for item in self._read_selected_data(selection).items()
+        ]
         return graph.Graph(contour_plots)
+
+    def _make_contour(self, key, data, plane, fraction, supercell):
+        grid_scalar = slicing.grid_scalar(data, plane, fraction)
+        label = f"{key} NICS contour ({plane.cut})"
+        contour_plot = graph.Contour(grid_scalar, plane, label, isolevels=True)
+        if supercell is not None:
+            contour_plot.supercell = np.ones(2, dtype=np.int_) * supercell
+        return contour_plot
