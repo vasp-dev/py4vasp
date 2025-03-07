@@ -7,7 +7,7 @@ import numpy as np
 from py4vasp import _config
 from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import graph, view
-from py4vasp._util import documentation, import_, index, select, slicing
+from py4vasp._util import check, documentation, import_, index, select, slicing
 
 pretty = import_.optional("IPython.lib.pretty")
 
@@ -16,6 +16,17 @@ _DEFAULT_SELECTION: str = "isotropic"
 
 class Nics(base.Refinery, structure.Mixin, view.Mixin):
     """This class accesses information on the nucleus-independent chemical shift (NICS)."""
+
+    @base.data_access
+    def __str__(self):
+        grid = self._raw_data.nics_grid.shape[1:]
+        raw_stoichiometry = self._raw_data.structure.stoichiometry
+        stoichiometry = _stoichiometry.Stoichiometry.from_data(raw_stoichiometry)
+        return f"""\
+nucleus-independent chemical shift:
+    structure: {pretty.pretty(stoichiometry)}
+    grid: {grid[2]}, {grid[1]}, {grid[0]}
+    tensor shape: 3x3"""
 
     @base.data_access
     def to_dict(self):
@@ -32,19 +43,11 @@ class Nics(base.Refinery, structure.Mixin, view.Mixin):
         result = {
             "structure": self._structure.read(),
             "nics": self.to_numpy(),
+            "method": (
+                "grid" if check.is_none(self._raw_data.positions) else "positions"
+            ),
         }
         return result
-
-    @base.data_access
-    def __str__(self):
-        grid = self._raw_data.nics.shape[1:]
-        raw_stoichiometry = self._raw_data.structure.stoichiometry
-        stoichiometry = _stoichiometry.Stoichiometry.from_data(raw_stoichiometry)
-        return f"""\
-nucleus-independent chemical shift:
-    structure: {pretty.pretty(stoichiometry)}
-    grid: {grid[2]}, {grid[1]}, {grid[0]}
-    tensor shape: 3x3"""
 
     @staticmethod
     def _init_directions_dict():
@@ -61,12 +64,20 @@ nucleus-independent chemical shift:
             "zz": 8,
         }
 
-    @staticmethod
-    def _read_selected_data(data, selection):
-        selector = index.Selector(
-            {3: Nics._init_directions_dict()}, data, reduction=np.average
-        )
+    def _read_selected_data(self, selection):
+        if check.is_none(self._raw_data.positions):
+            # transpose because it is written like that in the hdf5 file
+            nics_data = np.array(self._raw_data.nics_grid).T
+        else:
+            nics_data = np.array(self._raw_data.nics_points)
+            nics_data = nics_data.reshape((len(nics_data), 9))
+        if selection is None:
+            new_shape = (*nics_data.shape[:-1], 3, 3)
+            return {None: nics_data.reshape(new_shape)}
         tree = select.Tree.from_selection(selection)
+        selector = index.Selector(
+            {3: Nics._init_directions_dict()}, nics_data, reduction=np.average
+        )
         return {
             selector.label(selection): selector[selection]
             for selection in tree.selections()
@@ -89,15 +100,8 @@ nucleus-independent chemical shift:
         np.ndarray
             All components of NICS.
         """
-        transposed_nics = np.array(self._raw_data.nics).T
-        curr_shape = transposed_nics.shape
-        if selection is None:
-            transposed_nics = transposed_nics.reshape((*curr_shape[:-1], 3, 3))
-        else:
-            transposed_nics = np.squeeze(
-                list(Nics._read_selected_data(transposed_nics, selection).values())
-            )
-        return transposed_nics
+        selected_data = self._read_selected_data(selection)
+        return np.squeeze(list(selected_data.values()))
 
     def _isosurfaces(self, isolevel=1.0, opacity=0.6):
         return [
@@ -146,9 +150,7 @@ nucleus-independent chemical shift:
         """
         selection = selection or _DEFAULT_SELECTION
         viewer = self._structure.plot(supercell)
-        selected_data = Nics._read_selected_data(
-            np.array(self._raw_data.nics).T, selection
-        )
+        selected_data = self._read_selected_data(selection)
         viewer.grid_scalars = [
             view.GridQuantity(
                 quantity=(v)[np.newaxis],
@@ -217,9 +219,7 @@ nucleus-independent chemical shift:
         selection = selection or _DEFAULT_SELECTION
         cut, fraction = slicing.get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
-        selected_data = Nics._read_selected_data(
-            np.array(self._raw_data.nics).T, selection
-        )
+        selected_data = self._read_selected_data(selection)
         contour_plots = []
         for k, v in selected_data.items():
             grid_scalar = slicing.grid_scalar(v, plane, fraction)

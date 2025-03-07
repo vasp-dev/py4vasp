@@ -299,7 +299,10 @@ class RawDataFactory:
 
     @staticmethod
     def nics(selection):
-        return _Sr2TiO4_nics()
+        if selection == "on-a-grid":
+            return _Sr2TiO4_nics()
+        if selection == "at-points":
+            return _Fe3O4_nics()
 
     @staticmethod
     def pair_correlation(selection):
@@ -909,7 +912,7 @@ def _Sr2TiO4_internal_strain():
 def _Sr2TiO4_nics():
     structure = _Sr2TiO4_structure()
     grid = (9, *grid_dimensions)
-    return raw.Nics(structure=structure, nics=_make_arbitrary_data(grid))
+    return raw.Nics(structure=structure, nics_grid=_make_arbitrary_data(grid))
 
 
 def _Sr2TiO4_pair_correlation():
@@ -1172,6 +1175,17 @@ def _Fe3O4_forces(randomize):
     else:
         forces = np.arange(np.prod(shape)).reshape(shape)
     return raw.Force(structure=_Fe3O4_structure(), forces=forces)
+
+
+def _Fe3O4_nics():
+    structure = _Fe3O4_structure()
+    positions_shape = (axes, number_points)
+    nics_shape = (number_points, axes, axes)
+    return raw.Nics(
+        structure=structure,
+        nics_points=_make_arbitrary_data(nics_shape),
+        positions=_make_arbitrary_data(positions_shape),
+    )
 
 
 def _Fe3O4_potential(selection, included_potential):
