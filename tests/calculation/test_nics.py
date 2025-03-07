@@ -241,9 +241,6 @@ nucleus-independent chemical shift:
 
 def test_print_points(nics_at_points, format_):
     actual, _ = format_(nics_at_points)
-    # print(nics_at_points.ref.output["nics"].shape)
-    # print(nics_at_points.ref.output["positions"].shape)
-    # print(actual["text/plain"])
     expected_text = """\
 nucleus-independent chemical shift:
     structure: Fe3O4
