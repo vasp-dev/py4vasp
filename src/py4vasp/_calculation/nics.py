@@ -79,9 +79,9 @@ nucleus-independent chemical shift:
             new_shape = (*nics_data.shape[:-1], 3, 3)
             return {None: nics_data.reshape(new_shape)}
         tree = select.Tree.from_selection(selection)
-        selector = index.Selector(
-            {3: self._init_directions_dict()}, nics_data, reduction=np.average
-        )
+        # last dimension is direction
+        maps = {nics_data.ndim - 1: self._init_directions_dict()}
+        selector = index.Selector(maps, nics_data, reduction=np.average)
         return {
             selector.label(selection): selector[selection]
             for selection in tree.selections()

@@ -103,32 +103,29 @@ def get_3d_tensor_element_from_grid(tensor, element: str):
     if element == "3x3":
         return tensor
     if element == "xx":
-        return tensor[:, :, :, 0, 0]
+        return tensor[..., 0, 0]
     elif element == "xy":
-        return tensor[:, :, :, 0, 1]
+        return tensor[..., 0, 1]
     elif element == "xz":
-        return tensor[:, :, :, 0, 2]
+        return tensor[..., 0, 2]
     elif element == "yx":
-        return tensor[:, :, :, 1, 0]
+        return tensor[..., 1, 0]
     elif element == "yy":
-        return tensor[:, :, :, 1, 1]
+        return tensor[..., 1, 1]
     elif element == "yz":
-        return tensor[:, :, :, 1, 2]
+        return tensor[..., 1, 2]
     elif element == "zx":
-        return tensor[:, :, :, 2, 0]
+        return tensor[..., 2, 0]
     elif element == "zy":
-        return tensor[:, :, :, 2, 1]
+        return tensor[..., 2, 1]
     elif element == "zz":
-        return tensor[:, :, :, 2, 2]
+        return tensor[..., 2, 2]
     elif element == "xx + yy":
-        return tensor[:, :, :, 0, 0] + tensor[:, :, :, 1, 1]
+        return tensor[..., 0, 0] + tensor[..., 1, 1]
     elif element == "xx yy":
-        return [tensor[:, :, :, 0, 0], tensor[:, :, :, 1, 1]]
+        return [tensor[..., 0, 0], tensor[..., 1, 1]]
     elif element in [None, "isotropic"]:
-        tensor_sum = (
-            tensor[:, :, :, 0, 0] + tensor[:, :, :, 1, 1] + tensor[:, :, :, 2, 2]
-        )
-        return tensor_sum / 3.0
+        return (tensor[..., 0, 0] + tensor[..., 1, 1] + tensor[..., 2, 2]) / 3.0
     else:
         raise ValueError(
             f"Element {element} is unknown by get_3d_tensor_element_from_grid."
@@ -213,10 +210,16 @@ def test_to_contour_normal(nics_on_a_grid, normal_vector, Assert):
     Assert.allclose(graph.series[0].lattice.vectors, expected_lattice)
 
 
-def test_to_numpy(selection, nics_on_a_grid, Assert):
+def test_to_numpy_grid(nics_on_a_grid, selection, Assert):
     tensor = nics_on_a_grid.ref.output["nics"]
     element = get_3d_tensor_element_from_grid(tensor, selection or "3x3")
     Assert.allclose(nics_on_a_grid.to_numpy(selection), element)
+
+
+def test_to_numpy_points(nics_at_points, selection, Assert):
+    tensor = nics_at_points.ref.output["nics"]
+    element = get_3d_tensor_element_from_grid(tensor, selection or "3x3")
+    Assert.allclose(nics_at_points.to_numpy(selection), element)
 
 
 def test_print(nics_on_a_grid, format_):
