@@ -301,15 +301,15 @@ class _TensorReduction(index.Reduction):
         symmetric_array = 0.5 * (array + np.moveaxis(array, -2, -1))
         eigenvalues = np.linalg.eigvalsh(array)
         if self._selection == "11":
-            return eigenvalues[..., 0]
+            return eigenvalues[..., 2]
         if self._selection == "22":
             return eigenvalues[..., 1]
         if self._selection == "33":
-            return eigenvalues[..., 2]
+            return eigenvalues[..., 0]
         if self._selection == "span":
-            return eigenvalues[..., 0] - eigenvalues[..., 2]
+            return eigenvalues[..., 2] - eigenvalues[..., 0]
         if self._selection == "skew":
-            span = eigenvalues[..., 0] - eigenvalues[..., 2]
+            span = eigenvalues[..., 2] - eigenvalues[..., 0]
             return (3 * eigenvalues[..., 1] - np.sum(eigenvalues, axis=-1)) / span
         if self._selection in ("anisotropy", "asymmetry"):
             return self._haeberlen_mehring(eigenvalues)[self._selection]
@@ -318,9 +318,8 @@ class _TensorReduction(index.Reduction):
 
     def _haeberlen_mehring(self, eigenvalues):
         delta_iso = np.average(eigenvalues, axis=-1)
-        mask = np.abs(eigenvalues[..., 0] - delta_iso) > np.abs(
-            eigenvalues[..., 2] - delta_iso
-        )
+        # equivalent to |delta_11 - delta_iso| > |delta_33 - delta_iso|
+        mask = delta_iso < eigenvalues[..., 1]
         delta_xx = np.where(mask, eigenvalues[..., 2], eigenvalues[..., 0])
         delta_zz = np.where(mask, eigenvalues[..., 0], eigenvalues[..., 2])
         anisotropy = delta_zz - delta_iso

@@ -476,11 +476,12 @@ def test_to_numpy_conventions(nics, Assert):
     tensor = nics.ref.output["nics"]
     symmetric_tensor = 0.5 * (tensor + np.moveaxis(tensor, -1, -2))
     eigenvalues = np.linalg.eigvalsh(tensor)
-    delta_11 = eigenvalues[..., 0]
+    delta_11 = eigenvalues[..., 2]
     delta_22 = delta_yy = eigenvalues[..., 1]
-    delta_33 = eigenvalues[..., 2]
+    delta_33 = eigenvalues[..., 0]
     #
     # test standard convention
+    assert np.all(delta_11 >= delta_22) and np.all(delta_22 >= delta_33)
     Assert.allclose(nics.to_numpy("11"), delta_11)
     Assert.allclose(nics.to_numpy("22"), delta_22)
     Assert.allclose(nics.to_numpy("33"), delta_33)
@@ -489,8 +490,8 @@ def test_to_numpy_conventions(nics, Assert):
     delta_iso = np.average(eigenvalues, axis=-1)
     span = delta_11 - delta_33
     skew = 3 * (delta_22 - delta_iso) / span
-    # actual_iso = nics.to_numpy("isotropic")
-    Assert.allclose(nics.to_numpy("isotropic"), delta_iso)
+    assert np.all(-1 <= skew) and np.all(skew <= 1)
+    Assert.allclose(nics.to_numpy("isotropic"), delta_iso, tolerance=3)
     Assert.allclose(nics.to_numpy("span"), span)
     Assert.allclose(nics.to_numpy("skew"), skew)
     #
@@ -502,6 +503,7 @@ def test_to_numpy_conventions(nics, Assert):
     delta_zz = np.where(mask, delta_11, delta_33)
     reduced_anisotropy = delta_zz - delta_iso
     asymmetry = (delta_yy - delta_xx) / reduced_anisotropy
+    assert np.all(0 <= asymmetry) and np.all(asymmetry <= 1)
     Assert.allclose(nics.to_numpy("anisotropy"), reduced_anisotropy)
     Assert.allclose(nics.to_numpy("asymmetry"), asymmetry)
 
