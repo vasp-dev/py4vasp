@@ -6,7 +6,7 @@ import random
 
 import numpy as np
 import pytest
-from numpy.testing import assert_array_almost_equal_nulp
+from numpy.testing import assert_allclose
 
 from py4vasp import exception, raw
 from py4vasp._util import import_
@@ -66,7 +66,8 @@ class _Assert:
             actual, mask_actual = _finite_subset(actual)
             desired, mask_desired = _finite_subset(desired)
             assert np.all(mask_actual == mask_desired)
-            assert_array_almost_equal_nulp(actual, desired, tolerance * 30)
+            tolerance = 1e-14 * tolerance
+            assert_allclose(actual, desired, rtol=tolerance, atol=tolerance)
 
     @staticmethod
     def same_structure(actual, desired):

@@ -489,10 +489,10 @@ def test_to_numpy_conventions(nics, Assert):
     delta_iso = np.average(eigenvalues, axis=-1)
     span = delta_11 - delta_33
     skew = 3 * (delta_22 - delta_iso) / span
-    actual_iso = nics.to_numpy("isotropic")
-    npt.assert_allclose(actual_iso, delta_iso, rtol=1e-12, atol=1e-14)
+    # actual_iso = nics.to_numpy("isotropic")
+    Assert.allclose(nics.to_numpy("isotropic"), delta_iso)
     Assert.allclose(nics.to_numpy("span"), span)
-    Assert.allclose(nics.to_numpy("skew"), skew, tolerance=150)
+    Assert.allclose(nics.to_numpy("skew"), skew)
     #
     # test Haeberlen-Mehring convention
     anisotropy = []
