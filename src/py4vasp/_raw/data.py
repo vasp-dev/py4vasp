@@ -363,8 +363,12 @@ class Nics:
 
     structure: Structure
     "Structural information about the system."
-    nics: VaspData
-    "The tensor holding NICS data."
+    nics_grid: VaspData = NONE()
+    "The NICS tensor (flattened) at every grid point."
+    nics_points: VaspData = NONE()
+    "The NICS tensor at specfic positions."
+    positions: VaspData = NONE()
+    "Positions at which NICS tensor was evaluated."
 
 
 @dataclasses.dataclass

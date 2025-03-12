@@ -425,7 +425,9 @@ schema.add(
     raw.Nics,
     required=raw.Version(6, 5),
     structure=Link("structure", DEFAULT_SOURCE),
-    nics="results/nics/values",
+    nics_grid="results/nics/values",
+    nics_points="results/posnics/values",
+    positions="results/posnics/positions",
 )
 #
 group = "intermediate/pair_correlation"

@@ -113,7 +113,7 @@ def test_eigenvectors(Sr2TiO4, Assert):
     for actual, expected in zip(actual_vectors, expected_vectors):
         sign_actual = np.sign(actual.flatten()[np.argmax(np.abs(actual))])
         sign_expected = np.sign(expected.flatten()[np.argmax(np.abs(expected))])
-        Assert.allclose(sign_actual * actual, sign_expected * expected, tolerance=10)
+        Assert.allclose(sign_actual * actual, sign_expected * expected)
 
 
 def test_to_molden(Sr2TiO4, Assert):

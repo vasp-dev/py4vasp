@@ -6,7 +6,7 @@ import random
 
 import numpy as np
 import pytest
-from numpy.testing import assert_array_almost_equal_nulp
+from numpy.testing import assert_allclose
 
 from py4vasp import exception, raw
 from py4vasp._util import import_
@@ -66,7 +66,8 @@ class _Assert:
             actual, mask_actual = _finite_subset(actual)
             desired, mask_desired = _finite_subset(desired)
             assert np.all(mask_actual == mask_desired)
-            assert_array_almost_equal_nulp(actual, desired, tolerance * 30)
+            tolerance = 1e-14 * tolerance
+            assert_allclose(actual, desired, rtol=tolerance, atol=tolerance)
 
     @staticmethod
     def same_structure(actual, desired):
@@ -299,7 +300,10 @@ class RawDataFactory:
 
     @staticmethod
     def nics(selection):
-        return _Sr2TiO4_nics()
+        if selection == "on-a-grid":
+            return _Sr2TiO4_nics()
+        if selection == "at-points":
+            return _Fe3O4_nics()
 
     @staticmethod
     def pair_correlation(selection):
@@ -909,7 +913,7 @@ def _Sr2TiO4_internal_strain():
 def _Sr2TiO4_nics():
     structure = _Sr2TiO4_structure()
     grid = (9, *grid_dimensions)
-    return raw.Nics(structure=structure, nics=_make_arbitrary_data(grid))
+    return raw.Nics(structure=structure, nics_grid=_make_arbitrary_data(grid))
 
 
 def _Sr2TiO4_pair_correlation():
@@ -1172,6 +1176,24 @@ def _Fe3O4_forces(randomize):
     else:
         forces = np.arange(np.prod(shape)).reshape(shape)
     return raw.Force(structure=_Fe3O4_structure(), forces=forces)
+
+
+def _Fe3O4_nics():
+    structure = _Fe3O4_structure()
+    seed_nics = 4782838
+    seed_pos = 6375861
+    positions_shape = (axes, number_points)
+    nics_shape = (number_points, axes, axes)
+    nics_data = np.array(_make_arbitrary_data(nics_shape, seed=seed_nics))
+    # intentionally make values very small to check their output
+    nics_data[4, 1, 0] = 1e-108
+    nics_data[9, 0, 2] = -1e-15  # should be rounded
+    nics_data[11, 2, 1] = 1e-14  # should still be there
+    return raw.Nics(
+        structure=structure,
+        nics_points=raw.VaspData(nics_data),
+        positions=_make_arbitrary_data(positions_shape, seed=seed_pos),
+    )
 
 
 def _Fe3O4_potential(selection, included_potential):
