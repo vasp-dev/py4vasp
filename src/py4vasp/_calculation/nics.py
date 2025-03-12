@@ -114,7 +114,7 @@ nucleus-independent chemical shift:
         tree = select.Tree.from_selection(selection)
         # last dimension is direction
         maps = {nics_data.ndim - 1: self._init_directions_dict()}
-        selector = index.Selector(maps, nics_data, reduction=np.average)
+        selector = index.Selector(maps, nics_data, reduction=_TensorReduction)
         return {
             selector.label(selection): selector[selection]
             for selection in tree.selections()
@@ -133,6 +133,13 @@ nucleus-independent chemical shift:
             "zx": 6,
             "zy": 7,
             "zz": 8,
+            "11": slice(None),
+            "22": slice(None),
+            "33": slice(None),
+            "span": slice(None),
+            "skew": slice(None),
+            "anisotropy": slice(None),
+            "asymmetry": slice(None),
         }
 
     @base.data_access
@@ -275,3 +282,47 @@ nucleus-independent chemical shift:
         raise exception.IncorrectUsage(
             "You set LNICSALL = .FALSE. in the INCAR file. This mode is incompatible with the plotting routines."
         )
+
+
+class _TensorReduction(index.Reduction):
+    def __init__(self, keys):
+        keys_using_average = "isotropic xx xy xz yx yy yz zx zy zz"
+        self._use_average = keys[-1] in keys_using_average
+        self._selection = keys[-1]
+
+    def __call__(self, array, axis):
+        if self._use_average:
+            return np.average(array, axis=axis)
+        else:
+            return self._reduce(array, axis)
+
+    def _reduce(self, array, axis):
+        array = array.reshape((*array.shape[:-1], 3, 3))
+        symmetric_array = 0.5 * (array + np.moveaxis(array, -2, -1))
+        eigenvalues = np.linalg.eigvalsh(array)
+        if self._selection == "11":
+            return eigenvalues[..., 0]
+        if self._selection == "22":
+            return eigenvalues[..., 1]
+        if self._selection == "33":
+            return eigenvalues[..., 2]
+        if self._selection == "span":
+            return eigenvalues[..., 0] - eigenvalues[..., 2]
+        if self._selection == "skew":
+            span = eigenvalues[..., 0] - eigenvalues[..., 2]
+            return (3 * eigenvalues[..., 1] - np.sum(eigenvalues, axis=-1)) / span
+        if self._selection in ("anisotropy", "asymmetry"):
+            return self._haeberlen_mehring(eigenvalues)[self._selection]
+        message = f"The reduction for selection '{self._selection}' is not implemented."
+        raise exception.NotImplemented(message)
+
+    def _haeberlen_mehring(self, eigenvalues):
+        delta_iso = np.average(eigenvalues, axis=-1)
+        mask = np.abs(eigenvalues[..., 0] - delta_iso) > np.abs(
+            eigenvalues[..., 2] - delta_iso
+        )
+        delta_xx = np.where(mask, eigenvalues[..., 2], eigenvalues[..., 0])
+        delta_zz = np.where(mask, eigenvalues[..., 0], eigenvalues[..., 2])
+        anisotropy = delta_zz - delta_iso
+        asymmetry = (eigenvalues[..., 1] - delta_xx) / anisotropy
+        return {"anisotropy": anisotropy, "asymmetry": asymmetry}

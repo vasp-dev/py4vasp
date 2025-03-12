@@ -5,6 +5,7 @@ import dataclasses
 import types
 
 import numpy as np
+import numpy.testing as npt
 import pytest
 
 from py4vasp import _config, exception
@@ -220,6 +221,74 @@ def test_to_numpy_points(nics_at_points, selection, Assert):
     tensor = nics_at_points.ref.output["nics"]
     element = get_3d_tensor_element_from_grid(tensor, selection or "3x3")
     Assert.allclose(nics_at_points.to_numpy(selection), element)
+
+
+def test_to_numpy_conventions(nics_at_points, Assert):
+    tensor = nics_at_points.ref.output["nics"]
+    symmetric_tensor = 0.5 * (tensor + np.moveaxis(tensor, -1, -2))
+    eigenvalues = np.linalg.eigvalsh(tensor)
+    delta_11 = eigenvalues[..., 0]
+    delta_22 = delta_yy = eigenvalues[..., 1]
+    delta_33 = eigenvalues[..., 2]
+    #
+    # test standard convention
+    Assert.allclose(nics_at_points.to_numpy("11"), delta_11)
+    Assert.allclose(nics_at_points.to_numpy("22"), delta_22)
+    Assert.allclose(nics_at_points.to_numpy("33"), delta_33)
+    #
+    # test Herzfeld-Berger convention
+    delta_iso = np.average(eigenvalues, axis=-1)
+    span = delta_11 - delta_33
+    skew = 3 * (delta_22 - delta_iso) / span
+    actual_iso = nics_at_points.to_numpy("isotropic")
+    npt.assert_allclose(actual_iso, delta_iso, rtol=1e-12, atol=1e-14)
+    Assert.allclose(nics_at_points.to_numpy("span"), span)
+    Assert.allclose(nics_at_points.to_numpy("skew"), skew, tolerance=150)
+    #
+    # test Haeberlen-Mehring convention
+    anisotropy = []
+    asymmetry = []
+    mask = np.abs(delta_11 - delta_iso) > np.abs(delta_33 - delta_iso)
+    delta_xx = np.where(mask, delta_33, delta_11)
+    delta_zz = np.where(mask, delta_11, delta_33)
+    reduced_anisotropy = delta_zz - delta_iso
+    asymmetry = (delta_yy - delta_xx) / reduced_anisotropy
+    Assert.allclose(nics_at_points.to_numpy("anisotropy"), reduced_anisotropy)
+    Assert.allclose(nics_at_points.to_numpy("asymmetry"), asymmetry)
+
+
+def test_to_numpy_conventions(nics_on_a_grid, Assert):
+    tensor = nics_on_a_grid.ref.output["nics"]
+    symmetric_tensor = 0.5 * (tensor + np.moveaxis(tensor, -1, -2))
+    eigenvalues = np.linalg.eigvalsh(tensor)
+    delta_11 = eigenvalues[..., 0]
+    delta_22 = delta_yy = eigenvalues[..., 1]
+    delta_33 = eigenvalues[..., 2]
+    #
+    # test standard convention
+    Assert.allclose(nics_on_a_grid.to_numpy("11"), delta_11)
+    Assert.allclose(nics_on_a_grid.to_numpy("22"), delta_22)
+    Assert.allclose(nics_on_a_grid.to_numpy("33"), delta_33)
+    #
+    # test Herzfeld-Berger convention
+    delta_iso = np.average(eigenvalues, axis=-1)
+    span = delta_11 - delta_33
+    skew = 3 * (delta_22 - delta_iso) / span
+    actual_iso = nics_on_a_grid.to_numpy("isotropic")
+    npt.assert_allclose(actual_iso, delta_iso, rtol=1e-12, atol=1e-14)
+    Assert.allclose(nics_on_a_grid.to_numpy("span"), span)
+    Assert.allclose(nics_on_a_grid.to_numpy("skew"), skew, tolerance=150)
+    #
+    # test Haeberlen-Mehring convention
+    anisotropy = []
+    asymmetry = []
+    mask = np.abs(delta_11 - delta_iso) > np.abs(delta_33 - delta_iso)
+    delta_xx = np.where(mask, delta_33, delta_11)
+    delta_zz = np.where(mask, delta_11, delta_33)
+    reduced_anisotropy = delta_zz - delta_iso
+    asymmetry = (delta_yy - delta_xx) / reduced_anisotropy
+    Assert.allclose(nics_on_a_grid.to_numpy("anisotropy"), reduced_anisotropy)
+    Assert.allclose(nics_on_a_grid.to_numpy("asymmetry"), asymmetry)
 
 
 def test_nics_with_points_not_with_plotting_routines(nics_at_points):
