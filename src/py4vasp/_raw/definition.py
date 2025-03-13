@@ -113,9 +113,9 @@ schema.add(
     raw.CurrentDensity,
     name="nmr",
     required=raw.Version(6, 5, 1),
-    valid_indices="/results/nmrcurb_meta/directions",
+    valid_indices="/results/nmrcur_meta/perturbations",
     structure=Link("structure", DEFAULT_SOURCE),
-    current_density="/results/nmrcurb{}/values",
+    current_density="/results/nmrcur{}/values",
 )
 #
 schema.add(
