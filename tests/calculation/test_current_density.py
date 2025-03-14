@@ -86,7 +86,7 @@ def test_to_quiver(current_density, Assert):
     graph = current_density.to_quiver(c=0.7)
     assert len(graph) == 1
     series = graph.series[0]
-    Assert.allclose(series.data, 0.003 * np.moveaxis(expected_data, -1, 0))
+    Assert.allclose(series.data, np.moveaxis(expected_data, -1, 0))
     Assert.allclose(series.lattice.vectors, expected_lattice_vectors)
     assert series.label == f"current_{current_density.ref.default_direction}"
 
