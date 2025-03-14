@@ -92,6 +92,7 @@ def simple_quiver():
         scale_arrows=1.7,
     )
 
+
 @pytest.fixture
 def dense_quiver():
     return Contour(
@@ -541,7 +542,7 @@ def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
 def test_simple_quiver(simple_quiver, Assert, not_core):
     graph = Graph(simple_quiver)
     expected_positions = compute_positions(simple_quiver)
-    work = simple_quiver.scale_arrows *simple_quiver.data.T.reshape(-1, 2)
+    work = simple_quiver.scale_arrows * simple_quiver.data.T.reshape(-1, 2)
     expected_tips = expected_positions + work
     expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
     #
