@@ -54,6 +54,9 @@ class Contour(trace.Trace):
     "Show the unit cell in the resulting visualization."
     max_number_arrows: int = 1024
     "Subsample the data until the number of arrows falls below this limit."
+    scale_arrows: float = None
+    """Scale arrows by this factor when converting their length to Å. None means
+    autoscale them so that the arrows do not overlap."""
 
     def to_plotly(self):
         lattice_supercell = np.diag(self.supercell) @ self.lattice.vectors
@@ -103,9 +106,16 @@ class Contour(trace.Trace):
             for vector, num_points, subsample in zip(vectors, data.shape, subsamples)
         ]
         subsampled_data = data[:: subsamples[0], :: subsamples[1]]
+        if self.scale_arrows is None:
+            # arrows may be at most as long as the shorter lattice vector
+            max_length = min(np.linalg.norm(meshes[0][1]), np.linalg.norm(meshes[1][1]))
+            current_max_length = np.max(np.linalg.norm(subsampled_data, axis=-1))
+            scale = max_length / current_max_length
+        else:
+            scale = self.scale_arrows
         x, y = np.array([sum(points) for points in itertools.product(*meshes)]).T
-        u = subsampled_data[:, :, 0].flatten()
-        v = subsampled_data[:, :, 1].flatten()
+        u = scale * subsampled_data[:, :, 0].flatten()
+        v = scale * subsampled_data[:, :, 1].flatten()
         fig = ff.create_quiver(x, y, u, v, scale=1)
         fig.data[0].line.color = _config.VASP_COLORS["dark"]
         return fig.data[0]
