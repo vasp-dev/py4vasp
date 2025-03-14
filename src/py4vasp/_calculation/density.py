@@ -407,7 +407,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         else:
             data = slicing.grid_vector(self.to_numpy()[1:], plane, fraction)
         label = self._selection or "magnetization"
-        quiver_plot = graph.Contour(5.0 * data, plane, label)
+        quiver_plot = graph.Contour(data, plane, label)
         if supercell is not None:
             quiver_plot.supercell = np.ones(2, dtype=np.int_) * supercell
         return graph.Graph([quiver_plot])

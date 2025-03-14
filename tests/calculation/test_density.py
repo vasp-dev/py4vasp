@@ -405,7 +405,7 @@ def test_collinear_to_quiver(collinear_density, Assert):
     graph = collinear_density.to_quiver(a=-0.2)
     assert len(graph) == 1
     series = graph.series[0]
-    Assert.allclose(series.data, 5.0 * expected_data)
+    Assert.allclose(series.data, expected_data)
     Assert.allclose(series.lattice.vectors, expected_lattice)
     assert series.label == expected_label
 
@@ -422,7 +422,7 @@ def test_noncollinear_to_quiver(noncollinear_density, Assert):
     graph = noncollinear_density.to_quiver(c=1.4)
     assert len(graph) == 1
     series = graph.series[0]
-    Assert.allclose(series.data, 5.0 * expected_data)
+    Assert.allclose(series.data, expected_data)
     Assert.allclose(series.lattice.vectors, expected_lattice)
     assert series.label == expected_label
 

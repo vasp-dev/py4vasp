@@ -89,6 +89,7 @@ def simple_quiver():
         data=np.array([[(y, x) for x in range(3)] for y in range(5)]).T,
         lattice=slicing.Plane(np.diag((3, 5)), cut="a"),
         label="quiver plot",
+        scale_arrows=1.7,
     )
 
 
@@ -99,6 +100,7 @@ def dense_quiver():
         lattice=slicing.Plane(np.diag((4, 2)), cut="b"),
         supercell=(2, 3),
         label="quiver plot",
+        scale_arrows=0.5,
     )
 
 
@@ -539,19 +541,24 @@ def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
 
 def test_simple_quiver(simple_quiver, Assert, not_core):
     graph = Graph(simple_quiver)
+    expected_positions = compute_positions(simple_quiver)
+    work = simple_quiver.scale_arrows * simple_quiver.data.T.reshape(-1, 2)
+    expected_tips = expected_positions + work
+    expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
+    #
     fig = graph.to_plotly()
     data_size = simple_quiver.data.size // 2
     assert len(fig.data) == 1
     actual = split_data(fig.data[0], data_size, Assert)
     arrows = actual.tips - actual.positions
-    for (x, y), (u, v) in zip(actual.positions, arrows):
-        Assert.allclose(x, v)
-        Assert.allclose(y, u)
     assert len(fig.layout.shapes) == 1
     check_unit_cell(fig.layout.shapes[0], x="3", y="5", zero="0")
     check_annotations(simple_quiver.lattice, fig.layout.annotations, Assert)
     assert fig.layout.yaxis.scaleanchor == "x"
     assert fig.data[0].line.color == _config.VASP_COLORS["dark"]
+    Assert.allclose(actual.positions, expected_positions)
+    Assert.allclose(actual.tips, expected_tips)
+    Assert.allclose(actual.barb_length, expected_barb_length)
 
 
 @pytest.mark.parametrize("max_number_arrows", (None, 1025, 680))
@@ -572,7 +579,7 @@ def test_dense_quiver(dense_quiver, max_number_arrows, Assert, not_core):
     else:
         raise NotImplemented
     graph = Graph(dense_quiver)
-    work = dense_quiver.data
+    work = dense_quiver.scale_arrows * dense_quiver.data
     work = np.block([[work, work, work], [work, work, work]]).T
     # remember that a and b are transposed
     work = work[:: subsampling[1], :: subsampling[0]]
@@ -585,13 +592,14 @@ def test_dense_quiver(dense_quiver, max_number_arrows, Assert, not_core):
     assert len(fig.data) == 1
     actual = split_data(fig.data[0], data_size, Assert)
     Assert.allclose(actual.positions, expected_positions)
-    Assert.allclose(actual.tips, expected_tips, tolerance=10)
+    Assert.allclose(actual.tips, expected_tips)
     Assert.allclose(actual.barb_length, expected_barb_length)
 
 
 def test_complex_quiver(complex_quiver, Assert, not_core):
     graph = Graph(complex_quiver)
-    work = complex_quiver.data
+    expected_scale = 0.10015332542313245
+    work = expected_scale * complex_quiver.data
     work = np.block([[work, work], [work, work], [work, work]]).T
     expected_positions = compute_positions(complex_quiver)
     expected_tips = expected_positions + work.reshape(expected_positions.shape)
@@ -601,8 +609,8 @@ def test_complex_quiver(complex_quiver, Assert, not_core):
     fig = graph.to_plotly()
     assert len(fig.data) == 1
     actual = split_data(fig.data[0], data_size, Assert)
-    Assert.allclose(actual.positions, expected_positions, tolerance=10)
-    Assert.allclose(actual.tips, expected_tips, tolerance=10)
+    Assert.allclose(actual.positions, expected_positions)
+    Assert.allclose(actual.tips, expected_tips)
     Assert.allclose(actual.barb_length, expected_barb_length)
     assert len(fig.layout.annotations) == 0
 
@@ -629,17 +637,14 @@ def test_range_for_x_and_y_axis(parabola, Assert, not_core):
 @dataclasses.dataclass
 class ContourData:
     positions: np.ndarray = None
-    first_tips: np.ndarray = None
-    second_tips: np.ndarray = None
-    first_barb_length: np.ndarray = None
-    second_barb_length: np.ndarray = None
+    tips: np.ndarray = None
+    barb_length: np.ndarray = None
 
 
 def compute_positions(contour, subsampling=(1, 1)):
     step_a = np.divide(contour.lattice.vectors[0], contour.data.shape[1])
     step_b = np.divide(contour.lattice.vectors[1], contour.data.shape[2])
     shape = np.multiply(contour.supercell, contour.data.shape[1:])
-    print(shape)
     # remember that the data is transposed
     range_a = range(0, shape[0], subsampling[0])
     range_b = range(0, shape[1], subsampling[1])

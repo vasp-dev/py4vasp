@@ -144,7 +144,7 @@ current density:
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
         label, data = self._read_current_density(selection)
         sliced_data = slicing.grid_vector(np.moveaxis(data, -1, 0), plane, fraction)
-        quiver_plot = graph.Contour(0.003 * sliced_data, plane, label)
+        quiver_plot = graph.Contour(sliced_data, plane, label)
         if supercell is not None:
             quiver_plot.supercell = np.ones(2, dtype=np.int_) * supercell
         return graph.Graph([quiver_plot])
