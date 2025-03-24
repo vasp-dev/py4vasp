@@ -89,6 +89,7 @@ def test_to_quiver(current_density, Assert):
     Assert.allclose(series.data, np.moveaxis(expected_data, -1, 0))
     Assert.allclose(series.lattice.vectors, expected_lattice_vectors)
     assert series.label == f"current_{current_density.ref.default_direction}"
+    assert series.max_number_arrows == None
 
 
 def test_to_quiver_supercell(current_density, Assert):
@@ -135,6 +136,7 @@ def test_to_contour(current_density, kwargs, index, position, Assert):
     assert len(graph) == 1
     series = graph.series[0]
     Assert.allclose(series.data, scalar_data)
+    assert not series.isolevels
 
 
 def test_to_contour_supercell(current_density, Assert):
