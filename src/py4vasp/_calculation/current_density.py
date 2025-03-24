@@ -99,7 +99,7 @@ current density:
         label, grid_vector = self._read_current_density(selection)
         grid_scalar = np.linalg.norm(grid_vector, axis=-1)
         grid_scalar = slicing.grid_scalar(grid_scalar, plane, fraction)
-        contour_plot = graph.Contour(grid_scalar, plane, label, isolevels=True)
+        contour_plot = graph.Contour(grid_scalar, plane, label)
         if supercell is not None:
             contour_plot.supercell = np.ones(2, dtype=np.int_) * supercell
         return graph.Graph([contour_plot])
