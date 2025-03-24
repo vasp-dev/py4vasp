@@ -52,7 +52,7 @@ class Contour(trace.Trace):
     "Multiple of each lattice vector to be drawn."
     show_cell: bool = True
     "Show the unit cell in the resulting visualization."
-    max_number_arrows: int = 1024
+    max_number_arrows: int = None
     "Subsample the data until the number of arrows falls below this limit."
     scale_arrows: float = None
     """Scale arrows by this factor when converting their length to Å. None means
@@ -122,6 +122,8 @@ class Contour(trace.Trace):
 
     def _limit_number_of_arrows(self, data_size):
         subsamples = [1, 1]
+        if self.max_number_arrows is None:
+            return subsamples
         data_size /= 2  # ignore dimension of arrow
         while data_size / np.prod(subsamples) > self.max_number_arrows:
             if subsamples[0] <= subsamples[1]:

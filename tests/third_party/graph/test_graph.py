@@ -541,6 +541,7 @@ def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
 
 def test_simple_quiver(simple_quiver, Assert, not_core):
     graph = Graph(simple_quiver)
+    assert simple_quiver.max_number_arrows is None
     expected_positions = compute_positions(simple_quiver)
     work = simple_quiver.scale_arrows * simple_quiver.data.T.reshape(-1, 2)
     expected_tips = expected_positions + work
@@ -550,7 +551,6 @@ def test_simple_quiver(simple_quiver, Assert, not_core):
     data_size = simple_quiver.data.size // 2
     assert len(fig.data) == 1
     actual = split_data(fig.data[0], data_size, Assert)
-    arrows = actual.tips - actual.positions
     assert len(fig.layout.shapes) == 1
     check_unit_cell(fig.layout.shapes[0], x="3", y="5", zero="0")
     check_annotations(simple_quiver.lattice, fig.layout.annotations, Assert)
@@ -561,13 +561,10 @@ def test_simple_quiver(simple_quiver, Assert, not_core):
     Assert.allclose(actual.barb_length, expected_barb_length)
 
 
-@pytest.mark.parametrize("max_number_arrows", (None, 1025, 680))
+@pytest.mark.parametrize("max_number_arrows", (1025, 1024, 680))
 def test_dense_quiver(dense_quiver, max_number_arrows, Assert, not_core):
-    if max_number_arrows is not None:
-        dense_quiver.max_number_arrows = max_number_arrows
-    else:
-        assert dense_quiver.max_number_arrows == 1024
-    if max_number_arrows is None:
+    dense_quiver.max_number_arrows = max_number_arrows
+    if max_number_arrows == 1024:
         expected_shape = (28, 25)
         subsampling = (3, 3)
     elif max_number_arrows == 1025:
