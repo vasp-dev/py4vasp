@@ -28,11 +28,12 @@ _SELECTIONS = {
     "free energy    TOTEN": ["free_energy", "TOTEN"],
     "energy without entropy": ["without_entropy", "ENOENT"],
     "energy(sigma->0)": ["sigma_0", "ESIG0"],
-    "one-body        E1": ["one_body", "E1"],
-    "hartree         HA": ["hartree", "HA"],
-    "exchange        EX": ["exchange", "EX"],
-    "total           ETOT": ["total", "ETOT"],
-    "total (capped)  ETOT_CAP": ["capped", "ETOT_CAP"],
+    "step            STEP": ["step", "STEP"],
+    "One el. energy  E1": ["one_electron", "E1"],
+    "Hartree energy  -DENC": ["Hartree", "hartree", "DENC"],
+    "exchange        EXHF": ["exchange", "EXHF"],
+    "free energy     TOTEN": ["free_energy", "TOTEN"],
+    "free energy cap TOTENCAP": ["cap", "TOTENCAP"],
     "weight          WEIGHT": ["weight", "WEIGHT"],
 }
 

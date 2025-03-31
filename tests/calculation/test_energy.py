@@ -152,6 +152,27 @@ def test_selections(MD_energy, raw_data):
         "ESIG0",
     ]
     assert relax_selections == {"component": components}
+    #
+    afqmc_selections = Energy.from_data(raw_data.energy("afqmc")).selections()
+    afqmc_selections.pop("energy")
+    components = [
+        "step",
+        "STEP",
+        "one_electron",
+        "E1",
+        "Hartree",
+        "hartree",
+        "DENC",
+        "exchange",
+        "EXHF",
+        "free_energy",
+        "TOTEN",
+        "cap",
+        "TOTENCAP",
+        "weight",
+        "WEIGHT",
+    ]
+    assert afqmc_selections == {"component": components}
 
 
 @pytest.mark.parametrize(

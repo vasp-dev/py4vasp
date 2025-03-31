@@ -247,6 +247,8 @@ class RawDataFactory:
             return _MD_energy(randomize)
         elif selection == "relax":
             return _relax_energy(randomize)
+        elif selection == "afqmc":
+            return _afqmc_energy()
         else:
             raise exception.NotImplemented()
 
@@ -558,6 +560,19 @@ def _relax_energy(randomize: bool = False):
         "energy(sigma->0)       ",
     )
     return _create_energy(labels, randomize=randomize)
+
+
+def _afqmc_energy():
+    labels = (
+        "step            STEP    ",
+        "One el. energy  E1      ",
+        "Hartree energy  -DENC   ",
+        "exchange        EXHF    ",
+        "free energy     TOTEN   ",
+        "free energy cap TOTENCAP",
+        "weight          WEIGHT  ",
+    )
+    return _create_energy(labels)
 
 
 def _create_energy(labels, randomize: bool = False):
