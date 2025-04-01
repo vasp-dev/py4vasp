@@ -303,6 +303,14 @@ schema.add(
     labels="intermediate/ion_dynamics/energies_tags",
     values="intermediate/ion_dynamics/energies",
 )
+schema.add(
+    raw.Energy,
+    name="afqmc",
+    file="vaspwave.h5",
+    required=raw.Version(6, 5, 1),
+    labels="afqmc/ensemble/energy_labels",
+    values="afqmc/ensemble/ensemble_sampling",
+)
 #
 group = "results/linear_response"
 schema.add(
@@ -324,7 +332,6 @@ group = "results/linear_response"
 schema.add(
     raw.ExcitonDensity,
     required=raw.Version(6, 5),
-    file="vaspout.h5",
     structure=Link("structure", "exciton"),
     exciton_charge=f"{group}/exciton_charge",
 )

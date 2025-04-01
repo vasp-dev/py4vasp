@@ -121,7 +121,9 @@ def check_to_image(MD_energy, filename_argument, expected_filename):
 
 
 def test_selections(MD_energy, raw_data):
-    assert MD_energy.selections() == (
+    md_selections = MD_energy.selections()
+    md_selections.pop("energy")
+    components = [
         "ion_electron",
         "TOTEN",
         "kinetic_energy",
@@ -136,15 +138,41 @@ def test_selections(MD_energy, raw_data):
         "EPS",
         "total_energy",
         "ETOTAL",
-    )
-    assert Energy.from_data(raw_data.energy("relax")).selections() == (
+    ]
+    assert md_selections == {"component": components}
+    #
+    relax_selections = Energy.from_data(raw_data.energy("relax")).selections()
+    relax_selections.pop("energy")
+    components = [
         "free_energy",
         "TOTEN",
         "without_entropy",
         "ENOENT",
         "sigma_0",
         "ESIG0",
-    )
+    ]
+    assert relax_selections == {"component": components}
+    #
+    afqmc_selections = Energy.from_data(raw_data.energy("afqmc")).selections()
+    afqmc_selections.pop("energy")
+    components = [
+        "step",
+        "STEP",
+        "one_electron",
+        "E1",
+        "Hartree",
+        "hartree",
+        "DENC",
+        "exchange",
+        "EXHF",
+        "free_energy",
+        "TOTEN",
+        "cap",
+        "TOTENCAP",
+        "weight",
+        "WEIGHT",
+    ]
+    assert afqmc_selections == {"component": components}
 
 
 @pytest.mark.parametrize(

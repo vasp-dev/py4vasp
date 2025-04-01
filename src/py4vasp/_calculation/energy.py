@@ -28,6 +28,13 @@ _SELECTIONS = {
     "free energy    TOTEN": ["free_energy", "TOTEN"],
     "energy without entropy": ["without_entropy", "ENOENT"],
     "energy(sigma->0)": ["sigma_0", "ESIG0"],
+    "step            STEP": ["step", "STEP"],
+    "One el. energy  E1": ["one_electron", "E1"],
+    "Hartree energy  -DENC": ["Hartree", "hartree", "DENC"],
+    "exchange        EXHF": ["exchange", "EXHF"],
+    "free energy     TOTEN": ["free_energy", "TOTEN"],
+    "free energy cap TOTENCAP": ["cap", "TOTENCAP"],
+    "weight          WEIGHT": ["weight", "WEIGHT"],
 }
 
 
@@ -155,16 +162,8 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
 
     @base.data_access
     def selections(self):
-        """Returns all possible selections you can use for the other routines.
-
-        Returns
-        -------
-        tuple
-            Each element of the tuple is one possible selection for an energy or
-            temperature. Note that some elements correspond to the same underlying data.
-            If they are, they will be next to each other in the returned tuple.
-        """
-        return tuple(self._init_selection_dict().keys())
+        components = list(self._init_selection_dict().keys())
+        return {**super().selections(), "component": components}
 
     def _read_data(self, tree, steps_or_slice):
         maps = {1: self._init_selection_dict()}
