@@ -93,6 +93,32 @@ dielectric function:
             ylabel="dielectric function ϵ",
         )
 
+    # possibility to help users to create functions
+    # user code:
+    # from py4vasp import calculation
+    # broadening = calculation.dielectric_function.broadening_factory("lorentzian", gamma=0.5)
+    # calculation.dielectric_function.to_numpy(broadening_function=broadening)
+    def broadening_factory(kind, **kwargs):
+        if kind == "lorentzian":
+
+            def user_broadening(energies):
+                return np.lorentzian(energies, **kwargs)
+
+        return user_broadening
+
+    @base.data_access
+    def to_numpy(self, selection=None, broadening_function=None, lorentzian=None):
+        # only one of broadening_function and lorentzian may be present
+        # function must be func(energies: np.array) -> np.array
+        #
+        # if broadening function is not set, if should default to dielectric_function in self._raw_data
+        # read the eigenvalues and intensity_tensor from self._raw_data
+        # convolutes the intensity_tensor with the broadening_function
+        # uses selection to get isotropic, xx, or ... component of dielectric function
+        #
+        # could also put this into _get_data function
+        pass
+
     @base.data_access
     def selections(self):
         "Returns a dictionary of possible selections for component, direction, and complex value."

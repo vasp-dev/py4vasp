@@ -161,7 +161,7 @@ schema.add(
     dielectric_function=f"{group}/bse{values}",
     current_current=None,
     eigenvalues=f"{group}/bse_eigenvalues",
-    intensities=f"{group}/bse_intensities",
+    intensities=f"{group}/bse_intensity_tensor",
 )
 schema.add(
     raw.DielectricFunction,

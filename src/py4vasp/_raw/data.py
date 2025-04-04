@@ -153,8 +153,9 @@ class DielectricFunction:
     "Dielectric function obtained using the current-current response."
     eigenvalues: VaspData = NONE()
     "For user-supplied broadening, this describes the position of the peak."
-    intensities: VaspData = NONE()
+    intensity_tensor: VaspData = NONE()
     "For user-supplied broadening, this describes the height of the peak."
+
 
 @dataclasses.dataclass
 class DielectricTensor:
