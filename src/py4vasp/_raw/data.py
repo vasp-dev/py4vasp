@@ -151,7 +151,10 @@ class DielectricFunction:
     "The values of the dielectric function (frequency-dependent 3x3 tensor)."
     current_current: VaspData = NONE()
     "Dielectric function obtained using the current-current response."
-
+    eigenvalues: VaspData = NONE()
+    "For user-supplied broadening, this describes the position of the peak."
+    intensities: VaspData = NONE()
+    "For user-supplied broadening, this describes the height of the peak."
 
 @dataclasses.dataclass
 class DielectricTensor:

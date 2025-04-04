@@ -160,6 +160,8 @@ schema.add(
     energies=f"{group}/bse_{energies}",
     dielectric_function=f"{group}/bse{values}",
     current_current=None,
+    eigenvalues=f"{group}/bse_eigenvalues",
+    intensities=f"{group}/bse_intensities",
 )
 schema.add(
     raw.DielectricFunction,
