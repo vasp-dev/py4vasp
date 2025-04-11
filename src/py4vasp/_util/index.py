@@ -197,6 +197,8 @@ class Selector:
         return _Slices(self._indices).set(dimension, slice_, key)
 
     def _read_range(self, range_):
+        if range_ in self._map:
+            return self._read_key(range_)
         try:
             dimension = self._read_dimension(range_)
             slice_ = self._merge_slice(range_)
@@ -226,7 +228,6 @@ class Selector:
         return self._read_key(key)
 
     def _find_pair_key(self, pair):
-        print(str(pair), self._map.keys())
         if pair in self._map:
             return pair
         reversed_pair = dataclasses.replace(pair, group=list(reversed(pair.group)))

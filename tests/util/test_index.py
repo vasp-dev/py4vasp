@@ -126,11 +126,22 @@ def test_select_with_default(selection, expected):
         ((make_range("1", "3"),), slice(0, 3)),
         ((make_range("2", "6"),), slice(1, 6)),
         ((make_range("4", "5"),), slice(3, 5)),
+        ((make_range("a", "b"),), slice(6, 7)),
     ],
 )
 def test_select_range(selection, indices):
     values = np.arange(10) ** 2
-    map_ = {0: {"1": 0, "2": 1, "3": 2, "4": 3, "5": slice(4, 5), "6": slice(5, 6, 1)}}
+    map_ = {
+        0: {
+            "1": 0,
+            "2": 1,
+            "3": 2,
+            "4": 3,
+            "5": slice(4, 5),
+            "6": slice(5, 6, 1),
+            make_range("a", "b"): 6,
+        }
+    }
     selector = index.Selector(map_, values)
     assert selector[selection] == np.sum(values[indices])
 
@@ -190,6 +201,7 @@ def test_mix_indices(selection, expected, Assert):
     selector = index.Selector(map_, values)
     Assert.allclose(selector[selection], expected)
 
+
 # @pytest.mark.parametrize(
 #     "selection, expected",
 #     [
@@ -205,6 +217,7 @@ def test_mix_indices(selection, expected, Assert):
 #     }
 #     selector = index.Selector({1: map_}, values)
 #     Assert.allclose(selector[selection], expected)
+
 
 @pytest.mark.parametrize(
     "first_text, second_text",
