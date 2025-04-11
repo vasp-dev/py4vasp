@@ -185,7 +185,7 @@ class Selector:
         elif _is_pair(selection):
             yield self._read_pair(selection).set_operator(operator)
         elif isinstance(selection, select.Operation):
-            yield from self._evaluate_operation(selection, operator)
+            yield from self._read_operation(selection, operator)
         else:
             assert False, f"Reading {key} is not implemented."
 
@@ -236,6 +236,12 @@ class Selector:
         if (key := str(reversed_pair)) in self._map:
             return key
         return str(pair)
+
+    def _read_operation(self, operation, operator):
+        if operation in self._map:
+            yield self._read_key(operation).set_operator(operator)
+        else:
+            yield from self._evaluate_operation(operation, operator)
 
     def _evaluate_operation(self, operation, operator):
         if not operation.unary():

@@ -202,21 +202,21 @@ def test_mix_indices(selection, expected, Assert):
     Assert.allclose(selector[selection], expected)
 
 
-# @pytest.mark.parametrize(
-#     "selection, expected",
-#     [
-#         ((make_operation("a", "+", "b"),), 0),
-#         ((make_operation("c", "-", "d"),), 0),
-#     ]
-# )
-# def test_operation_as_key_in_map(selection, expected, Assert):
-#     values = np.arange(20).reshape((4, 5)) ** 3
-#     map_ = {
-#         make_operation("a", "+", "b"): 0,
-#         make_operation("c", "-", "d"): 1,
-#     }
-#     selector = index.Selector({1: map_}, values)
-#     Assert.allclose(selector[selection], expected)
+@pytest.mark.parametrize(
+    "selection, expected",
+    [
+        ((make_operation("a", "+", "b"),), [0, 125, 1000, 3375]),
+        ((make_operation("c", "-", "d"),), [1, 216, 1331, 4096]),
+    ],
+)
+def test_operation_as_key_in_map(selection, expected, Assert):
+    values = np.arange(20).reshape((4, 5)) ** 3
+    map_ = {
+        make_operation("a", "+", "b"): 0,
+        make_operation("c", "-", "d"): 1,
+    }
+    selector = index.Selector({1: map_}, values)
+    Assert.allclose(selector[selection], expected)
 
 
 @pytest.mark.parametrize(
