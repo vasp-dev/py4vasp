@@ -350,6 +350,8 @@ class Operation:
     right_operand: tuple
     "The selection on the right-hand side of the operation."
 
+    __hash__ = lambda self: hash(str(self))
+
     def __str__(self):
         left_op = _selection_to_string(self.left_operand)
         right_op = _selection_to_string(self.right_operand)

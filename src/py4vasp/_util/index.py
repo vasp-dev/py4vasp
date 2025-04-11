@@ -99,7 +99,7 @@ class Selector:
             key: self._make_label(map_, key, index, self._data.shape[dim])
             for dim, map_ in maps.items()
             for key, index in map_.items()
-            if key is not None and key.isdecimal()
+            if key is not None and str(key).isdecimal()
         }
 
     def _make_label(self, map_, number, index, size):
@@ -222,11 +222,19 @@ class Selector:
             return slice(left.start, right.stop)
 
     def _read_pair(self, pair):
-        key = str(pair)
-        if key not in self._map:
-            pair = dataclasses.replace(pair, group=reversed(pair.group))
-            key = str(pair)
+        key = self._find_pair_key(pair)
         return self._read_key(key)
+
+    def _find_pair_key(self, pair):
+        print(str(pair), self._map.keys())
+        if pair in self._map:
+            return pair
+        reversed_pair = dataclasses.replace(pair, group=list(reversed(pair.group)))
+        if reversed_pair in self._map:
+            return reversed_pair
+        if (key := str(reversed_pair)) in self._map:
+            return key
+        return str(pair)
 
     def _evaluate_operation(self, operation, operator):
         if not operation.unary():

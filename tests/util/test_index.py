@@ -143,11 +143,13 @@ def test_select_range(selection, indices):
         ((make_pair("B", "A"),), 1),
         ((make_pair("C", "A"),), 2),
         ((make_pair("B", "C"),), 3),
+        ((make_pair("A", "D"),), 4),
+        ((make_pair("D", "A"),), 4),
     ],
 )
 def test_select_pair(selection, indices):
     values = np.arange(10) ** 2
-    map_ = {0: {"total": 0, "A~B": 1, "A~C": 2, "B~C": 3}}
+    map_ = {0: {"total": 0, "A~B": 1, "A~C": 2, "B~C": 3, make_pair("A", "D"): 4}}
     selector = index.Selector(map_, values)
     assert selector[selection] == np.sum(values[indices])
 
@@ -188,6 +190,21 @@ def test_mix_indices(selection, expected, Assert):
     selector = index.Selector(map_, values)
     Assert.allclose(selector[selection], expected)
 
+# @pytest.mark.parametrize(
+#     "selection, expected",
+#     [
+#         ((make_operation("a", "+", "b"),), 0),
+#         ((make_operation("c", "-", "d"),), 0),
+#     ]
+# )
+# def test_operation_as_key_in_map(selection, expected, Assert):
+#     values = np.arange(20).reshape((4, 5)) ** 3
+#     map_ = {
+#         make_operation("a", "+", "b"): 0,
+#         make_operation("c", "-", "d"): 1,
+#     }
+#     selector = index.Selector({1: map_}, values)
+#     Assert.allclose(selector[selection], expected)
 
 @pytest.mark.parametrize(
     "first_text, second_text",
@@ -229,7 +246,6 @@ def test_equivalent_operation(first_text, second_text, Assert):
     ],
 )
 def test_dynamic_reduction(selection, expected, Assert):
-    print(f"{selection=}")
     values = np.sin(np.arange(48)).reshape(2, 4, 6)
     map_ = {
         1: {"A": 0, "B": 1, "C": 2, "D": 3},
