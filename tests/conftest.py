@@ -155,6 +155,8 @@ class RawDataFactory:
             return _line_band(options)
         elif band == "spin_polarized":
             return _spin_polarized_bands(options)
+        elif band == "spin_texture":
+            return _spin_texture_bands(options)
         else:
             raise exception.NotImplemented()
 
@@ -617,6 +619,22 @@ def _line_kpoints(mode, labels):
     return kpoints
 
 
+def _slice_kpoints(mode):
+    x = np.linspace(0, 1, 4, endpoint=False)
+    y = np.linspace(0, 1, 3, endpoint=False)
+    z = np.linspace(0, 1, 1, endpoint=False) + 1 / 8
+    coordinates = np.array(list(itertools.product(x, y, z)))
+    number_kpoints = len(coordinates) if mode[0] in ["e", b"e"[0]] else 0
+    kpoints = raw.Kpoint(
+        mode=mode,
+        number=number_kpoints,
+        coordinates=coordinates,
+        weights=np.arange(len(coordinates)),
+        cell=_Fe3O4_cell(),
+    )
+    return kpoints
+
+
 def _grid_kpoints(mode, labels):
     x = np.linspace(0, 1, 4, endpoint=False)
     y = np.linspace(0, 1, 3, endpoint=False)
@@ -727,7 +745,6 @@ def _spin_polarized_bands(projectors):
         raw_band.projectors.orbital_types = orbital_types
     return raw_band
 
-
 def _spin_polarized_dispersion():
     kpoints = _grid_kpoints("explicit", "no_labels")
     kpoints.cell = _Fe3O4_cell()
@@ -735,6 +752,29 @@ def _spin_polarized_dispersion():
     eigenvalues = np.arange(np.prod(shape)).reshape(shape)
     return raw.Dispersion(kpoints, eigenvalues)
 
+def _spin_texture_bands(projectors):
+    dispersion = _spin_texture_dispersion()
+    shape = dispersion.eigenvalues.shape
+    use_orbitals = projectors in ["with_projectors"]
+    raw_band = raw.Band(
+        dispersion=dispersion,
+        fermi_energy=0.0,
+        occupations=np.arange(np.prod(shape)).reshape(shape),
+        projectors=_Fe3O4_projectors(use_orbitals),
+    )
+    if use_orbitals:
+        number_orbitals = len(raw_band.projectors.orbital_types)
+        shape = (4, number_atoms, number_orbitals, *shape[1:])
+        raw_band.projections = np.random.random(shape)
+    return raw_band
+
+
+def _spin_texture_dispersion():
+    kpoints = _slice_kpoints("explicit")
+    kpoints.cell = _Fe3O4_cell()
+    shape = (two_spins, len(kpoints.coordinates), number_bands)
+    eigenvalues = np.arange(np.prod(shape)).reshape(shape)
+    return raw.Dispersion(kpoints, eigenvalues)
 
 def _workfunction(direction):
     shape = (number_points,)

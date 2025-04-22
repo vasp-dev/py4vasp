@@ -18,6 +18,8 @@ class RefinementError(Py4VaspError):
 class IncorrectUsage(Py4VaspError):
     """The user provided input is not suitable for processing"""
 
+class DataMismatch(Py4VaspError):
+    """The data provided is not suitable to be processed by the called function."""
 
 class NotImplemented(Py4VaspError):
     """Exception raised when a function is called that is not implemented."""
