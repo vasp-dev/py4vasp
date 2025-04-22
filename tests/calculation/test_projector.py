@@ -233,6 +233,25 @@ def test_selections_Fe3O4(Fe3O4):
     }
 
 
+def test_selections_Ba2PbO4(Ba2PbO4):
+    assert Ba2PbO4.selections() == {
+        "atom": ["Ba", "Pb", "O", "1", "2", "3", "4", "5", "6", "7"],
+        "orbital": ["s", "p", "d", "f"],
+        "spin": [
+            "total",
+            "sigma_x",
+            "sigma_y",
+            "sigma_z",
+            "x",
+            "y",
+            "z",
+            "sigma_1",
+            "sigma_2",
+            "sigma_3",
+        ],
+    }
+
+
 def test_selections_missing_orbitals(missing_orbitals):
     assert missing_orbitals.selections() == {}
 
