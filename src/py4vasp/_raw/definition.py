@@ -512,21 +512,21 @@ schema.add(
     raw.Projector,
     stoichiometry=Link("stoichiometry", DEFAULT_SOURCE),
     orbital_types="results/projectors/lchar",
-    number_spins=Length("results/electron_eigenvalues/eigenvalues"),
+    number_spin_projections=Length("results/projectors/par"),
 )
 schema.add(
     raw.Projector,
     name="kpoints_opt",
     stoichiometry=Link("stoichiometry", DEFAULT_SOURCE),
     orbital_types="results/projectors_kpoints_opt/lchar",
-    number_spins=Length("results/electron_eigenvalues/eigenvalues"),
+    number_spin_projections=Length("results/projectors_kpoints_opt/par"),
 )
 schema.add(
     raw.Projector,
     name="kpoints_wan",
     stoichiometry=Link("stoichiometry", DEFAULT_SOURCE),
     orbital_types="results/projectors_kpoints_wan/lchar",
-    number_spins=Length("results/electron_eigenvalues/eigenvalues"),
+    number_spin_projections=Length("results/projectors_kpoints_wan/par"),
 )
 #
 schema.add(

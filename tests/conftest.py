@@ -23,6 +23,7 @@ number_eigenvectors = 5
 number_excitons = 3
 single_spin = 1
 two_spins = 2
+noncollinear = 4
 axes = 3
 complex_ = 2
 number_modes = axes * number_atoms
@@ -155,6 +156,8 @@ class RawDataFactory:
             return _line_band(options)
         elif band == "spin_polarized":
             return _spin_polarized_bands(options)
+        elif band == "noncollinear":
+            return _noncollinear_bands(options)
         elif band == "spin_texture":
             return _spin_texture_bands(options)
         else:
@@ -353,6 +356,8 @@ class RawDataFactory:
             return _Sr2TiO4_projectors(use_orbitals=True)
         elif selection == "Fe3O4":
             return _Fe3O4_projectors(use_orbitals=True)
+        elif selection == "Ba2PbO4":
+            return _Ba2PbO4_projectors(use_orbitals=True)
         elif selection == "without_orbitals":
             return _Sr2TiO4_projectors(use_orbitals=False)
         else:
@@ -752,6 +757,30 @@ def _spin_polarized_dispersion():
     eigenvalues = np.arange(np.prod(shape)).reshape(shape)
     return raw.Dispersion(kpoints, eigenvalues)
 
+
+def _noncollinear_bands(projectors):
+    dispersion = _noncollinear_dispersion()
+    shape = dispersion.eigenvalues.shape
+    use_orbitals = projectors == "with_projectors"
+    raw_band = raw.Band(
+        dispersion=dispersion,
+        fermi_energy=0.0,
+        occupations=_make_arbitrary_data(shape),
+        projectors=_Ba2PbO4_projectors(use_orbitals),
+    )
+    if use_orbitals:
+        number_orbitals = len(raw_band.projectors.orbital_types)
+        shape = (noncollinear, number_atoms, number_orbitals, *shape[1:])
+        raw_band.projections = _make_arbitrary_data(shape)
+    return raw_band
+
+
+def _noncollinear_dispersion():
+    kpoints = _line_kpoints("explicit", "no_labels")
+    kpoints.cell = _Ba2PbO4_cell()
+    shape = (noncollinear, len(kpoints.coordinates), number_bands)
+    return raw.Dispersion(kpoints, eigenvalues=_make_arbitrary_data(shape))
+
 def _spin_texture_bands(projectors):
     dispersion = _spin_texture_dispersion()
     shape = dispersion.eigenvalues.shape
@@ -788,23 +817,28 @@ def _workfunction(direction):
     )
 
 
-def _Sr2TiO4_born_effective_charges():
-    shape = (number_atoms, axes, axes)
-    return raw.BornEffectiveCharge(
-        structure=_Sr2TiO4_structure(),
-        charge_tensors=np.arange(np.prod(shape)).reshape(shape),
+def _Ba2PbO4_cell():
+    lattice_vectors = [
+        [4.34, 0.0, 0.0],
+        [0.0, 4.34, 0.0],
+        [-2.17, -2.17, 6.682],
+    ]
+    return raw.Cell(lattice_vectors=np.array(lattice_vectors))
+
+
+def _Ba2PbO4_projectors(use_orbitals):
+    orbital_types = "s p d f"
+    return raw.Projector(
+        stoichiometry=_Ba2PbO4_stoichiometry(),
+        orbital_types=_make_orbital_types(use_orbitals, orbital_types),
+        number_spin_projections=4,
     )
 
 
-def _Sr2TiO4_cell():
-    scale = raw.VaspData(6.9229)
-    lattice_vectors = [
-        [1.0, 0.0, 0.0],
-        [0.678112209738693, 0.734958387251008, 0.0],
-        [-0.839055341042049, -0.367478859090843, 0.401180037874301],
-    ]
-    return raw.Cell(
-        lattice_vectors=np.array(number_steps * [lattice_vectors]), scale=scale
+def _Ba2PbO4_stoichiometry():
+    return raw.Stoichiometry(
+        number_ion_types=np.array((2, 1, 4)),
+        ion_types=raw.VaspData(np.array(("Ba", "Pb", "O "), dtype="S")),
     )
 
 
@@ -871,6 +905,26 @@ def _partial_density(selection):
         kpoints=kpoints,
         partial_charge=gaussian_charge,
         grid=grid,
+    )
+
+
+def _Sr2TiO4_born_effective_charges():
+    shape = (number_atoms, axes, axes)
+    return raw.BornEffectiveCharge(
+        structure=_Sr2TiO4_structure(),
+        charge_tensors=np.arange(np.prod(shape)).reshape(shape),
+    )
+
+
+def _Sr2TiO4_cell():
+    scale = raw.VaspData(6.9229)
+    lattice_vectors = [
+        [1.0, 0.0, 0.0],
+        [0.678112209738693, 0.734958387251008, 0.0],
+        [-0.839055341042049, -0.367478859090843, 0.401180037874301],
+    ]
+    return raw.Cell(
+        lattice_vectors=np.array(number_steps * [lattice_vectors]), scale=scale
     )
 
 
@@ -1000,7 +1054,7 @@ def _Sr2TiO4_projectors(use_orbitals):
     return raw.Projector(
         stoichiometry=_Sr2TiO4_stoichiometry(),
         orbital_types=_make_orbital_types(use_orbitals, orbital_types),
-        number_spins=1,
+        number_spin_projections=1,
     )
 
 
@@ -1271,7 +1325,7 @@ def _Fe3O4_projectors(use_orbitals):
     return raw.Projector(
         stoichiometry=_Fe3O4_stoichiometry(),
         orbital_types=_make_orbital_types(use_orbitals, "s p d f"),
-        number_spins=2,
+        number_spin_projections=2,
     )
 
 
