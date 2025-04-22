@@ -139,7 +139,7 @@ class Projector(base.Refinery):
     def _init_spin_dict(self):
         if self._is_nonpolarized:
             return {"total": slice(0, 1)}
-        if self.is_collinear:
+        if self._is_collinear:
             return {"total": slice(0, 2), "up": slice(0, 1), "down": slice(1, 2)}
         return {
             "total": slice(0, 1),
@@ -159,8 +159,7 @@ class Projector(base.Refinery):
         return self._raw_data.number_spin_projections == 1
 
     @property
-    def is_collinear(self):
-        """Returns whether the number of spin projections equals 2."""
+    def _is_collinear(self):
         return self._raw_data.number_spin_projections == 2
 
     @property
@@ -258,7 +257,7 @@ class Projector(base.Refinery):
         for selection in tree.selections():
             if self._is_nonpolarized or self._spin_selected(selection):
                 yield selection
-            elif self.is_collinear:
+            elif self._is_collinear:
                 # collinear defaults to two separate projections
                 yield selection + ("up",)
                 yield selection + ("down",)

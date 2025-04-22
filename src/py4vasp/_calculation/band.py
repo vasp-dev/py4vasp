@@ -256,7 +256,7 @@ class Band(base.Refinery, graph.Mixin):
     @base.data_access
     def to_quiver(
         self,
-        selection: str = "",
+        selection: str = "x~y(band[1])",
         normal: Union[None, str] = None,
         supercell: Union[None, int, np.ndarray] = None,
     ):
@@ -300,28 +300,56 @@ class Band(base.Refinery, graph.Mixin):
         )
         # Plane is defined by KPOINTS file
         plane = slicing.plane(reciprocal_lattice_vectors, "c", normal)
-        # Spin Texture only makes sense for non-collinear systems
-        if self._projector().is_collinear:
-            raise exception.DataMismatch(
-                "System is collinear, but spin texture only makes sense in non-collinear systems."
-            )
-        else:
-            data = self._read_projections("sigma_x,sigma_y")
-            sel_band = 2
-            data = np.concatenate(
-                (
-                    data["sigma_x"][:, sel_band].reshape(1, -1),
-                    data["sigma_y"][:, sel_band].reshape(1, -1),
-                ),
-                axis=0,
-            )
-            data = data.reshape(2, 4, 3)
-
-        label = self._selection or "spin texture"
-        quiver_plot = graph.Contour(data, plane, label)
+        options = {"plane": slicing.plane(reciprocal_lattice_vectors, "c", normal)}
         if supercell is not None:
-            quiver_plot.supercell = np.ones(2, dtype=np.int_) * supercell
-        return graph.Graph([quiver_plot])
+            options["supercell"] = np.ones(2, dtype=np.int_) * supercell
+        #
+        selector = self._make_selector(self._raw_data.projections)
+        tree = select.Tree.from_selection(selection)
+        quiver_plots = [
+            graph.Contour(**self._quiver_plot(selector, selection), **options)
+            for selection in tree.selections()
+        ]
+        return graph.Graph(quiver_plots)
+
+    def _quiver_plot(self, selector, selection):
+        data = selector[selection]
+        data = data.reshape(2, 4, 3)
+        label = "spin texture " + selector.label(selection)
+        return {"data": data, "label": label}
+
+    def _make_selector(self, projections):
+        maps = self._projector().to_dict()
+        maps = {
+            1: maps["atom"],
+            2: maps["orbital"],
+            0: self._spin_map(maps["spin"]),
+            4: self._band_map(projections.shape[-1]),
+        }
+        return index.Selector(
+            maps, projections, reduction=_ToQuiverReduction, use_number_labels=True
+        )
+
+    def _spin_map(self, spin_map):
+        if "sigma_x" not in spin_map:
+            # Spin Texture only makes sense for non-collinear systems
+            raise exception.DataMismatch(
+                "System is not noncollinear which is required to visualize spin texture."
+            )
+        return {
+            "sigma_x~sigma_y": slice(1, 3),
+            "sigma_x~sigma_z": slice(1, 4, 2),
+            "sigma_y~sigma_z": slice(2, 4),
+            "x~y": slice(1, 3),
+            "x~z": slice(1, 4, 2),
+            "y~z": slice(2, 4),
+            "sigma_1~sigma_2": slice(1, 3),
+            "sigma_1~sigma_3": slice(1, 4, 2),
+            "sigma_2~sigma_3": slice(2, 4),
+        }
+
+    def _band_map(self, num_bands):
+        return {f"band[{band + 1}]": slice(band, band + 1) for band in range(num_bands)}
 
     @base.data_access
     def selections(self):
@@ -401,3 +429,12 @@ class Band(base.Refinery, graph.Mixin):
 
 def _to_series(array):
     return array.T.flatten()
+
+
+class _ToQuiverReduction(index.Reduction):
+    def __init__(self, keys):
+        pass
+
+    def __call__(self, array, axis):
+        axis = tuple(filter(None, axis))
+        return np.sum(array, axis=axis)
