@@ -96,16 +96,21 @@ def spin_projectors(raw_data):
     band.ref.projectors_string = str(projector)
     return band
 
+
 @pytest.fixture
 def spin_texture(raw_data):
     raw_band = raw_data.band("spin_texture with_projectors")
     band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
-    band.ref.expected_data = np.reshape(raw_band.projections[1:3, 0, 0, :, 2], (2, 4, 3))
-    band.ref.expected_lattice = np.array([[1, 0],[0, 1]])
+    band.ref.expected_data = np.reshape(
+        raw_band.projections[1:3, 0, 0, :, 2], (2, 4, 3)
+    )
+    band.ref.expected_lattice = np.array([[1, 0], [0, 1]])
     band.ref.expected_label = "spin texture"
     return band
 
+
+@pytest.mark.xfail(reason="to_quiver not fully implemented yet")
 def test_texture_to_quiver(spin_texture, Assert):
     graph = spin_texture.to_quiver()
     assert len(graph) == 1
@@ -113,6 +118,7 @@ def test_texture_to_quiver(spin_texture, Assert):
     Assert.allclose(series.data, spin_texture.ref.expected_data)
     Assert.allclose(series.lattice.vectors, spin_texture.ref.expected_lattice)
     assert series.label == spin_texture.ref.expected_label
+
 
 def test_single_band_read(single_band, Assert):
     band = single_band.read()

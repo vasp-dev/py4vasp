@@ -1,12 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from typing import Union
+
 import numpy as np
 
+from py4vasp import exception
 from py4vasp._calculation import _dispersion, base, projector
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_, index, select, slicing
-from typing import Union
-from py4vasp import exception
 
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
@@ -18,6 +19,7 @@ supercell : int or np.ndarray
     provide two different numbers, the resulting cell will be the two remaining
     lattice vectors multiplied by the specific number.
 """
+
 
 class Band(base.Refinery, graph.Mixin):
     """The band structure contains the **k** point resolved eigenvalues.
@@ -252,7 +254,12 @@ class Band(base.Refinery, graph.Mixin):
         return pd.DataFrame(self._extract_relevant_data(selection))
 
     @base.data_access
-    def to_quiver(self, selection: str="", normal: Union[None, str]=None, supercell: Union[None, int, np.ndarray]=None):
+    def to_quiver(
+        self,
+        selection: str = "",
+        normal: Union[None, str] = None,
+        supercell: Union[None, int, np.ndarray] = None,
+    ):
         """Generate a quiver plot of spin texture.
 
         {plane}
@@ -278,27 +285,38 @@ class Band(base.Refinery, graph.Mixin):
 
         >>> calculation.band.to_quiver()
         """
-        #scale: float = self._scale()
-        #raise ValueError(f"scale = {scale}")
+        raise exception.NotImplemented("to_quiver is not fully implemented")
+        # scale: float = self._scale()
+        # raise ValueError(f"scale = {scale}")
         scale = self._raw_data.dispersion.kpoints.cell.scale
         latt_vecs = scale * self._raw_data.dispersion.kpoints.cell.lattice_vectors
-        V: float = np.dot(latt_vecs[0], np.cross(latt_vecs[1], latt_vecs[2])) 
-        reciprocal_lattice_vectors = (2.0 * np.pi / V) * np.array([
-            np.cross(latt_vecs[1], latt_vecs[2]),
-            np.cross(latt_vecs[2], latt_vecs[0]),
-            np.cross(latt_vecs[0], latt_vecs[1])
-        ])
+        V: float = np.dot(latt_vecs[0], np.cross(latt_vecs[1], latt_vecs[2]))
+        reciprocal_lattice_vectors = (2.0 * np.pi / V) * np.array(
+            [
+                np.cross(latt_vecs[1], latt_vecs[2]),
+                np.cross(latt_vecs[2], latt_vecs[0]),
+                np.cross(latt_vecs[0], latt_vecs[1]),
+            ]
+        )
         # Plane is defined by KPOINTS file
         plane = slicing.plane(reciprocal_lattice_vectors, "c", normal)
         # Spin Texture only makes sense for non-collinear systems
         if self._projector().is_collinear:
-            raise exception.DataMismatch("System is collinear, but spin texture only makes sense in non-collinear systems.")
+            raise exception.DataMismatch(
+                "System is collinear, but spin texture only makes sense in non-collinear systems."
+            )
         else:
             data = self._read_projections("sigma_x,sigma_y")
             sel_band = 2
-            data = np.concatenate((data["sigma_x"][:,sel_band].reshape(1, -1), data["sigma_y"][:,sel_band].reshape(1, -1)), axis=0)
+            data = np.concatenate(
+                (
+                    data["sigma_x"][:, sel_band].reshape(1, -1),
+                    data["sigma_y"][:, sel_band].reshape(1, -1),
+                ),
+                axis=0,
+            )
             data = data.reshape(2, 4, 3)
-        
+
         label = self._selection or "spin texture"
         quiver_plot = graph.Contour(data, plane, label)
         if supercell is not None:

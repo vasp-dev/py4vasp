@@ -750,6 +750,7 @@ def _spin_polarized_bands(projectors):
         raw_band.projectors.orbital_types = orbital_types
     return raw_band
 
+
 def _spin_polarized_dispersion():
     kpoints = _grid_kpoints("explicit", "no_labels")
     kpoints.cell = _Fe3O4_cell()
@@ -781,6 +782,7 @@ def _noncollinear_dispersion():
     shape = (noncollinear, len(kpoints.coordinates), number_bands)
     return raw.Dispersion(kpoints, eigenvalues=_make_arbitrary_data(shape))
 
+
 def _spin_texture_bands(projectors):
     dispersion = _spin_texture_dispersion()
     shape = dispersion.eigenvalues.shape
@@ -804,6 +806,7 @@ def _spin_texture_dispersion():
     shape = (two_spins, len(kpoints.coordinates), number_bands)
     eigenvalues = np.arange(np.prod(shape)).reshape(shape)
     return raw.Dispersion(kpoints, eigenvalues)
+
 
 def _workfunction(direction):
     shape = (number_points,)
