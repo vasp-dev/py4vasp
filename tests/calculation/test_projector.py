@@ -19,6 +19,11 @@ def Fe3O4(raw_data):
 
 
 @pytest.fixture
+def Ba2PbO4(raw_data):
+    return Projector.from_data(raw_data.projector("Ba2PbO4"))
+
+
+@pytest.fixture
 def missing_orbitals(raw_data):
     return Projector.from_data(raw_data.projector("without_orbitals"))
 
@@ -101,6 +106,41 @@ def test_read_Fe3O4(Fe3O4):
             "total": slice(0, 2),
             "up": slice(0, 1),
             "down": slice(1, 2),
+        },
+    }
+
+
+def test_read_Ba2PbO4(Ba2PbO4):
+    assert Ba2PbO4.read() == {
+        "atom": {
+            "Ba": slice(0, 2),
+            "Pb": slice(2, 3),
+            "O": slice(3, 7),
+            "1": slice(0, 1),
+            "2": slice(1, 2),
+            "3": slice(2, 3),
+            "4": slice(3, 4),
+            "5": slice(4, 5),
+            "6": slice(5, 6),
+            "7": slice(6, 7),
+        },
+        "orbital": {
+            "s": slice(0, 1),
+            "p": slice(1, 2),
+            "d": slice(2, 3),
+            "f": slice(3, 4),
+        },
+        "spin": {
+            "total": slice(0, 1),
+            "sigma_x": slice(1, 2),
+            "x": slice(1, 2),
+            "sigma_1": slice(1, 2),
+            "sigma_y": slice(2, 3),
+            "y": slice(2, 3),
+            "sigma_2": slice(2, 3),
+            "sigma_z": slice(3, 4),
+            "z": slice(3, 4),
+            "sigma_3": slice(3, 4),
         },
     }
 

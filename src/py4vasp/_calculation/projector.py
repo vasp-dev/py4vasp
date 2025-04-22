@@ -137,13 +137,34 @@ class Projector(base.Refinery):
         return orbital_dict
 
     def _init_spin_dict(self):
-        if not self._spin_polarized:
+        if self._is_nonpolarized:
             return {"total": slice(0, 1)}
-        return {"total": slice(0, 2), "up": slice(0, 1), "down": slice(1, 2)}
+        if self._is_collinear:
+            return {"total": slice(0, 2), "up": slice(0, 1), "down": slice(1, 2)}
+        return {
+            "total": slice(0, 1),
+            "sigma_x": slice(1, 2),
+            "sigma_y": slice(2, 3),
+            "sigma_z": slice(3, 4),
+            "x": slice(1, 2),
+            "y": slice(2, 3),
+            "z": slice(3, 4),
+            "sigma_1": slice(1, 2),
+            "sigma_2": slice(2, 3),
+            "sigma_3": slice(3, 4),
+        }
 
     @property
-    def _spin_polarized(self):
-        return self._raw_data.number_spins == 2
+    def _is_nonpolarized(self):
+        return self._raw_data.number_spin_projections == 1
+
+    @property
+    def _is_collinear(self):
+        return self._raw_data.number_spin_projections == 2
+
+    @property
+    def _is_noncollinear(self):
+        return self._raw_data.number_spin_projections == 4
 
     @base.data_access
     def selections(self):
@@ -215,7 +236,7 @@ class Projector(base.Refinery):
     def _parse_selection(self, selection):
         tree = select.Tree.from_selection(selection)
         for selection in tree.selections():
-            if not self._spin_polarized or self._spin_selected(selection):
+            if not self._is_collinear or self._spin_selected(selection):
                 yield selection
             else:
                 yield from self._add_spin_components(selection)

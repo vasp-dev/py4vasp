@@ -510,8 +510,8 @@ class Projector:
     "The stoichiometry of the system used, i.e., which elements are contained."
     orbital_types: VaspData
     "Character indicating the orbital angular momentum."
-    number_spins: int
-    "Indicates whether the calculation is spin polarized or not."
+    number_spin_projections: int
+    "This is 1 for nonpolarized calculations, 2 for spin polarized ones, and 4 for noncollinear calculations."
 
 
 @dataclasses.dataclass
