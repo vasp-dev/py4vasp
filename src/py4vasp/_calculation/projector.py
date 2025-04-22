@@ -218,7 +218,7 @@ class Projector(base.Refinery):
         self._raise_error_if_orbitals_missing()
         selector = self._make_selector(projections)
         return {
-            selector.label(selection): selector[selection]
+            self._create_label(selector, selection): selector[selection]
             for selection in self._parse_selection(selection)
         }
 
@@ -233,22 +233,29 @@ class Projector(base.Refinery):
                 atom, and orbital, respectively."""
             raise exception.IncorrectUsage(message) from error
 
+    def _create_label(self, selector, selection):
+        label = selector.label(selection)
+        if self._is_noncollinear:
+            return label.strip("_total")
+        return label
+
     def _parse_selection(self, selection):
         tree = select.Tree.from_selection(selection)
         for selection in tree.selections():
-            if not self._is_collinear or self._spin_selected(selection):
+            if self._is_nonpolarized or self._spin_selected(selection):
                 yield selection
+            elif self._is_collinear:
+                # collinear defaults to two separate projections
+                yield selection + ("up",)
+                yield selection + ("down",)
             else:
-                yield from self._add_spin_components(selection)
+                # noncollinear defaults to total
+                yield selection + ("total",)
 
     def _spin_selected(self, selection):
         return any(
             select.contains(selection, choice) for choice in self._init_spin_dict()
         )
-
-    def _add_spin_components(self, selection):
-        yield selection + ("up",)
-        yield selection + ("down",)
 
     def _raise_error_if_orbitals_missing(self):
         if self._raw_data.orbital_types.is_none():
