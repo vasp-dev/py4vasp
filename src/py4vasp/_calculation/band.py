@@ -6,6 +6,7 @@ from py4vasp._calculation import _dispersion, base, projector
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_, index, select, slicing
 from typing import Union
+from py4vasp import exception
 
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
@@ -277,9 +278,10 @@ class Band(base.Refinery, graph.Mixin):
 
         >>> calculation.band.to_quiver()
         """
-        scale: float = self._scale()
+        #scale: float = self._scale()
         #raise ValueError(f"scale = {scale}")
-        latt_vecs = scale * list(self._raw_data.dispersion.kpoints.cell.lattice_vectors[0])
+        scale = self._raw_data.dispersion.kpoints.cell.scale
+        latt_vecs = scale * self._raw_data.dispersion.kpoints.cell.lattice_vectors
         V: float = np.dot(latt_vecs[0], np.cross(latt_vecs[1], latt_vecs[2])) 
         reciprocal_lattice_vectors = (2.0 * np.pi / V) * np.array([
             np.cross(latt_vecs[1], latt_vecs[2]),
@@ -289,13 +291,13 @@ class Band(base.Refinery, graph.Mixin):
         # Plane is defined by KPOINTS file
         plane = slicing.plane(reciprocal_lattice_vectors, "c", normal)
         # Spin Texture only makes sense for non-collinear systems
-        #if self.is_collinear():
-        #    raise exception.DataMismatch("System is collinear, but spin texture only makes sense in non-collinear systems.")
-        #else:
-            # data = self._read_projections(selection, num_bands)
-            # { "...", "sx": , "sy": , "sz": }
-                # Pb, d
-        data = np.reshape(self._raw_data.projections[1:3, 0, 0, :, 2], (2, 4, 3))
+        if self._projector().is_collinear:
+            raise exception.DataMismatch("System is collinear, but spin texture only makes sense in non-collinear systems.")
+        else:
+            data = self._read_projections("sigma_x,sigma_y")
+            sel_band = 2
+            data = np.concatenate((data["sigma_x"][:,sel_band].reshape(1, -1), data["sigma_y"][:,sel_band].reshape(1, -1)), axis=0)
+            data = data.reshape(2, 4, 3)
         
         label = self._selection or "spin texture"
         quiver_plot = graph.Contour(data, plane, label)
@@ -306,23 +308,6 @@ class Band(base.Refinery, graph.Mixin):
     @base.data_access
     def selections(self):
         return {**super().selections(), **self._projector().selections()}
-
-    @base.data_access
-    def is_collinear(self):
-        "Returns whether the density has a collinear magnetization."
-        return len(self._raw_data.charge) == 2
-
-    @base.data_access
-    def lattice_vectors(self):
-        """Return the lattice vectors spanning the unit cell
-
-        Returns
-        -------
-        np.ndarray
-            Lattice vectors of the unit cell in Å.
-        """
-        lattice_vectors = _LatticeVectors(self._raw_data.dispersion.kpoints.cell.lattice_vectors)
-        return self._scale() * lattice_vectors[()]
 
     def _scale(self):
         if isinstance(self._raw_data.dispersion.kpoints.cell.scale, np.float64):
@@ -398,14 +383,3 @@ class Band(base.Refinery, graph.Mixin):
 
 def _to_series(array):
     return array.T.flatten()
-
-
-class _LatticeVectors(reader.Reader):
-    def error_message(self, key, err):
-        key = np.array(key)
-        steps = key if key.ndim == 0 else key[0]
-        return (
-            f"Error reading the lattice vectors. Please check if the steps "
-            f"`{steps}` are properly formatted and within the boundaries. "
-            "Additionally, you may consider the original error message:\n" + err.args[0]
-        )

@@ -635,7 +635,7 @@ def _slice_kpoints(mode):
         number=number_kpoints,
         coordinates=coordinates,
         weights=np.arange(len(coordinates)),
-        cell=_Fe3O4_cell(),
+        cell=_Ba2PbO4_cell(),
     )
     return kpoints
 
@@ -789,7 +789,7 @@ def _spin_texture_bands(projectors):
         dispersion=dispersion,
         fermi_energy=0.0,
         occupations=np.arange(np.prod(shape)).reshape(shape),
-        projectors=_Fe3O4_projectors(use_orbitals),
+        projectors=_Ba2PbO4_projectors(use_orbitals),
     )
     if use_orbitals:
         number_orbitals = len(raw_band.projectors.orbital_types)
@@ -800,7 +800,7 @@ def _spin_texture_bands(projectors):
 
 def _spin_texture_dispersion():
     kpoints = _slice_kpoints("explicit")
-    kpoints.cell = _Fe3O4_cell()
+    kpoints.cell = _Ba2PbO4_cell()
     shape = (two_spins, len(kpoints.coordinates), number_bands)
     eigenvalues = np.arange(np.prod(shape)).reshape(shape)
     return raw.Dispersion(kpoints, eigenvalues)
@@ -823,7 +823,7 @@ def _Ba2PbO4_cell():
         [0.0, 4.34, 0.0],
         [-2.17, -2.17, 6.682],
     ]
-    return raw.Cell(lattice_vectors=np.array(lattice_vectors))
+    return raw.Cell(lattice_vectors=np.array(lattice_vectors), scale=1.0)
 
 
 def _Ba2PbO4_projectors(use_orbitals):
