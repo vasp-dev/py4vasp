@@ -89,7 +89,7 @@ def _make_series(data, projection):
     name, width = _get_name_and_width(projection)
     x = data["kpoint_distances"]
     y = _get_bands(data["eigenvalues"], name)
-    return _graph.Series(x, y, name, width=width)
+    return _graph.Series(x, y, name, weight=width)
 
 
 def _get_name_and_width(projection):
