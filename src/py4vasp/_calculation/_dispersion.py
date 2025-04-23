@@ -59,7 +59,7 @@ class Dispersion(base.Refinery):
         -------
         Graph
             Contains the band structure for all the **k** points. If projections are
-            passed, the width of the band is adjusted accordingly.
+            passed, the weight of the band is adjusted accordingly.
         """
         data = self.to_dict()
         projections = self._use_projections_or_default(projections)
@@ -86,17 +86,17 @@ def _band_structure(data, projections):
 
 
 def _make_series(data, projection):
-    name, width = _get_name_and_width(projection)
+    name, weight = _get_name_and_weight(projection)
     x = data["kpoint_distances"]
     y = _get_bands(data["eigenvalues"], name)
-    return _graph.Series(x, y, name, weight=width)
+    return _graph.Series(x, y, name, weight=weight)
 
 
-def _get_name_and_width(projection):
-    name, width = projection
-    if width is not None:
-        width = width.T
-    return name, width
+def _get_name_and_weight(projection):
+    name, weight = projection
+    if weight is not None:
+        weight = weight.T
+    return name, weight
 
 
 def _get_bands(eigenvalues, name):

@@ -179,7 +179,7 @@ class Band(base.Refinery, graph.Mixin):
         Select the p orbitals of the first atom in the POSCAR file:
 
         >>> calculation.band.to_graph(selection="1(p)")
-        Graph(series=[Series(..., label='Sr_1_p', width=array(...), ...)], ...)
+        Graph(series=[Series(..., label='Sr_1_p', weight=array(...), ...)], ...)
 
         Select the d orbitals of Sr and Ti:
 
@@ -201,7 +201,7 @@ class Band(base.Refinery, graph.Mixin):
         the argument `width=1.0` increases the maximum linewidth to 1 eV
 
         >>> calculation.band.to_graph("d", width=1.0)
-        Graph(series=[Series(..., label='d', width=array(...), ...)], ...)
+        Graph(series=[Series(..., label='d', weight=array(...), ...)], ...)
         """
         projections = self._projections(selection, width)
         graph = self._dispersion().plot(projections)

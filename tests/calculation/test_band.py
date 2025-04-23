@@ -235,7 +235,7 @@ def test_single_band_plot(single_band, Assert):
     fig = single_band.plot()
     assert fig.ylabel == "Energy (eV)"
     assert len(fig.series) == 1
-    assert fig.series[0].width is None
+    assert fig.series[0].weight is None
     Assert.allclose(fig.series[0].x, single_band.ref.kpoints.distances())
     Assert.allclose(fig.series[0].y, single_band.ref.bands.T)
 
@@ -270,19 +270,19 @@ def test_spin_projectors_plot(spin_projectors, Assert):
     check_data(fig.series[1], width, reference.bands_down, reference.O_down, Assert)
 
 
-def check_figure(fig, width, reference, Assert):
+def check_figure(fig, weight, reference, Assert):
     assert len(fig.series) == 2
     assert fig.series[0].label == "Sr"
     assert fig.series[1].label == "p"
-    check_data(fig.series[0], width, reference.bands, reference.Sr, Assert)
-    check_data(fig.series[1], width, reference.bands, reference.p, Assert)
+    check_data(fig.series[0], weight, reference.bands, reference.Sr, Assert)
+    check_data(fig.series[1], weight, reference.bands, reference.p, Assert)
 
 
-def check_data(series, width, band, projection, Assert):
+def check_data(series, weight, band, projection, Assert):
     assert len(series.x) == series.y.shape[-1]
-    assert series.y.shape == series.width.shape
+    assert series.y.shape == series.weight.shape
     Assert.allclose(series.y, band.T)
-    Assert.allclose(series.width, width * projection.T)
+    Assert.allclose(series.weight, weight * projection.T)
 
 
 def test_spin_polarized_plot(spin_polarized, Assert):

@@ -46,7 +46,7 @@ def test_plot(phonon_band, Assert):
     graph = phonon_band.plot()
     assert graph.ylabel == "ω (THz)"
     assert len(graph.series) == 1
-    assert graph.series[0].width is None
+    assert graph.series[0].weight is None
     Assert.allclose(graph.series[0].x, phonon_band.ref.qpoints.distances())
     Assert.allclose(graph.series[0].y, phonon_band.ref.bands.T)
     check_ticks(graph, phonon_band.ref.qpoints, Assert)
@@ -80,15 +80,15 @@ class FatbandChecker:
         self.bands = ref.bands
         self.Assert = Assert
 
-    def verify(self, graph, width):
+    def verify(self, graph, weight):
         for item in zip(graph.series, self.projections, self.labels):
-            self.check_series(*item, width)
+            self.check_series(*item, weight)
 
-    def check_series(self, series, projection, label, width):
+    def check_series(self, series, projection, label, weight):
         assert series.label == label
         self.Assert.allclose(series.x, self.distances)
         self.Assert.allclose(series.y, self.bands.T)
-        self.Assert.allclose(series.width, width * projection.T)
+        self.Assert.allclose(series.weight, weight * projection.T)
 
 
 @patch.object(PhononBand, "to_graph")
