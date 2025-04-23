@@ -249,7 +249,7 @@ class Projector(base.Refinery):
     def _create_label(self, selector, selection):
         label = selector.label(selection)
         if self._is_noncollinear:
-            return label.strip("_total")
+            return label.removesuffix("_total")
         return label
 
     def _parse_selection(self, selection):

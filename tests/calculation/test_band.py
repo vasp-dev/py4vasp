@@ -98,6 +98,18 @@ def spin_projectors(raw_data):
 
 
 @pytest.fixture
+def noncollinear_projectors(raw_data):
+    raw_band = raw_data.band("noncollinear with_projectors")
+    band = Band.from_data(raw_band)
+    band.ref = types.SimpleNamespace()
+    band.ref.total = np.sum(raw_band.projections[0], axis=(0, 1))
+    band.ref.sigma_x = np.sum(raw_band.projections[1], axis=(0, 1))
+    band.ref.Ba_sigma_y = np.sum(raw_band.projections[2, 0:2], axis=(0, 1))
+    band.ref.d_sigma_z = np.sum(raw_band.projections[3, :, 2], axis=0)
+    return band
+
+
+@pytest.fixture
 def spin_texture(raw_data):
     raw_band = raw_data.band("spin_texture with_projectors")
     band = Band.from_data(raw_band)
@@ -163,6 +175,14 @@ def test_spin_projectors_read(spin_projectors, Assert):
     Assert.allclose(band["s_down"], spin_projectors.ref.s_down)
     Assert.allclose(band["Fe_d_up"], spin_projectors.ref.Fe_d_up)
     Assert.allclose(band["Fe_d_down"], spin_projectors.ref.Fe_d_down)
+
+
+def test_noncollinear_projectors_read(noncollinear_projectors, Assert):
+    band = noncollinear_projectors.read(selection="total sigma_x Ba(y) d(sigma_3)")
+    Assert.allclose(band["total"], noncollinear_projectors.ref.total)
+    Assert.allclose(band["sigma_x"], noncollinear_projectors.ref.sigma_x)
+    Assert.allclose(band["Ba_y"], noncollinear_projectors.ref.Ba_sigma_y)
+    Assert.allclose(band["d_sigma_3"], noncollinear_projectors.ref.d_sigma_z)
 
 
 def test_combining_projections(with_projectors, Assert):
