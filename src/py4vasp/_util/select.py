@@ -67,6 +67,7 @@ class Tree:
         self._new_selection = True
         self._space_parsed = False
         self._is_operation = False
+        self._description_level = 0  # open/close description with brackets
         self._parent = parent
         self._children = []
         self._content = ""
@@ -165,7 +166,13 @@ class Tree:
             _raise_error_if_parsing_failed(error, selection, ii)
 
     def _parse_character(self, character):
-        if character == ",":
+        if character == "[":
+            return self._parse_open_bracket()
+        elif character == "]":
+            return self._parse_close_bracket()
+        elif self._description_level > 0:
+            return self._store_character_in_tree(character)
+        elif character == ",":
             return self._parse_new_selection()
         elif character == " ":
             return self._parse_space()
@@ -215,6 +222,14 @@ class Tree:
         self._raise_error_if_superfluous_closing_parenthesis()
         node = self._finalize_operation()
         return node._parent._parse_space()
+
+    def _parse_open_bracket(self):
+        self._description_level += 1
+        return self._store_character_in_tree("[")
+
+    def _parse_close_bracket(self):
+        self._description_level -= 1
+        return self._store_character_in_tree("]")
 
     def _parse_operator(self, operator):
         self._add_child_if_needed(ignore_space=True)

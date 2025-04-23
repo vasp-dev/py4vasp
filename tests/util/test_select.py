@@ -82,6 +82,17 @@ def test_pair_selection():
     assert graph(selection) == expected
 
 
+def test_brackets_escape():
+    selection = "foo[a~b] bar[1:3] baz[1+2]"
+    assert selections(selection) == (("foo[a~b]",), ("bar[1:3]",), ("baz[1+2]",))
+    expected = """\
+graph LR
+    foo[a~b]
+    bar[1:3]
+    baz[1+2]"""
+    assert graph(selection) == expected
+
+
 @pytest.mark.parametrize("selection", ["a + b, c - d", "a+b c-d"])
 def test_addition_and_subtraction(selection):
     operation1 = select.Operation(("a",), "+", ("b",))
@@ -163,6 +174,17 @@ def test_nested_operations():
     _0_[+] --> B
     B --> u
     B --> v"""
+    assert graph(selection) == expected
+
+
+def test_operation_with_description():
+    selection = "p1/2[+1/2] + d3/2[-3/2]"
+    operation = select.Operation(("p1/2[+1/2]",), "+", ("d3/2[-3/2]",))
+    assert selections(selection) == ((operation,),)
+    expected = """\
+graph LR
+    _0_[+] --> p1/2[+1/2]
+    _0_[+] --> d3/2[-3/2]"""
     assert graph(selection) == expected
 
 
