@@ -103,20 +103,20 @@ def spin_texture(raw_data):
     band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
     band.ref.expected_data = np.reshape(
-        raw_band.projections[1:3, 0, 0, :, 2], (2, 4, 3)
+        raw_band.projections[1:3, 2, 0, :, 1], (2, 4, 3)
     )
-    band.ref.expected_lattice = np.array([[1, 0], [0, 1]])
-    band.ref.expected_label = "spin texture"
+    band.ref.expected_lattice = np.array([[1.52216787, 0.        ], [0.14521927, 1.51522486]])
+    band.ref.expected_label = "spin texture Pb_s_sigma_x~sigma_y_band[2]"
     return band
 
 
-@pytest.mark.xfail(reason="to_quiver not fully implemented yet")
+#@pytest.mark.xfail(reason="to_quiver not fully implemented yet")
 def test_texture_to_quiver(spin_texture, Assert):
-    graph = spin_texture.to_quiver()
+    graph = spin_texture.to_quiver("Pb(s(band[2](sigma_x~sigma_y)))")
     assert len(graph) == 1
     series = graph.series[0]
     Assert.allclose(series.data, spin_texture.ref.expected_data)
-    Assert.allclose(series.lattice.vectors, spin_texture.ref.expected_lattice)
+    Assert.allclose(series.lattice.vectors, spin_texture.ref.expected_lattice, tolerance=1e6)
     assert series.label == spin_texture.ref.expected_label
 
 

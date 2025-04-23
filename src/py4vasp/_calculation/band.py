@@ -5,7 +5,7 @@ from typing import Union
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._calculation import _dispersion, base, projector
+from py4vasp._calculation import _dispersion, _cell, base, projector
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_, index, select, slicing
 
@@ -281,17 +281,16 @@ class Band(base.Refinery, graph.Mixin):
         Examples
         --------
 
-        Plot a projection of the spin texture in reciprocal space for the first atom, at the valence band maximum.
+        Plot a projection of the spin texture in reciprocal space for the Pb atom, s orbital, second band and the x and y spin components.
 
-        >>> calculation.band.to_quiver()
+        >>> calculation.band.to_quiver("Pb(s(band[2](sigma_x~sigma_y)))")
         """
-        raise exception.NotImplemented("to_quiver is not fully implemented")
-        # scale: float = self._scale()
-        # raise ValueError(f"scale = {scale}")
+        #raise exception.NotImplemented("to_quiver is not fully implemented")
         scale = self._raw_data.dispersion.kpoints.cell.scale
         latt_vecs = scale * self._raw_data.dispersion.kpoints.cell.lattice_vectors
+        #latt_vecs = _cell.Cell.from_data(self._raw_data.dispersion.kpoints.cell).lattice_vectors()
         V: float = np.dot(latt_vecs[0], np.cross(latt_vecs[1], latt_vecs[2]))
-        reciprocal_lattice_vectors = (2.0 * np.pi / V) * np.array(
+        reciprocal_lattice_vectors = (2.0 * np.pi / V) * np.array( 
             [
                 np.cross(latt_vecs[1], latt_vecs[2]),
                 np.cross(latt_vecs[2], latt_vecs[0]),
@@ -299,8 +298,7 @@ class Band(base.Refinery, graph.Mixin):
             ]
         )
         # Plane is defined by KPOINTS file
-        plane = slicing.plane(reciprocal_lattice_vectors, "c", normal)
-        options = {"plane": slicing.plane(reciprocal_lattice_vectors, "c", normal)}
+        options = {"lattice": slicing.plane(reciprocal_lattice_vectors, "c", normal)}
         if supercell is not None:
             options["supercell"] = np.ones(2, dtype=np.int_) * supercell
         #
@@ -433,8 +431,15 @@ def _to_series(array):
 
 class _ToQuiverReduction(index.Reduction):
     def __init__(self, keys):
+        # raise an IncorrectUsage Warning if:
+        #   - no spin elements have been chosen
+        #   - no band has been chosen
+        if not(keys[0]): 
+            raise exception.IncorrectUsage("Spin Elements must be chosen, but none are given. Please adapt your `selection` argument to include, e.g., `x~y`. You can combine arguments by `arg1(arg2(arg3(...)))`.")
+        if not (keys[4]):
+            raise exception.IncorrectUsage("A band must be chosen, but none are given. Please adapt your `selection` argument to include, e.g., `band[1]`. You can combine arguments by `arg1(arg2(arg3(...)))`.")
         pass
 
     def __call__(self, array, axis):
-        axis = tuple(filter(None, axis))
+        axis = tuple(filter(None, axis)) # prevents summation along 0-axis
         return np.sum(array, axis=axis)
