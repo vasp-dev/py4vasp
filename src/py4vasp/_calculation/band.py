@@ -254,6 +254,7 @@ class Band(base.Refinery, graph.Mixin):
         return pd.DataFrame(self._extract_relevant_data(selection))
 
     @base.data_access
+    @documentation.format(selection_doc=projector.selection_doc)
     def to_quiver(
         self,
         selection: str = "x~y(band[1])",
@@ -262,14 +263,20 @@ class Band(base.Refinery, graph.Mixin):
     ):
         """Generate a quiver plot of spin texture.
 
-        {plane}
+        The plane cut will be determined from the kpoints grid. One of the kpoint
+        grid dimensions is required to be 1, and that direction will be cut.
 
-        For a collinear calculation, the spin texture will be aligned with the
-        y axis of the plane. For noncollinear calculations, the spin texture
-        is projected into the plane.
+        The spin texture can only be visualized for noncollinear calculations, 
+        and is projected into the plane.
 
         Parameters
         ----------
+        {selection_doc}
+        normal : str | None
+            Set the Cartesian direction "x", "y", or "z" parallel to which the normal of
+            the plane is rotated. Alteratively, set it to "auto" to rotate to the closest
+            Cartesian axis. If you set it to None, the normal will not be considered and
+            the first remaining lattice vector will be aligned with the x axis instead.
         {common_parameters}
 
         Returns
@@ -280,10 +287,24 @@ class Band(base.Refinery, graph.Mixin):
 
         Examples
         --------
+        Plot a projection of the spin texture in reciprocal space, summed over all atoms and orbitals, for the first band and the x and y components.
+        This is also the default behavior, so the following two lines should produce identical plots:
 
-        Plot a projection of the spin texture in reciprocal space for the Pb atom, s orbital, second band and the x and y spin components.
+        >>> calculation.band.to_quiver("x~y(band[1])")
+        >>> calculation.band.to_quiver()
+
+        Select the Ba atom, the third band, the x and z spin components, then sum over all orbitals:
+
+        >>> calculation.band.to_quiver("Ba(sigma_1~sigma_3(band[3]))")
+
+        Select the Pb atom, s orbital, second band and the x and y spin components:
 
         >>> calculation.band.to_quiver("Pb(s(band[2](sigma_x~sigma_y)))")
+
+        Select the 4th atom in the POSCAR file, d orbitals, the second band and the y and z spin components.
+        The plot is shown for a 3x3 supercell:
+
+        >>> calculation.band.to_quiver(selection="4(d(y~z(band[2])))", supercell=3)
         """
         #raise exception.NotImplemented("to_quiver is not fully implemented")
         scale = self._raw_data.dispersion.kpoints.cell.scale
