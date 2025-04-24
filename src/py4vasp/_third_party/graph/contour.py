@@ -116,7 +116,7 @@ class Contour(trace.Trace):
         x, y = np.array([sum(points) for points in itertools.product(*meshes)]).T
         u = scale * subsampled_data[:, :, 0].flatten()
         v = scale * subsampled_data[:, :, 1].flatten()
-        fig = ff.create_quiver(x, y, u, v, scale=1)
+        fig = ff.create_quiver(x - 0.5 * u, y - 0.5 * v, u, v, scale=1)
         fig.data[0].line.color = _config.VASP_COLORS["dark"]
         return fig.data[0]
 
@@ -190,7 +190,7 @@ class Contour(trace.Trace):
         if self.lattice.cut is None:
             return []
         vectors = self.lattice.vectors
-        labels = tuple("abc".replace(self.lattice.cut, ""))
+        labels = self.lattice.map_raw_labels(tuple("abc".replace(self.lattice.cut, "")))
         return [
             {
                 "text": label,

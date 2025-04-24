@@ -5,7 +5,7 @@ from typing import Union
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._calculation import _dispersion, _cell, base, projector
+from py4vasp._calculation import _cell, _dispersion, base, projector
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_, index, select, slicing
 
@@ -254,7 +254,9 @@ class Band(base.Refinery, graph.Mixin):
         return pd.DataFrame(self._extract_relevant_data(selection))
 
     @base.data_access
-    @documentation.format(selection_doc=projector.selection_doc)
+    @documentation.format(
+        selection_doc=projector.selection_doc, common_parameters=_COMMON_PARAMETERS
+    )
     def to_quiver(
         self,
         selection: str = "x~y(band[1])",
@@ -266,7 +268,7 @@ class Band(base.Refinery, graph.Mixin):
         The plane cut will be determined from the kpoints grid. One of the kpoint
         grid dimensions is required to be 1, and that direction will be cut.
 
-        The spin texture can only be visualized for noncollinear calculations, 
+        The spin texture can only be visualized for noncollinear calculations,
         and is projected into the plane.
 
         Parameters
@@ -305,15 +307,26 @@ class Band(base.Refinery, graph.Mixin):
         The plot is shown for a 3x3 supercell:
 
         >>> calculation.band.to_quiver(selection="4(d(y~z(band[2])))", supercell=3)
+
+        Select x & y spin components and the first band (default), sum over atoms and orbitals.
+        Plot a 2x4 supercell, and rotate the plane normal to align with the nearest coordinate axis.
+
+        >>> calculation.band.to_quiver(supercell=np.array([2, 4]), normal="auto")
+
+        Select x & y spin components and the first band (default), sum over atoms and orbitals.
+        Rotate the plane normal to align with the y coordinate axis.
+
+        >>> calculation.band.to_quiver(normal="y")
         """
-        #raise exception.NotImplemented("to_quiver is not fully implemented")
+        # raise exception.NotImplemented("to_quiver is not fully implemented")
         scale = self._raw_data.dispersion.kpoints.cell.scale
         latt_vecs = scale * self._raw_data.dispersion.kpoints.cell.lattice_vectors
-        if (latt_vecs.shape[0] == 1): latt_vecs = latt_vecs[0]
+        if latt_vecs.shape[0] == 1:
+            latt_vecs = latt_vecs[0]
         nkp1, nkp2, cut = self._kmesh()
-        #latt_vecs = _cell.Cell.from_data(self._raw_data.dispersion.kpoints.cell).lattice_vectors()
+        # latt_vecs = _cell.Cell.from_data(self._raw_data.dispersion.kpoints.cell).lattice_vectors()
         V: float = np.dot(latt_vecs[0], np.cross(latt_vecs[1], latt_vecs[2]))
-        reciprocal_lattice_vectors = (2.0 * np.pi / V) * np.array( 
+        reciprocal_lattice_vectors = (2.0 * np.pi / V) * np.array(
             [
                 np.cross(latt_vecs[1], latt_vecs[2]),
                 np.cross(latt_vecs[2], latt_vecs[0]),
@@ -321,14 +334,20 @@ class Band(base.Refinery, graph.Mixin):
             ]
         )
         # Plane is defined by KPOINTS file
-        options = {"lattice": slicing.plane(reciprocal_lattice_vectors, cut, normal)}
+        options = {
+            "lattice": slicing.plane(
+                reciprocal_lattice_vectors, cut, normal, axis_labels=("b1", "b2", "b3")
+            )
+        }
         if supercell is not None:
             options["supercell"] = np.ones(2, dtype=np.int_) * supercell
         #
         selector = self._make_selector(self._raw_data.projections)
         tree = select.Tree.from_selection(selection)
         quiver_plots = [
-            graph.Contour(**self._quiver_plot(selector, selection, nkp1, nkp2), **options)
+            graph.Contour(
+                **self._quiver_plot(selector, selection, nkp1, nkp2), **options
+            )
             for selection in tree.selections()
         ]
         return graph.Graph(quiver_plots)
@@ -447,23 +466,31 @@ class Band(base.Refinery, graph.Mixin):
             data[key] = _to_series(value)
         return data
 
-
-    def _kmesh(self) -> tuple[int,int,str]:
+    def _kmesh(self) -> tuple[int, int, str]:
         """
         Returns a tuple of number of k-points in two directions as per spin selection,
         and the corresponding cut direction in which the kpoint mesh is 1.
         """
-        try: 
+        try:
             nkpx = self._raw_data.dispersion.kpoints.number_x
             nkpy = self._raw_data.dispersion.kpoints.number_y
             nkpz = self._raw_data.dispersion.kpoints.number_z
-            
-            if (nkpx == 1): return (nkpy, nkpz, "a")
-            elif (nkpy == 1): return (nkpx, nkpz, "b")
-            elif (nkpz == 1): return (nkpx, nkpy, "c")
-            else: raise exception.DataMismatch(f"For spin texture visualisation, the plane normal (a,b,c) to the desired cutting plane must have exactly 1 k-point, but the k-point mesh is {nkpx},{nkpy},{nkpz}. Please adjust the KPOINTS file and re-run VASP.")
+
+            if nkpx == 1:
+                return (nkpy, nkpz, "a")
+            elif nkpy == 1:
+                return (nkpx, nkpz, "b")
+            elif nkpz == 1:
+                return (nkpx, nkpy, "c")
+            else:
+                raise exception.DataMismatch(
+                    f"For spin texture visualisation, the plane normal (a,b,c) to the desired cutting plane must have exactly 1 k-point, but the k-point mesh is {nkpx},{nkpy},{nkpz}. Please adjust the KPOINTS file and re-run VASP."
+                )
         except exception.NoData:
-            raise exception.DataMismatch(f"For spin texture visualisation, a k-point grid is assumed, but could not be found for this VASP run.")
+            raise exception.DataMismatch(
+                f"For spin texture visualisation, a k-point grid is assumed, but could not be found for this VASP run."
+            )
+
 
 def _to_series(array):
     return array.T.flatten()
@@ -474,12 +501,16 @@ class _ToQuiverReduction(index.Reduction):
         # raise an IncorrectUsage Warning if:
         #   - no spin elements have been chosen
         #   - no band has been chosen
-        if not(keys[0]): 
-            raise exception.IncorrectUsage("Spin Elements must be chosen, but none are given. Please adapt your `selection` argument to include, e.g., `x~y`. You can combine arguments by `arg1(arg2(arg3(...)))`.")
+        if not (keys[0]):
+            raise exception.IncorrectUsage(
+                "Spin Elements must be chosen, but none are given. Please adapt your `selection` argument to include, e.g., `x~y`. You can combine arguments by `arg1(arg2(arg3(...)))`."
+            )
         if not (keys[4]):
-            raise exception.IncorrectUsage("A band must be chosen, but none are given. Please adapt your `selection` argument to include, e.g., `band[1]`. You can combine arguments by `arg1(arg2(arg3(...)))`.")
+            raise exception.IncorrectUsage(
+                "A band must be chosen, but none are given. Please adapt your `selection` argument to include, e.g., `band[1]`. You can combine arguments by `arg1(arg2(arg3(...)))`."
+            )
         pass
 
     def __call__(self, array, axis):
-        axis = tuple(filter(None, axis)) # prevents summation along 0-axis
+        axis = tuple(filter(None, axis))  # prevents summation along 0-axis
         return np.sum(array, axis=axis)
