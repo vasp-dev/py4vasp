@@ -5,7 +5,7 @@ from typing import Union
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._calculation import _cell, _dispersion, base, projector
+from py4vasp._calculation import _dispersion, base, projector
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_, index, select, slicing
 
