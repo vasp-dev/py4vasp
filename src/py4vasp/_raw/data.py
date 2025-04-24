@@ -333,6 +333,12 @@ class Kpoint:
     "Weight of the **k** points used for integration."
     cell: Cell
     "Unit cell of the crystal."
+    number_x: int = NONE()
+    "The number of kpoints in x direction."
+    number_y: int = NONE()
+    "The number of kpoints in y direction."
+    number_z: int = NONE()
+    "The number of kpoints in z direction."
     labels: VaspData = NONE()
     "High symmetry label for specific **k** points used in band structures."
     label_indices: VaspData = NONE()

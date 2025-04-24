@@ -288,6 +288,8 @@ class Band(base.Refinery, graph.Mixin):
         #raise exception.NotImplemented("to_quiver is not fully implemented")
         scale = self._raw_data.dispersion.kpoints.cell.scale
         latt_vecs = scale * self._raw_data.dispersion.kpoints.cell.lattice_vectors
+        if (latt_vecs.shape[0] == 1): latt_vecs = latt_vecs[0]
+        nkp1, nkp2, cut = self._kmesh()
         #latt_vecs = _cell.Cell.from_data(self._raw_data.dispersion.kpoints.cell).lattice_vectors()
         V: float = np.dot(latt_vecs[0], np.cross(latt_vecs[1], latt_vecs[2]))
         reciprocal_lattice_vectors = (2.0 * np.pi / V) * np.array( 
@@ -298,21 +300,21 @@ class Band(base.Refinery, graph.Mixin):
             ]
         )
         # Plane is defined by KPOINTS file
-        options = {"lattice": slicing.plane(reciprocal_lattice_vectors, "c", normal)}
+        options = {"lattice": slicing.plane(reciprocal_lattice_vectors, cut, normal)}
         if supercell is not None:
             options["supercell"] = np.ones(2, dtype=np.int_) * supercell
         #
         selector = self._make_selector(self._raw_data.projections)
         tree = select.Tree.from_selection(selection)
         quiver_plots = [
-            graph.Contour(**self._quiver_plot(selector, selection), **options)
+            graph.Contour(**self._quiver_plot(selector, selection, nkp1, nkp2), **options)
             for selection in tree.selections()
         ]
         return graph.Graph(quiver_plots)
 
-    def _quiver_plot(self, selector, selection):
+    def _quiver_plot(self, selector, selection, nkp1, nkp2):
         data = selector[selection]
-        data = data.reshape(2, 4, 3)
+        data = data.reshape(2, nkp1, nkp2)
         label = "spin texture " + selector.label(selection)
         return {"data": data, "label": label}
 
@@ -424,6 +426,23 @@ class Band(base.Refinery, graph.Mixin):
             data[key] = _to_series(value)
         return data
 
+
+    def _kmesh(self) -> tuple[int,int,str]:
+        """
+        Returns a tuple of number of k-points in two directions as per spin selection,
+        and the corresponding cut direction in which the kpoint mesh is 1.
+        """
+        try: 
+            nkpx = self._raw_data.dispersion.kpoints.number_x
+            nkpy = self._raw_data.dispersion.kpoints.number_y
+            nkpz = self._raw_data.dispersion.kpoints.number_z
+            
+            if (nkpx == 1): return (nkpy, nkpz, "a")
+            elif (nkpy == 1): return (nkpx, nkpz, "b")
+            elif (nkpz == 1): return (nkpx, nkpy, "c")
+            else: raise exception.DataMismatch(f"For spin texture visualisation, the plane normal (a,b,c) to the desired cutting plane must have exactly 1 k-point, but the k-point mesh is {nkpx},{nkpy},{nkpz}. Please adjust the KPOINTS file and re-run VASP.")
+        except exception.NoData:
+            raise exception.DataMismatch(f"For spin texture visualisation, a k-point grid is assumed, but could not be found for this VASP run.")
 
 def _to_series(array):
     return array.T.flatten()
