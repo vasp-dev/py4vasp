@@ -214,6 +214,9 @@ def test_incorrect_reading_of_projections(Sr2TiO4):
         Sr2TiO4.project("Sr", np.zeros(3))
 
 
+@pytest.mark.parametrize("selection", ("sigma_x"))
+def test_spin_component_selected(Ba2PbO4):
+
 def test_selections_Sr2TiO4(Sr2TiO4):
     p_orbitals = ["p", "px", "py", "pz"]
     d_orbitals = ["d", "dx2y2", "dxy", "dxz", "dyz", "dz2"]

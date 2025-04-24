@@ -333,6 +333,20 @@ def test_line_with_labels_plot(line_with_labels, Assert):
     assert tuple(fig.xticks.values()) == (r"$\Gamma$", "", r"M|$\Gamma$", "Y", "M")
 
 
+def test_noncollinear_plot(noncollinear_projectors, Assert):
+    default_width = 0.5
+    fig = noncollinear_projectors.plot("total sigma_x")
+    assert len(fig.series) == 2
+    assert fig.series[0].label == "total"
+    reference = noncollinear_projectors.ref
+    Assert.allclose(fig.series[0].weight, default_width * reference.total.T)
+    assert fig.series[0].marker is None
+    assert fig.series[1].label == "sigma_x"
+    Assert.allclose(fig.series[1].weight, reference.sigma_x.T)
+    assert fig.series[1].marker == "o"
+    assert fig.series[1].weight_mode == "color"
+
+
 def check_ticks(fig, kpoints, Assert):
     dists = kpoints.distances()
     xticks = (*dists[:: kpoints.line_length()], dists[-1])

@@ -57,7 +57,7 @@ class Band(base.Refinery, graph.Mixin):
     @base.data_access
     def __str__(self):
         return f"""
-{"spin polarized" if self._spin_polarized() else ""} band data:
+{"spin polarized" if self._is_collinear() else ""} band data:
     {self._raw_data.dispersion.eigenvalues.shape[1]} k-points
     {self._raw_data.dispersion.eigenvalues.shape[2]} bands
 {pretty.pretty(self._projector())}
@@ -331,7 +331,7 @@ class Band(base.Refinery, graph.Mixin):
         )
 
     def _spin_map(self, spin_map):
-        if "sigma_x" not in spin_map:
+        if not self._is_noncollinear():
             # Spin Texture only makes sense for non-collinear systems
             raise exception.DataMismatch(
                 "System is not noncollinear which is required to visualize spin texture."
@@ -363,8 +363,13 @@ class Band(base.Refinery, graph.Mixin):
         else:
             return 1.0
 
-    def _spin_polarized(self):
+    def _is_collinear(self):
         return len(self._raw_data.dispersion.eigenvalues) == 2
+
+    def _is_noncollinear(self):
+        message = "If there are no projections, we cannot use them to check whether the system is noncollinear."
+        assert not check.is_none(self._raw_data.projections), message
+        return len(self._raw_data.projections) == 4
 
     def _dispersion(self):
         return _dispersion.Dispersion.from_data(self._raw_data.dispersion)
@@ -386,7 +391,7 @@ class Band(base.Refinery, graph.Mixin):
         return self._projector().project(selection, self._raw_data.projections)
 
     def _read_occupations(self):
-        if self._spin_polarized():
+        if self._is_collinear():
             return {
                 "occupations_up": self._raw_data.occupations[0],
                 "occupations_down": self._raw_data.occupations[1],
