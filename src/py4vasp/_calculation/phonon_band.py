@@ -85,8 +85,7 @@ class PhononBand(phonon.Mixin, base.Refinery, graph.Mixin):
         maps = {2: self._init_atom_dict(), 3: self._init_direction_dict()}
         selector = index.Selector(maps, np.abs(self._modes()), use_number_labels=True)
         tree = select.Tree.from_selection(selection)
-        Projection = _dispersion.Dispersion.Projection
-        return [
-            Projection(selector.label(selection), width * selector[selection])
+        return {
+            selector.label(selection): width * selector[selection]
             for selection in tree.selections()
-        ]
+        }
