@@ -4,6 +4,7 @@ import numpy as np
 
 import py4vasp._third_party.graph as _graph
 from py4vasp._calculation import base, kpoint
+from py4vasp._util import check
 
 
 class Dispersion(base.Refinery):
@@ -82,27 +83,31 @@ class Dispersion(base.Refinery):
 
 
 def _band_structure(data, projections):
-    return [_make_series(data, projection) for projection in projections.items()]
+    key_spin_projections = "spin_projections"
+    spin_projections = projections.get(key_spin_projections, [])
+    return [
+        _make_series(data, label, weight, label in spin_projections)
+        for label, weight in projections.items()
+        if label != key_spin_projections
+    ]
 
 
-def _make_series(data, projection):
-    name, weight = _get_name_and_weight(projection)
+def _make_series(data, label, weight, is_spin_projection):
+    print(label, is_spin_projection)
+    options = {}
+    if not check.is_none(weight):
+        options["weight"] = weight.T
+    if is_spin_projection:
+        options["weight_mode"] = "color"
     x = data["kpoint_distances"]
-    y = _get_bands(data["eigenvalues"], name)
-    return _graph.Series(x, y, name, weight=weight)
+    y = _get_bands(data["eigenvalues"], label)
+    return _graph.Series(x, y, label, **options)
 
 
-def _get_name_and_weight(projection):
-    name, weight = projection
-    if weight is not None:
-        weight = weight.T
-    return name, weight
-
-
-def _get_bands(eigenvalues, name):
+def _get_bands(eigenvalues, label):
     if eigenvalues.ndim == 2:
         return eigenvalues.T
-    elif "down" in name:
+    elif "down" in label:
         return eigenvalues[1].T
     else:
         return eigenvalues[0].T

@@ -80,8 +80,10 @@ def test_plot_dispersion_with_projections(dispersion, Assert):
         projections = {
             "one": np.random.uniform(low=0.1, high=0.5, size=shape),
             "two": np.random.uniform(low=0.1, high=0.5, size=shape),
+            "spin_projections": ["two"],
         }
     graph = dispersion.plot(projections)
+    spin_projections = projections.pop("spin_projections", [])
     assert len(graph.series) == len(projections)
     check_xticks(graph.xticks, dispersion.ref, Assert)
     bands = np.atleast_3d(dispersion.ref.eigenvalues.T)
@@ -91,6 +93,11 @@ def test_plot_dispersion_with_projections(dispersion, Assert):
         Assert.allclose(series.y, bands[:, :, component])
         assert series.label == label
         Assert.allclose(series.weight, weight.T)
+        print(label, spin_projections, label in spin_projections)
+        if label in spin_projections:
+            assert series.weight_mode == "color"
+        else:
+            assert series.weight_mode == "size"
 
 
 def test_print(dispersion, format_):
