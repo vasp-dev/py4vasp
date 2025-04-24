@@ -16,26 +16,26 @@ px = import_.optional("plotly.express")
 @pytest.fixture
 def parabola():
     x = np.linspace(0, 2, 50)
-    return Series(x=x, y=x**2, name="parabola")
+    return Series(x=x, y=x**2, label="parabola")
 
 
 @pytest.fixture
 def sine():
     x = np.linspace(0, np.pi, 50)
-    return Series(x=x, y=np.sin(x), name="sine", marker="o")
+    return Series(x=x, y=np.sin(x), label="sine", marker="o")
 
 
 @pytest.fixture
 def two_lines():
     x = np.linspace(0, 3, 30)
     y = np.linspace((0, 4), (1, 3), 30).T
-    return Series(x=x, y=y, name="two lines")
+    return Series(x=x, y=y, label="two lines")
 
 
 @pytest.fixture
 def fatband():
     x = np.linspace(-1, 1, 40)
-    return Series(x=x, y=np.abs(x), width=x**2, name="fatband")
+    return Series(x=x, y=np.abs(x), width=x**2, label="fatband")
 
 
 @pytest.fixture
@@ -43,7 +43,7 @@ def two_fatbands():
     x = np.linspace(0, 3, 30)
     y = np.array((x**2, x**3))
     width = np.sqrt(y)
-    return Series(x=x, y=y, width=width, name="two fatbands")
+    return Series(x=x, y=y, width=width, label="two fatbands")
 
 
 @pytest.fixture
@@ -89,6 +89,18 @@ def simple_quiver():
         data=np.array([[(y, x) for x in range(3)] for y in range(5)]).T,
         lattice=slicing.Plane(np.diag((3, 5)), cut="a"),
         label="quiver plot",
+        scale_arrows=1.7,
+    )
+
+
+@pytest.fixture
+def dense_quiver():
+    return Contour(
+        data=np.linspace(-4, 2, 2 * 41 * 25).reshape((2, 41, 25)),
+        lattice=slicing.Plane(np.diag((4, 2)), cut="b"),
+        supercell=(2, 3),
+        label="quiver plot",
+        scale_arrows=0.5,
     )
 
 
@@ -120,7 +132,7 @@ def test_two_series(parabola, sine, Assert, not_core):
 def compare_series(converted, original, Assert):
     Assert.allclose(converted.x, original.x)
     Assert.allclose(converted.y, original.y)
-    assert converted.name == original.name
+    assert converted.name == original.label
 
 
 def test_axis_label(parabola, not_core):
@@ -143,7 +155,7 @@ def test_secondary_yaxis(parabola, sine, Assert, not_core):
 
 
 def check_legend_group(converted, original, first_trace):
-    assert converted.legendgroup == original.name
+    assert converted.legendgroup == original.label
     assert converted.showlegend == first_trace
 
 
@@ -153,7 +165,7 @@ def test_two_lines(two_lines, Assert, not_core):
     assert len(fig.data) == 2
     first_trace = True
     for converted, y in zip(fig.data, two_lines.y):
-        original = Series(x=two_lines.x, y=y, name=two_lines.name)
+        original = Series(x=two_lines.x, y=y, label=two_lines.label)
         compare_series(converted, original, Assert)
         check_legend_group(converted, original, first_trace)
         if first_trace:
@@ -169,7 +181,7 @@ def compare_series_with_width(converted, original, Assert):
     expected = Series(
         x=np.concatenate((original.x, original.x[::-1])),
         y=np.concatenate((lower, upper[::-1])),
-        name=original.name,
+        label=original.label,
     )
     compare_series(converted, expected, Assert)
     assert converted.mode == "none"
@@ -190,7 +202,7 @@ def test_two_fatbands(two_fatbands, Assert, not_core):
     assert len(fig.data) == 2
     first_trace = True
     for converted, y, w in zip(fig.data, two_fatbands.y, two_fatbands.width):
-        original = Series(x=two_fatbands.x, y=y, width=w, name=two_fatbands.name)
+        original = Series(x=two_fatbands.x, y=y, width=w, label=two_fatbands.label)
         compare_series_with_width(converted, original, Assert)
         check_legend_group(converted, original, first_trace)
         if first_trace:
@@ -227,7 +239,7 @@ def test_two_fatband_with_marker(two_fatbands, Assert, not_core):
     assert fig.layout.legend.itemsizing == "constant"
     assert len(fig.data) == 2
     for converted, y, w in zip(fig.data, two_fatbands.y, two_fatbands.width):
-        original = Series(x=two_fatbands.x, y=y, name=two_fatbands.name)
+        original = Series(x=two_fatbands.x, y=y, label=two_fatbands.label)
         compare_series(converted, original, Assert)
         assert converted.mode == "markers"
         Assert.allclose(converted.marker.size, w)
@@ -251,12 +263,16 @@ def test_title(parabola, not_core):
 
 
 def test_merging_of_fields_of_graph(sine, parabola):
-    init_all_fields = {field.name: field.name for field in dataclasses.fields(Graph)}
-    init_all_fields.pop("series")
+    skipped_fields = ("series", "xsize", "ysize")
+    init_all_fields = {
+        field.name: field.name
+        for field in dataclasses.fields(Graph)
+        if field.name not in skipped_fields
+    }
     graph1 = Graph(sine, **init_all_fields)
     graph2 = Graph(parabola)
     for field in dataclasses.fields(Graph):
-        if field.name == "series":
+        if field.name in skipped_fields:
             continue
         # if only one side is defined, use that one
         graph = graph1 + graph2
@@ -314,8 +330,8 @@ def test_add_label_to_single_line(parabola, Assert):
     assert len(graph.series) == 1
     Assert.allclose(graph.series[0].x, parabola.x)
     Assert.allclose(graph.series[0].y, parabola.y)
-    assert graph.series[0].name == "new label"
-    assert parabola.name == "parabola"
+    assert graph.series[0].label == "new label"
+    assert parabola.label == "parabola"
 
 
 def test_add_label_to_multiple_lines(parabola, sine, Assert):
@@ -323,10 +339,10 @@ def test_add_label_to_multiple_lines(parabola, sine, Assert):
     assert len(graph.series) == 2
     Assert.allclose(graph.series[0].x, parabola.x)
     Assert.allclose(graph.series[0].y, parabola.y)
-    assert graph.series[0].name == "new label parabola"
+    assert graph.series[0].label == "new label parabola"
     Assert.allclose(graph.series[1].x, sine.x)
     Assert.allclose(graph.series[1].y, sine.y)
-    assert graph.series[1].name == "new label sine"
+    assert graph.series[1].label == "new label sine"
 
 
 def test_convert_parabola_to_frame(parabola, Assert, not_core):
@@ -461,6 +477,15 @@ def test_contour_supercell(rectangle_contour, Assert, not_core):
     check_annotations(rectangle_contour.lattice, fig.layout.annotations, Assert)
 
 
+@pytest.mark.parametrize("show_contour_values", [True, False, None])
+def test_contour_show_contour_values(rectangle_contour, show_contour_values, not_core):
+    rectangle_contour.show_contour_values = show_contour_values
+    graph = Graph(rectangle_contour)
+    fig = graph.to_plotly()
+    assert len(fig.data) == 1
+    assert fig.data[0].contours.showlabels == show_contour_values
+
+
 def check_unit_cell(unit_cell, x, y, zero):
     assert unit_cell.type == "path"
     assert unit_cell.path == f"M 0 0 L {x} {zero} L {x} {y} L {zero} {y} Z"
@@ -516,52 +541,111 @@ def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
 
 def test_simple_quiver(simple_quiver, Assert, not_core):
     graph = Graph(simple_quiver)
+    assert simple_quiver.max_number_arrows is None
+    expected_positions = compute_positions(simple_quiver)
+    work = simple_quiver.scale_arrows * simple_quiver.data.T.reshape(-1, 2)
+    expected_tips = expected_positions + work
+    expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
+    #
     fig = graph.to_plotly()
     data_size = simple_quiver.data.size // 2
     assert len(fig.data) == 1
     actual = split_data(fig.data[0], data_size, Assert)
-    arrows = actual.tips - actual.positions
-    for (x, y), (u, v) in zip(actual.positions, arrows):
-        Assert.allclose(x, v)
-        Assert.allclose(y, u)
     assert len(fig.layout.shapes) == 1
     check_unit_cell(fig.layout.shapes[0], x="3", y="5", zero="0")
     check_annotations(simple_quiver.lattice, fig.layout.annotations, Assert)
     assert fig.layout.yaxis.scaleanchor == "x"
+    assert fig.data[0].line.color == _config.VASP_COLORS["dark"]
+    Assert.allclose(actual.positions, expected_positions)
+    Assert.allclose(actual.tips, expected_tips)
+    Assert.allclose(actual.barb_length, expected_barb_length)
+
+
+@pytest.mark.parametrize("max_number_arrows", (1025, 1024, 680))
+def test_dense_quiver(dense_quiver, max_number_arrows, Assert, not_core):
+    dense_quiver.max_number_arrows = max_number_arrows
+    if max_number_arrows == 1024:
+        expected_shape = (28, 25)
+        subsampling = (3, 3)
+    elif max_number_arrows == 1025:
+        expected_shape = (41, 25)
+        subsampling = (2, 3)
+    elif max_number_arrows == 680:
+        expected_shape = (28, 19)
+        subsampling = (3, 4)
+    else:
+        raise NotImplemented
+    graph = Graph(dense_quiver)
+    work = dense_quiver.scale_arrows * dense_quiver.data
+    work = np.block([[work, work, work], [work, work, work]]).T
+    # remember that a and b are transposed
+    work = work[:: subsampling[1], :: subsampling[0]]
+    expected_positions = compute_positions(dense_quiver, subsampling)
+    expected_tips = expected_positions + work.reshape(expected_positions.shape)
+    expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
+    data_size = np.prod(expected_shape)
+    #
+    fig = graph.to_plotly()
+    assert len(fig.data) == 1
+    actual = split_data(fig.data[0], data_size, Assert)
+    Assert.allclose(actual.positions, expected_positions)
+    Assert.allclose(actual.tips, expected_tips)
+    Assert.allclose(actual.barb_length, expected_barb_length)
 
 
 def test_complex_quiver(complex_quiver, Assert, not_core):
     graph = Graph(complex_quiver)
-    fig = graph.to_plotly()
-    data_size = np.prod(complex_quiver.supercell) * complex_quiver.data.size // 2
-    vectors = np.array(complex_quiver.lattice.vectors)
-    step_a = vectors[0] / complex_quiver.data.shape[1]
-    mesh_a = np.arange(complex_quiver.supercell[0] * complex_quiver.data.shape[1])
-    step_b = vectors[1] / complex_quiver.data.shape[2]
-    mesh_b = np.arange(complex_quiver.supercell[1] * complex_quiver.data.shape[2])
-    expected_positions = np.array(
-        [a * step_a + b * step_b for b in mesh_b for a in mesh_a]
-    )
-    work = complex_quiver.data
+    expected_scale = 0.10015332542313245
+    work = expected_scale * complex_quiver.data
     work = np.block([[work, work], [work, work], [work, work]]).T
+    expected_positions = compute_positions(complex_quiver)
     expected_tips = expected_positions + work.reshape(expected_positions.shape)
     expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
+    data_size = np.prod(complex_quiver.supercell) * complex_quiver.data.size // 2
     #
+    fig = graph.to_plotly()
     assert len(fig.data) == 1
     actual = split_data(fig.data[0], data_size, Assert)
-    Assert.allclose(actual.positions, expected_positions, tolerance=10)
-    Assert.allclose(actual.tips, expected_tips, tolerance=10)
+    Assert.allclose(actual.positions, expected_positions)
+    Assert.allclose(actual.tips, expected_tips)
     Assert.allclose(actual.barb_length, expected_barb_length)
     assert len(fig.layout.annotations) == 0
+
+
+def test_width_and_height(parabola, not_core):
+    fig = Graph(parabola).to_plotly()
+    assert fig.layout.width == 720
+    assert fig.layout.height == 540
+    fig = Graph(parabola, xsize=800, ysize=600).to_plotly()
+    assert fig.layout.width == 800
+    assert fig.layout.height == 600
+
+
+def test_range_for_x_and_y_axis(parabola, Assert, not_core):
+    fig = Graph(parabola).to_plotly()
+    assert fig.layout.xaxis.range is None
+    assert fig.layout.yaxis.range is None
+    graph = Graph(parabola, xrange=[-1.5, 7.2], yrange=(2.1, 4.3))
+    fig = graph.to_plotly()
+    Assert.allclose(fig.layout.xaxis.range, graph.xrange)
+    Assert.allclose(fig.layout.yaxis.range, graph.yrange)
 
 
 @dataclasses.dataclass
 class ContourData:
     positions: np.ndarray = None
-    first_tips: np.ndarray = None
-    second_tips: np.ndarray = None
-    first_barb_length: np.ndarray = None
-    second_barb_length: np.ndarray = None
+    tips: np.ndarray = None
+    barb_length: np.ndarray = None
+
+
+def compute_positions(contour, subsampling=(1, 1)):
+    step_a = np.divide(contour.lattice.vectors[0], contour.data.shape[1])
+    step_b = np.divide(contour.lattice.vectors[1], contour.data.shape[2])
+    shape = np.multiply(contour.supercell, contour.data.shape[1:])
+    # remember that the data is transposed
+    range_a = range(0, shape[0], subsampling[0])
+    range_b = range(0, shape[1], subsampling[1])
+    return np.array([a * step_a + b * step_b for b in range_b for a in range_a])
 
 
 def split_data(data, data_size, Assert):
@@ -596,3 +680,7 @@ def split_data(data, data_size, Assert):
     other_barb_length = np.linalg.norm(other_barb - actual.tips, axis=-1)
     Assert.allclose(other_barb_length, actual.barb_length, tolerance=10)
     return actual
+
+
+def test_no_common_names():
+    assert set(Graph._fields).intersection(Series._fields) == set()

@@ -92,6 +92,8 @@ class VaspData(np.lib.mixins.NDArrayOperatorsMixin):
 
     def astype(self, *args, **kwargs):
         "Copy of the array, cast to a specified type."
+        if self.is_none():
+            return self
         return self.data.astype(*args, **kwargs)
 
 

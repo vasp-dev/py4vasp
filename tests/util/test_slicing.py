@@ -179,4 +179,4 @@ def test_slice_grid_vector_nontrivial_cell(cut, index, Assert):
             [[a * plane.vectors[0] + b * plane.vectors[1] for a in alpha] for b in beta]
         ).T
     actual_data = slicing.grid_vector(grid_vector, plane, fraction)
-    Assert.allclose(actual_data, expected_data, tolerance=3)
+    Assert.allclose(actual_data, expected_data)

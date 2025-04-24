@@ -31,12 +31,20 @@ class Graph(Sequence):
     "One or more series shown in the graph."
     xlabel: str = None
     "Label for the x axis."
+    xrange: tuple = None
+    "Reduce the x axis to this interval."
     xticks: dict = None
     "A dictionary specifying positions and labels where ticks are placed on the x axis."
+    xsize: int = 720
+    "Width of the resulting figure."
     ylabel: str = None
     "Label for the y axis."
+    yrange: tuple = None
+    "Reduce the y axis to this interval."
     y2label: str = None
     "Label for the secondary y axis."
+    ysize: int = 540
+    "Height of the resulting figure."
     title: str = None
     "Title of the graph."
     _frozen = False
@@ -103,8 +111,8 @@ class Graph(Sequence):
 
     def _make_label(self, series, new_label):
         if len(self) > 1:
-            new_label = f"{new_label} {series.name}"
-        return replace(series, name=new_label)
+            new_label = f"{new_label} {series.label}"
+        return replace(series, label=new_label)
 
     def _ipython_display_(self):
         self.to_plotly()._ipython_display_()
@@ -120,6 +128,9 @@ class Graph(Sequence):
         self._set_xaxis_options(figure)
         self._set_yaxis_options(figure)
         figure.layout.title.text = self.title
+        if self.xsize:
+            figure.layout.width = self.xsize
+        figure.layout.height = self.ysize
         figure.layout.legend.itemsizing = "constant"
         return figure
 
@@ -147,6 +158,8 @@ class Graph(Sequence):
             figure.layout.xaxis.tickmode = "array"
             figure.layout.xaxis.tickvals = tuple(self.xticks.keys())
             figure.layout.xaxis.ticktext = self._xtick_labels()
+        if self.xrange:
+            figure.layout.xaxis.range = self.xrange
         if self._all_are_contour():
             figure.layout.xaxis.visible = False
 
@@ -163,11 +176,12 @@ class Graph(Sequence):
             figure.layout.yaxis.title.text = self.ylabel
             if self.y2label:
                 figure.layout.yaxis2.title.text = self.y2label
+        if self.yrange:
+            figure.layout.yaxis.range = self.yrange
         if self._all_are_contour():
             figure.layout.yaxis.visible = False
         if self._any_are_contour():
             figure.layout.yaxis.scaleanchor = "x"
-            figure.layout.height = 500
 
     def _all_are_contour(self):
         return all(isinstance(series, Contour) for series in self)
@@ -220,8 +234,8 @@ class Graph(Sequence):
         return df
 
     def _name_column(self, series, suffix, idx=None):
-        if series.name:
-            text_suffix = series.name.replace(" ", "_") + f".{suffix}"
+        if series.label:
+            text_suffix = series.label.replace(" ", "_") + f".{suffix}"
         else:
             text_suffix = "series_" + str(uuid.uuid1())
         if series.y.ndim == 1 or idx is None:

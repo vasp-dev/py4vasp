@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-""" Select indices from an array based on a map.
+"""Select indices from an array based on a map.
 
 In multiple cases, VASP produces multiple outputs and the user wants to select one of
 its components e.g. plotting the p DOS. This module provides the Selector class that
@@ -26,6 +26,7 @@ and `data[:,1,1]`, respectively. The last selection is equivalent to
 `np.sum(data[:,:,2], axis=-1)` because we sum over all dimensions mentioned as keys
 in `maps`.
 """
+import abc
 import dataclasses
 import itertools
 
@@ -33,6 +34,18 @@ import numpy as np
 
 from py4vasp import exception, raw
 from py4vasp._util import select
+
+
+class Reduction(abc.ABC):
+    @abc.abstractmethod
+    def __init__(self, keys):
+        "The keys for each dimension are passed into the reduction to allow for dynamic behavior."
+        pass
+
+    @abc.abstractmethod
+    def __call__(self, array, axis):
+        "The behavior should be similar to `np.sum`."
+        pass
 
 
 class Selector:
@@ -52,7 +65,8 @@ class Selector:
     reduction : function
         The function used to reduce over the dimensions listed in the map. If not
         specified a summation is performed. Note that the function must have an axis
-        argument with the same meaning as `np.sum`.
+        argument with the same meaning as `np.sum`. For more complicated cases, you
+        can inherit from the Reduction class.
     use_number_labels :  bool
         If set numbers will be replaced by the corresponding label of the slice. If you
         have e.g. the label *A* corresponding to the first three elements and *1*
@@ -128,7 +142,7 @@ class Selector:
             i.e., ndim of the result = ndim of data - len(maps).
         """
         return sum(
-            slices.factor * self._reduction(self._data[slices.indices], axis=self._axes)
+            slices.reduce(self._data, self._reduction, axis=self._axes)
             for slices in self._get_all_slices(selection)
         )
 
@@ -256,7 +270,7 @@ class _Slices:
         self._default = indices
         self._indices = indices.copy()
         self._keys = [""] * len(indices)
-        self.factor = 1
+        self._factor = 1
 
     @classmethod
     def from_merge(cls, left, right):
@@ -265,7 +279,7 @@ class _Slices:
         slices._default = left._default
         slices._indices = _merge_indices(left._default, left._indices, right._indices)
         slices._keys = _merge_keys(left._keys, right._keys)
-        slices.factor = left.factor * right.factor
+        slices._factor = left._factor * right._factor
         return slices
 
     def set(self, dimension, slice_, key):
@@ -274,18 +288,20 @@ class _Slices:
         return self
 
     def set_operator(self, operator):
-        self.factor *= 1 if operator == "+" else -1
+        self._factor *= 1 if operator == "+" else -1
         return self
 
-    @property
-    def indices(self):
-        return tuple(self._indices)
+    def reduce(self, data, reduction, axis):
+        if isinstance(reduction, type) and issubclass(reduction, Reduction):
+            keys = [str(key) for key in self._keys]
+            reduction = reduction(keys)
+        return self._factor * reduction(data[tuple(self._indices)], axis=axis)
 
     def label(self, index, axes, number_labels):
         if index == 0:
-            factor = "" if self.factor == 1 else "-"
+            factor = "" if self._factor == 1 else "-"
         else:
-            factor = "+ " if self.factor == 1 else "- "
+            factor = "+ " if self._factor == 1 else "- "
         return factor + "_".join(self._parse_keys(axes, number_labels))
 
     def _parse_keys(self, axes, number_labels):

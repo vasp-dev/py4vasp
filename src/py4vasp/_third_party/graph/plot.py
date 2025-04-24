@@ -4,7 +4,7 @@ from py4vasp._third_party.graph.graph import Graph
 from py4vasp._third_party.graph.series import Series
 
 
-def plot(*args, **kwargs):
+def plot(x, y, label=None, **kwargs):
     """Plot the given data, modifying the look with some optional arguments.
 
     The intent of this function is not to provide a full fledged plotting functionality
@@ -12,6 +12,17 @@ def plot(*args, **kwargs):
     similar look and feel for the tutorials and facilitates simple plots with a very
     minimal interface. Use a proper plotting library (e.g. matplotlib or plotly) to
     realize more advanced plots.
+
+    Parameters
+    ----------
+    x : np.ndarray
+        The x values of the coordinates.
+    y : np.ndarray
+        The y values of the coordinates.
+    label : str
+        If set this will be used to label the series.
+    **kwargs
+        All additional arguments will be passed to initialize Series and Graph.
 
     Returns
     -------
@@ -26,30 +37,17 @@ def plot(*args, **kwargs):
 
     Plot two series in the same graph
 
-    >>> plot((x1, y1), (x2, y2))
+    >>> plot(x1, y1) + plot(x2, y2)
 
     Attributes of the graph are modified by keyword arguments
 
     >>> plot(x, y, xlabel="xaxis", ylabel="yaxis")
     """
+    series = _parse_series(x, y, label, **kwargs)
     for_graph = {key: val for key, val in kwargs.items() if key in Graph._fields}
-    return Graph(_parse_series(*args, **kwargs), **for_graph)
+    return Graph(series, **for_graph)
 
 
-def _parse_series(*args, **kwargs):
-    if series := _parse_multiple_series(*args, **kwargs):
-        return series
-    else:
-        return _parse_single_series(*args, **kwargs)
-
-
-def _parse_multiple_series(*args, **kwargs):
-    try:
-        return [Series(*arg) for arg in args]
-    except TypeError:
-        return []
-
-
-def _parse_single_series(*args, **kwargs):
+def _parse_series(x, y, label, **kwargs):
     for_series = {key: val for key, val in kwargs.items() if key in Series._fields}
-    return Series(*args, **for_series)
+    return Series(x, y, label, **for_series)

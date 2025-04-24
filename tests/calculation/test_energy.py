@@ -6,14 +6,15 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import calculation, exception
+from py4vasp import exception
+from py4vasp._calculation.energy import Energy
 from py4vasp._util import convert
 
 
 @pytest.fixture
 def MD_energy(raw_data):
     raw_energy = raw_data.energy("MD")
-    energy = calculation.energy.from_data(raw_energy)
+    energy = Energy.from_data(raw_energy)
     energy.ref = types.SimpleNamespace()
     energy.ref.number_steps = len(raw_energy.values)
     get_label = lambda x: convert.text_to_string(x).strip()
@@ -63,7 +64,7 @@ def test_plot(selection, labels, subset, steps, MD_energy, Assert):
     for series, label, yy in zip(graph.series, labels, MD_energy.ref.values[subset]):
         Assert.allclose(series.x, xx[steps])
         Assert.allclose(series.y, yy[steps])
-        assert series.name == label
+        assert series.label == label
 
 
 @pytest.mark.parametrize(
@@ -96,7 +97,7 @@ def test_incorrect_label(MD_energy):
         MD_energy.plot(number_instead_of_string)
 
 
-@patch("py4vasp.calculation._energy.Energy.to_graph")
+@patch.object(Energy, "to_graph")
 def test_energy_to_plotly(mock_plot, MD_energy):
     fig = MD_energy.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
@@ -112,7 +113,7 @@ def test_to_image(MD_energy):
 
 
 def check_to_image(MD_energy, filename_argument, expected_filename):
-    with patch("py4vasp.calculation._energy.Energy.to_plotly") as plot:
+    with patch.object(Energy, "to_plotly") as plot:
         MD_energy.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
@@ -120,7 +121,9 @@ def check_to_image(MD_energy, filename_argument, expected_filename):
 
 
 def test_selections(MD_energy, raw_data):
-    assert MD_energy.selections() == (
+    md_selections = MD_energy.selections()
+    md_selections.pop("energy")
+    components = [
         "ion_electron",
         "TOTEN",
         "kinetic_energy",
@@ -135,15 +138,41 @@ def test_selections(MD_energy, raw_data):
         "EPS",
         "total_energy",
         "ETOTAL",
-    )
-    assert calculation.energy.from_data(raw_data.energy("relax")).selections() == (
+    ]
+    assert md_selections == {"component": components}
+    #
+    relax_selections = Energy.from_data(raw_data.energy("relax")).selections()
+    relax_selections.pop("energy")
+    components = [
         "free_energy",
         "TOTEN",
         "without_entropy",
         "ENOENT",
         "sigma_0",
         "ESIG0",
-    )
+    ]
+    assert relax_selections == {"component": components}
+    #
+    afqmc_selections = Energy.from_data(raw_data.energy("afqmc")).selections()
+    afqmc_selections.pop("energy")
+    components = [
+        "step",
+        "STEP",
+        "one_electron",
+        "E1",
+        "Hartree",
+        "hartree",
+        "DENC",
+        "exchange",
+        "EXHF",
+        "free_energy",
+        "TOTEN",
+        "cap",
+        "TOTENCAP",
+        "weight",
+        "WEIGHT",
+    ]
+    assert afqmc_selections == {"component": components}
 
 
 @pytest.mark.parametrize(
@@ -171,4 +200,4 @@ def test_print(steps, step_label, MD_energy, format_):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.energy("MD")
-    check_factory_methods(calculation.energy, data)
+    check_factory_methods(Energy, data)

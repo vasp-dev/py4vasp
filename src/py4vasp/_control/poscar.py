@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp import calculation
+from py4vasp._calculation.structure import Structure
 from py4vasp._control import base
 from py4vasp._third_party import view
 
@@ -36,5 +36,5 @@ class POSCAR(base.InputFile, view.Mixin):
         View
             Visualize the structure as a 3d figure.
         """
-        structure = calculation.structure.from_POSCAR(self, elements=elements)
+        structure = Structure.from_POSCAR(self, elements=elements)
         return structure.plot(supercell)

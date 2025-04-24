@@ -6,7 +6,8 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import calculation, exception
+from py4vasp import exception
+from py4vasp._calculation.bandgap import Bandgap
 
 VBM = 0
 CBM = 1
@@ -31,7 +32,7 @@ def spin_polarized(raw_data):
 
 
 def setup_bandgap(raw_gap):
-    bandgap = calculation.bandgap.from_data(raw_gap)
+    bandgap = Bandgap.from_data(raw_gap)
     bandgap.ref = types.SimpleNamespace()
     bandgap.ref.fundamental = raw_gap.values[..., CBM] - raw_gap.values[..., VBM]
     bandgap.ref.vbm = raw_gap.values[..., VBM]
@@ -123,11 +124,11 @@ def check_default_graph(bandgap, steps, Assert, graph):
     assert graph.ylabel == "bandgap (eV)"
     assert len(graph.series) == 2
     fundamental = graph.series[0]
-    assert fundamental.name == "fundamental"
+    assert fundamental.label == "fundamental"
     Assert.allclose(fundamental.x, xx)
     Assert.allclose(fundamental.y, bandgap.ref.fundamental[steps, 0])
     direct = graph.series[1]
-    assert direct.name == "direct"
+    assert direct.label == "direct"
     Assert.allclose(direct.x, xx)
     Assert.allclose(direct.y, bandgap.ref.direct[steps, 0])
 
@@ -135,7 +136,7 @@ def check_default_graph(bandgap, steps, Assert, graph):
 def test_plot_selection_default(bandgap, steps, Assert):
     graph = bandgap.plot("direct") if steps == -1 else bandgap[steps].plot("direct")
     assert len(graph.series) == 1
-    assert graph.series[0].name == "direct"
+    assert graph.series[0].label == "direct"
     Assert.allclose(graph.series[0].y, bandgap.ref.direct[steps, 0])
 
 
@@ -145,16 +146,16 @@ def test_plot_selection_spin_polarized(spin_polarized, steps, Assert):
     graph = bandgap.plot(selection)
     assert len(graph.series) == 4
     fundamental_up = graph.series[0]
-    assert fundamental_up.name == "fundamental_up"
+    assert fundamental_up.label == "fundamental_up"
     Assert.allclose(fundamental_up.y, bandgap.ref.fundamental[steps, 1])
     direct_up = graph.series[1]
-    assert direct_up.name == "direct_up"
+    assert direct_up.label == "direct_up"
     Assert.allclose(direct_up.y, bandgap.ref.direct[steps, 1])
     fundamental_down = graph.series[2]
-    assert fundamental_down.name == "fundamental_down"
+    assert fundamental_down.label == "fundamental_down"
     Assert.allclose(fundamental_down.y, bandgap.ref.fundamental[steps, 2])
     direct = graph.series[3]
-    assert direct.name == "direct"
+    assert direct.label == "direct"
     Assert.allclose(direct.y, bandgap.ref.direct[steps, 0])
 
 
@@ -164,8 +165,8 @@ def test_plot_incorrect_selection(bandgap, selection):
         bandgap.plot(selection)
 
 
-@patch("py4vasp.calculation._bandgap.Bandgap.to_graph")
-def test_energy_to_plotly(mock_plot, bandgap):
+@patch.object(Bandgap, "to_graph")
+def test_bandgap_to_plotly(mock_plot, bandgap):
     fig = bandgap.to_plotly()
     mock_plot.assert_called_once_with()
     graph = mock_plot.return_value
@@ -180,7 +181,7 @@ def test_to_image(bandgap):
 
 
 def check_to_image(bandgap, filename_argument, expected_filename):
-    with patch("py4vasp.calculation._bandgap.Bandgap.to_plotly") as plot:
+    with patch.object(Bandgap, "to_plotly") as plot:
         bandgap.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
@@ -310,4 +311,4 @@ Fermi energy:               11.401754"""
 
 def test_factory_methods(raw_data, check_factory_methods):
     raw_gap = raw_data.bandgap("default")
-    check_factory_methods(calculation.bandgap, raw_gap)
+    check_factory_methods(Bandgap, raw_gap)
