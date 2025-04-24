@@ -7,6 +7,7 @@ from py4vasp import exception
 from py4vasp._calculation import _stoichiometry, base
 from py4vasp._util import convert, documentation, index, select
 
+SPIN_PROJECTION = "is_spin_projection"
 selection_doc = """\
 selection : str
     A string specifying the projection of the orbitals. There are four distinct
@@ -248,9 +249,9 @@ class Projector(base.Refinery):
         tree = select.Tree.from_selection(selection)
         for selection in tree.selections():
             if self._is_nonpolarized or self._spin_selected(selection):
-                print("spin selected")
                 label, weight = self._create_projection(selector, selection)
-                spin_projections.append(label)
+                if "total" not in selection:
+                    spin_projections.append(label)
                 yield label, weight
             elif self._is_collinear:
                 # collinear defaults to two separate projections
@@ -260,7 +261,7 @@ class Projector(base.Refinery):
                 # noncollinear defaults to total
                 yield self._create_projection(selector, selection + ("total",))
         if self._is_noncollinear:
-            yield "spin_projections", spin_projections
+            yield SPIN_PROJECTION, spin_projections
 
     def _create_projection(self, selector, selection):
         label = selector.label(selection)

@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation.projector import Projector
+from py4vasp._calculation.projector import SPIN_PROJECTION, Projector
 
 
 @pytest.fixture
@@ -151,7 +151,7 @@ def test_Sr2TiO4_project(Sr2TiO4, projections, Assert):
     actual = Sr2TiO4.project(selection="Sr(p) 3(dxy)", projections=projections)
     Assert.allclose(actual["Sr_p"], Sr_ref)
     Assert.allclose(actual["Ti_1_dxy"], Ti_ref)
-    assert "spin_projections" not in actual
+    assert SPIN_PROJECTION not in actual
 
 
 def test_spin_projections(Fe3O4, projections, Assert):
@@ -171,24 +171,27 @@ def test_spin_projections(Fe3O4, projections, Assert):
     Assert.allclose(actual["O_p_down + O_d_down"], O_pd_ref[1])
     Assert.allclose(actual["O_total"], O_ref)
     Assert.allclose(actual["p + down"], p_ref + down_ref)
-    assert "spin_projections" not in actual
+    assert SPIN_PROJECTION not in actual
 
 
 def test_noncollinear_projections(Ba2PbO4, projections, Assert):
     projections = np.add.outer(np.linspace(-2, 2, 4), np.squeeze(projections))
     Pb_ref = np.sum(projections[0, 2], axis=0)
+    total_ref = np.sum(projections[0], axis=(0, 1))
     p_x_ref = np.sum(projections[1, :, 1], axis=0)
     p_y_ref = np.sum(projections[2, :, 1], axis=0)
     BaPb_z_ref = np.sum(projections[3, 0:3], axis=(0, 1))
     xy_ref = np.sum(projections[1] - projections[2], axis=(0, 1))
-    actual = Ba2PbO4.project("3 p(x y) sigma_z(Ba + Pb) sigma_1 - sigma_2", projections)
+    selection = "3 total p(x y) sigma_z(Ba + Pb) sigma_1 - sigma_2"
+    actual = Ba2PbO4.project(selection, projections)
     Assert.allclose(actual["Pb_1"], Pb_ref)
+    Assert.allclose(actual["total"], total_ref)
     Assert.allclose(actual["p_x"], p_x_ref)
     Assert.allclose(actual["p_y"], p_y_ref)
     Assert.allclose(actual["Ba_sigma_z + Pb_sigma_z"], BaPb_z_ref)
     Assert.allclose(actual["sigma_1 - sigma_2"], xy_ref, tolerance=100)
     expected = ["p_x", "p_y", "Ba_sigma_z + Pb_sigma_z", "sigma_1 - sigma_2"]
-    assert actual["spin_projections"] == expected
+    assert actual[SPIN_PROJECTION] == expected
 
 
 def test_missing_arguments_should_return_empty_dictionary(Sr2TiO4, projections):

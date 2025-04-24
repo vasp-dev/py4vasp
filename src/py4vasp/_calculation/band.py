@@ -382,10 +382,14 @@ class Band(base.Refinery, graph.Mixin):
             return None
         error_message = "Width of fat band structure must be a number."
         check.raise_error_if_not_number(width, error_message)
-        return {
-            name: width * projection
-            for name, projection in self._read_projections(selection).items()
-        }
+        projections = self._read_projections(selection)
+        spin_projections = projections.get(projector.SPIN_PROJECTION, [])
+        for label, weight in projections.items():
+            if label == projector.SPIN_PROJECTION or label in spin_projections:
+                # do not scale spin projections
+                continue
+            weight *= width
+        return projections
 
     def _read_projections(self, selection):
         return self._projector().project(selection, self._raw_data.projections)

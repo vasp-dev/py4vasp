@@ -3,7 +3,7 @@
 import numpy as np
 
 import py4vasp._third_party.graph as _graph
-from py4vasp._calculation import base, kpoint
+from py4vasp._calculation import base, kpoint, projector
 from py4vasp._util import check
 
 
@@ -83,21 +83,20 @@ class Dispersion(base.Refinery):
 
 
 def _band_structure(data, projections):
-    key_spin_projections = "spin_projections"
-    spin_projections = projections.get(key_spin_projections, [])
+    spin_projections = projections.get(projector.SPIN_PROJECTION, [])
     return [
         _make_series(data, label, weight, label in spin_projections)
         for label, weight in projections.items()
-        if label != key_spin_projections
+        if label != projector.SPIN_PROJECTION
     ]
 
 
 def _make_series(data, label, weight, is_spin_projection):
-    print(label, is_spin_projection)
     options = {}
     if not check.is_none(weight):
         options["weight"] = weight.T
     if is_spin_projection:
+        options["marker"] = "o"
         options["weight_mode"] = "color"
     x = data["kpoint_distances"]
     y = _get_bands(data["eigenvalues"], label)
