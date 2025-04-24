@@ -230,10 +230,7 @@ class Projector(base.Refinery):
             return {}
         self._raise_error_if_orbitals_missing()
         selector = self._make_selector(projections)
-        return {
-            self._create_label(selector, selection): selector[selection]
-            for selection in self._parse_selection(selection)
-        }
+        return dict(self._create_projections(selector, selection))
 
     def _make_selector(self, projections):
         maps = self.to_dict()
@@ -246,24 +243,30 @@ class Projector(base.Refinery):
                 atom, and orbital, respectively."""
             raise exception.IncorrectUsage(message) from error
 
-    def _create_label(self, selector, selection):
-        label = selector.label(selection)
-        if self._is_noncollinear:
-            return label.removesuffix("_total")
-        return label
-
-    def _parse_selection(self, selection):
+    def _create_projections(self, selector, selection):
+        spin_projections = []
         tree = select.Tree.from_selection(selection)
         for selection in tree.selections():
             if self._is_nonpolarized or self._spin_selected(selection):
-                yield selection
+                print("spin selected")
+                label, weight = self._create_projection(selector, selection)
+                spin_projections.append(label)
+                yield label, weight
             elif self._is_collinear:
                 # collinear defaults to two separate projections
-                yield selection + ("up",)
-                yield selection + ("down",)
+                yield self._create_projection(selector, selection + ("up",))
+                yield self._create_projection(selector, selection + ("down",))
             else:
                 # noncollinear defaults to total
-                yield selection + ("total",)
+                yield self._create_projection(selector, selection + ("total",))
+        if self._is_noncollinear:
+            yield "spin_projections", spin_projections
+
+    def _create_projection(self, selector, selection):
+        label = selector.label(selection)
+        if self._is_noncollinear:
+            label = label.removesuffix("_total")
+        return label, selector[selection]
 
     def _spin_selected(self, selection):
         return any(

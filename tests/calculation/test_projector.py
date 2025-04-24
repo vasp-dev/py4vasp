@@ -151,6 +151,7 @@ def test_Sr2TiO4_project(Sr2TiO4, projections, Assert):
     actual = Sr2TiO4.project(selection="Sr(p) 3(dxy)", projections=projections)
     Assert.allclose(actual["Sr_p"], Sr_ref)
     Assert.allclose(actual["Ti_1_dxy"], Ti_ref)
+    assert "spin_projections" not in actual
 
 
 def test_spin_projections(Fe3O4, projections, Assert):
@@ -170,6 +171,7 @@ def test_spin_projections(Fe3O4, projections, Assert):
     Assert.allclose(actual["O_p_down + O_d_down"], O_pd_ref[1])
     Assert.allclose(actual["O_total"], O_ref)
     Assert.allclose(actual["p + down"], p_ref + down_ref)
+    assert "spin_projections" not in actual
 
 
 def test_noncollinear_projections(Ba2PbO4, projections, Assert):
@@ -185,6 +187,8 @@ def test_noncollinear_projections(Ba2PbO4, projections, Assert):
     Assert.allclose(actual["p_y"], p_y_ref)
     Assert.allclose(actual["Ba_sigma_z + Pb_sigma_z"], BaPb_z_ref)
     Assert.allclose(actual["sigma_1 - sigma_2"], xy_ref, tolerance=100)
+    expected = ["p_x", "p_y", "Ba_sigma_z + Pb_sigma_z", "sigma_1 - sigma_2"]
+    assert actual["spin_projections"] == expected
 
 
 def test_missing_arguments_should_return_empty_dictionary(Sr2TiO4, projections):
