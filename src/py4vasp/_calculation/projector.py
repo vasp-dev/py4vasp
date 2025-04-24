@@ -255,7 +255,7 @@ class Projector(base.Refinery):
     def _parse_selection(self, selection):
         tree = select.Tree.from_selection(selection)
         for selection in tree.selections():
-            if self._is_nonpolarized or self.spin_component_selected(selection):
+            if self._is_nonpolarized or self._spin_selected(selection):
                 yield selection
             elif self._is_collinear:
                 # collinear defaults to two separate projections
@@ -265,9 +265,7 @@ class Projector(base.Refinery):
                 # noncollinear defaults to total
                 yield selection + ("total",)
 
-    @base.data_access
-    def spin_component_selected(self, selection):
-        """Returns true if the selection string contains a spin component."""
+    def _spin_selected(self, selection):
         return any(
             select.contains(selection, choice) for choice in self._init_spin_dict()
         )
