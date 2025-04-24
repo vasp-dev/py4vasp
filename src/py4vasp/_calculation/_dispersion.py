@@ -1,12 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import dataclasses
-
 import numpy as np
 
 import py4vasp._third_party.graph as _graph
 from py4vasp._calculation import base, kpoint
-from py4vasp._util import check
 
 
 class Dispersion(base.Refinery):
@@ -43,15 +40,6 @@ class Dispersion(base.Refinery):
     def _kpoints(self):
         return kpoint.Kpoint.from_data(self._raw_data.kpoints)
 
-    @dataclasses.dataclass
-    class Projection:
-        label: str
-        "Label used for the generated series."
-        weight: np.ndarray = None
-        "Weight of the projection of the dispersion band."
-        mode: str = None
-        "How should the weight be shown (size, color)."
-
     @base.data_access
     def plot(self, projections=None):
         """Generate a graph of the dispersion.
@@ -62,10 +50,10 @@ class Dispersion(base.Refinery):
 
         Parameters
         ----------
-        projections : list
-            The label will be used for the legend of the figure. The values will be used
-            to modify the lines according to the mode. Must have the same shape as the
-            eigenvalues of the dispersion.
+        projections : dict
+            The key will be used for the legend of the figure. The values will be used
+            to broaden the lines. Must have the same shape as the eigenvalues of the
+            dispersion.
 
         Returns
         -------
@@ -84,9 +72,9 @@ class Dispersion(base.Refinery):
         if projections is not None:
             return projections
         elif self._spin_polarized():
-            return [self.Projection("up"), self.Projection("down")]
+            return {"up": None, "down": None}
         else:
-            return [self.Projection("bands")]
+            return {"bands": None}
 
     def _spin_polarized(self):
         eigenvalues = self._raw_data.eigenvalues
@@ -94,24 +82,27 @@ class Dispersion(base.Refinery):
 
 
 def _band_structure(data, projections):
-    return [_make_series(data, projection) for projection in projections]
+    return [_make_series(data, projection) for projection in projections.items()]
 
 
 def _make_series(data, projection):
-    options = {}
-    if not check.is_none(projection.weight):
-        options["weight"] = projection.weight.T
-    if projection.mode is not None:
-        options["weight_mode"] = projection.mode
+    name, weight = _get_name_and_weight(projection)
     x = data["kpoint_distances"]
-    y = _get_bands(data["eigenvalues"], projection.label)
-    return _graph.Series(x, y, projection.label, **options)
+    y = _get_bands(data["eigenvalues"], name)
+    return _graph.Series(x, y, name, weight=weight)
 
 
-def _get_bands(eigenvalues, label):
+def _get_name_and_weight(projection):
+    name, weight = projection
+    if weight is not None:
+        weight = weight.T
+    return name, weight
+
+
+def _get_bands(eigenvalues, name):
     if eigenvalues.ndim == 2:
         return eigenvalues.T
-    elif "down" in label:
+    elif "down" in name:
         return eigenvalues[1].T
     else:
         return eigenvalues[0].T

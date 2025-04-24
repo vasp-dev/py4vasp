@@ -70,32 +70,27 @@ def check_xticks(actual, reference, Assert):
 
 def test_plot_dispersion_with_projections(dispersion, Assert):
     shape = dispersion.ref.eigenvalues.shape[-2], dispersion.ref.eigenvalues.shape[-1]
-
-    def random_projection():
-        return np.random.uniform(low=0.1, high=0.5, size=shape)
-
     if dispersion.ref.spin_polarized:
-        projections = [
-            dispersion.Projection("one up", random_projection()),
-            dispersion.Projection("one down", random_projection(), mode="color"),
-            dispersion.Projection("two up", random_projection(), mode="size"),
-        ]
+        projections = {
+            "one up": np.random.uniform(low=0.1, high=0.5, size=shape),
+            "one down": np.random.uniform(low=0.1, high=0.5, size=shape),
+            "two up": np.random.uniform(low=0.1, high=0.5, size=shape),
+        }
     else:
-        projections = [
-            dispersion.Projection("one", random_projection(), mode="color"),
-            dispersion.Projection("two", random_projection()),
-        ]
+        projections = {
+            "one": np.random.uniform(low=0.1, high=0.5, size=shape),
+            "two": np.random.uniform(low=0.1, high=0.5, size=shape),
+        }
     graph = dispersion.plot(projections)
     assert len(graph.series) == len(projections)
     check_xticks(graph.xticks, dispersion.ref, Assert)
     bands = np.atleast_3d(dispersion.ref.eigenvalues.T)
-    for series, projection in zip(graph.series, projections):
-        component = 1 if "down" in projection.label else 0
+    for series, (label, weight) in zip(graph.series, projections.items()):
+        component = 1 if "down" in label else 0
         Assert.allclose(series.x, dispersion.ref.kpoints.distances())
         Assert.allclose(series.y, bands[:, :, component])
-        assert series.label == projection.label
-        Assert.allclose(series.weight, projection.weight.T)
-        assert series.weight_mode == (projection.mode or "size")
+        assert series.label == label
+        Assert.allclose(series.weight, weight.T)
 
 
 def test_print(dispersion, format_):
