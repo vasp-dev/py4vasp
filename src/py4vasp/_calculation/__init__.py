@@ -42,7 +42,7 @@ QUANTITIES = (
     "_stoichiometry",
 )
 GROUPS = {
-    "electron_phonon": {"self_energy"},
+    "electron_phonon": {"self_energy","transport"},
     "exciton": ("density", "eigenvector"),
     "phonon": ("band", "dos", "mode"),
 }
