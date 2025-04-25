@@ -1376,12 +1376,12 @@ def _current_density(selection):
 def _electron_phonon_self_energy(selection):
     number_samples = 3
     shape = [1, 2, 3]
-
     return raw.ElectronPhononSelfEnergy(
         valid_indices=number_samples,
         eigenvalues=_make_arbitrary_data(shape),
         debye_waller=[_make_arbitrary_data(shape) for _ in range(number_samples)],
         fan=[_make_arbitrary_data(shape) for _ in range(number_samples)],
+        bks_idx=[_make_arbitrary_data(shape) for _ in range(number_samples)],
     )
 
 

@@ -592,6 +592,7 @@ class ElectronPhononSelfEnergy(mapping.Mapping):
     eigenvalues: VaspData
     debye_waller: VaspData
     fan: VaspData
+    bks_idx: VaspData
 
 
 @dataclasses.dataclass
