@@ -215,7 +215,7 @@ def test_to_poscar(Sr2TiO4, Ca3AsBr3):
     assert Ca3AsBr3.to_POSCAR() == REF_Ca3AsBr3
 
 
-def test_from_poscar(Sr2TiO4, Assert, not_core):
+def test_from_poscar(Sr2TiO4, Assert):
     structure = Structure.from_POSCAR(REF_POSCAR)
     check_Sr2TiO4_structure(structure.read(), Sr2TiO4.ref, -1, Assert)
     elements = ["Ba", "Zr", "S"]
@@ -227,7 +227,7 @@ def test_from_poscar(Sr2TiO4, Assert, not_core):
     assert actual["names"] == ["Ba_1", "Ba_2", "Zr_1", "S_1", "S_2", "S_3", "S_4"]
 
 
-def test_from_poscar_without_elements(Sr2TiO4, Assert, not_core):
+def test_from_poscar_without_elements(Sr2TiO4, Assert):
     poscar = """\
 POSCAR without elements
 1.0

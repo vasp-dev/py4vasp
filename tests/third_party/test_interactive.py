@@ -13,6 +13,7 @@ def test_no_error_handling_outside_ipython():
 
 def test_set_error_handling(not_core):
     import IPython
+
     shell = IPython.terminal.interactiveshell.TerminalInteractiveShell()
     with patch("IPython.get_ipython", return_value=shell) as mock:
         assert shell.InteractiveTB.mode != "Minimal"

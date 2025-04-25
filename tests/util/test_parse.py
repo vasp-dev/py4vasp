@@ -73,6 +73,8 @@ class GeneralPOSCAR(raw.CONTCAR):
         yield from self._to_string(structure.lattice_vectors())
 
     def _ion_velocity_lines(self):
+        if self.velocity_coordinate_system == "nonempty":
+            yield " "
         if self.ion_velocities.is_none():
             return
         yield self._formatted_string(self.velocity_coordinate_system)
@@ -144,6 +146,7 @@ class GeneralPOSCAR(raw.CONTCAR):
         ("First letter only", "SrTiO3"),
         ("Ion velocity string is space", "BN"),
         ("Empty ion velocity string", "BN"),
+        ("Trailing nonempty line without velocities", "SrTiO3"),
         ("Multiple scaling factors", "BN"),
         ("Volume scaling factor", "SrTiO3"),
         ("Scaling factor set to 1", "BN"),
@@ -201,6 +204,8 @@ def example_poscar(raw_data, request):
         return GeneralPOSCAR(
             **common_part, ion_velocities=ion_velocities, velocity_coordinate_system=""
         )
+    elif system == "Trailing nonempty line without velocities":
+        return GeneralPOSCAR(**common_part, velocity_coordinate_system="newline")
     elif system == "Multiple scaling factors":
         return GeneralPOSCAR(**common_part, scaling_factor="split")
     elif system == "Volume scaling factor":
