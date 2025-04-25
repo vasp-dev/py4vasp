@@ -17,8 +17,9 @@ class ElectronPhononTransport(_slice.Mixin, _base.Refinery):
             "mobility": self._read_slice_of_data("mobility"),
         }
 
+    @base.data_access
     def __len__(self):
-        return self._raw_data.valid_indices
+        return len(self._raw_data.valid_indices)
 
     def _read_slice_of_data(self, name):
         slice_of_data = getattr(self._raw_data, name)[self._steps]
