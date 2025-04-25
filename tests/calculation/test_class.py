@@ -6,10 +6,11 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from py4vasp import Calculation, calculation, control, exception
+from py4vasp import Calculation, _calculation, control, exception
+from py4vasp._calculation import base
 
 
-@patch("py4vasp.calculation._base.Refinery.from_path", autospec=True)
+@patch.object(base.Refinery, "from_path", autospec=True)
 @patch("py4vasp.raw.access", autospec=True)
 def test_creation_from_path(mock_access, mock_from_path):
     # note: in pytest __file__ defaults to absolute path
@@ -22,10 +23,12 @@ def test_creation_from_path(mock_access, mock_from_path):
     calc = Calculation.from_path("~")
     assert calc.path() == Path.home()
     mock_access.assert_not_called()
-    mock_from_path.assert_called()
+    mock_from_path.assert_not_called()
+    calc.band  # access the band object
+    mock_from_path.assert_called_once()
 
 
-@patch("py4vasp.calculation._base.Refinery.from_file", autospec=True)
+@patch.object(base.Refinery, "from_file", autospec=True)
 @patch("py4vasp.raw.access", autospec=True)
 def test_creation_from_file(mock_access, mock_from_file):
     # note: in pytest __file__ defaults to absolute path
@@ -39,28 +42,26 @@ def test_creation_from_file(mock_access, mock_from_file):
     calc = Calculation.from_file("~/example.h5")
     assert calc.path() == Path.home()
     mock_access.assert_not_called()
+    mock_from_file.assert_not_called()
+    calc.band  # access the band object
     mock_from_file.assert_called()
 
 
 @patch("py4vasp.raw.access", autospec=True)
 def test_all_attributes(mock_access):
     calc = Calculation.from_path("test_path")
-    for name in calculation.__all__:
+    for name in _calculation.QUANTITIES:  #  + _calculation.INPUT_FILES:
         assert hasattr(calc, name)
+    for group, quantities in _calculation.GROUPS.items():
+        assert hasattr(calc, group)
+        namespace = getattr(calc, group)
+        for quantity in quantities:
+            assert hasattr(namespace, quantity)
     mock_access.assert_not_called()
     mock_access.return_value.__enter__.assert_not_called()
 
 
-@patch("py4vasp.raw.access", autospec=True)
-def test_nested_attributes(mock_access):
-    calc = Calculation.from_path("test_path")
-    for name, quantities in calculation._nested.items():
-        namespace = getattr(calc, name)
-        assert all(hasattr(namespace, quantity) for quantity in quantities)
-    mock_access.assert_not_called()
-    mock_access.return_value.__enter__.assert_not_called()
-
-
+@pytest.mark.skip("Input files are not included in current release.")
 def test_input_files_from_path():
     with patch("py4vasp._control.base.InputFile.__init__", return_value=None) as mock:
         calculation = Calculation.from_path("test_path")
@@ -69,6 +70,7 @@ def test_input_files_from_path():
     check_all_input_files(calculation)
 
 
+@pytest.mark.skip("Input files are not included in current release.")
 def test_input_files_from_file():
     with patch("py4vasp._control.base.InputFile.__init__", return_value=None) as mock:
         calculation = Calculation.from_file("test_file")

@@ -3,7 +3,7 @@
 import numpy as np
 
 from py4vasp._config import VASP_COLORS
-from py4vasp._util.convert import text_to_string, to_complex, to_rgb
+from py4vasp._util.convert import text_to_string, to_camelcase, to_complex, to_rgb
 
 
 def test_text_to_string():
@@ -36,7 +36,8 @@ def test_matrix_to_complex(Assert):
 
 
 def test_hex_to_rgb(Assert):
-    colors = [
+    colors = ("#4C265F", "#2FB5AB", "#2C68FC", "#A82C35", "#808080", "#212529")
+    converted = [
         [76, 38, 95],
         [47, 181, 171],
         [44, 104, 252],
@@ -44,6 +45,15 @@ def test_hex_to_rgb(Assert):
         [128, 128, 128],
         [33, 37, 41],
     ]
-    expected = np.array(colors) / 255
-    actual = np.array([to_rgb(color) for color in VASP_COLORS])
+    expected = np.array(converted) / 255
+    actual = np.array([to_rgb(color) for color in colors])
     Assert.allclose(expected, actual)
+
+
+def test_camelcase():
+    assert to_camelcase("foo") == "Foo"
+    assert to_camelcase("foo_bar") == "FooBar"
+    assert to_camelcase("foo_bar_baz") == "FooBarBaz"
+    assert to_camelcase("_foo") == "Foo"
+    assert to_camelcase("_foo_bar") == "FooBar"
+    assert to_camelcase("foo_bar", uppercase_first_letter=False) == "fooBar"

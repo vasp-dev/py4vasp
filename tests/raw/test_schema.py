@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import pytest
-from util import VERSION, OptionalArgument, Sequence, Simple, WithLength, WithLink
+from util import VERSION, Mapping, OptionalArgument, Simple, WithLength, WithLink
 
 from py4vasp import exception, raw
 from py4vasp._raw.schema import Length, Link, Schema, Source
@@ -96,13 +96,27 @@ def test_alias():
     assert remove_version(schema.sources) == reference
 
 
-def test_sequence():
-    sequence = Sequence("size", "common_data", "variable_data{}")
+def test_custom_data_source():
+    def make_data(source):
+        pass
+
+    schema = Schema(VERSION)
+    schema.add(Simple, file="filename", data_factory=make_data)
+    data_factory_source = Source(data=None, file="filename", data_factory=make_data)
+    reference = {"simple": {"default": data_factory_source}}
+    assert remove_version(schema.sources) == reference
+
+
+def test_mapping():
+    mapping = Mapping("valid_indices", "common_data", "variable_data{}")
     schema = Schema(VERSION)
     schema.add(
-        Sequence, size=sequence.size, common=sequence.common, variable=sequence.variable
+        Mapping,
+        valid_indices=mapping.valid_indices,
+        common=mapping.common,
+        variable=mapping.variable,
     )
-    reference = {"sequence": {"default": Source(sequence)}}
+    reference = {"mapping": {"default": Source(mapping)}}
     assert remove_version(schema.sources) == reference
 
 
@@ -136,6 +150,9 @@ simple:
         file: other_file
         foo: foo_dataset
         bar: bar_dataset
+    factory:  &simple-factory
+        file: other_file
+        data_factory: complex_schema.<locals>.make_data
 
 optional_argument:
     mandatory:  &optional_argument-mandatory
@@ -155,22 +172,26 @@ with_length:
         num_data: length(dataset)
     alias_name: *with_length-default
 
-sequence:
-    default:  &sequence-default
-        size: foo_sequence
+mapping:
+    default:  &mapping-default
+        valid_indices: foo_mapping
         common: common_data
         variable: variable_data{}
+    my_list:  &mapping-my_list
+        valid_indices: list_mapping
+        common: common
+        variable: variable_data_{}
 
 complex:
     default:  &complex-default
         opt: *optional_argument-default
         link: *with_link-default
-        sequence: *sequence-default
+        mapping: *mapping-default
         length: *with_length-default
     mandatory:  &complex-mandatory
         opt: *optional_argument-mandatory
         link: *with_link-default
-        sequence: *sequence-default
+        mapping: *mapping-my_list
 """
     assert str(schema) == reference
 

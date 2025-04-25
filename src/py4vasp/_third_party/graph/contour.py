@@ -10,6 +10,7 @@ import numpy as np
 from py4vasp import _config
 from py4vasp._third_party.graph import trace
 from py4vasp._util import import_
+from py4vasp._util.slicing import Plane
 
 ff = import_.optional("plotly.figure_factory")
 go = import_.optional("plotly.graph_objects")
@@ -45,10 +46,17 @@ class Contour(trace.Trace):
     "Assign a label to the visualization that may be used to identify one among multiple plots."
     isolevels: bool = False
     "Defines whether isolevels should be added or a heatmap is used."
+    show_contour_values: bool = None
+    "Defines whether contour values should be shown along contour plot lines."
     supercell: np.array = (1, 1)
     "Multiple of each lattice vector to be drawn."
     show_cell: bool = True
     "Show the unit cell in the resulting visualization."
+    max_number_arrows: int = None
+    "Subsample the data until the number of arrows falls below this limit."
+    scale_arrows: float = None
+    """Scale arrows by this factor when converting their length to Å. None means
+    autoscale them so that the arrows do not overlap."""
 
     def to_plotly(self):
         lattice_supercell = np.diag(self.supercell) @ self.lattice.vectors
@@ -69,23 +77,18 @@ class Contour(trace.Trace):
 
     def _make_contour(self, lattice, data):
         x, y, z = self._interpolate_data_if_necessary(lattice, data)
-        return go.Contour(x=x, y=y, z=z, name=self.label, autocontour=True)
+        return go.Contour(
+            x=x,
+            y=y,
+            z=z,
+            name=self.label,
+            autocontour=True,
+            contours={"showlabels": self.show_contour_values},
+        )
 
     def _make_heatmap(self, lattice, data):
         x, y, z = self._interpolate_data_if_necessary(lattice, data)
         return go.Heatmap(x=x, y=y, z=z, name=self.label, colorscale="turbid_r")
-
-    def _make_quiver(self, lattice, data):
-        u = data[:, :, 0].flatten()
-        v = data[:, :, 1].flatten()
-        meshes = [
-            np.linspace(np.zeros(2), vector, num_points, endpoint=False)
-            for vector, num_points in zip(reversed(lattice), data.shape)
-            # remember that b and a axis are swapped
-        ]
-        x, y = np.array([sum(points) for points in itertools.product(*meshes)]).T
-        fig = ff.create_quiver(x, y, u, v, scale=1)
-        return fig.data[0]
 
     def _interpolate_data_if_necessary(self, lattice, data):
         if self._interpolation_required():
@@ -93,6 +96,41 @@ class Contour(trace.Trace):
         else:
             x, y, z = self._use_data_without_interpolation(lattice, data)
         return x, y, z
+
+    def _make_quiver(self, lattice, data):
+        subsamples = self._limit_number_of_arrows(data.size)
+        # remember that b and a axis are swapped
+        vectors = reversed(lattice)
+        meshes = [
+            np.linspace(np.zeros(2), vector, num_points, endpoint=False)[::subsample]
+            for vector, num_points, subsample in zip(vectors, data.shape, subsamples)
+        ]
+        subsampled_data = data[:: subsamples[0], :: subsamples[1]]
+        if self.scale_arrows is None:
+            # arrows may be at most as long as the shorter lattice vector
+            max_length = min(np.linalg.norm(meshes[0][1]), np.linalg.norm(meshes[1][1]))
+            current_max_length = np.max(np.linalg.norm(subsampled_data, axis=-1))
+            scale = max_length / current_max_length
+        else:
+            scale = self.scale_arrows
+        x, y = np.array([sum(points) for points in itertools.product(*meshes)]).T
+        u = scale * subsampled_data[:, :, 0].flatten()
+        v = scale * subsampled_data[:, :, 1].flatten()
+        fig = ff.create_quiver(x, y, u, v, scale=1)
+        fig.data[0].line.color = _config.VASP_COLORS["dark"]
+        return fig.data[0]
+
+    def _limit_number_of_arrows(self, data_size):
+        subsamples = [1, 1]
+        if self.max_number_arrows is None:
+            return subsamples
+        data_size /= 2  # ignore dimension of arrow
+        while data_size / np.prod(subsamples) > self.max_number_arrows:
+            if subsamples[0] <= subsamples[1]:
+                subsamples[0] += 1
+            else:
+                subsamples[1] += 1
+        return subsamples
 
     def _interpolation_required(self):
         y_position_first_vector = self.lattice.vectors[0, 1]
@@ -144,7 +182,8 @@ class Contour(trace.Trace):
         corners = (vectors[0], vectors[0] + vectors[1], vectors[1])
         to_corners = (f"L {pos_to_str(corner)}" for corner in corners)
         path = f"M 0 0 {' '.join(to_corners)} Z"
-        unit_cell = {"type": "path", "line": {"color": _config.VASP_DARK}, "path": path}
+        color = _config.VASP_COLORS["dark"]
+        unit_cell = {"type": "path", "line": {"color": color}, "path": path}
         return (unit_cell,)
 
     def _label_unit_cell_vectors(self):

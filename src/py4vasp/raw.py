@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-""" Extract the raw data from the HDF5 file and transform it into dataclasses.
+"""Extract the raw data from the HDF5 file and transform it into dataclasses.
 
 In the HDF5 file, the raw data is stored with specific keys. To avoid
 propagating the name of these keys to the higher tier modules, we transform

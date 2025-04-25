@@ -8,12 +8,15 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import calculation, exception
+from py4vasp import exception
 from py4vasp._analysis.mlff import MLFFErrorAnalysis
+from py4vasp._calculation.energy import Energy
+from py4vasp._calculation.force import Force
+from py4vasp._calculation.stress import Stress
 
 
 class BaseCalculations:
-    def read(self):
+    def read(self, *args, **kwargs):
         return self._data
 
 
@@ -61,15 +64,15 @@ def mock_calculations(raw_data):
     data = defaultdict(lambda: defaultdict(list))
     for datatype in ["dft_data", "mlff_data"]:
         raw_energy = raw_data.energy("relax", randomize=True)
-        energy = calculation.energy.from_data(raw_energy)
-        energy_data = energy.read()
+        energy = Energy.from_data(raw_energy)
+        energy_data = energy.read(MLFFErrorAnalysis.TOTAL_ENERGY)
         data["_energies"][datatype].append(energy_data)
         raw_force = raw_data.force("Sr2TiO4", randomize=True)
-        force = calculation.force.from_data(raw_force)
+        force = Force.from_data(raw_force)
         force_data = force.read()
         data["_forces"][datatype].append(force_data)
         raw_stress = raw_data.stress("Sr2TiO4", randomize=True)
-        stress = calculation.stress.from_data(raw_stress)
+        stress = Stress.from_data(raw_stress)
         stress_data = stress.read()
         data["_stresses"][datatype].append(stress_data)
         data["_paths"][datatype].append(Path(__file__) / "calc")
@@ -84,15 +87,15 @@ def mock_multiple_calculations(raw_data):
     for datatype in ["dft_data", "mlff_data"]:
         for i in range(4):
             raw_energy = raw_data.energy("relax", randomize=True)
-            energy = calculation.energy.from_data(raw_energy)
-            energy_data = energy.read()
+            energy = Energy.from_data(raw_energy)
+            energy_data = energy.read(MLFFErrorAnalysis.TOTAL_ENERGY)
             data["_energies"][datatype].append(energy_data)
             raw_force = raw_data.force("Sr2TiO4", randomize=True)
-            force = calculation.force.from_data(raw_force)
+            force = Force.from_data(raw_force)
             force_data = force.read()
             data["_forces"][datatype].append(force_data)
             raw_stress = raw_data.stress("Sr2TiO4", randomize=True)
-            stress = calculation.stress.from_data(raw_stress)
+            stress = Stress.from_data(raw_stress)
             stress_data = stress.read()
             data["_stresses"][datatype].append(stress_data)
             data["_paths"][datatype].append(Path(__file__) / "calc")
@@ -106,19 +109,19 @@ def mock_calculations_incorrect(raw_data):
     data = defaultdict(lambda: defaultdict(list))
     for datatype in ["dft_data", "mlff_data"]:
         raw_energy = raw_data.energy("relax", randomize=True)
-        energy = calculation.energy.from_data(raw_energy)
-        energy_data = energy.read()
+        energy = Energy.from_data(raw_energy)
+        energy_data = energy.read(MLFFErrorAnalysis.TOTAL_ENERGY)
         data["_energies"][datatype].append(energy_data)
         if datatype == "mlff_data":
             species = "Sr2TiO4"
         else:
             species = "Fe3O4"
         raw_force = raw_data.force(species, randomize=True)
-        force = calculation.force.from_data(raw_force)
+        force = Force.from_data(raw_force)
         force_data = force.read()
         data["_forces"][datatype].append(force_data)
         raw_stress = raw_data.stress("Sr2TiO4", randomize=True)
-        stress = calculation.stress.from_data(raw_stress)
+        stress = Stress.from_data(raw_stress)
         stress_data = stress.read()
         data["_stresses"][datatype].append(stress_data)
         data["_paths"][datatype].append(Path(__file__) / "calc")
@@ -127,7 +130,7 @@ def mock_calculations_incorrect(raw_data):
     return _mock_calculations
 
 
-@patch("py4vasp.calculation._base.Refinery.from_path", autospec=True)
+@patch("py4vasp._calculation.base.Refinery.from_path", autospec=True)
 @patch("py4vasp.raw.access", autospec=True)
 def test_read_inputs_from_path(mock_access, mock_from_path):
     absolute_path_dft = Path(__file__) / "dft"
@@ -151,7 +154,7 @@ def test_read_inputs_from_path(mock_access, mock_from_path):
     assert isinstance(error_analysis.dft.stresses, np.ndarray)
 
 
-@patch("py4vasp.calculation._base.Refinery.from_path", autospec=True)
+@patch("py4vasp._calculation.base.Refinery.from_path", autospec=True)
 @patch("py4vasp.raw.access", autospec=True)
 def test_read_inputs_from_files(mock_analysis, mock_from_path):
     absolute_files_dft = Path(__file__) / "dft*.h5"
@@ -180,9 +183,9 @@ def test_read_from_data(mock_calculations):
     expected_forces = mock_calculations.forces.read()
     expected_stresses = mock_calculations.stresses.read()
     mlff_error_analysis = MLFFErrorAnalysis._from_data(mock_calculations)
-    output_energies = mlff_error_analysis._calculations.energies.read()
-    output_forces = mlff_error_analysis._calculations.forces.read()
-    output_stresses = mlff_error_analysis._calculations.stresses.read()
+    output_energies = mlff_error_analysis._batch.energies.read()
+    output_forces = mlff_error_analysis._batch.forces.read()
+    output_stresses = mlff_error_analysis._batch.stresses.read()
     assert output_energies == expected_energies
     assert output_forces == expected_forces
     assert output_stresses == expected_stresses
@@ -199,8 +202,9 @@ def _iter_properties(tag, data, return_array=True):
 def test_attributes_from_data(mocker, request):
     mock_calculations = request.getfixturevalue(mocker)
     energies_dict = mock_calculations.energies.read()
-    mlff_energies = _iter_properties("free energy    TOTEN", energies_dict["mlff_data"])
-    dft_energies = _iter_properties("free energy    TOTEN", energies_dict["dft_data"])
+    tag = MLFFErrorAnalysis.TOTAL_ENERGY
+    mlff_energies = _iter_properties(tag, energies_dict["mlff_data"])
+    dft_energies = _iter_properties(tag, energies_dict["dft_data"])
     forces_dict = mock_calculations.forces.read()
     mlff_forces = _iter_properties("forces", forces_dict["mlff_data"])
     dft_forces = _iter_properties("forces", forces_dict["dft_data"])

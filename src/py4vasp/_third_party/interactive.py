@@ -15,8 +15,7 @@ def set_error_handling(verbosity):
     if ipython is None:
         _ERROR_VERBOSITY = verbosity
     else:
-        with open(os.devnull, "w") as ignore, contextlib.redirect_stdout(ignore):
-            ipython.magic(f"xmode {verbosity}")
+        ipython.InteractiveTB.set_mode(verbosity)
 
 
 def error_handling():
@@ -24,7 +23,7 @@ def error_handling():
     if ipython is None:
         return _ERROR_VERBOSITY
     else:
-        return ipython.xmode
+        return ipython.InteractiveTB.mode
 
 
 def _get_ipython():

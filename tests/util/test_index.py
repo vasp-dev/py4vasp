@@ -216,6 +216,44 @@ def test_equivalent_operation(first_text, second_text, Assert):
         Assert.allclose(selector[first], selector[second])
 
 
+@pytest.mark.parametrize(
+    "selection, expected",
+    [
+        (("A",), [0.909297426825682, 0.956375928404503]),
+        (("x",), [-1.566975662971037, -3.801910387458235]),
+        (("B", "y"), [0.823172422671085, 0.073694517959313]),
+        (("z", "C"), [0.660919112573909, 0.485842070293535]),
+        ((make_range("B", "D"), "z"), [0.66432711338294, 0.499714623309142]),
+        ((make_operation("x", "+", "y"), "C"), [0.168814278260321, -1.165363630766923]),
+        ((make_operation("D", "-", "z"),), [0.273708667728343, 0.339540822873806]),
+    ],
+)
+def test_dynamic_reduction(selection, expected, Assert):
+    print(f"{selection=}")
+    values = np.sin(np.arange(48)).reshape(2, 4, 6)
+    map_ = {
+        1: {"A": 0, "B": 1, "C": 2, "D": 3},
+        2: {"x": 0, "y": slice(1, 3), "z": slice(3, 6)},
+    }
+    selector = index.Selector(map_, values, reduction=ExampleReduction)
+    Assert.allclose(selector[selection], expected)
+
+
+class ExampleReduction(index.Reduction):
+    def __init__(self, keys):
+        if keys[-1] == "x":
+            self._reduction = np.sum
+        elif keys[-1] == "y":
+            self._reduction = np.average
+        elif keys[-1] == "z":
+            self._reduction = np.std
+        else:
+            self._reduction = np.max
+
+    def __call__(self, array, axis):
+        return self._reduction(array, axis=axis)
+
+
 def test_complex_operation(Assert):
     values = np.sqrt(np.arange(120).reshape([5, 4, 3, 2]))
     map_ = {

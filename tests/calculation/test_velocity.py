@@ -4,7 +4,9 @@ import types
 
 import pytest
 
-from py4vasp import _config, calculation, exception
+from py4vasp import _config, exception
+from py4vasp._calculation.structure import Structure
+from py4vasp._calculation.velocity import Velocity
 
 
 @pytest.fixture
@@ -24,9 +26,9 @@ def steps(request):
 
 def create_velocity_data(raw_data, structure):
     raw_velocity = raw_data.velocity(structure)
-    velocity = calculation.velocity.from_data(raw_velocity)
+    velocity = Velocity.from_data(raw_velocity)
     velocity.ref = types.SimpleNamespace()
-    velocity.ref.structure = calculation.structure.from_data(raw_velocity.structure)
+    velocity.ref.structure = Structure.from_data(raw_velocity.structure)
     velocity.ref.velocities = raw_velocity.velocities
     return velocity
 
@@ -50,7 +52,7 @@ def test_plot(velocities, steps, supercell, Assert):
     expected_velocities = velocities.velocity_rescale * velocities.ref.velocities[steps]
     Assert.allclose(arrows.quantity, expected_velocities)
     assert arrows.label == "velocities"
-    assert arrows.color == _config.VASP_GRAY
+    assert arrows.color == _config.VASP_COLORS["gray"]
     assert arrows.radius == 0.2
 
 
@@ -106,4 +108,4 @@ def test_print_Sr2TiO4(Sr2TiO4, format_):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.velocity("Fe3O4")
-    check_factory_methods(calculation.velocity, data)
+    check_factory_methods(Velocity, data)

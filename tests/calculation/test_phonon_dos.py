@@ -6,13 +6,13 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import calculation
+from py4vasp._calculation.phonon_dos import PhononDos
 
 
 @pytest.fixture
 def phonon_dos(raw_data):
     raw_dos = raw_data.phonon_dos("default")
-    dos = calculation.phonon_dos.from_data(raw_dos)
+    dos = PhononDos.from_data(raw_dos)
     dos.ref = types.SimpleNamespace()
     dos.ref.energies = raw_dos.energies
     dos.ref.total_dos = raw_dos.dos
@@ -61,11 +61,11 @@ def test_phonon_dos_plot_selection(phonon_dos, Assert):
 
 
 def check_series(series, reference, label, Assert):
-    assert series.name == label
+    assert series.label == label
     Assert.allclose(series.y, reference)
 
 
-@patch("py4vasp.calculation._phonon_dos.PhononDos.to_graph")
+@patch.object(PhononDos, "to_graph")
 def test_phonon_dos_to_plotly(mock_plot, phonon_dos):
     fig = phonon_dos.to_plotly("selection")
     mock_plot.assert_called_once_with("selection")
@@ -81,7 +81,7 @@ def test_phonon_dos_to_image(phonon_dos):
 
 
 def check_to_image(phonon_dos, filename_argument, expected_filename):
-    with patch("py4vasp.calculation._phonon_dos.PhononDos.to_plotly") as plot:
+    with patch.object(PhononDos, "to_plotly") as plot:
         phonon_dos.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
@@ -107,4 +107,4 @@ phonon DOS:
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.phonon_dos("default")
-    check_factory_methods(calculation.phonon_dos, data)
+    check_factory_methods(PhononDos, data)

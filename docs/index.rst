@@ -28,15 +28,7 @@ You can then install *py4vasp* from PyPI_ using the pip package installer
 
   pip install py4vasp
 
-This will automatically download *py4vasp* as well as most of the required dependencies.
-However, we do not install the *mdtraj* dependency by default because it does not
-reliably work with pip. We recommend to install *mdtraj* using conda
-
-.. code-block:: bash
-
-  conda install -c conda-forge mdtraj
-
-if you need the features that depend on it (plotting a trajectory of structures).
+This will automatically download *py4vasp* and its required dependencies.
 
 For a minimalistic setup where you use py4vasp as a library, you can install the
 core package
@@ -59,7 +51,6 @@ the next VASP version is released.
   git clone https://github.com/vasp-dev/py4vasp.git
   cd py4vasp
   pip install .
-  conda install -c conda-forge mdtraj
 
 If these commands succeed, you should be able to use *py4vasp*. You can make a quick
 test of your installation running the following command
@@ -143,24 +134,25 @@ a look at the tutorials_ for VASP. Many of them use *py4vasp* to plot or analyze
 the data produced by VASP, so this may give you an excellent starting point to learn
 how you can apply *py4vasp* in your research.
 
-.. currentmodule:: py4vasp
+.. rubric:: Optional dependencies
 
-.. rubric:: Packages
+You can install mdtraj if you want to analyze molecular dynamics trajectories
+beyond the pair correlation function. We recommend using conda for the installation
+which we found to be more robust than pip.
 
-.. autosummary::
-   :toctree: _packages
-   :template: package.rst
-   :recursive:
+.. toctree::
+   :hidden:
 
    calculation
+   generate
 
-.. rubric:: Classes
+.. currentmodule:: py4vasp
 
 .. autosummary::
-   :toctree: _classes
-   :template: class.rst
 
+   calculation
    Calculation
+
 
 ----------------------------------------------------------------------------------------
 

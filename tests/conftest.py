@@ -6,7 +6,7 @@ import random
 
 import numpy as np
 import pytest
-from numpy.testing import assert_array_almost_equal_nulp
+from numpy.testing import assert_allclose
 
 from py4vasp import exception, raw
 from py4vasp._util import import_
@@ -20,6 +20,7 @@ number_bands = 3
 number_valence_bands = 2
 number_conduction_bands = 1
 number_eigenvectors = 5
+number_excitons = 3
 single_spin = 1
 two_spins = 2
 axes = 3
@@ -53,15 +54,20 @@ class _Assert:
     def allclose(actual, desired, tolerance=1):
         if _is_none(actual):
             assert _is_none(desired)
-        elif getattr(actual, "dtype", None) == np.bool_:
-            assert desired.dtype == np.bool_
-            assert np.all(actual == desired)
+            return
+        actual = np.array(actual)
+        desired = np.array(desired)
+        type_ = actual.dtype.type
+        if type_ in (np.bool_, np.str_, np.bytes_):
+            assert type_ == desired.dtype.type
+            assert np.array_equal(actual, desired)
         else:
             actual, desired = np.broadcast_arrays(actual, desired)
             actual, mask_actual = _finite_subset(actual)
             desired, mask_desired = _finite_subset(desired)
             assert np.all(mask_actual == mask_desired)
-            assert_array_almost_equal_nulp(actual, desired, tolerance * 30)
+            tolerance = 1e-14 * tolerance
+            assert_allclose(actual, desired, rtol=tolerance, atol=tolerance)
 
     @staticmethod
     def same_structure(actual, desired):
@@ -77,6 +83,45 @@ class _Assert:
         _Assert.allclose(actual.lattice_vectors, desired.lattice_vectors)
         _Assert.allclose(actual.positions, desired.positions)
         _Assert.allclose(actual.supercell, desired.supercell)
+
+    @staticmethod
+    def same_raw_contcar(actual, desired, exact_match=True):
+        # exact_match requires cell to be identical and not just equivalent
+        _Assert.same_raw_structure(actual.structure, desired.structure, exact_match)
+        assert actual.system == desired.system
+        _Assert.allclose(actual.selective_dynamics, desired.selective_dynamics)
+        # velocities use a lower precision when writing
+        _Assert.allclose(
+            actual.lattice_velocities.astype(np.float32),
+            desired.lattice_velocities.astype(np.float32),
+        )
+        _Assert.allclose(
+            actual.ion_velocities.astype(np.float32),
+            desired.ion_velocities.astype(np.float32),
+        )
+
+    @staticmethod
+    def same_raw_structure(actual, desired, exact_match=True):
+        # exact_match requires cell to be identical and not just equivalent
+        _Assert.same_raw_stoichiometry(actual.stoichiometry, desired.stoichiometry)
+        _Assert.same_raw_cell(actual.cell, desired.cell, exact_match)
+        _Assert.allclose(actual.positions, desired.positions)
+
+    @staticmethod
+    def same_raw_stoichiometry(actual, desired):
+        _Assert.allclose(actual.number_ion_types, desired.number_ion_types)
+        _Assert.allclose(actual.ion_types, desired.ion_types)
+
+    @staticmethod
+    def same_raw_cell(actual, desired, exact_match=True):
+        # exact_match requires cell to be identical and not just equivalent
+        if exact_match:
+            _Assert.allclose(actual.lattice_vectors, desired.lattice_vectors)
+            _Assert.allclose(actual.scale, desired.scale)
+        else:
+            actual_lattice_vectors = actual.lattice_vectors * actual.scale
+            desired_lattice_vectors = desired.lattice_vectors * desired.scale
+            _Assert.allclose(actual_lattice_vectors, desired_lattice_vectors)
 
 
 def _is_none(data):
@@ -97,15 +142,7 @@ def Assert():
     return _Assert
 
 
-class ElectronPhononFactory:
-    @staticmethod
-    def self_energy(selection):
-        return _electron_phonon_self_energy(selection)
-
-
 class RawDataFactory:
-    electron_phonon = ElectronPhononFactory()
-
     @staticmethod
     def band(selection):
         band, *options = selection.split()
@@ -142,8 +179,8 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
-    def OSZICAR(selection=None):
-        return _example_OSZICAR()
+    def current_density(selection):
+        return _current_density(selection)
 
     @staticmethod
     def density(selection):
@@ -201,22 +238,38 @@ class RawDataFactory:
         return _elastic_modulus()
 
     @staticmethod
+    def electron_phonon_self_energy(selection):
+        return _electron_phonon_self_energy(selection)
+
+    @staticmethod
+    def electronic_minimization(selection=None):
+        return _electronic_minimization()
+
+    @staticmethod
     def energy(selection, randomize: bool = False):
         if selection == "MD":
             return _MD_energy(randomize)
         elif selection == "relax":
             return _relax_energy(randomize)
+        elif selection == "afqmc":
+            return _afqmc_energy()
         else:
             raise exception.NotImplemented()
 
     @staticmethod
-    def fatband(selection):
-        return _Sr2TiO4_fatband()
+    def exciton_density():
+        return _Sr2TiO4_exciton_density()
+
+    @staticmethod
+    def exciton_eigenvector(selection):
+        return _Sr2TiO4_exciton_eigenvector()
 
     @staticmethod
     def force_constant(selection):
-        if selection == "Sr2TiO4":
-            return _Sr2TiO4_force_constants()
+        if selection == "Sr2TiO4 all atoms":
+            return _Sr2TiO4_force_constants(use_selective_dynamics=False)
+        if selection == "Sr2TiO4 selective dynamics":
+            return _Sr2TiO4_force_constants(use_selective_dynamics=True)
         else:
             raise exception.NotImplemented()
 
@@ -252,8 +305,19 @@ class RawDataFactory:
         return _magnetism(selection)
 
     @staticmethod
+    def nics(selection):
+        if selection == "on-a-grid":
+            return _Sr2TiO4_nics()
+        if selection == "at-points":
+            return _Fe3O4_nics()
+
+    @staticmethod
     def pair_correlation(selection):
         return _Sr2TiO4_pair_correlation()
+
+    @staticmethod
+    def partial_density(selection):
+        return _partial_density(selection)
 
     @staticmethod
     def piezoelectric_tensor(selection):
@@ -270,6 +334,10 @@ class RawDataFactory:
     @staticmethod
     def phonon_dos(selection):
         return _phonon_dos()
+
+    @staticmethod
+    def phonon_mode(selection):
+        return _phonon_mode()
 
     @staticmethod
     def potential(selection: str):
@@ -303,23 +371,33 @@ class RawDataFactory:
 
     @staticmethod
     def structure(selection):
-        if selection == "Sr2TiO4":
-            return _Sr2TiO4_structure()
-        elif selection == "Fe3O4":
-            return _Fe3O4_structure()
+        if selection == "BN":
+            return _BN_structure()
         elif selection == "Ca3AsBr3":
             return _Ca3AsBr3_structure()
+        elif selection == "Fe3O4":
+            return _Fe3O4_structure()
+        elif selection == "SrTiO3":
+            return _SrTiO3_structure()
+        elif selection == "Sr2TiO4":
+            return _Sr2TiO4_structure()
+        elif selection == "Sr2TiO4 without ion types":
+            return _Sr2TiO4_structure(has_ion_types=False)
+        elif selection == "ZnS":
+            return _ZnS_structure()
         else:
             raise exception.NotImplemented()
 
     @staticmethod
-    def topology(selection):
+    def stoichiometry(selection):
         if selection == "Sr2TiO4":
-            return _Sr2TiO4_topology()
+            return _Sr2TiO4_stoichiometry()
+        elif selection == "Sr2TiO4 without ion types":
+            return _Sr2TiO4_stoichiometry(has_ion_types=False)
         elif selection == "Fe3O4":
-            return _Fe3O4_topology()
+            return _Fe3O4_stoichiometry()
         elif selection == "Ca2AsBr-CaBr2":  # test duplicate entries
-            return _Ca3AsBr3_topology()
+            return _Ca3AsBr3_stoichiometry()
         else:
             raise exception.NotImplemented()
 
@@ -336,12 +414,8 @@ class RawDataFactory:
     def workfunction(selection):
         return _workfunction(selection)
 
-    @staticmethod
-    def partial_charge(selection):
-        return _partial_charge(selection)
 
-
-@pytest.fixture
+@pytest.fixture(scope="session")
 def raw_data():
     return RawDataFactory
 
@@ -428,7 +502,7 @@ def _phonon_band():
     shape = (*dispersion.eigenvalues.shape, number_atoms, axes, complex_)
     return raw.PhononBand(
         dispersion=dispersion,
-        topology=_Sr2TiO4_topology(),
+        stoichiometry=_Sr2TiO4_stoichiometry(),
         eigenvectors=np.linspace(0, 1, np.prod(shape)).reshape(shape),
     )
 
@@ -448,7 +522,16 @@ def _phonon_dos():
     upper_ratio = np.array(list(reversed(lower_ratio)))
     ratio = np.linspace(lower_ratio, upper_ratio, number_points).T
     projections = np.multiply(ratio, dos)
-    return raw.PhononDos(energies, dos, projections, _Sr2TiO4_topology())
+    return raw.PhononDos(energies, dos, projections, _Sr2TiO4_stoichiometry())
+
+
+def _phonon_mode():
+    frequencies = np.sqrt(np.linspace(0.1, -0.02, number_modes, dtype=np.complex128))
+    return raw.PhononMode(
+        structure=_Sr2TiO4_structure(),
+        frequencies=frequencies.view(np.float64).reshape(-1, 2),
+        eigenvectors=_make_unitary_matrix(number_modes),
+    )
 
 
 def _piezoelectric_tensor():
@@ -481,6 +564,19 @@ def _relax_energy(randomize: bool = False):
         "energy(sigma->0)       ",
     )
     return _create_energy(labels, randomize=randomize)
+
+
+def _afqmc_energy():
+    labels = (
+        "step            STEP    ",
+        "One el. energy  E1      ",
+        "Hartree energy  -DENC   ",
+        "exchange        EXHF    ",
+        "free energy     TOTEN   ",
+        "free energy cap TOTENCAP",
+        "weight          WEIGHT  ",
+    )
+    return _create_energy(labels)
 
 
 def _create_energy(labels, randomize: bool = False):
@@ -553,7 +649,8 @@ def _magnetism(selection):
         spin_moments=_make_data(np.arange(np.prod(shape)).reshape(shape)),
     )
     if selection == "orbital_moments":
-        magnetism.orbital_moments = _make_data(np.sqrt(magnetism.spin_moments))
+        remove_charge_and_s_component = magnetism.spin_moments[:, 1:, :, 1:]
+        magnetism.orbital_moments = _make_data(np.sqrt(remove_charge_and_s_component))
     return magnetism
 
 
@@ -675,7 +772,7 @@ def _Sr2TiO4_cell():
     )
 
 
-def _example_OSZICAR():
+def _electronic_minimization():
     random_convergence_data = np.random.rand(9, 3)
     iteration_number = np.arange(1, 10)[:, np.newaxis]
     ncg = np.random.randint(4, 10, (9, 1))
@@ -686,14 +783,14 @@ def _example_OSZICAR():
     convergence_data = raw.VaspData(convergence_data)
     label = raw.VaspData([b"N", b"E", b"dE", b"deps", b"ncg", b"rms", b"rms(c)"])
     is_elmin_converged = [0]
-    return raw.OSZICAR(
+    return raw.ElectronicMinimization(
         convergence_data=convergence_data,
         label=label,
         is_elmin_converged=is_elmin_converged,
     )
 
 
-def _partial_charge(selection):
+def _partial_density(selection):
     grid_dim = grid_dimensions
     if "CaAs3_110" in selection:
         structure = _CaAs3_110_structure()
@@ -720,7 +817,8 @@ def _partial_charge(selection):
     else:
         spin_dimension = 1
     grid = raw.VaspData(tuple(reversed(grid_dim)))
-    gaussian_charge = np.zeros((len(kpoints), len(bands), spin_dimension, *grid_dim))
+    charge_shape = (len(kpoints), len(bands), spin_dimension, *grid_dim)
+    gaussian_charge = np.zeros(charge_shape)
     if not _is_core():
         cov = grid_dim[0] / 10  # standard deviation
         z = np.arange(grid_dim[0])  # z range
@@ -731,7 +829,7 @@ def _partial_charge(selection):
                 # Fill the gaussian_charge array
                 gaussian_charge[:, :, :, :, gy, gx] = val
     gaussian_charge = raw.VaspData(gaussian_charge)
-    return raw.PartialCharge(
+    return raw.PartialDensity(
         structure=structure,
         bands=bands,
         kpoints=kpoints,
@@ -769,29 +867,45 @@ def _Sr2TiO4_dos(projectors):
     return raw_dos
 
 
-def _Sr2TiO4_fatband():
+def _Sr2TiO4_exciton_density():
+    shape = (number_excitons, *grid_dimensions)
+    exciton_charge = _make_arbitrary_data(shape)
+    return raw.ExcitonDensity(
+        structure=_Sr2TiO4_structure(), exciton_charge=exciton_charge
+    )
+
+
+def _Sr2TiO4_exciton_eigenvector():
     dispersion = _multiple_bands_dispersion()
     number_kpoints = len(dispersion.kpoints.coordinates)
     shape = (single_spin, number_kpoints, number_conduction_bands, number_valence_bands)
     bse_index = np.arange(np.prod(shape)).reshape(shape)
     number_transitions = bse_index.size
     shape = (number_eigenvectors, number_transitions, complex_)
-    fatbands = np.random.uniform(0, 20, shape)
-    return raw.Fatband(
+    eigenvectors = np.random.uniform(0, 20, shape)
+    return raw.ExcitonEigenvector(
         dispersion=dispersion,
         fermi_energy=0.2,
         bse_index=raw.VaspData(bse_index),
-        fatbands=raw.VaspData(fatbands),
+        eigenvectors=raw.VaspData(eigenvectors),
         first_valence_band=raw.VaspData(np.array([1])),
         first_conduction_band=raw.VaspData(np.array([3])),
     )
 
 
-def _Sr2TiO4_force_constants():
+def _Sr2TiO4_force_constants(use_selective_dynamics):
     shape = (axes * number_atoms, axes * number_atoms)
+    force_constants = _make_arbitrary_data(shape, seed=51609352)
+    if use_selective_dynamics:
+        mask = 3 * [True] + 5 * [False] + 5 * [True] + 6 * [False] + 2 * [True]
+        force_constants = force_constants[mask][:, mask]
+        selective_dynamics = np.reshape(mask, (number_atoms, axes))
+    else:
+        selective_dynamics = _make_arbitrary_data(None, present=False)
     return raw.ForceConstant(
         structure=_Sr2TiO4_structure(),
-        force_constants=np.arange(np.prod(shape)).reshape(shape),
+        force_constants=0.5 * (force_constants + force_constants[:].T),
+        selective_dynamics=selective_dynamics,
     )
 
 
@@ -813,6 +927,12 @@ def _Sr2TiO4_internal_strain():
         structure=_Sr2TiO4_structure(),
         internal_strain=np.arange(np.prod(shape)).reshape(shape),
     )
+
+
+def _Sr2TiO4_nics():
+    structure = _Sr2TiO4_structure()
+    grid = (9, *grid_dimensions)
+    return raw.Nics(structure=structure, nics_grid=_make_arbitrary_data(grid))
 
 
 def _Sr2TiO4_pair_correlation():
@@ -842,7 +962,7 @@ def _Sr2TiO4_potential(included_potential):
 def _Sr2TiO4_projectors(use_orbitals):
     orbital_types = "s py pz px dxy dyz dz2 dxz x2-y2 fy3x2 fxyz fyz2 fz3 fxz2 fzx2 fx3"
     return raw.Projector(
-        topology=_Sr2TiO4_topology(),
+        stoichiometry=_Sr2TiO4_stoichiometry(),
         orbital_types=_make_orbital_types(use_orbitals, orbital_types),
         number_spins=1,
     )
@@ -872,7 +992,7 @@ def _Graphite_structure():
         [0.33333333, 0.66666667, 0.60127716],
     ]
     return raw.Structure(
-        topology=_Graphite_topology(),
+        stoichiometry=_Graphite_stoichiometry(),
         cell=_Graphite_cell(),
         positions=raw.VaspData(positions),
     )
@@ -887,8 +1007,8 @@ def _Graphite_cell():
     return raw.Cell(np.asarray(lattice_vectors), scale=raw.VaspData(1.0))
 
 
-def _Graphite_topology():
-    return raw.Topology(
+def _Graphite_stoichiometry():
+    return raw.Stoichiometry(
         number_ion_types=np.array((10,)),
         ion_types=np.array(("C",), dtype="S"),
     )
@@ -904,7 +1024,7 @@ def _Ni100_structure():
         [0.00000000, 0.40000000, 0.00000000],
     ]
     return raw.Structure(
-        topology=_Ni100_topology(),
+        stoichiometry=_Ni100_stoichiometry(),
         cell=_Ni100_cell(),
         positions=raw.VaspData(positions),
     )
@@ -919,8 +1039,8 @@ def _Ni100_cell():
     return raw.Cell(np.asarray(lattice_vectors), scale=raw.VaspData(1.0))
 
 
-def _Ni100_topology():
-    return raw.Topology(
+def _Ni100_stoichiometry():
+    return raw.Stoichiometry(
         number_ion_types=np.array((5,)),
         ion_types=np.array(("Ni",), dtype="S"),
     )
@@ -955,7 +1075,7 @@ def _CaAs3_110_structure():
         [0.77964386, 0.09593968, 0.76122779],
     ]
     return raw.Structure(
-        topology=_CaAs3_110_topology(),
+        stoichiometry=_CaAs3_110_stoichiometry(),
         cell=_CaAs3_110_cell(),
         positions=raw.VaspData(positions),
     )
@@ -970,14 +1090,14 @@ def _CaAs3_110_cell():
     return raw.Cell(np.asarray(lattice_vectors), scale=raw.VaspData(1.0))
 
 
-def _CaAs3_110_topology():
-    return raw.Topology(
+def _CaAs3_110_stoichiometry():
+    return raw.Stoichiometry(
         number_ion_types=np.array((6, 18)),
         ion_types=np.array(("Ca", "As"), dtype="S"),
     )
 
 
-def _Sr2TiO4_structure():
+def _Sr2TiO4_structure(has_ion_types=True):
     repetitions = (number_steps, 1, 1)
     positions = [
         [0.64529, 0.64529, 0.0],
@@ -989,17 +1109,23 @@ def _Sr2TiO4_structure():
         [0.00000, 0.50000, 0.5],
     ]
     return raw.Structure(
-        topology=_Sr2TiO4_topology(),
+        stoichiometry=_Sr2TiO4_stoichiometry(has_ion_types),
         cell=_Sr2TiO4_cell(),
         positions=np.tile(positions, repetitions),
     )
 
 
-def _Sr2TiO4_topology():
-    return raw.Topology(
-        number_ion_types=np.array((2, 1, 4)),
-        ion_types=np.array(("Sr", "Ti", "O "), dtype="S"),
-    )
+def _Sr2TiO4_stoichiometry(has_ion_types=True):
+    if has_ion_types:
+        return raw.Stoichiometry(
+            number_ion_types=np.array((2, 1, 4)),
+            ion_types=raw.VaspData(np.array(("Sr", "Ti", "O "), dtype="S")),
+        )
+    else:
+        return raw.Stoichiometry(
+            number_ion_types=raw.VaspData(np.array((2, 1, 4))),
+            ion_types=raw.VaspData(None),
+        )
 
 
 def _Sr2TiO4_velocity():
@@ -1071,6 +1197,24 @@ def _Fe3O4_forces(randomize):
     return raw.Force(structure=_Fe3O4_structure(), forces=forces)
 
 
+def _Fe3O4_nics():
+    structure = _Fe3O4_structure()
+    seed_nics = 4782838
+    seed_pos = 6375861
+    positions_shape = (axes, number_points)
+    nics_shape = (number_points, axes, axes)
+    nics_data = np.array(_make_arbitrary_data(nics_shape, seed=seed_nics))
+    # intentionally make values very small to check their output
+    nics_data[4, 1, 0] = 1e-108
+    nics_data[9, 0, 2] = -1e-15  # should be rounded
+    nics_data[11, 2, 1] = 1e-14  # should still be there
+    return raw.Nics(
+        structure=structure,
+        nics_points=raw.VaspData(nics_data),
+        positions=_make_arbitrary_data(positions_shape, seed=seed_pos),
+    )
+
+
 def _Fe3O4_potential(selection, included_potential):
     structure = _Fe3O4_structure()
     shape_polarized = (_number_components(selection), *grid_dimensions)
@@ -1089,7 +1233,7 @@ def _Fe3O4_potential(selection, included_potential):
 
 def _Fe3O4_projectors(use_orbitals):
     return raw.Projector(
-        topology=_Fe3O4_topology(),
+        stoichiometry=_Fe3O4_stoichiometry(),
         orbital_types=_make_orbital_types(use_orbitals, "s p d f"),
         number_spins=2,
     )
@@ -1119,14 +1263,14 @@ def _Fe3O4_structure():
     ]
     shift = np.linspace(-0.02, 0.01, number_steps)
     return raw.Structure(
-        topology=_Fe3O4_topology(),
+        stoichiometry=_Fe3O4_stoichiometry(),
         cell=_Fe3O4_cell(),
         positions=np.add.outer(shift, positions),
     )
 
 
-def _Fe3O4_topology():
-    return raw.Topology(
+def _Fe3O4_stoichiometry():
+    return raw.Stoichiometry(
         number_ion_types=np.array((3, 4)), ion_types=np.array(("Fe", "O "), dtype="S")
     )
 
@@ -1155,31 +1299,103 @@ def _Ca3AsBr3_structure():
         [0.5, 0.5, 0.0],  # Br_3
     ]
     return raw.Structure(
-        topology=_Ca3AsBr3_topology(),
+        stoichiometry=_Ca3AsBr3_stoichiometry(),
         cell=_Ca3AsBr3_cell(),
         positions=_make_data(positions),
     )
 
 
-def _Ca3AsBr3_topology():
-    return raw.Topology(
+def _Ca3AsBr3_stoichiometry():
+    return raw.Stoichiometry(
         number_ion_types=np.array((2, 1, 1, 1, 2)),
         ion_types=np.array(("Ca", "As", "Br", "Ca", "Br"), dtype="S"),
     )
 
 
-def _electron_phonon_self_energy(selection):
-    return raw.ElectronPhononSelfEnergy(
-        size=3,
-        eigenvalues=_make_data([]),
-        debye_waller=[_make_data([]), _make_data([]), _make_data([])],
-        fan=[_make_data([]), _make_data([]), _make_data([])],
+def _ZnS_structure():
+    return raw.Structure(
+        raw.Stoichiometry(number_ion_types=[2, 2], ion_types=["Zn", "S"]),
+        raw.Cell(
+            lattice_vectors=np.array([[1.9, -3.3, 0.0], [1.9, 3.3, 0.0], [0, 0, 6.2]]),
+            scale=raw.VaspData(1.0),
+        ),
+        positions=np.array(
+            [
+                [1 / 3, 2 / 3, 0.0],
+                [2 / 3, 1 / 3, 0.5],
+                [1 / 3, 2 / 3, 0.375],
+                [2 / 3, 1 / 3, 0.875],
+            ]
+        ),
     )
 
 
-def _make_arbitrary_data(shape, present=True):
+def _SrTiO3_structure():
+    return raw.Structure(
+        raw.Stoichiometry(number_ion_types=[1, 1, 3], ion_types=["Sr", "Ti", "O"]),
+        raw.Cell(lattice_vectors=np.eye(3), scale=raw.VaspData(4.0)),
+        positions=np.array(
+            [
+                [0, 0, 0],
+                [0.5, 0.5, 0.5],
+                [0.0, 0.5, 0.5],
+                [0.5, 0.0, 0.5],
+                [0.5, 0.5, 0.0],
+            ]
+        ),
+    )
+
+
+def _BN_structure():
+    return raw.Structure(
+        raw.Stoichiometry(number_ion_types=[1, 1], ion_types=["B", "N"]),
+        raw.Cell(
+            lattice_vectors=np.array(
+                [[0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]
+            ),
+            scale=raw.VaspData(3.63),
+        ),
+        positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
+    )
+
+
+def _current_density(selection):
+    if selection == "all":
+        valid_indices = ("x", "y", "z")
+    else:
+        valid_indices = [selection]
+    shape = (axes, *grid_dimensions)
+    current_density = [_make_arbitrary_data(shape) for _ in valid_indices]
+    return raw.CurrentDensity(
+        valid_indices=valid_indices,
+        structure=_Fe3O4_structure(),
+        current_density=current_density,
+    )
+
+
+def _electron_phonon_self_energy(selection):
+    number_samples = 3
+    shape = [1, 2, 3]
+
+    return raw.ElectronPhononSelfEnergy(
+        valid_indices=number_samples,
+        eigenvalues=_make_arbitrary_data(shape),
+        debye_waller=[_make_arbitrary_data(shape) for _ in range(number_samples)],
+        fan=[_make_arbitrary_data(shape) for _ in range(number_samples)],
+    )
+
+
+def _make_unitary_matrix(n, seed=None):
+    rng = np.random.default_rng(seed)
+    matrix = rng.standard_normal((n, n))
+    unitary_matrix, _ = np.linalg.qr(matrix)
+    return raw.VaspData(unitary_matrix)
+
+
+def _make_arbitrary_data(shape, present=True, seed=None):
     if present:
-        data = np.random.random(shape) + np.arange(np.prod(shape)).reshape(shape)
+        rng = np.random.default_rng(seed)
+        data = 10 * rng.standard_normal(shape)
         return raw.VaspData(data)
     else:
         return raw.VaspData(None)

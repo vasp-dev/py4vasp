@@ -3,7 +3,7 @@
 import dataclasses
 
 from py4vasp import raw
-from py4vasp._raw import schema
+from py4vasp._raw import mapping
 
 VERSION = raw.Version("major_dataset", "minor_dataset", "patch_dataset")
 
@@ -32,7 +32,7 @@ class WithLength:
 
 
 @dataclasses.dataclass
-class Sequence(schema.Sequence):
+class Mapping(mapping.Mapping):
     common: str
     variable: str
 
@@ -41,5 +41,5 @@ class Sequence(schema.Sequence):
 class Complex:
     opt: OptionalArgument
     link: WithLink
-    sequence: Sequence
+    mapping: Mapping
     length: WithLength = None

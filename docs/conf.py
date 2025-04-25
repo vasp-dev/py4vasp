@@ -22,7 +22,7 @@ copyright = "2024, VASP Software GmbH"
 author = "VASP Software GmbH"
 
 # The full version, including alpha/beta/rc tags
-release = "0.9.0"
+release = "0.10.0"
 
 
 # -- General configuration ---------------------------------------------------
@@ -48,7 +48,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 
-# default theme
+# # default theme
 # html_theme = "nature"
 
 # a minimal theme for the website
@@ -69,6 +69,11 @@ modindex_common_prefix = ["py4vasp."]
 
 # -- Custom extension of Sphinx ----------------------------------------------
 from docutils import nodes
+from docutils.parsers.rst import Directive
+from docutils.statemachine import ViewList
+from jinja2 import Template
+
+from py4vasp import _calculation, _util
 
 
 # defines an INCAR tag
@@ -78,6 +83,21 @@ def tag_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
     return [node], []
 
 
+class JinjaDirective(Directive):
+    has_content = True
+
+    def run(self):
+        template_string = "\n".join(self.content)
+        template = Template(template_string)
+        rendered_content = template.render(calculation=_calculation)
+        filename = self.state.document.current_source
+        view_list = ViewList(rendered_content.split("\n"), filename)
+        node = nodes.Element()
+        self.state.nested_parse(view_list, 0, node)
+        return node.children
+
+
 def setup(app):
+    app.add_directive("jinja", JinjaDirective)
     app.add_role("tag", tag_role)
     return

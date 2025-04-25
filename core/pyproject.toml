@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "py4vasp-core"
-version = "0.9.0"
+version = "0.10.2"
 description = "Tool for assisting with the analysis and setup of VASP calculations."
 authors = [
     "VASP Software GmbH <py4vasp@vasp.at>",
@@ -12,6 +12,10 @@ authors = [
     "Sudarshan Vijay <sudarshan.vijay@protonmail.com>",
     "Marie-Therese Huebsch <marie-therese.huebsch@vasp.at>",
     "Michael Wolloch <michael.wolloch@vasp.at>",
+    "Andreas Singraber <andreas.singraber@vasp.at>",
+    "Alexey Tal <alexey.tal@vasp.at>",
+    "Tomáš Bučko <tomas.bucko@uniba.sk>",
+    "Max Liebetreu <max.liebetreu@vasp.at>",
 ]
 license = "Apache-2.0"
 readme = "README.md"
@@ -25,7 +29,7 @@ repository = "https://github.com/vasp-dev/py4vasp"
 
 [tool.poetry.dependencies]
 python = ">=3.9"
-numpy = "^1.23"
+numpy = ">=1.23"
 h5py = ">=3.7.0"
 
 [tool.poetry.group.dev.dependencies]
@@ -35,9 +39,6 @@ pylint = ">=2.15"
 hypothesis = ">=6.48.1"
 black = ">=22.6.0"
 isort = ">=5.10.1"
-
-[tool.poetry.scripts]
-error-analysis = "py4vasp.scripts.error_analysis:main"
 
 [tool.isort]
 profile = "black"
