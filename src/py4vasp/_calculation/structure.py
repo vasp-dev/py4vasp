@@ -8,7 +8,7 @@ import numpy as np
 from py4vasp import exception, raw
 from py4vasp._calculation import _stoichiometry, base, slice_
 from py4vasp._third_party import view
-from py4vasp._util import documentation, import_, reader
+from py4vasp._util import documentation, import_, parse, reader
 
 ase = import_.optional("ase")
 ase_io = import_.optional("ase.io")
@@ -87,9 +87,8 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
             required.
         """
         poscar = _replace_or_set_elements(str(poscar), elements)
-        poscar = io.StringIO(poscar)
-        structure = ase_io.read(poscar, format="vasp")
-        return cls.from_ase(structure)
+        poscar = parse.POSCAR(poscar)
+        return cls.from_data(poscar.structure)
 
     @classmethod
     def from_ase(cls, structure):

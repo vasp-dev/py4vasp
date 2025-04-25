@@ -208,6 +208,8 @@ class PoscarParser:
         """
         try:
             possible_coordinate_system = next(remaining_lines)
+            possible_first_ion_velocity = next(remaining_lines)
+            remaining_lines = _put_back(remaining_lines, possible_first_ion_velocity)
         except StopIteration:  # velocities are optional
             return result, remaining_lines
         coordinate_system = possible_coordinate_system

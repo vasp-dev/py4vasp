@@ -11,9 +11,11 @@ def test_no_error_handling_outside_ipython():
     assert interactive.error_handling() == "Plain"
 
 
-def test_set_error_handling(capsys, not_core):
-    with patch("IPython.get_ipython") as mock:
+def test_set_error_handling(not_core):
+    import IPython
+
+    shell = IPython.terminal.interactiveshell.TerminalInteractiveShell()
+    with patch("IPython.get_ipython", return_value=shell) as mock:
+        assert shell.InteractiveTB.mode != "Minimal"
         interactive.set_error_handling("Minimal")
-        mock.return_value.magic.assert_called_once_with("xmode Minimal")
-        output, _ = capsys.readouterr()
-        assert output == ""
+        assert shell.InteractiveTB.mode == "Minimal"
