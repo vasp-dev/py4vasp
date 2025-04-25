@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "py4vasp"
-version = "0.10.0"
+version = "0.10.2"
 description = "Tool for assisting with the analysis and setup of VASP calculations."
 authors = [
     "VASP Software GmbH <py4vasp@vasp.at>",
@@ -35,7 +35,7 @@ nglview = ">=3.0.5"
 ase = ">=3.22.1"
 plotly = ">=5.9.0"
 kaleido = ">=0.2.1,<0.2.1.post1 || >0.2.1.post1"
-ipython = "^8.12"
+ipython = ">=8.12"
 scipy = ">=1.12.0"
 click = ">=8.1.8"
 
