@@ -859,6 +859,7 @@ def _Ba2PbO4_stoichiometry():
         ion_types=raw.VaspData(np.array(("Ba", "Pb", "O "), dtype="S")),
     )
 
+
 def _Ba2PbO4_structure():
     raise exception.NotImplemented()
     positions = [
@@ -875,6 +876,7 @@ def _Ba2PbO4_structure():
         cell=_Ba2PbO4_cell(),
         positions=_make_data(positions),
     )
+
 
 def _Ba2PbO4_dos(projectors):
     raise exception.NotImplemented()
