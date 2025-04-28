@@ -163,6 +163,7 @@ def test_spin_projections(Fe3O4, projections, Assert):
     p_ref = np.sum(spin_projections[:, :, 1], axis=(0, 1))
     down_ref = np.sum(spin_projections[1], axis=(0, 1))
     actual = Fe3O4.project("Fe O(p + d) d O(total) p + down", spin_projections)
+    print(actual.keys())
     Assert.allclose(actual["Fe_up"], Fe_ref[0])
     Assert.allclose(actual["Fe_down"], Fe_ref[1])
     Assert.allclose(actual["d_up"], d_ref[0])
@@ -192,6 +193,21 @@ def test_noncollinear_projections(Ba2PbO4, projections, Assert):
     Assert.allclose(actual["sigma_1 - sigma_2"], xy_ref, tolerance=100)
     expected = ["p_x", "p_y", "Ba_sigma_z + Pb_sigma_z", "sigma_1 - sigma_2"]
     assert actual[SPIN_PROJECTION] == expected
+
+
+def test_noncollinear_projections(Ba2PbO4, projections, Assert):
+    projections = np.add.outer(np.linspace(-2, 2, 4), np.squeeze(projections))
+    Pb_ref = np.sum(projections[0, 2], axis=0)
+    p_x_ref = np.sum(projections[1, :, 1], axis=0)
+    p_y_ref = np.sum(projections[2, :, 1], axis=0)
+    BaPb_z_ref = np.sum(projections[3, 0:3], axis=(0, 1))
+    xy_ref = np.sum(projections[1] - projections[2], axis=(0, 1))
+    actual = Ba2PbO4.project("3 p(x y) sigma_z(Ba + Pb) sigma_1 - sigma_2", projections)
+    Assert.allclose(actual["Pb_1"], Pb_ref)
+    Assert.allclose(actual["p_x"], p_x_ref)
+    Assert.allclose(actual["p_y"], p_y_ref)
+    Assert.allclose(actual["Ba_sigma_z + Pb_sigma_z"], BaPb_z_ref)
+    Assert.allclose(actual["sigma_1 - sigma_2"], xy_ref, tolerance=100)
 
 
 def test_missing_arguments_should_return_empty_dictionary(Sr2TiO4, projections):

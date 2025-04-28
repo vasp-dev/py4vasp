@@ -558,6 +558,7 @@ def test_simple_quiver(simple_quiver, Assert, not_core):
     assert simple_quiver.max_number_arrows is None
     expected_positions = compute_positions(simple_quiver)
     work = simple_quiver.scale_arrows * simple_quiver.data.T.reshape(-1, 2)
+    expected_positions -= 0.5 * work
     expected_tips = expected_positions + work
     expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
     #
@@ -595,6 +596,7 @@ def test_dense_quiver(dense_quiver, max_number_arrows, Assert, not_core):
     # remember that a and b are transposed
     work = work[:: subsampling[1], :: subsampling[0]]
     expected_positions = compute_positions(dense_quiver, subsampling)
+    expected_positions -= 0.5 * work.reshape(expected_positions.shape)
     expected_tips = expected_positions + work.reshape(expected_positions.shape)
     expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
     data_size = np.prod(expected_shape)
@@ -613,6 +615,7 @@ def test_complex_quiver(complex_quiver, Assert, not_core):
     work = expected_scale * complex_quiver.data
     work = np.block([[work, work], [work, work], [work, work]]).T
     expected_positions = compute_positions(complex_quiver)
+    expected_positions -= 0.5 * work.reshape(expected_positions.shape)
     expected_tips = expected_positions + work.reshape(expected_positions.shape)
     expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
     data_size = np.prod(complex_quiver.supercell) * complex_quiver.data.size // 2

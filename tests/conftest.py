@@ -160,6 +160,10 @@ class RawDataFactory:
             return _noncollinear_bands(options)
         elif band == "spin_texture":
             return _spin_texture_bands(options)
+        elif band == "noncollinear":
+            return _noncollinear_bands(options)
+        elif band == "spin_texture":
+            return _spin_texture_bands(options)
         else:
             raise exception.NotImplemented()
 
@@ -625,14 +629,21 @@ def _line_kpoints(mode, labels):
 
 
 def _slice_kpoints(mode):
-    x = np.linspace(0, 1, 4, endpoint=False)
-    y = np.linspace(0, 1, 3, endpoint=False)
-    z = np.linspace(0, 1, 1, endpoint=False) + 1 / 8
+    nkpx, nkpy, nkpz = (4, 3, 1)
+    x = np.linspace(0, 1, nkpx, endpoint=False)
+    y = np.linspace(0, 1, nkpy, endpoint=False)
+    z = np.linspace(0, 1, nkpz, endpoint=False) + 1 / 8
     coordinates = np.array(list(itertools.product(x, y, z)))
     number_kpoints = len(coordinates) if mode[0] in ["e", b"e"[0]] else 0
+    number_kpx = nkpx if mode[0] in ["e", b"e"[0]] else 0
+    number_kpy = nkpy if mode[0] in ["e", b"e"[0]] else 0
+    number_kpz = nkpz if mode[0] in ["e", b"e"[0]] else 0
     kpoints = raw.Kpoint(
         mode=mode,
         number=number_kpoints,
+        number_x=number_kpx,
+        number_y=number_kpy,
+        number_z=number_kpz,
         coordinates=coordinates,
         weights=np.arange(len(coordinates)),
         cell=_Ba2PbO4_cell(),
@@ -641,14 +652,18 @@ def _slice_kpoints(mode):
 
 
 def _grid_kpoints(mode, labels):
-    x = np.linspace(0, 1, 4, endpoint=False)
-    y = np.linspace(0, 1, 3, endpoint=False)
-    z = np.linspace(0, 1, 4, endpoint=False) + 1 / 8
+    nkpx, nkpy, nkpz = (4, 3, 4)
+    x = np.linspace(0, 1, nkpx, endpoint=False)
+    y = np.linspace(0, 1, nkpy, endpoint=False)
+    z = np.linspace(0, 1, nkpz, endpoint=False) + 1 / 8
     coordinates = np.array(list(itertools.product(x, y, z)))
     number_kpoints = len(coordinates) if mode[0] in ["e", b"e"[0]] else 0
     kpoints = raw.Kpoint(
         mode=mode,
         number=number_kpoints,
+        number_x=nkpx,
+        number_y=nkpy,
+        number_z=nkpz,
         coordinates=coordinates,
         weights=np.arange(len(coordinates)),
         cell=_Sr2TiO4_cell(),

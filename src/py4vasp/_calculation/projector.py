@@ -195,6 +195,20 @@ class Projector(base.Refinery):
             "sigma_2",
             "sigma_3",
         ]
+        spin_keys = [
+            "total",
+            "up",
+            "down",
+            "sigma_x",
+            "sigma_y",
+            "sigma_z",
+            "x",
+            "y",
+            "z",
+            "sigma_1",
+            "sigma_2",
+            "sigma_3",
+        ]
         orbital_keys = ["s", "p", "d", "f"]
         if key in spin_keys:
             return 0
