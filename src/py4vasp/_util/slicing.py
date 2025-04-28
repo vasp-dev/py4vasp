@@ -53,6 +53,12 @@ class Plane:
     "Lattice vectors of the unit cell."
     cut: str = None
     "Lattice vector cut to get the plane, if not set, no labels will be added"
+    axis_labels: tuple[str, str, str] = ("a", "b", "c")
+
+    def map_raw_labels(self, labels: tuple[str, str]):
+        _raise_error_if_labels_invalid(self.axis_labels)
+        mapping = dict(zip(("a", "b", "c"), self.axis_labels))
+        return tuple(mapping[x] for x in labels)
 
 
 def get_cut(a, b, c):
@@ -76,8 +82,8 @@ def raise_error_cut_selection_incorrect(*selections):
         )
     if selected_elements > 1:
         raise exception.IncorrectUsage(
-            "You have selected more than a single element. Please use only one of "
-            "(a, b, c) and not multiple choices."
+            f"You have selected more than a single element. Please use only one of "
+            f"(a, b, c) and not multiple choices."
         )
 
 
@@ -168,7 +174,9 @@ def _project_vectors_to_plane(plane, data):
     return au + bv
 
 
-def plane(cell, cut, normal="auto"):
+def plane(
+    cell, cut, normal="auto", axis_labels: tuple[str, str, str] = ("a", "b", "c")
+):
     """Takes a 2d slice of a 3d cell and projects it onto 2d coordinates.
 
     For simplicity in the documentation, we will assume that the cut is in the plane of
@@ -202,18 +210,29 @@ def plane(cell, cut, normal="auto"):
         the plane is rotated. Alteratively, set it to "auto" to rotate to the closest
         Cartesian axis. If you set it to None, the normal will not be considered and
         the first remaining lattice vector will be aligned with the x axis instead.
-
+    axis_labels : tuple[str, str, str]
+        Defines the labels of the plane spanning vectors shown when plotted.
+        Must be exactly a tuple with three unique string elements.
+        
     Returns
     -------
     Plane
         A 2d representation of the plane with some information to transform data to it.
     """
     _raise_error_if_cut_unknown(cut)
+    _raise_error_if_labels_invalid(axis_labels)
     vectors = np.delete(cell, INDICES[cut], axis=0)
     if normal is not None:
-        return Plane(_rotate_normal_to_cartesian_axis(vectors, normal), cell, cut)
+        return Plane(
+            _rotate_normal_to_cartesian_axis(vectors, normal),
+            cell,
+            cut,
+            axis_labels=axis_labels,
+        )
     else:
-        return Plane(_rotate_first_vector_to_x_axis(vectors), cell, cut)
+        return Plane(
+            _rotate_first_vector_to_x_axis(vectors), cell, cut, axis_labels=axis_labels
+        )
 
 
 def _rotate_first_vector_to_x_axis(vectors):
@@ -261,6 +280,22 @@ def _get_rotation_matrix(vectors):
         return np.eye(3)
     V = np.cross(np.eye(3), v)
     return np.eye(3) + V + V @ V / (1 + cos_angle)
+
+
+def _raise_error_if_labels_invalid(labels: tuple):
+    if labels is None:
+        raise exception.IncorrectUsage(
+            "Labels must be a tuple of (str, str, str), but is None."
+        )
+    if len(labels) != 3:
+        raise exception.IncorrectUsage(
+            f"Labels must be a tuple of (str, str, str) (exactly length 3), but is {labels} of length {len(labels)}."
+        )
+    if any([not (isinstance(x, str)) for x in labels]):
+        raise exception.IncorrectUsage(
+            f"Labels must be a tuple of (str, str, str), but is {labels}."
+        )
+    return
 
 
 def _raise_error_if_cut_unknown(cut):

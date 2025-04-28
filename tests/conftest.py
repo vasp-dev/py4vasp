@@ -23,6 +23,7 @@ number_eigenvectors = 5
 number_excitons = 3
 single_spin = 1
 two_spins = 2
+noncollinear = 4
 axes = 3
 complex_ = 2
 number_modes = axes * number_atoms
@@ -155,6 +156,10 @@ class RawDataFactory:
             return _line_band(options)
         elif band == "spin_polarized":
             return _spin_polarized_bands(options)
+        elif band == "noncollinear":
+            return _noncollinear_bands(options)
+        elif band == "spin_texture":
+            return _spin_texture_bands(options)
         else:
             raise exception.NotImplemented()
 
@@ -230,6 +235,8 @@ class RawDataFactory:
             return _Sr2TiO4_dos(projectors)
         elif structure == "Fe3O4":
             return _Fe3O4_dos(projectors)
+        elif structure == "Ba2PbO4":
+            return _Ba2PbO4_dos(projectors)
         else:
             raise exception.NotImplemented()
 
@@ -351,6 +358,8 @@ class RawDataFactory:
             return _Sr2TiO4_projectors(use_orbitals=True)
         elif selection == "Fe3O4":
             return _Fe3O4_projectors(use_orbitals=True)
+        elif selection == "Ba2PbO4":
+            return _Ba2PbO4_projectors(use_orbitals=True)
         elif selection == "without_orbitals":
             return _Sr2TiO4_projectors(use_orbitals=False)
         else:
@@ -381,6 +390,8 @@ class RawDataFactory:
             return _Sr2TiO4_structure(has_ion_types=False)
         elif selection == "ZnS":
             return _ZnS_structure()
+        elif selection == "Ba2PbO4":
+            return _Ba2PbO4_structure()
         else:
             raise exception.NotImplemented()
 
@@ -617,15 +628,42 @@ def _line_kpoints(mode, labels):
     return kpoints
 
 
+def _slice_kpoints(mode):
+    nkpx, nkpy, nkpz = (4, 3, 1)
+    x = np.linspace(0, 1, nkpx, endpoint=False)
+    y = np.linspace(0, 1, nkpy, endpoint=False)
+    z = np.linspace(0, 1, nkpz, endpoint=False) + 1 / 8
+    coordinates = np.array(list(itertools.product(x, y, z)))
+    number_kpoints = len(coordinates) if mode[0] in ["e", b"e"[0]] else 0
+    number_kpx = nkpx if mode[0] in ["e", b"e"[0]] else 0
+    number_kpy = nkpy if mode[0] in ["e", b"e"[0]] else 0
+    number_kpz = nkpz if mode[0] in ["e", b"e"[0]] else 0
+    kpoints = raw.Kpoint(
+        mode=mode,
+        number=number_kpoints,
+        number_x=number_kpx,
+        number_y=number_kpy,
+        number_z=number_kpz,
+        coordinates=coordinates,
+        weights=np.arange(len(coordinates)),
+        cell=_Ba2PbO4_cell(),
+    )
+    return kpoints
+
+
 def _grid_kpoints(mode, labels):
-    x = np.linspace(0, 1, 4, endpoint=False)
-    y = np.linspace(0, 1, 3, endpoint=False)
-    z = np.linspace(0, 1, 4, endpoint=False) + 1 / 8
+    nkpx, nkpy, nkpz = (4, 3, 4)
+    x = np.linspace(0, 1, nkpx, endpoint=False)
+    y = np.linspace(0, 1, nkpy, endpoint=False)
+    z = np.linspace(0, 1, nkpz, endpoint=False) + 1 / 8
     coordinates = np.array(list(itertools.product(x, y, z)))
     number_kpoints = len(coordinates) if mode[0] in ["e", b"e"[0]] else 0
     kpoints = raw.Kpoint(
         mode=mode,
         number=number_kpoints,
+        number_x=nkpx,
+        number_y=nkpy,
+        number_z=nkpz,
         coordinates=coordinates,
         weights=np.arange(len(coordinates)),
         cell=_Sr2TiO4_cell(),
@@ -736,6 +774,55 @@ def _spin_polarized_dispersion():
     return raw.Dispersion(kpoints, eigenvalues)
 
 
+def _noncollinear_bands(projectors):
+    dispersion = _noncollinear_dispersion()
+    shape = dispersion.eigenvalues.shape
+    use_orbitals = projectors == "with_projectors"
+    raw_band = raw.Band(
+        dispersion=dispersion,
+        fermi_energy=0.0,
+        occupations=_make_arbitrary_data(shape),
+        projectors=_Ba2PbO4_projectors(use_orbitals),
+    )
+    if use_orbitals:
+        number_orbitals = len(raw_band.projectors.orbital_types)
+        shape = (noncollinear, number_atoms, number_orbitals, *shape[1:])
+        raw_band.projections = _make_arbitrary_data(shape)
+    return raw_band
+
+
+def _noncollinear_dispersion():
+    kpoints = _line_kpoints("explicit", "no_labels")
+    kpoints.cell = _Ba2PbO4_cell()
+    shape = (noncollinear, len(kpoints.coordinates), number_bands)
+    return raw.Dispersion(kpoints, eigenvalues=_make_arbitrary_data(shape))
+
+
+def _spin_texture_bands(projectors):
+    dispersion = _spin_texture_dispersion()
+    shape = dispersion.eigenvalues.shape
+    use_orbitals = projectors in ["with_projectors"]
+    raw_band = raw.Band(
+        dispersion=dispersion,
+        fermi_energy=0.0,
+        occupations=np.arange(np.prod(shape)).reshape(shape),
+        projectors=_Ba2PbO4_projectors(use_orbitals),
+    )
+    if use_orbitals:
+        number_orbitals = len(raw_band.projectors.orbital_types)
+        shape = (4, number_atoms, number_orbitals, *shape[1:])
+        raw_band.projections = np.random.random(shape)
+    return raw_band
+
+
+def _spin_texture_dispersion():
+    kpoints = _slice_kpoints("explicit")
+    kpoints.cell = _Ba2PbO4_cell()
+    shape = (two_spins, len(kpoints.coordinates), number_bands)
+    eigenvalues = np.arange(np.prod(shape)).reshape(shape)
+    return raw.Dispersion(kpoints, eigenvalues)
+
+
 def _workfunction(direction):
     shape = (number_points,)
     return raw.Workfunction(
@@ -748,24 +835,64 @@ def _workfunction(direction):
     )
 
 
-def _Sr2TiO4_born_effective_charges():
-    shape = (number_atoms, axes, axes)
-    return raw.BornEffectiveCharge(
-        structure=_Sr2TiO4_structure(),
-        charge_tensors=np.arange(np.prod(shape)).reshape(shape),
-    )
-
-
-def _Sr2TiO4_cell():
-    scale = raw.VaspData(6.9229)
+def _Ba2PbO4_cell():
     lattice_vectors = [
-        [1.0, 0.0, 0.0],
-        [0.678112209738693, 0.734958387251008, 0.0],
-        [-0.839055341042049, -0.367478859090843, 0.401180037874301],
+        [4.34, 0.0, 0.0],
+        [0.0, 4.34, 0.0],
+        [-2.17, -2.17, 6.682],
     ]
-    return raw.Cell(
-        lattice_vectors=np.array(number_steps * [lattice_vectors]), scale=scale
+    return raw.Cell(lattice_vectors=np.array(lattice_vectors), scale=1.0)
+
+
+def _Ba2PbO4_projectors(use_orbitals):
+    orbital_types = "s p d f"
+    return raw.Projector(
+        stoichiometry=_Ba2PbO4_stoichiometry(),
+        orbital_types=_make_orbital_types(use_orbitals, orbital_types),
+        number_spin_projections=4,
     )
+
+
+def _Ba2PbO4_stoichiometry():
+    return raw.Stoichiometry(
+        number_ion_types=np.array((2, 1, 4)),
+        ion_types=raw.VaspData(np.array(("Ba", "Pb", "O "), dtype="S")),
+    )
+
+
+def _Ba2PbO4_structure():
+    raise exception.NotImplemented()
+    positions = [
+        [0.5, 0.0, 0.0],  # Ca_1
+        [0.0, 0.5, 0.0],  # Ca_2
+        [0.0, 0.0, 0.0],  # As
+        [0.0, 0.5, 0.5],  # Br_1
+        [0.0, 0.0, 0.5],  # Ca_3
+        [0.5, 0.0, 0.5],  # Br_2
+        [0.5, 0.5, 0.0],  # Br_3
+    ]
+    return raw.Structure(
+        stoichiometry=_Ba2PbO4_stoichiometry(),
+        cell=_Ba2PbO4_cell(),
+        positions=_make_data(positions),
+    )
+
+
+def _Ba2PbO4_dos(projectors):
+    raise exception.NotImplemented()
+    energies = np.linspace(-1, 3, number_points)
+    use_orbitals = projectors == "with_projectors"
+    raw_dos = raw.Dos(
+        fermi_energy=1.372,
+        energies=energies,
+        dos=np.array([energies**2]),
+        projectors=_Ba2PbO4_projectors(use_orbitals),
+    )
+    if use_orbitals:
+        number_orbitals = len(raw_dos.projectors.orbital_types)
+        shape = (single_spin, number_atoms, number_orbitals, number_points)
+        raw_dos.projections = np.random.random(shape)
+    return raw_dos
 
 
 def _electronic_minimization():
@@ -831,6 +958,26 @@ def _partial_density(selection):
         kpoints=kpoints,
         partial_charge=gaussian_charge,
         grid=grid,
+    )
+
+
+def _Sr2TiO4_born_effective_charges():
+    shape = (number_atoms, axes, axes)
+    return raw.BornEffectiveCharge(
+        structure=_Sr2TiO4_structure(),
+        charge_tensors=np.arange(np.prod(shape)).reshape(shape),
+    )
+
+
+def _Sr2TiO4_cell():
+    scale = raw.VaspData(6.9229)
+    lattice_vectors = [
+        [1.0, 0.0, 0.0],
+        [0.678112209738693, 0.734958387251008, 0.0],
+        [-0.839055341042049, -0.367478859090843, 0.401180037874301],
+    ]
+    return raw.Cell(
+        lattice_vectors=np.array(number_steps * [lattice_vectors]), scale=scale
     )
 
 
@@ -960,7 +1107,7 @@ def _Sr2TiO4_projectors(use_orbitals):
     return raw.Projector(
         stoichiometry=_Sr2TiO4_stoichiometry(),
         orbital_types=_make_orbital_types(use_orbitals, orbital_types),
-        number_spins=1,
+        number_spin_projections=1,
     )
 
 
@@ -1231,7 +1378,7 @@ def _Fe3O4_projectors(use_orbitals):
     return raw.Projector(
         stoichiometry=_Fe3O4_stoichiometry(),
         orbital_types=_make_orbital_types(use_orbitals, "s p d f"),
-        number_spins=2,
+        number_spin_projections=2,
     )
 
 

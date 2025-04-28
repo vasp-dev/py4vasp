@@ -19,6 +19,11 @@ def Fe3O4(raw_data):
 
 
 @pytest.fixture
+def Ba2PbO4(raw_data):
+    return Projector.from_data(raw_data.projector("Ba2PbO4"))
+
+
+@pytest.fixture
 def missing_orbitals(raw_data):
     return Projector.from_data(raw_data.projector("without_orbitals"))
 
@@ -105,6 +110,41 @@ def test_read_Fe3O4(Fe3O4):
     }
 
 
+def test_read_Ba2PbO4(Ba2PbO4):
+    assert Ba2PbO4.read() == {
+        "atom": {
+            "Ba": slice(0, 2),
+            "Pb": slice(2, 3),
+            "O": slice(3, 7),
+            "1": slice(0, 1),
+            "2": slice(1, 2),
+            "3": slice(2, 3),
+            "4": slice(3, 4),
+            "5": slice(4, 5),
+            "6": slice(5, 6),
+            "7": slice(6, 7),
+        },
+        "orbital": {
+            "s": slice(0, 1),
+            "p": slice(1, 2),
+            "d": slice(2, 3),
+            "f": slice(3, 4),
+        },
+        "spin": {
+            "total": slice(0, 1),
+            "sigma_x": slice(1, 2),
+            "x": slice(1, 2),
+            "sigma_1": slice(1, 2),
+            "sigma_y": slice(2, 3),
+            "y": slice(2, 3),
+            "sigma_2": slice(2, 3),
+            "sigma_z": slice(3, 4),
+            "z": slice(3, 4),
+            "sigma_3": slice(3, 4),
+        },
+    }
+
+
 def test_Sr2TiO4_project(Sr2TiO4, projections, Assert):
     Sr_ref = np.sum(projections[0, 0:2, 1:4], axis=(0, 1))
     Ti_ref = projections[0, 2, 4]
@@ -130,6 +170,21 @@ def test_spin_projections(Fe3O4, projections, Assert):
     Assert.allclose(actual["O_p_down + O_d_down"], O_pd_ref[1])
     Assert.allclose(actual["O_total"], O_ref)
     Assert.allclose(actual["p + down"], p_ref + down_ref)
+
+
+def test_noncollinear_projections(Ba2PbO4, projections, Assert):
+    projections = np.add.outer(np.linspace(-2, 2, 4), np.squeeze(projections))
+    Pb_ref = np.sum(projections[0, 2], axis=0)
+    p_x_ref = np.sum(projections[1, :, 1], axis=0)
+    p_y_ref = np.sum(projections[2, :, 1], axis=0)
+    BaPb_z_ref = np.sum(projections[3, 0:3], axis=(0, 1))
+    xy_ref = np.sum(projections[1] - projections[2], axis=(0, 1))
+    actual = Ba2PbO4.project("3 p(x y) sigma_z(Ba + Pb) sigma_1 - sigma_2", projections)
+    Assert.allclose(actual["Pb_1"], Pb_ref)
+    Assert.allclose(actual["p_x"], p_x_ref)
+    Assert.allclose(actual["p_y"], p_y_ref)
+    Assert.allclose(actual["Ba_sigma_z + Pb_sigma_z"], BaPb_z_ref)
+    Assert.allclose(actual["sigma_1 - sigma_2"], xy_ref, tolerance=100)
 
 
 def test_missing_arguments_should_return_empty_dictionary(Sr2TiO4, projections):
@@ -175,6 +230,25 @@ def test_selections_Fe3O4(Fe3O4):
         "atom": ["Fe", "O", "1", "2", "3", "4", "5", "6", "7"],
         "orbital": ["s", "p", "d", "f"],
         "spin": ["total", "up", "down"],
+    }
+
+
+def test_selections_Ba2PbO4(Ba2PbO4):
+    assert Ba2PbO4.selections() == {
+        "atom": ["Ba", "Pb", "O", "1", "2", "3", "4", "5", "6", "7"],
+        "orbital": ["s", "p", "d", "f"],
+        "spin": [
+            "total",
+            "sigma_x",
+            "sigma_y",
+            "sigma_z",
+            "x",
+            "y",
+            "z",
+            "sigma_1",
+            "sigma_2",
+            "sigma_3",
+        ],
     }
 
 

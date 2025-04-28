@@ -1,13 +1,24 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from typing import Union
+
 import numpy as np
 
+from py4vasp import exception
 from py4vasp._calculation import _dispersion, base, projector
 from py4vasp._third_party import graph
-from py4vasp._util import check, documentation, import_
+from py4vasp._util import check, documentation, import_, index, select, slicing
 
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
+
+
+_COMMON_PARAMETERS = f"""\
+supercell : int or np.ndarray
+    Replicate the contour plot periodically a given number of times. If you
+    provide two different numbers, the resulting cell will be the two remaining
+    lattice vectors multiplied by the specific number.
+"""
 
 
 class Band(base.Refinery, graph.Mixin):
@@ -243,8 +254,162 @@ class Band(base.Refinery, graph.Mixin):
         return pd.DataFrame(self._extract_relevant_data(selection))
 
     @base.data_access
+    @documentation.format(
+        selection_doc=projector.selection_doc, common_parameters=_COMMON_PARAMETERS
+    )
+    def to_quiver(
+        self,
+        selection: str = "x~y(band[1])",
+        normal: Union[None, str] = None,
+        supercell: Union[None, int, np.ndarray] = None,
+    ):
+        """Generate a quiver plot of spin texture.
+
+        The plane cut will be determined from the kpoints grid. One of the kpoint
+        grid dimensions is required to be 1, and that direction will be cut.
+
+        The spin texture can only be visualized for noncollinear calculations,
+        and is projected into the plane.
+
+        Parameters
+        ----------
+        {selection_doc}
+        normal : str | None
+            Set the Cartesian direction "x", "y", or "z" parallel to which the normal of
+            the plane is rotated. Alteratively, set it to "auto" to rotate to the closest
+            Cartesian axis. If you set it to None, the normal will not be considered and
+            the first remaining lattice vector will be aligned with the x axis instead.
+        {common_parameters}
+
+        Returns
+        -------
+        graph
+            A quiver plot in the plane spanned by the 2 remaining lattice vectors.
+
+
+        Examples
+        --------
+        Plot a projection of the spin texture in reciprocal space, summed over all atoms and orbitals, for the first band and the x and y components.
+        This is also the default behavior, so the following two lines should produce identical plots:
+
+        >>> calculation.band.to_quiver("x~y(band[1])") # doctest: +OTHER_PATH_1
+        Graph(series=[Contour(data=array([[[...
+
+        >>> calculation.band.to_quiver() # doctest: +OTHER_PATH_1
+        Graph(series=[Contour(data=array([[[...
+
+        Select the Ba atom, the third band, the x and z spin components, then sum over all orbitals:
+
+        >>> calculation.band.to_quiver("Sr(sigma_1~sigma_3(band[3]))") # doctest: +OTHER_PATH_1
+        Graph(series=[Contour(data=array([[[...
+
+        Select the Pb atom, s orbital, second band and the x and y spin components:
+
+        >>> calculation.band.to_quiver("Ti(s(band[2](sigma_x~sigma_y)))") # doctest: +OTHER_PATH_1
+        Graph(series=[Contour(data=array([[[...
+
+        Select the 4th atom in the POSCAR file, d orbitals, the second band and the y and z spin components.
+        The plot is shown for a 3x3 supercell:
+
+        >>> calculation.band.to_quiver(selection="4(d(y~z(band[2])))", supercell=3) # doctest: +OTHER_PATH_1
+        Graph(series=[Contour(data=array([[[...
+
+        Select x & y spin components and the first band (default), sum over atoms and orbitals.
+        Plot a 2x4 supercell, and rotate the plane normal to align with the nearest coordinate axis.
+
+        >>> calculation.band.to_quiver(supercell=np.array([2, 4]), normal="auto") # doctest: +SKIP
+        Graph(series=[Contour(data=array([[[...
+
+        Select x & y spin components and the first band (default), sum over atoms and orbitals.
+        Rotate the plane normal to align with the y coordinate axis.
+
+        >>> calculation.band.to_quiver(normal="y") # doctest: +OTHER_PATH_1
+        Graph(series=[Contour(data=array([[[...
+        """
+        # raise exception.NotImplemented("to_quiver is not fully implemented")
+        scale = self._raw_data.dispersion.kpoints.cell.scale
+        latt_vecs = scale * self._raw_data.dispersion.kpoints.cell.lattice_vectors
+        if latt_vecs.shape[0] == 1:
+            latt_vecs = latt_vecs[0]
+        nkp1, nkp2, cut = self._kmesh()
+        # latt_vecs = _cell.Cell.from_data(self._raw_data.dispersion.kpoints.cell).lattice_vectors()
+        V: float = np.dot(latt_vecs[0], np.cross(latt_vecs[1], latt_vecs[2]))
+        reciprocal_lattice_vectors = (2.0 * np.pi / V) * np.array(
+            [
+                np.cross(latt_vecs[1], latt_vecs[2]),
+                np.cross(latt_vecs[2], latt_vecs[0]),
+                np.cross(latt_vecs[0], latt_vecs[1]),
+            ]
+        )
+        # Plane is defined by KPOINTS file
+        options = {
+            "lattice": slicing.plane(
+                reciprocal_lattice_vectors, cut, normal, axis_labels=("b1", "b2", "b3")
+            )
+        }
+        if supercell is not None:
+            options["supercell"] = np.ones(2, dtype=np.int_) * supercell
+        #
+        selector = self._make_selector(self._raw_data.projections)
+        tree = select.Tree.from_selection(selection)
+        quiver_plots = [
+            graph.Contour(
+                **self._quiver_plot(selector, selection, nkp1, nkp2), **options
+            )
+            for selection in tree.selections()
+        ]
+        return graph.Graph(quiver_plots)
+
+    def _quiver_plot(self, selector, selection, nkp1, nkp2):
+        data = selector[selection]
+        data = data.reshape(2, nkp1, nkp2)
+        label = "spin texture " + selector.label(selection)
+        return {"data": data, "label": label}
+
+    def _make_selector(self, projections):
+        maps = self._projector().to_dict()
+        maps = {
+            1: maps["atom"],
+            2: maps["orbital"],
+            0: self._spin_map(maps["spin"]),
+            4: self._band_map(projections.shape[-1]),
+        }
+        return index.Selector(
+            maps, projections, reduction=_ToQuiverReduction, use_number_labels=True
+        )
+
+    def _spin_map(self, spin_map):
+        if "sigma_x" not in spin_map:
+            # Spin Texture only makes sense for non-collinear systems
+            raise exception.DataMismatch(
+                "System is not noncollinear which is required to visualize spin texture."
+            )
+        return {
+            "sigma_x~sigma_y": slice(1, 3),
+            "sigma_x~sigma_z": slice(1, 4, 2),
+            "sigma_y~sigma_z": slice(2, 4),
+            "x~y": slice(1, 3),
+            "x~z": slice(1, 4, 2),
+            "y~z": slice(2, 4),
+            "sigma_1~sigma_2": slice(1, 3),
+            "sigma_1~sigma_3": slice(1, 4, 2),
+            "sigma_2~sigma_3": slice(2, 4),
+        }
+
+    def _band_map(self, num_bands):
+        return {f"band[{band + 1}]": slice(band, band + 1) for band in range(num_bands)}
+
+    @base.data_access
     def selections(self):
         return {**super().selections(), **self._projector().selections()}
+
+    def _scale(self):
+        if isinstance(self._raw_data.dispersion.kpoints.cell.scale, np.float64):
+            return self._raw_data.dispersion.kpoints.cell.scale
+        if not self._raw_data.dispersion.kpoints.cell.scale.is_none():
+            return self._raw_data.dispersion.kpoints.cell.scale[()]
+        else:
+            return 1.0
 
     def _spin_polarized(self):
         return len(self._raw_data.dispersion.eigenvalues) == 2
@@ -309,6 +474,51 @@ class Band(base.Refinery, graph.Mixin):
             data[key] = _to_series(value)
         return data
 
+    def _kmesh(self) -> tuple[int, int, str]:
+        """
+        Returns a tuple of number of k-points in two directions as per spin selection,
+        and the corresponding cut direction in which the kpoint mesh is 1.
+        """
+        try:
+            nkpx = self._raw_data.dispersion.kpoints.number_x
+            nkpy = self._raw_data.dispersion.kpoints.number_y
+            nkpz = self._raw_data.dispersion.kpoints.number_z
+
+            if nkpx == 1:
+                return (nkpy, nkpz, "a")
+            elif nkpy == 1:
+                return (nkpx, nkpz, "b")
+            elif nkpz == 1:
+                return (nkpx, nkpy, "c")
+            else:
+                raise exception.DataMismatch(
+                    f"For spin texture visualisation, the plane normal (a,b,c) to the desired cutting plane must have exactly 1 k-point, but the k-point mesh is {nkpx},{nkpy},{nkpz}. Please adjust the KPOINTS file and re-run VASP."
+                )
+        except exception.NoData:
+            raise exception.DataMismatch(
+                f"For spin texture visualisation, a k-point grid is assumed, but could not be found for this VASP run."
+            )
+
 
 def _to_series(array):
     return array.T.flatten()
+
+
+class _ToQuiverReduction(index.Reduction):
+    def __init__(self, keys):
+        # raise an IncorrectUsage Warning if:
+        #   - no spin elements have been chosen
+        #   - no band has been chosen
+        if not (keys[0]):
+            raise exception.IncorrectUsage(
+                "Spin Elements must be chosen, but none are given. Please adapt your `selection` argument to include, e.g., `x~y`. You can combine arguments by `arg1(arg2(arg3(...)))`."
+            )
+        if not (keys[4]):
+            raise exception.IncorrectUsage(
+                "A band must be chosen, but none are given. Please adapt your `selection` argument to include, e.g., `band[1]`. You can combine arguments by `arg1(arg2(arg3(...)))`."
+            )
+        pass
+
+    def __call__(self, array, axis):
+        axis = tuple(filter(None, axis))  # prevents summation along 0-axis
+        return np.sum(array, axis=axis)

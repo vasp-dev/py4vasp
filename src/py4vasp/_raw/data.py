@@ -333,6 +333,12 @@ class Kpoint:
     "Weight of the **k** points used for integration."
     cell: Cell
     "Unit cell of the crystal."
+    number_x: int = NONE()
+    "The number of kpoints in x direction."
+    number_y: int = NONE()
+    "The number of kpoints in y direction."
+    number_z: int = NONE()
+    "The number of kpoints in z direction."
     labels: VaspData = NONE()
     "High symmetry label for specific **k** points used in band structures."
     label_indices: VaspData = NONE()
@@ -510,8 +516,8 @@ class Projector:
     "The stoichiometry of the system used, i.e., which elements are contained."
     orbital_types: VaspData
     "Character indicating the orbital angular momentum."
-    number_spins: int
-    "Indicates whether the calculation is spin polarized or not."
+    number_spin_projections: int
+    "This is 1 for nonpolarized calculations, 2 for spin polarized ones, and 4 for noncollinear calculations."
 
 
 @dataclasses.dataclass
