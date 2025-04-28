@@ -292,26 +292,26 @@ class Band(base.Refinery, graph.Mixin):
         Plot a projection of the spin texture in reciprocal space, summed over all atoms and orbitals, for the first band and the x and y components.
         This is also the default behavior, so the following two lines should produce identical plots:
 
-        >>> calculation.band.to_quiver("x~y(band[1])") # doctest: +PATH_SPIN_TEXTURE
+        >>> calculation.band.to_quiver("x~y(band[1])") # doctest: +OTHER_PATH_1
         Graph(series=[Contour(data=array([[[...
 
-        >>> calculation.band.to_quiver() # doctest: +PATH_SPIN_TEXTURE
+        >>> calculation.band.to_quiver() # doctest: +OTHER_PATH_1
         Graph(series=[Contour(data=array([[[...
 
         Select the Ba atom, the third band, the x and z spin components, then sum over all orbitals:
 
-        >>> calculation.band.to_quiver("Ba(sigma_1~sigma_3(band[3]))") # doctest: +PATH_SPIN_TEXTURE
+        >>> calculation.band.to_quiver("Sr(sigma_1~sigma_3(band[3]))") # doctest: +OTHER_PATH_1
         Graph(series=[Contour(data=array([[[...
 
         Select the Pb atom, s orbital, second band and the x and y spin components:
 
-        >>> calculation.band.to_quiver("Pb(s(band[2](sigma_x~sigma_y)))") # doctest: +PATH_SPIN_TEXTURE
+        >>> calculation.band.to_quiver("Ti(s(band[2](sigma_x~sigma_y)))") # doctest: +OTHER_PATH_1
         Graph(series=[Contour(data=array([[[...
 
         Select the 4th atom in the POSCAR file, d orbitals, the second band and the y and z spin components.
         The plot is shown for a 3x3 supercell:
 
-        >>> calculation.band.to_quiver(selection="4(d(y~z(band[2])))", supercell=3) # doctest: +PATH_SPIN_TEXTURE
+        >>> calculation.band.to_quiver(selection="4(d(y~z(band[2])))", supercell=3) # doctest: +OTHER_PATH_1
         Graph(series=[Contour(data=array([[[...
 
         Select x & y spin components and the first band (default), sum over atoms and orbitals.
@@ -323,7 +323,7 @@ class Band(base.Refinery, graph.Mixin):
         Select x & y spin components and the first band (default), sum over atoms and orbitals.
         Rotate the plane normal to align with the y coordinate axis.
 
-        >>> calculation.band.to_quiver(normal="y") # doctest: +PATH_SPIN_TEXTURE
+        >>> calculation.band.to_quiver(normal="y") # doctest: +OTHER_PATH_1
         Graph(series=[Contour(data=array([[[...
         """
         # raise exception.NotImplemented("to_quiver is not fully implemented")

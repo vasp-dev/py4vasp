@@ -13,8 +13,9 @@ from py4vasp._calculation import Calculation, DefaultCalculationFactory
 from py4vasp._raw.definition import DEFAULT_FILE
 from py4vasp._raw.write import write
 
-PATH_SPIN_TEXTURE = doctest.register_optionflag("PATH_SPIN_TEXTURE")
-
+DEFAULT_HASH = "631e66d7-a541-4b40-b25b-532544f8e720"
+OTHER_PATH_1 = doctest.register_optionflag("OTHER_PATH_1")
+OTHER_PATH_2 = doctest.register_optionflag("OTHER_PATH_2")
 
 def create_symlinks(tmp_path_factory, tmp_dirname: str, elements: list):
     tmp_path = tmp_path_factory.mktemp(tmp_dirname)
@@ -43,47 +44,31 @@ def setup_doctest(raw_data, tmp_path_factory, not_core):
     )
     #
 
-    # SPIN TEXTURE CONFIG: spin_texture_path
+    # BAND.to_quiver CONFIG: 
+    # other_path
+    #raw_dos = raw_data.dos("Ba2PbO4 with_projectors")
     raw_band = raw_data.band("spin_texture with_projectors")
-    spin_texture_path = create_symlinks(
+    #raw_structure = raw_data.structure("Ba2PbO4")
+    band_to_quiver_other_path_1 = create_symlinks(
         tmp_path_factory, "data2", [raw_dos, raw_band, raw_structure, raw_energy]
     )
     #
-    return {"path": tmp_path, "path_spin_texture": spin_texture_path}
 
 
-class CustomDocTestParser(doctest.DocTestParser):
-    def _find_options(self, source, name, lineno):
-        """
-        Override _find_options to handle custom flags like +PATH_SPIN_TEXTURE
-        """
-        options = {}
-        # (note: with the current regexp, this will match at most once:)
-        for m in self._OPTION_DIRECTIVE_RE.finditer(source):
-            option_strings = m.group(1).replace(",", " ").split()
-            for option in option_strings:
-                # raise UserWarning(option)
-                if (
-                    option[0] not in "+-"
-                    or option[1:] not in doctest.OPTIONFLAGS_BY_NAME
-                ):
-                    raise ValueError(
-                        "line %r of the doctest for %s "
-                        "has an invalid option: %r" % (lineno + 1, name, option)
-                    )
-                flag = doctest.OPTIONFLAGS_BY_NAME[option[1:]]
-                options[flag] = option[0] == "+"
-        if options and self._IS_BLANK_OR_COMMENT(source):
-            raise ValueError(
-                "line %r of the doctest for %s has an option "
-                "directive on a line with no example: %r" % (lineno, name, source)
-            )
-        # if (options): raise UserWarning(options)
-        return options
+    ### ADD MORE PATHS?
+    # - Create a new symlink for the data.
+    # - Add the function name to the returned dict.
+    # 
+    # "path" is default; "other_path_1" and "other_path_2" can be defined, but don't have to.
+    # NEVER delete DEFAULT_HASH's "path" entry.
 
+    return {
+        DEFAULT_HASH: { "path": tmp_path }, 
+        "Band.to_quiver": { "path": tmp_path, "other_path_1": band_to_quiver_other_path_1 } 
+    } 
 
 def get_examples():
-    finder = doctest.DocTestFinder(parser=CustomDocTestParser())
+    finder = doctest.DocTestFinder()
     try:
         examples = (
             finder.find(_calculation)
@@ -112,54 +97,73 @@ def interesting_example(example):
     return suffix not in skipped_suffixes
 
 
-@pytest.mark.parametrize("examples", get_examples(), ids=lambda examples: examples.name)
-def test_example(examples, setup_doctest, monkeypatch):
-    # Get the first example from the list of examples (there should be at least one)
-    # raise UserWarning(PATH_SPIN_TEXTURE)
-    for example in examples.examples:
-        options = example.options
-        if options:
-            break
-    # Get the options from the first example
-    selected_path = None  # Initialize the selected path
+def _split_doctest_list(example: doctest.DocTest, ref_key: str, setup_doctest) -> list[tuple[doctest.DocTest, str]]:
+    _split_doctest_list: list[doctest.DocTest] = []
+    default_path_doctests = [ex for ex in example.examples if (
+        (not(OTHER_PATH_1 in ex.options) and not(OTHER_PATH_2 in ex.options))
+        or ((OTHER_PATH_1 in ex.options) and not("other_path_1" in setup_doctest[ref_key]))
+        or ((OTHER_PATH_2 in ex.options) and not("other_path_2" in setup_doctest[ref_key]))
+        )]
+    other_path_1_doctests = [ex for ex in example.examples if (
+                (OTHER_PATH_1 in ex.options) and ("other_path_1" in setup_doctest[ref_key])
+                )]
+    other_path_2_doctests = [ex for ex in example.examples if (
+                (OTHER_PATH_2 in ex.options) and ("other_path_2" in setup_doctest[ref_key])
+                )]
+    return [
+        (doctest.DocTest(
+            examples = dt,
+            globs=example.globs.copy(),
+            name=example.name,
+            filename=example.filename,
+            lineno=example.lineno,
+            docstring=example.docstring
+        ), p) for (dt, p) in [(default_path_doctests, "path"), (other_path_1_doctests, "other_path_1"), (other_path_2_doctests, "other_path_2")] if dt
+    ]
 
-    # Check if any path-related options are set
-    if options:
-        for key in options.keys():
-            if key == PATH_SPIN_TEXTURE:
-                # If the option is +PATH_SPIN_TEXTURE, we need to use the spin texture path
-                selected_path = setup_doctest["path_spin_texture"]
-                # raise UserWarning("using different path")
-                break  # Exit loop after determining the path
-            # You can add more checks here for other path flags if necessary
+@pytest.mark.parametrize("example", get_examples(), ids=lambda example: example.name)
+def test_example(example: doctest.DocTest, setup_doctest, monkeypatch):
+    # Find all functions in examples that have a custom definition in setup_doctest
+    path_special_keys: list = list(setup_doctest.keys())
 
-    # If no path was selected yet, fallback to the default path
-    if selected_path is None:
-        selected_path = setup_doctest["path"]
+    ref_key: str = DEFAULT_HASH
+    for k in path_special_keys[1:]:
+        if (example.name.endswith(k)):
+            ref_key = k; break
 
-    # Monkeypatch `__getattr__` to inject the correct path for the Calculation object
-    def custom_getattr(self, attr):
-        # When a specific path is needed, we pass it to Calculation.from_path()
-        if attr == "load":
-            return lambda: Calculation.from_path(selected_path)
-        calc = Calculation.from_path(selected_path)
-        return getattr(calc, attr)
+    # split list of examples according to requested path environment
+    split_doctest_list = _split_doctest_list(example, ref_key, setup_doctest)
 
-    # Apply the patch to the factory object
-    monkeypatch.setattr(DefaultCalculationFactory, "__getattr__", custom_getattr)
+    # treat each case separately:
+    for ex, sel_path_key in split_doctest_list:
+        # set selected environment path for data for this doctest
+        selected_path = setup_doctest.get(ref_key, setup_doctest[DEFAULT_HASH]).get(sel_path_key)
+        if selected_path is None: 
+            selected_path = setup_doctest[DEFAULT_HASH]["path"]
 
-    # Ensure correct path setup before running doctests
-    monkeypatch.chdir(setup_doctest["path"])
+        # Monkeypatch `__getattr__` to inject the correct path for the Calculation object
+        def custom_getattr(self, attr):
+            # When a specific path is needed, we pass it to Calculation.from_path()
+            if attr == "load":
+                return lambda: Calculation.from_path(selected_path)
+            calc = Calculation.from_path(selected_path)
+            return getattr(calc, attr)
 
-    # Apply doctest options (ELLIPSIS, NORMALIZE_WHITESPACE)
-    optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
-    runner = doctest.DocTestRunner(optionflags=optionflags)
+        # Apply the patch to the factory object
+        monkeypatch.setattr(DefaultCalculationFactory, "__getattr__", custom_getattr)
 
-    # Ensure calculation is properly set in the globals
-    examples.globs["calculation"] = calculation
+        # Ensure correct path setup before running doctests
+        monkeypatch.chdir(setup_doctest[DEFAULT_HASH]["path"])
 
-    # Run the doctest
-    result = runner.run(examples)
+        # Apply doctest options (ELLIPSIS, NORMALIZE_WHITESPACE)
+        optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
+        runner = doctest.DocTestRunner(optionflags=optionflags)
 
-    # Assert that there are no failed tests
-    assert result.failed == 0
+        # Ensure calculation is properly set in the globals
+        ex.globs["calculation"] = calculation
+
+        # Run the doctest
+        result = runner.run(ex)
+
+        # Assert that there are no failed tests
+        assert result.failed == 0, f"assert {result.failed} == {0} @ data = {selected_path}"
