@@ -13,8 +13,12 @@ class ElectronPhononTransport(slice_.Mixin, base.Refinery):
     @base.data_access
     def to_dict(self):
         return {
+            "temperatures": self._raw_data.temperatures[self._steps][:],
             "transport_function": self._read_slice_of_data("transport_function"),
             "mobility": self._read_slice_of_data("mobility"),
+            "electronic_conductivity": self._read_slice_of_data("electronic_conductivity"),
+            "seebeck": self._read_slice_of_data("seebeck"),
+            "electronic_thermal_conductivity": self._read_slice_of_data("electronic_thermal_conductivity"),
         }
 
     @base.data_access

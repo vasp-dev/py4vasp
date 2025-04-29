@@ -598,4 +598,8 @@ class ElectronPhononSelfEnergy(mapping.Mapping):
 @dataclasses.dataclass
 class ElectronPhononTransport(mapping.Mapping):
     mobility: VaspData
+    temperatures: VaspData
     transport_function: VaspData
+    electronic_conductivity: VaspData
+    seebeck: VaspData
+    electronic_thermal_conductivity: VaspData
