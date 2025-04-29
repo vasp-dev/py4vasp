@@ -22,6 +22,11 @@ class ElectronPhononSelfEnergy(slice_.Mixin, base.Refinery):
     def __len__(self):
         return len(self._raw_data.valid_indices)
 
+    @property
+    @base.data_access
+    def band_kpoint_spin_index(self):
+        return self._read_slice_of_data("band_kpoint_spin_index")
+
     def _read_slice_of_data(self, name):
         slice_of_data = getattr(self._raw_data, name)[self._steps]
         return [data[:] for data in slice_of_data]
@@ -33,17 +38,18 @@ class ElectronPhononSelfEnergy(slice_.Mixin, base.Refinery):
 
     def get_fan(self, arg):
         iband, ikpt, isp, *more = arg
-        st = SparseTensor(self._raw_data.band_kpoint_spin_index, self._raw_data.fan)
+        st = SparseTensor(self.band_kpoint_spin_index, self.band_start, self._read_slice_of_data("fan"))
         return st(iband, ikpt, isp)
 
 
 class SparseTensor:
-    def __init__(self, band_kpoint_spin_index, tensor):
+    def __init__(self, band_kpoint_spin_index, band_start, tensor):
         self.band_kpoint_spin_index = band_kpoint_spin_index
+        self.band_start = band_start
         self.tensor = tensor
 
     def _get_band_kpoint_spin_index(self, iband, ikpt, isp):
-        return self.band_kpoint_spin_index[iband, ikpt, isp]
+        return self.band_kpoint_spin_index[iband-self.band_start, ikpt, isp]
 
     def __getitem__(self, arg):
         iband, ikpt, isp, *more = arg

@@ -609,6 +609,7 @@ schema.add(
     debye_waller=f"{group}/self_energy_{{}}/selfen_dw",
     band_kpoint_spin_index=f"{group}/self_energy_{{}}/bks_idx",
     fan=f"{group}/self_energy_{{}}/selfen_fan",
+    band_start=f"{group}/self_energy_{{}}/band_start",
 )
 schema.add(
     raw.ElectronPhononTransport,

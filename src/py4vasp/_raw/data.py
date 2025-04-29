@@ -593,6 +593,7 @@ class ElectronPhononSelfEnergy(mapping.Mapping):
     debye_waller: VaspData
     fan: VaspData
     band_kpoint_spin_index: VaspData
+    band_start: int
 
 
 @dataclasses.dataclass
