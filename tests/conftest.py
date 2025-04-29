@@ -1381,7 +1381,7 @@ def _electron_phonon_self_energy(selection):
         eigenvalues=_make_arbitrary_data(shape),
         debye_waller=[_make_arbitrary_data(shape) for _ in range(number_samples)],
         fan=[_make_arbitrary_data(shape) for _ in range(number_samples)],
-        bks_idx=[_make_arbitrary_data(shape) for _ in range(number_samples)],
+        band_kpoint_spin_index=[_make_arbitrary_data(shape) for _ in range(number_samples)],
     )
 
 

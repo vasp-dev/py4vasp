@@ -33,19 +33,19 @@ class ElectronPhononSelfEnergy(slice_.Mixin, base.Refinery):
 
     def get_fan(self, arg):
         iband, ikpt, isp, *more = arg
-        st = SparseTensor(self._raw_data.bks_idx, self._raw_data.fan)
+        st = SparseTensor(self._raw_data.band_kpoint_spin_index, self._raw_data.fan)
         return st(iband, ikpt, isp)
 
 
 class SparseTensor:
-    def __init__(self, bks_idx, tensor):
-        self.bks_idx = bks_idx
+    def __init__(self, band_kpoint_spin_index, tensor):
+        self.band_kpoint_spin_index = band_kpoint_spin_index
         self.tensor = tensor
 
-    def _get_ibks(self, iband, ikpt, isp):
-        return self.bks_idx[iband, ikpt, isp]
+    def _get_band_kpoint_spin_index(self, iband, ikpt, isp):
+        return self.band_kpoint_spin_index[iband, ikpt, isp]
 
     def __getitem__(self, arg):
         iband, ikpt, isp, *more = arg
-        ibks = self._get_ibks(iband, ikpt, isp)
+        ibks = self._get_band_kpoint_spin_index(iband, ikpt, isp)
         return self.tensor[ibks, more]
