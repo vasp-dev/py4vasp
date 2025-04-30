@@ -41,3 +41,10 @@ def test_fatband_inconsistent_length():
     width = np.zeros(20)
     with pytest.raises(exception.IncorrectUsage):
         plot(x, y, width=width)
+
+
+def test_many_colors():
+    data =  np.random.random((6, 2, 50))
+    plots = (plot(x, y) for x, y in data)
+    graph = sum(plots, start=Graph([]))
+    graph.to_plotly()
