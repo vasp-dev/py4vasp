@@ -17,8 +17,9 @@ def single_band(raw_data):
     raw_band = raw_data.band("single")
     band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
+    band.ref.fermi_energy_argument = 1.23
     band.ref.fermi_energy = 0.0
-    band.ref.bands = raw_band.dispersion.eigenvalues[0]
+    band.ref.bands = raw_band.dispersion.eigenvalues[0] - band.ref.fermi_energy_argument
     band.ref.occupations = raw_band.occupations[0]
     band.ref.kpoints = Kpoint.from_data(raw_band.dispersion.kpoints)
     return band
@@ -263,7 +264,7 @@ def test_texture_to_quiver_selections(spin_texture_simple, selection, Assert):
 
 
 def test_single_band_read(single_band, Assert):
-    band = single_band.read()
+    band = single_band.read(fermi_energy=single_band.ref.fermi_energy_argument)
     assert band["fermi_energy"] == single_band.ref.fermi_energy
     Assert.allclose(band["bands"], single_band.ref.bands)
     Assert.allclose(band["occupations"], single_band.ref.occupations)
@@ -335,7 +336,7 @@ def test_more_projections_style(raw_data, Assert):
 
 
 def test_single_polarized_to_frame(single_band, Assert, not_core):
-    actual = single_band.to_frame()
+    actual = single_band.to_frame(fermi_energy=single_band.ref.fermi_energy_argument)
     Assert.allclose(actual.bands, single_band.ref.bands[:, 0])
     Assert.allclose(actual.occupations, single_band.ref.occupations[:, 0])
     Assert.allclose(actual.kpoint_distances, single_band.ref.kpoints.distances())
@@ -382,7 +383,7 @@ def test_spin_projectors_to_frame(spin_projectors, Assert, not_core):
 
 
 def test_single_band_plot(single_band, Assert):
-    fig = single_band.plot()
+    fig = single_band.plot(fermi_energy=single_band.ref.fermi_energy_argument)
     assert fig.ylabel == "Energy (eV)"
     assert len(fig.series) == 1
     assert fig.series[0].weight is None
@@ -412,7 +413,7 @@ def test_with_projectors_plot_custom_width(with_projectors, Assert):
 def test_spin_projectors_plot(spin_projectors, Assert):
     reference = spin_projectors.ref
     width = 0.05
-    fig = spin_projectors.plot("O", width)
+    fig = spin_projectors.plot("O", width=width)
     assert len(fig.series) == 2
     assert fig.series[0].label == "O_up"
     check_data(fig.series[0], width, reference.bands_up, reference.O_up, Assert)
