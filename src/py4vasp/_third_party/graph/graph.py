@@ -118,7 +118,10 @@ class Graph(Sequence):
         self.to_plotly()._ipython_display_()
 
     def _generate_plotly_traces(self):
-        colors = itertools.cycle(VASP_COLORS.values())
+        colors_without_dark = (
+            color for name, color in VASP_COLORS.items() if name != "dark"
+        )
+        colors = itertools.cycle(colors_without_dark)
         for series in self:
             series = _set_color_if_not_present(series, colors)
             yield from series.to_plotly()

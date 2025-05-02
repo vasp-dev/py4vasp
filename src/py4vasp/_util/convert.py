@@ -99,4 +99,4 @@ def to_lab(hex):
     l = 116 * f(y) - 16
     a = 500 * (f(x / xn) - f(y))
     b = 200 * (f(y) - f(z / zn))
-    return l, a, b
+    return np.array((l, a, b))
