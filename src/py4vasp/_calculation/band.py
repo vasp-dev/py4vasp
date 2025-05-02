@@ -57,7 +57,7 @@ class Band(base.Refinery, graph.Mixin):
     @base.data_access
     def __str__(self):
         return f"""
-{"spin polarized" if self._spin_polarized() else ""} band data:
+{"spin polarized" if self._is_collinear() else ""} band data:
     {self._raw_data.dispersion.eigenvalues.shape[1]} k-points
     {self._raw_data.dispersion.eigenvalues.shape[2]} bands
 {pretty.pretty(self._projector())}
@@ -179,7 +179,7 @@ class Band(base.Refinery, graph.Mixin):
         Select the p orbitals of the first atom in the POSCAR file:
 
         >>> calculation.band.to_graph(selection="1(p)")
-        Graph(series=[Series(..., label='Sr_1_p', width=array(...), ...)], ...)
+        Graph(series=[Series(..., label='Sr_1_p', weight=array(...), ...)], ...)
 
         Select the d orbitals of Sr and Ti:
 
@@ -201,7 +201,7 @@ class Band(base.Refinery, graph.Mixin):
         the argument `width=1.0` increases the maximum linewidth to 1 eV
 
         >>> calculation.band.to_graph("d", width=1.0)
-        Graph(series=[Series(..., label='d', width=array(...), ...)], ...)
+        Graph(series=[Series(..., label='d', weight=array(...), ...)], ...)
         """
         projections = self._projections(selection, width)
         graph = self._dispersion().plot(projections)
@@ -411,8 +411,13 @@ class Band(base.Refinery, graph.Mixin):
         else:
             return 1.0
 
-    def _spin_polarized(self):
+    def _is_collinear(self):
         return len(self._raw_data.dispersion.eigenvalues) == 2
+
+    def _is_noncollinear(self):
+        message = "If there are no projections, we cannot use them to check whether the system is noncollinear."
+        assert not check.is_none(self._raw_data.projections), message
+        return len(self._raw_data.projections) == 4
 
     def _dispersion(self):
         return _dispersion.Dispersion.from_data(self._raw_data.dispersion)
@@ -425,16 +430,20 @@ class Band(base.Refinery, graph.Mixin):
             return None
         error_message = "Width of fat band structure must be a number."
         check.raise_error_if_not_number(width, error_message)
-        return {
-            name: width * projection
-            for name, projection in self._read_projections(selection).items()
-        }
+        projections = self._read_projections(selection)
+        spin_projections = projections.get(projector.SPIN_PROJECTION, [])
+        for label, weight in projections.items():
+            if label == projector.SPIN_PROJECTION or label in spin_projections:
+                # do not scale spin projections
+                continue
+            weight *= width
+        return projections
 
     def _read_projections(self, selection):
         return self._projector().project(selection, self._raw_data.projections)
 
     def _read_occupations(self):
-        if self._spin_polarized():
+        if self._is_collinear():
             return {
                 "occupations_up": self._raw_data.occupations[0],
                 "occupations_down": self._raw_data.occupations[1],

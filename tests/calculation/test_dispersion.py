@@ -7,6 +7,7 @@ import pytest
 
 from py4vasp._calculation._dispersion import Dispersion
 from py4vasp._calculation.kpoint import Kpoint
+from py4vasp._calculation.projector import SPIN_PROJECTION
 
 
 @pytest.fixture(params=["single_band", "spin_polarized", "line", "phonon"])
@@ -58,7 +59,7 @@ def test_plot_dispersion(dispersion, Assert):
         Assert.allclose(series.x, dispersion.ref.kpoints.distances())
         Assert.allclose(series.y, bands[:, :, index])
         assert series.label == label
-        assert series.width is None
+        assert series.weight is None
 
 
 def check_xticks(actual, reference, Assert):
@@ -80,17 +81,24 @@ def test_plot_dispersion_with_projections(dispersion, Assert):
         projections = {
             "one": np.random.uniform(low=0.1, high=0.5, size=shape),
             "two": np.random.uniform(low=0.1, high=0.5, size=shape),
+            SPIN_PROJECTION: ["two"],
         }
     graph = dispersion.plot(projections)
+    spin_projections = projections.pop(SPIN_PROJECTION, [])
     assert len(graph.series) == len(projections)
     check_xticks(graph.xticks, dispersion.ref, Assert)
     bands = np.atleast_3d(dispersion.ref.eigenvalues.T)
-    for series, (label, width) in zip(graph.series, projections.items()):
+    for series, (label, weight) in zip(graph.series, projections.items()):
         component = 1 if "down" in label else 0
         Assert.allclose(series.x, dispersion.ref.kpoints.distances())
         Assert.allclose(series.y, bands[:, :, component])
         assert series.label == label
-        Assert.allclose(series.width, width.T)
+        Assert.allclose(series.weight, weight.T)
+        if label in spin_projections:
+            assert series.marker == "o"
+            assert series.weight_mode == "color"
+        else:
+            assert series.weight_mode == "size"
 
 
 def test_print(dispersion, format_):
