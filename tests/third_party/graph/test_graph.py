@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
+import re
 from unittest.mock import patch
 
 import numpy as np
@@ -169,8 +170,10 @@ def test_two_lines(two_lines, Assert, not_core):
         compare_series(converted, original, Assert)
         check_legend_group(converted, original, first_trace)
         if first_trace:
-            assert converted.line.color is not None
             color = converted.line.color
+            assert color is not None
+            hex_color_regex = "^#(?:[0-9a-fA-F]{3}){1,2}$"
+            assert re.match(hex_color_regex, color), f"'{color}' is not a hex color"
         assert converted.line.color == color
         first_trace = False
 

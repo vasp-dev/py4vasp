@@ -44,7 +44,7 @@ def test_fatband_inconsistent_length():
 
 
 def test_many_colors():
-    data =  np.random.random((6, 2, 50))
+    data = np.random.random((10, 2, 50))
     plots = (plot(x, y) for x, y in data)
     graph = sum(plots, start=Graph([]))
-    graph.to_plotly()
+    assert len(graph.to_plotly().data) == 10
