@@ -65,7 +65,7 @@ class Band(base.Refinery, graph.Mixin):
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
-    def to_dict(self, selection=None):
+    def to_dict(self, selection=None, fermi_energy=None):
         """Read the data into a dictionary.
 
         You may use this data for your own postprocessing tools. Sometimes you may
@@ -76,6 +76,10 @@ class Band(base.Refinery, graph.Mixin):
         Parameters
         ----------
         {selection_doc}
+        fermi_energy : float
+            Overwrite the Fermi energy of the band structure calculation with a more
+            accurate one from a different calculation. This is recommended for metallic
+            systems where the Fermi energy may be significantly different.
 
         Returns
         -------
@@ -132,14 +136,14 @@ class Band(base.Refinery, graph.Mixin):
         return {
             **dispersion,
             "fermi_energy": self._raw_data.fermi_energy,
-            **self._shift_dispersion_by_fermi_energy(eigenvalues),
+            **self._shift_dispersion_by_fermi_energy(eigenvalues, fermi_energy),
             **self._read_occupations(),
             **self._read_projections(selection),
         }
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
-    def to_graph(self, selection=None, width=0.5):
+    def to_graph(self, selection=None, fermi_energy=None, width=0.5):
         """Read the data and generate a graph.
 
         On the x axis, we show the **k** points as distances from the previous ones.
@@ -155,6 +159,10 @@ class Band(base.Refinery, graph.Mixin):
         Parameters
         ----------
         {selection_doc}
+        fermi_energy : float
+            Overwrite the Fermi energy of the band structure calculation with a more
+            accurate one from a different calculation. This is recommended for metallic
+            systems where the Fermi energy may be significantly different.
         width : float
             Specifies the width (in eV) of the fatbands if a selection of projections is
             specified. If the projection amounts to 100%, the line will be drawn with
@@ -205,18 +213,22 @@ class Band(base.Refinery, graph.Mixin):
         """
         projections = self._projections(selection, width)
         graph = self._dispersion().plot(projections)
-        graph = self._shift_series_by_fermi_energy(graph)
+        graph = self._shift_series_by_fermi_energy(graph, fermi_energy)
         graph.ylabel = "Energy (eV)"
         return graph
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
-    def to_frame(self, selection=None):
+    def to_frame(self, selection=None, fermi_energy=None):
         """Read the data into a DataFrame.
 
         Parameters
         ----------
         {selection_doc}
+        fermi_energy : float
+            Overwrite the Fermi energy of the band structure calculation with a more
+            accurate one from a different calculation. This is recommended for metallic
+            systems where the Fermi energy may be significantly different.
 
         Returns
         -------
@@ -251,7 +263,7 @@ class Band(base.Refinery, graph.Mixin):
            kpoint_distances  bands  occupations  dxy + dxz + dyz
         0  ...
         """
-        return pd.DataFrame(self._extract_relevant_data(selection))
+        return pd.DataFrame(self._extract_relevant_data(selection, fermi_energy))
 
     @base.data_access
     @documentation.format(
@@ -451,19 +463,24 @@ class Band(base.Refinery, graph.Mixin):
         else:
             return {"occupations": self._raw_data.occupations[0]}
 
-    def _shift_dispersion_by_fermi_energy(self, eigenvalues):
-        shifted = eigenvalues - self._raw_data.fermi_energy
+    def _shift_dispersion_by_fermi_energy(self, eigenvalues, fermi_energy):
+        shifted = self._shift_array_by_fermi_energy(eigenvalues, fermi_energy)
         if len(shifted) == 2:
             return {"bands_up": shifted[0], "bands_down": shifted[1]}
         else:
             return {"bands": shifted[0]}
 
-    def _shift_series_by_fermi_energy(self, graph):
+    def _shift_series_by_fermi_energy(self, graph, fermi_energy):
         for series in graph.series:
-            series.y = series.y - self._raw_data.fermi_energy
+            series.y = self._shift_array_by_fermi_energy(series.y, fermi_energy)
         return graph
 
-    def _extract_relevant_data(self, selection):
+    def _shift_array_by_fermi_energy(self, array, fermi_energy):
+        if fermi_energy is None:
+            fermi_energy = self._raw_data.fermi_energy
+        return array - fermi_energy
+
+    def _extract_relevant_data(self, selection, fermi_energy):
         need_to_be_repeated = ("kpoint_distances", "kpoint_labels")
         relevant_keys = (
             "bands",
@@ -474,7 +491,7 @@ class Band(base.Refinery, graph.Mixin):
             "occupations_down",
         )
         data = {}
-        for key, value in self.to_dict().items():
+        for key, value in self.to_dict(selection, fermi_energy).items():
             if key in need_to_be_repeated:
                 data[key] = np.repeat(value, self._raw_data.occupations[0].shape[-1])
             if key in relevant_keys:
