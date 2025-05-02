@@ -27,8 +27,11 @@ class Series(trace.Trace):
     generated with a common entry in the legend."""
     label: str = None
     "A label for the series used in the legend."
-    width: np.ndarray = None
-    "When a width is set, the series will be visualized as an area instead of a line."
+    weight: np.ndarray = None
+    "When a weight is set, the series will modify the plot according to weight_mode."
+    weight_mode: str = "size"
+    """If weight_mode is 'size', the size of the plot is adjusted according to the weight.
+    If weight_mode is 'color', the color of the plot is adjusted according to the weight."""
     y2: bool = False
     "Use a secondary y axis to show this series."
     subplot: int = None
@@ -45,8 +48,8 @@ class Series(trace.Trace):
         if len(self.x) != self.y.shape[-1]:
             message = "The length of the two plotted components is inconsistent."
             raise exception.IncorrectUsage(message)
-        if self.width is not None and len(self.x) != self.width.shape[-1]:
-            message = "The length of width and plot is inconsistent."
+        if self.weight is not None and len(self.x) != self.weight.shape[-1]:
+            message = "The length of weight and plot is inconsistent."
             raise exception.IncorrectUsage(message)
         self._frozen = True
 
@@ -71,42 +74,42 @@ class Series(trace.Trace):
             first_trace = False
 
     def _make_trace(self, index, y, first_trace):
-        width = self._get_width(index)
+        weight = self._get_weight(index)
         if self._is_line():
-            options = self._options_line(y, first_trace)
+            specific_options = self._options_line(y)
         elif self._is_area():
-            options = self._options_area(y, width, first_trace)
+            specific_options = self._options_area(y, weight)
+        elif self.weight_mode == "size":
+            specific_options = self._options_scaled_points(y, weight)
         else:
-            options = self._options_points(y, width, first_trace)
-        return go.Scatter(**options)
+            specific_options = self._options_colored_points(y, weight)
+        return go.Scatter(**self._common_options(first_trace), **specific_options)
 
-    def _get_width(self, index):
-        if self.width is None:
+    def _get_weight(self, index):
+        if self.weight is None:
             return None
-        elif self.width.ndim == 1:
-            return self.width
+        elif self.weight.ndim == 1:
+            return self.weight
         else:
-            return self.width[index]
+            return self.weight[index]
 
     def _is_line(self):
-        return (self.width is None) and (self.marker is None)
+        return (self.weight is None) and (self.marker is None)
 
     def _is_area(self):
-        return (self.width is not None) and (self.marker is None)
+        return (self.weight is not None) and (self.marker is None)
 
-    def _options_line(self, y, first_trace):
+    def _options_line(self, y):
         return {
-            **self._common_options(first_trace),
             "x": self.x,
             "y": y,
             "line": {"color": self.color},
         }
 
-    def _options_area(self, y, width, first_trace):
-        upper = y + width
-        lower = y - width
+    def _options_area(self, y, weight):
+        upper = y + weight
+        lower = y - weight
         return {
-            **self._common_options(first_trace),
             "x": np.concatenate((self.x, self.x[::-1])),
             "y": np.concatenate((lower, upper[::-1])),
             "mode": "none",
@@ -115,13 +118,20 @@ class Series(trace.Trace):
             "opacity": 0.5,
         }
 
-    def _options_points(self, y, width, first_trace):
+    def _options_scaled_points(self, y, weight):
         return {
-            **self._common_options(first_trace),
             "x": self.x,
             "y": y,
             "mode": "markers",
-            "marker": {"size": width, "sizemode": "area", "color": self.color},
+            "marker": {"size": weight, "sizemode": "area", "color": self.color},
+        }
+
+    def _options_colored_points(self, y, weight):
+        return {
+            "x": self.x,
+            "y": y,
+            "mode": "markers",
+            "marker": {"color": weight, "coloraxis": "coloraxis"},
         }
 
     def _common_options(self, first_trace):

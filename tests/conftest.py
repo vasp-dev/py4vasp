@@ -160,6 +160,10 @@ class RawDataFactory:
             return _noncollinear_bands(options)
         elif band == "spin_texture":
             return _spin_texture_bands(options)
+        elif band == "noncollinear":
+            return _noncollinear_bands(options)
+        elif band == "spin_texture":
+            return _spin_texture_bands(options)
         else:
             raise exception.NotImplemented()
 
@@ -235,8 +239,6 @@ class RawDataFactory:
             return _Sr2TiO4_dos(projectors)
         elif structure == "Fe3O4":
             return _Fe3O4_dos(projectors)
-        elif structure == "Ba2PbO4":
-            return _Ba2PbO4_dos(projectors)
         else:
             raise exception.NotImplemented()
 
@@ -390,8 +392,6 @@ class RawDataFactory:
             return _Sr2TiO4_structure(has_ion_types=False)
         elif selection == "ZnS":
             return _ZnS_structure()
-        elif selection == "Ba2PbO4":
-            return _Ba2PbO4_structure()
         else:
             raise exception.NotImplemented()
 
@@ -858,41 +858,6 @@ def _Ba2PbO4_stoichiometry():
         number_ion_types=np.array((2, 1, 4)),
         ion_types=raw.VaspData(np.array(("Ba", "Pb", "O "), dtype="S")),
     )
-
-
-def _Ba2PbO4_structure():
-    raise exception.NotImplemented()
-    positions = [
-        [0.5, 0.0, 0.0],  # Ca_1
-        [0.0, 0.5, 0.0],  # Ca_2
-        [0.0, 0.0, 0.0],  # As
-        [0.0, 0.5, 0.5],  # Br_1
-        [0.0, 0.0, 0.5],  # Ca_3
-        [0.5, 0.0, 0.5],  # Br_2
-        [0.5, 0.5, 0.0],  # Br_3
-    ]
-    return raw.Structure(
-        stoichiometry=_Ba2PbO4_stoichiometry(),
-        cell=_Ba2PbO4_cell(),
-        positions=_make_data(positions),
-    )
-
-
-def _Ba2PbO4_dos(projectors):
-    raise exception.NotImplemented()
-    energies = np.linspace(-1, 3, number_points)
-    use_orbitals = projectors == "with_projectors"
-    raw_dos = raw.Dos(
-        fermi_energy=1.372,
-        energies=energies,
-        dos=np.array([energies**2]),
-        projectors=_Ba2PbO4_projectors(use_orbitals),
-    )
-    if use_orbitals:
-        number_orbitals = len(raw_dos.projectors.orbital_types)
-        shape = (single_spin, number_atoms, number_orbitals, number_points)
-        raw_dos.projections = np.random.random(shape)
-    return raw_dos
 
 
 def _electronic_minimization():

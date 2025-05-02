@@ -227,10 +227,10 @@ class Graph(Sequence):
         df[self._name_column(series, "x", None)] = series.x
         for idx, series_y in enumerate(np.atleast_2d(series.y)):
             df[self._name_column(series, "y", idx)] = series_y
-        if series.width is not None:
-            assert series.width.ndim == series.y.ndim
-            for idx, series_width in enumerate(np.atleast_2d(series.width)):
-                df[self._name_column(series, "width", idx)] = series_width
+        if series.weight is not None:
+            assert series.weight.ndim == series.y.ndim
+            for idx, series_weight in enumerate(np.atleast_2d(series.weight)):
+                df[self._name_column(series, "weight", idx)] = series_weight
         return df
 
     def _name_column(self, series, suffix, idx=None):

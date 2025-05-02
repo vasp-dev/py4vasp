@@ -36,15 +36,15 @@ def two_lines():
 @pytest.fixture
 def fatband():
     x = np.linspace(-1, 1, 40)
-    return Series(x=x, y=np.abs(x), width=x**2, label="fatband")
+    return Series(x=x, y=np.abs(x), weight=x**2, label="fatband")
 
 
 @pytest.fixture
 def two_fatbands():
     x = np.linspace(0, 3, 30)
     y = np.array((x**2, x**3))
-    width = np.sqrt(y)
-    return Series(x=x, y=y, width=width, label="two fatbands")
+    weight = np.sqrt(y)
+    return Series(x=x, y=y, weight=weight, label="two fatbands")
 
 
 @pytest.fixture
@@ -178,9 +178,9 @@ def test_two_lines(two_lines, Assert, not_core):
         first_trace = False
 
 
-def compare_series_with_width(converted, original, Assert):
-    upper = original.y + original.width
-    lower = original.y - original.width
+def compare_series_with_weight(converted, original, Assert):
+    upper = original.y + original.weight
+    lower = original.y - original.weight
     expected = Series(
         x=np.concatenate((original.x, original.x[::-1])),
         y=np.concatenate((lower, upper[::-1])),
@@ -196,7 +196,7 @@ def compare_series_with_width(converted, original, Assert):
 def test_fatband(fatband, Assert, not_core):
     graph = Graph(fatband)
     fig = graph.to_plotly()
-    compare_series_with_width(fig.data[0], fatband, Assert)
+    compare_series_with_weight(fig.data[0], fatband, Assert)
 
 
 def test_two_fatbands(two_fatbands, Assert, not_core):
@@ -204,9 +204,9 @@ def test_two_fatbands(two_fatbands, Assert, not_core):
     fig = graph.to_plotly()
     assert len(fig.data) == 2
     first_trace = True
-    for converted, y, w in zip(fig.data, two_fatbands.y, two_fatbands.width):
-        original = Series(x=two_fatbands.x, y=y, width=w, label=two_fatbands.label)
-        compare_series_with_width(converted, original, Assert)
+    for converted, y, w in zip(fig.data, two_fatbands.y, two_fatbands.weight):
+        original = Series(x=two_fatbands.x, y=y, weight=w, label=two_fatbands.label)
+        compare_series_with_weight(converted, original, Assert)
         check_legend_group(converted, original, first_trace)
         if first_trace:
             assert converted.fillcolor is not None
@@ -232,7 +232,7 @@ def test_fatband_with_marker(fatband, Assert, not_core):
     compare_series(fig.data[0], fatband, Assert)
     assert fig.data[0].mode == "markers"
     assert fig.data[0].marker.sizemode == "area"
-    Assert.allclose(fig.data[0].marker.size, fatband.width)
+    Assert.allclose(fig.data[0].marker.size, fatband.weight)
 
 
 def test_two_fatband_with_marker(two_fatbands, Assert, not_core):
@@ -241,11 +241,25 @@ def test_two_fatband_with_marker(two_fatbands, Assert, not_core):
     fig = graph.to_plotly()
     assert fig.layout.legend.itemsizing == "constant"
     assert len(fig.data) == 2
-    for converted, y, w in zip(fig.data, two_fatbands.y, two_fatbands.width):
+    for converted, y, w in zip(fig.data, two_fatbands.y, two_fatbands.weight):
         original = Series(x=two_fatbands.x, y=y, label=two_fatbands.label)
         compare_series(converted, original, Assert)
         assert converted.mode == "markers"
         Assert.allclose(converted.marker.size, w)
+
+
+def test_weight_mode_color(two_fatbands, Assert, not_core):
+    fatbands = dataclasses.replace(two_fatbands, marker="o", weight_mode="color")
+    graph = Graph(fatbands)
+    fig = graph.to_plotly()
+    assert fig.layout.legend.itemsizing == "constant"
+    assert len(fig.data) == 2
+    for converted, y, w in zip(fig.data, two_fatbands.y, two_fatbands.weight):
+        original = Series(x=two_fatbands.x, y=y, label=two_fatbands.label)
+        compare_series(converted, original, Assert)
+        assert converted.mode == "markers"
+        Assert.allclose(converted.marker.color, w)
+        assert converted.marker.coloraxis == "coloraxis"
 
 
 def test_custom_xticks(parabola, not_core):
@@ -380,8 +394,8 @@ def test_convert_two_fatbands_to_frame(two_fatbands, Assert, not_core):
     Assert.allclose(df["two_fatbands.x"], two_fatbands.x)
     Assert.allclose(df["two_fatbands.y0"], two_fatbands.y[0])
     Assert.allclose(df["two_fatbands.y1"], two_fatbands.y[1])
-    Assert.allclose(df["two_fatbands.width0"], two_fatbands.width[0])
-    Assert.allclose(df["two_fatbands.width1"], two_fatbands.width[1])
+    Assert.allclose(df["two_fatbands.weight0"], two_fatbands.weight[0])
+    Assert.allclose(df["two_fatbands.weight1"], two_fatbands.weight[1])
 
 
 def test_write_csv(tmp_path, two_fatbands, non_numpy, Assert, not_core):
@@ -406,8 +420,8 @@ def test_convert_different_length_series_to_frame(
     assert len(df) == max(len(parabola.x), len(two_lines.x))
     Assert.allclose(df["parabola.x"], parabola.x)
     Assert.allclose(df["parabola.y"], parabola.y)
-    pad_width = len(parabola.x) - len(two_lines.x)
-    pad_nan = np.repeat(np.nan, pad_width)
+    pad_weight = len(parabola.x) - len(two_lines.x)
+    pad_nan = np.repeat(np.nan, pad_weight)
     padded_two_lines_x = np.hstack((two_lines.x, pad_nan))
     padded_two_lines_y = np.hstack((two_lines.y, np.vstack((pad_nan, pad_nan))))
     Assert.allclose(df["two_lines.x"], padded_two_lines_x)

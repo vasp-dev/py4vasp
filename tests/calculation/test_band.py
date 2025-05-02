@@ -98,6 +98,18 @@ def spin_projectors(raw_data):
 
 
 @pytest.fixture
+def noncollinear_projectors(raw_data):
+    raw_band = raw_data.band("noncollinear with_projectors")
+    band = Band.from_data(raw_band)
+    band.ref = types.SimpleNamespace()
+    band.ref.total = np.sum(raw_band.projections[0], axis=(0, 1))
+    band.ref.sigma_x = np.sum(raw_band.projections[1], axis=(0, 1))
+    band.ref.Ba_sigma_y = np.sum(raw_band.projections[2, 0:2], axis=(0, 1))
+    band.ref.d_sigma_z = np.sum(raw_band.projections[3, :, 2], axis=0)
+    return band
+
+
+@pytest.fixture
 def spin_texture(raw_data):
     raw_band = raw_data.band("spin_texture with_projectors")
     band = Band.from_data(raw_band)
@@ -295,6 +307,14 @@ def test_spin_projectors_read(spin_projectors, Assert):
     Assert.allclose(band["Fe_d_down"], spin_projectors.ref.Fe_d_down)
 
 
+def test_noncollinear_projectors_read(noncollinear_projectors, Assert):
+    band = noncollinear_projectors.read(selection="total sigma_x Ba(y) d(sigma_3)")
+    Assert.allclose(band["total"], noncollinear_projectors.ref.total)
+    Assert.allclose(band["sigma_x"], noncollinear_projectors.ref.sigma_x)
+    Assert.allclose(band["Ba_y"], noncollinear_projectors.ref.Ba_sigma_y)
+    Assert.allclose(band["d_sigma_3"], noncollinear_projectors.ref.d_sigma_z)
+
+
 def test_combining_projections(with_projectors, Assert):
     band = with_projectors.read("Sr + p, Sr - p")
     addition = with_projectors.ref.Sr + with_projectors.ref.p
@@ -365,7 +385,7 @@ def test_single_band_plot(single_band, Assert):
     fig = single_band.plot()
     assert fig.ylabel == "Energy (eV)"
     assert len(fig.series) == 1
-    assert fig.series[0].width is None
+    assert fig.series[0].weight is None
     Assert.allclose(fig.series[0].x, single_band.ref.kpoints.distances())
     Assert.allclose(fig.series[0].y, single_band.ref.bands.T)
 
@@ -400,19 +420,19 @@ def test_spin_projectors_plot(spin_projectors, Assert):
     check_data(fig.series[1], width, reference.bands_down, reference.O_down, Assert)
 
 
-def check_figure(fig, width, reference, Assert):
+def check_figure(fig, weight, reference, Assert):
     assert len(fig.series) == 2
     assert fig.series[0].label == "Sr"
     assert fig.series[1].label == "p"
-    check_data(fig.series[0], width, reference.bands, reference.Sr, Assert)
-    check_data(fig.series[1], width, reference.bands, reference.p, Assert)
+    check_data(fig.series[0], weight, reference.bands, reference.Sr, Assert)
+    check_data(fig.series[1], weight, reference.bands, reference.p, Assert)
 
 
-def check_data(series, width, band, projection, Assert):
+def check_data(series, weight, band, projection, Assert):
     assert len(series.x) == series.y.shape[-1]
-    assert series.y.shape == series.width.shape
+    assert series.y.shape == series.weight.shape
     Assert.allclose(series.y, band.T)
-    Assert.allclose(series.width, width * projection.T)
+    Assert.allclose(series.weight, weight * projection.T)
 
 
 def test_spin_polarized_plot(spin_polarized, Assert):
@@ -441,6 +461,20 @@ def test_line_with_labels_plot(line_with_labels, Assert):
     fig = line_with_labels.plot()
     check_ticks(fig, line_with_labels.ref.kpoints, Assert)
     assert tuple(fig.xticks.values()) == (r"$\Gamma$", "", r"M|$\Gamma$", "Y", "M")
+
+
+def test_noncollinear_plot(noncollinear_projectors, Assert):
+    default_width = 0.5
+    fig = noncollinear_projectors.plot("total sigma_x")
+    assert len(fig.series) == 2
+    assert fig.series[0].label == "total"
+    reference = noncollinear_projectors.ref
+    Assert.allclose(fig.series[0].weight, default_width * reference.total.T)
+    assert fig.series[0].marker is None
+    assert fig.series[1].label == "sigma_x"
+    Assert.allclose(fig.series[1].weight, reference.sigma_x.T)
+    assert fig.series[1].marker == "o"
+    assert fig.series[1].weight_mode == "color"
 
 
 def check_ticks(fig, kpoints, Assert):
