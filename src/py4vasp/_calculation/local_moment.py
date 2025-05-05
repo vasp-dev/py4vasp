@@ -22,7 +22,7 @@ selection : str
 """
 
 
-@documentation.format(examples=slice_.examples("magnetism"))
+@documentation.format(examples=slice_.examples("local_moment"))
 class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     """The local moments describe the charge and magnetization near an atom.
 
@@ -67,7 +67,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
     @base.data_access
     @documentation.format(
-        index_note=_index_note, examples=slice_.examples("magnetism", "to_dict")
+        index_note=_index_note, examples=slice_.examples("local_moment", "to_dict")
     )
     def to_dict(self):
         """Read the charges and magnetization data into a dictionary.
@@ -83,14 +83,14 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         {examples}
         """
         return {
-            "charges": self.charges(),
+            "charge": self.charge(),
             "moments": self.moments(),
             **self._add_spin_and_orbital_moments(),
         }
 
     @base.data_access
     @documentation.format(
-        selection=_moment_selection, examples=slice_.examples("magnetism", "to_view")
+        selection=_moment_selection, examples=slice_.examples("local_moment", "to_view")
     )
     def to_view(self, selection="total", supercell=None):
         """Visualize the magnetic moments as arrows inside the structure.
@@ -122,8 +122,8 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         return viewer
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("magnetism", "charges"))
-    def charges(self):
+    @documentation.format(examples=slice_.examples("local_moment", "charge"))
+    def charge(self):
         """Read the charges of the selected steps.
 
         Returns
@@ -140,7 +140,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     @documentation.format(
         selection=_moment_selection,
         index_note=_index_note,
-        examples=slice_.examples("magnetism", "moments"),
+        examples=slice_.examples("local_moment", "moments"),
     )
     def moments(self, selection="total"):
         """Read the magnetic moments of the selected steps.
@@ -169,8 +169,8 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
             return self._noncollinear_moments(selection)
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("magnetism", "total_charges"))
-    def total_charges(self):
+    @documentation.format(examples=slice_.examples("local_moment", "total_charge"))
+    def total_charge(self):
         """Read the total charges of the selected steps.
 
         Returns
@@ -181,13 +181,13 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
         {examples}
         """
-        return _sum_over_orbitals(self.charges())
+        return _sum_over_orbitals(self.charge())
 
     @base.data_access
     @documentation.format(
         selection=_moment_selection,
         index_note=_index_note,
-        examples=slice_.examples("magnetism", "total_moments"),
+        examples=slice_.examples("local_moment", "total_moments"),
     )
     def total_moments(self, selection="total"):
         """Read the total magnetic moments of the selected steps.

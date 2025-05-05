@@ -46,7 +46,7 @@ def setup_moments(raw_data, kind):
     local_moment = LocalMoment.from_data(raw_moment)
     local_moment.ref = types.SimpleNamespace()
     local_moment.ref.kind = kind
-    local_moment.ref.charges = raw_moment.spin_moments[:, 0]
+    local_moment.ref.charge = raw_moment.spin_moments[:, 0]
     local_moment.ref.structure = Structure.from_data(raw_moment.structure)
     set_moments(raw_moment, local_moment.ref)
     return local_moment
@@ -75,7 +75,7 @@ def set_moments(raw_moment, reference):
 def test_read(example_moments, steps, Assert):
     moments = example_moments[steps] if steps != -1 else example_moments
     actual = moments.read()
-    Assert.allclose(actual["charges"], example_moments.ref.charges[steps])
+    Assert.allclose(actual["charge"], example_moments.ref.charge[steps])
     Assert.allclose(actual["moments"], example_moments.ref.moments[steps])
 
 
@@ -87,9 +87,9 @@ def test_read_spin_and_orbital_moments(orbital_moments, steps, Assert):
     Assert.allclose(actual["orbital_moments"], reference.orbital_moments[steps])
 
 
-def test_charges(example_moments, steps, Assert):
+def test_charge(example_moments, steps, Assert):
     moments = example_moments[steps] if steps != -1 else example_moments
-    Assert.allclose(moments.charges(), example_moments.ref.charges[steps])
+    Assert.allclose(moments.charge(), example_moments.ref.charge[steps])
 
 
 def test_moments(example_moments, steps, Assert):
@@ -111,10 +111,10 @@ def test_moments_selection(example_moments, Assert):
         moments.moments("unknown_option")
 
 
-def test_total_charges(example_moments, steps, Assert):
+def test_total_charge(example_moments, steps, Assert):
     moments = example_moments[steps] if steps != -1 else example_moments
-    total_charges = np.sum(moments.ref.charges, axis=2)
-    Assert.allclose(moments.total_charges(), total_charges[steps])
+    total_charge = np.sum(moments.ref.charge, axis=2)
+    Assert.allclose(moments.total_charge(), total_charge[steps])
 
 
 def test_total_moments(example_moments, steps, Assert):
@@ -237,9 +237,9 @@ def test_incorrect_argument(example_moments):
     with pytest.raises(exception.IncorrectUsage):
         example_moments[out_of_bounds].total_moments()
     with pytest.raises(exception.IncorrectUsage):
-        example_moments[out_of_bounds].charges()
+        example_moments[out_of_bounds].charge()
     with pytest.raises(exception.IncorrectUsage):
-        example_moments[out_of_bounds].total_charges()
+        example_moments[out_of_bounds].total_charge()
 
 
 def test_factory_methods(raw_data, check_factory_methods):
