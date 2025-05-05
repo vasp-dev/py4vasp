@@ -27,6 +27,14 @@ class ElectronPhononTransport(slice_.Mixin, base.Refinery):
     def __len__(self):
         return len(self._raw_data.valid_indices)
 
+    @base.data_access
+    def selections(self):
+        """Return a dictionary describing what options are available
+        to read the transport coefficients."""
+        id_name = self._raw_data.id_name
+        id_size = self._raw_data.id_size[:]
+        return {convert.text_to_string(name).strip():int(size) for name,size in zip(id_name,id_size)}
+
     def _read_slice_of_data(self, name):
         slice_of_data = getattr(self._raw_data, name)[self._steps]
         return [data[:] for data in slice_of_data]

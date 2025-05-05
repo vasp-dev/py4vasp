@@ -615,6 +615,8 @@ schema.add(
     raw.ElectronPhononTransport,
     required=raw.Version(6, 5),
     valid_indices=f"{group}/transport_meta/ncalculators",
+    id_name=f"{group}/transport_meta/id_name",
+    id_size=f"{group}/transport_meta/id_size",
     temperatures=f"{group}/transport_{{}}/temps",
     electronic_conductivity=f"{group}/transport_{{}}/e_conductivity",
     mobility=f"{group}/transport_{{}}/mobility",
