@@ -675,7 +675,7 @@ def _grid_kpoints(mode, labels):
 
 
 def _local_moment(selection):
-    lmax = 3
+    lmax = 3 if selection != "noncollinear" else 4
     number_components = _number_components(selection)
     shape = (number_steps, number_components, number_atoms, lmax)
     moment = raw.LocalMoment(

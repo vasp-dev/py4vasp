@@ -21,6 +21,8 @@ selection : str
     the individual contributions instead.
 """
 
+_ORBITAL_PROJECTION = "orbital_projection"
+
 
 @documentation.format(examples=slice_.examples("local_moment"))
 class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
@@ -83,6 +85,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         {examples}
         """
         return {
+            _ORBITAL_PROJECTION: self.selections()[_ORBITAL_PROJECTION],
             "charge": self.charge(),
             "magnetic": self.magnetic(),
             **self._add_spin_and_orbital_moments(),
@@ -210,6 +213,15 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
             self.magnetic(selection), is_vector=self._is_noncollinear
         )
 
+    @base.data_access
+    def selections(self):
+        result = super().selections()
+        if self._raw_data.spin_moments.shape[-1] == 4:
+            result[_ORBITAL_PROJECTION] = ["s", "p", "d", "f"]
+        else:
+            result[_ORBITAL_PROJECTION] = ["s", "p", "d"]
+        return result
+
     @property
     def _only_charge(self):
         return self._raw_data.spin_moments.shape[1] == 1
@@ -258,8 +270,8 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         orbital_moments = self._orbital_moments(spin_moments)
         direction_axis = 1 if spin_moments.ndim == 4 else 0
         return {
-            "spin_moments": np.moveaxis(spin_moments, direction_axis, -1),
-            "orbital_moments": np.moveaxis(orbital_moments, direction_axis, -1),
+            "spin": np.moveaxis(spin_moments, direction_axis, -1),
+            "orbital": np.moveaxis(orbital_moments, direction_axis, -1),
         }
 
     def _prepare_magnetic_moments_for_plotting(self, selection):

@@ -48,6 +48,8 @@ def setup_moments(raw_data, kind):
     local_moment.ref.kind = kind
     local_moment.ref.charge = raw_moment.spin_moments[:, 0]
     local_moment.ref.structure = Structure.from_data(raw_moment.structure)
+    lmax = raw_moment.spin_moments.shape[-1]
+    local_moment.ref.projections = ["s", "p", "d", "f"][:lmax]
     set_moments(raw_moment, local_moment.ref)
     return local_moment
 
@@ -75,6 +77,7 @@ def set_moments(raw_moment, reference):
 def test_read(example_moments, steps, Assert):
     moments = example_moments[steps] if steps != -1 else example_moments
     actual = moments.read()
+    assert actual["orbital_projection"] == example_moments.ref.projections
     Assert.allclose(actual["charge"], example_moments.ref.charge[steps])
     Assert.allclose(actual["magnetic"], example_moments.ref.magnetic[steps])
 
@@ -83,8 +86,8 @@ def test_read_spin_and_orbital_moments(orbital_moments, steps, Assert):
     moments = orbital_moments[steps] if steps != -1 else orbital_moments
     actual = moments.read()
     reference = orbital_moments.ref
-    Assert.allclose(actual["spin_moments"], reference.spin_moments[steps])
-    Assert.allclose(actual["orbital_moments"], reference.orbital_moments[steps])
+    Assert.allclose(actual["spin"], reference.spin_moments[steps])
+    Assert.allclose(actual["orbital"], reference.orbital_moments[steps])
 
 
 def test_charge(example_moments, steps, Assert):
@@ -211,15 +214,14 @@ def test_collinear_print(collinear_moments, format_):
 
 def test_noncollinear_print(noncollinear_moments, format_):
     actual, _ = format_(noncollinear_moments)
-    reference = """
-MAGMOM = 822.00 885.00 948.00 \\
-         831.00 894.00 957.00 \\
-         840.00 903.00 966.00 \\
-         849.00 912.00 975.00 \\
-         858.00 921.00 984.00 \\
-         867.00 930.00 993.00 \\
-         876.00 939.00 1002.00
-    """.strip()
+    reference = """\
+MAGMOM = 1462.00 1574.00 1686.00 \\
+         1478.00 1590.00 1702.00 \\
+         1494.00 1606.00 1718.00 \\
+         1510.00 1622.00 1734.00 \\
+         1526.00 1638.00 1750.00 \\
+         1542.00 1654.00 1766.00 \\
+         1558.00 1670.00 1782.00"""
     assert actual == {"text/plain": reference}
 
 
