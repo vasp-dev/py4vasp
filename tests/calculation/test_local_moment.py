@@ -97,7 +97,7 @@ def test_magnetic(example_moments, steps, Assert):
     Assert.allclose(moments.magnetic(), example_moments.ref.magnetic[steps])
 
 
-def test_moments_selection(example_moments, Assert):
+def test_magnetic_selection(example_moments, Assert):
     moments = example_moments
     Assert.allclose(moments.magnetic("total"), moments.ref.magnetic[-1])
     if moments.ref.kind == "orbital_moments":
