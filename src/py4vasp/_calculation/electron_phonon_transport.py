@@ -15,10 +15,12 @@ class ElectronPhononTransport(slice_.Mixin, base.Refinery):
         return {
             "temperatures": self._raw_data.temperatures[self._steps][:],
             "transport_function": self._read_slice_of_data("transport_function"),
-            "mobility": self._read_slice_of_data("mobility"),
             "electronic_conductivity": self._read_slice_of_data("electronic_conductivity"),
+            "mobility": self._read_slice_of_data("mobility"),
             "seebeck": self._read_slice_of_data("seebeck"),
+            "peltier": self._read_slice_of_data("peltier"),
             "electronic_thermal_conductivity": self._read_slice_of_data("electronic_thermal_conductivity"),
+            "scattering_approximation": self._raw_data.scattering_approximation[self._steps],
         }
 
     @base.data_access

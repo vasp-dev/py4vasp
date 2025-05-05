@@ -616,9 +616,11 @@ schema.add(
     required=raw.Version(6, 5),
     valid_indices=f"{group}/transport_meta/ncalculators",
     temperatures=f"{group}/transport_{{}}/temps",
-    mobility=f"{group}/transport_{{}}/mobility",
     electronic_conductivity=f"{group}/transport_{{}}/e_conductivity",
+    mobility=f"{group}/transport_{{}}/mobility",
     seebeck=f"{group}/transport_{{}}/seebeck",
+    peltier=f"{group}/transport_{{}}/peltier",
     electronic_thermal_conductivity=f"{group}/transport_{{}}/e_t_conductivity",
     transport_function=f"{group}/transport_{{}}/transport_function",
+    scattering_approximation=f"{group}/transport_{{}}/scattering_approximation",
 )
