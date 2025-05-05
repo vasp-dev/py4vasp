@@ -23,7 +23,7 @@ selection : str
 
 
 @documentation.format(examples=slice_.examples("magnetism"))
-class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
+class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     """The local moments describe the charge and magnetization near an atom.
 
     The projection on local moments is particularly relevant in the context of
@@ -266,7 +266,7 @@ class Magnetism(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         moments = _convert_moment_to_3d_vector(moments)
         max_length_moments = _max_length_moments(moments)
         if max_length_moments > 1e-15:
-            rescale_moments = Magnetism.length_moments / max_length_moments
+            rescale_moments = LocalMoment.length_moments / max_length_moments
             return rescale_moments * moments
         else:
             return None

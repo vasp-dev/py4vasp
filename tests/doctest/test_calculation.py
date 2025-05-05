@@ -92,7 +92,7 @@ def interesting_example(example):
         "bandgap",
         "energy",
         "force",
-        "magnetism",
+        "local_moment",
         "pair_correlation",
         "stress",
         "structure",

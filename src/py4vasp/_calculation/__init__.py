@@ -24,7 +24,7 @@ QUANTITIES = (
     "force_constant",
     "internal_strain",
     "kpoint",
-    "magnetism",
+    "local_moment",
     "nics",
     "pair_correlation",
     "partial_density",
