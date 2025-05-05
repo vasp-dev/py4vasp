@@ -54,7 +54,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     @base.data_access
     def __str__(self):
         magmom = "MAGMOM = "
-        moments_last_step = self.total_moments()
+        moments_last_step = self.total_magnetic()
         moments_to_string = lambda vec: " ".join(f"{moment:.2f}" for moment in vec)
         if moments_last_step is None:
             return "not spin polarized"
@@ -84,7 +84,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         """
         return {
             "charge": self.charge(),
-            "moments": self.moments(),
+            "magnetic": self.magnetic(),
             **self._add_spin_and_orbital_moments(),
         }
 
@@ -140,9 +140,9 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     @documentation.format(
         selection=_moment_selection,
         index_note=_index_note,
-        examples=slice_.examples("local_moment", "moments"),
+        examples=slice_.examples("local_moment", "magnetic"),
     )
-    def moments(self, selection="total"):
+    def magnetic(self, selection="total"):
         """Read the magnetic moments of the selected steps.
 
         Parameters
@@ -163,7 +163,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         self._raise_error_if_selection_not_available(selection)
         if self._only_charge:
             return None
-        elif self._spin_polarized:
+        elif self._is_collinear:
             return self._collinear_moments()
         else:
             return self._noncollinear_moments(selection)
@@ -187,9 +187,9 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     @documentation.format(
         selection=_moment_selection,
         index_note=_index_note,
-        examples=slice_.examples("local_moment", "total_moments"),
+        examples=slice_.examples("local_moment", "total_magnetic"),
     )
-    def total_moments(self, selection="total"):
+    def total_magnetic(self, selection="total"):
         """Read the total magnetic moments of the selected steps.
 
         Parameters
@@ -206,18 +206,20 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
         {examples}
         """
-        return _sum_over_orbitals(self.moments(selection), is_vector=self._noncollinear)
+        return _sum_over_orbitals(
+            self.magnetic(selection), is_vector=self._is_noncollinear
+        )
 
     @property
     def _only_charge(self):
         return self._raw_data.spin_moments.shape[1] == 1
 
     @property
-    def _spin_polarized(self):
+    def _is_collinear(self):
         return self._raw_data.spin_moments.shape[1] == 2
 
     @property
-    def _noncollinear(self):
+    def _is_noncollinear(self):
         return self._raw_data.spin_moments.shape[1] == 4
 
     @property
@@ -261,7 +263,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         }
 
     def _prepare_magnetic_moments_for_plotting(self, selection):
-        moments = self.total_moments(selection)
+        moments = self.total_magnetic(selection)
         moments = self._make_sure_moments_have_timestep_dimension(moments)
         moments = _convert_moment_to_3d_vector(moments)
         max_length_moments = _max_length_moments(moments)

@@ -58,16 +58,16 @@ def set_moments(raw_moment, reference):
             return None
 
     if reference.kind == "charge_only":
-        reference.moments = GetItemNone()
+        reference.magnetic = GetItemNone()
     elif reference.kind == "collinear":
-        reference.moments = raw_moment.spin_moments[:, 1]
+        reference.magnetic = raw_moment.spin_moments[:, 1]
     elif reference.kind == "noncollinear":
-        reference.moments = np.moveaxis(raw_moment.spin_moments[:, 1:4], 1, 3)
-    else:
+        reference.magnetic = np.moveaxis(raw_moment.spin_moments[:, 1:4], 1, 3)
+    else:  # including orbital moments
         spin_moments = np.moveaxis(raw_moment.spin_moments[:, 1:4], 1, 3)
         orbital_moments = np.zeros_like(spin_moments).astype(np.float64)
         orbital_moments[:, :, 1:] += np.moveaxis(raw_moment.orbital_moments, 1, 3)
-        reference.moments = spin_moments + orbital_moments
+        reference.magnetic = spin_moments + orbital_moments
         reference.spin_moments = spin_moments
         reference.orbital_moments = orbital_moments
 
@@ -76,7 +76,7 @@ def test_read(example_moments, steps, Assert):
     moments = example_moments[steps] if steps != -1 else example_moments
     actual = moments.read()
     Assert.allclose(actual["charge"], example_moments.ref.charge[steps])
-    Assert.allclose(actual["moments"], example_moments.ref.moments[steps])
+    Assert.allclose(actual["magnetic"], example_moments.ref.magnetic[steps])
 
 
 def test_read_spin_and_orbital_moments(orbital_moments, steps, Assert):
@@ -92,23 +92,23 @@ def test_charge(example_moments, steps, Assert):
     Assert.allclose(moments.charge(), example_moments.ref.charge[steps])
 
 
-def test_moments(example_moments, steps, Assert):
+def test_magnetic(example_moments, steps, Assert):
     moments = example_moments[steps] if steps != -1 else example_moments
-    Assert.allclose(moments.moments(), example_moments.ref.moments[steps])
+    Assert.allclose(moments.magnetic(), example_moments.ref.magnetic[steps])
 
 
 def test_moments_selection(example_moments, Assert):
     moments = example_moments
-    Assert.allclose(moments.moments("total"), moments.ref.moments[-1])
+    Assert.allclose(moments.magnetic("total"), moments.ref.magnetic[-1])
     if moments.ref.kind == "orbital_moments":
-        Assert.allclose(moments.moments("spin"), moments.ref.spin_moments[-1])
-        Assert.allclose(moments.moments("orbital"), moments.ref.orbital_moments[-1])
+        Assert.allclose(moments.magnetic("spin"), moments.ref.spin_moments[-1])
+        Assert.allclose(moments.magnetic("orbital"), moments.ref.orbital_moments[-1])
     else:
-        Assert.allclose(moments.moments("spin"), moments.ref.moments[-1])
+        Assert.allclose(moments.magnetic("spin"), moments.ref.magnetic[-1])
         with pytest.raises(exception.NoData):
-            moments.moments("orbital")
+            moments.magnetic("orbital")
     with pytest.raises(exception.IncorrectUsage):
-        moments.moments("unknown_option")
+        moments.magnetic("unknown_option")
 
 
 def test_total_charge(example_moments, steps, Assert):
@@ -117,24 +117,24 @@ def test_total_charge(example_moments, steps, Assert):
     Assert.allclose(moments.total_charge(), total_charge[steps])
 
 
-def test_total_moments(example_moments, steps, Assert):
+def test_total_magnetic(example_moments, steps, Assert):
     moments = example_moments[steps] if steps != -1 else example_moments
     if example_moments.ref.kind == "charge_only":
-        assert moments.total_moments() is None
+        assert moments.total_magnetic() is None
     else:
-        total_moments = np.sum(moments.ref.moments, axis=2)
-        Assert.allclose(moments.total_moments(), total_moments[steps])
+        total_magnetic = np.sum(moments.ref.magnetic, axis=2)
+        Assert.allclose(moments.total_magnetic(), total_magnetic[steps])
 
 
 @pytest.mark.parametrize("selection", ["total", "spin", "orbital"])
 def test_total_moments_selection(example_moments, selection, Assert):
     if expect_exception(example_moments.ref.kind, selection):
         with pytest.raises(exception.NoData):
-            example_moments.total_moments(selection)
+            example_moments.total_magnetic(selection)
     else:
-        moments = example_moments.moments(selection)
+        moments = example_moments.magnetic(selection)
         total_moments = np.sum(moments, axis=1) if moments is not None else None
-        Assert.allclose(example_moments.total_moments(selection), total_moments)
+        Assert.allclose(example_moments.total_magnetic(selection), total_moments)
 
 
 @pytest.mark.parametrize("selection", [None, "total", "spin", "orbital"])
@@ -165,10 +165,10 @@ def expected_moments(reference, steps=-1, selection=None):
     elif reference.kind == "orbital_moments" and selection == "orbital":
         moments = np.sum(reference.orbital_moments[steps], axis=-2)
     elif reference.kind != "collinear":
-        moments = np.sum(reference.moments[steps], axis=-2)
+        moments = np.sum(reference.magnetic[steps], axis=-2)
     else:
         list_ = [
-            [[0, 0, m] for m in np.sum(reference.moments[step], axis=-1)]
+            [[0, 0, m] for m in np.sum(reference.magnetic[step], axis=-1)]
             for step in np.atleast_1d(np.arange(4)[steps])
         ]
         moments = np.array(list_)
@@ -233,9 +233,9 @@ def test_incorrect_argument(example_moments):
         example_moments["step not an integer"].read()
     out_of_bounds = 999
     with pytest.raises(exception.IncorrectUsage):
-        example_moments[out_of_bounds].moments()
+        example_moments[out_of_bounds].magnetic()
     with pytest.raises(exception.IncorrectUsage):
-        example_moments[out_of_bounds].total_moments()
+        example_moments[out_of_bounds].total_magnetic()
     with pytest.raises(exception.IncorrectUsage):
         example_moments[out_of_bounds].charge()
     with pytest.raises(exception.IncorrectUsage):
