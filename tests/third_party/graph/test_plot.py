@@ -1,10 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import itertools
+
 import numpy as np
 import pytest
 
 from py4vasp import exception
 from py4vasp._third_party.graph import Graph, Series, plot
+from py4vasp._util import convert
 
 
 def test_plot():
@@ -46,4 +49,15 @@ def test_many_colors(not_core):
     data = np.random.random((10, 2, 50))
     plots = (plot(x, y) for x, y in data)
     graph = sum(plots, start=Graph([]))
-    assert len(graph.to_plotly().data) == 10
+    figure = graph.to_plotly()
+    assert len(figure.data) == 10
+    colors = {series.line.color for series in figure.data}
+    assert len(colors) > 4
+    for color1, color2 in itertools.combinations(colors, 2):
+        assert color_distance(color1, color2) > 30
+
+
+def color_distance(color1, color2):
+    lab1 = convert.to_lab(color1)
+    lab2 = convert.to_lab(color2)
+    return np.linalg.norm(lab1 - lab2)
