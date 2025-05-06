@@ -5,7 +5,7 @@ import numpy as np
 from py4vasp import _config, exception
 from py4vasp._calculation import base, slice_, structure
 from py4vasp._third_party import view
-from py4vasp._util import documentation
+from py4vasp._util import documentation, select
 
 _index_note = """\
 Notes
@@ -113,15 +113,12 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         {examples}
         """
         viewer = self._structure[self._steps].plot(supercell)
-        moments = self._prepare_magnetic_moments_for_plotting(selection)
-        if moments is not None:
-            ion_arrows = view.IonArrow(
-                quantity=moments,
-                label=f"{selection} moments",
-                color=_config.VASP_COLORS["blue"],
-                radius=0.2,
-            )
-            viewer.ion_arrows = [ion_arrows]
+        ion_arrows = [
+            ion_arrow
+            for ion_arrow in self._prepare_magnetic_moments_for_plotting(selection)
+        ]
+        if ion_arrows:
+            viewer.ion_arrows = ion_arrows
         return viewer
 
     @base.data_access
@@ -275,15 +272,20 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         }
 
     def _prepare_magnetic_moments_for_plotting(self, selection):
-        moments = self.magnetic(selection)
-        moments = self._make_sure_moments_have_timestep_dimension(moments)
-        moments = _convert_moment_to_3d_vector(moments)
-        max_length_moments = _max_length_moments(moments)
-        if max_length_moments > 1e-15:
-            rescale_moments = LocalMoment.length_moments / max_length_moments
-            return rescale_moments * moments
-        else:
-            return None
+        tree = select.Tree.from_selection(selection)
+        for (selection, *_) in tree.selections():
+            moments = self.magnetic(selection)
+            moments = self._make_sure_moments_have_timestep_dimension(moments)
+            moments = _convert_moment_to_3d_vector(moments)
+            max_length_moments = _max_length_moments(moments)
+            if max_length_moments > 1e-15:
+                rescale_moments = LocalMoment.length_moments / max_length_moments
+                yield view.IonArrow(
+                    quantity=rescale_moments * moments,
+                    label=f"{selection} moments",
+                    color=_color(selection),
+                    radius=0.2,
+                )
 
     def _make_sure_moments_have_timestep_dimension(self, moments):
         if not self._is_slice and moments is not None:
@@ -336,3 +338,13 @@ def _max_length_moments(moments):
         return np.max(np.linalg.norm(moments, axis=2))
     else:
         return 0.0
+
+
+def _color(selection):
+    if selection == "total":
+        return _config.VASP_COLORS["blue"]
+    if selection == "spin":
+        return _config.VASP_COLORS["purple"]
+    if selection == "orbital":
+        return _config.VASP_COLORS["red"]
+    raise exception.IncorrectUsage(f"Unknown component {selection} selected.")

@@ -187,13 +187,26 @@ def check_view(view, reference_moments, selection, Assert):
         assert view.ion_arrows is None
     else:
         assert len(view.ion_arrows) == 1
-        arrows = view.ion_arrows[0]
-        assert arrows.quantity.ndim == 3
-        Assert.allclose(arrows.quantity, reference_moments)
-        expected_label = f"{selection} moments" if selection else "total moments"
-        assert arrows.label == expected_label
-        assert arrows.color == _config.VASP_COLORS["blue"]
-        assert arrows.radius == 0.2
+        check_arrows(view.ion_arrows[0], reference_moments, selection, Assert)
+
+
+def check_arrows(arrows, reference_moments, selection, Assert):
+    assert arrows.quantity.ndim == 3
+    Assert.allclose(arrows.quantity, reference_moments)
+    expected_label = f"{selection} moments" if selection else "total moments"
+    assert arrows.label == expected_label
+    assert arrows.color == _config.VASP_COLORS[expected_color(selection)]
+    assert arrows.radius == 0.2
+
+
+def expected_color(selection):
+    if selection == "total" or selection is None:
+        return "blue"
+    if selection == "spin":
+        return "purple"
+    if selection == "orbital":
+        return "red"
+    raise NotImplemented(selection + " not implemented")
 
 
 @pytest.mark.parametrize("supercell", [None, 2, (3, 2, 1)])
@@ -206,6 +219,15 @@ def test_plot_supercell(example_moments, supercell, Assert):
     Assert.same_structure_view(view, structure_view)
     reference_moments = expected_moments(example_moments.ref)
     check_view(view, reference_moments, selection="total", Assert=Assert)
+
+
+def test_plot_multiple(orbital_moments, Assert):
+    view = orbital_moments.plot("spin, orbital")
+    spin_moments = expected_moments(orbital_moments.ref, selection="spin")
+    orbital_moments = expected_moments(orbital_moments.ref, selection="orbital")
+    assert len(view.ion_arrows) == 2
+    check_arrows(view.ion_arrows[0], spin_moments, "spin", Assert)
+    check_arrows(view.ion_arrows[1], orbital_moments, "orbital", Assert)
 
 
 def test_collinear_print(collinear_moments, format_):
