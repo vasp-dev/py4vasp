@@ -5,7 +5,7 @@ import numpy as np
 from py4vasp import _config, exception
 from py4vasp._calculation import base, slice_, structure
 from py4vasp._third_party import view
-from py4vasp._util import documentation, select
+from py4vasp._util import check, documentation, select
 
 _index_note = """\
 Notes
@@ -55,12 +55,12 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
     @base.data_access
     def __str__(self):
+        if self._is_nonpolarized:
+            return "not spin polarized"
         magmom = "MAGMOM = "
         moments_last_step = self.magnetic("spin")
         moments_to_string = lambda vec: " ".join(f"{moment:.2f}" for moment in vec)
-        if moments_last_step is None:
-            return "not spin polarized"
-        elif moments_last_step.ndim == 1:
+        if moments_last_step.ndim == 1:
             return magmom + moments_to_string(moments_last_step)
         else:
             separator = " \\\n         "
@@ -87,7 +87,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         return {
             _ORBITAL_PROJECTION: self.selections()[_ORBITAL_PROJECTION],
             "charge": self.projected_charge(),
-            "magnetic": self.projected_magnetic(),
+            **self._add_total_magnetic_moment(),
             **self._add_spin_and_orbital_moments(),
         }
 
@@ -113,12 +113,10 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         {examples}
         """
         viewer = self._structure[self._steps].plot(supercell)
-        ion_arrows = [
-            ion_arrow
-            for ion_arrow in self._prepare_magnetic_moments_for_plotting(selection)
-        ]
-        if ion_arrows:
-            viewer.ion_arrows = ion_arrows
+        if not self._is_nonpolarized:
+            viewer.ion_arrows = list(
+                self._prepare_magnetic_moments_for_plotting(selection)
+            )
         return viewer
 
     @base.data_access
@@ -160,13 +158,10 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         {examples}
         """
         self._raise_error_if_steps_out_of_bounds()
-        self._raise_error_if_selection_not_available(selection)
-        if self._only_charge:
-            return None
-        elif self._is_collinear:
-            return self._collinear_moments()
-        else:
-            return self._noncollinear_moments(selection)
+        self._raise_error_if_no_magnetic_moments()
+        tree = select.Tree.from_selection(selection)
+        moments = [self._magnetic_moments(selection) for selection in tree.selections()]
+        return np.squeeze(moments)
 
     @base.data_access
     @documentation.format(examples=slice_.examples("local_moment", "charge"))
@@ -217,10 +212,16 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
             result[_ORBITAL_PROJECTION] = ["s", "p", "d", "f"]
         else:
             result[_ORBITAL_PROJECTION] = ["s", "p", "d"]
+        if self._is_nonpolarized:
+            result["component"] = ["charge"]
+        elif self._has_orbital_moments:
+            result["component"] = ["charge", "total", "spin", "orbital"]
+        else:
+            result["component"] = ["charge", "total", "spin"]
         return result
 
     @property
-    def _only_charge(self):
+    def _is_nonpolarized(self):
         return self._raw_data.spin_moments.shape[1] == 1
 
     @property
@@ -233,10 +234,14 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
     @property
     def _has_orbital_moments(self):
-        return not self._raw_data.orbital_moments.is_none()
+        return not check.is_none(self._raw_data.orbital_moments)
 
-    def _collinear_moments(self):
-        return self._raw_data.spin_moments[self._steps, 1]
+    def _magnetic_moments(self, selection):
+        self._raise_error_if_selection_not_available(selection)
+        if self._is_collinear:
+            return self._spin_moments()
+        else:
+            return self._noncollinear_moments(selection[0])
 
     def _noncollinear_moments(self, selection):
         spin_moments = self._spin_moments()
@@ -245,7 +250,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
             moments = orbital_moments
         elif selection == "spin":
             moments = spin_moments
-        else:
+        else:  # total
             moments = spin_moments + orbital_moments
         direction_axis = 1 if moments.ndim == 4 else 0
         return np.moveaxis(moments, direction_axis, -1)
@@ -259,6 +264,11 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         zero_s_moments = np.zeros((*spin_moments.shape[:-1], 1))
         orbital_moments = self._raw_data.orbital_moments[self._steps]
         return np.concatenate((zero_s_moments, orbital_moments), axis=-1)
+
+    def _add_total_magnetic_moment(self):
+        if self._is_nonpolarized:
+            return {}
+        return {"total": self.projected_magnetic()}
 
     def _add_spin_and_orbital_moments(self):
         if not self._has_orbital_moments:
@@ -301,7 +311,17 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
                 f"`{self._steps}` are properly formatted and within the boundaries."
             ) from error
 
+    def _raise_error_if_no_magnetic_moments(self):
+        if self._is_nonpolarized:
+            raise exception.NoData(
+                "There are no magnetic moments in the data. Please make sure that you "
+                "either set ISPIN = 2 or LNONCOLLINEAR = T or LSORBIT = T."
+            )
+
     def _raise_error_if_selection_not_available(self, selection):
+        if len(selection) != 1:
+            raise exception.IncorrectUsage()
+        selection = selection[0]
         if selection not in ("spin", "orbital", "total"):
             raise exception.IncorrectUsage(
                 f"The selection {selection} is incorrect. Please check if it is spelled "
