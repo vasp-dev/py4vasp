@@ -104,12 +104,10 @@ def test_projected_magnetic_selection(example_moments, Assert):
     moments = example_moments
     Assert.allclose(moments.projected_magnetic("total"), moments.ref.magnetic[-1])
     if moments.ref.kind == "orbital_moments":
-        Assert.allclose(
-            moments.projected_magnetic("spin"), moments.ref.spin_moments[-1]
-        )
-        Assert.allclose(
-            moments.projected_magnetic("orbital"), moments.ref.orbital_moments[-1]
-        )
+        spin_moments = moments.projected_magnetic("spin")
+        orbital_moments = moments.projected_magnetic("orbital")
+        Assert.allclose(spin_moments, moments.ref.spin_moments[-1])
+        Assert.allclose(orbital_moments, moments.ref.orbital_moments[-1])
     else:
         Assert.allclose(moments.projected_magnetic("spin"), moments.ref.magnetic[-1])
         with pytest.raises(exception.NoData):
@@ -118,30 +116,30 @@ def test_projected_magnetic_selection(example_moments, Assert):
         moments.projected_magnetic("unknown_option")
 
 
-def test_total_charge(example_moments, steps, Assert):
+def test_charge(example_moments, steps, Assert):
     moments = example_moments[steps] if steps != -1 else example_moments
     total_charge = np.sum(moments.ref.charge, axis=2)
-    Assert.allclose(moments.total_charge(), total_charge[steps])
+    Assert.allclose(moments.charge(), total_charge[steps])
 
 
-def test_total_magnetic(example_moments, steps, Assert):
+def test_magnetic(example_moments, steps, Assert):
     moments = example_moments[steps] if steps != -1 else example_moments
     if example_moments.ref.kind == "charge_only":
-        assert moments.total_magnetic() is None
+        assert moments.magnetic() is None
     else:
         total_magnetic = np.sum(moments.ref.magnetic, axis=2)
-        Assert.allclose(moments.total_magnetic(), total_magnetic[steps])
+        Assert.allclose(moments.magnetic(), total_magnetic[steps])
 
 
 @pytest.mark.parametrize("selection", ["total", "spin", "orbital"])
-def test_total_moments_selection(example_moments, selection, Assert):
+def test_magnetic_selection(example_moments, selection, Assert):
     if expect_exception(example_moments.ref.kind, selection):
         with pytest.raises(exception.NoData):
-            example_moments.total_magnetic(selection)
+            example_moments.magnetic(selection)
     else:
         moments = example_moments.projected_magnetic(selection)
         total_moments = np.sum(moments, axis=1) if moments is not None else None
-        Assert.allclose(example_moments.total_magnetic(selection), total_moments)
+        Assert.allclose(example_moments.magnetic(selection), total_moments)
 
 
 @pytest.mark.parametrize("selection", [None, "total", "spin", "orbital"])
@@ -241,11 +239,11 @@ def test_incorrect_argument(example_moments):
     with pytest.raises(exception.IncorrectUsage):
         example_moments[out_of_bounds].projected_magnetic()
     with pytest.raises(exception.IncorrectUsage):
-        example_moments[out_of_bounds].total_magnetic()
+        example_moments[out_of_bounds].magnetic()
     with pytest.raises(exception.IncorrectUsage):
         example_moments[out_of_bounds].projected_charge()
     with pytest.raises(exception.IncorrectUsage):
-        example_moments[out_of_bounds].total_charge()
+        example_moments[out_of_bounds].charge()
 
 
 def test_factory_methods(raw_data, check_factory_methods):

@@ -56,7 +56,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     @base.data_access
     def __str__(self):
         magmom = "MAGMOM = "
-        moments_last_step = self.total_magnetic()
+        moments_last_step = self.magnetic("spin")
         moments_to_string = lambda vec: " ".join(f"{moment:.2f}" for moment in vec)
         if moments_last_step is None:
             return "not spin polarized"
@@ -146,7 +146,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         examples=slice_.examples("local_moment", "projected_magnetic"),
     )
     def projected_magnetic(self, selection="total"):
-        """Read the magnetic moments of the selected steps.
+        """Read the orbital- and site-projected magnetic moments of the selected steps.
 
         Parameters
         ----------
@@ -172,15 +172,15 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
             return self._noncollinear_moments(selection)
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("local_moment", "total_charge"))
-    def total_charge(self):
-        """Read the total charges of the selected steps.
+    @documentation.format(examples=slice_.examples("local_moment", "charge"))
+    def charge(self):
+        """Read the site-projected charges of the selected steps.
 
         Returns
         -------
         np.ndarray
-            Contains the total charges for the selected steps projected on atoms. This
-            corresponds to the charges summed over the orbitals.
+            Contains the charges for the selected steps projected on atoms. Equivalent
+            to summing the projected charges over the orbitals.
 
         {examples}
         """
@@ -190,10 +190,10 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     @documentation.format(
         selection=_moment_selection,
         index_note=_index_note,
-        examples=slice_.examples("local_moment", "total_magnetic"),
+        examples=slice_.examples("local_moment", "magnetic"),
     )
-    def total_magnetic(self, selection="total"):
-        """Read the total magnetic moments of the selected steps.
+    def magnetic(self, selection="total"):
+        """Read the site-projected magnetic moments of the selected steps.
 
         Parameters
         ----------
@@ -202,8 +202,8 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         Returns
         -------
         np.ndarray
-            Contains the total magnetic moments for the selected steps projected on atoms.
-            This corresponds to the magnetic moments summed over the orbitals.
+            Contains the magnetic moments for the selected steps projected on atoms.
+            Equivalent to summing the projected magnetic moments over the orbitals.
 
         {index_note}
 
@@ -275,7 +275,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         }
 
     def _prepare_magnetic_moments_for_plotting(self, selection):
-        moments = self.total_magnetic(selection)
+        moments = self.magnetic(selection)
         moments = self._make_sure_moments_have_timestep_dimension(moments)
         moments = _convert_moment_to_3d_vector(moments)
         max_length_moments = _max_length_moments(moments)
