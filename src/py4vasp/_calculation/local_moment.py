@@ -11,7 +11,7 @@ _index_note = """\
 Notes
 -----
 The index order is different compared to the raw data when noncollinear calculations
-are used. This routine returns the magnetic moments as (steps, atoms, orbitals,
+are used. This routine returns the magnetic moments as (steps, orbitals, atoms,
 directions)."""
 
 _moment_selection = """\
@@ -86,8 +86,8 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         """
         return {
             _ORBITAL_PROJECTION: self.selections()[_ORBITAL_PROJECTION],
-            "charge": self.charge(),
-            "magnetic": self.magnetic(),
+            "charge": self.projected_charge(),
+            "magnetic": self.projected_magnetic(),
             **self._add_spin_and_orbital_moments(),
         }
 
@@ -125,9 +125,9 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         return viewer
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("local_moment", "charge"))
-    def charge(self):
-        """Read the charges of the selected steps.
+    @documentation.format(examples=slice_.examples("local_moment", "projected_charge"))
+    def projected_charge(self):
+        """Read the orbital- and site-projected charges of the selected steps.
 
         Returns
         -------
@@ -143,9 +143,9 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     @documentation.format(
         selection=_moment_selection,
         index_note=_index_note,
-        examples=slice_.examples("local_moment", "magnetic"),
+        examples=slice_.examples("local_moment", "projected_magnetic"),
     )
-    def magnetic(self, selection="total"):
+    def projected_magnetic(self, selection="total"):
         """Read the magnetic moments of the selected steps.
 
         Parameters
@@ -184,7 +184,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
         {examples}
         """
-        return _sum_over_orbitals(self.charge())
+        return _sum_over_orbitals(self.projected_charge())
 
     @base.data_access
     @documentation.format(
@@ -210,7 +210,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         {examples}
         """
         return _sum_over_orbitals(
-            self.magnetic(selection), is_vector=self._is_noncollinear
+            self.projected_magnetic(selection), is_vector=self._is_noncollinear
         )
 
     @base.data_access
