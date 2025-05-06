@@ -585,6 +585,15 @@ class Workfunction:
 
 
 # TODO: temporarily put this here for testing, should be put at the proper position after finalizing the schema
+@dataclasses.dataclass
+class ElectronPhononChemicalPotential:
+    fermi_energy: VaspData
+    chemical_potential: VaspData
+    carrier_density: VaspData
+    temperatures: VaspData
+    carrier_per_cell: VaspData  # values of the selfen_carrier_per_cell incar tag
+    carrier_den: VaspData  # values of th selfen_carrier_den incar tag
+    mu: VaspData  # values of the selfen_mu incar tag
 
 
 @dataclasses.dataclass

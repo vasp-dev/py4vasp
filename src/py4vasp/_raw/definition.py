@@ -602,6 +602,21 @@ schema.add(
 # TODO: temporarily put this here for testing, should be put at the proper position after finalizing the schema
 group = "/results/electron_phonon/electrons"
 schema.add(
+    raw.ElectronPhononChemicalPotential,
+    required=raw.Version(6, 5),
+    fermi_energy=f"{group}/chemical_potential/efermi",
+    chemical_potential=f"{group}/chemical_potential/muij",
+    carrier_density=f"{group}/chemical_potential/nij",
+    temperatures=f"{group}/chemical_potential/temperatures",
+    # would like to read these variables from the incar but because of a bug only the first element is ever written
+    #carrier_per_cell="input/incar/elph_selfen_carrier_per_cell",
+    #carrier_den="input/incar/elph_selfen_carrier_den",
+    #mu="input/incar/elph_selfen_carrier_mu",
+    carrier_per_cell=f"{group}/chemical_potential/selfen_carrier_per_cell",
+    carrier_den=f"{group}/chemical_potential/selfen_carrier_den",
+    mu=f"{group}/chemical_potential/selfen_mu",
+)
+schema.add(
     raw.ElectronPhononSelfEnergy,
     required=raw.Version(6, 5),
     valid_indices=f"{group}/self_energy_meta/ncalculators",
