@@ -306,8 +306,8 @@ class RawDataFactory:
             return _grid_kpoints(mode, labels)
 
     @staticmethod
-    def magnetism(selection):
-        return _magnetism(selection)
+    def local_moment(selection):
+        return _local_moment(selection)
 
     @staticmethod
     def nics(selection):
@@ -674,18 +674,18 @@ def _grid_kpoints(mode, labels):
     return kpoints
 
 
-def _magnetism(selection):
-    lmax = 3
+def _local_moment(selection):
+    lmax = 3 if selection != "noncollinear" else 4
     number_components = _number_components(selection)
     shape = (number_steps, number_components, number_atoms, lmax)
-    magnetism = raw.Magnetism(
+    moment = raw.LocalMoment(
         structure=_Fe3O4_structure(),
         spin_moments=_make_data(np.arange(np.prod(shape)).reshape(shape)),
     )
     if selection == "orbital_moments":
-        remove_charge_and_s_component = magnetism.spin_moments[:, 1:, :, 1:]
-        magnetism.orbital_moments = _make_data(np.sqrt(remove_charge_and_s_component))
-    return magnetism
+        remove_charge_and_s_component = moment.spin_moments[:, 1:, :, 1:]
+        moment.orbital_moments = _make_data(np.sqrt(remove_charge_and_s_component))
+    return moment
 
 
 def _single_band(projectors):

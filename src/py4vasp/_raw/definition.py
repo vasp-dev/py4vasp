@@ -433,7 +433,7 @@ schema.add(
 )
 #
 schema.add(
-    raw.Magnetism,
+    raw.LocalMoment,
     required=raw.Version(6, 5),
     structure=Link("structure", DEFAULT_SOURCE),
     spin_moments="intermediate/ion_dynamics/magnetism/spin_moments/values",

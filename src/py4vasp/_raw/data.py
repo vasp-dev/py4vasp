@@ -346,7 +346,7 @@ class Kpoint:
 
 
 @dataclasses.dataclass
-class Magnetism:
+class LocalMoment:
     """The local charges and magnetic moments on the ions.
 
     The projection on orbitals and atoms (LORBIT) distributes all bands over all ions
