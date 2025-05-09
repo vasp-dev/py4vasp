@@ -609,6 +609,7 @@ class ElectronPhononSelfEnergy(mapping.Mapping):
 class ElectronPhononTransport(mapping.Mapping):
     id_name: VaspData
     id_size: VaspData
+    id_index: VaspData
     temperatures: VaspData
     transport_function: VaspData
     electronic_conductivity: VaspData

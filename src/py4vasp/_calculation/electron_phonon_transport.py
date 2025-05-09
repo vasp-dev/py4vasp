@@ -1,9 +1,39 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._calculation import base, slice_
+from py4vasp._util import convert, select, import_
+pd = import_.optional("pandas")
 
+class ElectronPhononTransportInstance:
+    def __init__(self,parent,index):
+        self.parent = parent
+        self.index = index
 
-class ElectronPhononTransport(slice_.Mixin, base.Refinery):
+    def __str__(self):
+        return "electron phonon transport %d"%self.index
+
+    def get_data(self,name):
+        return self.parent.read_data(self.index,name)
+
+    def to_dict(self,selection=None):
+        return {
+            "temperatures": self.get_data("temperatures"),
+            "transport_function": self.get_data("transport_function"),
+            "electronic_conductivity": self.get_data("electronic_conductivity"),
+            "mobility": self.get_data("mobility"),
+            "seebeck": self.get_data("seebeck"),
+            "peltier": self.get_data("peltier"),
+            "electronic_thermal_conductivity": self.get_data("electronic_thermal_conductivity"),
+            "scattering_approximation": self.get_data("scattering_approximation"),
+        }
+
+    def id_index(self):
+        return self.get_data("id_index")
+
+    def id_name(self):
+        return self.get_data("id_name")
+
+class ElectronPhononTransport(base.Refinery):
     "Placeholder for electron phonon transport"
 
     @base.data_access
@@ -11,17 +41,27 @@ class ElectronPhononTransport(slice_.Mixin, base.Refinery):
         return "electron phonon transport"
 
     @base.data_access
-    def to_dict(self):
+    def to_dict(self,selection=None):
         return {
-            "temperatures": self._raw_data.temperatures[self._steps][:],
-            "transport_function": self._read_slice_of_data("transport_function"),
-            "electronic_conductivity": self._read_slice_of_data("electronic_conductivity"),
-            "mobility": self._read_slice_of_data("mobility"),
-            "seebeck": self._read_slice_of_data("seebeck"),
-            "peltier": self._read_slice_of_data("peltier"),
-            "electronic_thermal_conductivity": self._read_slice_of_data("electronic_thermal_conductivity"),
-            "scattering_approximation": self._raw_data.scattering_approximation[self._steps],
+            "naccumulators": len(self._raw_data.valid_indices),
         }
+
+    @base.data_access
+    def id_name(self):
+        return self._raw_data.id_name[:]
+
+    @base.data_access
+    def __getitem__(self,key):
+        index = self._raw_data.valid_indices.index(key)
+        return ElectronPhononTransportInstance(self, index)
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
+
+    @base.data_access
+    def read_data(self, index, name):
+        return getattr(self._raw_data,name)[index][:]
 
     @base.data_access
     def __len__(self):
@@ -38,6 +78,9 @@ class ElectronPhononTransport(slice_.Mixin, base.Refinery):
             for name, size in zip(id_name, id_size)
         }
 
-    def _read_slice_of_data(self, name):
-        slice_of_data = getattr(self._raw_data, name)[self._steps]
-        return [data[:] for data in slice_of_data]
+    def _parse_selection(self, selection):
+        tree = select.Tree.from_selection(selection)
+        return list(tree.selections())
+        #for selection in tree.selections():
+        #    return selection
+
