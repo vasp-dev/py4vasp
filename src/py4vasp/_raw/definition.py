@@ -610,3 +610,47 @@ schema.add(
     reference_potential=Link("bandgap", DEFAULT_SOURCE),
     fermi_energy="results/electron_dos/efermi",
 )
+
+# TODO: temporarily put this here for testing, should be put at the proper position after finalizing the schema
+group = "/results/electron_phonon/electrons"
+schema.add(
+    raw.ElectronPhononChemicalPotential,
+    required=raw.Version(6, 5),
+    fermi_energy=f"{group}/chemical_potential/efermi",
+    chemical_potential=f"{group}/chemical_potential/muij",
+    carrier_density=f"{group}/chemical_potential/nij",
+    temperatures=f"{group}/chemical_potential/temperatures",
+    # would like to read these variables from the incar but because of a bug only the first element is ever written
+    #carrier_per_cell="input/incar/elph_selfen_carrier_per_cell",
+    #carrier_den="input/incar/elph_selfen_carrier_den",
+    #mu="input/incar/elph_selfen_carrier_mu",
+    carrier_per_cell=f"{group}/chemical_potential/selfen_carrier_per_cell",
+    carrier_den=f"{group}/chemical_potential/selfen_carrier_den",
+    mu=f"{group}/chemical_potential/selfen_mu",
+)
+schema.add(
+    raw.ElectronPhononSelfEnergy,
+    required=raw.Version(6, 5),
+    valid_indices=f"{group}/self_energy_meta/ncalculators",
+    eigenvalues=f"{group}/eigenvalues/eigenvalues",
+    debye_waller=f"{group}/self_energy_{{}}/selfen_dw",
+    band_kpoint_spin_index=f"{group}/self_energy_{{}}/bks_idx",
+    fan=f"{group}/self_energy_{{}}/selfen_fan",
+    band_start=f"{group}/self_energy_{{}}/band_start",
+)
+schema.add(
+    raw.ElectronPhononTransport,
+    required=raw.Version(6, 5),
+    id_name=f"{group}/transport_meta/id_name",
+    id_size=f"{group}/transport_meta/id_size",
+    valid_indices=f"{group}/transport_meta/ncalculators",
+    id_index=f"{group}/transport_{{}}/id_idx",
+    temperatures=f"{group}/transport_{{}}/temps",
+    electronic_conductivity=f"{group}/transport_{{}}/e_conductivity",
+    mobility=f"{group}/transport_{{}}/mobility",
+    seebeck=f"{group}/transport_{{}}/seebeck",
+    peltier=f"{group}/transport_{{}}/peltier",
+    electronic_thermal_conductivity=f"{group}/transport_{{}}/e_t_conductivity",
+    transport_function=f"{group}/transport_{{}}/transport_function",
+    scattering_approximation=f"{group}/transport_{{}}/scattering_approximation",
+)

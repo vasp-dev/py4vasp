@@ -247,6 +247,10 @@ class RawDataFactory:
         return _elastic_modulus()
 
     @staticmethod
+    def electron_phonon_self_energy(selection):
+        return _electron_phonon_self_energy(selection)
+
+    @staticmethod
     def electronic_minimization(selection=None):
         return _electronic_minimization()
 
@@ -1478,6 +1482,38 @@ def _current_density(selection):
         valid_indices=valid_indices,
         structure=_Fe3O4_structure(),
         current_density=current_density,
+    )
+
+
+def _electron_phonon_self_energy(selection):
+    number_samples = 3
+    nspin = 1
+    nkpoint = 2
+    nband = 4
+    # mock band_kpoint_spin_index array
+    band_kpoint_spin_index_shape = [nspin, nkpoint, nband]
+    band_kpoint_spin_index = np.full(band_kpoint_spin_index_shape, -1)
+    ibks = 0
+    for isp in range(nspin):
+        for ikpt in range(nkpoint):
+            for iband in range(nband):
+                ibks = ibks + 1
+                band_kpoint_spin_index[isp, ikpt, iband] = ibks
+    # mock fan and dw
+    nbks = np.count_nonzero(band_kpoint_spin_index != -1)
+    nw = 1  # number of frequencies at which the fan self-energy is evaluated
+    ntemps = 6
+    fan_shape = [nbks, nw, ntemps]
+    debye_waller_shape = [nbks, ntemps]
+    return raw.ElectronPhononSelfEnergy(
+        valid_indices=number_samples,
+        eigenvalues=_make_arbitrary_data(band_kpoint_spin_index_shape),
+        debye_waller=[
+            _make_arbitrary_data(debye_waller_shape) for _ in range(number_samples)
+        ],
+        fan=[_make_arbitrary_data(fan_shape) for _ in range(number_samples)],
+        band_kpoint_spin_index=[band_kpoint_spin_index for _ in range(number_samples)],
+        band_start=[band_kpoint_spin_index for _ in range(number_samples)],
     )
 
 
