@@ -3,7 +3,40 @@
 from py4vasp._calculation import base, slice_
 
 
-class ElectronPhononSelfEnergy(slice_.Mixin, base.Refinery):
+class ElectronPhononSelfEnergyInstance:
+    def __init__(self,parent,index):
+        self.parent = parent
+        self.index = index
+
+    def __str__(self):
+        return "electron phonon self energy %d"%self.index
+
+    def get_data(self,name):
+        return self.parent.read_data(self.index,name)
+
+    def to_dict(self,selection=None):
+        return {
+            "eigenvalues": self.parent.eigenvalues(),
+            "debye_waller": self.get_data("debye_waller"),
+            "fan": self.get_data("fan"),
+        }
+
+    def id_index(self):
+        return self.get_data("id_index")
+
+    def id_name(self):
+        return self.get_data("id_name")
+
+    @base.data_access
+    def get_fan(self, arg):
+        iband, ikpt, isp, *more = arg
+        st = SparseTensor(self.get_data("band_kpoint_spin_index"),
+            0,
+            self.get_data("fan"),
+        )
+        return st[arg]
+
+class ElectronPhononSelfEnergy(base.Refinery):
     "Placeholder for electron phonon self energy"
 
     @base.data_access
@@ -13,28 +46,34 @@ class ElectronPhononSelfEnergy(slice_.Mixin, base.Refinery):
     @base.data_access
     def to_dict(self):
         return {
-            "eigenvalues": self._raw_data.eigenvalues[:],
-            "debye_waller": self._read_slice_of_data("debye_waller"),
-            "fan": self._read_slice_of_data("fan"),
+            "naccumulators": len(self)
         }
+
+    @base.data_access
+    def eigenvalues(self):
+        return self._raw_data.eigenvalues[:]
+
+    @base.data_access
+    def id_name(self):
+        return self._raw_data.id_name[:]
+
+    @base.data_access
+    def __getitem__(self,key):
+        #TODO add logic to select instances
+        index = self._raw_data.valid_indices.index(key)
+        return ElectronPhononSelfEnergyInstance(self, key)
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
+
+    @base.data_access
+    def read_data(self, index, name):
+        return getattr(self._raw_data,name)[index][:]
 
     @base.data_access
     def __len__(self):
         return len(self._raw_data.valid_indices)
-
-    def _read_slice_of_data(self, name):
-        slice_of_data = getattr(self._raw_data, name)[self._steps]
-        return [data[:] for data in slice_of_data]
-
-    @base.data_access
-    def get_fan(self, arg):
-        iband, ikpt, isp, *more = arg
-        st = SparseTensor(
-            self._read_slice_of_data("band_kpoint_spin_index"),
-            0,
-            self._read_slice_of_data("fan"),
-        )
-        return st[arg]
 
 
 class SparseTensor:

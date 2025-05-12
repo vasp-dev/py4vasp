@@ -598,6 +598,9 @@ class ElectronPhononChemicalPotential:
 
 @dataclasses.dataclass
 class ElectronPhononSelfEnergy(mapping.Mapping):
+    id_name: VaspData
+    id_size: VaspData
+    id_index: VaspData
     eigenvalues: VaspData
     debye_waller: VaspData
     fan: VaspData

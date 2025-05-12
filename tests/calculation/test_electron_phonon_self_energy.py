@@ -18,18 +18,14 @@ def self_energy(raw_data):
     return self_energy
 
 
-@pytest.fixture(params=[None, 0, slice(1, 3), slice(None)])
+@pytest.fixture(params=[0, slice(1, 3), slice(None)])
 def sample(request):
     return request.param
 
 
 def test_read(self_energy, sample, Assert):
-    if sample is None:
-        slice_ = -1
-        actual = self_energy.read()
-    else:
-        slice_ = sample
-        actual = self_energy[sample].read()
+    slice_ = sample
+    actual = self_energy[sample].to_dict()
     Assert.allclose(actual["eigenvalues"], self_energy.ref.eigenvalues)
     Assert.allclose(actual["debye_waller"], self_energy.ref.debye_waller[slice_])
     Assert.allclose(actual["fan"], self_energy.ref.fan[slice_])

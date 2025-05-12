@@ -619,8 +619,11 @@ schema.add(
 schema.add(
     raw.ElectronPhononSelfEnergy,
     required=raw.Version(6, 5),
+    id_name=f"{group}/transport_meta/id_name",
+    id_size=f"{group}/transport_meta/id_size",
     valid_indices=f"{group}/self_energy_meta/ncalculators",
     eigenvalues=f"{group}/eigenvalues/eigenvalues",
+    id_index=f"{group}/self_energy_{{}}/id_idx",
     debye_waller=f"{group}/self_energy_{{}}/selfen_dw",
     band_kpoint_spin_index=f"{group}/self_energy_{{}}/bks_idx",
     fan=f"{group}/self_energy_{{}}/selfen_fan",

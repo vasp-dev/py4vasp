@@ -52,6 +52,7 @@ class ElectronPhononTransport(base.Refinery):
 
     @base.data_access
     def __getitem__(self,key):
+        #TODO add logic to select instances
         index = self._raw_data.valid_indices.index(key)
         return ElectronPhononTransportInstance(self, index)
 
