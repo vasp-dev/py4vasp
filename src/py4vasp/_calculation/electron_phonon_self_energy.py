@@ -4,17 +4,17 @@ from py4vasp._calculation import base, slice_
 
 
 class ElectronPhononSelfEnergyInstance:
-    def __init__(self,parent,index):
+    def __init__(self, parent, index):
         self.parent = parent
         self.index = index
 
     def __str__(self):
-        return "electron phonon self energy %d"%self.index
+        return "electron phonon self energy %d" % self.index
 
-    def get_data(self,name):
-        return self.parent.read_data(name,self.index)
+    def get_data(self, name):
+        return self.parent.read_data(name, self.index)
 
-    def to_dict(self,selection=None):
+    def to_dict(self, selection=None):
         return {
             "eigenvalues": self.parent.eigenvalues(),
             "debye_waller": self.get_data("debye_waller"),
@@ -30,11 +30,13 @@ class ElectronPhononSelfEnergyInstance:
     @base.data_access
     def get_fan(self, arg):
         iband, ikpt, isp, *more = arg
-        st = SparseTensor(self.get_data("band_kpoint_spin_index"),
+        st = SparseTensor(
+            self.get_data("band_kpoint_spin_index"),
             0,
             self.get_data("fan"),
         )
         return st[arg]
+
 
 class ElectronPhononSelfEnergy(base.Refinery):
     "Placeholder for electron phonon self energy"
@@ -45,9 +47,7 @@ class ElectronPhononSelfEnergy(base.Refinery):
 
     @base.data_access
     def to_dict(self):
-        return {
-            "naccumulators": len(self._raw_data.valid_indices)
-        }
+        return {"naccumulators": len(self._raw_data.valid_indices)}
 
     @base.data_access
     def eigenvalues(self):
@@ -58,8 +58,8 @@ class ElectronPhononSelfEnergy(base.Refinery):
         return self._raw_data.id_name[:]
 
     @base.data_access
-    def __getitem__(self,key):
-        #TODO add logic to select instances
+    def __getitem__(self, key):
+        # TODO add logic to select instances
         return ElectronPhononSelfEnergyInstance(self, key)
 
     def __iter__(self):
@@ -68,7 +68,7 @@ class ElectronPhononSelfEnergy(base.Refinery):
 
     @base.data_access
     def read_data(self, name, index):
-        return getattr(self._raw_data,name)[index][:]
+        return getattr(self._raw_data, name)[index][:]
 
     @base.data_access
     def __len__(self):

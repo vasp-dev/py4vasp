@@ -609,9 +609,9 @@ schema.add(
     carrier_density=f"{group}/chemical_potential/nij",
     temperatures=f"{group}/chemical_potential/temperatures",
     # would like to read these variables from the incar but because of a bug only the first element is ever written
-    #carrier_per_cell="input/incar/elph_selfen_carrier_per_cell",
-    #carrier_den="input/incar/elph_selfen_carrier_den",
-    #mu="input/incar/elph_selfen_carrier_mu",
+    # carrier_per_cell="input/incar/elph_selfen_carrier_per_cell",
+    # carrier_den="input/incar/elph_selfen_carrier_den",
+    # mu="input/incar/elph_selfen_carrier_mu",
     carrier_per_cell=f"{group}/chemical_potential/selfen_carrier_per_cell",
     carrier_den=f"{group}/chemical_potential/selfen_carrier_den",
     mu=f"{group}/chemical_potential/selfen_mu",
