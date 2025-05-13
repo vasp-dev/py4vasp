@@ -242,6 +242,10 @@ class RawDataFactory:
         return _electron_phonon_self_energy(selection)
 
     @staticmethod
+    def electron_phonon_transport(selection):
+        return _electron_phonon_transport(selection)
+
+    @staticmethod
     def electronic_minimization(selection=None):
         return _electronic_minimization()
 
@@ -1394,7 +1398,10 @@ def _electron_phonon_self_energy(selection):
     fan_shape = [nbks, nw, ntemps]
     debye_waller_shape = [nbks, ntemps]
     return raw.ElectronPhononSelfEnergy(
-        valid_indices=number_samples,
+        valid_indices=range(number_samples),
+        id_name=['selfen_delta', 'nbands_sum', 'selfen_muij', 'selfen_approx'],
+        id_size=[1,number_samples,1],
+        id_index=[[1,sample+1,1] for sample in range(number_samples)],
         eigenvalues=_make_arbitrary_data(band_kpoint_spin_index_shape),
         debye_waller=[
             _make_arbitrary_data(debye_waller_shape) for _ in range(number_samples)
@@ -1402,6 +1409,27 @@ def _electron_phonon_self_energy(selection):
         fan=[_make_arbitrary_data(fan_shape) for _ in range(number_samples)],
         band_kpoint_spin_index=[band_kpoint_spin_index for _ in range(number_samples)],
         band_start=[band_kpoint_spin_index for _ in range(number_samples)],
+    )
+
+
+def _electron_phonon_transport(selection):
+    number_samples = 3
+    # mock transport_function
+    nw = 1  # number of frequencies at which the fan self-energy is evaluated
+    ntemps = 6
+    return raw.ElectronPhononTransport(
+        valid_indices=range(number_samples),
+        id_name=['selfen_delta', 'nbands_sum', 'selfen_muij', 'selfen_approx'],
+        id_size=[1,number_samples,1],
+        id_index=[[1,sample+1,1] for sample in range(number_samples)],
+        temperatures=[_make_arbitrary_data([ntemps]) for _ in range(number_samples)],
+        transport_function=[_make_arbitrary_data([ntemps,nw,3,3]) for _ in range(number_samples)],
+        mobility=[_make_arbitrary_data([ntemps,3,3]) for _ in range(number_samples)],
+        seebeck=[_make_arbitrary_data([ntemps,3,3]) for _ in range(number_samples)],
+        peltier=[_make_arbitrary_data([ntemps,3,3]) for _ in range(number_samples)],
+        electronic_conductivity=[_make_arbitrary_data([ntemps,3,3]) for _ in range(number_samples)],
+        electronic_thermal_conductivity=[_make_arbitrary_data([ntemps,3,3]) for _ in range(number_samples)],
+        scattering_approximation=[_make_arbitrary_data([ntemps,3,3]) for _ in range(number_samples)]
     )
 
 

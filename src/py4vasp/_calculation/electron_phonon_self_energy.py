@@ -12,7 +12,7 @@ class ElectronPhononSelfEnergyInstance:
         return "electron phonon self energy %d"%self.index
 
     def get_data(self,name):
-        return self.parent.read_data(self.index,name)
+        return self.parent.read_data(name,self.index)
 
     def to_dict(self,selection=None):
         return {
@@ -46,7 +46,7 @@ class ElectronPhononSelfEnergy(base.Refinery):
     @base.data_access
     def to_dict(self):
         return {
-            "naccumulators": len(self)
+            "naccumulators": len(self._raw_data.valid_indices)
         }
 
     @base.data_access
@@ -60,7 +60,6 @@ class ElectronPhononSelfEnergy(base.Refinery):
     @base.data_access
     def __getitem__(self,key):
         #TODO add logic to select instances
-        index = self._raw_data.valid_indices.index(key)
         return ElectronPhononSelfEnergyInstance(self, key)
 
     def __iter__(self):
@@ -68,7 +67,7 @@ class ElectronPhononSelfEnergy(base.Refinery):
             yield self[i]
 
     @base.data_access
-    def read_data(self, index, name):
+    def read_data(self, name, index):
         return getattr(self._raw_data,name)[index][:]
 
     @base.data_access

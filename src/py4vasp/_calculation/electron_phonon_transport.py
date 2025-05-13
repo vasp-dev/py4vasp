@@ -13,7 +13,7 @@ class ElectronPhononTransportInstance:
         return "electron phonon transport %d"%self.index
 
     def get_data(self,name):
-        return self.parent.read_data(self.index,name)
+        return self.parent.read_data(name,self.index)
 
     def to_dict(self,selection=None):
         return {
@@ -53,15 +53,14 @@ class ElectronPhononTransport(base.Refinery):
     @base.data_access
     def __getitem__(self,key):
         #TODO add logic to select instances
-        index = self._raw_data.valid_indices.index(key)
-        return ElectronPhononTransportInstance(self, index)
+        return ElectronPhononTransportInstance(self, key)
 
     def __iter__(self):
         for i in range(len(self)):
             yield self[i]
 
     @base.data_access
-    def read_data(self, index, name):
+    def read_data(self, name, index):
         return getattr(self._raw_data,name)[index][:]
 
     @base.data_access
