@@ -1377,6 +1377,20 @@ def _current_density(selection):
     )
 
 
+def _electron_phonon_chemical_potential(selection):
+    number_samples = 3
+    ntemps = 6
+    return raw.ElectronPhononChemicalPotential(
+        fermi_energy=0,
+        carrier_density=_make_arbitrary_data([number_samples]),
+        temperatures=_make_arbitrary_data([ntemps]),
+        chemical_potential=_make_arbitrary_data([number_samples, ntemps]),
+        carrier_per_cell=[0],
+        mu=[0],
+        carrier_den=_make_arbitrary_data([number_samples]),
+    )
+
+
 def _electron_phonon_self_energy(selection):
     number_samples = 3
     nspin = 1
@@ -1395,12 +1409,20 @@ def _electron_phonon_self_energy(selection):
     nbks = np.count_nonzero(band_kpoint_spin_index != -1)
     nw = 1  # number of frequencies at which the fan self-energy is evaluated
     ntemps = 6
+    nbands_sum = 12
+    scattering_approximation = "MRTA_TAU"
     fan_shape = [nbks, nw, ntemps]
     debye_waller_shape = [nbks, ntemps]
     return raw.ElectronPhononSelfEnergy(
         valid_indices=range(number_samples),
         id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
-        id_size=[1, number_samples, 1],
+        id_size=[1, number_samples, 1, 1],
+        nbands_sum=[nbands_sum for _ in range(number_samples)],
+        delta=[0 for _ in range(number_samples)],
+        scattering_approximation=[
+            scattering_approximation for _ in range(number_samples)
+        ],
+        chemical_potential=_electron_phonon_chemical_potential(selection),
         id_index=[[1, sample + 1, 1] for sample in range(number_samples)],
         eigenvalues=_make_arbitrary_data(band_kpoint_spin_index_shape),
         debye_waller=[
@@ -1421,6 +1443,8 @@ def _electron_phonon_transport(selection):
         valid_indices=range(number_samples),
         id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
         id_size=[1, number_samples, 1],
+        self_energy=_electron_phonon_self_energy(selection),
+        chemical_potential=_electron_phonon_chemical_potential(selection),
         id_index=[[1, sample + 1, 1] for sample in range(number_samples)],
         temperatures=_make_arbitrary_data([number_samples, ntemps]),
         transport_function=_make_arbitrary_data([number_samples, ntemps, nw, 3, 3]),

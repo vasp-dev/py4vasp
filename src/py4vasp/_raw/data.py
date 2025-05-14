@@ -600,18 +600,24 @@ class ElectronPhononChemicalPotential:
 class ElectronPhononSelfEnergy(mapping.Mapping):
     id_name: VaspData
     id_size: VaspData
+    chemical_potential: ElectronPhononChemicalPotential
     id_index: VaspData
     eigenvalues: VaspData
     debye_waller: VaspData
     fan: VaspData
     band_kpoint_spin_index: VaspData
     band_start: int
+    nbands_sum: int
+    delta: float
+    scattering_approximation: str
 
 
 @dataclasses.dataclass
 class ElectronPhononTransport(mapping.Mapping):
     id_name: VaspData
     id_size: VaspData
+    chemical_potential: ElectronPhononChemicalPotential
+    self_energy: ElectronPhononSelfEnergy
     id_index: VaspData
     temperatures: VaspData
     transport_function: VaspData

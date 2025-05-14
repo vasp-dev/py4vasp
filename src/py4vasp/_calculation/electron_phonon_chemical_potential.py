@@ -4,7 +4,7 @@ from py4vasp._calculation import base, slice_
 from py4vasp._util import check, convert, import_
 
 
-class ElectronPhononChemicalPotential(slice_.Mixin, base.Refinery):
+class ElectronPhononChemicalPotential(base.Refinery):
     "Placeholder for electron phonon chemical potential"
 
     @base.data_access
@@ -12,7 +12,7 @@ class ElectronPhononChemicalPotential(slice_.Mixin, base.Refinery):
         return "electron phonon chemical pontential"
 
     @base.data_access
-    def carrier_den_tag(self):
+    def mu_tag(self):
         """Get INCAR tag that was used to set the carrier density"""
         if not check.is_none(self._raw_data.carrier_den):
             return "selfen_carrier_den", self._raw_data.carrier_den[:]
@@ -27,8 +27,16 @@ class ElectronPhononChemicalPotential(slice_.Mixin, base.Refinery):
             "fermi_energy": self._raw_data.fermi_energy,
             "chemical_potential": self._raw_data.chemical_potential[:],
             "carrier_density": self._raw_data.carrier_density[:],
-            "temperatures": self._raw_data.temperatues[:],
+            "temperatures": self._raw_data.temperatures[:],
         }
-        tag, value = self.carrier_den_tag()
+        tag, value = self.mu_tag()
         _dict[tag] = value
         return _dict
+
+
+class Mixin:
+    @property
+    def _electron_phonon_chemical_potential(self):
+        return ElectronPhononChemicalPotential.from_data(
+            self._raw_data.chemical_potential
+        )
