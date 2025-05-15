@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp._calculation import base, electron_phonon_chemical_potential, slice_
+from py4vasp._calculation import base, slice_
 
 
 class ElectronPhononSelfEnergyInstance:
@@ -11,20 +11,20 @@ class ElectronPhononSelfEnergyInstance:
     def __str__(self):
         return "electron phonon self energy %d" % self.index
 
-    def get_data(self, name):
-        return self.parent.get_data(name, self.index)
+    def _get_data(self, name):
+        return self.parent._get_data(name, self.index)
 
-    def get_scalar(self, name):
-        return self.parent.get_scalar(name, self.index)
+    def _get_scalar(self, name):
+        return self.parent._get_scalar(name, self.index)
 
     def to_dict(self, selection=None):
         return {
             "eigenvalues": self.parent.eigenvalues(),
-            "debye_waller": self.get_data("debye_waller"),
-            "fan": self.get_data("fan"),
-            "nbands_sum": self.get_scalar("nbands_sum"),
-            "delta": self.get_scalar("delta"),
-            "scattering_approximation": self.get_data("scattering_approximation"),
+            "debye_waller": self._get_data("debye_waller"),
+            "fan": self._get_data("fan"),
+            "nbands_sum": self._get_scalar("nbands_sum"),
+            "delta": self._get_scalar("delta"),
+            "scattering_approximation": self._get_data("scattering_approximation"),
         }
 
     @property
@@ -37,20 +37,19 @@ class ElectronPhononSelfEnergyInstance:
 
     @property
     def scattering_approximation(self):
-        return self.get_data("scattering_approximation")
+        return self._get_data("scattering_approximation")
 
-    @base.data_access
     def get_fan(self, arg):
         iband, ikpt, isp, *more = arg
         st = SparseTensor(
-            self.get_data("band_kpoint_spin_index"),
+            self._get_data("band_kpoint_spin_index"),
             0,
-            self.get_data("fan"),
+            self._get_data("fan"),
         )
         return st[arg]
 
 
-class ElectronPhononSelfEnergy(base.Refinery, electron_phonon_chemical_potential.Mixin):
+class ElectronPhononSelfEnergy(base.Refinery):
     "Placeholder for electron phonon self energy"
 
     @base.data_access
@@ -65,12 +64,10 @@ class ElectronPhononSelfEnergy(base.Refinery, electron_phonon_chemical_potential
     def eigenvalues(self):
         return self._raw_data.eigenvalues[:]
 
-    @property
     @base.data_access
     def id_name(self):
         return self._raw_data.id_name[:]
 
-    @property
     @base.data_access
     def id_size(self):
         return self._raw_data.id_size[:]
@@ -86,25 +83,37 @@ class ElectronPhononSelfEnergy(base.Refinery, electron_phonon_chemical_potential
 
     @base.data_access
     def valid_delta(self):
-        return {self.get_scalar("delta", index) for index in range(len(self))}
+        return {self._get_scalar("delta", index) for index in range(len(self))}
 
     @base.data_access
     def valid_nbands_sum(self):
-        return {self.get_scalar("nbands_sum", index) for index in range(len(self))}
+        return {self._get_scalar("nbands_sum", index) for index in range(len(self))}
 
     @base.data_access
     def valid_scattering_approximation(self):
         return {
-            self.get_data("scattering_approximation", index)
+            self._get_data("scattering_approximation", index)
             for index in range(len(self))
         }
 
     @base.data_access
-    def get_data(self, name, index):
+    def selections(self):
+        """Return a dictionary describing what options are available
+        to read the transport coefficients."""
+        id_name = self.id_name()
+        id_size = self.id_size()
+        selections_dict = {}
+        selections_dict["nbands_sum"] = self.valid_nbands_sum()
+        selections_dict["selfen_approx"] = self.valid_scattering_approximation()
+        selections_dict["selfen_delta"] = self.valid_delta()
+        return selections_dict
+
+    @base.data_access
+    def _get_data(self, name, index):
         return getattr(self._raw_data, name)[index][:]
 
     @base.data_access
-    def get_scalar(self, name, index):
+    def _get_scalar(self, name, index):
         return getattr(self._raw_data, name)[index][()]
 
     @base.data_access
@@ -125,9 +134,3 @@ class SparseTensor:
         iband, ikpt, isp, *more = arg
         ibks = self._get_band_kpoint_spin_index(iband, ikpt, isp)
         return self.tensor[ibks]
-
-
-class Mixin:
-    @property
-    def _electron_phonon_self_energy(self):
-        return ElectronPhononSelfEnergy.from_data(self._raw_data.self_energy)

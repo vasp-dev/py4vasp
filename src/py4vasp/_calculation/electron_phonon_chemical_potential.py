@@ -32,11 +32,3 @@ class ElectronPhononChemicalPotential(base.Refinery):
         tag, value = self.mu_tag()
         _dict[tag] = value
         return _dict
-
-
-class Mixin:
-    @property
-    def _electron_phonon_chemical_potential(self):
-        return ElectronPhononChemicalPotential.from_data(
-            self._raw_data.chemical_potential
-        )

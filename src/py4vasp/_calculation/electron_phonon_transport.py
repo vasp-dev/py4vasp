@@ -1,12 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp._calculation import (
-    base,
-    electron_phonon_chemical_potential,
-    electron_phonon_self_energy,
-    slice_,
-)
-from py4vasp._util import convert, import_, select
+import numpy as np
+from py4vasp._calculation import base, slice_
+from py4vasp._third_party import graph
+from py4vasp._calculation.electron_phonon_self_energy import ElectronPhononSelfEnergy
+from py4vasp._calculation.electron_phonon_chemical_potential import ElectronPhononChemicalPotential
+from py4vasp._util import convert, index, import_, select
 
 pd = import_.optional("pandas")
 
@@ -23,17 +22,45 @@ class ElectronPhononTransportInstance:
         return self.parent.read_data(name, self.index)
 
     def to_dict(self, selection=None):
+        names = [
+            "temperatures",
+            "transport_function",
+            "electronic_conductivity",
+            "mobility",
+            "seebeck",
+            "peltier",
+            "electronic_thermal_conductivity",
+            "scattering_approximation"
+        ] 
+        return { name : self.get_data(name) for name in names }
+
+    def selections(self):
+        return self.to_dict().keys()
+
+    def to_graph(self,selection):
+        tree = select.Tree.from_selection(selection)
+        series = []
+        for selection in tree.selections():
+            data_ = self.get_data(selection[0]).reshape([-1,9])
+            maps = {
+                1: self._init_directions_dict(),
+            }
+            selector = index.Selector(maps, data_, reduction=np.average)
+            y = selector[selection[1:]]
+            x = self.get_data("temperatures")
+            series.append( graph.Series(x,y,label=selection[0]) )
+        return graph.Graph(series) 
+
+    def _init_directions_dict(self):
         return {
-            "temperatures": self.get_data("temperatures"),
-            "transport_function": self.get_data("transport_function"),
-            "electronic_conductivity": self.get_data("electronic_conductivity"),
-            "mobility": self.get_data("mobility"),
-            "seebeck": self.get_data("seebeck"),
-            "peltier": self.get_data("peltier"),
-            "electronic_thermal_conductivity": self.get_data(
-                "electronic_thermal_conductivity"
-            ),
-            "scattering_approximation": self.scattering_approximation,
+            None: [0, 4, 8],
+            "isotropic": [0, 4, 8],
+            "xx": 0,
+            "yy": 4,
+            "zz": 8,
+            "xy": [1, 3],
+            "xz": [2, 6],
+            "yz": [5, 7],
         }
 
     @property
@@ -44,24 +71,7 @@ class ElectronPhononTransportInstance:
     def id_name(self):
         return self.parent.id_name
 
-    @property
-    def nbands_sum(self):
-        return
-
-    @property
-    def delta(self):
-        return self.get_data("delta")
-
-    @property
-    def scattering_approximation(self):
-        return self.get_data("scattering_approximation")
-
-
-class ElectronPhononTransport(
-    base.Refinery,
-    electron_phonon_self_energy.Mixin,
-    electron_phonon_chemical_potential.Mixin,
-):
+class ElectronPhononTransport(base.Refinery):
     "Placeholder for electron phonon transport"
 
     @base.data_access
@@ -74,12 +84,10 @@ class ElectronPhononTransport(
             "naccumulators": len(self._raw_data.valid_indices),
         }
 
-    @property
     @base.data_access
     def id_name(self):
         return self._raw_data.id_name[:]
 
-    @property
     @base.data_access
     def id_size(self):
         return self._raw_data.id_size[:]
@@ -107,29 +115,23 @@ class ElectronPhononTransport(
         to read the transport coefficients."""
         id_name = self.id_name
         id_size = self.id_size
-        selections_dict = {}
-        selections_dict["nbands_sum"] = (
-            self._electron_phonon_self_energy.valid_nbands_sum()
-        )
-        selections_dict["selfen_approx"] = (
-            self._electron_phonon_self_energy.valid_scattering_approximation()
-        )
-        selections_dict["selfen_delta"] = (
-            self._electron_phonon_self_energy.valid_delta()
-        )
-        mu_tag,mu_val = self._electron_phonon_chemical_potential.mu_tag()
+        self_energy = ElectronPhononSelfEnergy.from_data(self._raw_data.self_energy)
+        selections_dict = self_energy.selections()
+        chemical_potential = ElectronPhononChemicalPotential.from_data(self._raw_data.chemical_potential)
+        mu_tag,mu_val = chemical_potential.mu_tag()
         selections_dict[mu_tag] = mu_val
         return selections_dict
 
+    @base.data_access
     def select(self, selection):
         parsed_selections = self._parse_selection(selection)
         selected_instances = []
-        for elph_selfen_instance in self:
-            # loop over selections
-            for parsed_selection in parsed_selections:
-                print(parsed_selection)
-            continue
-            selected_instances.append(elph_selfen_instance)
+        #for elph_selfen_instance in self:
+        #    # loop over selections
+        #    for parsed_selection in parsed_selections:
+        #        print(parsed_selection)
+        #    continue
+        #    selected_instances.append(elph_selfen_instance)
         return selected_instances
 
     def _parse_selection(self, selection):
