@@ -1417,8 +1417,8 @@ def _electron_phonon_self_energy(selection):
         valid_indices=range(number_samples),
         id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
         id_size=[1, number_samples, 1, 1],
-        nbands_sum=[nbands_sum for _ in range(number_samples)],
-        delta=[0 for _ in range(number_samples)],
+        nbands_sum=np.array([nbands_sum for _ in range(number_samples)]),
+        delta=np.array([0 for _ in range(number_samples)]),
         scattering_approximation=[
             scattering_approximation for _ in range(number_samples)
         ],
