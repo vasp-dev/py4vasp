@@ -6,6 +6,7 @@ import pytest
 
 from py4vasp._calculation.electron_phonon_self_energy import ElectronPhononSelfEnergy
 
+
 @pytest.fixture
 def self_energy(raw_data):
     raw_self_energy = raw_data.electron_phonon_self_energy("default")

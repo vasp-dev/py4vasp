@@ -1,11 +1,14 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
+
 from py4vasp._calculation import base, slice_
-from py4vasp._third_party import graph
+from py4vasp._calculation.electron_phonon_chemical_potential import (
+    ElectronPhononChemicalPotential,
+)
 from py4vasp._calculation.electron_phonon_self_energy import ElectronPhononSelfEnergy
-from py4vasp._calculation.electron_phonon_chemical_potential import ElectronPhononChemicalPotential
-from py4vasp._util import convert, index, import_, select
+from py4vasp._third_party import graph
+from py4vasp._util import convert, import_, index, select
 
 pd = import_.optional("pandas")
 
@@ -30,26 +33,26 @@ class ElectronPhononTransportInstance:
             "seebeck",
             "peltier",
             "electronic_thermal_conductivity",
-            "scattering_approximation"
-        ] 
-        return { name : self._get_data(name) for name in names }
+            "scattering_approximation",
+        ]
+        return {name: self._get_data(name) for name in names}
 
     def selections(self):
         return self.to_dict().keys()
 
-    def to_graph(self,selection):
+    def to_graph(self, selection):
         tree = select.Tree.from_selection(selection)
         series = []
         for selection in tree.selections():
-            data_ = self._get_data(selection[0]).reshape([-1,9])
+            data_ = self._get_data(selection[0]).reshape([-1, 9])
             maps = {
                 1: self._init_directions_dict(),
             }
             selector = index.Selector(maps, data_, reduction=np.average)
             y = selector[selection[1:]]
             x = self._get_data("temperatures")
-            series.append( graph.Series(x,y,label=selection[0]) )
-        return graph.Graph(series) 
+            series.append(graph.Series(x, y, label=selection[0]))
+        return graph.Graph(series)
 
     def _init_directions_dict(self):
         return {
@@ -70,6 +73,7 @@ class ElectronPhononTransportInstance:
     @property
     def id_name(self):
         return self.parent.id_name
+
 
 class ElectronPhononTransport(base.Refinery):
     "Placeholder for electron phonon transport"
@@ -117,8 +121,10 @@ class ElectronPhononTransport(base.Refinery):
         id_size = self.id_size
         self_energy = ElectronPhononSelfEnergy.from_data(self._raw_data.self_energy)
         selections_dict = self_energy.selections()
-        chemical_potential = ElectronPhononChemicalPotential.from_data(self._raw_data.chemical_potential)
-        mu_tag,mu_val = chemical_potential.mu_tag()
+        chemical_potential = ElectronPhononChemicalPotential.from_data(
+            self._raw_data.chemical_potential
+        )
+        mu_tag, mu_val = chemical_potential.mu_tag()
         selections_dict[mu_tag] = mu_val
         return selections_dict
 
@@ -126,7 +132,7 @@ class ElectronPhononTransport(base.Refinery):
     def select(self, selection):
         parsed_selections = self._parse_selection(selection)
         selected_instances = []
-        #for elph_selfen_instance in self:
+        # for elph_selfen_instance in self:
         #    # loop over selections
         #    for parsed_selection in parsed_selections:
         #        print(parsed_selection)

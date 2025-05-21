@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._calculation import base, slice_
 
+
 class ElectronPhononSelfEnergyInstance:
     def __init__(self, parent, index):
         self.parent = parent
@@ -22,7 +23,7 @@ class ElectronPhononSelfEnergyInstance:
             "fan",
             "scattering_approximation",
         ]
-        dict_ = { name : self._get_data(name) for name in names }
+        dict_ = {name: self._get_data(name) for name in names}
         dict_["eigenvalues"] = self.parent.eigenvalues()
         dict_["nbands_sum"] = self._get_scalar("nbands_sum")
         dict_["delta"] = self._get_scalar("delta")

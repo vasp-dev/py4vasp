@@ -595,6 +595,7 @@ class ElectronPhononChemicalPotential:
     carrier_den: VaspData  # values of th selfen_carrier_den incar tag
     mu: VaspData  # values of the selfen_mu incar tag
 
+
 @dataclasses.dataclass
 class ElectronPhononBandgap(mapping.Mapping):
     id_name: VaspData
@@ -606,6 +607,7 @@ class ElectronPhononBandgap(mapping.Mapping):
     id_index: VaspData
     nbands_sum: int
     delta: float
+
 
 @dataclasses.dataclass
 class ElectronPhononSelfEnergy(mapping.Mapping):
