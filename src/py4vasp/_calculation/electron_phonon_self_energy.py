@@ -2,7 +2,6 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._calculation import base, slice_
 
-
 class ElectronPhononSelfEnergyInstance:
     def __init__(self, parent, index):
         self.parent = parent
@@ -18,26 +17,24 @@ class ElectronPhononSelfEnergyInstance:
         return self.parent._get_scalar(name, self.index)
 
     def to_dict(self, selection=None):
-        return {
-            "eigenvalues": self.parent.eigenvalues(),
-            "debye_waller": self._get_data("debye_waller"),
-            "fan": self._get_data("fan"),
-            "nbands_sum": self._get_scalar("nbands_sum"),
-            "delta": self._get_scalar("delta"),
-            "scattering_approximation": self._get_data("scattering_approximation"),
-        }
+        names = [
+            "debye_waller",
+            "fan",
+            "scattering_approximation",
+        ]
+        dict_ = { name : self._get_data(name) for name in names }
+        dict_["eigenvalues"] = self.parent.eigenvalues()
+        dict_["nbands_sum"] = self._get_scalar("nbands_sum")
+        dict_["delta"] = self._get_scalar("delta")
+        return dict_
 
     @property
     def id_index(self):
-        return self.get_data("id_index")
+        return self._get_data("id_index")
 
     @property
     def id_name(self):
         return self.parent.id_name
-
-    @property
-    def scattering_approximation(self):
-        return self._get_data("scattering_approximation")
 
     def get_fan(self, arg):
         iband, ikpt, isp, *more = arg

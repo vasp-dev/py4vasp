@@ -18,7 +18,7 @@ class ElectronPhononTransportInstance:
     def __str__(self):
         return "electron phonon transport %d" % self.index
 
-    def get_data(self, name):
+    def _get_data(self, name):
         return self.parent.read_data(name, self.index)
 
     def to_dict(self, selection=None):
@@ -32,7 +32,7 @@ class ElectronPhononTransportInstance:
             "electronic_thermal_conductivity",
             "scattering_approximation"
         ] 
-        return { name : self.get_data(name) for name in names }
+        return { name : self._get_data(name) for name in names }
 
     def selections(self):
         return self.to_dict().keys()
@@ -41,13 +41,13 @@ class ElectronPhononTransportInstance:
         tree = select.Tree.from_selection(selection)
         series = []
         for selection in tree.selections():
-            data_ = self.get_data(selection[0]).reshape([-1,9])
+            data_ = self._get_data(selection[0]).reshape([-1,9])
             maps = {
                 1: self._init_directions_dict(),
             }
             selector = index.Selector(maps, data_, reduction=np.average)
             y = selector[selection[1:]]
-            x = self.get_data("temperatures")
+            x = self._get_data("temperatures")
             series.append( graph.Series(x,y,label=selection[0]) )
         return graph.Graph(series) 
 
@@ -65,7 +65,7 @@ class ElectronPhononTransportInstance:
 
     @property
     def id_index(self):
-        return self.get_data("id_index")
+        return self._get_data("id_index")
 
     @property
     def id_name(self):
