@@ -23,12 +23,10 @@ class ElectronPhononBandgapInstance:
         tree = select.Tree.from_selection(selection)
         series = []
         for selection in tree.selections():
-            print(selection)
-            data_ = self._get_data(selection[0])
-            y = data_
+            y = self._get_data(selection[0])
             x = self._get_data("temperatures")
             series.append( graph.Series(x,y,label=selection[0]) )
-        return graph.Graph(series)
+        return graph.Graph(series,ylabel="energy (eV)",xlabel="Temperature (K)")
 
     def to_dict(self):
         _dict = {
