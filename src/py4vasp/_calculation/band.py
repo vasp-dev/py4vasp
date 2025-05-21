@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from typing import Union
+from typing import Union, Any, Iterable
 
 import numpy as np
 
@@ -55,7 +55,7 @@ class Band(base.Refinery, graph.Mixin):
     """
 
     @base.data_access
-    def __str__(self):
+    def __str__(self) -> str:
         return f"""
 {"spin polarized" if self._spin_polarized() else ""} band data:
     {self._raw_data.dispersion.eigenvalues.shape[1]} k-points
@@ -65,7 +65,7 @@ class Band(base.Refinery, graph.Mixin):
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
-    def to_dict(self, selection=None):
+    def to_dict(self, selection: Union[str, None]=None) -> dict[str, Any]:
         """Read the data into a dictionary.
 
         You may use this data for your own postprocessing tools. Sometimes you may
@@ -139,7 +139,7 @@ class Band(base.Refinery, graph.Mixin):
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
-    def to_graph(self, selection=None, width=0.5):
+    def to_graph(self, selection: Union[str, None]=None, width: float=0.5) -> graph.Graph:
         """Read the data and generate a graph.
 
         On the x axis, we show the **k** points as distances from the previous ones.
@@ -211,7 +211,7 @@ class Band(base.Refinery, graph.Mixin):
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
-    def to_frame(self, selection=None):
+    def to_frame(self, selection: Union[str, None]=None) -> Any:
         """Read the data into a DataFrame.
 
         Parameters
@@ -260,9 +260,9 @@ class Band(base.Refinery, graph.Mixin):
     def to_quiver(
         self,
         selection: str = "x~y(band[1])",
-        normal: Union[None, str] = None,
-        supercell: Union[None, int, np.ndarray] = None,
-    ):
+        normal: Union[str, None] = None,
+        supercell: Union[int, np.ndarray, None] = None,
+    ) -> graph.Graph:
         """Generate a quiver plot of spin texture.
 
         The plane cut will be determined from the kpoints grid. One of the kpoint
@@ -293,42 +293,43 @@ class Band(base.Refinery, graph.Mixin):
         This is also the default behavior, so the following two lines should produce identical plots:
 
         >>> calculation.band.to_quiver("x~y(band[1])") # doctest: +OTHER_PATH_1
-        Graph(series=[Contour(data=array([[[...
+        Graph(series=[Contour(data=array([[[...]]]), ..., label='spin texture x~y_band[1]', ..., supercell=(1, 1), ...], ...)
 
         >>> calculation.band.to_quiver() # doctest: +OTHER_PATH_1
-        Graph(series=[Contour(data=array([[[...
+        Graph(series=[Contour(data=array([[[...]]]), ..., label='spin texture x~y_band[1]', ..., supercell=(1, 1), ...], ...)
 
-        Select the Ba atom, the third band, the x and z spin components, then sum over all orbitals:
+        Select the Sr atom, the third band, the x and z spin components, then sum over all orbitals:
 
         >>> calculation.band.to_quiver("Sr(sigma_1~sigma_3(band[3]))") # doctest: +OTHER_PATH_1
-        Graph(series=[Contour(data=array([[[...
+        Graph(series=[Contour(data=array([[[...]]]), ..., label='spin texture Sr_sigma_1~sigma_3_band[3]', ..., supercell=(1, 1), ...], ...)
 
-        Select the Pb atom, s orbital, second band and the x and y spin components:
+        Select the Ti atom, s orbital, second band and the x and y spin components:
 
         >>> calculation.band.to_quiver("Ti(s(band[2](sigma_x~sigma_y)))") # doctest: +OTHER_PATH_1
-        Graph(series=[Contour(data=array([[[...
+        Graph(series=[Contour(data=array([[[...]]]), ..., label='spin texture Ti_s_sigma_x~sigma_y_band[2]', ..., supercell=(1, 1), ...], ...)
 
         Select the 4th atom in the POSCAR file, d orbitals, the second band and the y and z spin components.
         The plot is shown for a 3x3 supercell:
 
         >>> calculation.band.to_quiver(selection="4(d(y~z(band[2])))", supercell=3) # doctest: +OTHER_PATH_1
-        Graph(series=[Contour(data=array([[[...
+        Graph(series=[Contour(data=array([[[...]]]), ..., label='spin texture O_1_d_y~z_band[2]', ..., supercell=array([3, 3]), ...], ...)
 
         Select x & y spin components and the first band (default), sum over atoms and orbitals.
         Plot a 2x4 supercell, and rotate the plane normal to align with the nearest coordinate axis.
 
         >>> calculation.band.to_quiver(supercell=np.array([2, 4]), normal="auto") # doctest: +SKIP
-        Graph(series=[Contour(data=array([[[...
+        Graph(series=[Contour(data=array([[[...]]]), ..., label='spin texture x~y_band[1]', ..., supercell=array([2, 4]), ...], ...)
 
         Select x & y spin components and the first band (default), sum over atoms and orbitals.
         Rotate the plane normal to align with the y coordinate axis.
 
         >>> calculation.band.to_quiver(normal="y") # doctest: +OTHER_PATH_1
-        Graph(series=[Contour(data=array([[[...
+        Graph(series=[Contour(data=array([[[...]]]), ..., label='spin texture x~y_band[1]', ..., supercell=(1, 1), ...], ...)
         """
         # raise exception.NotImplemented("to_quiver is not fully implemented")
-        scale = self._raw_data.dispersion.kpoints.cell.scale
-        latt_vecs = scale * self._raw_data.dispersion.kpoints.cell.lattice_vectors
+        raw_band: Band = self._raw_data
+        scale: float = raw_band.dispersion.kpoints.cell.scale
+        latt_vecs = scale * raw_band.dispersion.kpoints.cell.lattice_vectors
         if latt_vecs.shape[0] == 1:
             latt_vecs = latt_vecs[0]
         nkp1, nkp2, cut = self._kmesh()
@@ -360,13 +361,13 @@ class Band(base.Refinery, graph.Mixin):
         ]
         return graph.Graph(quiver_plots)
 
-    def _quiver_plot(self, selector, selection, nkp1, nkp2):
+    def _quiver_plot(self, selector: index.Selector, selection: str, nkp1: int, nkp2: int) -> dict[str, Any]:
         data = selector[selection]
         data = data.reshape(2, nkp1, nkp2)
         label = "spin texture " + selector.label(selection)
         return {"data": data, "label": label}
 
-    def _make_selector(self, projections):
+    def _make_selector(self, projections: np.ndarray) -> index.Selector:
         maps = self._projector().to_dict()
         maps = {
             1: maps["atom"],
@@ -378,7 +379,7 @@ class Band(base.Refinery, graph.Mixin):
             maps, projections, reduction=_ToQuiverReduction, use_number_labels=True
         )
 
-    def _spin_map(self, spin_map):
+    def _spin_map(self, spin_map: dict[str, Any]) -> dict[str, slice]:
         if "sigma_x" not in spin_map:
             # Spin Texture only makes sense for non-collinear systems
             raise exception.DataMismatch(
@@ -396,14 +397,14 @@ class Band(base.Refinery, graph.Mixin):
             "sigma_2~sigma_3": slice(2, 4),
         }
 
-    def _band_map(self, num_bands):
+    def _band_map(self, num_bands: int) -> dict[str, slice]:
         return {f"band[{band + 1}]": slice(band, band + 1) for band in range(num_bands)}
 
     @base.data_access
-    def selections(self):
+    def selections(self) -> dict[str, Any]:
         return {**super().selections(), **self._projector().selections()}
 
-    def _scale(self):
+    def _scale(self) -> float:
         if isinstance(self._raw_data.dispersion.kpoints.cell.scale, np.float64):
             return self._raw_data.dispersion.kpoints.cell.scale
         if not self._raw_data.dispersion.kpoints.cell.scale.is_none():
@@ -411,16 +412,16 @@ class Band(base.Refinery, graph.Mixin):
         else:
             return 1.0
 
-    def _spin_polarized(self):
+    def _spin_polarized(self) -> bool:
         return len(self._raw_data.dispersion.eigenvalues) == 2
 
-    def _dispersion(self):
+    def _dispersion(self) -> _dispersion.Dispersion:
         return _dispersion.Dispersion.from_data(self._raw_data.dispersion)
 
-    def _projector(self):
+    def _projector(self) -> projector.Projector:
         return projector.Projector.from_data(self._raw_data.projectors)
 
-    def _projections(self, selection, width):
+    def _projections(self, selection: str, width: Union[float, int]) -> dict[str, float]:
         if selection is None:
             return None
         error_message = "Width of fat band structure must be a number."
@@ -430,10 +431,10 @@ class Band(base.Refinery, graph.Mixin):
             for name, projection in self._read_projections(selection).items()
         }
 
-    def _read_projections(self, selection):
+    def _read_projections(self, selection: str) -> Union[dict, dict[str, int]]:
         return self._projector().project(selection, self._raw_data.projections)
 
-    def _read_occupations(self):
+    def _read_occupations(self) -> dict[str, Any]:
         if self._spin_polarized():
             return {
                 "occupations_up": self._raw_data.occupations[0],
@@ -442,19 +443,19 @@ class Band(base.Refinery, graph.Mixin):
         else:
             return {"occupations": self._raw_data.occupations[0]}
 
-    def _shift_dispersion_by_fermi_energy(self, eigenvalues):
+    def _shift_dispersion_by_fermi_energy(self, eigenvalues: np.ndarray) -> dict[str, np.ndarray]:
         shifted = eigenvalues - self._raw_data.fermi_energy
         if len(shifted) == 2:
             return {"bands_up": shifted[0], "bands_down": shifted[1]}
         else:
             return {"bands": shifted[0]}
 
-    def _shift_series_by_fermi_energy(self, graph):
+    def _shift_series_by_fermi_energy(self, graph: graph.Graph) -> graph.Graph:
         for series in graph.series:
             series.y = series.y - self._raw_data.fermi_energy
         return graph
 
-    def _extract_relevant_data(self, selection):
+    def _extract_relevant_data(self, selection: Union[str, None]) -> dict[str, Any]:
         need_to_be_repeated = ("kpoint_distances", "kpoint_labels")
         relevant_keys = (
             "bands",
@@ -500,12 +501,12 @@ class Band(base.Refinery, graph.Mixin):
             )
 
 
-def _to_series(array):
+def _to_series(array: np.ndarray) -> np.ndarray:
     return array.T.flatten()
 
 
 class _ToQuiverReduction(index.Reduction):
-    def __init__(self, keys):
+    def __init__(self, keys: list):
         # raise an IncorrectUsage Warning if:
         #   - no spin elements have been chosen
         #   - no band has been chosen
@@ -519,6 +520,6 @@ class _ToQuiverReduction(index.Reduction):
             )
         pass
 
-    def __call__(self, array, axis):
+    def __call__(self, array: np.ndarray, axis: Iterable):
         axis = tuple(filter(None, axis))  # prevents summation along 0-axis
         return np.sum(array, axis=axis)

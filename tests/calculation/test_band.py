@@ -142,13 +142,12 @@ def test_texture_to_quiver_sel1(spin_texture, Assert):
 
 
 @pytest.mark.parametrize(
-    "vars", [(None, None), ("y", None), ("x", None), ("z", 2), (None, np.array([2, 4]))]
+    "normal", [None, "x", "y", "z"]
 )
-def test_texture_to_quiver_normal_and_supercell(spin_texture_simple, vars, Assert):
+def test_texture_to_quiver_normal(spin_texture_simple, normal, Assert):
     band = Band.from_data(spin_texture_simple)
     band.ref = types.SimpleNamespace()
 
-    normal, supercell = vars
     band.ref.expected_data = np.reshape(
         spin_texture_simple.projections[1:3, 2, 0, :, 1], (2, 4, 3)
     )
@@ -172,10 +171,33 @@ def test_texture_to_quiver_normal_and_supercell(spin_texture_simple, vars, Asser
         raise exception.NotImplementedError(
             f"Normal argument <{normal}> has no available reference for testing."
         )
-    band.ref.expected_label = f"spin texture Pb_s_sigma_x~sigma_y_band[2]"
 
     graph = band.to_quiver(
-        "Pb(s(band[2](sigma_x~sigma_y)))", normal=normal, supercell=supercell
+        "Pb(s(band[2](sigma_x~sigma_y)))", normal=normal,
+    )
+    assert len(graph) == 1
+    series = graph.series[0]
+    Assert.allclose(series.data, band.ref.expected_data)
+    Assert.allclose(
+        np.linalg.norm(series.lattice.vectors, axis=1),
+        np.linalg.norm(band.ref.expected_lattice, axis=1),
+        tolerance=1e6,
+    )
+    Assert.allclose(series.lattice.vectors, band.ref.expected_lattice, tolerance=1e6)
+
+@pytest.mark.parametrize(
+    "supercell", [None, 1, 2, np.array([2, 4])]
+)
+def test_texture_to_quiver_supercell(spin_texture_simple, supercell, Assert):
+    band = Band.from_data(spin_texture_simple)
+    band.ref = types.SimpleNamespace()
+
+    band.ref.expected_data = np.reshape(
+        spin_texture_simple.projections[1:3, 2, 0, :, 1], (2, 4, 3)
+    )
+
+    graph = band.to_quiver(
+        "Pb(s(band[2](sigma_x~sigma_y)))", supercell=supercell
     )
     assert len(graph) == 1
     series = graph.series[0]
@@ -188,13 +210,6 @@ def test_texture_to_quiver_normal_and_supercell(spin_texture_simple, vars, Asser
         ),
     )
     Assert.allclose(series.data, band.ref.expected_data)
-    Assert.allclose(
-        np.linalg.norm(series.lattice.vectors, axis=1),
-        np.linalg.norm(band.ref.expected_lattice, axis=1),
-        tolerance=1e6,
-    )
-    Assert.allclose(series.lattice.vectors, band.ref.expected_lattice, tolerance=1e6)
-    assert series.label == band.ref.expected_label
 
 
 @pytest.mark.parametrize(
@@ -230,8 +245,6 @@ def test_texture_to_quiver_selections(spin_texture_simple, selection, Assert):
         band.ref.expected_data = np.reshape(
             spin_texture_simple.projections[2:4, 4, 2, :, 2], (2, 4, 3)
         )
-
-    band.ref.expected_lattice = np.array([[1.52216787, 0.0], [0.14521927, 1.51522486]])
     band.ref.expected_label = f"spin texture {selection[1]}"
 
     if selection[0] is not None:
@@ -241,12 +254,6 @@ def test_texture_to_quiver_selections(spin_texture_simple, selection, Assert):
     assert len(graph) == 1
     series = graph.series[0]
     Assert.allclose(series.data, band.ref.expected_data)
-    Assert.allclose(series.lattice.vectors, band.ref.expected_lattice, tolerance=1e6)
-    Assert.allclose(
-        np.linalg.norm(series.lattice.vectors, axis=1),
-        np.linalg.norm(band.ref.expected_lattice, axis=1),
-        tolerance=1e6,
-    )
     assert series.label == band.ref.expected_label
 
 
