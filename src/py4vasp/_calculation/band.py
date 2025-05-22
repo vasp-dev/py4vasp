@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from typing import Union, Any, Iterable
+from typing import Union, Any, Iterable, List
 
 import numpy as np
 
@@ -8,6 +8,7 @@ from py4vasp import exception
 from py4vasp._calculation import _dispersion, base, projector
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_, index, select, slicing
+from py4vasp.raw import VaspData
 
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
@@ -79,7 +80,7 @@ class Band(base.Refinery, graph.Mixin):
 
         Returns
         -------
-        dict
+        dict[str, Any]
             Contains the **k**-point path for plotting band structures with the
             eigenvalues shifted to bring the Fermi energy to 0. If available
             and a selection is passed, the projections of these bands on the
@@ -127,8 +128,8 @@ class Band(base.Refinery, graph.Mixin):
         {{'kpoint_distances': array(...), 'kpoint_labels': ..., 'fermi_energy': ...,
             'bands': array(...), 'occupations': array(...)}}
         """
-        dispersion = self._dispersion().read()
-        eigenvalues = dispersion.pop("eigenvalues")
+        dispersion: dict[str, Any] = self._dispersion().read()
+        eigenvalues: VaspData = dispersion.pop("eigenvalues")
         return {
             **dispersion,
             "fermi_energy": self._raw_data.fermi_energy,
@@ -329,7 +330,7 @@ class Band(base.Refinery, graph.Mixin):
         # raise exception.NotImplemented("to_quiver is not fully implemented")
         raw_band: Band = self._raw_data
         scale: float = raw_band.dispersion.kpoints.cell.scale
-        latt_vecs = scale * raw_band.dispersion.kpoints.cell.lattice_vectors
+        latt_vecs: VaspData = scale * raw_band.dispersion.kpoints.cell.lattice_vectors
         if latt_vecs.shape[0] == 1:
             latt_vecs = latt_vecs[0]
         nkp1, nkp2, cut = self._kmesh()
@@ -362,12 +363,12 @@ class Band(base.Refinery, graph.Mixin):
         return graph.Graph(quiver_plots)
 
     def _quiver_plot(self, selector: index.Selector, selection: str, nkp1: int, nkp2: int) -> dict[str, Any]:
-        data = selector[selection]
+        data: VaspData = selector[selection]
         data = data.reshape(2, nkp1, nkp2)
         label = "spin texture " + selector.label(selection)
         return {"data": data, "label": label}
 
-    def _make_selector(self, projections: np.ndarray) -> index.Selector:
+    def _make_selector(self, projections: VaspData) -> index.Selector:
         maps = self._projector().to_dict()
         maps = {
             1: maps["atom"],
@@ -443,7 +444,7 @@ class Band(base.Refinery, graph.Mixin):
         else:
             return {"occupations": self._raw_data.occupations[0]}
 
-    def _shift_dispersion_by_fermi_energy(self, eigenvalues: np.ndarray) -> dict[str, np.ndarray]:
+    def _shift_dispersion_by_fermi_energy(self, eigenvalues: VaspData) -> dict[str, VaspData]:
         shifted = eigenvalues - self._raw_data.fermi_energy
         if len(shifted) == 2:
             return {"bands_up": shifted[0], "bands_down": shifted[1]}
@@ -481,9 +482,10 @@ class Band(base.Refinery, graph.Mixin):
         and the corresponding cut direction in which the kpoint mesh is 1.
         """
         try:
-            nkpx = self._raw_data.dispersion.kpoints.number_x
-            nkpy = self._raw_data.dispersion.kpoints.number_y
-            nkpz = self._raw_data.dispersion.kpoints.number_z
+            raw_band: Band = self._raw_data
+            nkpx: int = raw_band.dispersion.kpoints.number_x
+            nkpy: int = raw_band.dispersion.kpoints.number_y
+            nkpz: int = raw_band.dispersion.kpoints.number_z
 
             if nkpx == 1:
                 return (nkpy, nkpz, "a")
@@ -501,12 +503,12 @@ class Band(base.Refinery, graph.Mixin):
             )
 
 
-def _to_series(array: np.ndarray) -> np.ndarray:
-    return array.T.flatten()
+def _to_series(array: VaspData) -> VaspData:
+    return VaspData.T.flatten()
 
 
 class _ToQuiverReduction(index.Reduction):
-    def __init__(self, keys: list):
+    def __init__(self, keys: List):
         # raise an IncorrectUsage Warning if:
         #   - no spin elements have been chosen
         #   - no band has been chosen
@@ -520,6 +522,6 @@ class _ToQuiverReduction(index.Reduction):
             )
         pass
 
-    def __call__(self, array: np.ndarray, axis: Iterable):
+    def __call__(self, array: VaspData, axis: Iterable):
         axis = tuple(filter(None, axis))  # prevents summation along 0-axis
         return np.sum(array, axis=axis)
