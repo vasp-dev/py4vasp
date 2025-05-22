@@ -504,7 +504,7 @@ class Band(base.Refinery, graph.Mixin):
 
 
 def _to_series(array: VaspData) -> VaspData:
-    return VaspData.T.flatten()
+    return array.T.flatten()
 
 
 class _ToQuiverReduction(index.Reduction):

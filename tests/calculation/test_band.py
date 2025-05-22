@@ -1,8 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
+from typing import Any, Callable, Union
 from unittest.mock import patch
-from typing import Any, Union, Callable
 
 import numpy as np
 import pytest
@@ -11,8 +11,10 @@ from py4vasp import exception
 from py4vasp._calculation.band import Band
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.projector import Projector
-from py4vasp.tests.conftest import _Assert
-from py4vasp.raw import VaspData, Band as rawBand
+from py4vasp.raw import Band as rawBand
+from py4vasp.raw import VaspData
+
+from ..conftest import _Assert
 
 
 @pytest.fixture
@@ -144,10 +146,10 @@ def test_texture_to_quiver_sel1(spin_texture: Band, Assert: _Assert):
     assert series.label == spin_texture.ref.expected_label
 
 
-@pytest.mark.parametrize(
-    "normal", [None, "x", "y", "z"]
-)
-def test_texture_to_quiver_normal(spin_texture_simple: Any, normal: Union[str, None], Assert: _Assert):
+@pytest.mark.parametrize("normal", [None, "x", "y", "z"])
+def test_texture_to_quiver_normal(
+    spin_texture_simple: Any, normal: Union[str, None], Assert: _Assert
+):
     band: Band = Band.from_data(spin_texture_simple)
     band.ref = types.SimpleNamespace()
 
@@ -176,7 +178,8 @@ def test_texture_to_quiver_normal(spin_texture_simple: Any, normal: Union[str, N
         )
 
     graph = band.to_quiver(
-        "Pb(s(band[2](sigma_x~sigma_y)))", normal=normal,
+        "Pb(s(band[2](sigma_x~sigma_y)))",
+        normal=normal,
     )
     assert len(graph) == 1
     series = graph.series[0]
@@ -188,10 +191,11 @@ def test_texture_to_quiver_normal(spin_texture_simple: Any, normal: Union[str, N
     )
     Assert.allclose(series.lattice.vectors, band.ref.expected_lattice, tolerance=1e6)
 
-@pytest.mark.parametrize(
-    "supercell", [None, 1, 2, np.array([2, 4])]
-)
-def test_texture_to_quiver_supercell(spin_texture_simple: Any, supercell: Union[int, np.ndarray, None], Assert: _Assert):
+
+@pytest.mark.parametrize("supercell", [None, 1, 2, np.array([2, 4])])
+def test_texture_to_quiver_supercell(
+    spin_texture_simple: Any, supercell: Union[int, np.ndarray, None], Assert: _Assert
+):
     band: Band = Band.from_data(spin_texture_simple)
     band.ref = types.SimpleNamespace()
 
@@ -199,9 +203,7 @@ def test_texture_to_quiver_supercell(spin_texture_simple: Any, supercell: Union[
         spin_texture_simple.projections[1:3, 2, 0, :, 1], (2, 4, 3)
     )
 
-    graph = band.to_quiver(
-        "Pb(s(band[2](sigma_x~sigma_y)))", supercell=supercell
-    )
+    graph = band.to_quiver("Pb(s(band[2](sigma_x~sigma_y)))", supercell=supercell)
     assert len(graph) == 1
     series = graph.series[0]
     Assert.allclose(
@@ -224,7 +226,9 @@ def test_texture_to_quiver_supercell(spin_texture_simple: Any, supercell: Union[
         ("5(d(band[3](y~z)))", "O_2_d_y~z_band[3]"),
     ],
 )
-def test_texture_to_quiver_selections(spin_texture_simple: Any, selection: list[Union[str, None]], Assert: _Assert):
+def test_texture_to_quiver_selections(
+    spin_texture_simple: Any, selection: list[Union[str, None]], Assert: _Assert
+):
     band: Band = Band.from_data(spin_texture_simple)
     band.ref = types.SimpleNamespace()
 
@@ -479,7 +483,11 @@ def test_to_image(single_band: Band):
     check_to_image(single_band, custom_filename, custom_filename)
 
 
-def check_to_image(single_band: Band, filename_argument: Union[str, None], expected_filename: Union[str, None]):
+def check_to_image(
+    single_band: Band,
+    filename_argument: Union[str, None],
+    expected_filename: Union[str, None],
+):
     with patch.object(Band, "to_plotly") as plot:
         single_band.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
