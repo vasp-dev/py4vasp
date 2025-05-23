@@ -54,11 +54,16 @@ class Dos(base.Refinery, graph.Mixin):
     @base.data_access
     def __str__(self):
         energies = self._raw_data.energies
-        return f"""
-{"spin polarized" if self._spin_polarized() else ""} Dos:
+        if self._is_collinear():
+            label = "collinear Dos"
+        elif self._is_noncollinear():
+            label = "noncollinear Dos"
+        else:
+            label = "Dos"
+        return f"""\
+{label}:
     energies: [{energies[0]:0.2f}, {energies[-1]:0.2f}] {len(energies)} points
-{pretty.pretty(self._projector())}
-    """.strip()
+{pretty.pretty(self._projector())}"""
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
@@ -255,8 +260,11 @@ class Dos(base.Refinery, graph.Mixin):
     def selections(self):
         return {**super().selections(), **self._projector().selections()}
 
-    def _spin_polarized(self):
-        return self._raw_data.dos.shape[0] == 2
+    def _is_collinear(self):
+        return len(self._raw_data.dos) == 2
+
+    def _is_noncollinear(self):
+        return len(self._raw_data.dos) == 4
 
     def _projector(self):
         return projector.Projector.from_data(self._raw_data.projectors)
@@ -272,7 +280,7 @@ class Dos(base.Refinery, graph.Mixin):
         return {"energies": self._raw_data.energies[:] - self._raw_data.fermi_energy}
 
     def _read_total_dos(self):
-        if self._spin_polarized():
+        if self._is_collinear():
             return {"up": self._raw_data.dos[0, :], "down": self._raw_data.dos[1, :]}
         else:
             return {"total": self._raw_data.dos[0, :]}

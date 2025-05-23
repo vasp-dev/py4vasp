@@ -292,33 +292,42 @@ def test_dos_selections(Fe3O4_projectors):
 
 def test_Sr2TiO4_print(Sr2TiO4, format_):
     actual, _ = format_(Sr2TiO4)
-    reference = f"""
+    reference = """\
 Dos:
     energies: [-1.00, 3.00] 50 points
-no projectors
-    """.strip()
+no projectors"""
     assert actual == {"text/plain": reference}
 
 
 def test_Fe3O4_print(Fe3O4, format_):
     actual, _ = format_(Fe3O4)
-    reference = f"""
-spin polarized Dos:
+    reference = """\
+collinear Dos:
     energies: [-2.00, 2.00] 50 points
-no projectors
-    """.strip()
+no projectors"""
     assert actual == {"text/plain": reference}
 
 
 def test_Sr2TiO4_projectors_print(Sr2TiO4_projectors, format_):
     actual, _ = format_(Sr2TiO4_projectors)
-    reference = f"""
+    reference = f"""\
 Dos:
     energies: [-1.00, 3.00] 50 points
 projectors:
     atoms: Sr, Ti, O
-    orbitals: s, py, pz, px, dxy, dyz, dz2, dxz, dx2y2, fy3x2, fxyz, fyz2, fz3, fxz2, fzx2, fx3
-    """.strip()
+    orbitals: s, py, pz, px, dxy, dyz, dz2, dxz, dx2y2, fy3x2, fxyz, fyz2, fz3, fxz2, fzx2, fx3"""
+    assert actual == {"text/plain": reference}
+
+
+def test_Ba2PbO4_print(Ba2PbO4, format_):
+    actual, _ = format_(Ba2PbO4)
+    reference = """\
+noncollinear Dos:
+    energies: [-4.00, 1.00] 50 points
+projectors:
+    atoms: Ba, Pb, O
+    orbitals: s, p, d, f
+    spin: total, sigma_x, sigma_y, sigma_z"""
     assert actual == {"text/plain": reference}
 
 
