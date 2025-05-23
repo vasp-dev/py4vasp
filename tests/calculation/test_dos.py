@@ -180,6 +180,17 @@ def test_Sr2TiO4_projectors_to_frame(Sr2TiO4_projectors, Assert, not_core):
         Assert.allclose(actual.O_1, Sr2TiO4_projectors.ref.O_1)
 
 
+def test_Ba2PbO4_to_frame(Ba2PbO4, Assert, not_core):
+    actual = Ba2PbO4.to_frame("sigma_z Pb(total, y) Ba(x) O(sigma_2)")
+    Assert.allclose(actual.energies, Ba2PbO4.ref.energies)
+    Assert.allclose(actual.total, Ba2PbO4.ref.dos)
+    Assert.allclose(actual.sigma_z, Ba2PbO4.ref.dos_z)
+    Assert.allclose(actual.Pb, Ba2PbO4.ref.Pb)
+    Assert.allclose(actual.Pb_y, Ba2PbO4.ref.Pb_y)
+    Assert.allclose(actual.Ba_x, Ba2PbO4.ref.Ba_x)
+    Assert.allclose(actual.O_sigma_2, Ba2PbO4.ref.O_y)
+
+
 def test_Sr2TiO4_plot(Sr2TiO4, Assert):
     fig = Sr2TiO4.plot()
     assert fig.xlabel == "Energy (eV)"

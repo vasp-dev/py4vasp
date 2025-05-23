@@ -243,7 +243,9 @@ class Dos(base.Refinery, graph.Mixin):
            energies  total  dxy + dxz + dyz
         0  ...
         """
-        df = pd.DataFrame(self._read_data(selection))
+        data = self._read_data(selection)
+        data.pop(projector.SPIN_PROJECTION, None)
+        df = pd.DataFrame(data)
         df.fermi_energy = self._raw_data.fermi_energy
         return df
 
