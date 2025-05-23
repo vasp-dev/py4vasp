@@ -163,7 +163,6 @@ def test_spin_projections(Fe3O4, projections, Assert):
     p_ref = np.sum(spin_projections[:, :, 1], axis=(0, 1))
     down_ref = np.sum(spin_projections[1], axis=(0, 1))
     actual = Fe3O4.project("Fe O(p + d) d O(total) p + down", spin_projections)
-    print(actual.keys())
     Assert.allclose(actual["Fe_up"], Fe_ref[0])
     Assert.allclose(actual["Fe_down"], Fe_ref[1])
     Assert.allclose(actual["d_up"], d_ref[0])
@@ -281,11 +280,30 @@ def test_selections_missing_orbitals(missing_orbitals):
 
 def test_print(Sr2TiO4, format_):
     actual, _ = format_(Sr2TiO4)
-    reference = """
+    reference = """\
 projectors:
     atoms: Sr, Ti, O
-    orbitals: s, py, pz, px, dxy, dyz, dz2, dxz, dx2y2, fy3x2, fxyz, fyz2, fz3, fxz2, fzx2, fx3
-    """.strip()
+    orbitals: s, py, pz, px, dxy, dyz, dz2, dxz, dx2y2, fy3x2, fxyz, fyz2, fz3, fxz2, fzx2, fx3"""
+    assert actual == {"text/plain": reference}
+
+
+def test_print_collinear(Fe3O4, format_):
+    actual, _ = format_(Fe3O4)
+    reference = """\
+projectors:
+    atoms: Fe, O
+    orbitals: s, p, d, f
+    spin: total, up, down"""
+    assert actual == {"text/plain": reference}
+
+
+def test_print_noncollinear(Ba2PbO4, format_):
+    actual, _ = format_(Ba2PbO4)
+    reference = """\
+projectors:
+    atoms: Ba, Pb, O
+    orbitals: s, p, d, f
+    spin: total, sigma_x, sigma_y, sigma_z"""
     assert actual == {"text/plain": reference}
 
 

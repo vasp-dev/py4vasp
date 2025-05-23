@@ -54,11 +54,16 @@ class Dos(base.Refinery, graph.Mixin):
     @base.data_access
     def __str__(self):
         energies = self._raw_data.energies
-        return f"""
-{"spin polarized" if self._spin_polarized() else ""} Dos:
+        if self._is_collinear():
+            label = "collinear Dos"
+        elif self._is_noncollinear():
+            label = "noncollinear Dos"
+        else:
+            label = "Dos"
+        return f"""\
+{label}:
     energies: [{energies[0]:0.2f}, {energies[-1]:0.2f}] {len(energies)} points
-{pretty.pretty(self._projector())}
-    """.strip()
+{pretty.pretty(self._projector())}"""
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
@@ -125,10 +130,9 @@ class Dos(base.Refinery, graph.Mixin):
         >>> calculation.dos.to_dict("kpoints_opt")  # doctest: +SKIP
         {{'energies': array(...), 'total': array(...), 'fermi_energy': ...}}
         """
-        return {
-            **self._read_data(selection),
-            "fermi_energy": self._raw_data.fermi_energy,
-        }
+        data = self._read_data(selection)
+        data.pop(projector.SPIN_PROJECTION, None)
+        return {**data, "fermi_energy": self._raw_data.fermi_energy}
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
@@ -191,8 +195,10 @@ class Dos(base.Refinery, graph.Mixin):
         Graph(series=[Series(..., label='total', ...)], ...)
         """
         data = self._read_data(selection)
+        energies = data.pop("energies")
+        data.pop(projector.SPIN_PROJECTION, None)
         return graph.Graph(
-            series=list(_series(data)),
+            series=list(_series(energies, data)),
             xlabel="Energy (eV)",
             ylabel="DOS (1/eV)",
         )
@@ -244,7 +250,9 @@ class Dos(base.Refinery, graph.Mixin):
            energies  total  dxy + dxz + dyz
         0  ...
         """
-        df = pd.DataFrame(self._read_data(selection))
+        data = self._read_data(selection)
+        data.pop(projector.SPIN_PROJECTION, None)
+        df = pd.DataFrame(data)
         df.fermi_energy = self._raw_data.fermi_energy
         return df
 
@@ -252,8 +260,11 @@ class Dos(base.Refinery, graph.Mixin):
     def selections(self):
         return {**super().selections(), **self._projector().selections()}
 
-    def _spin_polarized(self):
-        return self._raw_data.dos.shape[0] == 2
+    def _is_collinear(self):
+        return len(self._raw_data.dos) == 2
+
+    def _is_noncollinear(self):
+        return len(self._raw_data.dos) == 4
 
     def _projector(self):
         return projector.Projector.from_data(self._raw_data.projectors)
@@ -269,17 +280,14 @@ class Dos(base.Refinery, graph.Mixin):
         return {"energies": self._raw_data.energies[:] - self._raw_data.fermi_energy}
 
     def _read_total_dos(self):
-        if self._spin_polarized():
+        if self._is_collinear():
             return {"up": self._raw_data.dos[0, :], "down": self._raw_data.dos[1, :]}
         else:
             return {"total": self._raw_data.dos[0, :]}
 
 
-def _series(data):
-    energies = data["energies"]
+def _series(energies, data):
     for name, dos in data.items():
-        if name == "energies":
-            continue
         spin_factor = -1 if _flip_down_component(name) else 1
         yield graph.Series(energies, spin_factor * dos, name)
 

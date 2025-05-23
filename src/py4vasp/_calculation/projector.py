@@ -57,9 +57,18 @@ class Projector(base.Refinery):
     def __str__(self):
         if self._raw_data.orbital_types.is_none():
             return "no projectors"
-        return f"""projectors:
+        if self._is_collinear:
+            spin_projection = "\n    spin: total, up, down"
+        elif self._is_noncollinear:
+            spin_projection = "\n    spin: total, sigma_x, sigma_y, sigma_z"
+        else:
+            spin_projection = ""
+        return (
+            f"""projectors:
     atoms: {", ".join(self._stoichiometry().ion_types())}
     orbitals: {", ".join(self._orbital_types())}"""
+            + spin_projection
+        )
 
     def _stoichiometry(self):
         return _stoichiometry.Stoichiometry.from_data(self._raw_data.stoichiometry)
