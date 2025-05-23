@@ -8,7 +8,7 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._calculation.dos import Dos
-from py4vasp._calculation.projector import Projector
+from py4vasp._calculation.projector import SPIN_PROJECTION, Projector
 
 
 @pytest.fixture
@@ -66,6 +66,21 @@ def Fe3O4_projectors(raw_data):
     return dos
 
 
+@pytest.fixture
+def Ba2PbO4(raw_data):
+    raw_dos = raw_data.dos("Ba2PbO4 noncollinear")
+    dos = Dos.from_data(raw_dos)
+    dos.ref = types.SimpleNamespace()
+    dos.ref.energies = raw_dos.energies - raw_dos.fermi_energy
+    dos.ref.dos = raw_dos.dos[0]
+    dos.ref.dos_z = np.sum(raw_dos.projections[3], axis=(0, 1))
+    dos.ref.Ba_x = np.sum(raw_dos.projections[1, 0:2, :, :], axis=(0, 1))
+    dos.ref.Pb = np.sum(raw_dos.projections[0, 2, :, :], axis=0)
+    dos.ref.Pb_y = np.sum(raw_dos.projections[2, 2, :, :], axis=0)
+    dos.ref.O_y = np.sum(raw_dos.projections[2, 3:7, :, :], axis=(0, 1))
+    return dos
+
+
 def test_Sr2TiO4_read(Sr2TiO4, Assert):
     actual = Sr2TiO4.read()
     Assert.allclose(actual["energies"], Sr2TiO4.ref.energies)
@@ -89,6 +104,19 @@ def test_Fe3O4_projectors_read(Fe3O4_projectors, Assert):
     Assert.allclose(actual["p_down"], Fe3O4_projectors.ref.p_down)
     Assert.allclose(actual["O_d_up"], Fe3O4_projectors.ref.O_d_up)
     Assert.allclose(actual["O_d_down"], Fe3O4_projectors.ref.O_d_down)
+    assert SPIN_PROJECTION not in actual
+
+
+def test_Ba2PbO4_read(Ba2PbO4, Assert):
+    actual = Ba2PbO4.read("Pb Ba(sigma_x) y(Pb, O) sigma_3")
+    Assert.allclose(actual["energies"], Ba2PbO4.ref.energies)
+    Assert.allclose(actual["total"], Ba2PbO4.ref.dos)
+    Assert.allclose(actual["Pb"], Ba2PbO4.ref.Pb)
+    Assert.allclose(actual["Ba_sigma_x"], Ba2PbO4.ref.Ba_x)
+    Assert.allclose(actual["Pb_y"], Ba2PbO4.ref.Pb_y)
+    Assert.allclose(actual["O_y"], Ba2PbO4.ref.O_y)
+    Assert.allclose(actual["sigma_3"], Ba2PbO4.ref.dos_z)
+    assert SPIN_PROJECTION not in actual
 
 
 def test_combine_projectors(Fe3O4_projectors, Assert):

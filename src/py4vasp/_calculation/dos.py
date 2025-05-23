@@ -125,10 +125,9 @@ class Dos(base.Refinery, graph.Mixin):
         >>> calculation.dos.to_dict("kpoints_opt")  # doctest: +SKIP
         {{'energies': array(...), 'total': array(...), 'fermi_energy': ...}}
         """
-        return {
-            **self._read_data(selection),
-            "fermi_energy": self._raw_data.fermi_energy,
-        }
+        data = self._read_data(selection)
+        data.pop(projector.SPIN_PROJECTION, None)
+        return {**data, "fermi_energy": self._raw_data.fermi_energy}
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)

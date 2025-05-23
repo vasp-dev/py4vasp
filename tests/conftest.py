@@ -239,6 +239,8 @@ class RawDataFactory:
             return _Sr2TiO4_dos(projectors)
         elif structure == "Fe3O4":
             return _Fe3O4_dos(projectors)
+        elif structure == "Ba2PbO4":
+            return _Ba2PbO4_dos(projectors)
         else:
             raise exception.NotImplemented()
 
@@ -842,6 +844,21 @@ def _Ba2PbO4_cell():
         [-2.17, -2.17, 6.682],
     ]
     return raw.Cell(lattice_vectors=np.array(lattice_vectors), scale=1.0)
+
+
+def _Ba2PbO4_dos(projectors):
+    assert projectors == "noncollinear"
+    energies = np.linspace(-4, 1, number_points)
+    raw_dos = raw.Dos(
+        fermi_energy=-1.3,
+        energies=energies,
+        dos=_make_arbitrary_data((noncollinear, number_points)),
+        projectors=_Ba2PbO4_projectors(use_orbitals=True),
+    )
+    number_orbitals = len(raw_dos.projectors.orbital_types)
+    shape = (noncollinear, number_atoms, number_orbitals, number_points)
+    raw_dos.projections = _make_arbitrary_data(shape)
+    return raw_dos
 
 
 def _Ba2PbO4_projectors(use_orbitals):
