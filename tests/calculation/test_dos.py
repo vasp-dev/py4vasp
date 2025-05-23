@@ -235,6 +235,19 @@ def test_Fe3O4_projectors_plot(Fe3O4_projectors, Assert):
     Assert.allclose(data[O_d_down].y, -Fe3O4_projectors.ref.O_d_down)
 
 
+def test_Ba2PbO4_plot(Ba2PbO4, Assert):
+    fig = Ba2PbO4.plot("sigma_2(Pb, O) z Pb Ba(sigma_x)")
+    data = fig.series
+    assert len(data) == 6  # 1 total, 5 selections
+    names = [d.label for d in data]
+    Assert.allclose(data[names.index("total")].y, Ba2PbO4.ref.dos)
+    Assert.allclose(data[names.index("z")].y, Ba2PbO4.ref.dos_z)
+    Assert.allclose(data[names.index("Ba_sigma_x")].y, Ba2PbO4.ref.Ba_x)
+    Assert.allclose(data[names.index("Pb")].y, Ba2PbO4.ref.Pb)
+    Assert.allclose(data[names.index("Pb_sigma_2")].y, Ba2PbO4.ref.Pb_y)
+    Assert.allclose(data[names.index("O_sigma_2")].y, Ba2PbO4.ref.O_y)
+
+
 def test_plot_combine_projectors(Fe3O4_projectors, Assert):
     fig = Fe3O4_projectors.plot("Fe(up) + O(d(down)), Fe - p")
     data = fig.series

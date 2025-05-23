@@ -190,8 +190,10 @@ class Dos(base.Refinery, graph.Mixin):
         Graph(series=[Series(..., label='total', ...)], ...)
         """
         data = self._read_data(selection)
+        energies = data.pop("energies")
+        data.pop(projector.SPIN_PROJECTION, None)
         return graph.Graph(
-            series=list(_series(data)),
+            series=list(_series(energies, data)),
             xlabel="Energy (eV)",
             ylabel="DOS (1/eV)",
         )
@@ -276,11 +278,8 @@ class Dos(base.Refinery, graph.Mixin):
             return {"total": self._raw_data.dos[0, :]}
 
 
-def _series(data):
-    energies = data["energies"]
+def _series(energies, data):
     for name, dos in data.items():
-        if name == "energies":
-            continue
         spin_factor = -1 if _flip_down_component(name) else 1
         yield graph.Series(energies, spin_factor * dos, name)
 
