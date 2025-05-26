@@ -44,6 +44,8 @@ class Contour(trace.Trace):
     the plane. Can be generated with the 'plane' function in py4vasp._util.slicing."""
     label: str
     "Assign a label to the visualization that may be used to identify one among multiple plots."
+    units: str = None
+    """Units to show at the colorbar. If None, these may be automatically inferred from the label (if the label is known)."""
     isolevels: bool = False
     "Defines whether isolevels should be added or a heatmap is used."
     show_contour_values: bool = None
@@ -58,7 +60,8 @@ class Contour(trace.Trace):
     """
     color_diverging_around_zero: bool = True
     """If True, together with 'signed' color_scheme (or 'auto' color_scheme evaluating to 'signed'),
-    the color map will diverge around a value of zero if min<0 and max>0. If False, it will diverge around the mean."""
+    the color map will diverge around a value of zero if min<0 and max>0. If False, it will diverge around the mean.
+    This setting has no meaning while contrast_mode is True."""
     contrast_mode: bool = False
     "If True, enables high contrast mode, which affects the colors of the plot."
     supercell: np.array = (1, 1)
@@ -97,12 +100,20 @@ class Contour(trace.Trace):
             name=self.label,
             autocontour=True,
             colorscale=self._get_color_scale(z),
+            colorbar=self._get_color_bar(),
             contours={"showlabels": self.show_contour_values},
         )
 
     def _make_heatmap(self, lattice, data):
         x, y, z = self._interpolate_data_if_necessary(lattice, data)
-        return go.Heatmap(x=x, y=y, z=z, name=self.label, colorscale=self._get_color_scale(z))
+        return go.Heatmap(
+            x=x,
+            y=y,
+            z=z,
+            name=self.label,
+            colorscale=self._get_color_scale(z),
+            colorbar=self._get_color_bar(),
+        )
 
     def _interpolate_data_if_necessary(self, lattice, data):
         if self._interpolation_required():
@@ -132,7 +143,9 @@ class Contour(trace.Trace):
         v = scale * subsampled_data[:, :, 1].flatten()
         dx = np.linalg.norm(meshes[0][1])
         dy = np.linalg.norm(meshes[1][1])
-        fig = ff.create_quiver(x - 0.5 * u + 0.5 * dx, y - 0.5 * v + 0.5 * dy, u, v, scale=1)
+        fig = ff.create_quiver(
+            x - 0.5 * u + 0.5 * dx, y - 0.5 * v + 0.5 * dy, u, v, scale=1
+        )
         fig.data[0].line.color = _config.VASP_COLORS["dark"]
         return fig.data[0]
 
@@ -201,26 +214,63 @@ class Contour(trace.Trace):
         color = _config.VASP_COLORS["dark"]
         unit_cell = {"type": "path", "line": {"color": color}, "path": path}
         return (unit_cell,)
-    
+
     def _get_color_scale(self, z: np.ndarray):
         selected_color_scheme = None
         color_lower = _config.VASP_COLORS["blue"]
         color_zero = "white"
         color_upper = _config.VASP_COLORS["red"]
-        if (self.color_scheme == "signed") or (self.color_scheme == "auto" and (np.min(z) < 0 and np.max(z) > 0)):
+        if (self.color_scheme == "signed") or (
+            self.color_scheme == "auto" and (np.min(z) < 0 and np.max(z) > 0)
+        ):
             # make it so 0 is always drawn in white
             value_range = np.max(z) - np.min(z)
-            selected_color_scheme = [[0, color_lower], [(np.abs(np.min(z)) / value_range) if (self.color_diverging_around_zero and (np.min(z) < 0 and np.max(z) > 0)) else 0.5, color_zero], [1, color_upper]] if not(self.contrast_mode) else "seismic"
-        elif (self.color_scheme == "positive") or (self.color_scheme == "auto" and (np.min(z) >= 0)):
-            selected_color_scheme = [[0, color_zero], [1, color_upper]] if not(self.contrast_mode) else "viridis"
-        elif (self.color_scheme == "negative") or (self.color_scheme == "auto" and (np.max(z) <= 0)):
-            selected_color_scheme = [[0, color_lower], [1, color_zero]] if not (self.contrast_mode) else "cool"
+            selected_color_scheme = (
+                [
+                    [0, color_lower],
+                    [
+                        (
+                            (np.abs(np.min(z)) / value_range)
+                            if (
+                                self.color_diverging_around_zero
+                                and (np.min(z) < 0 and np.max(z) > 0)
+                            )
+                            else 0.5
+                        ),
+                        color_zero,
+                    ],
+                    [1, color_upper],
+                ]
+                if not (self.contrast_mode)
+                else "turbid_r"
+            )
+        elif (self.color_scheme == "positive") or (
+            self.color_scheme == "auto" and (np.min(z) >= 0)
+        ):
+            selected_color_scheme = (
+                [[0, color_zero], [1, color_upper]]
+                if not (self.contrast_mode)
+                else "turbid_r"
+            )
+        elif (self.color_scheme == "negative") or (
+            self.color_scheme == "auto" and (np.max(z) <= 0)
+        ):
+            selected_color_scheme = (
+                [[0, color_lower], [1, color_zero]]
+                if not (self.contrast_mode)
+                else "turbid_r"
+            )
         # Defaulting to color map if not yet set
-        if selected_color_scheme is None: 
-            selected_color_scheme = "seismic" if not self.contrast_mode else "seismic"
-        
+        if selected_color_scheme is None:
+            selected_color_scheme = "icefire" if not self.contrast_mode else "turbid_r"
+
         return selected_color_scheme
-        
+
+    def _get_color_bar(self):
+        if (self.units is not None) and (self.units):
+            return {"title": {"text": f"[{self.units}]", "side": "top"}}
+        else:
+            return None
 
     def _label_unit_cell_vectors(self):
         if self.lattice.cut is None:

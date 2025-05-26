@@ -81,6 +81,7 @@ def tilted_contour():
         label="tilted contour",
         supercell=(2, 1),
         show_cell=False,
+        contrast_mode=True,
     )
 
 
@@ -116,7 +117,7 @@ def complex_quiver():
 
 
 @pytest.mark.parametrize("color_scheme", ["auto", "signed", "positive", "negative"])
-def test_color_scheme(color_scheme):
+def test_contour_color_scheme(color_scheme):
     contour = Contour(
         data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
         lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
@@ -128,7 +129,7 @@ def test_color_scheme(color_scheme):
 
 
 @pytest.mark.parametrize("contrast_mode", [True, False])
-def test_contrast_mode(contrast_mode):
+def test_contour_contrast_mode(contrast_mode):
     contour = Contour(
         data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
         lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
@@ -140,7 +141,7 @@ def test_contrast_mode(contrast_mode):
 
 
 @pytest.mark.parametrize("color_diverging_around_zero", [True, False])
-def test_contrast_mode(color_diverging_around_zero):
+def test_contour_color_diverging_setting(color_diverging_around_zero):
     contour = Contour(
         data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
         lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
@@ -149,6 +150,18 @@ def test_contrast_mode(color_diverging_around_zero):
         isolevels=True,
     )
     assert color_diverging_around_zero == contour.color_diverging_around_zero
+
+
+@pytest.mark.parametrize("units", ["", None, "px", "m/s"])
+def test_contour_units(units):
+    contour = Contour(
+        data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
+        lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
+        label="rectangle contour",
+        units=units,
+        isolevels=True,
+    )
+    assert units == contour.units
 
 
 def test_basic_graph(parabola, Assert, not_core):
@@ -595,9 +608,10 @@ def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
 def test_simple_quiver(simple_quiver, Assert, not_core):
     graph = Graph(simple_quiver)
     assert simple_quiver.max_number_arrows is None
-    expected_positions = compute_positions(simple_quiver)
+    expected_positions, dx, dy = compute_positions(simple_quiver)
     work = simple_quiver.scale_arrows * simple_quiver.data.T.reshape(-1, 2)
     expected_positions -= 0.5 * work
+    expected_positions = expected_positions + 0.5 * np.array([dx, dy])
     expected_tips = expected_positions + work
     expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
     #
@@ -634,8 +648,9 @@ def test_dense_quiver(dense_quiver, max_number_arrows, Assert, not_core):
     work = np.block([[work, work, work], [work, work, work]]).T
     # remember that a and b are transposed
     work = work[:: subsampling[1], :: subsampling[0]]
-    expected_positions = compute_positions(dense_quiver, subsampling)
+    expected_positions, dx, dy = compute_positions(dense_quiver, subsampling)
     expected_positions -= 0.5 * work.reshape(expected_positions.shape)
+    expected_positions = expected_positions + 0.5 * np.array([dx, dy])
     expected_tips = expected_positions + work.reshape(expected_positions.shape)
     expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
     data_size = np.prod(expected_shape)
@@ -653,8 +668,9 @@ def test_complex_quiver(complex_quiver, Assert, not_core):
     expected_scale = 0.10015332542313245
     work = expected_scale * complex_quiver.data
     work = np.block([[work, work], [work, work], [work, work]]).T
-    expected_positions = compute_positions(complex_quiver)
+    expected_positions, dx, dy = compute_positions(complex_quiver)
     expected_positions -= 0.5 * work.reshape(expected_positions.shape)
+    expected_positions = expected_positions + 0.5 * np.array([dx, dy])
     expected_tips = expected_positions + work.reshape(expected_positions.shape)
     expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
     data_size = np.prod(complex_quiver.supercell) * complex_quiver.data.size // 2
@@ -701,7 +717,9 @@ def compute_positions(contour, subsampling=(1, 1)):
     # remember that the data is transposed
     range_a = range(0, shape[0], subsampling[0])
     range_b = range(0, shape[1], subsampling[1])
-    return np.array([a * step_a + b * step_b for b in range_b for a in range_a])
+    dx = np.linalg.norm(step_a)
+    dy = np.linalg.norm(step_b)
+    return np.array([a * step_a + b * step_b for b in range_b for a in range_a]), dx, dy
 
 
 def split_data(data, data_size, Assert):
