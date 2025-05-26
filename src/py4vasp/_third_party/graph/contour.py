@@ -48,6 +48,19 @@ class Contour(trace.Trace):
     "Defines whether isolevels should be added or a heatmap is used."
     show_contour_values: bool = None
     "Defines whether contour values should be shown along contour plot lines."
+    color_scheme: str = "auto"
+    """The color_scheme argument informs the chosen color map and parameters for the contours plot.
+    It should be chosen according to the nature of the data to be plotted, as one of the following:
+    - "auto": (Default) py4vasp will try to infer the color scheme on its own.
+    - "positive": Values are only positive. 
+    - "signed": Values are mixed - positive and negative.
+    - "negative": Values are only negative.
+    """
+    color_diverging_around_zero: bool = True
+    """If True, together with 'signed' color_scheme (or 'auto' color_scheme evaluating to 'signed'),
+    the color map will diverge around a value of zero if min<0 and max>0. If False, it will diverge around the mean."""
+    contrast_mode: bool = False
+    "If True, enables high contrast mode, which affects the colors of the plot."
     supercell: np.array = (1, 1)
     "Multiple of each lattice vector to be drawn."
     show_cell: bool = True
@@ -83,12 +96,13 @@ class Contour(trace.Trace):
             z=z,
             name=self.label,
             autocontour=True,
+            colorscale=self._get_color_scale(z),
             contours={"showlabels": self.show_contour_values},
         )
 
     def _make_heatmap(self, lattice, data):
         x, y, z = self._interpolate_data_if_necessary(lattice, data)
-        return go.Heatmap(x=x, y=y, z=z, name=self.label, colorscale="turbid_r")
+        return go.Heatmap(x=x, y=y, z=z, name=self.label, colorscale=self._get_color_scale(z))
 
     def _interpolate_data_if_necessary(self, lattice, data):
         if self._interpolation_required():
@@ -185,6 +199,26 @@ class Contour(trace.Trace):
         color = _config.VASP_COLORS["dark"]
         unit_cell = {"type": "path", "line": {"color": color}, "path": path}
         return (unit_cell,)
+    
+    def _get_color_scale(self, z: np.ndarray):
+        selected_color_scheme = None
+        color_lower = _config.VASP_COLORS["blue"]
+        color_zero = "white"
+        color_upper = _config.VASP_COLORS["red"]
+        if (self.color_scheme == "signed") or (self.color_scheme == "auto" and (np.min(z) < 0 and np.max(z) > 0)):
+            # make it so 0 is always drawn in white
+            value_range = np.max(z) - np.min(z)
+            selected_color_scheme = [[0, color_lower], [(np.abs(np.min(z)) / value_range) if (self.color_diverging_around_zero and (np.min(z) < 0 and np.max(z) > 0)) else 0.5, color_zero], [1, color_upper]] if not(self.contrast_mode) else "seismic"
+        elif (self.color_scheme == "positive") or (self.color_scheme == "auto" and (np.min(z) >= 0)):
+            selected_color_scheme = [[0, color_zero], [1, color_upper]] if not(self.contrast_mode) else "viridis"
+        elif (self.color_scheme == "negative") or (self.color_scheme == "auto" and (np.max(z) <= 0)):
+            selected_color_scheme = [[0, color_lower], [1, color_zero]] if not (self.contrast_mode) else "cool"
+        # Defaulting to color map if not yet set
+        if selected_color_scheme is None: 
+            selected_color_scheme = "seismic" if not self.contrast_mode else "seismic"
+        
+        return selected_color_scheme
+        
 
     def _label_unit_cell_vectors(self):
         if self.lattice.cut is None:

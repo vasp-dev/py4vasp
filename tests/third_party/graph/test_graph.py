@@ -115,6 +115,42 @@ def complex_quiver():
     )
 
 
+@pytest.mark.parametrize("color_scheme", ["auto", "signed", "positive", "negative"])
+def test_color_scheme(color_scheme):
+    contour = Contour(
+        data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
+        lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
+        label="rectangle contour",
+        color_scheme=color_scheme,
+        isolevels=True,
+    )
+    assert color_scheme == contour.color_scheme
+
+
+@pytest.mark.parametrize("contrast_mode", [True, False])
+def test_contrast_mode(contrast_mode):
+    contour = Contour(
+        data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
+        lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
+        label="rectangle contour",
+        contrast_mode=contrast_mode,
+        isolevels=True,
+    )
+    assert contrast_mode == contour.contrast_mode
+
+
+@pytest.mark.parametrize("color_diverging_around_zero", [True, False])
+def test_contrast_mode(color_diverging_around_zero):
+    contour = Contour(
+        data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
+        lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
+        label="rectangle contour",
+        color_diverging_around_zero=color_diverging_around_zero,
+        isolevels=True,
+    )
+    assert color_diverging_around_zero == contour.color_diverging_around_zero
+
+
 def test_basic_graph(parabola, Assert, not_core):
     graph = Graph(parabola)
     fig = graph.to_plotly()
