@@ -130,7 +130,9 @@ class Contour(trace.Trace):
         x, y = np.array([sum(points) for points in itertools.product(*meshes)]).T
         u = scale * subsampled_data[:, :, 0].flatten()
         v = scale * subsampled_data[:, :, 1].flatten()
-        fig = ff.create_quiver(x - 0.5 * u, y - 0.5 * v, u, v, scale=1)
+        dx = np.linalg.norm(meshes[0][1])
+        dy = np.linalg.norm(meshes[1][1])
+        fig = ff.create_quiver(x - 0.5 * u + 0.5 * dx, y - 0.5 * v + 0.5 * dy, u, v, scale=1)
         fig.data[0].line.color = _config.VASP_COLORS["dark"]
         return fig.data[0]
 
