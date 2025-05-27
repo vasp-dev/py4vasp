@@ -23,24 +23,41 @@ class Visualizer:
     def to_contour(self, selections, a=None, b=None, c=None, normal=None, supercell=None):
         cut, fraction = slicing.get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
-        if supercell is not None: supercell_arg = np.ones(2, dtype=np.int_) * supercell
-        else: supercell_arg = (1,1)
-        contours = [
-            Contour(
+
+        def _make_contour(selection):
+            contour = Contour(
                 slicing.grid_scalar(self._selector[selection].T, plane, fraction), 
                 plane, 
-                label=self._selector.label(selection) or "charge", 
+                label=self._selector.label(selection) or "", 
                 isolevels=True, 
-                supercell=supercell_arg
             )
+            if supercell is not None: contour.supercell = np.ones(2, dtype=np.int_) * supercell
+            return contour
+        
+        contours = [
+            _make_contour(selection)
             for selection in selections
         ]
         return graph.Graph(contours)
+    
+    
 
-    # def to_quiver(self, selections, a, b,c, supercell, normal):
-    #     cut, fraction = slicing.get_cut(a, b, c)
-    #     plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
-    #     quiver_plots = [
-    #         self._quiver_plot(selector, selection, plane, fraction, supercell)
-    #         for selection in selections
-    #     ]
+    def to_quiver(self, selections, a=None, b=None, c=None, supercell=None, normal=None):
+        cut, fraction = slicing.get_cut(a, b, c)
+        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
+
+        def _make_contour(selection):
+            contour = Contour(
+                slicing.grid_vector(self._selector[selection].T, plane, fraction), 
+                plane, 
+                label=self._selector.label(selection) or "", 
+                isolevels=True, 
+            )
+            if supercell is not None: contour.supercell = np.ones(2, dtype=np.int_) * supercell
+            return contour
+        
+        contours = [
+            _make_contour(selection)
+            for selection in selections
+        ]
+        return graph.Graph(contours)
