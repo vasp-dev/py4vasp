@@ -132,10 +132,7 @@ class Contour(trace.Trace):
         ]
         dx = np.linalg.norm(meshes_raw[0][1])
         dy = np.linalg.norm(meshes_raw[1][1])
-        meshes = [
-            v[::subsample]
-            for v, subsample in zip(meshes_raw, subsamples)
-        ]
+        meshes = [v[::subsample] for v, subsample in zip(meshes_raw, subsamples)]
         subsampled_data = data[:: subsamples[0], :: subsamples[1]]
         if self.scale_arrows is None:
             # arrows may be at most as long as the shorter lattice vector
