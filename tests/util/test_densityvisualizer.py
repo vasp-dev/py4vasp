@@ -1,32 +1,84 @@
+from types import SimpleNamespace
+from py4vasp import raw
 from py4vasp._util import density
 from py4vasp._util import index
 from py4vasp._calculation.structure import Structure
+from py4vasp._calculation.density import Density
 
 import numpy as np
-
 import pytest
 
 
-def test_view(raw_data, Assert):
-    structure = Structure.from_data(raw_data.structure("Fe3O4"))
-    data3d = np.ones(shape=(3,4,5,10))
-    selector = index.Selector({3: {"spin up": 0, "spin down": 1}}, data3d)
+@pytest.fixture(params=["simple", "with_selections"])
+def visualizer(raw_data, request): 
+    structure = Structure.from_data(raw_data.structure("Sr2TiO4"))
+    raw_density = raw_data.density("Sr2TiO4")
+    if (request.param == "simple"):
+        data3d = np.ones(shape=(3,4,5))
+        ref_data = [data3d.T]
+        selector = index.Selector({}, data3d)
+        selections = [()]
+    elif (request.param == "with_selections"):
+        data3d = np.ones(shape=(3,4,5,10))
+        ref_data = [data3d.T[0], data3d.T[1]]
+        selector = index.Selector({3: {"spin up": 0, "spin down": 1}}, data3d)
+        selections = [("spin up",), ("spin down",)]
+    else:
+        raise NotImplementedError(f"Requested param {request.param} not implemented.")
 
     visualizer = density.Visualizer(structure, selector)
-    view = visualizer.to_view([("spin up",), ("spin down",)])
+    visualizer.ref = SimpleNamespace()
+    visualizer.ref.structure = structure
+    visualizer.ref.data3d = ref_data
+    visualizer.ref.selections = selections
+    visualizer.ref.density = Density.from_data(raw_density)
+    return visualizer
 
-    Assert.same_structure_view(structure.to_view(), view)
-    Assert.allclose(view.grid_scalars[0].quantity, data3d.T[0])
-    Assert.allclose(view.grid_scalars[1].quantity, data3d.T[1])
+
+def test_view(visualizer, Assert):
+    view = visualizer.to_view(visualizer.ref.selections)
+
+    Assert.same_structure_view(visualizer.ref.structure.to_view(), view)
+    assert len(view.grid_scalars) == len(visualizer.ref.selections)
+    for sel, scalar, data in zip(visualizer.ref.selections, view.grid_scalars, visualizer.ref.data3d):
+        if (len(sel)>0): expected_label = sel[0]
+        else: expected_label = ""
+        assert (scalar.label == expected_label) 
+        Assert.allclose(scalar.quantity, data)
+
 
 @pytest.mark.parametrize("supercell", [(2,3,2), 3, (2,5,1)])
-def test_view_supercell(raw_data, supercell, Assert):
-    structure = Structure.from_data(raw_data.structure("Fe3O4"))
-    data3d = np.ones(shape=(3,4,5))
-    selector = index.Selector({}, data3d)
+def test_view_supercell(visualizer, supercell, Assert):
+    view = visualizer.to_view(visualizer.ref.selections, supercell=supercell)
 
-    visualizer = density.Visualizer(structure, selector)
-    view = visualizer.to_view([()], supercell=supercell)
+    Assert.same_structure_view(visualizer.ref.structure.to_view(supercell=supercell), view)
+    assert len(view.grid_scalars) == len(visualizer.ref.selections)
+    for sel, scalar, data in zip(visualizer.ref.selections, view.grid_scalars, visualizer.ref.data3d):
+        if (len(sel)>0): expected_label = sel[0]
+        else: expected_label = ""
+        assert (scalar.label == expected_label) 
+        Assert.allclose(scalar.quantity, data)
+    
+@pytest.mark.parametrize(
+    "kwargs, index, position",
+    (({"a": 0.2}, 0, 1), ({"b": 0.5}, 1, 2), ({"c": 1.3}, 2, 1)),
+)
+def test_contour_of_charge(visualizer, kwargs, index, position, Assert):
+    graph = visualizer.to_contour(visualizer.ref.selections, **kwargs)
+    
+    assert len(graph) == len(visualizer.ref.selections)
+    for idg, (sel, data) in enumerate(zip(visualizer.ref.selections, visualizer.ref.data3d)):
+        series = graph.series[idg]
+        slice_ = [slice(None), slice(None), slice(None)]
+        slice_[index] = position
+        expected_data = np.array(data)[tuple(slice_)]
+        Assert.allclose(series.data, expected_data)
 
-    Assert.same_structure_view(structure.to_view(supercell=supercell), view)
-    Assert.allclose(view.grid_scalars[0].quantity, data3d.T)
+        lattice_vectors = visualizer.ref.structure.lattice_vectors()
+        lattice_vectors = np.delete(lattice_vectors, index, axis=0)
+        expected_products = lattice_vectors @ lattice_vectors.T
+        actual_products = series.lattice.vectors @ series.lattice.vectors.T
+        Assert.allclose(actual_products, expected_products)
+        if (len(sel)>0): expected_label = sel[0]
+        else: expected_label = "charge"
+        assert (series.label == expected_label) 
