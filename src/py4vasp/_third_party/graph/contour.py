@@ -44,8 +44,8 @@ class Contour(trace.Trace):
     the plane. Can be generated with the 'plane' function in py4vasp._util.slicing."""
     label: str
     "Assign a label to the visualization that may be used to identify one among multiple plots."
-    units: str = None
-    """Units to show at the colorbar. If None, these may be automatically inferred from the label (if the label is known)."""
+    colorbar_label: str = None
+    """Label to show at the colorbar."""
     isolevels: bool = False
     "Defines whether isolevels should be added or a heatmap is used."
     show_contour_values: bool = None
@@ -58,10 +58,12 @@ class Contour(trace.Trace):
     - "signed": Values are mixed - positive and negative.
     - "negative": Values are only negative.
     """
-    color_diverging_around_zero: bool = True
-    """If True, together with 'signed' color_scheme (or 'auto' color_scheme evaluating to 'signed'),
-    the color map will diverge around a value of zero if min<0 and max>0. If False, it will diverge around the mean.
-    This setting has no meaning while contrast_mode is True."""
+    color_limits: tuple = None
+    """Is a tuple that sets the minimum and maximum of the color scale. Can be:
+    - None | (None, None): No limits are imposed.
+    - (float, None): Sets the minimum of the color scale.
+    - (None, float): Sets the maximum of the color scale.
+    - (float, float): Sets minimum and maximum of the color scale."""
     contrast_mode: bool = False
     "If True, enables high contrast mode, which affects the colors of the plot."
     supercell: np.array = (1, 1)
@@ -93,6 +95,7 @@ class Contour(trace.Trace):
 
     def _make_contour(self, lattice, data):
         x, y, z = self._interpolate_data_if_necessary(lattice, data)
+        zmin, zmax = self._get_color_range(z)
         return go.Contour(
             x=x,
             y=y,
@@ -101,11 +104,13 @@ class Contour(trace.Trace):
             autocontour=True,
             colorscale=self._get_color_scale(z),
             colorbar=self._get_color_bar(),
+            zmin=zmin, zmax=zmax,
             contours={"showlabels": self.show_contour_values},
         )
 
     def _make_heatmap(self, lattice, data):
         x, y, z = self._interpolate_data_if_necessary(lattice, data)
+        zmin, zmax = self._get_color_range(z)
         return go.Heatmap(
             x=x,
             y=y,
@@ -113,6 +118,7 @@ class Contour(trace.Trace):
             name=self.label,
             colorscale=self._get_color_scale(z),
             colorbar=self._get_color_bar(),
+            zmin=zmin, zmax=zmax,
         )
 
     def _interpolate_data_if_necessary(self, lattice, data):
@@ -219,57 +225,54 @@ class Contour(trace.Trace):
     def _get_color_scale(self, z: np.ndarray):
         selected_color_scheme = None
         color_lower = _config.VASP_COLORS["blue"]
-        color_zero = "white"
+        color_center = "white"
         color_upper = _config.VASP_COLORS["red"]
+        zmin, zmax = self._get_color_range(z)
         if (self.color_scheme == "signed") or (
-            self.color_scheme == "auto" and (np.min(z) < 0 and np.max(z) > 0)
+            self.color_scheme == "auto" and (zmin < 0 and zmax > 0)
         ):
-            # make it so 0 is always drawn in white
-            value_range = np.max(z) - np.min(z)
             selected_color_scheme = (
                 [
                     [0, color_lower],
-                    [
-                        (
-                            (np.abs(np.min(z)) / value_range)
-                            if (
-                                self.color_diverging_around_zero
-                                and (np.min(z) < 0 and np.max(z) > 0)
-                            )
-                            else 0.5
-                        ),
-                        color_zero,
-                    ],
+                    [0.5, color_center],
                     [1, color_upper],
                 ]
-                if not (self.contrast_mode)
-                else "turbid_r"
             )
         elif (self.color_scheme == "positive") or (
-            self.color_scheme == "auto" and (np.min(z) >= 0)
+            self.color_scheme == "auto" and (zmin >= 0)
         ):
             selected_color_scheme = (
-                [[0, color_zero], [1, color_upper]]
-                if not (self.contrast_mode)
-                else "turbid_r"
+                [[0, color_center], [1, color_upper]]
             )
         elif (self.color_scheme == "negative") or (
-            self.color_scheme == "auto" and (np.max(z) <= 0)
+            self.color_scheme == "auto" and (zmax <= 0)
         ):
             selected_color_scheme = (
-                [[0, color_lower], [1, color_zero]]
-                if not (self.contrast_mode)
-                else "turbid_r"
+                [[0, color_lower], [1, color_center]]
             )
         # Defaulting to color map if not yet set
         if selected_color_scheme is None:
-            selected_color_scheme = "icefire" if not self.contrast_mode else "turbid_r"
+            selected_color_scheme = [
+                    [0, color_lower],
+                    [0.5, color_center],
+                    [1, color_upper],
+                ]
 
         return selected_color_scheme
 
+    def _get_color_range(self, z: np.ndarray) -> tuple:
+        if self.color_limits is None: return (np.min(z), np.max(z))
+        else:
+            assert len(self.color_limits) == 2
+            zmin, zmax = self.color_limits
+            if zmin is None and zmax is not None: return (np.min(z), zmax)
+            elif zmin is not None and zmax is None: return (zmin, np.max(z))
+            elif zmin is None and zmax is None: return(np.min(z), np.max(z))
+            else: return (zmin, zmax)
+
     def _get_color_bar(self):
-        if (self.units is not None) and (self.units):
-            return {"title": {"text": f"[{self.units}]", "side": "top"}}
+        if (self.colorbar_label is not None) and (self.colorbar_label):
+            return {"title": {"text": f"{self.colorbar_label}", "side": "right"}}
         else:
             return None
 

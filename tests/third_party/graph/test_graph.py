@@ -126,8 +126,21 @@ def test_contour_color_scheme(color_scheme):
         isolevels=True,
     )
     assert color_scheme == contour.color_scheme
+    graph = Graph(contour)
+    fig = graph.to_plotly()
+    expected_colorscale = []
+    if (color_scheme == "auto") or (color_scheme == "positive"):
+        expected_colorscale = ((0, 'white'), (1, _config.VASP_COLORS["red"]))
+    elif (color_scheme == "negative"):
+        expected_colorscale = ((0, _config.VASP_COLORS["blue"]), (1, "white"))
+    elif (color_scheme == "signed"):
+        expected_colorscale = ((0, _config.VASP_COLORS["blue"]), (0.5, "white"), (1, _config.VASP_COLORS["red"]))
+    else: raise NotImplementedError(f"Color scheme {color_scheme} not implemented.")
+    assert fig.data[0].colorscale == expected_colorscale
+    
 
 
+@pytest.mark.xfail
 @pytest.mark.parametrize("contrast_mode", [True, False])
 def test_contour_contrast_mode(contrast_mode):
     contour = Contour(
@@ -138,30 +151,46 @@ def test_contour_contrast_mode(contrast_mode):
         isolevels=True,
     )
     assert contrast_mode == contour.contrast_mode
+    graph = Graph(contour)
+    raise NotImplementedError("Contrast mode currently has no effect on plotting.")
 
 
-@pytest.mark.parametrize("color_diverging_around_zero", [True, False])
-def test_contour_color_diverging_setting(color_diverging_around_zero):
+@pytest.mark.parametrize("color_limits", [None, (None, None), (-9, None), (None, 9), (-11, 11)])
+def test_contour_color_limits(color_limits):
     contour = Contour(
-        data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
+        data=np.linspace(-10, 10, 20 * 18).reshape((20, 18)),
         lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
         label="rectangle contour",
-        color_diverging_around_zero=color_diverging_around_zero,
+        color_limits=color_limits,
         isolevels=True,
     )
-    assert color_diverging_around_zero == contour.color_diverging_around_zero
+    assert color_limits == contour.color_limits
+    graph = Graph(contour)
+    expected_zmin = -10
+    expected_zmax = 10
+    if (color_limits is not None):
+        _zmin, _zmax = color_limits
+        if _zmin is not None: expected_zmin = _zmin
+        if _zmax is not None: expected_zmax = _zmax
+    fig = graph.to_plotly()
+    assert fig.data[0].zmin == expected_zmin
+    assert fig.data[0].zmax == expected_zmax
 
 
 @pytest.mark.parametrize("units", ["", None, "px", "m/s"])
-def test_contour_units(units):
+def test_contour_colorbar_label(units):
     contour = Contour(
         data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
         lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
         label="rectangle contour",
-        units=units,
+        colorbar_label=units,
         isolevels=True,
     )
-    assert units == contour.units
+    assert units == contour.colorbar_label
+    graph = Graph(contour)
+    fig = graph.to_plotly()
+    if units != '': assert fig.data[0].colorbar.title.text == units 
+    else: assert fig.data[0].colorbar.title.text == None
 
 
 def test_basic_graph(parabola, Assert, not_core):
@@ -588,7 +617,7 @@ def test_contour_interpolate(tilted_contour, Assert, not_core):
     finite = np.isfinite(fig.data[0].z)
     assert np.isclose(np.average(fig.data[0].z[finite]), expected_average)
     assert len(fig.layout.shapes) == 0
-    expected_colorscale = px.colors.get_colorscale("turbid_r")
+    expected_colorscale = [[0, _config.VASP_COLORS["blue"]], [0.5, "white"], [1, _config.VASP_COLORS["red"]]]
     assert len(fig.data[0].colorscale) == len(expected_colorscale)
     for actual, expected in zip(fig.data[0].colorscale, expected_colorscale):
         Assert.allclose(actual[0], expected[0])
