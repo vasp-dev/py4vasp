@@ -126,9 +126,15 @@ class Contour(trace.Trace):
         subsamples = self._limit_number_of_arrows(data.size)
         # remember that b and a axis are swapped
         vectors = reversed(lattice)
+        meshes_raw = [
+            np.linspace(np.zeros(2), vector, num_points, endpoint=False)
+            for vector, num_points in zip(vectors, data.shape)
+        ]
+        dx = np.linalg.norm(meshes_raw[0][1])
+        dy = np.linalg.norm(meshes_raw[1][1])
         meshes = [
-            np.linspace(np.zeros(2), vector, num_points, endpoint=False)[::subsample]
-            for vector, num_points, subsample in zip(vectors, data.shape, subsamples)
+            v[::subsample]
+            for v, subsample in zip(meshes_raw, subsamples)
         ]
         subsampled_data = data[:: subsamples[0], :: subsamples[1]]
         if self.scale_arrows is None:
@@ -141,10 +147,8 @@ class Contour(trace.Trace):
         x, y = np.array([sum(points) for points in itertools.product(*meshes)]).T
         u = scale * subsampled_data[:, :, 0].flatten()
         v = scale * subsampled_data[:, :, 1].flatten()
-        dx = np.linalg.norm(meshes[0][1])
-        dy = np.linalg.norm(meshes[1][1])
         fig = ff.create_quiver(
-            x - 0.5 * u + 0.5 * dx, y - 0.5 * v + 0.5 * dy, u, v, scale=1
+            x - 0.5 * u + 0.5 * dy, y - 0.5 * v + 0.5 * dx, u, v, scale=1
         )
         fig.data[0].line.color = _config.VASP_COLORS["dark"]
         return fig.data[0]
