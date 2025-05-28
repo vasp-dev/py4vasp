@@ -22,6 +22,11 @@ def reference_potential(raw_data, request, included_kinds):
     return make_reference_potential(raw_data, request.param, included_kinds)
 
 
+@pytest.fixture
+def noncollinear_potential(raw_data):
+    return make_reference_potential(raw_data, "Fe3O4 noncollinear", "all")
+
+
 @dataclasses.dataclass
 class Expectation:
     label: str
@@ -201,6 +206,18 @@ def test_empty_potential(raw_data, selection):
     potential = Potential.from_data(raw_potential)
     with pytest.raises(exception.NoData):
         potential.plot(selection)
+
+
+def test_to_quiver(noncollinear_potential, Assert):
+    reference = noncollinear_potential.ref
+    expected_data = reference.output["total_magnetization"][:2, :, :, 4]
+    expected_lattice_vectors = reference.structure.lattice_vectors()[:2, :2]
+    graph = noncollinear_potential.to_quiver(c=0.3)
+    assert len(graph) == 1
+    quiver = graph.series[0]
+    Assert.allclose(quiver.data, expected_data)
+    Assert.allclose(quiver.lattice.vectors, expected_lattice_vectors)
+    assert quiver.label == "total potential"
 
 
 def test_print(reference_potential, format_):

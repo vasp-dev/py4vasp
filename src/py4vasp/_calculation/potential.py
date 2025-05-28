@@ -7,7 +7,7 @@ import numpy as np
 from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import view
-from py4vasp._util import select
+from py4vasp._util import density, index, select, slicing
 
 VALID_KINDS = ("total", "ionic", "xc", "hartree")
 
@@ -128,6 +128,22 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
             label=f"{kind} potential" + (f"({component})" if component else ""),
             isosurfaces=[view.Isosurface(isolevel, color, opacity)],
         )
+
+    def to_quiver(
+        self, selection="total", *, a=None, b=None, c=None, normal=None, supercell=None
+    ):
+        iterator = _parse_selection(selection)
+        kind, component = next(iterator)
+        assert component is None
+        assert next(iterator, None) is None
+        potential = np.moveaxis(self._get_potential(kind)[1:], 0, -1)
+        default_map = {}
+        selector = index.Selector(default_map, potential)
+        visualizer = density.Visualizer(self._structure, selector)
+        default_selections = [()]
+        graph = visualizer.to_quiver(default_selections, a, b, c, supercell, normal)
+        graph.series[0].label = "total potential"
+        return graph
 
     def _get_potential(self, kind):
         return getattr(self._raw_data, f"{kind}_potential")
