@@ -591,6 +591,22 @@ def test_contour_show_contour_values(rectangle_contour, show_contour_values, not
     assert fig.data[0].contours.showlabels == show_contour_values
 
 
+def test_legend_positioning(parabola, sine, Assert, not_core):
+    graph = Graph([sine, parabola])
+    fig = graph.to_plotly()
+    assert len(fig.data) == 2
+    assert fig.layout.legend.x is None # actually at 1.02, but plotly does not expose this until set explicitly
+
+
+def test_contour_legend_with_colorbar(rectangle_contour, parabola, Assert, not_core):
+    graph = Graph([rectangle_contour, parabola])
+    fig = graph.to_plotly()
+    assert len(fig.data) == 2
+    assert hasattr(fig.data[0], "colorbar") and fig.data[0].colorbar
+    assert hasattr(fig.data[0].colorbar, "x")
+    assert fig.data[0].colorbar.x == 1.02
+    assert fig.layout.legend.x == pytest.approx(fig.data[0].colorbar.x + 0.18, abs=1e-6)
+
 def check_unit_cell(unit_cell, x, y, zero):
     assert unit_cell.type == "path"
     assert unit_cell.path == f"M 0 0 L {x} {zero} L {x} {y} L {zero} {y} Z"
