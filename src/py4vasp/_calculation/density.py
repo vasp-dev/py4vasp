@@ -6,6 +6,7 @@ from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import graph, view
 from py4vasp._util import documentation, import_, index, select, slicing
+from py4vasp._util.density import Visualizer
 
 pretty = import_.optional("IPython.lib.pretty")
 
@@ -221,16 +222,23 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         >>> calculation.density.plot("m(3)")
         """
         _raise_error_if_no_data(self._raw_data.charge)
-        selection = selection or _INTERNAL
-        viewer = self._structure.plot(supercell)
+        # build selector
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_data.charge)
+        
+        # define selections
+        selection = selection or _INTERNAL
         tree = select.Tree.from_selection(selection)
-        selections = self._filter_noncollinear_magnetization_from_selections(tree)
-        viewer.grid_scalars = [
-            self._grid_quantity(selector, selection, map_, user_options)
-            for selection in selections
-        ]
+        selections = list(self._filter_noncollinear_magnetization_from_selections(tree))
+
+        # set up visualizer
+        visualizer = Visualizer(self._structure, selector, (lambda sel: self._label(selector.label(sel))))
+        viewer = visualizer.to_view(selections, supercell=supercell)
+
+        # adjust viewer
+        for scalar, sel in zip(viewer.grid_scalars, selections):
+            isosurfaces = self._grid_quantity_properties(selector, sel, map_, user_options)
+            scalar.isosurfaces = isosurfaces
         return viewer
 
     def _filter_noncollinear_magnetization_from_selections(self, tree):
@@ -263,14 +271,11 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         for key in _MAGNETIZATION:
             map_[key] = 1
 
-    def _grid_quantity(self, selector, selection, map_, user_options):
+    def _grid_quantity_properties(self, selector, selection, map_, user_options):
         component_label = selector.label(selection)
         component = map_.get(component_label, -1)
-        return view.GridQuantity(
-            quantity=(selector[selection].T)[np.newaxis],
-            label=self._label(component_label),
-            isosurfaces=self._isosurfaces(component, **user_options),
-        )
+        isosurfaces=self._isosurfaces(component, **user_options)
+        return isosurfaces
 
     def _label(self, component_label):
         if component_label == _INTERNAL:
@@ -339,25 +344,17 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
 
         >>> calculation.density.to_contour("kinetic_energy", a=0.3, normal="x")
         """
-        cut, fraction = slicing.get_cut(a, b, c)
-        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
+        # build selector
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_data.charge)
-        tree = select.Tree.from_selection(selection)
-        selections = self._filter_noncollinear_magnetization_from_selections(tree)
-        contours = [
-            self._contour(selector, selection, plane, fraction, supercell)
-            for selection in selections
-        ]
-        return graph.Graph(contours)
 
-    def _contour(self, selector, selection, plane, fraction, supercell):
-        density = selector[selection].T
-        data = slicing.grid_scalar(density, plane, fraction)
-        label = self._label(selector.label(selection)) or "charge"
-        contour = graph.Contour(data, plane, label, isolevels=True)
-        if supercell is not None:
-            contour.supercell = np.ones(2, dtype=np.int_) * supercell
+        # build selections
+        tree = select.Tree.from_selection(selection)
+        selections = list(self._filter_noncollinear_magnetization_from_selections(tree))
+        
+        # set up visualizer
+        visualizer = Visualizer(self._structure, selector, (lambda sel: (self._label(selector.label(sel)) or "charge")))
+        contour = visualizer.to_contour(selections, a, b, c, normal, supercell)
         return contour
 
     @base.data_access

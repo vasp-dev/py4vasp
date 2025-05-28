@@ -208,3 +208,8 @@ def test_quiver_normal(visualizer_quiver, normal, Assert):
         )
         Assert.allclose(series.lattice.cell, expected_plane.cell)
         Assert.allclose(series.lattice.vectors, expected_plane.vectors)
+
+def test_quiver_collinear(visualizer, Assert):
+    graph = visualizer.to_quiver(
+        visualizer.ref.selections, c=1.3
+    )
