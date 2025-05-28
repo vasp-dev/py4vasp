@@ -49,13 +49,16 @@ class Visualizer:
         return Graph(contours)
 
     def to_quiver(
-        self, selections, a=None, b=None, c=None, normal=None, supercell=None, 
+        self, selections_or_data, *, a=None, b=None, c=None, normal=None, supercell=None, 
     ) -> Graph:
         cut, fraction = slicing.get_cut(a, b, c)
         plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
 
         def _make_contour(selection):
-            sel = self._mapping[selection].T
+            if (isinstance(selection, tuple)):
+                sel = self._mapping[selection].T
+            else:
+                sel = selection
             if sel.ndim == 3 or len(sel) == 1:
                 data = slicing.grid_scalar(sel, plane, fraction)
                 data = np.array((np.zeros_like(data), data))
@@ -71,5 +74,8 @@ class Visualizer:
                 contour.supercell = np.ones(2, dtype=np.int_) * supercell
             return contour
 
-        contours = [_make_contour(selection) for selection in selections]
+        if (isinstance(selections_or_data, list)):
+            contours = [_make_contour(selection) for selection in selections_or_data]
+        else:
+            contours = [_make_contour(selections_or_data)]
         return Graph(contours)

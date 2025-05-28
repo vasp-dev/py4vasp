@@ -349,6 +349,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         selector = index.Selector({0: map_}, self._raw_data.charge)
 
         # build selections
+        selection = selection or _INTERNAL
         tree = select.Tree.from_selection(selection)
         selections = list(self._filter_noncollinear_magnetization_from_selections(tree))
         
@@ -396,18 +397,13 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
 
         >>> calculation.density.to_quiver("kinetic_energy", a=0.3, normal="x")
         """
-        cut, fraction = slicing.get_cut(a, b, c)
-        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
-        if self.is_collinear():
-            data = slicing.grid_scalar(self._raw_data.charge[1].T, plane, fraction)
-            data = np.array((np.zeros_like(data), data))
-        else:
-            data = slicing.grid_vector(self.to_numpy()[1:], plane, fraction)
-        label = self._selection or "magnetization"
-        quiver_plot = graph.Contour(data, plane, label)
-        if supercell is not None:
-            quiver_plot.supercell = np.ones(2, dtype=np.int_) * supercell
-        return graph.Graph([quiver_plot])
+        # set up data
+        if self.is_collinear(): data = self._raw_data.charge[1].T
+        else: data = self.to_numpy()[1:]
+
+        # set up visualizer
+        visualizer = Visualizer(self._structure, {}, (lambda _: self._selection or "magnetization"))
+        return visualizer.to_quiver(data, a=a, b=b, c=c, normal=normal, supercell=supercell)
 
     @base.data_access
     def is_nonpolarized(self):
