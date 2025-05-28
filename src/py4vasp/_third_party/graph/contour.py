@@ -104,7 +104,8 @@ class Contour(trace.Trace):
             autocontour=True,
             colorscale=self._get_color_scale(z),
             colorbar=self._get_color_bar(),
-            zmin=zmin, zmax=zmax,
+            zmin=zmin,
+            zmax=zmax,
             contours={"showlabels": self.show_contour_values},
         )
 
@@ -118,7 +119,8 @@ class Contour(trace.Trace):
             name=self.label,
             colorscale=self._get_color_scale(z),
             colorbar=self._get_color_bar(),
-            zmin=zmin, zmax=zmax,
+            zmin=zmin,
+            zmax=zmax,
         )
 
     def _interpolate_data_if_necessary(self, lattice, data):
@@ -231,44 +233,43 @@ class Contour(trace.Trace):
         if (self.color_scheme == "signed") or (
             self.color_scheme == "auto" and (zmin < 0 and zmax > 0)
         ):
-            selected_color_scheme = (
-                [
-                    [0, color_lower],
-                    [0.5, color_center],
-                    [1, color_upper],
-                ]
-            )
+            selected_color_scheme = [
+                [0, color_lower],
+                [0.5, color_center],
+                [1, color_upper],
+            ]
         elif (self.color_scheme == "positive") or (
             self.color_scheme == "auto" and (zmin >= 0)
         ):
-            selected_color_scheme = (
-                [[0, color_center], [1, color_upper]]
-            )
+            selected_color_scheme = [[0, color_center], [1, color_upper]]
         elif (self.color_scheme == "negative") or (
             self.color_scheme == "auto" and (zmax <= 0)
         ):
-            selected_color_scheme = (
-                [[0, color_lower], [1, color_center]]
-            )
+            selected_color_scheme = [[0, color_lower], [1, color_center]]
         # Defaulting to color map if not yet set
         if selected_color_scheme is None:
             selected_color_scheme = [
-                    [0, color_lower],
-                    [0.5, color_center],
-                    [1, color_upper],
-                ]
+                [0, color_lower],
+                [0.5, color_center],
+                [1, color_upper],
+            ]
 
         return selected_color_scheme
 
     def _get_color_range(self, z: np.ndarray) -> tuple:
-        if self.color_limits is None: return (np.min(z), np.max(z))
+        if self.color_limits is None:
+            return (np.min(z), np.max(z))
         else:
             assert len(self.color_limits) == 2
             zmin, zmax = self.color_limits
-            if zmin is None and zmax is not None: return (np.min(z), zmax)
-            elif zmin is not None and zmax is None: return (zmin, np.max(z))
-            elif zmin is None and zmax is None: return(np.min(z), np.max(z))
-            else: return (zmin, zmax)
+            if zmin is None and zmax is not None:
+                return (np.min(z), zmax)
+            elif zmin is not None and zmax is None:
+                return (zmin, np.max(z))
+            elif zmin is None and zmax is None:
+                return (np.min(z), np.max(z))
+            else:
+                return (zmin, zmax)
 
     def _get_color_bar(self):
         if (self.colorbar_label is not None) and (self.colorbar_label):

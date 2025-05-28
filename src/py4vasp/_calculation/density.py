@@ -225,19 +225,23 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         # build selector
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_data.charge)
-        
+
         # define selections
         selection = selection or _INTERNAL
         tree = select.Tree.from_selection(selection)
         selections = list(self._filter_noncollinear_magnetization_from_selections(tree))
 
         # set up visualizer
-        visualizer = Visualizer(self._structure, selector, (lambda sel: self._label(selector.label(sel))))
+        visualizer = Visualizer(
+            self._structure, selector, (lambda sel: self._label(selector.label(sel)))
+        )
         viewer = visualizer.to_view(selections, supercell=supercell)
 
         # adjust viewer
         for scalar, sel in zip(viewer.grid_scalars, selections):
-            isosurfaces = self._grid_quantity_properties(selector, sel, map_, user_options)
+            isosurfaces = self._grid_quantity_properties(
+                selector, sel, map_, user_options
+            )
             scalar.isosurfaces = isosurfaces
         return viewer
 
@@ -274,7 +278,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
     def _grid_quantity_properties(self, selector, selection, map_, user_options):
         component_label = selector.label(selection)
         component = map_.get(component_label, -1)
-        isosurfaces=self._isosurfaces(component, **user_options)
+        isosurfaces = self._isosurfaces(component, **user_options)
         return isosurfaces
 
     def _label(self, component_label):
@@ -352,9 +356,13 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         selection = selection or _INTERNAL
         tree = select.Tree.from_selection(selection)
         selections = list(self._filter_noncollinear_magnetization_from_selections(tree))
-        
+
         # set up visualizer
-        visualizer = Visualizer(self._structure, selector, (lambda sel: (self._label(selector.label(sel)) or "charge")))
+        visualizer = Visualizer(
+            self._structure,
+            selector,
+            (lambda sel: (self._label(selector.label(sel)) or "charge")),
+        )
         contour = visualizer.to_contour(selections, a, b, c, normal, supercell)
         return contour
 
@@ -398,12 +406,18 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         >>> calculation.density.to_quiver("kinetic_energy", a=0.3, normal="x")
         """
         # set up data
-        if self.is_collinear(): data = self._raw_data.charge[1].T
-        else: data = self.to_numpy()[1:]
+        if self.is_collinear():
+            data = self._raw_data.charge[1].T
+        else:
+            data = self.to_numpy()[1:]
 
         # set up visualizer
-        visualizer = Visualizer(self._structure, {}, (lambda _: self._selection or "magnetization"))
-        return visualizer.to_quiver(data, a=a, b=b, c=c, normal=normal, supercell=supercell)
+        visualizer = Visualizer(
+            self._structure, {}, (lambda _: self._selection or "magnetization")
+        )
+        return visualizer.to_quiver(
+            data, a=a, b=b, c=c, normal=normal, supercell=supercell
+        )
 
     @base.data_access
     def is_nonpolarized(self):
