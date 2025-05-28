@@ -220,6 +220,18 @@ def test_to_quiver(noncollinear_potential, Assert):
     assert quiver.label == "total potential"
 
 
+def test_to_quiver_multiple(noncollinear_potential, Assert):
+    reference = noncollinear_potential.ref
+    expected_total = reference.output["total_magnetization"][:2, :, :, 10]
+    expected_xc = reference.output["xc_magnetization"][:2, :, :, 10]
+    graph = noncollinear_potential.to_quiver("total, xc", c=0.7)
+    assert len(graph) == 2
+    total_quiver, xc_quiver = graph.series
+    Assert.allclose(total_quiver.data, expected_total)
+    Assert.allclose(xc_quiver.data, expected_xc)
+    assert xc_quiver.label == "xc potential"
+
+
 def test_print(reference_potential, format_):
     actual, _ = format_(reference_potential)
     assert actual == {"text/plain": reference_potential.ref.string}

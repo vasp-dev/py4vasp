@@ -132,17 +132,15 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
     def to_quiver(
         self, selection="total", *, a=None, b=None, c=None, normal=None, supercell=None
     ):
-        iterator = _parse_selection(selection)
-        kind, component = next(iterator)
-        assert component is None
-        assert next(iterator, None) is None
-        potential = np.moveaxis(self._get_potential(kind)[1:], 0, -1)
-        default_map = {}
-        selector = index.Selector(default_map, potential)
-        visualizer = density.Visualizer(self._structure, selector)
-        default_selections = [()]
-        graph = visualizer.to_quiver(default_selections, a, b, c, supercell, normal)
-        graph.series[0].label = "total potential"
+        for _, component in _parse_selection(selection):
+            assert component is None
+        potentials = {
+            kind: np.moveaxis(self._get_potential(kind)[1:], 0, -1)
+            for kind, _ in _parse_selection(selection)
+        }
+        make_label = lambda selection: f"{selection} potential"
+        visualizer = density.Visualizer(self._structure, potentials, make_label)
+        graph = visualizer.to_quiver(potentials.keys(), a, b, c, supercell, normal)
         return graph
 
     def _get_potential(self, kind):
