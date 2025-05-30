@@ -1,9 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from py4vasp._calculation import base, slice_
 from py4vasp._calculation.electron_phonon_chemical_potential import (
     ElectronPhononChemicalPotential,
 )
-from py4vasp._calculation import base, slice_
 from py4vasp._util import select
 
 
@@ -22,6 +22,7 @@ class ElectronPhononSelfEnergyInstance:
     >>> data = instance.to_dict()
     >>> fan_value = instance.get_fan((iband, ikpt, isp))
     """
+
     def __init__(self, parent, index):
         self.parent = parent
         self.index = index
@@ -148,7 +149,7 @@ class ElectronPhononSelfEnergy(base.Refinery):
         mu_tag, mu_val = chemical_potential.mu_tag()
         selections_dict[mu_tag] = mu_val
         return selections_dict
-    
+
     def _generate_selections(self, selection):
         tree = select.Tree.from_selection(selection)
         for selection in tree.selections():
@@ -193,14 +194,16 @@ class ElectronPhononSelfEnergy(base.Refinery):
                         match_this = instance_value == value
                     elif key == "selfen_delta":
                         instance_value = self._get_scalar("delta", idx)
-                        match_this = abs(instance_value-value)<1e-8
+                        match_this = abs(instance_value - value) < 1e-8
                     elif key == mu_tag:
-                        mu_idx = self[idx].id_index[2]-1
+                        mu_idx = self[idx].id_index[2] - 1
                         instance_value = mu_val[mu_idx]
-                        match_this = abs(instance_value-float(value))<1e-8
+                        match_this = abs(instance_value - float(value)) < 1e-8
                     else:
                         possible_values = self.selections()
-                        raise ValueError(f"Invalid selection {key}. Possible values are {possible_values.keys()}")
+                        raise ValueError(
+                            f"Invalid selection {key}. Possible values are {possible_values.keys()}"
+                        )
                     match = match and match_this
                 match_all = match_all or match
             if match_all:

@@ -40,6 +40,7 @@ def check_instance_accesses_data(instance, data, parameters, file=None):
             kwargs = parameters.get(name, {})
             check_method_accesses_data(data, method, file, **kwargs)
 
+
 def should_test_method(name, parameters):
     if name in parameters:
         return True

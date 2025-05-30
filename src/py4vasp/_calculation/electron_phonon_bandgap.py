@@ -1,10 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from py4vasp._calculation import base, slice_
 from py4vasp._calculation.electron_phonon_chemical_potential import (
-    ElectronPhononChemicalPotential
+    ElectronPhononChemicalPotential,
 )
 from py4vasp._calculation.electron_phonon_self_energy import ElectronPhononSelfEnergy
-from py4vasp._calculation import base, slice_
 from py4vasp._third_party import graph
 from py4vasp._util import import_, select
 
@@ -51,6 +51,7 @@ class ElectronPhononBandgapInstance:
     def id_name(self):
         return self.parent.id_name()
 
+
 class ElectronPhononBandgap(base.Refinery):
     @base.data_access
     def __str__(self):
@@ -61,20 +62,18 @@ class ElectronPhononBandgap(base.Refinery):
         return {
             "naccumulators": len(self._raw_data.valid_indices),
         }
-    
+
     @base.data_access
     def selections(self):
         """Return a dictionary describing what options are available
         to read the electron transport coefficients.
         This is done using the self-energy class."""
-        self_energy = ElectronPhononSelfEnergy.from_data(
-            self._raw_data.self_energy
-        )
+        self_energy = ElectronPhononSelfEnergy.from_data(self._raw_data.self_energy)
         selections = self_energy.selections()
         # This class only make sense when the scattering approximation is SERTA
-        selections['scattering_approximation'] = 'SERTA'
+        selections["scattering_approximation"] = "SERTA"
         return selections
-    
+
     def _generate_selections(self, selection):
         tree = select.Tree.from_selection(selection)
         for selection in tree.selections():
@@ -86,7 +85,7 @@ class ElectronPhononBandgap(base.Refinery):
             self._raw_data.chemical_potential
         )
         return chemical_potential.mu_tag()
-    
+
     @base.data_access
     def select(self, selection):
         """Return a list of ElectronPhononBandgapInstance objects matching the selection.
@@ -119,14 +118,16 @@ class ElectronPhononBandgap(base.Refinery):
                         match_this = instance_value == value
                     elif key == "selfen_delta":
                         instance_value = self._get_scalar("delta", idx)
-                        match_this = abs(instance_value-value)<1e-8
+                        match_this = abs(instance_value - value) < 1e-8
                     elif key == mu_tag:
-                        mu_idx = self[idx].id_index[2]-1
+                        mu_idx = self[idx].id_index[2] - 1
                         instance_value = mu_val[mu_idx]
-                        match_this = abs(instance_value-float(value))<1e-8
+                        match_this = abs(instance_value - float(value)) < 1e-8
                     else:
                         possible_values = self.selections()
-                        raise ValueError(f"Invalid selection {key}. Possible values are {possible_values.keys()}")
+                        raise ValueError(
+                            f"Invalid selection {key}. Possible values are {possible_values.keys()}"
+                        )
                     match = match and match_this
                 match_all = match_all or match
             if match_all:
