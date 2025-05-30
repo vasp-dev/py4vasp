@@ -155,6 +155,13 @@ class ElectronPhononSelfEnergy(base.Refinery):
             yield selection
 
     @base.data_access
+    def chemical_potential_mu_tag(self):
+        chemical_potential = ElectronPhononChemicalPotential.from_data(
+            self._raw_data.chemical_potential
+        )
+        return chemical_potential.mu_tag()
+
+    @base.data_access
     def select(self, selection):
         """Return a list of ElectronPhononSelfEnergyInstance objects matching the selection.
 

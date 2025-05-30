@@ -31,5 +31,7 @@ def test_print(band_gap, format_):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.electron_phonon_band_gap("default")
-    parameters = {}
+    parameters = {
+        "select": {"selection": "selfen_approx(SERTA) selfen_carrier_den(0.01,0.001)"},
+    }
     check_factory_methods(ElectronPhononBandgap, data, parameters)

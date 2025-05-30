@@ -640,12 +640,14 @@ schema.add(
     id_size=f"{group}/transport_meta/id_size",
     id_index=f"{group}/self_energy_{{}}/id_idx",
     chemical_potential=Link("electron_phonon_chemical_potential", DEFAULT_SOURCE),
+    self_energy=Link("electron_phonon_self_energy",DEFAULT_SOURCE),
     valid_indices=f"{group}/self_energy_meta/ncalculators",
     fundamental=f"{group}/self_energy_{{}}/fundamental_gap_renorm",
     direct=f"{group}/self_energy_{{}}/direct_gap_renorm",
     temperatures=f"{group}/self_energy_{{}}/temps",
     nbands_sum=f"{group}/self_energy_{{}}/nbands_sum",
     delta=f"{group}/self_energy_{{}}/delta",
+    scattering_approximation=f"{group}/transport_{{}}/scattering_approximation",
 )
 schema.add(
     raw.ElectronPhononTransport,

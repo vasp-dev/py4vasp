@@ -601,12 +601,14 @@ class ElectronPhononBandgap(mapping.Mapping):
     id_name: VaspData
     id_size: VaspData
     chemical_potential: ElectronPhononChemicalPotential
+    self_energy: ElectronPhononSelfEnergy
     fundamental: VaspData
     direct: VaspData
     temperatures: VaspData
     id_index: VaspData
     nbands_sum: int
     delta: float
+    scattering_approximation: str
 
 
 @dataclasses.dataclass

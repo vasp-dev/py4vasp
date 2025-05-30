@@ -1442,6 +1442,7 @@ def _electron_phonon_band_gap(selection):
     number_samples = 3
     nbands_sum = 12
     ntemps = 6
+    scattering_approximation = "SERTA"
     return raw.ElectronPhononBandgap(
         valid_indices=range(number_samples),
         id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
@@ -1449,6 +1450,10 @@ def _electron_phonon_band_gap(selection):
         nbands_sum=np.array([nbands_sum for _ in range(number_samples)]),
         delta=np.array([0 for _ in range(number_samples)]),
         chemical_potential=_electron_phonon_chemical_potential(selection),
+        self_energy=_electron_phonon_self_energy(selection),
+        scattering_approximation=[
+            scattering_approximation for _ in range(number_samples)
+        ],
         fundamental=_make_arbitrary_data([number_samples, ntemps]),
         direct=_make_arbitrary_data([number_samples, ntemps]),
         temperatures=_make_arbitrary_data([number_samples, ntemps]),

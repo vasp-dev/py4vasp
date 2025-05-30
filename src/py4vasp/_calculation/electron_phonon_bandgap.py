@@ -43,6 +43,13 @@ class ElectronPhononBandgapInstance:
         }
         return _dict
 
+    @property
+    def id_index(self):
+        return self._get_data("id_index")
+
+    @property
+    def id_name(self):
+        return self.parent.id_name()
 
 class ElectronPhononBandgap(base.Refinery):
     @base.data_access
@@ -63,13 +70,23 @@ class ElectronPhononBandgap(base.Refinery):
         self_energy = ElectronPhononSelfEnergy.from_data(
             self._raw_data.self_energy
         )
-        return self_energy.selections()
+        selections = self_energy.selections()
+        # This class only make sense when the scattering approximation is SERTA
+        selections['scattering_approximation'] = 'SERTA'
+        return selections
     
     def _generate_selections(self, selection):
         tree = select.Tree.from_selection(selection)
         for selection in tree.selections():
             yield selection
 
+    @base.data_access
+    def chemical_potential_mu_tag(self):
+        chemical_potential = ElectronPhononChemicalPotential.from_data(
+            self._raw_data.chemical_potential
+        )
+        return chemical_potential.mu_tag()
+    
     @base.data_access
     def select(self, selection):
         """Return a list of ElectronPhononBandgapInstance objects matching the selection.
