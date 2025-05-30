@@ -242,6 +242,10 @@ class RawDataFactory:
         return _electron_phonon_self_energy(selection)
 
     @staticmethod
+    def electron_phonon_band_gap(selection):
+        return _electron_phonon_band_gap(selection)
+
+    @staticmethod
     def electron_phonon_transport(selection):
         return _electron_phonon_transport(selection)
 
@@ -1433,8 +1437,11 @@ def _electron_phonon_self_energy(selection):
         band_start=[band_kpoint_spin_index for _ in range(number_samples)],
     )
 
+
 def _electron_phonon_band_gap(selection):
     number_samples = 3
+    nbands_sum = 12
+    ntemps = 6
     return raw.ElectronPhononBandgap(
         valid_indices=range(number_samples),
         id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
@@ -1442,8 +1449,12 @@ def _electron_phonon_band_gap(selection):
         nbands_sum=np.array([nbands_sum for _ in range(number_samples)]),
         delta=np.array([0 for _ in range(number_samples)]),
         chemical_potential=_electron_phonon_chemical_potential(selection),
+        fundamental=_make_arbitrary_data([number_samples, ntemps]),
+        direct=_make_arbitrary_data([number_samples, ntemps]),
+        temperatures=_make_arbitrary_data([number_samples, ntemps]),
         id_index=[[1, sample + 1, 1] for sample in range(number_samples)],
     )
+
 
 def _electron_phonon_transport(selection):
     number_samples = 3

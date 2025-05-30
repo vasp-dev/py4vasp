@@ -46,6 +46,12 @@ class ElectronPhononBandgap(base.Refinery):
         return "electron phonon bandgap"
 
     @base.data_access
+    def to_dict(self, selection=None):
+        return {
+            "naccumulators": len(self._raw_data.valid_indices),
+        }
+
+    @base.data_access
     def _get_data(self, name, index):
         return getattr(self._raw_data, name)[index][:]
 
