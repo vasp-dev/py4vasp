@@ -7,7 +7,7 @@ import numpy as np
 from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import view
-from py4vasp._util import density, index, select, slicing
+from py4vasp._util import density, index, select, slicing, suggest
 
 VALID_KINDS = ("total", "ionic", "xc", "hartree")
 
@@ -113,7 +113,7 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
     def _create_potential_isosurface(
         self, kind, component, isolevel=0, color=None, opacity=0.6
     ):
-        self._raise_error_if_kind_incorrect(kind)
+        _raise_error_if_kind_incorrect(kind)
         potential_data = self._get_potential(kind)
         _raise_error_if_no_data(potential_data, kind)
         if component == "up":
@@ -136,25 +136,25 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         for _, component in _parse_selection(selection):
             assert component is None
         potentials = {
-            kind: np.moveaxis(self._get_potential(kind)[1:], 0, -1)
+            kind: self._get_and_verify_magnetic_potential(kind)
             for kind, _ in _parse_selection(selection)
         }
         make_label = lambda selection: f"{selection} potential"
         visualizer = density.Visualizer(self._structure, make_label)
         selections = potentials.keys()
-        graph = visualizer.to_quiver_from_mapping(potentials, selections, a, b, c, normal, supercell)
+        graph = visualizer.to_quiver_from_mapping(
+            potentials, selections, a, b, c, normal, supercell
+        )
         return graph
+
+    def _get_and_verify_magnetic_potential(self, kind):
+        _raise_error_if_kind_incorrect(kind, ("total", "xc"))
+        potential = self._get_potential(kind)
+        _raise_error_if_nonpolarized_potential(potential)
+        return np.moveaxis(potential[1:], 0, -1)
 
     def _get_potential(self, kind):
         return getattr(self._raw_data, f"{kind}_potential")
-
-    def _raise_error_if_kind_incorrect(self, kind):
-        if kind in VALID_KINDS:
-            return
-        message = f"""The selection {kind} is not a valid name for a potential. Only
-        the following selections are allowed: {", ".join(VALID_KINDS)}. Please check
-        for spelling errors"""
-        raise exception.IncorrectUsage(message)
 
 
 def _parse_selection(selection):
@@ -169,12 +169,26 @@ def _parse_selection(selection):
         yield kind, component
 
 
+def _is_nonpolarized(potential):
+    return potential.shape[0] == 1
+
+
 def _is_collinear(potential):
     return potential.shape[0] == 2
 
 
 def _is_noncollinear(potential):
     return potential.shape[0] == 4
+
+
+def _raise_error_if_kind_incorrect(kind, valid_kinds=VALID_KINDS):
+    if kind in valid_kinds:
+        return
+    message = f"""\
+The selection "{kind}" is not a selection for the potential. Only the following \
+selections are allowed: "{'", "'.join(VALID_KINDS)}". \
+{suggest.did_you_mean(kind, valid_kinds)}Please check for spelling errors."""
+    raise exception.IncorrectUsage(message)
 
 
 def _raise_error_if_no_data(data, selection="total"):
@@ -184,3 +198,9 @@ def _raise_error_if_no_data(data, selection="total"):
         if selection != "total":
             message += f" Did you set POTH5 = {selection} in the INCAR file?"
         raise exception.NoData(message)
+
+
+def _raise_error_if_nonpolarized_potential(potential):
+    if _is_nonpolarized(potential):
+        message = "Cannot visualize nonpolarized potential as quiver plot."
+        raise exception.DataMismatch(message)

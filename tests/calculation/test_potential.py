@@ -24,6 +24,11 @@ def reference_potential(raw_data, request, included_kinds):
 
 
 @pytest.fixture
+def nonpolarized_potential(raw_data):
+    return make_reference_potential(raw_data, "Sr2TiO4", "all")
+
+
+@pytest.fixture
 def collinear_potential(raw_data):
     return make_reference_potential(raw_data, "Fe3O4 collinear", "all")
 
@@ -267,6 +272,16 @@ def test_to_quiver_normal(collinear_potential, normal, Assert):
     graph = collinear_potential.to_quiver(a=0.5, normal=normal)
     assert len(graph) == 1
     Assert.allclose(graph.series[0].lattice, plane)
+
+
+def test_to_quiver_fails_for_nonpolarized(nonpolarized_potential):
+    with pytest.raises(exception.DataMismatch):
+        nonpolarized_potential.to_quiver(c=0)
+
+
+def test_to_quiver_fails_for_ionic(collinear_potential):
+    with pytest.raises(exception.IncorrectUsage):
+        collinear_potential.to_quiver("ionic", c=0)
 
 
 def test_print(reference_potential, format_):
