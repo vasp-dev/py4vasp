@@ -38,17 +38,7 @@ def check_instance_accesses_data(instance, data, parameters, file=None):
     for name, method in inspect.getmembers(instance, inspect.ismethod):
         if should_test_method(name, parameters):
             kwargs = parameters.get(name, {})
-            try:
-                check_method_accesses_data(data, method, file, **kwargs)
-            except (AttributeError, AssertionError):
-                failed.append(name)
-    if failed:
-        message = (
-            f"The method(s) {', '.join(failed)} do not load the data from file."
-            " The most likely issue is a missing @base.data_access decorator."
-        )
-        raise AssertionError(message)
-
+            check_method_accesses_data(data, method, file, **kwargs)
 
 def should_test_method(name, parameters):
     if name in parameters:
