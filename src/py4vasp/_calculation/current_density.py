@@ -99,8 +99,8 @@ current density:
         grid_scalar = np.linalg.norm(grid_vector, axis=-1)
 
         # set up Visualizer
-        visualizer = Visualizer(self._structure, {}, (lambda _: label))
-        return visualizer.to_contour(grid_scalar, a, b, c, normal, supercell)
+        visualizer = Visualizer(self._structure, (lambda _: label))
+        return visualizer.to_contour_from_data(grid_scalar, a, b, c, normal, supercell, isolevels=False)
 
     @base.data_access
     @documentation.format(plane=slicing.PLANE, parameters=_COMMON_PARAMETERS)
@@ -143,5 +143,5 @@ current density:
         sel_data = np.moveaxis(data, -1, 0)
 
         # set up Visualizer
-        visualizer = Visualizer(self._structure, {}, (lambda _: label))
-        return visualizer.to_quiver(sel_data, a, b, c, normal, supercell)
+        visualizer = Visualizer(self._structure, (lambda _: label))
+        return visualizer.to_quiver_from_data(sel_data, a, b, c, normal, supercell)

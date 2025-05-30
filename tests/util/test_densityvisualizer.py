@@ -32,12 +32,23 @@ def _make_visualizer(raw_data, request, data_ndim: int):
         ref_data = [data3d.T[0], data3d.T[1]]
         selector = index.Selector({-1: {"spin up": 0, "spin down": 1}}, data3d)
         selections = [("spin up",), ("spin down",)]
+    elif request.param == "selected":
+        if data_ndim == 3:
+            data3d = np.ones(shape=(3, 4, 5, 10))
+        elif data_ndim == 4:
+            data3d = np.ones(shape=(3, 4, 5, 3, 10))
+        else:
+            raise NotImplementedError(f"ndim {data_ndim} not implemented.")
+        ref_data = [data3d.T[0]]
+        selector = index.Selector({-1: {"": 0,}}, data3d)
+        selections = [("",)]
     else:
         raise NotImplementedError(f"Requested param {request.param} not implemented.")
 
-    visualizer = density.Visualizer(structure, selector)
+    visualizer = density.Visualizer(structure)
     visualizer.ref = SimpleNamespace()
     visualizer.ref.structure = structure
+    visualizer.ref.selector = selector
     visualizer.ref.data3d = ref_data
     visualizer.ref.selections = selections
     visualizer.ref.density = Density.from_data(raw_density)
@@ -49,13 +60,22 @@ def visualizer(raw_data, request):
     return _make_visualizer(raw_data, request, 3)
 
 
+@pytest.fixture(params=["selected"])
+def visualizer_selected(raw_data, request):
+    return _make_visualizer(raw_data, request, 3)
+
 @pytest.fixture(params=["simple", "with_selections"])
 def visualizer_quiver(raw_data, request):
     return _make_visualizer(raw_data, request, 4)
 
 
+@pytest.fixture(params=["selected"])
+def visualizer_quiver_selected(raw_data, request):
+    return _make_visualizer(raw_data, request, 4)
+
+
 def test_view(visualizer, Assert):
-    view = visualizer.to_view(visualizer.ref.selections)
+    view = visualizer.to_view(visualizer.ref.selector, visualizer.ref.selections)
 
     Assert.same_structure_view(visualizer.ref.structure.to_view(), view)
     assert len(view.grid_scalars) == len(visualizer.ref.selections)
@@ -72,7 +92,7 @@ def test_view(visualizer, Assert):
 
 @pytest.mark.parametrize("supercell", [(2, 3, 2), 3, (2, 5, 1)])
 def test_view_supercell(visualizer, supercell, Assert):
-    view = visualizer.to_view(visualizer.ref.selections, supercell=supercell)
+    view = visualizer.to_view(visualizer.ref.selector, visualizer.ref.selections, supercell=supercell)
 
     Assert.same_structure_view(
         visualizer.ref.structure.to_view(supercell=supercell), view
@@ -93,9 +113,21 @@ def test_view_supercell(visualizer, supercell, Assert):
     "kwargs, index, position",
     (({"a": 0.2}, 0, 1), ({"b": 0.5}, 1, 2), ({"c": 1.3}, 2, 1)),
 )
-def test_contour(visualizer, kwargs, index, position, Assert):
-    graph = visualizer.to_contour(visualizer.ref.selections, **kwargs)
+def test_contour_from_mapping(visualizer, kwargs, index, position, Assert):
+    graph = visualizer.to_contour_from_mapping(visualizer.ref.selector, visualizer.ref.selections, **kwargs)
+    _check_contour(graph, visualizer, index, position, Assert)
 
+
+@pytest.mark.parametrize(
+    "kwargs, index, position",
+    (({"a": 0.2}, 0, 1), ({"b": 0.5}, 1, 2), ({"c": 1.3}, 2, 1)),
+)
+def test_contour_from_data(visualizer_selected, kwargs, index, position, Assert):
+    graph = visualizer_selected.to_contour_from_data(visualizer_selected.ref.data3d[0], **kwargs)
+    _check_contour(graph, visualizer_selected, index, position, Assert)
+
+    
+def _check_contour(graph, visualizer, index, position, Assert):
     assert len(graph) == len(visualizer.ref.selections)
     for sel, series, data in zip(
         visualizer.ref.selections, graph.series, visualizer.ref.data3d
@@ -116,14 +148,15 @@ def test_contour(visualizer, kwargs, index, position, Assert):
             expected_label = ""
         assert series.label == expected_label
 
-
 @pytest.mark.parametrize("supercell", [(2, 3), 3, (2, 5)])
-def test_contour_supercell(visualizer, supercell, Assert):
+def test_contour_from_mapping_supercell(visualizer, supercell, Assert):
     kwargs, index = ({"c": 1.3}, 2)
-    graph = visualizer.to_contour(
-        visualizer.ref.selections, supercell=supercell, **kwargs
+    graph = visualizer.to_contour_from_mapping(
+        visualizer.ref.selector, visualizer.ref.selections, supercell=supercell, **kwargs
     )
+    _check_contour_supercell(graph, visualizer, index, supercell, Assert)
 
+def _check_contour_supercell(graph, visualizer, index, supercell, Assert):
     assert len(graph) == len(visualizer.ref.selections)
     for series in graph.series:
         lattice_vectors = visualizer.ref.structure.lattice_vectors()
@@ -136,11 +169,27 @@ def test_contour_supercell(visualizer, supercell, Assert):
         )
         Assert.allclose(series.supercell, expected_supercell)
 
+@pytest.mark.parametrize("supercell", [(2, 3), 3, (2, 5)])
+def test_contour_from_data_supercell(visualizer_selected, supercell, Assert):
+    kwargs, index = ({"c": 1.3}, 2)
+    graph = visualizer_selected.to_contour_from_data(
+        visualizer_selected.ref.data3d[0], supercell=supercell, **kwargs
+    )
+    _check_contour_supercell(graph, visualizer_selected, index, supercell, Assert)
+
 
 @pytest.mark.parametrize("normal", [None, "auto", "x"])
-def test_contour_normal(visualizer, normal, Assert):
-    graph = visualizer.to_contour(visualizer.ref.selections, normal=normal, c=1.3)
+def test_contour_from_mapping_normal(visualizer, normal, Assert):
+    graph = visualizer.to_contour_from_mapping(visualizer.ref.selector, visualizer.ref.selections, normal=normal, c=1.3)
+    _check_contour_normal(graph, visualizer, normal, Assert)
 
+@pytest.mark.parametrize("normal", [None, "auto", "x"])
+def test_contour_from_data_normal(visualizer_selected, normal, Assert):
+    graph = visualizer_selected.to_contour_from_data(visualizer_selected.ref.data3d[0], normal=normal, c=1.3)
+    _check_contour_normal(graph, visualizer_selected, normal, Assert)
+
+
+def _check_contour_normal(graph, visualizer, normal, Assert):
     assert len(graph) == len(visualizer.ref.selections)
     for series in graph.series:
         expected_plane = slicing.plane(
@@ -150,10 +199,18 @@ def test_contour_normal(visualizer, normal, Assert):
         Assert.allclose(series.lattice.vectors, expected_plane.vectors)
 
 
-def test_quiver(visualizer_quiver, Assert):
+def test_quiver_from_mapping(visualizer_quiver, Assert):
     kwargs, index, position = ({"c": 1.3}, 2, 1)
-    graph = visualizer_quiver.to_quiver(visualizer_quiver.ref.selections, **kwargs)
+    graph = visualizer_quiver.to_quiver_from_mapping(visualizer_quiver.ref.selector, visualizer_quiver.ref.selections, **kwargs)
+    _check_quiver(graph, visualizer_quiver, position, index, Assert)
 
+def test_quiver_from_data(visualizer_quiver_selected, Assert):
+    kwargs, index, position = ({"c": 1.3}, 2, 1)
+    graph = visualizer_quiver_selected.to_quiver_from_data(visualizer_quiver_selected.ref.data3d[0], **kwargs)
+    _check_quiver(graph, visualizer_quiver_selected, position, index, Assert)
+
+
+def _check_quiver(graph, visualizer_quiver, position, index, Assert):
     assert len(graph) == len(visualizer_quiver.ref.selections)
     for sel, series, data in zip(
         visualizer_quiver.ref.selections, graph.series, visualizer_quiver.ref.data3d
@@ -176,12 +233,23 @@ def test_quiver(visualizer_quiver, Assert):
 
 
 @pytest.mark.parametrize("supercell", [(2, 3), 3, (2, 5)])
-def test_quiver_supercell(visualizer_quiver, supercell, Assert):
+def test_quiver_from_mapping_supercell(visualizer_quiver, supercell, Assert):
     kwargs, index = ({"c": 1.3}, 2)
-    graph = visualizer_quiver.to_quiver(
+    graph = visualizer_quiver.to_quiver_from_mapping(
+        visualizer_quiver.ref.selector,
         visualizer_quiver.ref.selections, supercell=supercell, **kwargs
     )
+    _check_quiver_supercell(graph, visualizer_quiver, supercell, index, Assert)
 
+@pytest.mark.parametrize("supercell", [(2, 3), 3, (2, 5)])
+def test_quiver_from_data_supercell(visualizer_quiver_selected, supercell, Assert):
+    kwargs, index = ({"c": 1.3}, 2)
+    graph = visualizer_quiver_selected.to_quiver_from_data(
+        visualizer_quiver_selected.ref.data3d[0], supercell=supercell, **kwargs
+    )
+    _check_quiver_supercell(graph, visualizer_quiver_selected, supercell, index, Assert)
+
+def _check_quiver_supercell(graph, visualizer_quiver, supercell, index, Assert):
     assert len(graph) == len(visualizer_quiver.ref.selections)
     for series in graph.series:
         lattice_vectors = visualizer_quiver.ref.structure.lattice_vectors()
@@ -196,11 +264,21 @@ def test_quiver_supercell(visualizer_quiver, supercell, Assert):
 
 
 @pytest.mark.parametrize("normal", [None, "auto", "x"])
-def test_quiver_normal(visualizer_quiver, normal, Assert):
-    graph = visualizer_quiver.to_quiver(
+def test_quiver_from_mapping_normal(visualizer_quiver, normal, Assert):
+    graph = visualizer_quiver.to_quiver_from_mapping(
+        visualizer_quiver.ref.selector,
         visualizer_quiver.ref.selections, normal=normal, c=1.3
     )
+    _check_quiver_normal(graph, visualizer_quiver, normal, Assert)
 
+@pytest.mark.parametrize("normal", [None, "auto", "x"])
+def test_quiver_from_mapping_normal(visualizer_quiver_selected, normal, Assert):
+    graph = visualizer_quiver_selected.to_quiver_from_data(
+        visualizer_quiver_selected.ref.data3d[0], normal=normal, c=1.3
+    )
+    _check_quiver_normal(graph, visualizer_quiver_selected, normal, Assert)
+
+def _check_quiver_normal(graph, visualizer_quiver, normal, Assert):
     assert len(graph) == len(visualizer_quiver.ref.selections)
     for series in graph.series:
         expected_plane = slicing.plane(
@@ -211,4 +289,4 @@ def test_quiver_normal(visualizer_quiver, normal, Assert):
 
 
 def test_quiver_collinear(visualizer, Assert):
-    graph = visualizer.to_quiver(visualizer.ref.selections, c=1.3)
+    graph = visualizer.to_quiver_from_mapping(visualizer.ref.selector, visualizer.ref.selections, c=1.3)

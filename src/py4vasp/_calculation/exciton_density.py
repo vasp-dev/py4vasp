@@ -108,9 +108,9 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
 
         # set up Visualizer
         visualizer = Visualizer(
-            self._structure, selector, (lambda sel: selector.label(sel))
+            self._structure, (lambda sel: selector.label(sel))
         )
-        viewer = visualizer.to_view(tree.selections(), supercell=supercell)
+        viewer = visualizer.to_view(selector, tree.selections(), supercell=supercell)
 
         # adjust viewer
         if center:
