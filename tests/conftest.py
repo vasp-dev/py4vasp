@@ -1433,6 +1433,17 @@ def _electron_phonon_self_energy(selection):
         band_start=[band_kpoint_spin_index for _ in range(number_samples)],
     )
 
+def _electron_phonon_band_gap(selection):
+    number_samples = 3
+    return raw.ElectronPhononBandgap(
+        valid_indices=range(number_samples),
+        id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
+        id_size=[1, number_samples, 1, 1],
+        nbands_sum=np.array([nbands_sum for _ in range(number_samples)]),
+        delta=np.array([0 for _ in range(number_samples)]),
+        chemical_potential=_electron_phonon_chemical_potential(selection),
+        id_index=[[1, sample + 1, 1] for sample in range(number_samples)],
+    )
 
 def _electron_phonon_transport(selection):
     number_samples = 3
