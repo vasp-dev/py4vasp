@@ -142,7 +142,7 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         make_label = lambda selection: f"{selection[0]} potential"
         visualizer = density.Visualizer(self._structure, potentials, make_label)
         selections = list(potentials.keys())
-        graph = visualizer.to_quiver(selections, a, b, c, supercell, normal)
+        graph = visualizer.to_quiver(selections, a, b, c, normal, supercell)
         return graph
 
     def _get_potential(self, kind):

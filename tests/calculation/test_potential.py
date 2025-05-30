@@ -251,6 +251,14 @@ def test_to_quiver_collinear(collinear_potential, Assert):
     Assert.allclose(quiver.lattice.vectors, expected_lattice_vectors)
 
 
+@pytest.mark.parametrize("supercell", [3, (2, 3)])
+def test_to_quiver_supercell(noncollinear_potential, supercell, Assert):
+    graph = noncollinear_potential.to_quiver(b=0.3, supercell=supercell)
+    assert len(graph) == 1
+    assert len(graph.series[0].supercell) == 2
+    Assert.allclose(graph.series[0].supercell, supercell)
+
+
 def test_print(reference_potential, format_):
     actual, _ = format_(reference_potential)
     assert actual == {"text/plain": reference_potential.ref.string}
