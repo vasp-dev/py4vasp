@@ -135,7 +135,7 @@ class ElectronPhononSelfEnergy(base.Refinery):
     @base.data_access
     def selections(self):
         """Return a dictionary describing what options are available
-        to read the transport coefficients."""
+        to read the electron self-energies."""
         id_name = self.id_name()
         id_size = self.id_size()
         selections_dict = {}
@@ -170,30 +170,33 @@ class ElectronPhononSelfEnergy(base.Refinery):
             Instances that match the selection criteria.
         """
         selected_instances = []
-        chemical_potential = ElectronPhononChemicalPotential.from_data(
-            self._raw_data.chemical_potential
-        )
-        mu_tag, mu_val = chemical_potential.mu_tag()
+        mu_tag, mu_val = self.chemical_potential_mu_tag()
         for idx in range(len(self)):
-            match = False
+            match_all = False
             for sel in self._generate_selections(selection):
-                key, value = sel
-                # Map selection keys to property names
-                if key == "nbands_sum":
-                    instance_value = self._get_scalar("nbands_sum", idx)
-                elif key == "selfen_approx":
-                    instance_value = self._get_data("scattering_approximation", idx)
-                elif key == "selfen_delta":
-                    instance_value = self._get_scalar("delta", idx)
-                elif key == mu_tag:
-                    mu_idx = self[idx].id_index[2]-1
-                    instance_value = mu_val[mu_idx]
-                else:
-                    possible_values = self.selections()
-                    raise ValueError(f"Invalid selection {key}. Possible values are {possible_values.keys()}")
-                if (instance_value == value):
-                    match = True
-            if match:
+                match = True
+                sel_dict = dict(zip(sel[::2], sel[1::2]))
+                for key, value in sel_dict.items():
+                    # Map selection keys to property names
+                    if key == "nbands_sum":
+                        instance_value = self._get_scalar("nbands_sum", idx)
+                        match_this = instance_value == value
+                    elif key == "selfen_approx":
+                        instance_value = self._get_data("scattering_approximation", idx)
+                        match_this = instance_value == value
+                    elif key == "selfen_delta":
+                        instance_value = self._get_scalar("delta", idx)
+                        match_this = abs(instance_value-value)<1e-8
+                    elif key == mu_tag:
+                        mu_idx = self[idx].id_index[2]-1
+                        instance_value = mu_val[mu_idx]
+                        match_this = abs(instance_value-float(value))<1e-8
+                    else:
+                        possible_values = self.selections()
+                        raise ValueError(f"Invalid selection {key}. Possible values are {possible_values.keys()}")
+                    match = match and match_this
+                match_all = match_all or match
+            if match_all:
                 selected_instances.append(ElectronPhononSelfEnergyInstance(self, idx))
         return selected_instances
 
