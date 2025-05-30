@@ -23,6 +23,11 @@ def reference_potential(raw_data, request, included_kinds):
 
 
 @pytest.fixture
+def collinear_potential(raw_data):
+    return make_reference_potential(raw_data, "Fe3O4 collinear", "all")
+
+
+@pytest.fixture
 def noncollinear_potential(raw_data):
     return make_reference_potential(raw_data, "Fe3O4 noncollinear", "all")
 
@@ -230,6 +235,20 @@ def test_to_quiver_multiple(noncollinear_potential, Assert):
     Assert.allclose(total_quiver.data, expected_total)
     Assert.allclose(xc_quiver.data, expected_xc)
     assert xc_quiver.label == "xc potential"
+
+
+def test_to_quiver_collinear(collinear_potential, Assert):
+    reference = collinear_potential.ref
+    expected_data = reference.output["total_up"] - reference.output["total"]
+    length_a = np.linalg.norm(reference.structure.lattice_vectors()[1])
+    length_b = np.linalg.norm(reference.structure.lattice_vectors()[2])
+    expected_lattice_vectors = np.diag([length_a, length_b])
+    graph = collinear_potential.to_quiver(a=-0.2)
+    assert len(graph) == 1
+    quiver = graph.series[0]
+    Assert.allclose(quiver.data[0], 0)
+    Assert.allclose(quiver.data[1], expected_data)
+    Assert.allclose(quiver.lattice.vectors, expected_lattice_vectors)
 
 
 def test_print(reference_potential, format_):

@@ -129,6 +129,7 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
             isosurfaces=[view.Isosurface(isolevel, color, opacity)],
         )
 
+    @base.data_access
     def to_quiver(
         self, selection="total", *, a=None, b=None, c=None, normal=None, supercell=None
     ):
