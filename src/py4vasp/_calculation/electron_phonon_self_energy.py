@@ -1,9 +1,27 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from py4vasp._calculation.electron_phonon_chemical_potential import (
+    ElectronPhononChemicalPotential,
+)
 from py4vasp._calculation import base, slice_
+from py4vasp._util import select
 
 
 class ElectronPhononSelfEnergyInstance:
+    """
+    Represents a single instance of electron-phonon self-energy calculations.
+    This class provides access to the electron-phonon self-energy data for a specific
+    self-energy accumulator. It allows retrieval of various components of the
+    self-energy, such as Debye-Waller and Fan terms.
+
+    Examples
+    --------
+    >>> instance = ElectronPhononSelfEnergyInstance(parent, index=0)
+    >>> print(instance)
+    electron phonon self energy 0
+    >>> data = instance.to_dict()
+    >>> fan_value = instance.get_fan((iband, ikpt, isp))
+    """
     def __init__(self, parent, index):
         self.parent = parent
         self.index = index
@@ -48,7 +66,27 @@ class ElectronPhononSelfEnergyInstance:
 
 
 class ElectronPhononSelfEnergy(base.Refinery):
-    "Placeholder for electron phonon self energy"
+    """Access and analyze electron-phonon self-energy data.
+
+    This class provides methods to access, select, and analyze the electron-phonon
+    self-energy. It allows you to retrieve various quantities
+    such as eigenvalues, Debye-Waller and Fan self-energies, and scattering
+    approximations for different selections of bands, k-points, and spin channel.
+
+    Main features:
+        - Retrieve self-energy data for specific bands, k-points and spin channels.
+        - Convert self-energy data to dictionaries for further analysis.
+        - Iterate over all available self-energy instances.
+
+    Examples
+    --------
+
+        >>> elph_selfen = ElectronPhononSelfEnergy(raw_data)
+        >>> print(elph_selfen)
+        electron phonon self energy
+        >>> instance = elph_selfen[0]
+        >>> data = instance.to_dict()
+    """
 
     @base.data_access
     def __str__(self):
@@ -104,7 +142,60 @@ class ElectronPhononSelfEnergy(base.Refinery):
         selections_dict["nbands_sum"] = self.valid_nbands_sum()
         selections_dict["selfen_approx"] = self.valid_scattering_approximation()
         selections_dict["selfen_delta"] = self.valid_delta()
+        chemical_potential = ElectronPhononChemicalPotential.from_data(
+            self._raw_data.chemical_potential
+        )
+        mu_tag, mu_val = chemical_potential.mu_tag()
+        selections_dict[mu_tag] = mu_val
         return selections_dict
+    
+    def _generate_selections(self, selection):
+        tree = select.Tree.from_selection(selection)
+        for selection in tree.selections():
+            yield selection
+
+    @base.data_access
+    def select(self, selection):
+        """Return a list of ElectronPhononSelfEnergyInstance objects matching the selection.
+
+        Parameters
+        ----------
+        selection : dict
+            Dictionary with keys as selection names (e.g., "nbands_sum", "selfen_approx", "selfen_delta")
+            and values as the desired values for those properties.
+
+        Returns
+        -------
+        list of ElectronPhononSelfEnergyInstance
+            Instances that match the selection criteria.
+        """
+        selected_instances = []
+        chemical_potential = ElectronPhononChemicalPotential.from_data(
+            self._raw_data.chemical_potential
+        )
+        mu_tag, mu_val = chemical_potential.mu_tag()
+        for idx in range(len(self)):
+            match = False
+            for sel in self._generate_selections(selection):
+                key, value = sel
+                # Map selection keys to property names
+                if key == "nbands_sum":
+                    instance_value = self._get_scalar("nbands_sum", idx)
+                elif key == "selfen_approx":
+                    instance_value = self._get_data("scattering_approximation", idx)
+                elif key == "selfen_delta":
+                    instance_value = self._get_scalar("delta", idx)
+                elif key == mu_tag:
+                    mu_idx = self[idx].id_index[2]-1
+                    instance_value = mu_val[mu_idx]
+                else:
+                    possible_values = self.selections()
+                    raise ValueError(f"Invalid selection {key}. Possible values are {possible_values.keys()}")
+                if (instance_value == value):
+                    match = True
+            if match:
+                selected_instances.append(ElectronPhononSelfEnergyInstance(self, idx))
+        return selected_instances
 
     @base.data_access
     def _get_data(self, name, index):

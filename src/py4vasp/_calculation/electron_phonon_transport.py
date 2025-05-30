@@ -143,5 +143,3 @@ class ElectronPhononTransport(base.Refinery):
     def _parse_selection(self, selection):
         tree = select.Tree.from_selection(selection)
         return list(tree.selections())
-        # for selection in tree.selections():
-        #    return selection
