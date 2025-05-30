@@ -136,13 +136,13 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         for _, component in _parse_selection(selection):
             assert component is None
         potentials = {
-            (kind,): np.moveaxis(self._get_potential(kind)[1:], 0, -1)
+            kind: np.moveaxis(self._get_potential(kind)[1:], 0, -1)
             for kind, _ in _parse_selection(selection)
         }
-        make_label = lambda selection: f"{selection[0]} potential"
-        visualizer = density.Visualizer(self._structure, potentials, make_label)
-        selections = list(potentials.keys())
-        graph = visualizer.to_quiver(selections, a, b, c, normal, supercell)
+        make_label = lambda selection: f"{selection} potential"
+        visualizer = density.Visualizer(self._structure, make_label)
+        selections = potentials.keys()
+        graph = visualizer.to_quiver_from_mapping(potentials, selections, a, b, c, normal, supercell)
         return graph
 
     def _get_potential(self, kind):
