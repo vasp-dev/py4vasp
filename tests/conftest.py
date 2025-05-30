@@ -95,14 +95,9 @@ class _Assert:
     @staticmethod
     def same_raw_structure(actual, desired, exact_match=True):
         # exact_match requires cell to be identical and not just equivalent
-        _Assert.same_raw_stoichiometry(actual.stoichiometry, desired.stoichiometry)
+        _Assert.allclose(actual.stoichiometry, desired.stoichiometry)
         _Assert.same_raw_cell(actual.cell, desired.cell, exact_match)
         _Assert.allclose(actual.positions, desired.positions)
-
-    @staticmethod
-    def same_raw_stoichiometry(actual, desired):
-        _Assert.allclose(actual.number_ion_types, desired.number_ion_types)
-        _Assert.allclose(actual.ion_types, desired.ion_types)
 
     @staticmethod
     def same_raw_cell(actual, desired, exact_match=True):
