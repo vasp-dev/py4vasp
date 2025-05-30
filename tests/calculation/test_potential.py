@@ -219,6 +219,18 @@ def test_empty_potential(raw_data, selection):
         potential.plot(selection)
 
 
+def test_to_contour(reference_potential, Assert):
+    reference = reference_potential.ref
+    expected_data = reference.output["total"][:, :, 13]
+    expected_lattice_vectors = reference.structure.lattice_vectors()[:2, :2]
+    graph = reference_potential.to_contour(c=0.9)
+    assert len(graph) == 1
+    contour = graph.series[0]
+    Assert.allclose(contour.data, expected_data)
+    Assert.allclose(contour.lattice.vectors, expected_lattice_vectors)
+    assert contour.label == "total potential"
+
+
 def test_to_quiver(noncollinear_potential, Assert):
     reference = noncollinear_potential.ref
     expected_data = reference.output["total_magnetization"][:2, :, :, 4]

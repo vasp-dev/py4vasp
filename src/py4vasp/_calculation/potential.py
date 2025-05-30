@@ -130,6 +130,15 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         )
 
     @base.data_access
+    def to_contour(self, selection="total", *, a=None, b=None, c=None, normal=None, supercell=None):
+        make_label = lambda selection: f"total potential"
+        visualizer = density.Visualizer(self._structure, make_label)
+        potential_data = self._get_potential(selection)[0]
+        return visualizer.to_contour_from_data(
+            potential_data.T, a, b, c, normal, supercell
+        )
+
+    @base.data_access
     def to_quiver(
         self, selection="total", *, a=None, b=None, c=None, normal=None, supercell=None
     ):
@@ -142,10 +151,9 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         make_label = lambda selection: f"{selection} potential"
         visualizer = density.Visualizer(self._structure, make_label)
         selections = potentials.keys()
-        graph = visualizer.to_quiver_from_mapping(
+        return visualizer.to_quiver_from_mapping(
             potentials, selections, a, b, c, normal, supercell
         )
-        return graph
 
     def _get_and_verify_magnetic_potential(self, kind):
         _raise_error_if_kind_incorrect(kind, ("total", "xc"))
