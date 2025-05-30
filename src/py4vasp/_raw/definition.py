@@ -631,7 +631,7 @@ schema.add(
     band_start=f"{group}/self_energy_{{}}/band_start",
     nbands_sum=f"{group}/self_energy_{{}}/nbands_sum",
     delta=f"{group}/self_energy_{{}}/delta",
-    scattering_approximation=f"{group}/transport_{{}}/scattering_approximation",
+    scattering_approximation=f"{group}/self_energy_{{}}/scattering_approximation",
 )
 schema.add(
     raw.ElectronPhononBandgap,
@@ -647,7 +647,7 @@ schema.add(
     temperatures=f"{group}/self_energy_{{}}/temps",
     nbands_sum=f"{group}/self_energy_{{}}/nbands_sum",
     delta=f"{group}/self_energy_{{}}/delta",
-    scattering_approximation=f"{group}/transport_{{}}/scattering_approximation",
+    scattering_approximation=f"{group}/self_energy_{{}}/scattering_approximation",
 )
 schema.add(
     raw.ElectronPhononTransport,
@@ -663,6 +663,8 @@ schema.add(
     mobility=f"{group}/transport_{{}}/mobility",
     seebeck=f"{group}/transport_{{}}/seebeck",
     peltier=f"{group}/transport_{{}}/peltier",
+    nbands_sum=f"{group}/self_energy_{{}}/nbands_sum",
+    delta=f"{group}/transport_{{}}/delta",
     electronic_thermal_conductivity=f"{group}/transport_{{}}/e_t_conductivity",
     transport_function=f"{group}/transport_{{}}/transport_function",
     scattering_approximation=f"{group}/transport_{{}}/scattering_approximation",

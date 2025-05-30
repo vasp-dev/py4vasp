@@ -640,5 +640,7 @@ class ElectronPhononTransport(mapping.Mapping):
     mobility: VaspData
     seebeck: VaspData
     peltier: VaspData
+    nbands_sum: int
     electronic_thermal_conductivity: VaspData
+    delta: float
     scattering_approximation: str

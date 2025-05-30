@@ -1466,13 +1466,17 @@ def _electron_phonon_transport(selection):
     # mock transport_function
     nw = 1  # number of frequencies at which the fan self-energy is evaluated
     ntemps = 6
+    nbands_sum = 12
+    scattering_approximation = "MRTA_TAU"
     return raw.ElectronPhononTransport(
         valid_indices=range(number_samples),
         id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
         id_size=[1, number_samples, 1],
+        nbands_sum=np.array([nbands_sum for _ in range(number_samples)]),
         self_energy=_electron_phonon_self_energy(selection),
         chemical_potential=_electron_phonon_chemical_potential(selection),
         id_index=[[1, sample + 1, 1] for sample in range(number_samples)],
+        delta=np.array([0 for _ in range(number_samples)]),
         temperatures=_make_arbitrary_data([number_samples, ntemps]),
         transport_function=_make_arbitrary_data([number_samples, ntemps, nw, 3, 3]),
         mobility=_make_arbitrary_data([number_samples, ntemps, 3, 3]),
@@ -1482,7 +1486,9 @@ def _electron_phonon_transport(selection):
         electronic_thermal_conductivity=_make_arbitrary_data(
             [number_samples, ntemps, 3, 3]
         ),
-        scattering_approximation=_make_arbitrary_data([number_samples, ntemps, 3, 3]),
+        scattering_approximation=[
+            scattering_approximation for _ in range(number_samples)
+        ],
     )
 
 
