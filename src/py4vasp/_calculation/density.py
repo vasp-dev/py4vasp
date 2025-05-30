@@ -362,7 +362,9 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
             self._structure,
             (lambda sel: (self._label(selector.label(sel)) or "charge")),
         )
-        contour = visualizer.to_contour_from_mapping(selector, selections, a, b, c, normal, supercell)
+        contour = visualizer.to_contour_from_mapping(
+            selector, selections, a, b, c, normal, supercell
+        )
         return contour
 
     @base.data_access

@@ -100,7 +100,9 @@ current density:
 
         # set up Visualizer
         visualizer = Visualizer(self._structure, (lambda _: label))
-        return visualizer.to_contour_from_data(grid_scalar, a, b, c, normal, supercell, isolevels=False)
+        return visualizer.to_contour_from_data(
+            grid_scalar, a, b, c, normal, supercell, isolevels=False
+        )
 
     @base.data_access
     @documentation.format(plane=slicing.PLANE, parameters=_COMMON_PARAMETERS)
