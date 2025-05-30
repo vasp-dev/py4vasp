@@ -10,6 +10,7 @@ from py4vasp import _config, exception, raw
 from py4vasp._calculation.potential import Potential
 from py4vasp._calculation.structure import Structure
 from py4vasp._third_party.view import Isosurface
+from py4vasp._util import slicing
 
 
 @pytest.fixture(params=["total", "ionic", "hartree", "xc", "all"])
@@ -257,6 +258,15 @@ def test_to_quiver_supercell(noncollinear_potential, supercell, Assert):
     assert len(graph) == 1
     assert len(graph.series[0].supercell) == 2
     Assert.allclose(graph.series[0].supercell, supercell)
+
+
+@pytest.mark.parametrize("normal", ("x", "y", "z", "auto"))
+def test_to_quiver_normal(collinear_potential, normal, Assert):
+    lattice_vectors = collinear_potential.ref.structure.lattice_vectors()
+    plane = slicing.plane(lattice_vectors, "a", normal)
+    graph = collinear_potential.to_quiver(a=0.5, normal=normal)
+    assert len(graph) == 1
+    Assert.allclose(graph.series[0].lattice, plane)
 
 
 def test_print(reference_potential, format_):
