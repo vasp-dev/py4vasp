@@ -130,14 +130,18 @@ def test_contour_color_scheme(color_scheme):
     fig = graph.to_plotly()
     expected_colorscale = []
     if (color_scheme == "auto") or (color_scheme == "positive"):
-        expected_colorscale = ((0, 'white'), (1, _config.VASP_COLORS["red"]))
-    elif (color_scheme == "negative"):
+        expected_colorscale = ((0, "white"), (1, _config.VASP_COLORS["red"]))
+    elif color_scheme == "negative":
         expected_colorscale = ((0, _config.VASP_COLORS["blue"]), (1, "white"))
-    elif (color_scheme == "signed"):
-        expected_colorscale = ((0, _config.VASP_COLORS["blue"]), (0.5, "white"), (1, _config.VASP_COLORS["red"]))
-    else: raise NotImplementedError(f"Color scheme {color_scheme} not implemented.")
+    elif color_scheme == "signed":
+        expected_colorscale = (
+            (0, _config.VASP_COLORS["blue"]),
+            (0.5, "white"),
+            (1, _config.VASP_COLORS["red"]),
+        )
+    else:
+        raise NotImplementedError(f"Color scheme {color_scheme} not implemented.")
     assert fig.data[0].colorscale == expected_colorscale
-    
 
 
 @pytest.mark.xfail
@@ -155,7 +159,9 @@ def test_contour_contrast_mode(contrast_mode):
     raise NotImplementedError("Contrast mode currently has no effect on plotting.")
 
 
-@pytest.mark.parametrize("color_limits", [None, (None, None), (-9, None), (None, 9), (-11, 11)])
+@pytest.mark.parametrize(
+    "color_limits", [None, (None, None), (-9, None), (None, 9), (-11, 11)]
+)
 def test_contour_color_limits(color_limits):
     contour = Contour(
         data=np.linspace(-10, 10, 20 * 18).reshape((20, 18)),
@@ -168,10 +174,12 @@ def test_contour_color_limits(color_limits):
     graph = Graph(contour)
     expected_zmin = -10
     expected_zmax = 10
-    if (color_limits is not None):
+    if color_limits is not None:
         _zmin, _zmax = color_limits
-        if _zmin is not None: expected_zmin = _zmin
-        if _zmax is not None: expected_zmax = _zmax
+        if _zmin is not None:
+            expected_zmin = _zmin
+        if _zmax is not None:
+            expected_zmax = _zmax
     fig = graph.to_plotly()
     assert fig.data[0].zmin == expected_zmin
     assert fig.data[0].zmax == expected_zmax
@@ -189,8 +197,10 @@ def test_contour_colorbar_label(units):
     assert units == contour.colorbar_label
     graph = Graph(contour)
     fig = graph.to_plotly()
-    if units != '': assert fig.data[0].colorbar.title.text == units 
-    else: assert fig.data[0].colorbar.title.text == None
+    if units != "":
+        assert fig.data[0].colorbar.title.text == units
+    else:
+        assert fig.data[0].colorbar.title.text == None
 
 
 def test_basic_graph(parabola, Assert, not_core):
@@ -581,6 +591,25 @@ def test_contour_show_contour_values(rectangle_contour, show_contour_values, not
     assert fig.data[0].contours.showlabels == show_contour_values
 
 
+def test_legend_positioning(parabola, sine, Assert, not_core):
+    graph = Graph([sine, parabola])
+    fig = graph.to_plotly()
+    assert len(fig.data) == 2
+    assert (
+        fig.layout.legend.x is None
+    )  # actually at 1.02, but plotly does not expose this until set explicitly
+
+
+def test_contour_legend_with_colorbar(rectangle_contour, parabola, Assert, not_core):
+    graph = Graph([rectangle_contour, parabola])
+    fig = graph.to_plotly()
+    assert len(fig.data) == 2
+    assert hasattr(fig.data[0], "colorbar") and fig.data[0].colorbar
+    assert hasattr(fig.data[0].colorbar, "x")
+    assert fig.data[0].colorbar.x == 1.02
+    assert fig.layout.legend.x == pytest.approx(fig.data[0].colorbar.x + 0.18, abs=1e-6)
+
+
 def check_unit_cell(unit_cell, x, y, zero):
     assert unit_cell.type == "path"
     assert unit_cell.path == f"M 0 0 L {x} {zero} L {x} {y} L {zero} {y} Z"
@@ -617,7 +646,11 @@ def test_contour_interpolate(tilted_contour, Assert, not_core):
     finite = np.isfinite(fig.data[0].z)
     assert np.isclose(np.average(fig.data[0].z[finite]), expected_average)
     assert len(fig.layout.shapes) == 0
-    expected_colorscale = [[0, _config.VASP_COLORS["blue"]], [0.5, "white"], [1, _config.VASP_COLORS["red"]]]
+    expected_colorscale = [
+        [0, _config.VASP_COLORS["blue"]],
+        [0.5, "white"],
+        [1, _config.VASP_COLORS["red"]],
+    ]
     assert len(fig.data[0].colorscale) == len(expected_colorscale)
     for actual, expected in zip(fig.data[0].colorscale, expected_colorscale):
         Assert.allclose(actual[0], expected[0])

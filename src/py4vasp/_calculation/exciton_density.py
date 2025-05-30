@@ -6,6 +6,7 @@ from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import view
 from py4vasp._util import import_, index, select
+from py4vasp._util.density import Visualizer
 
 pretty = import_.optional("IPython.lib.pretty")
 
@@ -96,29 +97,31 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
         >>> calculation.exciton.density.plot("1+2")
         """
         _raise_error_if_no_data(self._raw_data.exciton_charge)
-        selection = selection or _DEFAULT_SELECTION
         viewer = self._structure.plot(supercell)
+        # build selector
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_data.exciton_charge)
+
+        # define selections
+        selection = selection or _DEFAULT_SELECTION
         tree = select.Tree.from_selection(selection)
-        viewer.grid_scalars = [
-            self._grid_quantity(selector, selection, map_, user_options)
-            for selection in tree.selections()
-        ]
+
+        # set up Visualizer
+        visualizer = Visualizer(
+            self._structure, selector, (lambda sel: selector.label(sel))
+        )
+        viewer = visualizer.to_view(tree.selections(), supercell=supercell)
+
+        # adjust viewer
         if center:
             viewer.shift = np.array([0.5, 0.5, 0.5])
+        for scalar in viewer.grid_scalars:
+            scalar.isosurfaces = self._isosurfaces(**user_options)
         return viewer
 
     def _create_map(self):
         num_excitons = self._raw_data.exciton_charge.shape[0]
         return {str(choice + 1): choice for choice in range(num_excitons)}
-
-    def _grid_quantity(self, selector, selection, map_, user_options):
-        return view.GridQuantity(
-            quantity=(selector[selection].T)[np.newaxis],
-            label=selector.label(selection),
-            isosurfaces=self._isosurfaces(**user_options),
-        )
 
     def _isosurfaces(self, isolevel=0.8, color=None, opacity=0.6):
         color = color or _config.VASP_COLORS["cyan"]

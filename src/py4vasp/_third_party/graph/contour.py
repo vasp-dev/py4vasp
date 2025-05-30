@@ -66,6 +66,14 @@ class Contour(trace.Trace):
     - (float, float): Sets minimum and maximum of the color scale."""
     contrast_mode: bool = False
     "If True, enables high contrast mode, which affects the colors of the plot."
+    traces_as_periodic: bool = False
+    """If True, traces (contour and quiver) are shifted so that quiver and heatmap 'cell' 
+    centers align with the positions they were computed at. Periodic images will be drawn
+    so that the supercell still appears completely covered on all sides.
+
+    If False, traces (contour and quiver) are shifted so that the heatmap cells visually
+    align with the supercell instead. No periodic images are required, but the visual
+    presentation might be misleading."""
     supercell: np.array = (1, 1)
     "Multiple of each lattice vector to be drawn."
     show_cell: bool = True
@@ -104,7 +112,8 @@ class Contour(trace.Trace):
             autocontour=True,
             colorscale=self._get_color_scale(z),
             colorbar=self._get_color_bar(),
-            zmin=zmin, zmax=zmax,
+            zmin=zmin,
+            zmax=zmax,
             contours={"showlabels": self.show_contour_values},
         )
 
@@ -118,7 +127,8 @@ class Contour(trace.Trace):
             name=self.label,
             colorscale=self._get_color_scale(z),
             colorbar=self._get_color_bar(),
-            zmin=zmin, zmax=zmax,
+            zmin=zmin,
+            zmax=zmax,
         )
 
     def _interpolate_data_if_necessary(self, lattice, data):
@@ -133,13 +143,22 @@ class Contour(trace.Trace):
         # remember that b and a axis are swapped
         vectors = reversed(lattice)
         meshes_raw = [
-            np.linspace(np.zeros(2), vector, num_points, endpoint=False)
+            np.linspace(
+                np.zeros(2),
+                vector,
+                num_points + (1 if self.traces_as_periodic else 0),
+                endpoint=self.traces_as_periodic,
+            )
             for vector, num_points in zip(vectors, data.shape)
         ]
         dx = np.linalg.norm(meshes_raw[0][1])
         dy = np.linalg.norm(meshes_raw[1][1])
         meshes = [v[::subsample] for v, subsample in zip(meshes_raw, subsamples)]
-        subsampled_data = data[:: subsamples[0], :: subsamples[1]]
+        subsampled_data = (
+            self._subsample_data_quiver(data, subsamples)
+            if self.traces_as_periodic
+            else data[:: subsamples[0], :: subsamples[1]]
+        )
         if self.scale_arrows is None:
             # arrows may be at most as long as the shorter lattice vector
             max_length = min(np.linalg.norm(meshes[0][1]), np.linalg.norm(meshes[1][1]))
@@ -151,10 +170,42 @@ class Contour(trace.Trace):
         u = scale * subsampled_data[:, :, 0].flatten()
         v = scale * subsampled_data[:, :, 1].flatten()
         fig = ff.create_quiver(
-            x - 0.5 * u + 0.5 * dy, y - 0.5 * v + 0.5 * dx, u, v, scale=1
+            x - 0.5 * u + ((0.5 * dy) if not (self.traces_as_periodic) else 0.0),
+            y - 0.5 * v + ((0.5 * dx) if not (self.traces_as_periodic) else 0.0),
+            u,
+            v,
+            scale=1,
         )
         fig.data[0].line.color = _config.VASP_COLORS["dark"]
         return fig.data[0]
+
+    def _subsample_data_quiver(self, data, subsamples):
+        xdim, ydim, _ = data.shape
+
+        # Create index arrays with "wrapped" boundaries
+        x_indices = (
+            np.arange(0, xdim + (1 if self.traces_as_periodic else 0), subsamples[0])
+            % xdim
+        )
+        y_indices = (
+            np.arange(0, ydim + (1 if self.traces_as_periodic else 0), subsamples[1])
+            % ydim
+        )
+
+        # Access data using advanced indexing
+        subsampled_data = data[np.ix_(x_indices, y_indices)]
+        return subsampled_data
+
+    def _extend_data_contour(self, data):
+        xdim, ydim = data.shape
+
+        # Create index arrays with "wrapped" boundaries
+        x_indices = np.arange(0, xdim + (1 if self.traces_as_periodic else 0)) % xdim
+        y_indices = np.arange(0, ydim + (1 if self.traces_as_periodic else 0)) % ydim
+
+        # Access data using advanced indexing
+        subsampled_data = data[np.ix_(x_indices, y_indices)]
+        return subsampled_data
 
     def _limit_number_of_arrows(self, data_size):
         subsamples = [1, 1]
@@ -184,7 +235,11 @@ class Contour(trace.Trace):
         x_in, y_in = (line_mesh_a[:, np.newaxis] + line_mesh_b[np.newaxis, :]).T
         x_in = x_in.flatten()
         y_in = y_in.flatten()
-        z_in = data.flatten()
+        z_in = (
+            self._extend_data_contour(data).flatten()
+            if self.traces_as_periodic
+            else data.flatten()
+        )
         x_out, y_out = np.meshgrid(
             np.linspace(x_in.min(), x_in.max(), shape[0]),
             np.linspace(y_in.min(), y_in.max(), shape[1]),
@@ -195,14 +250,24 @@ class Contour(trace.Trace):
     def _use_data_without_interpolation(self, lattice, data):
         x = self._make_mesh(lattice, data.shape[1], 0)
         y = self._make_mesh(lattice, data.shape[0], 1)
-        return x, y, data
+        return (
+            x,
+            y,
+            (self._extend_data_contour(data) if self.traces_as_periodic else data),
+        )
 
     def _make_mesh(self, lattice, num_point, index):
         vector = index if self._interpolation_required() else (index, index)
-        return (
-            np.linspace(0, lattice[vector], num_point, endpoint=False)
-            + 0.5 * lattice[vector] / num_point
+
+        mesh = np.linspace(
+            0,
+            lattice[vector],
+            num_point + (1 if self.traces_as_periodic else 0),
+            endpoint=self.traces_as_periodic,
         )
+        if not self.traces_as_periodic:
+            mesh = mesh + (0.5 * lattice[vector] / num_point)
+        return mesh
 
     def _options(self):
         return {
@@ -231,44 +296,43 @@ class Contour(trace.Trace):
         if (self.color_scheme == "signed") or (
             self.color_scheme == "auto" and (zmin < 0 and zmax > 0)
         ):
-            selected_color_scheme = (
-                [
-                    [0, color_lower],
-                    [0.5, color_center],
-                    [1, color_upper],
-                ]
-            )
+            selected_color_scheme = [
+                [0, color_lower],
+                [0.5, color_center],
+                [1, color_upper],
+            ]
         elif (self.color_scheme == "positive") or (
             self.color_scheme == "auto" and (zmin >= 0)
         ):
-            selected_color_scheme = (
-                [[0, color_center], [1, color_upper]]
-            )
+            selected_color_scheme = [[0, color_center], [1, color_upper]]
         elif (self.color_scheme == "negative") or (
             self.color_scheme == "auto" and (zmax <= 0)
         ):
-            selected_color_scheme = (
-                [[0, color_lower], [1, color_center]]
-            )
+            selected_color_scheme = [[0, color_lower], [1, color_center]]
         # Defaulting to color map if not yet set
         if selected_color_scheme is None:
             selected_color_scheme = [
-                    [0, color_lower],
-                    [0.5, color_center],
-                    [1, color_upper],
-                ]
+                [0, color_lower],
+                [0.5, color_center],
+                [1, color_upper],
+            ]
 
         return selected_color_scheme
 
     def _get_color_range(self, z: np.ndarray) -> tuple:
-        if self.color_limits is None: return (np.min(z), np.max(z))
+        if self.color_limits is None:
+            return (np.min(z), np.max(z))
         else:
             assert len(self.color_limits) == 2
             zmin, zmax = self.color_limits
-            if zmin is None and zmax is not None: return (np.min(z), zmax)
-            elif zmin is not None and zmax is None: return (zmin, np.max(z))
-            elif zmin is None and zmax is None: return(np.min(z), np.max(z))
-            else: return (zmin, zmax)
+            if zmin is None and zmax is not None:
+                return (np.min(z), zmax)
+            elif zmin is not None and zmax is None:
+                return (zmin, np.max(z))
+            elif zmin is None and zmax is None:
+                return (np.min(z), np.max(z))
+            else:
+                return (zmin, zmax)
 
     def _get_color_bar(self):
         if (self.colorbar_label is not None) and (self.colorbar_label):
