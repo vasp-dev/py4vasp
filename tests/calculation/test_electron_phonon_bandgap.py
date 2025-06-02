@@ -36,9 +36,7 @@ def test_selections(band_gap):
     assert "nbands_sum" in selections
     assert "selfen_approx" in selections
     assert "selfen_delta" in selections
-    assert "selfen_carrier_den" in selections or \
-           "selfen_carrier_cell" in selections or \
-           "selfen_mu" in selections
+    assert any(tag in selections for tag in ["selfen_carrier_den", "selfen_carrier_cell", "selfen_mu"])
 
 
 def test_select_returns_instances(band_gap):
