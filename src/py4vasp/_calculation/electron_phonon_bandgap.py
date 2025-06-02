@@ -17,7 +17,53 @@ class ElectronPhononBandgapInstance:
         self.index = index
 
     def __str__(self):
-        return "electron phonon band gap %d" % self.index
+        """
+        Returns a formatted string representation of the band gap instance,
+        including direct and fundamental gaps as a function of temperature.
+        """
+        lines = []
+        lines.append(f"Electron self-energy accumulator N=  {self.index + 1}")
+
+        def format_gap_section(title, ks_gap, qp_gap, temperatures):
+            section = []
+            section.append(f"{title}")
+            section.append("   Temperature (K)         KS gap (eV)         QP gap (eV)     KS-QP gap (meV)")
+            for t, qp in zip(temperatures, qp_gap):
+                diff_meV = (ks_gap - qp) * 1000
+                section.append(
+                    f"{t:18.6f}{ks_gap:20.6f}{qp:20.6f}{diff_meV:20.6f}"
+                )
+            return "\n".join(section)
+
+        # Get data
+        temperatures = self._get_data("temperatures")
+        ks_gap_direct = self._get_data("direct")
+        qp_gap_direct = self._get_data("direct_renorm")
+        ks_gap_fundamental = self._get_data("fundamental")
+        qp_gap_fundamental = self._get_data("fundamental_renorm")
+
+        nspin,ntemps = qp_gap_direct.shape
+        for ispin in range(nspin):
+            if (nspin==2): lines.append("spin independent")
+            # Direct gap section
+            lines.append("")
+            lines.append(format_gap_section("Direct gap", ks_gap_direct[ispin], qp_gap_direct[ispin], temperatures))
+            lines.append("")
+            # Fundamental gap section
+            lines.append(format_gap_section("Fundamental gap", ks_gap_fundamental[ispin], qp_gap_fundamental[ispin], temperatures))
+            lines.append("")
+
+        if (nspin==2):
+            for ispin in range(nspin):
+                if (nspin==2): lines.append("spin component ",ispin+1)
+                # Direct gap section
+                lines.append("")
+                lines.append(format_gap_section("Direct gap", ks_gap_direct[ispin], qp_gap_direct[ispin], temperatures))
+                lines.append("")
+                # Fundamental gap section
+                lines.append(format_gap_section("Fundamental gap", ks_gap_fundamental[ispin], qp_gap_fundamental[ispin], temperatures))
+                lines.append("")
+        return "\n".join(lines)
 
     def _get_data(self, name):
         return self.parent._get_data(name, self.index)
@@ -37,7 +83,9 @@ class ElectronPhononBandgapInstance:
     def to_dict(self):
         _dict = {
             "nbands_sum": self._get_scalar("nbands_sum"),
+            "direct_renorm": self._get_data("direct_renorm"),
             "direct": self._get_data("direct"),
+            "fundamental_renorm": self._get_data("fundamental_renorm"),
             "fundamental": self._get_data("fundamental"),
             "temperatures": self._get_data("temperatures"),
         }

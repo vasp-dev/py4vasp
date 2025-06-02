@@ -602,7 +602,9 @@ class ElectronPhononBandgap(mapping.Mapping):
     id_size: VaspData
     chemical_potential: ElectronPhononChemicalPotential
     self_energy: ElectronPhononSelfEnergy
+    fundamental_renorm: VaspData
     fundamental: VaspData
+    direct_renorm: VaspData
     direct: VaspData
     temperatures: VaspData
     id_index: VaspData

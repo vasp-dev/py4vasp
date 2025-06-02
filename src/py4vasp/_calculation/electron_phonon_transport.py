@@ -37,7 +37,8 @@ class ElectronPhononTransportInstance:
         potential and scattering approximation information.
         """
         lines = []
-        lines.append("electron phonon transport %d" % self.index)
+        lines.append(f"Transport calculator N =  {self.index + 1}")
+        lines.append("----------------------------------")
         # Information about the chemical potential
         mu_tag, mu_val = self.get_mu_tag()
         lines.append(f"{mu_tag}: {mu_val}")
@@ -47,6 +48,9 @@ class ElectronPhononTransportInstance:
         # Information about the broadening parameter
         delta = self._get_scalar("delta")
         lines.append(f"delta: {delta}")
+        # Information about the number of bands summed over
+        nbands_sumdelta = self._get_scalar("nbands_sum")
+        lines.append(f"nbands_sum: {delta}")
         return "\n".join(lines) + "\n"
 
     def get_mu_tag(self):

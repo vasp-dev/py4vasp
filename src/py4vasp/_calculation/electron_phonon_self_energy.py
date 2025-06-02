@@ -28,7 +28,32 @@ class ElectronPhononSelfEnergyInstance:
         self.index = index
 
     def __str__(self):
-        return "electron phonon self energy %d" % self.index
+        """
+        Returns a string representation of the self energy instance, including chemical
+        potential and number of bands included in the sum.
+        """
+        lines = []
+        lines.append(f"Electron self-energy accumulator N =  {self.index + 1}")
+        lines.append("----------------------------------")
+        # Information about the chemical potential
+        mu_tag, mu_val = self.get_mu_tag()
+        lines.append(f"{mu_tag}: {mu_val}")
+        # Information about the scattering approximation
+        scattering_approx = self._get_data("scattering_approximation")
+        lines.append(f"scattering_approximation: {scattering_approx}")
+        # Information about the broadening parameter
+        delta = self._get_scalar("delta")
+        lines.append(f"delta: {delta}")
+        # Information about the number of bands summed over
+        nbands_sumdelta = self._get_scalar("nbands_sum")
+        lines.append(f"nbands_sum: {delta}")
+        return "\n".join(lines) + "\n"
+
+    def get_mu_tag(self):
+        """ Get choosen tag to select the chemical potential as well as its value"""
+        mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
+        mu_idx = self.id_index[2] - 1
+        return mu_tag,mu_val[mu_idx]
 
     def _get_data(self, name):
         return self.parent._get_data(name, self.index)

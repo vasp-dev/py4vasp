@@ -1454,8 +1454,10 @@ def _electron_phonon_band_gap(selection):
         scattering_approximation=[
             scattering_approximation for _ in range(number_samples)
         ],
-        fundamental=_make_arbitrary_data([number_samples, ntemps]),
-        direct=_make_arbitrary_data([number_samples, ntemps]),
+        fundamental_renorm=_make_arbitrary_data([number_samples, ntemps]),
+        direct_renorm=_make_arbitrary_data([number_samples, ntemps]),
+        fundamental=_make_arbitrary_data([number_samples]),
+        direct=_make_arbitrary_data([number_samples]),
         temperatures=_make_arbitrary_data([number_samples, ntemps]),
         id_index=[[1, sample + 1, 1] for sample in range(number_samples)],
     )
