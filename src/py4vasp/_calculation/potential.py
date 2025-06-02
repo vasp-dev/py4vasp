@@ -132,7 +132,7 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         color = color or _config.VASP_COLORS["cyan"]
         return view.GridQuantity(
             quantity=potential.T[np.newaxis],
-            label=f"{kind} potential" + (f"({component})" if component else ""),
+            label=self._get_label(kind, component),
             isosurfaces=[view.Isosurface(isolevel, color, opacity)],
         )
 
@@ -140,12 +140,23 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
     def to_contour(
         self, selection="total", *, a=None, b=None, c=None, normal=None, supercell=None
     ):
-        make_label = lambda selection: f"total potential"
+        potentials = dict(self._get_potentials(selection))
+        make_label = lambda selection: selection
         visualizer = density.Visualizer(self._structure, make_label)
-        potential_data = self._get_potentials(selection)
-        return visualizer.to_contour_from_data(
-            potential_data.T, a, b, c, normal, supercell
+        return visualizer.to_contour_from_mapping(
+            potentials, potentials.keys(), a, b, c, normal, supercell
         )
+
+    def _get_potentials(self, selection):
+        tree = select.Tree.from_selection(selection)
+        for selection in tree.selections():
+            kind, component = self._determine_kind_and_component(selection)
+            selector = self._create_selector(kind)
+            component_label = component[0] if component else ""
+            yield self._get_label(kind, component_label), selector[component]
+
+    def _get_label(self, kind, component):
+        return f"{kind} potential" + (f"({component})" if component else "")
 
     @base.data_access
     def to_quiver(
@@ -159,9 +170,8 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         }
         make_label = lambda selection: f"{selection} potential"
         visualizer = density.Visualizer(self._structure, make_label)
-        selections = potentials.keys()
         return visualizer.to_quiver_from_mapping(
-            potentials, selections, a, b, c, normal, supercell
+            potentials, potentials.keys(), a, b, c, normal, supercell
         )
 
     def _get_and_verify_magnetic_potential(self, kind):
@@ -169,13 +179,6 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         potential = self._get_potential(kind)
         _raise_error_if_nonpolarized_potential(potential)
         return np.moveaxis(potential[1:], 0, -1)
-
-    def _get_potentials(self, selection):
-        tree = select.Tree.from_selection(selection)
-        for selection in tree.selections():
-            kind, component = self._determine_kind_and_component(selection)
-            selector = self._create_selector(kind)
-            return selector[component]
 
     def _determine_kind_and_component(self, selection):
         for kind in VALID_KINDS:
@@ -188,7 +191,7 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
     def _create_selector(self, kind):
         potential = self._get_potential(kind)
         maps = {0: self._create_map(potential)}
-        return index.Selector(maps, potential, reduction=_default_to_total_potential)
+        return index.Selector(maps, potential, reduction=PotentialReduction)
 
     def _get_potential(self, kind):
         return getattr(self._raw_data, f"{kind}_potential")
@@ -200,6 +203,7 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
             return {
                 **{choice: 0 for choice in _COMPONENTS[0]},
                 **{choice: 1 for choice in _COMPONENTS[3]},
+                **{"up": slice(None), "down": slice(None)},
             }
         return {
             choice: component
@@ -208,8 +212,16 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         }
 
 
-def _default_to_total_potential(data, axis):
-    return data[0]
+class PotentialReduction(index.Reduction):
+    def __init__(self, keys):
+        self._selection = keys[0]
+
+    def __call__(self, array, axis):
+        assert axis == (0,)
+        if self._selection == "up":
+            return array[0] + array[1]
+        else:
+            return array[0]
 
 
 def _parse_selection(selection):

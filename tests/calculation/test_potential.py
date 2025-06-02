@@ -250,6 +250,18 @@ def test_to_contour_selections(noncollinear_potential, selection, Assert):
     Assert.allclose(contour.data, expected_data)
 
 
+def test_to_contour_multiple(collinear_potential, Assert):
+    expected_total = collinear_potential.ref.output["total_up"][:, 11, :]
+    expected_ionic = collinear_potential.ref.output["ionic"][:, 11, :]
+    graph = collinear_potential.to_contour("total(up), ionic", b=-0.1)
+    assert len(graph) == 2
+    total_contour, ionic_contour = graph.series
+    Assert.allclose(total_contour.data, expected_total)
+    Assert.allclose(ionic_contour.data, expected_ionic)
+    assert total_contour.label == "total potential(up)"
+    assert ionic_contour.label == "ionic potential"
+
+
 def test_to_quiver(noncollinear_potential, Assert):
     reference = noncollinear_potential.ref
     expected_data = reference.output["total_magnetization"][:2, :, :, 4]
