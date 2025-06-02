@@ -14,8 +14,8 @@ from py4vasp.exception import IncorrectUsage
 
 _DATA_DICT_PARAMETER = """\
 data_dict : dict[str, Any]
-    A dictionary containing labels as keys and the data as values (if required, already 
-    transposed and reshaped) for all selections, in the form of 
+    A dictionary containing labels as keys and the data as values (if required, already
+    transposed and reshaped) for all selections, in the form of
     `{make_label(selection): get_data(selector, selection) for selection in selections}`.
 """
 _SLICE_ARGS_PARAMETER = """\
@@ -68,7 +68,7 @@ class SliceArguments:
     close Cartesian axis if it can find any."""
     supercell: Optional[Union[int, tuple]] = None
     """Stored here to replicate the lattice periodically a given number of times
-    when passed to Visualizer. If you provide two different numbers, the resulting 
+    when passed to Visualizer. If you provide two different numbers, the resulting
     cell will be the two remaining lattice vectors multiplied by the specific number."""
 
     def __post_init__(self):
@@ -133,7 +133,7 @@ class Visualizer:
         viewer = self._structure.plot(supercell)
         viewer.grid_scalars = [
             GridQuantity(
-                data,
+                data[np.newaxis],
                 label=label if label else "",
             )
             for label, data in data_dict.items()

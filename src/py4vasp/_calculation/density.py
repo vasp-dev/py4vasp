@@ -234,8 +234,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         # set up visualizer
         visualizer = Visualizer(self._structure)
         dataDict = {
-            self._label(selector.label(sel)): (selector[sel].T)[np.newaxis]
-            for sel in selections
+            self._label(selector.label(sel)): (selector[sel].T) for sel in selections
         }
         viewer = visualizer.to_view(dataDict, supercell=supercell)
 

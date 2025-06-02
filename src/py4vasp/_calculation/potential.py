@@ -111,30 +111,16 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
             A visualization of the potential isosurface within the crystal structure.
         """
         viewer = self._structure.plot(supercell)
-        viewer.grid_scalars = [
-            self._create_potential_isosurface(kind, component, **user_options)
-            for kind, component in _parse_selection(selection)
-        ]
+        potentials = dict(self._get_potentials(selection))
+        visualizer = density.Visualizer(self._structure)
+        viewer = visualizer.to_view(potentials, supercell)
+        for grid_scalar in viewer.grid_scalars:
+            grid_scalar.isosurfaces = [self._create_isosurface(**user_options)]
         return viewer
 
-    def _create_potential_isosurface(
-        self, kind, component, isolevel=0, color=None, opacity=0.6
-    ):
-        _raise_error_if_kind_incorrect(kind)
-        potential_data = self._get_potential(kind)
-        _raise_error_if_no_data(potential_data, kind)
-        if component == "up":
-            potential = potential_data[0] + potential_data[1]
-        elif component == "down":
-            potential = potential_data[0] - potential_data[1]
-        else:
-            potential = potential_data[0]
+    def _create_isosurface(self, isolevel=0, color=None, opacity=0.6):
         color = color or _config.VASP_COLORS["cyan"]
-        return view.GridQuantity(
-            quantity=potential.T[np.newaxis],
-            label=self._get_label(kind, component),
-            isosurfaces=[view.Isosurface(isolevel, color, opacity)],
-        )
+        return view.Isosurface(isolevel, color, opacity)
 
     @base.data_access
     def to_contour(
@@ -219,23 +205,12 @@ class PotentialReduction(index.Reduction):
             return np.moveaxis(array[1:], 0, -1)
         if self._selection == "up":
             return array[0] + array[1]
-        else:
-            return array[0]
+        if self._selection == "down":
+            return array[0] - array[1]
+        return array[0]
 
     def _is_magnetic_potential(self, axis):
         return axis == ()  # for magnetic potentials, we do not remove the first axis
-
-
-def _parse_selection(selection):
-    tree = select.Tree.from_selection(selection)
-    possible_components = {"up", "down"}
-    for selection in tree.selections():
-        set_ = set(selection)
-        components = set_.intersection(possible_components)
-        component = components.pop() if components else None
-        kinds = set_.difference(possible_components)
-        kind = kinds.pop() if kinds else "total"
-        yield kind, component
 
 
 def _is_nonpolarized(potential):
