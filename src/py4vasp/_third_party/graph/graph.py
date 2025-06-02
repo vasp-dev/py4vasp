@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import itertools
 import uuid
+from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, fields, replace
 
@@ -89,6 +90,7 @@ class Graph(Sequence):
                 figure.add_shape(**shape)
             for annotation in options.get("annotations", ()):
                 figure.add_annotation(**annotation)
+        self._set_legend(figure)
         return figure
 
     def show(self):
@@ -148,6 +150,39 @@ class Graph(Sequence):
             return subplots.make_subplots(specs=[[{"secondary_y": True}]])
         else:
             return go.Figure()
+
+    def _set_legend(self, figure):
+        default_colorbar_x = 1.02
+        colorbar_spacing = 0.18
+        subplot_colorbars = defaultdict(list)
+
+        # Step 1: Group colorbars by subplot (based on axis mapping)
+        for trace in figure.data:
+            if hasattr(trace, "colorbar") and trace.colorbar:
+                xaxis = getattr(trace, "xaxis", "x")
+                yaxis = getattr(trace, "yaxis", "y")
+                subplot_key = f"{xaxis}_{yaxis}"
+                subplot_colorbars[subplot_key].append(trace)
+
+        max_colorbar_x = 1.0  # Track global maximum x for legend placement
+
+        # Step 2: Assign x-positions to colorbars, per subplot
+        for colorbar_list in subplot_colorbars.values():
+            for i, trace in enumerate(colorbar_list):
+                cb = trace.colorbar
+                # If user hasn't explicitly set `x`, place them with spacing
+                if not hasattr(cb, "x") or cb.x is None:
+                    cb.x = default_colorbar_x + i * colorbar_spacing
+                max_colorbar_x = max(max_colorbar_x, cb.x)
+
+        # Step 3: Place legend safely to the right of all colorbars
+        if max_colorbar_x > 1.0:
+            legend_x = max_colorbar_x + colorbar_spacing
+            figure.update_layout(
+                legend=dict(x=legend_x, y=1.0, xanchor="left", yanchor="top")
+            )
+
+        figure.update_layout(margin=dict(r=120))
 
     def _set_xaxis_options(self, figure):
         if self._subplot_on:

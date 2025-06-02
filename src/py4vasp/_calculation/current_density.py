@@ -7,6 +7,7 @@ from py4vasp import exception
 from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import graph
 from py4vasp._util import documentation, import_, slicing
+from py4vasp._util.density import SliceArguments, Visualizer
 
 pretty = import_.optional("IPython.lib.pretty")
 
@@ -94,15 +95,16 @@ current density:
 
         >>> calculation.current_density.to_contour(a=0.3, normal="x")
         """
-        cut, fraction = slicing.get_cut(a, b, c)
-        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
         label, grid_vector = self._read_current_density(selection)
         grid_scalar = np.linalg.norm(grid_vector, axis=-1)
-        grid_scalar = slicing.grid_scalar(grid_scalar, plane, fraction)
-        contour_plot = graph.Contour(grid_scalar, plane, label)
-        if supercell is not None:
-            contour_plot.supercell = np.ones(2, dtype=np.int_) * supercell
-        return graph.Graph([contour_plot])
+
+        # set up Visualizer
+        visualizer = Visualizer(self._structure)
+        return visualizer.to_contour(
+            {label: grid_scalar},
+            SliceArguments(a, b, c, normal, supercell),
+            isolevels=False,
+        )
 
     @base.data_access
     @documentation.format(plane=slicing.PLANE, parameters=_COMMON_PARAMETERS)
@@ -140,11 +142,12 @@ current density:
 
         >>> calculation.current_density.to_quiver(a=0.3, normal="x")
         """
-        cut, fraction = slicing.get_cut(a, b, c)
-        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
+        # set up data
         label, data = self._read_current_density(selection)
-        sliced_data = slicing.grid_vector(np.moveaxis(data, -1, 0), plane, fraction)
-        quiver_plot = graph.Contour(sliced_data, plane, label)
-        if supercell is not None:
-            quiver_plot.supercell = np.ones(2, dtype=np.int_) * supercell
-        return graph.Graph([quiver_plot])
+        sel_data = np.moveaxis(data, -1, 0)
+
+        # set up Visualizer
+        visualizer = Visualizer(self._structure)
+        return visualizer.to_quiver(
+            {label: sel_data}, SliceArguments(a, b, c, normal, supercell)
+        )
