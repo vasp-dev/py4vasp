@@ -8,7 +8,7 @@ import numpy as np
 from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import view
-from py4vasp._util import density, index, select, slicing, suggest
+from py4vasp._util import density, documentation, index, select, slicing, suggest
 
 VALID_KINDS = ("total", "ionic", "xc", "hartree")
 _COMPONENTS = {
@@ -17,6 +17,13 @@ _COMPONENTS = {
     2: ["2", "sigma_y", "y", "sigma_2"],
     3: ["3", "sigma_z", "z", "sigma_3"],
 }
+_COMMON_PARAMETERS = f"""\
+{slicing.PARAMETERS}
+supercell : int or np.ndarray
+    Replicate the contour plot periodically a given number of times. If you
+    provide two different numbers, the resulting cell will be the two remaining
+    lattice vectors multiplied by the specific number.
+"""
 
 
 class Potential(base.Refinery, structure.Mixin, view.Mixin):
@@ -123,18 +130,93 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         return view.Isosurface(isolevel, color, opacity)
 
     @base.data_access
+    @documentation.format(plane=slicing.PLANE, parameters=_COMMON_PARAMETERS)
     def to_contour(
         self, selection="total", *, a=None, b=None, c=None, normal=None, supercell=None
     ):
+        """Generate a 2D contour plot of the selected potential on a slice through the cell.
+
+        {plane}
+
+        Parameters
+        ----------
+        selection : str, optional
+            Specifies which potential to plot. Can be any of the valid kinds
+            ("total", "ionic", "xc", "hartree"). For "total" and "xc" potentials
+            in spin-polarized calculations, you can select "up" or "down" components
+            (e.g., "total_up"). For noncollinear calculations, you can select
+            spin components ("x", "y", "z").
+
+        {parameters}
+
+        Returns
+        -------
+        Graph
+            A Graph object containing the contour plot. The plot shows the selected
+            potential component on the specified 2D slice.
+
+        Examples
+        --------
+
+        Cut a plane through the potential at the origin of the third lattice vector.
+
+        >>> calculation.potential.to_contour(c=0)
+
+        Plot the Hartree potential in the (100) plane crossing at 0.5 fractional coordinate
+        >>> calculation.potential.to_contour(selection="hartree", a=0.5)
+
+        Plot the sigma_z-component of the xc potential in a 2x2 supercell in the plane
+        defined by the first two lattice vectors.
+
+        >>> calculation.potential.to_contour(selection="xc_z", c=0.2, supercell=2)
+        """
         potentials = dict(self._get_potentials(selection))
         visualizer = density.Visualizer(self._structure)
         slice_arguments = density.SliceArguments(a, b, c, normal, supercell)
         return visualizer.to_contour(potentials, slice_arguments, isolevels=False)
 
     @base.data_access
+    @documentation.format(plane=slicing.PLANE, parameters=_COMMON_PARAMETERS)
     def to_quiver(
         self, selection="total", *, a=None, b=None, c=None, normal=None, supercell=None
     ):
+        """Generate a 2D quiver plot of the magnetic part of the potential on a slice.
+
+        This method visualizes the vector field of the magnetization potential
+        (difference between spin-up and spin-down potentials for collinear cases,
+        or the vector components for noncollinear cases) as arrows on a 2D slice
+        through the simulation cell.
+
+        {plane}
+
+        Parameters
+        ----------
+        selection : str, optional
+            Specifies which magnetic potential to plot. It must be a kind that
+            can have a magnetic component, i.e., "total" or "xc".
+            Component selection is not allowed for quiver plots as it inherently plots
+            the vector nature of the magnetization.
+
+        {parameters}
+
+        Returns
+        -------
+        Graph
+            A Graph object containing the quiver plot. The plot shows
+            arrows representing the magnitude and direction of the magnetic
+            potential in the specified 2D slice.
+
+        Examples
+        --------
+        Plot the magnetization of the total potential in the a-b plane
+
+        >>> calculation.potential.to_quiver(c=0)
+
+        Plot the magnetization of the xc potential in the (010) plane
+        crossing at 0.25 fractional coordinate, using a 2x2 supercell.
+
+        >>> calculation.potential.to_quiver(selection="xc", b=0.25, supercell=2)
+        """
         potentials = dict(self._get_potentials(selection, is_magnetic=True))
         visualizer = density.Visualizer(self._structure)
         slice_arguments = density.SliceArguments(a, b, c, normal, supercell)
