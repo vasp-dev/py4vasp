@@ -263,6 +263,23 @@ def test_to_contour_multiple(collinear_potential, Assert):
     assert ionic_contour.label == "ionic potential"
 
 
+@pytest.mark.parametrize("supercell", [3, (2, 3)])
+def test_to_contour_supercell(noncollinear_potential, supercell, Assert):
+    graph = noncollinear_potential.to_contour(c=0.7, supercell=supercell)
+    assert len(graph) == 1
+    assert len(graph.series[0].supercell) == 2
+    Assert.allclose(graph.series[0].supercell, supercell)
+
+
+@pytest.mark.parametrize("normal", ("x", "y", "z", "auto"))
+def test_to_contour_normal(collinear_potential, normal, Assert):
+    lattice_vectors = collinear_potential.ref.structure.lattice_vectors()
+    plane = slicing.plane(lattice_vectors, "b", normal)
+    graph = collinear_potential.to_contour(b=0.1, normal=normal)
+    assert len(graph) == 1
+    Assert.allclose(graph.series[0].lattice, plane)
+
+
 def test_to_quiver(noncollinear_potential, Assert):
     reference = noncollinear_potential.ref
     expected_data = reference.output["total_magnetization"][:2, :, :, 4]

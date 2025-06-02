@@ -10,9 +10,8 @@ from py4vasp._third_party import view
 from py4vasp._util import density, index, select, slicing, suggest
 
 VALID_KINDS = ("total", "ionic", "xc", "hartree")
-_INTERNAL = "_density"
 _COMPONENTS = {
-    0: ["0", "unity", "sigma_0", "scalar", _INTERNAL],
+    0: ["0", "unity", "sigma_0", "scalar"],
     1: ["1", "sigma_x", "x", "sigma_1"],
     2: ["2", "sigma_y", "y", "sigma_2"],
     3: ["3", "sigma_z", "z", "sigma_3"],
