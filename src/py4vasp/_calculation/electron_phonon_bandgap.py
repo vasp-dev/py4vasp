@@ -71,7 +71,7 @@ class ElectronPhononBandgap(base.Refinery):
         self_energy = ElectronPhononSelfEnergy.from_data(self._raw_data.self_energy)
         selections = self_energy.selections()
         # This class only make sense when the scattering approximation is SERTA
-        selections["scattering_approximation"] = "SERTA"
+        selections["selfen_approx"] = ["SERTA"]
         return selections
 
     def _generate_selections(self, selection):
