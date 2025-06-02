@@ -231,6 +231,25 @@ def test_to_contour(reference_potential, Assert):
     assert contour.label == "total potential"
 
 
+@pytest.mark.parametrize(
+    "selection", ("sigma_z", "ionic(0)", "xc(sigma_1)", "y(total)")
+)
+def test_to_contour_selections(noncollinear_potential, selection, Assert):
+    if "0" in selection:
+        expected_data = noncollinear_potential.ref.output["ionic"]
+    elif "1" in selection:
+        expected_data = noncollinear_potential.ref.output["xc_magnetization"][0]
+    elif "y" in selection:
+        expected_data = noncollinear_potential.ref.output["total_magnetization"][1]
+    else:
+        expected_data = noncollinear_potential.ref.output["total_magnetization"][2]
+    expected_data = expected_data[4, :, :]
+    graph = noncollinear_potential.to_contour(selection, a=0.4)
+    assert len(graph) == 1
+    contour = graph.series[0]
+    Assert.allclose(contour.data, expected_data)
+
+
 def test_to_quiver(noncollinear_potential, Assert):
     reference = noncollinear_potential.ref
     expected_data = reference.output["total_magnetization"][:2, :, :, 4]

@@ -10,6 +10,13 @@ from py4vasp._third_party import view
 from py4vasp._util import density, index, select, slicing, suggest
 
 VALID_KINDS = ("total", "ionic", "xc", "hartree")
+_INTERNAL = "_density"
+_COMPONENTS = {
+    0: ["0", "unity", "sigma_0", "scalar", _INTERNAL],
+    1: ["1", "sigma_x", "x", "sigma_1"],
+    2: ["2", "sigma_y", "y", "sigma_2"],
+    3: ["3", "sigma_z", "z", "sigma_3"],
+}
 
 
 class Potential(base.Refinery, structure.Mixin, view.Mixin):
@@ -130,10 +137,12 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         )
 
     @base.data_access
-    def to_contour(self, selection="total", *, a=None, b=None, c=None, normal=None, supercell=None):
+    def to_contour(
+        self, selection="total", *, a=None, b=None, c=None, normal=None, supercell=None
+    ):
         make_label = lambda selection: f"total potential"
         visualizer = density.Visualizer(self._structure, make_label)
-        potential_data = self._get_potential(selection)[0]
+        potential_data = self._get_potentials(selection)
         return visualizer.to_contour_from_data(
             potential_data.T, a, b, c, normal, supercell
         )
@@ -161,8 +170,46 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         _raise_error_if_nonpolarized_potential(potential)
         return np.moveaxis(potential[1:], 0, -1)
 
+    def _get_potentials(self, selection):
+        tree = select.Tree.from_selection(selection)
+        for selection in tree.selections():
+            kind, component = self._determine_kind_and_component(selection)
+            selector = self._create_selector(kind)
+            return selector[component]
+
+    def _determine_kind_and_component(self, selection):
+        for kind in VALID_KINDS:
+            if kind in selection:
+                remaining = list(selection)
+                remaining.remove(kind)
+                return kind, tuple(remaining)
+        return "total", selection
+
+    def _create_selector(self, kind):
+        potential = self._get_potential(kind)
+        maps = {0: self._create_map(potential)}
+        return index.Selector(maps, potential, reduction=_default_to_total_potential)
+
     def _get_potential(self, kind):
         return getattr(self._raw_data, f"{kind}_potential")
+
+    def _create_map(self, potential):
+        if _is_nonpolarized(potential):
+            return {choice: 0 for choice in _COMPONENTS[0]}
+        elif _is_collinear(potential):
+            return {
+                **{choice: 0 for choice in _COMPONENTS[0]},
+                **{choice: 1 for choice in _COMPONENTS[3]},
+            }
+        return {
+            choice: component
+            for component, choices in _COMPONENTS.items()
+            for choice in choices
+        }
+
+
+def _default_to_total_potential(data, axis):
+    return data[0]
 
 
 def _parse_selection(selection):
