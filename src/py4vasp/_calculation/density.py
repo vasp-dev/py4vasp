@@ -413,6 +413,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         # set up data
         if self.is_collinear():
             data = self._raw_data.charge[1].T
+            data = self._raw_data.charge[1].T
         else:
             data = self.to_numpy()[1:]
 
