@@ -7,7 +7,7 @@ from py4vasp import exception
 from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import graph
 from py4vasp._util import documentation, import_, slicing
-from py4vasp._util.density import Visualizer
+from py4vasp._util.density import SliceArguments, Visualizer
 
 pretty = import_.optional("IPython.lib.pretty")
 
@@ -99,9 +99,11 @@ current density:
         grid_scalar = np.linalg.norm(grid_vector, axis=-1)
 
         # set up Visualizer
-        visualizer = Visualizer(self._structure, (lambda _: label))
-        return visualizer.to_contour_from_data(
-            grid_scalar, a, b, c, normal, supercell, isolevels=False
+        visualizer = Visualizer(self._structure)
+        return visualizer.to_contour(
+            {label: grid_scalar},
+            SliceArguments(a, b, c, normal, supercell),
+            isolevels=False,
         )
 
     @base.data_access
@@ -145,5 +147,7 @@ current density:
         sel_data = np.moveaxis(data, -1, 0)
 
         # set up Visualizer
-        visualizer = Visualizer(self._structure, (lambda _: label))
-        return visualizer.to_quiver_from_data(sel_data, a, b, c, normal, supercell)
+        visualizer = Visualizer(self._structure)
+        return visualizer.to_quiver(
+            {label: sel_data}, SliceArguments(a, b, c, normal, supercell)
+        )
