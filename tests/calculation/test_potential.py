@@ -229,6 +229,7 @@ def test_to_contour(reference_potential, Assert):
     Assert.allclose(contour.data, expected_data)
     Assert.allclose(contour.lattice.vectors, expected_lattice_vectors)
     assert contour.label == "total potential"
+    assert not contour.isolevels
 
 
 @pytest.mark.parametrize(

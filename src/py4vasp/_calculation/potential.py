@@ -141,11 +141,9 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         self, selection="total", *, a=None, b=None, c=None, normal=None, supercell=None
     ):
         potentials = dict(self._get_potentials(selection))
-        make_label = lambda selection: selection
-        visualizer = density.Visualizer(self._structure, make_label)
-        return visualizer.to_contour_from_mapping(
-            potentials, potentials.keys(), a, b, c, normal, supercell
-        )
+        visualizer = density.Visualizer(self._structure)
+        slice_arguments = density.SliceArguments(a, b, c, normal, supercell)
+        return visualizer.to_contour(potentials, slice_arguments, isolevels=False)
 
     def _get_potentials(self, selection):
         tree = select.Tree.from_selection(selection)
@@ -153,40 +151,10 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
             kind, component = self._determine_kind_and_component(selection)
             selector = self._create_selector(kind)
             component_label = component[0] if component else ""
-            yield self._get_label(kind, component_label), selector[component]
+            yield self._get_label(kind, component_label), selector[component].T
 
     def _get_label(self, kind, component):
         return f"{kind} potential" + (f"({component})" if component else "")
-
-    @base.data_access
-    def to_quiver(
-        self, selection="total", *, a=None, b=None, c=None, normal=None, supercell=None
-    ):
-        for _, component in _parse_selection(selection):
-            assert component is None
-        potentials = {
-            kind: self._get_and_verify_magnetic_potential(kind)
-            for kind, _ in _parse_selection(selection)
-        }
-        make_label = lambda selection: f"{selection} potential"
-        visualizer = density.Visualizer(self._structure, make_label)
-        return visualizer.to_quiver_from_mapping(
-            potentials, potentials.keys(), a, b, c, normal, supercell
-        )
-
-    def _get_and_verify_magnetic_potential(self, kind):
-        _raise_error_if_kind_incorrect(kind, ("total", "xc"))
-        potential = self._get_potential(kind)
-        _raise_error_if_nonpolarized_potential(potential)
-        return np.moveaxis(potential[1:], 0, -1)
-
-    def _determine_kind_and_component(self, selection):
-        for kind in VALID_KINDS:
-            if kind in selection:
-                remaining = list(selection)
-                remaining.remove(kind)
-                return kind, tuple(remaining)
-        return "total", selection
 
     def _create_selector(self, kind):
         potential = self._get_potential(kind)
@@ -210,6 +178,34 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
             for component, choices in _COMPONENTS.items()
             for choice in choices
         }
+
+    @base.data_access
+    def to_quiver(
+        self, selection="total", *, a=None, b=None, c=None, normal=None, supercell=None
+    ):
+        for _, component in _parse_selection(selection):
+            assert component is None
+        potentials = {
+            self._get_label(kind, ""): self._get_and_verify_magnetic_potential(kind)
+            for kind, _ in _parse_selection(selection)
+        }
+        visualizer = density.Visualizer(self._structure)
+        slice_arguments = density.SliceArguments(a, b, c, normal, supercell)
+        return visualizer.to_quiver(potentials, slice_arguments)
+
+    def _get_and_verify_magnetic_potential(self, kind):
+        _raise_error_if_kind_incorrect(kind, ("total", "xc"))
+        potential = self._get_potential(kind)
+        _raise_error_if_nonpolarized_potential(potential)
+        return np.moveaxis(potential[1:], 0, -1).T
+
+    def _determine_kind_and_component(self, selection):
+        for kind in VALID_KINDS:
+            if kind in selection:
+                remaining = list(selection)
+                remaining.remove(kind)
+                return kind, tuple(remaining)
+        return "total", selection
 
 
 class PotentialReduction(index.Reduction):
