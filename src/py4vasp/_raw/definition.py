@@ -664,7 +664,7 @@ schema.add(
     seebeck=f"{group}/transport_{{}}/seebeck",
     peltier=f"{group}/transport_{{}}/peltier",
     nbands_sum=f"{group}/self_energy_{{}}/nbands_sum",
-    delta=f"{group}/transport_{{}}/delta",
+    delta=f"{group}/self_energy_{{}}/delta",
     electronic_thermal_conductivity=f"{group}/transport_{{}}/e_t_conductivity",
     transport_function=f"{group}/transport_{{}}/transport_function",
     scattering_approximation=f"{group}/transport_{{}}/scattering_approximation",

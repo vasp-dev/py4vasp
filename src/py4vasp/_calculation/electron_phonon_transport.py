@@ -14,28 +14,55 @@ pd = import_.optional("pandas")
 
 
 class ElectronPhononTransportInstance:
+    """
+    Represents a single instance of electron-phonon transport calculations.
+    This class provides access to various transport properties computed from
+    electron-phonon interactions, such as conductivity, mobility, Seebeck and Peltier
+    coefficients, and thermal conductivity. It allows for data extraction, selection,
+    and visualization of transport properties for a given calculation index.
+    Parameters
+    ----------
+    parent : object
+        The parent object containing the calculation data and methods for data retrieval.
+    index : int
+        The index identifying this particular transport calculation instance.
+    """
     def __init__(self, parent, index):
         self.parent = parent
         self.index = index
 
     def __str__(self):
+        """
+        Returns a string representation of the transport instance, including chemical
+        potential and scattering approximation information.
+        """
         lines = []
         lines.append("electron phonon transport %d" % self.index)
-        lines.append("id_name %s" % self.id_name)
-        lines.append("id_index %s" % self.id_index)
         # Information about the chemical potential
-        mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
-        mu_idx = self.id_index[2] - 1
-        lines.append(f"{mu_tag}: {mu_val[mu_idx]}")
+        mu_tag, mu_val = self.get_mu_tag()
+        lines.append(f"{mu_tag}: {mu_val}")
         # Information about the scattering approximation
         scattering_approx = self._get_data("scattering_approximation")
         lines.append(f"scattering_approximation: {scattering_approx}")
+        # Information about the broadening parameter
+        delta = self._get_scalar("delta")
+        lines.append(f"delta: {delta}")
         return "\n".join(lines) + "\n"
 
+    def get_mu_tag(self):
+        """ Get choosen tag to select the chemical potential as well as its value"""
+        mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
+        mu_idx = self.id_index[2] - 1
+        return mu_tag,mu_val[mu_idx]
+                     
     def _get_data(self, name):
         return self.parent._get_data(name, self.index)
 
+    def _get_scalar(self,name):
+        return self.parent._get_scalar(name, self.index)
+    
     def to_dict(self, selection=None):
+        """Returns a dictionary with selected transport properties for this instance."""
         names = [
             "temperatures",
             "transport_function",
@@ -46,9 +73,15 @@ class ElectronPhononTransportInstance:
             "electronic_thermal_conductivity",
             "scattering_approximation",
         ]
-        return {name: self._get_data(name) for name in names}
+        data_dict = {name: self._get_data(name) for name in names}
+        names = [
+            "delta"
+        ]
+        scalar_dict = {name: self._get_scalar(name) for name in names}
+        return data_dict | scalar_dict
 
     def selections(self):
+        """Returns the available property names that can be selected for this instance."""
         return self.to_dict().keys()
 
     def to_graph(self, selection):
