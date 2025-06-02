@@ -318,6 +318,21 @@ def test_to_quiver_normal(collinear_potential, normal, Assert):
     Assert.allclose(graph.series[0].lattice, plane)
 
 
+def test_incorrect_slice_raises_error(noncollinear_potential):
+    with pytest.raises(exception.IncorrectUsage):
+        noncollinear_potential.to_contour()
+    with pytest.raises(exception.IncorrectUsage):
+        noncollinear_potential.to_contour(a=1, b=2)
+    with pytest.raises(exception.IncorrectUsage):
+        noncollinear_potential.to_contour(3)
+    with pytest.raises(exception.IncorrectUsage):
+        noncollinear_potential.to_quiver()
+    with pytest.raises(exception.IncorrectUsage):
+        noncollinear_potential.to_quiver(b=1, c=2)
+    with pytest.raises(exception.IncorrectUsage):
+        noncollinear_potential.to_quiver(3)
+
+
 def test_to_quiver_fails_for_nonpolarized(nonpolarized_potential):
     with pytest.raises(exception.DataMismatch):
         nonpolarized_potential.to_quiver(c=0)
