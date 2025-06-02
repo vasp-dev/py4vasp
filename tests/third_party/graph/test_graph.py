@@ -81,7 +81,6 @@ def tilted_contour():
         label="tilted contour",
         supercell=(2, 1),
         show_cell=False,
-        contrast_mode=True,
     )
 
 

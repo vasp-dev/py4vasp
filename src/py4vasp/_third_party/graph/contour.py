@@ -64,8 +64,6 @@ class Contour(trace.Trace):
     - (float, None): Sets the minimum of the color scale.
     - (None, float): Sets the maximum of the color scale.
     - (float, float): Sets minimum and maximum of the color scale."""
-    contrast_mode: bool = False
-    "If True, enables high contrast mode, which affects the colors of the plot."
     traces_as_periodic: bool = False
     """If True, traces (contour and quiver) are shifted so that quiver and heatmap 'cell' 
     centers align with the positions they were computed at. Periodic images will be drawn
