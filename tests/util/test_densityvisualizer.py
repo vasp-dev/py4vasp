@@ -33,23 +33,6 @@ def _make_visualizer(raw_data, request, data_ndim: int):
         ref_data = [data3d.T[0], data3d.T[1]]
         selector = index.Selector({-1: {"spin up": 0, "spin down": 1}}, data3d)
         selections = [("spin up",), ("spin down",)]
-    elif request.param == "selected":
-        if data_ndim == 3:
-            data3d = np.ones(shape=(3, 4, 5, 10))
-        elif data_ndim == 4:
-            data3d = np.ones(shape=(3, 4, 5, 3, 10))
-        else:
-            raise NotImplementedError(f"ndim {data_ndim} not implemented.")
-        ref_data = [data3d.T[0]]
-        selector = index.Selector(
-            {
-                -1: {
-                    "": 0,
-                }
-            },
-            data3d,
-        )
-        selections = [("",)]
     else:
         raise NotImplementedError(f"Requested param {request.param} not implemented.")
 
@@ -68,18 +51,8 @@ def visualizer(raw_data, request):
     return _make_visualizer(raw_data, request, 3)
 
 
-@pytest.fixture(params=["selected"])
-def visualizer_selected(raw_data, request):
-    return _make_visualizer(raw_data, request, 3)
-
-
 @pytest.fixture(params=["simple", "with_selections"])
 def visualizer_quiver(raw_data, request):
-    return _make_visualizer(raw_data, request, 4)
-
-
-@pytest.fixture(params=["selected"])
-def visualizer_quiver_selected(raw_data, request):
     return _make_visualizer(raw_data, request, 4)
 
 
