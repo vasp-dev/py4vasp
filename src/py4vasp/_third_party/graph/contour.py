@@ -253,7 +253,7 @@ class Contour(trace.Trace):
         return (
             x,
             y,
-            (self._extend_data_contour(data) if self.traces_as_periodic else data),
+            self._extend_data_contour(data),
         )
 
     def _make_mesh(self, lattice, num_point, index):

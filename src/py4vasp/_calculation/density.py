@@ -6,7 +6,7 @@ from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import graph, view
 from py4vasp._util import documentation, import_, index, select, slicing
-from py4vasp._util.density import Visualizer
+from py4vasp._util.density import SliceArguments, Visualizer
 
 pretty = import_.optional("IPython.lib.pretty")
 
@@ -232,10 +232,12 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         selections = list(self._filter_noncollinear_magnetization_from_selections(tree))
 
         # set up visualizer
-        visualizer = Visualizer(
-            self._structure, (lambda sel: self._label(selector.label(sel)))
-        )
-        viewer = visualizer.to_view(selector, selections, supercell=supercell)
+        visualizer = Visualizer(self._structure)
+        dataDict = {
+            self._label(selector.label(sel)): (selector[sel].T)[np.newaxis]
+            for sel in selections
+        }
+        viewer = visualizer.to_view(dataDict, supercell=supercell)
 
         # adjust viewer
         for scalar, sel in zip(viewer.grid_scalars, selections):
@@ -360,9 +362,14 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         # set up visualizer
         visualizer = Visualizer(
             self._structure,
-            (lambda sel: (self._label(selector.label(sel)) or "charge")),
         )
-        contour = visualizer.to_contour_from_mapping(selector, selections, a, b, c, normal, supercell)
+        dataDict = {
+            (self._label(selector.label(sel)) or "charge"): selector[sel].T
+            for sel in selections
+        }
+        contour = visualizer.to_contour(
+            dataDict, SliceArguments(a, b, c, normal, supercell)
+        )
         return contour
 
     @base.data_access
@@ -411,11 +418,10 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
             data = self.to_numpy()[1:]
 
         # set up visualizer
-        visualizer = Visualizer(
-            self._structure, (lambda _: self._selection or "magnetization")
-        )
-        return visualizer.to_quiver_from_data(
-            data, a=a, b=b, c=c, normal=normal, supercell=supercell
+        visualizer = Visualizer(self._structure)
+        dataDict = {(self._selection or "magnetization"): data}
+        return visualizer.to_quiver(
+            dataDict, SliceArguments(a, b, c, normal, supercell)
         )
 
     @base.data_access
