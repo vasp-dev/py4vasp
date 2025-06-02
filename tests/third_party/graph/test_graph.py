@@ -81,7 +81,6 @@ def tilted_contour():
         label="tilted contour",
         supercell=(2, 1),
         show_cell=False,
-        contrast_mode=True,
     )
 
 
@@ -117,7 +116,7 @@ def complex_quiver():
 
 
 @pytest.mark.parametrize("color_scheme", ["auto", "signed", "positive", "negative"])
-def test_contour_color_scheme(color_scheme):
+def test_contour_color_scheme(color_scheme, not_core):
     contour = Contour(
         data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
         lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
@@ -146,7 +145,7 @@ def test_contour_color_scheme(color_scheme):
 
 @pytest.mark.xfail
 @pytest.mark.parametrize("contrast_mode", [True, False])
-def test_contour_contrast_mode(contrast_mode):
+def test_contour_contrast_mode(contrast_mode, not_core):
     contour = Contour(
         data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
         lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
@@ -156,13 +155,13 @@ def test_contour_contrast_mode(contrast_mode):
     )
     assert contrast_mode == contour.contrast_mode
     graph = Graph(contour)
-    raise NotImplementedError("Contrast mode currently has no effect on plotting.")
+    raise NotImplementedError("Implementation not yet complete.")
 
 
 @pytest.mark.parametrize(
     "color_limits", [None, (None, None), (-9, None), (None, 9), (-11, 11)]
 )
-def test_contour_color_limits(color_limits):
+def test_contour_color_limits(color_limits, not_core):
     contour = Contour(
         data=np.linspace(-10, 10, 20 * 18).reshape((20, 18)),
         lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
@@ -186,7 +185,7 @@ def test_contour_color_limits(color_limits):
 
 
 @pytest.mark.parametrize("units", ["", None, "px", "m/s"])
-def test_contour_colorbar_label(units):
+def test_contour_colorbar_label(units, not_core):
     contour = Contour(
         data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
         lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
