@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import numpy as np
+from py4vasp.exception import IncorrectUsage
 import pytest
 
 from py4vasp import raw
@@ -120,23 +121,23 @@ def test_view_supercell(visualizer, supercell, Assert):
 
 
 @pytest.mark.parametrize(
-    "kwargs, index, position",
-    (({"a": 0.2}, 0, 1), ({"b": 0.5}, 1, 2), ({"c": 1.3}, 2, 1)),
+    "slice_args, index, position",
+    ((density.SliceArguments(a=0.2), 0, 1), (density.SliceArguments(b=0.5), 1, 2), (density.SliceArguments(c=1.3), 2, 1)),
 )
-def test_contour_from_mapping(visualizer, kwargs, index, position, Assert):
+def test_contour_from_mapping(visualizer, slice_args, index, position, Assert):
     graph = visualizer.to_contour_from_mapping(
-        visualizer.ref.selector, visualizer.ref.selections, **kwargs
+        visualizer.ref.selector, visualizer.ref.selections, slice_args
     )
     _check_contour(graph, visualizer, index, position, Assert)
 
 
 @pytest.mark.parametrize(
-    "kwargs, index, position",
-    (({"a": 0.2}, 0, 1), ({"b": 0.5}, 1, 2), ({"c": 1.3}, 2, 1)),
+    "slice_args, index, position",
+    ((density.SliceArguments(a=0.2), 0, 1), (density.SliceArguments(b=0.5), 1, 2), (density.SliceArguments(c=1.3), 2, 1)),
 )
-def test_contour_from_data(visualizer_selected, kwargs, index, position, Assert):
+def test_contour_from_data(visualizer_selected, slice_args, index, position, Assert):
     graph = visualizer_selected.to_contour_from_data(
-        visualizer_selected.ref.data3d[0], **kwargs
+        visualizer_selected.ref.data3d[0], slice_args
     )
     _check_contour(graph, visualizer_selected, index, position, Assert)
 
@@ -165,12 +166,11 @@ def _check_contour(graph, visualizer, index, position, Assert):
 
 @pytest.mark.parametrize("supercell", [(2, 3), 3, (2, 5)])
 def test_contour_from_mapping_supercell(visualizer, supercell, Assert):
-    kwargs, index = ({"c": 1.3}, 2)
+    slice_args, index = (density.SliceArguments(c=1.3, supercell=supercell), 2)
     graph = visualizer.to_contour_from_mapping(
         visualizer.ref.selector,
         visualizer.ref.selections,
-        supercell=supercell,
-        **kwargs,
+        slice_args=slice_args,
     )
     _check_contour_supercell(graph, visualizer, index, supercell, Assert)
 
@@ -191,25 +191,27 @@ def _check_contour_supercell(graph, visualizer, index, supercell, Assert):
 
 @pytest.mark.parametrize("supercell", [(2, 3), 3, (2, 5)])
 def test_contour_from_data_supercell(visualizer_selected, supercell, Assert):
-    kwargs, index = ({"c": 1.3}, 2)
+    slice_args, index = (density.SliceArguments(c=1.3, supercell=supercell), 2)
     graph = visualizer_selected.to_contour_from_data(
-        visualizer_selected.ref.data3d[0], supercell=supercell, **kwargs
+        visualizer_selected.ref.data3d[0], slice_args
     )
     _check_contour_supercell(graph, visualizer_selected, index, supercell, Assert)
 
 
 @pytest.mark.parametrize("normal", [None, "auto", "x"])
 def test_contour_from_mapping_normal(visualizer, normal, Assert):
+    slice_args = density.SliceArguments(c=1.3, normal=normal)
     graph = visualizer.to_contour_from_mapping(
-        visualizer.ref.selector, visualizer.ref.selections, normal=normal, c=1.3
+        visualizer.ref.selector, visualizer.ref.selections, slice_args
     )
     _check_contour_normal(graph, visualizer, normal, Assert)
 
 
 @pytest.mark.parametrize("normal", [None, "auto", "x"])
 def test_contour_from_data_normal(visualizer_selected, normal, Assert):
+    slice_args = density.SliceArguments(c=1.3, normal=normal)
     graph = visualizer_selected.to_contour_from_data(
-        visualizer_selected.ref.data3d[0], normal=normal, c=1.3
+        visualizer_selected.ref.data3d[0], slice_args
     )
     _check_contour_normal(graph, visualizer_selected, normal, Assert)
 
@@ -225,17 +227,17 @@ def _check_contour_normal(graph, visualizer, normal, Assert):
 
 
 def test_quiver_from_mapping(visualizer_quiver, Assert):
-    kwargs, index, position = ({"c": 1.3}, 2, 1)
+    slice_args, index, position = (density.SliceArguments(c=1.3), 2, 1)
     graph = visualizer_quiver.to_quiver_from_mapping(
-        visualizer_quiver.ref.selector, visualizer_quiver.ref.selections, **kwargs
+        visualizer_quiver.ref.selector, visualizer_quiver.ref.selections, slice_args
     )
     _check_quiver(graph, visualizer_quiver, position, index, Assert)
 
 
 def test_quiver_from_data(visualizer_quiver_selected, Assert):
-    kwargs, index, position = ({"c": 1.3}, 2, 1)
+    slice_args, index, position = (density.SliceArguments(c=1.3), 2, 1)
     graph = visualizer_quiver_selected.to_quiver_from_data(
-        visualizer_quiver_selected.ref.data3d[0], **kwargs
+        visualizer_quiver_selected.ref.data3d[0], slice_args
     )
     _check_quiver(graph, visualizer_quiver_selected, position, index, Assert)
 
@@ -264,21 +266,20 @@ def _check_quiver(graph, visualizer_quiver, position, index, Assert):
 
 @pytest.mark.parametrize("supercell", [(2, 3), 3, (2, 5)])
 def test_quiver_from_mapping_supercell(visualizer_quiver, supercell, Assert):
-    kwargs, index = ({"c": 1.3}, 2)
+    slice_args, index = (density.SliceArguments(c=1.3, supercell=supercell), 2)
     graph = visualizer_quiver.to_quiver_from_mapping(
         visualizer_quiver.ref.selector,
         visualizer_quiver.ref.selections,
-        supercell=supercell,
-        **kwargs,
+        slice_args,
     )
     _check_quiver_supercell(graph, visualizer_quiver, supercell, index, Assert)
 
 
 @pytest.mark.parametrize("supercell", [(2, 3), 3, (2, 5)])
 def test_quiver_from_data_supercell(visualizer_quiver_selected, supercell, Assert):
-    kwargs, index = ({"c": 1.3}, 2)
+    slice_args, index = (density.SliceArguments(c=1.3, supercell=supercell), 2)
     graph = visualizer_quiver_selected.to_quiver_from_data(
-        visualizer_quiver_selected.ref.data3d[0], supercell=supercell, **kwargs
+        visualizer_quiver_selected.ref.data3d[0], slice_args
     )
     _check_quiver_supercell(graph, visualizer_quiver_selected, supercell, index, Assert)
 
@@ -299,19 +300,20 @@ def _check_quiver_supercell(graph, visualizer_quiver, supercell, index, Assert):
 
 @pytest.mark.parametrize("normal", [None, "auto", "x"])
 def test_quiver_from_mapping_normal(visualizer_quiver, normal, Assert):
+    slice_args = density.SliceArguments(c=1.3, normal=normal)
     graph = visualizer_quiver.to_quiver_from_mapping(
         visualizer_quiver.ref.selector,
         visualizer_quiver.ref.selections,
-        normal=normal,
-        c=1.3,
+        slice_args
     )
     _check_quiver_normal(graph, visualizer_quiver, normal, Assert)
 
 
 @pytest.mark.parametrize("normal", [None, "auto", "x"])
 def test_quiver_from_mapping_normal(visualizer_quiver_selected, normal, Assert):
+    slice_args = density.SliceArguments(c=1.3, normal=normal)
     graph = visualizer_quiver_selected.to_quiver_from_data(
-        visualizer_quiver_selected.ref.data3d[0], normal=normal, c=1.3
+        visualizer_quiver_selected.ref.data3d[0], slice_args
     )
     _check_quiver_normal(graph, visualizer_quiver_selected, normal, Assert)
 
@@ -327,6 +329,18 @@ def _check_quiver_normal(graph, visualizer_quiver, normal, Assert):
 
 
 def test_quiver_collinear(visualizer, Assert):
+    slice_args = density.SliceArguments(c=1.3)
     graph = visualizer.to_quiver_from_mapping(
-        visualizer.ref.selector, visualizer.ref.selections, c=1.3
+        visualizer.ref.selector, visualizer.ref.selections, slice_args
     )
+
+def test_slice_arguments():
+    with pytest.raises(IncorrectUsage): density.SliceArguments(a=1.0,b=1.0)
+    with pytest.raises(IncorrectUsage): density.SliceArguments(b=1.0,c=1.0)
+    with pytest.raises(IncorrectUsage): density.SliceArguments(a=1.0,c=1.0)
+    with pytest.raises(IncorrectUsage): density.SliceArguments(a=1.0,b=1.0,c=1.0)
+    with pytest.raises(IncorrectUsage): density.SliceArguments()
+
+    slice_args = density.SliceArguments(b=1.0, supercell=(1,1,1))
+    assert slice_args.a is None
+    assert slice_args.c is None

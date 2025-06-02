@@ -1,4 +1,5 @@
-from typing import Callable, Mapping
+from dataclasses import dataclass
+from typing import Callable, Mapping, Optional
 
 import numpy as np
 
@@ -6,6 +7,28 @@ from py4vasp._calculation.structure import Structure
 from py4vasp._third_party.graph import Contour, Graph
 from py4vasp._third_party.view import GridQuantity, View
 from py4vasp._util import index, slicing
+from py4vasp.exception import IncorrectUsage
+
+
+@dataclass
+class SliceArguments:
+    a: Optional[float]=None
+    b: Optional[float]=None
+    c: Optional[float]=None
+    normal: Optional[float]=None
+    supercell: Optional[float]=None
+
+    def __post_init__(self):
+        # Count how many of a, b, c are not None
+        provided = [x is not None for x in (self.a, self.b, self.c)].count(True)
+        if provided != 1:
+            raise IncorrectUsage("Exactly one of a, b, or c must be provided (not None).")
+
+    def slice_plane(self, lattice_vectors):
+        cut, fraction = slicing.get_cut(self.a, self.b, self.c)
+        plane = slicing.plane(lattice_vectors, cut, self.normal)
+        return plane, fraction
+
 
 
 class Visualizer:
@@ -29,19 +52,15 @@ class Visualizer:
         self,
         mapping,
         selections,
-        a=None,
-        b=None,
-        c=None,
-        normal=None,
-        supercell=None,
-        isolevels=True,
+        slice_args: SliceArguments,
+        isolevels: bool=True,
     ) -> Graph:
         if self._label is None:
             self._label = getattr(mapping, "label", (lambda _: ""))
-        plane, fraction = self._slice_plane(a, b, c, normal)
+        plane, fraction = slice_args.slice_plane(self._structure.lattice_vectors())
         contours = [
             self._make_contour(
-                mapping[selection].T, selection, plane, fraction, supercell, isolevels
+                mapping[selection].T, selection, plane, fraction, slice_args.supercell, isolevels
             )
             for selection in selections
         ]
@@ -58,26 +77,17 @@ class Visualizer:
             contour.supercell = np.ones(2, dtype=np.int_) * supercell
         return contour
 
-    def _slice_plane(self, a, b, c, normal):
-        cut, fraction = slicing.get_cut(a, b, c)
-        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
-        return plane, fraction
-
     def to_contour_from_data(
         self,
         data,
-        a=None,
-        b=None,
-        c=None,
-        normal=None,
-        supercell=None,
-        isolevels=True,
+        slice_args: SliceArguments,
+        isolevels: bool=True,
     ) -> Graph:
         if self._label is None:
             self._label = lambda _: ""
-        plane, fraction = self._slice_plane(a, b, c, normal)
+        plane, fraction = slice_args.slice_plane(self._structure.lattice_vectors())
         contours = [
-            self._make_contour(data, None, plane, fraction, supercell, isolevels)
+            self._make_contour(data, None, plane, fraction, slice_args.supercell, isolevels)
         ]
         return Graph(contours)
 
@@ -85,18 +95,14 @@ class Visualizer:
         self,
         mapping,
         selections,
-        a=None,
-        b=None,
-        c=None,
-        normal=None,
-        supercell=None,
+        slice_args: SliceArguments,
     ) -> Graph:
         if self._label is None:
             self._label = getattr(mapping, "label", (lambda _: ""))
-        plane, fraction = self._slice_plane(a, b, c, normal)
+        plane, fraction = slice_args.slice_plane(self._structure.lattice_vectors())
         contours = [
             self._make_quiver(
-                mapping[selection].T, selection, plane, fraction, supercell
+                mapping[selection].T, selection, plane, fraction, slice_args.supercell
             )
             for selection in selections
         ]
@@ -121,14 +127,10 @@ class Visualizer:
     def to_quiver_from_data(
         self,
         data,
-        a=None,
-        b=None,
-        c=None,
-        normal=None,
-        supercell=None,
+        slice_args: SliceArguments,
     ) -> Graph:
         if self._label is None:
             self._label = lambda _: ""
-        plane, fraction = self._slice_plane(a, b, c, normal)
-        contours = [self._make_quiver(data, None, plane, fraction, supercell)]
+        plane, fraction = slice_args.slice_plane(self._structure.lattice_vectors())
+        contours = [self._make_quiver(data, None, plane, fraction, slice_args.supercell)]
         return Graph(contours)
