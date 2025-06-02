@@ -114,9 +114,9 @@ class ElectronPhononBandgapInstance:
         _dict = {
             "nbands_sum": self._get_scalar("nbands_sum"),
             "direct_renorm": self._get_data("direct_renorm"),
-            "direct": self._get_data("direct"),
+            "direct": self._get_scalar("direct"),
             "fundamental_renorm": self._get_data("fundamental_renorm"),
-            "fundamental": self._get_data("fundamental"),
+            "fundamental": self._get_scalar("fundamental"),
             "temperatures": self._get_data("temperatures"),
         }
         return _dict
