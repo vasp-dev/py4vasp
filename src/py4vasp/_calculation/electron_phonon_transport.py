@@ -27,6 +27,7 @@ class ElectronPhononTransportInstance:
     index : int
         The index identifying this particular transport calculation instance.
     """
+
     def __init__(self, parent, index):
         self.parent = parent
         self.index = index
@@ -54,17 +55,17 @@ class ElectronPhononTransportInstance:
         return "\n".join(lines) + "\n"
 
     def get_mu_tag(self):
-        """ Get choosen tag to select the chemical potential as well as its value"""
+        """Get choosen tag to select the chemical potential as well as its value"""
         mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
         mu_idx = self.id_index[2] - 1
-        return mu_tag,mu_val[mu_idx]
-                     
+        return mu_tag, mu_val[mu_idx]
+
     def _get_data(self, name):
         return self.parent._get_data(name, self.index)
 
-    def _get_scalar(self,name):
+    def _get_scalar(self, name):
         return self.parent._get_scalar(name, self.index)
-    
+
     def to_dict(self, selection=None):
         """Returns a dictionary with selected transport properties for this instance."""
         names = [
@@ -78,9 +79,7 @@ class ElectronPhononTransportInstance:
             "scattering_approximation",
         ]
         data_dict = {name: self._get_data(name) for name in names}
-        names = [
-            "delta"
-        ]
+        names = ["delta"]
         scalar_dict = {name: self._get_scalar(name) for name in names}
         return data_dict | scalar_dict
 

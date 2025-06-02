@@ -36,24 +36,35 @@ def test_selections(band_gap):
     assert "nbands_sum" in selections
     assert "selfen_approx" in selections
     assert "selfen_delta" in selections
-    assert any(tag in selections for tag in ["selfen_carrier_den", "selfen_carrier_cell", "selfen_mu"])
+    assert any(
+        tag in selections
+        for tag in ["selfen_carrier_den", "selfen_carrier_cell", "selfen_mu"]
+    )
 
 
 def test_select_returns_instances(band_gap):
     # Should return a list of ElectronPhononBandgapInstance
     selections = band_gap.selections()
-    from py4vasp._calculation.electron_phonon_bandgap import ElectronPhononBandgapInstance
+    from py4vasp._calculation.electron_phonon_bandgap import (
+        ElectronPhononBandgapInstance,
+    )
+
     for nbands_sum in selections["nbands_sum"]:
         for selfen_approx in selections["selfen_approx"]:
-            #check if we got an ElectronPhononBandgapInstance
-            selected = band_gap.select(f"nbands_sum({nbands_sum}) selfen_approx({selfen_approx})")
+            # check if we got an ElectronPhononBandgapInstance
+            selected = band_gap.select(
+                f"nbands_sum({nbands_sum}) selfen_approx({selfen_approx})"
+            )
             assert len(selected) == 3
             assert all(isinstance(x, ElectronPhononBandgapInstance) for x in selected)
 
 
 def test_indexing_and_iteration(band_gap):
     # Indexing and iteration should yield instances
-    from py4vasp._calculation.electron_phonon_bandgap import ElectronPhononBandgapInstance
+    from py4vasp._calculation.electron_phonon_bandgap import (
+        ElectronPhononBandgapInstance,
+    )
+
     for i, instance in enumerate(band_gap):
         assert isinstance(instance, ElectronPhononBandgapInstance)
         assert instance.index == i

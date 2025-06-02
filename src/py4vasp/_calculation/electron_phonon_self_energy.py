@@ -50,10 +50,10 @@ class ElectronPhononSelfEnergyInstance:
         return "\n".join(lines) + "\n"
 
     def get_mu_tag(self):
-        """ Get choosen tag to select the chemical potential as well as its value"""
+        """Get choosen tag to select the chemical potential as well as its value"""
         mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
         mu_idx = self.id_index[2] - 1
-        return mu_tag,mu_val[mu_idx]
+        return mu_tag, mu_val[mu_idx]
 
     def _get_data(self, name):
         return self.parent._get_data(name, self.index)

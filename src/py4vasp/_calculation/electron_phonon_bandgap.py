@@ -27,12 +27,12 @@ class ElectronPhononBandgapInstance:
         def format_gap_section(title, ks_gap, qp_gap, temperatures):
             section = []
             section.append(f"{title}")
-            section.append("   Temperature (K)         KS gap (eV)         QP gap (eV)     KS-QP gap (meV)")
+            section.append(
+                "   Temperature (K)         KS gap (eV)         QP gap (eV)     KS-QP gap (meV)"
+            )
             for t, qp in zip(temperatures, qp_gap):
                 diff_meV = (ks_gap - qp) * 1000
-                section.append(
-                    f"{t:18.6f}{ks_gap:20.6f}{qp:20.6f}{diff_meV:20.6f}"
-                )
+                section.append(f"{t:18.6f}{ks_gap:20.6f}{qp:20.6f}{diff_meV:20.6f}")
             return "\n".join(section)
 
         # Get data
@@ -42,26 +42,56 @@ class ElectronPhononBandgapInstance:
         ks_gap_fundamental = self._get_data("fundamental")
         qp_gap_fundamental = self._get_data("fundamental_renorm")
 
-        nspin,ntemps = qp_gap_direct.shape
+        nspin, ntemps = qp_gap_direct.shape
         for ispin in range(nspin):
-            if (nspin==2): lines.append("spin independent")
+            if nspin == 2:
+                lines.append("spin independent")
             # Direct gap section
             lines.append("")
-            lines.append(format_gap_section("Direct gap", ks_gap_direct[ispin], qp_gap_direct[ispin], temperatures))
+            lines.append(
+                format_gap_section(
+                    "Direct gap",
+                    ks_gap_direct[ispin],
+                    qp_gap_direct[ispin],
+                    temperatures,
+                )
+            )
             lines.append("")
             # Fundamental gap section
-            lines.append(format_gap_section("Fundamental gap", ks_gap_fundamental[ispin], qp_gap_fundamental[ispin], temperatures))
+            lines.append(
+                format_gap_section(
+                    "Fundamental gap",
+                    ks_gap_fundamental[ispin],
+                    qp_gap_fundamental[ispin],
+                    temperatures,
+                )
+            )
             lines.append("")
 
-        if (nspin==2):
+        if nspin == 2:
             for ispin in range(nspin):
-                if (nspin==2): lines.append("spin component ",ispin+1)
+                if nspin == 2:
+                    lines.append("spin component ", ispin + 1)
                 # Direct gap section
                 lines.append("")
-                lines.append(format_gap_section("Direct gap", ks_gap_direct[ispin], qp_gap_direct[ispin], temperatures))
+                lines.append(
+                    format_gap_section(
+                        "Direct gap",
+                        ks_gap_direct[ispin],
+                        qp_gap_direct[ispin],
+                        temperatures,
+                    )
+                )
                 lines.append("")
                 # Fundamental gap section
-                lines.append(format_gap_section("Fundamental gap", ks_gap_fundamental[ispin], qp_gap_fundamental[ispin], temperatures))
+                lines.append(
+                    format_gap_section(
+                        "Fundamental gap",
+                        ks_gap_fundamental[ispin],
+                        qp_gap_fundamental[ispin],
+                        temperatures,
+                    )
+                )
                 lines.append("")
         return "\n".join(lines)
 
