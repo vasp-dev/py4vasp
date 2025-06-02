@@ -360,6 +360,11 @@ def test_to_quiver_fails_for_ionic(collinear_potential):
         collinear_potential.to_quiver("ionic", c=0)
 
 
+def test_to_quiver_fails_for_component(noncollinear_potential):
+    with pytest.raises(exception.NotImplemented):
+        noncollinear_potential.to_quiver("xc(sigma_x)", a=0)
+
+
 def test_print(reference_potential, format_):
     actual, _ = format_(reference_potential)
     assert actual == {"text/plain": reference_potential.ref.string}

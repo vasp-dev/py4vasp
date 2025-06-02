@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import functools
 import itertools
 
 import numpy as np
@@ -144,18 +145,48 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         slice_arguments = density.SliceArguments(a, b, c, normal, supercell)
         return visualizer.to_contour(potentials, slice_arguments, isolevels=False)
 
-    def _get_potentials(self, selection):
+    @base.data_access
+    def to_quiver(
+        self, selection="total", *, a=None, b=None, c=None, normal=None, supercell=None
+    ):
+        potentials = dict(self._get_potentials(selection, is_magnetic=True))
+        visualizer = density.Visualizer(self._structure)
+        slice_arguments = density.SliceArguments(a, b, c, normal, supercell)
+        return visualizer.to_quiver(potentials, slice_arguments)
+
+    def _get_potentials(self, selection, is_magnetic=False):
         tree = select.Tree.from_selection(selection)
         for selection in tree.selections():
             kind, component = self._determine_kind_and_component(selection)
-            selector = self._create_selector(kind)
+            selector = self._create_selector(kind, component, is_magnetic)
             component_label = component[0] if component else ""
             yield self._get_label(kind, component_label), selector[component].T
+
+    def _determine_kind_and_component(self, selection):
+        for kind in VALID_KINDS:
+            if kind in selection:
+                remaining = list(selection)
+                remaining.remove(kind)
+                return kind, tuple(remaining)
+        return "total", selection
 
     def _get_label(self, kind, component):
         return f"{kind} potential" + (f"({component})" if component else "")
 
-    def _create_selector(self, kind):
+    def _create_selector(self, kind, component, is_magnetic):
+        if is_magnetic:
+            return self._create_magnetic_selector(kind, component)
+        else:
+            return self._create_nonmagnetic_selector(kind)
+
+    def _create_magnetic_selector(self, kind, component):
+        _raise_error_if_kind_incorrect(kind, ("total", "xc"))
+        _raise_error_if_component_selected(component)
+        potential = self._get_potential(kind)
+        _raise_error_if_nonpolarized_potential(potential)
+        return index.Selector(maps={}, data=potential, reduction=PotentialReduction)
+
+    def _create_nonmagnetic_selector(self, kind):
         potential = self._get_potential(kind)
         maps = {0: self._create_map(potential)}
         return index.Selector(maps, potential, reduction=PotentialReduction)
@@ -178,45 +209,21 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
             for choice in choices
         }
 
-    @base.data_access
-    def to_quiver(
-        self, selection="total", *, a=None, b=None, c=None, normal=None, supercell=None
-    ):
-        for _, component in _parse_selection(selection):
-            assert component is None
-        potentials = {
-            self._get_label(kind, ""): self._get_and_verify_magnetic_potential(kind)
-            for kind, _ in _parse_selection(selection)
-        }
-        visualizer = density.Visualizer(self._structure)
-        slice_arguments = density.SliceArguments(a, b, c, normal, supercell)
-        return visualizer.to_quiver(potentials, slice_arguments)
-
-    def _get_and_verify_magnetic_potential(self, kind):
-        _raise_error_if_kind_incorrect(kind, ("total", "xc"))
-        potential = self._get_potential(kind)
-        _raise_error_if_nonpolarized_potential(potential)
-        return np.moveaxis(potential[1:], 0, -1).T
-
-    def _determine_kind_and_component(self, selection):
-        for kind in VALID_KINDS:
-            if kind in selection:
-                remaining = list(selection)
-                remaining.remove(kind)
-                return kind, tuple(remaining)
-        return "total", selection
-
 
 class PotentialReduction(index.Reduction):
     def __init__(self, keys):
         self._selection = keys[0]
 
     def __call__(self, array, axis):
-        assert axis == (0,)
+        if self._is_magnetic_potential(axis):
+            return np.moveaxis(array[1:], 0, -1)
         if self._selection == "up":
             return array[0] + array[1]
         else:
             return array[0]
+
+    def _is_magnetic_potential(self, axis):
+        return axis == ()  # for magnetic potentials, we do not remove the first axis
 
 
 def _parse_selection(selection):
@@ -253,12 +260,22 @@ selections are allowed: "{'", "'.join(VALID_KINDS)}". \
     raise exception.IncorrectUsage(message)
 
 
-def _raise_error_if_no_data(data, selection="total"):
+def _raise_error_if_component_selected(component):
+    if not component:
+        return
+    message = f"Selecting a component {component} is not implemented for quiver plots."
+    raise exception.NotImplemented(message)
+
+
+def _raise_error_if_no_data(data, kind="total"):
     if data.is_none():
-        message = f"Cannot find the {selection} potential data."
-        message += " Did you set LVTOT = T in the INCAR file?"
-        if selection != "total":
-            message += f" Did you set POTH5 = {selection} in the INCAR file?"
+        message = f"Cannot find the {kind} potential data. "
+        if kind == "total":
+            message += (
+                "Did you set LVTOT = T or WRT_POTENTIAL = total in the INCAR file?"
+            )
+        else:
+            message += f"Did you set WRT_POTENTIAL = {kind} in the INCAR file?"
         raise exception.NoData(message)
 
 
