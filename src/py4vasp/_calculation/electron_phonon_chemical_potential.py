@@ -61,7 +61,7 @@ class ElectronPhononChemicalPotential(base.Refinery):
         if not check.is_none(self._raw_data.carrier_den):
             return "selfen_carrier_den", self._raw_data.carrier_den[:]
         if not check.is_none(self._raw_data.mu):
-            return "selfen_mu", self._raw_data.selfen_mu[:]
+            return "selfen_mu", self._raw_data.mu[:]
         if not check.is_none(self._raw_data.carrier_per_cell):
             return "selfen_carrier_per_cell", self._raw_data.carrier_per_cell[:]
 
