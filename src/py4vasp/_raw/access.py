@@ -136,6 +136,7 @@ class _State:
         if not isinstance(data, Mapping):
             return None
         valid_indices = self._get_dataset(h5f, data.valid_indices)
+        if hasattr(valid_indices, "is_none"): return range(0)
         if valid_indices.ndim == 0:
             return range(valid_indices)
         else:
