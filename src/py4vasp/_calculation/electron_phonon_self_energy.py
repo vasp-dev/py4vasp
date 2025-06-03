@@ -45,8 +45,8 @@ class ElectronPhononSelfEnergyInstance:
         delta = self._get_scalar("delta")
         lines.append(f"delta: {delta}")
         # Information about the number of bands summed over
-        nbands_sumdelta = self._get_scalar("nbands_sum")
-        lines.append(f"nbands_sum: {delta}")
+        nbands_sum = self._get_scalar("nbands_sum")
+        lines.append(f"nbands_sum: {nbands_sum}")
         return "\n".join(lines) + "\n"
 
     def get_mu_tag(self):
