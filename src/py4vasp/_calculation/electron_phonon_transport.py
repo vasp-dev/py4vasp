@@ -254,6 +254,7 @@ class ElectronPhononTransport(base.Refinery):
         for a particular temperature.
         """
         mu_tag, mu_val = self.chemical_potential_mu_tag()
+        if selection=="": return None
         tree = select.Tree.from_selection(selection)
         series = []
         for selection in tree.selections():
