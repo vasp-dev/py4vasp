@@ -98,6 +98,29 @@ class ElectronPhononTransportInstance:
         }
         return selections_units_dict
 
+    def _get_temperature_idx(self,temperature,tolerance=1e-8):
+
+        def find_float_index(float_array, target_value, tolerance):
+            close_indices = np.where(np.isclose(float_array, target_value, atol=tolerance))[0]
+            if close_indices.size > 0:
+                return close_indices[0]
+            else:
+                raise ValueError(f"No temperature close to {target_value} within a tolerance of {tolerance} was found.")
+            
+        return find_float_index(self._get_data("temperatures"), temperature, tolerance)
+
+    def _get_ydata(self,selection):
+            data_ = self._get_data(selection[0]).reshape([-1, 9])
+            maps = {
+                1: self._init_directions_dict(),
+            }
+            selector = index.Selector(maps, data_, reduction=np.average)
+            return selector[selection[1:]]
+
+    def _get_ydata_at_temperature(self,selection,temperature):
+        itemp = self._get_temperature_idx(temperature)
+        return self._get_ydata(selection)[itemp]
+
     def to_graph(self, selection):
         tree = select.Tree.from_selection(selection)
         series = []
@@ -106,12 +129,7 @@ class ElectronPhononTransportInstance:
                 raise ValueError(
                     f"Invalid selection {selection}. Must be one of {self.selections()}"
                 )
-            data_ = self._get_data(selection[0]).reshape([-1, 9])
-            maps = {
-                1: self._init_directions_dict(),
-            }
-            selector = index.Selector(maps, data_, reduction=np.average)
-            y = selector[selection[1:]]
+            y = self._get_ydata(selection)
             x = self._get_data("temperatures")
             dir_str = "".join(selection[1:])
             series.append(graph.Series(x, y, label=f"{selection[0]} {dir_str}"))
@@ -199,7 +217,6 @@ class ElectronPhononTransport(base.Refinery):
 
     @base.data_access
     def valid_nbands_sum(self):
-
         return {self._get_scalar("nbands_sum", index) for index in range(len(self))}
 
     @base.data_access
@@ -228,6 +245,30 @@ class ElectronPhononTransport(base.Refinery):
             self._raw_data.chemical_potential
         )
         return chemical_potential.mu_tag()
+
+
+    @base.data_access
+    def to_graph_carrier(self, selection, temperature):
+        """
+        Plot a particular transport coefficient as a function of the chemical potential tag
+        for a particular temperature.
+        """
+        mu_tag, mu_val = self.chemical_potential_mu_tag()
+        tree = select.Tree.from_selection(selection)
+        series = []
+        for selection in tree.selections():
+            ydata = []
+            for idx in range(len(self)):
+                instance = self[idx]
+                y = instance._get_ydata_at_temperature(selection, temperature)
+                ydata.append(y)
+            series.append(graph.Series(mu_val, ydata, label=f"{selection[0]} {''.join(selection[1:])}"))
+        return graph.Graph(
+            series,
+            xlabel=mu_tag,
+            ylabel=selection[0],
+        )
+
 
     @base.data_access
     def select(self, selection):
