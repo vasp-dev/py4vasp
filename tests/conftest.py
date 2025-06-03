@@ -253,6 +253,18 @@ class RawDataFactory:
         return _elastic_modulus()
 
     @staticmethod
+    def electron_phonon_self_energy(selection):
+        return _electron_phonon_self_energy(selection)
+
+    @staticmethod
+    def electron_phonon_band_gap(selection):
+        return _electron_phonon_band_gap(selection)
+
+    @staticmethod
+    def electron_phonon_transport(selection):
+        return _electron_phonon_transport(selection)
+
+    @staticmethod
     def electronic_minimization(selection=None):
         return _electronic_minimization()
 
@@ -1499,6 +1511,122 @@ def _current_density(selection):
         valid_indices=valid_indices,
         structure=_Fe3O4_structure(),
         current_density=current_density,
+    )
+
+
+def _electron_phonon_chemical_potential(selection):
+    number_samples = 3
+    ntemps = 6
+    return raw.ElectronPhononChemicalPotential(
+        fermi_energy=0,
+        carrier_density=_make_arbitrary_data([number_samples]),
+        temperatures=_make_arbitrary_data([ntemps]),
+        chemical_potential=_make_arbitrary_data([number_samples, ntemps]),
+        carrier_per_cell=[0],
+        mu=[0],
+        carrier_den=_make_arbitrary_data([number_samples]),
+    )
+
+
+def _electron_phonon_self_energy(selection):
+    number_samples = 3
+    nspin = 1
+    nkpoint = 2
+    nband = 4
+    band_start = 1
+    # mock band_kpoint_spin_index array
+    band_kpoint_spin_index_shape = [nspin, nkpoint, nband]
+    band_kpoint_spin_index = np.full(band_kpoint_spin_index_shape, -1)
+    ibks = 0
+    for isp in range(nspin):
+        for ikpt in range(nkpoint):
+            for iband in range(nband):
+                ibks = ibks + 1
+                band_kpoint_spin_index[isp, ikpt, iband] = ibks
+    # mock fan and dw
+    nbks = np.count_nonzero(band_kpoint_spin_index != -1)
+    nw = 1  # number of frequencies at which the fan self-energy is evaluated
+    ntemps = 6
+    nbands_sum = 12
+    scattering_approximation = "MRTA_TAU"
+    fan_shape = [nbks, nw, ntemps]
+    debye_waller_shape = [nbks, ntemps]
+    return raw.ElectronPhononSelfEnergy(
+        valid_indices=range(number_samples),
+        id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
+        id_size=[1, number_samples, 1, 1],
+        nbands_sum=np.array([nbands_sum for _ in range(number_samples)]),
+        delta=np.array([0 for _ in range(number_samples)]),
+        scattering_approximation=[
+            scattering_approximation for _ in range(number_samples)
+        ],
+        chemical_potential=_electron_phonon_chemical_potential(selection),
+        id_index=[[1, sample + 1, 1] for sample in range(number_samples)],
+        eigenvalues=_make_arbitrary_data(band_kpoint_spin_index_shape),
+        debye_waller=[
+            _make_arbitrary_data(debye_waller_shape) for _ in range(number_samples)
+        ],
+        fan=[_make_arbitrary_data(fan_shape) for _ in range(number_samples)],
+        band_kpoint_spin_index=np.array(
+            [band_kpoint_spin_index for _ in range(number_samples)]
+        ),
+        band_start=np.array([band_start for _ in range(number_samples)]),
+    )
+
+
+def _electron_phonon_band_gap(selection):
+    number_samples = 3
+    nbands_sum = 12
+    ntemps = 6
+    scattering_approximation = "SERTA"
+    return raw.ElectronPhononBandgap(
+        valid_indices=range(number_samples),
+        id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
+        id_size=[1, number_samples, 1, 1],
+        nbands_sum=np.array([nbands_sum for _ in range(number_samples)]),
+        delta=np.array([0 for _ in range(number_samples)]),
+        chemical_potential=_electron_phonon_chemical_potential(selection),
+        self_energy=_electron_phonon_self_energy(selection),
+        scattering_approximation=[
+            scattering_approximation for _ in range(number_samples)
+        ],
+        fundamental_renorm=_make_arbitrary_data([number_samples, ntemps]),
+        direct_renorm=_make_arbitrary_data([number_samples, ntemps]),
+        fundamental=_make_arbitrary_data([number_samples]),
+        direct=_make_arbitrary_data([number_samples]),
+        temperatures=_make_arbitrary_data([number_samples, ntemps]),
+        id_index=[[1, sample + 1, 1] for sample in range(number_samples)],
+    )
+
+
+def _electron_phonon_transport(selection):
+    number_samples = 3
+    # mock transport_function
+    nw = 1  # number of frequencies at which the fan self-energy is evaluated
+    ntemps = 6
+    nbands_sum = 12
+    scattering_approximation = "MRTA_TAU"
+    return raw.ElectronPhononTransport(
+        valid_indices=range(number_samples),
+        id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
+        id_size=[1, number_samples, 1],
+        nbands_sum=np.array([nbands_sum for _ in range(number_samples)]),
+        self_energy=_electron_phonon_self_energy(selection),
+        chemical_potential=_electron_phonon_chemical_potential(selection),
+        id_index=[[1, sample + 1, 1] for sample in range(number_samples)],
+        delta=np.array([0 for _ in range(number_samples)]),
+        temperatures=[np.linspace(0, 500, 6) for _ in range(number_samples)],
+        transport_function=_make_arbitrary_data([number_samples, ntemps, nw, 3, 3]),
+        mobility=_make_arbitrary_data([number_samples, ntemps, 3, 3]),
+        seebeck=_make_arbitrary_data([number_samples, ntemps, 3, 3]),
+        peltier=_make_arbitrary_data([number_samples, ntemps, 3, 3]),
+        electronic_conductivity=_make_arbitrary_data([number_samples, ntemps, 3, 3]),
+        electronic_thermal_conductivity=_make_arbitrary_data(
+            [number_samples, ntemps, 3, 3]
+        ),
+        scattering_approximation=[
+            scattering_approximation for _ in range(number_samples)
+        ],
     )
 
 
