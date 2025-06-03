@@ -85,12 +85,27 @@ class ElectronPhononTransportInstance:
 
     def selections(self):
         """Returns the available property names that can be selected for this instance."""
-        return self.to_dict().keys()
+        return self.selections_units.keys()
+
+    @property
+    def selections_units(self):
+        selections_units_dict = {
+            "electronic_conductivity": "S/m",
+            "mobility": "cm^2/(V.s)",
+            "seebeck": "μV/K",
+            "peltier": "μV",
+            "electronic_thermal_conductivity": "W/(m.K)",
+        }
+        return selections_units_dict
 
     def to_graph(self, selection):
         tree = select.Tree.from_selection(selection)
         series = []
         for selection in tree.selections():
+            if selection[0] not in self.selections():
+                raise ValueError(
+                    f"Invalid selection {selection}. Must be one of {self.selections()}"
+                )
             data_ = self._get_data(selection[0]).reshape([-1, 9])
             maps = {
                 1: self._init_directions_dict(),
@@ -98,8 +113,9 @@ class ElectronPhononTransportInstance:
             selector = index.Selector(maps, data_, reduction=np.average)
             y = selector[selection[1:]]
             x = self._get_data("temperatures")
-            series.append(graph.Series(x, y, label=selection[0]))
-        return graph.Graph(series)
+            dir_str = "".join(selection[1:])
+            series.append(graph.Series(x, y, label=f"{selection[0]} {dir_str}"))
+        return graph.Graph(series, ylabel=selection[0], xlabel="Temperature (K)")
 
     def _init_directions_dict(self):
         return {
