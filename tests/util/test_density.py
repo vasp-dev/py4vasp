@@ -60,10 +60,9 @@ def visualizer_quiver(raw_data, request):
 
 
 def test_view(visualizer, Assert):
+    selector = visualizer.ref.selector
     dataDict = {
-        (selection[0] if selection else ""): (visualizer.ref.selector[selection].T)[
-            np.newaxis
-        ]
+        (selection[0] if selection else ""): selector[selection].T
         for selection in visualizer.ref.selections
     }
     view = visualizer.to_view(dataDict)
@@ -78,6 +77,7 @@ def test_view(visualizer, Assert):
         else:
             expected_label = ""
         assert scalar.label == expected_label
+        assert scalar.quantity.ndim == 4
         Assert.allclose(scalar.quantity, data)
 
 

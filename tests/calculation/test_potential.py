@@ -10,6 +10,7 @@ from py4vasp import _config, exception, raw
 from py4vasp._calculation.potential import Potential
 from py4vasp._calculation.structure import Structure
 from py4vasp._third_party.view import Isosurface
+from py4vasp._util import slicing
 
 
 @pytest.fixture(params=["total", "ionic", "hartree", "xc", "all"])
@@ -20,6 +21,21 @@ def included_kinds(request):
 @pytest.fixture(params=["Sr2TiO4", "Fe3O4 collinear", "Fe3O4 noncollinear"])
 def reference_potential(raw_data, request, included_kinds):
     return make_reference_potential(raw_data, request.param, included_kinds)
+
+
+@pytest.fixture
+def nonpolarized_potential(raw_data):
+    return make_reference_potential(raw_data, "Sr2TiO4", "all")
+
+
+@pytest.fixture
+def collinear_potential(raw_data):
+    return make_reference_potential(raw_data, "Fe3O4 collinear", "all")
+
+
+@pytest.fixture
+def noncollinear_potential(raw_data):
+    return make_reference_potential(raw_data, "Fe3O4 noncollinear", "all")
 
 
 @dataclasses.dataclass
@@ -201,6 +217,152 @@ def test_empty_potential(raw_data, selection):
     potential = Potential.from_data(raw_potential)
     with pytest.raises(exception.NoData):
         potential.plot(selection)
+
+
+def test_to_contour(reference_potential, Assert):
+    reference = reference_potential.ref
+    expected_data = reference.output["total"][:, :, 13]
+    expected_lattice_vectors = reference.structure.lattice_vectors()[:2, :2]
+    graph = reference_potential.to_contour(c=0.9)
+    assert len(graph) == 1
+    contour = graph.series[0]
+    Assert.allclose(contour.data, expected_data)
+    Assert.allclose(contour.lattice.vectors, expected_lattice_vectors)
+    assert contour.label == "total potential"
+    assert not contour.isolevels
+
+
+@pytest.mark.parametrize(
+    "selection", ("sigma_z", "ionic(0)", "xc(sigma_1)", "y(total)")
+)
+def test_to_contour_selections(noncollinear_potential, selection, Assert):
+    if "0" in selection:
+        expected_data = noncollinear_potential.ref.output["ionic"]
+    elif "1" in selection:
+        expected_data = noncollinear_potential.ref.output["xc_magnetization"][0]
+    elif "y" in selection:
+        expected_data = noncollinear_potential.ref.output["total_magnetization"][1]
+    else:
+        expected_data = noncollinear_potential.ref.output["total_magnetization"][2]
+    expected_data = expected_data[4, :, :]
+    graph = noncollinear_potential.to_contour(selection, a=0.4)
+    assert len(graph) == 1
+    contour = graph.series[0]
+    Assert.allclose(contour.data, expected_data)
+
+
+def test_to_contour_multiple(collinear_potential, Assert):
+    expected_total = collinear_potential.ref.output["total_up"][:, 11, :]
+    expected_ionic = collinear_potential.ref.output["ionic"][:, 11, :]
+    graph = collinear_potential.to_contour("total(up), ionic", b=-0.1)
+    assert len(graph) == 2
+    total_contour, ionic_contour = graph.series
+    Assert.allclose(total_contour.data, expected_total)
+    Assert.allclose(ionic_contour.data, expected_ionic)
+    assert total_contour.label == "total potential(up)"
+    assert ionic_contour.label == "ionic potential"
+
+
+@pytest.mark.parametrize("supercell", [3, (2, 3)])
+def test_to_contour_supercell(noncollinear_potential, supercell, Assert):
+    graph = noncollinear_potential.to_contour(c=0.7, supercell=supercell)
+    assert len(graph) == 1
+    assert len(graph.series[0].supercell) == 2
+    Assert.allclose(graph.series[0].supercell, supercell)
+
+
+@pytest.mark.parametrize("normal", ("x", "y", "z", "auto"))
+def test_to_contour_normal(collinear_potential, normal, Assert):
+    lattice_vectors = collinear_potential.ref.structure.lattice_vectors()
+    plane = slicing.plane(lattice_vectors, "b", normal)
+    graph = collinear_potential.to_contour(b=0.1, normal=normal)
+    assert len(graph) == 1
+    Assert.allclose(graph.series[0].lattice, plane)
+
+
+def test_to_quiver(noncollinear_potential, Assert):
+    reference = noncollinear_potential.ref
+    expected_data = reference.output["total_magnetization"][:2, :, :, 4]
+    expected_lattice_vectors = reference.structure.lattice_vectors()[:2, :2]
+    graph = noncollinear_potential.to_quiver(c=0.3)
+    assert len(graph) == 1
+    quiver = graph.series[0]
+    Assert.allclose(quiver.data, expected_data)
+    Assert.allclose(quiver.lattice.vectors, expected_lattice_vectors)
+    assert quiver.label == "total potential"
+
+
+def test_to_quiver_multiple(noncollinear_potential, Assert):
+    reference = noncollinear_potential.ref
+    expected_total = reference.output["total_magnetization"][:2, :, :, 10]
+    expected_xc = reference.output["xc_magnetization"][:2, :, :, 10]
+    graph = noncollinear_potential.to_quiver("total, xc", c=0.7)
+    assert len(graph) == 2
+    total_quiver, xc_quiver = graph.series
+    Assert.allclose(total_quiver.data, expected_total)
+    Assert.allclose(xc_quiver.data, expected_xc)
+    assert xc_quiver.label == "xc potential"
+
+
+def test_to_quiver_collinear(collinear_potential, Assert):
+    reference = collinear_potential.ref
+    expected_data = reference.output["total_up"] - reference.output["total"]
+    length_a = np.linalg.norm(reference.structure.lattice_vectors()[1])
+    length_b = np.linalg.norm(reference.structure.lattice_vectors()[2])
+    expected_lattice_vectors = np.diag([length_a, length_b])
+    graph = collinear_potential.to_quiver(a=-0.2)
+    assert len(graph) == 1
+    quiver = graph.series[0]
+    Assert.allclose(quiver.data[0], 0)
+    Assert.allclose(quiver.data[1], expected_data)
+    Assert.allclose(quiver.lattice.vectors, expected_lattice_vectors)
+
+
+@pytest.mark.parametrize("supercell", [3, (2, 3)])
+def test_to_quiver_supercell(noncollinear_potential, supercell, Assert):
+    graph = noncollinear_potential.to_quiver(b=0.3, supercell=supercell)
+    assert len(graph) == 1
+    assert len(graph.series[0].supercell) == 2
+    Assert.allclose(graph.series[0].supercell, supercell)
+
+
+@pytest.mark.parametrize("normal", ("x", "y", "z", "auto"))
+def test_to_quiver_normal(collinear_potential, normal, Assert):
+    lattice_vectors = collinear_potential.ref.structure.lattice_vectors()
+    plane = slicing.plane(lattice_vectors, "a", normal)
+    graph = collinear_potential.to_quiver(a=0.5, normal=normal)
+    assert len(graph) == 1
+    Assert.allclose(graph.series[0].lattice, plane)
+
+
+def test_incorrect_slice_raises_error(noncollinear_potential):
+    with pytest.raises(exception.IncorrectUsage):
+        noncollinear_potential.to_contour()
+    with pytest.raises(exception.IncorrectUsage):
+        noncollinear_potential.to_contour(a=1, b=2)
+    with pytest.raises(exception.IncorrectUsage):
+        noncollinear_potential.to_contour(3)
+    with pytest.raises(exception.IncorrectUsage):
+        noncollinear_potential.to_quiver()
+    with pytest.raises(exception.IncorrectUsage):
+        noncollinear_potential.to_quiver(b=1, c=2)
+    with pytest.raises(exception.IncorrectUsage):
+        noncollinear_potential.to_quiver(3)
+
+
+def test_to_quiver_fails_for_nonpolarized(nonpolarized_potential):
+    with pytest.raises(exception.DataMismatch):
+        nonpolarized_potential.to_quiver(c=0)
+
+
+def test_to_quiver_fails_for_ionic(collinear_potential):
+    with pytest.raises(exception.IncorrectUsage):
+        collinear_potential.to_quiver("ionic", c=0)
+
+
+def test_to_quiver_fails_for_component(noncollinear_potential):
+    with pytest.raises(exception.NotImplemented):
+        noncollinear_potential.to_quiver("xc(sigma_x)", a=0)
 
 
 def test_print(reference_potential, format_):

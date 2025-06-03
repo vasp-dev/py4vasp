@@ -108,10 +108,7 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
 
         # set up Visualizer
         visualizer = Visualizer(self._structure)
-        dataDict = {
-            selector.label(sel): (selector[sel].T)[np.newaxis]
-            for sel in tree.selections()
-        }
+        dataDict = {selector.label(sel): (selector[sel].T) for sel in tree.selections()}
         viewer = visualizer.to_view(dataDict, supercell=supercell)
 
         # adjust viewer

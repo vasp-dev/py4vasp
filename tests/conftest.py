@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 import importlib.metadata
 import itertools
 import random
@@ -9,7 +10,7 @@ import pytest
 from numpy.testing import assert_allclose
 
 from py4vasp import exception, raw
-from py4vasp._util import import_
+from py4vasp._util import check, import_
 
 stats = import_.optional("scipy.stats")
 
@@ -53,22 +54,12 @@ def _is_core():
 class _Assert:
     @staticmethod
     def allclose(actual, desired, tolerance=1):
-        if _is_none(actual):
-            assert _is_none(desired)
-            return
-        actual = np.array(actual)
-        desired = np.array(desired)
-        type_ = actual.dtype.type
-        if type_ in (np.bool_, np.str_, np.bytes_):
-            assert type_ == desired.dtype.type
-            assert np.array_equal(actual, desired)
+        if check.is_none(actual):
+            assert check.is_none(desired)
+        elif dataclasses.is_dataclass(actual):
+            _compare_dataclasses(actual, desired, tolerance)
         else:
-            actual, desired = np.broadcast_arrays(actual, desired)
-            actual, mask_actual = _finite_subset(actual)
-            desired, mask_desired = _finite_subset(desired)
-            assert np.all(mask_actual == mask_desired)
-            tolerance = 1e-14 * tolerance
-            assert_allclose(actual, desired, rtol=tolerance, atol=tolerance)
+            _compare_arrays(actual, desired, tolerance)
 
     @staticmethod
     def same_structure(actual, desired):
@@ -104,14 +95,9 @@ class _Assert:
     @staticmethod
     def same_raw_structure(actual, desired, exact_match=True):
         # exact_match requires cell to be identical and not just equivalent
-        _Assert.same_raw_stoichiometry(actual.stoichiometry, desired.stoichiometry)
+        _Assert.allclose(actual.stoichiometry, desired.stoichiometry)
         _Assert.same_raw_cell(actual.cell, desired.cell, exact_match)
         _Assert.allclose(actual.positions, desired.positions)
-
-    @staticmethod
-    def same_raw_stoichiometry(actual, desired):
-        _Assert.allclose(actual.number_ion_types, desired.number_ion_types)
-        _Assert.allclose(actual.ion_types, desired.ion_types)
 
     @staticmethod
     def same_raw_cell(actual, desired, exact_match=True):
@@ -125,11 +111,29 @@ class _Assert:
             _Assert.allclose(actual_lattice_vectors, desired_lattice_vectors)
 
 
-def _is_none(data):
-    if isinstance(data, raw.VaspData):
-        return data.is_none()
+def _compare_dataclasses(actual, desired, tolerance):
+    assert dataclasses.is_dataclass(desired)
+    assert type(actual) is type(desired)
+    for field in dataclasses.fields(actual):
+        actual_field = getattr(actual, field.name)
+        desired_field = getattr(desired, field.name)
+        _Assert.allclose(actual_field, desired_field, tolerance)
+
+
+def _compare_arrays(actual, desired, tolerance):
+    actual = np.array(actual)
+    desired = np.array(desired)
+    type_ = actual.dtype.type
+    if type_ in (np.bool_, np.str_, np.bytes_):
+        assert type_ == desired.dtype.type
+        assert np.array_equal(actual, desired)
     else:
-        return data is None
+        actual, desired = np.broadcast_arrays(actual, desired)
+        actual, mask_actual = _finite_subset(actual)
+        desired, mask_desired = _finite_subset(desired)
+        assert np.all(mask_actual == mask_desired)
+        tolerance = 1e-14 * tolerance
+        assert_allclose(actual, desired, rtol=tolerance, atol=tolerance)
 
 
 def _finite_subset(array):
