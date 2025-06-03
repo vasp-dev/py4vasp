@@ -84,9 +84,31 @@ class ElectronPhononSelfEnergyInstance:
     def get_fan(self, arg):
         iband, ikpt, isp, *more = arg
         st = SparseTensor(
-            self._get_data("band_kpoint_spin_index"),
-            0,
+            self._get_data("band_kpoint_spin_index") - 1,
+            self._get_scalar("band_start"),
             self._get_data("fan"),
+        )
+        return st[arg]
+
+    def get_debye_waller(self, arg):
+        iband, ikpt, isp, *more = arg
+        st = SparseTensor(
+            self._get_data("band_kpoint_spin_index") - 1,
+            self._get_scalar("band_start"),
+            self._get_data("debye_waller"),
+        )
+        return st[arg]
+
+    def get_self_energy(self, arg):
+        import numpy as np
+
+        iband, ikpt, isp, *more = arg
+        fan = self._get_data("fan")
+        dw = self._get_data("debye_waller")[:, np.newaxis, :]
+        st = SparseTensor(
+            self._get_data("band_kpoint_spin_index") - 1,
+            self._get_scalar("band_start"),
+            fan + dw,
         )
         return st[arg]
 
@@ -255,9 +277,13 @@ class SparseTensor:
         self.tensor = tensor
 
     def _get_band_kpoint_spin_index(self, iband, ikpt, isp):
-        return self.band_kpoint_spin_index[iband - self.band_start][ikpt, isp]
+        return self.band_kpoint_spin_index[iband - self.band_start, ikpt, isp]
 
     def __getitem__(self, arg):
         iband, ikpt, isp, *more = arg
         ibks = self._get_band_kpoint_spin_index(iband, ikpt, isp)
+        if ibks == -1:
+            raise IndexError(
+                f"The calculation for band:{iband} kpoint:{ikpt} spin:{isp} was not performed."
+            )
         return self.tensor[ibks]

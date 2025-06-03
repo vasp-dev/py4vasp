@@ -130,7 +130,14 @@ class ElectronPhononTransportInstance:
 
 
 class ElectronPhononTransport(base.Refinery):
-    "Placeholder for electron phonon transport"
+    """
+    Provides access to electron-phonon transport data and selection utilities.
+    This class serves as an interface to electron-phonon transport calculations,
+    allowing users to query and select transport coefficients and related properties.
+    It supports selection based on various criteria such as
+    the number of bands, scattering approximation, broadening parameter (delta),
+    and chemical potential.
+    """
 
     @base.data_access
     def __str__(self):
@@ -139,7 +146,7 @@ class ElectronPhononTransport(base.Refinery):
     @base.data_access
     def to_dict(self):
         return {
-            "naccumulators": len(self._raw_data.valid_indices),
+            "naccumulators": len(self),
         }
 
     @base.data_access
@@ -152,7 +159,6 @@ class ElectronPhononTransport(base.Refinery):
 
     @base.data_access
     def __getitem__(self, key):
-        # TODO add logic to select instances
         return ElectronPhononTransportInstance(self, key)
 
     def __iter__(self):

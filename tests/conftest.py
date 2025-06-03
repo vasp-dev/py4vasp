@@ -1400,6 +1400,7 @@ def _electron_phonon_self_energy(selection):
     nspin = 1
     nkpoint = 2
     nband = 4
+    band_start = 1
     # mock band_kpoint_spin_index array
     band_kpoint_spin_index_shape = [nspin, nkpoint, nband]
     band_kpoint_spin_index = np.full(band_kpoint_spin_index_shape, -1)
@@ -1433,8 +1434,10 @@ def _electron_phonon_self_energy(selection):
             _make_arbitrary_data(debye_waller_shape) for _ in range(number_samples)
         ],
         fan=[_make_arbitrary_data(fan_shape) for _ in range(number_samples)],
-        band_kpoint_spin_index=[band_kpoint_spin_index for _ in range(number_samples)],
-        band_start=[band_kpoint_spin_index for _ in range(number_samples)],
+        band_kpoint_spin_index=np.array(
+            [band_kpoint_spin_index for _ in range(number_samples)]
+        ),
+        band_start=np.array([band_start for _ in range(number_samples)]),
     )
 
 

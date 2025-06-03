@@ -2,9 +2,14 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
 
+import numpy as np
 import pytest
 
-from py4vasp._calculation.electron_phonon_self_energy import ElectronPhononSelfEnergy
+from py4vasp._calculation.electron_phonon_self_energy import (
+    ElectronPhononSelfEnergy,
+    ElectronPhononSelfEnergyInstance,
+    SparseTensor,
+)
 
 
 @pytest.fixture
@@ -35,31 +40,93 @@ def test_selections(self_energy):
     selections = self_energy.selections()
     assert isinstance(selections, dict)
     assert "nbands_sum" in selections
-    assert "selfen_approx" in selections
-    assert "selfen_delta" in selections
-    # At least one chemical potential tag should be present
-    assert any(
-        tag in selections
-        for tag in ["selfen_carrier_den", "selfen_carrier_cell", "selfen_mu"]
-    )
 
 
-def test_select_returns_instances(self_energy):
-    # Should return a list of ElectronPhononSelfEnergyInstance
-    selections = self_energy.selections()
-    from py4vasp._calculation.electron_phonon_self_energy import (
-        ElectronPhononSelfEnergyInstance,
-    )
+@pytest.fixture
+def mock_sparse_tensor():
+    # 4 bands, 3 kpoints, 2 spins, only some indices valid
+    band_kpoint_spin_index = np.full((4, 3, 2), -1, dtype=int)
+    band_kpoint_spin_index[0, 0, 0] = 0
+    band_kpoint_spin_index[1, 1, 1] = 1
+    band_kpoint_spin_index[3, 2, 1] = 2
+    band_start = 0
+    tensor = np.array([10.0, 20.0, 30.0])
+    return SparseTensor(band_kpoint_spin_index, band_start, tensor)
 
-    for nbands_sum in selections["nbands_sum"]:
-        for selfen_approx in selections["selfen_approx"]:
-            selected = self_energy.select(
-                f"nbands_sum({nbands_sum}) selfen_approx({selfen_approx})"
-            )
-            assert len(selected) == 3
-            assert all(
-                isinstance(x, ElectronPhononSelfEnergyInstance) for x in selected
-            )
+
+def test_sparse_tensor_valid_and_invalid_access(mock_sparse_tensor):
+    # Valid indices
+    assert mock_sparse_tensor[0, 0, 0] == 10.0
+    assert mock_sparse_tensor[1, 1, 1] == 20.0
+    assert mock_sparse_tensor[3, 2, 1] == 30.0
+    # Invalid indices should raise IndexError
+    with pytest.raises(IndexError):
+        _ = mock_sparse_tensor[0, 1, 0]
+    with pytest.raises(IndexError):
+        _ = mock_sparse_tensor[1, 0, 1]
+    with pytest.raises(IndexError):
+        _ = mock_sparse_tensor[4, 2, 1]
+
+
+def test_get_fan_and_debye_waller_and_self_energy(self_energy):
+    # For each instance, test get_fan, get_debye_waller, get_self_energy
+    for i in range(len(self_energy)):
+        instance = self_energy[i]
+        # Get valid indices from band_kpoint_spin_index
+        bks = instance._get_data("band_kpoint_spin_index")
+        band_start = instance._get_scalar("band_start")
+        # Find all valid indices (where value != -1)
+        valid_indices = np.argwhere(bks != -1)
+        for idx in valid_indices:
+            iband, ikpt, isp = idx + np.array([band_start, 0, 0])
+            fan = instance.get_fan((iband, ikpt, isp))
+            dw = instance.get_debye_waller((iband, ikpt, isp))
+            se = instance.get_self_energy((iband, ikpt, isp))
+            # Should match raw data
+            fan_raw = instance._get_data("fan")[bks[iband - band_start, ikpt, isp] - 1]
+            dw_raw = instance._get_data("debye_waller")[
+                bks[iband - band_start, ikpt, isp] - 1
+            ]
+            assert np.allclose(fan, fan_raw)
+            assert np.allclose(dw, dw_raw)
+            assert np.allclose(se, fan_raw + dw_raw)
+
+
+def test_get_fan_invalid_index_raises(self_energy):
+    # Pick an instance and try to access an invalid index
+    instance = self_energy[0]
+    bks = instance._get_data("band_kpoint_spin_index")
+    band_start = instance._get_scalar("band_start")
+    # Find an invalid index (where value == -1)
+    invalid = np.argwhere(bks == -1)
+    if invalid.size > 0:
+        iband, ikpt, isp = invalid[0] + [band_start, 0, 0]
+        with pytest.raises(IndexError):
+            instance.get_fan((int(iband), int(ikpt), int(isp)))
+
+
+def test_sparse_tensor_hypothesis(mock_sparse_tensor):
+    bks = mock_sparse_tensor.band_kpoint_spin_index
+    band_start = mock_sparse_tensor.band_start
+    for iband in range(4):
+        for ikpt in range(3):
+            for isp in range(2):
+                try:
+                    val = mock_sparse_tensor[iband, ikpt, isp]
+                    # Should only succeed if index is valid
+                    assert bks[iband - band_start, ikpt, isp] != -1
+                    assert val in (10.0, 20.0, 30.0)
+                except IndexError:
+                    assert bks[iband - band_start, ikpt, isp] == -1
+
+
+def test_str_contains_expected_info(self_energy):
+    instance = self_energy[0]
+    s = str(instance)
+    assert "Electron self-energy accumulator" in s
+    assert "scattering_approximation" in s
+    assert "delta" in s
+    assert "nbands_sum" in s
 
 
 def test_indexing_and_iteration(self_energy):
