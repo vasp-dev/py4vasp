@@ -124,6 +124,6 @@ def test_factory_methods(raw_data, check_factory_methods):
     parameters = {
         "read_data": {"name": "mobility", "index": 0},
         "select": {"selection": "selfen_approx(MRTA) selfen_carrier_den(0.01,0.001)"},
-        "to_graph_carrier": {"selection": 'seebeck(xx)',"temperature": 300},
+        "to_graph_carrier": {"selection": "seebeck(xx)", "temperature": 300},
     }
     check_factory_methods(calculation.electron_phonon.transport, data, parameters)

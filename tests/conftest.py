@@ -1482,7 +1482,7 @@ def _electron_phonon_transport(selection):
         chemical_potential=_electron_phonon_chemical_potential(selection),
         id_index=[[1, sample + 1, 1] for sample in range(number_samples)],
         delta=np.array([0 for _ in range(number_samples)]),
-        temperatures=[np.linspace(0,500,6) for _ in range(number_samples)],
+        temperatures=[np.linspace(0, 500, 6) for _ in range(number_samples)],
         transport_function=_make_arbitrary_data([number_samples, ntemps, nw, 3, 3]),
         mobility=_make_arbitrary_data([number_samples, ntemps, 3, 3]),
         seebeck=_make_arbitrary_data([number_samples, ntemps, 3, 3]),

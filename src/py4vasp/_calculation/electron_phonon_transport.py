@@ -98,26 +98,30 @@ class ElectronPhononTransportInstance:
         }
         return selections_units_dict
 
-    def _get_temperature_idx(self,temperature,tolerance=1e-8):
+    def _get_temperature_idx(self, temperature, tolerance=1e-8):
 
         def find_float_index(float_array, target_value, tolerance):
-            close_indices = np.where(np.isclose(float_array, target_value, atol=tolerance))[0]
+            close_indices = np.where(
+                np.isclose(float_array, target_value, atol=tolerance)
+            )[0]
             if close_indices.size > 0:
                 return close_indices[0]
             else:
-                raise ValueError(f"No temperature close to {target_value} within a tolerance of {tolerance} was found.")
-            
+                raise ValueError(
+                    f"No temperature close to {target_value} within a tolerance of {tolerance} was found."
+                )
+
         return find_float_index(self._get_data("temperatures"), temperature, tolerance)
 
-    def _get_ydata(self,selection):
-            data_ = self._get_data(selection[0]).reshape([-1, 9])
-            maps = {
-                1: self._init_directions_dict(),
-            }
-            selector = index.Selector(maps, data_, reduction=np.average)
-            return selector[selection[1:]]
+    def _get_ydata(self, selection):
+        data_ = self._get_data(selection[0]).reshape([-1, 9])
+        maps = {
+            1: self._init_directions_dict(),
+        }
+        selector = index.Selector(maps, data_, reduction=np.average)
+        return selector[selection[1:]]
 
-    def _get_ydata_at_temperature(self,selection,temperature):
+    def _get_ydata_at_temperature(self, selection, temperature):
         itemp = self._get_temperature_idx(temperature)
         return self._get_ydata(selection)[itemp]
 
@@ -246,7 +250,6 @@ class ElectronPhononTransport(base.Refinery):
         )
         return chemical_potential.mu_tag()
 
-
     @base.data_access
     def to_graph_carrier(self, selection, temperature):
         """
@@ -254,7 +257,8 @@ class ElectronPhononTransport(base.Refinery):
         for a particular temperature.
         """
         mu_tag, mu_val = self.chemical_potential_mu_tag()
-        if selection=="": return None
+        if selection == "":
+            return None
         tree = select.Tree.from_selection(selection)
         series = []
         for selection in tree.selections():
@@ -263,13 +267,16 @@ class ElectronPhononTransport(base.Refinery):
                 instance = self[idx]
                 y = instance._get_ydata_at_temperature(selection, temperature)
                 ydata.append(y)
-            series.append(graph.Series(mu_val, ydata, label=f"{selection[0]} {''.join(selection[1:])}"))
+            series.append(
+                graph.Series(
+                    mu_val, ydata, label=f"{selection[0]} {''.join(selection[1:])}"
+                )
+            )
         return graph.Graph(
             series,
             xlabel=mu_tag,
             ylabel=selection[0],
         )
-
 
     @base.data_access
     def select(self, selection):
