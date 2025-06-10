@@ -52,7 +52,8 @@ from py4vasp._util import check
 
 range_separator = ":"
 pair_separator = "~"
-group_separators = (range_separator, pair_separator)
+assignment_seperator = "="
+group_separators = (range_separator, pair_separator, assignment_seperator)
 operators = ("+", "-")
 all = "__all__"
 end_of_text = chr(3)

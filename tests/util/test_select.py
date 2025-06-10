@@ -82,6 +82,17 @@ def test_pair_selection():
     assert graph(selection) == expected
 
 
+def test_assignment_selection():
+    selection = "foo  =  bar, baz=foo"
+    pair1 = select.Group(["foo", "bar"], "=")
+    pair2 = select.Group(["baz", "foo"], "=")
+    assert selections(selection) == ((pair1,), (pair2,))
+    expected = """graph LR
+    foo=bar
+    baz=foo"""
+    assert graph(selection) == expected
+
+
 def test_brackets_escape():
     selection = "foo[a~b] bar[1:3] baz[1+2]"
     assert selections(selection) == (("foo[a~b]",), ("bar[1:3]",), ("baz[1+2]",))
