@@ -68,13 +68,21 @@ def test_plot_instance(band_gap, Assert):
 
 def test_plot_multiple_selections(band_gap, Assert):
     graph = band_gap[1].plot("fundamental, fundamental_renorm")
+    expected = band_gap.ref.fundamental[1] + band_gap.ref.fundamental_renorm[1]
     assert len(graph) == 2
     Assert.allclose(graph.series[0].x, band_gap.ref.temperatures[1])
-    Assert.allclose(graph.series[0].y, band_gap.ref.fundamental[1])
+    Assert.allclose(graph.series[0].y, expected)
     assert graph.series[0].label == "fundamental"
     Assert.allclose(graph.series[1].x, band_gap.ref.temperatures[1])
     Assert.allclose(graph.series[1].y, band_gap.ref.fundamental_renorm[1])
     assert graph.series[1].label == "fundamental_renorm"
+
+
+def test_plot_direct_gap(band_gap, Assert):
+    # Plotting the direct gap should return a graph with correct data
+    graph = band_gap[2].plot("direct - direct_renorm")
+    assert len(graph) == 1
+    Assert.allclose(graph.series[0].y, band_gap.ref.direct[2])
 
 
 @pytest.mark.xfail(reason="This test is expected to fail due to missing implementation")

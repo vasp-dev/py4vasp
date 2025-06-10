@@ -229,7 +229,6 @@ def test_equivalent_operation(first_text, second_text, Assert):
     ],
 )
 def test_dynamic_reduction(selection, expected, Assert):
-    print(f"{selection=}")
     values = np.sin(np.arange(48)).reshape(2, 4, 6)
     map_ = {
         1: {"A": 0, "B": 1, "C": 2, "D": 3},

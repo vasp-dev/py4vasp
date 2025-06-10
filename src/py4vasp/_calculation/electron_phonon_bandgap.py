@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import numpy as np
+
 from py4vasp._calculation import base
 from py4vasp._calculation.electron_phonon_chemical_potential import (
     ElectronPhononChemicalPotential,
@@ -7,7 +9,7 @@ from py4vasp._calculation.electron_phonon_chemical_potential import (
 
 # from py4vasp._calculation.electron_phonon_self_energy import ElectronPhononSelfEnergy
 from py4vasp._third_party import graph
-from py4vasp._util import select
+from py4vasp._util import index, select
 
 
 class ElectronPhononBandgapInstance(graph.Mixin):
@@ -97,20 +99,26 @@ class ElectronPhononBandgapInstance(graph.Mixin):
         return "\n".join(lines)
 
     def _get_data(self, name):
-        print(name, self.index, self.parent)
         return self.parent._get_data(name, self.index)
 
     def _get_scalar(self, name):
         return self.parent._get_scalar(name, self.index)
 
     def to_graph(self, selection):
+        data = self.to_dict()
+        temperatures = data.pop("temperatures")
+        del data["nbands_sum"]
+        data["fundamental"] = data["fundamental"] + data["fundamental_renorm"]
+        data["direct"] = data["direct"] + data["direct_renorm"]
+        maps = {0: {key: index_ for index_, key in enumerate(data.keys())}}
+        selector = index.Selector(maps, np.array(list(data.values())))
         tree = select.Tree.from_selection(selection)
-        series = []
-        for selection in tree.selections():
-            y = self._get_data(selection[0])
-            x = self._get_data("temperatures")
-            series.append(graph.Series(x, y, label=selection[0]))
-        print(series)
+        series = [
+            graph.Series(
+                temperatures, selector[selection], label=selector.label(selection)
+            )
+            for selection in tree.selections()
+        ]
         return graph.Graph(series, ylabel="Energy (eV)", xlabel="Temperature (K)")
 
     def read(self):
@@ -232,9 +240,6 @@ class ElectronPhononBandgap(base.Refinery):
     @base.data_access
     def _get_data(self, name, index):
         dataset = getattr(self._raw_data, name)
-        import numpy as np
-
-        print(name, index, np.array(dataset).shape)
         return dataset[index][:]
 
     @base.data_access
