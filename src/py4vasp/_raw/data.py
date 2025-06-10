@@ -235,65 +235,141 @@ class ElectronicMinimization:
 
 @dataclasses.dataclass
 class ElectronPhononChemicalPotential:
+    """The chemical potential for electron-phonon calculations.
+
+    The chemical potential is computed for each temperature and carrier doping.
+    The carrier doping can be specified using only one of:
+    carrier_per_cell, carrier_den or mu
+    """
+
     fermi_energy: VaspData
+    "The Fermi energy at zero temperature and without doping"
     chemical_potential: VaspData
-    carrier_density: VaspData
+    "The chemical potential for each temperature and doping"
     temperatures: VaspData
+    "List of temperatures at which the chemical potential is computed"
     carrier_per_cell: VaspData  # values of the selfen_carrier_per_cell incar tag
+    "The doping specified by the additional number of carriers per cell"
     carrier_den: VaspData  # values of th selfen_carrier_den incar tag
+    "The doping specified by an additional carrier density"
     mu: VaspData  # values of the selfen_mu incar tag
+    "The doping specified by an energy shift with respect to the fermi energy"
 
 
 @dataclasses.dataclass
 class ElectronPhononBandgap(mapping.Mapping):
-    id_name: VaspData
-    id_size: VaspData
-    chemical_potential: ElectronPhononChemicalPotential
-    self_energy: ElectronPhononSelfEnergy
-    fundamental_renorm: VaspData
-    fundamental: VaspData
-    direct_renorm: VaspData
-    direct: VaspData
-    temperatures: VaspData
-    id_index: VaspData
-    nbands_sum: int
-    delta: float
-    scattering_approximation: str
+    """The bandgap renormalized due to electron-phonon coupling
 
+    The information is derived from a self-energy calculation.
+    """
+
+    id_name: VaspData
+    "The names of the variables that generate instances of the bandgap calculations"
+    id_size: VaspData
+    "The number of values that each of the variables can take to generate instances"
+    id_index: VaspData
+    "Index of the elements on each list of variables used to generate instances"
+    chemical_potential: ElectronPhononChemicalPotential
+    "Chemical potential information"
+    self_energy: ElectronPhononSelfEnergy
+    "Electron self-energy calculation information"
+    fundamental_renorm: VaspData
+    "Renormalization of the fundamental bandgap"
+    fundamental: VaspData
+    "Value of the fundamental bandgap"
+    direct_renorm: VaspData
+    "Renormalization of the direct bandgap"
+    direct: VaspData
+    "Value of the direct bandgap"
+    temperatures: VaspData
+    "List of temperatures at which the bandgap renormalization was computed"
+    nbands_sum: int
+    "Number of bands that were summed over in this instance"
+    delta: float
+    "Value of the imaginary broadening parameter used to evaluate the electron self-energy"
+    scattering_approximation: str
+    "Scattering approximation used to compute the electron self-energy"
 
 @dataclasses.dataclass
 class ElectronPhononSelfEnergy(mapping.Mapping):
+    """The electron self-energy due to electron-phonon coupling
+
+    This is composed of two Feynman diagrams, the Fan and Debye-Waller.
+    They are compued only for selectes Kohn-Sham states and stored in a flattened array.
+    When the scattering approximation is not SERTA then strictly speaking
+    this is not a self-energy anymore but a scattering rate that is used in the
+    context of solving the Boltzman transport equation (see ElectronPhononTransport)
+    """
+
     id_name: VaspData
+    "The names of the variables that generate instances of the self-energy calculations"
     id_size: VaspData
-    chemical_potential: ElectronPhononChemicalPotential
+    "The number of values that each of the variables can take to generate instances"
     id_index: VaspData
+    "Index of the elements on each list of variables used to generate instances"
+    chemical_potential: ElectronPhononChemicalPotential
+    "Chemical potential information"
     eigenvalues: VaspData
+    "Kohn-sham eigenvalues on the mesh used for the electron-phonon calculation"
+    temperatures: VaspData
+    "List of temperatures at which the bandgap renormalization was computed"
     debye_waller: VaspData
+    "Debye-Waller self-energy contribution as an array flattened along (band,kpoint,spin)"
     fan: VaspData
+    "Fan self-energy contribution for an array of energies as an array flattened along (band,kpoint,spin)"
     band_kpoint_spin_index: VaspData
+    "Translate a (band,kpoint,spin) tuple to the flattened array"
     band_start: int
+    "Index of the lowest band for which the electron self-energy was computed"
     nbands_sum: int
+    "Number of bands that were summed over in this instance"
     delta: float
+    "Value of the imaginary broadening parameter used to evaluate the electron self-energy"
     scattering_approximation: str
+    "Scattering approximation used to compute the electron self-energy"
 
 
 @dataclasses.dataclass
 class ElectronPhononTransport(mapping.Mapping):
+    """Electronic transport quantities limited by electron-phonon scattering
+
+    The electronic transport coefficients are computed based on the electronic group-velocities
+    and scattering rated computed the self-energy accumulators.
+    They are computed for each temperature and chemical potential specified in the INCAR file
+    """
+
     id_name: VaspData
+    "The names of the variables that generate instances of the self-energy calculations"
     id_size: VaspData
-    chemical_potential: ElectronPhononChemicalPotential
-    self_energy: ElectronPhononSelfEnergy
+    "The number of values that each of the variables can take to generate instances"
     id_index: VaspData
+    "Index of the elements on each list of variables used to generate instances"
+    chemical_potential: ElectronPhononChemicalPotential
+    "Chemical potential information"
+    self_energy: ElectronPhononSelfEnergy
+    "Electron self-energy calculation information"
     temperatures: VaspData
+    "List of temperatures at which the bandgap renormalization was computed"
     transport_function: VaspData
+    """Transport function which is computed from the electron group-velocities
+    and scattering rated for each temperature and carrier doping
+    """
     electronic_conductivity: VaspData
+    "Electronic conductivity for each temperature and carrier doping"
     mobility: VaspData
+    "Electronic mobility for each temperature and carrier doping"
     seebeck: VaspData
+    "Seebeck coefficient for each temperature and carrier doping"
     peltier: VaspData
+    "Peltier coefficient for each temperature and carrier doping"
     electronic_thermal_conductivity: VaspData
+    "Electronic thermal conductivity for each temperature and carrier doping"
     nbands_sum: int
+    "Number of bands that were summed over in this instance"
     delta: float
+    "Value of the imaginary broadening parameter used to evaluate the electron self-energy"
     scattering_approximation: str
+    "Scattering approximation used to compute the electron self-energy"
 
 
 @dataclasses.dataclass
