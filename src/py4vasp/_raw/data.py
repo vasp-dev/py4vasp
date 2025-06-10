@@ -234,6 +234,69 @@ class ElectronicMinimization:
 
 
 @dataclasses.dataclass
+class ElectronPhononChemicalPotential:
+    fermi_energy: VaspData
+    chemical_potential: VaspData
+    carrier_density: VaspData
+    temperatures: VaspData
+    carrier_per_cell: VaspData  # values of the selfen_carrier_per_cell incar tag
+    carrier_den: VaspData  # values of th selfen_carrier_den incar tag
+    mu: VaspData  # values of the selfen_mu incar tag
+
+
+@dataclasses.dataclass
+class ElectronPhononBandgap(mapping.Mapping):
+    id_name: VaspData
+    id_size: VaspData
+    chemical_potential: ElectronPhononChemicalPotential
+    self_energy: ElectronPhononSelfEnergy
+    fundamental_renorm: VaspData
+    fundamental: VaspData
+    direct_renorm: VaspData
+    direct: VaspData
+    temperatures: VaspData
+    id_index: VaspData
+    nbands_sum: int
+    delta: float
+    scattering_approximation: str
+
+
+@dataclasses.dataclass
+class ElectronPhononSelfEnergy(mapping.Mapping):
+    id_name: VaspData
+    id_size: VaspData
+    chemical_potential: ElectronPhononChemicalPotential
+    id_index: VaspData
+    eigenvalues: VaspData
+    debye_waller: VaspData
+    fan: VaspData
+    band_kpoint_spin_index: VaspData
+    band_start: int
+    nbands_sum: int
+    delta: float
+    scattering_approximation: str
+
+
+@dataclasses.dataclass
+class ElectronPhononTransport(mapping.Mapping):
+    id_name: VaspData
+    id_size: VaspData
+    chemical_potential: ElectronPhononChemicalPotential
+    self_energy: ElectronPhononSelfEnergy
+    id_index: VaspData
+    temperatures: VaspData
+    transport_function: VaspData
+    electronic_conductivity: VaspData
+    mobility: VaspData
+    seebeck: VaspData
+    peltier: VaspData
+    electronic_thermal_conductivity: VaspData
+    nbands_sum: int
+    delta: float
+    scattering_approximation: str
+
+
+@dataclasses.dataclass
 class Energy:
     """Various energies during ionic relaxation or MD simulation.
 
@@ -588,67 +651,3 @@ class Workfunction:
     "Describes the band edges in the surface."
     fermi_energy: float
     "Fermi energy obtained by VASP."
-
-
-# TODO: temporarily put this here for testing, should be put at the proper position after finalizing the schema
-@dataclasses.dataclass
-class ElectronPhononChemicalPotential:
-    fermi_energy: VaspData
-    chemical_potential: VaspData
-    carrier_density: VaspData
-    temperatures: VaspData
-    carrier_per_cell: VaspData  # values of the selfen_carrier_per_cell incar tag
-    carrier_den: VaspData  # values of th selfen_carrier_den incar tag
-    mu: VaspData  # values of the selfen_mu incar tag
-
-
-@dataclasses.dataclass
-class ElectronPhononBandgap(mapping.Mapping):
-    id_name: VaspData
-    id_size: VaspData
-    chemical_potential: ElectronPhononChemicalPotential
-    self_energy: ElectronPhononSelfEnergy
-    fundamental_renorm: VaspData
-    fundamental: VaspData
-    direct_renorm: VaspData
-    direct: VaspData
-    temperatures: VaspData
-    id_index: VaspData
-    nbands_sum: int
-    delta: float
-    scattering_approximation: str
-
-
-@dataclasses.dataclass
-class ElectronPhononSelfEnergy(mapping.Mapping):
-    id_name: VaspData
-    id_size: VaspData
-    chemical_potential: ElectronPhononChemicalPotential
-    id_index: VaspData
-    eigenvalues: VaspData
-    debye_waller: VaspData
-    fan: VaspData
-    band_kpoint_spin_index: VaspData
-    band_start: int
-    nbands_sum: int
-    delta: float
-    scattering_approximation: str
-
-
-@dataclasses.dataclass
-class ElectronPhononTransport(mapping.Mapping):
-    id_name: VaspData
-    id_size: VaspData
-    chemical_potential: ElectronPhononChemicalPotential
-    self_energy: ElectronPhononSelfEnergy
-    id_index: VaspData
-    temperatures: VaspData
-    transport_function: VaspData
-    electronic_conductivity: VaspData
-    mobility: VaspData
-    seebeck: VaspData
-    peltier: VaspData
-    electronic_thermal_conductivity: VaspData
-    nbands_sum: int
-    delta: float
-    scattering_approximation: str
