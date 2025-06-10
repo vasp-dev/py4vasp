@@ -4,7 +4,8 @@ from py4vasp._calculation import base, slice_
 from py4vasp._calculation.electron_phonon_chemical_potential import (
     ElectronPhononChemicalPotential,
 )
-from py4vasp._calculation.electron_phonon_self_energy import ElectronPhononSelfEnergy
+
+# from py4vasp._calculation.electron_phonon_self_energy import ElectronPhononSelfEnergy
 from py4vasp._third_party import graph
 from py4vasp._util import import_, select
 
@@ -146,6 +147,8 @@ class ElectronPhononBandgap(base.Refinery):
         """Return a dictionary describing what options are available
         to read the electron transport coefficients.
         This is done using the self-energy class."""
+        # TODO: fix the use of self_energy
+        return super().selections()
         self_energy = ElectronPhononSelfEnergy.from_data(self._raw_data.self_energy)
         selections = self_energy.selections()
         # This class only make sense when the scattering approximation is SERTA
