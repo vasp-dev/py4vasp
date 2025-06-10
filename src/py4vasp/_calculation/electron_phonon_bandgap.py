@@ -10,7 +10,7 @@ from py4vasp._third_party import graph
 from py4vasp._util import select
 
 
-class ElectronPhononBandgapInstance:
+class ElectronPhononBandgapInstance(graph.Mixin):
     "Placeholder for electron phonon band gap"
 
     def __init__(self, parent, index):
@@ -97,6 +97,7 @@ class ElectronPhononBandgapInstance:
         return "\n".join(lines)
 
     def _get_data(self, name):
+        print(name, self.index, self.parent)
         return self.parent._get_data(name, self.index)
 
     def _get_scalar(self, name):
@@ -109,7 +110,8 @@ class ElectronPhononBandgapInstance:
             y = self._get_data(selection[0])
             x = self._get_data("temperatures")
             series.append(graph.Series(x, y, label=selection[0]))
-        return graph.Graph(series, ylabel="energy (eV)", xlabel="Temperature (K)")
+        print(series)
+        return graph.Graph(series, ylabel="Energy (eV)", xlabel="Temperature (K)")
 
     def read(self):
         return self.to_dict()
@@ -219,14 +221,6 @@ class ElectronPhononBandgap(base.Refinery):
         return selected_instances
 
     @base.data_access
-    def _get_data(self, name, index):
-        return getattr(self._raw_data, name)[index][:]
-
-    @base.data_access
-    def _get_scalar(self, name, index):
-        return getattr(self._raw_data, name)[index][()]
-
-    @base.data_access
     def __getitem__(self, key):
         # TODO add logic to select instances
         return ElectronPhononBandgapInstance(self, key)
@@ -237,7 +231,11 @@ class ElectronPhononBandgap(base.Refinery):
 
     @base.data_access
     def _get_data(self, name, index):
-        return getattr(self._raw_data, name)[index][:]
+        dataset = getattr(self._raw_data, name)
+        import numpy as np
+
+        print(name, index, np.array(dataset).shape)
+        return dataset[index][:]
 
     @base.data_access
     def _get_scalar(self, name, index):
