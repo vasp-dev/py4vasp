@@ -331,7 +331,7 @@ schema.add(
 group = "/results/electron_phonon/electrons"
 schema.add(
     raw.ElectronPhononChemicalPotential,
-    required=raw.Version(6, 5),
+    required=raw.Version(6, 5, 2),
     fermi_energy=f"{group}/chemical_potential/efermi",
     chemical_potential=f"{group}/chemical_potential/muij",
     carrier_density=f"{group}/chemical_potential/nij",
@@ -346,7 +346,7 @@ schema.add(
 )
 schema.add(
     raw.ElectronPhononSelfEnergy,
-    required=raw.Version(6, 5),
+    required=raw.Version(6, 5, 2),
     id_name=f"{group}/self_energy_meta/id_name",
     id_size=f"{group}/self_energy_meta/id_size",
     valid_indices=f"{group}/self_energy_meta/ncalculators",
@@ -363,7 +363,7 @@ schema.add(
 )
 schema.add(
     raw.ElectronPhononBandgap,
-    required=raw.Version(6, 5),
+    required=raw.Version(6, 5, 2),
     id_name=f"{group}/self_energy_meta/id_name",
     id_size=f"{group}/self_energy_meta/id_size",
     id_index=f"{group}/self_energy_{{}}/id_idx",
@@ -381,7 +381,7 @@ schema.add(
 )
 schema.add(
     raw.ElectronPhononTransport,
-    required=raw.Version(6, 5),
+    required=raw.Version(6, 5, 2),
     id_name=f"{group}/transport_meta/id_name",
     id_size=f"{group}/transport_meta/id_size",
     chemical_potential=Link("electron_phonon_chemical_potential", DEFAULT_SOURCE),
