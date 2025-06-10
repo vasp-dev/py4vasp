@@ -1,13 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp._calculation import base, slice_
+from py4vasp._calculation import base
 from py4vasp._calculation.electron_phonon_chemical_potential import (
     ElectronPhononChemicalPotential,
 )
 
 # from py4vasp._calculation.electron_phonon_self_energy import ElectronPhononSelfEnergy
 from py4vasp._third_party import graph
-from py4vasp._util import import_, select
+from py4vasp._util import select
 
 
 class ElectronPhononBandgapInstance:
@@ -110,6 +110,9 @@ class ElectronPhononBandgapInstance:
             x = self._get_data("temperatures")
             series.append(graph.Series(x, y, label=selection[0]))
         return graph.Graph(series, ylabel="energy (eV)", xlabel="Temperature (K)")
+
+    def read(self):
+        return self.to_dict()
 
     def to_dict(self):
         _dict = {

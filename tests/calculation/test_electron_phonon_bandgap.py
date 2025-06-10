@@ -4,7 +4,10 @@ import types
 
 import pytest
 
-from py4vasp._calculation.electron_phonon_bandgap import ElectronPhononBandgap
+from py4vasp._calculation.electron_phonon_bandgap import (
+    ElectronPhononBandgap,
+    ElectronPhononBandgapInstance,
+)
 
 
 @pytest.fixture
@@ -15,6 +18,8 @@ def band_gap(raw_data):
     band_gap.ref.naccumulators = len(raw_band_gap.valid_indices)
     band_gap.ref.fundamental = raw_band_gap.fundamental
     band_gap.ref.direct = raw_band_gap.direct
+    band_gap.ref.temperatures = raw_band_gap.temperatures
+    band_gap.ref.nbands_sum = raw_band_gap.nbands_sum
     return band_gap
 
 
@@ -23,9 +28,28 @@ def test_len(band_gap):
     assert len(band_gap) == band_gap.ref.naccumulators
 
 
-def test_to_dict_keys(band_gap):
+def test_indexing_and_iteration(band_gap):
+    # Indexing and iteration should yield instances
+    for i, instance in enumerate(band_gap):
+        assert isinstance(instance, ElectronPhononBandgapInstance)
+        assert instance.index == i
+        assert instance.parent is band_gap
+    assert isinstance(band_gap[0], ElectronPhononBandgapInstance)
+
+
+def test_read_mapping(band_gap):
     # Check that to_dict returns expected keys
     assert band_gap.to_dict() == {"naccumulators": band_gap.ref.naccumulators}
+
+
+def test_read_instance(band_gap, Assert):
+    # Each instance's to_dict should match the raw data for that index
+    for i, instance in enumerate(band_gap):
+        d = instance.read()
+        Assert.allclose(d["fundamental"], band_gap.ref.fundamental[i])
+        Assert.allclose(d["direct"], band_gap.ref.direct[i])
+        Assert.allclose(d["temperatures"], band_gap.ref.temperatures[i])
+        Assert.allclose(d["nbands_sum"], band_gap.ref.nbands_sum)
 
 
 @pytest.mark.xfail(reason="This test is expected to fail due to missing implementation")
@@ -58,39 +82,6 @@ def test_select_returns_instances(band_gap):
             )
             assert len(selected) == 3
             assert all(isinstance(x, ElectronPhononBandgapInstance) for x in selected)
-
-
-def test_indexing_and_iteration(band_gap):
-    # Indexing and iteration should yield instances
-    from py4vasp._calculation.electron_phonon_bandgap import (
-        ElectronPhononBandgapInstance,
-    )
-
-    for i, instance in enumerate(band_gap):
-        assert isinstance(instance, ElectronPhononBandgapInstance)
-        assert instance.index == i
-        assert instance.parent is band_gap
-    assert isinstance(band_gap[0], ElectronPhononBandgapInstance)
-
-
-def test_to_dict_instance_matches_raw(band_gap):
-    # Each instance's to_dict should match the raw data for that index
-    for i in range(len(band_gap)):
-        d = band_gap[i].to_dict()
-        assert "fundamental" in d
-        assert "direct" in d
-        assert "temperatures" in d
-        assert "nbands_sum" in d
-        # Check shape matches
-        assert d["fundamental"].shape == band_gap.ref.fundamental[i].shape
-        assert d["direct"].shape == band_gap.ref.direct[i].shape
-
-
-def test_read(band_gap, Assert):
-    slice_ = 0
-    actual = band_gap[slice_].to_dict()
-    Assert.allclose(actual["fundamental"], band_gap.ref.fundamental[slice_])
-    Assert.allclose(actual["direct"], band_gap.ref.direct[slice_])
 
 
 def test_print(band_gap, format_):
