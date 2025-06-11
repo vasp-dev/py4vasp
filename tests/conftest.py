@@ -22,6 +22,7 @@ number_valence_bands = 2
 number_conduction_bands = 1
 number_eigenvectors = 5
 number_excitons = 3
+number_samples = 5
 single_spin = 1
 two_spins = 2
 noncollinear = 4
@@ -253,12 +254,16 @@ class RawDataFactory:
         return _elastic_modulus()
 
     @staticmethod
-    def electron_phonon_self_energy(selection):
-        return _electron_phonon_self_energy(selection)
-
-    @staticmethod
     def electron_phonon_band_gap(selection):
         return _electron_phonon_band_gap(selection)
+
+    @staticmethod
+    def electron_phonon_chemical_potential(selection):
+        return _electron_phonon_chemical_potential(selection)
+
+    @staticmethod
+    def electron_phonon_self_energy(selection):
+        return _electron_phonon_self_energy(selection)
 
     @staticmethod
     def electron_phonon_transport(selection):
@@ -1514,22 +1519,22 @@ def _current_density(selection):
     )
 
 
-def _electron_phonon_chemical_potential(selection):
-    number_samples = 3
-    ntemps = 6
+def _electron_phonon_chemical_potential(selection="carrier_den"):
+    number_temps = 6
     return raw.ElectronPhononChemicalPotential(
         fermi_energy=0,
         carrier_density=_make_arbitrary_data([number_samples]),
-        temperatures=_make_arbitrary_data([ntemps]),
-        chemical_potential=_make_arbitrary_data([number_samples, ntemps]),
-        carrier_per_cell=_make_data(None),
-        mu=_make_data(None),
-        carrier_den=_make_arbitrary_data([number_samples]),
+        temperatures=_make_arbitrary_data([number_temps]),
+        chemical_potential=_make_arbitrary_data([number_samples, number_temps]),
+        carrier_per_cell=_make_arbitrary_data(
+            [number_samples], selection == "carrier_per_cell"
+        ),
+        mu=_make_arbitrary_data([number_samples], selection == "mu"),
+        carrier_den=_make_arbitrary_data([number_samples], selection == "carrier_den"),
     )
 
 
 def _electron_phonon_self_energy(selection):
-    number_samples = 3
     nspin = 1
     nkpoint = 2
     nband = 4
@@ -1575,23 +1580,20 @@ def _electron_phonon_self_energy(selection):
 
 
 def _electron_phonon_band_gap(selection):
-    number_samples = 3
     number_components = 3 if selection == "collinear" else 1
     number_temps = 6
     shape_gap = [number_samples, number_components]
     shape_renorm = [number_samples, number_components, number_temps]
     shape_temperature = [number_samples, number_temps]
-    nbands_sum = 12
     scattering_approximation = "SERTA"
     return raw.ElectronPhononBandgap(
         valid_indices=range(number_samples),
-        id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
-        id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
-        id_size=[1, number_samples, 1, 1],  #unused
-        nbands_sum=np.array([nbands_sum for _ in range(number_samples)]),
-        delta=np.array([0 for _ in range(number_samples)]),
-        chemical_potential=_electron_phonon_chemical_potential(selection),
-        self_energy=_electron_phonon_self_energy(selection), # unused
+        id_name=_make_data(None),
+        id_size=_make_data(None),
+        nbands_sum=_make_data(np.linspace(10, 100, number_samples, dtype=np.int32)),
+        delta=_make_arbitrary_data([number_samples]),
+        chemical_potential=_electron_phonon_chemical_potential(),
+        self_energy=_make_data(None),
         scattering_approximation=[
             scattering_approximation for _ in range(number_samples)
         ],
@@ -1600,12 +1602,11 @@ def _electron_phonon_band_gap(selection):
         fundamental=_make_arbitrary_data(shape_gap),
         direct=_make_arbitrary_data(shape_gap),
         temperatures=_make_arbitrary_data(shape_temperature),
-        id_index=[[1, sample + 1, 1] for sample in range(number_samples)], # unused
+        id_index=_make_data(None),
     )
 
 
 def _electron_phonon_transport(selection):
-    number_samples = 3
     # mock transport_function
     nw = 1  # number of frequencies at which the fan self-energy is evaluated
     ntemps = 6

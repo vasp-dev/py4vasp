@@ -119,12 +119,12 @@ class ElectronPhononBandgap(base.Refinery):
         to read the electron transport coefficients.
         This is done using the self-energy class."""
         # This class only make sense when the scattering approximation is SERTA
+        mu_tag, mu_val = self.chemical_potential_mu_tag()
         return {
             **super().selections(),
-            "scattering_approx": ("SERTA",),
-            "carrier_per_cell": (),
-            "carrier_den": (),
-            "mu": (),
+            mu_tag: mu_val,
+            "nbands_sum": self._raw_data.nbands_sum[:],
+            "selfen_delta": self._raw_data.delta[:],
         }
 
     @base.data_access
@@ -172,7 +172,7 @@ class ElectronPhononBandgap(base.Refinery):
         # elph_selfen_carrier_per_cell -> selfen_carrier_per_cell -> mu_tag
         # elph_selfen_mu               -> selfen_mu -> mu_tag
 
-        calc.electron_phonon.bandgap.select("scatter_approx=SERTA nbands_sum=300")
+        # calc.electron_phonon.bandgap.select("scatter_approx=SERTA nbands_sum=300")
 
         # selection (Group(["nbands_sum", "12"], "="),) (Group(["selfen_approx", "SERTA"], "="),) # or
         # selection (Group(["nbands_sum", "12"], "="), Group(["selfen_approx", "SERTA"], "=")) # and
@@ -207,10 +207,12 @@ class ElectronPhononBandgap(base.Refinery):
 
     @base.data_access
     def _get_data(self, name, index):
-        if name == "carrier_den":
-            _, mu_val = self.chemical_potential_mu_tag()
-            return mu_val[index]
-        dataset = getattr(self._raw_data, name)
+        dataset = getattr(self._raw_data, name, None)
+        if dataset is None:
+            expected_name, dataset = self.chemical_potential_mu_tag()
+            assert (
+                name == expected_name
+            ), f"Cannot access {name}, not present in this class and chemical potential."
         return np.array(dataset[index])[()]
 
     @base.data_access
