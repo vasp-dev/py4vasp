@@ -313,8 +313,8 @@ class ElectronPhononSelfEnergy(mapping.Mapping):
     "Chemical potential information"
     eigenvalues: VaspData
     "Kohn-sham eigenvalues on the mesh used for the electron-phonon calculation"
-    temperatures: VaspData
-    "List of temperatures at which the bandgap renormalization was computed"
+    #temperatures: VaspData
+    #"List of temperatures at which the bandgap renormalization was computed"
     debye_waller: VaspData
     "Debye-Waller self-energy contribution as an array flattened along (band,kpoint,spin)"
     fan: VaspData
