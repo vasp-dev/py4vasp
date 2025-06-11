@@ -64,8 +64,8 @@ class ElectronPhononBandgapInstance(graph.Mixin):
 
     def to_graph(self, selection):
         data = self.to_dict()
+        del data["metadata"]
         temperatures = data.pop("temperatures")
-        del data["nbands_sum"]
         fundamental_gap = data["fundamental"][:, np.newaxis]
         data["fundamental"] = fundamental_gap + data["fundamental_renorm"]
         data["direct"] = data["direct"][:, np.newaxis] + data["direct_renorm"]
@@ -85,7 +85,7 @@ class ElectronPhononBandgapInstance(graph.Mixin):
 
     def to_dict(self):
         return {
-            "nbands_sum": self._get_data("nbands_sum"),
+            "metadata": {},
             "direct_renorm": self._get_data("direct_renorm"),
             "direct": self._get_data("direct"),
             "fundamental_renorm": self._get_data("fundamental_renorm"),
@@ -118,18 +118,14 @@ class ElectronPhononBandgap(base.Refinery):
         """Return a dictionary describing what options are available
         to read the electron transport coefficients.
         This is done using the self-energy class."""
-        # TODO: fix the use of self_energy
-        return super().selections()
-        self_energy = ElectronPhononSelfEnergy.from_data(self._raw_data.self_energy)
-        selections = self_energy.selections()
         # This class only make sense when the scattering approximation is SERTA
-        selections["selfen_approx"] = ["SERTA"]
-        return selections
-
-    def _generate_selections(self, selection):
-        tree = select.Tree.from_selection(selection)
-        for selection in tree.selections():
-            yield selection
+        return {
+            **super().selections(),
+            "scattering_approx": ("SERTA",),
+            "carrier_per_cell": (),
+            "carrier_den": (),
+            "mu": (),
+        }
 
     @base.data_access
     def chemical_potential_mu_tag(self):
@@ -153,42 +149,41 @@ class ElectronPhononBandgap(base.Refinery):
         list of ElectronPhononBandgapInstance
             Instances that match the selection criteria.
         """
-        selected_instances = []
-        mu_tag, mu_val = self.chemical_potential_mu_tag()
-        for idx in range(len(self)):
-            match_all = False
-            for sel in self._generate_selections(selection):
-                match = True
-                sel_dict = dict(zip(sel[::2], sel[1::2]))
-                for key, value in sel_dict.items():
-                    # Map selection keys to property names
-                    if key == "nbands_sum":
-                        instance_value = self._get_data("nbands_sum", idx)
-                        match_this = instance_value == value
-                    elif key == "selfen_approx":
-                        instance_value = self._get_data("scattering_approximation", idx)
-                        match_this = instance_value == value
-                    elif key == "selfen_delta":
-                        instance_value = self._get_data("delta", idx)
-                        match_this = abs(instance_value - value) < 1e-8
-                    elif key == mu_tag:
-                        mu_idx = self[idx].id_index[2] - 1
-                        instance_value = mu_val[mu_idx]
-                        match_this = abs(instance_value - float(value)) < 1e-8
-                    else:
-                        possible_values = self.selections()
-                        raise ValueError(
-                            f"Invalid selection {key}. Possible values are {possible_values.keys()}"
-                        )
-                    match = match and match_this
-                match_all = match_all or match
-            if match_all:
-                selected_instances.append(ElectronPhononBandgapInstance(self, idx))
-        return selected_instances
+        indices = self._select_indices(selection)
+        return [ElectronPhononBandgapInstance(self, index) for index in indices]
+
+    def _select_indices(self, selection):
+        tree = select.Tree.from_selection(selection)
+        return {
+            index_
+            for selection in tree.selections()
+            for index_ in self._filter_indices(selection)
+        }
+
+    def _filter_indices(self, selection):
+        remaining_indices = range(len(self))
+        for group in selection:
+            assert isinstance(group, select.Group)
+            assert group.separator == "="
+            assert len(group.group) == 2
+            remaining_indices = self._filter_group(remaining_indices, group)
+            remaining_indices = list(remaining_indices)
+        yield from remaining_indices
+
+    def _filter_group(self, remaining_indices, group):
+        for index_ in remaining_indices:
+            if self._match_key_value(index_, *group.group):
+                yield index_
+
+    def _match_key_value(self, index_, key, value):
+        instance_value = self._get_data(key, index_)
+        if value.isnumeric():
+            return np.isclose(instance_value, float(value), atol=0)
+        else:
+            return instance_value == value
 
     @base.data_access
     def __getitem__(self, key):
-        # TODO add logic to select instances
         return ElectronPhononBandgapInstance(self, key)
 
     def __iter__(self):
@@ -197,6 +192,9 @@ class ElectronPhononBandgap(base.Refinery):
 
     @base.data_access
     def _get_data(self, name, index):
+        if name == "carrier_den":
+            _, mu_val = self.chemical_potential_mu_tag()
+            return mu_val[index]
         dataset = getattr(self._raw_data, name)
         return np.array(dataset[index])[()]
 

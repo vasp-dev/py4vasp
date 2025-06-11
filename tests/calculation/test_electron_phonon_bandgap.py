@@ -108,7 +108,7 @@ Fundamental gap:
 ^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
 ^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}"""
     else:
-        raise NotImplemented
+        raise NotImplementedError
 
 
 def test_len(band_gap):
@@ -139,7 +139,7 @@ def test_read_instance(band_gap, Assert):
         Assert.allclose(d["direct"], band_gap.ref.direct[i])
         Assert.allclose(d["direct_renorm"], band_gap.ref.direct_renorm[i])
         Assert.allclose(d["temperatures"], band_gap.ref.temperatures[i])
-        Assert.allclose(d["nbands_sum"], band_gap.ref.nbands_sum)
+        assert d["metadata"] == {}
 
 
 def test_plot_instance(band_gap, Assert):
@@ -172,36 +172,25 @@ def test_plot_direct_gap(band_gap, Assert):
     Assert.allclose(graph.series[0].y, band_gap.ref.direct[2, :, np.newaxis])
 
 
-@pytest.mark.xfail(reason="This test is expected to fail due to missing implementation")
+# @pytest.mark.xfail(reason="This test is expected to fail due to missing implementation")
 def test_selections(band_gap):
     # Should return a dictionary with expected selection keys
     selections = band_gap.selections()
-    assert isinstance(selections, dict)
-    assert "nbands_sum" in selections
-    assert "selfen_approx" in selections
-    assert "selfen_delta" in selections
-    assert any(
-        tag in selections
-        for tag in ["selfen_carrier_den", "selfen_carrier_cell", "selfen_mu"]
-    )
+    selections.pop("electron_phonon_bandgap")
+    assert selections == {
+        "scattering_approx": ("SERTA",),
+        "carrier_per_cell": (),
+        "carrier_den": (),
+        "mu": (),
+    }
+    raise NotImplementedError
 
 
-@pytest.mark.xfail(reason="This test is expected to fail due to missing implementation")
+# @pytest.mark.xfail(reason="This test is expected to fail due to missing implementation")
 def test_select_returns_instances(band_gap):
-    # Should return a list of ElectronPhononBandgapInstance
-    selections = band_gap.selections()
-    from py4vasp._calculation.electron_phonon_bandgap import (
-        ElectronPhononBandgapInstance,
-    )
-
-    for nbands_sum in selections["nbands_sum"]:
-        for selfen_approx in selections["selfen_approx"]:
-            # check if we got an ElectronPhononBandgapInstance
-            selected = band_gap.select(
-                f"nbands_sum({nbands_sum}) selfen_approx({selfen_approx})"
-            )
-            assert len(selected) == 3
-            assert all(isinstance(x, ElectronPhononBandgapInstance) for x in selected)
+    selected = band_gap.select("nbands_sum=12 scattering_approximation=SERTA")
+    assert len(selected) == 3
+    assert all(isinstance(x, ElectronPhononBandgapInstance) for x in selected)
 
 
 def test_print_mapping(band_gap, format_):
@@ -220,6 +209,6 @@ def test_print_instance(band_gap, format_):
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.electron_phonon_band_gap("default")
     parameters = {
-        "select": {"selection": "selfen_approx(SERTA) selfen_carrier_den(0.01,0.001)"},
+        "select": {"selection": "scattering_approximation=SERTA carrier_den=0.01"},
     }
     check_factory_methods(ElectronPhononBandgap, data, parameters)
