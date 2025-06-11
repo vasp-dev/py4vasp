@@ -1522,8 +1522,8 @@ def _electron_phonon_chemical_potential(selection):
         carrier_density=_make_arbitrary_data([number_samples]),
         temperatures=_make_arbitrary_data([ntemps]),
         chemical_potential=_make_arbitrary_data([number_samples, ntemps]),
-        carrier_per_cell=[0],
-        mu=[0],
+        carrier_per_cell=_make_data(None),
+        mu=_make_data(None),
         carrier_den=_make_arbitrary_data([number_samples]),
     )
 
@@ -1586,11 +1586,12 @@ def _electron_phonon_band_gap(selection):
     return raw.ElectronPhononBandgap(
         valid_indices=range(number_samples),
         id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
-        id_size=[1, number_samples, 1, 1],
+        id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
+        id_size=[1, number_samples, 1, 1],  #unused
         nbands_sum=np.array([nbands_sum for _ in range(number_samples)]),
         delta=np.array([0 for _ in range(number_samples)]),
         chemical_potential=_electron_phonon_chemical_potential(selection),
-        self_energy=_electron_phonon_self_energy(selection),
+        self_energy=_electron_phonon_self_energy(selection), # unused
         scattering_approximation=[
             scattering_approximation for _ in range(number_samples)
         ],
@@ -1599,7 +1600,7 @@ def _electron_phonon_band_gap(selection):
         fundamental=_make_arbitrary_data(shape_gap),
         direct=_make_arbitrary_data(shape_gap),
         temperatures=_make_arbitrary_data(shape_temperature),
-        id_index=[[1, sample + 1, 1] for sample in range(number_samples)],
+        id_index=[[1, sample + 1, 1] for sample in range(number_samples)], # unused
     )
 
 

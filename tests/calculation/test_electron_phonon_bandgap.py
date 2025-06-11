@@ -139,7 +139,10 @@ def test_read_instance(band_gap, Assert):
         Assert.allclose(d["direct"], band_gap.ref.direct[i])
         Assert.allclose(d["direct_renorm"], band_gap.ref.direct_renorm[i])
         Assert.allclose(d["temperatures"], band_gap.ref.temperatures[i])
-        assert d["metadata"] == {}
+        assert d["metadata"] == {
+            "nbands_sum": 200,
+            "scattering_approx": "SERTA"
+        }
 
 
 def test_plot_instance(band_gap, Assert):
@@ -179,9 +182,11 @@ def test_selections(band_gap):
     selections.pop("electron_phonon_bandgap")
     assert selections == {
         "scattering_approx": ("SERTA",),
-        "carrier_per_cell": (),
-        "carrier_den": (),
-        "mu": (),
+        "selfen_carrier_per_cell": (),
+        "selfen_carrier_den": (),
+        "selfen_mu": (),
+        "nbands_sum": (),
+        "selfen_delta": (),
     }
     raise NotImplementedError
 
