@@ -246,6 +246,8 @@ class ElectronPhononChemicalPotential:
     "The Fermi energy at zero temperature and without doping"
     chemical_potential: VaspData
     "The chemical potential for each temperature and doping"
+    carrier_density: VaspData
+    "Computed carrier density for each temperature and doping"
     temperatures: VaspData
     "List of temperatures at which the chemical potential is computed"
     carrier_per_cell: VaspData  # values of the selfen_carrier_per_cell incar tag
