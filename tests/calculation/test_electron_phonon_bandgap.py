@@ -28,6 +28,8 @@ def band_gap(raw_band_gap):
     band_gap.ref.direct_renorm = raw_band_gap.direct_renorm
     band_gap.ref.temperatures = raw_band_gap.temperatures
     band_gap.ref.nbands_sum = raw_band_gap.nbands_sum
+    band_gap.ref.delta = raw_band_gap.delta
+    band_gap.ref.carrier_den = raw_band_gap.chemical_potential.carrier_den
     band_gap.ref.pattern = _make_reference_pattern(raw_band_gap)
     return band_gap
 
@@ -152,7 +154,12 @@ def test_read_instance(band_gap, Assert):
         Assert.allclose(d["direct"], band_gap.ref.direct[i])
         Assert.allclose(d["direct_renorm"], band_gap.ref.direct_renorm[i])
         Assert.allclose(d["temperatures"], band_gap.ref.temperatures[i])
-        # assert d["metadata"] == {"nbands_sum": 200, "scattering_approx": "SERTA"}
+        assert d["metadata"] == {
+            "nbands_sum": band_gap.ref.nbands_sum[i],
+            "selfen_delta": band_gap.ref.delta[i],
+            "selfen_carrier_den": band_gap.ref.carrier_den[i],
+            "scattering_approx": "SERTA",
+        }
 
 
 def test_plot_instance(band_gap, Assert):
@@ -185,7 +192,6 @@ def test_plot_direct_gap(band_gap, Assert):
     Assert.allclose(graph.series[0].y, band_gap.ref.direct[2, :, np.newaxis])
 
 
-# @pytest.mark.xfail(reason="This test is expected to fail due to missing implementation")
 def test_selections(raw_band_gap, chemical_potential, Assert):
     # Should return a dictionary with expected selection keys
     raw_band_gap.chemical_potential = chemical_potential

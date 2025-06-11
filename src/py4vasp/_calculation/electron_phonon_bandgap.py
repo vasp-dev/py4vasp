@@ -84,8 +84,14 @@ class ElectronPhononBandgapInstance(graph.Mixin):
         return self.to_dict()
 
     def to_dict(self):
+        mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
         return {
-            "metadata": {},
+            "metadata": {
+                "nbands_sum": self._get_data("nbands_sum"),
+                "selfen_delta": self._get_data("delta"),
+                "scattering_approx": self._get_data("scattering_approximation"),
+                mu_tag: mu_val[self.index],
+            },
             "direct_renorm": self._get_data("direct_renorm"),
             "direct": self._get_data("direct"),
             "fundamental_renorm": self._get_data("fundamental_renorm"),
@@ -161,21 +167,6 @@ class ElectronPhononBandgap(base.Refinery):
         }
 
     def _filter_indices(self, selection):
-
-        # any of those
-        # elph_scattering_approx -> scattering_approx
-        # elph_nbands_sum        -> nbands_sum
-        # elph_selfen_delta      -> selfen_delta
-
-        # one of these
-        # elph_selfen_carrier_den      -> selfen_carrier_den -> mu_tag
-        # elph_selfen_carrier_per_cell -> selfen_carrier_per_cell -> mu_tag
-        # elph_selfen_mu               -> selfen_mu -> mu_tag
-
-        # calc.electron_phonon.bandgap.select("scatter_approx=SERTA nbands_sum=300")
-
-        # selection (Group(["nbands_sum", "12"], "="),) (Group(["selfen_approx", "SERTA"], "="),) # or
-        # selection (Group(["nbands_sum", "12"], "="), Group(["selfen_approx", "SERTA"], "=")) # and
         remaining_indices = range(len(self))
         for group in selection:
             assert isinstance(group, select.Group)
