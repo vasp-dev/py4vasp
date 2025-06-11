@@ -66,8 +66,9 @@ class ElectronPhononBandgapInstance(graph.Mixin):
         data = self.to_dict()
         temperatures = data.pop("temperatures")
         del data["nbands_sum"]
-        data["fundamental"] = data["fundamental"] + data["fundamental_renorm"]
-        data["direct"] = data["direct"] + data["direct_renorm"]
+        fundamental_gap = data["fundamental"][:, np.newaxis]
+        data["fundamental"] = fundamental_gap + data["fundamental_renorm"]
+        data["direct"] = data["direct"][:, np.newaxis] + data["direct_renorm"]
         maps = {0: {key: index_ for index_, key in enumerate(data.keys())}}
         selector = index.Selector(maps, np.array(list(data.values())))
         tree = select.Tree.from_selection(selection)
