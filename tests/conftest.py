@@ -1576,8 +1576,12 @@ def _electron_phonon_self_energy(selection):
 
 def _electron_phonon_band_gap(selection):
     number_samples = 3
+    number_components = 3 if selection == "collinear" else 1
+    number_temps = 6
+    shape_gap = [number_samples, number_components]
+    shape_renorm = [number_samples, number_components, number_temps]
+    shape_temperature = [number_samples, number_temps]
     nbands_sum = 12
-    ntemps = 6
     scattering_approximation = "SERTA"
     return raw.ElectronPhononBandgap(
         valid_indices=range(number_samples),
@@ -1590,11 +1594,11 @@ def _electron_phonon_band_gap(selection):
         scattering_approximation=[
             scattering_approximation for _ in range(number_samples)
         ],
-        fundamental_renorm=_make_arbitrary_data([number_samples, ntemps]),
-        direct_renorm=_make_arbitrary_data([number_samples, ntemps]),
-        fundamental=_make_arbitrary_data([number_samples]),
-        direct=_make_arbitrary_data([number_samples]),
-        temperatures=_make_arbitrary_data([number_samples, ntemps]),
+        fundamental_renorm=_make_arbitrary_data(shape_renorm),
+        direct_renorm=_make_arbitrary_data(shape_renorm),
+        fundamental=_make_arbitrary_data(shape_gap),
+        direct=_make_arbitrary_data(shape_gap),
+        temperatures=_make_arbitrary_data(shape_temperature),
         id_index=[[1, sample + 1, 1] for sample in range(number_samples)],
     )
 

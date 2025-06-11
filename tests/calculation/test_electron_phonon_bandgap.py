@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import re
 import types
 
 import pytest
@@ -10,9 +11,9 @@ from py4vasp._calculation.electron_phonon_bandgap import (
 )
 
 
-@pytest.fixture
-def band_gap(raw_data):
-    raw_band_gap = raw_data.electron_phonon_band_gap("default")
+@pytest.fixture(params=["nonpolarized", "collinear"])
+def band_gap(raw_data, request):
+    raw_band_gap = raw_data.electron_phonon_band_gap(request.param)
     band_gap = ElectronPhononBandgap.from_data(raw_band_gap)
     band_gap.ref = types.SimpleNamespace()
     band_gap.ref.naccumulators = len(raw_band_gap.valid_indices)
@@ -22,7 +23,91 @@ def band_gap(raw_data):
     band_gap.ref.direct_renorm = raw_band_gap.direct_renorm
     band_gap.ref.temperatures = raw_band_gap.temperatures
     band_gap.ref.nbands_sum = raw_band_gap.nbands_sum
+    band_gap.ref.pattern = _make_reference_pattern(request.param)
     return band_gap
+
+
+def _make_reference_pattern(polarization):
+    if polarization == "nonpolarized":
+        return r"""Direct gap:
+   Temperature \(K\)         KS gap \(eV\)         QP gap \(eV\)     KS-QP gap \(meV\)
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+
+Fundamental gap:
+   Temperature \(K\)         KS gap \(eV\)         QP gap \(eV\)     KS-QP gap \(meV\)
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}"""
+    elif polarization == "collinear":
+        return r"""spin independent
+
+Direct gap:
+   Temperature \(K\)         KS gap \(eV\)         QP gap \(eV\)     KS-QP gap \(meV\)
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+
+Fundamental gap:
+   Temperature \(K\)         KS gap \(eV\)         QP gap \(eV\)     KS-QP gap \(meV\)
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+
+spin component 1
+
+Direct gap:
+   Temperature \(K\)         KS gap \(eV\)         QP gap \(eV\)     KS-QP gap \(meV\)
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+
+Fundamental gap:
+   Temperature \(K\)         KS gap \(eV\)         QP gap \(eV\)     KS-QP gap \(meV\)
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+
+spin component 2
+
+Direct gap:
+   Temperature \(K\)         KS gap \(eV\)         QP gap \(eV\)     KS-QP gap \(meV\)
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+
+Fundamental gap:
+   Temperature \(K\)         KS gap \(eV\)         QP gap \(eV\)     KS-QP gap \(meV\)
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}
+^\s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6} \s*[-+]?\d*\.\d{6}"""
+    else:
+        raise NotImplemented
 
 
 def test_len(band_gap):
@@ -122,10 +207,12 @@ def test_print_mapping(band_gap, format_):
     assert actual["text/plain"] == "electron phonon bandgap"
 
 
-# def test_print_instance(band_gap, format_):
-#     instance = band_gap[0]
-#     actual, _ = format_(instance)
-#     assert actual["text/plain"] == "electron phonon bandgap instance 0"
+def test_print_instance(band_gap, format_):
+    instance = band_gap[0]
+    actual, _ = format_(instance)
+    # Check if the actual output matches the expected pattern
+    assert re.search(band_gap.ref.pattern, str(instance), re.MULTILINE)
+    assert re.search(band_gap.ref.pattern, actual["text/plain"], re.MULTILINE)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

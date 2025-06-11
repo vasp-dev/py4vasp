@@ -24,85 +24,43 @@ class ElectronPhononBandgapInstance(graph.Mixin):
         Returns a formatted string representation of the band gap instance,
         including direct and fundamental gaps as a function of temperature.
         """
-        lines = []
-        lines.append(f"Electron self-energy accumulator N=  {self.index + 1}")
+        return "\n".join(self._generate_lines())
 
-        def format_gap_section(title, ks_gap, qp_gap, temperatures):
-            section = []
-            section.append(f"{title}")
-            section.append(
-                "   Temperature (K)         KS gap (eV)         QP gap (eV)     KS-QP gap (meV)"
-            )
-            for t, qp in zip(temperatures, qp_gap):
-                diff_meV = (ks_gap - qp) * 1000
-                section.append(f"{t:18.6f}{ks_gap:20.6f}{qp:20.6f}{diff_meV:20.6f}")
-            return "\n".join(section)
+    def _generate_lines(self):
+        data = self.to_dict()
+        num_component = len(data["fundamental"])
+        for component in range(num_component):
+            yield from self._format_spin_component(component, num_component)
+            yield from self._format_gap_section("direct", component, data)
+            yield from self._format_gap_section("fundamental", component, data)
 
-        # Get data
-        temperatures = self._get_data("temperatures")
-        ks_gap_direct = self._get_data("direct")
-        qp_gap_direct = self._get_data("direct_renorm")
-        ks_gap_fundamental = self._get_data("fundamental")
-        qp_gap_fundamental = self._get_data("fundamental_renorm")
+    def _format_spin_component(self, component, num_component):
+        if component == 0 and num_component == 3:
+            yield "spin independent"
+        elif num_component == 3:
+            yield f"spin component {component}"
+        yield ""
 
-        nspin, ntemps = qp_gap_direct.shape
-        for ispin in range(nspin):
-            if nspin == 2:
-                lines.append("spin independent")
-            # Direct gap section
-            lines.append("")
-            lines.append(
-                format_gap_section(
-                    "Direct gap",
-                    ks_gap_direct[ispin],
-                    qp_gap_direct[ispin],
-                    temperatures,
-                )
-            )
-            lines.append("")
-            # Fundamental gap section
-            lines.append(
-                format_gap_section(
-                    "Fundamental gap",
-                    ks_gap_fundamental[ispin],
-                    qp_gap_fundamental[ispin],
-                    temperatures,
-                )
-            )
-            lines.append("")
+    def _format_gap_section(self, label, spin, data):
+        yield f"{label.capitalize()} gap:"
+        yield "   Temperature (K)         KS gap (eV)         QP gap (eV)     KS-QP gap (meV)"
+        temperatures = data["temperatures"]
+        kohn_sham_gap = data[label][spin]
+        renormalizations = data[f"{label}_renorm"][spin]
+        for temperature, renormalization in zip(temperatures, renormalizations):
+            quasi_particle_gap = kohn_sham_gap + renormalization
+            yield f"{temperature:18.6f} {kohn_sham_gap:19.6f} {quasi_particle_gap:19.6f} {1000 * renormalization:19.6f}"
+        yield ""
 
-        if nspin == 2:
-            for ispin in range(nspin):
-                if nspin == 2:
-                    lines.append("spin component ", ispin + 1)
-                # Direct gap section
-                lines.append("")
-                lines.append(
-                    format_gap_section(
-                        "Direct gap",
-                        ks_gap_direct[ispin],
-                        qp_gap_direct[ispin],
-                        temperatures,
-                    )
-                )
-                lines.append("")
-                # Fundamental gap section
-                lines.append(
-                    format_gap_section(
-                        "Fundamental gap",
-                        ks_gap_fundamental[ispin],
-                        qp_gap_fundamental[ispin],
-                        temperatures,
-                    )
-                )
-                lines.append("")
-        return "\n".join(lines)
+    def print(self):
+        "Print a string representation of this instance."
+        print(str(self))
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
 
     def _get_data(self, name):
         return self.parent._get_data(name, self.index)
-
-    def _get_scalar(self, name):
-        return self.parent._get_scalar(name, self.index)
 
     def to_graph(self, selection):
         data = self.to_dict()
@@ -125,15 +83,14 @@ class ElectronPhononBandgapInstance(graph.Mixin):
         return self.to_dict()
 
     def to_dict(self):
-        _dict = {
-            "nbands_sum": self._get_scalar("nbands_sum"),
+        return {
+            "nbands_sum": self._get_data("nbands_sum"),
             "direct_renorm": self._get_data("direct_renorm"),
-            "direct": self._get_scalar("direct"),
+            "direct": self._get_data("direct"),
             "fundamental_renorm": self._get_data("fundamental_renorm"),
-            "fundamental": self._get_scalar("fundamental"),
+            "fundamental": self._get_data("fundamental"),
             "temperatures": self._get_data("temperatures"),
         }
-        return _dict
 
     @property
     def id_index(self):
@@ -205,13 +162,13 @@ class ElectronPhononBandgap(base.Refinery):
                 for key, value in sel_dict.items():
                     # Map selection keys to property names
                     if key == "nbands_sum":
-                        instance_value = self._get_scalar("nbands_sum", idx)
+                        instance_value = self._get_data("nbands_sum", idx)
                         match_this = instance_value == value
                     elif key == "selfen_approx":
                         instance_value = self._get_data("scattering_approximation", idx)
                         match_this = instance_value == value
                     elif key == "selfen_delta":
-                        instance_value = self._get_scalar("delta", idx)
+                        instance_value = self._get_data("delta", idx)
                         match_this = abs(instance_value - value) < 1e-8
                     elif key == mu_tag:
                         mu_idx = self[idx].id_index[2] - 1
@@ -240,11 +197,7 @@ class ElectronPhononBandgap(base.Refinery):
     @base.data_access
     def _get_data(self, name, index):
         dataset = getattr(self._raw_data, name)
-        return dataset[index][:]
-
-    @base.data_access
-    def _get_scalar(self, name, index):
-        return getattr(self._raw_data, name)[index][()]
+        return np.array(dataset[index])[()]
 
     @base.data_access
     def __len__(self):
