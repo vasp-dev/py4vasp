@@ -333,8 +333,8 @@ def test_selections_to_string(input, output):
 @pytest.mark.parametrize(
     "selection, expected",
     [
-        ("A, x(A), A~B, B:A, A + B, C - B - A, x(B - A), A(x y)", True),
-        ("B, y(B), B~C, B:C, B + C, C - B - D, y(B - C), B(x y)", False),
+        ("A, x(A), A~B, B:A, A + B, C - B - A, x(B - A), A(x y), x = A + B", True),
+        ("B, y(B), B~C, B:C, B + C, C - B - D, y(B - C), B(x y), x = B + C", False),
     ],
 )
 def test_contains(selection, expected):

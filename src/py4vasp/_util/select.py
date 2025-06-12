@@ -415,10 +415,7 @@ def _part_contains(part, choice, ignore_case):
 
 
 def _choice_in_group(group, choice, ignore_case):
-    if ignore_case:
-        return any(choice.lower() == element.lower() for element in group)
-    else:
-        return choice in group
+    return any(_part_contains(element, choice, ignore_case) for element in group)
 
 
 def _choice_in_operation(part, choice, ignore_case):
