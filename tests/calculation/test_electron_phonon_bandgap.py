@@ -7,6 +7,7 @@ import types
 import numpy as np
 import pytest
 
+from py4vasp import exception
 from py4vasp._calculation.electron_phonon_bandgap import (
     ElectronPhononBandgap,
     ElectronPhononBandgapInstance,
@@ -201,9 +202,10 @@ def test_selections(raw_band_gap, chemical_potential, Assert):
     selections.pop("electron_phonon_bandgap")
     expected = selections.pop(f"selfen_{chemical_potential.ref.param}")
     Assert.allclose(expected, chemical_potential.ref.expected_data)
-    assert selections.keys() == {"nbands_sum", "selfen_delta"}
+    assert selections.keys() == {"nbands_sum", "selfen_delta", "scattering_approx"}
     Assert.allclose(selections["nbands_sum"], raw_band_gap.nbands_sum)
     Assert.allclose(selections["selfen_delta"], raw_band_gap.delta)
+    Assert.allclose(selections["scattering_approx"], 5 * ["SERTA"])
 
 
 @pytest.mark.parametrize(
@@ -217,6 +219,23 @@ def test_select_returns_instances(band_gap, attribute):
     assert len(selected) == 1
     assert isinstance(selected[0], ElectronPhononBandgapInstance)
     assert selected[0].index == index_[0]
+
+
+def test_select_multiple(band_gap):
+    selected = band_gap.select("scattering_approx=SERTA")
+    assert len(selected) == len(band_gap)
+    for i, instance in enumerate(selected):
+        assert isinstance(instance, ElectronPhononBandgapInstance)
+        assert instance.index == i
+
+
+@pytest.mark.parametrize(
+    "selection",
+    ["invalid_selection=0.01", "nbands_sum:0.01", "selfen_delta", "selfen_delta=y=z"],
+)
+def test_incorrect_selection(band_gap, selection):
+    with pytest.raises(exception.IncorrectUsage):
+        band_gap.select(selection)
 
 
 def test_print_mapping(band_gap, format_):

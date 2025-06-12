@@ -1,18 +1,20 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from collections import abc
+
 import numpy as np
 
+from py4vasp import exception
 from py4vasp._calculation import base
 from py4vasp._calculation.electron_phonon_chemical_potential import (
     ElectronPhononChemicalPotential,
 )
-
-# from py4vasp._calculation.electron_phonon_self_energy import ElectronPhononSelfEnergy
 from py4vasp._third_party import graph
-from py4vasp._util import index, select
+from py4vasp._util import index, select, suggest
 
 ALIAS = {
     "selfen_delta": "delta",
+    "scattering_approx": "scattering_approximation",
 }
 
 
@@ -103,16 +105,8 @@ class ElectronPhononBandgapInstance(graph.Mixin):
             "temperatures": self._get_data("temperatures"),
         }
 
-    @property
-    def id_index(self):
-        return self._get_data("id_index")
 
-    @property
-    def id_name(self):
-        return self.parent.id_name()
-
-
-class ElectronPhononBandgap(base.Refinery):
+class ElectronPhononBandgap(base.Refinery, abc.Sequence):
     @base.data_access
     def __str__(self):
         return "electron phonon bandgap"
@@ -133,6 +127,7 @@ class ElectronPhononBandgap(base.Refinery):
             mu_tag: mu_val,
             "nbands_sum": self._raw_data.nbands_sum[:],
             "selfen_delta": self._raw_data.delta[:],
+            "scattering_approx": self._raw_data.scattering_approximation[:],
         }
 
     @base.data_access
@@ -171,12 +166,18 @@ class ElectronPhononBandgap(base.Refinery):
     def _filter_indices(self, selection):
         remaining_indices = range(len(self))
         for group in selection:
-            assert isinstance(group, select.Group)
-            assert group.separator == "="
+            self._raise_error_if_group_format_incorrect(group)
             assert len(group.group) == 2
             remaining_indices = self._filter_group(remaining_indices, *group.group)
             remaining_indices = list(remaining_indices)
         yield from remaining_indices
+
+    def _raise_error_if_group_format_incorrect(self, group):
+        if not isinstance(group, select.Group) or group.separator != "=":
+            message = f'\
+The selection {group} is not formatted correctly. It should be formatted like \
+"key=value". Please check the "selections" method for available options.'
+            raise exception.IncorrectUsage(message)
 
     def _filter_group(self, remaining_indices, key, value):
         for index_ in remaining_indices:
@@ -193,11 +194,13 @@ class ElectronPhononBandgap(base.Refinery):
 
     @base.data_access
     def __getitem__(self, key):
-        return ElectronPhononBandgapInstance(self, key)
+        if 0 <= key < len(self):
+            return ElectronPhononBandgapInstance(self, key)
+        raise IndexError("Index out of range for electron phonon bandgap instance.")
 
-    def __iter__(self):
-        for i in range(len(self)):
-            yield self[i]
+    @base.data_access
+    def __len__(self):
+        return len(self._raw_data.valid_indices)
 
     @base.data_access
     def _get_data(self, name, index):
@@ -205,11 +208,18 @@ class ElectronPhononBandgap(base.Refinery):
         dataset = getattr(self._raw_data, name, None)
         if dataset is None:
             expected_name, dataset = self.chemical_potential_mu_tag()
-            assert (
-                name == expected_name
-            ), f"Cannot access {name}, not present in this class and chemical potential."
+            self._raise_error_if_not_present(name, expected_name)
+
         return np.array(dataset[index])[()]
 
-    @base.data_access
-    def __len__(self):
-        return len(self._raw_data.valid_indices)
+    def _raise_error_if_not_present(self, name, expected_name):
+
+        if name != expected_name:
+            valid_names = set(self.selections().keys())
+            valid_names.remove("electron_phonon_bandgap")
+            did_you_mean = suggest.did_you_mean(name, valid_names)
+            available_selections = '", "'.join(valid_names)
+            message = f'\
+The selection "{name}" is not a valid choice. {did_you_mean}Please check the \
+available selections: "{available_selections}".'
+            raise exception.IncorrectUsage(message)
