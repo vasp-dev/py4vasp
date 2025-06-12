@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import random
 import re
 import types
 
@@ -205,11 +206,17 @@ def test_selections(raw_band_gap, chemical_potential, Assert):
     Assert.allclose(selections["selfen_delta"], raw_band_gap.delta)
 
 
-# @pytest.mark.xfail(reason="This test is expected to fail due to missing implementation")
-def test_select_returns_instances(band_gap):
-    selected = band_gap.select("nbands_sum=12 scattering_approximation=SERTA")
-    assert len(selected) == 5
-    assert all(isinstance(x, ElectronPhononBandgapInstance) for x in selected)
+@pytest.mark.parametrize(
+    "attribute", ["nbands_sum", "selfen_delta", "selfen_carrier_den"]
+)
+def test_select_returns_instances(band_gap, attribute):
+    selections = band_gap.selections()
+    choice = random.choice(selections[attribute])
+    index_, *_ = np.where(selections[attribute] == choice)
+    selected = band_gap.select(f"{attribute}={choice.item()}")
+    assert len(selected) == 1
+    assert isinstance(selected[0], ElectronPhononBandgapInstance)
+    assert selected[0].index == index_[0]
 
 
 def test_print_mapping(band_gap, format_):
@@ -225,9 +232,9 @@ def test_print_instance(band_gap, format_):
     assert re.search(band_gap.ref.pattern, actual["text/plain"], re.MULTILINE)
 
 
-# def test_factory_methods(raw_data, check_factory_methods):
-#     data = raw_data.electron_phonon_band_gap("default")
-#     parameters = {
-#         "select": {"selection": "scattering_approximation=SERTA carrier_den=0.01"},
-#     }
-#     check_factory_methods(ElectronPhononBandgap, data, parameters)
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.electron_phonon_band_gap("default")
+    parameters = {
+        "select": {"selection": "selfen_carrier_den=0.01"},
+    }
+    check_factory_methods(ElectronPhononBandgap, data, parameters)

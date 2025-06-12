@@ -344,7 +344,7 @@ class Group:
     "The individual members of the group."
     separator: str
     "The string separating the members of the group."
-    __str__ = lambda self: self.separator.join(self.group)
+    __str__ = lambda self: self.separator.join(str(element) for element in self.group)
     __hash__ = lambda self: hash(str(self))
 
     def __iadd__(self, character):
@@ -366,7 +366,10 @@ class Operation:
     def __str__(self):
         left_op = _selection_to_string(self.left_operand)
         right_op = _selection_to_string(self.right_operand)
-        return f"{left_op} {self.operator} {right_op}"
+        if self.unary():
+            return f"{self.operator}{right_op}"
+        else:
+            return f"{left_op} {self.operator} {right_op}"
 
     def unary(self):
         return self.left_operand == ()

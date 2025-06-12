@@ -11,6 +11,10 @@ from py4vasp._calculation.electron_phonon_chemical_potential import (
 from py4vasp._third_party import graph
 from py4vasp._util import index, select
 
+ALIAS = {
+    "selfen_delta": "delta",
+}
+
 
 class ElectronPhononBandgapInstance(graph.Mixin):
     "Placeholder for electron phonon band gap"
@@ -114,10 +118,8 @@ class ElectronPhononBandgap(base.Refinery):
         return "electron phonon bandgap"
 
     @base.data_access
-    def to_dict(self, selection=None):
-        return {
-            "naccumulators": len(self._raw_data.valid_indices),
-        }
+    def to_dict(self):
+        return {"naccumulators": len(self._raw_data.valid_indices)}
 
     @base.data_access
     def selections(self):
@@ -172,21 +174,22 @@ class ElectronPhononBandgap(base.Refinery):
             assert isinstance(group, select.Group)
             assert group.separator == "="
             assert len(group.group) == 2
-            remaining_indices = self._filter_group(remaining_indices, group)
+            remaining_indices = self._filter_group(remaining_indices, *group.group)
             remaining_indices = list(remaining_indices)
         yield from remaining_indices
 
-    def _filter_group(self, remaining_indices, group):
+    def _filter_group(self, remaining_indices, key, value):
         for index_ in remaining_indices:
-            if self._match_key_value(index_, *group.group):
+            if self._match_key_value(index_, key, str(value)):
                 yield index_
 
     def _match_key_value(self, index_, key, value):
         instance_value = self._get_data(key, index_)
-        if value.isnumeric():
-            return np.isclose(instance_value, float(value), atol=0)
-        else:
+        try:
+            value = float(value)
+        except ValueError:
             return instance_value == value
+        return np.isclose(instance_value, float(value), rtol=1e-8, atol=0)
 
     @base.data_access
     def __getitem__(self, key):
@@ -198,6 +201,7 @@ class ElectronPhononBandgap(base.Refinery):
 
     @base.data_access
     def _get_data(self, name, index):
+        name = ALIAS.get(name, name)
         dataset = getattr(self._raw_data, name, None)
         if dataset is None:
             expected_name, dataset = self.chemical_potential_mu_tag()
