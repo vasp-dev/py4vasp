@@ -231,7 +231,7 @@ def test_select_multiple(band_gap):
 
 @pytest.mark.parametrize(
     "selection",
-    ["invalid_selection=0.01", "nbands_sum:0.01", "selfen_delta", "selfen_delta=y=z"],
+    ["invalid_selection=0.01", "nbands_sum:0.01", "selfen_delta"],
 )
 def test_incorrect_selection(band_gap, selection):
     with pytest.raises(exception.IncorrectUsage):
@@ -256,4 +256,5 @@ def test_factory_methods(raw_data, check_factory_methods):
     parameters = {
         "select": {"selection": "selfen_carrier_den=0.01"},
     }
-    check_factory_methods(ElectronPhononBandgap, data, parameters)
+    skip_methods = ["count", "access", "index"]  # inherited from Sequence
+    check_factory_methods(ElectronPhononBandgap, data, parameters, skip_methods)

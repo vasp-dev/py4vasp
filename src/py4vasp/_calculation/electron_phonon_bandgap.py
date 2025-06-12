@@ -213,7 +213,6 @@ The selection {group} is not formatted correctly. It should be formatted like \
         return np.array(dataset[index])[()]
 
     def _raise_error_if_not_present(self, name, expected_name):
-
         if name != expected_name:
             valid_names = set(self.selections().keys())
             valid_names.remove("electron_phonon_bandgap")
