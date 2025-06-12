@@ -32,8 +32,8 @@ nesting
 
 groups
     Sometimes it can be useful to group multiple elements together. Currently, it is
-    supported to connect two elements with a colon to form a range ("1:3") or with
-    a tilde to form a pair ("A~B").
+    supported to connect two elements with a colon to form a range ("1:3"), with
+    a tilde to form a pair ("A~B"), or with assignment to form "a=b".
 
 operations
     Adding or subtracting two quantities is supported. Currently this will interpret
@@ -55,8 +55,8 @@ pair_separator = "~"
 assignment_seperator = "="
 group_separators = (range_separator, pair_separator, assignment_seperator)
 operators = ("+", "-")
+subtree_characters = group_separators + operators
 all = "__all__"
-end_of_text = chr(3)
 
 
 class Tree:
@@ -67,7 +67,7 @@ class Tree:
         _raise_error_if_not_internal_call(_internal)
         self._new_selection = True
         self._space_parsed = False
-        self._is_operation = False
+        self._has_subtree = False
         self._description_level = 0  # open/close description with brackets
         self._parent = parent
         self._children = []
@@ -98,7 +98,7 @@ class Tree:
     def __str__(self):
         return str(self._content)
 
-    def selections(self, selected=(), filter={}):
+    def selections(self, selected=(), filter=set(), filter_toplevel=True):
         """Core routine generating all user selections parsed.
 
         This will generate one selection at a time so it should be used in a loop or
@@ -112,6 +112,9 @@ class Tree:
             set, if defaults to giving just the user selections.
         filter : set
             Remove any element found in the set from the resulting selection.
+        filter_toplevel : bool
+            If True, the filter will be applied to all content in the tree.
+            If False, it will not be applied to toplevel of the tree.
 
         Yields
         ------
@@ -119,28 +122,40 @@ class Tree:
             Each selection corresponds to one path from the root of the tree to one of
             its leaves.
         """
-        if self._content and self._content not in filter:
+        if self._content and (self._content not in filter or not filter_toplevel):
             content = (self._content,)
         else:
             content = ()
         if not self._children:
             yield selected + content
-        elif self._is_operation:
-            yield from self._operation_selections(selected, filter)
+        elif self._has_subtree:
+            yield from self._subtree_selections(selected, filter)
         else:
             for child in self._children:
                 yield from child.selections(selected + content, filter)
 
-    def _operation_selections(self, selected, filter):
-        left_operands = self._get_operands(self._children[0], filter)
-        right_operands = self._get_operands(self._children[1], filter)
-        for left_op, right_op in itertools.product(left_operands, right_operands):
-            yield *selected, Operation(left_op, self._content.operator, right_op)
+    def _subtree_selections(self, selected, filter):
+        left_arguments = self._get_arguments(self._children[0], filter)
+        right_arguments = self._get_arguments(self._children[1], filter)
+        for left_arg, right_arg in itertools.product(left_arguments, right_arguments):
+            if self._content.character in operators:
+                yield from self._assemble_operation(selected, left_arg, right_arg)
+            else:
+                yield from self._assemble_group(selected, left_arg, right_arg)
 
-    def _get_operands(self, child, filter):
-        for operand in child.selections(filter=filter):
-            child._raise_error_if_content_and_operator_are_incompatible(operand)
-            yield operand
+    def _assemble_operation(self, selected, left_arg, right_arg):
+        yield *selected, Operation(left_arg, self._content.character, right_arg)
+
+    def _assemble_group(self, selected, left_arg, right_arg):
+        group = [left_arg[0], right_arg[0]]
+        self._raise_error_if_group_has_nested_left_hand_side(left_arg)
+        yield *selected, Group(group, self._content.character), *right_arg[1:]
+
+    def _get_arguments(self, child, filter):
+        is_operation = self._content.character in operators
+        for argument in child.selections(filter=filter, filter_toplevel=is_operation):
+            child._raise_error_if_content_and_argument_are_incompatible(argument)
+            yield argument
 
     def to_mermaid(self):
         "Helper routine to visualize the Tree using Mermaid"
@@ -162,7 +177,7 @@ class Tree:
         try:
             for ii, character in enumerate(selection):
                 active_node = active_node._parse_character(character)
-            active_node._parse_character(end_of_text)
+            active_node._parse_end_of_text()
         except exception._Py4VaspInternalError as error:
             _raise_error_if_parsing_failed(error, selection, ii)
 
@@ -177,42 +192,28 @@ class Tree:
             return self._parse_new_selection()
         elif character == " ":
             return self._parse_space()
-        elif character in group_separators:
-            return self._parse_group(character)
         elif character == "(":
             return self._parse_open_parenthesis()
         elif character == ")":
             return self._parse_close_parenthesis()
-        elif character in operators:
-            return self._parse_operator(character)
-        elif character == end_of_text:
-            return self._parse_end_of_text()
+        elif character in subtree_characters:
+            return self._create_subtree(character)
         else:
             return self._store_character_in_tree(character)
 
     def _parse_new_selection(self):
         self._new_selection = True
-        self._raise_error_if_group_misses_right_hand_side()
-        self._raise_error_if_operation_misses_right_hand_side()
-        return self._finalize_operation()
+        self._raise_error_if_subtree_misses_right_hand_side()
+        return self._finalize_subtree()
 
-    def _finalize_operation(self):
-        if self._new_child_needed() and self._is_operation and len(self._children) == 2:
+    def _finalize_subtree(self):
+        if self._new_child_needed() and self._has_subtree and len(self._children) == 2:
             return self._parent._parse_new_selection()
         return self
 
     def _parse_space(self):
         self._space_parsed = True
         return self
-
-    def _parse_group(self, separator):
-        self._raise_error_if_group_misses_left_hand_side(separator)
-        self._ignore_space = True
-        self._children[-1]._transform_to_group(separator)
-        return self
-
-    def _transform_to_group(self, separator):
-        self._content = Group([self._content, ""], separator)
 
     def _parse_open_parenthesis(self):
         self._raise_error_if_opening_parenthesis_without_argument()
@@ -221,7 +222,7 @@ class Tree:
     def _parse_close_parenthesis(self):
         self._new_selection = True
         self._raise_error_if_superfluous_closing_parenthesis()
-        node = self._finalize_operation()
+        node = self._finalize_subtree()
         return node._parent._parse_space()
 
     def _parse_open_bracket(self):
@@ -232,19 +233,20 @@ class Tree:
         self._description_level -= 1
         return self._store_character_in_tree("]")
 
-    def _parse_operator(self, operator):
+    def _create_subtree(self, character):
+        self._raise_error_if_group_misses_left_hand_side(character)
         self._add_child_if_needed(ignore_space=True)
-        self._children[-1]._transform_to_operation(operator)
+        self._children[-1]._transform_to_subtree(character)
         return self._children[-1]
 
-    def _transform_to_operation(self, operator):
-        self._is_operation = True
+    def _transform_to_subtree(self, character):
+        self._has_subtree = True
         node = Tree(self, _internal=True)
         node._content = self._content
         node._children = self._children
         for child in node._children:
             child._parent = node
-        self._content = _Operator(operator, self._next_id())
+        self._content = Subtree(character, self._next_id())
         self._children = [node]
 
     def _next_id(self):
@@ -255,13 +257,12 @@ class Tree:
 
     def _parse_end_of_text(self):
         self._raise_error_if_closing_parenthesis_missing()
-        self._raise_error_if_group_misses_right_hand_side()
-        self._raise_error_if_operation_misses_right_hand_side()
+        self._raise_error_if_subtree_misses_right_hand_side()
         return self
 
     def _store_character_in_tree(self, character):
-        node = self._finalize_operation()
-        ignore_space = node._is_operation or node._child_is_open_group()
+        node = self._finalize_subtree()
+        ignore_space = node._has_subtree or node._child_is_open_group()
         node._add_child_if_needed(ignore_space)
         node._space_parsed = False
         node._children[-1]._content += character
@@ -283,22 +284,16 @@ class Tree:
         return self._new_selection or (self._space_parsed and not ignore_space)
 
     def _raise_error_if_group_misses_left_hand_side(self, separator):
-        if len(self._children) > 0:
+        if separator not in group_separators or len(self._children) > 0:
             return
-        self._raise_group_error_message("left", separator)
-
-    def _raise_error_if_group_misses_right_hand_side(self):
-        if len(self._children) == 0:
-            return
-        content = self._children[-1]._content
-        if not isinstance(content, Group) or content.group[1]:
-            return
-        self._raise_group_error_message("right", content.separator)
-
-    def _raise_group_error_message(self, missing_side, separator):
-        group = "range" if separator == range_separator else "pair"
-        message = f"The {missing_side} argument of {group} is missing."
+        message = f"The left argument of the group {separator} is missing."
         raise exception._Py4VaspInternalError(message)
+
+    def _raise_error_if_group_has_nested_left_hand_side(self, left_op):
+        if len(left_op) == 1:
+            return
+        message = f"Left argument of group {self._content.character} should only contain one element and not {'('.join(left_op) + (len(left_op) - 1)* ')'}."
+        raise exception.IncorrectUsage(message)
 
     def _raise_error_if_opening_parenthesis_without_argument(self):
         if len(self._children) > 0:
@@ -313,22 +308,32 @@ class Tree:
         raise exception._Py4VaspInternalError(message)
 
     def _raise_error_if_closing_parenthesis_missing(self):
-        if not self._parent or self._is_operation:
+        if not self._parent or self._has_subtree:
             return
         message = "An opening parenthesis was not followed by a closing one."
         raise exception._Py4VaspInternalError(message)
 
-    def _raise_error_if_operation_misses_right_hand_side(self):
-        if not self._is_operation or len(self._children) == 2:
+    def _raise_error_if_subtree_misses_right_hand_side(self):
+        if not self._has_subtree or len(self._children) == 2:
             return
-        message = f"The operator {self._content} is not followed by an element."
+        message = f"The character {self._content} is not followed by an element."
         raise exception._Py4VaspInternalError(message)
 
-    def _raise_error_if_content_and_operator_are_incompatible(self, operand):
-        if bool(self._content) == bool(operand):
+    def _raise_error_if_content_and_argument_are_incompatible(self, argument):
+        if bool(self._content) == bool(argument):
             return
-        message = f"The operand `{operand}` has a qualitatively different behavior then the content `{self}`. This may occur when a filter would replace the last element."
+        message = f"The argument `{argument}` has a qualitatively different behavior then the content `{self}`. This may occur when a filter would replace the last element."
         raise exception.IncorrectUsage(message)
+
+
+@dataclasses.dataclass
+class Subtree:
+    "Internal class used to represent groups and operations"
+
+    character: str
+    _id: int
+    __str__ = lambda self: f"_{self._id}_[{self.character}]"
+    __hash__ = lambda self: hash(self.character)
 
 
 @dataclasses.dataclass
@@ -345,14 +350,6 @@ class Group:
     def __iadd__(self, character):
         self.group[-1] += character
         return self
-
-
-@dataclasses.dataclass
-class _Operator:
-    operator: str
-    _id: int
-    __str__ = lambda self: f"_{self._id}_[{self.operator}]"
-    __hash__ = lambda self: hash(self.operator)
 
 
 @dataclasses.dataclass
