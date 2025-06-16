@@ -22,10 +22,10 @@ class ElectronPhononBandgapInstance(graph.Mixin):
     """
     Represents an instance of electron-phonon band gap calculations.
 
-    This class provides methods to access, format, and visualize the temperature-dependent
-    direct and fundamental band gaps, including their renormalizations due to electron-phonon
-    interactions. It is typically constructed with a reference to a parent calculation object
-    and an index identifying the specific dataset.
+    This class provides methods to access, and visualize the temperature-dependent
+    direct and fundamental band gaps due to electron-phonon interactions.
+    This is constructed with an index corresponding to the accumulator index
+    as shown in the OUTCAR.
 
     Attributes:
         parent: Reference to the parent calculation object containing the data.
@@ -158,9 +158,13 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
     and selection utilities.
 
     This class allows users to query and select specific instances of electron-phonon bandgap
-    calculations, based on various selection criteria.
+    calculations, based on the INCAR settings that were used to generate them (e.g. nbands_sum, selfen_delta or <mu_tag>).
     It provides methods to convert the data to dictionary form, retrieve available selection
     options, and access individual bandgap instances.
+
+    Notes:
+            The <mu_tag> key in the metadata will be dynamically set based on the chemical potential tag
+            returned by `ChemicalPotential.mu_tag()`.
     """
 
     @base.data_access
