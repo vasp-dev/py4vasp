@@ -80,6 +80,22 @@ class ElectronPhononBandgapInstance(graph.Mixin):
         return self.parent._get_data(name, self.index)
 
     def to_graph(self, selection):
+        """
+        Generates a graph representing the temperature dependence of bandgap energies.
+        This method accesses the electron-phonon bandgap data, applies the specified selection,
+        and returns a graph object with energy values (in eV) plotted against temperature (in K).
+        The graph includes series for the fundamental and direct bandgaps, with and without
+        electron-phonon renormalization, as determined by the selection.
+        Parameters
+        ----------
+        selection : str or object
+            A selection string or object specifying which bandgap data to include in the graph.
+            The selection is parsed and used to extract the relevant data series.
+        Returns
+        -------
+        graph.Graph
+            A graph object containing the selected bandgap energy series as a function of temperature.
+        """
         data = self.to_dict()
         del data["metadata"]
         temperatures = data.pop("temperatures")
@@ -98,9 +114,28 @@ class ElectronPhononBandgapInstance(graph.Mixin):
         return graph.Graph(series, ylabel="Energy (eV)", xlabel="Temperature (K)")
 
     def read(self):
+        "Convenient wrapper around to_dict. Check that function for examples and optional arguments."
         return self.to_dict()
 
     def to_dict(self):
+        """
+        Convert the electron-phonon bandgap calculation results to a dictionary.
+        Returns:
+            dict: A dictionary containing:
+                - "metadata": A dictionary with metadata about the calculation, including:
+                    - "nbands_sum": The sum of the number of bands.
+                    - "selfen_delta": The self-energy delta value.
+                    - <mu_tag>: The chemical potential value for the current index.
+                - "direct_renorm": The renormalized direct bandgap values.
+                - "direct": The direct bandgap values.
+                - "fundamental_renorm": The renormalized fundamental bandgap values.
+                - "fundamental": The fundamental bandgap values.
+                - "temperatures": The temperatures at which the calculations were performed.
+        Notes:
+            The <mu_tag> key in the metadata will be dynamically set based on the chemical potential tag
+            returned by `ChemicalPotential.mu_tag()`.
+        """
+
         mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
         return {
             "metadata": {
