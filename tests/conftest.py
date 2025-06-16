@@ -1521,16 +1521,19 @@ def _current_density(selection):
 
 def _electron_phonon_chemical_potential(selection="carrier_den"):
     number_temps = 6
+    seed = 26826821
     return raw.ElectronPhononChemicalPotential(
         fermi_energy=0,
         carrier_density=_make_arbitrary_data([number_samples]),
         temperatures=_make_arbitrary_data([number_temps]),
         chemical_potential=_make_arbitrary_data([number_samples, number_temps]),
         carrier_per_cell=_make_arbitrary_data(
-            [number_samples], selection == "carrier_per_cell"
+            [number_samples], selection == "carrier_per_cell", seed=seed
         ),
-        mu=_make_arbitrary_data([number_samples], selection == "mu"),
-        carrier_den=_make_arbitrary_data([number_samples], selection == "carrier_den"),
+        mu=_make_arbitrary_data([number_samples], selection == "mu", seed=seed),
+        carrier_den=_make_arbitrary_data(
+            [number_samples], selection == "carrier_den", seed=seed
+        ),
     )
 
 
@@ -1589,7 +1592,7 @@ def _electron_phonon_band_gap(selection):
     return raw.ElectronPhononBandgap(
         valid_indices=range(number_samples),
         nbands_sum=_make_data(np.linspace(10, 100, number_samples, dtype=np.int32)),
-        delta=_make_arbitrary_data([number_samples]),
+        delta=_make_arbitrary_data([number_samples], seed=7824570),
         chemical_potential=_electron_phonon_chemical_potential(),
         scattering_approximation=[
             scattering_approximation for _ in range(number_samples)
