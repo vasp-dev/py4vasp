@@ -80,17 +80,19 @@ class ElectronPhononBandgapInstance(graph.Mixin):
         return self.parent._get_data(name, self.index)
 
     def to_graph(self, selection):
-        """
-        Generates a graph representing the temperature dependence of bandgap energies.
+        """Generates a graph representing the temperature dependence of bandgap energies.
+
         This method accesses the electron-phonon bandgap data, applies the specified selection,
         and returns a graph object with energy values (in eV) plotted against temperature (in K).
         The graph includes series for the fundamental and direct bandgaps, with and without
         electron-phonon renormalization, as determined by the selection.
+
         Parameters
         ----------
         selection : str or object
             A selection string or object specifying which bandgap data to include in the graph.
             The selection is parsed and used to extract the relevant data series.
+
         Returns
         -------
         graph.Graph
@@ -118,24 +120,26 @@ class ElectronPhononBandgapInstance(graph.Mixin):
         return self.to_dict()
 
     def to_dict(self):
-        """
-        Convert the electron-phonon bandgap calculation results to a dictionary.
-        Returns:
-            dict: A dictionary containing:
-                - "metadata": A dictionary with metadata about the calculation, including:
-                    - "nbands_sum": The sum of the number of bands.
-                    - "selfen_delta": The self-energy delta value.
-                    - <mu_tag>: The chemical potential value for the current index.
-                - "direct_renorm": The renormalized direct bandgap values.
-                - "direct": The direct bandgap values.
-                - "fundamental_renorm": The renormalized fundamental bandgap values.
-                - "fundamental": The fundamental bandgap values.
-                - "temperatures": The temperatures at which the calculations were performed.
-        Notes:
-            The <mu_tag> key in the metadata will be dynamically set based on the chemical potential tag
-            returned by `ChemicalPotential.mu_tag()`.
-        """
+        """Convert the electron-phonon bandgap calculation results to a dictionary.
 
+        Returns
+        -------
+        dict
+            A dictionary containing:
+            - "metadata": A dictionary with metadata about the calculation, including:
+                - "nbands_sum": The sum of the number of bands.
+                - "selfen_delta": The self-energy delta value.
+                - <mu_tag>: The chemical potential value for the current index.
+            - "direct_renorm": The renormalized direct bandgap values.
+            - "direct": The direct bandgap values.
+            - "fundamental_renorm": The renormalized fundamental bandgap values.
+            - "fundamental": The fundamental bandgap values.
+            - "temperatures": The temperatures at which the calculations were performed.
+        Notes
+        -----
+        The <mu_tag> key in the metadata will be dynamically set based on the chemical
+        potential tag returned by `ChemicalPotential.mu_tag()`.
+        """
         mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
         return {
             "metadata": {
@@ -154,17 +158,19 @@ class ElectronPhononBandgapInstance(graph.Mixin):
 
 class ElectronPhononBandgap(base.Refinery, abc.Sequence):
     """
-    ElectronPhononBandgap provides access to the electron-phonon bandgap renormalization data
-    and selection utilities.
+    ElectronPhononBandgap provides access to the electron-phonon bandgap renormalization
+    data and selection utilities.
 
-    This class allows users to query and select specific instances of electron-phonon bandgap
-    calculations, based on the INCAR settings that were used to generate them (e.g. nbands_sum, selfen_delta or <mu_tag>).
-    It provides methods to convert the data to dictionary form, retrieve available selection
-    options, and access individual bandgap instances.
+    This class allows users to query and select specific instances of electron-phonon
+    bandgap calculations, based on the INCAR settings that were used to generate them
+    (e.g. nbands_sum, selfen_delta or <mu_tag>). It provides methods to convert the data
+    to dictionary form, retrieve available selection options, and access individual
+    bandgap instances.
 
-    Notes:
-            The <mu_tag> key in the metadata will be dynamically set based on the chemical potential tag
-            returned by `ChemicalPotential.mu_tag()`.
+    Notes
+    -----
+    The <mu_tag> key in the metadata will be dynamically set based on the chemical
+    potential tag returned by `ChemicalPotential.mu_tag()`.
     """
 
     @base.data_access
@@ -188,9 +194,19 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
 
     @base.data_access
     def selections(self):
-        """Return a dictionary describing what options are available
-        to read the electron transport coefficients.
-        This is done using the self-energy class."""
+        """Return a dictionary describing what options are available to read the
+        electron transport coefficients.
+
+        Returns
+        -------
+        dict
+            A dictionary with keys as selection names and values as the corresponding
+            values. The keys include:
+            - "nbands_sum": The sum of the number of bands.
+            - "selfen_delta": The self-energy delta value.
+            - "scattering_approx": The scattering approximation used.
+            - <mu_tag>: The chemical potential value for the current index.
+        """
         # This class only make sense when the scattering approximation is SERTA
         mu_tag, mu_val = self.chemical_potential_mu_tag()
         return {
@@ -224,9 +240,11 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
 
         Parameters
         ----------
-        selection : dict
-            Dictionary with keys as selection names (e.g., "nbands_sum", "selfen_approx", "selfen_delta")
-            and values as the desired values for those properties.
+        selection : str
+            A string specifying which instances we would like to select. You specify a
+            particular string like "nbands_sum=800" to select all instances that were
+            run with that setup. If you provide multiple selections the results will be
+            merged.
 
         Returns
         -------
