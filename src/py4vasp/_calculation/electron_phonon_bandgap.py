@@ -178,11 +178,10 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
         num_instances = len(self)
         selection_options = self.selections()
         options_str = "\n".join(
-            f"  {key}: {value}" for key, value in selection_options.items()
+            f"    {key}: {value}" for key, value in selection_options.items()
         )
         return (
-            f"ElectronPhononBandgap with {num_instances} instance(s).\n"
-            f"Selection options:\n{options_str}"
+            f"Electron-phonon bandgap with {num_instances} instance(s):\n{options_str}"
         )
 
     @base.data_access

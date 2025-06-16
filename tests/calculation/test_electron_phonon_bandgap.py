@@ -32,7 +32,8 @@ def band_gap(raw_band_gap):
     band_gap.ref.nbands_sum = raw_band_gap.nbands_sum
     band_gap.ref.delta = raw_band_gap.delta
     band_gap.ref.carrier_den = raw_band_gap.chemical_potential.carrier_den
-    band_gap.ref.pattern = _make_reference_pattern(raw_band_gap)
+    band_gap.ref.mapping_pattern = _make_reference_pattern()
+    band_gap.ref.instance_pattern = _make_reference_pattern(raw_band_gap)
     return band_gap
 
 
@@ -45,7 +46,14 @@ def chemical_potential(raw_data, request):
     return raw_potential
 
 
-def _make_reference_pattern(raw_band_gap):
+def _make_reference_pattern(raw_band_gap=None):
+    if raw_band_gap is None:
+        return r"""Electron-phonon bandgap with 5 instance\(s\):
+    electron_phonon_bandgap: \[.*\]
+    selfen_carrier_den: \[.*\]
+    nbands_sum: \[.*\]
+    selfen_delta: \[.*\]
+    scattering_approx: \[.*\]"""
     if raw_band_gap.fundamental.shape[-1] == 1:
         return r"""Direct gap:
    Temperature \(K\)         KS gap \(eV\)         QP gap \(eV\)     KS-QP gap \(meV\)
@@ -240,15 +248,16 @@ def test_incorrect_selection(band_gap, selection):
 
 def test_print_mapping(band_gap, format_):
     actual, _ = format_(band_gap)
-    assert actual["text/plain"] == "electron phonon bandgap"
+    assert re.search(band_gap.ref.mapping_pattern, str(band_gap), re.MULTILINE)
+    assert actual == {"text/plain": str(band_gap)}
 
 
 def test_print_instance(band_gap, format_):
     instance = band_gap[0]
     actual, _ = format_(instance)
     # Check if the actual output matches the expected pattern
-    assert re.search(band_gap.ref.pattern, str(instance), re.MULTILINE)
-    assert re.search(band_gap.ref.pattern, actual["text/plain"], re.MULTILINE)
+    assert re.search(band_gap.ref.instance_pattern, str(instance), re.MULTILINE)
+    assert actual == {"text/plain": str(instance)}
 
 
 def test_factory_methods(raw_data, check_factory_methods):
