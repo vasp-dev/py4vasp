@@ -19,7 +19,18 @@ ALIAS = {
 
 
 class ElectronPhononBandgapInstance(graph.Mixin):
-    "Placeholder for electron phonon band gap"
+    """
+    Represents an instance of electron-phonon band gap calculations.
+
+    This class provides methods to access, format, and visualize the temperature-dependent
+    direct and fundamental band gaps, including their renormalizations due to electron-phonon
+    interactions. It is typically constructed with a reference to a parent calculation object
+    and an index identifying the specific dataset.
+
+    Attributes:
+        parent: Reference to the parent calculation object containing the data.
+        index: Index specifying which dataset to access from the parent.
+    """
 
     def __init__(self, parent, index):
         self.parent = parent
@@ -107,12 +118,33 @@ class ElectronPhononBandgapInstance(graph.Mixin):
 
 
 class ElectronPhononBandgap(base.Refinery, abc.Sequence):
+    """
+    ElectronPhononBandgap provides access to the electron-phonon bandgap renormalization data
+    and selection utilities.
+
+    This class allows users to query and select specific instances of electron-phonon bandgap
+    calculations, based on various selection criteria.
+    It provides methods to convert the data to dictionary form, retrieve available selection
+    options, and access individual bandgap instances.
+    """
+
     @base.data_access
     def __str__(self):
-        return "electron phonon bandgap"
+        num_instances = len(self)
+        selection_options = self.selections()
+        options_str = "\n".join(
+            f"  {key}: {value}" for key, value in selection_options.items()
+        )
+        return (
+            f"ElectronPhononBandgap with {num_instances} instance(s).\n"
+            f"Selection options:\n{options_str}"
+        )
 
     @base.data_access
     def to_dict(self):
+        """
+        Converts the bandgap data to a dictionary format.
+        """
         return {"naccumulators": len(self._raw_data.valid_indices)}
 
     @base.data_access
@@ -132,6 +164,16 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
 
     @base.data_access
     def chemical_potential_mu_tag(self):
+        """
+        Retrieves the INCAR tag that was used to set the chemical potential
+        as well as its values.
+
+        Returns
+        -------
+        tuple of (str, numpy.ndarray)
+            The INCAR tag name and its corresponding value as set in the calculation.
+            Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
+        """
         chemical_potential = ElectronPhononChemicalPotential.from_data(
             self._raw_data.chemical_potential
         )

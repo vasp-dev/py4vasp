@@ -6,8 +6,8 @@ from py4vasp._util import check, convert, import_
 
 class ElectronPhononChemicalPotential(base.Refinery):
     """
-    Provides access to the electron-phonon chemical potential data calculatedduring an
-    electron-phonon calculation.
+    Provides access to the electron-phonon chemical potential data calculated
+    during an electron-phonon calculation.
 
     This class allows users to retrieve information about the chemical potential,
     carrier density, Fermi energy, and related quantities as computed in electron-phonon
