@@ -1588,12 +1588,9 @@ def _electron_phonon_band_gap(selection):
     scattering_approximation = "SERTA"
     return raw.ElectronPhononBandgap(
         valid_indices=range(number_samples),
-        id_name=_make_data(None),
-        id_size=_make_data(None),
         nbands_sum=_make_data(np.linspace(10, 100, number_samples, dtype=np.int32)),
         delta=_make_arbitrary_data([number_samples]),
         chemical_potential=_electron_phonon_chemical_potential(),
-        self_energy=_make_data(None),
         scattering_approximation=[
             scattering_approximation for _ in range(number_samples)
         ],
@@ -1602,7 +1599,6 @@ def _electron_phonon_band_gap(selection):
         fundamental=_make_arbitrary_data(shape_gap),
         direct=_make_arbitrary_data(shape_gap),
         temperatures=_make_arbitrary_data(shape_temperature),
-        id_index=_make_data(None),
     )
 
 

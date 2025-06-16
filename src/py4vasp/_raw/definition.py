@@ -330,6 +330,20 @@ schema.add(
 #
 group = "/results/electron_phonon/electrons"
 schema.add(
+    raw.ElectronPhononBandgap,
+    required=raw.Version(6, 5, 2),
+    chemical_potential=Link("electron_phonon_chemical_potential", DEFAULT_SOURCE),
+    valid_indices=f"{group}/self_energy_meta/ncalculators",
+    fundamental_renorm=f"{group}/self_energy_{{}}/fundamental_gap_renorm",
+    fundamental=f"{group}/self_energy_{{}}/fundamental_gap",
+    direct_renorm=f"{group}/self_energy_{{}}/direct_gap_renorm",
+    direct=f"{group}/self_energy_{{}}/direct_gap",
+    temperatures=f"{group}/self_energy_{{}}/temps",
+    nbands_sum=f"{group}/self_energy_{{}}/nbands_sum",
+    delta=f"{group}/self_energy_{{}}/delta",
+    scattering_approximation=f"{group}/self_energy_{{}}/scattering_approximation",
+)
+schema.add(
     raw.ElectronPhononChemicalPotential,
     required=raw.Version(6, 5, 2),
     fermi_energy=f"{group}/chemical_potential/efermi",
@@ -357,24 +371,6 @@ schema.add(
     band_kpoint_spin_index=f"{group}/self_energy_{{}}/bks_idx",
     fan=f"{group}/self_energy_{{}}/selfen_fan",
     band_start=f"{group}/self_energy_{{}}/band_start",
-    nbands_sum=f"{group}/self_energy_{{}}/nbands_sum",
-    delta=f"{group}/self_energy_{{}}/delta",
-    scattering_approximation=f"{group}/self_energy_{{}}/scattering_approximation",
-)
-schema.add(
-    raw.ElectronPhononBandgap,
-    required=raw.Version(6, 5, 2),
-    id_name=f"{group}/self_energy_meta/id_name",
-    id_size=f"{group}/self_energy_meta/id_size",
-    id_index=f"{group}/self_energy_{{}}/id_idx",
-    chemical_potential=Link("electron_phonon_chemical_potential", DEFAULT_SOURCE),
-    self_energy=Link("electron_phonon_self_energy", DEFAULT_SOURCE),
-    valid_indices=f"{group}/self_energy_meta/ncalculators",
-    fundamental_renorm=f"{group}/self_energy_{{}}/fundamental_gap_renorm",
-    fundamental=f"{group}/self_energy_{{}}/fundamental_gap",
-    direct_renorm=f"{group}/self_energy_{{}}/direct_gap_renorm",
-    direct=f"{group}/self_energy_{{}}/direct_gap",
-    temperatures=f"{group}/self_energy_{{}}/temps",
     nbands_sum=f"{group}/self_energy_{{}}/nbands_sum",
     delta=f"{group}/self_energy_{{}}/delta",
     scattering_approximation=f"{group}/self_energy_{{}}/scattering_approximation",
