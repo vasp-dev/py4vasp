@@ -342,6 +342,7 @@ schema.add(
     nbands_sum=f"{group}/self_energy_{{}}/nbands_sum",
     delta=f"{group}/self_energy_{{}}/delta",
     scattering_approximation=f"{group}/self_energy_{{}}/scattering_approximation",
+    id_index=f"{group}/self_energy_{{}}/id_idx",
 )
 schema.add(
     raw.ElectronPhononChemicalPotential,

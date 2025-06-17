@@ -140,12 +140,14 @@ class ElectronPhononBandgapInstance(graph.Mixin):
         potential tag returned by `ChemicalPotential.mu_tag()`.
         """
         mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
+        print(f"{mu_val.shape=}")
+        print(f"{self._get_data('id_index')=}")
         return {
             "metadata": {
                 "nbands_sum": self._get_data("nbands_sum"),
                 "selfen_delta": self._get_data("delta"),
                 "scattering_approx": self._get_data("scattering_approximation"),
-                mu_tag: mu_val[self.index],
+                mu_tag: mu_val[self._get_data("id_index")[2]],
             },
             "direct_renorm": self._get_data("direct_renorm"),
             "direct": self._get_data("direct"),
@@ -303,11 +305,11 @@ The selection {group} is not formatted correctly. It should be formatted like \
     def _get_data(self, name, index):
         name = ALIAS.get(name, name)
         dataset = getattr(self._raw_data, name, None)
-        if dataset is None:
-            expected_name, dataset = self.chemical_potential_mu_tag()
-            self._raise_error_if_not_present(name, expected_name)
-
-        return np.array(dataset[index])[()]
+        if dataset is not None:
+            return np.array(dataset[index])[()]
+        mu_tag, mu_val = self.chemical_potential_mu_tag()
+        self._raise_error_if_not_present(name, expected_name=mu_tag)
+        return mu_val[self._raw_data.id_index[index, 2]]
 
     def _raise_error_if_not_present(self, name, expected_name):
         if name != expected_name:

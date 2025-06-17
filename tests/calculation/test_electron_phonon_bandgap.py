@@ -30,8 +30,8 @@ def band_gap(raw_band_gap):
     band_gap.ref.direct_renorm = raw_band_gap.direct_renorm
     band_gap.ref.temperatures = raw_band_gap.temperatures
     band_gap.ref.nbands_sum = raw_band_gap.nbands_sum
-    band_gap.ref.delta = raw_band_gap.delta
-    band_gap.ref.carrier_den = raw_band_gap.chemical_potential.carrier_den
+    band_gap.ref.selfen_delta = raw_band_gap.delta
+    band_gap.ref.selfen_carrier_den = _make_reference_carrier_den(raw_band_gap)
     band_gap.ref.mapping_pattern = _make_reference_pattern()
     band_gap.ref.instance_pattern = _make_reference_pattern(raw_band_gap)
     return band_gap
@@ -44,6 +44,11 @@ def chemical_potential(raw_data, request):
     raw_potential.ref.param = request.param
     raw_potential.ref.expected_data = getattr(raw_potential, request.param)
     return raw_potential
+
+
+def _make_reference_carrier_den(raw_band_gap):
+    chemical_potential = raw_band_gap.chemical_potential
+    return [chemical_potential.carrier_den[index[2]] for index in raw_band_gap.id_index]
 
 
 def _make_reference_pattern(raw_band_gap=None):
@@ -166,8 +171,8 @@ def test_read_instance(band_gap, Assert):
         Assert.allclose(d["temperatures"], band_gap.ref.temperatures[i])
         assert d["metadata"] == {
             "nbands_sum": band_gap.ref.nbands_sum[i],
-            "selfen_delta": band_gap.ref.delta[i],
-            "selfen_carrier_den": band_gap.ref.carrier_den[i],
+            "selfen_delta": band_gap.ref.selfen_delta[i],
+            "selfen_carrier_den": band_gap.ref.selfen_carrier_den[i],
             "scattering_approx": "SERTA",
         }
 
@@ -219,13 +224,14 @@ def test_selections(raw_band_gap, chemical_potential, Assert):
     "attribute", ["nbands_sum", "selfen_delta", "selfen_carrier_den"]
 )
 def test_select_returns_instances(band_gap, attribute):
-    selections = band_gap.selections()
-    choice = random.choice(list(selections[attribute]))
-    index_, *_ = np.where(selections[attribute] == choice)
+    choices = getattr(band_gap.ref, attribute)
+    choice = random.choice(list(choices))
+    indices, *_ = np.where(choices == choice)
     selected = band_gap.select(f"{attribute}={choice.item()}")
-    assert len(selected) == 1
-    assert isinstance(selected[0], ElectronPhononBandgapInstance)
-    assert selected[0].index == index_[0]
+    assert len(selected) == len(indices)
+    for index_, instance in zip(indices, selected):
+        assert isinstance(instance, ElectronPhononBandgapInstance)
+        assert instance.index == index_
 
 
 def test_select_multiple(band_gap):

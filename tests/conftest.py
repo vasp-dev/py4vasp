@@ -23,6 +23,7 @@ number_conduction_bands = 1
 number_eigenvectors = 5
 number_excitons = 3
 number_samples = 5
+number_chemical_potentials = 3
 single_spin = 1
 two_spins = 2
 noncollinear = 4
@@ -1524,15 +1525,19 @@ def _electron_phonon_chemical_potential(selection="carrier_den"):
     seed = 26826821
     return raw.ElectronPhononChemicalPotential(
         fermi_energy=0,
-        carrier_density=_make_arbitrary_data([number_samples]),
+        carrier_density=_make_arbitrary_data([number_chemical_potentials]),
         temperatures=_make_arbitrary_data([number_temps]),
-        chemical_potential=_make_arbitrary_data([number_samples, number_temps]),
-        carrier_per_cell=_make_arbitrary_data(
-            [number_samples], selection == "carrier_per_cell", seed=seed
+        chemical_potential=_make_arbitrary_data(
+            [number_chemical_potentials, number_temps]
         ),
-        mu=_make_arbitrary_data([number_samples], selection == "mu", seed=seed),
+        carrier_per_cell=_make_arbitrary_data(
+            [number_chemical_potentials], selection == "carrier_per_cell", seed=seed
+        ),
+        mu=_make_arbitrary_data(
+            [number_chemical_potentials], selection == "mu", seed=seed
+        ),
         carrier_den=_make_arbitrary_data(
-            [number_samples], selection == "carrier_den", seed=seed
+            [number_chemical_potentials], selection == "carrier_den", seed=seed
         ),
     )
 
@@ -1589,6 +1594,9 @@ def _electron_phonon_band_gap(selection):
     shape_renorm = [number_samples, number_components, number_temps]
     shape_temperature = [number_samples, number_temps]
     scattering_approximation = "SERTA"
+    unused = np.full(number_samples, fill_value=9999)
+    index_chemical_potential = np.arange(number_samples) % number_chemical_potentials
+    id_index = np.array([unused, unused, index_chemical_potential, unused]).T
     return raw.ElectronPhononBandgap(
         valid_indices=range(number_samples),
         nbands_sum=_make_data(np.linspace(10, 100, number_samples, dtype=np.int32)),
@@ -1602,6 +1610,7 @@ def _electron_phonon_band_gap(selection):
         fundamental=_make_arbitrary_data(shape_gap),
         direct=_make_arbitrary_data(shape_gap),
         temperatures=_make_arbitrary_data(shape_temperature),
+        id_index=_make_data(id_index),
     )
 
 

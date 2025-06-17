@@ -258,6 +258,8 @@ class ElectronPhononBandgap(mapping.Mapping):
     "Value of the imaginary broadening parameter used to evaluate the electron self-energy"
     scattering_approximation: str
     "Scattering approximation used to compute the electron self-energy"
+    id_index: VaspData
+    "Index of the elements on each list of variables used to generate instances"
 
 
 @dataclasses.dataclass
