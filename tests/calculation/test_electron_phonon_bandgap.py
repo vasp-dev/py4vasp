@@ -184,22 +184,21 @@ def test_plot_instance(band_gap, Assert):
 
 def test_plot_multiple_selections(band_gap, Assert):
     graph = band_gap[1].plot("fundamental, fundamental_renorm")
-    fundamental_gap = band_gap.ref.fundamental[1, :, np.newaxis]
-    expected = fundamental_gap + band_gap.ref.fundamental_renorm[1]
     assert len(graph) == 2
     Assert.allclose(graph.series[0].x, band_gap.ref.temperatures[1])
-    Assert.allclose(graph.series[0].y, expected)
+    Assert.allclose(graph.series[0].y, band_gap.ref.fundamental[1, :, np.newaxis])
     assert graph.series[0].label == "fundamental"
     Assert.allclose(graph.series[1].x, band_gap.ref.temperatures[1])
     Assert.allclose(graph.series[1].y, band_gap.ref.fundamental_renorm[1])
     assert graph.series[1].label == "fundamental_renorm"
 
 
-def test_plot_direct_gap(band_gap, Assert):
+def test_plot_direct_gap_renormalization(band_gap, Assert):
     # Plotting the direct gap should return a graph with correct data
+    expected = band_gap.ref.direct[2, :, np.newaxis] - band_gap.ref.direct_renorm[2]
     graph = band_gap[2].plot("direct - direct_renorm")
     assert len(graph) == 1
-    Assert.allclose(graph.series[0].y, band_gap.ref.direct[2, :, np.newaxis])
+    Assert.allclose(graph.series[0].y, expected)
 
 
 def test_selections(raw_band_gap, chemical_potential, Assert):
