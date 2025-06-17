@@ -221,7 +221,7 @@ def test_selections(raw_band_gap, chemical_potential, Assert):
 )
 def test_select_returns_instances(band_gap, attribute):
     selections = band_gap.selections()
-    choice = random.choice(selections[attribute])
+    choice = random.choice(list(selections[attribute]))
     index_, *_ = np.where(selections[attribute] == choice)
     selected = band_gap.select(f"{attribute}={choice.item()}")
     assert len(selected) == 1
