@@ -217,10 +217,10 @@ def test_selections(raw_band_gap, chemical_potential, Assert):
     selections = band_gap.selections()
     selections.pop("electron_phonon_bandgap")
     expected = selections.pop(f"selfen_{chemical_potential.ref.param}")
-    Assert.allclose(expected, chemical_potential.ref.expected_data)
+    Assert.allclose(expected, np.unique(chemical_potential.ref.expected_data))
     assert selections.keys() == {"nbands_sum", "selfen_delta"}
-    Assert.allclose(selections["nbands_sum"], raw_band_gap.nbands_sum)
-    Assert.allclose(selections["selfen_delta"], raw_band_gap.delta)
+    Assert.allclose(selections["nbands_sum"], np.unique(raw_band_gap.nbands_sum))
+    Assert.allclose(selections["selfen_delta"], np.unique(raw_band_gap.delta))
 
 
 @pytest.mark.parametrize(

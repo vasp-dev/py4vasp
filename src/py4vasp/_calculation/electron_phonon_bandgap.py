@@ -209,9 +209,9 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
         mu_tag, mu_val = self.chemical_potential_mu_tag()
         return {
             **super().selections(),
-            mu_tag: mu_val,
-            "nbands_sum": self._raw_data.nbands_sum[:],
-            "selfen_delta": self._raw_data.delta[:],
+            mu_tag: np.unique(mu_val),
+            "nbands_sum": np.unique(self._raw_data.nbands_sum),
+            "selfen_delta": np.unique(self._raw_data.delta),
         }
 
     @base.data_access
