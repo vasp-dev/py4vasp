@@ -52,7 +52,7 @@ def access(*args, **kwargs):
             "The arguments to the function are incorrect. Please use keywords for all "
             "arguments except for the first."
         )
-        raise exception.IncorrectUsage(message) from error
+        raise exception.IncorrectUsage(message) from None
 
 
 class _State:
@@ -77,7 +77,7 @@ class _State:
             return schema.sources[quantity][source]
         except KeyError as error:
             message = error_message(schema, quantity, source)
-            raise exception.FileAccessError(message) from error
+            raise exception.FileAccessError(message) from None
 
     def _access_data_from_hdf5(self, quantity, source, path):
         h5f = self._open_file(path)
@@ -100,7 +100,7 @@ class _State:
             message = (
                 f"{filename} could not be opened. Please make sure the file exists."
             )
-            raise exception.FileAccessError(message) from error
+            raise exception.FileAccessError(message) from None
         except OSError as error:
             message = (
                 f"Error when reading from {filename}. Please check whether the file "

@@ -88,7 +88,7 @@ class Schema:
         try:
             return self._sources[quantity].keys()
         except KeyError as error:
-            raise exception.FileAccessError(error_message(self, quantity)) from error
+            raise exception.FileAccessError(error_message(self, quantity)) from None
 
     @property
     def verified(self):

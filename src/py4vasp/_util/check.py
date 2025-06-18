@@ -28,4 +28,4 @@ def raise_error_if_not_callable(function, *args, **kwargs):
         signature.bind(*args, **kwargs)
     except TypeError as error:
         message = f"You tried to call {function.__name__}, but the arguments are incorrect! Please double check your input."
-        raise exception.IncorrectUsage(message) from error
+        raise exception.IncorrectUsage(message) from None

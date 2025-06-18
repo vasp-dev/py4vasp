@@ -190,18 +190,15 @@ class Selector:
             assert False, f"Reading {key} is not implemented."
 
     def _read_key(self, key):
-        try:
-            dimension, slice_ = self._map[key]
-        except KeyError as error:
-            _raise_key_not_found_error(key, error)
+        self._raise_key_not_found_error(key)
+        dimension, slice_ = self._map[key]
         return _Slices(self._indices).set(dimension, slice_, key)
 
     def _read_range(self, range_):
-        try:
-            dimension = self._read_dimension(range_)
-            slice_ = self._merge_slice(range_)
-        except KeyError as error:
-            _raise_key_not_found_error(range_, error)
+        self._raise_key_not_found_error(range_.group[0])
+        self._raise_key_not_found_error(range_.group[1])
+        dimension = self._read_dimension(range_)
+        slice_ = self._merge_slice(range_)
         return _Slices(self._indices).set(dimension, slice_, range_)
 
     def _read_dimension(self, range_):
@@ -233,6 +230,14 @@ class Selector:
             yield from self._get_all_slices(operation.left_operand, operator)
         operator = _merge_operator(operator, operation.operator)
         yield from self._get_all_slices(operation.right_operand, operation.operator)
+
+    def _raise_key_not_found_error(self, key):
+        if key in self._map:
+            return
+        message = f"""Could not read "{key}", please check the spelling and capitalization.
+            Perhaps the INCAR file does not produce the required data. Many classes also
+            provide a `selections` method, that you can use to see what keys are found."""
+        raise exception.IncorrectUsage(message)
 
 
 def _merge_operator(first_operator, second_operator):
@@ -341,13 +346,6 @@ def _raise_error_if_index_used_twice(left_key, right_key):
         return
     message = f"Conflicting keys '{left_key}' and '{right_key}' act on the same index."
     raise exception.IncorrectUsage(message)
-
-
-def _raise_key_not_found_error(key, error):
-    message = f"""Could not read "{key}", please check the spelling and capitalization.
-        Perhaps the INCAR file does not produce the required data. Many classes also
-        provide a `selections` method, that you can use to see what keys are found."""
-    raise exception.IncorrectUsage(message) from error
 
 
 def _raise_error_if_list_not_empty(list_, message):
