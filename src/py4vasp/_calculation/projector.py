@@ -265,7 +265,7 @@ class Projector(base.Refinery):
             message = f"""Error reading the projections. Please make sure that the passed
                 projections has the right format, i.e., the indices correspond to spin,
                 atom, and orbital, respectively."""
-            raise exception.IncorrectUsage(message) from error
+            raise exception.IncorrectUsage(message) from None
 
     def _create_projections(self, selector, selection):
         spin_projections = []

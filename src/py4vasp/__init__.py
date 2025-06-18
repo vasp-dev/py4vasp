@@ -7,4 +7,4 @@ from py4vasp._third_party.graph import plot
 from py4vasp._third_party.interactive import set_error_handling
 
 __version__ = "0.10.2"
-set_error_handling("Minimal")
+set_error_handling("Plain")  # Set default error handling to "Plain"

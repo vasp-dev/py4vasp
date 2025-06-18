@@ -75,4 +75,4 @@ def _create_slice_for_current_step_if_possible(steps):
         return slice(steps, steps + 1)
     except TypeError as error:
         message = f"Error creating slice [{steps}:{steps} + 1], please check the access operator argument."
-        raise exception.IncorrectUsage(message) from error
+        raise exception.IncorrectUsage(message) from None

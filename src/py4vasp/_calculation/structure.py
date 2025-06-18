@@ -231,7 +231,7 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
                     "Generating the supercell failed. Please make sure the requested "
                     "supercell is either an integer or a list of 3 integers."
                 )
-                raise exception.IncorrectUsage(error_message) from err
+                raise exception.IncorrectUsage(error_message) from None
         num_atoms_super = len(structure)
         order = sorted(range(num_atoms_super), key=lambda n: n % num_atoms_prim)
         return structure[order]
@@ -438,7 +438,7 @@ Atoms # atomic
             message = (
                 f"Could not convert supercell='{supercell}' to an integer numpy array."
             )
-            raise exception.IncorrectUsage(message) from error
+            raise exception.IncorrectUsage(message) from None
         if not np.allclose(supercell, integer_supercell):
             message = f"supercell='{supercell}' contains noninteger values."
             raise exception.IncorrectUsage(message)
