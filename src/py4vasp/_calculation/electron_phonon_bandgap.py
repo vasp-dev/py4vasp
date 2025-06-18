@@ -63,9 +63,9 @@ class ElectronPhononBandgapInstance(graph.Mixin):
         yield "   Temperature (K)         KS gap (eV)         QP gap (eV)     KS-QP gap (meV)"
         temperatures = data["temperatures"]
         kohn_sham_gap = data[label][spin]
-        renormalizations = data[f"{label}_renorm"][spin]
-        for temperature, renormalization in zip(temperatures, renormalizations):
-            quasi_particle_gap = kohn_sham_gap + renormalization
+        quasi_particle_gaps = data[f"{label}_renorm"][spin]
+        for temperature, quasi_particle_gap in zip(temperatures, quasi_particle_gaps):
+            renormalization = quasi_particle_gap - kohn_sham_gap
             yield f"{temperature:18.6f} {kohn_sham_gap:19.6f} {quasi_particle_gap:19.6f} {1000 * renormalization:19.6f}"
         yield ""
 
@@ -140,14 +140,12 @@ class ElectronPhononBandgapInstance(graph.Mixin):
         potential tag returned by `ChemicalPotential.mu_tag()`.
         """
         mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
-        print(f"{mu_val.shape=}")
-        print(f"{self._get_data('id_index')=}")
         return {
             "metadata": {
                 "nbands_sum": self._get_data("nbands_sum"),
                 "selfen_delta": self._get_data("delta"),
                 "scattering_approx": self._get_data("scattering_approximation"),
-                mu_tag: mu_val[self._get_data("id_index")[2]],
+                mu_tag: mu_val[self._get_data("id_index")[2] - 1],
             },
             "direct_renorm": self._get_data("direct_renorm"),
             "direct": self._get_data("direct"),
@@ -178,6 +176,7 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
     def __str__(self):
         num_instances = len(self)
         selection_options = self.selections()
+        selection_options.pop("electron_phonon_bandgap", None)
         options_str = "\n".join(
             f"    {key}: {value}" for key, value in selection_options.items()
         )
@@ -190,7 +189,7 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
         """
         Converts the bandgap data to a dictionary format.
         """
-        return {"naccumulators": len(self._raw_data.valid_indices)}
+        return {"naccumulators": len(self)}
 
     @base.data_access
     def selections(self):
@@ -204,7 +203,6 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
             values. The keys include:
             - "nbands_sum": The sum of the number of bands.
             - "selfen_delta": The self-energy delta value.
-            - "scattering_approx": The scattering approximation used.
             - <mu_tag>: The chemical potential value for the current index.
         """
         # This class only make sense when the scattering approximation is SERTA
@@ -214,7 +212,6 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
             mu_tag: mu_val,
             "nbands_sum": self._raw_data.nbands_sum[:],
             "selfen_delta": self._raw_data.delta[:],
-            "scattering_approx": self._raw_data.scattering_approximation[:],
         }
 
     @base.data_access
@@ -263,7 +260,10 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
         }
 
     def _filter_indices(self, selection):
-        remaining_indices = range(len(self))
+        remaining_indices = range(len(self._raw_data.valid_indices))
+        remaining_indices = self._filter_group(
+            remaining_indices, "scattering_approximation", "SERTA"
+        )
         for group in selection:
             self._raise_error_if_group_format_incorrect(group)
             assert len(group.group) == 2
@@ -294,22 +294,24 @@ The selection {group} is not formatted correctly. It should be formatted like \
     @base.data_access
     def __getitem__(self, key):
         if 0 <= key < len(self):
-            return ElectronPhononBandgapInstance(self, key)
+            mask = np.equal(self._raw_data.scattering_approximation, "SERTA")
+            index_ = np.arange(len(mask))[mask][key]
+            return ElectronPhononBandgapInstance(self, index_)
         raise IndexError("Index out of range for electron phonon bandgap instance.")
 
     @base.data_access
     def __len__(self):
-        return len(self._raw_data.valid_indices)
+        return sum(np.equal(self._raw_data.scattering_approximation, "SERTA"))
 
     @base.data_access
     def _get_data(self, name, index):
         name = ALIAS.get(name, name)
         dataset = getattr(self._raw_data, name, None)
         if dataset is not None:
-            return np.array(dataset[index])[()]
+            return np.array(dataset[index])
         mu_tag, mu_val = self.chemical_potential_mu_tag()
         self._raise_error_if_not_present(name, expected_name=mu_tag)
-        return mu_val[self._raw_data.id_index[index, 2]]
+        return mu_val[self._raw_data.id_index[index, 2] - 1]
 
     def _raise_error_if_not_present(self, name, expected_name):
         if name != expected_name:

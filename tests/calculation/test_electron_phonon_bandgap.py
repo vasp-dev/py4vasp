@@ -23,7 +23,9 @@ def raw_band_gap(request, raw_data):
 def band_gap(raw_band_gap):
     band_gap = ElectronPhononBandgap.from_data(raw_band_gap)
     band_gap.ref = types.SimpleNamespace()
-    band_gap.ref.naccumulators = len(raw_band_gap.valid_indices)
+    mask = np.array(raw_band_gap.scattering_approximation) == "SERTA"
+    band_gap.ref.naccumulators = 4
+    band_gap.ref.indices = np.arange(5)[mask]
     band_gap.ref.fundamental = raw_band_gap.fundamental
     band_gap.ref.fundamental_renorm = raw_band_gap.fundamental_renorm
     band_gap.ref.direct = raw_band_gap.direct
@@ -48,17 +50,16 @@ def chemical_potential(raw_data, request):
 
 def _make_reference_carrier_den(raw_band_gap):
     chemical_potential = raw_band_gap.chemical_potential
-    return [chemical_potential.carrier_den[index[2]] for index in raw_band_gap.id_index]
+    indices = raw_band_gap.id_index[:, 2] - 1
+    return np.array([chemical_potential.carrier_den[index_] for index_ in indices])
 
 
 def _make_reference_pattern(raw_band_gap=None):
     if raw_band_gap is None:
-        return r"""Electron-phonon bandgap with 5 instance\(s\):
-    electron_phonon_bandgap: \[.*\]
+        return r"""Electron-phonon bandgap with 4 instance\(s\):
     selfen_carrier_den: \[.*\]
     nbands_sum: \[.*\]
-    selfen_delta: \[.*\]
-    scattering_approx: \[.*\]"""
+    selfen_delta: \[.*\]"""
     if raw_band_gap.fundamental.shape[-1] == 1:
         return r"""Direct gap:
    Temperature \(K\)         KS gap \(eV\)         QP gap \(eV\)     KS-QP gap \(meV\)
@@ -150,7 +151,7 @@ def test_indexing_and_iteration(band_gap):
     # Indexing and iteration should yield instances
     for i, instance in enumerate(band_gap):
         assert isinstance(instance, ElectronPhononBandgapInstance)
-        assert instance.index == i
+        assert instance.index == band_gap.ref.indices[i]
         assert instance.parent is band_gap
     assert isinstance(band_gap[0], ElectronPhononBandgapInstance)
 
@@ -164,15 +165,16 @@ def test_read_instance(band_gap, Assert):
     # Each instance's to_dict should match the raw data for that index
     for i, instance in enumerate(band_gap):
         d = instance.read()
-        Assert.allclose(d["fundamental"], band_gap.ref.fundamental[i])
-        Assert.allclose(d["fundamental_renorm"], band_gap.ref.fundamental_renorm[i])
-        Assert.allclose(d["direct"], band_gap.ref.direct[i])
-        Assert.allclose(d["direct_renorm"], band_gap.ref.direct_renorm[i])
-        Assert.allclose(d["temperatures"], band_gap.ref.temperatures[i])
+        index = band_gap.ref.indices[i]
+        Assert.allclose(d["fundamental"], band_gap.ref.fundamental[index])
+        Assert.allclose(d["fundamental_renorm"], band_gap.ref.fundamental_renorm[index])
+        Assert.allclose(d["direct"], band_gap.ref.direct[index])
+        Assert.allclose(d["direct_renorm"], band_gap.ref.direct_renorm[index])
+        Assert.allclose(d["temperatures"], band_gap.ref.temperatures[index])
         assert d["metadata"] == {
-            "nbands_sum": band_gap.ref.nbands_sum[i],
-            "selfen_delta": band_gap.ref.selfen_delta[i],
-            "selfen_carrier_den": band_gap.ref.selfen_carrier_den[i],
+            "nbands_sum": band_gap.ref.nbands_sum[index],
+            "selfen_delta": band_gap.ref.selfen_delta[index],
+            "selfen_carrier_den": band_gap.ref.selfen_carrier_den[index],
             "scattering_approx": "SERTA",
         }
 
@@ -200,8 +202,10 @@ def test_plot_multiple_selections(band_gap, Assert):
 
 def test_plot_direct_gap_renormalization(band_gap, Assert):
     # Plotting the direct gap should return a graph with correct data
-    expected = band_gap.ref.direct[2, :, np.newaxis] - band_gap.ref.direct_renorm[2]
-    graph = band_gap[2].plot("direct - direct_renorm")
+    i = 3
+    j = band_gap.ref.indices[i]
+    expected = band_gap.ref.direct[j, :, np.newaxis] - band_gap.ref.direct_renorm[j]
+    graph = band_gap[i].plot("direct - direct_renorm")
     assert len(graph) == 1
     Assert.allclose(graph.series[0].y, expected)
 
@@ -214,10 +218,9 @@ def test_selections(raw_band_gap, chemical_potential, Assert):
     selections.pop("electron_phonon_bandgap")
     expected = selections.pop(f"selfen_{chemical_potential.ref.param}")
     Assert.allclose(expected, chemical_potential.ref.expected_data)
-    assert selections.keys() == {"nbands_sum", "selfen_delta", "scattering_approx"}
+    assert selections.keys() == {"nbands_sum", "selfen_delta"}
     Assert.allclose(selections["nbands_sum"], raw_band_gap.nbands_sum)
     Assert.allclose(selections["selfen_delta"], raw_band_gap.delta)
-    Assert.allclose(selections["scattering_approx"], 5 * ["SERTA"])
 
 
 @pytest.mark.parametrize(
@@ -225,7 +228,7 @@ def test_selections(raw_band_gap, chemical_potential, Assert):
 )
 def test_select_returns_instances(band_gap, attribute):
     choices = getattr(band_gap.ref, attribute)
-    choice = random.choice(list(choices))
+    choice = random.choice(list(choices[band_gap.ref.indices]))
     indices, *_ = np.where(choices == choice)
     selected = band_gap.select(f"{attribute}={choice.item()}")
     assert len(selected) == len(indices)
@@ -234,12 +237,42 @@ def test_select_returns_instances(band_gap, attribute):
         assert instance.index == index_
 
 
+def test_select_non_SERTA_returns_empty(band_gap):
+    # Selecting an element corresponding to a scattering approximation other than SERTA
+    # should return an empty list
+    index_nonserta = 2
+    assert index_nonserta not in band_gap.ref.indices
+    choice = band_gap.ref.nbands_sum[index_nonserta]
+    selected = band_gap.select(f"nbands_sum={choice.item()}")
+    assert len(selected) == 0
+
+
 def test_select_multiple(band_gap):
-    selected = band_gap.select("scattering_approx=SERTA")
-    assert len(selected) == len(band_gap)
-    for i, instance in enumerate(selected):
+    index_nbands_sum = 1
+    index_selfen_delta = 3
+    indices = [index_nbands_sum, index_selfen_delta]
+    choice_nbands_sum = band_gap.ref.nbands_sum[index_nbands_sum]
+    choice_selfen_delta = band_gap.ref.selfen_delta[index_selfen_delta]
+    selection = f"nbands_sum={choice_nbands_sum.item()}, selfen_delta={choice_selfen_delta.item()}"
+    selected = band_gap.select(selection)
+    assert len(selected) == len(indices)
+    for index_, instance in zip(indices, selected):
         assert isinstance(instance, ElectronPhononBandgapInstance)
-        assert instance.index == i
+        assert instance.index == index_
+
+
+def test_select_nested(band_gap):
+    index_ = 0
+    choice_nbands_sum = band_gap.ref.nbands_sum[index_]
+    choice_selfen_carrier_den = band_gap.ref.selfen_carrier_den[index_]
+    count_ = sum(band_gap.ref.selfen_carrier_den == choice_selfen_carrier_den)
+    assert count_ > 1
+    selection = f"nbands_sum={choice_nbands_sum.item()}(selfen_carrier_den={choice_selfen_carrier_den.item()})"
+    selected = band_gap.select(selection)
+    assert len(selected) == 1
+    instance = selected[0]
+    assert isinstance(instance, ElectronPhononBandgapInstance)
+    assert instance.index == index_
 
 
 @pytest.mark.parametrize(

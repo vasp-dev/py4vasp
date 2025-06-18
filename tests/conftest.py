@@ -1593,18 +1593,15 @@ def _electron_phonon_band_gap(selection):
     shape_gap = [number_samples, number_components]
     shape_renorm = [number_samples, number_components, number_temps]
     shape_temperature = [number_samples, number_temps]
-    scattering_approximation = "SERTA"
     unused = np.full(number_samples, fill_value=9999)
     index_chemical_potential = np.arange(number_samples) % number_chemical_potentials
-    id_index = np.array([unused, unused, index_chemical_potential, unused]).T
+    id_index = np.array([unused, unused, index_chemical_potential + 1, unused]).T
     return raw.ElectronPhononBandgap(
         valid_indices=range(number_samples),
         nbands_sum=_make_data(np.linspace(10, 100, number_samples, dtype=np.int32)),
         delta=_make_arbitrary_data([number_samples], seed=7824570),
         chemical_potential=_electron_phonon_chemical_potential(),
-        scattering_approximation=[
-            scattering_approximation for _ in range(number_samples)
-        ],
+        scattering_approximation=["SERTA", "SERTA", "MRTA_TAU", "SERTA", "SERTA"],
         fundamental_renorm=_make_arbitrary_data(shape_renorm),
         direct_renorm=_make_arbitrary_data(shape_renorm),
         fundamental=_make_arbitrary_data(shape_gap),
