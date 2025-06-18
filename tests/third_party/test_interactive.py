@@ -47,7 +47,7 @@ def test_py4vasp_inherits_error_handling(ipython):
     assert ipython.custom_exceptions == ()
 
 
-def test_py4vasp_error_handling(raw_data, capsys):
+def test_py4vasp_error_handling(raw_data, capsys, not_core):
     interactive.set_error_handling("Plain")
     raw_dos = raw_data.dos("Sr2TiO4 with_projectors")
     try:
