@@ -13,6 +13,16 @@ _ALLOWED_VERBOSITIES = ["Inherit", "Plain", "Minimal"]
 
 
 def set_error_handling(verbosity):
+    """Set the error handling verbosity for IPython.
+
+    Parameters
+    ----------
+    verbosity : str
+        The verbosity level for error handling. Allowed values are:
+        - "Inherit": Inherit the error handling from IPython.
+        - "Plain": Use plain error messages (traceback for user code).
+        - "Minimal": Use minimal error messages (no traceback).
+    """
     if verbosity not in _ALLOWED_VERBOSITIES:
         raise exception.NotImplemented(
             f"Error handling mode '{verbosity}' is not supported. "
