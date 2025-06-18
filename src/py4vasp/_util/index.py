@@ -34,6 +34,7 @@ import numpy as np
 
 from py4vasp import exception, raw
 from py4vasp._util import select
+from py4vasp._util.suggest import did_you_mean
 
 
 class Reduction(abc.ABC):
@@ -234,9 +235,11 @@ class Selector:
     def _raise_key_not_found_error(self, key):
         if key in self._map:
             return
-        message = f"""Could not read "{key}", please check the spelling and capitalization.
-            Perhaps the INCAR file does not produce the required data. Many classes also
-            provide a `selections` method, that you can use to see what keys are found."""
+        valid_keys = self._map.keys()
+        message = f"""Could not parse the selection "{key}", please check the spelling \
+and capitalization. {did_you_mean(key, valid_keys)}py4vasp supports any of the following \
+selections: "{'", "'.join(valid_keys)}". If some of the selections you expected are not \
+available, please check your INCAR file and the VASP version you are using."""
         raise exception.IncorrectUsage(message)
 
 
