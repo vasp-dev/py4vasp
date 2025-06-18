@@ -9,7 +9,7 @@ from py4vasp._util import import_
 
 IPython = import_.optional("IPython")
 _ERROR_VERBOSITY = "not set"
-_ALLOWED_VERBOSITIES = ["Plain", "Minimal"]
+_ALLOWED_VERBOSITIES = ["Inherit", "Plain", "Minimal"]
 
 
 def set_error_handling(verbosity):
@@ -22,7 +22,8 @@ def set_error_handling(verbosity):
     _ERROR_VERBOSITY = verbosity
     ipython = _get_ipython()
     if ipython is not None:
-        ipython.set_custom_exc((exception.Py4VaspError,), _handle_exception)
+        custom_exceptions = () if verbosity == "Inherit" else (exception.Py4VaspError,)
+        ipython.set_custom_exc(custom_exceptions, _handle_exception)
 
 
 def error_handling():
