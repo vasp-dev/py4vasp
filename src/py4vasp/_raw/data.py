@@ -234,6 +234,35 @@ class ElectronicMinimization:
 
 
 @dataclasses.dataclass
+class ElectronPhononBandgap(mapping.Mapping):
+    """The bandgap renormalized due to electron-phonon coupling
+
+    The information is derived from a self-energy calculation.
+    """
+
+    chemical_potential: ElectronPhononChemicalPotential
+    "Chemical potential information"
+    fundamental_renorm: VaspData
+    "Renormalization of the fundamental bandgap"
+    fundamental: VaspData
+    "Value of the fundamental bandgap"
+    direct_renorm: VaspData
+    "Renormalization of the direct bandgap"
+    direct: VaspData
+    "Value of the direct bandgap"
+    temperatures: VaspData
+    "List of temperatures at which the bandgap renormalization was computed"
+    nbands_sum: int
+    "Number of bands that were summed over in this instance"
+    delta: float
+    "Value of the imaginary broadening parameter used to evaluate the electron self-energy"
+    scattering_approximation: str
+    "Scattering approximation used to compute the electron self-energy"
+    id_index: VaspData
+    "Index of the elements on each list of variables used to generate instances"
+
+
+@dataclasses.dataclass
 class ElectronPhononChemicalPotential:
     """The chemical potential for electron-phonon calculations.
 
@@ -256,41 +285,6 @@ class ElectronPhononChemicalPotential:
     "The doping specified by an additional carrier density"
     mu: VaspData  # values of the selfen_mu incar tag
     "The doping specified by an energy shift with respect to the fermi energy"
-
-
-@dataclasses.dataclass
-class ElectronPhononBandgap(mapping.Mapping):
-    """The bandgap renormalized due to electron-phonon coupling
-
-    The information is derived from a self-energy calculation.
-    """
-
-    id_name: VaspData
-    "The names of the variables that generate instances of the bandgap calculations"
-    id_size: VaspData
-    "The number of values that each of the variables can take to generate instances"
-    id_index: VaspData
-    "Index of the elements on each list of variables used to generate instances"
-    chemical_potential: ElectronPhononChemicalPotential
-    "Chemical potential information"
-    self_energy: ElectronPhononSelfEnergy
-    "Electron self-energy calculation information"
-    fundamental_renorm: VaspData
-    "Renormalization of the fundamental bandgap"
-    fundamental: VaspData
-    "Value of the fundamental bandgap"
-    direct_renorm: VaspData
-    "Renormalization of the direct bandgap"
-    direct: VaspData
-    "Value of the direct bandgap"
-    temperatures: VaspData
-    "List of temperatures at which the bandgap renormalization was computed"
-    nbands_sum: int
-    "Number of bands that were summed over in this instance"
-    delta: float
-    "Value of the imaginary broadening parameter used to evaluate the electron self-energy"
-    scattering_approximation: str
-    "Scattering approximation used to compute the electron self-energy"
 
 
 @dataclasses.dataclass
