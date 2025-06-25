@@ -24,7 +24,7 @@ jobs:
       run: |
         python --version
         python -m pip install --progress-bar=off --upgrade pip
-        pip install --progress-bar=off "poetry!=1.4.1"
+        pip install --progress-bar=off poetry
     - name: Install py4vasp-core
       run: |
         cp core/* .
