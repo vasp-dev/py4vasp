@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
     - uses: actions/checkout@v4
@@ -26,7 +26,7 @@ jobs:
       run: |
         python --version
         python -m pip install --progress-bar=off --upgrade pip
-        pip install --progress-bar=off "poetry<2"
+        pip install --progress-bar=off poetry
     - name: Install py4vasp
       shell: bash -el {0}
       run: |
@@ -36,7 +36,7 @@ jobs:
       shell: bash -el {0}
       run: |
         conda info
-        conda install -q -c conda-forge "mdtraj<1.10.2"
+        conda install -q -c conda-forge mdtraj
     - name: Test with pytest
       shell: bash -el {0}
       run: |

@@ -21,6 +21,10 @@ def test_repr():
 def check_repr_is_consistent(instance, quantity):
     class_name = convert.to_camelcase(quantity)
     module = importlib.import_module(f"py4vasp._calculation.{quantity}")
-    locals()[class_name] = getattr(module, class_name)
-    copy = eval(repr(instance))
+    eval_globals = {
+        class_name: getattr(module, class_name),
+        "PosixPath": PosixPath,
+        "WindowsPath": WindowsPath,
+    }
+    copy = eval(repr(instance), eval_globals)
     assert copy.__class__ == instance.__class__
