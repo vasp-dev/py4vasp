@@ -13,8 +13,12 @@ from py4vasp._calculation.electron_phonon_self_energy import (
 
 
 @pytest.fixture
-def self_energy(raw_data):
-    raw_self_energy = raw_data.electron_phonon_self_energy("default")
+def raw_self_energy(raw_data):
+    return raw_data.electron_phonon_self_energy("default")
+
+
+@pytest.fixture
+def self_energy(raw_self_energy):
     self_energy = ElectronPhononSelfEnergy.from_data(raw_self_energy)
     self_energy.ref = types.SimpleNamespace()
     self_energy.ref.eigenvalues = raw_self_energy.eigenvalues
@@ -25,6 +29,15 @@ def self_energy(raw_data):
     self_energy.ref.selfen_carrier_den = _make_reference_carrier_den(raw_self_energy)
     self_energy.ref.scattering_approximation = raw_self_energy.scattering_approximation
     return self_energy
+
+
+@pytest.fixture(params=["carrier_den", "carrier_per_cell", "mu"])
+def chemical_potential(raw_data, request):
+    raw_potential = raw_data.electron_phonon_chemical_potential(request.param)
+    raw_potential.ref = types.SimpleNamespace()
+    raw_potential.ref.param = request.param
+    raw_potential.ref.expected_data = getattr(raw_potential, request.param)
+    return raw_potential
 
 
 def _make_reference_carrier_den(raw_self_energy):
@@ -64,15 +77,24 @@ def test_read_instance(self_energy, Assert):
             "nbands_sum": self_energy.ref.nbands_sum[i],
             "selfen_delta": self_energy.ref.selfen_delta[i],
             "selfen_carrier_den": self_energy.ref.selfen_carrier_den[i],
-            "scattering_approximation": self_energy.ref.scattering_approximation[i],
+            "scattering_approx": self_energy.ref.scattering_approximation[i],
         }
 
 
-def test_selections(self_energy):
+def test_selections(raw_self_energy, chemical_potential, Assert):
     # Should return a dictionary with expected selection keys
+    raw_self_energy.chemical_potential = chemical_potential
+    self_energy = ElectronPhononSelfEnergy.from_data(raw_self_energy)
     selections = self_energy.selections()
-    assert isinstance(selections, dict)
-    assert "nbands_sum" in selections
+    selections.pop("electron_phonon_self_energy")
+    expected = selections.pop(f"selfen_{chemical_potential.ref.param}")
+    Assert.allclose(expected, np.unique(chemical_potential.ref.expected_data))
+    expected_keys = {"nbands_sum", "scattering_approx", "selfen_delta"}
+    assert selections.keys() == expected_keys
+    Assert.allclose(selections["nbands_sum"], np.unique(raw_self_energy.nbands_sum))
+    Assert.allclose(selections["selfen_delta"], np.unique(raw_self_energy.delta))
+    scattering_approximation = np.unique(raw_self_energy.scattering_approximation)
+    Assert.allclose(selections["scattering_approx"], scattering_approximation)
 
 
 @pytest.fixture
@@ -160,42 +182,6 @@ def test_str_contains_expected_info(self_energy):
     assert "scattering_approximation" in s
     assert "delta" in s
     assert "nbands_sum" in s
-
-
-def test_indexing_and_iteration(self_energy):
-    # Indexing and iteration should yield instances
-    from py4vasp._calculation.electron_phonon_self_energy import (
-        ElectronPhononSelfEnergyInstance,
-    )
-
-    for i, instance in enumerate(self_energy):
-        assert isinstance(instance, ElectronPhononSelfEnergyInstance)
-        assert instance.index == i
-        assert instance.parent is self_energy
-    assert isinstance(self_energy[0], ElectronPhononSelfEnergyInstance)
-
-
-def test_to_dict_instance_matches_raw(self_energy):
-    # Each instance's to_dict should match the raw data for that index
-    for i in range(len(self_energy)):
-        d = self_energy[i].to_dict()
-        assert "eigenvalues" in d
-        assert "debye_waller" in d
-        assert "fan" in d
-        assert "nbands_sum" in d
-        assert "delta" in d
-        # Check shape matches
-        assert d["eigenvalues"].shape == self_energy.ref.eigenvalues.shape
-        assert d["debye_waller"].shape == self_energy.ref.debye_waller[i].shape
-        assert d["fan"].shape == self_energy.ref.fan[i].shape
-
-
-def test_read(self_energy, Assert):
-    slice_ = 0
-    actual = self_energy[slice_].to_dict()
-    Assert.allclose(actual["eigenvalues"], self_energy.ref.eigenvalues)
-    Assert.allclose(actual["debye_waller"], self_energy.ref.debye_waller[slice_])
-    Assert.allclose(actual["fan"], self_energy.ref.fan[slice_])
 
 
 def test_print(self_energy, format_):

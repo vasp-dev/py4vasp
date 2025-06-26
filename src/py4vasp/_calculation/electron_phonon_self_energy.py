@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import numpy as np
+
 from py4vasp._calculation import base, slice_
 from py4vasp._calculation.electron_phonon_chemical_potential import (
     ElectronPhononChemicalPotential,
@@ -66,13 +68,12 @@ class ElectronPhononSelfEnergyInstance:
         return self.to_dict()
 
     def to_dict(self):
-        print("mutag", self.parent.chemical_potential_mu_tag())
         mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
         return {
             "metadata": {
                 "nbands_sum": self._get_scalar("nbands_sum"),
                 "selfen_delta": self._get_scalar("delta"),
-                "scattering_approximation": self._get_data("scattering_approximation"),
+                "scattering_approx": self._get_data("scattering_approximation"),
                 mu_tag: mu_val[self._get_data("id_index")[2] - 1],
             },
             "eigenvalues": self.parent.eigenvalues(),
@@ -191,18 +192,14 @@ class ElectronPhononSelfEnergy(base.Refinery):
     def selections(self):
         """Return a dictionary describing what options are available
         to read the electron self-energies."""
-        id_name = self.id_name()
-        id_size = self.id_size()
-        selections_dict = {}
-        selections_dict["nbands_sum"] = self.valid_nbands_sum()
-        selections_dict["selfen_approx"] = self.valid_scattering_approximation()
-        selections_dict["selfen_delta"] = self.valid_delta()
-        chemical_potential = ElectronPhononChemicalPotential.from_data(
-            self._raw_data.chemical_potential
-        )
-        mu_tag, mu_val = chemical_potential.mu_tag()
-        selections_dict[mu_tag] = mu_val
-        return selections_dict
+        mu_tag, mu_val = self.chemical_potential_mu_tag()
+        return {
+            **super().selections(),
+            mu_tag: np.unique(mu_val),
+            "nbands_sum": np.unique(self._raw_data.nbands_sum),
+            "selfen_delta": np.unique(self._raw_data.delta),
+            "scattering_approx": np.unique(self._raw_data.scattering_approximation),
+        }
 
     def _generate_selections(self, selection):
         tree = select.Tree.from_selection(selection)
@@ -211,7 +208,6 @@ class ElectronPhononSelfEnergy(base.Refinery):
 
     @base.data_access
     def chemical_potential_mu_tag(self):
-        print(self._raw_data.chemical_potential)
         chemical_potential = ElectronPhononChemicalPotential.from_data(
             self._raw_data.chemical_potential
         )
