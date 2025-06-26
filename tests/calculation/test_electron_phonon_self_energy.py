@@ -6,6 +6,7 @@ import types
 import numpy as np
 import pytest
 
+from py4vasp import exception
 from py4vasp._calculation.electron_phonon_self_energy import (
     ElectronPhononSelfEnergy,
     ElectronPhononSelfEnergyInstance,
@@ -104,16 +105,50 @@ def test_selections(raw_self_energy, chemical_potential, Assert):
 )
 def test_select_returns_instances(self_energy, attribute):
     choices = getattr(self_energy.ref, attribute)
-    print(f"Choices for {attribute}: {choices}")
     choice = random.choice(list(choices))
-    print(f"Selected choice for {attribute}: {choice}")
-    print(choices == choice)
     indices, *_ = np.where(choices == choice)
     selected = self_energy.select(f"{attribute}={choice.item()}")
     assert len(selected) == len(indices)
     for index_, instance in zip(indices, selected):
         assert isinstance(instance, ElectronPhononSelfEnergyInstance)
         assert instance.index == index_
+
+
+def test_select_multiple(self_energy):
+    index_nbands_sum = 1
+    index_selfen_delta = 3
+    indices = [index_nbands_sum, index_selfen_delta]
+    choice_nbands_sum = self_energy.ref.nbands_sum[index_nbands_sum]
+    choice_selfen_delta = self_energy.ref.selfen_delta[index_selfen_delta]
+    selection = f"nbands_sum={choice_nbands_sum.item()}, selfen_delta={choice_selfen_delta.item()}"
+    selected = self_energy.select(selection)
+    assert len(selected) == len(indices)
+    for index_, instance in zip(indices, selected):
+        assert isinstance(instance, ElectronPhononSelfEnergyInstance)
+        assert instance.index == index_
+
+
+def test_select_nested(self_energy):
+    index_ = 0
+    choice_nbands_sum = self_energy.ref.nbands_sum[index_]
+    choice_selfen_carrier_den = self_energy.ref.selfen_carrier_den[index_]
+    count_ = sum(self_energy.ref.selfen_carrier_den == choice_selfen_carrier_den)
+    assert count_ > 1
+    selection = f"nbands_sum={choice_nbands_sum.item()}(selfen_carrier_den={choice_selfen_carrier_den.item()})"
+    selected = self_energy.select(selection)
+    assert len(selected) == 1
+    instance = selected[0]
+    assert isinstance(instance, ElectronPhononSelfEnergyInstance)
+    assert instance.index == index_
+
+
+@pytest.mark.parametrize(
+    "selection",
+    ["invalid_selection=0.01", "nbands_sum:0.01", "selfen_delta"],
+)
+def test_incorrect_selection(self_energy, selection):
+    with pytest.raises(exception.IncorrectUsage):
+        self_energy.select(selection)
 
 
 @pytest.fixture
