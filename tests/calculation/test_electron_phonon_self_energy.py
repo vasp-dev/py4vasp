@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import random
+import re
 import types
 
 import numpy as np
@@ -30,6 +31,8 @@ def self_energy(raw_self_energy):
     self_energy.ref.selfen_delta = raw_self_energy.delta
     self_energy.ref.selfen_carrier_den = _make_reference_carrier_den(raw_self_energy)
     self_energy.ref.scattering_approx = raw_self_energy.scattering_approximation
+    self_energy.ref.mapping_pattern = _make_reference_pattern()
+    self_energy.ref.instance_pattern = _make_reference_pattern(raw_self_energy)
     return self_energy
 
 
@@ -46,6 +49,21 @@ def _make_reference_carrier_den(raw_self_energy):
     chemical_potential = raw_self_energy.chemical_potential
     indices = raw_self_energy.id_index[:, 2] - 1
     return np.array([chemical_potential.carrier_den[index_] for index_ in indices])
+
+
+def _make_reference_pattern(raw_self_energy=None):
+    if raw_self_energy is None:
+        return r"""Electron-phonon self energy with 5 instance\(s\):
+    selfen_carrier_den: \[.*\]
+    nbands_sum: \[.*\]
+    selfen_delta: \[.*\]
+    scattering_approx: \[.*\]"""
+    else:
+        return r"""Electron self-energy instance 1:
+    selfen_carrier_den: .*
+    nbands_sum: .*
+    selfen_delta: .*
+    scattering_approx: .*"""
 
 
 def test_len(self_energy):
@@ -229,18 +247,18 @@ def test_sparse_tensor_hypothesis(mock_sparse_tensor):
                     assert bks[iband - band_start, ikpt, isp] == -1
 
 
-def test_str_contains_expected_info(self_energy):
-    instance = self_energy[0]
-    s = str(instance)
-    assert "Electron self-energy accumulator" in s
-    assert "scattering_approximation" in s
-    assert "delta" in s
-    assert "nbands_sum" in s
-
-
-def test_print(self_energy, format_):
+def test_print_mapping(self_energy, format_):
     actual, _ = format_(self_energy)
-    assert actual["text/plain"] == "electron phonon self energy"
+    assert re.search(self_energy.ref.mapping_pattern, str(self_energy), re.MULTILINE)
+    assert actual == {"text/plain": str(self_energy)}
+
+
+def test_print_instance(self_energy, format_):
+    instance = self_energy[0]
+    actual, _ = format_(instance)
+    # Check if the actual output matches the expected pattern
+    assert re.search(self_energy.ref.instance_pattern, str(instance), re.MULTILINE)
+    assert actual == {"text/plain": str(instance)}
 
 
 def test_factory_methods(raw_data, check_factory_methods):

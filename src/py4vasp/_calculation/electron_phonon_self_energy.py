@@ -40,22 +40,30 @@ class ElectronPhononSelfEnergyInstance:
         Returns a string representation of the self energy instance, including chemical
         potential and number of bands included in the sum.
         """
-        lines = []
-        lines.append(f"Electron self-energy accumulator N =  {self.index + 1}")
-        lines.append("----------------------------------")
+        return "\n".join(self._generate_lines())
+
+    def _generate_lines(self):
+        yield f"Electron self-energy instance {self.index + 1}:"
+        indent = 4 * " "
         # Information about the chemical potential
         mu_tag, mu_val = self.get_mu_tag()
-        lines.append(f"{mu_tag}: {mu_val}")
-        # Information about the scattering approximation
-        scattering_approx = self._get_data("scattering_approximation")
-        lines.append(f"scattering_approximation: {scattering_approx}")
-        # Information about the broadening parameter
-        delta = self._get_scalar("delta")
-        lines.append(f"delta: {delta}")
+        yield f"{indent}{mu_tag}: {mu_val}"
         # Information about the number of bands summed over
         nbands_sum = self._get_scalar("nbands_sum")
-        lines.append(f"nbands_sum: {nbands_sum}")
-        return "\n".join(lines) + "\n"
+        yield f"{indent}nbands_sum: {nbands_sum}"
+        # Information about the broadening parameter
+        delta = self._get_scalar("delta")
+        yield f"{indent}selfen_delta: {delta}"
+        # Information about the scattering approximation
+        scattering_approx = self._get_data("scattering_approximation")
+        yield f"{indent}scattering_approx: {scattering_approx}"
+
+    def print(self):
+        "Print a string representation of this instance."
+        print(str(self))
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
 
     def get_mu_tag(self):
         """Get choosen tag to select the chemical potential as well as its value"""
@@ -152,7 +160,13 @@ class ElectronPhononSelfEnergy(base.Refinery):
 
     @base.data_access
     def __str__(self):
-        return "electron phonon self energy"
+        num_instances = len(self)
+        selection_options = self.selections()
+        selection_options.pop("electron_phonon_self_energy", None)
+        options_str = "\n".join(
+            f"    {key}: {value}" for key, value in selection_options.items()
+        )
+        return f"Electron-phonon self energy with {num_instances} instance(s):\n{options_str}"
 
     @base.data_access
     def to_dict(self):
