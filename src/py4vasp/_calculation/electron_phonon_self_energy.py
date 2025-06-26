@@ -61,17 +61,24 @@ class ElectronPhononSelfEnergyInstance:
     def _get_scalar(self, name):
         return self.parent._get_scalar(name, self.index)
 
-    def to_dict(self, selection=None):
-        names = [
-            "debye_waller",
-            "fan",
-            "scattering_approximation",
-        ]
-        dict_ = {name: self._get_data(name) for name in names}
-        dict_["eigenvalues"] = self.parent.eigenvalues()
-        dict_["nbands_sum"] = self._get_scalar("nbands_sum")
-        dict_["delta"] = self._get_scalar("delta")
-        return dict_
+    def read(self):
+        "Convenient wrapper around to_dict. Check that function for examples and optional arguments."
+        return self.to_dict()
+
+    def to_dict(self):
+        print("mutag", self.parent.chemical_potential_mu_tag())
+        mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
+        return {
+            "metadata": {
+                "nbands_sum": self._get_scalar("nbands_sum"),
+                "selfen_delta": self._get_scalar("delta"),
+                "scattering_approximation": self._get_data("scattering_approximation"),
+                mu_tag: mu_val[self._get_data("id_index")[2] - 1],
+            },
+            "eigenvalues": self.parent.eigenvalues(),
+            "fan": self._get_data("fan"),
+            "debye_waller": self._get_data("debye_waller"),
+        }
 
     @property
     def id_index(self):
@@ -204,6 +211,7 @@ class ElectronPhononSelfEnergy(base.Refinery):
 
     @base.data_access
     def chemical_potential_mu_tag(self):
+        print(self._raw_data.chemical_potential)
         chemical_potential = ElectronPhononChemicalPotential.from_data(
             self._raw_data.chemical_potential
         )

@@ -1520,6 +1520,27 @@ def _current_density(selection):
     )
 
 
+def _electron_phonon_band_gap(selection):
+    number_components = 3 if selection == "collinear" else 1
+    number_temps = 6
+    shape_gap = [number_samples, number_components]
+    shape_renorm = [number_samples, number_components, number_temps]
+    shape_temperature = [number_samples, number_temps]
+    return raw.ElectronPhononBandgap(
+        valid_indices=range(number_samples),
+        nbands_sum=_make_data(np.linspace(10, 100, number_samples, dtype=np.int32)),
+        delta=_make_arbitrary_data([number_samples], seed=7824570),
+        chemical_potential=_electron_phonon_chemical_potential(),
+        scattering_approximation=["SERTA", "SERTA", "MRTA_TAU", "SERTA", "SERTA"],
+        fundamental_renorm=_make_arbitrary_data(shape_renorm),
+        direct_renorm=_make_arbitrary_data(shape_renorm),
+        fundamental=_make_arbitrary_data(shape_gap),
+        direct=_make_arbitrary_data(shape_gap),
+        temperatures=_make_arbitrary_data(shape_temperature),
+        id_index=_make_id_index(),
+    )
+
+
 def _electron_phonon_chemical_potential(selection="carrier_den"):
     number_temps = 6
     seed = 26826821
@@ -1573,8 +1594,8 @@ def _electron_phonon_self_energy(selection):
         scattering_approximation=[
             scattering_approximation for _ in range(number_samples)
         ],
-        chemical_potential=_electron_phonon_chemical_potential(selection),
-        id_index=[[1, sample + 1, 1] for sample in range(number_samples)],
+        chemical_potential=_electron_phonon_chemical_potential(),
+        id_index=_make_id_index(),
         eigenvalues=_make_arbitrary_data(band_kpoint_spin_index_shape),
         debye_waller=[
             _make_arbitrary_data(debye_waller_shape) for _ in range(number_samples)
@@ -1584,30 +1605,6 @@ def _electron_phonon_self_energy(selection):
             [band_kpoint_spin_index for _ in range(number_samples)]
         ),
         band_start=np.array([band_start for _ in range(number_samples)]),
-    )
-
-
-def _electron_phonon_band_gap(selection):
-    number_components = 3 if selection == "collinear" else 1
-    number_temps = 6
-    shape_gap = [number_samples, number_components]
-    shape_renorm = [number_samples, number_components, number_temps]
-    shape_temperature = [number_samples, number_temps]
-    unused = np.full(number_samples, fill_value=9999)
-    index_chemical_potential = np.arange(number_samples) % number_chemical_potentials
-    id_index = np.array([unused, unused, index_chemical_potential + 1, unused]).T
-    return raw.ElectronPhononBandgap(
-        valid_indices=range(number_samples),
-        nbands_sum=_make_data(np.linspace(10, 100, number_samples, dtype=np.int32)),
-        delta=_make_arbitrary_data([number_samples], seed=7824570),
-        chemical_potential=_electron_phonon_chemical_potential(),
-        scattering_approximation=["SERTA", "SERTA", "MRTA_TAU", "SERTA", "SERTA"],
-        fundamental_renorm=_make_arbitrary_data(shape_renorm),
-        direct_renorm=_make_arbitrary_data(shape_renorm),
-        fundamental=_make_arbitrary_data(shape_gap),
-        direct=_make_arbitrary_data(shape_gap),
-        temperatures=_make_arbitrary_data(shape_temperature),
-        id_index=_make_data(id_index),
     )
 
 
@@ -1639,6 +1636,13 @@ def _electron_phonon_transport(selection):
             scattering_approximation for _ in range(number_samples)
         ],
     )
+
+
+def _make_id_index():
+    unused = np.full(number_samples, fill_value=9999)
+    index_chemical_potential = np.arange(number_samples) % number_chemical_potentials
+    id_index = np.array([unused, unused, index_chemical_potential + 1, unused]).T
+    return raw.VaspData(id_index)
 
 
 def _make_unitary_matrix(n, seed=None):

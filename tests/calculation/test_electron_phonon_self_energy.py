@@ -20,7 +20,17 @@ def self_energy(raw_data):
     self_energy.ref.eigenvalues = raw_self_energy.eigenvalues
     self_energy.ref.debye_waller = raw_self_energy.debye_waller
     self_energy.ref.fan = raw_self_energy.fan
+    self_energy.ref.nbands_sum = raw_self_energy.nbands_sum
+    self_energy.ref.selfen_delta = raw_self_energy.delta
+    self_energy.ref.selfen_carrier_den = _make_reference_carrier_den(raw_self_energy)
+    self_energy.ref.scattering_approximation = raw_self_energy.scattering_approximation
     return self_energy
+
+
+def _make_reference_carrier_den(raw_self_energy):
+    chemical_potential = raw_self_energy.chemical_potential
+    indices = raw_self_energy.id_index[:, 2] - 1
+    return np.array([chemical_potential.carrier_den[index_] for index_ in indices])
 
 
 def test_len(self_energy):
@@ -28,11 +38,34 @@ def test_len(self_energy):
     assert len(self_energy) == len(self_energy._raw_data.valid_indices)
 
 
-def test_to_dict_keys(self_energy):
+def test_indexing_and_iteration(self_energy):
+    # Indexing and iteration should yield instances
+    for i, instance in enumerate(self_energy):
+        assert isinstance(instance, ElectronPhononSelfEnergyInstance)
+        assert instance.index == i
+        assert instance.parent is self_energy
+    assert isinstance(self_energy[0], ElectronPhononSelfEnergyInstance)
+
+
+def test_read_mapping(self_energy):
     # Check that to_dict returns expected keys
-    d = self_energy.to_dict()
-    assert "naccumulators" in d
-    assert d["naccumulators"] == len(self_energy)
+    assert self_energy.read() == {"naccumulators": len(self_energy)}
+
+
+def test_read_instance(self_energy, Assert):
+    # Each instance's to_dict should match the raw data for that index
+    for i, instance in enumerate(self_energy):
+        d = instance.read()
+        assert d.keys() == {"eigenvalues", "debye_waller", "fan", "metadata"}
+        Assert.allclose(d["eigenvalues"], self_energy.ref.eigenvalues)
+        Assert.allclose(d["debye_waller"], self_energy.ref.debye_waller[i])
+        Assert.allclose(d["fan"], self_energy.ref.fan[i])
+        assert d["metadata"] == {
+            "nbands_sum": self_energy.ref.nbands_sum[i],
+            "selfen_delta": self_energy.ref.selfen_delta[i],
+            "selfen_carrier_den": self_energy.ref.selfen_carrier_den[i],
+            "scattering_approximation": self_energy.ref.scattering_approximation[i],
+        }
 
 
 def test_selections(self_energy):
