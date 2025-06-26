@@ -1581,19 +1581,17 @@ def _electron_phonon_self_energy(selection):
     nbks = np.count_nonzero(band_kpoint_spin_index != -1)
     nw = 1  # number of frequencies at which the fan self-energy is evaluated
     ntemps = 6
-    nbands_sum = 12
-    scattering_approximation = "MRTA_TAU"
     fan_shape = [nbks, nw, ntemps]
     debye_waller_shape = [nbks, ntemps]
     return raw.ElectronPhononSelfEnergy(
         valid_indices=range(number_samples),
         id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
         id_size=[1, number_samples, 1, 1],
-        nbands_sum=np.array([nbands_sum for _ in range(number_samples)]),
-        delta=np.array([0 for _ in range(number_samples)]),
-        scattering_approximation=[
-            scattering_approximation for _ in range(number_samples)
-        ],
+        nbands_sum=_make_data(np.linspace(10, 100, number_samples, dtype=np.int32)),
+        delta=_make_arbitrary_data([number_samples], seed=18573411),
+        scattering_approximation=_make_data(
+            ["SERTA", "ERTA_LAMDBA", "ERTA_TAU", "MRTA_LAMDBA", "MRTA_TAU"]
+        ),
         chemical_potential=_electron_phonon_chemical_potential(),
         id_index=_make_id_index(),
         eigenvalues=_make_arbitrary_data(band_kpoint_spin_index_shape),

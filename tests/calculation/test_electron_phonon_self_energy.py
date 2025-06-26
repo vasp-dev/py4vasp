@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import random
 import types
 
 import numpy as np
@@ -27,7 +28,7 @@ def self_energy(raw_self_energy):
     self_energy.ref.nbands_sum = raw_self_energy.nbands_sum
     self_energy.ref.selfen_delta = raw_self_energy.delta
     self_energy.ref.selfen_carrier_den = _make_reference_carrier_den(raw_self_energy)
-    self_energy.ref.scattering_approximation = raw_self_energy.scattering_approximation
+    self_energy.ref.scattering_approx = raw_self_energy.scattering_approximation
     return self_energy
 
 
@@ -77,7 +78,7 @@ def test_read_instance(self_energy, Assert):
             "nbands_sum": self_energy.ref.nbands_sum[i],
             "selfen_delta": self_energy.ref.selfen_delta[i],
             "selfen_carrier_den": self_energy.ref.selfen_carrier_den[i],
-            "scattering_approx": self_energy.ref.scattering_approximation[i],
+            "scattering_approx": self_energy.ref.scattering_approx[i],
         }
 
 
@@ -95,6 +96,24 @@ def test_selections(raw_self_energy, chemical_potential, Assert):
     Assert.allclose(selections["selfen_delta"], np.unique(raw_self_energy.delta))
     scattering_approximation = np.unique(raw_self_energy.scattering_approximation)
     Assert.allclose(selections["scattering_approx"], scattering_approximation)
+
+
+@pytest.mark.parametrize(
+    "attribute",
+    ["nbands_sum", "selfen_delta", "selfen_carrier_den", "scattering_approx"],
+)
+def test_select_returns_instances(self_energy, attribute):
+    choices = getattr(self_energy.ref, attribute)
+    print(f"Choices for {attribute}: {choices}")
+    choice = random.choice(list(choices))
+    print(f"Selected choice for {attribute}: {choice}")
+    print(choices == choice)
+    indices, *_ = np.where(choices == choice)
+    selected = self_energy.select(f"{attribute}={choice.item()}")
+    assert len(selected) == len(indices)
+    for index_, instance in zip(indices, selected):
+        assert isinstance(instance, ElectronPhononSelfEnergyInstance)
+        assert instance.index == index_
 
 
 @pytest.fixture

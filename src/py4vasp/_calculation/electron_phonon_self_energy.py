@@ -2,11 +2,17 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
+from py4vasp import exception
 from py4vasp._calculation import base, slice_
 from py4vasp._calculation.electron_phonon_chemical_potential import (
     ElectronPhononChemicalPotential,
 )
-from py4vasp._util import select
+from py4vasp._util import select, suggest
+
+ALIAS = {
+    "selfen_delta": "delta",
+    "scattering_approx": "scattering_approximation",
+}
 
 
 class ElectronPhononSelfEnergyInstance:
@@ -228,42 +234,66 @@ class ElectronPhononSelfEnergy(base.Refinery):
         list of ElectronPhononSelfEnergyInstance
             Instances that match the selection criteria.
         """
-        selected_instances = []
-        mu_tag, mu_val = self.chemical_potential_mu_tag()
-        for idx in range(len(self)):
-            match_all = False
-            for sel in self._generate_selections(selection):
-                match = True
-                sel_dict = dict(zip(sel[::2], sel[1::2]))
-                for key, value in sel_dict.items():
-                    # Map selection keys to property names
-                    if key == "nbands_sum":
-                        instance_value = self._get_scalar("nbands_sum", idx)
-                        match_this = instance_value == value
-                    elif key == "selfen_approx":
-                        instance_value = self._get_data("scattering_approximation", idx)
-                        match_this = instance_value == value
-                    elif key == "selfen_delta":
-                        instance_value = self._get_scalar("delta", idx)
-                        match_this = abs(instance_value - value) < 1e-8
-                    elif key == mu_tag:
-                        mu_idx = self[idx].id_index[2] - 1
-                        instance_value = mu_val[mu_idx]
-                        match_this = abs(instance_value - float(value)) < 1e-8
-                    else:
-                        possible_values = self.selections()
-                        raise ValueError(
-                            f"Invalid selection {key}. Possible values are {possible_values.keys()}"
-                        )
-                    match = match and match_this
-                match_all = match_all or match
-            if match_all:
-                selected_instances.append(ElectronPhononSelfEnergyInstance(self, idx))
-        return selected_instances
+        indices = self._select_indices(selection)
+        return [ElectronPhononSelfEnergyInstance(self, index) for index in indices]
+
+    def _select_indices(self, selection):
+        tree = select.Tree.from_selection(selection)
+        return {
+            index_
+            for selection in tree.selections()
+            for index_ in self._filter_indices(selection)
+        }
+
+    def _filter_indices(self, selection):
+        remaining_indices = range(len(self._raw_data.valid_indices))
+        for group in selection:
+            self._raise_error_if_group_format_incorrect(group)
+            assert len(group.group) == 2
+            remaining_indices = self._filter_group(remaining_indices, *group.group)
+            remaining_indices = list(remaining_indices)
+        yield from remaining_indices
+
+    def _raise_error_if_group_format_incorrect(self, group):
+        if not isinstance(group, select.Group) or group.separator != "=":
+            message = f'\
+The selection {group} is not formatted correctly. It should be formatted like \
+"key=value". Please check the "selections" method for available options.'
+            raise exception.IncorrectUsage(message)
+
+    def _filter_group(self, remaining_indices, key, value):
+        for index_ in remaining_indices:
+            if self._match_key_value(index_, key, str(value)):
+                yield index_
+
+    def _match_key_value(self, index_, key, value):
+        instance_value = self._get_data(key, index_)
+        try:
+            value = float(value)
+        except ValueError:
+            return instance_value == value
+        return np.isclose(instance_value, float(value), rtol=1e-8, atol=0)
 
     @base.data_access
     def _get_data(self, name, index):
-        return getattr(self._raw_data, name)[index][:]
+        name = ALIAS.get(name, name)
+        dataset = getattr(self._raw_data, name, None)
+        if dataset is not None:
+            return np.array(dataset[index])
+        mu_tag, mu_val = self.chemical_potential_mu_tag()
+        self._raise_error_if_not_present(name, expected_name=mu_tag)
+        return mu_val[self._raw_data.id_index[index, 2] - 1]
+
+    def _raise_error_if_not_present(self, name, expected_name):
+        if name != expected_name:
+            valid_names = set(self.selections().keys())
+            valid_names.remove("electron_phonon_self_energy")
+            did_you_mean = suggest.did_you_mean(name, valid_names)
+            available_selections = '", "'.join(valid_names)
+            message = f'\
+The selection "{name}" is not a valid choice. {did_you_mean}Please check the \
+available selections: "{available_selections}".'
+            raise exception.IncorrectUsage(message)
 
     @base.data_access
     def _get_scalar(self, name, index):
