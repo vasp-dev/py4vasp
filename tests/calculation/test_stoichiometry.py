@@ -44,8 +44,9 @@ class Base:
             "resName": num_atoms * ("crystal",),
             "chainID": num_atoms * (0,),
             "segmentID": num_atoms * ("",),
-            "formal_charge": num_atoms * (0,),
         }
+        if "formal_charge" in actual:
+            ref_data["formal_charge"] = num_atoms * (0,)
         reference = pd.DataFrame(ref_data)
         pdt.assert_frame_equal(reference, actual, check_dtype=False)
 
