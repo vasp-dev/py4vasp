@@ -117,6 +117,7 @@ class Stoichiometry(base.Refinery):
         df["resSeq"] = 0
         df["resName"] = "crystal"
         df["chainID"] = 0
+        df["formal_charge"] = 0
         return mdtraj.Topology.from_dataframe(df)
 
     @base.data_access
