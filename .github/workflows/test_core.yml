@@ -7,7 +7,7 @@ on:
     branches: [master]
 
 jobs:
-  tests:
+  test-core:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
