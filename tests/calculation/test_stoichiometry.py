@@ -9,6 +9,7 @@ from py4vasp._util import import_, select
 
 ase = import_.optional("ase")
 pd = import_.optional("pandas")
+pdt = import_.optional("pandas.testing")
 
 
 @pytest.fixture
@@ -30,7 +31,7 @@ class Base:
         actual = self.stoichiometry.to_frame(**self.ion_types)
         ref_data = {"name": self.names, "element": self.elements}
         reference = pd.DataFrame(ref_data)
-        assert reference.equals(actual)
+        pdt.assert_frame_equal(reference, actual)
 
     def test_to_mdtraj(self, not_core):
         actual, _ = self.stoichiometry.to_mdtraj(**self.ion_types).to_dataframe()
@@ -44,8 +45,10 @@ class Base:
             "chainID": num_atoms * (0,),
             "segmentID": num_atoms * ("",),
         }
+        if "formal_charge" in actual:
+            ref_data["formal_charge"] = num_atoms * (0,)
         reference = pd.DataFrame(ref_data)
-        assert reference.equals(actual)
+        pdt.assert_frame_equal(reference, actual, check_dtype=False)
 
     def test_elements(self):
         assert self.stoichiometry.elements(**self.ion_types) == self.elements
