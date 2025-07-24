@@ -3,7 +3,7 @@
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._calculation import base, slice_
+from py4vasp._calculation import base
 from py4vasp._calculation.electron_phonon_chemical_potential import (
     ElectronPhononChemicalPotential,
 )
@@ -46,13 +46,13 @@ class ElectronPhononSelfEnergyInstance:
         yield f"Electron self-energy instance {self.index + 1}:"
         indent = 4 * " "
         # Information about the chemical potential
-        mu_tag, mu_val = self.get_mu_tag()
-        yield f"{indent}{mu_tag}: {mu_val}"
+        mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
+        yield f"{indent}{mu_tag}: {mu_val[self._get_data('id_index')[2] - 1]}"
         # Information about the number of bands summed over
-        nbands_sum = self._get_scalar("nbands_sum")
+        nbands_sum = self._get_data("nbands_sum")
         yield f"{indent}nbands_sum: {nbands_sum}"
         # Information about the broadening parameter
-        delta = self._get_scalar("delta")
+        delta = self._get_data("delta")
         yield f"{indent}selfen_delta: {delta}"
         # Information about the scattering approximation
         scattering_approx = self._get_data("scattering_approximation")
@@ -65,17 +65,8 @@ class ElectronPhononSelfEnergyInstance:
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def get_mu_tag(self):
-        """Get choosen tag to select the chemical potential as well as its value"""
-        mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
-        mu_idx = self.id_index[2] - 1
-        return mu_tag, mu_val[mu_idx]
-
     def _get_data(self, name):
         return self.parent._get_data(name, self.index)
-
-    def _get_scalar(self, name):
-        return self.parent._get_scalar(name, self.index)
 
     def read(self):
         "Convenient wrapper around to_dict. Check that function for examples and optional arguments."
@@ -85,8 +76,8 @@ class ElectronPhononSelfEnergyInstance:
         mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
         return {
             "metadata": {
-                "nbands_sum": self._get_scalar("nbands_sum"),
-                "selfen_delta": self._get_scalar("delta"),
+                "nbands_sum": self._get_data("nbands_sum"),
+                "selfen_delta": self._get_data("delta"),
                 "scattering_approx": self._get_data("scattering_approximation"),
                 mu_tag: mu_val[self._get_data("id_index")[2] - 1],
             },
@@ -95,44 +86,36 @@ class ElectronPhononSelfEnergyInstance:
             "debye_waller": self._get_data("debye_waller"),
         }
 
-    @property
-    def id_index(self):
-        return self._get_data("id_index")
+    # def get_fan(self, arg):
+    #     iband, ikpt, isp, *more = arg
+    #     st = SparseTensor(
+    #         self._get_data("band_kpoint_spin_index") - 1,
+    #         self._get_scalar("band_start"),
+    #         self._get_data("fan"),
+    #     )
+    #     return st[arg]
 
-    @property
-    def id_name(self):
-        return self.parent.id_name
+    # def get_debye_waller(self, arg):
+    #     iband, ikpt, isp, *more = arg
+    #     st = SparseTensor(
+    #         self._get_data("band_kpoint_spin_index") - 1,
+    #         self._get_scalar("band_start"),
+    #         self._get_data("debye_waller"),
+    #     )
+    #     return st[arg]
 
-    def get_fan(self, arg):
-        iband, ikpt, isp, *more = arg
-        st = SparseTensor(
-            self._get_data("band_kpoint_spin_index") - 1,
-            self._get_scalar("band_start"),
-            self._get_data("fan"),
-        )
-        return st[arg]
+    # def get_self_energy(self, arg):
+    #     import numpy as np
 
-    def get_debye_waller(self, arg):
-        iband, ikpt, isp, *more = arg
-        st = SparseTensor(
-            self._get_data("band_kpoint_spin_index") - 1,
-            self._get_scalar("band_start"),
-            self._get_data("debye_waller"),
-        )
-        return st[arg]
-
-    def get_self_energy(self, arg):
-        import numpy as np
-
-        iband, ikpt, isp, *more = arg
-        fan = self._get_data("fan")
-        dw = self._get_data("debye_waller")[:, np.newaxis, :]
-        st = SparseTensor(
-            self._get_data("band_kpoint_spin_index") - 1,
-            self._get_scalar("band_start"),
-            fan + dw,
-        )
-        return st[arg]
+    #     iband, ikpt, isp, *more = arg
+    #     fan = self._get_data("fan")
+    #     dw = self._get_data("debye_waller")[:, np.newaxis, :]
+    #     st = SparseTensor(
+    #         self._get_data("band_kpoint_spin_index") - 1,
+    #         self._get_scalar("band_start"),
+    #         fan + dw,
+    #     )
+    #     return st[arg]
 
 
 class ElectronPhononSelfEnergy(base.Refinery):
@@ -177,14 +160,6 @@ class ElectronPhononSelfEnergy(base.Refinery):
         return self._raw_data.eigenvalues[:]
 
     @base.data_access
-    def id_name(self):
-        return self._raw_data.id_name[:]
-
-    @base.data_access
-    def id_size(self):
-        return self._raw_data.id_size[:]
-
-    @base.data_access
     def __getitem__(self, key):
         # TODO add logic to select instances
         return ElectronPhononSelfEnergyInstance(self, key)
@@ -193,20 +168,20 @@ class ElectronPhononSelfEnergy(base.Refinery):
         for i in range(len(self)):
             yield self[i]
 
-    @base.data_access
-    def valid_delta(self):
-        return {self._get_scalar("delta", index) for index in range(len(self))}
+    # @base.data_access
+    # def valid_delta(self):
+    #     return {self._get_scalar("delta", index) for index in range(len(self))}
 
-    @base.data_access
-    def valid_nbands_sum(self):
-        return {self._get_scalar("nbands_sum", index) for index in range(len(self))}
+    # @base.data_access
+    # def valid_nbands_sum(self):
+    #     return {self._get_scalar("nbands_sum", index) for index in range(len(self))}
 
-    @base.data_access
-    def valid_scattering_approximation(self):
-        return {
-            self._get_data("scattering_approximation", index)
-            for index in range(len(self))
-        }
+    # @base.data_access
+    # def valid_scattering_approximation(self):
+    #     return {
+    #         self._get_data("scattering_approximation", index)
+    #         for index in range(len(self))
+    #     }
 
     @base.data_access
     def selections(self):
@@ -308,10 +283,6 @@ The selection {group} is not formatted correctly. It should be formatted like \
 The selection "{name}" is not a valid choice. {did_you_mean}Please check the \
 available selections: "{available_selections}".'
             raise exception.IncorrectUsage(message)
-
-    @base.data_access
-    def _get_scalar(self, name, index):
-        return getattr(self._raw_data, name)[index][()]
 
     @base.data_access
     def __len__(self):
