@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import itertools
 import random
 import re
 import types
@@ -181,18 +182,49 @@ def mock_sparse_tensor():
     return SparseTensor(band_kpoint_spin_index, band_start, tensor)
 
 
-def test_sparse_tensor_valid_and_invalid_access(mock_sparse_tensor):
-    # Valid indices
-    assert mock_sparse_tensor[0, 0, 0] == 10.0
-    assert mock_sparse_tensor[1, 1, 1] == 20.0
-    assert mock_sparse_tensor[3, 2, 1] == 30.0
-    # Invalid indices should raise IndexError
-    with pytest.raises(IndexError):
-        _ = mock_sparse_tensor[0, 1, 0]
-    with pytest.raises(IndexError):
-        _ = mock_sparse_tensor[1, 0, 1]
-    with pytest.raises(IndexError):
-        _ = mock_sparse_tensor[4, 2, 1]
+@pytest.mark.parametrize(
+    "valid_indices, expected_data",
+    [[(0, 0, 0), 10.0], [(1, 1, 1), 20.0], [(3, 2, 1), 30.0]],
+)
+def test_sparse_tensor_valid_and_invalid_access(
+    mock_sparse_tensor, valid_indices, expected_data
+):
+    band, kpoint, spin = valid_indices
+    assert mock_sparse_tensor[band, kpoint, spin] == expected_data
+
+
+@pytest.mark.parametrize("invalid_indices", [[0, 1, 0], [1, 0, 1], [2, 2, 1]])
+def test_sparse_tensor_invalid_access(mock_sparse_tensor, invalid_indices):
+    band, kpoint, spin = invalid_indices
+    with pytest.raises(exception.DataMismatch):
+        mock_sparse_tensor[band, kpoint, spin]
+
+
+@pytest.mark.parametrize("out_of_bounds_indices", [[4, 2, 1], [3, 3, 2]])
+def test_sparse_tensor_out_of_bounds_access(mock_sparse_tensor, out_of_bounds_indices):
+    band, kpoint, spin = out_of_bounds_indices
+    with pytest.raises(exception.IncorrectUsage):
+        mock_sparse_tensor[band, kpoint, spin]
+
+
+def test_sparse_tensor_incorrect_arguments(mock_sparse_tensor):
+    # Test incorrect number of arguments
+    with pytest.raises(exception.IncorrectUsage):
+        mock_sparse_tensor[1, 2]  # Missing spin index
+    with pytest.raises(exception.IncorrectUsage):
+        mock_sparse_tensor[1, 2, 3, 4]  # Too many arguments
+
+
+def test_sparse_tensor_should_only_succeed_if_index_is_valid(mock_sparse_tensor):
+    bks = mock_sparse_tensor._band_kpoint_spin_index
+    band_start = mock_sparse_tensor._band_start
+    for band, kpoint, spin in itertools.product(range(4), range(3), range(2)):
+        try:
+            val = mock_sparse_tensor[band, kpoint, spin]
+            assert bks[band - band_start, kpoint, spin] != -1
+            assert val in (10.0, 20.0, 30.0)
+        except exception.DataMismatch:
+            assert bks[band - band_start, kpoint, spin] == -1
 
 
 @pytest.mark.skip
@@ -232,21 +264,6 @@ def test_get_fan_invalid_index_raises(self_energy):
         iband, ikpt, isp = invalid[0] + [band_start, 0, 0]
         with pytest.raises(IndexError):
             instance.get_fan((int(iband), int(ikpt), int(isp)))
-
-
-def test_sparse_tensor_hypothesis(mock_sparse_tensor):
-    bks = mock_sparse_tensor.band_kpoint_spin_index
-    band_start = mock_sparse_tensor.band_start
-    for iband in range(4):
-        for ikpt in range(3):
-            for isp in range(2):
-                try:
-                    val = mock_sparse_tensor[iband, ikpt, isp]
-                    # Should only succeed if index is valid
-                    assert bks[iband - band_start, ikpt, isp] != -1
-                    assert val in (10.0, 20.0, 30.0)
-                except IndexError:
-                    assert bks[iband - band_start, ikpt, isp] == -1
 
 
 def test_print_mapping(self_energy, format_):

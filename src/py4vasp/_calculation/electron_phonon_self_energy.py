@@ -291,18 +291,30 @@ available selections: "{available_selections}".'
 
 class SparseTensor:
     def __init__(self, band_kpoint_spin_index, band_start, tensor):
-        self.band_kpoint_spin_index = band_kpoint_spin_index
-        self.band_start = band_start
-        self.tensor = tensor
+        self._band_kpoint_spin_index = band_kpoint_spin_index
+        self._band_start = band_start
+        self._tensor = tensor
 
-    def _get_band_kpoint_spin_index(self, iband, ikpt, isp):
-        return self.band_kpoint_spin_index[iband - self.band_start, ikpt, isp]
-
-    def __getitem__(self, arg):
-        iband, ikpt, isp, *more = arg
-        ibks = self._get_band_kpoint_spin_index(iband, ikpt, isp)
-        if ibks == -1:
-            raise IndexError(
-                f"The calculation for band:{iband} kpoint:{ikpt} spin:{isp} was not performed."
+    def _get_band_kpoint_spin_index(self, band, kpoint, spin):
+        try:
+            return self._band_kpoint_spin_index[band - self._band_start, kpoint, spin]
+        except IndexError:
+            raise exception.IncorrectUsage(
+                f"Invalid indices: {band=}, {kpoint=}, {spin=}. "
+                f"Valid ranges are: {self._band_start} <= band < {self._band_start + len(self._band_kpoint_spin_index)}"
+                f", 0 <= kpoint < {self._band_kpoint_spin_index.shape[1]}, "
+                f"0 <= spin < {self._band_kpoint_spin_index.shape[2]}."
             )
-        return self.tensor[ibks]
+
+    def __getitem__(self, band_kpoint_spin_tuple):
+        if len(band_kpoint_spin_tuple) != 3:
+            raise exception.IncorrectUsage(
+                "Please provide exactly three indices for band, kpoint and spin."
+            )
+        band, kpoint, spin = band_kpoint_spin_tuple
+        index_ = self._get_band_kpoint_spin_index(band, kpoint, spin)
+        if index_ == -1:
+            raise exception.DataMismatch(
+                f"The calculation for {band=} {kpoint=} {spin=} was not performed."
+            )
+        return self._tensor[index_]
