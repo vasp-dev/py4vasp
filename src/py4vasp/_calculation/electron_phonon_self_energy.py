@@ -6,6 +6,7 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._calculation import base
+from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
 from py4vasp._calculation.electron_phonon_chemical_potential import (
     ElectronPhononChemicalPotential,
 )
@@ -68,7 +69,11 @@ class ElectronPhononSelfEnergyInstance:
         p.text(str(self))
 
     def _get_data(self, name):
-        return self.parent._get_data(name, self.index)
+        data = self.parent._get_data(name, self.index)
+        if name == "fan":
+            return convert.to_complex(data)
+        else:
+            return data
 
     def read(self):
         "Convenient wrapper around to_dict. Check that function for examples and optional arguments."
@@ -127,39 +132,27 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
         >>> data = instance.to_dict()
     """
 
+    def _accumulator(self):
+        return ElectronPhononAccumulator(self, self._raw_data)
+
     @base.data_access
     def __str__(self):
-        num_instances = len(self)
-        selection_options = self.selections()
-        selection_options.pop("electron_phonon_self_energy", None)
-        options_str = "\n".join(
-            f"    {key}: {value}" for key, value in selection_options.items()
-        )
-        return f"Electron-phonon self energy with {num_instances} instance(s):\n{options_str}"
+        return str(self._accumulator())
 
     @base.data_access
     def to_dict(self):
-        return {"naccumulators": len(self)}
+        return self._accumulator().to_dict()
 
     @base.data_access
     def selections(self):
         """Return a dictionary describing what options are available
         to read the electron self-energies."""
-        mu_tag, mu_val = self.chemical_potential_mu_tag()
-        return {
-            **super().selections(),
-            mu_tag: np.unique(mu_val),
-            "nbands_sum": np.unique(self._raw_data.nbands_sum),
-            "selfen_delta": np.unique(self._raw_data.delta),
-            "scattering_approx": np.unique(self._raw_data.scattering_approximation),
-        }
+        base_selections = super().selections()
+        return self._accumulator().selections(base_selections)
 
     @base.data_access
     def chemical_potential_mu_tag(self):
-        chemical_potential = ElectronPhononChemicalPotential.from_data(
-            self._raw_data.chemical_potential
-        )
-        return chemical_potential.mu_tag()
+        return self._accumulator().chemical_potential_mu_tag()
 
     @base.data_access
     def select(self, selection):
@@ -176,45 +169,12 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
         list of ElectronPhononSelfEnergyInstance
             Instances that match the selection criteria.
         """
-        indices = self._select_indices(selection)
+        indices = self._accumulator().select_indices(selection)
         return [ElectronPhononSelfEnergyInstance(self, index) for index in indices]
 
-    def _select_indices(self, selection):
-        tree = select.Tree.from_selection(selection)
-        return {
-            index_
-            for selection in tree.selections()
-            for index_ in self._filter_indices(selection)
-        }
-
-    def _filter_indices(self, selection):
-        remaining_indices = range(len(self._raw_data.valid_indices))
-        for group in selection:
-            self._raise_error_if_group_format_incorrect(group)
-            assert len(group.group) == 2
-            remaining_indices = self._filter_group(remaining_indices, *group.group)
-            remaining_indices = list(remaining_indices)
-        yield from remaining_indices
-
-    def _raise_error_if_group_format_incorrect(self, group):
-        if not isinstance(group, select.Group) or group.separator != "=":
-            message = f'\
-The selection {group} is not formatted correctly. It should be formatted like \
-"key=value". Please check the "selections" method for available options.'
-            raise exception.IncorrectUsage(message)
-
-    def _filter_group(self, remaining_indices, key, value):
-        for index_ in remaining_indices:
-            if self._match_key_value(index_, key, str(value)):
-                yield index_
-
-    def _match_key_value(self, index_, key, value):
-        instance_value = self._get_data(key, index_)
-        try:
-            value = float(value)
-        except ValueError:
-            return instance_value == value
-        return np.isclose(instance_value, float(value), rtol=1e-8, atol=0)
+    @base.data_access
+    def _get_data(self, name, index):
+        return self._accumulator().get_data(name, index)
 
     @base.data_access
     def eigenvalues(self):
@@ -229,29 +189,6 @@ The selection {group} is not formatted correctly. It should be formatted like \
     @base.data_access
     def __len__(self):
         return len(self._raw_data.valid_indices)
-
-    @base.data_access
-    def _get_data(self, name, index):
-        name = ALIAS.get(name, name)
-        dataset = getattr(self._raw_data, name, None)
-        if name == "fan":
-            return convert.to_complex(np.array(dataset[index]))
-        if dataset is not None:
-            return np.array(dataset[index])
-        mu_tag, mu_val = self.chemical_potential_mu_tag()
-        self._raise_error_if_not_present(name, expected_name=mu_tag)
-        return mu_val[self._raw_data.id_index[index, 2] - 1]
-
-    def _raise_error_if_not_present(self, name, expected_name):
-        if name != expected_name:
-            valid_names = set(self.selections().keys())
-            valid_names.remove("electron_phonon_self_energy")
-            did_you_mean = suggest.did_you_mean(name, valid_names)
-            available_selections = '", "'.join(valid_names)
-            message = f'\
-The selection "{name}" is not a valid choice. {did_you_mean}Please check the \
-available selections: "{available_selections}".'
-            raise exception.IncorrectUsage(message)
 
 
 class SparseTensor:
