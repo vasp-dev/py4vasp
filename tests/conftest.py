@@ -1564,25 +1564,24 @@ def _electron_phonon_chemical_potential(selection="carrier_den"):
 
 
 def _electron_phonon_self_energy(selection):
-    nspin = 1
-    nkpoint = 2
-    nband = 4
     band_start = 1
     # mock band_kpoint_spin_index array
-    band_kpoint_spin_index_shape = [nspin, nkpoint, nband]
+    number_kpoints = 2
+    band_kpoint_spin_index_shape = [single_spin, number_kpoints, number_bands]
     band_kpoint_spin_index = np.full(band_kpoint_spin_index_shape, -1)
-    ibks = 0
-    for isp in range(nspin):
-        for ikpt in range(nkpoint):
-            for iband in range(nband):
-                ibks = ibks + 1
-                band_kpoint_spin_index[isp, ikpt, iband] = ibks
+    spin = 0
+    index_ = 0
+    for kpoint, band in itertools.product(range(number_kpoints), range(number_bands)):
+        if kpoint == band:
+            continue  # create a gap in the band_kpoint_spin_index
+        index_ += 1
+        band_kpoint_spin_index[spin, kpoint, band] = index_
     # mock fan and dw
-    nbks = np.count_nonzero(band_kpoint_spin_index != -1)
-    nw = 1  # number of frequencies at which the fan self-energy is evaluated
-    ntemps = 6
-    fan_shape = [nbks, nw, ntemps]
-    debye_waller_shape = [nbks, ntemps]
+    number_indices = np.count_nonzero(band_kpoint_spin_index != -1)
+    number_freq = 1  # number of frequencies at which the fan self-energy is evaluated
+    number_temp = 6
+    fan_shape = [number_indices, number_freq, number_temp, complex_]
+    debye_waller_shape = [number_indices, number_temp]
     return raw.ElectronPhononSelfEnergy(
         valid_indices=range(number_samples),
         id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
@@ -1599,10 +1598,8 @@ def _electron_phonon_self_energy(selection):
             _make_arbitrary_data(debye_waller_shape) for _ in range(number_samples)
         ],
         fan=[_make_arbitrary_data(fan_shape) for _ in range(number_samples)],
-        band_kpoint_spin_index=np.array(
-            [band_kpoint_spin_index for _ in range(number_samples)]
-        ),
-        band_start=np.array([band_start for _ in range(number_samples)]),
+        band_kpoint_spin_index=[band_kpoint_spin_index for _ in range(number_samples)],
+        band_start=[band_start for _ in range(number_samples)],
     )
 
 

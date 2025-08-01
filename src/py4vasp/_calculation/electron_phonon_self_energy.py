@@ -7,7 +7,7 @@ from py4vasp._calculation import base
 from py4vasp._calculation.electron_phonon_chemical_potential import (
     ElectronPhononChemicalPotential,
 )
-from py4vasp._util import select, suggest
+from py4vasp._util import convert, select, suggest
 
 ALIAS = {
     "selfen_delta": "delta",
@@ -85,6 +85,21 @@ class ElectronPhononSelfEnergyInstance:
             "fan": self._get_data("fan"),
             "debye_waller": self._get_data("debye_waller"),
         }
+
+    def fan(self):
+        return self._make_sparse_tensor(self._get_data("fan"))
+
+    def debye_waller(self):
+        return self._make_sparse_tensor(self._get_data("debye_waller"))
+
+    def self_energy(self):
+        self_energy = self._get_data("fan") + self._get_data("debye_waller")
+        return self._make_sparse_tensor(self_energy)
+
+    def _make_sparse_tensor(self, tensor_data):
+        band_kpoint_spin_index = self._get_data("band_kpoint_spin_index").T - 1
+        band_start = self._get_data("band_start")
+        return SparseTensor(band_kpoint_spin_index, band_start, tensor_data)
 
     # def get_fan(self, arg):
     #     iband, ikpt, isp, *more = arg
@@ -167,21 +182,6 @@ class ElectronPhononSelfEnergy(base.Refinery):
     def __iter__(self):
         for i in range(len(self)):
             yield self[i]
-
-    # @base.data_access
-    # def valid_delta(self):
-    #     return {self._get_scalar("delta", index) for index in range(len(self))}
-
-    # @base.data_access
-    # def valid_nbands_sum(self):
-    #     return {self._get_scalar("nbands_sum", index) for index in range(len(self))}
-
-    # @base.data_access
-    # def valid_scattering_approximation(self):
-    #     return {
-    #         self._get_data("scattering_approximation", index)
-    #         for index in range(len(self))
-    #     }
 
     @base.data_access
     def selections(self):
@@ -267,6 +267,8 @@ The selection {group} is not formatted correctly. It should be formatted like \
     def _get_data(self, name, index):
         name = ALIAS.get(name, name)
         dataset = getattr(self._raw_data, name, None)
+        if name == "fan":
+            return convert.to_complex(np.array(dataset[index]))
         if dataset is not None:
             return np.array(dataset[index])
         mu_tag, mu_val = self.chemical_potential_mu_tag()
@@ -313,7 +315,7 @@ class SparseTensor:
             )
         band, kpoint, spin = band_kpoint_spin_tuple
         index_ = self._get_band_kpoint_spin_index(band, kpoint, spin)
-        if index_ == -1:
+        if index_ < 0:
             raise exception.DataMismatch(
                 f"The calculation for {band=} {kpoint=} {spin=} was not performed."
             )
