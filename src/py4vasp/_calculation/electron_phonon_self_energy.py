@@ -2,15 +2,11 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from collections import abc
 
-import numpy as np
-
 from py4vasp import exception
 from py4vasp._calculation import base
 from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
-from py4vasp._calculation.electron_phonon_chemical_potential import (
-    ElectronPhononChemicalPotential,
-)
-from py4vasp._util import convert, select, suggest
+from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
+from py4vasp._util import convert
 
 ALIAS = {
     "selfen_delta": "delta",
@@ -18,7 +14,7 @@ ALIAS = {
 }
 
 
-class ElectronPhononSelfEnergyInstance:
+class ElectronPhononSelfEnergyInstance(ElectronPhononInstance):
     """
     Represents a single instance of electron-phonon self-energy calculations.
     This class provides access to the electron-phonon self-energy data for a specific
@@ -33,10 +29,6 @@ class ElectronPhononSelfEnergyInstance:
     >>> data = instance.to_dict()
     >>> fan_value = instance.get_fan((iband, ikpt, isp))
     """
-
-    def __init__(self, parent, index):
-        self.parent = parent
-        self.index = index
 
     def __str__(self):
         """
@@ -61,46 +53,25 @@ class ElectronPhononSelfEnergyInstance:
         scattering_approx = self._get_data("scattering_approximation")
         yield f"{indent}scattering_approx: {scattering_approx}"
 
-    def print(self):
-        "Print a string representation of this instance."
-        print(str(self))
-
-    def _repr_pretty_(self, p, cycle):
-        p.text(str(self))
-
-    def _get_data(self, name):
-        data = self.parent._get_data(name, self.index)
-        if name == "fan":
-            return convert.to_complex(data)
-        else:
-            return data
-
-    def read(self):
-        "Convenient wrapper around to_dict. Check that function for examples and optional arguments."
-        return self.to_dict()
-
     def to_dict(self):
-        mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
         return {
-            "metadata": {
-                "nbands_sum": self._get_data("nbands_sum"),
-                "selfen_delta": self._get_data("delta"),
-                "scattering_approx": self._get_data("scattering_approximation"),
-                mu_tag: mu_val[self._get_data("id_index")[2] - 1],
-            },
+            "metadata": self._read_metadata(),
             "eigenvalues": self.parent.eigenvalues(),
-            "fan": self._get_data("fan"),
+            "fan": self._get_fan(),
             "debye_waller": self._get_data("debye_waller"),
         }
 
+    def _get_fan(self):
+        return convert.to_complex(self._get_data("fan"))
+
     def fan(self):
-        return self._make_sparse_tensor(self._get_data("fan"))
+        return self._make_sparse_tensor(self._get_fan())
 
     def debye_waller(self):
         return self._make_sparse_tensor(self._get_data("debye_waller"))
 
     def self_energy(self):
-        self_energy = self._get_data("fan") + self._get_data("debye_waller")
+        self_energy = self._get_fan() + self._get_data("debye_waller")
         return self._make_sparse_tensor(self_energy)
 
     def _make_sparse_tensor(self, tensor_data):

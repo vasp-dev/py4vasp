@@ -4,22 +4,14 @@ from collections import abc
 
 import numpy as np
 
-from py4vasp import exception
 from py4vasp._calculation import base
 from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
-from py4vasp._calculation.electron_phonon_chemical_potential import (
-    ElectronPhononChemicalPotential,
-)
+from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
 from py4vasp._third_party import graph
-from py4vasp._util import index, select, suggest
-
-ALIAS = {
-    "selfen_delta": "delta",
-    "scattering_approx": "scattering_approximation",
-}
+from py4vasp._util import index, select
 
 
-class ElectronPhononBandgapInstance(graph.Mixin):
+class ElectronPhononBandgapInstance(ElectronPhononInstance, graph.Mixin):
     """
     Represents an instance of electron-phonon band gap calculations.
 
@@ -70,16 +62,6 @@ class ElectronPhononBandgapInstance(graph.Mixin):
             yield f"{temperature:18.6f} {kohn_sham_gap:19.6f} {quasi_particle_gap:19.6f} {1000 * renormalization:19.6f}"
         yield ""
 
-    def print(self):
-        "Print a string representation of this instance."
-        print(str(self))
-
-    def _repr_pretty_(self, p, cycle):
-        p.text(str(self))
-
-    def _get_data(self, name):
-        return self.parent._get_data(name, self.index)
-
     def to_graph(self, selection):
         """Generates a graph representing the temperature dependence of bandgap energies.
 
@@ -115,10 +97,6 @@ class ElectronPhononBandgapInstance(graph.Mixin):
         ]
         return graph.Graph(series, ylabel="Energy (eV)", xlabel="Temperature (K)")
 
-    def read(self):
-        "Convenient wrapper around to_dict. Check that function for examples and optional arguments."
-        return self.to_dict()
-
     def to_dict(self):
         """Convert the electron-phonon bandgap calculation results to a dictionary.
 
@@ -140,14 +118,8 @@ class ElectronPhononBandgapInstance(graph.Mixin):
         The <mu_tag> key in the metadata will be dynamically set based on the chemical
         potential tag returned by `ChemicalPotential.mu_tag()`.
         """
-        mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
         return {
-            "metadata": {
-                "nbands_sum": self._get_data("nbands_sum"),
-                "selfen_delta": self._get_data("delta"),
-                "scattering_approx": self._get_data("scattering_approximation"),
-                mu_tag: mu_val[self._get_data("id_index")[2] - 1],
-            },
+            "metadata": self._read_metadata(),
             "direct_renorm": self._get_data("direct_renorm"),
             "direct": self._get_data("direct"),
             "fundamental_renorm": self._get_data("fundamental_renorm"),
