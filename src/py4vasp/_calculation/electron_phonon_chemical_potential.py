@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from py4vasp import exception
 from py4vasp._calculation import base, slice_
 from py4vasp._util import check, convert, import_
 
@@ -64,6 +65,9 @@ class ElectronPhononChemicalPotential(base.Refinery):
             return "selfen_mu", self._raw_data.mu[:]
         if not check.is_none(self._raw_data.carrier_per_cell):
             return "selfen_carrier_per_cell", self._raw_data.carrier_per_cell[:]
+        raise exception.NoData(
+            "None of the carrier density, chemical potential, or carrier per cell data is available in the raw data."
+        )
 
     @base.data_access
     def to_dict(self):
