@@ -8,11 +8,6 @@ from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccum
 from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
 from py4vasp._util import convert
 
-ALIAS = {
-    "selfen_delta": "delta",
-    "scattering_approx": "scattering_approximation",
-}
-
 
 class ElectronPhononSelfEnergyInstance(ElectronPhononInstance):
     """
