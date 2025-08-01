@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from collections import abc
+
 import numpy as np
 
 from py4vasp import exception
@@ -101,39 +103,8 @@ class ElectronPhononSelfEnergyInstance:
         band_start = self._get_data("band_start")
         return SparseTensor(band_kpoint_spin_index, band_start, tensor_data)
 
-    # def get_fan(self, arg):
-    #     iband, ikpt, isp, *more = arg
-    #     st = SparseTensor(
-    #         self._get_data("band_kpoint_spin_index") - 1,
-    #         self._get_scalar("band_start"),
-    #         self._get_data("fan"),
-    #     )
-    #     return st[arg]
 
-    # def get_debye_waller(self, arg):
-    #     iband, ikpt, isp, *more = arg
-    #     st = SparseTensor(
-    #         self._get_data("band_kpoint_spin_index") - 1,
-    #         self._get_scalar("band_start"),
-    #         self._get_data("debye_waller"),
-    #     )
-    #     return st[arg]
-
-    # def get_self_energy(self, arg):
-    #     import numpy as np
-
-    #     iband, ikpt, isp, *more = arg
-    #     fan = self._get_data("fan")
-    #     dw = self._get_data("debye_waller")[:, np.newaxis, :]
-    #     st = SparseTensor(
-    #         self._get_data("band_kpoint_spin_index") - 1,
-    #         self._get_scalar("band_start"),
-    #         fan + dw,
-    #     )
-    #     return st[arg]
-
-
-class ElectronPhononSelfEnergy(base.Refinery):
+class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
     """Access and analyze electron-phonon self-energy data.
 
     This class provides methods to access, select, and analyze the electron-phonon
@@ -168,20 +139,7 @@ class ElectronPhononSelfEnergy(base.Refinery):
 
     @base.data_access
     def to_dict(self):
-        return {"naccumulators": len(self._raw_data.valid_indices)}
-
-    @base.data_access
-    def eigenvalues(self):
-        return self._raw_data.eigenvalues[:]
-
-    @base.data_access
-    def __getitem__(self, key):
-        # TODO add logic to select instances
-        return ElectronPhononSelfEnergyInstance(self, key)
-
-    def __iter__(self):
-        for i in range(len(self)):
-            yield self[i]
+        return {"naccumulators": len(self)}
 
     @base.data_access
     def selections(self):
@@ -195,11 +153,6 @@ class ElectronPhononSelfEnergy(base.Refinery):
             "selfen_delta": np.unique(self._raw_data.delta),
             "scattering_approx": np.unique(self._raw_data.scattering_approximation),
         }
-
-    def _generate_selections(self, selection):
-        tree = select.Tree.from_selection(selection)
-        for selection in tree.selections():
-            yield selection
 
     @base.data_access
     def chemical_potential_mu_tag(self):
@@ -264,6 +217,20 @@ The selection {group} is not formatted correctly. It should be formatted like \
         return np.isclose(instance_value, float(value), rtol=1e-8, atol=0)
 
     @base.data_access
+    def eigenvalues(self):
+        return self._raw_data.eigenvalues[:]
+
+    @base.data_access
+    def __getitem__(self, key):
+        if 0 <= key < len(self._raw_data.valid_indices):
+            return ElectronPhononSelfEnergyInstance(self, key)
+        raise IndexError("Index out of range for electron phonon self energy instance.")
+
+    @base.data_access
+    def __len__(self):
+        return len(self._raw_data.valid_indices)
+
+    @base.data_access
     def _get_data(self, name, index):
         name = ALIAS.get(name, name)
         dataset = getattr(self._raw_data, name, None)
@@ -285,10 +252,6 @@ The selection {group} is not formatted correctly. It should be formatted like \
 The selection "{name}" is not a valid choice. {did_you_mean}Please check the \
 available selections: "{available_selections}".'
             raise exception.IncorrectUsage(message)
-
-    @base.data_access
-    def __len__(self):
-        return len(self._raw_data.valid_indices)
 
 
 class SparseTensor:

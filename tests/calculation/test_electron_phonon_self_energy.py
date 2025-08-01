@@ -271,9 +271,6 @@ def test_print_instance(self_energy, format_):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.electron_phonon_self_energy("default")
-    # parameters = {"get_fan": {"arg": (0, 0, 0)}, "select": {"selection": "1 1"}}
-    parameters = {
-        "get_data": {"name": "fan", "index": 0},
-        "select": {"selection": "selfen_approx(SERTA) selfen_carrier_den(0.01,0.001)"},
-    }
-    check_factory_methods(ElectronPhononSelfEnergy, data, parameters)
+    parameters = {"select": {"selection": "selfen_approx=SERTA"}}
+    skip_methods = ["count", "access", "index"]  # inherited from Sequence
+    check_factory_methods(ElectronPhononSelfEnergy, data, parameters, skip_methods)
