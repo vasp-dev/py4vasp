@@ -119,8 +119,13 @@ title = "{node.astext()}"
 
         Unlike HTML, Markdown paragraphs don't need opening tags or special markers.
         The content will be added by child Text nodes, and spacing is handled in depart.
+        Inside lists only a single newline is required because the list item separate
+        the paragraphs.
         """
-        pass
+        if self.list_stack:
+            self.newlines_after_paragraph = 1
+        else:
+            self.newlines_after_paragraph = 2
 
     def depart_paragraph(self, node):
         """Add newline after paragraph content for proper Markdown separation.
@@ -129,7 +134,7 @@ title = "{node.astext()}"
         rather than visit because we need the newline after all the paragraph's content
         has been processed, not before it.
         """
-        self.content.append("\n")
+        self.content.append(self.newlines_after_paragraph * "\n")
 
     def visit_Text(self, node):
         """Add text content directly without modification.
@@ -246,12 +251,12 @@ title = "{node.astext()}"
         self.content.append(f"{indent}{self.list_stack[-1]} ")
 
     def visit_definition_list(self, node):
-        """No action needed for definition list container.
+        self.list_stack.append("description")
 
-        Definition lists in Markdown don't require wrapper markup, unlike HTML.
-        The formatting is handled entirely by the individual term/definition pairs.
-        """
-        pass
+    def depart_definition_list(self, node):
+        self.list_stack.pop()
+        if not self.list_stack:
+            self.content.append("\n")
 
     def visit_definition_list_item(self, node):
         """No action needed for definition list item container.

@@ -55,6 +55,13 @@ def test_convert_comment(sphinx_app):
     assert "This is a comment and should not appear in the output." not in content
 
 
+def test_convert_paragraphs(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "paragraph.md")
+    doctree = sphinx_app.env.get_doctree("paragraph")
+    # markdown needs double line break for new paragraph
+    assert "aliqua.\n\nUt" in content
+
+
 def test_convert_headings(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "headings.md")
     assert 'title = "Chapter"' in content
@@ -94,6 +101,7 @@ title = "Inline markup example"
 
 def test_convert_lists(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "list.md")
+    doctree = sphinx_app.env.get_doctree("list")
     unordered_list = """\
 * this is
 * a list
