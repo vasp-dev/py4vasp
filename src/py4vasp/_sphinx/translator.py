@@ -184,11 +184,7 @@ title = "{node.astext()}"
     def depart_definition(self, node):
         self.content.append("\n")
 
-    def visit_compound(self, node):
-        pass
-
-    def depart_compound(self, node):
-        pass
+    # Comment handling methods
 
     def visit_comment(self, node):
         raise SkipNode
@@ -196,11 +192,7 @@ title = "{node.astext()}"
     def depart_comment(self, node):
         pass
 
-    def visit_compact_paragraph(self, node):
-        pass
-
-    def depart_compact_paragraph(self, node):
-        self.content.append("\n")
+    # Internal and external reference handling methods
 
     def visit_reference(self, node):
         # Handle both external and internal references
@@ -253,3 +245,15 @@ title = "{node.astext()}"
         uri = getattr(self, "_reference_uri", "")
         self.content.append(f"]({uri})")
         self._reference_uri = None
+
+    # def visit_compound(self, node):
+    #     pass
+
+    # def depart_compound(self, node):
+    #     pass
+
+    # def visit_compact_paragraph(self, node):
+    #     pass
+
+    # def depart_compact_paragraph(self, node):
+    #     self.content.append("\n")
