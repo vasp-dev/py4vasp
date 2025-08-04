@@ -30,13 +30,17 @@ def test_register_hugo_builder(sphinx_app):
     assert "hugo" in sphinx_app.registry.builders
 
 
-def test_convert_headings(sphinx_app):
-    output_file = sphinx_app.outdir / "hugo/headings.md"
+def read_file_content(outdir, source_file):
+    output_file = outdir / "hugo" / source_file
     assert output_file.exists()
     content = output_file.read_text()
     assert content.startswith("+++")
+    return content
+
+
+def test_convert_headings(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "headings.md")
     assert 'title = "Chapter"' in content
-    print(content)
     lines = content.splitlines()
     # find all headers
     headers = []
@@ -60,12 +64,25 @@ def test_convert_headings(sphinx_app):
 
 
 def test_convert_inline_markup(sphinx_app):
-    output_file = sphinx_app.outdir / "hugo/inline_markup.md"
-    assert output_file.exists()
-    content = output_file.read_text()
-    assert content.startswith("+++")
+    content = read_file_content(sphinx_app.outdir, "inline_markup.md")
     expected_content = f"""\
 # Inline markup example
 
 *this text is emphasized*, **this text is strong**, `this text is code`"""
     assert expected_content in content
+
+
+def test_convert_lists(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "list.md")
+    print(content)
+    #     expected_content = f"""\
+    # # Lists example
+
+    # * Item 1
+    # * Item 2
+    #   * Subitem 2.1
+    #   * Subitem 2.2
+    # * Item 3
+    # """
+    # assert expected_content in content
+    assert False

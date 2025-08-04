@@ -40,6 +40,7 @@ class HugoTranslator(NodeVisitor):
         self.has_title = False
         self.section_level = 0
         self.content = []
+        self.list_stack = []
 
     def unknown_departure(self, node):
         """Handle departure from nodes that don't have specific depart methods.
@@ -103,11 +104,7 @@ title = "{node.astext()}"
         self.section_level -= 1
 
     def visit_paragraph(self, node):
-        """Add spacing before paragraphs for proper Markdown formatting.
-
-        Markdown requires blank lines between paragraphs and other elements.
-        """
-        self.content.append("\n")
+        pass
 
     def depart_paragraph(self, node):
         self.content.append("\n")
@@ -134,3 +131,44 @@ title = "{node.astext()}"
 
     def depart_literal(self, node):
         self.content.append("`")
+
+    # list handling methods
+
+    def visit_bullet_list(self, node):
+        self.list_stack.append("*")
+
+    def depart_bullet_list(self, node):
+        self.depart_list()
+
+    def visit_enumerated_list(self, node):
+        self.list_stack.append("1.")
+
+    def depart_enumerated_list(self, node):
+        self.depart_list()
+
+    def depart_list(self):
+        self.list_stack.pop()
+        if not self.list_stack:
+            self.content.append("\n")  # Add newline after the last list item
+
+    def visit_list_item(self, node):
+        indent = "  " * (len(self.list_stack) - 1)
+        self.content.append(f"{indent}{self.list_stack[-1]} ")
+
+    def visit_definition_list(self, node):
+        pass
+
+    def visit_definition_list_item(self, node):
+        pass
+
+    def visit_term(self, node):
+        pass
+
+    def depart_term(self, node):
+        self.content.append("\n")
+
+    def visit_definition(self, node):
+        self.content.append(": ")
+
+    def depart_definition(self, node):
+        self.content.append("\n")
