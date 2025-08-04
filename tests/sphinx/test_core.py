@@ -36,6 +36,7 @@ def test_convert_headings(sphinx_app):
     content = output_file.read_text()
     assert content.startswith("+++")
     assert 'title = "Chapter"' in content
+    print(content)
     lines = content.splitlines()
     # find all headers
     headers = []
@@ -56,3 +57,15 @@ def test_convert_headings(sphinx_app):
                     headers.append(lines.index(paragraph_header))
     # check that headers are in order
     assert sorted(headers) == headers
+
+
+def test_convert_inline_markup(sphinx_app):
+    output_file = sphinx_app.outdir / "hugo/inline_markup.md"
+    assert output_file.exists()
+    content = output_file.read_text()
+    assert content.startswith("+++")
+    expected_content = f"""\
+# Inline markup example
+
+*this text is emphasized*, **this text is strong**, `this text is code`"""
+    assert expected_content in content

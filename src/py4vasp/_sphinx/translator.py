@@ -71,6 +71,9 @@ class HugoTranslator(NodeVisitor):
             self.has_title = True
         self.content.append(f"{self.section_level * '#'} ")
 
+    def depart_title(self, node):
+        self.content.append("\n")
+
     def _create_hugo_front_matter(self, node):
         """Create Hugo front matter for the document title.
         This method generates the TOML front matter required by Hugo, which includes
@@ -106,5 +109,28 @@ title = "{node.astext()}"
         """
         self.content.append("\n")
 
+    def depart_paragraph(self, node):
+        self.content.append("\n")
+
     def visit_Text(self, node):
-        self.content.append(f"{node.astext()}\n")
+        self.content.append(f"{node.astext()}")
+
+    # Inline markup handling methods
+
+    def visit_emphasis(self, node):
+        self.content.append("*")
+
+    def depart_emphasis(self, node):
+        self.content.append("*")
+
+    def visit_strong(self, node):
+        self.content.append("**")
+
+    def depart_strong(self, node):
+        self.content.append("**")
+
+    def visit_literal(self, node):
+        self.content.append("`")
+
+    def depart_literal(self, node):
+        self.content.append("`")
