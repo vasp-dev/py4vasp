@@ -2,9 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import pytest
 
-from py4vasp._util import import_
-
-application = import_.optional("sphinx.application")
+sphinx = pytest.importorskip("sphinx")
 
 
 @pytest.fixture(scope="module")
@@ -14,7 +12,7 @@ def sphinx_app(tmp_path_factory, not_core):
     confdir = "tests/sphinx/examples"
     outdir = tmp_path / "_build"
     doctreedir = tmp_path / "_doctree"
-    app = application.Sphinx(
+    app = sphinx.application.Sphinx(
         srcdir=srcdir,
         confdir=confdir,
         outdir=outdir,
