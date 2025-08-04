@@ -1,7 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import pytest
-from sphinx.application import Sphinx
+
+from py4vasp._util import import_
+
+application = import_.optional("sphinx.application")
 
 
 @pytest.fixture(scope="module")
@@ -11,7 +14,7 @@ def sphinx_app(tmp_path_factory, not_core):
     confdir = "tests/sphinx/examples"
     outdir = tmp_path / "_build"
     doctreedir = tmp_path / "_doctree"
-    app = Sphinx(
+    app = application.Sphinx(
         srcdir=srcdir,
         confdir=confdir,
         outdir=outdir,
@@ -29,7 +32,7 @@ def test_register_hugo_builder(sphinx_app):
     assert "hugo" in sphinx_app.registry.builders
 
 
-def test_convert_headings(sphinx_app: Sphinx):
+def test_convert_headings(sphinx_app):
     output_file = sphinx_app.outdir / "hugo/headings.md"
     assert output_file.exists()
     content = output_file.read_text()
