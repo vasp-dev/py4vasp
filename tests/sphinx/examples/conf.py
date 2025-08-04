@@ -12,3 +12,14 @@ extensions = [
 import sys
 import os
 sys.path.insert(0, os.path.abspath('.'))
+
+napoleon_include_init_with_doc = True
+napoleon_include_private_with_doc = False
+napoleon_include_special_with_doc = False
+napoleon_use_param = True
+napoleon_use_rtype = True
+napoleon_use_ivar = False
+napoleon_preprocess_types = True
+napoleon_type_aliases = None
+napoleon_attr_annotations = True
+napoleon_include_default_value = True

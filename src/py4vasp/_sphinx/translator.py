@@ -44,11 +44,12 @@ class HugoTranslator(NodeVisitor):
 
     def unknown_visit(self, node):
         """Handle unknown node types by logging them for debugging."""
-        print(f"DEBUG: Unknown node type: {node.__class__.__name__}")
-        print(f"DEBUG: Node attributes: {node.attributes}")
-        print(f"DEBUG: Node children: {[child.__class__.__name__ for child in node.children]}")
+        # print(f"DEBUG: Unknown node type: {node.__class__.__name__}")
+        # print(f"DEBUG: Node attributes: {node.attributes}")
+        # print(f"DEBUG: Node children: {[child.__class__.__name__ for child in node.children]}")
         # Don't raise error, just skip for now
-        pass
+        raise NotImplementedError(
+            f"Unknown node type {node.__class__.__name__} encountered.\nNode attributes: {node.attributes}\nNode children: {[child.__class__.__name__ for child in node.children]}")
 
     def unknown_departure(self, node):
         """Handle departure from nodes that don't have specific depart methods.
