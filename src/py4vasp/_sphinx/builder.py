@@ -72,11 +72,11 @@ class HugoBuilder(Builder):
 
     def get_target_uri(self, docname, typ=None):
         """Return the relative URI for a document.
-        
+
         Args:
             docname (str): The name of the document.
             typ (str, optional): The type of the target, not used in this builder.
-        
+
         Returns:
             str: The relative path to the Markdown file for the given document name.
         """

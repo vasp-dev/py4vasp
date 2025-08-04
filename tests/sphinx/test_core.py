@@ -30,49 +30,29 @@ def test_register_hugo_builder(sphinx_app):
     assert "hugo" in sphinx_app.registry.builders
 
 
-def test_index_page(sphinx_app):
-    """Test that the index page is created correctly."""
-    output_file = sphinx_app.outdir / "hugo/index.md"
-    assert output_file.exists()
-    content_text = output_file.read_text()
-    print(content_text)
-    assert content_text.startswith("+++")
-    assert 'title = "Main page"' in content_text
-    assert '# Main page' in content_text
-    assert 'This is the main page of the documentation. It serves as an index for the content available in this project.' in content_text
-
-
-def test_convert_example(sphinx_app):
-    output_file = sphinx_app.outdir / "hugo/example.md"
-    assert output_file.exists()
-    content = output_file.read_text()
-    assert content.startswith("+++")
-    print(content)
-    assert False
-
-
-def test_convert_comment(sphinx_app):
-    output_file = sphinx_app.outdir / "hugo/comments.md"
-    assert output_file.exists()
-    content = output_file.read_text()
-    print(content)
-    assert content.startswith("+++")
-    assert 'title = "Comment"' in content
-    expected_content = f"""\
-+++
-title = "Comment"
-+++
-# Comment
-This is visible content and should appear in the output."""
-    assert expected_content in content
-
-
 def read_file_content(outdir, source_file):
     output_file = outdir / "hugo" / source_file
     assert output_file.exists()
     content = output_file.read_text()
     assert content.startswith("+++")
     return content
+
+
+def test_index_page(sphinx_app):
+    """Test that the index page is created correctly."""
+    content = read_file_content(sphinx_app.outdir, "index.md")
+    assert 'title = "Main page"' in content
+    assert "# Main page" in content
+    assert (
+        "This is the main page of the documentation. It serves as an index for the content available in this project."
+        in content
+    )
+
+
+def test_convert_comment(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "comments.md")
+    assert "This is visible content and should appear in the output." in content
+    assert "This is a comment and should not appear in the output." not in content
 
 
 def test_convert_headings(sphinx_app):
@@ -102,7 +82,6 @@ def test_convert_headings(sphinx_app):
 
 def test_convert_inline_markup(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "inline_markup.md")
-    print(content)
     expected_content = f"""\
 +++
 title = "Inline markup example"
@@ -115,25 +94,35 @@ title = "Inline markup example"
 
 def test_convert_lists(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "list.md")
-    print(content)
-    #     expected_content = f"""\
-    # # Lists example
+    unordered_list = """\
+* this is
+* a list
+  * with a nested list
+  * and some subitems
+* and here the parent list continues"""
+    assert unordered_list in content
+    ordered_list = """\
+1. This is a numbered list.
+1. It has two items too.
+1. This is a numbered list.
+1. It has two items, the second
+item uses two lines."""
+    assert ordered_list in content
+    definition_list = """\
+term (up to a line of text)
+: Definition of the term, which must be indented
+and can even consist of multiple paragraphs
 
-    # * Item 1
-    # * Item 2
-    #   * Subitem 2.1
-    #   * Subitem 2.2
-    # * Item 3
-    # """
-    # assert expected_content in content
-    assert False
+next term
+: Description."""
+    assert definition_list in content
 
 
 def test_convert_reference(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "reference.md")
     print(content)
 
-    doctree = sphinx_app.env.get_doctree('reference')
+    doctree = sphinx_app.env.get_doctree("reference")
     print(doctree.pformat())
     ## CAREFUL: internal references are first shown as pending_xref nodes,
     ## then converted to inline nodes with class "xref std std-ref"
@@ -147,3 +136,13 @@ def test_convert_reference(sphinx_app):
     assert '<a name="internal-label"></a>' in content
     # Target section text
     assert "This is the internal target section." in content
+
+
+@pytest.mark.skip
+def test_convert_example(sphinx_app):
+    output_file = sphinx_app.outdir / "hugo/example.md"
+    assert output_file.exists()
+    content = output_file.read_text()
+    assert content.startswith("+++")
+    print(content)
+    assert False

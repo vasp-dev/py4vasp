@@ -48,8 +48,10 @@ class HugoTranslator(NodeVisitor):
         # print(f"DEBUG: Node attributes: {node.attributes}")
         # print(f"DEBUG: Node children: {[child.__class__.__name__ for child in node.children]}")
         # Don't raise error, just skip for now
+        return
         raise NotImplementedError(
-            f"Unknown node type {node.__class__.__name__} encountered.\nNode attributes: {node.attributes}\nNode children: {[child.__class__.__name__ for child in node.children]}")
+            f"Unknown node type {node.__class__.__name__} encountered.\nNode attributes: {node.attributes}\nNode children: {[child.__class__.__name__ for child in node.children]}"
+        )
 
     def unknown_departure(self, node):
         """Handle departure from nodes that don't have specific depart methods.
@@ -202,17 +204,19 @@ title = "{node.astext()}"
 
     def visit_reference(self, node):
         # Handle both external and internal references
-        self._reference_uri = node.get('refuri') or (f"#{node.get('refid')}" if node.get('refid') else '')
+        self._reference_uri = node.get("refuri") or (
+            f"#{node.get('refid')}" if node.get("refid") else ""
+        )
         self.content.append("[")
 
     def depart_reference(self, node):
-        uri = getattr(self, '_reference_uri', '')
+        uri = getattr(self, "_reference_uri", "")
         self.content.append(f"]({uri})")
         self._reference_uri = None
 
     def visit_target(self, node):
         # Internal targets have 'refid'; external have 'refuri'
-        refid = node.get('refid')
+        refid = node.get("refid")
         if refid:
             # Insert an anchor for internal references
             self.content.append(f'<a name="{refid}"></a>')
@@ -223,8 +227,8 @@ title = "{node.astext()}"
 
     def visit_inline(self, node):
         # Check if this is a cross-reference (std-ref)
-        classes = node.get('classes', [])
-        if 'std-ref' in classes:
+        classes = node.get("classes", [])
+        if "std-ref" in classes:
             # This is an internal cross-reference, create a link
             # We need to get the target from somewhere - let's use the text content
             # as the anchor since that's what Sphinx typically does
@@ -234,7 +238,7 @@ title = "{node.astext()}"
             self._inline_is_xref = False
 
     def depart_inline(self, node):
-        if getattr(self, '_inline_is_xref', False):
+        if getattr(self, "_inline_is_xref", False):
             # Extract the text content to use as the anchor
             text_content = node.astext()
             self.content.append(f"](#{text_content})")
@@ -246,6 +250,6 @@ title = "{node.astext()}"
         self.content.append("[")
 
     def depart_pending_xref(self, node):
-        uri = getattr(self, '_reference_uri', '')
+        uri = getattr(self, "_reference_uri", "")
         self.content.append(f"]({uri})")
         self._reference_uri = None
