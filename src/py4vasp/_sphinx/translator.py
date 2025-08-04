@@ -172,3 +172,9 @@ title = "{node.astext()}"
 
     def depart_definition(self, node):
         self.content.append("\n")
+
+    def visit_compound(self, node):
+        pass
+
+    def depart_compound(self, node):
+        pass
