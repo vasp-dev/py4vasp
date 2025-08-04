@@ -178,3 +178,9 @@ title = "{node.astext()}"
 
     def depart_compound(self, node):
         pass
+
+    def visit_comment(self, node):
+        pass
+
+    def depart_comment(self, node):
+        pass

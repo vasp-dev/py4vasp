@@ -29,6 +29,34 @@ def sphinx_app(tmp_path_factory, not_core):
 def test_register_hugo_builder(sphinx_app):
     assert "hugo" in sphinx_app.registry.builders
 
+def test_index_page(sphinx_app):
+    """Test that the index page is created correctly."""
+    output_file = sphinx_app.outdir / "hugo/index.md"
+    assert output_file.exists()
+    content_text = output_file.read_text()
+    print(content_text)
+    assert content_text.startswith("+++")
+    assert 'title = "Main page"' in content_text
+    assert '# Main page' in content_text
+    assert 'This is the main page of the documentation. It serves as an index for the content available in this project.' in content_text
+
+def test_convert_example(sphinx_app):
+    output_file = sphinx_app.outdir / "hugo/example.md"
+    assert output_file.exists()
+    content = output_file.read_text()
+    assert content.startswith("+++")
+    print(content)
+
+def test_convert_comment(sphinx_app):
+    output_file = sphinx_app.outdir / "hugo/comments.md"
+    assert output_file.exists()
+    content = output_file.read_text()
+    print(content)
+    assert content.startswith("+++")
+    assert 'title = "Comment"' in content
+    assert 'This is visible content' in content
+    assert not('This is a comment.' in content)
+
 
 def read_file_content(outdir, source_file):
     output_file = outdir / "hugo" / source_file

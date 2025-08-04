@@ -1,10 +1,10 @@
-example
+Example
 =======
 
-.. autodata:: examples.example.Example
+.. autodata:: example.Example
    :annotation: Example class for demonstration purposes.
 
-.. autoclass:: examples.example.Example
+.. autoclass::example.Example
    :members:
    :show-inheritance:
    :undoc-members:

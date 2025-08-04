@@ -69,3 +69,16 @@ class HugoBuilder(Builder):
         visitor = HugoTranslator(doctree)
         doctree.walkabout(visitor)
         return "".join(visitor.content)
+
+    def get_target_uri(self, docname, typ=None):
+        """Return the relative URI for a document.
+        
+        Args:
+            docname (str): The name of the document.
+            typ (str, optional): The type of the target, not used in this builder.
+        
+        Returns:
+            str: The relative path to the Markdown file for the given document name.
+        """
+        # Return the relative path to the Markdown file for the given docname
+        return f"hugo/{docname}.md"

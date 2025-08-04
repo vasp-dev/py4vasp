@@ -5,6 +5,9 @@ class Example:
         """
         Initialize the Example class with a value.
 
+        - some list entry
+        - some other list entry
+
         Parameters
         ----------
         value : float
