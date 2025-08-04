@@ -115,98 +115,238 @@ title = "{node.astext()}"
         self.section_level -= 1
 
     def visit_paragraph(self, node):
+        """Empty visit method because paragraph opening requires no markup.
+
+        Unlike HTML, Markdown paragraphs don't need opening tags or special markers.
+        The content will be added by child Text nodes, and spacing is handled in depart.
+        """
         pass
 
     def depart_paragraph(self, node):
+        """Add newline after paragraph content for proper Markdown separation.
+
+        Markdown requires blank lines between block elements. We handle this in depart
+        rather than visit because we need the newline after all the paragraph's content
+        has been processed, not before it.
+        """
         self.content.append("\n")
 
     def visit_Text(self, node):
+        """Add text content directly without modification.
+
+        Text nodes contain the raw content and don't need escaping or wrapping
+        in basic cases. More complex escaping could be added here if needed.
+        """
         self.content.append(f"{node.astext()}")
 
     # Inline markup handling methods
 
     def visit_emphasis(self, node):
+        """Add opening asterisk for italic text.
+
+        Markdown uses single asterisks for emphasis. We use asterisks instead of
+        underscores because they're more universally supported and don't conflict
+        with underscores in code or identifiers.
+        """
         self.content.append("*")
 
     def depart_emphasis(self, node):
+        """Add closing asterisk to complete italic markup.
+
+        Both opening and closing markers are identical in Markdown emphasis,
+        unlike HTML where tags differ (&lt;em&gt; vs &lt;/em&gt;).
+        """
         self.content.append("*")
 
     def visit_strong(self, node):
+        """Add opening double asterisk for bold text.
+
+        Markdown uses double asterisks for strong/bold text. Double asterisks are
+        preferred over double underscores for consistency with single emphasis.
+        """
         self.content.append("**")
 
     def depart_strong(self, node):
+        """Add closing double asterisk to complete bold markup.
+
+        Symmetric opening and closing markers are required for proper Markdown parsing.
+        """
         self.content.append("**")
 
     def visit_literal(self, node):
+        """Add opening backtick for inline code.
+
+        Single backticks are used for inline code spans in Markdown. This handles
+        simple cases where the literal text doesn't contain backticks itself.
+        """
         self.content.append("`")
 
     def depart_literal(self, node):
+        """Add closing backtick to complete inline code markup.
+
+        Matching backticks are required to properly delimit the code span.
+        """
         self.content.append("`")
 
     # list handling methods
 
     def visit_bullet_list(self, node):
+        """Initialize bullet list state by pushing marker onto stack.
+
+        We use a stack to handle nested lists properly. Each nesting level needs
+        to know what marker to use, and asterisks are chosen over dashes for
+        better Hugo/CommonMark compatibility.
+        """
         self.list_stack.append("*")
 
     def depart_bullet_list(self, node):
+        """Clean up bullet list state when exiting the list.
+
+        Uses the shared depart_list method because the cleanup logic is identical
+        for both bullet and enumerated lists - only the markers differ.
+        """
         self.depart_list()
 
     def visit_enumerated_list(self, node):
+        """Initialize enumerated list state with numbered marker.
+
+        We use "1." for all items rather than tracking actual numbers because
+        Markdown auto-numbers list items, making the specific number irrelevant.
+        This simplifies the implementation without affecting output.
+        """
         self.list_stack.append("1.")
 
     def depart_enumerated_list(self, node):
+        """Clean up enumerated list state when exiting the list.
+
+        Shares cleanup logic with bullet lists since the behavior is identical
+        regardless of marker type.
+        """
         self.depart_list()
 
     def depart_list(self):
+        """Remove current list from stack and add spacing after top-level lists.
+
+        We only add newlines after the outermost list (when stack becomes empty)
+        because nested lists shouldn't have extra spacing between them, but
+        lists need separation from following content.
+        """
         self.list_stack.pop()
         if not self.list_stack:
-            self.content.append("\n")  # Add newline after the last list item
+            self.content.append("\n")
 
     def visit_list_item(self, node):
+        """Add list marker with proper indentation for current nesting level.
+
+        Indentation is calculated from stack depth to handle nested lists correctly.
+        Two spaces per level is the Markdown standard for nested list indentation.
+        The marker comes from the stack top, so it matches the current list type.
+        """
         indent = "  " * (len(self.list_stack) - 1)
         self.content.append(f"{indent}{self.list_stack[-1]} ")
 
     def visit_definition_list(self, node):
+        """No action needed for definition list container.
+
+        Definition lists in Markdown don't require wrapper markup, unlike HTML.
+        The formatting is handled entirely by the individual term/definition pairs.
+        """
         pass
 
     def visit_definition_list_item(self, node):
+        """No action needed for definition list item container.
+
+        Like the parent definition list, individual items don't need wrapper markup.
+        The term and definition children handle their own formatting.
+        """
         pass
 
     def visit_term(self, node):
+        """No opening markup needed for definition terms.
+
+        In Markdown definition lists, terms are just regular text that will be
+        followed by a colon and definition. No special markup is required.
+        """
         pass
 
     def depart_term(self, node):
+        """Add newline after term to separate it from the definition.
+
+        This creates the line break that Markdown definition list syntax requires
+        between the term and the definition that follows.
+        """
         self.content.append("\n")
 
     def visit_definition(self, node):
+        """Add colon prefix to mark the beginning of a definition.
+
+        This follows Markdown definition list syntax where definitions are
+        prefixed with a colon and space. The colon signals that this is the
+        definition part of the term-definition pair.
+        """
         self.content.append(": ")
 
     def depart_definition(self, node):
+        """Add newline after definition for proper separation.
+
+        This ensures proper spacing between definition list items and prevents
+        them from running together in the output.
+        """
         self.content.append("\n")
 
     # Comment handling methods
 
     def visit_comment(self, node):
+        """Skip comment nodes entirely to exclude them from output.
+
+        Comments are typically internal documentation that shouldn't appear
+        in the final output. SkipNode prevents the visitor from processing
+        this node's children, effectively removing it from the output.
+        """
         raise SkipNode
 
     def depart_comment(self, node):
+        """No action needed since comments are skipped entirely.
+
+        This method exists only to satisfy the visitor pattern expectations,
+        but will never be called due to SkipNode being raised in visit.
+        """
         pass
 
     # Internal and external reference handling methods
 
     def visit_reference(self, node):
-        # Handle both external and internal references
+        """Start a Markdown link and store the target URI for later use.
+
+        We handle both external URLs (refuri) and internal anchors (refid) with
+        the same link syntax. Internal references get a hash prefix to create
+        anchor links. The URI is stored as an instance variable because we need
+        it in the depart method after processing the link text.
+        """
         self._reference_uri = node.get("refuri") or (
             f"#{node.get('refid')}" if node.get("refid") else ""
         )
         self.content.append("[")
 
     def depart_reference(self, node):
+        """Complete the Markdown link with the stored URI and clean up state.
+
+        The link text has been added by child nodes between visit and depart,
+        so we can now close the link with the URI that was stored in visit.
+        We clean up the temporary state to avoid interference with other links.
+        """
         uri = getattr(self, "_reference_uri", "")
         self.content.append(f"]({uri})")
         self._reference_uri = None
 
     def visit_target(self, node):
+        """Create HTML anchor tags for internal reference targets.
+
+        Targets with refid become anchor points that can be linked to from elsewhere
+        in the document. We use HTML anchor tags because Markdown doesn't have
+        native syntax for arbitrary anchor points. External targets (refuri) are
+        handled by the reference nodes that point to them.
+        """
         # Internal targets have 'refid'; external have 'refuri'
         refid = node.get("refid")
         if refid:
@@ -215,9 +355,21 @@ title = "{node.astext()}"
         # For external targets (refuri), do nothing (handled by reference)
 
     def depart_target(self, node):
-        pass  # No action needed on depart
+        """No cleanup needed for target nodes.
+
+        Anchor tags are self-contained and don't require closing markup or
+        state cleanup like some other node types.
+        """
+        pass
 
     def visit_inline(self, node):
+        """Handle inline nodes, particularly Sphinx cross-references.
+
+        Sphinx uses inline nodes with specific CSS classes to mark cross-references.
+        We detect 'std-ref' class to identify internal cross-references and treat
+        them as links. Other inline nodes are ignored since they typically don't
+        need special Markdown markup.
+        """
         # Check if this is a cross-reference (std-ref)
         classes = node.get("classes", [])
         if "std-ref" in classes:
@@ -230,6 +382,12 @@ title = "{node.astext()}"
             self._inline_is_xref = False
 
     def depart_inline(self, node):
+        """Complete cross-reference links using the node's text as the anchor.
+
+        For cross-references, we use the displayed text as the anchor target,
+        which is a common convention in documentation. This assumes the text
+        content matches an existing anchor somewhere in the document.
+        """
         if getattr(self, "_inline_is_xref", False):
             # Extract the text content to use as the anchor
             text_content = node.astext()
@@ -237,11 +395,22 @@ title = "{node.astext()}"
             self._inline_is_xref = False
 
     def visit_pending_xref(self, node):
+        """Handle Sphinx pending cross-references by creating anchor links.
+
+        Pending cross-references are unresolved references that Sphinx will
+        process later. We extract the target from the 'reftarget' attribute
+        and create a link assuming it will resolve to an internal anchor.
+        """
         # Use reftarget for anchor
         self._reference_uri = f"#{node.get('reftarget', '')}"
         self.content.append("[")
 
     def depart_pending_xref(self, node):
+        """Complete pending cross-reference links with the stored target.
+
+        Similar to regular references, we close the link with the URI that was
+        stored in visit and clean up the temporary state.
+        """
         uri = getattr(self, "_reference_uri", "")
         self.content.append(f"]({uri})")
         self._reference_uri = None
