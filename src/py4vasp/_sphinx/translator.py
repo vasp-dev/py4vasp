@@ -134,3 +134,9 @@ title = "{node.astext()}"
 
     def depart_literal(self, node):
         self.content.append("`")
+
+    def visit_compound(self, node):
+        pass
+
+    def depart_compound(self, node):
+        pass

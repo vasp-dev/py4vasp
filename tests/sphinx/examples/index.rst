@@ -8,3 +8,5 @@ This is the main page of the documentation. It serves as an index for the conten
    :caption: Contents
 
    examples/example
+   examples/headings
+   examples/inline_markup
