@@ -29,6 +29,7 @@ def sphinx_app(tmp_path_factory, not_core):
 def test_register_hugo_builder(sphinx_app):
     assert "hugo" in sphinx_app.registry.builders
 
+
 def test_index_page(sphinx_app):
     """Test that the index page is created correctly."""
     output_file = sphinx_app.outdir / "hugo/index.md"
@@ -40,12 +41,15 @@ def test_index_page(sphinx_app):
     assert '# Main page' in content_text
     assert 'This is the main page of the documentation. It serves as an index for the content available in this project.' in content_text
 
+
 def test_convert_example(sphinx_app):
     output_file = sphinx_app.outdir / "hugo/example.md"
     assert output_file.exists()
     content = output_file.read_text()
     assert content.startswith("+++")
     print(content)
+    assert False
+
 
 def test_convert_comment(sphinx_app):
     output_file = sphinx_app.outdir / "hugo/comments.md"
@@ -54,8 +58,13 @@ def test_convert_comment(sphinx_app):
     print(content)
     assert content.startswith("+++")
     assert 'title = "Comment"' in content
-    assert 'This is visible content' in content
-    assert not('This is a comment.' in content)
+    expected_content = f"""\
++++
+title = "Comment"
++++
+# Comment
+This is visible content and should appear in the output."""
+    assert expected_content in content
 
 
 def read_file_content(outdir, source_file):
@@ -93,10 +102,14 @@ def test_convert_headings(sphinx_app):
 
 def test_convert_inline_markup(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "inline_markup.md")
+    print(content)
     expected_content = f"""\
++++
+title = "Inline markup example"
++++
 # Inline markup example
-
-*this text is emphasized*, **this text is strong**, `this text is code`"""
+*this text is emphasized*, **this text is strong**, `this text is code`
+"""
     assert expected_content in content
 
 
@@ -114,3 +127,23 @@ def test_convert_lists(sphinx_app):
     # """
     # assert expected_content in content
     assert False
+
+
+def test_convert_reference(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "reference.md")
+    print(content)
+
+    doctree = sphinx_app.env.get_doctree('reference')
+    print(doctree.pformat())
+    ## CAREFUL: internal references are first shown as pending_xref nodes,
+    ## then converted to inline nodes with class "xref std std-ref"
+    ## therefore, the processing by the translator must be done in visit/depart_inline
+
+    # External link
+    assert "This is a link to the [VASP website](https://www.vasp.at)." in content
+    # Internal reference (Markdown link to anchor)
+    assert "[internal-label](#internal-label)" in content
+    # Internal anchor
+    assert '<a name="internal-label"></a>' in content
+    # Target section text
+    assert "This is the internal target section." in content

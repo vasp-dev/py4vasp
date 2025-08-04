@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from docutils.nodes import NodeVisitor
+from docutils.nodes import NodeVisitor, SkipNode
 
 
 class HugoTranslator(NodeVisitor):
@@ -41,6 +41,14 @@ class HugoTranslator(NodeVisitor):
         self.section_level = 0
         self.content = []
         self.list_stack = []
+
+    def unknown_visit(self, node):
+        """Handle unknown node types by logging them for debugging."""
+        print(f"DEBUG: Unknown node type: {node.__class__.__name__}")
+        print(f"DEBUG: Node attributes: {node.attributes}")
+        print(f"DEBUG: Node children: {[child.__class__.__name__ for child in node.children]}")
+        # Don't raise error, just skip for now
+        pass
 
     def unknown_departure(self, node):
         """Handle departure from nodes that don't have specific depart methods.
@@ -180,7 +188,63 @@ title = "{node.astext()}"
         pass
 
     def visit_comment(self, node):
-        pass
+        raise SkipNode
 
     def depart_comment(self, node):
         pass
+
+    def visit_compact_paragraph(self, node):
+        pass
+
+    def depart_compact_paragraph(self, node):
+        self.content.append("\n")
+
+    def visit_reference(self, node):
+        # Handle both external and internal references
+        self._reference_uri = node.get('refuri') or (f"#{node.get('refid')}" if node.get('refid') else '')
+        self.content.append("[")
+
+    def depart_reference(self, node):
+        uri = getattr(self, '_reference_uri', '')
+        self.content.append(f"]({uri})")
+        self._reference_uri = None
+
+    def visit_target(self, node):
+        # Internal targets have 'refid'; external have 'refuri'
+        refid = node.get('refid')
+        if refid:
+            # Insert an anchor for internal references
+            self.content.append(f'<a name="{refid}"></a>')
+        # For external targets (refuri), do nothing (handled by reference)
+
+    def depart_target(self, node):
+        pass  # No action needed on depart
+
+    def visit_inline(self, node):
+        # Check if this is a cross-reference (std-ref)
+        classes = node.get('classes', [])
+        if 'std-ref' in classes:
+            # This is an internal cross-reference, create a link
+            # We need to get the target from somewhere - let's use the text content
+            # as the anchor since that's what Sphinx typically does
+            self.content.append("[")
+            self._inline_is_xref = True
+        else:
+            self._inline_is_xref = False
+
+    def depart_inline(self, node):
+        if getattr(self, '_inline_is_xref', False):
+            # Extract the text content to use as the anchor
+            text_content = node.astext()
+            self.content.append(f"](#{text_content})")
+            self._inline_is_xref = False
+
+    def visit_pending_xref(self, node):
+        # Use reftarget for anchor
+        self._reference_uri = f"#{node.get('reftarget', '')}"
+        self.content.append("[")
+
+    def depart_pending_xref(self, node):
+        uri = getattr(self, '_reference_uri', '')
+        self.content.append(f"]({uri})")
+        self._reference_uri = None
