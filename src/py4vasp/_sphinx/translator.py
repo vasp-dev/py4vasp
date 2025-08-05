@@ -494,6 +494,7 @@ title = "{node.astext()}"
         pass
 
     # AUTODOC handling methods
+    # === .. autodata:: ===
 
     def visit_index(self, node):
         pass
@@ -521,29 +522,47 @@ title = "{node.astext()}"
             if child.__class__.__name__ == 'desc_addname':
                 addname = child.astext()
         # Build anchor id (e.g., py-example or py-example-classname)
-        anchor_id = f"{domain}-{addname.rstrip('.')}-{name.rstrip('.')}".replace(" ", "-").lower() if domain and name and addname else ""
+        domain_str = f"{domain}-" if domain else ''
+        objtype_str = f"{objtype}-" if objtype else ''
+        addname_str = f"{addname}-" if addname else ''
+        name_str = f"{name}-" if name else ""
+        anchor_id = f"{domain_str}{objtype_str}{addname_str}{name_str}".replace(" ", "-").replace("_", "").replace(".", "").rstrip("-").lower()
         self.content.append(f"\n\n<p id='{anchor_id}'></p>\n\n## *{objtype}* ")
 
     def depart_desc_signature(self, node):
-        self.content.append("\n\n")
+        self.content.append("\n")
 
     def visit_desc_content(self, node):
-        self.content.append("<p class='desc-content'>\n\n")
+        self.content.append("\n\n<p class='desc-content'>\n\n")
 
     def depart_desc_content(self, node):
-        self.content.append("</p>\n\n")
+        self.content.append("\n</p>\n")
 
     def visit_desc_addname(self, node):
-        pass
+        self.content.append("`")
 
     def depart_desc_addname(self, node):
-        pass
+        # if desc_name is defined, do not close the backtick yet
+        parent = node.parent
+        skip_ahead = False
+        for sibling in parent.children:
+            if sibling.__class__.__name__ == 'desc_name':
+                skip_ahead = True
+        if not skip_ahead:
+            self.content.append("`")
 
     def visit_desc_name(self, node):
-        pass
+        # if desc_addname is defined, no need to open the backtick here
+        parent = node.parent
+        skip_ahead = False
+        for sibling in parent.children:
+            if sibling.__class__.__name__ == 'desc_addname':
+                skip_ahead = True
+        if not skip_ahead:
+            self.content.append("`")
 
     def depart_desc_name(self, node):
-        pass
+        self.content.append("`")
 
     def visit_desc_annotation(self, node):
         raise SkipNode
@@ -556,4 +575,88 @@ title = "{node.astext()}"
         self.content.append(f" ")
 
     def depart_desc_sig_space(self, node):
+        pass
+
+    # === .. autoclass:: ===
+
+    def visit_desc_parameterlist(self, node):
+        # Start parameter list (e.g., for function/method signatures)
+        self.content.append("(")
+
+    def depart_desc_parameterlist(self, node):
+        self.content.append(")")
+
+    def visit_desc_parameter(self, node):
+        # Each parameter in the list
+        pass  # Let children (names, punctuation, etc.) handle their own output
+
+    def depart_desc_parameter(self, node):
+        # Only add a comma if this is not the last parameter in the list
+        parent = node.parent  # desc_parameterlist
+        siblings = [child for child in parent.children if child.__class__.__name__ == "desc_parameter"]
+        if siblings and node != siblings[-1]:
+            self.content.append(", ")
+
+    def visit_desc_sig_name(self, node):
+        pass
+
+    def depart_desc_sig_name(self, node):
+        pass
+
+    def visit_desc_sig_punctuation(self, node):
+        # Punctuation in signature (e.g., '=')
+        pass
+
+    def depart_desc_sig_punctuation(self, node):
+        pass
+
+    def visit_desc_sig_space(self, node):
+        # Space in signature
+        pass
+
+    def depart_desc_sig_space(self, node):
+        pass
+
+    def visit_field_list(self, node):
+        # Start field list (e.g., for :param:, :returns:, etc.)
+        self.content.append("\n")
+
+    def depart_field_list(self, node):
+        self.content.append("\n")
+
+    def visit_field(self, node):
+        # Start a field (parameter, return, etc.)
+        self.content.append("\n")
+
+    def depart_field(self, node):
+        self.content.append("\n")
+
+    def visit_field_name(self, node):
+        # Field name (e.g., "Parameters", "Returns")
+        self.content.append(f"**{node.astext()}:** ")
+        raise SkipNode
+
+    def depart_field_name(self, node):
+        pass
+
+    def visit_field_body(self, node):
+        # Field body (description)
+        pass  # Let children handle output
+
+    def depart_field_body(self, node):
+        pass
+
+    def visit_literal_strong(self, node):
+        # Strong literal (e.g., for emphasized code)
+        self.content.append("**")
+
+    def depart_literal_strong(self, node):
+        self.content.append("**")
+
+    def visit_desc_returns(self, node):
+        # Return type annotation
+        self.content.append(f"\n**Returns:** {node.astext()}")
+        raise SkipNode
+
+    def depart_desc_returns(self, node):
         pass
