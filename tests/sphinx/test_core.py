@@ -35,6 +35,7 @@ def read_file_content(outdir, source_file):
     assert output_file.exists()
     content = output_file.read_text()
     assert content.startswith("+++")
+    print(content)
     return content
 
 
@@ -145,6 +146,35 @@ def test_convert_reference(sphinx_app):
     # Target section text
     assert "This is the internal target section." in content
 
+def test_convert_compound(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "compound.md")
+    expected_content = """\
+<div class="compound">
+
+This is inside a compound block.
+
+Another paragraph inside compound.
+
+
+</div>
+"""
+    assert expected_content in content
+    expected_content_nested = """\
+<div class="compound">
+
+This is inside a compound block.
+
+
+<div class="compound">
+
+This is a nested compound block.
+
+
+</div>
+
+</div>
+"""
+    assert expected_content_nested in content
 
 def test_convert_custom_role(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "custom_role.md")
@@ -202,9 +232,5 @@ def test_convert_footnote(sphinx_app):
 
 @pytest.mark.skip
 def test_convert_example(sphinx_app):
-    output_file = sphinx_app.outdir / "hugo/example.md"
-    assert output_file.exists()
-    content = output_file.read_text()
-    assert content.startswith("+++")
-    print(content)
+    content = read_file_content(sphinx_app.outdir, "example.md")
     assert False

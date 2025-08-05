@@ -479,14 +479,16 @@ title = "{node.astext()}"
     def depart_label(self, node):
         self.content.append("]: ")
 
-    # def visit_compound(self, node):
-    #     self.content.append("<compound>")
+    def visit_compound(self, node):
+        # Start a div to preserve grouping in Markdown
+        self.content.append('\n<div class="compound">\n\n')
 
-    # def depart_compound(self, node):
-    #     self.content.append("</compound>")
+    def depart_compound(self, node):
+        # End the div
+        self.content.append("\n</div>\n")
 
-    # def visit_compact_paragraph(self, node):
-    #     self.content.append("<compact_paragraph>")
+    def visit_compact_paragraph(self, node):
+        pass
 
-    # def depart_compact_paragraph(self, node):
-    #     self.content.append("</compact_paragraph>")
+    def depart_compact_paragraph(self, node):
+        pass
