@@ -242,3 +242,77 @@ An example class for demonstration purposes.
 
 """
     assert expected_autodata_content in content
+
+    expected_class_content = """\
+<p id='py-class-example-example'></p>
+
+## *class* `example.Example`(*value: float*)
+
+
+<p class='desc-content'>
+
+Bases: `object`
+
+An example class for demonstration purposes.
+"""
+    assert expected_class_content in content
+
+    expected_private_method_content = """\
+<p id='py-method-init'></p>
+
+## *method* `__init__`(*value: float*)
+
+
+<p class='desc-content'>
+
+Initialize the Example class with a value.
+
+* some list entry
+* some other list entry
+
+
+
+**Parameters:**
+
+**value** (`float`) – The value to be stored in the instance.
+
+
+
+
+</p>"""
+    assert expected_private_method_content in content
+
+    expected_public_method_content = """\
+<p id='py-method-combinedreturns'></p>
+
+## *method* `combined_returns`(*some_value: float, some_string: str | None = ''*) → `tuple[float, str | None]`
+
+
+<p class='desc-content'>
+
+Combine a float and a string in a tuple.
+
+
+
+**Parameters:**
+
+* **some_value** (`float`) – A value to be included in the tuple.
+* **some_string** (`str`) – A string to be included in the tuple.
+
+
+
+**Returns:**
+
+A tuple containing the float and a string representation.
+
+
+
+**Return type:**
+
+`tuple[float`, `str | None]`
+
+
+
+
+</p>"""
+    assert expected_public_method_content in content

@@ -36,3 +36,21 @@ class Example:
             The new value to be stored.
         """
         self.value = new_value
+
+    def combined_returns(self, some_value: float, some_string: str | None = "") -> tuple[float, str | None]:
+        """
+        Combine a float and a string in a tuple.
+
+        Parameters
+        ----------
+        some_value : float
+            A value to be included in the tuple.
+        some_string : str
+            A string to be included in the tuple.
+
+        Returns
+        -------
+        tuple[float, str | None]
+            A tuple containing the float and a string representation.
+        """
+        return some_value, f"{some_string}: {some_value}" if some_string else None

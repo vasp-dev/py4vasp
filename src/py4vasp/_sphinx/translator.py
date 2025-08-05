@@ -581,10 +581,12 @@ title = "{node.astext()}"
 
     def visit_desc_parameterlist(self, node):
         # Start parameter list (e.g., for function/method signatures)
-        self.content.append("(")
+        self.content.append("(*")
 
     def depart_desc_parameterlist(self, node):
-        self.content.append(")")
+        if self.content[-1] == "(*":
+            self.content[-1] = "()"
+        else: self.content.append("*)")
 
     def visit_desc_parameter(self, node):
         # Each parameter in the list
@@ -633,7 +635,7 @@ title = "{node.astext()}"
 
     def visit_field_name(self, node):
         # Field name (e.g., "Parameters", "Returns")
-        self.content.append(f"**{node.astext()}:** ")
+        self.content.append(f"**{node.astext()}:**\n\n")
         raise SkipNode
 
     def depart_field_name(self, node):
@@ -654,9 +656,8 @@ title = "{node.astext()}"
         self.content.append("**")
 
     def visit_desc_returns(self, node):
-        # Return type annotation
-        self.content.append(f"\n**Returns:** {node.astext()}")
-        raise SkipNode
+        # return type annotation for functions, like " --> float"
+        self.content.append(f" → `")
 
     def depart_desc_returns(self, node):
-        pass
+        self.content.append("`")
