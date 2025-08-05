@@ -187,6 +187,19 @@ def test_convert_admonition(sphinx_app):
     assert "[!important]\nThis is an important admonition." in content
 
 
+@pytest.mark.skip("Indentation handling needs to be fixed")
+def test_convert_footnote(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "footnote.md")
+    print(content)
+    assert False
+
+
+# def test_py4vasp_example(sphinx_app):
+#     doctree = sphinx_app.env.get_doctree("p4v")
+#     print(doctree.pformat())
+#     assert False
+
+
 @pytest.mark.skip
 def test_convert_example(sphinx_app):
     output_file = sphinx_app.outdir / "hugo/example.md"

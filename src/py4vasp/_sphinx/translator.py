@@ -41,6 +41,7 @@ class HugoTranslator(NodeVisitor):
         self.section_level = 0
         self.content = []
         self.list_stack = []
+        self.in_footnote = False
 
     def unknown_visit(self, node):
         """Handle unknown node types by logging them for debugging."""
@@ -457,6 +458,26 @@ title = "{node.astext()}"
 
     def visit_caution(self, node):
         self.content.append("[!caution]\n")
+
+    # Footnote handling methods
+
+    def visit_footnote_reference(self, node):
+        self.content.append(f"[^")
+
+    def depart_footnote_reference(self, node):
+        self.content.append(f"]")
+
+    def visit_footnote(self, node):
+        self.in_footnote = True
+
+    def depart_footnote(self, node):
+        self.in_footnote = False
+
+    def visit_label(self, node):
+        self.content.append("[^")
+
+    def depart_label(self, node):
+        self.content.append("]: ")
 
     # def visit_compound(self, node):
     #     self.content.append("<compound>")
