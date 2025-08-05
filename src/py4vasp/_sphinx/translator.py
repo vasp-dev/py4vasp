@@ -48,7 +48,7 @@ class HugoTranslator(NodeVisitor):
         # print(f"DEBUG: Node attributes: {node.attributes}")
         # print(f"DEBUG: Node children: {[child.__class__.__name__ for child in node.children]}")
         # Don't raise error, just skip for now
-        return
+        # return
         raise NotImplementedError(
             f"Unknown node type {node.__class__.__name__} encountered.\nNode attributes: {node.attributes}\nNode children: {[child.__class__.__name__ for child in node.children]}"
         )
@@ -420,14 +420,29 @@ title = "{node.astext()}"
         self.content.append(f"]({uri})")
         self._reference_uri = None
 
+    # Code block handling methods
+
+    def visit_literal_block(self, node):
+        language = node["language"].strip("default")
+        self.content.append(f"~~~{language}\n")
+
+    def depart_literal_block(self, node):
+        self.content.append("\n~~~\n\n")
+
+    def visit_doctest_block(self, node):
+        self.content.append("~~~python\n")
+
+    def depart_doctest_block(self, node):
+        self.content.append("\n~~~\n\n")
+
     # def visit_compound(self, node):
-    #     pass
+    #     self.content.append("<compound>")
 
     # def depart_compound(self, node):
-    #     pass
+    #     self.content.append("</compound>")
 
     # def visit_compact_paragraph(self, node):
-    #     pass
+    #     self.content.append("<compact_paragraph>")
 
     # def depart_compact_paragraph(self, node):
-    #     self.content.append("\n")
+    #     self.content.append("</compact_paragraph>")

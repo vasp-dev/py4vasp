@@ -151,6 +151,33 @@ def test_convert_custom_role(sphinx_app):
     assert "[LORBIT](https://vasp.at/wiki/index.php/LORBIT)" in content
 
 
+def test_code_block(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "code_block.md")
+    default_code_block = """\
+~~~
+This is a generic code block.
+
+It can contain any text, including special characters like $ and %.
+~~~"""
+    assert default_code_block in content
+    bash_code_block = """\
+~~~bash
+echo "Hello, World!"
+~~~"""
+    assert bash_code_block in content
+    python_code_block = """\
+~~~python
+print("Hello, World!")
+~~~"""
+    assert python_code_block in content
+    doctest_code_block = """\
+~~~python
+>>> print("Hello, World!")
+Hello, World!
+~~~"""
+    assert doctest_code_block in content
+
+
 @pytest.mark.skip
 def test_convert_example(sphinx_app):
     output_file = sphinx_app.outdir / "hugo/example.md"
