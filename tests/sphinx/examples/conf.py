@@ -8,9 +8,11 @@ extensions = [
     "sphinx.ext.napoleon", 
 ]
 
+import os
+
 # Configure autodoc to find the example module
 import sys
-import os
+
 sys.path.insert(0, os.path.abspath('.'))
 
 napoleon_include_init_with_doc = True
