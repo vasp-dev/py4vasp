@@ -178,6 +178,15 @@ Hello, World!
     assert doctest_code_block in content
 
 
+def test_convert_admonition(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "admonition.md")
+    assert "[!note]\nThis is a note admonition." in content
+    assert "[!warning]\nThis is a warning admonition." in content
+    assert "[!caution]\nThis is a caution admonition." in content
+    assert "[!tip]\nThis is a tip admonition." in content
+    assert "[!important]\nThis is an important admonition." in content
+
+
 @pytest.mark.skip
 def test_convert_example(sphinx_app):
     output_file = sphinx_app.outdir / "hugo/example.md"

@@ -435,6 +435,23 @@ title = "{node.astext()}"
     def depart_doctest_block(self, node):
         self.content.append("\n~~~\n\n")
 
+    # Admonition handling methods
+
+    def visit_note(self, node):
+        self.content.append("[!note]\n")
+
+    def visit_warning(self, node):
+        self.content.append("[!warning]\n")
+
+    def visit_important(self, node):
+        self.content.append("[!important]\n")
+
+    def visit_tip(self, node):
+        self.content.append("[!tip]\n")
+
+    def visit_caution(self, node):
+        self.content.append("[!caution]\n")
+
     # def visit_compound(self, node):
     #     self.content.append("<compound>")
 
