@@ -621,6 +621,13 @@ title = "{node.astext()}"
     def depart_desc_sig_space(self, node):
         pass
 
+    def visit_desc_sig_operator(self, node):
+        # Operator in signature (e.g., '->', '=', etc.)
+        pass
+
+    def depart_desc_sig_operator(self, node):
+        pass
+
     def visit_field_list(self, node):
         # Start field list (e.g., for :param:, :returns:, etc.)
         self.content.append("\n")
