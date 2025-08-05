@@ -244,6 +244,7 @@ An example class for demonstration purposes.
     assert expected_autodata_content in content
 
     expected_class_content = """\
+
 <p id='py-class-example-example'></p>
 
 ## *class* `example.Example`(*value: float*)
@@ -254,10 +255,12 @@ An example class for demonstration purposes.
 Bases: `object`
 
 An example class for demonstration purposes.
+
 """
     assert expected_class_content in content
 
     expected_private_method_content = """\
+
 <p id='py-method-init'></p>
 
 ### *method* `__init__`(*value: float*)
@@ -279,10 +282,13 @@ Initialize the Example class with a value.
 
 
 
-</p>"""
+</p>
+
+"""
     assert expected_private_method_content in content
 
     expected_public_method_content = """\
+
 <p id='py-method-combinedreturns'></p>
 
 ### *method* `combined_returns`(*some_value: float, some_string: str | None = ''*) → `tuple[float, str | None]`
@@ -314,5 +320,7 @@ A tuple containing the float and a string representation.
 
 
 
-</p>"""
+</p>
+
+"""
     assert expected_public_method_content in content
