@@ -146,6 +146,11 @@ def test_convert_reference(sphinx_app):
     assert "This is the internal target section." in content
 
 
+def test_convert_custom_role(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "custom_role.md")
+    assert "[LORBIT](https://vasp.at/wiki/index.php/LORBIT)" in content
+
+
 @pytest.mark.skip
 def test_convert_example(sphinx_app):
     output_file = sphinx_app.outdir / "hugo/example.md"
