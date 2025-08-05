@@ -260,7 +260,7 @@ An example class for demonstration purposes.
     expected_private_method_content = """\
 <p id='py-method-init'></p>
 
-## *method* `__init__`(*value: float*)
+### *method* `__init__`(*value: float*)
 
 
 <p class='desc-content'>
@@ -285,7 +285,7 @@ Initialize the Example class with a value.
     expected_public_method_content = """\
 <p id='py-method-combinedreturns'></p>
 
-## *method* `combined_returns`(*some_value: float, some_string: str | None = ''*) → `tuple[float, str | None]`
+### *method* `combined_returns`(*some_value: float, some_string: str | None = ''*) → `tuple[float, str | None]`
 
 
 <p class='desc-content'>

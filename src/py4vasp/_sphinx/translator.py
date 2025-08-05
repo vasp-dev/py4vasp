@@ -503,9 +503,11 @@ title = "{node.astext()}"
         pass
 
     def visit_desc(self, node):
+        self.section_level += 1
         pass
 
     def depart_desc(self, node):
+        self.section_level -= 1
         pass
 
     def visit_desc_signature(self, node):
@@ -527,7 +529,7 @@ title = "{node.astext()}"
         addname_str = f"{addname}-" if addname else ''
         name_str = f"{name}-" if name else ""
         anchor_id = f"{domain_str}{objtype_str}{addname_str}{name_str}".replace(" ", "-").replace("_", "").replace(".", "").rstrip("-").lower()
-        self.content.append(f"\n\n<p id='{anchor_id}'></p>\n\n## *{objtype}* ")
+        self.content.append(f"\n\n<p id='{anchor_id}'></p>\n\n{self.section_level * '#'} *{objtype}* ")
 
     def depart_desc_signature(self, node):
         self.content.append("\n")
