@@ -85,6 +85,7 @@ def test_convert_headings(sphinx_app):
                     headers.append(lines.index(paragraph_header))
     # check that headers are in order
     assert sorted(headers) == headers
+    assert "***Header not in table of contents***\n" in content
 
 
 def test_convert_inline_markup(sphinx_app):
@@ -101,7 +102,6 @@ title = "Inline markup example"
 
 def test_convert_lists(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "list.md")
-    doctree = sphinx_app.env.get_doctree("list")
     unordered_list = """\
 * this is
 * a list

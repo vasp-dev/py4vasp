@@ -91,3 +91,5 @@ Paragraph 2.2.2.1
 
 Paragraph 2.2.2.2
 """""""""""""""""
+
+.. rubric:: Header not in table of contents

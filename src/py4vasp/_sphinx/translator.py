@@ -136,6 +136,12 @@ title = "{node.astext()}"
         """
         self.content.append(self.newlines_after_paragraph * "\n")
 
+    def visit_rubric(self, node):
+        return self.content.append("***")
+
+    def depart_rubric(self, node):
+        return self.content.append("***\n")
+
     def visit_Text(self, node):
         """Add text content directly without modification.
 
