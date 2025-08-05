@@ -224,13 +224,20 @@ def test_convert_footnote(sphinx_app):
     assert False
 
 
-# def test_py4vasp_example(sphinx_app):
-#     doctree = sphinx_app.env.get_doctree("p4v")
-#     print(doctree.pformat())
-#     assert False
-
-
 @pytest.mark.skip
 def test_convert_example(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
-    assert False
+    expected_content = """\
+
+<p id='py-example-example'></p>
+
+## *data* example.Example
+
+<p class='desc-content'>
+
+An example class for demonstration purposes.
+
+</p>
+
+"""
+    assert expected_content in content

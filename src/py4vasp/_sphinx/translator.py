@@ -45,11 +45,11 @@ class HugoTranslator(NodeVisitor):
 
     def unknown_visit(self, node):
         """Handle unknown node types by logging them for debugging."""
-        # print(f"DEBUG: Unknown node type: {node.__class__.__name__}")
-        # print(f"DEBUG: Node attributes: {node.attributes}")
-        # print(f"DEBUG: Node children: {[child.__class__.__name__ for child in node.children]}")
+        print(f"DEBUG: Unknown node type: {node.__class__.__name__}")
+        print(f"DEBUG: Node attributes: {node.attributes}")
+        print(f"DEBUG: Node children: {[child.__class__.__name__ for child in node.children]}")
         # Don't raise error, just skip for now
-        # return
+        return
         raise NotImplementedError(
             f"Unknown node type {node.__class__.__name__} encountered.\nNode attributes: {node.attributes}\nNode children: {[child.__class__.__name__ for child in node.children]}"
         )
@@ -491,4 +491,69 @@ title = "{node.astext()}"
         pass
 
     def depart_compact_paragraph(self, node):
+        pass
+
+    # AUTODOC handling methods
+
+    def visit_index(self, node):
+        pass
+
+    def depart_index(self, node):
+        pass
+
+    def visit_desc(self, node):
+        pass
+
+    def depart_desc(self, node):
+        pass
+
+    def visit_desc_signature(self, node):
+        # Get parent desc node and its attributes
+        parent = node.parent  # desc_signature -> desc
+        domain = getattr(parent, 'attributes', {}).get('domain', '')
+        objtype = getattr(parent, 'attributes', {}).get('objtype', '')
+        # Find desc_name and desc_addname children for the object's name
+        name = ''
+        addname = ''
+        for child in node.children:
+            if child.__class__.__name__ == 'desc_name':
+                name = child.astext()
+            if child.__class__.__name__ == 'desc_addname':
+                addname = child.astext()
+        # Build anchor id (e.g., py-example or py-example-classname)
+        anchor_id = f"{domain}-{addname.rstrip('.')}-{name.rstrip('.')}".replace(" ", "-").lower() if domain and name and addname else ""
+        self.content.append(f"\n\n<p id='{anchor_id}'></p>\n\n## *{objtype}* ")
+
+    def depart_desc_signature(self, node):
+        self.content.append("\n\n")
+
+    def visit_desc_content(self, node):
+        self.content.append("<p class='desc-content'>\n\n")
+
+    def depart_desc_content(self, node):
+        self.content.append("</p>\n\n")
+
+    def visit_desc_addname(self, node):
+        pass
+
+    def depart_desc_addname(self, node):
+        pass
+
+    def visit_desc_name(self, node):
+        pass
+
+    def depart_desc_name(self, node):
+        pass
+
+    def visit_desc_annotation(self, node):
+        raise SkipNode
+
+    def depart_desc_annotation(self, node):
+        pass
+
+    def visit_desc_sig_space(self, node):
+        # Space in signatures (for formatting)
+        self.content.append(f" ")
+
+    def depart_desc_sig_space(self, node):
         pass

@@ -1,11 +1,9 @@
 Example
 =======
 
-.. TODO
-  .. autodata:: example.Example
-   :annotation: Example class for demonstration purposes.
+.. autodata:: example.Example
 
-  .. autoclass:: example.Example
-   :members:
-   :show-inheritance:
-   :undoc-members:
+  .. .. autoclass:: example.Example
+  ..  :members:
+  ..  :show-inheritance:
+  ..  :undoc-members:
