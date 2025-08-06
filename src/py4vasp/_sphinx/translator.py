@@ -567,19 +567,20 @@ title = "{node.astext()}"
         anchor_str = f"\n\n<a id='{anchor_id}'></a>" if anchor_id else ""
         ref_str = f" [¶](#{anchor_id})" if anchor_id else ""
         objtype = self.get_latest_objtype()
-        objtype_str = f"*{objtype}* " if objtype else ""
+        objtype_str = f"*{objtype}* " if (objtype != "method") else ""
         if (objtype):
             self.content.append(f"\n\n<div class='{objtype} signature'>")
 
         name = self.get_latest_name()
         name_str = f"**{name}**"
         self.content.append(f"{anchor_str}\n\n{self.section_level * '#'} {objtype_str}{name_str}{ref_str}")
+
         if (objtype):
             self.content.append(f"\n\n</div>\n\n")
         raise SkipNode
 
     def depart_desc_signature(self, node):
-        self.content.append("\n")
+        pass
 
     def visit_desc_returns(self, node):
         # return type annotation for functions, like " --> float"

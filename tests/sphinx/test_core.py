@@ -275,7 +275,7 @@ An example class for demonstration purposes.
 
 <a id='example.Example.__init__'></a>
 
-### *method* **__init__** [¶](#example.Example.__init__)
+### **__init__** [¶](#example.Example.__init__)
 
 </div>
 
@@ -308,7 +308,7 @@ Initialize the Example class with a value.
 
 <a id='example.Example.combined_returns'></a>
 
-### *method* **combined_returns** [¶](#example.Example.combined_returns)
+### **combined_returns** [¶](#example.Example.combined_returns)
 
 </div>
 
