@@ -562,6 +562,45 @@ title = "{node.astext()}"
         self.section_level -= 1
         pass
 
+    def get_parameter_list_and_types(self, node):
+        """Extract parameter names and types from a desc_signature node."""
+        parameters = []
+        for child in node.children:
+            if child.__class__.__name__ == 'desc_parameterlist':
+                for param in child.children:
+                    if param.__class__.__name__ == 'desc_parameter':
+                        name = ''
+                        annotation = ''
+                        for subchild in param.children:
+                            if subchild.__class__.__name__ == 'desc_sig_name':
+                                name = subchild.astext()
+                            elif subchild.__class__.__name__ == 'desc_annotation':
+                                annotation = subchild.astext()
+                        parameters.append((name, annotation))
+        return parameters
+    
+    def get_parameter_list_str(self, parameters):
+        """Get a string representation of the parameter list with types."""
+        if not parameters:
+            return " ()"
+        param_strs = []
+        for name, annotation in parameters:
+            if annotation:
+                param_strs.append(f"{name}: {annotation}")
+            else:
+                param_strs.append(name)
+        if len(param_strs) == 1:
+            return f" ({param_strs[0]})"
+        concat_str = ',\n- '.join(param_strs)
+        return "\n(\n- "+concat_str+"\n\n)"
+
+    def get_return_type(self, node):
+        """Get the return type annotation from a desc_signature node."""
+        for child in node.children:
+            if child.__class__.__name__ == 'desc_returns':
+                return child.astext()
+        return ""
+
     def visit_desc_signature(self, node):
         anchor_id = self.get_anchor_id()
         anchor_str = f"\n\n<a id='{anchor_id}'></a>" if anchor_id else ""
@@ -574,6 +613,14 @@ title = "{node.astext()}"
         name = self.get_latest_name()
         name_str = f"**{name}**"
         self.content.append(f"{anchor_str}\n\n{self.section_level * '#'} {objtype_str}{name_str}{ref_str}")
+
+        parameters = self.get_parameter_list_and_types(node)
+        parameters_str = self.get_parameter_list_str(parameters)
+        self.content.append(parameters_str)
+        return_type = self.get_return_type(node).lstrip(" -> ")
+        if return_type:
+            return_str = f" → `{return_type}`"
+            self.content.append(return_str)
 
         if (objtype):
             self.content.append(f"\n\n</div>\n\n")

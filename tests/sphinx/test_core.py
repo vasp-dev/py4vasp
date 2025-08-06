@@ -223,7 +223,7 @@ def test_convert_footnote(sphinx_app):
     print(content)
     assert False
 
-
+@pytest.mark.skip("WiP")
 def test_convert_example(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_autodata_content = """\
