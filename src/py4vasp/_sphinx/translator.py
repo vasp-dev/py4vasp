@@ -42,6 +42,8 @@ class HugoTranslator(NodeVisitor):
         self.content = []
         self.list_stack = []
         self.in_footnote = False
+        self.anchor_id_stack = [] 
+        """Used to identify stacks of anchor IDs for desc_signature, so that class methods, e.g. can be referenced as #script_name.Class_name.method_name."""
 
     def unknown_visit(self, node):
         """Handle unknown node types by logging them for debugging."""
@@ -348,6 +350,8 @@ title = "{node.astext()}"
         We clean up the temporary state to avoid interference with other links.
         """
         uri = getattr(self, "_reference_uri", "")
+        if (uri) and uri.startswith("#"):
+            uri = uri.replace(" ", "-").rstrip("-")
         self.content.append(f"]({uri})")
         self._reference_uri = None
 
@@ -502,43 +506,93 @@ title = "{node.astext()}"
     def depart_index(self, node):
         pass
 
-    def visit_desc(self, node):
-        self.section_level += 1
-        pass
+    def get_anchor_id(self):
+        if not self.anchor_id_stack:
+            return None
+        else:
+            list_to_join = [anchor.replace(" ", "") for (anchor,name,addname,domain,objtype) in self.anchor_id_stack if anchor]
+            return ".".join(list_to_join)
 
-    def depart_desc(self, node):
-        self.section_level -= 1
-        pass
-
-    def visit_desc_signature(self, node):
-        # Get parent desc node and its attributes
-        parent = node.parent  # desc_signature -> desc
-        domain = getattr(parent, 'attributes', {}).get('domain', '')
-        objtype = getattr(parent, 'attributes', {}).get('objtype', '')
+    def construct_new_anchor_id(self, node) -> tuple[str, str, str]:
+        domain = getattr(node, 'attributes', {}).get('domain', '')
+        objtype = getattr(node, 'attributes', {}).get('objtype', '')
         # Find desc_name and desc_addname children for the object's name
         name = ''
         addname = ''
         for child in node.children:
-            if child.__class__.__name__ == 'desc_name':
-                name = child.astext()
-            if child.__class__.__name__ == 'desc_addname':
-                addname = child.astext()
+            if child.__class__.__name__ == "desc_signature":
+                for childB in child.children:
+                    if childB.__class__.__name__ == 'desc_name':
+                        name = childB.astext()
+                    if childB.__class__.__name__ == 'desc_addname':
+                        addname = childB.astext()
+                break
         # Build anchor id (e.g., py-example or py-example-classname)
-        domain_str = f"{domain}-" if domain else ''
-        objtype_str = f"{objtype}-" if objtype else ''
-        addname_str = f"{addname}-" if addname else ''
-        name_str = f"{name}-" if name else ""
-        anchor_id = f"{domain_str}{objtype_str}{addname_str}{name_str}".replace(" ", "-").replace("_", "").replace(".", "").rstrip("-").lower()
-        self.content.append(f"\n\n<p id='{anchor_id}'></p>\n\n{self.section_level * '#'} *{objtype}* ")
+        addname_str = f"{addname.rstrip('.').lstrip('.').lstrip(' ').rstrip(' ')}" if addname else ''
+        name_str = f"{name.rstrip('.').lstrip('.').lstrip(' ').rstrip(' ')}" if name else ""
+        new_anchor_id = f"{addname_str}.{name_str}".replace(" ", "-").rstrip("-").rstrip(".").lstrip(".")
+        self.anchor_id_stack.append((new_anchor_id, name, addname, domain, objtype))
+        return new_anchor_id, domain, objtype
+
+    def get_latest_objtype(self) -> str | None:
+        """Get the latest non-empty objtype from the anchor_id_stack."""
+        if not self.anchor_id_stack:
+            return None
+        for anchor_id, name, addname, domain, objtype in reversed(self.anchor_id_stack):
+            if objtype:
+                return objtype
+        return None
+
+    def get_latest_name(self) -> str | None:
+        """Get the latest non-empty name from the anchor_id_stack."""
+        if not self.anchor_id_stack:
+            return None
+        for anchor_id, name, addname, domain, objtype in reversed(self.anchor_id_stack):
+            if name:
+                return name
+        return None
+
+    def visit_desc(self, node):
+        self.construct_new_anchor_id(node)
+        self.section_level += 1
+        pass
+
+    def depart_desc(self, node):
+        if (self.anchor_id_stack): self.anchor_id_stack.pop()
+        self.section_level -= 1
+        pass
+
+    def visit_desc_signature(self, node):
+        anchor_id = self.get_anchor_id()
+        anchor_str = f"\n\n<a id='{anchor_id}'></a>" if anchor_id else ""
+        ref_str = f" [¶](#{anchor_id})" if anchor_id else ""
+        objtype = self.get_latest_objtype()
+        objtype_str = f"*{objtype}* " if objtype else ""
+        if (objtype):
+            self.content.append(f"\n\n<div class='{objtype} signature'>")
+
+        name = self.get_latest_name()
+        name_str = f"**{name}**"
+        self.content.append(f"{anchor_str}\n\n{self.section_level * '#'} {objtype_str}{name_str}{ref_str}")
+        if (objtype):
+            self.content.append(f"\n\n</div>\n\n")
+        raise SkipNode
 
     def depart_desc_signature(self, node):
         self.content.append("\n")
 
+    def visit_desc_returns(self, node):
+        # return type annotation for functions, like " --> float"
+        self.content.append(f" → `")
+
+    def depart_desc_returns(self, node):
+        self.content.append("`")
+
     def visit_desc_content(self, node):
-        self.content.append("\n\n<p class='desc-content'>\n\n")
+        self.content.append("\n\n<div class='desc-content'>\n\n")
 
     def depart_desc_content(self, node):
-        self.content.append("\n</p>\n")
+        self.content.append("\n</div>\n")
 
     def visit_desc_addname(self, node):
         self.content.append("`")
@@ -663,10 +717,3 @@ title = "{node.astext()}"
 
     def depart_literal_strong(self, node):
         self.content.append("**")
-
-    def visit_desc_returns(self, node):
-        # return type annotation for functions, like " --> float"
-        self.content.append(f" → `")
-
-    def depart_desc_returns(self, node):
-        self.content.append("`")

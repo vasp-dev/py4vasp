@@ -28,7 +28,7 @@ class Example:
 
     def set_value(self, new_value: float):
         """
-        Set a new value for the instance.
+        Set a new value for the instance. The value can be obtained with the :py:meth:`get_value` method.
 
         Parameters
         ----------

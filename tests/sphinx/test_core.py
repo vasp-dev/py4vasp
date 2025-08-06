@@ -228,29 +228,39 @@ def test_convert_example(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_autodata_content = """\
 
-<p id='py-data-example-example'></p>
+<div class='data signature'>
 
-## *data* `example.Example`
+<a id='example.Example'></a>
+
+## *data* **Example** [¶](#example.Example)
+
+</div>
 
 
-<p class='desc-content'>
+
+<div class='desc-content'>
 
 An example class for demonstration purposes.
 
 
-</p>
+</div>
 
 """
     assert expected_autodata_content in content
 
     expected_class_content = """\
 
-<p id='py-class-example-example'></p>
+<div class='class signature'>
 
-## *class* `example.Example`(*value: float*)
+<a id='example.Example'></a>
+
+## *class* **Example** [¶](#example.Example)
+
+</div>
 
 
-<p class='desc-content'>
+
+<div class='desc-content'>
 
 Bases: `object`
 
@@ -261,12 +271,17 @@ An example class for demonstration purposes.
 
     expected_private_method_content = """\
 
-<p id='py-method-init'></p>
+<div class='method signature'>
 
-### *method* `__init__`(*value: float*)
+<a id='example.Example.__init__'></a>
+
+### *method* **__init__** [¶](#example.Example.__init__)
+
+</div>
 
 
-<p class='desc-content'>
+
+<div class='desc-content'>
 
 Initialize the Example class with a value.
 
@@ -282,19 +297,24 @@ Initialize the Example class with a value.
 
 
 
-</p>
+</div>
 
 """
     assert expected_private_method_content in content
 
     expected_public_method_content = """\
 
-<p id='py-method-combinedreturns'></p>
+<div class='method signature'>
 
-### *method* `combined_returns`(*some_value: float, some_string: str | None = ''*) → `tuple[float, str | None]`
+<a id='example.Example.combined_returns'></a>
+
+### *method* **combined_returns** [¶](#example.Example.combined_returns)
+
+</div>
 
 
-<p class='desc-content'>
+
+<div class='desc-content'>
 
 Combine a float and a string in a tuple.
 
@@ -320,7 +340,7 @@ A tuple containing the float and a string representation.
 
 
 
-</p>
+</div>
 
 """
     assert expected_public_method_content in content
