@@ -43,6 +43,9 @@ class HugoTranslator(NodeVisitor):
         self.list_stack = []
         self.in_footnote = False
         self.anchor_id_stack = [] 
+        self._in_parameters_field = False
+        self._in_returns_field = False
+        self._current_return_type = None
         """Used to identify stacks of anchor IDs for desc_signature, so that class methods, e.g. can be referenced as #script_name.Class_name.method_name."""
 
     def unknown_visit(self, node):
@@ -587,17 +590,22 @@ title = "{node.astext()}"
                         parameters.append((name, type_, default))
         return parameters
     
+    def get_formatted_param(self, name, annotation, default):
+        """Format a single parameter with its name, type, and default value."""
+        param = f"*{name}*"
+        if annotation:
+            param += f": `{annotation}`"
+        if default:
+            param += f", optional [default: {default}]"
+        return param
+    
     def get_parameter_list_str(self, parameters):
         """Get a string representation of the parameter list with types."""
         if not parameters:
             return "()"
         param_strs = []
         for name, annotation, default in parameters:
-            param = f"*{name}*"
-            if annotation:
-                param += f": `{annotation}`"
-            if default:
-                param += f", optional [default: {default}]"
+            param = self.get_formatted_param(name, annotation, default)
             param_strs.append(param)
         if len(param_strs) == 1:
             return f"({param_strs[0]})"
@@ -727,23 +735,73 @@ title = "{node.astext()}"
         self.content.append("\n")
 
     def visit_field(self, node):
-        # Start a field (parameter, return, etc.)
-        self.content.append("\n")
+        # Identify the field name
+        field_name = ""
+        for child in node.children:
+            if child.__class__.__name__ == "field_name":
+                field_name = child.astext().strip().lower()
+                break
+
+        if field_name == "return type":
+            # Store the return type for later use in "Returns"
+            for child in node.children:
+                if child.__class__.__name__ == "field_body":
+                    self._current_return_type = child.astext()
+            raise SkipNode
+
+        if field_name == "returns":
+            self.content.append("\n**Returns:**\n\n")
+            # Will append return type in depart_field_body
+            self._in_returns_field = True
+            return
+
+        if field_name == "parameters":
+            self.content.append("\n**Parameters:**\n\n")
+            self._in_parameters_field = True
+            return
 
     def depart_field(self, node):
-        self.content.append("\n")
+        if getattr(self, "_in_returns_field", False):
+            # Append the return type if available
+            if hasattr(self, "_current_return_type"):
+                self.content.append(f"\n\n*Type:* `{self._current_return_type}`\n")
+            self._in_returns_field = False
+        if getattr(self, "_in_parameters_field", False):
+            self._in_parameters_field = False
+        if getattr(self, "_current_return_type", None):
+            # Reset the return type after processing
+            self._current_return_type = None
 
     def visit_field_name(self, node):
-        # Field name (e.g., "Parameters", "Returns")
-        self.content.append(f"**{node.astext()}:**\n\n")
         raise SkipNode
 
     def depart_field_name(self, node):
         pass
 
+    def add_formatted_field_body_paragraph(self, para):
+        text = para.astext()
+        # Try to split "name (type) – description"
+        if " – " in text:
+            left, desc = text.split(" – ", 1)
+            self.content.append(f"- {left}\n: {desc}\n")
+        else:
+            self.content.append(f": {text}\n")
+
     def visit_field_body(self, node):
-        # Field body (description)
-        pass  # Let children handle output
+        if getattr(self, "_in_parameters_field", False):
+            # Render each parameter as a Markdown definition list
+            # You need to parse the field_body for parameter entries
+            for para in node.children:
+                if para.__class__.__name__ == "paragraph":
+                    self.add_formatted_field_body_paragraph(para)
+                elif para.__class__.__name__ == "bullet_list":
+                    # Handle bullet lists in parameters
+                    for item in para.children:
+                        print("DEBUG: Processing bullet list item in parameters: ", item.__class__.__name__)
+                        if item.__class__.__name__ == "list_item":
+                            self.add_formatted_field_body_paragraph(item)
+            raise SkipNode  # Prevent default rendering
+        # Otherwise, process as usual
 
     def depart_field_body(self, node):
         pass

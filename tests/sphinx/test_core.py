@@ -292,9 +292,8 @@ Initialize the Example class with a value.
 
 **Parameters:**
 
-**value** (`float`) – The value to be stored in the instance.
-
-
+- value (float)
+: The value to be stored in the instance.
 
 
 </div>
@@ -327,10 +326,10 @@ Combine a float and a string in a tuple.
 
 **Parameters:**
 
-* **some_value** (`float`) – A value to be included in the tuple.
-* **some_string** (`str`) – A string to be included in the tuple.
-
-
+- some_value (float)
+: A value to be included in the tuple.
+- some_string (str)
+: A string to be included in the tuple.
 
 **Returns:**
 
@@ -338,11 +337,7 @@ A tuple containing the float and a string representation.
 
 
 
-**Return type:**
-
-`tuple[float`, `str | None]`
-
-
+*Type:* `None`
 
 
 </div>
