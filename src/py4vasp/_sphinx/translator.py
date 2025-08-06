@@ -563,34 +563,44 @@ title = "{node.astext()}"
         pass
 
     def get_parameter_list_and_types(self, node):
-        """Extract parameter names and types from a desc_signature node."""
+        """Extract parameter names, types, and default values from a desc_signature node."""
         parameters = []
         for child in node.children:
             if child.__class__.__name__ == 'desc_parameterlist':
                 for param in child.children:
                     if param.__class__.__name__ == 'desc_parameter':
                         name = ''
-                        annotation = ''
+                        type_ = ''
+                        default = ''
+                        next_is_default = False
                         for subchild in param.children:
                             if subchild.__class__.__name__ == 'desc_sig_name':
-                                name = subchild.astext()
-                            elif subchild.__class__.__name__ == 'desc_annotation':
-                                annotation = subchild.astext()
-                        parameters.append((name, annotation))
+                                if not name:
+                                    name = subchild.astext()
+                                else:
+                                    type_ = subchild.astext()
+                            elif subchild.__class__.__name__ == 'desc_sig_operator' and '=' in subchild.astext():
+                                next_is_default = True
+                            elif subchild.__class__.__name__ == 'inline' and next_is_default:
+                                default = subchild.astext()
+                                next_is_default = False
+                        parameters.append((name, type_, default))
         return parameters
     
     def get_parameter_list_str(self, parameters):
         """Get a string representation of the parameter list with types."""
         if not parameters:
-            return " ()"
+            return "()"
         param_strs = []
-        for name, annotation in parameters:
+        for name, annotation, default in parameters:
+            param = f"*{name}*"
             if annotation:
-                param_strs.append(f"{name}: {annotation}")
-            else:
-                param_strs.append(name)
+                param += f": `{annotation}`"
+            if default:
+                param += f", optional [default: {default}]"
+            param_strs.append(param)
         if len(param_strs) == 1:
-            return f" ({param_strs[0]})"
+            return f"({param_strs[0]})"
         concat_str = ',\n- '.join(param_strs)
         return "\n(\n- "+concat_str+"\n\n)"
 
@@ -614,9 +624,10 @@ title = "{node.astext()}"
         name_str = f"**{name}**"
         self.content.append(f"{anchor_str}\n\n{self.section_level * '#'} {objtype_str}{name_str}{ref_str}")
 
-        parameters = self.get_parameter_list_and_types(node)
-        parameters_str = self.get_parameter_list_str(parameters)
-        self.content.append(parameters_str)
+        if (objtype in ["function", "method", "class", "exception"]):
+            parameters = self.get_parameter_list_and_types(node)
+            parameters_str = self.get_parameter_list_str(parameters)
+            self.content.append(parameters_str)
         return_type = self.get_return_type(node).lstrip(" -> ")
         if return_type:
             return_str = f" → `{return_type}`"
@@ -630,43 +641,29 @@ title = "{node.astext()}"
         pass
 
     def visit_desc_returns(self, node):
-        # return type annotation for functions, like " --> float"
-        self.content.append(f" → `")
+        raise SkipNode
 
     def depart_desc_returns(self, node):
-        self.content.append("`")
+        pass
 
     def visit_desc_content(self, node):
         self.content.append("\n\n<div class='desc-content'>\n\n")
+        pass
 
     def depart_desc_content(self, node):
         self.content.append("\n</div>\n")
 
     def visit_desc_addname(self, node):
-        self.content.append("`")
+        raise SkipNode
 
     def depart_desc_addname(self, node):
-        # if desc_name is defined, do not close the backtick yet
-        parent = node.parent
-        skip_ahead = False
-        for sibling in parent.children:
-            if sibling.__class__.__name__ == 'desc_name':
-                skip_ahead = True
-        if not skip_ahead:
-            self.content.append("`")
+        pass
 
     def visit_desc_name(self, node):
-        # if desc_addname is defined, no need to open the backtick here
-        parent = node.parent
-        skip_ahead = False
-        for sibling in parent.children:
-            if sibling.__class__.__name__ == 'desc_addname':
-                skip_ahead = True
-        if not skip_ahead:
-            self.content.append("`")
+        raise SkipNode
 
     def depart_desc_name(self, node):
-        self.content.append("`")
+        pass
 
     def visit_desc_annotation(self, node):
         raise SkipNode
@@ -676,7 +673,7 @@ title = "{node.astext()}"
 
     def visit_desc_sig_space(self, node):
         # Space in signatures (for formatting)
-        self.content.append(f" ")
+        self.content.append(" ")
 
     def depart_desc_sig_space(self, node):
         pass
@@ -684,24 +681,16 @@ title = "{node.astext()}"
     # === .. autoclass:: ===
 
     def visit_desc_parameterlist(self, node):
-        # Start parameter list (e.g., for function/method signatures)
-        self.content.append("(*")
+        raise SkipNode
 
     def depart_desc_parameterlist(self, node):
-        if self.content[-1] == "(*":
-            self.content[-1] = "()"
-        else: self.content.append("*)")
+        pass
 
     def visit_desc_parameter(self, node):
-        # Each parameter in the list
-        pass  # Let children (names, punctuation, etc.) handle their own output
+        raise SkipNode
 
     def depart_desc_parameter(self, node):
-        # Only add a comma if this is not the last parameter in the list
-        parent = node.parent  # desc_parameterlist
-        siblings = [child for child in parent.children if child.__class__.__name__ == "desc_parameter"]
-        if siblings and node != siblings[-1]:
-            self.content.append(", ")
+        pass
 
     def visit_desc_sig_name(self, node):
         pass

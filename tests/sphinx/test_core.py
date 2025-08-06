@@ -223,7 +223,7 @@ def test_convert_footnote(sphinx_app):
     print(content)
     assert False
 
-@pytest.mark.skip("WiP")
+#@pytest.mark.skip("WiP")
 def test_convert_example(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_autodata_content = """\
@@ -254,7 +254,7 @@ An example class for demonstration purposes.
 
 <a id='example.Example'></a>
 
-## *class* **Example** [¶](#example.Example)
+## *class* **Example** [¶](#example.Example)(*value*: `float`)
 
 </div>
 
@@ -275,7 +275,7 @@ An example class for demonstration purposes.
 
 <a id='example.Example.__init__'></a>
 
-### **__init__** [¶](#example.Example.__init__)
+### **__init__** [¶](#example.Example.__init__)(*value*: `float`)
 
 </div>
 
@@ -309,6 +309,11 @@ Initialize the Example class with a value.
 <a id='example.Example.combined_returns'></a>
 
 ### **combined_returns** [¶](#example.Example.combined_returns)
+(
+- *some_value*: `float`,
+- *some_string*: `str | None`, optional [default: '']
+
+) → `tuple[float, str | None]`
 
 </div>
 
