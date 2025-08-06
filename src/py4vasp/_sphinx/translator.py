@@ -762,9 +762,6 @@ title = "{node.astext()}"
 
     def depart_field(self, node):
         if getattr(self, "_in_returns_field", False):
-            # Append the return type if available
-            if hasattr(self, "_current_return_type"):
-                self.content.append(f"\n\n*Type:* `{self._current_return_type}`\n")
             self._in_returns_field = False
         if getattr(self, "_in_parameters_field", False):
             self._in_parameters_field = False
@@ -801,6 +798,11 @@ title = "{node.astext()}"
                         if item.__class__.__name__ == "list_item":
                             self.add_formatted_field_body_paragraph(item)
             raise SkipNode  # Prevent default rendering
+        elif getattr(self, "_in_returns_field", False):
+            # Append the return type if available
+            if hasattr(self, "_current_return_type"):
+                self.content.append(f"`{self._current_return_type}`\n") # TODO: ensure return types are also read from desc_returns, and vice-versa
+                self.content.append(f": {node.astext()}")
         # Otherwise, process as usual
 
     def depart_field_body(self, node):
