@@ -342,3 +342,8 @@ Combine a float and a string in a tuple.
 
 """
     assert expected_public_method_content in content
+
+
+def test_convert_example_dos(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_dos.md")
+    print(content)
