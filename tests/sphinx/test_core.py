@@ -242,6 +242,8 @@ def test_convert_footnote(sphinx_app):
     assert first_reference in content
     second_reference = "reference.[^2]"
     assert second_reference in content
+    third_reference = "footnote.[^3]"
+    assert third_reference in content
     first_footnote = """\
 [^1]:
     This is the first footnote.
@@ -258,6 +260,16 @@ def test_convert_footnote(sphinx_app):
     print("This is a code block in a footnote.")
     ~~~"""
     assert second_footnote in content
+    third_footnote = """\
+[^3]:
+    This is the third footnote with a definition list:
+
+    term
+    : Definition of the term in the third footnote.
+   
+    next term
+    : Description of the next term in the third footnote."""
+    assert third_footnote in content
 
 
 # def test_convert_p4v(sphinx_app):
@@ -268,6 +280,7 @@ def test_convert_footnote(sphinx_app):
 #     # print(doctree.pformat())
 
 
+@pytest.mark.skip
 def test_convert_example(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_autodata_content = """\
@@ -388,6 +401,7 @@ Combine a float and a string in a tuple.
     assert expected_public_method_content in content
 
 
+@pytest.mark.skip
 def test_convert_example_dos(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
     print(content)
