@@ -83,7 +83,7 @@ def test_convert_headings(sphinx_app):
                     headers.append(lines.index(paragraph_header))
     # check that headers are in order
     assert sorted(headers) == headers
-    assert "***Header not in table of contents***\n" in content
+    assert "###### ***Header not in table of contents***\n" in content
 
 
 def test_convert_inline_markup(sphinx_app):
@@ -310,7 +310,7 @@ Initialize the Example class with a value.
 ### **combined_returns** [¶](#example.Example.combined_returns)
 (
 - *some_value*: `float`,
-- *some_string*: `str | None`, optional [default: '']
+- *some_string*: [optional] `str | None` [default: '']
 
 ) → `tuple[float, str | None]`
 
@@ -328,7 +328,7 @@ Combine a float and a string in a tuple.
 
 - *some_value*: `float`
 : A value to be included in the tuple.
-- *some_string*: `str`, optional [default: '']
+- *some_string*: [optional] `str` [default: '']
 : A string to be included in the tuple.
 
 #### **Returns:**
