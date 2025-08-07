@@ -161,7 +161,7 @@ title = "{node.astext()}"
         has been processed, not before it.
         """
         self._move_content_to_lines()
-        if not self.list_stack:
+        if not self.list_stack or self.list_stack[-1] == "description":
             self._add_new_line()
 
     def visit_rubric(self, node):
@@ -316,7 +316,7 @@ title = "{node.astext()}"
         This creates the line break that Markdown definition list syntax requires
         between the term and the definition that follows.
         """
-        self.content += "\n"
+        self._move_content_to_lines()
 
     def visit_definition(self, node):
         """Add colon prefix to mark the beginning of a definition.
@@ -326,6 +326,8 @@ title = "{node.astext()}"
         definition part of the term-definition pair.
         """
         self.content += ": "
+        self._move_content_to_lines()
+        self.indentation_stack.append(self.indentation_stack[-1] + 2)
 
     def depart_definition(self, node):
         """Add newline after definition for proper separation.
@@ -333,7 +335,8 @@ title = "{node.astext()}"
         This ensures proper spacing between definition list items and prevents
         them from running together in the output.
         """
-        self.content += "\n"
+        self._move_content_to_lines()
+        self.indentation_stack.pop()
 
     # Comment handling methods
 
@@ -943,8 +946,7 @@ title = "{node.astext()}"
                 type_annotation = sig_types
                 if len(sep_around_type) > 1:
                     type_annotation = sep_around_type[1].split(")")[0].strip()
-                left = self.get_formatted_param(
-                    left, type_annotation, sig_default)
+                left = self.get_formatted_param(left, type_annotation, sig_default)
             else:
                 # No type annotation, just use the left part
                 left = f"*{left.strip()}*"
@@ -987,6 +989,6 @@ title = "{node.astext()}"
 
     def visit_title_reference(self, node):
         self.content += "*"
-    
+
     def depart_title_reference(self, node):
         self.content += "*"

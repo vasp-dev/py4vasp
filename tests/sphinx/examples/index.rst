@@ -10,6 +10,7 @@ This is the main page of the documentation. It serves as an index for the conten
 
    code_block
    comments
+   complex_list
    custom_role
    example
    headings
