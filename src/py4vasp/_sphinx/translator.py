@@ -325,7 +325,7 @@ title = "{node.astext()}"
         prefixed with a colon and space. The colon signals that this is the
         definition part of the term-definition pair.
         """
-        self.content += ": "
+        self.content += ": #"
         self._move_content_to_lines()
         self.indentation_stack.append(self.indentation_stack[-1] + 2)
 

@@ -114,17 +114,18 @@ def test_convert_lists(sphinx_app):
 1. It has two items, the second
 item uses two lines."""
     assert ordered_list in content
-    # note that there is a space after the colon in the definition list
-    # otherwise Hugo will not render it correctly
+    # Note we added a # after the colon in the definition list so that Hugo renders it
+    # correctly. Technically only the space is needed, but then opening the file manually
+    # in a text editor may trim the trailing space.
     definition_list = """\
 term (up to a line of text)
-: 
+: #
     Definition of the term, which must be indented
 
     and can even consist of multiple paragraphs
 
 next term
-: 
+: #
     Description."""
     assert definition_list in content
 
@@ -270,11 +271,11 @@ def test_convert_footnote(sphinx_app):
     This is the third footnote with a definition list.
 
     term
-    : 
+    : #
         Definition of the term in the third footnote.
 
     next term
-    : 
+    : #
         Description of the next term in the third footnote."""
     assert third_footnote in content
 
@@ -285,7 +286,7 @@ def test_complex_list(sphinx_app):
     # otherwise Hugo will not render it correctly
     expected_content = """\
 title
-: 
+: #
     ~~~python
     print("This is a code block in a definition list.")
     ~~~
