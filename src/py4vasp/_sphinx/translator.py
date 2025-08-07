@@ -37,22 +37,37 @@ class HugoTranslator(NodeVisitor):
         appropriate number of hash symbols.
         """
         self.document = document
-        self.has_title = False
+        self.frontmatter_created = False
         self.section_level = 0
-        self.content = []
+        self.indent = 0
+        self.lines = []
+        self.content = ""
         self.list_stack = []
         self.in_footnote = False
-        self.anchor_id_stack = [] 
+        self.anchor_id_stack = []
         self._in_parameters_field = False
         self._in_returns_field = False
         self._current_return_type = None
         """Used to identify stacks of anchor IDs for desc_signature, so that class methods, e.g. can be referenced as #script_name.Class_name.method_name."""
 
+    def __str__(self):
+        return "\n".join(self.lines) + "\n"
+
+    def _add_new_line(self):
+        self.lines.append("")
+
+    def _move_content_to_lines(self):
+        for line in self.content.splitlines():
+            self.lines.append("  " * self.indent + line)
+        self.content = ""
+
     def unknown_visit(self, node):
         """Handle unknown node types by logging them for debugging."""
         print(f"DEBUG: Unknown node type: {node.__class__.__name__}")
         print(f"DEBUG: Node attributes: {node.attributes}")
-        print(f"DEBUG: Node children: {[child.__class__.__name__ for child in node.children]}")
+        print(
+            f"DEBUG: Node children: {[child.__class__.__name__ for child in node.children]}"
+        )
         # Don't raise error, just skip for now
         return
         raise NotImplementedError(
@@ -84,23 +99,25 @@ class HugoTranslator(NodeVisitor):
         titles become Markdown headers with the appropriate nesting level based on
         the current section depth.
         """
-        if not self.has_title:
-            self.content.append(self._create_hugo_front_matter(node))
-            self.has_title = True
-        self.content.append(f"{self.section_level * '#'} ")
+        self._create_hugo_front_matter(node)
+        self.content = f"{self.section_level * '#'} "
 
     def depart_title(self, node):
-        self.content.append("\n")
+        self._move_content_to_lines()
 
     def _create_hugo_front_matter(self, node):
         """Create Hugo front matter for the document title.
         This method generates the TOML front matter required by Hugo, which includes
         the document title. It is called only once, when the first title node is visited.
         """
-        return f"""\
+        if self.frontmatter_created:
+            return
+        self.content = f"""\
 +++
 title = "{node.astext()}"
 +++\n"""
+        self._move_content_to_lines()
+        self.frontmatter_created = True
 
     def visit_section(self, node):
         """Increment section nesting level when entering a section.
@@ -128,10 +145,7 @@ title = "{node.astext()}"
         Inside lists only a single newline is required because the list item separate
         the paragraphs.
         """
-        if self.list_stack:
-            self.newlines_after_paragraph = 1
-        else:
-            self.newlines_after_paragraph = 2
+        pass
 
     def depart_paragraph(self, node):
         """Add newline after paragraph content for proper Markdown separation.
@@ -140,13 +154,16 @@ title = "{node.astext()}"
         rather than visit because we need the newline after all the paragraph's content
         has been processed, not before it.
         """
-        self.content.append(self.newlines_after_paragraph * "\n")
+        self._move_content_to_lines()
+        if not self.list_stack:
+            self._add_new_line()
 
     def visit_rubric(self, node):
-        return self.content.append("***")
+        self.content = "***"
 
     def depart_rubric(self, node):
-        return self.content.append("***\n")
+        self.content += "***"
+        self._move_content_to_lines()
 
     def visit_Text(self, node):
         """Add text content directly without modification.
@@ -154,7 +171,7 @@ title = "{node.astext()}"
         Text nodes contain the raw content and don't need escaping or wrapping
         in basic cases. More complex escaping could be added here if needed.
         """
-        self.content.append(f"{node.astext()}")
+        self.content += node.astext()
 
     # Inline markup handling methods
 
@@ -165,7 +182,7 @@ title = "{node.astext()}"
         underscores because they're more universally supported and don't conflict
         with underscores in code or identifiers.
         """
-        self.content.append("*")
+        self.content += "*"
 
     def depart_emphasis(self, node):
         """Add closing asterisk to complete italic markup.
@@ -173,7 +190,7 @@ title = "{node.astext()}"
         Both opening and closing markers are identical in Markdown emphasis,
         unlike HTML where tags differ (&lt;em&gt; vs &lt;/em&gt;).
         """
-        self.content.append("*")
+        self.content += "*"
 
     def visit_strong(self, node):
         """Add opening double asterisk for bold text.
@@ -181,14 +198,14 @@ title = "{node.astext()}"
         Markdown uses double asterisks for strong/bold text. Double asterisks are
         preferred over double underscores for consistency with single emphasis.
         """
-        self.content.append("**")
+        self.content += "**"
 
     def depart_strong(self, node):
         """Add closing double asterisk to complete bold markup.
 
         Symmetric opening and closing markers are required for proper Markdown parsing.
         """
-        self.content.append("**")
+        self.content += "**"
 
     def visit_literal(self, node):
         """Add opening backtick for inline code.
@@ -196,14 +213,14 @@ title = "{node.astext()}"
         Single backticks are used for inline code spans in Markdown. This handles
         simple cases where the literal text doesn't contain backticks itself.
         """
-        self.content.append("`")
+        self.content += "`"
 
     def depart_literal(self, node):
         """Add closing backtick to complete inline code markup.
 
         Matching backticks are required to properly delimit the code span.
         """
-        self.content.append("`")
+        self.content += "`"
 
     # list handling methods
 
@@ -250,7 +267,7 @@ title = "{node.astext()}"
         """
         self.list_stack.pop()
         if not self.list_stack:
-            self.content.append("\n")
+            self._add_new_line()
 
     def visit_list_item(self, node):
         """Add list marker with proper indentation for current nesting level.
@@ -259,8 +276,8 @@ title = "{node.astext()}"
         Two spaces per level is the Markdown standard for nested list indentation.
         The marker comes from the stack top, so it matches the current list type.
         """
-        indent = "  " * (len(self.list_stack) - 1)
-        self.content.append(f"{indent}{self.list_stack[-1]} ")
+        self.indent = len(self.list_stack) - 1
+        self.content = f"{self.list_stack[-1]} "
 
     def visit_definition_list(self, node):
         self.list_stack.append("description")
@@ -268,7 +285,7 @@ title = "{node.astext()}"
     def depart_definition_list(self, node):
         self.list_stack.pop()
         if not self.list_stack:
-            self.content.append("\n")
+            self._add_new_line()
 
     def visit_definition_list_item(self, node):
         """No action needed for definition list item container.
@@ -292,7 +309,7 @@ title = "{node.astext()}"
         This creates the line break that Markdown definition list syntax requires
         between the term and the definition that follows.
         """
-        self.content.append("\n")
+        self.content += "\n"
 
     def visit_definition(self, node):
         """Add colon prefix to mark the beginning of a definition.
@@ -301,7 +318,7 @@ title = "{node.astext()}"
         prefixed with a colon and space. The colon signals that this is the
         definition part of the term-definition pair.
         """
-        self.content.append(": ")
+        self.content += ": "
 
     def depart_definition(self, node):
         """Add newline after definition for proper separation.
@@ -309,7 +326,7 @@ title = "{node.astext()}"
         This ensures proper spacing between definition list items and prevents
         them from running together in the output.
         """
-        self.content.append("\n")
+        self.content += "\n"
 
     # Comment handling methods
 
@@ -343,7 +360,7 @@ title = "{node.astext()}"
         self._reference_uri = node.get("refuri") or (
             f"#{node.get('refid')}" if node.get("refid") else ""
         )
-        self.content.append("[")
+        self.content += "["
 
     def depart_reference(self, node):
         """Complete the Markdown link with the stored URI and clean up state.
@@ -355,7 +372,7 @@ title = "{node.astext()}"
         uri = getattr(self, "_reference_uri", "")
         if (uri) and uri.startswith("#"):
             uri = uri.replace(" ", "-").rstrip("-")
-        self.content.append(f"]({uri})")
+        self.content += f"]({uri})"
         self._reference_uri = None
 
     def visit_target(self, node):
@@ -370,7 +387,7 @@ title = "{node.astext()}"
         refid = node.get("refid")
         if refid:
             # Insert an anchor for internal references
-            self.content.append(f'<a name="{refid}"></a>')
+            self.content += f'<a name="{refid}"></a>'
         # For external targets (refuri), do nothing (handled by reference)
 
     def depart_target(self, node):
@@ -395,7 +412,7 @@ title = "{node.astext()}"
             # This is an internal cross-reference, create a link
             # We need to get the target from somewhere - let's use the text content
             # as the anchor since that's what Sphinx typically does
-            self.content.append("[")
+            self.content += "["
             self._inline_is_xref = True
         else:
             self._inline_is_xref = False
@@ -410,7 +427,7 @@ title = "{node.astext()}"
         if getattr(self, "_inline_is_xref", False):
             # Extract the text content to use as the anchor
             text_content = node.astext()
-            self.content.append(f"](#{text_content})")
+            self.content += f"](#{text_content})"
             self._inline_is_xref = False
 
     def visit_pending_xref(self, node):
@@ -422,7 +439,7 @@ title = "{node.astext()}"
         """
         # Use reftarget for anchor
         self._reference_uri = f"#{node.get('reftarget', '')}"
-        self.content.append("[")
+        self.content += "["
 
     def depart_pending_xref(self, node):
         """Complete pending cross-reference links with the stored target.
@@ -431,48 +448,52 @@ title = "{node.astext()}"
         stored in visit and clean up the temporary state.
         """
         uri = getattr(self, "_reference_uri", "")
-        self.content.append(f"]({uri})")
+        self.content += f"]({uri})"
         self._reference_uri = None
 
     # Code block handling methods
 
     def visit_literal_block(self, node):
         language = node["language"].strip("default")
-        self.content.append(f"~~~{language}\n")
+        self.content += f"~~~{language}\n"
 
     def depart_literal_block(self, node):
-        self.content.append("\n~~~\n\n")
+        self.content += "\n~~~"
+        self._move_content_to_lines()
+        self._add_new_line()
 
     def visit_doctest_block(self, node):
-        self.content.append("~~~python\n")
+        self.content += "~~~python\n"
 
     def depart_doctest_block(self, node):
-        self.content.append("\n~~~\n\n")
+        self.content += "\n~~~"
+        self._move_content_to_lines()
+        self._add_new_line()
 
     # Admonition handling methods
 
     def visit_note(self, node):
-        self.content.append("[!note]\n")
+        self.content += "[!note]\n"
 
     def visit_warning(self, node):
-        self.content.append("[!warning]\n")
+        self.content += "[!warning]\n"
 
     def visit_important(self, node):
-        self.content.append("[!important]\n")
+        self.content += "[!important]\n"
 
     def visit_tip(self, node):
-        self.content.append("[!tip]\n")
+        self.content += "[!tip]\n"
 
     def visit_caution(self, node):
-        self.content.append("[!caution]\n")
+        self.content += "[!caution]\n"
 
     # Footnote handling methods
 
     def visit_footnote_reference(self, node):
-        self.content.append(f"[^")
+        self.content += f"[^"
 
     def depart_footnote_reference(self, node):
-        self.content.append(f"]")
+        self.content += f"]"
 
     def visit_footnote(self, node):
         self.in_footnote = True
@@ -481,18 +502,21 @@ title = "{node.astext()}"
         self.in_footnote = False
 
     def visit_label(self, node):
-        self.content.append("[^")
+        self.content += "[^"
 
     def depart_label(self, node):
-        self.content.append("]: ")
+        self.content += "]: "
+
+    # Compound handling methods
 
     def visit_compound(self, node):
         # Start a div to preserve grouping in Markdown
-        self.content.append('\n<div class="compound">\n\n')
+        self.content += '\n<div class="compound">\n\n'
 
     def depart_compound(self, node):
         # End the div
-        self.content.append("\n</div>\n")
+        self.content += "\n</div>"
+        self._move_content_to_lines()
 
     def visit_compact_paragraph(self, node):
         pass
@@ -513,27 +537,42 @@ title = "{node.astext()}"
         if not self.anchor_id_stack:
             return None
         else:
-            list_to_join = [anchor.replace(" ", "") for (anchor,name,addname,domain,objtype) in self.anchor_id_stack if anchor]
+            list_to_join = [
+                anchor.replace(" ", "")
+                for (anchor, name, addname, domain, objtype) in self.anchor_id_stack
+                if anchor
+            ]
             return ".".join(list_to_join)
 
     def construct_new_anchor_id(self, node) -> tuple[str, str, str]:
-        domain = getattr(node, 'attributes', {}).get('domain', '')
-        objtype = getattr(node, 'attributes', {}).get('objtype', '')
+        domain = getattr(node, "attributes", {}).get("domain", "")
+        objtype = getattr(node, "attributes", {}).get("objtype", "")
         # Find desc_name and desc_addname children for the object's name
-        name = ''
-        addname = ''
+        name = ""
+        addname = ""
         for child in node.children:
             if child.__class__.__name__ == "desc_signature":
                 for childB in child.children:
-                    if childB.__class__.__name__ == 'desc_name':
+                    if childB.__class__.__name__ == "desc_name":
                         name = childB.astext()
-                    if childB.__class__.__name__ == 'desc_addname':
+                    if childB.__class__.__name__ == "desc_addname":
                         addname = childB.astext()
                 break
         # Build anchor id (e.g., py-example or py-example-classname)
-        addname_str = f"{addname.rstrip('.').lstrip('.').lstrip(' ').rstrip(' ')}" if addname else ''
-        name_str = f"{name.rstrip('.').lstrip('.').lstrip(' ').rstrip(' ')}" if name else ""
-        new_anchor_id = f"{addname_str}.{name_str}".replace(" ", "-").rstrip("-").rstrip(".").lstrip(".")
+        addname_str = (
+            f"{addname.rstrip('.').lstrip('.').lstrip(' ').rstrip(' ')}"
+            if addname
+            else ""
+        )
+        name_str = (
+            f"{name.rstrip('.').lstrip('.').lstrip(' ').rstrip(' ')}" if name else ""
+        )
+        new_anchor_id = (
+            f"{addname_str}.{name_str}".replace(" ", "-")
+            .rstrip("-")
+            .rstrip(".")
+            .lstrip(".")
+        )
         self.anchor_id_stack.append((new_anchor_id, name, addname, domain, objtype))
         return new_anchor_id, domain, objtype
 
@@ -561,7 +600,8 @@ title = "{node.astext()}"
         pass
 
     def depart_desc(self, node):
-        if (self.anchor_id_stack): self.anchor_id_stack.pop()
+        if self.anchor_id_stack:
+            self.anchor_id_stack.pop()
         self.section_level -= 1
         pass
 
@@ -569,27 +609,33 @@ title = "{node.astext()}"
         """Extract parameter names, types, and default values from a desc_signature node."""
         parameters = []
         for child in node.children:
-            if child.__class__.__name__ == 'desc_parameterlist':
+            if child.__class__.__name__ == "desc_parameterlist":
                 for param in child.children:
-                    if param.__class__.__name__ == 'desc_parameter':
-                        name = ''
-                        type_ = ''
-                        default = ''
+                    if param.__class__.__name__ == "desc_parameter":
+                        name = ""
+                        type_ = ""
+                        default = ""
                         next_is_default = False
                         for subchild in param.children:
-                            if subchild.__class__.__name__ == 'desc_sig_name':
+                            if subchild.__class__.__name__ == "desc_sig_name":
                                 if not name:
                                     name = subchild.astext()
                                 else:
                                     type_ = subchild.astext()
-                            elif subchild.__class__.__name__ == 'desc_sig_operator' and '=' in subchild.astext():
+                            elif (
+                                subchild.__class__.__name__ == "desc_sig_operator"
+                                and "=" in subchild.astext()
+                            ):
                                 next_is_default = True
-                            elif subchild.__class__.__name__ == 'inline' and next_is_default:
+                            elif (
+                                subchild.__class__.__name__ == "inline"
+                                and next_is_default
+                            ):
                                 default = subchild.astext()
                                 next_is_default = False
                         parameters.append((name, type_, default))
         return parameters
-    
+
     def get_formatted_param(self, name, annotation, default):
         """Format a single parameter with its name, type, and default value."""
         param = f"*{name}*"
@@ -598,7 +644,7 @@ title = "{node.astext()}"
         if default:
             param += f", optional [default: {default}]"
         return param
-    
+
     def get_parameter_list_str(self, parameters):
         """Get a string representation of the parameter list with types."""
         if not parameters:
@@ -609,13 +655,13 @@ title = "{node.astext()}"
             param_strs.append(param)
         if len(param_strs) == 1:
             return f"({param_strs[0]})"
-        concat_str = ',\n- '.join(param_strs)
-        return "\n(\n- "+concat_str+"\n\n)"
+        concat_str = ",\n- ".join(param_strs)
+        return "\n(\n- " + concat_str + "\n\n)"
 
     def get_return_type(self, node):
         """Get the return type annotation from a desc_signature node."""
         for child in node.children:
-            if child.__class__.__name__ == 'desc_returns':
+            if child.__class__.__name__ == "desc_returns":
                 return child.astext()
         return ""
 
@@ -625,24 +671,24 @@ title = "{node.astext()}"
         ref_str = f" [¶](#{anchor_id})" if anchor_id else ""
         objtype = self.get_latest_objtype()
         objtype_str = f"*{objtype}* " if (objtype != "method") else ""
-        if (objtype):
-            self.content.append(f"\n\n<div class='{objtype} signature'>")
+        if objtype:
+            self.content += f"\n\n<div class='{objtype} signature'>"
 
         name = self.get_latest_name()
         name_str = f"**{name}**"
-        self.content.append(f"{anchor_str}\n\n{self.section_level * '#'} {objtype_str}{name_str}{ref_str}")
+        self.content += f"{anchor_str}\n\n{self.section_level * '#'} {objtype_str}{name_str}{ref_str}"
 
-        if (objtype in ["function", "method", "class", "exception"]):
+        if objtype in ["function", "method", "class", "exception"]:
             parameters = self.get_parameter_list_and_types(node)
             parameters_str = self.get_parameter_list_str(parameters)
-            self.content.append(parameters_str)
+            self.content += parameters_str
         return_type = self.get_return_type(node).lstrip(" -> ")
         if return_type:
             return_str = f" → `{return_type}`"
-            self.content.append(return_str)
+            self.content += return_str
 
-        if (objtype):
-            self.content.append(f"\n\n</div>\n\n")
+        if objtype:
+            self.content += f"\n\n</div>\n\n"
         raise SkipNode
 
     def depart_desc_signature(self, node):
@@ -655,11 +701,11 @@ title = "{node.astext()}"
         pass
 
     def visit_desc_content(self, node):
-        self.content.append("\n\n<div class='desc-content'>\n\n")
+        self.content += "\n\n<div class='desc-content'>\n\n"
         pass
 
     def depart_desc_content(self, node):
-        self.content.append("\n</div>\n")
+        self.content += "\n</div>\n"
 
     def visit_desc_addname(self, node):
         raise SkipNode
@@ -681,7 +727,7 @@ title = "{node.astext()}"
 
     def visit_desc_sig_space(self, node):
         # Space in signatures (for formatting)
-        self.content.append(" ")
+        self.content += " "
 
     def depart_desc_sig_space(self, node):
         pass
@@ -729,10 +775,10 @@ title = "{node.astext()}"
 
     def visit_field_list(self, node):
         # Start field list (e.g., for :param:, :returns:, etc.)
-        self.content.append("\n")
+        self.content += "\n"
 
     def depart_field_list(self, node):
-        self.content.append("\n")
+        self.content += "\n"
 
     def visit_field(self, node):
         # Identify the field name
@@ -750,13 +796,13 @@ title = "{node.astext()}"
             raise SkipNode
 
         if field_name == "returns":
-            self.content.append(f"\n{(self.section_level+1) * '#'} **Returns:**\n\n")
+            self.content += f"\n{(self.section_level+1) * '#'} **Returns:**\n\n"
             # Will append return type in depart_field_body
             self._in_returns_field = True
             return
 
         if field_name == "parameters":
-            self.content.append(f"\n{(self.section_level+1) * '#'} **Parameters:**\n\n")
+            self.content += f"\n{(self.section_level+1) * '#'} **Parameters:**\n\n"
             self._in_parameters_field = True
             return
 
@@ -789,9 +835,9 @@ title = "{node.astext()}"
             else:
                 # No type annotation, just use the left part
                 left = left.strip()
-            self.content.append(f"- {left}\n: {desc}\n")
+            self.content += f"- {left}\n: {desc}\n"
         else:
-            self.content.append(f": {text}\n")
+            self.content += f": {text}\n"
 
     def visit_field_body(self, node):
         if getattr(self, "_in_parameters_field", False):
@@ -803,15 +849,18 @@ title = "{node.astext()}"
                 elif para.__class__.__name__ == "bullet_list":
                     # Handle bullet lists in parameters
                     for item in para.children:
-                        print("DEBUG: Processing bullet list item in parameters: ", item.__class__.__name__)
+                        print(
+                            "DEBUG: Processing bullet list item in parameters: ",
+                            item.__class__.__name__,
+                        )
                         if item.__class__.__name__ == "list_item":
                             self.add_formatted_field_body_paragraph(item)
             raise SkipNode  # Prevent default rendering
         elif getattr(self, "_in_returns_field", False):
             # Append the return type if available
             if hasattr(self, "_current_return_type"):
-                self.content.append(f"`{self._current_return_type}`\n") # TODO: ensure return types are also read from desc_returns, and vice-versa
-                self.content.append(f": {node.astext()}")
+                self.content += f"`{self._current_return_type}`\n"  # TODO: ensure return types are also read from desc_returns, and vice-versa
+                self.content += f": {node.astext()}"
                 raise SkipNode
         # Otherwise, process as usual
 
@@ -820,7 +869,7 @@ title = "{node.astext()}"
 
     def visit_literal_strong(self, node):
         # Strong literal (e.g., for emphasized code)
-        self.content.append("**")
+        self.content += "**"
 
     def depart_literal_strong(self, node):
-        self.content.append("**")
+        self.content += "**"

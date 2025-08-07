@@ -68,7 +68,7 @@ class HugoBuilder(Builder):
         """
         visitor = HugoTranslator(doctree)
         doctree.walkabout(visitor)
-        return "".join(visitor.content)
+        return str(visitor)
 
     def get_target_uri(self, docname, typ=None):
         """Return the relative URI for a document.

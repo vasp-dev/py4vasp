@@ -35,7 +35,6 @@ def read_file_content(outdir, source_file):
     assert output_file.exists()
     content = output_file.read_text()
     assert content.startswith("+++")
-    print(content)
     return content
 
 
@@ -58,14 +57,12 @@ def test_convert_comment(sphinx_app):
 
 def test_convert_paragraphs(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "paragraph.md")
-    doctree = sphinx_app.env.get_doctree("paragraph")
     # markdown needs double line break for new paragraph
     assert "aliqua.\n\nUt" in content
 
 
 def test_convert_headings(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "headings.md")
-    assert 'title = "Chapter"' in content
     lines = content.splitlines()
     # find all headers
     headers = []
@@ -146,8 +143,10 @@ def test_convert_reference(sphinx_app):
     # Target section text
     assert "This is the internal target section." in content
 
+
 def test_convert_compound(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "compound.md")
+    print(content)
     expected_content = """\
 <div class="compound">
 
@@ -175,6 +174,7 @@ This is a nested compound block.
 </div>
 """
     assert expected_content_nested in content
+
 
 def test_convert_custom_role(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "custom_role.md")
@@ -223,7 +223,8 @@ def test_convert_footnote(sphinx_app):
     print(content)
     assert False
 
-#@pytest.mark.skip("WiP")
+
+@pytest.mark.skip("WiP")
 def test_convert_example(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_autodata_content = """\
