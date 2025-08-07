@@ -47,6 +47,7 @@ class HugoTranslator(NodeVisitor):
         """Used to identify stacks of anchor IDs for desc_signature, so that class methods, e.g. can be referenced as #script_name.Class_name.method_name."""
         self._in_parameters_field = False
         self._in_returns_field = False
+        self._in_examples_field = False
         self._expect_returns_field = False
         self._current_return_type = None
         self._current_signature_dict = {}
@@ -164,10 +165,10 @@ title = "{node.astext()}"
             self._add_new_line()
 
     def visit_rubric(self, node):
-        self.content = "***"
+        self.content = "\n" + (self.section_level + 1) * "#" + " ***"
 
     def depart_rubric(self, node):
-        self.content += "***"
+        self.content += "***\n\n"
         self._move_content_to_lines()
 
     def visit_Text(self, node):
@@ -680,9 +681,10 @@ title = "{node.astext()}"
         """Format a single parameter with its name, type, and default value."""
         param = f"*{name}*"
         if annotation:
-            param += f": `{annotation}`"
+            optional_str = "[optional] " if default else ""
+            param += f": {optional_str}`{annotation}`"
         if default:
-            param += f", optional [default: {default}]"
+            param += f" [default: {default}]"
         return param
 
     def get_parameter_list_str(self, parameters):
@@ -894,12 +896,19 @@ title = "{node.astext()}"
             self._in_parameters_field = True
             return
 
+        if field_name == "examples":
+            self.content += self.get_formatted_field_header("Examples")
+            self._in_examples_field = True
+            return
+
     def depart_field(self, node):
         if getattr(self, "_in_returns_field", False):
             self._in_returns_field = False
             self._expect_returns_field = False
         if getattr(self, "_in_parameters_field", False):
             self._in_parameters_field = False
+        if getattr(self, "_in_examples_field", False):
+            self._in_examples_field = False
 
     def visit_field_name(self, node):
         raise SkipNode
@@ -934,12 +943,11 @@ title = "{node.astext()}"
                 type_annotation = sig_types
                 if len(sep_around_type) > 1:
                     type_annotation = sep_around_type[1].split(")")[0].strip()
-                left = f"*{left}*: `{type_annotation}`"
+                left = self.get_formatted_param(
+                    left, type_annotation, sig_default)
             else:
                 # No type annotation, just use the left part
                 left = f"*{left.strip()}*"
-            if sig_default:
-                left += f", optional [default: {sig_default}]"
             self.content += f"- {left}\n{self.get_definition_list_item_body(desc)}"
         else:
             self.content += self.get_definition_list_item_body(text)
@@ -954,10 +962,6 @@ title = "{node.astext()}"
                 elif para.__class__.__name__ == "bullet_list":
                     # Handle bullet lists in parameters
                     for item in para.children:
-                        print(
-                            "DEBUG: Processing bullet list item in parameters: ",
-                            item.__class__.__name__,
-                        )
                         if item.__class__.__name__ == "list_item":
                             self.add_formatted_field_body_paragraph(item)
             raise SkipNode  # Prevent default rendering
@@ -967,6 +971,8 @@ title = "{node.astext()}"
             if hasattr(self, "_current_return_type"):
                 self.content += self.get_formatted_returns_field_body(node.astext())
                 raise SkipNode
+        elif getattr(self, "_in_examples_field", False):
+            pass
         # Otherwise, process as usual
 
     def depart_field_body(self, node):
@@ -978,3 +984,9 @@ title = "{node.astext()}"
 
     def depart_literal_strong(self, node):
         self.content += "**"
+
+    def visit_title_reference(self, node):
+        self.content += "*"
+    
+    def depart_title_reference(self, node):
+        self.content += "*"
