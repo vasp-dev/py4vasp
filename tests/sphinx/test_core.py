@@ -303,7 +303,6 @@ title
 #     # print(doctree.pformat())
 
 
-@pytest.mark.skip
 def test_convert_example(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_autodata_content = """\

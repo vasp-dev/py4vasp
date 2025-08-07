@@ -718,6 +718,29 @@ title = "{node.astext()}"
                     self._current_signature_dict["sig_return_type"] = return_type
                     self._current_return_type = return_type
                     self._expect_returns_field = True
+                    return return_type
+            # If not found, check for a field named "Return type" in the parent desc node
+            parent_desc = node.parent
+            for sibling in parent_desc.children:
+                if sibling.__class__.__name__ == "desc_content":
+                    for desc_child in sibling.children:
+                        if (desc_child.__class__.__name__ == "field_list"):
+                            for field in desc_child.children:
+                                if (
+                                    field.__class__.__name__ == "field"
+                                    and field.children
+                                ):
+                                    if field.children[0].__class__.__name__ == "field_name":
+                                        field_name = field.children[0].astext().strip()
+                                        if field_name.lower() == "return type":
+                                            for field_child in field.children:
+                                                if field_child.__class__.__name__ == "field_body":
+                                                    return_type = field_child.astext().strip()
+                                                    self._current_signature_dict["sig_return_type"] = return_type
+                                                    self._current_return_type = return_type
+                                                    self._expect_returns_field = True
+                                                    print("DEBUG: Inferred desc_returns as ", return_type)
+                                                    return return_type
         return return_type
 
     def visit_desc_signature(self, node):
@@ -836,6 +859,7 @@ title = "{node.astext()}"
 
     def visit_field_list(self, node):
         # Start field list (e.g., for :param:, :returns:, etc.)
+        print("DEBUG: visit_field_list: returns field expected? -- ", self._expect_returns_field)
         self.content += "\n"
 
     def depart_field_list(self, node):
@@ -881,7 +905,6 @@ title = "{node.astext()}"
                 break
 
         if field_name == "return type":
-            print("DEBUG: field_body in Returns type field")
             for child in node.children:
                 if (
                     child.__class__.__name__ == "field_body"
@@ -899,16 +922,19 @@ title = "{node.astext()}"
         if field_name == "returns":
             self.content += self.get_formatted_field_header("Returns")
             self._in_returns_field = True
-            self._expect_returns_field = False
+            print("DEBUG: Writing returns field")
+            self._move_content_to_lines()
             return
 
         if field_name == "parameters":
             self.content += self.get_formatted_field_header("Parameters")
             self._in_parameters_field = True
+            self._move_content_to_lines()
             return
 
         if field_name == "examples":
             self.content += self.get_formatted_field_header("Examples")
+            self._move_content_to_lines()
             self._in_examples_field = True
             return
 
