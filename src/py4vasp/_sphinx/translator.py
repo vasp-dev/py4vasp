@@ -43,10 +43,12 @@ class HugoTranslator(NodeVisitor):
         self.list_stack = []
         self.in_footnote = False
         self.anchor_id_stack = [] 
+        """Used to identify stacks of anchor IDs for desc_signature, so that class methods, e.g. can be referenced as #script_name.Class_name.method_name."""
         self._in_parameters_field = False
         self._in_returns_field = False
+        self._expect_returns_field = False
         self._current_return_type = None
-        """Used to identify stacks of anchor IDs for desc_signature, so that class methods, e.g. can be referenced as #script_name.Class_name.method_name."""
+        self._current_signature_dict = {}
 
     def unknown_visit(self, node):
         """Handle unknown node types by logging them for debugging."""
@@ -568,26 +570,30 @@ title = "{node.astext()}"
     def get_parameter_list_and_types(self, node):
         """Extract parameter names, types, and default values from a desc_signature node."""
         parameters = []
-        for child in node.children:
-            if child.__class__.__name__ == 'desc_parameterlist':
-                for param in child.children:
-                    if param.__class__.__name__ == 'desc_parameter':
-                        name = ''
-                        type_ = ''
-                        default = ''
-                        next_is_default = False
-                        for subchild in param.children:
-                            if subchild.__class__.__name__ == 'desc_sig_name':
-                                if not name:
-                                    name = subchild.astext()
-                                else:
-                                    type_ = subchild.astext()
-                            elif subchild.__class__.__name__ == 'desc_sig_operator' and '=' in subchild.astext():
-                                next_is_default = True
-                            elif subchild.__class__.__name__ == 'inline' and next_is_default:
-                                default = subchild.astext()
-                                next_is_default = False
-                        parameters.append((name, type_, default))
+        if (node.__class__.__name__ != 'desc_signature'):
+            raise UserWarning("Node passed to get_parameter_list_and_types is not a desc_signature node. Parameters not retrieved.")
+        else:
+            for child in node.children:
+                if child.__class__.__name__ == 'desc_parameterlist':
+                    for param in child.children:
+                        if param.__class__.__name__ == 'desc_parameter':
+                            name = ''
+                            type_ = ''
+                            default = ''
+                            next_is_default = False
+                            for subchild in param.children:
+                                if subchild.__class__.__name__ == 'desc_sig_name':
+                                    if not name:
+                                        name = subchild.astext()
+                                    else:
+                                        type_ = subchild.astext()
+                                elif subchild.__class__.__name__ == 'desc_sig_operator' and '=' in subchild.astext():
+                                    next_is_default = True
+                                elif subchild.__class__.__name__ == 'inline' and next_is_default:
+                                    default = subchild.astext()
+                                    next_is_default = False
+                            parameters.append((name, type_, default))
+            self._current_signature_dict["sig_parameters"] = parameters.copy()
         return parameters
     
     def get_formatted_param(self, name, annotation, default):
@@ -614,10 +620,17 @@ title = "{node.astext()}"
 
     def get_return_type(self, node):
         """Get the return type annotation from a desc_signature node."""
-        for child in node.children:
-            if child.__class__.__name__ == 'desc_returns':
-                return child.astext()
-        return ""
+        return_type = ""
+        if (node.__class__.__name__ != 'desc_signature'):
+            raise UserWarning("Node passed to get_return_type is not a desc_signature node. Return type not retrieved.")
+        else:
+            for child in node.children:
+                if child.__class__.__name__ == 'desc_returns':
+                    return_type = child.astext().lstrip(" -> ").strip()
+                    self._current_signature_dict["sig_return_type"] = return_type
+                    self._current_return_type = return_type
+                    self._expect_returns_field = True
+        return return_type
 
     def visit_desc_signature(self, node):
         anchor_id = self.get_anchor_id()
@@ -632,17 +645,21 @@ title = "{node.astext()}"
         name_str = f"**{name}**"
         self.content.append(f"{anchor_str}\n\n{self.section_level * '#'} {objtype_str}{name_str}{ref_str}")
 
+        self._current_signature_dict = {}
+        self._current_return_type = None
         if (objtype in ["function", "method", "class", "exception"]):
             parameters = self.get_parameter_list_and_types(node)
             parameters_str = self.get_parameter_list_str(parameters)
             self.content.append(parameters_str)
-        return_type = self.get_return_type(node).lstrip(" -> ")
+        return_type = self.get_return_type(node)
         if return_type:
             return_str = f" → `{return_type}`"
             self.content.append(return_str)
 
         if (objtype):
             self.content.append(f"\n\n</div>\n\n")
+
+        if (self._current_return_type): self._expect_returns_field = True
         raise SkipNode
 
     def depart_desc_signature(self, node):
@@ -732,7 +749,24 @@ title = "{node.astext()}"
         self.content.append("\n")
 
     def depart_field_list(self, node):
+        if getattr(self, "_expect_returns_field", False):
+            # If we expected a returns field, but didn't find it, log a warning
+            print("WARNING: Expected 'Returns' field but did not find it in the docstring.")
+            self.content.append(self.get_formatted_field_header("Returns"))
+            self.content.append(self.get_formatted_returns_field_body(""))
+            self._expect_returns_field = False
+            self._current_return_type = None
         self.content.append("\n")
+
+    def get_formatted_field_header(self, field_name):
+        """Format the field name for Markdown headers."""
+        return f"\n{(self.section_level + 1) * '#'} **{field_name.capitalize()}:**\n\n"
+
+    def get_formatted_returns_field_body(self, description: str=""):
+        """Format the return type for the 'Returns' field."""
+        if self._current_return_type:
+            return f"- `{self._current_return_type}`\n" + (f": {description}\n" if description else "") + "\n"
+        return ""
 
     def visit_field(self, node):
         # Identify the field name
@@ -743,31 +777,31 @@ title = "{node.astext()}"
                 break
 
         if field_name == "return type":
-            # Store the return type for later use in "Returns"
             for child in node.children:
-                if child.__class__.__name__ == "field_body":
+                if child.__class__.__name__ == "field_body" and self._current_return_type is None:
                     self._current_return_type = child.astext()
+            if not(self._current_return_type): 
+                self._current_return_type = getattr(self._current_signature_dict, "sig_return_type", None)
             raise SkipNode
 
         if field_name == "returns":
-            self.content.append(f"\n{(self.section_level+1) * '#'} **Returns:**\n\n")
+            self.content.append(self.get_formatted_field_header("Returns"))
             # Will append return type in depart_field_body
             self._in_returns_field = True
+            self._expect_returns_field = False
             return
 
         if field_name == "parameters":
-            self.content.append(f"\n{(self.section_level+1) * '#'} **Parameters:**\n\n")
+            self.content.append(self.get_formatted_field_header("Parameters"))
             self._in_parameters_field = True
             return
 
     def depart_field(self, node):
         if getattr(self, "_in_returns_field", False):
             self._in_returns_field = False
+            self._expect_returns_field = False
         if getattr(self, "_in_parameters_field", False):
             self._in_parameters_field = False
-        if getattr(self, "_current_return_type", None):
-            # Reset the return type after processing
-            self._current_return_type = None
 
     def visit_field_name(self, node):
         raise SkipNode
@@ -781,14 +815,28 @@ title = "{node.astext()}"
         if " – " in text:
             left, desc = text.split(" – ", 1)
             sep_around_type = left.split(" (")
-            if len(sep_around_type) > 1:
+            left = sep_around_type[0].strip()
+            sig_default = ""
+            sig_types = ""
+            if self._current_signature_dict.get("sig_parameters"):
+                # Check if the name is found in sig_parameters
+                for (param, _type, default) in self._current_signature_dict["sig_parameters"]:
+                    if param == left:
+                        sig_default = default
+                        sig_types = _type
+                        break
+
+            if len(sep_around_type) > 1 or sig_types:
                 # If we have a type annotation, format it
-                left = sep_around_type[0].strip()
-                type_annotation = sep_around_type[1].split(")")[0].strip()
+                type_annotation = sig_types
+                if len(sep_around_type) > 1:
+                    type_annotation = sep_around_type[1].split(")")[0].strip()
                 left = f"*{left}*: `{type_annotation}`"
             else:
                 # No type annotation, just use the left part
-                left = left.strip()
+                left = f"*{left.strip()}*"
+            if sig_default:
+                left += f", optional [default: {sig_default}]"
             self.content.append(f"- {left}\n: {desc}\n")
         else:
             self.content.append(f": {text}\n")
@@ -809,9 +857,9 @@ title = "{node.astext()}"
             raise SkipNode  # Prevent default rendering
         elif getattr(self, "_in_returns_field", False):
             # Append the return type if available
+            self._expect_returns_field = False
             if hasattr(self, "_current_return_type"):
-                self.content.append(f"`{self._current_return_type}`\n") # TODO: ensure return types are also read from desc_returns, and vice-versa
-                self.content.append(f": {node.astext()}")
+                self.content.append(self.get_formatted_returns_field_body(node.astext()))
                 raise SkipNode
         # Otherwise, process as usual
 

@@ -328,13 +328,15 @@ Combine a float and a string in a tuple.
 
 - *some_value*: `float`
 : A value to be included in the tuple.
-- *some_string*: `str`
+- *some_string*: `str`, optional [default: '']
 : A string to be included in the tuple.
 
 #### **Returns:**
 
-`None`
+- `tuple[float, str | None]`
 : A tuple containing the float and a string representation.
+
+
 
 </div>
 
