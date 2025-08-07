@@ -866,6 +866,10 @@ title = "{node.astext()}"
                 )
                 + "\n"
             )
+        else:
+            # If no return type is set, just return the description
+            if description:
+                return f"- {description}\n"
         return ""
 
     def visit_field(self, node):
@@ -877,12 +881,15 @@ title = "{node.astext()}"
                 break
 
         if field_name == "return type":
+            print("DEBUG: field_body in Returns type field")
             for child in node.children:
                 if (
                     child.__class__.__name__ == "field_body"
                     and self._current_return_type in [None, ""]
                 ):
                     self._current_return_type = child.astext()
+                    print("DEBUG: return type set to ", self._current_return_type)
+                    break
             if not (self._current_return_type):
                 self._current_return_type = getattr(
                     self._current_signature_dict, "sig_return_type", None
@@ -891,7 +898,6 @@ title = "{node.astext()}"
 
         if field_name == "returns":
             self.content += self.get_formatted_field_header("Returns")
-            # Will append return type in depart_field_body
             self._in_returns_field = True
             self._expect_returns_field = False
             return
@@ -960,20 +966,31 @@ title = "{node.astext()}"
         if getattr(self, "_in_parameters_field", False):
             # Render each parameter as a Markdown definition list
             # You need to parse the field_body for parameter entries
-            for para in node.children:
-                if para.__class__.__name__ == "paragraph":
-                    self.add_formatted_field_body_paragraph(para)
-                elif para.__class__.__name__ == "bullet_list":
-                    # Handle bullet lists in parameters
-                    for item in para.children:
-                        if item.__class__.__name__ == "list_item":
-                            self.add_formatted_field_body_paragraph(item)
+            if (len(node.children) >= 1):
+                for para in node.children:
+                    if para.__class__.__name__ == "paragraph":
+                        self.add_formatted_field_body_paragraph(para)
+                    elif para.__class__.__name__ == "bullet_list":
+                        # Handle bullet lists in parameters
+                        for item in para.children:
+                            if item.__class__.__name__ == "list_item":
+                                self.add_formatted_field_body_paragraph(item)
             raise SkipNode  # Prevent default rendering
         elif getattr(self, "_in_returns_field", False):
             # Append the return type if available
             self._expect_returns_field = False
             if hasattr(self, "_current_return_type"):
-                self.content += self.get_formatted_returns_field_body(node.astext())
+                if (node.children):
+                    for para in node.children:
+                        if para.__class__.__name__ == "paragraph":
+                            self.content += self.get_formatted_returns_field_body(para.astext())
+                        elif para.__class__.__name__ == "bullet_list":
+                            # Handle bullet lists in returns
+                            for item in para.children:
+                                if item.__class__.__name__ == "list_item":
+                                    self.content += self.get_formatted_returns_field_body(item.astext())
+                else:
+                    self.content += self.get_formatted_returns_field_body(node.astext())
                 raise SkipNode
         elif getattr(self, "_in_examples_field", False):
             pass
