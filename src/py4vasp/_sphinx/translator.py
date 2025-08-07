@@ -641,6 +641,7 @@ title = "{node.astext()}"
         if self.anchor_id_stack:
             self.anchor_id_stack.pop()
         self.section_level -= 1
+        self._move_content_to_lines()
         pass
 
     def get_parameter_list_and_types(self, node):
@@ -765,6 +766,7 @@ title = "{node.astext()}"
 
     def depart_desc_content(self, node):
         self.content += "\n</div>\n"
+        self._move_content_to_lines()
 
     def visit_desc_addname(self, node):
         raise SkipNode
@@ -878,7 +880,7 @@ title = "{node.astext()}"
             for child in node.children:
                 if (
                     child.__class__.__name__ == "field_body"
-                    and self._current_return_type is None
+                    and self._current_return_type in [None, ""]
                 ):
                     self._current_return_type = child.astext()
             if not (self._current_return_type):
