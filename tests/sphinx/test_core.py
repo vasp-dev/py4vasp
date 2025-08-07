@@ -146,7 +146,6 @@ def test_convert_reference(sphinx_app):
 
 def test_convert_compound(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "compound.md")
-    print(content)
     expected_content = """\
 <div class="compound">
 
@@ -210,14 +209,33 @@ Hello, World!
 
 def test_convert_admonition(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "admonition.md")
-    assert "[!note]\nThis is a note admonition." in content
-    assert "[!warning]\nThis is a warning admonition." in content
-    assert "[!caution]\nThis is a caution admonition." in content
-    assert "[!tip]\nThis is a tip admonition." in content
-    assert "[!important]\nThis is an important admonition." in content
+    note_admonition = """\
+{{< admonition type="info" >}}
+This is a note admonition.
+{{< /admonition >}}"""
+    assert note_admonition in content
+    warning_admonition = """\
+{{< admonition type="warning" >}}
+This is a warning admonition.
+{{< /admonition >}}"""
+    assert warning_admonition in content
+    caution_admonition = """\
+{{< admonition type="danger" >}}
+This is a caution admonition.
+{{< /admonition >}}"""
+    assert caution_admonition in content
+    tip_admonition = """\
+{{< admonition type="success" >}}
+This is a tip admonition.
+{{< /admonition >}}"""
+    assert tip_admonition in content
+    important_admonition = """\
+{{< admonition type="primary" >}}
+This is an important admonition.
+{{< /admonition >}}"""
+    assert important_admonition in content
 
 
-# @pytest.mark.skip("Indentation handling needs to be fixed")
 def test_convert_footnote(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "footnote.md")
     first_reference = "documentation.[^1]"
@@ -240,6 +258,14 @@ def test_convert_footnote(sphinx_app):
     print("This is a code block in a footnote.")
     ~~~"""
     assert second_footnote in content
+
+
+# def test_convert_p4v(sphinx_app):
+#     content = read_file_content(sphinx_app.outdir, "p4v.md")
+#     print(content)
+#     assert False
+#     # doctree = sphinx_app.env.get_doctree("reference")
+#     # print(doctree.pformat())
 
 
 @pytest.mark.skip("WiP")

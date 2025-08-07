@@ -39,7 +39,7 @@ class HugoTranslator(NodeVisitor):
         self.document = document
         self.frontmatter_created = False
         self.section_level = 0
-        self.indent = 0
+        self.indentation_stack = [0]
         self.lines = []
         self.content = ""
         self.list_stack = []
@@ -57,9 +57,13 @@ class HugoTranslator(NodeVisitor):
     def _add_new_line(self):
         self.lines.append("")
 
+    def _strip_blank_lines(self):
+        while self.lines and not self.lines[-1]:
+            self.lines.pop()
+
     def _move_content_to_lines(self):
         for line in self.content.splitlines():
-            self.lines.append("  " * self.indent + line)
+            self.lines.append("  " * self.indentation_stack[-1] + line)
         self.content = ""
 
     def unknown_visit(self, node):
@@ -240,7 +244,7 @@ title = "{node.astext()}"
         Uses the shared depart_list method because the cleanup logic is identical
         for both bullet and enumerated lists - only the markers differ.
         """
-        self.depart_list()
+        self._depart_list()
 
     def visit_enumerated_list(self, node):
         """Initialize enumerated list state with numbered marker.
@@ -257,9 +261,9 @@ title = "{node.astext()}"
         Shares cleanup logic with bullet lists since the behavior is identical
         regardless of marker type.
         """
-        self.depart_list()
+        self._depart_list()
 
-    def depart_list(self):
+    def _depart_list(self):
         """Remove current list from stack and add spacing after top-level lists.
 
         We only add newlines after the outermost list (when stack becomes empty)
@@ -277,16 +281,17 @@ title = "{node.astext()}"
         Two spaces per level is the Markdown standard for nested list indentation.
         The marker comes from the stack top, so it matches the current list type.
         """
-        self.indent = len(self.list_stack) - 1
+        self.indentation_stack.append(len(self.list_stack) - 1)
         self.content = f"{self.list_stack[-1]} "
+
+    def depart_abbreviation(self, node):
+        self.indentation_stack.pop()
 
     def visit_definition_list(self, node):
         self.list_stack.append("description")
 
     def depart_definition_list(self, node):
-        self.list_stack.pop()
-        if not self.list_stack:
-            self._add_new_line()
+        self._depart_list()
 
     def visit_definition_list_item(self, node):
         """No action needed for definition list item container.
@@ -474,19 +479,45 @@ title = "{node.astext()}"
     # Admonition handling methods
 
     def visit_note(self, node):
-        self.content += "[!note]\n"
+        self._visit_admonition("info")
 
     def visit_warning(self, node):
-        self.content += "[!warning]\n"
+        self._visit_admonition("warning")
 
     def visit_important(self, node):
-        self.content += "[!important]\n"
+        self._visit_admonition("primary")
 
     def visit_tip(self, node):
-        self.content += "[!tip]\n"
+        self._visit_admonition("success")
 
     def visit_caution(self, node):
-        self.content += "[!caution]\n"
+        self._visit_admonition("danger")
+
+    def _visit_admonition(self, type):
+        self.content += f'{{{{< admonition type="{type}" >}}}}\n'
+        self._move_content_to_lines()
+        self.indentation_stack.append(0)
+
+    def depart_note(self, node):
+        self._depart_admonition()
+
+    def depart_warning(self, node):
+        self._depart_admonition()
+
+    def depart_important(self, node):
+        self._depart_admonition()
+
+    def depart_tip(self, node):
+        self._depart_admonition()
+
+    def depart_caution(self, node):
+        self._depart_admonition()
+
+    def _depart_admonition(self):
+        self._strip_blank_lines()
+        self.indentation_stack.pop()
+        self.content += "{{< /admonition >}}\n"
+        self._move_content_to_lines()
 
     # Footnote handling methods
 
@@ -500,7 +531,7 @@ title = "{node.astext()}"
         pass
 
     def depart_footnote(self, node):
-        self.indent -= 2
+        self.indentation_stack.pop()
 
     def visit_label(self, node):
         self.content = "[^"
@@ -508,7 +539,7 @@ title = "{node.astext()}"
     def depart_label(self, node):
         self.content += "]:"
         self._move_content_to_lines()
-        self.indent += 2
+        self.indentation_stack.append(2)
 
     # Compound handling methods
 
