@@ -818,11 +818,7 @@ title = "{node.astext()}"
     def get_formatted_returns_field_body(self, description: str = ""):
         """Format the return type for the 'Returns' field."""
         if self._current_return_type:
-            return (
-                f"- `{self._current_return_type}`\n"
-                + (f": {description}\n" if description else "")
-                + "\n"
-            )
+            return f"- `{self._current_return_type}`\n" + (self.get_definition_list_item_body(description) if description else "") + "\n"
         return ""
 
     def visit_field(self, node):
@@ -871,6 +867,9 @@ title = "{node.astext()}"
     def depart_field_name(self, node):
         pass
 
+    def get_definition_list_item_body(self, content: str) -> str:
+        return f": {content.strip()}\n"
+
     def add_formatted_field_body_paragraph(self, para):
         text = para.astext()
         # Try to split "name (type) – description"
@@ -901,9 +900,9 @@ title = "{node.astext()}"
                 left = f"*{left.strip()}*"
             if sig_default:
                 left += f", optional [default: {sig_default}]"
-            self.content += f"- {left}\n: {desc}\n"
+            self.content += f"- {left}\n{self.get_definition_list_item_body(desc)}"
         else:
-            self.content += f": {text}\n"
+            self.content += self.get_definition_list_item_body(text)
 
     def visit_field_body(self, node):
         if getattr(self, "_in_parameters_field", False):
