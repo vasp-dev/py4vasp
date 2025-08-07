@@ -914,10 +914,6 @@ title = "{node.astext()}"
                 elif para.__class__.__name__ == "bullet_list":
                     # Handle bullet lists in parameters
                     for item in para.children:
-                        print(
-                            "DEBUG: Processing bullet list item in parameters: ",
-                            item.__class__.__name__,
-                        )
                         if item.__class__.__name__ == "list_item":
                             self.add_formatted_field_body_paragraph(item)
             raise SkipNode  # Prevent default rendering
