@@ -750,13 +750,13 @@ title = "{node.astext()}"
             raise SkipNode
 
         if field_name == "returns":
-            self.content.append("\n**Returns:**\n\n")
+            self.content.append(f"\n{(self.section_level+1) * '#'} **Returns:**\n\n")
             # Will append return type in depart_field_body
             self._in_returns_field = True
             return
 
         if field_name == "parameters":
-            self.content.append("\n**Parameters:**\n\n")
+            self.content.append(f"\n{(self.section_level+1) * '#'} **Parameters:**\n\n")
             self._in_parameters_field = True
             return
 
@@ -780,6 +780,15 @@ title = "{node.astext()}"
         # Try to split "name (type) – description"
         if " – " in text:
             left, desc = text.split(" – ", 1)
+            sep_around_type = left.split(" (")
+            if len(sep_around_type) > 1:
+                # If we have a type annotation, format it
+                left = sep_around_type[0].strip()
+                type_annotation = sep_around_type[1].split(")")[0].strip()
+                left = f"*{left}*: `{type_annotation}`"
+            else:
+                # No type annotation, just use the left part
+                left = left.strip()
             self.content.append(f"- {left}\n: {desc}\n")
         else:
             self.content.append(f": {text}\n")
@@ -803,6 +812,7 @@ title = "{node.astext()}"
             if hasattr(self, "_current_return_type"):
                 self.content.append(f"`{self._current_return_type}`\n") # TODO: ensure return types are also read from desc_returns, and vice-versa
                 self.content.append(f": {node.astext()}")
+                raise SkipNode
         # Otherwise, process as usual
 
     def depart_field_body(self, node):
