@@ -217,11 +217,29 @@ def test_convert_admonition(sphinx_app):
     assert "[!important]\nThis is an important admonition." in content
 
 
-@pytest.mark.skip("Indentation handling needs to be fixed")
+# @pytest.mark.skip("Indentation handling needs to be fixed")
 def test_convert_footnote(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "footnote.md")
-    print(content)
-    assert False
+    first_reference = "documentation.[^1]"
+    assert first_reference in content
+    second_reference = "reference.[^2]"
+    assert second_reference in content
+    first_footnote = """\
+[^1]:
+    This is the first footnote.
+    It can contain multiple lines of text and even
+    some formatting like *bold* or **italic**."""
+    assert first_footnote in content
+    second_footnote = """\
+[^2]:
+    This is the second footnote.
+
+    The second footnote has multiple paragraphs and a code block:
+
+    ~~~python
+    print("This is a code block in a footnote.")
+    ~~~"""
+    assert second_footnote in content
 
 
 @pytest.mark.skip("WiP")

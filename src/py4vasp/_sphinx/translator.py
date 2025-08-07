@@ -43,7 +43,6 @@ class HugoTranslator(NodeVisitor):
         self.lines = []
         self.content = ""
         self.list_stack = []
-        self.in_footnote = False
         self.anchor_id_stack = []
         """Used to identify stacks of anchor IDs for desc_signature, so that class methods, e.g. can be referenced as #script_name.Class_name.method_name."""
         self._in_parameters_field = False
@@ -492,22 +491,24 @@ title = "{node.astext()}"
     # Footnote handling methods
 
     def visit_footnote_reference(self, node):
-        self.content += f"[^"
+        self.content = self.content.strip() + "[^"
 
     def depart_footnote_reference(self, node):
-        self.content += f"]"
+        self.content += "]"
 
     def visit_footnote(self, node):
-        self.in_footnote = True
+        pass
 
     def depart_footnote(self, node):
-        self.in_footnote = False
+        self.indent -= 2
 
     def visit_label(self, node):
-        self.content += "[^"
+        self.content = "[^"
 
     def depart_label(self, node):
-        self.content += "]: "
+        self.content += "]:"
+        self._move_content_to_lines()
+        self.indent += 2
 
     # Compound handling methods
 
@@ -818,7 +819,15 @@ title = "{node.astext()}"
     def get_formatted_returns_field_body(self, description: str = ""):
         """Format the return type for the 'Returns' field."""
         if self._current_return_type:
-            return f"- `{self._current_return_type}`\n" + (self.get_definition_list_item_body(description) if description else "") + "\n"
+            return (
+                f"- `{self._current_return_type}`\n"
+                + (
+                    self.get_definition_list_item_body(description)
+                    if description
+                    else ""
+                )
+                + "\n"
+            )
         return ""
 
     def visit_field(self, node):
