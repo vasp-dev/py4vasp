@@ -371,8 +371,13 @@ Initialize the Example class with a value.
 
 #### **Parameters:**
 
+<div class='desc-content'>
+
 - *value*: `float`
 : The value to be stored in the instance.
+
+</div>
+
 
 
 </div>
@@ -405,15 +410,24 @@ Combine a float and a string in a tuple.
 
 #### **Parameters:**
 
+<div class='desc-content'>
+
 - *some_value*: `float`
 : A value to be included in the tuple.
 - *some_string*: [optional] `str` [default: '']
 : A string to be included in the tuple.
 
+</div>
+
+
 #### **Returns:**
+
+<div class='desc-content'>
 
 - `tuple[float, str | None]`
 : A tuple containing the float and a string representation.
+
+</div>
 
 
 

@@ -51,20 +51,31 @@ class HugoTranslator(NodeVisitor):
         self._expect_returns_field = False
         self._current_return_type = None
         self._current_signature_dict = {}
+        self._prevent_move_content = False
+        self._content_stash = []
 
     def __str__(self):
         return "\n".join(self.lines) + "\n"
 
     def _add_new_line(self):
-        self.lines.append("")
+        if (self._prevent_move_content):
+            self._content_stash.append("")
+        else: self.lines.append("")
 
     def _strip_blank_lines(self):
         while self.lines and not self.lines[-1]:
             self.lines.pop()
 
     def _move_content_to_lines(self):
+        if not(self._prevent_move_content) and self._content_stash:
+            for line in self._content_stash:
+                self.lines.append(line)
+            self._content_stash = []
+
         for line in self.content.splitlines():
-            self.lines.append("  " * self.indentation_stack[-1] + line)
+            full_line = "  " * self.indentation_stack[-1] + line
+            if not self._prevent_move_content: self.lines.append(full_line)
+            else: self._content_stash.append(full_line)
         self.content = ""
 
     def unknown_visit(self, node):
@@ -739,7 +750,6 @@ title = "{node.astext()}"
                                                     self._current_signature_dict["sig_return_type"] = return_type
                                                     self._current_return_type = return_type
                                                     self._expect_returns_field = True
-                                                    print("DEBUG: Inferred desc_returns as ", return_type)
                                                     return return_type
         return return_type
 
@@ -859,7 +869,6 @@ title = "{node.astext()}"
 
     def visit_field_list(self, node):
         # Start field list (e.g., for :param:, :returns:, etc.)
-        print("DEBUG: visit_field_list: returns field expected? -- ", self._expect_returns_field)
         self.content += "\n"
 
     def depart_field_list(self, node):
@@ -869,7 +878,7 @@ title = "{node.astext()}"
                 "WARNING: Expected 'Returns' field but did not find it in the docstring."
             )
             self.content += self.get_formatted_field_header("Returns")
-            self.content += self.get_formatted_returns_field_body("")
+            raise NotImplementedError # TODO
             self._expect_returns_field = False
             self._current_return_type = None
         self.content += "\n"
@@ -877,24 +886,6 @@ title = "{node.astext()}"
     def get_formatted_field_header(self, field_name):
         """Format the field name for Markdown headers."""
         return f"\n{(self.section_level + 1) * '#'} **{field_name.capitalize()}:**\n\n"
-
-    def get_formatted_returns_field_body(self, description: str = ""):
-        """Format the return type for the 'Returns' field."""
-        if self._current_return_type:
-            return (
-                f"- `{self._current_return_type}`\n"
-                + (
-                    self.get_definition_list_item_body(description)
-                    if description
-                    else ""
-                )
-                + "\n"
-            )
-        else:
-            # If no return type is set, just return the description
-            if description:
-                return f"- {description}\n"
-        return ""
 
     def visit_field(self, node):
         # Identify the field name
@@ -911,7 +902,6 @@ title = "{node.astext()}"
                     and self._current_return_type in [None, ""]
                 ):
                     self._current_return_type = child.astext()
-                    print("DEBUG: return type set to ", self._current_return_type)
                     break
             if not (self._current_return_type):
                 self._current_return_type = getattr(
@@ -922,7 +912,6 @@ title = "{node.astext()}"
         if field_name == "returns":
             self.content += self.get_formatted_field_header("Returns")
             self._in_returns_field = True
-            print("DEBUG: Writing returns field")
             self._move_content_to_lines()
             return
 
@@ -953,76 +942,68 @@ title = "{node.astext()}"
     def depart_field_name(self, node):
         pass
 
-    def get_definition_list_item_body(self, content: str) -> str:
-        return f": {content.strip()}\n"
-
-    def add_formatted_field_body_paragraph(self, para):
-        text = para.astext()
-        # Try to split "name (type) – description"
-        if " – " in text:
-            left, desc = text.split(" – ", 1)
-            sep_around_type = left.split(" (")
-            left = sep_around_type[0].strip()
-            sig_default = ""
-            sig_types = ""
-            if self._current_signature_dict.get("sig_parameters"):
-                # Check if the name is found in sig_parameters
-                for param, _type, default in self._current_signature_dict[
-                    "sig_parameters"
-                ]:
-                    if param == left:
-                        sig_default = default
-                        sig_types = _type
-                        break
-
-            if len(sep_around_type) > 1 or sig_types:
-                # If we have a type annotation, format it
-                type_annotation = sig_types
-                if len(sep_around_type) > 1:
-                    type_annotation = sep_around_type[1].split(")")[0].strip()
-                left = self.get_formatted_param(left, type_annotation, sig_default)
+    def restructure_parameters_field_body(self):
+        pure_str_content = self._content_stash
+        new_str_content = ""
+        for line in pure_str_content:
+            if not(" – "in line): 
+                new_str_content += f"\n: {line}"
             else:
-                # No type annotation, just use the left part
-                left = f"*{left.strip()}*"
-            self.content += f"- {left}\n{self.get_definition_list_item_body(desc)}"
-        else:
-            self.content += self.get_definition_list_item_body(text)
+                # Split "name (type) – description"
+                left, desc = line.split(" – ", 1)
+                sep_around_type = left.split(" (")
+                left = sep_around_type[0].strip().strip("**").strip().strip("**")
+                sig_default = ""
+                sig_types = ""
+                if self._current_signature_dict.get("sig_parameters"):
+                    # Check if the name is found in sig_parameters
+                    for param, _type, default in self._current_signature_dict[
+                        "sig_parameters"
+                    ]:
+                        if param == left:
+                            sig_default = default
+                            sig_types = _type
+                            break
+
+                type_annotation = ""
+                if len(sep_around_type) > 1 or sig_types:
+                    # If we have a type annotation, format it
+                    type_annotation = sig_types
+                    if len(sep_around_type) > 1:
+                        type_annotation = sep_around_type[1].split(")")[0].strip().strip("`")
+                left = self.get_formatted_param(left.strip(), type_annotation, sig_default)
+                new_str_content += f"\n- {left}\n" + (f": {desc}" if (desc) else "")
+        new_str_content = new_str_content.rstrip("\n").rstrip(" ").rstrip(":")
+        self.content = new_str_content
+        self._content_stash = []
+
+    def restructure_returns_field_body(self):
+        pure_str_content = self._content_stash
+        new_str_content = "\n"
+        if self._current_return_type:
+            new_str_content = f"\n- `{self._current_return_type}`"
+        for content in pure_str_content[:-1]:
+            new_str_content += f"\n: {content}"
+        self.content = new_str_content+"\n"
+        self._content_stash = []
+
+    def restructure_field_body(self):
+        if (self._in_parameters_field):
+            # If we are in a parameters field, we need to restructure the content
+            self.restructure_parameters_field_body()
+        elif (self._in_returns_field):
+            self.restructure_returns_field_body()
 
     def visit_field_body(self, node):
-        if getattr(self, "_in_parameters_field", False):
-            # Render each parameter as a Markdown definition list
-            # You need to parse the field_body for parameter entries
-            if (len(node.children) >= 1):
-                for para in node.children:
-                    if para.__class__.__name__ == "paragraph":
-                        self.add_formatted_field_body_paragraph(para)
-                    elif para.__class__.__name__ == "bullet_list":
-                        # Handle bullet lists in parameters
-                        for item in para.children:
-                            if item.__class__.__name__ == "list_item":
-                                self.add_formatted_field_body_paragraph(item)
-            raise SkipNode  # Prevent default rendering
-        elif getattr(self, "_in_returns_field", False):
-            # Append the return type if available
-            self._expect_returns_field = False
-            if hasattr(self, "_current_return_type"):
-                if (node.children):
-                    for para in node.children:
-                        if para.__class__.__name__ == "paragraph":
-                            self.content += self.get_formatted_returns_field_body(para.astext())
-                        elif para.__class__.__name__ == "bullet_list":
-                            # Handle bullet lists in returns
-                            for item in para.children:
-                                if item.__class__.__name__ == "list_item":
-                                    self.content += self.get_formatted_returns_field_body(item.astext())
-                else:
-                    self.content += self.get_formatted_returns_field_body(node.astext())
-                raise SkipNode
-        elif getattr(self, "_in_examples_field", False):
-            pass
-        # Otherwise, process as usual
+        self.content += "<div class='desc-content'>\n"
+        self._move_content_to_lines()
+        self._prevent_move_content = True
 
     def depart_field_body(self, node):
+        self.restructure_field_body()
+        self._prevent_move_content = False
+        self.content += "\n</div>\n\n"
+        self._move_content_to_lines()
         pass
 
     def visit_literal_strong(self, node):
