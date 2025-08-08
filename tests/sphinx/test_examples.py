@@ -101,8 +101,10 @@ def test_convert_example_init_signature(sphinx_app):
 
 Initialize the Example class with a value.
 
-* some list entry
-* some other list entry
+*   some list entry
+
+*   some other list entry
+
 
 
 
@@ -114,7 +116,7 @@ Initialize the Example class with a value.
 *value*: `float`
 : <!---->
     The value to be stored in the instance.
-    
+
 </div>
 
 
@@ -159,10 +161,12 @@ Combine a float and a string in a tuple.
 : <!---->
     A value to be included in the tuple.
 
+
 *some_string*: [optional] `str` [default: '']
 : <!---->
     A string to be included in the tuple.
-    
+
+
 </div>
 
 
@@ -173,7 +177,7 @@ Combine a float and a string in a tuple.
 `tuple[float, str | None]`
 : <!---->
     A tuple containing the float and a string representation.
-    
+
 
 
 </div>
@@ -216,10 +220,12 @@ Return value 2.
 : <!---->
     The first value.
 
+
 *value2*: `float | str`
 : <!---->
     The second value, which can be a float or a string.
-    
+
+
 </div>
 
 
@@ -230,7 +236,7 @@ Return value 2.
 `float | str`
 : <!---->
     The second value.
-    
+
 """
     assert expected_method_content in content
 
@@ -269,10 +275,12 @@ Return value 2.
 : <!---->
     The first value.
 
+
 *value2*: `float | str`
 : <!---->
     The second value, which can be a float or a string.
-    
+
+
 </div>
 
 
@@ -326,10 +334,12 @@ Return value 2.
 : <!---->
     The first value.
 
+
 *value2*: `float | str`
 : <!---->
     The second value, which can be a float or a string.
-    
+
+
 </div>
 
 
@@ -341,8 +351,8 @@ Return value 2.
 : <!---->
     The second value.
     With another line!
-    
-    
+
+
 
 
 </div>
@@ -357,7 +367,6 @@ Return value 2.
 
 def test_convert_example_returns_type_without_returns_field_desc_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_return_types.md")
-    print(content)
     expected_method_content = """\
 <div class='function signature'>
 
@@ -389,10 +398,12 @@ Return value 2.
 : <!---->
     The first value.
 
+
 *value2*: `float | str`
 : <!---->
     The second value, which can be a float or a string.
-    
+
+
 </div>
 
 
