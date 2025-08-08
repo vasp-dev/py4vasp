@@ -990,11 +990,16 @@ title = "{node.astext()}"
     def restructure_parameters_field_body(self):
         pure_str_content = self._content_stash
         new_str_content = ""
+        opened_description_list = False
         for line in pure_str_content:
             if not (" – " in line):
-                new_str_content += f"\n: {line}"
+                if not (opened_description_list):
+                    new_str_content += "\n: <!---->"
+                    opened_description_list = True
+                new_str_content += "\n" + f"    {line}"
             else:
                 # Split "name (type) – description"
+                opened_description_list = False
                 left, desc = line.split(" – ", 1)
                 sep_around_type = left.split(" (")
                 left = sep_around_type[0].strip().strip("**").strip().strip("**")
@@ -1018,11 +1023,13 @@ title = "{node.astext()}"
                         type_annotation = (
                             sep_around_type[1].split(")")[0].strip().strip("`")
                         )
-                left = self.get_formatted_param(
+                formatted_param = self.get_formatted_param(
                     left.strip(), type_annotation, sig_default
                 )
-                new_str_content += f"\n- {left}\n" + (f": {desc}" if (desc) else "")
-        new_str_content = new_str_content.rstrip("\n").rstrip(" ").rstrip(":")
+                new_str_content += f"\n\n{formatted_param}\n"
+                if desc:
+                    new_str_content += f": <!---->\n    {desc}"
+                    opened_description_list = True
         self.content = new_str_content
         self._content_stash = []
 
@@ -1030,10 +1037,10 @@ title = "{node.astext()}"
         pure_str_content = self._content_stash
         new_str_content = "\n"
         if self._current_return_type:
-            new_str_content = f"\n- `{self._current_return_type}`"
-        for content in pure_str_content[:-1]:
-            new_str_content += f"\n: {content}"
-        self.content = new_str_content + "\n"
+            new_str_content = f"\n`{self._current_return_type}`"
+        new_str_content += "\n: <!---->"
+        new_str_content += "\n    " + "\n    ".join(pure_str_content)
+        self.content = new_str_content + "\n\n"
         self._content_stash = []
 
     def restructure_field_body(self):
