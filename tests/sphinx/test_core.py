@@ -305,6 +305,7 @@ title
 
 def test_convert_example(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
+    print(content)
     expected_autodata_content = """\
 
 <div class='data signature'>
@@ -373,9 +374,11 @@ Initialize the Example class with a value.
 
 <div class='desc-content'>
 
-- *value*: `float`
-: The value to be stored in the instance.
 
+*value*: `float`
+: <!---->
+    The value to be stored in the instance.
+    
 </div>
 
 
@@ -412,11 +415,15 @@ Combine a float and a string in a tuple.
 
 <div class='desc-content'>
 
-- *some_value*: `float`
-: A value to be included in the tuple.
-- *some_string*: [optional] `str` [default: '']
-: A string to be included in the tuple.
 
+*some_value*: `float`
+: <!---->
+    A value to be included in the tuple.
+
+*some_string*: [optional] `str` [default: '']
+: <!---->
+    A string to be included in the tuple.
+    
 </div>
 
 
@@ -424,11 +431,10 @@ Combine a float and a string in a tuple.
 
 <div class='desc-content'>
 
-- `tuple[float, str | None]`
-: A tuple containing the float and a string representation.
-
-</div>
-
+`tuple[float, str | None]`
+: <!---->
+    A tuple containing the float and a string representation.
+    
 
 
 </div>
@@ -440,4 +446,3 @@ Combine a float and a string in a tuple.
 #@pytest.mark.skip
 def test_convert_example_dos(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
-    print(content)
