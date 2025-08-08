@@ -1,6 +1,33 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from typing import Optional
+
 from docutils.nodes import NodeVisitor, SkipNode
+
+
+class Indentation:
+    """A simple data class to track the current indentation level."""
+
+    def __init__(self, level: int, level_in_first_row: Optional[int] = None):
+        self._level = level
+        self._level_in_first_row = level_in_first_row
+        self._row = 0
+
+    @property
+    def level(self):
+        if self._row > 0 or self._level_in_first_row is None:
+            return self._level
+        else:
+            return self._level_in_first_row
+
+    def indent(self, line: str) -> str:
+        """Indent a line based on the current indentation level.
+
+        If level_in_first_row is set, it uses that for the first row,
+        otherwise it uses the current level."""
+        result = f"{'    ' * self.level}{line}"
+        self._row += 1
+        return result
 
 
 class HugoTranslator(NodeVisitor):
@@ -39,7 +66,7 @@ class HugoTranslator(NodeVisitor):
         self.document = document
         self.frontmatter_created = False
         self.section_level = 0
-        self.indentation_stack = [0]
+        self.indentation_stack = [Indentation(0)]
         self.lines = []
         self.content = ""
         self.list_stack = []
@@ -58,24 +85,27 @@ class HugoTranslator(NodeVisitor):
         return "\n".join(self.lines) + "\n"
 
     def _add_new_line(self):
-        if (self._prevent_move_content):
+        if self._prevent_move_content:
             self._content_stash.append("")
-        else: self.lines.append("")
+        else:
+            self.lines.append("")
 
     def _strip_blank_lines(self):
         while self.lines and not self.lines[-1]:
             self.lines.pop()
 
     def _move_content_to_lines(self):
-        if not(self._prevent_move_content) and self._content_stash:
+        if not (self._prevent_move_content) and self._content_stash:
             for line in self._content_stash:
                 self.lines.append(line)
             self._content_stash = []
 
         for line in self.content.splitlines():
-            full_line = "  " * self.indentation_stack[-1] + line
-            if not self._prevent_move_content: self.lines.append(full_line)
-            else: self._content_stash.append(full_line)
+            full_line = self.indentation_stack[-1].indent(line)
+            if not self._prevent_move_content:
+                self.lines.append(full_line)
+            else:
+                self._content_stash.append(full_line)
         self.content = ""
 
     def unknown_visit(self, node):
@@ -172,8 +202,7 @@ title = "{node.astext()}"
         has been processed, not before it.
         """
         self._move_content_to_lines()
-        if not self.list_stack or self.list_stack[-1] == "description":
-            self._add_new_line()
+        self._add_new_line()
 
     def visit_rubric(self, node):
         self.content = "\n" + (self.section_level + 1) * "#" + " ***"
@@ -293,10 +322,13 @@ title = "{node.astext()}"
         Two spaces per level is the Markdown standard for nested list indentation.
         The marker comes from the stack top, so it matches the current list type.
         """
-        self.indentation_stack.append(len(self.list_stack) - 1)
-        self.content = f"{self.list_stack[-1]} "
+        indentation = Indentation(
+            level=len(self.list_stack), level_in_first_row=len(self.list_stack) - 1
+        )
+        self.indentation_stack.append(indentation)
+        self.content = f"{self.list_stack[-1]:4}"
 
-    def depart_abbreviation(self, node):
+    def depart_list_item(self, node):
         self.indentation_stack.pop()
 
     def visit_definition_list(self, node):
@@ -336,9 +368,10 @@ title = "{node.astext()}"
         prefixed with a colon and space. The colon signals that this is the
         definition part of the term-definition pair.
         """
-        self.content += ": #"
+        self.content += ": <!---->"
         self._move_content_to_lines()
-        self.indentation_stack.append(self.indentation_stack[-1] + 2)
+        indentation = Indentation(self.indentation_stack[-1].level + 1)
+        self.indentation_stack.append(indentation)
 
     def depart_definition(self, node):
         """Add newline after definition for proper separation.
@@ -511,7 +544,7 @@ title = "{node.astext()}"
     def _visit_admonition(self, type):
         self.content += f'{{{{< admonition type="{type}" >}}}}\n'
         self._move_content_to_lines()
-        self.indentation_stack.append(0)
+        self.indentation_stack.append(Indentation(0))
 
     def depart_note(self, node):
         self._depart_admonition()
@@ -554,7 +587,7 @@ title = "{node.astext()}"
     def depart_label(self, node):
         self.content += "]:"
         self._move_content_to_lines()
-        self.indentation_stack.append(2)
+        self.indentation_stack.append(Indentation(1))
 
     # Compound handling methods
 
@@ -735,20 +768,32 @@ title = "{node.astext()}"
             for sibling in parent_desc.children:
                 if sibling.__class__.__name__ == "desc_content":
                     for desc_child in sibling.children:
-                        if (desc_child.__class__.__name__ == "field_list"):
+                        if desc_child.__class__.__name__ == "field_list":
                             for field in desc_child.children:
                                 if (
                                     field.__class__.__name__ == "field"
                                     and field.children
                                 ):
-                                    if field.children[0].__class__.__name__ == "field_name":
+                                    if (
+                                        field.children[0].__class__.__name__
+                                        == "field_name"
+                                    ):
                                         field_name = field.children[0].astext().strip()
                                         if field_name.lower() == "return type":
                                             for field_child in field.children:
-                                                if field_child.__class__.__name__ == "field_body":
-                                                    return_type = field_child.astext().strip()
-                                                    self._current_signature_dict["sig_return_type"] = return_type
-                                                    self._current_return_type = return_type
+                                                if (
+                                                    field_child.__class__.__name__
+                                                    == "field_body"
+                                                ):
+                                                    return_type = (
+                                                        field_child.astext().strip()
+                                                    )
+                                                    self._current_signature_dict[
+                                                        "sig_return_type"
+                                                    ] = return_type
+                                                    self._current_return_type = (
+                                                        return_type
+                                                    )
                                                     self._expect_returns_field = True
                                                     return return_type
         return return_type
@@ -878,7 +923,7 @@ title = "{node.astext()}"
                 "WARNING: Expected 'Returns' field but did not find it in the docstring."
             )
             self.content += self.get_formatted_field_header("Returns")
-            raise NotImplementedError # TODO
+            raise NotImplementedError  # TODO
             self._expect_returns_field = False
             self._current_return_type = None
         self.content += "\n"
@@ -946,7 +991,7 @@ title = "{node.astext()}"
         pure_str_content = self._content_stash
         new_str_content = ""
         for line in pure_str_content:
-            if not(" – "in line): 
+            if not (" – " in line):
                 new_str_content += f"\n: {line}"
             else:
                 # Split "name (type) – description"
@@ -970,8 +1015,12 @@ title = "{node.astext()}"
                     # If we have a type annotation, format it
                     type_annotation = sig_types
                     if len(sep_around_type) > 1:
-                        type_annotation = sep_around_type[1].split(")")[0].strip().strip("`")
-                left = self.get_formatted_param(left.strip(), type_annotation, sig_default)
+                        type_annotation = (
+                            sep_around_type[1].split(")")[0].strip().strip("`")
+                        )
+                left = self.get_formatted_param(
+                    left.strip(), type_annotation, sig_default
+                )
                 new_str_content += f"\n- {left}\n" + (f": {desc}" if (desc) else "")
         new_str_content = new_str_content.rstrip("\n").rstrip(" ").rstrip(":")
         self.content = new_str_content
@@ -984,14 +1033,14 @@ title = "{node.astext()}"
             new_str_content = f"\n- `{self._current_return_type}`"
         for content in pure_str_content[:-1]:
             new_str_content += f"\n: {content}"
-        self.content = new_str_content+"\n"
+        self.content = new_str_content + "\n"
         self._content_stash = []
 
     def restructure_field_body(self):
-        if (self._in_parameters_field):
+        if self._in_parameters_field:
             # If we are in a parameters field, we need to restructure the content
             self.restructure_parameters_field_body()
-        elif (self._in_returns_field):
+        elif self._in_returns_field:
             self.restructure_returns_field_body()
 
     def visit_field_body(self, node):
@@ -1017,4 +1066,8 @@ title = "{node.astext()}"
         self.content += "*"
 
     def depart_title_reference(self, node):
+        self.content += "*"
+
+    def depart_title_reference(self, node):
+        self.content += "*"
         self.content += "*"

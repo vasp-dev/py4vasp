@@ -12,6 +12,8 @@ unordered list
 
 * and here the parent list continues
 
+  with multiple paragraphs
+
 ordered list
 ------------
 

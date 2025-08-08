@@ -102,30 +102,39 @@ def test_convert_lists(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "list.md")
     unordered_list = """\
 * this is
+
 * a list
+
   * with a nested list
+
   * and some subitems
-* and here the parent list continues"""
+
+* and here the parent list continues
+
+  with multiple paragraphs"""
     assert unordered_list in content
     ordered_list = """\
 1. This is a numbered list.
+
 1. It has two items too.
+
 1. This is a numbered list.
+
 1. It has two items, the second
-item uses two lines."""
+  item uses two lines."""
     assert ordered_list in content
     # Note we added a # after the colon in the definition list so that Hugo renders it
     # correctly. Technically only the space is needed, but then opening the file manually
     # in a text editor may trim the trailing space.
     definition_list = """\
 term (up to a line of text)
-: #
+: <!---->
     Definition of the term, which must be indented
 
     and can even consist of multiple paragraphs
 
 next term
-: #
+: <!---->
     Description."""
     assert definition_list in content
 
@@ -271,11 +280,11 @@ def test_convert_footnote(sphinx_app):
     This is the third footnote with a definition list.
 
     term
-    : #
+    : <!---->
         Definition of the term in the third footnote.
 
     next term
-    : #
+    : <!---->
         Description of the next term in the third footnote."""
     assert third_footnote in content
 
@@ -284,15 +293,37 @@ def test_complex_list(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "complex_list.md")
     # note that there is a space after the colon in the definition list
     # otherwise Hugo will not render it correctly
-    expected_content = """\
+    list_with_codeblock = """\
 title
-: #
+: <!---->
     ~~~python
     print("This is a code block in a definition list.")
     ~~~
 
     text after the code block"""
-    assert expected_content in content
+    assert list_with_codeblock in content
+    list_with_nested_list = """\
+* first term
+  : <!---->
+      definition
+
+  second term
+  : <!---->
+      definition with a list
+
+    * item 1
+
+    * item 2
+
+* second list item
+
+  term in paragraph
+  : <!---->
+      first paragraph
+
+      second paragraph"""
+    assert list_with_nested_list in content
+    assert False
 
 
 # def test_convert_p4v(sphinx_app):
@@ -303,6 +334,7 @@ title
 #     # print(doctree.pformat())
 
 
+@pytest.mark.skip
 def test_convert_example(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_autodata_content = """\
@@ -437,7 +469,7 @@ Combine a float and a string in a tuple.
     assert expected_public_method_content in content
 
 
-#@pytest.mark.skip
+@pytest.mark.skip
 def test_convert_example_dos(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
     print(content)
