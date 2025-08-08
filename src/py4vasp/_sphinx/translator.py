@@ -922,8 +922,12 @@ title = "{node.astext()}"
             print(
                 "WARNING: Expected 'Returns' field but did not find it in the docstring."
             )
-            self.content += self.get_formatted_field_header("Returns")
-            raise NotImplementedError  # TODO
+            if (self._current_return_type):
+                self.content += self.get_formatted_field_header("Returns")
+                self.content += "<div class='desc-content'>\n\n"
+                self.content += f"`{self._current_return_type}`\n\n"
+                
+                self.content += "</div>\n"
             self._expect_returns_field = False
             self._current_return_type = None
         self.content += "\n"
@@ -1034,13 +1038,13 @@ title = "{node.astext()}"
         self._content_stash = []
 
     def restructure_returns_field_body(self):
-        pure_str_content = self._content_stash
+        pure_str_content = self._content_stash.copy()
         new_str_content = "\n"
         if self._current_return_type:
             new_str_content = f"\n`{self._current_return_type}`"
         new_str_content += "\n: <!---->"
-        new_str_content += "\n    " + "\n    ".join(pure_str_content)
-        self.content = new_str_content + "\n\n"
+        new_str_content += "\n    " + "\n    ".join([c.lstrip("* `").rstrip("`") if c.startswith("* `") and c.endswith("`") else c for c in pure_str_content])
+        self.content = new_str_content+"\n\n"
         self._content_stash = []
 
     def restructure_field_body(self):

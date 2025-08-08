@@ -54,3 +54,69 @@ class Example:
             A tuple containing the float and a string representation.
         """
         return some_value, f"{some_string}: {some_value}" if some_string else None
+    
+def returns_type_without_desc_returns(value1: float, value2: float | str):
+    """
+    Return value 2.
+
+    Parameters
+    ----------
+    value1 : float
+        The first value.
+    value2 : float | str
+        The second value, which can be a float or a string.
+
+    Returns
+    -------
+    float | str
+        The second value.
+    """
+    return value2
+
+def returns_type_without_returns_field(value1: float, value2: float | str) -> float | str:
+    """
+    Return value 2.
+
+    Parameters
+    ----------
+    value1 : float
+        The first value.
+    value2 : float | str
+        The second value, which can be a float or a string.
+    """
+    return value2
+
+def returns_type_without_returns_field_desc(value1: float, value2: float | str) -> float | str:
+    """
+    Return value 2.
+
+    Parameters
+    ----------
+    value1 : float
+        The first value.
+    value2 : float | str
+        The second value, which can be a float or a string.
+
+    Returns
+    -------
+    float | str
+    """
+    return value2
+
+def returns_type_without_returns_field_type(value1: float, value2: float | str) -> float | str:
+    """
+    Return value 2.
+
+    Parameters
+    ----------
+    value1 : float
+        The first value.
+    value2 : float | str
+        The second value, which can be a float or a string.
+
+    Returns
+    -------
+    The second value.
+    With another line!
+    """
+    return value2
