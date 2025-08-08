@@ -597,7 +597,7 @@ title = "{node.astext()}"
 
     def depart_compound(self, node):
         # End the div
-        self.content += "\n</div>"
+        self.content += "\n</div>\n"
         self._move_content_to_lines()
 
     def visit_compact_paragraph(self, node):
@@ -805,7 +805,7 @@ title = "{node.astext()}"
         objtype = self.get_latest_objtype()
         objtype_str = f"*{objtype}* " if (objtype != "method") else ""
         if objtype:
-            self.content += f"\n\n<div class='{objtype} signature'>"
+            self.content += f"\n\n<div class='{f'{objtype} ' if objtype else ''}signature'>"
 
         name = self.get_latest_name()
         name_str = f"**{name}**"
@@ -822,8 +822,7 @@ title = "{node.astext()}"
             return_str = f" → `{return_type}`"
             self.content += return_str
 
-        if objtype:
-            self.content += f"\n\n</div>\n\n"
+        self.content += f"\n\n</div>\n\n"
 
         if self._current_return_type:
             self._expect_returns_field = True
@@ -839,11 +838,10 @@ title = "{node.astext()}"
         pass
 
     def visit_desc_content(self, node):
-        self.content += "\n\n<div class='desc-content'>\n\n"
+        self.content += "\n"
         pass
 
     def depart_desc_content(self, node):
-        self.content += "\n</div>\n"
         self._move_content_to_lines()
 
     def visit_desc_addname(self, node):
@@ -919,15 +917,9 @@ title = "{node.astext()}"
     def depart_field_list(self, node):
         if getattr(self, "_expect_returns_field", False):
             # If we expected a returns field, but didn't find it, log a warning
-            print(
-                "WARNING: Expected 'Returns' field but did not find it in the docstring."
-            )
             if self._current_return_type:
                 self.content += self.get_formatted_field_header("Returns")
-                self.content += "<div class='desc-content'>\n\n"
                 self.content += f"`{self._current_return_type}`\n\n"
-
-                self.content += "</div>\n"
             self._expect_returns_field = False
             self._current_return_type = None
         self.content += "\n"
@@ -1046,8 +1038,8 @@ title = "{node.astext()}"
         new_str_content += "\n    " + "\n    ".join(
             [
                 (
-                    c.lstrip("* `").rstrip("`")
-                    if c.startswith("* `") and c.endswith("`")
+                    c.lstrip("*   `").rstrip("`")
+                    if c.startswith("*   `") and c.endswith("`")
                     else c
                 )
                 for c in pure_str_content
@@ -1064,14 +1056,13 @@ title = "{node.astext()}"
             self.restructure_returns_field_body()
 
     def visit_field_body(self, node):
-        self.content += "<div class='desc-content'>\n"
         self._move_content_to_lines()
         self._prevent_move_content = True
 
     def depart_field_body(self, node):
         self.restructure_field_body()
         self._prevent_move_content = False
-        self.content += "\n</div>\n\n"
+        self.content += "\n"
         self._move_content_to_lines()
         pass
 
