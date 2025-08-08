@@ -101,29 +101,29 @@ title = "Inline markup example"
 def test_convert_lists(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "list.md")
     unordered_list = """\
-* this is
+*   this is
 
-* a list
+*   a list
 
-  * with a nested list
+    *   with a nested list
 
-  * and some subitems
+    *   and some subitems
 
-* and here the parent list continues
+*   and here the parent list continues
 
-  with multiple paragraphs"""
+    with multiple paragraphs"""
     assert unordered_list in content
     ordered_list = """\
-1. This is a numbered list.
+1.  This is a numbered list.
 
-1. It has two items too.
+1.  It has two items too.
 
-1. This is a numbered list.
+1.  This is a numbered list.
 
-1. It has two items, the second
-  item uses two lines."""
+1.  It has two items, the second
+    item uses two lines."""
     assert ordered_list in content
-    # Note we added a # after the colon in the definition list so that Hugo renders it
+    # Note we added a comment after the colon in the definition list so that Hugo renders it
     # correctly. Technically only the space is needed, but then opening the file manually
     # in a text editor may trim the trailing space.
     definition_list = """\
@@ -291,8 +291,6 @@ def test_convert_footnote(sphinx_app):
 
 def test_complex_list(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "complex_list.md")
-    # note that there is a space after the colon in the definition list
-    # otherwise Hugo will not render it correctly
     list_with_codeblock = """\
 title
 : <!---->
@@ -303,27 +301,26 @@ title
     text after the code block"""
     assert list_with_codeblock in content
     list_with_nested_list = """\
-* first term
-  : <!---->
-      definition
+*   first term
+    : <!---->
+        definition
 
-  second term
-  : <!---->
-      definition with a list
+    second term
+    : <!---->
+        definition with a list
 
-    * item 1
+        *   item 1
 
-    * item 2
+        *   item 2
 
-* second list item
+*   second list item
 
-  term in paragraph
-  : <!---->
-      first paragraph
+    term in paragraph
+    : <!---->
+        first paragraph
 
-      second paragraph"""
+        second paragraph"""
     assert list_with_nested_list in content
-    assert False
 
 
 # def test_convert_p4v(sphinx_app):
