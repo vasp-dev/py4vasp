@@ -54,6 +54,7 @@ class ElectronPhononSelfEnergyInstance(ElectronPhononInstance):
             "eigenvalues": self.parent.eigenvalues(),
             "fan": self._get_fan(),
             "debye_waller": self._get_data("debye_waller"),
+            "energies": self._get_data("energies"),
         }
 
     def _get_fan(self):
@@ -68,6 +69,9 @@ class ElectronPhononSelfEnergyInstance(ElectronPhononInstance):
     def self_energy(self):
         self_energy = self._get_fan() + self._get_data("debye_waller")
         return self._make_sparse_tensor(self_energy)
+
+    def energies(self):
+        return self._make_sparse_tensor(self._get_data("energies"))
 
     def _make_sparse_tensor(self, tensor_data):
         band_kpoint_spin_index = self._get_data("band_kpoint_spin_index").T - 1

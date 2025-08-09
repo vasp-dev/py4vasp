@@ -29,6 +29,7 @@ def self_energy(raw_self_energy):
     self_energy.ref.eigenvalues = raw_self_energy.eigenvalues
     self_energy.ref.debye_waller = raw_self_energy.debye_waller
     self_energy.ref.fan = [convert.to_complex(fan[:]) for fan in raw_self_energy.fan]
+    self_energy.ref.energies = raw_self_energy.energies
     self_energy.ref.nbands_sum = raw_self_energy.nbands_sum
     self_energy.ref.selfen_delta = raw_self_energy.delta
     self_energy.ref.selfen_carrier_den = _make_reference_carrier_den(raw_self_energy)
@@ -92,10 +93,12 @@ def test_read_instance(self_energy, Assert):
     # Each instance's to_dict should match the raw data for that index
     for i, instance in enumerate(self_energy):
         d = instance.read()
-        assert d.keys() == {"eigenvalues", "debye_waller", "fan", "metadata"}
+        expected_keys = {"eigenvalues", "debye_waller", "fan", "energies", "metadata"}
+        assert d.keys() == expected_keys
         Assert.allclose(d["eigenvalues"], self_energy.ref.eigenvalues)
         Assert.allclose(d["debye_waller"], self_energy.ref.debye_waller[i])
         Assert.allclose(d["fan"], self_energy.ref.fan[i])
+        Assert.allclose(d["energies"], self_energy.ref.energies[i])
         assert d["metadata"] == {
             "nbands_sum": self_energy.ref.nbands_sum[i],
             "selfen_delta": self_energy.ref.selfen_delta[i],
@@ -230,7 +233,9 @@ def test_sparse_tensor_should_only_succeed_if_index_is_valid(mock_sparse_tensor)
             assert bks[band - band_start, kpoint, spin] < 0
 
 
-@pytest.mark.parametrize("contribution", ["fan", "debye_waller", "self_energy"])
+@pytest.mark.parametrize(
+    "contribution", ["fan", "debye_waller", "self_energy", "energies"]
+)
 def test_sparse_tensor_self_energy(self_energy, contribution, Assert):
     first_band = 1
     for instance, indices in zip(self_energy, self_energy.ref.band_kpoint_spin_index):

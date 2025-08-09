@@ -1582,6 +1582,7 @@ def _electron_phonon_self_energy(selection):
     number_temp = 6
     fan_shape = [number_indices, number_freq, number_temp, complex_]
     debye_waller_shape = [number_indices, number_temp]
+    energies_shape = [number_indices, number_freq]
     return raw.ElectronPhononSelfEnergy(
         valid_indices=range(number_samples),
         id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
@@ -1598,6 +1599,7 @@ def _electron_phonon_self_energy(selection):
             _make_arbitrary_data(debye_waller_shape) for _ in range(number_samples)
         ],
         fan=[_make_arbitrary_data(fan_shape) for _ in range(number_samples)],
+        energies=[_make_arbitrary_data(energies_shape) for _ in range(number_samples)],
         band_kpoint_spin_index=[band_kpoint_spin_index for _ in range(number_samples)],
         band_start=[band_start for _ in range(number_samples)],
     )
