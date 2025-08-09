@@ -27,8 +27,13 @@ class ElectronPhononSelfEnergyInstance(ElectronPhononInstance):
 
     def __str__(self):
         """
-        Returns a string representation of the self energy instance, including chemical
-        potential and number of bands included in the sum.
+        Return a string representation of the self energy instance.
+
+        Returns
+        -------
+        str
+            String representation including chemical potential and number of bands
+            included in the sum.
         """
         return "\n".join(self._generate_lines())
 
@@ -49,6 +54,15 @@ class ElectronPhononSelfEnergyInstance(ElectronPhononInstance):
         yield f"{indent}scattering_approx: {scattering_approx}"
 
     def to_dict(self):
+        """
+        Convert the electron-phonon self-energy instance to a dictionary.
+
+        Returns
+        -------
+        dict
+            Dictionary containing metadata, eigenvalues, fan terms, debye_waller terms,
+            and energies for this self-energy instance.
+        """
         return {
             "metadata": self._read_metadata(),
             "eigenvalues": self.parent.eigenvalues(),
@@ -61,16 +75,52 @@ class ElectronPhononSelfEnergyInstance(ElectronPhononInstance):
         return convert.to_complex(self._get_data("fan"))
 
     def fan(self):
+        """
+        Return the Fan contribution to the electron-phonon self-energy as a sparse tensor.
+
+        Returns
+        -------
+        SparseTensor
+            Sparse tensor containing Fan self-energy contributions for specific
+            band, k-point, and spin combinations.
+        """
         return self._make_sparse_tensor(self._get_fan())
 
     def debye_waller(self):
+        """
+        Return the Debye-Waller contribution to the electron-phonon self-energy as a sparse tensor.
+
+        Returns
+        -------
+        SparseTensor
+            Sparse tensor containing Debye-Waller self-energy contributions for specific
+            band, k-point, and spin combinations.
+        """
         return self._make_sparse_tensor(self._get_data("debye_waller"))
 
     def self_energy(self):
+        """
+        Return the total electron-phonon self-energy as a sparse tensor.
+
+        Returns
+        -------
+        SparseTensor
+            Sparse tensor containing the sum of Fan and Debye-Waller contributions
+            for specific band, k-point, and spin combinations.
+        """
         self_energy = self._get_fan() + self._get_data("debye_waller")
         return self._make_sparse_tensor(self_energy)
 
     def energies(self):
+        """
+        Return the energies at which the self energy was evaluated as a sparse tensor.
+
+        Returns
+        -------
+        SparseTensor
+            Sparse tensor containing energy values for specific band, k-point,
+            and spin combinations.
+        """
         return self._make_sparse_tensor(self._get_data("energies"))
 
     def _make_sparse_tensor(self, tensor_data):
@@ -115,13 +165,28 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
 
     @base.data_access
     def selections(self):
-        """Return a dictionary describing what options are available
-        to read the electron self-energies."""
+        """Return a dictionary describing what options are available to read the electron self-energies.
+
+        Returns
+        -------
+        dict
+            Dictionary containing available selection options with their possible values.
+            Keys include selection criteria like "nbands_sum", "selfen_approx", "selfen_delta".
+        """
         base_selections = super().selections()
         return self._accumulator().selections(base_selections)
 
     @base.data_access
     def chemical_potential_mu_tag(self):
+        """Return the chemical potential tag and values.
+
+        Returns
+        -------
+        tuple
+            A tuple containing (tag_name, values_array) where tag_name is a string
+            describing the chemical potential parameter and values_array contains
+            the numerical values.
+        """
         return self._accumulator().chemical_potential_mu_tag()
 
     @base.data_access
@@ -130,9 +195,9 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
 
         Parameters
         ----------
-        selection : dict
-            Dictionary with keys as selection names (e.g., "nbands_sum", "selfen_approx", "selfen_delta")
-            and values as the desired values for those properties.
+        selection : str
+            String representing the selection criteria (e.g., "nbands_sum", "selfen_approx",
+            "selfen_delta") and the desired values for those properties
 
         Returns
         -------
@@ -148,6 +213,13 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
 
     @base.data_access
     def eigenvalues(self):
+        """Return the eigenvalues from the raw data.
+
+        Returns
+        -------
+        numpy.ndarray
+            Array containing eigenvalues for all k-points, bands, and spin channels.
+        """
         return self._raw_data.eigenvalues[:]
 
     @base.data_access
@@ -162,6 +234,22 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
 
 
 class SparseTensor:
+    """
+    A sparse tensor implementation for electron-phonon data.
+
+    This class provides efficient storage and access to tensor data that is only
+    defined for specific combinations of band, k-point, and spin indices.
+
+    Parameters
+    ----------
+    band_kpoint_spin_index : array_like
+        Index mapping for (band, kpoint, spin) combinations.
+    band_start : int
+        Starting band index for valid data.
+    tensor : array_like
+        The actual tensor data values in compressed form.
+    """
+
     def __init__(self, band_kpoint_spin_index, band_start, tensor):
         self._band_kpoint_spin_index = band_kpoint_spin_index
         self._band_start = band_start
@@ -190,11 +278,40 @@ class SparseTensor:
 
     @property
     def valid_bands(self):
+        """
+        Return the range of valid band indices.
+
+        Returns
+        -------
+        range
+            Range object representing the valid band indices.
+        """
         return range(
             self._band_start, self._band_start + self._band_kpoint_spin_index.shape[0]
         )
 
     def __getitem__(self, spin_kpoint_band_tuple):
+        """
+        Access tensor data for specific spin, k-point, and band indices.
+
+        Parameters
+        ----------
+        spin, kpoint, band : int
+            Spin, k-point, and band indices.
+
+        Returns
+        -------
+        array_like
+            The tensor data at the specified indices.
+
+        Raises
+        ------
+        IncorrectUsage
+            If the tuple doesn't contain exactly three indices, if band index
+            is outside valid range, or if indices are invalid.
+        DataMismatch
+            If the calculation for the specified indices was not performed.
+        """
         if len(spin_kpoint_band_tuple) != 3:
             raise exception.IncorrectUsage(
                 "Please provide exactly three indices for spin, kpoint and band."
