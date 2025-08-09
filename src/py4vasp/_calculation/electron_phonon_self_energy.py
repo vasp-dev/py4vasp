@@ -163,24 +163,24 @@ class SparseTensor:
         self._band_start = band_start
         self._tensor = tensor
 
-    def _get_band_kpoint_spin_index(self, band, kpoint, spin):
+    def _get_band_kpoint_spin_index(self, spin, kpoint, band):
         try:
             return self._band_kpoint_spin_index[band - self._band_start, kpoint, spin]
         except IndexError:
             raise exception.IncorrectUsage(
-                f"Invalid indices: {band=}, {kpoint=}, {spin=}. "
-                f"Valid ranges are: {self._band_start} <= band < {self._band_start + len(self._band_kpoint_spin_index)}"
-                f", 0 <= kpoint < {self._band_kpoint_spin_index.shape[1]}, "
+                f"Invalid indices: {spin=}, {kpoint=}, {band=}. "
                 f"0 <= spin < {self._band_kpoint_spin_index.shape[2]}."
+                f", 0 <= kpoint < {self._band_kpoint_spin_index.shape[1]}, "
+                f"Valid ranges are: {self._band_start} <= band < {self._band_start + len(self._band_kpoint_spin_index)}"
             )
 
-    def __getitem__(self, band_kpoint_spin_tuple):
-        if len(band_kpoint_spin_tuple) != 3:
+    def __getitem__(self, spin_kpoint_band_tuple):
+        if len(spin_kpoint_band_tuple) != 3:
             raise exception.IncorrectUsage(
-                "Please provide exactly three indices for band, kpoint and spin."
+                "Please provide exactly three indices for spin, kpoint and band."
             )
-        band, kpoint, spin = band_kpoint_spin_tuple
-        index_ = self._get_band_kpoint_spin_index(band, kpoint, spin)
+        spin, kpoint, band = spin_kpoint_band_tuple
+        index_ = self._get_band_kpoint_spin_index(spin, kpoint, band)
         if index_ < 0:
             raise exception.DataMismatch(
                 f"The calculation for {band=} {kpoint=} {spin=} was not performed."

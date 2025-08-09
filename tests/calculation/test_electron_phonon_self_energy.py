@@ -33,9 +33,7 @@ def self_energy(raw_self_energy):
     self_energy.ref.selfen_delta = raw_self_energy.delta
     self_energy.ref.selfen_carrier_den = _make_reference_carrier_den(raw_self_energy)
     self_energy.ref.scattering_approx = raw_self_energy.scattering_approximation
-    self_energy.ref.band_kpoint_spin_index = [
-        indices.T for indices in raw_self_energy.band_kpoint_spin_index
-    ]
+    self_energy.ref.band_kpoint_spin_index = raw_self_energy.band_kpoint_spin_index
     self_energy.ref.mapping_pattern = _make_reference_pattern()
     self_energy.ref.instance_pattern = _make_reference_pattern(raw_self_energy)
     return self_energy
@@ -193,22 +191,23 @@ def mock_sparse_tensor():
 def test_sparse_tensor_valid_and_invalid_access(
     mock_sparse_tensor, valid_indices, expected_data
 ):
+    # note the different order between Python and Fortan indices
     band, kpoint, spin = valid_indices
-    assert mock_sparse_tensor[band, kpoint, spin] == expected_data
+    assert mock_sparse_tensor[spin, kpoint, band] == expected_data
 
 
 @pytest.mark.parametrize("invalid_indices", [[0, 1, 0], [1, 0, 1], [2, 2, 1]])
 def test_sparse_tensor_invalid_access(mock_sparse_tensor, invalid_indices):
     band, kpoint, spin = invalid_indices
     with pytest.raises(exception.DataMismatch):
-        mock_sparse_tensor[band, kpoint, spin]
+        mock_sparse_tensor[spin, kpoint, band]
 
 
 @pytest.mark.parametrize("out_of_bounds_indices", [[4, 2, 1], [3, 3, 2]])
 def test_sparse_tensor_out_of_bounds_access(mock_sparse_tensor, out_of_bounds_indices):
     band, kpoint, spin = out_of_bounds_indices
     with pytest.raises(exception.IncorrectUsage):
-        mock_sparse_tensor[band, kpoint, spin]
+        mock_sparse_tensor[spin, kpoint, band]
 
 
 def test_sparse_tensor_incorrect_arguments(mock_sparse_tensor):
@@ -224,7 +223,7 @@ def test_sparse_tensor_should_only_succeed_if_index_is_valid(mock_sparse_tensor)
     band_start = mock_sparse_tensor._band_start
     for band, kpoint, spin in itertools.product(range(4), range(3), range(2)):
         try:
-            val = mock_sparse_tensor[band, kpoint, spin]
+            val = mock_sparse_tensor[spin, kpoint, band]
             assert bks[band - band_start, kpoint, spin] >= 0
             assert val in (10.0, 20.0, 30.0)
         except exception.DataMismatch:
@@ -243,16 +242,20 @@ def test_sparse_tensor_self_energy(self_energy, contribution, Assert):
         sparse_tensor = getattr(instance, contribution)()
         assert isinstance(sparse_tensor, SparseTensor)
         shape = indices.shape
-        for band, kpoint, spin in itertools.product(
+        for spin, kpoint, band in itertools.product(
             range(shape[0]), range(shape[1]), range(shape[2])
         ):
-            index_ = indices[band, kpoint, spin]
+            index_ = indices[spin, kpoint, band]
             if index_ >= 0:
-                value = sparse_tensor[band + first_band, kpoint, spin]
+                value = sparse_tensor[spin, kpoint, band + first_band]
                 Assert.allclose(value, expected_result[index_ - 1])
             else:
                 with pytest.raises(exception.DataMismatch):
-                    sparse_tensor[band + first_band, kpoint, spin]
+                    sparse_tensor[spin, kpoint, band + first_band]
+
+
+def test_eigenvalues(self_energy, Assert):
+    Assert.allclose(self_energy.eigenvalues(), self_energy.ref.eigenvalues)
 
 
 def test_print_mapping(self_energy, format_):
