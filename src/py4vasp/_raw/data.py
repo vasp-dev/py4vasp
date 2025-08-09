@@ -314,6 +314,8 @@ class ElectronPhononSelfEnergy(mapping.Mapping):
     "Debye-Waller self-energy contribution as an array flattened along (band,kpoint,spin)"
     fan: VaspData
     "Fan self-energy contribution for an array of energies as an array flattened along (band,kpoint,spin)"
+    energies: VaspData
+    "Energies at which the Fan self-energy was evaluated."
     band_kpoint_spin_index: VaspData
     "Translate a (band,kpoint,spin) tuple to the flattened array"
     band_start: int

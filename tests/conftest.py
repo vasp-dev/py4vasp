@@ -1520,6 +1520,27 @@ def _current_density(selection):
     )
 
 
+def _electron_phonon_band_gap(selection):
+    number_components = 3 if selection == "collinear" else 1
+    number_temps = 6
+    shape_gap = [number_samples, number_components]
+    shape_renorm = [number_samples, number_components, number_temps]
+    shape_temperature = [number_samples, number_temps]
+    return raw.ElectronPhononBandgap(
+        valid_indices=range(number_samples),
+        nbands_sum=_make_data(np.linspace(10, 100, number_samples, dtype=np.int32)),
+        delta=_make_arbitrary_data([number_samples], seed=7824570),
+        chemical_potential=_electron_phonon_chemical_potential(),
+        scattering_approximation=["SERTA", "SERTA", "MRTA_TAU", "SERTA", "SERTA"],
+        fundamental_renorm=_make_arbitrary_data(shape_renorm),
+        direct_renorm=_make_arbitrary_data(shape_renorm),
+        fundamental=_make_arbitrary_data(shape_gap),
+        direct=_make_arbitrary_data(shape_gap),
+        temperatures=_make_arbitrary_data(shape_temperature),
+        id_index=_make_id_index(),
+    )
+
+
 def _electron_phonon_chemical_potential(selection="carrier_den"):
     number_temps = 6
     seed = 26826821
@@ -1543,71 +1564,44 @@ def _electron_phonon_chemical_potential(selection="carrier_den"):
 
 
 def _electron_phonon_self_energy(selection):
-    nspin = 1
-    nkpoint = 2
-    nband = 4
     band_start = 1
     # mock band_kpoint_spin_index array
-    band_kpoint_spin_index_shape = [nspin, nkpoint, nband]
+    number_kpoints = 2
+    band_kpoint_spin_index_shape = [single_spin, number_kpoints, number_bands]
     band_kpoint_spin_index = np.full(band_kpoint_spin_index_shape, -1)
-    ibks = 0
-    for isp in range(nspin):
-        for ikpt in range(nkpoint):
-            for iband in range(nband):
-                ibks = ibks + 1
-                band_kpoint_spin_index[isp, ikpt, iband] = ibks
+    spin = 0
+    index_ = 0
+    for kpoint, band in itertools.product(range(number_kpoints), range(number_bands)):
+        if kpoint == band:
+            continue  # create a gap in the band_kpoint_spin_index
+        index_ += 1
+        band_kpoint_spin_index[spin, kpoint, band] = index_
     # mock fan and dw
-    nbks = np.count_nonzero(band_kpoint_spin_index != -1)
-    nw = 1  # number of frequencies at which the fan self-energy is evaluated
-    ntemps = 6
-    nbands_sum = 12
-    scattering_approximation = "MRTA_TAU"
-    fan_shape = [nbks, nw, ntemps]
-    debye_waller_shape = [nbks, ntemps]
+    number_indices = np.count_nonzero(band_kpoint_spin_index != -1)
+    number_freq = 1  # number of frequencies at which the fan self-energy is evaluated
+    number_temp = 6
+    fan_shape = [number_indices, number_freq, number_temp, complex_]
+    debye_waller_shape = [number_indices, number_temp]
+    energies_shape = [number_indices, number_freq]
     return raw.ElectronPhononSelfEnergy(
         valid_indices=range(number_samples),
         id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
         id_size=[1, number_samples, 1, 1],
-        nbands_sum=np.array([nbands_sum for _ in range(number_samples)]),
-        delta=np.array([0 for _ in range(number_samples)]),
-        scattering_approximation=[
-            scattering_approximation for _ in range(number_samples)
-        ],
-        chemical_potential=_electron_phonon_chemical_potential(selection),
-        id_index=[[1, sample + 1, 1] for sample in range(number_samples)],
+        nbands_sum=_make_data(np.linspace(10, 100, number_samples, dtype=np.int32)),
+        delta=_make_arbitrary_data([number_samples], seed=18573411),
+        scattering_approximation=_make_data(
+            ["SERTA", "ERTA_LAMDBA", "ERTA_TAU", "MRTA_LAMDBA", "MRTA_TAU"]
+        ),
+        chemical_potential=_electron_phonon_chemical_potential(),
+        id_index=_make_id_index(),
         eigenvalues=_make_arbitrary_data(band_kpoint_spin_index_shape),
         debye_waller=[
             _make_arbitrary_data(debye_waller_shape) for _ in range(number_samples)
         ],
         fan=[_make_arbitrary_data(fan_shape) for _ in range(number_samples)],
-        band_kpoint_spin_index=np.array(
-            [band_kpoint_spin_index for _ in range(number_samples)]
-        ),
-        band_start=np.array([band_start for _ in range(number_samples)]),
-    )
-
-
-def _electron_phonon_band_gap(selection):
-    number_components = 3 if selection == "collinear" else 1
-    number_temps = 6
-    shape_gap = [number_samples, number_components]
-    shape_renorm = [number_samples, number_components, number_temps]
-    shape_temperature = [number_samples, number_temps]
-    unused = np.full(number_samples, fill_value=9999)
-    index_chemical_potential = np.arange(number_samples) % number_chemical_potentials
-    id_index = np.array([unused, unused, index_chemical_potential + 1, unused]).T
-    return raw.ElectronPhononBandgap(
-        valid_indices=range(number_samples),
-        nbands_sum=_make_data(np.linspace(10, 100, number_samples, dtype=np.int32)),
-        delta=_make_arbitrary_data([number_samples], seed=7824570),
-        chemical_potential=_electron_phonon_chemical_potential(),
-        scattering_approximation=["SERTA", "SERTA", "MRTA_TAU", "SERTA", "SERTA"],
-        fundamental_renorm=_make_arbitrary_data(shape_renorm),
-        direct_renorm=_make_arbitrary_data(shape_renorm),
-        fundamental=_make_arbitrary_data(shape_gap),
-        direct=_make_arbitrary_data(shape_gap),
-        temperatures=_make_arbitrary_data(shape_temperature),
-        id_index=_make_data(id_index),
+        energies=[_make_arbitrary_data(energies_shape) for _ in range(number_samples)],
+        band_kpoint_spin_index=[band_kpoint_spin_index for _ in range(number_samples)],
+        band_start=[band_start for _ in range(number_samples)],
     )
 
 
@@ -1639,6 +1633,13 @@ def _electron_phonon_transport(selection):
             scattering_approximation for _ in range(number_samples)
         ],
     )
+
+
+def _make_id_index():
+    unused = np.full(number_samples, fill_value=9999)
+    index_chemical_potential = np.arange(number_samples) % number_chemical_potentials
+    id_index = np.array([unused, unused, index_chemical_potential + 1, unused]).T
+    return raw.VaspData(id_index)
 
 
 def _make_unitary_matrix(n, seed=None):

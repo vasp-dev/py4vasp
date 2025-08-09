@@ -4,21 +4,14 @@ from collections import abc
 
 import numpy as np
 
-from py4vasp import exception
 from py4vasp._calculation import base
-from py4vasp._calculation.electron_phonon_chemical_potential import (
-    ElectronPhononChemicalPotential,
-)
+from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
+from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
 from py4vasp._third_party import graph
-from py4vasp._util import index, select, suggest
-
-ALIAS = {
-    "selfen_delta": "delta",
-    "scattering_approx": "scattering_approximation",
-}
+from py4vasp._util import index, select
 
 
-class ElectronPhononBandgapInstance(graph.Mixin):
+class ElectronPhononBandgapInstance(ElectronPhononInstance, graph.Mixin):
     """
     Represents an instance of electron-phonon band gap calculations.
 
@@ -69,16 +62,6 @@ class ElectronPhononBandgapInstance(graph.Mixin):
             yield f"{temperature:18.6f} {kohn_sham_gap:19.6f} {quasi_particle_gap:19.6f} {1000 * renormalization:19.6f}"
         yield ""
 
-    def print(self):
-        "Print a string representation of this instance."
-        print(str(self))
-
-    def _repr_pretty_(self, p, cycle):
-        p.text(str(self))
-
-    def _get_data(self, name):
-        return self.parent._get_data(name, self.index)
-
     def to_graph(self, selection):
         """Generates a graph representing the temperature dependence of bandgap energies.
 
@@ -114,10 +97,6 @@ class ElectronPhononBandgapInstance(graph.Mixin):
         ]
         return graph.Graph(series, ylabel="Energy (eV)", xlabel="Temperature (K)")
 
-    def read(self):
-        "Convenient wrapper around to_dict. Check that function for examples and optional arguments."
-        return self.to_dict()
-
     def to_dict(self):
         """Convert the electron-phonon bandgap calculation results to a dictionary.
 
@@ -139,14 +118,8 @@ class ElectronPhononBandgapInstance(graph.Mixin):
         The <mu_tag> key in the metadata will be dynamically set based on the chemical
         potential tag returned by `ChemicalPotential.mu_tag()`.
         """
-        mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
         return {
-            "metadata": {
-                "nbands_sum": self._get_data("nbands_sum"),
-                "selfen_delta": self._get_data("delta"),
-                "scattering_approx": self._get_data("scattering_approximation"),
-                mu_tag: mu_val[self._get_data("id_index")[2] - 1],
-            },
+            "metadata": self._read_metadata(),
             "direct_renorm": self._get_data("direct_renorm"),
             "direct": self._get_data("direct"),
             "fundamental_renorm": self._get_data("fundamental_renorm"),
@@ -172,24 +145,19 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
     potential tag returned by `ChemicalPotential.mu_tag()`.
     """
 
+    def _accumulator(self):
+        return ElectronPhononAccumulator(self, self._raw_data)
+
     @base.data_access
     def __str__(self):
-        num_instances = len(self)
-        selection_options = self.selections()
-        selection_options.pop("electron_phonon_bandgap", None)
-        options_str = "\n".join(
-            f"    {key}: {value}" for key, value in selection_options.items()
-        )
-        return (
-            f"Electron-phonon bandgap with {num_instances} instance(s):\n{options_str}"
-        )
+        return str(self._accumulator())
 
     @base.data_access
     def to_dict(self):
         """
         Converts the bandgap data to a dictionary format.
         """
-        return {"naccumulators": len(self)}
+        return self._accumulator().to_dict()
 
     @base.data_access
     def selections(self):
@@ -205,14 +173,11 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
             - "selfen_delta": The self-energy delta value.
             - <mu_tag>: The chemical potential value for the current index.
         """
+        base_selections = super().selections()
+        result = self._accumulator().selections(base_selections)
         # This class only make sense when the scattering approximation is SERTA
-        mu_tag, mu_val = self.chemical_potential_mu_tag()
-        return {
-            **super().selections(),
-            mu_tag: np.unique(mu_val),
-            "nbands_sum": np.unique(self._raw_data.nbands_sum),
-            "selfen_delta": np.unique(self._raw_data.delta),
-        }
+        result.pop("scattering_approx", None)
+        return result
 
     @base.data_access
     def chemical_potential_mu_tag(self):
@@ -226,10 +191,7 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
             The INCAR tag name and its corresponding value as set in the calculation.
             Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
         """
-        chemical_potential = ElectronPhononChemicalPotential.from_data(
-            self._raw_data.chemical_potential
-        )
-        return chemical_potential.mu_tag()
+        return self._accumulator().chemical_potential_mu_tag()
 
     @base.data_access
     def select(self, selection):
@@ -248,48 +210,14 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
         list of ElectronPhononBandgapInstance
             Instances that match the selection criteria.
         """
-        indices = self._select_indices(selection)
+        indices = self._accumulator().select_indices(
+            selection, scattering_approximation="SERTA"
+        )
         return [ElectronPhononBandgapInstance(self, index) for index in indices]
 
-    def _select_indices(self, selection):
-        tree = select.Tree.from_selection(selection)
-        return {
-            index_
-            for selection in tree.selections()
-            for index_ in self._filter_indices(selection)
-        }
-
-    def _filter_indices(self, selection):
-        remaining_indices = range(len(self._raw_data.valid_indices))
-        remaining_indices = self._filter_group(
-            remaining_indices, "scattering_approximation", "SERTA"
-        )
-        for group in selection:
-            self._raise_error_if_group_format_incorrect(group)
-            assert len(group.group) == 2
-            remaining_indices = self._filter_group(remaining_indices, *group.group)
-            remaining_indices = list(remaining_indices)
-        yield from remaining_indices
-
-    def _raise_error_if_group_format_incorrect(self, group):
-        if not isinstance(group, select.Group) or group.separator != "=":
-            message = f'\
-The selection {group} is not formatted correctly. It should be formatted like \
-"key=value". Please check the "selections" method for available options.'
-            raise exception.IncorrectUsage(message)
-
-    def _filter_group(self, remaining_indices, key, value):
-        for index_ in remaining_indices:
-            if self._match_key_value(index_, key, str(value)):
-                yield index_
-
-    def _match_key_value(self, index_, key, value):
-        instance_value = self._get_data(key, index_)
-        try:
-            value = float(value)
-        except ValueError:
-            return instance_value == value
-        return np.isclose(instance_value, float(value), rtol=1e-8, atol=0)
+    @base.data_access
+    def _get_data(self, name, index):
+        return self._accumulator().get_data(name, index)
 
     @base.data_access
     def __getitem__(self, key):
@@ -302,24 +230,3 @@ The selection {group} is not formatted correctly. It should be formatted like \
     @base.data_access
     def __len__(self):
         return sum(np.equal(self._raw_data.scattering_approximation, "SERTA"))
-
-    @base.data_access
-    def _get_data(self, name, index):
-        name = ALIAS.get(name, name)
-        dataset = getattr(self._raw_data, name, None)
-        if dataset is not None:
-            return np.array(dataset[index])
-        mu_tag, mu_val = self.chemical_potential_mu_tag()
-        self._raise_error_if_not_present(name, expected_name=mu_tag)
-        return mu_val[self._raw_data.id_index[index, 2] - 1]
-
-    def _raise_error_if_not_present(self, name, expected_name):
-        if name != expected_name:
-            valid_names = set(self.selections().keys())
-            valid_names.remove("electron_phonon_bandgap")
-            did_you_mean = suggest.did_you_mean(name, valid_names)
-            available_selections = '", "'.join(valid_names)
-            message = f'\
-The selection "{name}" is not a valid choice. {did_you_mean}Please check the \
-available selections: "{available_selections}".'
-            raise exception.IncorrectUsage(message)

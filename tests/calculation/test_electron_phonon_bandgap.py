@@ -300,8 +300,6 @@ def test_print_instance(band_gap, format_):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.electron_phonon_band_gap("default")
-    parameters = {
-        "select": {"selection": "selfen_carrier_den=0.01"},
-    }
+    parameters = {"select": {"selection": "selfen_carrier_den=0.01"}}
     skip_methods = ["count", "access", "index"]  # inherited from Sequence
     check_factory_methods(ElectronPhononBandgap, data, parameters, skip_methods)

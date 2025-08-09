@@ -371,6 +371,7 @@ schema.add(
     debye_waller=f"{group}/self_energy_{{}}/selfen_dw",
     band_kpoint_spin_index=f"{group}/self_energy_{{}}/bks_idx",
     fan=f"{group}/self_energy_{{}}/selfen_fan",
+    energies=f"{group}/self_energy_{{}}/energies",
     band_start=f"{group}/self_energy_{{}}/band_start",
     nbands_sum=f"{group}/self_energy_{{}}/nbands_sum",
     delta=f"{group}/self_energy_{{}}/delta",
