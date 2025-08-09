@@ -182,14 +182,14 @@ def mock_sparse_tensor():
     band_kpoint_spin_index[0, 0, 0] = 0
     band_kpoint_spin_index[1, 1, 1] = 1
     band_kpoint_spin_index[3, 2, 1] = 2
-    band_start = 0
+    band_start = 2
     tensor = np.array([10.0, 20.0, 30.0])
     return SparseTensor(band_kpoint_spin_index, band_start, tensor)
 
 
 @pytest.mark.parametrize(
     "valid_indices, expected_data",
-    [[(0, 0, 0), 10.0], [(1, 1, 1), 20.0], [(3, 2, 1), 30.0]],
+    [[(2, 0, 0), 10.0], [(3, 1, 1), 20.0], [(5, 2, 1), 30.0]],
 )
 def test_sparse_tensor_valid_and_invalid_access(
     mock_sparse_tensor, valid_indices, expected_data
@@ -199,14 +199,29 @@ def test_sparse_tensor_valid_and_invalid_access(
     assert mock_sparse_tensor[spin, kpoint, band] == expected_data
 
 
-@pytest.mark.parametrize("invalid_indices", [[0, 1, 0], [1, 0, 1], [2, 2, 1]])
+@pytest.mark.parametrize(
+    "negative_indices, expected_data",
+    [[(-1, 2, 1), 30.0], [(2, -3, 0), 10.0], [(-3, 1, -1), 20.0]],
+)
+def test_sparse_tensor_negative_indices(
+    mock_sparse_tensor, negative_indices, expected_data
+):
+    band, kpoint, spin = negative_indices
+    assert mock_sparse_tensor[spin, kpoint, band] == expected_data
+
+
+def test_sparse_tensor_valid_bands(mock_sparse_tensor):
+    assert mock_sparse_tensor.valid_bands == range(2, 6)
+
+
+@pytest.mark.parametrize("invalid_indices", [[2, 1, 0], [3, 0, 1], [4, 2, 1]])
 def test_sparse_tensor_invalid_access(mock_sparse_tensor, invalid_indices):
     band, kpoint, spin = invalid_indices
     with pytest.raises(exception.DataMismatch):
         mock_sparse_tensor[spin, kpoint, band]
 
 
-@pytest.mark.parametrize("out_of_bounds_indices", [[4, 2, 1], [3, 3, 2]])
+@pytest.mark.parametrize("out_of_bounds_indices", [[1, 2, 1], [3, 3, 2]])
 def test_sparse_tensor_out_of_bounds_access(mock_sparse_tensor, out_of_bounds_indices):
     band, kpoint, spin = out_of_bounds_indices
     with pytest.raises(exception.IncorrectUsage):
@@ -223,14 +238,14 @@ def test_sparse_tensor_incorrect_arguments(mock_sparse_tensor):
 
 def test_sparse_tensor_should_only_succeed_if_index_is_valid(mock_sparse_tensor):
     bks = mock_sparse_tensor._band_kpoint_spin_index
-    band_start = mock_sparse_tensor._band_start
-    for band, kpoint, spin in itertools.product(range(4), range(3), range(2)):
+    valid_bands = mock_sparse_tensor.valid_bands
+    for band, kpoint, spin in itertools.product(valid_bands, range(3), range(2)):
         try:
             val = mock_sparse_tensor[spin, kpoint, band]
-            assert bks[band - band_start, kpoint, spin] >= 0
+            assert bks[band - valid_bands.start, kpoint, spin] >= 0
             assert val in (10.0, 20.0, 30.0)
         except exception.DataMismatch:
-            assert bks[band - band_start, kpoint, spin] < 0
+            assert bks[band - valid_bands.start, kpoint, spin] < 0
 
 
 @pytest.mark.parametrize(

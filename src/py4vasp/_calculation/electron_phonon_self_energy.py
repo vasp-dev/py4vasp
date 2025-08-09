@@ -168,15 +168,31 @@ class SparseTensor:
         self._tensor = tensor
 
     def _get_band_kpoint_spin_index(self, spin, kpoint, band):
+        if 0 <= band < self._band_start:
+            raise exception.IncorrectUsage(
+                f"Band index {band} is not in valid range {self._band_range_string()}."
+            )
         try:
-            return self._band_kpoint_spin_index[band - self._band_start, kpoint, spin]
+            if band > 0:
+                band -= self._band_start
+            return self._band_kpoint_spin_index[band, kpoint, spin]
         except IndexError:
             raise exception.IncorrectUsage(
                 f"Invalid indices: {spin=}, {kpoint=}, {band=}. "
-                f"0 <= spin < {self._band_kpoint_spin_index.shape[2]}."
+                f"Valid ranges are: 0 <= spin < {self._band_kpoint_spin_index.shape[2]}."
                 f", 0 <= kpoint < {self._band_kpoint_spin_index.shape[1]}, "
-                f"Valid ranges are: {self._band_start} <= band < {self._band_start + len(self._band_kpoint_spin_index)}"
+                f", {self._band_range_string()}."
             )
+
+    def _band_range_string(self):
+        range_ = self.valid_bands
+        return f"{range_.start} <= band < {range_.stop}"
+
+    @property
+    def valid_bands(self):
+        return range(
+            self._band_start, self._band_start + self._band_kpoint_spin_index.shape[0]
+        )
 
     def __getitem__(self, spin_kpoint_band_tuple):
         if len(spin_kpoint_band_tuple) != 3:
