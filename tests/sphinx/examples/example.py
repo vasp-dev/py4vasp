@@ -120,3 +120,45 @@ def returns_type_without_returns_field_type(value1: float, value2: float | str) 
     With another line!
     """
     return value2
+
+def params_types_only_in_signature(value1: float, value2: float | str = 0):
+    """
+    Example function with parameter types only in the signature.
+
+    Parameters
+    ----------
+    value1
+        The first value.
+    value2
+        The second value, which can be a float or a string.
+    """
+    value3 = value1 + value2
+    return value3
+
+def params_types_only_in_field(value1, value2):
+    """
+    Example function with parameter types only in the field.
+
+    Parameters
+    ----------
+    value1 : float
+        The first value.
+    value2 : float | str, optional
+        The second value, which can be a float or a string.
+    """
+    value3 = value1 + value2
+    return value3
+
+def params_types_in_signature_and_field(value1, value2: float | str = 0):
+    """
+    Example function with parameter types mixed in both field and signature.
+
+    Parameters
+    ----------
+    value1 : float
+        The first value.
+    value2
+        The second value, which can be a float or a string.
+    """
+    value3 = value1 + value2
+    return value3

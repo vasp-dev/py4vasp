@@ -343,6 +343,119 @@ Return value 2.
     assert expected_method_content in content
 
 
+def test_convert_example_params_types_only_in_signature(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_param_types.md")
+    expected_method_content = """\
+<div class='function signature'>
+
+<a id='example.params_types_only_in_signature'></a>
+
+## *function* **params_types_only_in_signature** [¶](#example.params_types_only_in_signature)
+(
+- *value1*: `float`,
+- *value2*: [optional] `float | str` [default: 0]
+
+)
+
+</div>
+
+
+Example function with parameter types only in the signature.
+
+
+
+### **Parameters:**
+
+
+
+*value1*: `float`
+: <!---->
+    The first value.
+
+
+*value2*: [optional] `float | str` [default: 0]
+: <!---->
+    The second value, which can be a float or a string.
+
+"""
+    print(content)
+    assert expected_method_content in content
+
+def test_convert_example_params_types_only_in_field(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_param_types.md")
+    expected_method_content = """\
+<div class='function signature'>
+
+<a id='example.params_types_only_in_field'></a>
+
+## *function* **params_types_only_in_field** [¶](#example.params_types_only_in_field)
+(
+- *value1*: `float`,
+- *value2*: [optional] `float | str` [default: `?_ERR_?`]
+
+)
+
+</div>
+
+
+Example function with parameter types only in the field.
+
+
+### **Parameters:**
+
+
+
+*value1*: `float`
+: <!---->
+    The first value.
+
+
+*value2*: [optional] `float | str` [default: `?_ERR_?`]
+: <!---->
+    The second value, which can be a float or a string.
+
+"""
+    assert expected_method_content in content
+
+def test_convert_example_params_types_in_signature_and_field(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_param_types.md")
+    expected_method_content = """\
+<div class='function signature'>
+
+<a id='example.params_types_in_signature_and_field'></a>
+
+## *function* **params_types_in_signature_and_field** [¶](#example.params_types_in_signature_and_field)
+(
+- *value1*: `float`,
+- *value2*: [optional] `float | str` [default: ?_UNKNOWN_?]
+
+)
+
+</div>
+
+
+Example function with parameter types mixed in both field and signature.
+
+
+### **Parameters:**
+
+
+
+*value1*: `float`
+: <!---->
+    The first value.
+
+
+*value2*: [optional] `float | str` [default: ?_UNKNOWN_?]
+: <!---->
+    The second value, which can be a float or a string.
+
+"""
+    print(content)
+    assert expected_method_content in content
+
 # @pytest.mark.skip
 def test_convert_example_dos(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
+
+

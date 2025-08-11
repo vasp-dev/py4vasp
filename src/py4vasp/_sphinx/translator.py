@@ -688,6 +688,9 @@ title = "{node.astext()}"
         self._move_content_to_lines()
         pass
 
+    def get_param_info_from_node(self, node):
+        pass
+
     def get_parameter_list_and_types(self, node):
         """Extract parameter names, types, and default values from a desc_signature node."""
         parameters = []
@@ -722,15 +725,50 @@ title = "{node.astext()}"
                                     default = subchild.astext()
                                     next_is_default = False
                             parameters.append((name, type_, default))
+            # now check which parameters do not have assigned types or defaults yet
+            missing_parameter_detail_idxs = [i for i, (_, type_, default) in enumerate(parameters) if (not type_ or not default)]
+            if missing_parameter_detail_idxs:
+                # look for Parameters field
+                parent_desc = node.parent
+                for sibling in parent_desc.children:
+                    if sibling.__class__.__name__ == "desc_content":
+                        for desc_child in sibling.children:
+                            if desc_child.__class__.__name__ == "field_list":
+                                for field in desc_child.children:
+                                    if (
+                                        field.__class__.__name__ == "field"
+                                        and field.children
+                                    ):
+                                        if (
+                                            field.children[0].__class__.__name__
+                                            == "field_name"
+                                        ):
+                                            field_name = field.children[0].astext().strip()
+                                            if field_name.lower() == "parameters":
+                                                for field_child in field.children:
+                                                    if (
+                                                        field_child.__class__.__name__
+                                                        == "field_body"
+                                                    ):
+                                                        curr_name, curr_type, curr_default = get_param_info_from_node(field_child.children[0])
+                                                        for idx, (name, type_, default) in [(i, parameters[i]) for i in missing_parameter_detail_idxs]:
+                                                            if (curr_name == name):
+                                                                if (not type_) and curr_type:
+                                                                    type_ = curr_type
+                                                                if (not default) and curr_default:
+                                                                    default = curr_default
+                                                                parameters[idx] = (name, type_, default)
+
             self._current_signature_dict["sig_parameters"] = parameters.copy()
         return parameters
 
     def get_formatted_param(self, name, annotation, default):
         """Format a single parameter with its name, type, and default value."""
         param = f"*{name}*"
+        if default or annotation:
+            param += ": " + ("[optional] " if default else "")
         if annotation:
-            optional_str = "[optional] " if default else ""
-            param += f": {optional_str}`{annotation}`"
+            param += f"`{annotation}`"
         if default:
             param += f" [default: {default}]"
         return param
