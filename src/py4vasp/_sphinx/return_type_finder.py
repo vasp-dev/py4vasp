@@ -9,7 +9,7 @@ class ReturnTypeFinder(NodeVisitor):
 
     def __init__(self, document):
         super().__init__(document)
-        self.return_type = None
+        self._return_type = None
         self._in_returns_type_field = False
 
     def __str__(self):
@@ -21,9 +21,9 @@ class ReturnTypeFinder(NodeVisitor):
                 "Node passed to get_return_type is not a desc_signature node. Return type not retrieved."
             )
         else:
-            self.return_type = ""
+            self._return_type = ""
             node.parent.walkabout(self)
-        return self.return_type
+        return self._return_type
 
     def unknown_visit(self, node):
         raise SkipNode
@@ -48,8 +48,8 @@ class ReturnTypeFinder(NodeVisitor):
     def visit_field(self, node): pass
 
     def visit_desc_returns(self, node):
-        if not(self.return_type):
-            self.return_type = node.astext().lstrip(" -> ").strip()
+        if not(self._return_type):
+            self._return_type = node.astext().lstrip(" -> ").strip()
         raise SkipNode
     
     def visit_field_name(self, node):
@@ -59,8 +59,8 @@ class ReturnTypeFinder(NodeVisitor):
 
     def visit_field_body(self, node):
         if self._in_returns_type_field:
-            if not(self.return_type):
-                self.return_type = node.astext().strip()
+            if not(self._return_type):
+                self._return_type = node.astext().strip()
         raise SkipNode
 
     def depart_field(self, node):
