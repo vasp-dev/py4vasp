@@ -692,7 +692,7 @@ title = "{node.astext()}"
     def _get_param_raw_info_from_left_string(self, left: str) -> tuple[str, str, str]:
         """Extract parameter name, type, and default value from the left part of a field."""
         sep_around_type = left.split(" (")
-        left = sep_around_type[0].strip("* ").strip("* ")
+        left = sep_around_type[0].strip("* ")
         sig_default = ""
         sig_types = ""
         if self._current_signature_dict.get("sig_parameters"):
@@ -718,7 +718,7 @@ title = "{node.astext()}"
                 )
                 if not(sig_default) and ("optional" in types):
                     sig_default = "`?_UNKNOWN_?`"
-        return left.strip(), type_annotation, sig_default
+        return left, type_annotation, sig_default
 
     def _get_param_info_from_node(self, field_node) -> dict:
         parameters_dict = {}
