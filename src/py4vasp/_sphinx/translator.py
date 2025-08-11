@@ -4,6 +4,8 @@ from typing import Optional
 
 from docutils.nodes import NodeVisitor, SkipNode
 
+from py4vasp._sphinx.return_type_finder import ReturnTypeFinder
+
 
 class Indentation:
     """A simple data class to track the current indentation level."""
@@ -826,52 +828,12 @@ title = "{node.astext()}"
 
     def _get_return_type(self, node):
         """Get the return type annotation from a desc_signature node."""
-        return_type = ""
-        if node.__class__.__name__ != "desc_signature":
-            raise UserWarning(
-                "Node passed to get_return_type is not a desc_signature node. Return type not retrieved."
-            )
-        else:
-            for child in node.children:
-                if child.__class__.__name__ == "desc_returns":
-                    return_type = child.astext().lstrip(" -> ").strip()
-                    self._current_signature_dict["sig_return_type"] = return_type
-                    self._current_return_type = return_type
-                    self._expect_returns_field = True
-                    return return_type
-            # If not found, check for a field named "Return type" in the parent desc node
-            parent_desc = node.parent
-            for sibling in parent_desc.children:
-                if sibling.__class__.__name__ == "desc_content":
-                    for desc_child in sibling.children:
-                        if desc_child.__class__.__name__ == "field_list":
-                            for field in desc_child.children:
-                                if (
-                                    field.__class__.__name__ == "field"
-                                    and field.children
-                                ):
-                                    if (
-                                        field.children[0].__class__.__name__
-                                        == "field_name"
-                                    ):
-                                        field_name = field.children[0].astext().strip()
-                                        if field_name.lower() == "return type":
-                                            for field_child in field.children:
-                                                if (
-                                                    field_child.__class__.__name__
-                                                    == "field_body"
-                                                ):
-                                                    return_type = (
-                                                        field_child.astext().strip()
-                                                    )
-                                                    self._current_signature_dict[
-                                                        "sig_return_type"
-                                                    ] = return_type
-                                                    self._current_return_type = (
-                                                        return_type
-                                                    )
-                                                    self._expect_returns_field = True
-                                                    return return_type
+        return_type_finder = ReturnTypeFinder(self.document)
+        return_type = return_type_finder.find_return_type(node)
+        if (return_type):
+            self._current_signature_dict["sig_return_type"] = return_type
+            self._current_return_type = return_type
+            self._expect_returns_field = True
         return return_type
 
     def visit_desc_signature(self, node):
@@ -893,10 +855,11 @@ title = "{node.astext()}"
             parameters = self._get_parameter_list_and_types(node)
             parameters_str = self._get_parameter_list_str(parameters)
             self.content += parameters_str
-        return_type = self._get_return_type(node)
-        if return_type:
-            return_str = f" → `{return_type}`"
-            self.content += return_str
+        if objtype in ["function", "method"]:
+            return_type = self._get_return_type(node)
+            if return_type:
+                return_str = f" → `{return_type}`"
+                self.content += return_str
 
         self.content += f"\n\n</div>\n\n"
 
