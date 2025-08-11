@@ -55,6 +55,7 @@ An example class for demonstration purposes.
 
 def test_convert_example_autoclass_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
+    print(content)
     expected_class_content = """\
 
 <div class='class signature'>

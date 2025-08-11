@@ -5,6 +5,7 @@ from typing import Optional
 from docutils.nodes import NodeVisitor, SkipNode
 
 from py4vasp._sphinx.return_type_finder import ReturnTypeFinder
+from py4vasp._sphinx.parameters_info_finder import ParametersInfoFinder, _get_param_raw_info_from_left_string
 
 
 class Indentation:
@@ -645,18 +646,16 @@ title = "{node.astext()}"
                 break
         # Build anchor id (e.g., py-example or py-example-classname)
         addname_str = (
-            f"{addname.rstrip('.').lstrip('.').lstrip(' ').rstrip(' ')}"
+            f"{addname.strip('. ').strip('. ')}"
             if addname
             else ""
         )
         name_str = (
-            f"{name.rstrip('.').lstrip('.').lstrip(' ').rstrip(' ')}" if name else ""
+            f"{name.strip('. ').strip('. ')}" if name else ""
         )
         new_anchor_id = (
             f"{addname_str}.{name_str}".replace(" ", "-")
-            .rstrip("-")
-            .rstrip(".")
-            .lstrip(".")
+            .rstrip("-").strip(".")
         )
         self.anchor_id_stack.append((new_anchor_id, name, addname, domain, objtype))
         return new_anchor_id, domain, objtype
@@ -691,114 +690,12 @@ title = "{node.astext()}"
         self._move_content_to_lines()
         pass
 
-    def _get_param_raw_info_from_left_string(self, left: str) -> tuple[str, str, str]:
-        """Extract parameter name, type, and default value from the left part of a field."""
-        sep_around_type = left.split(" (")
-        left = sep_around_type[0].strip("* ")
-        sig_default = ""
-        sig_types = ""
-        if self._current_signature_dict.get("sig_parameters"):
-            # Check if the name is found in sig_parameters
-            for param, _type, default in self._current_signature_dict[
-                "sig_parameters"
-            ]:
-                if param == left:
-                    sig_default = default
-                    sig_types = _type
-                    break
-
-        type_annotation = ""
-        if len(sep_around_type) > 1 or sig_types:
-            # If we have a type annotation, format it
-            type_annotation = sig_types
-            if len(sep_around_type) > 1:
-                types = sep_around_type[1].split(")")[0].strip()
-                types_and_optional = types.split(",")
-                pure_types = [t.strip(" `") for t in types_and_optional if not("optional" in t)]
-                type_annotation = (
-                    " | ".join(pure_types)
-                )
-                if not(sig_default) and ("optional" in types):
-                    sig_default = "`?_UNKNOWN_?`"
-        return left, type_annotation, sig_default
-
-    def _get_param_info_from_node(self, field_node) -> dict:
-        parameters_dict = {}
-        helperTranslator = HugoTranslator(self.document)
-        helperTranslator._prevent_content_stash_deletion = True
-        field_node.walkabout(helperTranslator)
-        for line in helperTranslator._content_stash:
-            if " – " in line:
-                left,_ = line.split(" – ", 1)
-                # Further parse left for name, type, default if needed
-                name, type_, default = self._get_param_raw_info_from_left_string(left)
-                parameters_dict[name] = (type_, default)
-        return parameters_dict
-
-    def _get_parameter_list_and_types(self, node):
+    def _get_parameter_list_and_types(self, node, skip_content: bool = False):
         """Extract parameter names, types, and default values from a desc_signature node."""
-        parameters = []
-        if node.__class__.__name__ != "desc_signature":
-            raise UserWarning(
-                "Node passed to get_parameter_list_and_types is not a desc_signature node. Parameters not retrieved."
-            )
-        else:
-            for child in node.children:
-                if child.__class__.__name__ == "desc_parameterlist":
-                    for param in child.children:
-                        if param.__class__.__name__ == "desc_parameter":
-                            name = ""
-                            type_ = ""
-                            default = ""
-                            next_is_default = False
-                            for subchild in param.children:
-                                if subchild.__class__.__name__ == "desc_sig_name":
-                                    if not name:
-                                        name = subchild.astext()
-                                    else:
-                                        type_ = subchild.astext()
-                                elif (
-                                    subchild.__class__.__name__ == "desc_sig_operator"
-                                    and "=" in subchild.astext()
-                                ):
-                                    next_is_default = True
-                                elif (
-                                    subchild.__class__.__name__ == "inline"
-                                    and next_is_default
-                                ):
-                                    default = subchild.astext()
-                                    next_is_default = False
-                            parameters.append((name, type_, default))
-            # now check which parameters do not have assigned types or defaults yet
-            missing_parameter_detail_idxs = [i for i, (_, type_, default) in enumerate(parameters) if (not type_ or not default)]
-            if missing_parameter_detail_idxs:
-                # look for Parameters field
-                parent_desc = node.parent
-                for sibling in parent_desc.children:
-                    if sibling.__class__.__name__ == "desc_content":
-                        for desc_child in sibling.children:
-                            if desc_child.__class__.__name__ == "field_list":
-                                for field in desc_child.children:
-                                    if (
-                                        field.__class__.__name__ == "field"
-                                        and field.children
-                                    ):
-                                        if (
-                                            field.children[0].__class__.__name__
-                                            == "field_name"
-                                        ):
-                                            field_name = field.children[0].astext().strip()
-                                            if field_name.lower() == "parameters":
-                                                additional_parameters_dict = self._get_param_info_from_node(field)
-                                                for idx, (name, type_, default) in [(i, parameters[i]) for i in missing_parameter_detail_idxs]:
-                                                    if (name in additional_parameters_dict.keys()):
-                                                        curr_type, curr_default = additional_parameters_dict[name]
-                                                        if (not type_) and curr_type:
-                                                            type_ = curr_type
-                                                        if (not default) and curr_default:
-                                                            default = curr_default
-                                                        parameters[idx] = (name, type_, default)
-
+        parameters_info_finder = ParametersInfoFinder(self.document)
+        parameters_dict = parameters_info_finder.find_parameters_info(node, skip_content=skip_content)
+        parameters = [(name, info.get("type"), info.get("default")) for name, info in parameters_dict.items()]
+        if (parameters):
             self._current_signature_dict["sig_parameters"] = parameters.copy()
         return parameters
 
@@ -852,7 +749,7 @@ title = "{node.astext()}"
         self._current_signature_dict = {}
         self._current_return_type = None
         if objtype in ["function", "method", "class", "exception"]:
-            parameters = self._get_parameter_list_and_types(node)
+            parameters = self._get_parameter_list_and_types(node, not(objtype in ["function", "method"]))
             parameters_str = self._get_parameter_list_str(parameters)
             self.content += parameters_str
         if objtype in ["function", "method"]:
@@ -1030,7 +927,7 @@ title = "{node.astext()}"
                 opened_description_list = False
                 left, desc = line.split(" – ", 1)
                 formatted_param = self._get_formatted_param(
-                    *self._get_param_raw_info_from_left_string(left)
+                    *(_get_param_raw_info_from_left_string(left, self._current_signature_dict))
                 )
                 new_str_content += f"\n\n{formatted_param}\n"
                 if desc:
