@@ -162,3 +162,16 @@ def params_types_in_signature_and_field(value1, value2: float | str = 0):
     """
     value3 = value1 + value2
     return value3
+
+def params_types_mismatched(value1: float, value2 = 0):
+    """
+    Example function with parameter types mismatched.
+
+    Parameters
+    ----------
+    value1 : float | None
+        The first value.
+    value2 : float | str, optional
+        The second value, which can be a float or a string.
+    """
+    value3 = value1 + value2

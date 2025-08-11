@@ -79,6 +79,7 @@ class HugoTranslator(NodeVisitor):
         self._current_return_type = None
         self._current_signature_dict = {}
         self._prevent_move_content = False
+        self._prevent_content_stash_deletion = False
         self._content_stash = []
 
     def __str__(self):
@@ -98,7 +99,7 @@ class HugoTranslator(NodeVisitor):
         if not (self._prevent_move_content) and self._content_stash:
             for line in self._content_stash:
                 self.lines.append(line)
-            self._content_stash = []
+            if not(self._prevent_content_stash_deletion): self._content_stash = []
 
         for line in self.content.splitlines():
             full_line = self.indentation_stack[-1].indent(line).rstrip()
@@ -615,7 +616,7 @@ title = "{node.astext()}"
     def depart_index(self, node):
         pass
 
-    def get_anchor_id(self):
+    def _get_anchor_id(self):
         if not self.anchor_id_stack:
             return None
         else:
@@ -626,7 +627,7 @@ title = "{node.astext()}"
             ]
             return ".".join(list_to_join)
 
-    def construct_new_anchor_id(self, node) -> tuple[str, str, str]:
+    def _construct_new_anchor_id(self, node) -> tuple[str, str, str]:
         domain = getattr(node, "attributes", {}).get("domain", "")
         objtype = getattr(node, "attributes", {}).get("objtype", "")
         # Find desc_name and desc_addname children for the object's name
@@ -658,7 +659,7 @@ title = "{node.astext()}"
         self.anchor_id_stack.append((new_anchor_id, name, addname, domain, objtype))
         return new_anchor_id, domain, objtype
 
-    def get_latest_objtype(self) -> str | None:
+    def _get_latest_objtype(self) -> str | None:
         """Get the latest non-empty objtype from the anchor_id_stack."""
         if not self.anchor_id_stack:
             return None
@@ -667,7 +668,7 @@ title = "{node.astext()}"
                 return objtype
         return None
 
-    def get_latest_name(self) -> str | None:
+    def _get_latest_name(self) -> str | None:
         """Get the latest non-empty name from the anchor_id_stack."""
         if not self.anchor_id_stack:
             return None
@@ -677,7 +678,7 @@ title = "{node.astext()}"
         return None
 
     def visit_desc(self, node):
-        self.construct_new_anchor_id(node)
+        self._construct_new_anchor_id(node)
         self.section_level += 1
         pass
 
@@ -688,10 +689,51 @@ title = "{node.astext()}"
         self._move_content_to_lines()
         pass
 
-    def get_param_info_from_node(self, node):
-        pass
+    def _get_param_raw_info_from_left_string(self, left: str) -> tuple[str, str, str]:
+        """Extract parameter name, type, and default value from the left part of a field."""
+        sep_around_type = left.split(" (")
+        left = sep_around_type[0].strip("* ").strip("* ")
+        sig_default = ""
+        sig_types = ""
+        if self._current_signature_dict.get("sig_parameters"):
+            # Check if the name is found in sig_parameters
+            for param, _type, default in self._current_signature_dict[
+                "sig_parameters"
+            ]:
+                if param == left:
+                    sig_default = default
+                    sig_types = _type
+                    break
 
-    def get_parameter_list_and_types(self, node):
+        type_annotation = ""
+        if len(sep_around_type) > 1 or sig_types:
+            # If we have a type annotation, format it
+            type_annotation = sig_types
+            if len(sep_around_type) > 1:
+                types = sep_around_type[1].split(")")[0].strip()
+                types_and_optional = types.split(",")
+                pure_types = [t.strip(" `") for t in types_and_optional if not("optional" in t)]
+                type_annotation = (
+                    " | ".join(pure_types)
+                )
+                if not(sig_default) and ("optional" in types):
+                    sig_default = "`?_UNKNOWN_?`"
+        return left.strip(), type_annotation, sig_default
+
+    def _get_param_info_from_node(self, field_node) -> dict:
+        parameters_dict = {}
+        helperTranslator = HugoTranslator(self.document)
+        helperTranslator._prevent_content_stash_deletion = True
+        field_node.walkabout(helperTranslator)
+        for line in helperTranslator._content_stash:
+            if " – " in line:
+                left,_ = line.split(" – ", 1)
+                # Further parse left for name, type, default if needed
+                name, type_, default = self._get_param_raw_info_from_left_string(left)
+                parameters_dict[name] = (type_, default)
+        return parameters_dict
+
+    def _get_parameter_list_and_types(self, node):
         """Extract parameter names, types, and default values from a desc_signature node."""
         parameters = []
         if node.__class__.__name__ != "desc_signature":
@@ -745,24 +787,20 @@ title = "{node.astext()}"
                                         ):
                                             field_name = field.children[0].astext().strip()
                                             if field_name.lower() == "parameters":
-                                                for field_child in field.children:
-                                                    if (
-                                                        field_child.__class__.__name__
-                                                        == "field_body"
-                                                    ):
-                                                        curr_name, curr_type, curr_default = self.get_param_info_from_node(field_child.children[0])
-                                                        for idx, (name, type_, default) in [(i, parameters[i]) for i in missing_parameter_detail_idxs]:
-                                                            if (curr_name == name):
-                                                                if (not type_) and curr_type:
-                                                                    type_ = curr_type
-                                                                if (not default) and curr_default:
-                                                                    default = curr_default
-                                                                parameters[idx] = (name, type_, default)
+                                                additional_parameters_dict = self._get_param_info_from_node(field)
+                                                for idx, (name, type_, default) in [(i, parameters[i]) for i in missing_parameter_detail_idxs]:
+                                                    if (name in additional_parameters_dict.keys()):
+                                                        curr_type, curr_default = additional_parameters_dict[name]
+                                                        if (not type_) and curr_type:
+                                                            type_ = curr_type
+                                                        if (not default) and curr_default:
+                                                            default = curr_default
+                                                        parameters[idx] = (name, type_, default)
 
             self._current_signature_dict["sig_parameters"] = parameters.copy()
         return parameters
 
-    def get_formatted_param(self, name, annotation, default):
+    def _get_formatted_param(self, name, annotation, default):
         """Format a single parameter with its name, type, and default value."""
         param = f"*{name}*"
         if default or annotation:
@@ -773,20 +811,20 @@ title = "{node.astext()}"
             param += f" [default: {default}]"
         return param
 
-    def get_parameter_list_str(self, parameters):
+    def _get_parameter_list_str(self, parameters):
         """Get a string representation of the parameter list with types."""
         if not parameters:
             return "()"
         param_strs = []
         for name, annotation, default in parameters:
-            param = self.get_formatted_param(name, annotation, default)
+            param = self._get_formatted_param(name, annotation, default)
             param_strs.append(param)
         if len(param_strs) == 1:
             return f"({param_strs[0]})"
         concat_str = ",\n- ".join(param_strs)
         return "\n(\n- " + concat_str + "\n\n)"
 
-    def get_return_type(self, node):
+    def _get_return_type(self, node):
         """Get the return type annotation from a desc_signature node."""
         return_type = ""
         if node.__class__.__name__ != "desc_signature":
@@ -837,25 +875,25 @@ title = "{node.astext()}"
         return return_type
 
     def visit_desc_signature(self, node):
-        anchor_id = self.get_anchor_id()
+        anchor_id = self._get_anchor_id()
         anchor_str = f"\n\n<a id='{anchor_id}'></a>" if anchor_id else ""
         ref_str = f" [¶](#{anchor_id})" if anchor_id else ""
-        objtype = self.get_latest_objtype()
+        objtype = self._get_latest_objtype()
         objtype_str = f"*{objtype}* " if (objtype != "method") else ""
         if objtype:
             self.content += f"\n\n<div class='{f'{objtype} ' if objtype else ''}signature'>"
 
-        name = self.get_latest_name()
+        name = self._get_latest_name()
         name_str = f"**{name}**"
         self.content += f"{anchor_str}\n\n{self.section_level * '#'} {objtype_str}{name_str}{ref_str}"
 
         self._current_signature_dict = {}
         self._current_return_type = None
         if objtype in ["function", "method", "class", "exception"]:
-            parameters = self.get_parameter_list_and_types(node)
-            parameters_str = self.get_parameter_list_str(parameters)
+            parameters = self._get_parameter_list_and_types(node)
+            parameters_str = self._get_parameter_list_str(parameters)
             self.content += parameters_str
-        return_type = self.get_return_type(node)
+        return_type = self._get_return_type(node)
         if return_type:
             return_str = f" → `{return_type}`"
             self.content += return_str
@@ -956,13 +994,13 @@ title = "{node.astext()}"
         if getattr(self, "_expect_returns_field", False):
             # If we expected a returns field, but didn't find it, log a warning
             if self._current_return_type:
-                self.content += self.get_formatted_field_header("Returns")
+                self.content += self._get_formatted_field_header("Returns")
                 self.content += f"`{self._current_return_type}`\n\n"
             self._expect_returns_field = False
             self._current_return_type = None
         self.content += "\n"
 
-    def get_formatted_field_header(self, field_name):
+    def _get_formatted_field_header(self, field_name):
         """Format the field name for Markdown headers."""
         return f"\n{(self.section_level + 1) * '#'} **{field_name.capitalize()}:**\n\n"
 
@@ -989,19 +1027,19 @@ title = "{node.astext()}"
             raise SkipNode
 
         if field_name == "returns":
-            self.content += self.get_formatted_field_header("Returns")
+            self.content += self._get_formatted_field_header("Returns")
             self._in_returns_field = True
             self._move_content_to_lines()
             return
 
         if field_name == "parameters":
-            self.content += self.get_formatted_field_header("Parameters")
+            self.content += self._get_formatted_field_header("Parameters")
             self._in_parameters_field = True
             self._move_content_to_lines()
             return
 
         if field_name == "examples":
-            self.content += self.get_formatted_field_header("Examples")
+            self.content += self._get_formatted_field_header("Examples")
             self._move_content_to_lines()
             self._in_examples_field = True
             return
@@ -1021,7 +1059,7 @@ title = "{node.astext()}"
     def depart_field_name(self, node):
         pass
 
-    def restructure_parameters_field_body(self):
+    def _restructure_parameters_field_body(self):
         pure_str_content = self._content_stash
         new_str_content = ""
         opened_description_list = False
@@ -1035,39 +1073,17 @@ title = "{node.astext()}"
                 # Split "name (type) – description"
                 opened_description_list = False
                 left, desc = line.split(" – ", 1)
-                sep_around_type = left.split(" (")
-                left = sep_around_type[0].strip().strip("**").strip().strip("**")
-                sig_default = ""
-                sig_types = ""
-                if self._current_signature_dict.get("sig_parameters"):
-                    # Check if the name is found in sig_parameters
-                    for param, _type, default in self._current_signature_dict[
-                        "sig_parameters"
-                    ]:
-                        if param == left:
-                            sig_default = default
-                            sig_types = _type
-                            break
-
-                type_annotation = ""
-                if len(sep_around_type) > 1 or sig_types:
-                    # If we have a type annotation, format it
-                    type_annotation = sig_types
-                    if len(sep_around_type) > 1:
-                        type_annotation = (
-                            sep_around_type[1].split(")")[0].strip().strip("`")
-                        )
-                formatted_param = self.get_formatted_param(
-                    left.strip(), type_annotation, sig_default
+                formatted_param = self._get_formatted_param(
+                    *self._get_param_raw_info_from_left_string(left)
                 )
                 new_str_content += f"\n\n{formatted_param}\n"
                 if desc:
                     new_str_content += f": <!---->\n    {desc}"
                     opened_description_list = True
         self.content = new_str_content
-        self._content_stash = []
+        if not(self._prevent_content_stash_deletion): self._content_stash = []
 
-    def restructure_returns_field_body(self):
+    def _restructure_returns_field_body(self):
         pure_str_content = self._content_stash.copy()
         new_str_content = "\n"
         if self._current_return_type:
@@ -1084,21 +1100,21 @@ title = "{node.astext()}"
             ]
         )
         self.content = new_str_content + "\n\n"
-        self._content_stash = []
+        if not(self._prevent_content_stash_deletion): self._content_stash = []
 
-    def restructure_field_body(self):
+    def _restructure_field_body(self):
         if self._in_parameters_field:
             # If we are in a parameters field, we need to restructure the content
-            self.restructure_parameters_field_body()
+            self._restructure_parameters_field_body()
         elif self._in_returns_field:
-            self.restructure_returns_field_body()
+            self._restructure_returns_field_body()
 
     def visit_field_body(self, node):
         self._move_content_to_lines()
         self._prevent_move_content = True
 
     def depart_field_body(self, node):
-        self.restructure_field_body()
+        self._restructure_field_body()
         self._prevent_move_content = False
         self.content += "\n"
         self._move_content_to_lines()
