@@ -16,6 +16,18 @@ class ReturnTypeFinder(NodeVisitor):
         return "\n".join(self.lines) + "\n"
 
     def find_return_type(self, node) -> str:
+        """Retrieves the return type from a desc_signature node.
+
+        Parameters
+        ----------
+        node : docutils.nodes.Node
+            The desc_signature node to retrieve the return type from.
+
+        Returns
+        -------
+        str
+            The return type of the function or method.
+        """
         if node.__class__.__name__ != "desc_signature":
             raise UserWarning(
                 "Node passed to get_return_type is not a desc_signature node. Return type not retrieved."

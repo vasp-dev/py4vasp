@@ -17,7 +17,19 @@ class AnchorsFinder(NodeVisitor):
     def __str__(self):
         return "\n".join(self.lines) + "\n"
 
-    def find_anchors(self, node) -> list:
+    def find_anchor(self, node) -> list:
+        """Retrieves anchor information from a desc node.
+
+        Parameters
+        ----------
+        node : docutils.nodes.Node
+            The desc node to retrieve anchor information from.
+
+        Returns
+        -------
+        tuple[str, str, str, str]
+            The name (function name, e.g.), addname (script name, e.g.), objtype (class, method, function, ...), and domain (py, e.g.) of the anchor to be generated.
+        """
         if node.__class__.__name__ != "desc":
             raise UserWarning(
                 "Node passed to find_anchors is not a desc node. Anchors not retrieved."

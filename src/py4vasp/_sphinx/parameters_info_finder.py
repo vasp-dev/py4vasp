@@ -21,6 +21,21 @@ class ParametersInfoFinder(NodeVisitor):
         return "\n".join(self.lines) + "\n"
 
     def find_parameters_info(self, node, skip_content: bool = False) -> dict:
+        """Retrieves parameter information from a desc_signature node.
+
+        Parameters
+        ----------
+        node : docutils.nodes.Node
+            The desc_signature node to retrieve parameter information from.
+        skip_content : bool, optional
+            Whether to skip content processing.
+            This should be true only when calling from function or method objtypes, otherwise False to prevent retrieving information from deeper layers.
+
+        Returns
+        -------
+        dict
+            A dictionary containing parameter information: { "name": { "type": my_type, "default": my_default } }
+        """
         if node.__class__.__name__ != "desc_signature":
             raise UserWarning(
                 "Node passed to get_parameter_list_and_types is not a desc_signature node. Parameters not retrieved."

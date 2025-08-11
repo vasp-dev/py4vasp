@@ -637,7 +637,7 @@ title = "{node.astext()}"
 
     def _construct_new_anchor_id(self, node) -> tuple[str, str, str]:
         anchors_finder = AnchorsFinder(self.document)
-        name, addname, objtype, domain = anchors_finder.find_anchors(node)
+        name, addname, objtype, domain = anchors_finder.find_anchor(node)
         # Build anchor id (e.g., py-example or py-example-classname)
         new_anchor_id = f"{addname}.{name}".replace(" ", "-").rstrip("-").strip(".")
         self.anchor_id_stack.append((new_anchor_id, name, addname, domain, objtype))
