@@ -750,7 +750,7 @@ title = "{node.astext()}"
                                                         field_child.__class__.__name__
                                                         == "field_body"
                                                     ):
-                                                        curr_name, curr_type, curr_default = get_param_info_from_node(field_child.children[0])
+                                                        curr_name, curr_type, curr_default = self.get_param_info_from_node(field_child.children[0])
                                                         for idx, (name, type_, default) in [(i, parameters[i]) for i in missing_parameter_detail_idxs]:
                                                             if (curr_name == name):
                                                                 if (not type_) and curr_type:
