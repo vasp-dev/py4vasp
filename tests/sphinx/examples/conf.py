@@ -5,7 +5,7 @@
 extensions = [
     "py4vasp._sphinx",
     "sphinx.ext.autodoc",
-    "sphinx.ext.napoleon", 
+    "sphinx.ext.napoleon",
 ]
 
 import os
@@ -13,7 +13,7 @@ import os
 # Configure autodoc to find the example module
 import sys
 
-sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath("."))
 
 napoleon_include_init_with_doc = True
 napoleon_include_private_with_doc = False

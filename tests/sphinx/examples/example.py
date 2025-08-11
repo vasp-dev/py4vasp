@@ -37,7 +37,9 @@ class Example:
         """
         self.value = new_value
 
-    def combined_returns(self, some_value: float, some_string: str | None = "") -> tuple[float, str | None]:
+    def combined_returns(
+        self, some_value: float, some_string: str | None = ""
+    ) -> tuple[float, str | None]:
         """
         Combine a float and a string in a tuple.
 
@@ -54,7 +56,8 @@ class Example:
             A tuple containing the float and a string representation.
         """
         return some_value, f"{some_string}: {some_value}" if some_string else None
-    
+
+
 def returns_type_without_desc_returns(value1: float, value2: float | str):
     """
     Return value 2.
@@ -73,7 +76,10 @@ def returns_type_without_desc_returns(value1: float, value2: float | str):
     """
     return value2
 
-def returns_type_without_returns_field(value1: float, value2: float | str) -> float | str:
+
+def returns_type_without_returns_field(
+    value1: float, value2: float | str
+) -> float | str:
     """
     Return value 2.
 
@@ -86,7 +92,10 @@ def returns_type_without_returns_field(value1: float, value2: float | str) -> fl
     """
     return value2
 
-def returns_type_without_returns_field_desc(value1: float, value2: float | str) -> float | str:
+
+def returns_type_without_returns_field_desc(
+    value1: float, value2: float | str
+) -> float | str:
     """
     Return value 2.
 
@@ -103,7 +112,10 @@ def returns_type_without_returns_field_desc(value1: float, value2: float | str) 
     """
     return value2
 
-def returns_type_without_returns_field_type(value1: float, value2: float | str) -> float | str:
+
+def returns_type_without_returns_field_type(
+    value1: float, value2: float | str
+) -> float | str:
     """
     Return value 2.
 
@@ -121,6 +133,7 @@ def returns_type_without_returns_field_type(value1: float, value2: float | str) 
     """
     return value2
 
+
 def params_types_only_in_signature(value1: float, value2: float | str = 0):
     """
     Example function with parameter types only in the signature.
@@ -134,6 +147,7 @@ def params_types_only_in_signature(value1: float, value2: float | str = 0):
     """
     value3 = value1 + value2
     return value3
+
 
 def params_types_only_in_field(value1, value2):
     """
@@ -149,6 +163,7 @@ def params_types_only_in_field(value1, value2):
     value3 = value1 + value2
     return value3
 
+
 def params_types_in_signature_and_field(value1, value2: float | str = 0):
     """
     Example function with parameter types mixed in both field and signature.
@@ -163,7 +178,8 @@ def params_types_in_signature_and_field(value1, value2: float | str = 0):
     value3 = value1 + value2
     return value3
 
-def params_types_mismatched(value1: float, value2 = 0):
+
+def params_types_mismatched(value1: float, value2=0):
     """
     Example function with parameter types mismatched.
 

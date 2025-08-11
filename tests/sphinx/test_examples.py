@@ -380,6 +380,7 @@ Example function with parameter types only in the signature.
 """
     assert expected_method_content in content
 
+
 def test_convert_example_params_types_only_in_field(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
     expected_method_content = """\
@@ -416,6 +417,7 @@ Example function with parameter types only in the field.
 
 """
     assert expected_method_content in content
+
 
 def test_convert_example_params_types_in_signature_and_field(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
@@ -454,6 +456,7 @@ Example function with parameter types mixed in both field and signature.
 """
     assert expected_method_content in content
 
+
 def test_convert_example_params_types_mismatched(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
     expected_method_content = """\
@@ -490,6 +493,7 @@ Example function with parameter types mismatched.
 
 """
     assert expected_method_content in content
+
 
 def test_convert_example_dos_class(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
@@ -558,6 +562,7 @@ These methods also accept selections for specific orbitals if you used VASP with
 """
     assert expected_class_content in content
 
+
 def test_convert_example_dos_selections(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
     expected_class_content = """\
@@ -590,6 +595,7 @@ other routines.
 
 """
     assert expected_class_content in content
+
 
 def test_convert_example_dos_to_dict(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
@@ -724,6 +730,7 @@ file
 
 """
     assert expected_class_content in content
+
 
 def test_convert_example_dos_to_graph(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
