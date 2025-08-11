@@ -46,9 +46,11 @@ class AnchorsFinder(NodeVisitor):
         self._domain = getattr(node, "attributes", {}).get("domain", "")
         self._objtype = getattr(node, "attributes", {}).get("objtype", "")
 
-    def visit_desc_signature(self, node): 
+    def visit_desc_signature(self, node):
         pass
 
-    def visit_desc_name(self, node): self._name = node.astext().strip(". ").strip(" .")
+    def visit_desc_name(self, node):
+        self._name = node.astext().strip(". ").strip(" .")
 
-    def visit_desc_addname(self, node): self._addname = node.astext().strip(". ").strip(" .")
+    def visit_desc_addname(self, node):
+        self._addname = node.astext().strip(". ").strip(" .")

@@ -6,7 +6,10 @@ from docutils.nodes import NodeVisitor, SkipNode
 
 from py4vasp._sphinx.anchors_finder import AnchorsFinder
 from py4vasp._sphinx.return_type_finder import ReturnTypeFinder
-from py4vasp._sphinx.parameters_info_finder import ParametersInfoFinder, _get_param_raw_info_from_left_string
+from py4vasp._sphinx.parameters_info_finder import (
+    ParametersInfoFinder,
+    _get_param_raw_info_from_left_string,
+)
 
 
 class Indentation:
@@ -103,7 +106,8 @@ class HugoTranslator(NodeVisitor):
         if not (self._prevent_move_content) and self._content_stash:
             for line in self._content_stash:
                 self.lines.append(line)
-            if not(self._prevent_content_stash_deletion): self._content_stash = []
+            if not (self._prevent_content_stash_deletion):
+                self._content_stash = []
 
         for line in self.content.splitlines():
             full_line = self.indentation_stack[-1].indent(line).rstrip()
@@ -635,10 +639,7 @@ title = "{node.astext()}"
         anchors_finder = AnchorsFinder(self.document)
         name, addname, objtype, domain = anchors_finder.find_anchors(node)
         # Build anchor id (e.g., py-example or py-example-classname)
-        new_anchor_id = (
-            f"{addname}.{name}".replace(" ", "-")
-            .rstrip("-").strip(".")
-        )
+        new_anchor_id = f"{addname}.{name}".replace(" ", "-").rstrip("-").strip(".")
         self.anchor_id_stack.append((new_anchor_id, name, addname, domain, objtype))
         return new_anchor_id, domain, objtype
 
@@ -675,9 +676,14 @@ title = "{node.astext()}"
     def _get_parameter_list_and_types(self, node, skip_content: bool = False):
         """Extract parameter names, types, and default values from a desc_signature node."""
         parameters_info_finder = ParametersInfoFinder(self.document)
-        parameters_dict = parameters_info_finder.find_parameters_info(node, skip_content=skip_content)
-        parameters = [(name, info.get("type"), info.get("default")) for name, info in parameters_dict.items()]
-        if (parameters):
+        parameters_dict = parameters_info_finder.find_parameters_info(
+            node, skip_content=skip_content
+        )
+        parameters = [
+            (name, info.get("type"), info.get("default"))
+            for name, info in parameters_dict.items()
+        ]
+        if parameters:
             self._current_signature_dict["sig_parameters"] = parameters.copy()
         return parameters
 
@@ -709,7 +715,7 @@ title = "{node.astext()}"
         """Get the return type annotation from a desc_signature node."""
         return_type_finder = ReturnTypeFinder(self.document)
         return_type = return_type_finder.find_return_type(node)
-        if (return_type):
+        if return_type:
             self._current_signature_dict["sig_return_type"] = return_type
             self._current_return_type = return_type
             self._expect_returns_field = True
@@ -722,7 +728,9 @@ title = "{node.astext()}"
         objtype = self._get_latest_objtype()
         objtype_str = f"*{objtype}* " if (objtype != "method") else ""
         if objtype:
-            self.content += f"\n\n<div class='{f'{objtype} ' if objtype else ''}signature'>"
+            self.content += (
+                f"\n\n<div class='{f'{objtype} ' if objtype else ''}signature'>"
+            )
 
         name = self._get_latest_name()
         name_str = f"**{name}**"
@@ -731,7 +739,9 @@ title = "{node.astext()}"
         self._current_signature_dict = {}
         self._current_return_type = None
         if objtype in ["function", "method", "class", "exception"]:
-            parameters = self._get_parameter_list_and_types(node, not(objtype in ["function", "method"]))
+            parameters = self._get_parameter_list_and_types(
+                node, not (objtype in ["function", "method"])
+            )
             parameters_str = self._get_parameter_list_str(parameters)
             self.content += parameters_str
         if objtype in ["function", "method"]:
@@ -909,14 +919,19 @@ title = "{node.astext()}"
                 opened_description_list = False
                 left, desc = line.split(" – ", 1)
                 formatted_param = self._get_formatted_param(
-                    *(_get_param_raw_info_from_left_string(left, self._current_signature_dict))
+                    *(
+                        _get_param_raw_info_from_left_string(
+                            left, self._current_signature_dict
+                        )
+                    )
                 )
                 new_str_content += f"\n\n{formatted_param}\n"
                 if desc:
                     new_str_content += f": <!---->\n    {desc}"
                     opened_description_list = True
         self.content = new_str_content
-        if not(self._prevent_content_stash_deletion): self._content_stash = []
+        if not (self._prevent_content_stash_deletion):
+            self._content_stash = []
 
     def _restructure_returns_field_body(self):
         pure_str_content = self._content_stash.copy()
@@ -935,7 +950,8 @@ title = "{node.astext()}"
             ]
         )
         self.content = new_str_content + "\n\n"
-        if not(self._prevent_content_stash_deletion): self._content_stash = []
+        if not (self._prevent_content_stash_deletion):
+            self._content_stash = []
 
     def _restructure_field_body(self):
         if self._in_parameters_field:

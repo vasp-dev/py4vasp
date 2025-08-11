@@ -37,21 +37,26 @@ class ReturnTypeFinder(NodeVisitor):
         """
         pass
 
-    def visit_desc(self, node): pass
+    def visit_desc(self, node):
+        pass
 
-    def visit_desc_signature(self, node): pass
+    def visit_desc_signature(self, node):
+        pass
 
-    def visit_desc_content(self, node): pass
+    def visit_desc_content(self, node):
+        pass
 
-    def visit_field_list(self, node): pass
+    def visit_field_list(self, node):
+        pass
 
-    def visit_field(self, node): pass
+    def visit_field(self, node):
+        pass
 
     def visit_desc_returns(self, node):
-        if not(self._return_type):
+        if not (self._return_type):
             self._return_type = node.astext().lstrip(" -> ").strip()
         raise SkipNode
-    
+
     def visit_field_name(self, node):
         if node.astext().lower() == "return type":
             self._in_returns_type_field = True
@@ -59,12 +64,10 @@ class ReturnTypeFinder(NodeVisitor):
 
     def visit_field_body(self, node):
         if self._in_returns_type_field:
-            if not(self._return_type):
+            if not (self._return_type):
                 self._return_type = node.astext().strip()
         raise SkipNode
 
     def depart_field(self, node):
         self._in_returns_type_field = False
         pass
-
-    
