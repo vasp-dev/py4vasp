@@ -5,11 +5,11 @@ from typing import Optional
 from docutils.nodes import NodeVisitor, SkipNode
 
 from py4vasp._sphinx.anchors_finder import AnchorsFinder
-from py4vasp._sphinx.return_type_finder import ReturnTypeFinder
 from py4vasp._sphinx.parameters_info_finder import (
     ParametersInfoFinder,
     _get_param_raw_info_from_left_string,
 )
+from py4vasp._sphinx.return_type_finder import ReturnTypeFinder
 
 
 class Indentation:
