@@ -976,13 +976,6 @@ title = "{node.astext()}"
                 break
 
         if field_name == "return type":
-            for child in node.children:
-                if (
-                    child.__class__.__name__ == "field_body"
-                    and self._current_return_type in [None, ""]
-                ):
-                    self._current_return_type = child.astext()
-                    break
             if not (self._current_return_type):
                 self._current_return_type = getattr(
                     self._current_signature_dict, "sig_return_type", None
