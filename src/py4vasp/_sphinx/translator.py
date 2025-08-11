@@ -4,6 +4,7 @@ from typing import Optional
 
 from docutils.nodes import NodeVisitor, SkipNode
 
+from py4vasp._sphinx.anchors_finder import AnchorsFinder
 from py4vasp._sphinx.return_type_finder import ReturnTypeFinder
 from py4vasp._sphinx.parameters_info_finder import ParametersInfoFinder, _get_param_raw_info_from_left_string
 
@@ -631,30 +632,11 @@ title = "{node.astext()}"
             return ".".join(list_to_join)
 
     def _construct_new_anchor_id(self, node) -> tuple[str, str, str]:
-        domain = getattr(node, "attributes", {}).get("domain", "")
-        objtype = getattr(node, "attributes", {}).get("objtype", "")
-        # Find desc_name and desc_addname children for the object's name
-        name = ""
-        addname = ""
-        for child in node.children:
-            if child.__class__.__name__ == "desc_signature":
-                for childB in child.children:
-                    if childB.__class__.__name__ == "desc_name":
-                        name = childB.astext()
-                    if childB.__class__.__name__ == "desc_addname":
-                        addname = childB.astext()
-                break
+        anchors_finder = AnchorsFinder(self.document)
+        name, addname, objtype, domain = anchors_finder.find_anchors(node)
         # Build anchor id (e.g., py-example or py-example-classname)
-        addname_str = (
-            f"{addname.strip('. ').strip('. ')}"
-            if addname
-            else ""
-        )
-        name_str = (
-            f"{name.strip('. ').strip('. ')}" if name else ""
-        )
         new_anchor_id = (
-            f"{addname_str}.{name_str}".replace(" ", "-")
+            f"{addname}.{name}".replace(" ", "-")
             .rstrip("-").strip(".")
         )
         self.anchor_id_stack.append((new_anchor_id, name, addname, domain, objtype))
