@@ -979,11 +979,7 @@ title = "{node.astext()}"
         self.content += "**"
 
     def visit_title_reference(self, node):
-        self.content += "*"
+        self.content += "*" # TODO insert link
 
     def depart_title_reference(self, node):
-        self.content += "*"
-
-    def depart_title_reference(self, node):
-        self.content += "*"
         self.content += "*"

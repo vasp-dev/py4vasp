@@ -535,7 +535,7 @@ these orbitals to read or plot.
 
 ### ***Examples***
 
-If you want to visualize the total DOS, you can use the *plot** method. This will
+If you want to visualize the total DOS, you can use the *plot* method. This will
 show the different spin components if [ISPIN](https://vasp.at/wiki/index.php/ISPIN) = 2
 
 ~~~python
@@ -599,6 +599,7 @@ other routines.
 
 def test_convert_example_dos_to_dict(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
+    print(content)
     expected_class_content = """\
 <div class='method signature'>
 
@@ -645,7 +646,7 @@ projection.
 
 
     You separate multiple selections by commas or whitespace and can nest them using
-    parenthesis, e.g. *Sr(s, p)** or *s(up), p(down)**. The order of the selections
+    parenthesis, e.g. *Sr(s, p)* or *s(up), p(down)*. The order of the selections
     does not matter, but it is case sensitive to distinguish p (angular momentum
     l = 1) from P (phosphorus).
 
@@ -778,7 +779,7 @@ corresponding to the selected projections.
 
 
     You separate multiple selections by commas or whitespace and can nest them using
-    parenthesis, e.g. *Sr(s, p)** or *s(up), p(down)**. The order of the selections
+    parenthesis, e.g. *Sr(s, p)* or *s(up), p(down)*. The order of the selections
     does not matter, but it is case sensitive to distinguish p (angular momentum
     l = 1) from P (phosphorus).
 
