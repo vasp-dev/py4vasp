@@ -17,9 +17,6 @@ go = import_.optional("plotly.graph_objects")
 px = import_.optional("plotly.express")
 interpolate = import_.optional("scipy.interpolate")
 
-_COLORMAP_LIST = px.colors.named_colorscales()
-_COLORMAP_LIST_R = [c + "_r" for c in _COLORMAP_LIST]
-
 
 @dataclasses.dataclass
 class Contour(trace.Trace):
@@ -58,13 +55,13 @@ class Contour(trace.Trace):
     """The color_scheme argument informs the chosen color map and parameters for the contours plot.
     It should be chosen according to the nature of the data to be plotted, as one of the following:
     - "auto": py4vasp will try to infer the color scheme on its own.
-    - "monochrome" OR "stm": (Default) Standard colorscheme for stm.
+    - "monochrome" OR "stm": (Default) Standard colorscheme for STM.
     - "positive": Values are only positive.
     - "signed": Values are mixed - positive and negative.
     - "negative": Values are only negative.
     
-    Additionally, any of the color maps listed in _COLORMAP_LIST (and their names appended with 
-    "_r") are also valid inputs, but the list itself might be subject to change on future releases.
+    Additionally, any of the color maps obtained via _get_valid_external_colormaps() are also valid 
+    inputs, but the list itself might be subject to change on future releases.
     """
     color_limits: tuple = None
     """Is a tuple that sets the minimum and maximum of the color scale. Can be:
@@ -384,7 +381,7 @@ class Contour(trace.Trace):
             selected_color_scheme = [[0, color_lower], [1, color_center]]
         # Defaulting to color map if not yet set
         if selected_color_scheme is None:
-            if self.color_scheme in (_COLORMAP_LIST + _COLORMAP_LIST_R):
+            if self.color_scheme in Contour._get_valid_external_colormaps():
                 selected_color_scheme = self.color_scheme
             else:
                 selected_color_scheme = [
@@ -394,6 +391,12 @@ class Contour(trace.Trace):
                 ]
 
         return selected_color_scheme
+
+    @staticmethod
+    def _get_valid_external_colormaps() -> list:
+        return px.colors.named_colorscales() + [
+            cmp + "_r" for cmp in px.colors.named_colorscales()
+        ]
 
     def _get_color_range(self, z: np.ndarray) -> tuple:
         if self.color_limits is None:
