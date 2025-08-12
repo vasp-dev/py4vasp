@@ -18,7 +18,8 @@ px = import_.optional("plotly.express")
 interpolate = import_.optional("scipy.interpolate")
 
 _COLORMAP_LIST = px.colors.named_colorscales()
-_COLORMAP_LIST_R = [c+"_r" for c in _COLORMAP_LIST]
+_COLORMAP_LIST_R = [c + "_r" for c in _COLORMAP_LIST]
+
 
 @dataclasses.dataclass
 class Contour(trace.Trace):
@@ -363,7 +364,7 @@ class Contour(trace.Trace):
         color_center = "white"
         color_upper = _config.VASP_COLORS["red"]
         zmin, zmax = self._get_color_range(z)
-        if (self.color_scheme in ["monochrome", "stm"]):
+        if self.color_scheme in ["monochrome", "stm"]:
             selected_color_scheme = "turbid"
         elif (self.color_scheme == "signed") or (
             self.color_scheme == "auto" and (zmin < 0 and zmax > 0)
@@ -383,7 +384,7 @@ class Contour(trace.Trace):
             selected_color_scheme = [[0, color_lower], [1, color_center]]
         # Defaulting to color map if not yet set
         if selected_color_scheme is None:
-            if self.color_scheme in (_COLORMAP_LIST+_COLORMAP_LIST_R):
+            if self.color_scheme in (_COLORMAP_LIST + _COLORMAP_LIST_R):
                 selected_color_scheme = self.color_scheme
             else:
                 selected_color_scheme = [
