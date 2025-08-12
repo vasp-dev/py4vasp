@@ -115,7 +115,7 @@ def complex_quiver():
     )
 
 
-@pytest.mark.parametrize("color_scheme", ["auto", "signed", "positive", "negative"])
+@pytest.mark.parametrize("color_scheme", ["monochrome", "stm", "turbid", "teal", "viridis_r", "auto", "signed", "positive", "negative"])
 def test_contour_color_scheme(color_scheme, not_core):
     contour = Contour(
         data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
@@ -138,10 +138,28 @@ def test_contour_color_scheme(color_scheme, not_core):
             (0.5, "white"),
             (1, _config.VASP_COLORS["red"]),
         )
+    elif color_scheme in ["monochrome", "stm", "turbid"]:
+        expected_colorscale = px.colors.sequential.turbid
+    elif color_scheme == "teal":
+        expected_colorscale = px.colors.sequential.Teal
+    elif color_scheme == "viridis_r":
+        expected_colorscale = list(reversed(px.colors.sequential.Viridis))
     else:
+        expected_colorscale = (
+            (0, _config.VASP_COLORS["blue"]),
+            (0.5, "white"),
+            (1, _config.VASP_COLORS["red"]),
+        )
+        assert (fig.data[0].colorscale == expected_colorscale) or ([s[1] for s in fig.data[0].colorscale] == expected_colorscale)
         raise NotImplementedError(f"Color scheme {color_scheme} not implemented.")
-    assert fig.data[0].colorscale == expected_colorscale
+    assert (fig.data[0].colorscale == expected_colorscale) or ([s[1] for s in fig.data[0].colorscale] == expected_colorscale)
 
+@pytest.mark.parametrize("color_scheme", ["invalid_color_scheme_name", "VIRIDIS"])
+def test_contour_color_scheme_invalid(color_scheme, not_core):
+    try:
+        test_contour_color_scheme(color_scheme, not_core)
+    except NotImplementedError:
+        pass
 
 @pytest.mark.xfail
 @pytest.mark.parametrize("contrast_mode", [True, False])
@@ -682,6 +700,7 @@ def test_contour_interpolate(tilted_contour, num_periodic_add, Assert, not_core)
     tilted_contour.num_periodic_add = (
         num_periodic_add  # should have no effect unless traces_as_periodic
     )
+    tilted_contour.color_scheme = "auto"
     graph = Graph(tilted_contour)
     fig = graph.to_plotly()
     area_cell = 12.0
@@ -717,6 +736,7 @@ def test_contour_interpolate_with_periodic_traces(
 ):
     tilted_contour.traces_as_periodic = True
     tilted_contour.num_periodic_add = num_periodic_add
+    tilted_contour.color_scheme = "auto"
     graph = Graph(tilted_contour)
     fig = graph.to_plotly()
     area_cell = 12.0

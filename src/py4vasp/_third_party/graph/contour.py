@@ -14,8 +14,11 @@ from py4vasp._util.slicing import Plane
 
 ff = import_.optional("plotly.figure_factory")
 go = import_.optional("plotly.graph_objects")
+px = import_.optional("plotly.express")
 interpolate = import_.optional("scipy.interpolate")
 
+_COLORMAP_LIST = px.colors.named_colorscales()
+_COLORMAP_LIST_R = [c+"_r" for c in _COLORMAP_LIST]
 
 @dataclasses.dataclass
 class Contour(trace.Trace):
@@ -50,13 +53,17 @@ class Contour(trace.Trace):
     "Defines whether isolevels should be added or a heatmap is used."
     show_contour_values: bool = None
     "Defines whether contour values should be shown along contour plot lines."
-    color_scheme: str = "auto"
+    color_scheme: str = "stm"
     """The color_scheme argument informs the chosen color map and parameters for the contours plot.
     It should be chosen according to the nature of the data to be plotted, as one of the following:
-    - "auto": (Default) py4vasp will try to infer the color scheme on its own.
-    - "positive": Values are only positive. 
+    - "auto": py4vasp will try to infer the color scheme on its own.
+    - "monochrome" OR "stm": (Default) Standard colorscheme for stm.
+    - "positive": Values are only positive.
     - "signed": Values are mixed - positive and negative.
     - "negative": Values are only negative.
+    
+    Additionally, any of the color maps listed in _COLORMAP_LIST (and their names appended with 
+    "_r") are also valid options.
     """
     color_limits: tuple = None
     """Is a tuple that sets the minimum and maximum of the color scale. Can be:
@@ -356,7 +363,9 @@ class Contour(trace.Trace):
         color_center = "white"
         color_upper = _config.VASP_COLORS["red"]
         zmin, zmax = self._get_color_range(z)
-        if (self.color_scheme == "signed") or (
+        if (self.color_scheme in ["monochrome", "stm"]):
+            selected_color_scheme = "turbid"
+        elif (self.color_scheme == "signed") or (
             self.color_scheme == "auto" and (zmin < 0 and zmax > 0)
         ):
             selected_color_scheme = [
@@ -374,11 +383,14 @@ class Contour(trace.Trace):
             selected_color_scheme = [[0, color_lower], [1, color_center]]
         # Defaulting to color map if not yet set
         if selected_color_scheme is None:
-            selected_color_scheme = [
-                [0, color_lower],
-                [0.5, color_center],
-                [1, color_upper],
-            ]
+            if self.color_scheme in (_COLORMAP_LIST+_COLORMAP_LIST_R):
+                selected_color_scheme = self.color_scheme
+            else:
+                selected_color_scheme = [
+                    [0, color_lower],
+                    [0.5, color_center],
+                    [1, color_upper],
+                ]
 
         return selected_color_scheme
 
