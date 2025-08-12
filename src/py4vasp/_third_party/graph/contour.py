@@ -64,7 +64,7 @@ class Contour(trace.Trace):
     - "negative": Values are only negative.
     
     Additionally, any of the color maps listed in _COLORMAP_LIST (and their names appended with 
-    "_r") are also valid options.
+    "_r") are also valid inputs, but the list itself might be subject to change on future releases.
     """
     color_limits: tuple = None
     """Is a tuple that sets the minimum and maximum of the color scale. Can be:
