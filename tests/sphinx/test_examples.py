@@ -29,7 +29,7 @@ def sphinx_app(tmp_path_factory, not_core):
 def read_file_content(outdir, source_file):
     output_file = outdir / "hugo" / source_file
     assert output_file.exists()
-    content = output_file.read_text()
+    content = output_file.read_text(encoding="utf-8")
     assert content.startswith("+++")
     return content
 
