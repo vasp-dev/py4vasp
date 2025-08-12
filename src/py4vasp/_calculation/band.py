@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from __future__ import Annotations
+
 from typing import Any, Iterable, List, Optional
 
 import numpy as np
@@ -66,7 +68,9 @@ class Band(base.Refinery, graph.Mixin):
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
-    def to_dict(self, selection: Optional[str]=None, fermi_energy: Optional[float]=None) -> dict[str, Any]:
+    def to_dict(
+        self, selection: Optional[str] = None, fermi_energy: Optional[float] = None
+    ) -> dict[str, Any]:
         """Read the data into a dictionary.
 
         You may use this data for your own postprocessing tools. Sometimes you may
@@ -144,7 +148,12 @@ class Band(base.Refinery, graph.Mixin):
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
-    def to_graph(self, selection: Optional[str]=None, fermi_energy: Optional[float]=None, width: float=0.5) -> graph.Graph:
+    def to_graph(
+        self,
+        selection: Optional[str] = None,
+        fermi_energy: Optional[float] = None,
+        width: float = 0.5,
+    ) -> graph.Graph:
         """Read the data and generate a graph.
 
         On the x axis, we show the **k** points as distances from the previous ones.
@@ -220,7 +229,9 @@ class Band(base.Refinery, graph.Mixin):
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
-    def to_frame(self, selection: Optional[str]=None, fermi_energy: Optional[float]=None) -> pd.DataFrame:
+    def to_frame(
+        self, selection: Optional[str] = None, fermi_energy: Optional[float] = None
+    ) -> pd.DataFrame:
         """Read the data into a DataFrame.
 
         Parameters
