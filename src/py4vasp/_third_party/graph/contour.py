@@ -86,31 +86,6 @@ class Contour(trace.Trace):
     """Scale arrows by this factor when converting their length to Å. None means
     autoscale them so that the arrows do not overlap."""
 
-    _num_periodic_add: int = 0
-    """The number of additional periodic rows and columns (>= 0) of heatmap/contour cells added 
-    to the plot if and only if interpolation is required and traces_as_periodic is True. 
-    By default, traces_as_periodic will cause the first row and first column to be repeated 
-    to ensure a consistent visual presentation. 
-
-    _num_periodic_add can be used to repeat additional rows and columns, such that the sum
-    of repeats is 1+_num_periodic_add.
-    Periodicity will be enforced in the direction of lattice vectors first, then alternate.
-
-    Example:
-    _num_periodic_add = 2
-
-    ```
-    o4|o1o2o3o4|o1o2
-       --------
-    m4|m1m2m3m4|m1m2
-    n4|n1n2n3n4|n1n2
-    o4|o1o2o3o4|o1o2
-       --------
-    m4|m1m2m3m4|m1m2
-    n4|n1n2n3n4|n1n2
-    ```
-    """
-
     def to_plotly(self):
         lattice_supercell = np.diag(self.supercell) @ self.lattice.vectors
         # swap a and b axes because that is the way plotly expects the data
@@ -295,17 +270,7 @@ class Contour(trace.Trace):
         # The supercell itself requires supercell[0] * supercell[1] primitive cells
         # We need to cover a slightly larger area, so add some margin
         max_supercell_dim = max(self.supercell)
-        periodic_extend = max_supercell_dim + 1  # Add 1 for padding margin
-
-        print(
-            f"Smart padding: extending by {periodic_extend-1} cells to cover supercell bounds"
-        )
-        print(
-            f"Target area: x=[{xmin_target:.2f}, {xmax_target:.2f}], y=[{ymin_target:.2f}, {ymax_target:.2f}]"
-        )
-        print(
-            f"Canvas area: x=[{xmin_canvas:.2f}, {xmax_canvas:.2f}], y=[{ymin_canvas:.2f}, {ymax_canvas:.2f}]"
-        )
+        periodic_extend = max_supercell_dim + 10  # Add 1 for padding margin
 
         # Create the extended input mesh
         line_mesh_a = self._make_mesh(
@@ -341,7 +306,9 @@ class Contour(trace.Trace):
         x_out, y_out = np.meshgrid(x_line_mesh, y_line_mesh)
 
         # Interpolate
-        z_out = interpolate.griddata((x_in, y_in), z_in, (x_out, y_out), method="cubic")
+        z_out = interpolate.griddata(
+            (x_in, y_in), z_in, (x_out, y_out), method="linear"
+        )
 
         # Mask anything outside the target supercell area
         z_out_masked = self._mask_outside_supercell(x_out, y_out, z_out, lattice)
@@ -358,9 +325,25 @@ class Contour(trace.Trace):
         points_cart = np.column_stack([x_out.flatten(), y_out.flatten()])
         points_lattice = points_cart @ lattice_inv
 
-        # Check if points are inside the unit cell with a small tolerance
-        # Use a small positive tolerance to be generous at boundaries
-        tolerance = 0.025  # Allow points slightly outside the mathematical boundary
+        # Calculate adaptive tolerance based on grid resolution
+        # Get the spacing between grid points in lattice coordinates
+        if x_out.shape[1] > 1 and x_out.shape[0] > 1:
+            # Calculate grid spacing in Cartesian coordinates
+            dx_cart = abs(x_out[0, 1] - x_out[0, 0])
+            dy_cart = abs(y_out[1, 0] - y_out[0, 0])
+
+            # Convert grid spacing to lattice coordinates
+            # A small displacement in Cartesian becomes this in lattice coordinates
+            dx_lattice = abs(np.array([dx_cart, 0]) @ lattice_inv).max()
+            dy_lattice = abs(np.array([0, dy_cart]) @ lattice_inv).max()
+
+            # Use half the smallest grid spacing as tolerance
+            tolerance = 1.5 * min(dx_lattice, dy_lattice)
+        else:
+            # Fallback for edge cases
+            tolerance = 0.025
+
+        # Check if points are inside the unit cell with adaptive tolerance
         inside_mask = (
             (points_lattice[:, 0] >= -tolerance)
             & (points_lattice[:, 0] <= 1 + tolerance)
