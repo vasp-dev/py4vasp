@@ -236,6 +236,25 @@ class Contour(trace.Trace):
         lengths = np.sum(np.abs(lattice), axis=0)
         shape = np.ceil(points_per_line * lengths).astype(int)
 
+        # Handle non-periodic case (original logic)
+        if not self.traces_as_periodic:
+            line_mesh_a = self._make_mesh(lattice, data.shape[1], 0)
+            line_mesh_b = self._make_mesh(lattice, data.shape[0], 1)
+            x_in, y_in = (line_mesh_a[:, np.newaxis] + line_mesh_b[np.newaxis, :]).T
+            x_in = x_in.flatten()
+            y_in = y_in.flatten()
+            z_in = data.flatten()
+
+            x_out, y_out = np.meshgrid(
+                np.linspace(x_in.min(), x_in.max(), shape[0]),
+                np.linspace(y_in.min(), y_in.max(), shape[1]),
+            )
+            z_out = interpolate.griddata(
+                (x_in, y_in), z_in, (x_out, y_out), method="cubic"
+            )
+            return x_out[0], y_out[:, 0], z_out
+
+        # Handle periodic case with smart canvas sizing
         # Find the bounding box of the supercell
         supercell_corners = np.array(
             [
