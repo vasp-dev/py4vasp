@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from __future__ import Annotations
+from __future__ import annotations
 
 from typing import Any, Iterable, List, Optional
 
