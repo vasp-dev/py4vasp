@@ -120,11 +120,9 @@ def complex_quiver():
     [
         "monochrome",
         "stm",
-        "turbid",
-        "teal",
-        "viridis_r",
         "auto",
-        "signed",
+        "sequential",
+        "diverging",
         "positive",
         "negative",
     ],
@@ -140,44 +138,40 @@ def test_contour_color_scheme(color_scheme, not_core):
     assert color_scheme == contour.color_scheme
     graph = Graph(contour)
     fig = graph.to_plotly()
-    expected_colorscale = []
-    if (color_scheme == "auto") or (color_scheme == "positive"):
-        expected_colorscale = ((0, "white"), (1, _config.VASP_COLORS["red"]))
-    elif color_scheme == "negative":
-        expected_colorscale = ((0, _config.VASP_COLORS["blue"]), (1, "white"))
-    elif color_scheme == "signed":
-        expected_colorscale = (
+    expected_colorscales_dict = {
+        "default": [
             (0, _config.VASP_COLORS["blue"]),
             (0.5, "white"),
             (1, _config.VASP_COLORS["red"]),
-        )
-    elif color_scheme in ["monochrome", "stm", "turbid"]:
-        expected_colorscale = px.colors.sequential.turbid
-    elif color_scheme == "teal":
-        expected_colorscale = px.colors.sequential.Teal
-    elif color_scheme == "viridis_r":
-        expected_colorscale = list(reversed(px.colors.sequential.Viridis))
-    else:
-        expected_colorscale = (
-            (0, _config.VASP_COLORS["blue"]),
-            (0.5, "white"),
-            (1, _config.VASP_COLORS["red"]),
-        )
+        ],
+        "auto": px.colors.sequential.Reds,
+        "positive": px.colors.sequential.Reds,
+        "negative": px.colors.sequential.Blues_r,
+        "sequential": px.colors.sequential.Viridis,
+        "diverging": px.colors.diverging.RdBu_r,
+        "monochrome": px.colors.sequential.turbid_r,
+        "stm": px.colors.sequential.turbid_r,
+    }
+    expected_colorscale = expected_colorscales_dict.get(
+        color_scheme, expected_colorscales_dict.get("default", None)
+    )
+    try:
         assert (fig.data[0].colorscale == expected_colorscale) or (
             [s[1] for s in fig.data[0].colorscale] == expected_colorscale
         )
-        raise NotImplementedError(f"Color scheme {color_scheme} not implemented.")
-    assert (fig.data[0].colorscale == expected_colorscale) or (
-        [s[1] for s in fig.data[0].colorscale] == expected_colorscale
-    )
-
-
-@pytest.mark.parametrize("color_scheme", ["invalid_color_scheme_name", "VIRIDIS"])
-def test_contour_color_scheme_invalid(color_scheme, not_core):
-    try:
-        test_contour_color_scheme(color_scheme, not_core)
-    except NotImplementedError:
-        pass
+    except AssertionError:
+        raise NotImplementedError(
+            f"Color scheme {color_scheme} diverges from expectation:"
+            + "\nExpected vs. actual:\n"
+            + "\n".join(
+                [
+                    "\t" + f"{expect_cs}" + "\t" + f"{actual_cs}" + "\n"
+                    for expect_cs, actual_cs in zip(
+                        expected_colorscale, fig.data[0].colorscale
+                    )
+                ]
+            )
+        )
 
 
 @pytest.mark.xfail
@@ -608,9 +602,10 @@ def test_contour_with_periodic_traces(
     rectangle_contour, num_periodic_add, Assert, not_core
 ):
     rectangle_contour.traces_as_periodic = True
-    rectangle_contour.num_periodic_add = (
+    rectangle_contour._num_periodic_add = (
         num_periodic_add  # should have no effect on rectangular
     )
+
     graph = Graph(rectangle_contour)
     fig = graph.to_plotly()
     assert len(fig.data) == 1
@@ -648,7 +643,7 @@ def test_contour_supercell_with_periodic_traces(
 ):
     supercell = np.asarray((3, 5))
     rectangle_contour.traces_as_periodic = True
-    rectangle_contour.num_periodic_add = (
+    rectangle_contour._num_periodic_add = (
         num_periodic_add  # should have no effect on rectangular contour
     )
     rectangle_contour.supercell = supercell
@@ -716,7 +711,7 @@ def check_annotations(lattice, annotations, Assert):
 
 @pytest.mark.parametrize("num_periodic_add", [0, 3])
 def test_contour_interpolate(tilted_contour, num_periodic_add, Assert, not_core):
-    tilted_contour.num_periodic_add = (
+    tilted_contour._num_periodic_add = (
         num_periodic_add  # should have no effect unless traces_as_periodic
     )
     tilted_contour.color_scheme = "auto"
@@ -754,7 +749,7 @@ def test_contour_interpolate_with_periodic_traces(
     tilted_contour, num_periodic_add, Assert, not_core
 ):
     tilted_contour.traces_as_periodic = True
-    tilted_contour.num_periodic_add = num_periodic_add
+    tilted_contour._num_periodic_add = num_periodic_add
     tilted_contour.color_scheme = "auto"
     graph = Graph(tilted_contour)
     fig = graph.to_plotly()

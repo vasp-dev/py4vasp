@@ -51,17 +51,16 @@ class Contour(trace.Trace):
     "Defines whether isolevels should be added or a heatmap is used."
     show_contour_values: bool = None
     "Defines whether contour values should be shown along contour plot lines."
-    color_scheme: str = "stm"
+    color_scheme: str = "auto"
     """The color_scheme argument informs the chosen color map and parameters for the contours plot.
     It should be chosen according to the nature of the data to be plotted, as one of the following:
-    - "auto": py4vasp will try to infer the color scheme on its own.
-    - "monochrome" OR "stm": (Default) Standard colorscheme for STM.
-    - "positive": Values are only positive.
-    - "signed": Values are mixed - positive and negative.
-    - "negative": Values are only negative.
-    
-    Additionally, any of the color maps obtained via _get_valid_external_colormaps() are also valid 
-    inputs, but the list itself might be subject to change on future releases.
+    - "auto" (Default): py4vasp will try to infer the color scheme on its own.
+    - "monochrome" OR "stm": Standard colorscheme for STM.
+    - "sequential": Use a sequential color scheme.
+    - "positive": Values are only positive. Use a Reds color scheme. Consider setting color_limits=(0, None).
+    - "diverging": Use a diverging color scheme.
+    - "negative": Values are only negative. Use a reverse Blues color scheme. Consider setting color_limits=(None, 0).
+    - "cyclical": Use a cyclical color scheme.
     """
     color_limits: tuple = None
     """Is a tuple that sets the minimum and maximum of the color scale. Can be:
@@ -77,16 +76,29 @@ class Contour(trace.Trace):
     If False, traces (contour and quiver) are shifted so that the heatmap cells visually
     align with the supercell instead. No periodic images are required, but the visual
     presentation might be misleading."""
-    num_periodic_add: int = 0
-    """The number of periodic rows and columns (>= 0) of heatmap/contour cells added to the plot 
-    if and only if interpolation is required and traces_as_periodic is True. 
-    by default, traces_as_periodic will cause the first row and first column to be repeated.
-    num_periodic_add can be used to repeat additional rows and columns.
+    supercell: np.array = (1, 1)
+    "Multiple of each lattice vector to be drawn."
+    show_cell: bool = True
+    "Show the unit cell in the resulting visualization."
+    max_number_arrows: int = None
+    "Subsample the data until the number of arrows falls below this limit."
+    scale_arrows: float = None
+    """Scale arrows by this factor when converting their length to Å. None means
+    autoscale them so that the arrows do not overlap."""
+
+    _num_periodic_add: int = 0
+    """The number of additional periodic rows and columns (>= 0) of heatmap/contour cells added 
+    to the plot if and only if interpolation is required and traces_as_periodic is True. 
+    By default, traces_as_periodic will cause the first row and first column to be repeated 
+    to ensure a consistent visual presentation. 
+
+    _num_periodic_add can be used to repeat additional rows and columns, such that the sum
+    of repeats is 1+_num_periodic_add.
     Periodicity will be enforced in the direction of lattice vectors first, then alternate.
 
     Example:
-    num_periodic_add = 2
-    
+    _num_periodic_add = 2
+
     ```
     o4|o1o2o3o4|o1o2
        --------
@@ -98,15 +110,6 @@ class Contour(trace.Trace):
     n4|n1n2n3n4|n1n2
     ```
     """
-    supercell: np.array = (1, 1)
-    "Multiple of each lattice vector to be drawn."
-    show_cell: bool = True
-    "Show the unit cell in the resulting visualization."
-    max_number_arrows: int = None
-    "Subsample the data until the number of arrows falls below this limit."
-    scale_arrows: float = None
-    """Scale arrows by this factor when converting their length to Å. None means
-    autoscale them so that the arrows do not overlap."""
 
     def to_plotly(self):
         lattice_supercell = np.diag(self.supercell) @ self.lattice.vectors
@@ -266,7 +269,7 @@ class Contour(trace.Trace):
         xmin, xmax = x_in.min(), x_in.max()
         ymin, ymax = y_in.min(), y_in.max()
 
-        periodic_expand = 1 + self.num_periodic_add
+        periodic_expand = 1 + self._num_periodic_add
         line_mesh_a = self._make_mesh(
             lattice, data.shape[1], 0, periodic_expand=periodic_expand
         )
@@ -356,47 +359,47 @@ class Contour(trace.Trace):
         return (unit_cell,)
 
     def _get_color_scale(self, z: np.ndarray):
-        selected_color_scheme = None
-        color_lower = _config.VASP_COLORS["blue"]
-        color_center = "white"
-        color_upper = _config.VASP_COLORS["red"]
         zmin, zmax = self._get_color_range(z)
-        if self.color_scheme in ["monochrome", "stm"]:
-            selected_color_scheme = "turbid"
-        elif (self.color_scheme == "signed") or (
-            self.color_scheme == "auto" and (zmin < 0 and zmax > 0)
-        ):
-            selected_color_scheme = [
-                [0, color_lower],
-                [0.5, color_center],
-                [1, color_upper],
-            ]
-        elif (self.color_scheme == "positive") or (
-            self.color_scheme == "auto" and (zmin >= 0)
-        ):
-            selected_color_scheme = [[0, color_center], [1, color_upper]]
-        elif (self.color_scheme == "negative") or (
-            self.color_scheme == "auto" and (zmax <= 0)
-        ):
-            selected_color_scheme = [[0, color_lower], [1, color_center]]
-        # Defaulting to color map if not yet set
-        if selected_color_scheme is None:
-            if self.color_scheme in Contour._get_valid_external_colormaps():
-                selected_color_scheme = self.color_scheme
-            else:
-                selected_color_scheme = [
-                    [0, color_lower],
-                    [0.5, color_center],
-                    [1, color_upper],
-                ]
+        target_scheme = self.color_scheme
 
-        return selected_color_scheme
+        if self.color_scheme == "auto":
+            if zmin < 0 and zmax > 0:
+                target_scheme = "diverging"
+            elif zmin >= 0:
+                target_scheme = "positive"
+            elif zmax <= 0:
+                target_scheme = "negative"
+            else:
+                target_scheme = "default"
+
+        colormaps_dict = Contour._get_colormap_themes()
+        selected_color_map = colormaps_dict.get(
+            target_scheme,
+            colormaps_dict.get("default", Contour._get_fallback_colormap()),
+        )
+
+        return selected_color_map
 
     @staticmethod
-    def _get_valid_external_colormaps() -> list:
-        return px.colors.named_colorscales() + [
-            cmp + "_r" for cmp in px.colors.named_colorscales()
+    def _get_fallback_colormap() -> list[tuple[float, str]]:
+        return [
+            (0, _config.VASP_COLORS["blue"]),
+            (0.5, "white"),
+            (1, _config.VASP_COLORS["red"]),
         ]
+
+    @staticmethod
+    def _get_colormap_themes() -> dict[str, list[tuple[float, str]] | str]:
+        return {
+            "default": Contour._get_fallback_colormap(),
+            "monochrome": "turbid_r",
+            "stm": "turbid_r",
+            "positive": "Reds",
+            "negative": "Blues_r",
+            "sequential": "Viridis",
+            "diverging": "RdBu_r",
+            "cyclical": "Twilight",
+        }
 
     def _get_color_range(self, z: np.ndarray) -> tuple:
         if self.color_limits is None:
