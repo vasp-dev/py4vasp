@@ -393,12 +393,10 @@ class Contour(trace.Trace):
         return {
             "default": Contour._get_fallback_colormap(),
             "monochrome": "turbid_r",
-            "stm": "turbid_r",
             "positive": "Reds",
             "negative": "Blues_r",
             "sequential": "Viridis",
             "diverging": "RdBu_r",
-            "cyclical": "Twilight",
         }
 
     def _get_color_range(self, z: np.ndarray) -> tuple:

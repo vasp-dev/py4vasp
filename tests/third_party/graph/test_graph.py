@@ -119,7 +119,6 @@ def complex_quiver():
     "color_scheme",
     [
         "monochrome",
-        "stm",
         "auto",
         "sequential",
         "diverging",
@@ -150,7 +149,6 @@ def test_contour_color_scheme(color_scheme, not_core):
         "sequential": px.colors.sequential.Viridis,
         "diverging": px.colors.diverging.RdBu_r,
         "monochrome": px.colors.sequential.turbid_r,
-        "stm": px.colors.sequential.turbid_r,
     }
     expected_colorscale = expected_colorscales_dict.get(
         color_scheme, expected_colorscales_dict.get("default", None)
