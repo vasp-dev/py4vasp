@@ -1,8 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from typing import Union
+from __future__ import annotations
+
+from typing import Any, Iterable, List, Optional
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from py4vasp import exception
 from py4vasp._calculation import _dispersion, base, projector
@@ -55,7 +58,7 @@ class Band(base.Refinery, graph.Mixin):
     """
 
     @base.data_access
-    def __str__(self):
+    def __str__(self) -> str:
         return f"""
 {"spin polarized" if self._is_collinear() else ""} band data:
     {self._raw_data.dispersion.eigenvalues.shape[1]} k-points
@@ -65,7 +68,9 @@ class Band(base.Refinery, graph.Mixin):
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
-    def to_dict(self, selection=None, fermi_energy=None):
+    def to_dict(
+        self, selection: Optional[str] = None, fermi_energy: Optional[float] = None
+    ) -> dict[str, Any]:
         """Read the data into a dictionary.
 
         You may use this data for your own postprocessing tools. Sometimes you may
@@ -143,7 +148,12 @@ class Band(base.Refinery, graph.Mixin):
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
-    def to_graph(self, selection=None, fermi_energy=None, width=0.5):
+    def to_graph(
+        self,
+        selection: Optional[str] = None,
+        fermi_energy: Optional[float] = None,
+        width: float = 0.5,
+    ) -> graph.Graph:
         """Read the data and generate a graph.
 
         On the x axis, we show the **k** points as distances from the previous ones.
@@ -219,7 +229,9 @@ class Band(base.Refinery, graph.Mixin):
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
-    def to_frame(self, selection=None, fermi_energy=None):
+    def to_frame(
+        self, selection: Optional[str] = None, fermi_energy: Optional[float] = None
+    ) -> pd.DataFrame:
         """Read the data into a DataFrame.
 
         Parameters
@@ -272,8 +284,8 @@ class Band(base.Refinery, graph.Mixin):
     def to_quiver(
         self,
         selection: str = "x~y(band[1])",
-        normal: Union[None, str] = None,
-        supercell: Union[None, int, np.ndarray] = None,
+        normal: Optional[str] = None,
+        supercell: Optional[ArrayLike] = None,
     ):
         """Generate a quiver plot of spin texture.
 
@@ -412,7 +424,7 @@ class Band(base.Refinery, graph.Mixin):
         return {f"band[{band + 1}]": slice(band, band + 1) for band in range(num_bands)}
 
     @base.data_access
-    def selections(self):
+    def selections(self) -> dict[str, Any]:
         return {**super().selections(), **self._projector().selections()}
 
     def _scale(self):
@@ -531,7 +543,7 @@ def _to_series(array):
 
 
 class _ToQuiverReduction(index.Reduction):
-    def __init__(self, keys):
+    def __init__(self, keys: List):
         # raise an IncorrectUsage Warning if:
         #   - no spin elements have been chosen
         #   - no band has been chosen
@@ -545,6 +557,6 @@ class _ToQuiverReduction(index.Reduction):
             )
         pass
 
-    def __call__(self, array, axis):
+    def __call__(self, array: ArrayLike, axis: Iterable):
         axis = tuple(filter(None, axis))  # prevents summation along 0-axis
         return np.sum(array, axis=axis)
