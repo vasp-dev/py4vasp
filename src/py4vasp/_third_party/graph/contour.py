@@ -14,6 +14,7 @@ from py4vasp._util.slicing import Plane
 
 ff = import_.optional("plotly.figure_factory")
 go = import_.optional("plotly.graph_objects")
+px = import_.optional("plotly.express")
 interpolate = import_.optional("scipy.interpolate")
 
 
@@ -53,10 +54,13 @@ class Contour(trace.Trace):
     color_scheme: str = "auto"
     """The color_scheme argument informs the chosen color map and parameters for the contours plot.
     It should be chosen according to the nature of the data to be plotted, as one of the following:
-    - "auto": (Default) py4vasp will try to infer the color scheme on its own.
-    - "positive": Values are only positive. 
-    - "signed": Values are mixed - positive and negative.
-    - "negative": Values are only negative.
+    - "auto" (Default): py4vasp will try to infer the color scheme on its own.
+    - "monochrome" OR "stm": Standard colorscheme for STM.
+    - "sequential": Use a sequential color scheme.
+    - "positive": Values are only positive. Use a Reds color scheme. Consider setting color_limits=(0, None).
+    - "diverging": Use a diverging color scheme.
+    - "negative": Values are only negative. Use a reverse Blues color scheme. Consider setting color_limits=(None, 0).
+    - "cyclical": Use a cyclical color scheme.
     """
     color_limits: tuple = None
     """Is a tuple that sets the minimum and maximum of the color scale. Can be:
@@ -81,6 +85,31 @@ class Contour(trace.Trace):
     scale_arrows: float = None
     """Scale arrows by this factor when converting their length to Å. None means
     autoscale them so that the arrows do not overlap."""
+
+    _num_periodic_add: int = 0
+    """The number of additional periodic rows and columns (>= 0) of heatmap/contour cells added 
+    to the plot if and only if interpolation is required and traces_as_periodic is True. 
+    By default, traces_as_periodic will cause the first row and first column to be repeated 
+    to ensure a consistent visual presentation. 
+
+    _num_periodic_add can be used to repeat additional rows and columns, such that the sum
+    of repeats is 1+_num_periodic_add.
+    Periodicity will be enforced in the direction of lattice vectors first, then alternate.
+
+    Example:
+    _num_periodic_add = 2
+
+    ```
+    o4|o1o2o3o4|o1o2
+       --------
+    m4|m1m2m3m4|m1m2
+    n4|n1n2n3n4|n1n2
+    o4|o1o2o3o4|o1o2
+       --------
+    m4|m1m2m3m4|m1m2
+    n4|n1n2n3n4|n1n2
+    ```
+    """
 
     def to_plotly(self):
         lattice_supercell = np.diag(self.supercell) @ self.lattice.vectors
@@ -194,12 +223,15 @@ class Contour(trace.Trace):
         subsampled_data = data[np.ix_(x_indices, y_indices)]
         return subsampled_data
 
-    def _extend_data_contour(self, data):
+    def _extend_data_contour(self, data, periodic_expand=1):
         xdim, ydim = data.shape
 
+        periodic_left = 0
+        if (self.traces_as_periodic) and (periodic_expand > 1):
+            periodic_left = int(np.floor((periodic_expand - 1) / 2))
         # Create index arrays with "wrapped" boundaries
-        x_indices = np.arange(0, xdim + (1 if self.traces_as_periodic else 0)) % xdim
-        y_indices = np.arange(0, ydim + (1 if self.traces_as_periodic else 0)) % ydim
+        x_indices = (np.arange(0, xdim + periodic_expand) % xdim) - periodic_left
+        y_indices = (np.arange(0, ydim + periodic_expand) % ydim) - periodic_left
 
         # Access data using advanced indexing
         subsampled_data = data[np.ix_(x_indices, y_indices)]
@@ -228,20 +260,49 @@ class Contour(trace.Trace):
         points_per_line = np.sqrt(points_per_area) * self._interpolation_factor
         lengths = np.sum(np.abs(lattice), axis=0)
         shape = np.ceil(points_per_line * lengths).astype(int)
-        line_mesh_a = self._make_mesh(lattice, data.shape[1], 0)
-        line_mesh_b = self._make_mesh(lattice, data.shape[0], 1)
+        # obtain min and max for final grid
+        line_mesh_a = self._make_mesh(lattice, data.shape[1], 0, periodic_expand=1)
+        line_mesh_b = self._make_mesh(lattice, data.shape[0], 1, periodic_expand=1)
+        x_in, y_in = (line_mesh_a[:, np.newaxis] + line_mesh_b[np.newaxis, :]).T
+        x_in = x_in.flatten()
+        y_in = y_in.flatten()
+        xmin, xmax = x_in.min(), x_in.max()
+        ymin, ymax = y_in.min(), y_in.max()
+
+        periodic_expand = 1 + self._num_periodic_add
+        line_mesh_a = self._make_mesh(
+            lattice, data.shape[1], 0, periodic_expand=periodic_expand
+        )
+        line_mesh_b = self._make_mesh(
+            lattice, data.shape[0], 1, periodic_expand=periodic_expand
+        )
         x_in, y_in = (line_mesh_a[:, np.newaxis] + line_mesh_b[np.newaxis, :]).T
         x_in = x_in.flatten()
         y_in = y_in.flatten()
         z_in = (
-            self._extend_data_contour(data).flatten()
-            if self.traces_as_periodic
+            self._extend_data_contour(data, periodic_expand=periodic_expand).flatten()
+            if (self.traces_as_periodic)
             else data.flatten()
         )
-        x_out, y_out = np.meshgrid(
-            np.linspace(x_in.min(), x_in.max(), shape[0]),
-            np.linspace(y_in.min(), y_in.max(), shape[1]),
+
+        # make sure the actual grid aligns with shifts
+        x_line_mesh = np.linspace(
+            xmin,
+            xmax,
+            shape[0] + (1 if self.traces_as_periodic else 0),
+            endpoint=self.traces_as_periodic,
         )
+        y_line_mesh = np.linspace(
+            ymin,
+            ymax,
+            shape[1] + (1 if self.traces_as_periodic else 0),
+            endpoint=self.traces_as_periodic,
+        )
+        x_out, y_out = np.meshgrid(
+            x_line_mesh,
+            y_line_mesh,
+        )
+
         z_out = interpolate.griddata((x_in, y_in), z_in, (x_out, y_out), method="cubic")
         return x_out[0], y_out[:, 0], z_out
 
@@ -251,20 +312,32 @@ class Contour(trace.Trace):
         return (
             x,
             y,
-            self._extend_data_contour(data),
+            self._extend_data_contour(data) if (self.traces_as_periodic) else data,
         )
 
-    def _make_mesh(self, lattice, num_point, index):
+    def _make_mesh(self, lattice, num_point, index, periodic_expand: int = 1):
         vector = index if self._interpolation_required() else (index, index)
 
+        endpoint = lattice[vector]
+        if (self.traces_as_periodic) and (periodic_expand > 0):
+            endpoint = endpoint + float(periodic_expand - 1) * (
+                lattice[vector] / float(num_point)
+            )
         mesh = np.linspace(
             0,
-            lattice[vector],
-            num_point + (1 if self.traces_as_periodic else 0),
+            endpoint,
+            num_point + (periodic_expand if (self.traces_as_periodic) else 0),
             endpoint=self.traces_as_periodic,
         )
-        if not self.traces_as_periodic:
+
+        periodic_left = 0
+        if (self.traces_as_periodic) and (periodic_expand > 1):
+            periodic_left = np.floor((periodic_expand - 1) / 2)
+
+        if not (self.traces_as_periodic):
             mesh = mesh + (0.5 * lattice[vector] / num_point)
+        else:
+            mesh = mesh - periodic_left * (lattice[vector] / float(num_point))
         return mesh
 
     def _options(self):
@@ -286,36 +359,45 @@ class Contour(trace.Trace):
         return (unit_cell,)
 
     def _get_color_scale(self, z: np.ndarray):
-        selected_color_scheme = None
-        color_lower = _config.VASP_COLORS["blue"]
-        color_center = "white"
-        color_upper = _config.VASP_COLORS["red"]
         zmin, zmax = self._get_color_range(z)
-        if (self.color_scheme == "signed") or (
-            self.color_scheme == "auto" and (zmin < 0 and zmax > 0)
-        ):
-            selected_color_scheme = [
-                [0, color_lower],
-                [0.5, color_center],
-                [1, color_upper],
-            ]
-        elif (self.color_scheme == "positive") or (
-            self.color_scheme == "auto" and (zmin >= 0)
-        ):
-            selected_color_scheme = [[0, color_center], [1, color_upper]]
-        elif (self.color_scheme == "negative") or (
-            self.color_scheme == "auto" and (zmax <= 0)
-        ):
-            selected_color_scheme = [[0, color_lower], [1, color_center]]
-        # Defaulting to color map if not yet set
-        if selected_color_scheme is None:
-            selected_color_scheme = [
-                [0, color_lower],
-                [0.5, color_center],
-                [1, color_upper],
-            ]
+        target_scheme = self.color_scheme
 
-        return selected_color_scheme
+        if self.color_scheme == "auto":
+            if zmin < 0 and zmax > 0:
+                target_scheme = "diverging"
+            elif zmin >= 0:
+                target_scheme = "positive"
+            elif zmax <= 0:
+                target_scheme = "negative"
+            else:
+                target_scheme = "default"
+
+        colormaps_dict = Contour._get_colormap_themes()
+        selected_color_map = colormaps_dict.get(
+            target_scheme,
+            colormaps_dict.get("default", Contour._get_fallback_colormap()),
+        )
+
+        return selected_color_map
+
+    @staticmethod
+    def _get_fallback_colormap() -> list[tuple[float, str]]:
+        return [
+            (0, _config.VASP_COLORS["blue"]),
+            (0.5, "white"),
+            (1, _config.VASP_COLORS["red"]),
+        ]
+
+    @staticmethod
+    def _get_colormap_themes() -> dict[str, list[tuple[float, str]] | str]:
+        return {
+            "default": Contour._get_fallback_colormap(),
+            "monochrome": "turbid_r",
+            "positive": "Reds",
+            "negative": "Blues_r",
+            "sequential": "Viridis",
+            "diverging": "RdBu_r",
+        }
 
     def _get_color_range(self, z: np.ndarray) -> tuple:
         if self.color_limits is None:
