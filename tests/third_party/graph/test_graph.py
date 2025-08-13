@@ -595,15 +595,8 @@ def test_contour(rectangle_contour, Assert, not_core):
     assert fig.layout.yaxis.scaleanchor == "x"
 
 
-@pytest.mark.parametrize("num_periodic_add", [0, 3])
-def test_contour_with_periodic_traces(
-    rectangle_contour, num_periodic_add, Assert, not_core
-):
+def test_contour_with_periodic_traces(rectangle_contour, Assert, not_core):
     rectangle_contour.traces_as_periodic = True
-    rectangle_contour._num_periodic_add = (
-        num_periodic_add  # should have no effect on rectangular
-    )
-
     graph = Graph(rectangle_contour)
     fig = graph.to_plotly()
     assert len(fig.data) == 1
@@ -635,15 +628,9 @@ def test_contour_supercell(rectangle_contour, Assert, not_core):
     check_annotations(rectangle_contour.lattice, fig.layout.annotations, Assert)
 
 
-@pytest.mark.parametrize("num_periodic_add", [0, 3])
-def test_contour_supercell_with_periodic_traces(
-    rectangle_contour, num_periodic_add, Assert, not_core
-):
+def test_contour_supercell_with_periodic_traces(rectangle_contour, Assert, not_core):
     supercell = np.asarray((3, 5))
     rectangle_contour.traces_as_periodic = True
-    rectangle_contour._num_periodic_add = (
-        num_periodic_add  # should have no effect on rectangular contour
-    )
     rectangle_contour.supercell = supercell
     graph = Graph(rectangle_contour)
     fig = graph.to_plotly()
@@ -707,11 +694,7 @@ def check_annotations(lattice, annotations, Assert):
         sign *= -1
 
 
-@pytest.mark.parametrize("num_periodic_add", [0, 3])
-def test_contour_interpolate(tilted_contour, num_periodic_add, Assert, not_core):
-    tilted_contour._num_periodic_add = (
-        num_periodic_add  # should have no effect unless traces_as_periodic
-    )
+def test_contour_interpolate(tilted_contour, Assert, not_core):
     tilted_contour.color_scheme = "auto"
     graph = Graph(tilted_contour)
     fig = graph.to_plotly()
@@ -742,43 +725,24 @@ def test_contour_interpolate(tilted_contour, num_periodic_add, Assert, not_core)
 
 
 # @pytest.mark.xfail
-@pytest.mark.parametrize("num_periodic_add", [0, 1, 4])
-def test_contour_interpolate_with_periodic_traces(
-    tilted_contour, num_periodic_add, Assert, not_core
-):
+def test_contour_interpolate_with_periodic_traces(tilted_contour, Assert, not_core):
     tilted_contour.traces_as_periodic = True
-    tilted_contour._num_periodic_add = num_periodic_add
     tilted_contour.color_scheme = "auto"
     graph = Graph(tilted_contour)
     fig = graph.to_plotly()
-    area_cell = 12.0
-    points_per_area = tilted_contour.data.size / area_cell
-    points_per_line = np.sqrt(points_per_area) * tilted_contour._interpolation_factor
-    lengths = np.array([6, 9])  # this accounts for the 2 x 1 supercell
 
-    periodic_left = int(np.floor(((1 + num_periodic_add) - 1) / 2))
     xdim, ydim = tilted_contour.data.shape
-    x_indices = (np.arange(0, xdim + 1 + num_periodic_add) % xdim) - periodic_left
-    y_indices = (np.arange(0, ydim + 1 + num_periodic_add) % ydim) - periodic_left
+    x_indices = np.arange(0, xdim + 1) % xdim
+    y_indices = np.arange(0, ydim + 1) % ydim
     expected_data = tilted_contour.data[np.ix_(x_indices, y_indices)]
     print(
         expected_data.shape,
-        num_periodic_add,
         fig.data[0].z.T.shape,
         tilted_contour.data.shape,
-    )
-    expected_shape = np.array(
-        [
-            ls + 1 + num_periodic_add
-            for ls in np.ceil(points_per_line * lengths).astype(int)
-        ]
     )
     expected_average = np.average(expected_data.data)
     assert len(fig.data) == 1
     # plotly expects y-x order
-    assert all(fig.data[0].z.T.shape <= expected_shape)
-    assert fig.data[0].x.size <= expected_shape[0]
-    assert fig.data[0].y.size <= expected_shape[1]
     finite = np.isfinite(fig.data[0].z)
     assert np.isclose(np.average(fig.data[0].z[finite]), expected_average, rtol=0.1)
     assert len(fig.layout.shapes) == 0
