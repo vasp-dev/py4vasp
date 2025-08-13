@@ -358,12 +358,14 @@ class Contour(trace.Trace):
         points_cart = np.column_stack([x_out.flatten(), y_out.flatten()])
         points_lattice = points_cart @ lattice_inv
 
-        # Check if points are inside the unit cell (0 <= u, v <= 1)
+        # Check if points are inside the unit cell with a small tolerance
+        # Use a small positive tolerance to be generous at boundaries
+        tolerance = 0.025  # Allow points slightly outside the mathematical boundary
         inside_mask = (
-            (points_lattice[:, 0] > 0)
-            & (points_lattice[:, 0] < 1)
-            & (points_lattice[:, 1] > 0)
-            & (points_lattice[:, 1] < 1)
+            (points_lattice[:, 0] >= -tolerance)
+            & (points_lattice[:, 0] <= 1 + tolerance)
+            & (points_lattice[:, 1] >= -tolerance)
+            & (points_lattice[:, 1] <= 1 + tolerance)
         )
 
         # Create masked output
