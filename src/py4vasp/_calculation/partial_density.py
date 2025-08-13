@@ -211,7 +211,9 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
         spin_label = "both spin channels" if spin == "total" else f"spin {spin}"
         stoichiometry = self._stoichiometry()
         label = f"STM of {stoichiometry} for {spin_label} at constant current={current*1e9:.2f} nA"
-        return Contour(data=scan, lattice=self._get_stm_plane(), label=label)
+        return Contour(
+            data=scan, lattice=self._get_stm_plane(), label=label, color_scheme="stm"
+        )
 
     def _constant_height_stm(self, smoothed_charge, tip_height, spin, stm_settings):
         zz = self._z_index_for_height(tip_height + self._get_highest_z_coord())
