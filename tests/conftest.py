@@ -1587,7 +1587,6 @@ def _electron_phonon_self_energy(selection):
     return raw.ElectronPhononSelfEnergy(
         valid_indices=range(number_samples),
         id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
-        id_size=[1, number_samples, 1, 1],
         nbands_sum=_make_nbands_sum(),
         delta=_make_arbitrary_data([number_samples], seed=18573411),
         scattering_approximation=_make_scattering_approximation(),
@@ -1612,7 +1611,6 @@ def _electron_phonon_transport(selection):
     return raw.ElectronPhononTransport(
         valid_indices=range(number_samples),
         id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
-        id_size=[1, number_samples, 1, 1],
         nbands_sum=_make_nbands_sum(),
         self_energy=_electron_phonon_self_energy(selection),
         chemical_potential=_electron_phonon_chemical_potential(),

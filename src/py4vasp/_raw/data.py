@@ -300,8 +300,6 @@ class ElectronPhononSelfEnergy(mapping.Mapping):
 
     id_name: VaspData
     "The names of the variables that generate instances of the self-energy calculations"
-    id_size: VaspData
-    "The number of values that each of the variables can take to generate instances"
     id_index: VaspData
     "Index of the elements on each list of variables used to generate instances"
     chemical_potential: ElectronPhononChemicalPotential
@@ -339,8 +337,6 @@ class ElectronPhononTransport(mapping.Mapping):
 
     id_name: VaspData
     "The names of the variables that generate instances of the self-energy calculations"
-    id_size: VaspData
-    "The number of values that each of the variables can take to generate instances"
     id_index: VaspData
     "Index of the elements on each list of variables used to generate instances"
     chemical_potential: ElectronPhononChemicalPotential
