@@ -33,6 +33,8 @@ class Contour(trace.Trace):
     to by approximately this factor along each line."""
     _shift_label_pixels = 10
     "Shift the labels by this many pixels to avoid overlap."
+    _interpolation_method = "linear"
+    """Can be linear or cubic to determine interpolation behavior."""
 
     data: np.array
     """2d or 3d grid data in the plane spanned by the lattice vectors. If the data is
@@ -85,31 +87,6 @@ class Contour(trace.Trace):
     scale_arrows: float = None
     """Scale arrows by this factor when converting their length to Å. None means
     autoscale them so that the arrows do not overlap."""
-
-    _num_periodic_add: int = 0
-    """The number of additional periodic rows and columns (>= 0) of heatmap/contour cells added 
-    to the plot if and only if interpolation is required and traces_as_periodic is True. 
-    By default, traces_as_periodic will cause the first row and first column to be repeated 
-    to ensure a consistent visual presentation. 
-
-    _num_periodic_add can be used to repeat additional rows and columns, such that the sum
-    of repeats is 1+_num_periodic_add.
-    Periodicity will be enforced in the direction of lattice vectors first, then alternate.
-
-    Example:
-    _num_periodic_add = 2
-
-    ```
-    o4|o1o2o3o4|o1o2
-       --------
-    m4|m1m2m3m4|m1m2
-    n4|n1n2n3n4|n1n2
-    o4|o1o2o3o4|o1o2
-       --------
-    m4|m1m2m3m4|m1m2
-    n4|n1n2n3n4|n1n2
-    ```
-    """
 
     def to_plotly(self):
         lattice_supercell = np.diag(self.supercell) @ self.lattice.vectors
@@ -269,7 +246,8 @@ class Contour(trace.Trace):
         xmin, xmax = x_in.min(), x_in.max()
         ymin, ymax = y_in.min(), y_in.max()
 
-        periodic_expand = 1 + self._num_periodic_add
+        _num_periodic_add = min(data.shape) - 1
+        periodic_expand = 1 + _num_periodic_add
         line_mesh_a = self._make_mesh(
             lattice, data.shape[1], 0, periodic_expand=periodic_expand
         )
@@ -303,8 +281,54 @@ class Contour(trace.Trace):
             y_line_mesh,
         )
 
-        z_out = interpolate.griddata((x_in, y_in), z_in, (x_out, y_out), method="cubic")
+        z_out = interpolate.griddata(
+            (x_in, y_in), z_in, (x_out, y_out), method=self._interpolation_method
+        )
+        if self.traces_as_periodic:
+            z_out = self._mask_outside_supercell(x_out, y_out, z_out, lattice)
         return x_out[0], y_out[:, 0], z_out
+
+    def _mask_outside_supercell(self, x_out, y_out, z_out, lattice_supercell):
+        """Mask points that are outside the supercell area."""
+        # Convert Cartesian coordinates to lattice coordinates
+        # lattice_supercell has vectors as rows, so we need its inverse
+        lattice_inv = np.linalg.inv(lattice_supercell)
+
+        # For each point, get its position in lattice coordinates
+        points_cart = np.column_stack([x_out.flatten(), y_out.flatten()])
+        points_lattice = points_cart @ lattice_inv
+
+        # Calculate adaptive tolerance based on grid resolution
+        # Get the spacing between grid points in lattice coordinates
+        if x_out.shape[1] > 1 and x_out.shape[0] > 1:
+            # Calculate grid spacing in Cartesian coordinates
+            dx_cart = abs(x_out[0, 1] - x_out[0, 0])
+            dy_cart = abs(y_out[1, 0] - y_out[0, 0])
+
+            # Convert grid spacing to lattice coordinates
+            # A small displacement in Cartesian becomes this in lattice coordinates
+            dx_lattice = abs(np.array([dx_cart, 0]) @ lattice_inv).max()
+            dy_lattice = abs(np.array([0, dy_cart]) @ lattice_inv).max()
+
+            # Use half the largest grid spacing as tolerance
+            tolerance = 0.5 * max(dx_lattice, dy_lattice)
+        else:
+            # Fallback for edge cases
+            tolerance = 0.025
+
+        # Check if points are inside the unit cell with adaptive tolerance
+        inside_mask = (
+            (points_lattice[:, 0] >= -tolerance)
+            & (points_lattice[:, 0] <= 1 + tolerance)
+            & (points_lattice[:, 1] >= -tolerance)
+            & (points_lattice[:, 1] <= 1 + tolerance)
+        )
+
+        # Create masked output
+        z_out_masked = z_out.copy()
+        z_out_masked.flat[~inside_mask] = np.nan
+
+        return z_out_masked
 
     def _use_data_without_interpolation(self, lattice, data):
         x = self._make_mesh(lattice, data.shape[1], 0)
@@ -362,12 +386,16 @@ class Contour(trace.Trace):
         zmin, zmax = self._get_color_range(z)
         target_scheme = self.color_scheme
 
+        tolerance = 1e-12 * (zmax - zmin)
+
         if self.color_scheme == "auto":
-            if zmin < 0 and zmax > 0:
+            if zmin == zmax:
+                target_scheme = "default"
+            elif zmin < -tolerance and zmax > tolerance:
                 target_scheme = "diverging"
-            elif zmin >= 0:
+            elif zmin >= -tolerance:
                 target_scheme = "positive"
-            elif zmax <= 0:
+            elif zmax <= tolerance:
                 target_scheme = "negative"
             else:
                 target_scheme = "default"
@@ -400,17 +428,18 @@ class Contour(trace.Trace):
         }
 
     def _get_color_range(self, z: np.ndarray) -> tuple:
+        z_finite = z[np.isfinite(z)]
         if self.color_limits is None:
-            return (np.min(z), np.max(z))
+            return (np.min(z_finite), np.max(z_finite))
         else:
             assert len(self.color_limits) == 2
             zmin, zmax = self.color_limits
             if zmin is None and zmax is not None:
-                return (np.min(z), zmax)
+                return (np.min(z_finite), zmax)
             elif zmin is not None and zmax is None:
-                return (zmin, np.max(z))
+                return (zmin, np.max(z_finite))
             elif zmin is None and zmax is None:
-                return (np.min(z), np.max(z))
+                return (np.min(z_finite), np.max(z_finite))
             else:
                 return (zmin, zmax)
 
