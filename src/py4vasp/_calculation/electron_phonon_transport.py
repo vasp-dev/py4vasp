@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from collections import abc
+
 import numpy as np
 
 from py4vasp._calculation import base
@@ -173,7 +175,7 @@ class ElectronPhononTransportInstance(ElectronPhononInstance):
         return dict(zip(self.id_name, self.id_index - 1))
 
 
-class ElectronPhononTransport(base.Refinery, graph.Mixin):
+class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
     """
     Provides access to electron-phonon transport data and selection utilities.
     This class serves as an interface to electron-phonon transport calculations,
@@ -278,67 +280,13 @@ class ElectronPhononTransport(base.Refinery, graph.Mixin):
             label = f"{quantity}(T={temperature})"
             series.append(graph.Series(x, y, label))
         return graph.Graph(series)
-        if selection == "":
-            return None
-        tree = select.Tree.from_selection(selection)
-        series = []
-        for selection in tree.selections():
-            ydata = []
-            for idx in range(len(self)):
-                instance = self[idx]
-                y = instance._get_ydata_at_temperature(selection, temperature)
-                ydata.append(y)
-            series.append(
-                graph.Series(
-                    mu_val, ydata, label=f"{selection[0]} {''.join(selection[1:])}"
-                )
-            )
-        return graph.Graph(
-            series,
-            xlabel=mu_tag,
-            ylabel=selection[0],
-        )
-
-    @base.data_access
-    def id_name(self):
-        return self._raw_data.id_name[:]
-
-    @base.data_access
-    def id_size(self):
-        return self._raw_data.id_size[:]
 
     @base.data_access
     def __getitem__(self, key):
-        return ElectronPhononTransportInstance(self, key)
-
-    def __iter__(self):
-        for i in range(len(self)):
-            yield self[i]
-
-    # @base.data_access
-    # def _get_scalar(self, name, index):
-    #     return getattr(self._raw_data, name)[index][()]
+        if 0 <= key < len(self._raw_data.valid_indices):
+            return ElectronPhononTransportInstance(self, key)
+        raise IndexError("Index out of range for electron-phonon transport instance.")
 
     @base.data_access
     def __len__(self):
         return len(self._raw_data.valid_indices)
-
-    @base.data_access
-    def valid_delta(self):
-        return {self._get_scalar("delta", index) for index in range(len(self))}
-
-    @base.data_access
-    def valid_nbands_sum(self):
-        return {self._get_scalar("nbands_sum", index) for index in range(len(self))}
-
-    @base.data_access
-    def valid_scattering_approximation(self):
-        return {
-            self._get_data("scattering_approximation", index)
-            for index in range(len(self))
-        }
-
-    def _generate_selections(self, selection):
-        tree = select.Tree.from_selection(selection)
-        for selection in tree.selections():
-            yield selection

@@ -218,7 +218,7 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
     def __getitem__(self, key):
         if 0 <= key < len(self._raw_data.valid_indices):
             return ElectronPhononSelfEnergyInstance(self, key)
-        raise IndexError("Index out of range for electron phonon self energy instance.")
+        raise IndexError("Index out of range for electron-phonon self energy instance.")
 
     @base.data_access
     def __len__(self):
