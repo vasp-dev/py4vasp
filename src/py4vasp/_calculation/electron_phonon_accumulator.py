@@ -17,15 +17,14 @@ ALIAS = {
 class ElectronPhononAccumulator:
     "Helper class to create instances of electron phonon calculations"
 
-    def __init__(self, accumulator, raw_data):
-        self._accumulator = accumulator
+    def __init__(self, parent, raw_data):
+        self._parent = parent
         self._raw_data = raw_data
-        self._name = convert.quantity_name(accumulator.__class__.__name__)
+        self._name = convert.quantity_name(parent.__class__.__name__)
 
     def __str__(self):
-        num_instances = len(self._accumulator)
-        selection_options = self._accumulator.selections()
-        selection_options.pop(self._name, None)
+        num_instances = len(self._parent)
+        selection_options = self.selections()
         options_str = "\n".join(
             f"    {key}: {value}" for key, value in selection_options.items()
         )
@@ -34,9 +33,9 @@ class ElectronPhononAccumulator:
         return f"{name} with {num_instances} instance(s):\n{options_str}"
 
     def to_dict(self):
-        return {"naccumulators": len(self._accumulator)}
+        return {"naccumulators": len(self._parent)}
 
-    def selections(self, base_selections):
+    def selections(self, base_selections={}):
         mu_tag, mu_val = self.chemical_potential_mu_tag()
         return {
             **base_selections,
@@ -52,12 +51,12 @@ class ElectronPhononAccumulator:
         )
         return chemical_potential.mu_tag()
 
-    def select_indices(self, selection, **filters):
+    def select_indices(self, selection, *args_filters, **kwargs_filters):
         tree = select.Tree.from_selection(selection)
         return {
             index_
-            for selection in tree.selections()
-            for index_ in self._filter_indices(selection, filters)
+            for selection in tree.selections(filter=set(args_filters))
+            for index_ in self._filter_indices(selection, kwargs_filters)
         }
 
     def _filter_indices(self, selection, filters):
@@ -102,7 +101,7 @@ The selection {group} is not formatted correctly. It should be formatted like \
 
     def _raise_error_if_not_present(self, name, expected_name):
         if name != expected_name:
-            valid_names = set(self._accumulator.selections().keys())
+            valid_names = set(self._parent.selections().keys())
             valid_names.remove(self._name)
             did_you_mean = suggest.did_you_mean(name, valid_names)
             available_selections = '", "'.join(valid_names)

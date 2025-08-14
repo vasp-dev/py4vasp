@@ -135,7 +135,7 @@ class ElectronPhononTransportInstance(ElectronPhononInstance):
         return dict(zip(self.id_name, self.id_index - 1))
 
 
-class ElectronPhononTransport(base.Refinery):
+class ElectronPhononTransport(base.Refinery, graph.Mixin):
     """
     Provides access to electron-phonon transport data and selection utilities.
     This class serves as an interface to electron-phonon transport calculations,
@@ -173,8 +173,28 @@ class ElectronPhononTransport(base.Refinery):
             Dictionary containing available selection options with their possible values.
             Keys include selection criteria like "nbands_sum", "selfen_approx", "selfen_delta".
         """
-        base_selections = super().selections()
+        base_selections = {
+            **super().selections(),
+            "transport": list(self.units.keys()),
+        }
         return self._accumulator().selections(base_selections)
+
+    @property
+    def units(self):
+        return {
+            "electronic_conductivity": "S/m",
+            "mobility": "cm^2/(V.s)",
+            "seebeck": "μV/K",
+            "peltier": "μV",
+            "electronic_thermal_conductivity": "W/(m.K)",
+        }
+
+    @base.data_access
+    def chemical_potential_mu_tag(self):
+        chemical_potential = ElectronPhononChemicalPotential.from_data(
+            self._raw_data.chemical_potential
+        )
+        return chemical_potential.mu_tag()
 
     @base.data_access
     def select(self, selection):
@@ -191,12 +211,43 @@ class ElectronPhononTransport(base.Refinery):
         list of ElectronPhononSelfEnergyInstance
             Instances that match the selection criteria.
         """
-        indices = self._accumulator().select_indices(selection)
+        indices = self._accumulator().select_indices(selection, *self.units.keys())
         return [ElectronPhononTransportInstance(self, index) for index in indices]
 
     @base.data_access
     def _get_data(self, name, index):
         return self._accumulator().get_data(name, index)
+
+    @base.data_access
+    def to_graph(self, selection):
+        """
+        Plot a particular transport coefficient as a function of the chemical potential tag
+        for a particular temperature.
+        """
+        mu_tag, mu_val = self.chemical_potential_mu_tag()
+        indices = self.select(selection)
+        print(indices)
+        return graph.Graph(series)
+        if selection == "":
+            return None
+        tree = select.Tree.from_selection(selection)
+        series = []
+        for selection in tree.selections():
+            ydata = []
+            for idx in range(len(self)):
+                instance = self[idx]
+                y = instance._get_ydata_at_temperature(selection, temperature)
+                ydata.append(y)
+            series.append(
+                graph.Series(
+                    mu_val, ydata, label=f"{selection[0]} {''.join(selection[1:])}"
+                )
+            )
+        return graph.Graph(
+            series,
+            xlabel=mu_tag,
+            ylabel=selection[0],
+        )
 
     @base.data_access
     def id_name(self):
@@ -241,38 +292,3 @@ class ElectronPhononTransport(base.Refinery):
         tree = select.Tree.from_selection(selection)
         for selection in tree.selections():
             yield selection
-
-    @base.data_access
-    def chemical_potential_mu_tag(self):
-        chemical_potential = ElectronPhononChemicalPotential.from_data(
-            self._raw_data.chemical_potential
-        )
-        return chemical_potential.mu_tag()
-
-    @base.data_access
-    def to_graph_carrier(self, selection, temperature):
-        """
-        Plot a particular transport coefficient as a function of the chemical potential tag
-        for a particular temperature.
-        """
-        mu_tag, mu_val = self.chemical_potential_mu_tag()
-        if selection == "":
-            return None
-        tree = select.Tree.from_selection(selection)
-        series = []
-        for selection in tree.selections():
-            ydata = []
-            for idx in range(len(self)):
-                instance = self[idx]
-                y = instance._get_ydata_at_temperature(selection, temperature)
-                ydata.append(y)
-            series.append(
-                graph.Series(
-                    mu_val, ydata, label=f"{selection[0]} {''.join(selection[1:])}"
-                )
-            )
-        return graph.Graph(
-            series,
-            xlabel=mu_tag,
-            ylabel=selection[0],
-        )

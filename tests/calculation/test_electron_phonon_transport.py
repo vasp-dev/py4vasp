@@ -131,6 +131,8 @@ def test_selections(raw_transport, chemical_potential, Assert):
     transport = ElectronPhononTransport.from_data(raw_transport)
     selections = transport.selections()
     selections.pop("electron_phonon_transport")
+    transport_quantities = selections.pop("transport")
+    assert set(transport_quantities) == transport.units.keys()
     expected = selections.pop(f"selfen_{chemical_potential.ref.param}")
     Assert.allclose(expected, np.unique(chemical_potential.ref.expected_data))
     expected_keys = {"nbands_sum", "scattering_approx", "selfen_delta"}
@@ -193,6 +195,26 @@ def test_incorrect_selection(transport, selection):
         transport.select(selection)
 
 
+@pytest.mark.skip
+@pytest.mark.parametrize(
+    "selection",
+    (
+        "transport_function",
+        "electronic_conductivity",
+        "mobility",
+        "seebeck",
+        "peltier",
+        "electronic_thermal_conductivity",
+    ),
+)
+def test_plot_mapping(transport, selection, not_core):
+    graph = transport.plot(selection)
+    temperatures = transport.ref.temperatures[0]
+    assert len(graph) == len(temperatures)
+    for temperature, series in zip(temperatures, graph):
+        assert series.label == f"{selection}(T={temperature})"
+
+
 def test_print_mapping(transport, format_):
     actual, _ = format_(transport)
     assert re.search(transport.ref.mapping_pattern, str(transport), re.MULTILINE)
@@ -203,7 +225,6 @@ def test_print_instance(transport, format_):
     instance = transport[0]
     actual, _ = format_(instance)
     # Check if the actual output matches the expected pattern
-    print(str(instance))
     assert re.search(transport.ref.instance_pattern, str(instance), re.MULTILINE)
     assert actual == {"text/plain": str(instance)}
 
