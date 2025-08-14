@@ -43,12 +43,9 @@ def test_indexing_and_iteration(transport):
     assert isinstance(transport[0], ElectronPhononTransportInstance)
 
 
-@pytest.mark.skip
-def test_to_dict_keys(transport):
+def test_read_mapping(transport):
     # Check that to_dict returns expected keys
-    d = transport.to_dict()
-    assert "naccumulators" in d
-    assert d["naccumulators"] == len(transport)
+    assert transport.read() == {"naccumulators": len(transport)}
 
 
 @pytest.mark.skip
