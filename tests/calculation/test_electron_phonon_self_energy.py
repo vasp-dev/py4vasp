@@ -64,7 +64,7 @@ def _make_reference_pattern(raw_self_energy=None):
     selfen_delta: \[.*\]
     scattering_approx: \[.*\]"""
     else:
-        return r"""Electron self-energy instance 1:
+        return r"""Electron-phonon self-energy instance 1:
     selfen_carrier_den: .*
     nbands_sum: .*
     selfen_delta: .*

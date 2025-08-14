@@ -35,23 +35,7 @@ class ElectronPhononSelfEnergyInstance(ElectronPhononInstance):
             String representation including chemical potential and number of bands
             included in the sum.
         """
-        return "\n".join(self._generate_lines())
-
-    def _generate_lines(self):
-        yield f"Electron self-energy instance {self.index + 1}:"
-        indent = 4 * " "
-        # Information about the chemical potential
-        mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
-        yield f"{indent}{mu_tag}: {mu_val[self._get_data('id_index')[2] - 1]}"
-        # Information about the number of bands summed over
-        nbands_sum = self._get_data("nbands_sum")
-        yield f"{indent}nbands_sum: {nbands_sum}"
-        # Information about the broadening parameter
-        delta = self._get_data("delta")
-        yield f"{indent}selfen_delta: {delta}"
-        # Information about the scattering approximation
-        scattering_approx = self._get_data("scattering_approximation")
-        yield f"{indent}scattering_approx: {scattering_approx}"
+        return f"Electron-phonon self-energy instance {self.index + 1}:\n{self._metadata_string()}"
 
     def to_dict(self):
         """

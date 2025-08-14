@@ -34,22 +34,7 @@ class ElectronPhononTransportInstance(ElectronPhononInstance):
         Returns a string representation of the transport instance, including chemical
         potential and scattering approximation information.
         """
-        lines = []
-        lines.append(f"Transport calculator N =  {self.index + 1}")
-        lines.append("----------------------------------")
-        # Information about the chemical potential
-        mu_tag, mu_val = self.get_mu_tag()
-        lines.append(f"{mu_tag}: {mu_val}")
-        # Information about the scattering approximation
-        scattering_approx = self._get_data("scattering_approximation")
-        lines.append(f"scattering_approximation: {scattering_approx}")
-        # Information about the broadening parameter
-        delta = self._get_scalar("delta")
-        lines.append(f"delta: {delta}")
-        # Information about the number of bands summed over
-        nbands_sumdelta = self._get_scalar("nbands_sum")
-        lines.append(f"nbands_sum: {delta}")
-        return "\n".join(lines) + "\n"
+        return f"Electron-phonon transport instance {self.index + 1}:\n{self._metadata_string()}"
 
     def to_dict(self):
         """Returns a dictionary with selected transport properties for this instance."""
@@ -210,6 +195,10 @@ class ElectronPhononTransport(base.Refinery):
         return [ElectronPhononTransportInstance(self, index) for index in indices]
 
     @base.data_access
+    def _get_data(self, name, index):
+        return self._accumulator().get_data(name, index)
+
+    @base.data_access
     def id_name(self):
         return self._raw_data.id_name[:]
 
@@ -224,10 +213,6 @@ class ElectronPhononTransport(base.Refinery):
     def __iter__(self):
         for i in range(len(self)):
             yield self[i]
-
-    @base.data_access
-    def _get_data(self, name, index):
-        return self._accumulator().get_data(name, index)
 
     # @base.data_access
     # def _get_scalar(self, name, index):

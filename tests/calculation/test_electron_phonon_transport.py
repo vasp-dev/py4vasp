@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import random
+import re
 import types
 
 import numpy as np
@@ -35,6 +36,8 @@ def transport(raw_transport):
     transport.ref.selfen_delta = raw_transport.delta
     transport.ref.selfen_carrier_den = _make_reference_carrier_den(raw_transport)
     transport.ref.scattering_approx = raw_transport.scattering_approximation
+    transport.ref.mapping_pattern = _make_reference_pattern()
+    transport.ref.instance_pattern = _make_reference_pattern(raw_transport)
     return transport
 
 
@@ -51,6 +54,21 @@ def _make_reference_carrier_den(raw_transport):
     chemical_potential = raw_transport.chemical_potential
     indices = raw_transport.id_index[:, 2] - 1
     return np.array([chemical_potential.carrier_den[index_] for index_ in indices])
+
+
+def _make_reference_pattern(raw_transport=None):
+    if raw_transport is None:
+        return r"""Electron-phonon transport with 5 instance\(s\):
+    selfen_carrier_den: \[.*\]
+    nbands_sum: \[.*\]
+    selfen_delta: \[.*\]
+    scattering_approx: \[.*\]"""
+    else:
+        return r"""Electron-phonon transport instance 1:
+    selfen_carrier_den: .*
+    nbands_sum: .*
+    selfen_delta: .*
+    scattering_approx: .*"""
 
 
 def test_len(transport):
@@ -175,10 +193,19 @@ def test_incorrect_selection(transport, selection):
         transport.select(selection)
 
 
-@pytest.mark.skip
-def test_print(transport, format_):
+def test_print_mapping(transport, format_):
     actual, _ = format_(transport)
-    assert actual["text/plain"] == "electron phonon transport"
+    assert re.search(transport.ref.mapping_pattern, str(transport), re.MULTILINE)
+    assert actual == {"text/plain": str(transport)}
+
+
+def test_print_instance(transport, format_):
+    instance = transport[0]
+    actual, _ = format_(instance)
+    # Check if the actual output matches the expected pattern
+    print(str(instance))
+    assert re.search(transport.ref.instance_pattern, str(instance), re.MULTILINE)
+    assert actual == {"text/plain": str(instance)}
 
 
 @pytest.mark.skip

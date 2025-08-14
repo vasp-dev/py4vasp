@@ -30,11 +30,15 @@ class ElectronPhononInstance(abc.ABC):
     def _read_metadata(self):
         mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
         return {
+            mu_tag: mu_val[self._get_data("id_index")[2] - 1],
             "nbands_sum": self._get_data("nbands_sum"),
             "selfen_delta": self._get_data("delta"),
             "scattering_approx": self._get_data("scattering_approximation"),
-            mu_tag: mu_val[self._get_data("id_index")[2] - 1],
         }
+
+    def _metadata_string(self):
+        metadata = self._read_metadata()
+        return "\n".join([f"    {key}: {value}" for key, value in metadata.items()])
 
     def read(self):
         "Convenient wrapper around to_dict. Check that function for examples and optional arguments."
