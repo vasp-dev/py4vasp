@@ -195,11 +195,9 @@ def test_incorrect_selection(transport, selection):
         transport.select(selection)
 
 
-@pytest.mark.skip
 @pytest.mark.parametrize(
     "selection",
     (
-        "transport_function",
         "electronic_conductivity",
         "mobility",
         "seebeck",
@@ -207,11 +205,14 @@ def test_incorrect_selection(transport, selection):
         "electronic_thermal_conductivity",
     ),
 )
-def test_plot_mapping(transport, selection, not_core):
+def test_plot_mapping(transport, selection, not_core, Assert):
     graph = transport.plot(selection)
     temperatures = transport.ref.temperatures[0]
     assert len(graph) == len(temperatures)
-    for temperature, series in zip(temperatures, graph):
+    data = np.trace(getattr(transport.ref, selection), axis1=2, axis2=3) / 3
+    for temperature, series, expected_y in zip(temperatures, graph, data.T):
+        Assert.allclose(series.x, transport.ref.selfen_carrier_den)
+        Assert.allclose(series.y, expected_y)
         assert series.label == f"{selection}(T={temperature})"
 
 

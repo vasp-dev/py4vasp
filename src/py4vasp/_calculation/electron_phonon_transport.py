@@ -13,6 +13,17 @@ from py4vasp._util import import_, index, select
 
 pd = import_.optional("pandas")
 
+DIRECTIONS = {
+    None: [0, 4, 8],
+    "isotropic": [0, 4, 8],
+    "xx": 0,
+    "yy": 4,
+    "zz": 8,
+    "xy": [1, 3],
+    "xz": [2, 6],
+    "yz": [5, 7],
+}
+
 
 class ElectronPhononTransportInstance(ElectronPhononInstance):
     """
@@ -50,6 +61,33 @@ class ElectronPhononTransportInstance(ElectronPhononInstance):
         result = {name: self._get_data(name) for name in names}
         result["metadata"] = self._read_metadata()
         return result
+
+    def temperatures(self):
+        return self._get_data("temperatures")
+
+    def electronic_conductivity(self, selection=""):
+        return self._select_data("electronic_conductivity", selection)
+
+    def mobility(self, selection=""):
+        return self._select_data("mobility", selection)
+
+    def seebeck(self, selection=""):
+        return self._select_data("seebeck", selection)
+
+    def peltier(self, selection=""):
+        return self._select_data("peltier", selection)
+
+    def electronic_thermal_conductivity(self, selection=""):
+        return self._select_data("electronic_thermal_conductivity", selection)
+
+    def _select_data(self, quantity, selection):
+        tree = select.Tree.from_selection(selection)
+        selections = list(tree.selections())
+        assert len(selections) == 1
+        maps = {1: DIRECTIONS}
+        data = self._get_data(quantity).reshape(-1, 9)
+        selector = index.Selector(maps, data, reduction=np.average)
+        return selector[selections[0]]
 
     def selections(self):
         """Returns the available property names that can be selected for this instance."""
@@ -225,8 +263,20 @@ class ElectronPhononTransport(base.Refinery, graph.Mixin):
         for a particular temperature.
         """
         mu_tag, mu_val = self.chemical_potential_mu_tag()
-        indices = self.select(selection)
-        print(indices)
+        quantity = selection
+        instances = self.select(selection)
+        assert len(instances) > 0
+        temperatures = instances[0].temperatures()
+        x = np.zeros(len(instances))
+        ys = np.zeros((len(temperatures), len(instances)))
+        for index_, instance in enumerate(instances):
+            assert np.allclose(temperatures, instance.temperatures())
+            x[index_] = instance._read_metadata()[mu_tag]
+            ys[:, index_] = getattr(instance, quantity)()
+        series = []
+        for temperature, y in zip(temperatures, ys):
+            label = f"{quantity}(T={temperature})"
+            series.append(graph.Series(x, y, label))
         return graph.Graph(series)
         if selection == "":
             return None
