@@ -9,6 +9,7 @@ import pytest
 
 from py4vasp import calculation, exception
 from py4vasp._calculation.electron_phonon_transport import (
+    DIRECTIONS,
     ElectronPhononTransport,
     ElectronPhononTransportInstance,
 )
@@ -214,6 +215,23 @@ def test_plot_mapping(transport, selection, not_core, Assert):
         Assert.allclose(series.x, transport.ref.selfen_carrier_den)
         Assert.allclose(series.y, expected_y)
         assert series.label == f"{selection}(T={temperature})"
+
+
+@pytest.mark.parametrize("direction, expected", DIRECTIONS.items())
+def test_plot_mapping_with_direction(transport, direction, expected, not_core, Assert):
+    raw_data = transport.ref.mobility
+    new_shape = *raw_data.shape[:2], 9
+    flattened_data = np.reshape(raw_data, new_shape)
+    expected_data = np.average(flattened_data[:, :, np.atleast_1d(expected)], axis=-1).T
+    selection = "mobility" if direction is None else f"mobility({direction})"
+    graph = transport.plot(selection)
+    temperatures = transport.ref.temperatures[0]
+    assert len(graph) == len(temperatures)
+    for temperature, series, expected_y in zip(temperatures, graph, expected_data):
+        Assert.allclose(series.x, transport.ref.selfen_carrier_den)
+        Assert.allclose(series.y, expected_y)
+        suffix = "" if direction in (None, "isotropic") else f"_{direction}"
+        assert series.label == f"mobility{suffix}(T={temperature})"
 
 
 def test_print_mapping(transport, format_):

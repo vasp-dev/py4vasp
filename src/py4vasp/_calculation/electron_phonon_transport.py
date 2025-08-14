@@ -251,7 +251,10 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         list of ElectronPhononSelfEnergyInstance
             Instances that match the selection criteria.
         """
-        indices = self._accumulator().select_indices(selection, *self.units.keys())
+        return self._select(selection)
+
+    def _select(self, selection, *filter_selections):
+        indices = self._accumulator().select_indices(selection, *filter_selections)
         return [ElectronPhononTransportInstance(self, index) for index in indices]
 
     @base.data_access
@@ -264,9 +267,17 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         Plot a particular transport coefficient as a function of the chemical potential tag
         for a particular temperature.
         """
-        mu_tag, mu_val = self.chemical_potential_mu_tag()
-        quantity = selection
-        instances = self.select(selection)
+        mu_tag, _ = self.chemical_potential_mu_tag()
+        tree = select.Tree.from_selection(selection)
+        directions_keys = DIRECTIONS.keys() - {None}
+        quantities = list(tree.selections(filter=directions_keys))
+        assert len(quantities) == 1
+        quantity = select.selections_to_string(quantities)
+        directions = list(tree.selections(filter=self.units.keys()))
+        assert len(directions) == 1
+        direction = select.selections_to_string(directions)
+        filter_selections = self.units.keys() | directions_keys
+        instances = self._select(selection, *filter_selections)
         assert len(instances) > 0
         temperatures = instances[0].temperatures()
         x = np.zeros(len(instances))
@@ -274,10 +285,13 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         for index_, instance in enumerate(instances):
             assert np.allclose(temperatures, instance.temperatures())
             x[index_] = instance._read_metadata()[mu_tag]
-            ys[:, index_] = getattr(instance, quantity)()
+            ys[:, index_] = getattr(instance, quantity)(selection=direction)
         series = []
         for temperature, y in zip(temperatures, ys):
-            label = f"{quantity}(T={temperature})"
+            if not direction or direction == "isotropic":
+                label = f"{quantity}(T={temperature})"
+            else:
+                label = f"{quantity}_{direction}(T={temperature})"
             series.append(graph.Series(x, y, label))
         return graph.Graph(series)
 
