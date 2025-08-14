@@ -774,7 +774,7 @@ def test_contour_interpolate(tilted_contour, Assert, not_core):
     fig, expected_data = check_basic_tilted_contour(
         tilted_contour, False, Assert, not_core, expected_lengths=[6, 9]
     )
-    check_colorscale(fig, expected_data, True, Assert, not_core)
+    check_colorscale(fig, expected_data, False, Assert, not_core)
 
 
 # @pytest.mark.xfail
@@ -782,7 +782,7 @@ def test_contour_interpolate_with_periodic_traces(tilted_contour, Assert, not_co
     fig, expected_data = check_basic_tilted_contour(
         tilted_contour, True, Assert, not_core
     )
-    check_colorscale(fig, expected_data, True, Assert, not_core)
+    check_colorscale(fig, expected_data, False, Assert, not_core)
 
 
 def test_contour_interpolate_with_periodic_function(
@@ -800,7 +800,7 @@ def test_contour_interpolate_with_periodic_function_and_traces(
     fig, expected_data = check_basic_tilted_contour(
         tilted_contour_with_sin_cos, True, Assert, not_core
     )
-    check_colorscale(fig, expected_data, True, Assert, not_core)
+    check_colorscale(fig, expected_data, False, Assert, not_core)
 
 
 def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
