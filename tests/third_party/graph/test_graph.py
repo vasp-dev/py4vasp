@@ -711,16 +711,13 @@ def test_contour_interpolate(tilted_contour, Assert, not_core):
     assert fig.data[0].y.size == expected_shape[1]
     finite = np.isfinite(fig.data[0].z)
     assert np.isclose(np.average(fig.data[0].z[finite]), expected_average)
+    assert np.any(finite)
     assert len(fig.layout.shapes) == 0
-    expected_colorscale = [
-        [0, _config.VASP_COLORS["blue"]],
-        [0.5, "white"],
-        [1, _config.VASP_COLORS["red"]],
-    ]
+    # This colorscheme will be diverging due to interpolation
+    expected_colorscale = px.colors.sequential.RdBu_r
     assert len(fig.data[0].colorscale) == len(expected_colorscale)
     for actual, expected in zip(fig.data[0].colorscale, expected_colorscale):
-        Assert.allclose(actual[0], expected[0])
-        assert actual[1] == expected[1]
+        assert actual[1] == expected
     check_annotations(tilted_contour.lattice, fig.layout.annotations, Assert)
 
 
@@ -735,26 +732,17 @@ def test_contour_interpolate_with_periodic_traces(tilted_contour, Assert, not_co
     x_indices = np.arange(0, xdim + 1) % xdim
     y_indices = np.arange(0, ydim + 1) % ydim
     expected_data = tilted_contour.data[np.ix_(x_indices, y_indices)]
-    print(
-        expected_data.shape,
-        fig.data[0].z.T.shape,
-        tilted_contour.data.shape,
-    )
     expected_average = np.average(expected_data.data)
     assert len(fig.data) == 1
     # plotly expects y-x order
     finite = np.isfinite(fig.data[0].z)
+    assert np.any(finite)
     assert np.isclose(np.average(fig.data[0].z[finite]), expected_average, rtol=0.1)
     assert len(fig.layout.shapes) == 0
-    expected_colorscale = [
-        [0, _config.VASP_COLORS["blue"]],
-        [0.5, "white"],
-        [1, _config.VASP_COLORS["red"]],
-    ]
+    expected_colorscale = px.colors.sequential.Reds
     assert len(fig.data[0].colorscale) == len(expected_colorscale)
     for actual, expected in zip(fig.data[0].colorscale, expected_colorscale):
-        Assert.allclose(actual[0], expected[0])
-        assert actual[1] == expected[1]
+        assert actual[1] == expected
     check_annotations(tilted_contour.lattice, fig.layout.annotations, Assert)
 
 

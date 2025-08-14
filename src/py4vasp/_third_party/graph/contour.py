@@ -470,17 +470,18 @@ class Contour(trace.Trace):
         }
 
     def _get_color_range(self, z: np.ndarray) -> tuple:
+        z_finite = z[np.isfinite(z)]
         if self.color_limits is None:
-            return (np.min(z), np.max(z))
+            return (np.min(z_finite), np.max(z_finite))
         else:
             assert len(self.color_limits) == 2
             zmin, zmax = self.color_limits
             if zmin is None and zmax is not None:
-                return (np.min(z), zmax)
+                return (np.min(z_finite), zmax)
             elif zmin is not None and zmax is None:
-                return (zmin, np.max(z))
+                return (zmin, np.max(z_finite))
             elif zmin is None and zmax is None:
-                return (np.min(z), np.max(z))
+                return (np.min(z_finite), np.max(z_finite))
             else:
                 return (zmin, zmax)
 
