@@ -33,7 +33,7 @@ class Contour(trace.Trace):
     to by approximately this factor along each line."""
     _shift_label_pixels = 10
     "Shift the labels by this many pixels to avoid overlap."
-    _interpolation_method = "cubic"
+    _interpolation_method = "linear"
     """Can be linear or cubic to determine interpolation behavior."""
 
     data: np.array
