@@ -33,8 +33,8 @@ class Contour(trace.Trace):
     to by approximately this factor along each line."""
     _shift_label_pixels = 10
     "Shift the labels by this many pixels to avoid overlap."
-    _interpolation_method = "linear"
-    """Linear interpolation linearly interpolates between adjacent cell values."""
+    _interpolation_method = "cubic"
+    """Can be linear or cubic to determine interpolation behavior."""
 
     data: np.array
     """2d or 3d grid data in the plane spanned by the lattice vectors. If the data is
@@ -246,7 +246,7 @@ class Contour(trace.Trace):
         xmin, xmax = x_in.min(), x_in.max()
         ymin, ymax = y_in.min(), y_in.max()
 
-        _num_periodic_add = max(data.shape) - 1
+        _num_periodic_add = min(data.shape) - 1
         periodic_expand = 1 + _num_periodic_add
         line_mesh_a = self._make_mesh(
             lattice, data.shape[1], 0, periodic_expand=periodic_expand
@@ -389,7 +389,9 @@ class Contour(trace.Trace):
         tolerance = 1e-12 * (zmax - zmin)
 
         if self.color_scheme == "auto":
-            if zmin < -tolerance and zmax > tolerance:
+            if zmin == zmax:
+                target_scheme = "default"
+            elif zmin < -tolerance and zmax > tolerance:
                 target_scheme = "diverging"
             elif zmin >= -tolerance:
                 target_scheme = "positive"
