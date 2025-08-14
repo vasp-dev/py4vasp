@@ -33,6 +33,8 @@ class Contour(trace.Trace):
     to by approximately this factor along each line."""
     _shift_label_pixels = 10
     "Shift the labels by this many pixels to avoid overlap."
+    _interpolation_method = "linear"
+    """Linear interpolation linearly interpolates between adjacent cell values."""
 
     data: np.array
     """2d or 3d grid data in the plane spanned by the lattice vectors. If the data is
@@ -235,104 +237,56 @@ class Contour(trace.Trace):
         points_per_line = np.sqrt(points_per_area) * self._interpolation_factor
         lengths = np.sum(np.abs(lattice), axis=0)
         shape = np.ceil(points_per_line * lengths).astype(int)
+        # obtain min and max for final grid
+        line_mesh_a = self._make_mesh(lattice, data.shape[1], 0, periodic_expand=1)
+        line_mesh_b = self._make_mesh(lattice, data.shape[0], 1, periodic_expand=1)
+        x_in, y_in = (line_mesh_a[:, np.newaxis] + line_mesh_b[np.newaxis, :]).T
+        x_in = x_in.flatten()
+        y_in = y_in.flatten()
+        xmin, xmax = x_in.min(), x_in.max()
+        ymin, ymax = y_in.min(), y_in.max()
 
-        # Handle non-periodic case (original logic)
-        if not self.traces_as_periodic:
-            line_mesh_a = self._make_mesh(lattice, data.shape[1], 0)
-            line_mesh_b = self._make_mesh(lattice, data.shape[0], 1)
-            x_in, y_in = (line_mesh_a[:, np.newaxis] + line_mesh_b[np.newaxis, :]).T
-            x_in = x_in.flatten()
-            y_in = y_in.flatten()
-            z_in = data.flatten()
-
-            x_out, y_out = np.meshgrid(
-                np.linspace(x_in.min(), x_in.max(), shape[0]),
-                np.linspace(y_in.min(), y_in.max(), shape[1]),
-            )
-            z_out = interpolate.griddata(
-                (x_in, y_in), z_in, (x_out, y_out), method="cubic"
-            )
-            return x_out[0], y_out[:, 0], z_out
-
-        # Handle periodic case with smart canvas sizing
-        # Find the bounding box of the supercell
-        supercell_corners = np.array(
-            [
-                [0, 0],  # origin
-                lattice[0],  # end of first vector
-                lattice[1],  # end of second vector
-                lattice[0] + lattice[1],  # opposite corner
-            ]
-        )
-
-        # Get the bounding box that covers the entire supercell
-        xmin_target = supercell_corners[:, 0].min()
-        xmax_target = supercell_corners[:, 0].max()
-        ymin_target = supercell_corners[:, 1].min()
-        ymax_target = supercell_corners[:, 1].max()
-
-        # For interpolation padding, add a small margin around the target area
-        # Just enough for good interpolation near the boundaries
-        target_width = xmax_target - xmin_target
-        target_height = ymax_target - ymin_target
-
-        # Use 5% padding relative to the supercell size
-        x_padding = target_width * 0.05
-        y_padding = target_height * 0.05
-
-        xmin_canvas = xmin_target - x_padding
-        xmax_canvas = xmax_target + x_padding
-        ymin_canvas = ymin_target - y_padding
-        ymax_canvas = ymax_target + y_padding
-
-        # Estimate how many primitive cells we need to extend to cover the canvas
-        # The supercell itself requires supercell[0] * supercell[1] primitive cells
-        # We need to cover a slightly larger area, so add some margin
-        max_supercell_dim = max(self.supercell)
-        periodic_extend = max_supercell_dim + 10  # Add 1 for padding margin
-
-        # Create the extended input mesh
+        _num_periodic_add = max(data.shape) - 1
+        periodic_expand = 1 + _num_periodic_add
         line_mesh_a = self._make_mesh(
-            lattice, data.shape[1], 0, periodic_expand=periodic_extend
+            lattice, data.shape[1], 0, periodic_expand=periodic_expand
         )
         line_mesh_b = self._make_mesh(
-            lattice, data.shape[0], 1, periodic_expand=periodic_extend
+            lattice, data.shape[0], 1, periodic_expand=periodic_expand
         )
         x_in, y_in = (line_mesh_a[:, np.newaxis] + line_mesh_b[np.newaxis, :]).T
         x_in = x_in.flatten()
         y_in = y_in.flatten()
         z_in = (
-            self._extend_data_contour(data, periodic_expand=periodic_extend).flatten()
+            self._extend_data_contour(data, periodic_expand=periodic_expand).flatten()
             if (self.traces_as_periodic)
             else data.flatten()
         )
 
-        # Create output grid that covers the canvas area
+        # make sure the actual grid aligns with shifts
         x_line_mesh = np.linspace(
-            xmin_canvas,
-            xmax_canvas,
-            int(shape[0] * (xmax_canvas - xmin_canvas) / (xmax_target - xmin_target))
-            + (1 if self.traces_as_periodic else 0),
+            xmin,
+            xmax,
+            shape[0] + (1 if self.traces_as_periodic else 0),
             endpoint=self.traces_as_periodic,
         )
         y_line_mesh = np.linspace(
-            ymin_canvas,
-            ymax_canvas,
-            int(shape[1] * (ymax_canvas - ymin_canvas) / (ymax_target - ymin_target))
-            + (1 if self.traces_as_periodic else 0),
+            ymin,
+            ymax,
+            shape[1] + (1 if self.traces_as_periodic else 0),
             endpoint=self.traces_as_periodic,
         )
-        x_out, y_out = np.meshgrid(x_line_mesh, y_line_mesh)
-
-        # Interpolate
-        z_out = interpolate.griddata(
-            (x_in, y_in), z_in, (x_out, y_out), method="linear"
+        x_out, y_out = np.meshgrid(
+            x_line_mesh,
+            y_line_mesh,
         )
 
-        # Mask anything outside the target supercell area
-        z_out_masked = self._mask_outside_supercell(x_out, y_out, z_out, lattice)
-
-        return x_out[0], y_out[:, 0], z_out_masked
+        z_out = interpolate.griddata(
+            (x_in, y_in), z_in, (x_out, y_out), method=self._interpolation_method
+        )
+        if self.traces_as_periodic:
+            z_out = self._mask_outside_supercell(x_out, y_out, z_out, lattice)
+        return x_out[0], y_out[:, 0], z_out
 
     def _mask_outside_supercell(self, x_out, y_out, z_out, lattice_supercell):
         """Mask points that are outside the supercell area."""
@@ -356,8 +310,8 @@ class Contour(trace.Trace):
             dx_lattice = abs(np.array([dx_cart, 0]) @ lattice_inv).max()
             dy_lattice = abs(np.array([0, dy_cart]) @ lattice_inv).max()
 
-            # Use half the smallest grid spacing as tolerance
-            tolerance = 1.5 * min(dx_lattice, dy_lattice)
+            # Use half the largest grid spacing as tolerance
+            tolerance = 0.5 * max(dx_lattice, dy_lattice)
         else:
             # Fallback for edge cases
             tolerance = 0.025
@@ -432,12 +386,14 @@ class Contour(trace.Trace):
         zmin, zmax = self._get_color_range(z)
         target_scheme = self.color_scheme
 
+        tolerance = 1e-12 * (zmax - zmin)
+
         if self.color_scheme == "auto":
-            if zmin < 0 and zmax > 0:
+            if zmin < -tolerance and zmax > tolerance:
                 target_scheme = "diverging"
-            elif zmin >= 0:
+            elif zmin >= -tolerance:
                 target_scheme = "positive"
-            elif zmax <= 0:
+            elif zmax <= tolerance:
                 target_scheme = "negative"
             else:
                 target_scheme = "default"

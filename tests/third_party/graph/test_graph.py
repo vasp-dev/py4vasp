@@ -713,8 +713,7 @@ def test_contour_interpolate(tilted_contour, Assert, not_core):
     assert np.isclose(np.average(fig.data[0].z[finite]), expected_average)
     assert np.any(finite)
     assert len(fig.layout.shapes) == 0
-    # This colorscheme will be diverging due to interpolation
-    expected_colorscale = px.colors.sequential.RdBu_r
+    expected_colorscale = px.colors.sequential.Reds
     assert len(fig.data[0].colorscale) == len(expected_colorscale)
     for actual, expected in zip(fig.data[0].colorscale, expected_colorscale):
         assert actual[1] == expected
