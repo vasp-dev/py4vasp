@@ -162,6 +162,13 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
 
     @base.data_access
     def to_dict(self):
+        """Return a dictionary that lists how many accumulators are available
+
+        Returns
+        -------
+        dict
+            Dictionary containing information about the available accumulators.
+        """
         return self._accumulator().to_dict()
 
     @base.data_access

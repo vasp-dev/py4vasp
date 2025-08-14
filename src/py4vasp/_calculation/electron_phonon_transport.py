@@ -2,15 +2,14 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp._calculation import base, slice_
+from py4vasp._calculation import base
 from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
 from py4vasp._calculation.electron_phonon_chemical_potential import (
     ElectronPhononChemicalPotential,
 )
 from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
-from py4vasp._calculation.electron_phonon_self_energy import ElectronPhononSelfEnergy
 from py4vasp._third_party import graph
-from py4vasp._util import convert, import_, index, select
+from py4vasp._util import import_, index, select
 
 pd = import_.optional("pandas")
 
@@ -166,13 +165,19 @@ class ElectronPhononTransport(base.Refinery):
 
     @base.data_access
     def __str__(self):
-        return "electron phonon transport"
+        return str(self._accumulator())
 
     @base.data_access
     def to_dict(self):
-        return {
-            "naccumulators": len(self),
-        }
+        return self._accumulator().to_dict()
+
+    @base.data_access
+    def selections(self):
+        """Return a dictionary describing what options are available
+        to read the electron transport coefficients.
+        This is done using the self-energy class."""
+        base_selections = super().selections()
+        return self._accumulator().selections(base_selections)
 
     @base.data_access
     def id_name(self):
@@ -216,14 +221,6 @@ class ElectronPhononTransport(base.Refinery):
             self._get_data("scattering_approximation", index)
             for index in range(len(self))
         }
-
-    @base.data_access
-    def selections(self):
-        """Return a dictionary describing what options are available
-        to read the electron transport coefficients.
-        This is done using the self-energy class."""
-        self_energy = ElectronPhononSelfEnergy.from_data(self._raw_data.self_energy)
-        return self_energy.selections()
 
     def _generate_selections(self, selection):
         tree = select.Tree.from_selection(selection)

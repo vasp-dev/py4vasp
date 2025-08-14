@@ -13,8 +13,12 @@ from py4vasp._calculation.electron_phonon_transport import (
 
 
 @pytest.fixture
-def transport(raw_data):
-    raw_transport = raw_data.electron_phonon_transport("default")
+def raw_transport(raw_data):
+    return raw_data.electron_phonon_transport("default")
+
+
+@pytest.fixture
+def transport(raw_transport):
     transport = ElectronPhononTransport.from_data(raw_transport)
     transport.ref = types.SimpleNamespace()
     transport.ref.temperatures = raw_transport.temperatures
@@ -31,6 +35,15 @@ def transport(raw_data):
     transport.ref.selfen_carrier_den = _make_reference_carrier_den(raw_transport)
     transport.ref.scattering_approx = raw_transport.scattering_approximation
     return transport
+
+
+@pytest.fixture(params=["carrier_den", "carrier_per_cell", "mu"])
+def chemical_potential(raw_data, request):
+    raw_potential = raw_data.electron_phonon_chemical_potential(request.param)
+    raw_potential.ref = types.SimpleNamespace()
+    raw_potential.ref.param = request.param
+    raw_potential.ref.expected_data = getattr(raw_potential, request.param)
+    return raw_potential
 
 
 def _make_reference_carrier_den(raw_transport):
@@ -93,19 +106,20 @@ def test_read_instance(transport, Assert):
         }
 
 
-@pytest.mark.skip
-def test_selections(transport):
+def test_selections(raw_transport, chemical_potential, Assert):
     # Should return a dictionary with expected selection keys
+    raw_transport.chemical_potential = chemical_potential
+    transport = ElectronPhononTransport.from_data(raw_transport)
     selections = transport.selections()
-    assert isinstance(selections, dict)
-    assert "nbands_sum" in selections
-    assert "selfen_approx" in selections
-    assert "selfen_delta" in selections
-    # At least one chemical potential tag should be present
-    assert any(
-        tag in selections
-        for tag in ["selfen_carrier_den", "selfen_carrier_cell", "selfen_mu"]
-    )
+    selections.pop("electron_phonon_transport")
+    expected = selections.pop(f"selfen_{chemical_potential.ref.param}")
+    Assert.allclose(expected, np.unique(chemical_potential.ref.expected_data))
+    expected_keys = {"nbands_sum", "scattering_approx", "selfen_delta"}
+    assert selections.keys() == expected_keys
+    Assert.allclose(selections["nbands_sum"], np.unique(raw_transport.nbands_sum))
+    Assert.allclose(selections["selfen_delta"], np.unique(raw_transport.delta))
+    scattering_approximation = np.unique(raw_transport.scattering_approximation)
+    Assert.allclose(selections["scattering_approx"], scattering_approximation)
 
 
 @pytest.mark.skip
@@ -142,4 +156,5 @@ def test_factory_methods(raw_data, check_factory_methods):
         "select": {"selection": "selfen_approx(MRTA) selfen_carrier_den(0.01,0.001)"},
         "to_graph_carrier": {"selection": "seebeck(xx)", "temperature": 300},
     }
+    check_factory_methods(calculation.electron_phonon.transport, data, parameters)
     check_factory_methods(calculation.electron_phonon.transport, data, parameters)
