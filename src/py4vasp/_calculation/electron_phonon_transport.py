@@ -3,9 +3,11 @@
 import numpy as np
 
 from py4vasp._calculation import base, slice_
+from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
 from py4vasp._calculation.electron_phonon_chemical_potential import (
     ElectronPhononChemicalPotential,
 )
+from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
 from py4vasp._calculation.electron_phonon_self_energy import ElectronPhononSelfEnergy
 from py4vasp._third_party import graph
 from py4vasp._util import convert, import_, index, select
@@ -13,7 +15,7 @@ from py4vasp._util import convert, import_, index, select
 pd = import_.optional("pandas")
 
 
-class ElectronPhononTransportInstance:
+class ElectronPhononTransportInstance(ElectronPhononInstance):
     """
     Represents a single instance of electron-phonon transport calculations.
     This class provides access to various transport properties computed from
@@ -27,10 +29,6 @@ class ElectronPhononTransportInstance:
     index : int
         The index identifying this particular transport calculation instance.
     """
-
-    def __init__(self, parent, index):
-        self.parent = parent
-        self.index = index
 
     def __str__(self):
         """
@@ -54,19 +52,7 @@ class ElectronPhononTransportInstance:
         lines.append(f"nbands_sum: {delta}")
         return "\n".join(lines) + "\n"
 
-    def get_mu_tag(self):
-        """Get choosen tag to select the chemical potential as well as its value"""
-        mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
-        mu_idx = self.id_index[2] - 1
-        return mu_tag, mu_val[mu_idx]
-
-    def _get_data(self, name):
-        return self.parent._get_data(name, self.index)
-
-    def _get_scalar(self, name):
-        return self.parent._get_scalar(name, self.index)
-
-    def to_dict(self, selection=None):
+    def to_dict(self):
         """Returns a dictionary with selected transport properties for this instance."""
         names = [
             "temperatures",
@@ -76,12 +62,10 @@ class ElectronPhononTransportInstance:
             "seebeck",
             "peltier",
             "electronic_thermal_conductivity",
-            "scattering_approximation",
         ]
-        data_dict = {name: self._get_data(name) for name in names}
-        names = ["delta"]
-        scalar_dict = {name: self._get_scalar(name) for name in names}
-        return data_dict | scalar_dict
+        result = {name: self._get_data(name) for name in names}
+        result["metadata"] = self._read_metadata()
+        return result
 
     def selections(self):
         """Returns the available property names that can be selected for this instance."""
@@ -177,6 +161,9 @@ class ElectronPhononTransport(base.Refinery):
     and chemical potential.
     """
 
+    def _accumulator(self):
+        return ElectronPhononAccumulator(self, self._raw_data)
+
     @base.data_access
     def __str__(self):
         return "electron phonon transport"
@@ -205,11 +192,11 @@ class ElectronPhononTransport(base.Refinery):
 
     @base.data_access
     def _get_data(self, name, index):
-        return getattr(self._raw_data, name)[index][:]
+        return self._accumulator().get_data(name, index)
 
-    @base.data_access
-    def _get_scalar(self, name, index):
-        return getattr(self._raw_data, name)[index][()]
+    # @base.data_access
+    # def _get_scalar(self, name, index):
+    #     return getattr(self._raw_data, name)[index][()]
 
     @base.data_access
     def __len__(self):
