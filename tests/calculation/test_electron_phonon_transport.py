@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import random
 import types
 
 import numpy as np
@@ -122,23 +123,19 @@ def test_selections(raw_transport, chemical_potential, Assert):
     Assert.allclose(selections["scattering_approx"], scattering_approximation)
 
 
-@pytest.mark.skip
-def test_select_returns_instances(transport):
-    from py4vasp._calculation.electron_phonon_transport import (
-        ElectronPhononTransportInstance,
-    )
-
-    # Should return a list of TransportInstance (or the correct instance class)
-    selections = transport.selections()
-    # Try to import the correct instance class
-    TransportInstance = type(transport[0])
-    for nbands_sum in selections["nbands_sum"]:
-        for selfen_approx in selections["selfen_approx"]:
-            selected = transport.select(
-                f"nbands_sum({nbands_sum}) selfen_approx({selfen_approx})"
-            )
-            assert len(selected) == 3
-            assert all(isinstance(x, ElectronPhononTransportInstance) for x in selected)
+@pytest.mark.parametrize(
+    "attribute",
+    ["nbands_sum", "selfen_delta", "selfen_carrier_den", "scattering_approx"],
+)
+def test_select_returns_instances(transport, attribute):
+    choices = getattr(transport.ref, attribute)
+    choice = random.choice(list(choices))
+    indices, *_ = np.where(choices == choice)
+    selected = transport.select(f"{attribute}={choice.item()}")
+    assert len(selected) == len(indices)
+    for index_, instance in zip(indices, selected):
+        assert isinstance(instance, ElectronPhononTransportInstance)
+        assert instance.index == index_
 
 
 @pytest.mark.skip

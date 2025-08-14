@@ -169,15 +169,45 @@ class ElectronPhononTransport(base.Refinery):
 
     @base.data_access
     def to_dict(self):
+        """Return a dictionary that lists how many accumulators are available
+
+        Returns
+        -------
+        dict
+            Dictionary containing information about the available accumulators.
+        """
         return self._accumulator().to_dict()
 
     @base.data_access
     def selections(self):
-        """Return a dictionary describing what options are available
-        to read the electron transport coefficients.
-        This is done using the self-energy class."""
+        """Return a dictionary describing what options are available to read the transport.
+
+        Returns
+        -------
+        dict
+            Dictionary containing available selection options with their possible values.
+            Keys include selection criteria like "nbands_sum", "selfen_approx", "selfen_delta".
+        """
         base_selections = super().selections()
         return self._accumulator().selections(base_selections)
+
+    @base.data_access
+    def select(self, selection):
+        """Return a list of ElectronPhononSelfEnergyInstance objects matching the selection.
+
+        Parameters
+        ----------
+        selection : dict
+            Dictionary with keys as selection names (e.g., "nbands_sum", "selfen_approx", "selfen_delta")
+            and values as the desired values for those properties.
+
+        Returns
+        -------
+        list of ElectronPhononSelfEnergyInstance
+            Instances that match the selection criteria.
+        """
+        indices = self._accumulator().select_indices(selection)
+        return [ElectronPhononTransportInstance(self, index) for index in indices]
 
     @base.data_access
     def id_name(self):
@@ -261,51 +291,3 @@ class ElectronPhononTransport(base.Refinery):
             xlabel=mu_tag,
             ylabel=selection[0],
         )
-
-    @base.data_access
-    def select(self, selection):
-        """Return a list of ElectronPhononSelfEnergyInstance objects matching the selection.
-
-        Parameters
-        ----------
-        selection : dict
-            Dictionary with keys as selection names (e.g., "nbands_sum", "selfen_approx", "selfen_delta")
-            and values as the desired values for those properties.
-
-        Returns
-        -------
-        list of ElectronPhononSelfEnergyInstance
-            Instances that match the selection criteria.
-        """
-        selected_instances = []
-        mu_tag, mu_val = self.chemical_potential_mu_tag()
-        for idx in range(len(self)):
-            match_all = False
-            for sel in self._generate_selections(selection):
-                match = True
-                sel_dict = dict(zip(sel[::2], sel[1::2]))
-                for key, value in sel_dict.items():
-                    # Map selection keys to property names
-                    if key == "nbands_sum":
-                        instance_value = self._get_scalar("nbands_sum", idx)
-                        match_this = instance_value == value
-                    elif key == "selfen_approx":
-                        instance_value = self._get_data("scattering_approximation", idx)
-                        match_this = instance_value == value
-                    elif key == "selfen_delta":
-                        instance_value = self._get_scalar("delta", idx)
-                        match_this = abs(instance_value - value) < 1e-8
-                    elif key == mu_tag:
-                        mu_idx = self[idx].id_index[2] - 1
-                        instance_value = mu_val[mu_idx]
-                        match_this = abs(instance_value - float(value)) < 1e-8
-                    else:
-                        possible_values = self.selections()
-                        raise ValueError(
-                            f"Invalid selection {key}. Possible values are {possible_values.keys()}"
-                        )
-                    match = match and match_this
-                match_all = match_all or match
-            if match_all:
-                selected_instances.append(ElectronPhononTransportInstance(self, idx))
-        return selected_instances
