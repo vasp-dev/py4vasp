@@ -6,7 +6,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import calculation
+from py4vasp import calculation, exception
 from py4vasp._calculation.electron_phonon_transport import (
     ElectronPhononTransport,
     ElectronPhononTransportInstance,
@@ -136,6 +136,43 @@ def test_select_returns_instances(transport, attribute):
     for index_, instance in zip(indices, selected):
         assert isinstance(instance, ElectronPhononTransportInstance)
         assert instance.index == index_
+
+
+def test_select_multiple(transport):
+    index_nbands_sum = 1
+    index_selfen_delta = 3
+    indices = [index_nbands_sum, index_selfen_delta]
+    choice_nbands_sum = transport.ref.nbands_sum[index_nbands_sum]
+    choice_selfen_delta = transport.ref.selfen_delta[index_selfen_delta]
+    selection = f"nbands_sum={choice_nbands_sum.item()}, selfen_delta={choice_selfen_delta.item()}"
+    selected = transport.select(selection)
+    assert len(selected) == len(indices)
+    for index_, instance in zip(indices, selected):
+        assert isinstance(instance, ElectronPhononTransportInstance)
+        assert instance.index == index_
+
+
+def test_select_nested(transport):
+    index_ = 0
+    choice_nbands_sum = transport.ref.nbands_sum[index_]
+    choice_selfen_carrier_den = transport.ref.selfen_carrier_den[index_]
+    count_ = sum(transport.ref.selfen_carrier_den == choice_selfen_carrier_den)
+    assert count_ > 1
+    selection = f"nbands_sum={choice_nbands_sum.item()}(selfen_carrier_den={choice_selfen_carrier_den.item()})"
+    selected = transport.select(selection)
+    assert len(selected) == 1
+    instance = selected[0]
+    assert isinstance(instance, ElectronPhononTransportInstance)
+    assert instance.index == index_
+
+
+@pytest.mark.parametrize(
+    "selection",
+    ["invalid_selection=0.01", "nbands_sum:0.01", "selfen_delta"],
+)
+def test_incorrect_selection(transport, selection):
+    with pytest.raises(exception.IncorrectUsage):
+        transport.select(selection)
 
 
 @pytest.mark.skip

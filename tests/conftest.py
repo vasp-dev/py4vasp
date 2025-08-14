@@ -1606,10 +1606,6 @@ def _electron_phonon_self_energy(selection):
 
 
 def _electron_phonon_transport(selection):
-    # mock transport_function
-    nw = 1  # number of frequencies at which the fan self-energy is evaluated
-    ntemps = 6
-    nbands_sum = 12
     temperature_mesh = np.linspace(0, 500, number_temperatures)
     transport_shape = [number_samples, number_temperatures, number_frequencies, 3, 3]
     mobility_shape = [number_samples, number_temperatures, 3, 3]
@@ -1621,7 +1617,7 @@ def _electron_phonon_transport(selection):
         self_energy=_electron_phonon_self_energy(selection),
         chemical_potential=_electron_phonon_chemical_potential(),
         id_index=_make_id_index(),
-        delta=np.array([0 for _ in range(number_samples)]),
+        delta=_make_arbitrary_data([number_samples], seed=733144842),
         temperatures=[temperature_mesh for _ in range(number_samples)],
         transport_function=_make_arbitrary_data(transport_shape),
         mobility=_make_arbitrary_data(mobility_shape),
