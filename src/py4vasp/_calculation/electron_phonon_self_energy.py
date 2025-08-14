@@ -69,6 +69,7 @@ class ElectronPhononSelfEnergyInstance(ElectronPhononInstance):
             "fan": self._get_fan(),
             "debye_waller": self._get_data("debye_waller"),
             "energies": self._get_data("energies"),
+            "temperatures": self._get_data("temperatures"),
         }
 
     def _get_fan(self):

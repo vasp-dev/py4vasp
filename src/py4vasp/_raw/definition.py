@@ -367,6 +367,7 @@ schema.add(
     valid_indices=f"{group}/self_energy_meta/ncalculators",
     chemical_potential=Link("electron_phonon_chemical_potential", DEFAULT_SOURCE),
     eigenvalues=f"{group}/eigenvalues/eigenvalues",
+    temperatures=f"{group}/self_energy_{{}}/temps",
     id_index=f"{group}/self_energy_{{}}/id_idx",
     debye_waller=f"{group}/self_energy_{{}}/selfen_dw",
     band_kpoint_spin_index=f"{group}/self_energy_{{}}/bks_idx",

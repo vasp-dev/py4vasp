@@ -24,6 +24,7 @@ number_eigenvectors = 5
 number_excitons = 3
 number_samples = 5
 number_chemical_potentials = 3
+number_temperatures = 6
 single_spin = 1
 two_spins = 2
 noncollinear = 4
@@ -1522,10 +1523,9 @@ def _current_density(selection):
 
 def _electron_phonon_band_gap(selection):
     number_components = 3 if selection == "collinear" else 1
-    number_temps = 6
     shape_gap = [number_samples, number_components]
-    shape_renorm = [number_samples, number_components, number_temps]
-    shape_temperature = [number_samples, number_temps]
+    shape_renorm = [number_samples, number_components, number_temperatures]
+    shape_temperature = [number_samples, number_temperatures]
     return raw.ElectronPhononBandgap(
         valid_indices=range(number_samples),
         nbands_sum=_make_data(np.linspace(10, 100, number_samples, dtype=np.int32)),
@@ -1542,14 +1542,13 @@ def _electron_phonon_band_gap(selection):
 
 
 def _electron_phonon_chemical_potential(selection="carrier_den"):
-    number_temps = 6
     seed = 26826821
     return raw.ElectronPhononChemicalPotential(
         fermi_energy=0,
         carrier_density=_make_arbitrary_data([number_chemical_potentials]),
-        temperatures=_make_arbitrary_data([number_temps]),
+        temperatures=_make_arbitrary_data([number_temperatures]),
         chemical_potential=_make_arbitrary_data(
-            [number_chemical_potentials, number_temps]
+            [number_chemical_potentials, number_temperatures]
         ),
         carrier_per_cell=_make_arbitrary_data(
             [number_chemical_potentials], selection == "carrier_per_cell", seed=seed
@@ -1579,10 +1578,10 @@ def _electron_phonon_self_energy(selection):
     # mock fan and dw
     number_indices = np.count_nonzero(band_kpoint_spin_index != -1)
     number_freq = 1  # number of frequencies at which the fan self-energy is evaluated
-    number_temp = 6
-    fan_shape = [number_indices, number_freq, number_temp, complex_]
-    debye_waller_shape = [number_indices, number_temp]
+    fan_shape = [number_indices, number_freq, number_temperatures, complex_]
+    debye_waller_shape = [number_indices, number_temperatures]
     energies_shape = [number_indices, number_freq]
+    temperatures_shape = [number_samples, number_temperatures]
     return raw.ElectronPhononSelfEnergy(
         valid_indices=range(number_samples),
         id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
@@ -1595,6 +1594,7 @@ def _electron_phonon_self_energy(selection):
         chemical_potential=_electron_phonon_chemical_potential(),
         id_index=_make_id_index(),
         eigenvalues=_make_arbitrary_data(band_kpoint_spin_index_shape),
+        temperatures=_make_arbitrary_data(temperatures_shape),
         debye_waller=[
             _make_arbitrary_data(debye_waller_shape) for _ in range(number_samples)
         ],
