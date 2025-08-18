@@ -91,7 +91,9 @@ class Contour(trace.Trace):
     def to_plotly(self):
         lattice_supercell = np.diag(self.supercell) @ self.lattice.vectors
         # swap a and b axes because that is the way plotly expects the data
+        print(self.data.shape)
         data = np.tile(self.data, self.supercell).T
+        print(data.shape)
         if self._is_contour():
             yield self._make_contour(lattice_supercell, data), self._options()
         elif self._is_heatmap():
@@ -238,22 +240,32 @@ class Contour(trace.Trace):
         lengths = np.sum(np.abs(lattice), axis=0)
         shape = np.ceil(points_per_line * lengths).astype(int)
         # obtain min and max for final grid
-        line_mesh_a = self._make_mesh(lattice, data.shape[1], 0, periodic_expand=1)
-        line_mesh_b = self._make_mesh(lattice, data.shape[0], 1, periodic_expand=1)
+        line_mesh_a, shift_a = self._make_mesh(
+            lattice, data.shape[1], 0, periodic_expand=1
+        )
+        line_mesh_a = line_mesh_a + shift_a
+        line_mesh_b, shift_b = self._make_mesh(
+            lattice, data.shape[0], 1, periodic_expand=1
+        )
+        line_mesh_b = line_mesh_b + shift_b
         x_in, y_in = (line_mesh_a[:, np.newaxis] + line_mesh_b[np.newaxis, :]).T
         x_in = x_in.flatten()
         y_in = y_in.flatten()
         xmin, xmax = x_in.min(), x_in.max()
         ymin, ymax = y_in.min(), y_in.max()
+        print(xmin, xmax)
+        print(ymin, ymax)
 
         _num_periodic_add = min(data.shape) - 1
         periodic_expand = 1 + _num_periodic_add
-        line_mesh_a = self._make_mesh(
+        line_mesh_a, shift_a = self._make_mesh(
             lattice, data.shape[1], 0, periodic_expand=periodic_expand
         )
-        line_mesh_b = self._make_mesh(
+        line_mesh_a = line_mesh_a + shift_a
+        line_mesh_b, shift_b = self._make_mesh(
             lattice, data.shape[0], 1, periodic_expand=periodic_expand
         )
+        line_mesh_b = line_mesh_b + shift_b
         x_in, y_in = (line_mesh_a[:, np.newaxis] + line_mesh_b[np.newaxis, :]).T
         x_in = x_in.flatten()
         y_in = y_in.flatten()
@@ -331,11 +343,11 @@ class Contour(trace.Trace):
         return z_out_masked
 
     def _use_data_without_interpolation(self, lattice, data):
-        x = self._make_mesh(lattice, data.shape[1], 0)
-        y = self._make_mesh(lattice, data.shape[0], 1)
+        x, shift_x = self._make_mesh(lattice, data.shape[1], 0)
+        y, shift_y = self._make_mesh(lattice, data.shape[0], 1)
         return (
-            x,
-            y,
+            x + shift_x,
+            y + shift_y,
             self._extend_data_contour(data) if (self.traces_as_periodic) else data,
         )
 
@@ -359,10 +371,10 @@ class Contour(trace.Trace):
             periodic_left = np.floor((periodic_expand - 1) / 2)
 
         if not (self.traces_as_periodic):
-            mesh = mesh + (0.5 * lattice[vector] / num_point)
+            shift = 0.5 * lattice[vector] / num_point
         else:
-            mesh = mesh - periodic_left * (lattice[vector] / float(num_point))
-        return mesh
+            shift = -periodic_left * (lattice[vector] / float(num_point))
+        return mesh, shift
 
     def _options(self):
         return {
