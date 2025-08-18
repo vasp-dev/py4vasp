@@ -56,7 +56,18 @@ class Series(trace.Trace):
         if self.weight is not None and len(self.x) != self.weight.shape[-1]:
             message = "The length of weight and plot is inconsistent."
             raise exception.IncorrectUsage(message)
+        self._raise_error_if_annotations_length_incorrect()
         self._frozen = True
+
+    def _raise_error_if_annotations_length_incorrect(self):
+        if self.annotations is None:
+            return
+        for key, value in self.annotations.items():
+            if np.ndim(value) == 0:
+                continue
+            if len(value) != len(self.x):
+                message = f"The length of annotation '{key}' must be 1 or match the length of x."
+                raise exception.IncorrectUsage(message)
 
     def __setattr__(self, key, value):
         # prevent adding new attributes to avoid typos, in Python 3.10 this could be
