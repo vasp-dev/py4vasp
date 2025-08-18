@@ -478,6 +478,22 @@ def test_add_label_to_multiple_lines(parabola, sine, Assert):
     assert graph.series[1].label == "new label sine"
 
 
+def test_annotations(parabola, Assert, not_core):
+    num_points = len(parabola.x)
+    metadata = np.linspace(-1, 1, num_points)
+    parabola.annotations = {
+        "index": [str(i) for i in range(num_points)],
+        "meta": metadata,
+        "constant": 12,
+    }
+    fig = Graph(parabola).to_plotly()
+    assert len(fig.data) == 1
+    expected_text = [
+        f"index: {i}<br>meta: {z}<br>constant: 12" for i, z in enumerate(metadata)
+    ]
+    Assert.allclose(fig.data[0].text, expected_text)
+
+
 def test_convert_parabola_to_frame(parabola, Assert, not_core):
     graph = Graph(parabola)
     df = graph.to_frame()
