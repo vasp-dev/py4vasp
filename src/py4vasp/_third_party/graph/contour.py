@@ -240,32 +240,18 @@ class Contour(trace.Trace):
         lengths = np.sum(np.abs(lattice), axis=0)
         shape = np.ceil(points_per_line * lengths).astype(int)
         # obtain min and max for final grid
-        line_mesh_a, shift_a = self._make_mesh(
-            lattice, data.shape[1], 0, periodic_expand=1
-        )
-        line_mesh_a = line_mesh_a + shift_a
-        line_mesh_b, shift_b = self._make_mesh(
-            lattice, data.shape[0], 1, periodic_expand=1
-        )
-        line_mesh_b = line_mesh_b + shift_b
-        x_in, y_in = (line_mesh_a[:, np.newaxis] + line_mesh_b[np.newaxis, :]).T
-        x_in = x_in.flatten()
-        y_in = y_in.flatten()
-        xmin, xmax = x_in.min(), x_in.max()
-        ymin, ymax = y_in.min(), y_in.max()
-        print(xmin, xmax)
-        print(ymin, ymax)
+        corners = np.array([[0, 0], lattice[0], lattice[1], lattice[0] + lattice[1]])
+        xmin, xmax = (min(corners[:, 0]), max(corners[:, 0]))
+        ymin, ymax = (min(corners[:, 1]), max(corners[:, 1]))
 
         _num_periodic_add = min(data.shape) - 1
         periodic_expand = 1 + _num_periodic_add
-        line_mesh_a, shift_a = self._make_mesh(
+        line_mesh_a = self._make_mesh(
             lattice, data.shape[1], 0, periodic_expand=periodic_expand
         )
-        line_mesh_a = line_mesh_a + shift_a
-        line_mesh_b, shift_b = self._make_mesh(
+        line_mesh_b = self._make_mesh(
             lattice, data.shape[0], 1, periodic_expand=periodic_expand
         )
-        line_mesh_b = line_mesh_b + shift_b
         x_in, y_in = (line_mesh_a[:, np.newaxis] + line_mesh_b[np.newaxis, :]).T
         x_in = x_in.flatten()
         y_in = y_in.flatten()
@@ -299,6 +285,40 @@ class Contour(trace.Trace):
         if self.traces_as_periodic:
             z_out = self._mask_outside_supercell(x_out, y_out, z_out, lattice)
         return x_out[0], y_out[:, 0], z_out
+
+    def _use_data_without_interpolation(self, lattice, data):
+        x = self._make_mesh(lattice, data.shape[1], 0)
+        y = self._make_mesh(lattice, data.shape[0], 1)
+        return (
+            x,
+            y,
+            self._extend_data_contour(data) if (self.traces_as_periodic) else data,
+        )
+
+    def _make_mesh(self, lattice, num_point, index, periodic_expand: int = 1):
+        vector = index if self._interpolation_required() else (index, index)
+
+        endpoint = lattice[vector]
+        if (self.traces_as_periodic) and (periodic_expand > 0):
+            endpoint = endpoint + float(periodic_expand - 1) * (
+                lattice[vector] / float(num_point)
+            )
+        mesh = np.linspace(
+            0,
+            endpoint,
+            num_point + (periodic_expand if (self.traces_as_periodic) else 0),
+            endpoint=self.traces_as_periodic,
+        )
+
+        periodic_left = 0
+        if (self.traces_as_periodic) and (periodic_expand > 1):
+            periodic_left = np.floor((periodic_expand - 1) / 2)
+
+        if not (self.traces_as_periodic):
+            mesh = mesh + (0.5 * lattice[vector] / num_point)
+        else:
+            mesh = mesh - periodic_left * (lattice[vector] / float(num_point))
+        return mesh
 
     def _mask_outside_supercell(self, x_out, y_out, z_out, lattice_supercell):
         """Mask points that are outside the supercell area."""
@@ -341,40 +361,6 @@ class Contour(trace.Trace):
         z_out_masked.flat[~inside_mask] = np.nan
 
         return z_out_masked
-
-    def _use_data_without_interpolation(self, lattice, data):
-        x, shift_x = self._make_mesh(lattice, data.shape[1], 0)
-        y, shift_y = self._make_mesh(lattice, data.shape[0], 1)
-        return (
-            x + shift_x,
-            y + shift_y,
-            self._extend_data_contour(data) if (self.traces_as_periodic) else data,
-        )
-
-    def _make_mesh(self, lattice, num_point, index, periodic_expand: int = 1):
-        vector = index if self._interpolation_required() else (index, index)
-
-        endpoint = lattice[vector]
-        if (self.traces_as_periodic) and (periodic_expand > 0):
-            endpoint = endpoint + float(periodic_expand - 1) * (
-                lattice[vector] / float(num_point)
-            )
-        mesh = np.linspace(
-            0,
-            endpoint,
-            num_point + (periodic_expand if (self.traces_as_periodic) else 0),
-            endpoint=self.traces_as_periodic,
-        )
-
-        periodic_left = 0
-        if (self.traces_as_periodic) and (periodic_expand > 1):
-            periodic_left = np.floor((periodic_expand - 1) / 2)
-
-        if not (self.traces_as_periodic):
-            shift = 0.5 * lattice[vector] / num_point
-        else:
-            shift = -periodic_left * (lattice[vector] / float(num_point))
-        return mesh, shift
 
     def _options(self):
         return {
