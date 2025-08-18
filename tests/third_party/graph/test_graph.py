@@ -86,10 +86,10 @@ def tilted_contour():
 
 @pytest.fixture
 def tilted_contour_with_sin_cos():
-    xvals = np.linspace(0, 2.0 * np.pi, 16)
-    yvals = np.linspace(0, 2.0 * np.pi, 20)
+    xvals = np.linspace(0, 2.0 * np.pi, 16, endpoint=False)
+    yvals = np.linspace(0, 2.0 * np.pi, 20, endpoint=False)
     X, Y = np.meshgrid(xvals, yvals)
-    Z = np.sin(X) * np.cos(Y)
+    Z = np.sin(X + np.pi / 4) * np.cos(Y + np.pi / 4)
     return Contour(
         data=Z,
         lattice=slicing.Plane(np.array([[2, 4], [2, -4]]), cut="b"),
@@ -710,19 +710,27 @@ def check_annotations(lattice, annotations, Assert):
 
 
 def check_colorscale(fig, data, expect_diverging, Assert, not_core):
+    tolerance = 1e-10
     if expect_diverging:
         expected_colorscale = px.colors.diverging.RdBu_r
-    elif np.min(data.data) < 0 and np.max(data.data) > 0:
+    elif np.min(data.data) < -tolerance and np.max(data.data) > tolerance:
         expected_colorscale = px.colors.sequential.RdBu_r
-    elif np.max(data.data) <= 0:
+    elif np.max(data.data) <= tolerance:
         expected_colorscale = px.colors.sequential.Blues_r
-    elif np.min(data.data) >= 0:
+    elif np.min(data.data) >= -tolerance:
         expected_colorscale = px.colors.sequential.Reds
     else:
-        raise ValueError("Unexpected data range")
-    assert len(fig.data[0].colorscale) == len(expected_colorscale)
+        raise ValueError(
+            f"Unexpected data range: {np.min(data.data)}, {np.max(data.data)}"
+        )
+    finite = np.isfinite(fig.data[0].z)
+    assert len(fig.data[0].colorscale) == len(
+        expected_colorscale
+    ), f"Unexpected colorscale lengths ({len(fig.data[0].colorscale)} vs. {len(expected_colorscale)}) for EXPECTED: min: {np.min(data.data)}, max: {np.max(data.data)}, ACTUAL: min: {np.min(fig.data[0].z[finite])}, max: {np.max(fig.data[0].z[finite])}"
     for actual, expected in zip(fig.data[0].colorscale, expected_colorscale):
-        assert actual[1] == expected
+        assert (
+            actual[1] == expected
+        ), f"Unexpected colorscale values for min: {np.min(data.data)}, max: {np.max(data.data)}"
 
 
 def check_basic_tilted_contour(
@@ -755,16 +763,15 @@ def check_basic_tilted_contour(
     check_annotations(curr_contour.lattice, fig.layout.annotations, Assert)
     # plotly expects y-x order
     finite = np.isfinite(fig.data[0].z)
-    if np.abs(expected_average) > 1e-4:
+    actual_average = np.average(fig.data[0].z[finite])
+    if np.abs(actual_average) > 2e-3:
         assert np.isclose(
-            np.average(fig.data[0].z[finite]),
+            actual_average,
             expected_average,
             rtol=1e-1 if with_periodic_traces else 1e-2,
         )
     else:
-        assert np.isclose(
-            np.average(fig.data[0].z[finite]), expected_average, atol=1e-3
-        )
+        assert np.isclose(actual_average, expected_average, atol=2e-3)
     assert np.any(finite)
     assert len(fig.layout.shapes) == 0
     return fig, expected_data

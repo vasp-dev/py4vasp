@@ -91,9 +91,7 @@ class Contour(trace.Trace):
     def to_plotly(self):
         lattice_supercell = np.diag(self.supercell) @ self.lattice.vectors
         # swap a and b axes because that is the way plotly expects the data
-        print(self.data.shape)
         data = np.tile(self.data, self.supercell).T
-        print(data.shape)
         if self._is_contour():
             yield self._make_contour(lattice_supercell, data), self._options()
         elif self._is_heatmap():
@@ -205,9 +203,7 @@ class Contour(trace.Trace):
     def _extend_data_contour(self, data, periodic_expand=1):
         xdim, ydim = data.shape
 
-        periodic_left = 0
-        if (self.traces_as_periodic) and (periodic_expand > 1):
-            periodic_left = int(np.floor((periodic_expand - 1) / 2))
+        periodic_left = self._get_periodic_left(periodic_expand)
         # Create index arrays with "wrapped" boundaries
         x_indices = (np.arange(0, xdim + periodic_expand) % xdim) - periodic_left
         y_indices = (np.arange(0, ydim + periodic_expand) % ydim) - periodic_left
@@ -295,6 +291,16 @@ class Contour(trace.Trace):
             self._extend_data_contour(data) if (self.traces_as_periodic) else data,
         )
 
+    def _get_periodic_left(self, periodic_expand: int) -> int:
+        """When we periodically expand the data, we may wish to do so symmetrically.
+        This function returns the integer number of points to prepend to the line mesh,
+        data row or column. Generally, line meshes will need to be shifted by this number.
+        """
+        periodic_left = 0
+        if (self.traces_as_periodic) and (periodic_expand > 1):
+            periodic_left = int(np.floor((periodic_expand - 1) / 2))
+        return periodic_left
+
     def _make_mesh(self, lattice, num_point, index, periodic_expand: int = 1):
         vector = index if self._interpolation_required() else (index, index)
 
@@ -310,13 +316,17 @@ class Contour(trace.Trace):
             endpoint=self.traces_as_periodic,
         )
 
-        periodic_left = 0
-        if (self.traces_as_periodic) and (periodic_expand > 1):
-            periodic_left = np.floor((periodic_expand - 1) / 2)
+        periodic_left = self._get_periodic_left(periodic_expand)
 
         if not (self.traces_as_periodic):
+            # shift the mesh by 0.5*cell_length so that heatmap cells are bottom-left anchored
+            # rather than centered on the computed point, which makes it so rectangular boxes
+            # are filled exactly and in a visually appealing way
             mesh = mesh + (0.5 * lattice[vector] / num_point)
         else:
+            # shift the mesh by -periodic_left*cell_length to accommodate repeats in other direction
+            # this is necessary to ensure that the heatmap cells are center-anchored and aligned correctly
+            # especially in the presence of repeated rows/columns
             mesh = mesh - periodic_left * (lattice[vector] / float(num_point))
         return mesh
 
