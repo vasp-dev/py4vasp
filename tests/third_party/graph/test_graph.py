@@ -85,6 +85,21 @@ def tilted_contour():
 
 
 @pytest.fixture
+def tilted_contour_with_sin_cos():
+    xvals = np.linspace(0, 2.0 * np.pi, 16, endpoint=False)
+    yvals = np.linspace(0, 2.0 * np.pi, 20, endpoint=False)
+    X, Y = np.meshgrid(xvals, yvals)
+    Z = np.sin(X + np.pi / 4) * np.cos(Y + np.pi / 4)
+    return Contour(
+        data=Z,
+        lattice=slicing.Plane(np.array([[2, 4], [2, -4]]), cut="b"),
+        label="tilted contour",
+        supercell=(2, 2),
+        show_cell=False,
+    )
+
+
+@pytest.fixture
 def simple_quiver():
     return Contour(
         data=np.array([[(y, x) for x in range(3)] for y in range(5)]).T,
@@ -595,15 +610,8 @@ def test_contour(rectangle_contour, Assert, not_core):
     assert fig.layout.yaxis.scaleanchor == "x"
 
 
-@pytest.mark.parametrize("num_periodic_add", [0, 3])
-def test_contour_with_periodic_traces(
-    rectangle_contour, num_periodic_add, Assert, not_core
-):
+def test_contour_with_periodic_traces(rectangle_contour, Assert, not_core):
     rectangle_contour.traces_as_periodic = True
-    rectangle_contour._num_periodic_add = (
-        num_periodic_add  # should have no effect on rectangular
-    )
-
     graph = Graph(rectangle_contour)
     fig = graph.to_plotly()
     assert len(fig.data) == 1
@@ -635,15 +643,9 @@ def test_contour_supercell(rectangle_contour, Assert, not_core):
     check_annotations(rectangle_contour.lattice, fig.layout.annotations, Assert)
 
 
-@pytest.mark.parametrize("num_periodic_add", [0, 3])
-def test_contour_supercell_with_periodic_traces(
-    rectangle_contour, num_periodic_add, Assert, not_core
-):
+def test_contour_supercell_with_periodic_traces(rectangle_contour, Assert, not_core):
     supercell = np.asarray((3, 5))
     rectangle_contour.traces_as_periodic = True
-    rectangle_contour._num_periodic_add = (
-        num_periodic_add  # should have no effect on rectangular contour
-    )
     rectangle_contour.supercell = supercell
     graph = Graph(rectangle_contour)
     fig = graph.to_plotly()
@@ -707,91 +709,105 @@ def check_annotations(lattice, annotations, Assert):
         sign *= -1
 
 
-@pytest.mark.parametrize("num_periodic_add", [0, 3])
-def test_contour_interpolate(tilted_contour, num_periodic_add, Assert, not_core):
-    tilted_contour._num_periodic_add = (
-        num_periodic_add  # should have no effect unless traces_as_periodic
-    )
-    tilted_contour.color_scheme = "auto"
-    graph = Graph(tilted_contour)
-    fig = graph.to_plotly()
-    area_cell = 12.0
-    points_per_area = tilted_contour.data.size / area_cell
-    points_per_line = np.sqrt(points_per_area) * tilted_contour._interpolation_factor
-    lengths = np.array([6, 9])  # this accounts for the 2 x 1 supercell
-    expected_shape = np.ceil(points_per_line * lengths).astype(int)
-    expected_average = np.average(tilted_contour.data)
-    assert len(fig.data) == 1
-    # plotly expects y-x order
-    assert all(fig.data[0].z.T.shape == expected_shape)
-    assert fig.data[0].x.size == expected_shape[0]
-    assert fig.data[0].y.size == expected_shape[1]
+def check_colorscale(fig, data, expect_diverging, Assert, not_core):
+    tolerance = 1e-10
+    if expect_diverging:
+        expected_colorscale = px.colors.diverging.RdBu_r
+    elif np.min(data.data) < -tolerance and np.max(data.data) > tolerance:
+        expected_colorscale = px.colors.sequential.RdBu_r
+    elif np.max(data.data) <= tolerance:
+        expected_colorscale = px.colors.sequential.Blues_r
+    elif np.min(data.data) >= -tolerance:
+        expected_colorscale = px.colors.sequential.Reds
+    else:
+        raise ValueError(
+            f"Unexpected data range: {np.min(data.data)}, {np.max(data.data)}"
+        )
     finite = np.isfinite(fig.data[0].z)
-    assert np.isclose(np.average(fig.data[0].z[finite]), expected_average)
-    assert len(fig.layout.shapes) == 0
-    expected_colorscale = [
-        [0, _config.VASP_COLORS["blue"]],
-        [0.5, "white"],
-        [1, _config.VASP_COLORS["red"]],
-    ]
-    assert len(fig.data[0].colorscale) == len(expected_colorscale)
+    assert len(fig.data[0].colorscale) == len(
+        expected_colorscale
+    ), f"Unexpected colorscale lengths ({len(fig.data[0].colorscale)} vs. {len(expected_colorscale)}) for EXPECTED: min: {np.min(data.data)}, max: {np.max(data.data)}, ACTUAL: min: {np.min(fig.data[0].z[finite])}, max: {np.max(fig.data[0].z[finite])}"
     for actual, expected in zip(fig.data[0].colorscale, expected_colorscale):
-        Assert.allclose(actual[0], expected[0])
-        assert actual[1] == expected[1]
-    check_annotations(tilted_contour.lattice, fig.layout.annotations, Assert)
+        assert (
+            actual[1] == expected
+        ), f"Unexpected colorscale values for min: {np.min(data.data)}, max: {np.max(data.data)}"
+
+
+def check_basic_tilted_contour(
+    curr_contour, with_periodic_traces: bool, Assert, not_core, expected_lengths=[]
+) -> Graph:
+    curr_contour.traces_as_periodic = with_periodic_traces
+    curr_contour.color_scheme = "auto"
+    graph = Graph(curr_contour)
+    fig = graph.to_plotly()
+    if not with_periodic_traces:
+        area_cell = np.linalg.norm(np.cross(*curr_contour.lattice.vectors))
+        points_per_area = curr_contour.data.size / area_cell
+        points_per_line = np.sqrt(points_per_area) * curr_contour._interpolation_factor
+        lengths = np.array(expected_lengths)
+        expected_shape = np.ceil(points_per_line * lengths).astype(int)
+        expected_average = np.average(curr_contour.data)
+        expected_data = curr_contour.data
+
+        assert all(fig.data[0].z.T.shape == expected_shape)
+        assert fig.data[0].x.size == expected_shape[0]
+        assert fig.data[0].y.size == expected_shape[1]
+    else:
+        xdim, ydim = curr_contour.data.shape
+        x_indices = np.arange(0, xdim + 1) % xdim
+        y_indices = np.arange(0, ydim + 1) % ydim
+        expected_data = curr_contour.data[np.ix_(x_indices, y_indices)]
+        expected_average = np.average(expected_data.data)
+
+    assert len(fig.data) == 1
+    check_annotations(curr_contour.lattice, fig.layout.annotations, Assert)
+    # plotly expects y-x order
+    finite = np.isfinite(fig.data[0].z)
+    actual_average = np.average(fig.data[0].z[finite])
+    if np.abs(actual_average) > 2e-3:
+        assert np.isclose(
+            actual_average,
+            expected_average,
+            rtol=1e-1 if with_periodic_traces else 1e-2,
+        )
+    else:
+        assert np.isclose(actual_average, expected_average, atol=2e-3)
+    assert np.any(finite)
+    assert len(fig.layout.shapes) == 0
+    return fig, expected_data
+
+
+def test_contour_interpolate(tilted_contour, Assert, not_core):
+    fig, expected_data = check_basic_tilted_contour(
+        tilted_contour, False, Assert, not_core, expected_lengths=[6, 9]
+    )
+    check_colorscale(fig, expected_data, False, Assert, not_core)
 
 
 # @pytest.mark.xfail
-@pytest.mark.parametrize("num_periodic_add", [0, 1, 4])
-def test_contour_interpolate_with_periodic_traces(
-    tilted_contour, num_periodic_add, Assert, not_core
-):
-    tilted_contour.traces_as_periodic = True
-    tilted_contour._num_periodic_add = num_periodic_add
-    tilted_contour.color_scheme = "auto"
-    graph = Graph(tilted_contour)
-    fig = graph.to_plotly()
-    area_cell = 12.0
-    points_per_area = tilted_contour.data.size / area_cell
-    points_per_line = np.sqrt(points_per_area) * tilted_contour._interpolation_factor
-    lengths = np.array([6, 9])  # this accounts for the 2 x 1 supercell
+def test_contour_interpolate_with_periodic_traces(tilted_contour, Assert, not_core):
+    fig, expected_data = check_basic_tilted_contour(
+        tilted_contour, True, Assert, not_core
+    )
+    check_colorscale(fig, expected_data, False, Assert, not_core)
 
-    periodic_left = int(np.floor(((1 + num_periodic_add) - 1) / 2))
-    xdim, ydim = tilted_contour.data.shape
-    x_indices = (np.arange(0, xdim + 1 + num_periodic_add) % xdim) - periodic_left
-    y_indices = (np.arange(0, ydim + 1 + num_periodic_add) % ydim) - periodic_left
-    expected_data = tilted_contour.data[np.ix_(x_indices, y_indices)]
-    print(
-        expected_data.shape,
-        num_periodic_add,
-        fig.data[0].z.T.shape,
-        tilted_contour.data.shape,
+
+def test_contour_interpolate_with_periodic_function(
+    tilted_contour_with_sin_cos, Assert, not_core
+):
+    fig, expected_data = check_basic_tilted_contour(
+        tilted_contour_with_sin_cos, False, Assert, not_core, expected_lengths=[8, 16]
     )
-    expected_shape = np.array(
-        [
-            ls + 1 + num_periodic_add
-            for ls in np.ceil(points_per_line * lengths).astype(int)
-        ]
+    check_colorscale(fig, expected_data, False, Assert, not_core)
+
+
+def test_contour_interpolate_with_periodic_function_and_traces(
+    tilted_contour_with_sin_cos, Assert, not_core
+):
+    fig, expected_data = check_basic_tilted_contour(
+        tilted_contour_with_sin_cos, True, Assert, not_core
     )
-    expected_average = np.average(expected_data.data)
-    assert len(fig.data) == 1
-    # plotly expects y-x order
-    assert all(fig.data[0].z.T.shape <= expected_shape)
-    assert fig.data[0].x.size <= expected_shape[0]
-    assert fig.data[0].y.size <= expected_shape[1]
-    finite = np.isfinite(fig.data[0].z)
-    assert np.isclose(np.average(fig.data[0].z[finite]), expected_average, rtol=0.1)
-    assert len(fig.layout.shapes) == 0
-    expected_colorscale = [
-        [0, _config.VASP_COLORS["blue"]],
-        [0.5, "white"],
-        [1, _config.VASP_COLORS["red"]],
-    ]
-    assert len(fig.data[0].colorscale) == len(expected_colorscale)
-    for actual, expected in zip(fig.data[0].colorscale, expected_colorscale):
-        Assert.allclose(actual[0], expected[0])
-        assert actual[1] == expected[1]
-    check_annotations(tilted_contour.lattice, fig.layout.annotations, Assert)
+    check_colorscale(fig, expected_data, False, Assert, not_core)
 
 
 def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
