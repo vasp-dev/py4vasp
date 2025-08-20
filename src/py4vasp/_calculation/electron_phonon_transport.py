@@ -282,17 +282,24 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         temperatures = instances[0].temperatures()
         x = np.zeros(len(instances))
         ys = np.zeros((len(temperatures), len(instances)))
+        annotations = {"nbands_sum": [], "selfen_delta": [], "scattering_approx": []}
         for index_, instance in enumerate(instances):
             assert np.allclose(temperatures, instance.temperatures())
-            x[index_] = instance._read_metadata()[mu_tag]
+            metadata = instance._read_metadata()
+            x[index_] = metadata[mu_tag]
             ys[:, index_] = getattr(instance, quantity)(selection=direction)
+            annotations["nbands_sum"].append(metadata["nbands_sum"])
+            annotations["selfen_delta"].append(metadata["selfen_delta"])
+            annotations["scattering_approx"].append(metadata["scattering_approx"])
         series = []
         for temperature, y in zip(temperatures, ys):
             if not direction or direction == "isotropic":
                 label = f"{quantity}(T={temperature})"
             else:
                 label = f"{quantity}_{direction}(T={temperature})"
-            series.append(graph.Series(x, y, label))
+            series.append(
+                graph.Series(x, y, label, annotations=annotations, marker="*")
+            )
         return graph.Graph(series)
 
     @base.data_access

@@ -215,6 +215,12 @@ def test_plot_mapping(transport, selection, not_core, Assert):
         Assert.allclose(series.x, transport.ref.selfen_carrier_den)
         Assert.allclose(series.y, expected_y)
         assert series.label == f"{selection}(T={temperature})"
+        Assert.allclose(series.annotations["nbands_sum"], transport.ref.nbands_sum)
+        Assert.allclose(series.annotations["selfen_delta"], transport.ref.selfen_delta)
+        Assert.allclose(
+            series.annotations["scattering_approx"], transport.ref.scattering_approx
+        )
+        assert series.marker == "*"
 
 
 @pytest.mark.parametrize("direction, expected", DIRECTIONS.items())
