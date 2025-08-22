@@ -206,7 +206,7 @@ def test_incorrect_selection(transport, selection):
         "electronic_thermal_conductivity",
     ),
 )
-def test_plot_mapping(transport, selection, not_core, Assert):
+def test_plot_mapping(transport, selection, Assert):
     graph = transport.plot(selection)
     temperatures = transport.ref.temperatures[0]
     assert len(graph) == len(temperatures)
@@ -224,7 +224,7 @@ def test_plot_mapping(transport, selection, not_core, Assert):
 
 
 @pytest.mark.parametrize("direction, expected", DIRECTIONS.items())
-def test_plot_mapping_with_direction(transport, direction, expected, not_core, Assert):
+def test_plot_mapping_with_direction(transport, direction, expected, Assert):
     raw_data = transport.ref.mobility
     new_shape = *raw_data.shape[:2], 9
     flattened_data = np.reshape(raw_data, new_shape)
@@ -238,6 +238,14 @@ def test_plot_mapping_with_direction(transport, direction, expected, not_core, A
         Assert.allclose(series.y, expected_y)
         suffix = "" if direction in (None, "isotropic") else f"_{direction}"
         assert series.label == f"mobility{suffix}(T={temperature})"
+
+
+@pytest.mark.parametrize(
+    "incorrect_selection", ("unknown_selection", "seebeck, peltier")
+)
+def test_plot_mapping_incorrect_selection(transport, incorrect_selection, Assert):
+    with pytest.raises(exception.IncorrectUsage):
+        transport.plot(incorrect_selection)
 
 
 def test_print_mapping(transport, format_):

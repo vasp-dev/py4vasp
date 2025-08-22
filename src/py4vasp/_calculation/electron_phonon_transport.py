@@ -4,6 +4,7 @@ from collections import abc
 
 import numpy as np
 
+from py4vasp import exception
 from py4vasp._calculation import base
 from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
 from py4vasp._calculation.electron_phonon_chemical_potential import (
@@ -269,13 +270,11 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         """
         mu_tag, _ = self.chemical_potential_mu_tag()
         tree = select.Tree.from_selection(selection)
-        directions_keys = DIRECTIONS.keys() - {None}
-        quantities = list(tree.selections(filter=directions_keys))
-        assert len(quantities) == 1
-        quantity = select.selections_to_string(quantities)
+        quantity = self._get_selected_quantity(tree)
         directions = list(tree.selections(filter=self.units.keys()))
         assert len(directions) == 1
         direction = select.selections_to_string(directions)
+        directions_keys = DIRECTIONS.keys() - {None}
         filter_selections = self.units.keys() | directions_keys
         instances = self._select(selection, *filter_selections)
         assert len(instances) > 0
@@ -301,6 +300,15 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
                 graph.Series(x, y, label, annotations=annotations, marker="*")
             )
         return graph.Graph(series)
+
+    def _get_selected_quantity(self, tree):
+        directions_keys = DIRECTIONS.keys() - {None}
+        quantities = list(tree.selections(filter=directions_keys))
+        if len(quantities) != 1:
+            raise exception.IncorrectUsage(
+                f"Selection must contain exactly one transport quantity, got '{select.selections_to_string(quantities)}'"
+            )
+        return select.selections_to_string(quantities)
 
     @base.data_access
     def __getitem__(self, key):
