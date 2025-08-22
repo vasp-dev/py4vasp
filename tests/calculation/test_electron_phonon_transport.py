@@ -240,6 +240,19 @@ def test_plot_mapping_with_direction(transport, direction, expected, Assert):
         assert series.label == f"mobility{suffix}(T={temperature})"
 
 
+def test_plot_mapping_multiple_directions(transport, Assert):
+    graph = transport.plot("mobility(xx, yy)")
+    temperatures = transport.ref.temperatures[0]
+    assert len(graph) == 2 * len(temperatures)
+    for ii, direction in enumerate(("xx", "yy")):
+        expected_data = transport.ref.mobility[:, :, ii, ii]
+        for jj, temperature in enumerate(temperatures):
+            series = graph[ii * len(temperatures) + jj]
+            Assert.allclose(series.x, transport.ref.selfen_carrier_den)
+            Assert.allclose(series.y, expected_data[:, jj])
+            assert series.label == f"mobility_{direction}(T={temperature})"
+
+
 @pytest.mark.parametrize(
     "incorrect_selection", ("unknown_selection", "seebeck, peltier")
 )

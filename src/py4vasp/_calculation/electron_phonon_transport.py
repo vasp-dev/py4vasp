@@ -86,11 +86,12 @@ class ElectronPhononTransportInstance(ElectronPhononInstance):
     def _select_data(self, quantity, selection):
         tree = select.Tree.from_selection(selection)
         selections = list(tree.selections())
-        assert len(selections) == 1
         maps = {1: DIRECTIONS}
         data = self._get_data(quantity).reshape(-1, 9)
         selector = index.Selector(maps, data, reduction=np.average)
-        return selector[selections[0]]
+        return {
+            selector.label(selection): selector[selection] for selection in selections
+        }
 
     def selections(self):
         """Returns the available property names that can be selected for this instance."""
@@ -268,47 +269,76 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         Plot a particular transport coefficient as a function of the chemical potential tag
         for a particular temperature.
         """
-        mu_tag, _ = self.chemical_potential_mu_tag()
         tree = select.Tree.from_selection(selection)
         quantity = self._get_selected_quantity(tree)
+
         directions = list(tree.selections(filter=self.units.keys()))
-        assert len(directions) == 1
         direction = select.selections_to_string(directions)
+
         directions_keys = DIRECTIONS.keys() - {None}
         filter_selections = self.units.keys() | directions_keys
         instances = self._select(selection, *filter_selections)
         assert len(instances) > 0
-        temperatures = instances[0].temperatures()
-        x = np.zeros(len(instances))
-        ys = np.zeros((len(temperatures), len(instances)))
-        annotations = {"nbands_sum": [], "selfen_delta": [], "scattering_approx": []}
-        for index_, instance in enumerate(instances):
-            assert np.allclose(temperatures, instance.temperatures())
-            metadata = instance._read_metadata()
-            x[index_] = metadata[mu_tag]
-            ys[:, index_] = getattr(instance, quantity)(selection=direction)
-            annotations["nbands_sum"].append(metadata["nbands_sum"])
-            annotations["selfen_delta"].append(metadata["selfen_delta"])
-            annotations["scattering_approx"].append(metadata["scattering_approx"])
-        series = []
-        for temperature, y in zip(temperatures, ys):
-            if not direction or direction == "isotropic":
-                label = f"{quantity}(T={temperature})"
-            else:
-                label = f"{quantity}_{direction}(T={temperature})"
-            series.append(
-                graph.Series(x, y, label, annotations=annotations, marker="*")
-            )
+        temperatures = self._get_temperatures(instances)
+        annotations = self._get_metadata(instances)
+        transport_data = self._get_transport_data(instances, quantity, direction)
+        series = list(
+            self._generate_series(quantity, transport_data, temperatures, annotations)
+        )
         return graph.Graph(series)
 
     def _get_selected_quantity(self, tree):
         directions_keys = DIRECTIONS.keys() - {None}
-        quantities = list(tree.selections(filter=directions_keys))
+        quantities = set(tree.selections(filter=directions_keys))
         if len(quantities) != 1:
             raise exception.IncorrectUsage(
                 f"Selection must contain exactly one transport quantity, got '{select.selections_to_string(quantities)}'"
             )
         return select.selections_to_string(quantities)
+
+    def _get_temperatures(self, instances):
+        temperatures = instances[0].temperatures()
+        for instance in instances:
+            assert np.allclose(temperatures, instance.temperatures())
+        return temperatures
+
+    def _get_metadata(self, instances):
+        mu_tag, _ = self.chemical_potential_mu_tag()
+        joint_metadata = {
+            mu_tag: [],
+            "nbands_sum": [],
+            "selfen_delta": [],
+            "scattering_approx": [],
+        }
+        for instance in instances:
+            metadata = instance._read_metadata()
+            joint_metadata[mu_tag].append(metadata[mu_tag])
+            joint_metadata["nbands_sum"].append(metadata["nbands_sum"])
+            joint_metadata["selfen_delta"].append(metadata["selfen_delta"])
+            joint_metadata["scattering_approx"].append(metadata["scattering_approx"])
+        return joint_metadata
+
+    def _get_transport_data(self, instances, quantity, direction):
+        joint_data = {}
+        for instance in instances:
+            transport_data = getattr(instance, quantity)(selection=direction)
+            for key, value in transport_data.items():
+                if key not in joint_data:
+                    joint_data[key] = []
+                joint_data[key].append(value)
+        return joint_data
+
+    def _generate_series(self, quantity, transport_data, temperatures, annotations):
+        mu_tag, _ = self.chemical_potential_mu_tag()
+        x = annotations.pop(mu_tag)
+        for direction, data in transport_data.items():
+            for index_, temperature in enumerate(temperatures):
+                if not direction or direction == "isotropic":
+                    label = f"{quantity}(T={temperature})"
+                else:
+                    label = f"{quantity}_{direction}(T={temperature})"
+                y = np.array(data)[:, index_]
+                yield graph.Series(x, y, label, annotations=annotations, marker="*")
 
     @base.data_access
     def __getitem__(self, key):
