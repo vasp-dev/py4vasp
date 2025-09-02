@@ -150,7 +150,11 @@ class Tree:
 
     def _assemble_assignment(self, selected, left_arg, right_arg):
         self._raise_error_if_left_hand_side_is_nested(left_arg)
-        yield *selected, Assignment(str(left_arg[0]), right_arg)
+        if left_arg[0] is None or right_arg[0] is None:
+            if len(selected) > 0:
+                yield selected
+        else:
+            yield *selected, Assignment(str(left_arg[0]), right_arg)
 
     def _assemble_group(self, selected, left_arg, right_arg):
         group = [left_arg[0], right_arg[0]]
@@ -162,7 +166,9 @@ class Tree:
         for argument in child.selections(filter=filter, filter_toplevel=is_operation):
             if child._content_and_argument_are_compatible(argument):
                 yield argument
-            elif self._content.character != assignment:
+            elif self._content.character == assignment:
+                yield (None,)
+            else:
                 child._raise_error_that_content_and_argument_are_incompatible(argument)
 
     def to_mermaid(self):

@@ -306,7 +306,8 @@ def test_complex_operation():
         ("A(B:C) B:C(A)", "B:C B:C"),
         ("A~B B~A", "A~B B~A"),
         ("A(B) + C, B - C(A)", "B + C, B - C"),
-        ("A=B, B=A, B=C(A), C=D", "B=C, C=D"),
+        ("A=B, B=A, C=D", "C=D"),
+        ("B=C(A) B(A=C) C(B=A)", "B=C, B, C"),
     ],
 )
 def test_selection_filter(unfiltered, filtered):
