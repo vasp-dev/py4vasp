@@ -89,14 +89,29 @@ def test_pair_selection():
 
 def test_assignment_selection():
     selection = "foo  =  bar, baz=foo"
-    assignment1 = select.Operation(("foo",), "=", ("bar",))
-    assignment2 = select.Operation(("baz",), "=", ("foo",))
+    assignment1 = select.Assignment("foo", ("bar",))
+    assignment2 = select.Assignment("baz", ("foo",))
     assert selections(selection) == ((assignment1,), (assignment2,))
     expected = """graph LR
     _0_[=] --> foo
     _0_[=] --> bar
     _1_[=] --> baz
     _1_[=] --> foo"""
+    assert graph(selection) == expected
+
+
+def test_assignment_with_parenthesis():
+    selection = "A(foo=bar) B=C(baz)"
+    assignment1 = select.Assignment("foo", ("bar",))
+    assignment2 = select.Assignment("B", ("C", "baz"))
+    assert selections(selection) == (("A", assignment1), (assignment2,))
+    expected = """graph LR
+    A --> _0_[=]
+    _0_[=] --> foo
+    _0_[=] --> bar
+    _1_[=] --> B
+    _1_[=] --> C
+    C --> baz"""
     assert graph(selection) == expected
 
 
@@ -291,7 +306,7 @@ def test_complex_operation():
         ("A(B:C) B:C(A)", "B:C B:C"),
         ("A~B B~A", "A~B B~A"),
         ("A(B) + C, B - C(A)", "B + C, B - C"),
-        ("A=B, B=A, C=D", "B=A, C=D"),
+        ("A=B, B=A, B=C(A), C=D", "B=C, C=D"),
     ],
 )
 def test_selection_filter(unfiltered, filtered):
@@ -360,6 +375,12 @@ def test_broken_parenthesis(selection):
 def test_missing_operand(selection):
     with pytest.raises(exception.IncorrectUsage):
         select.Tree.from_selection(selection)
+
+
+@pytest.mark.parametrize("selection", ["=a", "b=", "a(b)=c"])
+def test_broken_assignment_raises_error(selection):
+    with pytest.raises(exception.IncorrectUsage):
+        selections(selection)
 
 
 @pytest.mark.parametrize("selection", [None, "string"])

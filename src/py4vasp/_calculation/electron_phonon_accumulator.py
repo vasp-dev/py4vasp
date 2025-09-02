@@ -66,15 +66,13 @@ class ElectronPhononAccumulator:
         for assignment in selection:
             self._raise_error_if_assignment_format_incorrect(assignment)
             remaining_indices = self._filter_assignment(
-                remaining_indices,
-                assignment.left_operand[0],
-                assignment.right_operand[0],
+                remaining_indices, assignment.left_operand, assignment.right_operand[0]
             )
             remaining_indices = list(remaining_indices)
         yield from remaining_indices
 
     def _raise_error_if_assignment_format_incorrect(self, assignment):
-        if not isinstance(assignment, select.Operation) or assignment.operator != "=":
+        if not isinstance(assignment, select.Assignment):
             message = f'\
 The selection {assignment} is not formatted correctly. It should be formatted like \
 "key=value". Please check the "selections" method for available options.'
