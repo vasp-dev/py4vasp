@@ -239,6 +239,10 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         return chemical_potential.mu_tag()
 
     @base.data_access
+    def _get_data(self, name, index):
+        return self._accumulator().get_data(name, index)
+
+    @base.data_access
     def select(self, selection):
         """Return a list of ElectronPhononSelfEnergyInstance objects matching the selection.
 
@@ -253,15 +257,7 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         list of ElectronPhononSelfEnergyInstance
             Instances that match the selection criteria.
         """
-        return self._select(selection)
-
-    def _select(self, selection, *filter_selections):
-        indices = self._accumulator().select_indices(selection, *filter_selections)
-        return [ElectronPhononTransportInstance(self, index) for index in indices]
-
-    @base.data_access
-    def _get_data(self, name, index):
-        return self._accumulator().get_data(name, index)
+        return self._select_instances(selection)
 
     @base.data_access
     def to_graph(self, selection):
@@ -270,14 +266,14 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         for a particular temperature.
         """
         tree = select.Tree.from_selection(selection)
-        quantity = self._get_selected_quantity(tree)
+        quantity_keys = self.units.keys()
+        direction_keys = DIRECTIONS.keys() - {None}
+        selection_keys = self._accumulator().selections({}).keys()
 
-        directions = list(tree.selections(filter=self.units.keys()))
-        direction = select.selections_to_string(directions)
+        instances = self._select_instances(selection, quantity_keys | direction_keys)
+        quantity = self._select_quantity(tree, direction_keys | selection_keys)
+        direction = self._select_direction(tree, selection_keys | quantity_keys)
 
-        directions_keys = DIRECTIONS.keys() - {None}
-        filter_selections = self.units.keys() | directions_keys
-        instances = self._select(selection, *filter_selections)
         assert len(instances) > 0
         temperatures = self._get_temperatures(instances)
         annotations = self._get_metadata(instances)
@@ -287,14 +283,21 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         )
         return graph.Graph(series)
 
-    def _get_selected_quantity(self, tree):
-        directions_keys = DIRECTIONS.keys() - {None}
-        quantities = set(tree.selections(filter=directions_keys))
+    def _select_instances(self, selection, filter_keys=()):
+        indices = self._accumulator().select_indices(selection, *filter_keys)
+        return [ElectronPhononTransportInstance(self, index) for index in indices]
+
+    def _select_quantity(self, tree, filter_keys):
+        quantities = set(tree.selections(filter=filter_keys))
         if len(quantities) != 1:
             raise exception.IncorrectUsage(
                 f"Selection must contain exactly one transport quantity, got '{select.selections_to_string(quantities)}'"
             )
         return select.selections_to_string(quantities)
+
+    def _select_direction(self, tree, filter_keys):
+        directions = tree.selections(filter=filter_keys)
+        return select.selections_to_string(directions)
 
     def _get_temperatures(self, instances):
         temperatures = instances[0].temperatures()
@@ -331,6 +334,7 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
     def _generate_series(self, quantity, transport_data, temperatures, annotations):
         mu_tag, _ = self.chemical_potential_mu_tag()
         x = annotations.pop(mu_tag)
+        marker = self._use_marker_if_metadata_is_different(annotations)
         for direction, data in transport_data.items():
             for index_, temperature in enumerate(temperatures):
                 if not direction or direction == "isotropic":
@@ -338,7 +342,13 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
                 else:
                     label = f"{quantity}_{direction}(T={temperature})"
                 y = np.array(data)[:, index_]
-                yield graph.Series(x, y, label, annotations=annotations, marker="*")
+                yield graph.Series(x, y, label, annotations=annotations, marker=marker)
+
+    def _use_marker_if_metadata_is_different(self, annotations):
+        for value in annotations.values():
+            if len(np.unique(value)) > 1:
+                return "*"
+        return None
 
     @base.data_access
     def __getitem__(self, key):

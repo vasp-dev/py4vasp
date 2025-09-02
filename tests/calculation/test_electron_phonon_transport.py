@@ -253,6 +253,20 @@ def test_plot_mapping_multiple_directions(transport, Assert):
             assert series.label == f"mobility_{direction}(T={temperature})"
 
 
+def test_plot_mapping_select_scattering_approx(transport, Assert):
+    graph = transport.plot("peltier(scattering_approx=ERTA_LAMDBA)")
+    temperatures = transport.ref.temperatures[0]
+    assert len(graph) == len(temperatures)
+    mask = transport.ref.scattering_approx == "ERTA_LAMDBA"
+    data = np.trace(np.squeeze(transport.ref.peltier[mask]), axis1=1, axis2=2) / 3
+    for temperature, series, expected_y in zip(temperatures, graph, data):
+        Assert.allclose(series.x, transport.ref.selfen_carrier_den[mask])
+        Assert.allclose(series.y, expected_y)
+        assert series.label == f"peltier(T={temperature})"
+        Assert.allclose(series.annotations["scattering_approx"], ["ERTA_LAMDBA"])
+        assert series.marker == None
+
+
 @pytest.mark.parametrize(
     "incorrect_selection", ("unknown_selection", "seebeck, peltier")
 )
