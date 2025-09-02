@@ -89,9 +89,9 @@ def test_pair_selection():
 
 def test_assignment_selection():
     selection = "foo  =  bar, baz=foo"
-    pair1 = select.Group(["foo", "bar"], "=")
-    pair2 = select.Group(["baz", "foo"], "=")
-    assert selections(selection) == ((pair1,), (pair2,))
+    assignment1 = select.Operation(("foo",), "=", ("bar",))
+    assignment2 = select.Operation(("baz",), "=", ("foo",))
+    assert selections(selection) == ((assignment1,), (assignment2,))
     expected = """graph LR
     _0_[=] --> foo
     _0_[=] --> bar
@@ -101,18 +101,7 @@ def test_assignment_selection():
 
 
 # def test_assignment_with_operator():
-#     selection = "foo = bar + baz"  # , foo = bar - baz, foo = +bar, foo = -baz"
-#     operation1 = select.Operation(("bar",), "+", ("baz",))
-#     operation2 = select.Operation(("bar",), "-", ("baz",))
-#     operation3 = select.Operation((), "+", ("bar",))
-#     operation4 = select.Operation((), "-", ("baz",))
-#     pair1 = select.Group(["foo", operation1], "=")
-#     pair2 = select.Group(["foo", operation2], "=")
-#     pair3 = select.Group(["foo", operation3], "=")
-#     pair4 = select.Group(["foo", operation4], "=")
-#     actual_selections = selections(selection)
-#     print(actual_selections)
-#     assert actual_selections == ((pair1,), (pair2,), (pair3,), (pair4,))
+#     # one should implement order of operators, such that + is evaluated before =
 
 
 def test_brackets_escape():
@@ -302,6 +291,7 @@ def test_complex_operation():
         ("A(B:C) B:C(A)", "B:C B:C"),
         ("A~B B~A", "A~B B~A"),
         ("A(B) + C, B - C(A)", "B + C, B - C"),
+        ("A=B, B=A, C=D", "B=A, C=D"),
     ],
 )
 def test_selection_filter(unfiltered, filtered):

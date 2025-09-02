@@ -62,22 +62,25 @@ class ElectronPhononAccumulator:
     def _filter_indices(self, selection, filters):
         remaining_indices = range(len(self._raw_data.valid_indices))
         for key, value in filters.items():
-            remaining_indices = self._filter_group(remaining_indices, key, value)
-        for group in selection:
-            self._raise_error_if_group_format_incorrect(group)
-            assert len(group.group) == 2
-            remaining_indices = self._filter_group(remaining_indices, *group.group)
+            remaining_indices = self._filter_assignment(remaining_indices, key, value)
+        for assignment in selection:
+            self._raise_error_if_assignment_format_incorrect(assignment)
+            remaining_indices = self._filter_assignment(
+                remaining_indices,
+                assignment.left_operand[0],
+                assignment.right_operand[0],
+            )
             remaining_indices = list(remaining_indices)
         yield from remaining_indices
 
-    def _raise_error_if_group_format_incorrect(self, group):
-        if not isinstance(group, select.Group) or group.separator != "=":
+    def _raise_error_if_assignment_format_incorrect(self, assignment):
+        if not isinstance(assignment, select.Operation) or assignment.operator != "=":
             message = f'\
-The selection {group} is not formatted correctly. It should be formatted like \
+The selection {assignment} is not formatted correctly. It should be formatted like \
 "key=value". Please check the "selections" method for available options.'
             raise exception.IncorrectUsage(message)
 
-    def _filter_group(self, remaining_indices, key, value):
+    def _filter_assignment(self, remaining_indices, key, value):
         for index_ in remaining_indices:
             if self._match_key_value(index_, key, str(value)):
                 yield index_
