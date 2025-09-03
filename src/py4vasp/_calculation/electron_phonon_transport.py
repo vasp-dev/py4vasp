@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from collections import abc
 from dataclasses import dataclass
+from typing import List, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -28,12 +29,6 @@ DIRECTIONS = {
     "xz": [2, 6],
     "yz": [5, 7],
 }
-
-
-@dataclass
-class TemperatureSelection:
-    temperature: ArrayLike
-    mask: ArrayLike
 
 
 class ElectronPhononTransportInstance(ElectronPhononInstance):
@@ -185,6 +180,20 @@ class ElectronPhononTransportInstance(ElectronPhononInstance):
         return dict(zip(self.id_name, self.id_index - 1))
 
 
+@dataclass
+class ParsedSelection:
+    quantity: str
+    direction: Optional[str]
+    temperature: Optional[float]
+    instances: List[ElectronPhononTransportInstance]
+
+
+@dataclass
+class TemperatureSelection:
+    temperature: ArrayLike
+    mask: ArrayLike
+
+
 class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
     """
     Provides access to electron-phonon transport data and selection utilities.
@@ -267,135 +276,129 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         """
         return self._select_instances(selection)
 
+    def _select_instances(self, selection, filter_keys=()):
+        indices = self._accumulator().select_indices(selection, *filter_keys)
+        return [ElectronPhononTransportInstance(self, index) for index in indices]
+
     @base.data_access
     def to_graph(self, selection):
         """
         Plot a particular transport coefficient as a function of the chemical potential tag
         for a particular temperature.
         """
-        tree = select.Tree.from_selection(selection)
-        quantity_keys = self.units.keys()
-        direction_keys = DIRECTIONS.keys() - {None}
-        instance_keys = self._accumulator().selections({}).keys()
-        temperature_keys = {"T", "temperature"}
-        all_keys = quantity_keys | direction_keys | instance_keys | temperature_keys
+        parsed_selections = [
+            self._parse_selection(selection)
+            for selection in select.Tree.from_selection(selection).selections()
+        ]
+        self._raise_error_if_quantities_are_different(parsed_selections)
+        series_list = [
+            series
+            for parsed_selection in parsed_selections
+            for series in self._generate_series(parsed_selection)
+        ]
+        return graph.Graph(series_list)
 
-        instances = self._select_instances(selection, all_keys - instance_keys)
-        assert len(instances) > 0
-        quantity = self._select_quantity(tree, all_keys - quantity_keys)
-        direction = self._select_direction(tree, all_keys - direction_keys)
-        temperatures = self._select_temperatures(tree, all_keys - temperature_keys)
-
-        temperature_selections = self._get_temperatures(instances, temperatures)
-        print(temperature_selections)
-
-        annotations = self._get_metadata(instances)
-        transport_data = self._get_transport_data(instances, quantity, direction)
-        series = list(
-            self._generate_series(
-                quantity, transport_data, temperature_selections, annotations
-            )
+    def _parse_selection(self, selection):
+        selection_string = select.selections_to_string((selection,))
+        filter_keys = self.units.keys() | DIRECTIONS.keys() | {"T", "temperature"}
+        return ParsedSelection(
+            quantity=self._parse_quantity(selection, selection_string),
+            direction=self._parse_direction(selection, selection_string),
+            temperature=self._parse_temperature(selection),
+            instances=self._select_instances(selection_string, filter_keys),
         )
-        return graph.Graph(series)
 
-    def _select_instances(self, selection, filter_keys=()):
-        indices = self._accumulator().select_indices(selection, *filter_keys)
-        print(indices)
-        return [ElectronPhononTransportInstance(self, index) for index in indices]
+    def _parse_quantity(self, selection, selection_string):
+        selected_quantities = [
+            quantity
+            for quantity in self.units.keys()
+            if select.contains(selection, quantity)
+        ]
+        if len(selected_quantities) != 1:
+            raise exception.IncorrectUsage(
+                f"Selection must contain exactly one transport quantity, but '{selection_string}' contains {selected_quantities}."
+            )
+        return selected_quantities[0]
 
-    def _select_quantity(self, tree, filter_keys):
-        quantities = set(tree.selections(filter=filter_keys))
+    def _parse_direction(self, selection, selection_string):
+        selected_directions = [
+            direction
+            for direction in DIRECTIONS.keys()
+            if select.contains(selection, direction)
+        ]
+        if len(selected_directions) > 1:
+            raise exception.IncorrectUsage(
+                f"Selection must contain exactly one transport direction, but '{selection_string}' contains {selected_directions}."
+            )
+        return selected_directions[0] if selected_directions else None
+
+    def _parse_temperature(self, selection):
+        selected_temperatures = [
+            float(item.right_operand[0])
+            for item in selection
+            if isinstance(item, select.Assignment)
+            and item.left_operand in {"T", "temperature"}
+        ]
+        return selected_temperatures[0] if selected_temperatures else None
+
+    def _raise_error_if_quantities_are_different(self, parsed_selections):
+        quantities = {selection.quantity for selection in parsed_selections}
         if len(quantities) != 1:
             raise exception.IncorrectUsage(
-                f"Selection must contain exactly one transport quantity, got '{select.selections_to_string(quantities)}'"
+                f"Selections must contain exactly one transport quantity, but got {quantities}"
             )
-        return select.selections_to_string(quantities)
 
-    def _select_direction(self, tree, filter_keys):
-        directions = tree.selections(filter=filter_keys)
-        return select.selections_to_string(directions)
-
-    def _select_temperatures(self, tree, filter_keys):
-        return [
-            self._convert_selection_to_temperature(selection)
-            for selection in tree.selections(filter=filter_keys)
-        ]
-
-    def _convert_selection_to_temperature(self, selection):
-        if len(selection) == 0:
-            return None
-        elif len(selection) == 1:
-            assignment = selection[0]
-            return float(assignment.right_operand[0])
+    def _generate_series(self, parsed_selection):
+        if parsed_selection.direction in ("isotropic", None):
+            common_label = parsed_selection.quantity
         else:
-            raise exception.IncorrectUsage(
-                "Selection must contain at most one temperature, got "
-                f"{select.selections_to_string(selection)}"
-            )
+            common_label = f"{parsed_selection.quantity}_{parsed_selection.direction}"
+        temperatures, mask = self._get_temperatures(parsed_selection)
+        transport_data = self._get_transport_data(parsed_selection, mask)
+        x, annotations = self._get_metadata(parsed_selection.instances)
+        marker = self._use_marker_if_metadata_is_different(annotations)
+        assert len(temperatures) == len(transport_data)
+        for T, y in zip(temperatures, transport_data):
+            label = f"{common_label}(T={T}K)"
+            yield graph.Series(x, y, label, annotations=annotations, marker=marker)
 
-    def _get_temperatures(self, instances, selected_temperatures):
-        all_temperatures = instances[0].temperatures()
-        for instance in instances:
+    def _get_temperatures(self, parsed_selection):
+        all_temperatures = parsed_selection.instances[0].temperatures()
+        for instance in parsed_selection.instances:
             assert np.allclose(all_temperatures, instance.temperatures())
-        return [
-            self._make_temperature_selection(all_temperatures, selected_temperature)
-            for selected_temperature in selected_temperatures
-        ]
+        if parsed_selection.temperature is None:
+            mask = np.full_like(all_temperatures, True, dtype=bool)
+        else:
+            mask = np.isclose(all_temperatures, parsed_selection.temperature)
+        return all_temperatures[mask], mask
 
-    def _make_temperature_selection(self, all_temperatures, selected_temperature):
-        if selected_temperature is None:
-            return TemperatureSelection(
-                all_temperatures, mask=np.full_like(all_temperatures, True, dtype=bool)
-            )
-        return TemperatureSelection(
-            all_temperatures, mask=np.isclose(all_temperatures, selected_temperature)
-        )
+    def _get_transport_data(self, parsed_selection, mask):
+        joint_data = []
+        for instance in parsed_selection.instances:
+            get_quantity = getattr(instance, parsed_selection.quantity)
+            transport_data = get_quantity(selection=parsed_selection.direction)
+            assert len(transport_data) == 1
+            _, value = transport_data.popitem()
+            joint_data.append(value[mask])
+        return np.array(joint_data).T
 
     def _get_metadata(self, instances):
         mu_tag, _ = self.chemical_potential_mu_tag()
-        joint_metadata = {
-            mu_tag: [],
-            "nbands_sum": [],
-            "selfen_delta": [],
-            "scattering_approx": [],
-        }
-        for instance in instances:
+        chemical_potential = np.empty(len(instances))
+        nbands_sum = np.empty(len(instances), dtype=int)
+        selfen_delta = np.empty(len(instances))
+        scattering_approx = np.empty(len(instances), dtype="<U20")
+        for ii, instance in enumerate(instances):
             metadata = instance._read_metadata()
-            joint_metadata[mu_tag].append(metadata[mu_tag])
-            joint_metadata["nbands_sum"].append(metadata["nbands_sum"])
-            joint_metadata["selfen_delta"].append(metadata["selfen_delta"])
-            joint_metadata["scattering_approx"].append(metadata["scattering_approx"])
-        return joint_metadata
-
-    def _get_transport_data(self, instances, quantity, direction):
-        joint_data = {}
-        for instance in instances:
-            transport_data = getattr(instance, quantity)(selection=direction)
-            for key, value in transport_data.items():
-                print(key, value.shape)
-                joint_data.setdefault(key, []).append(value)
-        return joint_data
-
-    def _generate_series(
-        self, quantity, transport_data, temperature_selections, annotations
-    ):
-        mu_tag, _ = self.chemical_potential_mu_tag()
-        x = annotations.pop(mu_tag)
-        marker = self._use_marker_if_metadata_is_different(annotations)
-        print(transport_data)
-        for direction, data in transport_data.items():
-            for temperature_selection in temperature_selections:
-                for index_, temperature in enumerate(temperature_selection.temperature):
-                    if not temperature_selection.mask[index_]:
-                        continue
-                    if not direction or direction == "isotropic":
-                        label = f"{quantity}(T={temperature}K)"
-                    else:
-                        label = f"{quantity}_{direction}(T={temperature}K)"
-                    y = np.array(data)[:, index_]
-                    yield graph.Series(
-                        x, y, label, annotations=annotations, marker=marker
-                    )
+            chemical_potential[ii] = metadata[mu_tag]
+            nbands_sum[ii] = metadata["nbands_sum"]
+            selfen_delta[ii] = metadata["selfen_delta"]
+            scattering_approx[ii] = metadata["scattering_approx"]
+        return chemical_potential, {
+            "nbands_sum": nbands_sum,
+            "selfen_delta": selfen_delta,
+            "scattering_approx": scattering_approx,
+        }
 
     def _use_marker_if_metadata_is_different(self, annotations):
         for value in annotations.values():

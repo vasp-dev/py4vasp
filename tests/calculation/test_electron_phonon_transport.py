@@ -240,7 +240,6 @@ def test_plot_mapping_with_direction(transport, direction, expected, Assert):
         assert series.label == f"mobility{suffix}(T={temperature}K)"
 
 
-@pytest.mark.skip
 def test_plot_mapping_multiple_directions(transport, Assert):
     graph = transport.plot("mobility(xx, yy)")
     temperatures = transport.ref.temperatures[0]
@@ -284,7 +283,8 @@ def test_plot_mapping_select_temperature(transport, selection, Assert):
 
 
 @pytest.mark.parametrize(
-    "incorrect_selection", ("unknown_selection", "seebeck, peltier")
+    "incorrect_selection",
+    ("unknown_selection", "mobility(seebeck)", "seebeck, peltier"),
 )
 def test_plot_mapping_incorrect_selection(transport, incorrect_selection, Assert):
     with pytest.raises(exception.IncorrectUsage):
