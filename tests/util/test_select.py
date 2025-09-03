@@ -306,12 +306,26 @@ def test_complex_operation():
         ("A(B:C) B:C(A)", "B:C B:C"),
         ("A~B B~A", "A~B B~A"),
         ("A(B) + C, B - C(A)", "B + C, B - C"),
-        ("A=B, B=A, C=D", "C=D"),
+        ("A=B", ""),
+        ("A=B(C), B=A(D), C=D", "C, B=D, C=D"),
         ("B=C(A) B(A=C) C(B=A)", "B=C, B, C"),
     ],
 )
 def test_selection_filter(unfiltered, filtered):
     assert selections(unfiltered, filter={"A"}) == selections(filtered)
+
+
+@pytest.mark.parametrize(
+    "unfiltered, filtered",
+    [
+        ("A(B(C)), A(C), B(C(A))", "C, C, C"),
+        ("A(B)", ""),
+        ("B(C) + A(D), A(B(C)) - D", "C + D, C - D"),
+        ("A(B=C)", ""),
+    ],
+)
+def test_filter_multiple(unfiltered, filtered):
+    assert selections(unfiltered, filter={"A", "B"}) == selections(filtered)
 
 
 @pytest.mark.parametrize("selection", ("A + B", "B + A", "A - B", "B - A"))

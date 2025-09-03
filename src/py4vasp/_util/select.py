@@ -151,8 +151,7 @@ class Tree:
     def _assemble_assignment(self, selected, left_arg, right_arg):
         self._raise_error_if_left_hand_side_is_nested(left_arg)
         if left_arg[0] is None or right_arg[0] is None:
-            if len(selected) > 0:
-                yield selected
+            yield *selected, *right_arg[1:]
         else:
             yield *selected, Assignment(str(left_arg[0]), right_arg)
 
