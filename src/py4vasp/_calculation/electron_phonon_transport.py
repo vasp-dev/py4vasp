@@ -1,8 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from collections import abc
+from dataclasses import dataclass
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from py4vasp import exception
 from py4vasp._calculation import base
@@ -26,6 +28,12 @@ DIRECTIONS = {
     "xz": [2, 6],
     "yz": [5, 7],
 }
+
+
+@dataclass
+class TemperatureSelection:
+    temperature: ArrayLike
+    mask: ArrayLike
 
 
 class ElectronPhononTransportInstance(ElectronPhononInstance):
@@ -268,23 +276,31 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         tree = select.Tree.from_selection(selection)
         quantity_keys = self.units.keys()
         direction_keys = DIRECTIONS.keys() - {None}
-        selection_keys = self._accumulator().selections({}).keys()
+        instance_keys = self._accumulator().selections({}).keys()
+        temperature_keys = {"T", "temperature"}
+        all_keys = quantity_keys | direction_keys | instance_keys | temperature_keys
 
-        instances = self._select_instances(selection, quantity_keys | direction_keys)
-        quantity = self._select_quantity(tree, direction_keys | selection_keys)
-        direction = self._select_direction(tree, selection_keys | quantity_keys)
-
+        instances = self._select_instances(selection, all_keys - instance_keys)
         assert len(instances) > 0
-        temperatures = self._get_temperatures(instances)
+        quantity = self._select_quantity(tree, all_keys - quantity_keys)
+        direction = self._select_direction(tree, all_keys - direction_keys)
+        temperatures = self._select_temperatures(tree, all_keys - temperature_keys)
+
+        temperature_selections = self._get_temperatures(instances, temperatures)
+        print(temperature_selections)
+
         annotations = self._get_metadata(instances)
         transport_data = self._get_transport_data(instances, quantity, direction)
         series = list(
-            self._generate_series(quantity, transport_data, temperatures, annotations)
+            self._generate_series(
+                quantity, transport_data, temperature_selections, annotations
+            )
         )
         return graph.Graph(series)
 
     def _select_instances(self, selection, filter_keys=()):
         indices = self._accumulator().select_indices(selection, *filter_keys)
+        print(indices)
         return [ElectronPhononTransportInstance(self, index) for index in indices]
 
     def _select_quantity(self, tree, filter_keys):
@@ -299,11 +315,41 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         directions = tree.selections(filter=filter_keys)
         return select.selections_to_string(directions)
 
-    def _get_temperatures(self, instances):
-        temperatures = instances[0].temperatures()
+    def _select_temperatures(self, tree, filter_keys):
+        return [
+            self._convert_selection_to_temperature(selection)
+            for selection in tree.selections(filter=filter_keys)
+        ]
+
+    def _convert_selection_to_temperature(self, selection):
+        if len(selection) == 0:
+            return None
+        elif len(selection) == 1:
+            assignment = selection[0]
+            return float(assignment.right_operand[0])
+        else:
+            raise exception.IncorrectUsage(
+                "Selection must contain at most one temperature, got "
+                f"{select.selections_to_string(selection)}"
+            )
+
+    def _get_temperatures(self, instances, selected_temperatures):
+        all_temperatures = instances[0].temperatures()
         for instance in instances:
-            assert np.allclose(temperatures, instance.temperatures())
-        return temperatures
+            assert np.allclose(all_temperatures, instance.temperatures())
+        return [
+            self._make_temperature_selection(all_temperatures, selected_temperature)
+            for selected_temperature in selected_temperatures
+        ]
+
+    def _make_temperature_selection(self, all_temperatures, selected_temperature):
+        if selected_temperature is None:
+            return TemperatureSelection(
+                all_temperatures, mask=np.full_like(all_temperatures, True, dtype=bool)
+            )
+        return TemperatureSelection(
+            all_temperatures, mask=np.isclose(all_temperatures, selected_temperature)
+        )
 
     def _get_metadata(self, instances):
         mu_tag, _ = self.chemical_potential_mu_tag()
@@ -326,23 +372,30 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         for instance in instances:
             transport_data = getattr(instance, quantity)(selection=direction)
             for key, value in transport_data.items():
-                if key not in joint_data:
-                    joint_data[key] = []
-                joint_data[key].append(value)
+                print(key, value.shape)
+                joint_data.setdefault(key, []).append(value)
         return joint_data
 
-    def _generate_series(self, quantity, transport_data, temperatures, annotations):
+    def _generate_series(
+        self, quantity, transport_data, temperature_selections, annotations
+    ):
         mu_tag, _ = self.chemical_potential_mu_tag()
         x = annotations.pop(mu_tag)
         marker = self._use_marker_if_metadata_is_different(annotations)
+        print(transport_data)
         for direction, data in transport_data.items():
-            for index_, temperature in enumerate(temperatures):
-                if not direction or direction == "isotropic":
-                    label = f"{quantity}(T={temperature})"
-                else:
-                    label = f"{quantity}_{direction}(T={temperature})"
-                y = np.array(data)[:, index_]
-                yield graph.Series(x, y, label, annotations=annotations, marker=marker)
+            for temperature_selection in temperature_selections:
+                for index_, temperature in enumerate(temperature_selection.temperature):
+                    if not temperature_selection.mask[index_]:
+                        continue
+                    if not direction or direction == "isotropic":
+                        label = f"{quantity}(T={temperature}K)"
+                    else:
+                        label = f"{quantity}_{direction}(T={temperature}K)"
+                    y = np.array(data)[:, index_]
+                    yield graph.Series(
+                        x, y, label, annotations=annotations, marker=marker
+                    )
 
     def _use_marker_if_metadata_is_different(self, annotations):
         for value in annotations.values():

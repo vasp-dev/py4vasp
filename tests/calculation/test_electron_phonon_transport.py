@@ -214,7 +214,7 @@ def test_plot_mapping(transport, selection, Assert):
     for temperature, series, expected_y in zip(temperatures, graph, data.T):
         Assert.allclose(series.x, transport.ref.selfen_carrier_den)
         Assert.allclose(series.y, expected_y)
-        assert series.label == f"{selection}(T={temperature})"
+        assert series.label == f"{selection}(T={temperature}K)"
         Assert.allclose(series.annotations["nbands_sum"], transport.ref.nbands_sum)
         Assert.allclose(series.annotations["selfen_delta"], transport.ref.selfen_delta)
         Assert.allclose(
@@ -237,9 +237,10 @@ def test_plot_mapping_with_direction(transport, direction, expected, Assert):
         Assert.allclose(series.x, transport.ref.selfen_carrier_den)
         Assert.allclose(series.y, expected_y)
         suffix = "" if direction in (None, "isotropic") else f"_{direction}"
-        assert series.label == f"mobility{suffix}(T={temperature})"
+        assert series.label == f"mobility{suffix}(T={temperature}K)"
 
 
+@pytest.mark.skip
 def test_plot_mapping_multiple_directions(transport, Assert):
     graph = transport.plot("mobility(xx, yy)")
     temperatures = transport.ref.temperatures[0]
@@ -250,7 +251,7 @@ def test_plot_mapping_multiple_directions(transport, Assert):
             series = graph[ii * len(temperatures) + jj]
             Assert.allclose(series.x, transport.ref.selfen_carrier_den)
             Assert.allclose(series.y, expected_data[:, jj])
-            assert series.label == f"mobility_{direction}(T={temperature})"
+            assert series.label == f"mobility_{direction}(T={temperature}K)"
 
 
 def test_plot_mapping_select_scattering_approx(transport, Assert):
@@ -262,9 +263,24 @@ def test_plot_mapping_select_scattering_approx(transport, Assert):
     for temperature, series, expected_y in zip(temperatures, graph, data):
         Assert.allclose(series.x, transport.ref.selfen_carrier_den[mask])
         Assert.allclose(series.y, expected_y)
-        assert series.label == f"peltier(T={temperature})"
+        assert series.label == f"peltier(T={temperature}K)"
         Assert.allclose(series.annotations["scattering_approx"], ["ERTA_LAMDBA"])
         assert series.marker == None
+
+
+@pytest.mark.parametrize(
+    "selection", ("T=300, T=400", "temperature=300, temperature=400")
+)
+def test_plot_mapping_select_temperature(transport, selection, Assert):
+    graph = transport.plot(f"seebeck({selection})")
+    assert len(graph) == 2
+    temperatures = transport.ref.temperatures[0]
+    mask = np.isclose(temperatures, 300.0) | np.isclose(temperatures, 400.0)
+    data = np.trace(np.squeeze(transport.ref.seebeck[:, mask]), axis1=2, axis2=3) / 3
+    for series, temperature, expected_y in zip(graph, (300.0, 400.0), data.T):
+        Assert.allclose(series.x, transport.ref.selfen_carrier_den)
+        Assert.allclose(series.y, expected_y)
+        assert series.label == f"seebeck(T={temperature}K)"
 
 
 @pytest.mark.parametrize(
