@@ -31,6 +31,15 @@ DIRECTIONS = {
 }
 
 
+UNITS = {
+    "electronic_conductivity": "S/m",
+    "mobility": "cm^2/(V.s)",
+    "seebeck": "μV/K",
+    "peltier": "μV",
+    "electronic_thermal_conductivity": "W/(m.K)",
+}
+
+
 class ElectronPhononTransportInstance(ElectronPhononInstance):
     """
     Represents a single instance of electron-phonon transport calculations.
@@ -98,18 +107,7 @@ class ElectronPhononTransportInstance(ElectronPhononInstance):
 
     def selections(self):
         """Returns the available property names that can be selected for this instance."""
-        return self.selections_units.keys()
-
-    @property
-    def selections_units(self):
-        selections_units_dict = {
-            "electronic_conductivity": "S/m",
-            "mobility": "cm^2/(V.s)",
-            "seebeck": "μV/K",
-            "peltier": "μV",
-            "electronic_thermal_conductivity": "W/(m.K)",
-        }
-        return selections_units_dict
+        return UNITS.keys()
 
     def _get_temperature_idx(self, temperature, tolerance=1e-8):
 
@@ -180,20 +178,6 @@ class ElectronPhononTransportInstance(ElectronPhononInstance):
         return dict(zip(self.id_name, self.id_index - 1))
 
 
-@dataclass
-class ParsedSelection:
-    quantity: str
-    direction: Optional[str]
-    temperature: Optional[float]
-    instances: List[ElectronPhononTransportInstance]
-
-
-@dataclass
-class TemperatureSelection:
-    temperature: ArrayLike
-    mask: ArrayLike
-
-
 class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
     """
     Provides access to electron-phonon transport data and selection utilities.
@@ -234,19 +218,13 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         """
         base_selections = {
             **super().selections(),
-            "transport": list(self.units.keys()),
+            "transport": list(UNITS.keys()),
         }
         return self._accumulator().selections(base_selections)
 
     @property
     def units(self):
-        return {
-            "electronic_conductivity": "S/m",
-            "mobility": "cm^2/(V.s)",
-            "seebeck": "μV/K",
-            "peltier": "μV",
-            "electronic_thermal_conductivity": "W/(m.K)",
-        }
+        return UNITS
 
     @base.data_access
     def chemical_potential_mu_tag(self):
@@ -286,125 +264,18 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         Plot a particular transport coefficient as a function of the chemical potential tag
         for a particular temperature.
         """
-        parsed_selections = [
-            self._parse_selection(selection)
-            for selection in select.Tree.from_selection(selection).selections()
-        ]
-        self._raise_error_if_quantities_are_different(parsed_selections)
+        builder = SeriesBuilder()
         series_list = [
             series
-            for parsed_selection in parsed_selections
-            for series in self._generate_series(parsed_selection)
+            for selection in select.Tree.from_selection(selection).selections()
+            for series in builder.build(selection, self._get_instances(selection))
         ]
         return graph.Graph(series_list)
 
-    def _parse_selection(self, selection):
+    def _get_instances(self, selection):
         selection_string = select.selections_to_string((selection,))
-        filter_keys = self.units.keys() | DIRECTIONS.keys() | {"T", "temperature"}
-        return ParsedSelection(
-            quantity=self._parse_quantity(selection, selection_string),
-            direction=self._parse_direction(selection, selection_string),
-            temperature=self._parse_temperature(selection),
-            instances=self._select_instances(selection_string, filter_keys),
-        )
-
-    def _parse_quantity(self, selection, selection_string):
-        selected_quantities = [
-            quantity
-            for quantity in self.units.keys()
-            if select.contains(selection, quantity)
-        ]
-        if len(selected_quantities) != 1:
-            raise exception.IncorrectUsage(
-                f"Selection must contain exactly one transport quantity, but '{selection_string}' contains {selected_quantities}."
-            )
-        return selected_quantities[0]
-
-    def _parse_direction(self, selection, selection_string):
-        selected_directions = [
-            direction
-            for direction in DIRECTIONS.keys()
-            if select.contains(selection, direction)
-        ]
-        if len(selected_directions) > 1:
-            raise exception.IncorrectUsage(
-                f"Selection must contain exactly one transport direction, but '{selection_string}' contains {selected_directions}."
-            )
-        return selected_directions[0] if selected_directions else None
-
-    def _parse_temperature(self, selection):
-        selected_temperatures = [
-            float(item.right_operand[0])
-            for item in selection
-            if isinstance(item, select.Assignment)
-            and item.left_operand in {"T", "temperature"}
-        ]
-        return selected_temperatures[0] if selected_temperatures else None
-
-    def _raise_error_if_quantities_are_different(self, parsed_selections):
-        quantities = {selection.quantity for selection in parsed_selections}
-        if len(quantities) != 1:
-            raise exception.IncorrectUsage(
-                f"Selections must contain exactly one transport quantity, but got {quantities}"
-            )
-
-    def _generate_series(self, parsed_selection):
-        if parsed_selection.direction in ("isotropic", None):
-            common_label = parsed_selection.quantity
-        else:
-            common_label = f"{parsed_selection.quantity}_{parsed_selection.direction}"
-        temperatures, mask = self._get_temperatures(parsed_selection)
-        transport_data = self._get_transport_data(parsed_selection, mask)
-        x, annotations = self._get_metadata(parsed_selection.instances)
-        marker = self._use_marker_if_metadata_is_different(annotations)
-        assert len(temperatures) == len(transport_data)
-        for T, y in zip(temperatures, transport_data):
-            label = f"{common_label}(T={T}K)"
-            yield graph.Series(x, y, label, annotations=annotations, marker=marker)
-
-    def _get_temperatures(self, parsed_selection):
-        all_temperatures = parsed_selection.instances[0].temperatures()
-        for instance in parsed_selection.instances:
-            assert np.allclose(all_temperatures, instance.temperatures())
-        if parsed_selection.temperature is None:
-            mask = np.full_like(all_temperatures, True, dtype=bool)
-        else:
-            mask = np.isclose(all_temperatures, parsed_selection.temperature)
-        return all_temperatures[mask], mask
-
-    def _get_transport_data(self, parsed_selection, mask):
-        joint_data = []
-        for instance in parsed_selection.instances:
-            get_quantity = getattr(instance, parsed_selection.quantity)
-            transport_data = get_quantity(selection=parsed_selection.direction)
-            assert len(transport_data) == 1
-            _, value = transport_data.popitem()
-            joint_data.append(value[mask])
-        return np.array(joint_data).T
-
-    def _get_metadata(self, instances):
-        mu_tag, _ = self.chemical_potential_mu_tag()
-        chemical_potential = np.empty(len(instances))
-        nbands_sum = np.empty(len(instances), dtype=int)
-        selfen_delta = np.empty(len(instances))
-        scattering_approx = np.empty(len(instances), dtype="<U20")
-        for ii, instance in enumerate(instances):
-            metadata = instance._read_metadata()
-            chemical_potential[ii] = metadata[mu_tag]
-            nbands_sum[ii] = metadata["nbands_sum"]
-            selfen_delta[ii] = metadata["selfen_delta"]
-            scattering_approx[ii] = metadata["scattering_approx"]
-        return chemical_potential, {
-            "nbands_sum": nbands_sum,
-            "selfen_delta": selfen_delta,
-            "scattering_approx": scattering_approx,
-        }
-
-    def _use_marker_if_metadata_is_different(self, annotations):
-        for value in annotations.values():
-            if len(np.unique(value)) > 1:
-                return "*"
-        return None
+        filter_keys = UNITS.keys() | DIRECTIONS.keys() | {"T", "temperature"}
+        return self._select_instances(selection_string, filter_keys)
 
     @base.data_access
     def __getitem__(self, key):
@@ -415,3 +286,130 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
     @base.data_access
     def __len__(self):
         return len(self._raw_data.valid_indices)
+
+
+class SeriesBuilder:
+    def __init__(self):
+        self.quantity = None
+
+    def build(self, selection, instances):
+        self.quantity = self._get_and_check_quantity(selection)
+        x, annotations = self._get_metadata(instances)
+        temperatures, mask = self._get_temperature(selection, instances)
+        common_label, data = self._get_transport_data(selection, instances, mask)
+        marker = self._use_marker_if_metadata_is_different(annotations)
+        assert len(temperatures) == len(data)
+        for T, y in zip(temperatures, data):
+            label = f"{common_label}(T={T}K)"
+            yield graph.Series(x, y, label, annotations=annotations, marker=marker)
+
+    def _get_and_check_quantity(self, selection):
+        selected_quantities = self._get_quantities_from_selection(selection)
+        self._raise_error_if_not_exactly_one_quantity(selection, selected_quantities)
+        self._raise_error_if_quantity_inconsistent(selected_quantities)
+        return selected_quantities[0]
+
+    def _get_quantities_from_selection(self, selection):
+        return [
+            quantity
+            for quantity in UNITS.keys()
+            if select.contains(selection, quantity)
+        ]
+
+    def _raise_error_if_quantity_inconsistent(self, selected_quantities):
+        if self.quantity and self.quantity != selected_quantities[0]:
+            raise exception.IncorrectUsage(
+                f"Selections must contain exactly one transport quantity, but got {self.quantity} and {selected_quantities[0]}"
+            )
+
+    def _raise_error_if_not_exactly_one_quantity(self, selection, selected_quantities):
+        if len(selected_quantities) != 1:
+            raise exception.IncorrectUsage(
+                f"Selection must contain exactly one transport quantity, but '{select.selections_to_string((selection,))}' contains {selected_quantities}."
+            )
+
+    def _get_metadata(self, instances):
+        chemical_potential = np.empty(len(instances))
+        nbands_sum = np.empty(len(instances), dtype=int)
+        selfen_delta = np.empty(len(instances))
+        scattering_approx = np.empty(len(instances), dtype="<U20")
+        for ii, instance in enumerate(instances):
+            metadata = instance._read_metadata()
+            nbands_sum[ii] = metadata.pop("nbands_sum")
+            selfen_delta[ii] = metadata.pop("selfen_delta")
+            scattering_approx[ii] = metadata.pop("scattering_approx")
+            _, chemical_potential[ii] = metadata.popitem()
+        return chemical_potential, {
+            "nbands_sum": nbands_sum,
+            "selfen_delta": selfen_delta,
+            "scattering_approx": scattering_approx,
+        }
+
+    def _get_temperature(self, selection, instances):
+        selected_temperatures = self._get_temperature_from_selection(selection)
+        all_temperatures = self._get_temperature_from_instances(instances)
+        mask = self._find_selected_temperature(selected_temperatures, all_temperatures)
+        return all_temperatures[mask], mask
+
+    def _get_temperature_from_selection(self, selection):
+        return [
+            float(item.right_operand[0])
+            for item in selection
+            if isinstance(item, select.Assignment)
+            and item.left_operand in {"T", "temperature"}
+        ]
+
+    def _get_temperature_from_instances(self, instances):
+        all_temperatures = instances[0].temperatures()
+        for instance in instances:
+            assert np.allclose(all_temperatures, instance.temperatures())
+        return all_temperatures
+
+    def _find_selected_temperature(self, selected_temperatures, all_temperatures):
+        if selected_temperatures:
+            return np.isclose(all_temperatures, selected_temperatures[0])
+        else:
+            return np.full_like(all_temperatures, True, dtype=bool)
+
+    def _get_transport_data(self, selection, instances, mask):
+        selected_directions = self._get_direction_from_selection(selection)
+        self._raise_error_if_more_than_one_direction(selection, selected_directions)
+        direction = selected_directions[0] if selected_directions else None
+        common_label = self._assign_common_label(direction)
+        data = self._get_data_from_instances(instances, mask, direction)
+        return common_label, data
+
+    def _get_direction_from_selection(self, selection):
+        return [
+            direction
+            for direction in DIRECTIONS.keys()
+            if select.contains(selection, direction)
+        ]
+
+    def _raise_error_if_more_than_one_direction(self, selection, selected_directions):
+        if len(selected_directions) > 1:
+            raise exception.IncorrectUsage(
+                f"Selection must contain exactly one transport direction, but '{select.selections_to_string((selection,))}' contains {selected_directions}."
+            )
+
+    def _assign_common_label(self, direction):
+        if direction in ("isotropic", None):
+            return self.quantity
+        else:
+            return f"{self.quantity}_{direction}"
+
+    def _get_data_from_instances(self, instances, mask, direction):
+        joint_data = []
+        for instance in instances:
+            get_quantity = getattr(instance, self.quantity)
+            transport_data = get_quantity(selection=direction)
+            assert len(transport_data) == 1
+            _, value = transport_data.popitem()
+            joint_data.append(value[mask])
+        return np.array(joint_data).T
+
+    def _use_marker_if_metadata_is_different(self, annotations):
+        for value in annotations.values():
+            if len(np.unique(value)) > 1:
+                return "*"
+        return None
