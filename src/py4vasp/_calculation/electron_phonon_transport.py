@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from collections import abc
+from typing import Any, Dict, Generator, List, Tuple
 
 import numpy as np
 
@@ -37,16 +38,11 @@ UNITS = {
 class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
     """
     Represents a single instance of electron-phonon transport calculations.
+
     This class provides access to various transport properties computed from
     electron-phonon interactions, such as conductivity, mobility, Seebeck and Peltier
     coefficients, and thermal conductivity. It allows for data extraction, selection,
     and visualization of transport properties for a given calculation index.
-    Parameters
-    ----------
-    parent : object
-        The parent object containing the calculation data and methods for data retrieval.
-    index : int
-        The index identifying this particular transport calculation instance.
     """
 
     def __str__(self):
@@ -56,8 +52,22 @@ class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
         """
         return f"Electron-phonon transport instance {self.index + 1}:\n{self._metadata_string()}"
 
-    def to_dict(self):
-        """Returns a dictionary with selected transport properties for this instance."""
+    def to_dict(self) -> Dict[str, Any]:
+        """Returns a dictionary with selected transport properties for this instance.
+
+        Returns
+        -------
+        A dictionary containing:
+        - "metadata": Metadata about the instance, including chemical potential,
+            number of bands summed, delta, and scattering approximation.
+        - "temperatures": Array of temperatures at which transport properties are computed.
+        - "transport_function": The transport function data.
+        - "electronic_conductivity": Electronic conductivity values.
+        - "mobility": Mobility values.
+        - "seebeck": Seebeck coefficient values.
+        - "peltier": Peltier coefficient values.
+        - "electronic_thermal_conductivity": Electronic thermal conductivity values.
+        """
         names = [
             "temperatures",
             "transport_function",
@@ -71,22 +81,168 @@ class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
         result["metadata"] = self._read_metadata()
         return result
 
-    def temperatures(self):
+    def temperatures(self) -> np.ndarray:
+        """Returns the temperatures at which transport properties are computed.
+
+        Returns
+        -------
+        A numpy array of temperatures in Kelvin.
+        """
         return self._get_data("temperatures")
 
-    def electronic_conductivity(self, selection=""):
+    def electronic_conductivity(
+        self, selection=""
+    ) -> np.ndarray | Dict[str, np.ndarray]:
+        """Returns the electronic conductivity for the selected direction.
+
+        Parameters
+        ----------
+        selection
+            A string specifying the direction for which to retrieve the electronic
+            conductivity. Options include "xx", "yy", "zz", "xy", "xz", "yz", or
+            "isotropic". If no direction is specified, the isotropic average is returned.
+
+        Returns
+        -------
+        A numpy array of electronic conductivity values in S/m for the specified
+        direction, or a dictionary of arrays if multiple directions are selected.
+
+        Examples
+        --------
+        To get the isotropic average of the electronic conductivity of the first instance:
+
+        >>> calculation.electron_phonon.transport[0].electronic_conductivity()
+
+        To get the electronic conductivity in the xx direction of all instances
+
+        >>> [
+        ...     instance.electronic_conductivity("xx")
+        ...     for instance in calculation.electron_phonon.transport
+        ... ]
+        """
         return self._select_data("electronic_conductivity", selection)
 
-    def mobility(self, selection=""):
+    def mobility(self, selection="") -> np.ndarray | Dict[str, np.ndarray]:
+        """Returns the mobility for the selected direction.
+
+        Parameters
+        ----------
+        selection
+            A string specifying the direction for which to retrieve the mobility. Options
+            include "xx", "yy", "zz", "xy", "xz", "yz", or "isotropic". If no direction
+            is specified, the isotropic average is returned.
+
+        Returns
+        -------
+        A numpy array of mobility values in cm^2/(V.s) for the specified direction,
+        or a dictionary of arrays if multiple directions are selected.
+
+        Examples
+        --------
+        To get the isotropic average of the mobility of the first instance:
+
+        >>> calculation.electron_phonon.transport[0].mobility()
+
+        To get the mobility in the xx direction of all instances
+
+        >>> [
+        ...     instance.mobility("xx")
+        ...     for instance in calculation.electron_phonon.transport
+        ... ]
+        """
         return self._select_data("mobility", selection)
 
-    def seebeck(self, selection=""):
+    def seebeck(self, selection="") -> np.ndarray | Dict[str, np.ndarray]:
+        """Returns the Seebeck coefficient for the selected direction.
+
+        Parameters
+        ----------
+        selection
+            A string specifying the direction for which to retrieve the Seebeck
+            coefficient. Options include "xx", "yy", "zz", "xy", "xz", "yz", or
+            "isotropic". If no direction is specified, the isotropic average is returned.
+
+        Returns
+        -------
+        A numpy array of Seebeck coefficient values in μV/K for the specified direction,
+        or a dictionary of arrays if multiple directions are selected.
+
+        Examples
+        --------
+        To get the isotropic average of the Seebeck coefficient of the first instance:
+
+        >>> calculation.electron_phonon.transport[0].seebeck()
+
+        To get the Seebeck coefficient in the xx direction of all instances
+
+        >>> [
+        ...     instance.seebeck("xx")
+        ...     for instance in calculation.electron_phonon.transport
+        ... ]
+        """
         return self._select_data("seebeck", selection)
 
-    def peltier(self, selection=""):
+    def peltier(self, selection="") -> np.ndarray | Dict[str, np.ndarray]:
+        """Returns the Peltier coefficient for the selected direction.
+
+        Parameters
+        ----------
+        selection
+            A string specifying the direction for which to retrieve the Peltier
+            coefficient. Options include "xx", "yy", "zz", "xy", "xz", "yz", or
+            "isotropic". If no direction is specified, the isotropic average is returned.
+
+        Returns
+        -------
+        A numpy array of Peltier coefficient values in μV for the specified direction,
+        or a dictionary of arrays if multiple directions are selected.
+
+        Examples
+        --------
+        To get the isotropic average of the Peltier coefficient of the first instance:
+
+        >>> calculation.electron_phonon.transport[0].peltier()
+
+        To get the Peltier coefficient in the xx direction of all instances
+
+        >>> [
+        ...     instance.peltier("xx")
+        ...     for instance in calculation.electron_phonon.transport
+        ... ]
+        """
         return self._select_data("peltier", selection)
 
-    def electronic_thermal_conductivity(self, selection=""):
+    def electronic_thermal_conductivity(
+        self, selection=""
+    ) -> np.ndarray | Dict[str, np.ndarray]:
+        """Returns the electronic thermal conductivity for the selected direction.
+
+        Parameters
+        ----------
+        selection
+            A string specifying the direction for which to retrieve the electronic
+            thermal conductivity. Options include "xx", "yy", "zz", "xy", "xz", "yz",
+            or "isotropic". If no direction is specified, the isotropic average is returned.
+
+        Returns
+        -------
+        A numpy array of electronic thermal conductivity values in W/(m.K) for the
+        specified direction, or a dictionary of arrays if multiple directions are selected.
+
+        Examples
+        --------
+        To get the isotropic average of the electronic thermal conductivity of the
+        first instance:
+
+        >>> calculation.electron_phonon.transport[0].electronic_thermal_conductivity()
+
+        To get the electronic thermal conductivity in the xx direction of all instances
+
+        >>> [
+        ...     instance.electronic_thermal_conductivity("xx")
+        ...     for instance in calculation.electron_phonon.transport
+        ]
+        """
         return self._select_data("electronic_thermal_conductivity", selection)
 
     def _select_data(self, quantity, selection):
@@ -95,9 +251,10 @@ class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
         maps = {1: DIRECTIONS}
         data = self._get_data(quantity).reshape(-1, 9)
         selector = index.Selector(maps, data, reduction=np.average)
-        return {
+        result = {
             selector.label(selection): selector[selection] for selection in selections
         }
+        return result if len(result) > 1 else next(iter(result.values()))
 
     def selections(self):
         """Returns the available property names that can be selected for this instance."""
@@ -155,20 +312,25 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         return self._accumulator().selections(base_selections)
 
     @property
-    def units(self):
-        return UNITS
-
-    @base.data_access
-    def chemical_potential_mu_tag(self):
-        """
-        Retrieves the INCAR tag that was used to set the chemical potential
-        as well as its values.
+    def units(self) -> Dict[str, str]:
+        """Return a dictionary with the physical units for each transport quantity.
 
         Returns
         -------
-        tuple of (str, numpy.ndarray)
-            The INCAR tag name and its corresponding value as set in the calculation.
-            Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
+        Dictionary containing transport quantities as keys and their corresponding
+        physical units as values.
+        """
+        return UNITS
+
+    @base.data_access
+    def chemical_potential_mu_tag(self) -> tuple[str, np.ndarray]:
+        """Retrieves the INCAR tag that was used to set the chemical potential as well
+        as its values.
+
+        Returns
+        -------
+        The INCAR tag name and its corresponding value as set in the calculation.
+        Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
         """
         return self._accumulator().chemical_potential_mu_tag()
 
@@ -177,19 +339,35 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         return self._accumulator().get_data(name, index)
 
     @base.data_access
-    def select(self, selection):
+    def select(self, selection: str) -> List[ElectronPhononTransportInstance]:
         """Return a list of ElectronPhononSelfEnergyInstance objects matching the selection.
 
         Parameters
         ----------
-        selection : dict
-            Dictionary with keys as selection names (e.g., "nbands_sum", "selfen_approx", "selfen_delta")
-            and values as the desired values for those properties.
+        selection
+            A string specifying which instances we would like to select. You specify a
+            particular string like "nbands_sum=800" to select all instances that were
+            run with that setup. If you provide multiple selections the results will be
+            merged.
 
         Returns
         -------
-        list of ElectronPhononSelfEnergyInstance
-            Instances that match the selection criteria.
+        Instances that match the selection criteria.
+
+        Examples
+        --------
+        To select all instances with a sum of 800 bands, you can use:
+
+        >>> calculation.electron_phonon.transport.select("nbands_sum=800")
+
+        To select instances with a specific scattering approximation, such as SERTA:
+
+        >>> calculation.electron_phonon.transport.select("selfen_approx=SERTA")
+
+        You can also combine multiple selection criteria. For example, to select instances
+        with a sum of 800 bands and a delta value of 0.1:
+
+        >>> calculation.electron_phonon.transport.select("nbands_sum=800(selfen_delta=0.1)")
         """
         return self._select_instances(selection)
 
@@ -198,10 +376,46 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         return [ElectronPhononTransportInstance(self, index) for index in indices]
 
     @base.data_access
-    def to_graph(self, selection):
+    def to_graph(self, selection: str) -> graph.Graph:
         """
-        Plot a particular transport coefficient as a function of the chemical potential tag
-        for a particular temperature.
+        Plot a particular transport coefficient as a function of the chemical potential tag.
+
+        Parameters
+        ----------
+        selection
+            Use this string to specify what you want to plot. You must always specify
+            a transport quantity like "mobility" or "seebeck". You can optionally also
+            specify a direction like "xx" or "isotropic". If you do not specify a
+            direction, the isotropic average will be used. You can also specify a
+            particular temperature by adding "T=300" to the selection. If you do not
+            specify a temperature, results for all temperatures will be plotted.
+            Finally, you can also filter the instances that are used for plotting by
+            adding criteria like "nbands_sum=800" or "selfen_delta=0.1".
+
+        Returns
+        -------
+        A graph object containing the requested data. Each series corresponds to one
+        temperature and plots the requested transport quantity as a function of the
+        chemical potential tag. If the instances share the same metadata, the series
+        is connected with a line.
+
+        Examples
+        --------
+        To plot the mobility as a function of the chemical potential tag for all
+        available temperatures, you can use:
+
+        >>> calculation.electron_phonon.transport.to_graph("mobility")
+
+        To plot the Seebeck coefficient in the xx direction at a specific temperature
+        of 300K, you can use:
+
+        >>> calculation.electron_phonon.transport.to_graph("seebeck(xx(T=300))")
+
+        You can also filter the instances used for plotting. For example, to plot the
+        electronic conductivity for instances with a sum of 800 bands and a delta
+        value of 0.1, you can use:
+
+        >>> calculation.electron_phonon.transport.to_graph("electronic_conductivity(nbands_sum=800(selfen_delta=0.1))")
         """
         builder = _SeriesBuilderMapping()
         series_list = [
@@ -233,7 +447,8 @@ class _SeriesBuilderBase:
         self.quantity = None
 
     @property
-    def ylabel(self):
+    def ylabel(self) -> str:
+        """Return a label for the y-axis based on the selected quantity."""
         quantity = self.quantity.replace("_", " ").capitalize()
         return f"{quantity} ({UNITS[self.quantity]})"
 
@@ -282,14 +497,16 @@ class _SeriesBuilderBase:
 
     def _get_data_from_instance(self, direction, instance):
         get_quantity = getattr(instance, self.quantity)
-        transport_data = get_quantity(selection=direction)
-        assert len(transport_data) == 1
-        _, value = transport_data.popitem()
-        return value
+        return get_quantity(selection=direction)
 
 
 class _SeriesBuilderInstance(_SeriesBuilderBase):
-    def build(self, selection, instance):
+    def build(
+        self, selection: Tuple, instance: ElectronPhononTransportInstance
+    ) -> graph.Series:
+        """Build a graph series for a single instance based on the selection.
+
+        This will plot selected quantity over temperature."""
         self.quantity = self._get_and_check_quantity(selection)
         direction = self._get_and_check_direction(selection)
         x = instance.temperatures()
@@ -299,7 +516,12 @@ class _SeriesBuilderInstance(_SeriesBuilderBase):
 
 
 class _SeriesBuilderMapping(_SeriesBuilderBase):
-    def build(self, selection, instances):
+    def build(
+        self, selection: Tuple, instances: List[ElectronPhononTransportInstance]
+    ) -> Generator[graph.Series, None, None]:
+        """Build graph series for multiple instances based on the selection.
+        This will plot selected quantity over chemical potential tag for each temperature.
+        """
         self.quantity = self._get_and_check_quantity(selection)
         direction = self._get_and_check_direction(selection)
         x, annotations = self._get_metadata(instances)
