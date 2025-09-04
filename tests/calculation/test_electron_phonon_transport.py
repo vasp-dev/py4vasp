@@ -387,6 +387,15 @@ def test_plot_instance_multiple_directions(transport, Assert):
         assert series.label == direction
 
 
+@pytest.mark.parametrize(
+    "incorrect_selection",
+    ("unknown_selection", "seebeck(peltier)", "seebeck, peltier", "seebeck(xx(yy))"),
+)
+def test_plot_instance_incorrect_selection(transport, incorrect_selection, Assert):
+    with pytest.raises(exception.IncorrectUsage):
+        transport[0].plot(incorrect_selection)
+
+
 def test_print_mapping(transport, format_):
     actual, _ = format_(transport)
     assert re.search(transport.ref.mapping_pattern, str(transport), re.MULTILINE)
