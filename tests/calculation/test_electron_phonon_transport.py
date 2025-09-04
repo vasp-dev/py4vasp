@@ -376,6 +376,17 @@ def test_plot_instance_direction(transport, direction, expected, Assert):
         assert series.label == direction
 
 
+def test_plot_instance_multiple_directions(transport, Assert):
+    index_ = 2
+    instance = transport[index_]
+    graph = instance.plot("seebeck(xx, yy, zz)")
+    assert len(graph) == 3
+    for ii, (series, direction) in enumerate(zip(graph, ("xx", "yy", "zz"))):
+        expected_data = transport.ref.seebeck[index_, :, ii, ii]
+        Assert.allclose(series.y, expected_data)
+        assert series.label == direction
+
+
 def test_print_mapping(transport, format_):
     actual, _ = format_(transport)
     assert re.search(transport.ref.mapping_pattern, str(transport), re.MULTILINE)
