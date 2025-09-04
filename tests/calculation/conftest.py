@@ -36,7 +36,6 @@ def check_factory_methods(mock_schema, not_core):
 
 
 def check_instance_accesses_data(instance, data, parameters, skip_methods, file=None):
-    failed = []
     for name, method in inspect.getmembers(instance, inspect.ismethod):
         if should_test_method(name, parameters, skip_methods):
             kwargs = parameters.get(name, {})

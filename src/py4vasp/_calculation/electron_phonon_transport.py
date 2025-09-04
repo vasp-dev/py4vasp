@@ -10,9 +10,7 @@ from py4vasp._calculation import base
 from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
 from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
 from py4vasp._third_party import graph
-from py4vasp._util import import_, index, select
-
-pd = import_.optional("pandas")
+from py4vasp._util import index, select
 
 DIRECTIONS = {
     None: [0, 4, 8],
@@ -285,25 +283,23 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         return str(self._accumulator())
 
     @base.data_access
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Return a dictionary that lists how many accumulators are available
 
         Returns
         -------
-        dict
-            Dictionary containing information about the available accumulators.
+        Dictionary containing information about the available accumulators.
         """
         return self._accumulator().to_dict()
 
     @base.data_access
-    def selections(self):
+    def selections(self) -> Dict[str, Any]:
         """Return a dictionary describing what options are available to read the transport.
 
         Returns
         -------
-        dict
-            Dictionary containing available selection options with their possible values.
-            Keys include selection criteria like "nbands_sum", "selfen_approx", "selfen_delta".
+        Dictionary containing available selection options with their possible values.
+        Keys include selection criteria like "nbands_sum", "selfen_approx", "selfen_delta".
         """
         base_selections = {
             **super().selections(),

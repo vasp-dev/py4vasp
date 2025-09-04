@@ -410,13 +410,14 @@ def test_print_instance(transport, format_):
     assert actual == {"text/plain": str(instance)}
 
 
-@pytest.mark.skip
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.electron_phonon_transport("default")
-    # parameters = {"get_fan": {"arg": (0, 0, 0)}, "select": {"selection": "1 1"}}
     parameters = {
-        "read_data": {"name": "mobility", "index": 0},
-        "select": {"selection": "selfen_approx(MRTA) selfen_carrier_den(0.01,0.001)"},
-        "to_graph_carrier": {"selection": "seebeck(xx)", "temperature": 300},
+        "select": {"selection": "scattering_approx=MRTA_TAU"},
+        "plot": {"selection": "mobility"},
+        "to_graph": {"selection": "mobility"},
+        "to_frame": {"selection": "mobility"},
+        "to_plotly": {"selection": "mobility"},
     }
-    check_factory_methods(calculation.electron_phonon.transport, data, parameters)
+    skip_methods = ["count", "access", "index"]  # inherited from Sequence
+    check_factory_methods(ElectronPhononTransport, data, parameters, skip_methods)
