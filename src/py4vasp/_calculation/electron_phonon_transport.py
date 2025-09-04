@@ -353,7 +353,7 @@ class SeriesBuilder:
 
     def _get_temperature_from_selection(self, selection):
         return [
-            float(item.right_operand[0])
+            float(item.right_operand)
             for item in selection
             if isinstance(item, select.Assignment)
             and item.left_operand in {"T", "temperature"}

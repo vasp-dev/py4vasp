@@ -150,6 +150,7 @@ def test_selections(raw_transport, chemical_potential, Assert):
 )
 def test_select_returns_instances(transport, attribute):
     choices = getattr(transport.ref, attribute)
+    print(choices)
     choice = random.choice(list(choices))
     indices, *_ = np.where(choices == choice)
     selected = transport.select(f"{attribute}={choice.item()}")
@@ -283,8 +284,32 @@ def test_plot_mapping_select_temperature(transport, selection, Assert):
 
 
 @pytest.mark.parametrize(
+    "selection",
+    (
+        # order should not matter
+        "mobility(zz(nbands_sum=32(T=200)))",
+        "T=200(mobility(zz(nbands_sum=32)))",
+        "zz(T=200(mobility(nbands_sum=32)))",
+        "nbands_sum=32(zz(T=200(mobility)))",
+    ),
+)
+def test_complex_selection(transport, selection, Assert):
+    graph = transport.plot(selection)
+    assert len(graph) == 1
+    series = graph[0]
+    index_nbands_sum = np.searchsorted(transport.ref.nbands_sum, 32)
+    index_temperature = np.searchsorted(transport.ref.temperatures[0], 200.0)
+    x = transport.ref.selfen_carrier_den[index_nbands_sum]
+    y = transport.ref.mobility[index_nbands_sum, index_temperature, 2, 2]
+    Assert.allclose(series.x, x)
+    Assert.allclose(series.y, y)
+    assert series.label == "mobility_zz(T=200.0K)"
+    assert series.annotations["nbands_sum"] == 32
+
+
+@pytest.mark.parametrize(
     "incorrect_selection",
-    ("unknown_selection", "mobility(seebeck)", "seebeck, peltier"),
+    ("unknown_selection", "mobility(seebeck)", "seebeck, peltier", "mobility(xx(yy))"),
 )
 def test_plot_mapping_incorrect_selection(transport, incorrect_selection, Assert):
     with pytest.raises(exception.IncorrectUsage):

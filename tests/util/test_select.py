@@ -75,22 +75,23 @@ def test_ranges():
 
 
 def test_pair_selection():
-    selection = "foo  ~  bar, baz~foo"
+    selection = "foo  ~  bar, baz~foo(A)"
     pair1 = select.Group(["foo", "bar"], "~")
     pair2 = select.Group(["baz", "foo"], "~")
-    assert selections(selection) == ((pair1,), (pair2,))
+    assert selections(selection) == ((pair1,), (pair2, "A"))
     expected = """graph LR
     _0_[~] --> foo
     _0_[~] --> bar
     _1_[~] --> baz
-    _1_[~] --> foo"""
+    _1_[~] --> foo
+    foo --> A"""
     assert graph(selection) == expected
 
 
 def test_assignment_selection():
     selection = "foo  =  bar, baz=foo"
-    assignment1 = select.Assignment("foo", ("bar",))
-    assignment2 = select.Assignment("baz", ("foo",))
+    assignment1 = select.Assignment("foo", "bar")
+    assignment2 = select.Assignment("baz", "foo")
     assert selections(selection) == ((assignment1,), (assignment2,))
     expected = """graph LR
     _0_[=] --> foo
@@ -102,9 +103,9 @@ def test_assignment_selection():
 
 def test_assignment_with_parenthesis():
     selection = "A(foo=bar) B=C(baz)"
-    assignment1 = select.Assignment("foo", ("bar",))
-    assignment2 = select.Assignment("B", ("C", "baz"))
-    assert selections(selection) == (("A", assignment1), (assignment2,))
+    assignment1 = select.Assignment("foo", "bar")
+    assignment2 = select.Assignment("B", "C")
+    assert selections(selection) == (("A", assignment1), (assignment2, "baz"))
     expected = """graph LR
     A --> _0_[=]
     _0_[=] --> foo
@@ -307,7 +308,7 @@ def test_complex_operation():
         ("A~B B~A", "A~B B~A"),
         ("A(B) + C, B - C(A)", "B + C, B - C"),
         ("A=B", ""),
-        ("A=B(C), B=A(D), C=D", "C, B=D, C=D"),
+        ("A=B(C), B=A(D), C=D", "C, D, C=D"),
         ("B=C(A) B(A=C) C(B=A)", "B=C, B, C"),
     ],
 )
@@ -343,6 +344,7 @@ def test_incorrect_combination(selection):
             "A(x+y(z)) + B(1:3 u-v) - C~D",
             "A(x + y(z)) + B(1:3) - C~D, A(x + y(z)) + B(u - v) - C~D",
         ),
+        ("foo = bar", "foo=bar"),
     ],
 )
 def test_selections_to_string(input, output):

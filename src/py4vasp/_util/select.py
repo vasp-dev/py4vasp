@@ -139,29 +139,29 @@ class Tree:
         right_arguments = self._get_arguments(self._children[1], filter)
         for left_arg, right_arg in itertools.product(left_arguments, right_arguments):
             if self._content.character in operators:
-                yield from self._assemble_operation(selected, left_arg, right_arg)
+                yield self._assemble_operation(selected, left_arg, right_arg)
             elif self._content.character == assignment:
-                yield from self._assemble_assignment(selected, left_arg, right_arg)
+                yield self._assemble_assignment(selected, left_arg, right_arg, filter)
             else:
-                yield from self._assemble_group(selected, left_arg, right_arg)
+                yield self._assemble_group(selected, left_arg, right_arg)
 
     def _assemble_operation(self, selected, left_arg, right_arg):
-        yield *selected, Operation(left_arg, self._content.character, right_arg)
+        return *selected, Operation(left_arg, self._content.character, right_arg)
 
-    def _assemble_assignment(self, selected, left_arg, right_arg):
+    def _assemble_assignment(self, selected, left_arg, right_arg, filter):
         self._raise_error_if_left_hand_side_is_nested(left_arg)
-        if left_arg[0] is None or right_arg[0] is None:
-            yield *selected, *right_arg[1:]
+        if left_arg[0] in filter or right_arg[0] in filter:
+            return *selected, *right_arg[1:]
         else:
-            yield *selected, Assignment(str(left_arg[0]), right_arg)
+            return *selected, Assignment(left_arg[0], right_arg[0]), *right_arg[1:]
 
     def _assemble_group(self, selected, left_arg, right_arg):
         group = [left_arg[0], right_arg[0]]
         self._raise_error_if_left_hand_side_is_nested(left_arg)
-        yield *selected, Group(group, self._content.character), *right_arg[1:]
+        return *selected, Group(group, self._content.character), *right_arg[1:]
 
     def _get_arguments(self, child, filter):
-        is_operation = self._content.character in (*operators, assignment)
+        is_operation = self._content.character in operators
         for argument in child.selections(filter=filter, filter_toplevel=is_operation):
             if child._content_and_argument_are_compatible(argument):
                 yield argument
@@ -386,6 +386,8 @@ class Operation:
         else:
             return f"{left_op} {self.operator} {right_op}"
 
+    __hash__ = lambda self: hash(str(self))
+
     def unary(self):
         return self.left_operand == ()
 
@@ -396,12 +398,11 @@ class Assignment:
 
     left_operand: str
     "The selection on the left-hand side of the assignment."
-    right_operand: tuple
+    right_operand: str
     "The selection on the right-hand side of the assignment."
 
     def __str__(self):
-        right_op = _selection_to_string(self.right_operand)
-        return f"{self.left_operand} = {right_op}"
+        return f"{self.left_operand}={self.right_operand}"
 
 
 def _raise_error_if_parsing_failed(error, selection, ii):
@@ -460,7 +461,7 @@ def _choice_in_operation(part, choice, ignore_case):
 
 def _choice_in_assignment(part, choice, ignore_case):
     in_left_op = _part_is_choice(part.left_operand, choice, ignore_case)
-    in_right_op = contains(part.right_operand, choice, ignore_case)
+    in_right_op = _part_contains(part.right_operand, choice, ignore_case)
     return in_left_op or in_right_op
 
 
