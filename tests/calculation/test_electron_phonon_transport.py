@@ -150,7 +150,6 @@ def test_selections(raw_transport, chemical_potential, Assert):
 )
 def test_select_returns_instances(transport, attribute):
     choices = getattr(transport.ref, attribute)
-    print(choices)
     choice = random.choice(list(choices))
     indices, *_ = np.where(choices == choice)
     selected = transport.select(f"{attribute}={choice.item()}")
@@ -209,13 +208,15 @@ def test_incorrect_selection(transport, selection):
 )
 def test_plot_mapping(transport, selection, Assert):
     graph = transport.plot(selection)
+    assert graph.xlabel == "carrier density (cm^-3)"
+    assert graph.ylabel == f"{selection} ({transport.units[selection]})"
     temperatures = transport.ref.temperatures[0]
     assert len(graph) == len(temperatures)
     data = np.trace(getattr(transport.ref, selection), axis1=2, axis2=3) / 3
     for temperature, series, expected_y in zip(temperatures, graph, data.T):
         Assert.allclose(series.x, transport.ref.selfen_carrier_den)
         Assert.allclose(series.y, expected_y)
-        assert series.label == f"{selection}(T={temperature}K)"
+        assert series.label == f"T={temperature}K"
         Assert.allclose(series.annotations["nbands_sum"], transport.ref.nbands_sum)
         Assert.allclose(series.annotations["selfen_delta"], transport.ref.selfen_delta)
         Assert.allclose(
@@ -237,8 +238,10 @@ def test_plot_mapping_with_direction(transport, direction, expected, Assert):
     for temperature, series, expected_y in zip(temperatures, graph, expected_data):
         Assert.allclose(series.x, transport.ref.selfen_carrier_den)
         Assert.allclose(series.y, expected_y)
-        suffix = "" if direction in (None, "isotropic") else f"_{direction}"
-        assert series.label == f"mobility{suffix}(T={temperature}K)"
+        if direction in (None, "isotropic"):
+            assert series.label == f"T={temperature}K"
+        else:
+            assert series.label == f"{direction}, T={temperature}K"
 
 
 def test_plot_mapping_multiple_directions(transport, Assert):
@@ -251,7 +254,7 @@ def test_plot_mapping_multiple_directions(transport, Assert):
             series = graph[ii * len(temperatures) + jj]
             Assert.allclose(series.x, transport.ref.selfen_carrier_den)
             Assert.allclose(series.y, expected_data[:, jj])
-            assert series.label == f"mobility_{direction}(T={temperature}K)"
+            assert series.label == f"{direction}, T={temperature}K"
 
 
 def test_plot_mapping_select_scattering_approx(transport, Assert):
@@ -263,7 +266,7 @@ def test_plot_mapping_select_scattering_approx(transport, Assert):
     for temperature, series, expected_y in zip(temperatures, graph, data):
         Assert.allclose(series.x, transport.ref.selfen_carrier_den[mask])
         Assert.allclose(series.y, expected_y)
-        assert series.label == f"peltier(T={temperature}K)"
+        assert series.label == f"T={temperature}K"
         Assert.allclose(series.annotations["scattering_approx"], ["ERTA_LAMDBA"])
         assert series.marker == None
 
@@ -280,7 +283,7 @@ def test_plot_mapping_select_temperature(transport, selection, Assert):
     for series, temperature, expected_y in zip(graph, (300.0, 400.0), data.T):
         Assert.allclose(series.x, transport.ref.selfen_carrier_den)
         Assert.allclose(series.y, expected_y)
-        assert series.label == f"seebeck(T={temperature}K)"
+        assert series.label == f"T={temperature}K"
 
 
 @pytest.mark.parametrize(
@@ -303,7 +306,7 @@ def test_complex_selection(transport, selection, Assert):
     y = transport.ref.mobility[index_nbands_sum, index_temperature, 2, 2]
     Assert.allclose(series.x, x)
     Assert.allclose(series.y, y)
-    assert series.label == "mobility_zz(T=200.0K)"
+    assert series.label == "zz, T=200.0K"
     assert series.annotations["nbands_sum"] == 32
 
 

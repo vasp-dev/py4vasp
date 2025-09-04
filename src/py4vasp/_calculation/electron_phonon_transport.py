@@ -1,11 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from collections import abc
-from dataclasses import dataclass
-from typing import List, Optional
 
 import numpy as np
-from numpy.typing import ArrayLike
 
 from py4vasp import exception
 from py4vasp._calculation import base
@@ -270,7 +267,9 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
             for selection in select.Tree.from_selection(selection).selections()
             for series in builder.build(selection, self._get_instances(selection))
         ]
-        return graph.Graph(series_list)
+        xlabel = "carrier density (cm^-3)"
+        ylabel = f"{builder.quantity} ({UNITS[builder.quantity]})"
+        return graph.Graph(series_list, xlabel=xlabel, ylabel=ylabel)
 
     def _get_instances(self, selection):
         selection_string = select.selections_to_string((selection,))
@@ -300,7 +299,7 @@ class SeriesBuilder:
         marker = self._use_marker_if_metadata_is_different(annotations)
         assert len(temperatures) == len(data)
         for T, y in zip(temperatures, data):
-            label = f"{common_label}(T={T}K)"
+            label = f"{common_label}T={T}K"
             yield graph.Series(x, y, label, annotations=annotations, marker=marker)
 
     def _get_and_check_quantity(self, selection):
@@ -394,9 +393,9 @@ class SeriesBuilder:
 
     def _assign_common_label(self, direction):
         if direction in ("isotropic", None):
-            return self.quantity
+            return ""
         else:
-            return f"{self.quantity}_{direction}"
+            return f"{direction}, "
 
     def _get_data_from_instances(self, instances, mask, direction):
         joint_data = []
