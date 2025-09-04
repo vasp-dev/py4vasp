@@ -225,10 +225,17 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
     @base.data_access
     def chemical_potential_mu_tag(self):
-        chemical_potential = ElectronPhononChemicalPotential.from_data(
-            self._raw_data.chemical_potential
-        )
-        return chemical_potential.mu_tag()
+        """
+        Retrieves the INCAR tag that was used to set the chemical potential
+        as well as its values.
+
+        Returns
+        -------
+        tuple of (str, numpy.ndarray)
+            The INCAR tag name and its corresponding value as set in the calculation.
+            Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
+        """
+        return self._accumulator().chemical_potential_mu_tag()
 
     @base.data_access
     def _get_data(self, name, index):
@@ -267,7 +274,7 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
             for selection in select.Tree.from_selection(selection).selections()
             for series in builder.build(selection, self._get_instances(selection))
         ]
-        xlabel = "carrier density (cm^-3)"
+        xlabel = self._accumulator().chemical_potential_label()
         ylabel = f"{builder.quantity} ({UNITS[builder.quantity]})"
         return graph.Graph(series_list, xlabel=xlabel, ylabel=ylabel)
 

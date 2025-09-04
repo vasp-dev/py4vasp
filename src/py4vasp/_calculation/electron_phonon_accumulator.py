@@ -45,11 +45,15 @@ class ElectronPhononAccumulator:
             "scattering_approx": np.unique(self._raw_data.scattering_approximation),
         }
 
+    def _chemical_potential(self):
+        new_chemical_potential = ElectronPhononChemicalPotential.from_data
+        return new_chemical_potential(self._raw_data.chemical_potential)
+
     def chemical_potential_mu_tag(self):
-        chemical_potential = ElectronPhononChemicalPotential.from_data(
-            self._raw_data.chemical_potential
-        )
-        return chemical_potential.mu_tag()
+        return self._chemical_potential().mu_tag()
+
+    def chemical_potential_label(self):
+        return self._chemical_potential().label()
 
     def select_indices(self, selection, *args_filters, **kwargs_filters):
         tree = select.Tree.from_selection(selection)

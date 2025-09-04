@@ -48,6 +48,12 @@ def chemical_potential(raw_data, request):
     raw_potential.ref = types.SimpleNamespace()
     raw_potential.ref.param = request.param
     raw_potential.ref.expected_data = getattr(raw_potential, request.param)
+    if request.param == "carrier_den":
+        raw_potential.ref.xlabel = "carrier density (cm^-3)"
+    elif request.param == "carrier_per_cell":
+        raw_potential.ref.xlabel = "carrier per cell"
+    elif request.param == "mu":
+        raw_potential.ref.xlabel = "chemical potential (eV)"
     return raw_potential
 
 
@@ -296,7 +302,7 @@ def test_plot_mapping_select_temperature(transport, selection, Assert):
         "nbands_sum=32(zz(T=200(mobility)))",
     ),
 )
-def test_complex_selection(transport, selection, Assert):
+def test_plot_mapping_complex_selection(transport, selection, Assert):
     graph = transport.plot(selection)
     assert len(graph) == 1
     series = graph[0]
@@ -308,6 +314,14 @@ def test_complex_selection(transport, selection, Assert):
     Assert.allclose(series.y, y)
     assert series.label == "zz, T=200.0K"
     assert series.annotations["nbands_sum"] == 32
+
+
+def test_plot_mapping_chemical_potential(raw_transport, chemical_potential, Assert):
+    # Should return a dictionary with expected selection keys
+    raw_transport.chemical_potential = chemical_potential
+    transport = ElectronPhononTransport.from_data(raw_transport)
+    graph = transport.plot("mobility")
+    assert graph.xlabel == chemical_potential.ref.xlabel
 
 
 @pytest.mark.parametrize(
