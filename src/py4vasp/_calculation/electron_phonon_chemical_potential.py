@@ -81,11 +81,11 @@ class ElectronPhononChemicalPotential(base.Refinery):
         A label indicating the type of data contained in this object and its units.
         """
         if not check.is_none(self._raw_data.carrier_den):
-            return "carrier density (cm^-3)"
+            return "Carrier density (cm^-3)"
         if not check.is_none(self._raw_data.mu):
-            return "chemical potential (eV)"
+            return "Chemical potential (eV)"
         if not check.is_none(self._raw_data.carrier_per_cell):
-            return "carrier per cell"
+            return "Carrier per cell"
         raise exception.NoData(
             "None of the carrier density, chemical potential, or carrier per cell data is available in the raw data."
         )

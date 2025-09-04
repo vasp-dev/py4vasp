@@ -49,11 +49,11 @@ def chemical_potential(raw_data, request):
     raw_potential.ref.param = request.param
     raw_potential.ref.expected_data = getattr(raw_potential, request.param)
     if request.param == "carrier_den":
-        raw_potential.ref.xlabel = "carrier density (cm^-3)"
+        raw_potential.ref.xlabel = "Carrier density (cm^-3)"
     elif request.param == "carrier_per_cell":
-        raw_potential.ref.xlabel = "carrier per cell"
+        raw_potential.ref.xlabel = "Carrier per cell"
     elif request.param == "mu":
-        raw_potential.ref.xlabel = "chemical potential (eV)"
+        raw_potential.ref.xlabel = "Chemical potential (eV)"
     return raw_potential
 
 
@@ -214,8 +214,9 @@ def test_incorrect_selection(transport, selection):
 )
 def test_plot_mapping(transport, selection, Assert):
     graph = transport.plot(selection)
-    assert graph.xlabel == "carrier density (cm^-3)"
-    assert graph.ylabel == f"{selection} ({transport.units[selection]})"
+    assert graph.xlabel == "Carrier density (cm^-3)"
+    quantity = selection.replace("_", " ").capitalize()
+    assert graph.ylabel == f"{quantity} ({transport.units[selection]})"
     temperatures = transport.ref.temperatures[0]
     assert len(graph) == len(temperatures)
     data = np.trace(getattr(transport.ref, selection), axis1=2, axis2=3) / 3
@@ -333,6 +334,32 @@ def test_plot_mapping_incorrect_selection(transport, incorrect_selection, Assert
         transport.plot(incorrect_selection)
 
 
+@pytest.mark.parametrize(
+    "selection",
+    (
+        "electronic_conductivity",
+        "mobility",
+        "seebeck",
+        "peltier",
+        "electronic_thermal_conductivity",
+    ),
+)
+def test_plot_instance(transport, selection, Assert):
+    for index_, instance in enumerate(transport):
+        graph = instance.plot(selection)
+        assert graph.xlabel == "Temperature (K)"
+        quantity = selection.replace("_", " ").capitalize()
+        assert graph.ylabel == f"{quantity} ({transport.units[selection]})"
+        assert len(graph) == 1
+        series = graph[0]
+        Assert.allclose(series.x, transport.ref.temperatures[index_])
+        expected = (
+            np.trace(getattr(transport.ref, selection)[index_], axis1=1, axis2=2) / 3
+        )
+        Assert.allclose(series.y, expected)
+        assert series.label == "isotropic"
+
+
 def test_print_mapping(transport, format_):
     actual, _ = format_(transport)
     assert re.search(transport.ref.mapping_pattern, str(transport), re.MULTILINE)
@@ -356,5 +383,4 @@ def test_factory_methods(raw_data, check_factory_methods):
         "select": {"selection": "selfen_approx(MRTA) selfen_carrier_den(0.01,0.001)"},
         "to_graph_carrier": {"selection": "seebeck(xx)", "temperature": 300},
     }
-    check_factory_methods(calculation.electron_phonon.transport, data, parameters)
     check_factory_methods(calculation.electron_phonon.transport, data, parameters)

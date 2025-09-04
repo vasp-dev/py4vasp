@@ -7,9 +7,6 @@ import numpy as np
 from py4vasp import exception
 from py4vasp._calculation import base
 from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
-from py4vasp._calculation.electron_phonon_chemical_potential import (
-    ElectronPhononChemicalPotential,
-)
 from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
 from py4vasp._third_party import graph
 from py4vasp._util import import_, index, select
@@ -37,7 +34,7 @@ UNITS = {
 }
 
 
-class ElectronPhononTransportInstance(ElectronPhononInstance):
+class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
     """
     Represents a single instance of electron-phonon transport calculations.
     This class provides access to various transport properties computed from
@@ -137,15 +134,15 @@ class ElectronPhononTransportInstance(ElectronPhononInstance):
         tree = select.Tree.from_selection(selection)
         series = []
         for selection in tree.selections():
-            if selection[0] not in self.selections():
-                raise ValueError(
-                    f"Invalid selection {selection}. Must be one of {self.selections()}"
-                )
+            selected_quantities = get_quantities_from_selection(selection)
+            raise_error_if_not_exactly_one_quantity(selection, selected_quantities)
+            quantity = selected_quantities[0]
             y = self._get_ydata(selection)
             x = self._get_data("temperatures")
             dir_str = "".join(selection[1:])
-            series.append(graph.Series(x, y, label=f"{selection[0]} {dir_str}"))
-        return graph.Graph(series, ylabel=selection[0], xlabel="Temperature (K)")
+            series.append(graph.Series(x, y, label="isotropic"))
+        ylabel = f'{quantity.replace("_", " ").capitalize()} ({UNITS[quantity]})'
+        return graph.Graph(series, xlabel="Temperature (K)", ylabel=ylabel)
 
     def _init_directions_dict(self):
         return {
@@ -275,8 +272,7 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
             for series in builder.build(selection, self._get_instances(selection))
         ]
         xlabel = self._accumulator().chemical_potential_label()
-        ylabel = f"{builder.quantity} ({UNITS[builder.quantity]})"
-        return graph.Graph(series_list, xlabel=xlabel, ylabel=ylabel)
+        return graph.Graph(series_list, xlabel=xlabel, ylabel=builder.ylabel)
 
     def _get_instances(self, selection):
         selection_string = select.selections_to_string((selection,))
@@ -309,29 +305,21 @@ class SeriesBuilder:
             label = f"{common_label}T={T}K"
             yield graph.Series(x, y, label, annotations=annotations, marker=marker)
 
+    @property
+    def ylabel(self):
+        quantity = self.quantity.replace("_", " ").capitalize()
+        return f"{quantity} ({UNITS[self.quantity]})"
+
     def _get_and_check_quantity(self, selection):
-        selected_quantities = self._get_quantities_from_selection(selection)
-        self._raise_error_if_not_exactly_one_quantity(selection, selected_quantities)
+        selected_quantities = get_quantities_from_selection(selection)
+        raise_error_if_not_exactly_one_quantity(selection, selected_quantities)
         self._raise_error_if_quantity_inconsistent(selected_quantities)
         return selected_quantities[0]
-
-    def _get_quantities_from_selection(self, selection):
-        return [
-            quantity
-            for quantity in UNITS.keys()
-            if select.contains(selection, quantity)
-        ]
 
     def _raise_error_if_quantity_inconsistent(self, selected_quantities):
         if self.quantity and self.quantity != selected_quantities[0]:
             raise exception.IncorrectUsage(
                 f"Selections must contain exactly one transport quantity, but got {self.quantity} and {selected_quantities[0]}"
-            )
-
-    def _raise_error_if_not_exactly_one_quantity(self, selection, selected_quantities):
-        if len(selected_quantities) != 1:
-            raise exception.IncorrectUsage(
-                f"Selection must contain exactly one transport quantity, but '{select.selections_to_string((selection,))}' contains {selected_quantities}."
             )
 
     def _get_metadata(self, instances):
@@ -419,3 +407,16 @@ class SeriesBuilder:
             if len(np.unique(value)) > 1:
                 return "*"
         return None
+
+
+def get_quantities_from_selection(selection):
+    return [
+        quantity for quantity in UNITS.keys() if select.contains(selection, quantity)
+    ]
+
+
+def raise_error_if_not_exactly_one_quantity(selection, selected_quantities):
+    if len(selected_quantities) != 1:
+        raise exception.IncorrectUsage(
+            f"Selection must contain exactly one transport quantity, but '{select.selections_to_string((selection,))}' contains {selected_quantities}."
+        )
