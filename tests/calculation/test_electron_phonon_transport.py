@@ -360,6 +360,22 @@ def test_plot_instance(transport, selection, Assert):
         assert series.label == "isotropic"
 
 
+@pytest.mark.parametrize("direction, expected", DIRECTIONS.items())
+def test_plot_instance_direction(transport, direction, expected, Assert):
+    index_ = 3
+    instance = transport[index_]
+    graph = instance.plot("mobility" if direction is None else f"mobility({direction})")
+    assert len(graph) == 1
+    series = graph[0]
+    flattened_data = transport.ref.mobility[index_].reshape(-1, 9)
+    expected_data = np.average(flattened_data[:, np.atleast_1d(expected)], axis=-1).T
+    Assert.allclose(series.y, expected_data)
+    if direction in (None, "isotropic"):
+        assert series.label == "isotropic"
+    else:
+        assert series.label == direction
+
+
 def test_print_mapping(transport, format_):
     actual, _ = format_(transport)
     assert re.search(transport.ref.mapping_pattern, str(transport), re.MULTILINE)

@@ -103,73 +103,28 @@ class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
         """Returns the available property names that can be selected for this instance."""
         return UNITS.keys()
 
-    def _get_temperature_idx(self, temperature, tolerance=1e-8):
-
-        def find_float_index(float_array, target_value, tolerance):
-            close_indices = np.where(
-                np.isclose(float_array, target_value, atol=tolerance)
-            )[0]
-            if close_indices.size > 0:
-                return close_indices[0]
-            else:
-                raise ValueError(
-                    f"No temperature close to {target_value} within a tolerance of {tolerance} was found."
-                )
-
-        return find_float_index(self._get_data("temperatures"), temperature, tolerance)
-
     def _get_ydata(self, selection):
         data_ = self._get_data(selection[0]).reshape([-1, 9])
-        maps = {
-            1: self._init_directions_dict(),
-        }
+        maps = {1: DIRECTIONS}
         selector = index.Selector(maps, data_, reduction=np.average)
         return selector[selection[1:]]
-
-    def _get_ydata_at_temperature(self, selection, temperature):
-        itemp = self._get_temperature_idx(temperature)
-        return self._get_ydata(selection)[itemp]
 
     def to_graph(self, selection):
         tree = select.Tree.from_selection(selection)
         series = []
         for selection in tree.selections():
-            selected_quantities = get_quantities_from_selection(selection)
-            raise_error_if_not_exactly_one_quantity(selection, selected_quantities)
+            selected_quantities = _get_quantities_from_selection(selection)
+            _raise_error_if_not_exactly_one_quantity(selection, selected_quantities)
             quantity = selected_quantities[0]
+            selected_directions = _get_direction_from_selection(selection)
+            _raise_error_if_more_than_one_direction(selection, selected_directions)
+            direction = selected_directions[0] if selected_directions else None
             y = self._get_ydata(selection)
             x = self._get_data("temperatures")
-            dir_str = "".join(selection[1:])
-            series.append(graph.Series(x, y, label="isotropic"))
+            label = direction or "isotropic"
+            series.append(graph.Series(x, y, label=label))
         ylabel = f'{quantity.replace("_", " ").capitalize()} ({UNITS[quantity]})'
         return graph.Graph(series, xlabel="Temperature (K)", ylabel=ylabel)
-
-    def _init_directions_dict(self):
-        return {
-            None: [0, 4, 8],
-            "isotropic": [0, 4, 8],
-            "xx": 0,
-            "yy": 4,
-            "zz": 8,
-            "xy": [1, 3],
-            "xz": [2, 6],
-            "yz": [5, 7],
-        }
-
-    @property
-    def id_index(self):
-        return self._get_data("id_index")
-
-    @property
-    def id_name(self):
-        return self.parent.id_name()
-
-    def _make_name_index(self):
-        """
-        Get corresponding id_index from id_name
-        """
-        # the -1 is because index conversion between fortran and C
-        return dict(zip(self.id_name, self.id_index - 1))
 
 
 class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
@@ -265,7 +220,7 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         Plot a particular transport coefficient as a function of the chemical potential tag
         for a particular temperature.
         """
-        builder = SeriesBuilder()
+        builder = _SeriesBuilder()
         series_list = [
             series
             for selection in select.Tree.from_selection(selection).selections()
@@ -290,7 +245,7 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         return len(self._raw_data.valid_indices)
 
 
-class SeriesBuilder:
+class _SeriesBuilder:
     def __init__(self):
         self.quantity = None
 
@@ -311,8 +266,8 @@ class SeriesBuilder:
         return f"{quantity} ({UNITS[self.quantity]})"
 
     def _get_and_check_quantity(self, selection):
-        selected_quantities = get_quantities_from_selection(selection)
-        raise_error_if_not_exactly_one_quantity(selection, selected_quantities)
+        selected_quantities = _get_quantities_from_selection(selection)
+        _raise_error_if_not_exactly_one_quantity(selection, selected_quantities)
         self._raise_error_if_quantity_inconsistent(selected_quantities)
         return selected_quantities[0]
 
@@ -366,25 +321,12 @@ class SeriesBuilder:
             return np.full_like(all_temperatures, True, dtype=bool)
 
     def _get_transport_data(self, selection, instances, mask):
-        selected_directions = self._get_direction_from_selection(selection)
-        self._raise_error_if_more_than_one_direction(selection, selected_directions)
+        selected_directions = _get_direction_from_selection(selection)
+        _raise_error_if_more_than_one_direction(selection, selected_directions)
         direction = selected_directions[0] if selected_directions else None
         common_label = self._assign_common_label(direction)
         data = self._get_data_from_instances(instances, mask, direction)
         return common_label, data
-
-    def _get_direction_from_selection(self, selection):
-        return [
-            direction
-            for direction in DIRECTIONS.keys()
-            if select.contains(selection, direction)
-        ]
-
-    def _raise_error_if_more_than_one_direction(self, selection, selected_directions):
-        if len(selected_directions) > 1:
-            raise exception.IncorrectUsage(
-                f"Selection must contain exactly one transport direction, but '{select.selections_to_string((selection,))}' contains {selected_directions}."
-            )
 
     def _assign_common_label(self, direction):
         if direction in ("isotropic", None):
@@ -409,14 +351,29 @@ class SeriesBuilder:
         return None
 
 
-def get_quantities_from_selection(selection):
+def _get_quantities_from_selection(selection):
     return [
         quantity for quantity in UNITS.keys() if select.contains(selection, quantity)
     ]
 
 
-def raise_error_if_not_exactly_one_quantity(selection, selected_quantities):
+def _raise_error_if_not_exactly_one_quantity(selection, selected_quantities):
     if len(selected_quantities) != 1:
         raise exception.IncorrectUsage(
             f"Selection must contain exactly one transport quantity, but '{select.selections_to_string((selection,))}' contains {selected_quantities}."
+        )
+
+
+def _get_direction_from_selection(selection):
+    return [
+        direction
+        for direction in DIRECTIONS.keys()
+        if select.contains(selection, direction)
+    ]
+
+
+def _raise_error_if_more_than_one_direction(selection, selected_directions):
+    if len(selected_directions) > 1:
+        raise exception.IncorrectUsage(
+            f"Selection must contain exactly one transport direction, but '{select.selections_to_string((selection,))}' contains {selected_directions}."
         )
