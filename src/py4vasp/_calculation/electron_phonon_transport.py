@@ -301,9 +301,11 @@ class _SeriesBuilderInstance(_SeriesBuilderBase):
 class _SeriesBuilderMapping(_SeriesBuilderBase):
     def build(self, selection, instances):
         self.quantity = self._get_and_check_quantity(selection)
+        direction = self._get_and_check_direction(selection)
         x, annotations = self._get_metadata(instances)
         temperatures, mask = self._get_temperature(selection, instances)
-        common_label, data = self._get_transport_data(selection, instances, mask)
+        data = self._get_transport_data(direction, instances, mask)
+        common_label = self._assign_common_label(direction)
         marker = self._use_marker_if_metadata_is_different(annotations)
         assert len(temperatures) == len(data)
         for T, y in zip(temperatures, data):
@@ -353,24 +355,18 @@ class _SeriesBuilderMapping(_SeriesBuilderBase):
         else:
             return np.full_like(all_temperatures, True, dtype=bool)
 
-    def _get_transport_data(self, selection, instances, mask):
-        direction = self._get_and_check_direction(selection)
-        common_label = self._assign_common_label(direction)
-        data = self._get_data_from_instances(instances, mask, direction)
-        return common_label, data
+    def _get_transport_data(self, direction, instances, mask):
+        joint_data = []
+        for instance in instances:
+            transport_data = self._get_data_from_instance(direction, instance)
+            joint_data.append(transport_data[mask])
+        return np.array(joint_data).T
 
     def _assign_common_label(self, direction):
         if direction in ("isotropic", None):
             return ""
         else:
             return f"{direction}, "
-
-    def _get_data_from_instances(self, instances, mask, direction):
-        joint_data = []
-        for instance in instances:
-            transport_data = self._get_data_from_instance(direction, instance)
-            joint_data.append(transport_data[mask])
-        return np.array(joint_data).T
 
     def _use_marker_if_metadata_is_different(self, annotations):
         for value in annotations.values():
