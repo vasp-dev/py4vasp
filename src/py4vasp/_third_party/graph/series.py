@@ -3,7 +3,6 @@
 from dataclasses import dataclass, fields
 
 import numpy as np
-from tomlkit import value
 
 from py4vasp import exception
 from py4vasp._third_party.graph import trace
@@ -34,7 +33,7 @@ class Series(trace.Trace):
     """If weight_mode is 'size', the size of the plot is adjusted according to the weight.
     If weight_mode is 'color', the color of the plot is adjusted according to the weight."""
     annotations: dict = None
-    """If present, stores the metadata for this line or each point of the plot. Note 
+    """If present, stores the metadata for this line or each point of the plot. Note
     that each element of the dictionary must have either size 1 or the same size as the
     x coordinates."""
     y2: bool = False
