@@ -57,7 +57,7 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         """
         return {
             "structure": self._structure[self._steps].read(),
-            "velocities": self._velocity[self._steps],
+            "velocities": self.to_numpy(),
         }
 
     @base.data_access
@@ -91,9 +91,8 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         viewer.ion_arrows = [ion_arrow]
         return viewer
 
-    @property
-    def _velocity(self):
-        return _VelocityReader(self._raw_data.velocities)
+    def to_numpy(self):
+        return _VelocityReader(self._raw_data.velocities)[self._steps]
 
 
 class _VelocityReader(reader.Reader):
