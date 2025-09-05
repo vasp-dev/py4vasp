@@ -30,7 +30,8 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     @base.data_access
     def __str__(self):
         step = self._last_step_in_slice
-        velocities = self._vectors_to_string(self._velocity[step])
+        velocities = np.atleast_1d(self.to_numpy())[-1]
+        velocities = self._vectors_to_string(velocities)
         return f"{self._structure[step]}\n\n{velocities}"
 
     def _vectors_to_string(self, vectors):
