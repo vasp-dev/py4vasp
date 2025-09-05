@@ -396,6 +396,34 @@ def test_plot_instance_incorrect_selection(transport, incorrect_selection, Asser
         transport[0].plot(incorrect_selection)
 
 
+def test_figure_of_merit(transport, Assert):
+    for instance in transport:
+        seebeck = instance.seebeck() * 1e-6  # from uV/K to V/K
+        sigma = instance.electronic_conductivity()
+        kappa = instance.electronic_thermal_conductivity()
+        temperature = instance.temperatures()
+        expected = seebeck**2 * sigma * temperature / kappa
+        Assert.allclose(instance.figure_of_merit(), expected)
+
+
+@pytest.mark.parametrize("kappa_lattice", [1.0, np.linspace(1.0, 3.0, 6)])
+def test_figure_of_merit_with_argument(transport, kappa_lattice, Assert):
+    instance = transport[3]
+    seebeck = instance.seebeck() * 1e-6  # from uV/K to V/K
+    sigma = instance.electronic_conductivity()
+    kappa_electronic = instance.electronic_thermal_conductivity()
+    temperature = instance.temperatures()
+    expected = seebeck**2 * sigma * temperature / (kappa_electronic + kappa_lattice)
+    Assert.allclose(instance.figure_of_merit(kappa_lattice), expected)
+
+
+def test_figure_of_merit_with_wrong_size_argument(transport):
+    instance = transport[0]
+    kappa_lattice = np.linspace(1.0, 3.0, 5)  # Incorrect size
+    with pytest.raises(exception.IncorrectUsage):
+        instance.figure_of_merit(kappa_lattice)
+
+
 def test_print_mapping(transport, format_):
     actual, _ = format_(transport)
     assert re.search(transport.ref.mapping_pattern, str(transport), re.MULTILINE)

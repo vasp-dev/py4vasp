@@ -1,9 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from collections import abc
-from typing import Any, Dict, Generator, List, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from py4vasp import exception
 from py4vasp._calculation import base
@@ -242,6 +243,54 @@ class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
         ]
         """
         return self._select_data("electronic_thermal_conductivity", selection)
+
+    def figure_of_merit(
+        self, kappa_lattice: Optional[float | ArrayLike] = None
+    ) -> np.ndarray:
+        """Returns the dimensionless figure of merit ZT for this instance.
+
+        The figure of merit is calculated as ZT = S^2 * σ * T / κ, where S is the
+        Seebeck coefficient, σ is the electronic conductivity, T is the temperature,
+        and κ is the electronic thermal conductivity.
+
+        Parameters
+        ----------
+        kappa_lattice
+            The lattice thermal conductivity in W/(m.K). This can be a single float
+            value or an array-like object with the same length as the number of
+            temperatures. If an array is provided, it allows for temperature-dependent
+            calculations. If None, only the electronic contribution to the figure of
+            merit is considered.
+
+        Returns
+        -------
+        A numpy array of dimensionless figure of merit values at each temperature.
+
+        Examples
+        --------
+        To get the figure of merit of the first instance:
+
+        >>> calculation.electron_phonon.transport[0].figure_of_merit()
+        """
+        seebeck = self.seebeck() * 1e-6  # from uV/K to V/K
+        sigma = self.electronic_conductivity()
+        kappa = self._thermal_conductivity(kappa_lattice)
+        temperature = self.temperatures()
+        return seebeck**2 * sigma * temperature / kappa
+
+    def _thermal_conductivity(self, kappa_lattice):
+        kappa_electronic = self.electronic_thermal_conductivity()
+        if kappa_lattice is None:
+            return kappa_electronic
+        try:
+            return kappa_electronic + kappa_lattice
+        except ValueError:
+            message = (
+                "The provided lattice thermal conductivity has an incompatible shape. "
+                "It must be a single float value or an array-like object with the same "
+                "length as the number of temperatures."
+            )
+            raise exception.IncorrectUsage(message)
 
     def _select_data(self, quantity, selection):
         tree = select.Tree.from_selection(selection)
