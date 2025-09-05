@@ -30,7 +30,7 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     @base.data_access
     def __str__(self):
         step = self._last_step_in_slice
-        velocities = np.atleast_1d(self.to_numpy())[-1]
+        velocities = _VelocityReader(self._raw_data.velocities)[self._last_step_in_slice]
         velocities = self._vectors_to_string(velocities)
         return f"{self._structure[step]}\n\n{velocities}"
 
@@ -92,7 +92,17 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         viewer.ion_arrows = [ion_arrow]
         return viewer
 
-    def to_numpy(self):
+    @base.data_access
+    @documentation.format(examples=slice_.examples("velocity", "to_numpy"))
+    def to_numpy(self) -> np.ndarray:
+        """Convert the ion velocities for the selected steps into a numpy array.
+
+        Returns
+        -------
+        A numpy array of the velocities of the selected steps.
+
+        {examples}
+        """
         return _VelocityReader(self._raw_data.velocities)[self._steps]
 
 
