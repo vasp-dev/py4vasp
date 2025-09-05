@@ -56,6 +56,11 @@ def test_plot(velocities, steps, supercell, Assert):
     assert arrows.radius == 0.2
 
 
+def test_to_numpy(Sr2TiO4, steps, Assert):
+    actual = velocities.to_numpy() if steps == -1 else velocities[steps].to_numpy()
+    Assert.allclose(actual, velocities.ref.velocities[steps])
+    
+    
 def test_incorrect_access(Sr2TiO4):
     out_of_bounds = 999
     with pytest.raises(exception.IncorrectUsage):
