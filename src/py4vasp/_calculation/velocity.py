@@ -30,7 +30,10 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     @base.data_access
     def __str__(self):
         step = self._last_step_in_slice
-        velocities = self._vectors_to_string(self._velocity[step])
+        velocities = _VelocityReader(self._raw_data.velocities)[
+            self._last_step_in_slice
+        ]
+        velocities = self._vectors_to_string(velocities)
         return f"{self._structure[step]}\n\n{velocities}"
 
     def _vectors_to_string(self, vectors):
@@ -57,7 +60,7 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         """
         return {
             "structure": self._structure[self._steps].read(),
-            "velocities": self._velocity[self._steps],
+            "velocities": self.to_numpy(),
         }
 
     @base.data_access
@@ -79,7 +82,7 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         {examples}
         """
         viewer = self._structure.plot(supercell)
-        velocities = self.velocity_rescale * self._velocity[self._steps]
+        velocities = self.velocity_rescale * self.to_numpy()
         if velocities.ndim == 2:
             velocities = velocities[np.newaxis]
         ion_arrow = view.IonArrow(
@@ -91,9 +94,18 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         viewer.ion_arrows = [ion_arrow]
         return viewer
 
-    @property
-    def _velocity(self):
-        return _VelocityReader(self._raw_data.velocities)
+    @base.data_access
+    @documentation.format(examples=slice_.examples("velocity", "to_numpy"))
+    def to_numpy(self) -> np.ndarray:
+        """Convert the ion velocities for the selected steps into a numpy array.
+
+        Returns
+        -------
+        A numpy array of the velocities of the selected steps.
+
+        {examples}
+        """
+        return _VelocityReader(self._raw_data.velocities)[self._steps]
 
 
 class _VelocityReader(reader.Reader):
