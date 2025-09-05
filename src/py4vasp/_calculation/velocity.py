@@ -80,7 +80,7 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         {examples}
         """
         viewer = self._structure.plot(supercell)
-        velocities = self.velocity_rescale * self._velocity[self._steps]
+        velocities = self.velocity_rescale * self.to_numpy()
         if velocities.ndim == 2:
             velocities = velocities[np.newaxis]
         ion_arrow = view.IonArrow(
