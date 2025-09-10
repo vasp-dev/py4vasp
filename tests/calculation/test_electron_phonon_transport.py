@@ -398,7 +398,7 @@ def test_plot_instance_incorrect_selection(transport, incorrect_selection, Asser
 
 def test_figure_of_merit(transport, Assert):
     for instance in transport:
-        seebeck = instance.seebeck() * 1e-6  # from uV/K to V/K
+        seebeck = instance.seebeck()
         sigma = instance.electronic_conductivity()
         kappa = instance.electronic_thermal_conductivity()
         temperature = instance.temperatures()
@@ -409,7 +409,7 @@ def test_figure_of_merit(transport, Assert):
 @pytest.mark.parametrize("kappa_lattice", [1.0, np.linspace(1.0, 3.0, 6)])
 def test_figure_of_merit_with_argument(transport, kappa_lattice, Assert):
     instance = transport[3]
-    seebeck = instance.seebeck() * 1e-6  # from uV/K to V/K
+    seebeck = instance.seebeck()
     sigma = instance.electronic_conductivity()
     kappa_electronic = instance.electronic_thermal_conductivity()
     temperature = instance.temperatures()

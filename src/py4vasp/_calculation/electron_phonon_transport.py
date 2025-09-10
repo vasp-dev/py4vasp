@@ -28,8 +28,8 @@ DIRECTIONS = {
 UNITS = {
     "electronic_conductivity": "S/m",
     "mobility": "cm^2/(V.s)",
-    "seebeck": "μV/K",
-    "peltier": "μV",
+    "seebeck": "V/K",
+    "peltier": "V",
     "electronic_thermal_conductivity": "W/(m.K)",
 }
 
@@ -163,7 +163,7 @@ class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
 
         Returns
         -------
-        A numpy array of Seebeck coefficient values in μV/K for the specified direction,
+        A numpy array of Seebeck coefficient values in V/K for the specified direction,
         or a dictionary of arrays if multiple directions are selected.
 
         Examples
@@ -193,7 +193,7 @@ class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
 
         Returns
         -------
-        A numpy array of Peltier coefficient values in μV for the specified direction,
+        A numpy array of Peltier coefficient values in V for the specified direction,
         or a dictionary of arrays if multiple directions are selected.
 
         Examples
@@ -272,7 +272,7 @@ class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
 
         >>> calculation.electron_phonon.transport[0].figure_of_merit()
         """
-        seebeck = self.seebeck() * 1e-6  # from uV/K to V/K
+        seebeck = self.seebeck()
         sigma = self.electronic_conductivity()
         kappa = self._thermal_conductivity(kappa_lattice)
         temperature = self.temperatures()
