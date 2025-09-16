@@ -173,6 +173,14 @@ def test_selections(raw_transport, chemical_potential, Assert):
     Assert.allclose(selections["scattering_approx"], scattering_approximation)
 
 
+def test_selections_CRTA(transport_CRTA):
+    selections = transport_CRTA.selections()
+    assert "selfen_carrier_den" in selections
+    assert "nbands_sum" not in selections
+    assert "selfen_delta" not in selections
+    assert "scattering_approx" in selections
+
+
 @pytest.mark.parametrize(
     "attribute",
     ["nbands_sum", "selfen_delta", "selfen_carrier_den", "scattering_approx"],
@@ -214,6 +222,12 @@ def test_select_nested(transport):
     instance = selected[0]
     assert isinstance(instance, ElectronPhononTransportInstance)
     assert instance.index == index_
+
+
+@pytest.mark.filterwarnings("ignore:nbands_sum")
+def test_select_missing(transport, transport_CRTA):
+    assert transport.select("nbands_sum=246161") == []
+    assert transport_CRTA.select("nbands_sum=20") == []
 
 
 @pytest.mark.parametrize(

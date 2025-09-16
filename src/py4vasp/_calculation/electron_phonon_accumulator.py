@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import warnings
+
 import numpy as np
 
 from py4vasp import exception
@@ -37,14 +39,15 @@ class ElectronPhononAccumulator:
         return {"naccumulators": len(self._parent)}
 
     def selections(self, base_selections={}):
+        result = base_selections.copy()
         mu_tag, mu_val = self.chemical_potential_mu_tag()
-        return {
-            **base_selections,
-            mu_tag: np.unique(mu_val),
-            "nbands_sum": np.unique(self._raw_data.nbands_sum),
-            "selfen_delta": np.unique(self._raw_data.delta),
-            "scattering_approx": np.unique(self._raw_data.scattering_approximation),
-        }
+        result[mu_tag] = np.unique(mu_val)
+        if not check.is_none(self._raw_data.nbands_sum):
+            result["nbands_sum"] = np.unique(self._raw_data.nbands_sum)
+        if not check.is_none(self._raw_data.delta):
+            result["selfen_delta"] = np.unique(self._raw_data.delta)
+        result["scattering_approx"] = np.unique(self._raw_data.scattering_approximation)
+        return result
 
     def _chemical_potential(self):
         new_chemical_potential = ElectronPhononChemicalPotential.from_data
@@ -90,6 +93,10 @@ The selection {assignment} is not formatted correctly. It should be formatted li
 
     def _match_key_value(self, index_, key, value):
         instance_value = self.get_data(key, index_)
+        if instance_value is None:
+            message = f"{key} is not defined in the VASP output for some instances. These instances not be included in the selection."
+            warnings.warn(message)
+            return False
         try:
             value = float(value)
         except ValueError:
@@ -116,4 +123,5 @@ The selection {assignment} is not formatted correctly. It should be formatted li
             message = f'\
 The selection "{name}" is not a valid choice. {did_you_mean}Please check the \
 available selections: "{available_selections}".'
+            raise exception.IncorrectUsage(message)
             raise exception.IncorrectUsage(message)
