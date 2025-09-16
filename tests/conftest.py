@@ -1626,13 +1626,14 @@ def _electron_phonon_transport(selection):
 
 def _make_nbands_sum(selection):
     if selection == "CRTA":
-        return raw.VaspData(None)
+        return [raw.VaspData(None) for _ in range(number_samples)]
     return _make_data(np.linspace(10, 100, number_samples, dtype=np.int32))
 
 
 def _make_delta(selection, seed):
-    present = selection != "CRTA"
-    return _make_arbitrary_data([number_samples], seed=seed, present=present)
+    if selection == "CRTA":
+        return [raw.VaspData(None) for _ in range(number_samples)]
+    return _make_arbitrary_data([number_samples], seed=seed)
 
 
 def _make_id_index():

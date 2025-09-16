@@ -14,7 +14,6 @@ ALIAS = {
     "selfen_delta": "delta",
     "scattering_approx": "scattering_approximation",
 }
-NOT_FOUND = "not found"
 
 
 class ElectronPhononAccumulator:
@@ -42,12 +41,16 @@ class ElectronPhononAccumulator:
         result = base_selections.copy()
         mu_tag, mu_val = self.chemical_potential_mu_tag()
         result[mu_tag] = np.unique(mu_val)
-        if not check.is_none(self._raw_data.nbands_sum):
-            result["nbands_sum"] = np.unique(self._raw_data.nbands_sum)
-        if not check.is_none(self._raw_data.delta):
-            result["selfen_delta"] = np.unique(self._raw_data.delta)
+        if nbands_sum := self._remove_missing_data(self._raw_data.nbands_sum):
+            result["nbands_sum"] = np.unique(nbands_sum)
+        if selfen_delta := self._remove_missing_data(self._raw_data.delta):
+            result["selfen_delta"] = np.unique(selfen_delta)
         result["scattering_approx"] = np.unique(self._raw_data.scattering_approximation)
         return result
+
+    def _remove_missing_data(self, data):
+        filter_function = lambda data: not check.is_none(data)
+        return list(filter(filter_function, data))
 
     def _chemical_potential(self):
         new_chemical_potential = ElectronPhononChemicalPotential.from_data
@@ -105,14 +108,13 @@ The selection {assignment} is not formatted correctly. It should be formatted li
 
     def get_data(self, name, index):
         name = ALIAS.get(name, name)
-        dataset = getattr(self._raw_data, name, NOT_FOUND)
-        if dataset is NOT_FOUND:
+        dataset = getattr(self._raw_data, name, None)
+        if dataset is None:
             mu_tag, mu_val = self.chemical_potential_mu_tag()
             self._raise_error_if_not_present(name, expected_name=mu_tag)
             return mu_val[self._raw_data.id_index[index, 2] - 1]
-        if check.is_none(dataset):
-            return None
-        return np.array(dataset[index])
+        data = dataset[index]
+        return np.array(data) if not check.is_none(data) else None
 
     def _raise_error_if_not_present(self, name, expected_name):
         if name != expected_name:
