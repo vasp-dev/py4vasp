@@ -77,7 +77,7 @@ class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
             "electronic_thermal_conductivity",
         ]
         result = {name: self._get_data(name) for name in names}
-        result["metadata"] = self._read_metadata()
+        result["metadata"] = self.read_metadata()
         return result
 
     def temperatures(self) -> np.ndarray:
@@ -585,7 +585,7 @@ class _SeriesBuilderMapping(_SeriesBuilderBase):
         selfen_delta = np.empty(len(instances))
         scattering_approx = np.empty(len(instances), dtype="<U20")
         for ii, instance in enumerate(instances):
-            metadata = instance._read_metadata()
+            metadata = instance.read_metadata()
             nbands_sum[ii] = metadata.pop("nbands_sum")
             selfen_delta[ii] = metadata.pop("selfen_delta")
             scattering_approx[ii] = metadata.pop("scattering_approx")

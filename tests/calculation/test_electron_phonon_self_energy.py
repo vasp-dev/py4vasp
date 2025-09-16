@@ -108,7 +108,12 @@ def test_read_instance(self_energy, Assert):
         Assert.allclose(d["fan"], self_energy.ref.fan[i])
         Assert.allclose(d["energies"], self_energy.ref.energies[i])
         Assert.allclose(d["temperatures"], self_energy.ref.temperatures[i])
-        assert d["metadata"] == {
+        assert d["metadata"] == instance.read_metadata()
+
+
+def test_read_instance_metadata(self_energy):
+    for i, instance in enumerate(self_energy):
+        assert instance.read_metadata() == {
             "nbands_sum": self_energy.ref.nbands_sum[i],
             "selfen_delta": self_energy.ref.selfen_delta[i],
             "selfen_carrier_den": self_energy.ref.selfen_carrier_den[i],

@@ -124,7 +124,12 @@ def test_read_instance(transport, Assert):
             d["electronic_thermal_conductivity"],
             transport.ref.electronic_thermal_conductivity[i],
         )
-        assert d["metadata"] == {
+        assert d["metadata"] == instance.read_metadata()
+
+
+def test_read_instance_metadata(transport):
+    for i, instance in enumerate(transport):
+        assert instance.read_metadata() == {
             "nbands_sum": transport.ref.nbands_sum[i],
             "selfen_delta": transport.ref.selfen_delta[i],
             "selfen_carrier_den": transport.ref.selfen_carrier_den[i],

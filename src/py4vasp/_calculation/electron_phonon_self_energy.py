@@ -48,7 +48,7 @@ class ElectronPhononSelfEnergyInstance(ElectronPhononInstance):
             and energies for this self-energy instance.
         """
         return {
-            "metadata": self._read_metadata(),
+            "metadata": self.read_metadata(),
             "eigenvalues": self.parent.eigenvalues(),
             "fan": self._get_fan(),
             "debye_waller": self._get_data("debye_waller"),
