@@ -1586,9 +1586,8 @@ def _electron_phonon_self_energy(selection):
     temperatures_shape = [number_samples, number_temperatures]
     return raw.ElectronPhononSelfEnergy(
         valid_indices=range(number_samples),
-        id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
-        nbands_sum=_make_nbands_sum(),
-        delta=_make_arbitrary_data([number_samples], seed=18573411),
+        nbands_sum=_make_nbands_sum(selection),
+        delta=_make_delta(selection, seed=18573411),
         scattering_approximation=_make_scattering_approximation(),
         chemical_potential=_electron_phonon_chemical_potential(),
         id_index=_make_id_index(),
@@ -1610,12 +1609,10 @@ def _electron_phonon_transport(selection):
     mobility_shape = [number_samples, number_temperatures, 3, 3]
     return raw.ElectronPhononTransport(
         valid_indices=range(number_samples),
-        id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
-        nbands_sum=_make_nbands_sum(),
-        self_energy=_electron_phonon_self_energy(selection),
+        nbands_sum=_make_nbands_sum(selection),
         chemical_potential=_electron_phonon_chemical_potential(),
         id_index=_make_id_index(),
-        delta=_make_arbitrary_data([number_samples], seed=733144842),
+        delta=_make_delta(selection, seed=733144842),
         temperatures=[temperature_mesh for _ in range(number_samples)],
         transport_function=_make_arbitrary_data(transport_shape),
         mobility=_make_arbitrary_data(mobility_shape),
@@ -1623,12 +1620,19 @@ def _electron_phonon_transport(selection):
         peltier=_make_arbitrary_data(mobility_shape),
         electronic_conductivity=_make_arbitrary_data(mobility_shape),
         electronic_thermal_conductivity=_make_arbitrary_data(mobility_shape),
-        scattering_approximation=_make_scattering_approximation(),
+        scattering_approximation=_make_scattering_approximation(selection),
     )
 
 
-def _make_nbands_sum():
+def _make_nbands_sum(selection):
+    if selection == "CRTA":
+        return raw.VaspData(None)
     return _make_data(np.linspace(10, 100, number_samples, dtype=np.int32))
+
+
+def _make_delta(selection, seed):
+    present = selection != "CRTA"
+    return _make_arbitrary_data([number_samples], seed=seed, present=present)
 
 
 def _make_id_index():
@@ -1641,6 +1645,8 @@ def _make_id_index():
 def _make_scattering_approximation(selection="default"):
     if selection == "bandgap":
         choices = ["SERTA", "SERTA", "MRTA_TAU", "SERTA", "SERTA"]
+    elif selection == "CRTA":
+        choices = ["CRTA" for _ in range(number_samples)]
     else:
         choices = ["SERTA", "ERTA_LAMDBA", "ERTA_TAU", "MRTA_LAMDBA", "MRTA_TAU"]
     return _make_data(choices)

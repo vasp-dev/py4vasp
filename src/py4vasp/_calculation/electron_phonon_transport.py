@@ -586,15 +586,16 @@ class _SeriesBuilderMapping(_SeriesBuilderBase):
         scattering_approx = np.empty(len(instances), dtype="<U20")
         for ii, instance in enumerate(instances):
             metadata = instance.read_metadata()
-            nbands_sum[ii] = metadata.pop("nbands_sum")
-            selfen_delta[ii] = metadata.pop("selfen_delta")
+            nbands_sum[ii] = metadata.pop("nbands_sum", -1)
+            selfen_delta[ii] = metadata.pop("selfen_delta", np.inf)
             scattering_approx[ii] = metadata.pop("scattering_approx")
             _, chemical_potential[ii] = metadata.popitem()
-        return chemical_potential, {
-            "nbands_sum": nbands_sum,
-            "selfen_delta": selfen_delta,
-            "scattering_approx": scattering_approx,
-        }
+        annotations = {"scattering_approx": scattering_approx}
+        if any(nbands_sum != -1):
+            annotations["nbands_sum"] = nbands_sum
+        if any(selfen_delta != np.inf):
+            annotations["selfen_delta"] = selfen_delta
+        return chemical_potential, annotations
 
     def _get_temperature(self, selection, instances):
         selected_temperatures = self._get_temperature_from_selection(selection)

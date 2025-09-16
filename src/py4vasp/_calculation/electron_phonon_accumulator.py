@@ -6,12 +6,13 @@ from py4vasp import exception
 from py4vasp._calculation.electron_phonon_chemical_potential import (
     ElectronPhononChemicalPotential,
 )
-from py4vasp._util import convert, select, suggest
+from py4vasp._util import check, convert, select, suggest
 
 ALIAS = {
     "selfen_delta": "delta",
     "scattering_approx": "scattering_approximation",
 }
+NOT_FOUND = "not found"
 
 
 class ElectronPhononAccumulator:
@@ -97,12 +98,14 @@ The selection {assignment} is not formatted correctly. It should be formatted li
 
     def get_data(self, name, index):
         name = ALIAS.get(name, name)
-        dataset = getattr(self._raw_data, name, None)
-        if dataset is not None:
-            return np.array(dataset[index])
-        mu_tag, mu_val = self.chemical_potential_mu_tag()
-        self._raise_error_if_not_present(name, expected_name=mu_tag)
-        return mu_val[self._raw_data.id_index[index, 2] - 1]
+        dataset = getattr(self._raw_data, name, NOT_FOUND)
+        if dataset is NOT_FOUND:
+            mu_tag, mu_val = self.chemical_potential_mu_tag()
+            self._raise_error_if_not_present(name, expected_name=mu_tag)
+            return mu_val[self._raw_data.id_index[index, 2] - 1]
+        if check.is_none(dataset):
+            return None
+        return np.array(dataset[index])
 
     def _raise_error_if_not_present(self, name, expected_name):
         if name != expected_name:

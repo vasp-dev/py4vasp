@@ -42,6 +42,16 @@ def transport(raw_transport):
     return transport
 
 
+@pytest.fixture
+def transport_CRTA(raw_data):
+    # CRTA data does not have nbands_sum and delta data
+    raw_transport = raw_data.electron_phonon_transport("CRTA")
+    transport = ElectronPhononTransport.from_data(raw_transport)
+    transport.ref = types.SimpleNamespace()
+    transport.ref.selfen_carrier_den = _make_reference_carrier_den(raw_transport)
+    return transport
+
+
 @pytest.fixture(params=["carrier_den", "carrier_per_cell", "mu"])
 def chemical_potential(raw_data, request):
     raw_potential = raw_data.electron_phonon_chemical_potential(request.param)
@@ -134,6 +144,14 @@ def test_read_instance_metadata(transport):
             "selfen_delta": transport.ref.selfen_delta[i],
             "selfen_carrier_den": transport.ref.selfen_carrier_den[i],
             "scattering_approx": transport.ref.scattering_approx[i],
+        }
+
+
+def test_read_instance_metadata_CRTA(transport_CRTA):
+    for i, instance in enumerate(transport_CRTA):
+        assert instance.read_metadata() == {
+            "scattering_approx": "CRTA",
+            "selfen_carrier_den": transport_CRTA.ref.selfen_carrier_den[i],
         }
 
 
@@ -328,6 +346,14 @@ def test_plot_mapping_chemical_potential(raw_transport, chemical_potential, Asse
     transport = ElectronPhononTransport.from_data(raw_transport)
     graph = transport.plot("mobility")
     assert graph.xlabel == chemical_potential.ref.xlabel
+
+
+def test_plot_mapping_CRTA(transport_CRTA):
+    graph = transport_CRTA.plot("mobility")
+    for series in graph:
+        assert "nbands_sum" not in series.annotations
+        assert "selfen_delta" not in series.annotations
+        assert all(series.annotations["scattering_approx"] == "CRTA")
 
 
 @pytest.mark.parametrize(

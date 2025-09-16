@@ -40,10 +40,14 @@ class ElectronPhononInstance(abc.ABC):
         settings in the INCAR file, and the values are the respective settings used.
         """
         mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
+        optional_metadata = {}
+        if nbands_sum := self._get_data("nbands_sum"):
+            optional_metadata["nbands_sum"] = nbands_sum
+        if selfen_delta := self._get_data("delta"):
+            optional_metadata["selfen_delta"] = selfen_delta
         return {
             mu_tag: mu_val[self._get_data("id_index")[2] - 1],
-            "nbands_sum": self._get_data("nbands_sum"),
-            "selfen_delta": self._get_data("delta"),
+            **optional_metadata,
             "scattering_approx": self._get_data("scattering_approximation"),
         }
 

@@ -362,7 +362,6 @@ schema.add(
 schema.add(
     raw.ElectronPhononSelfEnergy,
     required=raw.Version(6, 5, 2),
-    id_name=f"{group}/self_energy_meta/id_name",
     valid_indices=f"{group}/self_energy_meta/ncalculators",
     chemical_potential=Link("electron_phonon_chemical_potential", DEFAULT_SOURCE),
     eigenvalues=f"{group}/eigenvalues/eigenvalues",
@@ -380,9 +379,7 @@ schema.add(
 schema.add(
     raw.ElectronPhononTransport,
     required=raw.Version(6, 5, 2),
-    id_name=f"{group}/transport_meta/id_name",
     chemical_potential=Link("electron_phonon_chemical_potential", DEFAULT_SOURCE),
-    self_energy=Link("electron_phonon_self_energy", DEFAULT_SOURCE),
     valid_indices=f"{group}/transport_meta/ncalculators",
     id_index=f"{group}/transport_{{}}/id_idx",
     temperatures=f"{group}/transport_{{}}/temps",
