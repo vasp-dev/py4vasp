@@ -1531,8 +1531,8 @@ def _electron_phonon_band_gap(selection):
     shape_temperature = [number_samples, number_temperatures]
     return raw.ElectronPhononBandgap(
         valid_indices=range(number_samples),
-        nbands_sum=_make_nbands_sum(),
-        delta=_make_arbitrary_data([number_samples], seed=7824570),
+        nbands_sum=_make_nbands_sum(selection),
+        delta=_make_delta(selection, seed=7824570),
         chemical_potential=_electron_phonon_chemical_potential(),
         scattering_approximation=_make_scattering_approximation("bandgap"),
         fundamental_renorm=_make_arbitrary_data(shape_renorm),
