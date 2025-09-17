@@ -119,7 +119,7 @@ class ElectronPhononBandgapInstance(ElectronPhononInstance, graph.Mixin):
         potential tag returned by `ChemicalPotential.mu_tag()`.
         """
         return {
-            "metadata": self._read_metadata(),
+            "metadata": self.read_metadata(),
             "direct_renorm": self._get_data("direct_renorm"),
             "direct": self._get_data("direct"),
             "fundamental_renorm": self._get_data("fundamental_renorm"),

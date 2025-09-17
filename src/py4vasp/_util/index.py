@@ -188,7 +188,7 @@ class Selector:
         elif isinstance(selection, select.Operation):
             yield from self._evaluate_operation(selection, operator)
         else:
-            assert False, f"Reading {key} is not implemented."
+            assert False, f"Reading {selection} is not implemented."
 
     def _read_key(self, key):
         self._raise_key_not_found_error(key)

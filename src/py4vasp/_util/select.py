@@ -52,10 +52,10 @@ from py4vasp._util import check
 
 range_separator = ":"
 pair_separator = "~"
-assignment_seperator = "="
-group_separators = (range_separator, pair_separator, assignment_seperator)
+group_separators = (range_separator, pair_separator)
 operators = ("+", "-")
-subtree_characters = group_separators + operators
+assignment = "="
+subtree_characters = group_separators + operators + (assignment,)
 all = "__all__"
 
 
@@ -139,23 +139,36 @@ class Tree:
         right_arguments = self._get_arguments(self._children[1], filter)
         for left_arg, right_arg in itertools.product(left_arguments, right_arguments):
             if self._content.character in operators:
-                yield from self._assemble_operation(selected, left_arg, right_arg)
+                yield self._assemble_operation(selected, left_arg, right_arg)
+            elif self._content.character == assignment:
+                yield self._assemble_assignment(selected, left_arg, right_arg, filter)
             else:
-                yield from self._assemble_group(selected, left_arg, right_arg)
+                yield self._assemble_group(selected, left_arg, right_arg)
 
     def _assemble_operation(self, selected, left_arg, right_arg):
-        yield *selected, Operation(left_arg, self._content.character, right_arg)
+        return *selected, Operation(left_arg, self._content.character, right_arg)
+
+    def _assemble_assignment(self, selected, left_arg, right_arg, filter):
+        self._raise_error_if_left_hand_side_is_nested(left_arg)
+        if left_arg[0] in filter or right_arg[0] in filter:
+            return *selected, *right_arg[1:]
+        else:
+            return *selected, Assignment(left_arg[0], right_arg[0]), *right_arg[1:]
 
     def _assemble_group(self, selected, left_arg, right_arg):
         group = [left_arg[0], right_arg[0]]
-        self._raise_error_if_group_has_nested_left_hand_side(left_arg)
-        yield *selected, Group(group, self._content.character), *right_arg[1:]
+        self._raise_error_if_left_hand_side_is_nested(left_arg)
+        return *selected, Group(group, self._content.character), *right_arg[1:]
 
     def _get_arguments(self, child, filter):
         is_operation = self._content.character in operators
         for argument in child.selections(filter=filter, filter_toplevel=is_operation):
-            child._raise_error_if_content_and_argument_are_incompatible(argument)
-            yield argument
+            if child._content_and_argument_are_compatible(argument):
+                yield argument
+            elif self._content.character == assignment:
+                yield (None,)
+            else:
+                child._raise_error_that_content_and_argument_are_incompatible(argument)
 
     def to_mermaid(self):
         "Helper routine to visualize the Tree using Mermaid"
@@ -234,7 +247,7 @@ class Tree:
         return self._store_character_in_tree("]")
 
     def _create_subtree(self, character):
-        self._raise_error_if_group_misses_left_hand_side(character)
+        self._raise_error_if_left_hand_side_is_missing(character)
         self._add_child_if_needed(ignore_space=True)
         self._children[-1]._transform_to_subtree(character)
         return self._children[-1]
@@ -283,16 +296,17 @@ class Tree:
     def _new_child_needed(self, ignore_space=False):
         return self._new_selection or (self._space_parsed and not ignore_space)
 
-    def _raise_error_if_group_misses_left_hand_side(self, separator):
-        if separator not in group_separators or len(self._children) > 0:
+    def _raise_error_if_left_hand_side_is_missing(self, separator):
+        # operators may be unary
+        if separator in operators or len(self._children) > 0:
             return
-        message = f"The left argument of the group {separator} is missing."
+        message = f"The left argument of near {separator} is missing."
         raise exception._Py4VaspInternalError(message)
 
-    def _raise_error_if_group_has_nested_left_hand_side(self, left_op):
+    def _raise_error_if_left_hand_side_is_nested(self, left_op):
         if len(left_op) == 1:
             return
-        message = f"Left argument of group {self._content.character} should only contain one element and not {'('.join(left_op) + (len(left_op) - 1)* ')'}."
+        message = f"Left argument of {self._content.character} should only contain one element and not {'('.join(left_op) + (len(left_op) - 1)* ')'}."
         raise exception.IncorrectUsage(message)
 
     def _raise_error_if_opening_parenthesis_without_argument(self):
@@ -319,9 +333,10 @@ class Tree:
         message = f"The character {self._content} is not followed by an element."
         raise exception._Py4VaspInternalError(message)
 
-    def _raise_error_if_content_and_argument_are_incompatible(self, argument):
-        if bool(self._content) == bool(argument):
-            return
+    def _content_and_argument_are_compatible(self, argument):
+        return bool(self._content) == bool(argument)
+
+    def _raise_error_that_content_and_argument_are_incompatible(self, argument):
         message = f"The argument `{argument}` has a qualitatively different behavior then the content `{self}`. This may occur when a filter would replace the last element."
         raise exception.IncorrectUsage(message)
 
@@ -371,8 +386,23 @@ class Operation:
         else:
             return f"{left_op} {self.operator} {right_op}"
 
+    __hash__ = lambda self: hash(str(self))
+
     def unary(self):
         return self.left_operand == ()
+
+
+@dataclasses.dataclass
+class Assignment:
+    "An assignment operation like a=b."
+
+    left_operand: str
+    "The selection on the left-hand side of the assignment."
+    right_operand: str
+    "The selection on the right-hand side of the assignment."
+
+    def __str__(self):
+        return f"{self.left_operand}={self.right_operand}"
 
 
 def _raise_error_if_parsing_failed(error, selection, ii):
@@ -414,6 +444,8 @@ def _part_contains(part, choice, ignore_case):
         return _choice_in_group(part.group, choice, ignore_case)
     if isinstance(part, Operation):
         return _choice_in_operation(part, choice, ignore_case)
+    if isinstance(part, Assignment):
+        return _choice_in_assignment(part, choice, ignore_case)
     return _part_is_choice(part, choice, ignore_case)
 
 
@@ -424,6 +456,12 @@ def _choice_in_group(group, choice, ignore_case):
 def _choice_in_operation(part, choice, ignore_case):
     in_left_op = contains(part.left_operand, choice, ignore_case)
     in_right_op = contains(part.right_operand, choice, ignore_case)
+    return in_left_op or in_right_op
+
+
+def _choice_in_assignment(part, choice, ignore_case):
+    in_left_op = _part_is_choice(part.left_operand, choice, ignore_case)
+    in_right_op = _part_contains(part.right_operand, choice, ignore_case)
     return in_left_op or in_right_op
 
 

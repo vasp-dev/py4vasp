@@ -35,23 +35,7 @@ class ElectronPhononSelfEnergyInstance(ElectronPhononInstance):
             String representation including chemical potential and number of bands
             included in the sum.
         """
-        return "\n".join(self._generate_lines())
-
-    def _generate_lines(self):
-        yield f"Electron self-energy instance {self.index + 1}:"
-        indent = 4 * " "
-        # Information about the chemical potential
-        mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
-        yield f"{indent}{mu_tag}: {mu_val[self._get_data('id_index')[2] - 1]}"
-        # Information about the number of bands summed over
-        nbands_sum = self._get_data("nbands_sum")
-        yield f"{indent}nbands_sum: {nbands_sum}"
-        # Information about the broadening parameter
-        delta = self._get_data("delta")
-        yield f"{indent}selfen_delta: {delta}"
-        # Information about the scattering approximation
-        scattering_approx = self._get_data("scattering_approximation")
-        yield f"{indent}scattering_approx: {scattering_approx}"
+        return f"Electron-phonon self-energy instance {self.index + 1}:\n{self._metadata_string()}"
 
     def to_dict(self):
         """
@@ -64,11 +48,12 @@ class ElectronPhononSelfEnergyInstance(ElectronPhononInstance):
             and energies for this self-energy instance.
         """
         return {
-            "metadata": self._read_metadata(),
+            "metadata": self.read_metadata(),
             "eigenvalues": self.parent.eigenvalues(),
             "fan": self._get_fan(),
             "debye_waller": self._get_data("debye_waller"),
             "energies": self._get_data("energies"),
+            "temperatures": self._get_data("temperatures"),
         }
 
     def _get_fan(self):
@@ -161,6 +146,13 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
 
     @base.data_access
     def to_dict(self):
+        """Return a dictionary that lists how many accumulators are available
+
+        Returns
+        -------
+        dict
+            Dictionary containing information about the available accumulators.
+        """
         return self._accumulator().to_dict()
 
     @base.data_access
@@ -226,7 +218,7 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
     def __getitem__(self, key):
         if 0 <= key < len(self._raw_data.valid_indices):
             return ElectronPhononSelfEnergyInstance(self, key)
-        raise IndexError("Index out of range for electron phonon self energy instance.")
+        raise IndexError("Index out of range for electron-phonon self energy instance.")
 
     @base.data_access
     def __len__(self):

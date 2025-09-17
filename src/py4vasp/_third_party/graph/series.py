@@ -32,6 +32,10 @@ class Series(trace.Trace):
     weight_mode: str = "size"
     """If weight_mode is 'size', the size of the plot is adjusted according to the weight.
     If weight_mode is 'color', the color of the plot is adjusted according to the weight."""
+    annotations: dict = None
+    """If present, stores the metadata for this line or each point of the plot. Note
+    that each element of the dictionary must have either size 1 or the same size as the
+    x coordinates."""
     y2: bool = False
     "Use a secondary y axis to show this series."
     subplot: int = None
@@ -51,7 +55,18 @@ class Series(trace.Trace):
         if self.weight is not None and len(self.x) != self.weight.shape[-1]:
             message = "The length of weight and plot is inconsistent."
             raise exception.IncorrectUsage(message)
+        self._raise_error_if_annotations_length_incorrect()
         self._frozen = True
+
+    def _raise_error_if_annotations_length_incorrect(self):
+        if self.annotations is None:
+            return
+        for key, value in self.annotations.items():
+            if np.ndim(value) == 0:
+                continue
+            if len(value) != len(self.x):
+                message = f"The length of annotation '{key}' must be 1 or match the length of x."
+                raise exception.IncorrectUsage(message)
 
     def __setattr__(self, key, value):
         # prevent adding new attributes to avoid typos, in Python 3.10 this could be
@@ -137,10 +152,27 @@ class Series(trace.Trace):
     def _common_options(self, first_trace):
         return {
             "name": self.label,
+            "text": self._convert_annotations(),
             "legendgroup": self.label,
             "showlegend": first_trace,
             "yaxis": "y2" if self.y2 else "y",
         }
+
+    def _convert_annotations(self):
+        if self.annotations is None:
+            return None
+        return [self._convert_annotation(index_) for index_ in range(len(self.x))]
+
+    def _convert_annotation(self, index_):
+        return "<br>".join(
+            f"{key}: {self._get_element(value, index_)}"
+            for key, value in self.annotations.items()
+        )
+
+    def _get_element(self, array_or_scalar, index_):
+        if np.ndim(array_or_scalar) == 0:
+            return array_or_scalar
+        return array_or_scalar[index_]
 
     def _generate_shapes(self):
         return ()

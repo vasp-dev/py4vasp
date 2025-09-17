@@ -70,6 +70,27 @@ class ElectronPhononChemicalPotential(base.Refinery):
         )
 
     @base.data_access
+    def label(self) -> str:
+        """
+        Get a descriptive label for the electron-phonon chemical potential data.
+
+        This can be useful for plotting or identifying the type of data.
+
+        Returns
+        -------
+        A label indicating the type of data contained in this object and its units.
+        """
+        if not check.is_none(self._raw_data.carrier_den):
+            return "Carrier density (cm^-3)"
+        if not check.is_none(self._raw_data.mu):
+            return "Chemical potential (eV)"
+        if not check.is_none(self._raw_data.carrier_per_cell):
+            return "Carrier per cell"
+        raise exception.NoData(
+            "None of the carrier density, chemical potential, or carrier per cell data is available in the raw data."
+        )
+
+    @base.data_access
     def to_dict(self):
         """
         Convert the electron-phonon chemical potential data to a dictionary.

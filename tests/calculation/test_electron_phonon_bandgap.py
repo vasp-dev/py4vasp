@@ -171,7 +171,13 @@ def test_read_instance(band_gap, Assert):
         Assert.allclose(d["direct"], band_gap.ref.direct[index])
         Assert.allclose(d["direct_renorm"], band_gap.ref.direct_renorm[index])
         Assert.allclose(d["temperatures"], band_gap.ref.temperatures[index])
-        assert d["metadata"] == {
+        assert d["metadata"] == instance.read_metadata()
+
+
+def test_read_instance_metadata(band_gap):
+    for i, instance in enumerate(band_gap):
+        index = band_gap.ref.indices[i]
+        assert instance.read_metadata() == {
             "nbands_sum": band_gap.ref.nbands_sum[index],
             "selfen_delta": band_gap.ref.selfen_delta[index],
             "selfen_carrier_den": band_gap.ref.selfen_carrier_den[index],

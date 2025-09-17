@@ -24,6 +24,10 @@ number_eigenvectors = 5
 number_excitons = 3
 number_samples = 5
 number_chemical_potentials = 3
+number_temperatures = 6
+number_frequencies = (
+    1  # number of frequencies at which the fan self-energy is evaluated
+)
 single_spin = 1
 two_spins = 2
 noncollinear = 4
@@ -1522,16 +1526,15 @@ def _current_density(selection):
 
 def _electron_phonon_band_gap(selection):
     number_components = 3 if selection == "collinear" else 1
-    number_temps = 6
     shape_gap = [number_samples, number_components]
-    shape_renorm = [number_samples, number_components, number_temps]
-    shape_temperature = [number_samples, number_temps]
+    shape_renorm = [number_samples, number_components, number_temperatures]
+    shape_temperature = [number_samples, number_temperatures]
     return raw.ElectronPhononBandgap(
         valid_indices=range(number_samples),
-        nbands_sum=_make_data(np.linspace(10, 100, number_samples, dtype=np.int32)),
-        delta=_make_arbitrary_data([number_samples], seed=7824570),
+        nbands_sum=_make_nbands_sum(selection),
+        delta=_make_delta(selection, seed=7824570),
         chemical_potential=_electron_phonon_chemical_potential(),
-        scattering_approximation=["SERTA", "SERTA", "MRTA_TAU", "SERTA", "SERTA"],
+        scattering_approximation=_make_scattering_approximation("bandgap"),
         fundamental_renorm=_make_arbitrary_data(shape_renorm),
         direct_renorm=_make_arbitrary_data(shape_renorm),
         fundamental=_make_arbitrary_data(shape_gap),
@@ -1542,14 +1545,13 @@ def _electron_phonon_band_gap(selection):
 
 
 def _electron_phonon_chemical_potential(selection="carrier_den"):
-    number_temps = 6
     seed = 26826821
     return raw.ElectronPhononChemicalPotential(
         fermi_energy=0,
         carrier_density=_make_arbitrary_data([number_chemical_potentials]),
-        temperatures=_make_arbitrary_data([number_temps]),
+        temperatures=_make_arbitrary_data([number_temperatures]),
         chemical_potential=_make_arbitrary_data(
-            [number_chemical_potentials, number_temps]
+            [number_chemical_potentials, number_temperatures]
         ),
         carrier_per_cell=_make_arbitrary_data(
             [number_chemical_potentials], selection == "carrier_per_cell", seed=seed
@@ -1578,23 +1580,19 @@ def _electron_phonon_self_energy(selection):
         band_kpoint_spin_index[spin, kpoint, band] = index_
     # mock fan and dw
     number_indices = np.count_nonzero(band_kpoint_spin_index != -1)
-    number_freq = 1  # number of frequencies at which the fan self-energy is evaluated
-    number_temp = 6
-    fan_shape = [number_indices, number_freq, number_temp, complex_]
-    debye_waller_shape = [number_indices, number_temp]
-    energies_shape = [number_indices, number_freq]
+    fan_shape = [number_indices, number_frequencies, number_temperatures, complex_]
+    debye_waller_shape = [number_indices, number_temperatures]
+    energies_shape = [number_indices, number_frequencies]
+    temperatures_shape = [number_samples, number_temperatures]
     return raw.ElectronPhononSelfEnergy(
         valid_indices=range(number_samples),
-        id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
-        id_size=[1, number_samples, 1, 1],
-        nbands_sum=_make_data(np.linspace(10, 100, number_samples, dtype=np.int32)),
-        delta=_make_arbitrary_data([number_samples], seed=18573411),
-        scattering_approximation=_make_data(
-            ["SERTA", "ERTA_LAMDBA", "ERTA_TAU", "MRTA_LAMDBA", "MRTA_TAU"]
-        ),
+        nbands_sum=_make_nbands_sum(selection),
+        delta=_make_delta(selection, seed=18573411),
+        scattering_approximation=_make_scattering_approximation(),
         chemical_potential=_electron_phonon_chemical_potential(),
         id_index=_make_id_index(),
         eigenvalues=_make_arbitrary_data(band_kpoint_spin_index_shape),
+        temperatures=_make_arbitrary_data(temperatures_shape),
         debye_waller=[
             _make_arbitrary_data(debye_waller_shape) for _ in range(number_samples)
         ],
@@ -1606,33 +1604,36 @@ def _electron_phonon_self_energy(selection):
 
 
 def _electron_phonon_transport(selection):
-    # mock transport_function
-    nw = 1  # number of frequencies at which the fan self-energy is evaluated
-    ntemps = 6
-    nbands_sum = 12
-    scattering_approximation = "MRTA_TAU"
+    temperature_mesh = np.linspace(0, 500, number_temperatures)
+    transport_shape = [number_samples, number_temperatures, number_frequencies, 3, 3]
+    mobility_shape = [number_samples, number_temperatures, 3, 3]
     return raw.ElectronPhononTransport(
         valid_indices=range(number_samples),
-        id_name=["selfen_delta", "nbands_sum", "selfen_muij", "selfen_approx"],
-        id_size=[1, number_samples, 1],
-        nbands_sum=np.array([nbands_sum for _ in range(number_samples)]),
-        self_energy=_electron_phonon_self_energy(selection),
-        chemical_potential=_electron_phonon_chemical_potential(selection),
-        id_index=[[1, sample + 1, 1] for sample in range(number_samples)],
-        delta=np.array([0 for _ in range(number_samples)]),
-        temperatures=[np.linspace(0, 500, 6) for _ in range(number_samples)],
-        transport_function=_make_arbitrary_data([number_samples, ntemps, nw, 3, 3]),
-        mobility=_make_arbitrary_data([number_samples, ntemps, 3, 3]),
-        seebeck=_make_arbitrary_data([number_samples, ntemps, 3, 3]),
-        peltier=_make_arbitrary_data([number_samples, ntemps, 3, 3]),
-        electronic_conductivity=_make_arbitrary_data([number_samples, ntemps, 3, 3]),
-        electronic_thermal_conductivity=_make_arbitrary_data(
-            [number_samples, ntemps, 3, 3]
-        ),
-        scattering_approximation=[
-            scattering_approximation for _ in range(number_samples)
-        ],
+        nbands_sum=_make_nbands_sum(selection),
+        chemical_potential=_electron_phonon_chemical_potential(),
+        id_index=_make_id_index(),
+        delta=_make_delta(selection, seed=733144842),
+        temperatures=[temperature_mesh for _ in range(number_samples)],
+        transport_function=_make_arbitrary_data(transport_shape),
+        mobility=_make_arbitrary_data(mobility_shape),
+        seebeck=_make_arbitrary_data(mobility_shape),
+        peltier=_make_arbitrary_data(mobility_shape),
+        electronic_conductivity=_make_arbitrary_data(mobility_shape),
+        electronic_thermal_conductivity=_make_arbitrary_data(mobility_shape),
+        scattering_approximation=_make_scattering_approximation(selection),
     )
+
+
+def _make_nbands_sum(selection):
+    if selection == "CRTA":
+        return [raw.VaspData(None) for _ in range(number_samples)]
+    return _make_data(np.linspace(10, 100, number_samples, dtype=np.int32))
+
+
+def _make_delta(selection, seed):
+    if selection == "CRTA":
+        return [raw.VaspData(None) for _ in range(number_samples)]
+    return _make_arbitrary_data([number_samples], seed=seed)
 
 
 def _make_id_index():
@@ -1640,6 +1641,16 @@ def _make_id_index():
     index_chemical_potential = np.arange(number_samples) % number_chemical_potentials
     id_index = np.array([unused, unused, index_chemical_potential + 1, unused]).T
     return raw.VaspData(id_index)
+
+
+def _make_scattering_approximation(selection="default"):
+    if selection == "bandgap":
+        choices = ["SERTA", "SERTA", "MRTA_TAU", "SERTA", "SERTA"]
+    elif selection == "CRTA":
+        choices = ["CRTA" for _ in range(number_samples)]
+    else:
+        choices = ["SERTA", "ERTA_LAMDBA", "ERTA_TAU", "MRTA_LAMDBA", "MRTA_TAU"]
+    return _make_data(choices)
 
 
 def _make_unitary_matrix(n, seed=None):

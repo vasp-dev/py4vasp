@@ -1,12 +1,14 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import warnings
+
 import numpy as np
 
 from py4vasp import exception
 from py4vasp._calculation.electron_phonon_chemical_potential import (
     ElectronPhononChemicalPotential,
 )
-from py4vasp._util import convert, select, suggest
+from py4vasp._util import check, convert, select, suggest
 
 ALIAS = {
     "selfen_delta": "delta",
@@ -17,15 +19,14 @@ ALIAS = {
 class ElectronPhononAccumulator:
     "Helper class to create instances of electron phonon calculations"
 
-    def __init__(self, accumulator, raw_data):
-        self._accumulator = accumulator
+    def __init__(self, parent, raw_data):
+        self._parent = parent
         self._raw_data = raw_data
-        self._name = convert.quantity_name(accumulator.__class__.__name__)
+        self._name = convert.quantity_name(parent.__class__.__name__)
 
     def __str__(self):
-        num_instances = len(self._accumulator)
-        selection_options = self._accumulator.selections()
-        selection_options.pop(self._name, None)
+        num_instances = len(self._parent)
+        selection_options = self.selections()
         options_str = "\n".join(
             f"    {key}: {value}" for key, value in selection_options.items()
         )
@@ -34,57 +35,71 @@ class ElectronPhononAccumulator:
         return f"{name} with {num_instances} instance(s):\n{options_str}"
 
     def to_dict(self):
-        return {"naccumulators": len(self._accumulator)}
+        return {"naccumulators": len(self._parent)}
 
-    def selections(self, base_selections):
+    def selections(self, base_selections={}):
+        result = base_selections.copy()
         mu_tag, mu_val = self.chemical_potential_mu_tag()
-        return {
-            **base_selections,
-            mu_tag: np.unique(mu_val),
-            "nbands_sum": np.unique(self._raw_data.nbands_sum),
-            "selfen_delta": np.unique(self._raw_data.delta),
-            "scattering_approx": np.unique(self._raw_data.scattering_approximation),
-        }
+        result[mu_tag] = np.unique(mu_val)
+        if nbands_sum := self._remove_missing_data(self._raw_data.nbands_sum):
+            result["nbands_sum"] = np.unique(nbands_sum)
+        if selfen_delta := self._remove_missing_data(self._raw_data.delta):
+            result["selfen_delta"] = np.unique(selfen_delta)
+        result["scattering_approx"] = np.unique(self._raw_data.scattering_approximation)
+        return result
+
+    def _remove_missing_data(self, data):
+        filter_function = lambda data: not check.is_none(data)
+        return list(filter(filter_function, data))
+
+    def _chemical_potential(self):
+        new_chemical_potential = ElectronPhononChemicalPotential.from_data
+        return new_chemical_potential(self._raw_data.chemical_potential)
 
     def chemical_potential_mu_tag(self):
-        chemical_potential = ElectronPhononChemicalPotential.from_data(
-            self._raw_data.chemical_potential
-        )
-        return chemical_potential.mu_tag()
+        return self._chemical_potential().mu_tag()
 
-    def select_indices(self, selection, **filters):
+    def chemical_potential_label(self):
+        return self._chemical_potential().label()
+
+    def select_indices(self, selection, *args_filters, **kwargs_filters):
         tree = select.Tree.from_selection(selection)
         return {
             index_
-            for selection in tree.selections()
-            for index_ in self._filter_indices(selection, filters)
+            for selection in tree.selections(filter=set(args_filters))
+            for index_ in self._filter_indices(selection, kwargs_filters)
         }
 
     def _filter_indices(self, selection, filters):
         remaining_indices = range(len(self._raw_data.valid_indices))
         for key, value in filters.items():
-            remaining_indices = self._filter_group(remaining_indices, key, value)
-        for group in selection:
-            self._raise_error_if_group_format_incorrect(group)
-            assert len(group.group) == 2
-            remaining_indices = self._filter_group(remaining_indices, *group.group)
+            remaining_indices = self._filter_assignment(remaining_indices, key, value)
+        for assignment in selection:
+            self._raise_error_if_assignment_format_incorrect(assignment)
+            remaining_indices = self._filter_assignment(
+                remaining_indices, assignment.left_operand, assignment.right_operand
+            )
             remaining_indices = list(remaining_indices)
         yield from remaining_indices
 
-    def _raise_error_if_group_format_incorrect(self, group):
-        if not isinstance(group, select.Group) or group.separator != "=":
+    def _raise_error_if_assignment_format_incorrect(self, assignment):
+        if not isinstance(assignment, select.Assignment):
             message = f'\
-The selection {group} is not formatted correctly. It should be formatted like \
+The selection {assignment} is not formatted correctly. It should be formatted like \
 "key=value". Please check the "selections" method for available options.'
             raise exception.IncorrectUsage(message)
 
-    def _filter_group(self, remaining_indices, key, value):
+    def _filter_assignment(self, remaining_indices, key, value):
         for index_ in remaining_indices:
             if self._match_key_value(index_, key, str(value)):
                 yield index_
 
     def _match_key_value(self, index_, key, value):
         instance_value = self.get_data(key, index_)
+        if instance_value is None:
+            message = f"{key} is not defined in the VASP output for some instances. These instances not be included in the selection."
+            warnings.warn(message)
+            return False
         try:
             value = float(value)
         except ValueError:
@@ -94,19 +109,21 @@ The selection {group} is not formatted correctly. It should be formatted like \
     def get_data(self, name, index):
         name = ALIAS.get(name, name)
         dataset = getattr(self._raw_data, name, None)
-        if dataset is not None:
-            return np.array(dataset[index])
-        mu_tag, mu_val = self.chemical_potential_mu_tag()
-        self._raise_error_if_not_present(name, expected_name=mu_tag)
-        return mu_val[self._raw_data.id_index[index, 2] - 1]
+        if dataset is None:
+            mu_tag, mu_val = self.chemical_potential_mu_tag()
+            self._raise_error_if_not_present(name, expected_name=mu_tag)
+            return mu_val[self._raw_data.id_index[index, 2] - 1]
+        data = dataset[index]
+        return np.array(data) if not check.is_none(data) else None
 
     def _raise_error_if_not_present(self, name, expected_name):
         if name != expected_name:
-            valid_names = set(self._accumulator.selections().keys())
+            valid_names = set(self._parent.selections().keys())
             valid_names.remove(self._name)
             did_you_mean = suggest.did_you_mean(name, valid_names)
             available_selections = '", "'.join(valid_names)
             message = f'\
 The selection "{name}" is not a valid choice. {did_you_mean}Please check the \
 available selections: "{available_selections}".'
+            raise exception.IncorrectUsage(message)
             raise exception.IncorrectUsage(message)

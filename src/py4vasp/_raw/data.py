@@ -298,18 +298,14 @@ class ElectronPhononSelfEnergy(mapping.Mapping):
     context of solving the Boltzman transport equation (see ElectronPhononTransport)
     """
 
-    id_name: VaspData
-    "The names of the variables that generate instances of the self-energy calculations"
-    id_size: VaspData
-    "The number of values that each of the variables can take to generate instances"
     id_index: VaspData
     "Index of the elements on each list of variables used to generate instances"
     chemical_potential: ElectronPhononChemicalPotential
     "Chemical potential information"
     eigenvalues: VaspData
     "Kohn-sham eigenvalues on the mesh used for the electron-phonon calculation"
-    # temperatures: VaspData
-    # "List of temperatures at which the bandgap renormalization was computed"
+    temperatures: VaspData
+    "List of temperatures at which the self energy was computed"
     debye_waller: VaspData
     "Debye-Waller self-energy contribution as an array flattened along (band,kpoint,spin)"
     fan: VaspData
@@ -337,16 +333,10 @@ class ElectronPhononTransport(mapping.Mapping):
     They are computed for each temperature and chemical potential specified in the INCAR file
     """
 
-    id_name: VaspData
-    "The names of the variables that generate instances of the self-energy calculations"
-    id_size: VaspData
-    "The number of values that each of the variables can take to generate instances"
     id_index: VaspData
     "Index of the elements on each list of variables used to generate instances"
     chemical_potential: ElectronPhononChemicalPotential
     "Chemical potential information"
-    self_energy: ElectronPhononSelfEnergy
-    "Electron self-energy calculation information"
     temperatures: VaspData
     "List of temperatures at which the bandgap renormalization was computed"
     transport_function: VaspData
