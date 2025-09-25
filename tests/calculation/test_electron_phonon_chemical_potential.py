@@ -61,3 +61,9 @@ def test_read(chemical_potential, Assert):
 def test_label(chemical_potential):
     label = chemical_potential.label()
     assert label == chemical_potential.ref.label
+
+
+def test_mu_tag(chemical_potential, Assert):
+    tag, val = chemical_potential.mu_tag()
+    assert tag == f"selfen_{chemical_potential.ref.mu_tag}"
+    Assert.allclose(val, chemical_potential.ref.mu_val)
