@@ -1,8 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from typing import Any, Dict, Tuple
+
+from numpy.typing import NDArray
+
 from py4vasp import exception
-from py4vasp._calculation import base, slice_
-from py4vasp._util import check, convert, import_
+from py4vasp._calculation import base
+from py4vasp._util import check
 
 
 class ElectronPhononChemicalPotential(base.Refinery):
@@ -16,43 +20,39 @@ class ElectronPhononChemicalPotential(base.Refinery):
     """
 
     @base.data_access
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Return a formatted string representation of the electron-phonon chemical potential object.
         """
-        # Extract data
-        temps = self._raw_data.temperatures[:].T
-        carrier_density = self._raw_data.carrier_density[:].T
-        chemical_potential = self._raw_data.chemical_potential[:].T
+        return "\n".join(self._generate_lines())
 
-        # Helper for formatting rows
-        def format_row(T, values):
-            return f"T={T:16.8f}" + "".join(f"{v:14.8f}" for v in values)
+    def _generate_lines(self):
+        temperatures = self._raw_data.temperatures[:]
+        carrier_densities = self._raw_data.carrier_density[:].T
+        chemical_potentials = self._raw_data.chemical_potential[:].T
+        underline = "-" * 28
+        format_row = lambda values: "".join(f"{x:14.8f}" for x in values)
 
-        # Build carrier density section
-        lines = []
-        lines.append("                   Number of electrons per cell")
-        lines.append("                   ----------------------------")
-        for i, T in enumerate(temps):
-            lines.append(format_row(T, carrier_density[i]))
-        lines.append("                   ----------------------------")
-        lines.append("                       Chemical potential")
-        lines.append("                   ----------------------------")
-        for i, T in enumerate(temps):
-            lines.append(format_row(T, chemical_potential[i]))
-        lines.append("                   ----------------------------")
-        return "\n".join(lines)
+        yield " " * 19 + "Number of electrons per cell"
+        yield " " * 19 + underline
+        for T, chemical_potential in zip(temperatures, chemical_potentials):
+            yield f"T={T:16.8f}" + format_row(chemical_potential)
+        yield " " * 19 + underline
+        yield " " * 23 + "Chemical potential"
+        yield " " * 19 + underline
+        for T, carrier_density in zip(temperatures, carrier_densities):
+            yield f"T={T:16.8f}" + format_row(carrier_density)
+        yield " " * 19 + underline
 
     @base.data_access
-    def mu_tag(self):
+    def mu_tag(self) -> Tuple[str, NDArray]:
         """
         Get the INCAR tag and value used to set the carrier density or chemical potential.
 
         Returns
         -------
-        tuple of (str, numpy.ndarray)
-            The INCAR tag name and its corresponding value as set in the calculation.
-            Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
+        The INCAR tag name and its corresponding value as set in the calculation.
+        Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
 
         Notes
         -----
@@ -91,22 +91,20 @@ class ElectronPhononChemicalPotential(base.Refinery):
         )
 
     @base.data_access
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """
         Convert the electron-phonon chemical potential data to a dictionary.
 
         Returns
         -------
-        dict
-            A dictionary containing the Fermi energy, chemical potential, carrier density,
-            temperatures, and the INCAR tag/value used to set the carrier density.
+        A dictionary containing the Fermi energy, chemical potential, carrier density,
+        temperatures, and the INCAR tag/value used to set the carrier density.
         """
-        _dict = {
+        tag, value = self.mu_tag()
+        return {
             "fermi_energy": self._raw_data.fermi_energy,
             "chemical_potential": self._raw_data.chemical_potential[:],
             "carrier_density": self._raw_data.carrier_density[:],
             "temperatures": self._raw_data.temperatures[:],
+            tag: value,
         }
-        tag, value = self.mu_tag()
-        _dict[tag] = value
-        return _dict

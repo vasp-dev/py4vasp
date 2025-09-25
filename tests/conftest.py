@@ -1546,10 +1546,13 @@ def _electron_phonon_band_gap(selection):
 
 def _electron_phonon_chemical_potential(selection="carrier_den"):
     seed = 26826821
+    temperature_mesh = np.linspace(0, 500, number_temperatures)
     return raw.ElectronPhononChemicalPotential(
-        fermi_energy=0,
-        carrier_density=_make_arbitrary_data([number_chemical_potentials]),
-        temperatures=_make_arbitrary_data([number_temperatures]),
+        fermi_energy=np.random.randn(),
+        carrier_density=_make_arbitrary_data(
+            [number_chemical_potentials, number_temperatures]
+        ),
+        temperatures=_make_data(temperature_mesh),
         chemical_potential=_make_arbitrary_data(
             [number_chemical_potentials, number_temperatures]
         ),
