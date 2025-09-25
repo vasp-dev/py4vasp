@@ -101,12 +101,11 @@ class ElectronPhononChemicalPotential(base.Refinery):
             A dictionary containing the Fermi energy, chemical potential, carrier density,
             temperatures, and the INCAR tag/value used to set the carrier density.
         """
-        _dict = {
+        tag, value = self.mu_tag()
+        return {
             "fermi_energy": self._raw_data.fermi_energy,
             "chemical_potential": self._raw_data.chemical_potential[:],
             "carrier_density": self._raw_data.carrier_density[:],
             "temperatures": self._raw_data.temperatures[:],
+            tag: value,
         }
-        tag, value = self.mu_tag()
-        _dict[tag] = value
-        return _dict
