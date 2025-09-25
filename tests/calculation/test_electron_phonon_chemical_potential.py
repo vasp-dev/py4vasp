@@ -28,10 +28,13 @@ def chemical_potential(raw_data, mu_tag):
     chemical_potential.ref.mu_tag = mu_tag
     if mu_tag == "carrier_den":
         chemical_potential.ref.mu_val = raw_chemical_potential.carrier_den[:]
+        chemical_potential.ref.label = "Carrier density (cm^-3)"
     elif mu_tag == "mu":
         chemical_potential.ref.mu_val = raw_chemical_potential.mu[:]
+        chemical_potential.ref.label = "Chemical potential (eV)"
     else:  # mu_tag == "carrier_per_cell"
         chemical_potential.ref.mu_val = raw_chemical_potential.carrier_per_cell[:]
+        chemical_potential.ref.label = "Carrier per cell"
     return chemical_potential
 
 
@@ -53,3 +56,8 @@ def test_read(chemical_potential, Assert):
     Assert.allclose(actual["carrier_density"], chemical_potential.ref.carrier_density)
     Assert.allclose(actual["temperatures"], chemical_potential.ref.temperatures)
     Assert.allclose(actual[mu_tag], chemical_potential.ref.mu_val)
+
+
+def test_label(chemical_potential):
+    label = chemical_potential.label()
+    assert label == chemical_potential.ref.label
