@@ -20,28 +20,25 @@ class ElectronPhononChemicalPotential(base.Refinery):
         """
         Return a formatted string representation of the electron-phonon chemical potential object.
         """
-        # Extract data
-        temps = self._raw_data.temperatures[:].T
-        carrier_density = self._raw_data.carrier_density[:].T
-        chemical_potential = self._raw_data.chemical_potential[:].T
+        return "\n".join(self._generate_lines())
 
-        # Helper for formatting rows
-        def format_row(T, values):
-            return f"T={T:16.8f}" + "".join(f"{v:14.8f}" for v in values)
+    def _generate_lines(self):
+        temperatures = self._raw_data.temperatures[:]
+        carrier_densities = self._raw_data.carrier_density[:].T
+        chemical_potentials = self._raw_data.chemical_potential[:].T
+        underline = "-" * 28
+        format_row = lambda values: "".join(f"{x:14.8f}" for x in values)
 
-        # Build carrier density section
-        lines = []
-        lines.append("                   Number of electrons per cell")
-        lines.append("                   ----------------------------")
-        for i, T in enumerate(temps):
-            lines.append(format_row(T, carrier_density[i]))
-        lines.append("                   ----------------------------")
-        lines.append("                       Chemical potential")
-        lines.append("                   ----------------------------")
-        for i, T in enumerate(temps):
-            lines.append(format_row(T, chemical_potential[i]))
-        lines.append("                   ----------------------------")
-        return "\n".join(lines)
+        yield " " * 19 + "Number of electrons per cell"
+        yield " " * 19 + underline
+        for T, chemical_potential in zip(temperatures, chemical_potentials):
+            yield f"T={T:16.8f}" + format_row(chemical_potential)
+        yield " " * 19 + underline
+        yield " " * 23 + "Chemical potential"
+        yield " " * 19 + underline
+        for T, carrier_density in zip(temperatures, carrier_densities):
+            yield f"T={T:16.8f}" + format_row(carrier_density)
+        yield " " * 19 + underline
 
     @base.data_access
     def mu_tag(self):
