@@ -1,8 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from typing import Any, Dict, Tuple
+
+from numpy.typing import NDArray
+
 from py4vasp import exception
-from py4vasp._calculation import base, slice_
-from py4vasp._util import check, convert, import_
+from py4vasp._calculation import base
+from py4vasp._util import check
 
 
 class ElectronPhononChemicalPotential(base.Refinery):
@@ -16,7 +20,7 @@ class ElectronPhononChemicalPotential(base.Refinery):
     """
 
     @base.data_access
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Return a formatted string representation of the electron-phonon chemical potential object.
         """
@@ -41,15 +45,14 @@ class ElectronPhononChemicalPotential(base.Refinery):
         yield " " * 19 + underline
 
     @base.data_access
-    def mu_tag(self):
+    def mu_tag(self) -> Tuple[str, NDArray]:
         """
         Get the INCAR tag and value used to set the carrier density or chemical potential.
 
         Returns
         -------
-        tuple of (str, numpy.ndarray)
-            The INCAR tag name and its corresponding value as set in the calculation.
-            Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
+        The INCAR tag name and its corresponding value as set in the calculation.
+        Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
 
         Notes
         -----
@@ -88,15 +91,14 @@ class ElectronPhononChemicalPotential(base.Refinery):
         )
 
     @base.data_access
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """
         Convert the electron-phonon chemical potential data to a dictionary.
 
         Returns
         -------
-        dict
-            A dictionary containing the Fermi energy, chemical potential, carrier density,
-            temperatures, and the INCAR tag/value used to set the carrier density.
+        A dictionary containing the Fermi energy, chemical potential, carrier density,
+        temperatures, and the INCAR tag/value used to set the carrier density.
         """
         tag, value = self.mu_tag()
         return {
