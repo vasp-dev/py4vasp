@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import re
 import types
 
 import pytest
@@ -25,6 +26,24 @@ def chemical_potential(raw_data, mu_tag):
     )
     chemical_potential.ref.carrier_density = raw_chemical_potential.carrier_density[:]
     chemical_potential.ref.temperatures = raw_chemical_potential.temperatures[:]
+    chemical_potential.ref.pattern = r"""\s*Number of electrons per cell
+\s*-+
+T=\s*\d+\.\d{8}(\s+-?\d+\.\d{8}){3}
+T=\s*\d+\.\d{8}(\s+-?\d+\.\d{8}){3}
+T=\s*\d+\.\d{8}(\s+-?\d+\.\d{8}){3}
+T=\s*\d+\.\d{8}(\s+-?\d+\.\d{8}){3}
+T=\s*\d+\.\d{8}(\s+-?\d+\.\d{8}){3}
+T=\s*\d+\.\d{8}(\s+-?\d+\.\d{8}){3}
+\s*-+
+\s*Chemical potential
+\s*-+
+T=\s*\d+\.\d{8}(\s+-?\d+\.\d{8}){3}
+T=\s*\d+\.\d{8}(\s+-?\d+\.\d{8}){3}
+T=\s*\d+\.\d{8}(\s+-?\d+\.\d{8}){3}
+T=\s*\d+\.\d{8}(\s+-?\d+\.\d{8}){3}
+T=\s*\d+\.\d{8}(\s+-?\d+\.\d{8}){3}
+T=\s*\d+\.\d{8}(\s+-?\d+\.\d{8}){3}
+\s*-+"""
     chemical_potential.ref.mu_tag = mu_tag
     if mu_tag == "carrier_den":
         chemical_potential.ref.mu_val = raw_chemical_potential.carrier_den[:]
@@ -67,3 +86,11 @@ def test_mu_tag(chemical_potential, Assert):
     tag, val = chemical_potential.mu_tag()
     assert tag == f"selfen_{chemical_potential.ref.mu_tag}"
     Assert.allclose(val, chemical_potential.ref.mu_val)
+
+
+def test_print(chemical_potential, format_):
+    assert re.search(
+        chemical_potential.ref.pattern, str(chemical_potential), re.MULTILINE
+    )
+    actual, _ = format_(chemical_potential)
+    assert actual == {"text/plain": str(chemical_potential)}
