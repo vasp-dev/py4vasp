@@ -7,7 +7,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import calculation, exception
+from py4vasp import exception
 from py4vasp._calculation.electron_phonon_transport import (
     DIRECTIONS,
     ElectronPhononTransport,
