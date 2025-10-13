@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from py4vasp import demo
 from py4vasp._analysis.mlff import MLFFErrorAnalysis
 from py4vasp._batch import Batch
 from py4vasp._calculation import Calculation, calculation

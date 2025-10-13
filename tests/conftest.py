@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
-from py4vasp import exception, raw
+from py4vasp import _demo, exception, raw
 from py4vasp._util import check, import_
 
 stats = import_.optional("scipy.stats")
@@ -159,7 +159,7 @@ class RawDataFactory:
         band, *options = selection.split()
         options = options[0] if len(options) > 0 else None
         if band == "single":
-            return _single_band(options)
+            return _demo.band.single_band()
         elif band == "multiple":
             return _multiple_bands(options)
         elif band == "line":
@@ -229,7 +229,7 @@ class RawDataFactory:
     @staticmethod
     def dispersion(selection):
         if selection == "single_band":
-            return _single_band_dispersion()
+            return _demo.dispersion.single_band()
         elif selection == "multiple_bands":
             return _multiple_bands_dispersion()
         elif selection == "line":
@@ -391,7 +391,7 @@ class RawDataFactory:
         elif selection == "Ba2PbO4":
             return _Ba2PbO4_projectors(use_orbitals=True)
         elif selection == "without_orbitals":
-            return _Sr2TiO4_projectors(use_orbitals=False)
+            return _demo.projector.Sr2TiO4(use_orbitals=False)
         else:
             raise exception.NotImplemented()
 
@@ -426,9 +426,9 @@ class RawDataFactory:
     @staticmethod
     def stoichiometry(selection):
         if selection == "Sr2TiO4":
-            return _Sr2TiO4_stoichiometry()
+            return _demo.stoichiometry.Sr2TiO4()
         elif selection == "Sr2TiO4 without ion types":
-            return _Sr2TiO4_stoichiometry(has_ion_types=False)
+            return _demo.stoichiometry.Sr2TiO4(has_ion_types=False)
         elif selection == "Fe3O4":
             return _Fe3O4_stoichiometry()
         elif selection == "Ca2AsBr-CaBr2":  # test duplicate entries
@@ -680,26 +680,7 @@ def _slice_kpoints(mode):
 
 
 def _grid_kpoints(mode, labels):
-    nkpx, nkpy, nkpz = (4, 3, 4)
-    x = np.linspace(0, 1, nkpx, endpoint=False)
-    y = np.linspace(0, 1, nkpy, endpoint=False)
-    z = np.linspace(0, 1, nkpz, endpoint=False) + 1 / 8
-    coordinates = np.array(list(itertools.product(x, y, z)))
-    number_kpoints = len(coordinates) if mode[0] in ["e", b"e"[0]] else 0
-    kpoints = raw.Kpoint(
-        mode=mode,
-        number=number_kpoints,
-        number_x=nkpx,
-        number_y=nkpy,
-        number_z=nkpz,
-        coordinates=coordinates,
-        weights=np.arange(len(coordinates)),
-        cell=_Sr2TiO4_cell(),
-    )
-    if labels == "with_labels":
-        kpoints.labels = _make_data(["foo", b"bar", "baz"])
-        kpoints.label_indices = _make_data([9, 25, 40])
-    return kpoints
+    return _demo.kpoint.grid(mode, labels)
 
 
 def _local_moment(selection):
@@ -714,22 +695,6 @@ def _local_moment(selection):
         remove_charge_and_s_component = moment.spin_moments[:, 1:, :, 1:]
         moment.orbital_moments = _make_data(np.sqrt(remove_charge_and_s_component))
     return moment
-
-
-def _single_band(projectors):
-    dispersion = _single_band_dispersion()
-    return raw.Band(
-        dispersion=dispersion,
-        fermi_energy=0.0,
-        occupations=np.array([np.linspace([1], [0], dispersion.eigenvalues.size)]),
-        projectors=_Sr2TiO4_projectors(use_orbitals=False),
-    )
-
-
-def _single_band_dispersion():
-    kpoints = _grid_kpoints("explicit", "no_labels")
-    eigenvalues = np.array([np.linspace([0], [1], len(kpoints.coordinates))])
-    return raw.Dispersion(kpoints, eigenvalues)
 
 
 def _multiple_bands(projectors):
@@ -978,15 +943,7 @@ def _Sr2TiO4_born_effective_charges():
 
 
 def _Sr2TiO4_cell():
-    scale = raw.VaspData(6.9229)
-    lattice_vectors = [
-        [1.0, 0.0, 0.0],
-        [0.678112209738693, 0.734958387251008, 0.0],
-        [-0.839055341042049, -0.367478859090843, 0.401180037874301],
-    ]
-    return raw.Cell(
-        lattice_vectors=np.array(number_steps * [lattice_vectors]), scale=scale
-    )
+    return _demo.cell.Sr2TiO4()
 
 
 def _Sr2TiO4_CONTCAR():
@@ -1111,12 +1068,7 @@ def _Sr2TiO4_potential(included_potential):
 
 
 def _Sr2TiO4_projectors(use_orbitals):
-    orbital_types = "s py pz px dxy dyz dz2 dxz x2-y2 fy3x2 fxyz fyz2 fz3 fxz2 fzx2 fx3"
-    return raw.Projector(
-        stoichiometry=_Sr2TiO4_stoichiometry(),
-        orbital_types=_make_orbital_types(use_orbitals, orbital_types),
-        number_spin_projections=1,
-    )
+    return _demo.projector.Sr2TiO4(use_orbitals)
 
 
 def _Sr2TiO4_stress(randomize):
@@ -1264,19 +1216,6 @@ def _Sr2TiO4_structure(has_ion_types=True):
         cell=_Sr2TiO4_cell(),
         positions=np.tile(positions, repetitions),
     )
-
-
-def _Sr2TiO4_stoichiometry(has_ion_types=True):
-    if has_ion_types:
-        return raw.Stoichiometry(
-            number_ion_types=np.array((2, 1, 4)),
-            ion_types=raw.VaspData(np.array(("Sr", "Ti", "O "), dtype="S")),
-        )
-    else:
-        return raw.Stoichiometry(
-            number_ion_types=raw.VaspData(np.array((2, 1, 4))),
-            ion_types=raw.VaspData(None),
-        )
 
 
 def _Sr2TiO4_velocity():
