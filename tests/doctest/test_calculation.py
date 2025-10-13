@@ -2,8 +2,6 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import doctest
 import pathlib
-import re
-import types
 
 import h5py
 import pytest
