@@ -232,7 +232,7 @@ class RawDataFactory:
         elif selection == "spin_polarized":
             return _demo.dispersion.spin_polarized_bands()
         elif selection == "phonon":
-            return _phonon_dispersion()
+            return _demo.dispersion.phonon()
         else:
             raise exception.NotImplemented()
 
@@ -320,7 +320,7 @@ class RawDataFactory:
     @staticmethod
     def kpoint(selection):
         if selection == "qpoints":
-            return _qpoints()
+            return _demo.kpoint.qpoints()
         mode, *labels = selection.split()
         labels = labels[0] if len(labels) > 0 else "no_labels"
         if mode[0] in ["l", b"l"[0]]:
@@ -357,15 +357,15 @@ class RawDataFactory:
 
     @staticmethod
     def phonon_band(selection):
-        return _phonon_band()
+        return _demo.phonon.band.Sr2TiO4()
 
     @staticmethod
     def phonon_dos(selection):
-        return _phonon_dos()
+        return _demo.phonon.dos.Sr2TiO4()
 
     @staticmethod
     def phonon_mode(selection):
-        return _phonon_mode()
+        return _demo.phonon.mode.Sr2TiO4()
 
     @staticmethod
     def potential(selection: str):
@@ -448,64 +448,6 @@ class RawDataFactory:
 @pytest.fixture(scope="session")
 def raw_data():
     return RawDataFactory
-
-
-def _number_components(selection):
-    if selection == "collinear":
-        return 2
-    elif selection in ("noncollinear", "orbital_moments"):
-        return 4
-    elif selection == "charge_only":
-        return 1
-    else:
-        raise exception.NotImplemented()
-
-
-def _phonon_band():
-    dispersion = _phonon_dispersion()
-    shape = (*dispersion.eigenvalues.shape, number_atoms, axes, complex_)
-    return raw.PhononBand(
-        dispersion=dispersion,
-        stoichiometry=_demo.stoichiometry.Sr2TiO4(),
-        eigenvectors=np.linspace(0, 1, np.prod(shape)).reshape(shape),
-    )
-
-
-def _phonon_dispersion():
-    qpoints = _qpoints()
-    shape = (len(qpoints.coordinates), number_modes)
-    eigenvalues = np.arange(np.prod(shape)).reshape(shape)
-    return raw.Dispersion(qpoints, eigenvalues)
-
-
-def _phonon_dos():
-    energies = np.linspace(0, 5, number_points)
-    dos = energies**2
-    lower_ratio = np.arange(number_modes, dtype=np.float64).reshape(axes, number_atoms)
-    lower_ratio /= np.sum(lower_ratio)
-    upper_ratio = np.array(list(reversed(lower_ratio)))
-    ratio = np.linspace(lower_ratio, upper_ratio, number_points).T
-    projections = np.multiply(ratio, dos)
-    return raw.PhononDos(energies, dos, projections, _demo.stoichiometry.Sr2TiO4())
-
-
-def _phonon_mode():
-    frequencies = np.sqrt(np.linspace(0.1, -0.02, number_modes, dtype=np.complex128))
-    return raw.PhononMode(
-        structure=_Sr2TiO4_structure(),
-        frequencies=frequencies.view(np.float64).reshape(-1, 2),
-        eigenvectors=_make_unitary_matrix(number_modes),
-    )
-
-
-def _qpoints():
-    qpoints = _line_kpoints("line", "with_labels")
-    qpoints.cell.lattice_vectors = qpoints.cell.lattice_vectors[-1]
-    return qpoints
-
-
-def _line_kpoints(mode, labels):
-    return _demo.kpoint.line_mode(mode, labels)
 
 
 def _partial_density(selection):
@@ -778,22 +720,6 @@ def _BN_structure():
         ),
         positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
     )
-
-
-def _make_unitary_matrix(n, seed=None):
-    rng = np.random.default_rng(seed)
-    matrix = rng.standard_normal((n, n))
-    unitary_matrix, _ = np.linalg.qr(matrix)
-    return raw.VaspData(unitary_matrix)
-
-
-def _make_arbitrary_data(shape, present=True, seed=None):
-    if present:
-        rng = np.random.default_rng(seed)
-        data = 10 * rng.standard_normal(shape)
-        return raw.VaspData(data)
-    else:
-        return raw.VaspData(None)
 
 
 def _make_data(data):

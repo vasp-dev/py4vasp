@@ -46,3 +46,10 @@ def spin_texture():
     shape = (_demo.NONCOLLINEAR, len(kpoints.coordinates), _demo.NUMBER_BANDS)
     eigenvalues = np.arange(np.prod(shape)).reshape(shape)
     return raw.Dispersion(kpoints, eigenvalues)
+
+
+def phonon():
+    qpoints = _demo.kpoint.qpoints()
+    shape = (len(qpoints.coordinates), _demo.NUMBER_MODES)
+    eigenvalues = np.arange(np.prod(shape)).reshape(shape)
+    return raw.Dispersion(qpoints, eigenvalues)

@@ -76,3 +76,9 @@ def slice_(mode):
         cell=_demo.cell.Ba2PbO4(),
     )
     return kpoints
+
+
+def qpoints():
+    qpoints = line_mode("line", "with_labels")
+    qpoints.cell.lattice_vectors = qpoints.cell.lattice_vectors[-1]
+    return qpoints

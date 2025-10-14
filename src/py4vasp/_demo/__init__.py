@@ -28,6 +28,7 @@ from py4vasp._demo import (
     nics,
     pair_correlation,
     partial_density,
+    phonon,
     piezoelectric_tensor,
     polarization,
     potential,
@@ -38,6 +39,8 @@ from py4vasp._demo import (
     workfunction,
 )
 
+# constants for vector dimensions
+AXES = 3
 # constants for the shape of demo data
 NUMBER_ATOMS = 7
 NUMBER_BANDS = 3
@@ -46,13 +49,12 @@ NUMBER_CONDUCTION_BANDS = 1
 NUMBER_EIGENVECTORS = 5
 NUMBER_EXCITONS = 3
 NUMBER_FREQUENCIES = 1
+NUMBER_MODES = NUMBER_ATOMS * AXES
 NUMBER_POINTS = 50
 NUMBER_SAMPLES = 5
 NUMBER_STEPS = 4
 NUMBER_TEMPERATURES = 6
 NUMBER_VALENCE_BANDS = 2
-# constants for vector dimensions
-AXES = 3
 # constants for FFT grid dimensions
 GRID_DIMENSIONS = (14, 12, 10)  # note: order is z, y, x
 # constants for the magnetic configuration
