@@ -537,7 +537,7 @@ def _phonon_band():
     shape = (*dispersion.eigenvalues.shape, number_atoms, axes, complex_)
     return raw.PhononBand(
         dispersion=dispersion,
-        stoichiometry=_Sr2TiO4_stoichiometry(),
+        stoichiometry=_demo.stoichiometry.Sr2TiO4(),
         eigenvectors=np.linspace(0, 1, np.prod(shape)).reshape(shape),
     )
 
@@ -557,7 +557,7 @@ def _phonon_dos():
     upper_ratio = np.array(list(reversed(lower_ratio)))
     ratio = np.linspace(lower_ratio, upper_ratio, number_points).T
     projections = np.multiply(ratio, dos)
-    return raw.PhononDos(energies, dos, projections, _Sr2TiO4_stoichiometry())
+    return raw.PhononDos(energies, dos, projections, _demo.stoichiometry.Sr2TiO4())
 
 
 def _phonon_mode():
@@ -1212,7 +1212,7 @@ def _Sr2TiO4_structure(has_ion_types=True):
         [0.00000, 0.50000, 0.5],
     ]
     return raw.Structure(
-        stoichiometry=_Sr2TiO4_stoichiometry(has_ion_types),
+        stoichiometry=_demo.stoichiometry.Sr2TiO4(has_ion_types),
         cell=_Sr2TiO4_cell(),
         positions=np.tile(positions, repetitions),
     )
