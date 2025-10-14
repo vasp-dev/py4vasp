@@ -26,12 +26,16 @@ from py4vasp._demo import (
     kpoint,
     local_moment,
     nics,
+    pair_correlation,
+    partial_density,
     piezoelectric_tensor,
     polarization,
+    potential,
     projector,
     stoichiometry,
     structure,
     velocity,
+    workfunction,
 )
 
 # constants for the shape of demo data

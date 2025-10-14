@@ -341,7 +341,7 @@ class RawDataFactory:
 
     @staticmethod
     def pair_correlation(selection):
-        return _Sr2TiO4_pair_correlation()
+        return _demo.pair_correlation.Sr2TiO4()
 
     @staticmethod
     def partial_density(selection):
@@ -371,9 +371,9 @@ class RawDataFactory:
     def potential(selection: str):
         parts = selection.split()
         if parts[0] == "Sr2TiO4":
-            return _Sr2TiO4_potential(parts[1])
+            return _demo.potential.Sr2TiO4(parts[1])
         elif parts[0] == "Fe3O4":
-            return _Fe3O4_potential(*parts[1:])
+            return _demo.potential.Fe3O4(*parts[1:])
         else:
             raise exception.NotImplemented()
 
@@ -442,7 +442,7 @@ class RawDataFactory:
 
     @staticmethod
     def workfunction(selection):
-        return _workfunction(selection)
+        return _demo.workfunction.workfunction(selection)
 
 
 @pytest.fixture(scope="session")
@@ -508,18 +508,6 @@ def _line_kpoints(mode, labels):
     return _demo.kpoint.line_mode(mode, labels)
 
 
-def _workfunction(direction):
-    shape = (number_points,)
-    return raw.Workfunction(
-        idipol=int(direction),
-        distance=_make_arbitrary_data(shape),
-        average_potential=_make_arbitrary_data(shape),
-        vacuum_potential=_make_arbitrary_data(shape=(2,)),
-        reference_potential=_demo.bandgap.bandgap("nonpolarized"),
-        fermi_energy=1.234,
-    )
-
-
 def _partial_density(selection):
     grid_dim = grid_dimensions
     if "CaAs3_110" in selection:
@@ -565,30 +553,6 @@ def _partial_density(selection):
         kpoints=kpoints,
         partial_charge=gaussian_charge,
         grid=grid,
-    )
-
-
-def _Sr2TiO4_pair_correlation():
-    labels = ("total", "Sr~Sr", "Sr~Ti", "Sr~O", "Ti~Ti", "Ti~O", "O~O")
-    shape = (number_steps, len(labels), number_points)
-    data = np.arange(np.prod(shape)).reshape(shape)
-    return raw.PairCorrelation(
-        distances=np.arange(number_points), function=data, labels=labels
-    )
-
-
-def _Sr2TiO4_potential(included_potential):
-    structure = _Sr2TiO4_structure()
-    shape = (1, *grid_dimensions)
-    include_xc = included_potential in ("xc", "all")
-    include_hartree = included_potential in ("hartree", "all")
-    include_ionic = included_potential in ("ionic", "all")
-    return raw.Potential(
-        structure=structure,
-        total_potential=_make_arbitrary_data(shape),
-        xc_potential=_make_arbitrary_data(shape, present=include_xc),
-        hartree_potential=_make_arbitrary_data(shape, present=include_hartree),
-        ionic_potential=_make_arbitrary_data(shape, present=include_ionic),
     )
 
 
@@ -723,22 +687,6 @@ def _CaAs3_110_stoichiometry():
 
 def _Sr2TiO4_structure(has_ion_types=True):
     return _demo.structure.Sr2TiO4(has_ion_types=has_ion_types)
-
-
-def _Fe3O4_potential(selection, included_potential):
-    structure = _Fe3O4_structure()
-    shape_polarized = (_number_components(selection), *grid_dimensions)
-    shape_trivial = (1, *grid_dimensions)
-    include_xc = included_potential in ("xc", "all")
-    include_hartree = included_potential in ("hartree", "all")
-    include_ionic = included_potential in ("ionic", "all")
-    return raw.Potential(
-        structure=structure,
-        total_potential=_make_arbitrary_data(shape_polarized),
-        xc_potential=_make_arbitrary_data(shape_polarized, present=include_xc),
-        hartree_potential=_make_arbitrary_data(shape_trivial, present=include_hartree),
-        ionic_potential=_make_arbitrary_data(shape_trivial, present=include_ionic),
-    )
 
 
 def _Fe3O4_stress(randomize):
