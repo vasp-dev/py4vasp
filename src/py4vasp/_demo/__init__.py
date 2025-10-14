@@ -34,6 +34,7 @@ from py4vasp._demo import (
     potential,
     projector,
     stoichiometry,
+    stress,
     structure,
     velocity,
     workfunction,
