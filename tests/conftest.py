@@ -161,19 +161,15 @@ class RawDataFactory:
         if band == "single":
             return _demo.band.single_band()
         elif band == "multiple":
-            return _multiple_bands(options)
+            return _demo.band.multiple_bands(options)
         elif band == "line":
-            return _line_band(options)
+            return _demo.band.line_mode(options)
         elif band == "spin_polarized":
-            return _spin_polarized_bands(options)
+            return _demo.band.spin_polarized_bands(options)
         elif band == "noncollinear":
-            return _noncollinear_bands(options)
+            return _demo.band.noncollinear_bands(options)
         elif band == "spin_texture":
-            return _spin_texture_bands(options)
-        elif band == "noncollinear":
-            return _noncollinear_bands(options)
-        elif band == "spin_texture":
-            return _spin_texture_bands(options)
+            return _demo.band.spin_texture(options)
         else:
             raise exception.NotImplemented()
 
@@ -231,11 +227,11 @@ class RawDataFactory:
         if selection == "single_band":
             return _demo.dispersion.single_band()
         elif selection == "multiple_bands":
-            return _multiple_bands_dispersion()
+            return _demo.dispersion.multiple_bands()
         elif selection == "line":
-            return _line_dispersion("no_labels")
+            return _demo.dispersion.line_mode("no_labels")
         elif selection == "spin_polarized":
-            return _spin_polarized_dispersion()
+            return _demo.dispersion.spin_polarized_bands()
         elif selection == "phonon":
             return _phonon_dispersion()
         else:
@@ -329,9 +325,9 @@ class RawDataFactory:
         mode, *labels = selection.split()
         labels = labels[0] if len(labels) > 0 else "no_labels"
         if mode[0] in ["l", b"l"[0]]:
-            return _line_kpoints(mode, labels)
+            return _demo.kpoint.line_mode(mode, labels)
         else:
-            return _grid_kpoints(mode, labels)
+            return _demo.kpoint.grid(mode, labels)
 
     @staticmethod
     def local_moment(selection):
@@ -385,11 +381,11 @@ class RawDataFactory:
     @staticmethod
     def projector(selection):
         if selection == "Sr2TiO4":
-            return _Sr2TiO4_projectors(use_orbitals=True)
+            return _demo.projector.Sr2TiO4(use_orbitals=True)
         elif selection == "Fe3O4":
-            return _Fe3O4_projectors(use_orbitals=True)
+            return _demo.projector.Fe3O4(use_orbitals=True)
         elif selection == "Ba2PbO4":
-            return _Ba2PbO4_projectors(use_orbitals=True)
+            return _demo.projector.Ba2PbO4(use_orbitals=True)
         elif selection == "without_orbitals":
             return _demo.projector.Sr2TiO4(use_orbitals=False)
         else:
@@ -430,9 +426,9 @@ class RawDataFactory:
         elif selection == "Sr2TiO4 without ion types":
             return _demo.stoichiometry.Sr2TiO4(has_ion_types=False)
         elif selection == "Fe3O4":
-            return _Fe3O4_stoichiometry()
+            return _demo.stoichiometry.Fe3O4()
         elif selection == "Ca2AsBr-CaBr2":  # test duplicate entries
-            return _Ca3AsBr3_stoichiometry()
+            return _demo.stoichiometry.Ca3AsBr3()
         else:
             raise exception.NotImplemented()
 
@@ -632,51 +628,7 @@ def _qpoints():
 
 
 def _line_kpoints(mode, labels):
-    line_length = 5
-    GM = [0, 0, 0]
-    Y = [0.5, 0.5, 0.0]
-    A = [0, 0, 0.5]
-    M = [0.5, 0.5, 0.5]
-    coordinates = (
-        np.linspace(GM, A, line_length),
-        np.linspace(A, M, line_length),
-        np.linspace(GM, Y, line_length),
-        np.linspace(Y, M, line_length),
-    )
-    kpoints = raw.Kpoint(
-        mode=mode,
-        number=line_length,
-        coordinates=np.concatenate(coordinates),
-        weights=np.ones(len(coordinates)),
-        cell=_Sr2TiO4_cell(),
-    )
-    if labels == "with_labels":
-        kpoints.labels = _make_data([r"$\Gamma$", " M ", r"$\Gamma$", "Y", "M"])
-        kpoints.label_indices = _make_data([1, 4, 5, 7, 8])
-    return kpoints
-
-
-def _slice_kpoints(mode):
-    nkpx, nkpy, nkpz = (4, 3, 1)
-    x = np.linspace(0, 1, nkpx, endpoint=False)
-    y = np.linspace(0, 1, nkpy, endpoint=False)
-    z = np.linspace(0, 1, nkpz, endpoint=False) + 1 / 8
-    coordinates = np.array(list(itertools.product(x, y, z)))
-    number_kpoints = len(coordinates) if mode[0] in ["e", b"e"[0]] else 0
-    number_kpx = nkpx if mode[0] in ["e", b"e"[0]] else 0
-    number_kpy = nkpy if mode[0] in ["e", b"e"[0]] else 0
-    number_kpz = nkpz if mode[0] in ["e", b"e"[0]] else 0
-    kpoints = raw.Kpoint(
-        mode=mode,
-        number=number_kpoints,
-        number_x=number_kpx,
-        number_y=number_kpy,
-        number_z=number_kpz,
-        coordinates=coordinates,
-        weights=np.arange(len(coordinates)),
-        cell=_Ba2PbO4_cell(),
-    )
-    return kpoints
+    return _demo.kpoint.line_mode(mode, labels)
 
 
 def _grid_kpoints(mode, labels):
@@ -697,125 +649,6 @@ def _local_moment(selection):
     return moment
 
 
-def _multiple_bands(projectors):
-    dispersion = _multiple_bands_dispersion()
-    shape = dispersion.eigenvalues.shape
-    use_orbitals = projectors == "with_projectors"
-    raw_band = raw.Band(
-        dispersion=dispersion,
-        fermi_energy=0.5,
-        occupations=np.arange(np.prod(shape)).reshape(shape),
-        projectors=_Sr2TiO4_projectors(use_orbitals),
-    )
-    if use_orbitals:
-        number_orbitals = len(raw_band.projectors.orbital_types)
-        shape = (single_spin, number_atoms, number_orbitals, *shape[1:])
-        raw_band.projections = np.random.random(shape)
-    return raw_band
-
-
-def _multiple_bands_dispersion():
-    kpoints = _grid_kpoints("explicit", "no_labels")
-    shape = (single_spin, len(kpoints.coordinates), number_bands)
-    eigenvalues = np.arange(np.prod(shape)).reshape(shape)
-    return raw.Dispersion(kpoints, eigenvalues)
-
-
-def _line_band(labels):
-    dispersion = _line_dispersion(labels)
-    shape = dispersion.eigenvalues.shape
-    return raw.Band(
-        dispersion=dispersion,
-        fermi_energy=0.5,
-        occupations=np.arange(np.prod(shape)).reshape(shape),
-        projectors=_Sr2TiO4_projectors(use_orbitals=False),
-    )
-
-
-def _line_dispersion(labels):
-    kpoints = _line_kpoints("line", labels)
-    shape = (single_spin, len(kpoints.coordinates), number_bands)
-    eigenvalues = np.arange(np.prod(shape)).reshape(shape)
-    return raw.Dispersion(kpoints, eigenvalues)
-
-
-def _spin_polarized_bands(projectors):
-    dispersion = _spin_polarized_dispersion()
-    shape = dispersion.eigenvalues.shape
-    use_orbitals = projectors in ["with_projectors", "excess_orbitals"]
-    raw_band = raw.Band(
-        dispersion=dispersion,
-        fermi_energy=0.0,
-        occupations=np.arange(np.prod(shape)).reshape(shape),
-        projectors=_Fe3O4_projectors(use_orbitals),
-    )
-    if use_orbitals:
-        number_orbitals = len(raw_band.projectors.orbital_types)
-        shape = (two_spins, number_atoms, number_orbitals, *shape[1:])
-        raw_band.projections = np.random.random(shape)
-    if projectors == "excess_orbitals":
-        orbital_types = _make_orbital_types(use_orbitals, "s p d f g h i")
-        raw_band.projectors.orbital_types = orbital_types
-    return raw_band
-
-
-def _spin_polarized_dispersion():
-    kpoints = _grid_kpoints("explicit", "no_labels")
-    kpoints.cell = _Fe3O4_cell()
-    shape = (two_spins, len(kpoints.coordinates), number_bands)
-    eigenvalues = np.arange(np.prod(shape)).reshape(shape)
-    return raw.Dispersion(kpoints, eigenvalues)
-
-
-def _noncollinear_bands(projectors):
-    dispersion = _noncollinear_dispersion()
-    shape = dispersion.eigenvalues.shape
-    use_orbitals = projectors == "with_projectors"
-    raw_band = raw.Band(
-        dispersion=dispersion,
-        fermi_energy=0.0,
-        occupations=_make_arbitrary_data(shape),
-        projectors=_Ba2PbO4_projectors(use_orbitals),
-    )
-    if use_orbitals:
-        number_orbitals = len(raw_band.projectors.orbital_types)
-        shape = (noncollinear, number_atoms, number_orbitals, *shape[1:])
-        raw_band.projections = _make_arbitrary_data(shape)
-    return raw_band
-
-
-def _noncollinear_dispersion():
-    kpoints = _line_kpoints("explicit", "no_labels")
-    kpoints.cell = _Ba2PbO4_cell()
-    shape = (noncollinear, len(kpoints.coordinates), number_bands)
-    return raw.Dispersion(kpoints, eigenvalues=_make_arbitrary_data(shape))
-
-
-def _spin_texture_bands(projectors):
-    dispersion = _spin_texture_dispersion()
-    shape = dispersion.eigenvalues.shape
-    use_orbitals = projectors in ["with_projectors"]
-    raw_band = raw.Band(
-        dispersion=dispersion,
-        fermi_energy=0.0,
-        occupations=np.arange(np.prod(shape)).reshape(shape),
-        projectors=_Ba2PbO4_projectors(use_orbitals),
-    )
-    if use_orbitals:
-        number_orbitals = len(raw_band.projectors.orbital_types)
-        shape = (4, number_atoms, number_orbitals, *shape[1:])
-        raw_band.projections = np.random.random(shape)
-    return raw_band
-
-
-def _spin_texture_dispersion():
-    kpoints = _slice_kpoints("explicit")
-    kpoints.cell = _Ba2PbO4_cell()
-    shape = (two_spins, len(kpoints.coordinates), number_bands)
-    eigenvalues = np.arange(np.prod(shape)).reshape(shape)
-    return raw.Dispersion(kpoints, eigenvalues)
-
-
 def _workfunction(direction):
     shape = (number_points,)
     return raw.Workfunction(
@@ -828,15 +661,6 @@ def _workfunction(direction):
     )
 
 
-def _Ba2PbO4_cell():
-    lattice_vectors = [
-        [4.34, 0.0, 0.0],
-        [0.0, 4.34, 0.0],
-        [-2.17, -2.17, 6.682],
-    ]
-    return raw.Cell(lattice_vectors=np.array(lattice_vectors), scale=1.0)
-
-
 def _Ba2PbO4_dos(projectors):
     assert projectors == "noncollinear"
     energies = np.linspace(-4, 1, number_points)
@@ -844,28 +668,12 @@ def _Ba2PbO4_dos(projectors):
         fermi_energy=-1.3,
         energies=energies,
         dos=_make_arbitrary_data((noncollinear, number_points)),
-        projectors=_Ba2PbO4_projectors(use_orbitals=True),
+        projectors=_demo.projector.Ba2PbO4(use_orbitals=True),
     )
     number_orbitals = len(raw_dos.projectors.orbital_types)
     shape = (noncollinear, number_atoms, number_orbitals, number_points)
     raw_dos.projections = _make_arbitrary_data(shape)
     return raw_dos
-
-
-def _Ba2PbO4_projectors(use_orbitals):
-    orbital_types = "s p d f"
-    return raw.Projector(
-        stoichiometry=_Ba2PbO4_stoichiometry(),
-        orbital_types=_make_orbital_types(use_orbitals, orbital_types),
-        number_spin_projections=4,
-    )
-
-
-def _Ba2PbO4_stoichiometry():
-    return raw.Stoichiometry(
-        number_ion_types=np.array((2, 1, 4)),
-        ion_types=raw.VaspData(np.array(("Ba", "Pb", "O "), dtype="S")),
-    )
 
 
 def _electronic_minimization():
@@ -984,7 +792,7 @@ def _Sr2TiO4_exciton_density():
 
 
 def _Sr2TiO4_exciton_eigenvector():
-    dispersion = _multiple_bands_dispersion()
+    dispersion = _demo.dispersion.multiple_bands()
     number_kpoints = len(dispersion.kpoints.coordinates)
     shape = (single_spin, number_kpoints, number_conduction_bands, number_valence_bands)
     bse_index = np.arange(np.prod(shape)).reshape(shape)
@@ -1225,14 +1033,7 @@ def _Sr2TiO4_velocity():
 
 
 def _Fe3O4_cell():
-    lattice_vectors = [
-        [5.1427, 0.0, 0.0],
-        [0.0, 3.0588, 0.0],
-        [-1.3633791448, 0.0, 5.0446102592],
-    ]
-    scaling = np.linspace(0.98, 1.01, number_steps)
-    lattice_vectors = np.multiply.outer(scaling, lattice_vectors)
-    return raw.Cell(lattice_vectors, scale=raw.VaspData(None))
+    return _demo.cell.Fe3O4()
 
 
 def _Fe3O4_CONTCAR():
@@ -1322,11 +1123,7 @@ def _Fe3O4_potential(selection, included_potential):
 
 
 def _Fe3O4_projectors(use_orbitals):
-    return raw.Projector(
-        stoichiometry=_Fe3O4_stoichiometry(),
-        orbital_types=_make_orbital_types(use_orbitals, "s p d f"),
-        number_spin_projections=2,
-    )
+    return _demo.projector.Fe3O4(use_orbitals)
 
 
 def _Fe3O4_stress(randomize):
@@ -1360,9 +1157,7 @@ def _Fe3O4_structure():
 
 
 def _Fe3O4_stoichiometry():
-    return raw.Stoichiometry(
-        number_ion_types=np.array((3, 4)), ion_types=np.array(("Fe", "O "), dtype="S")
-    )
+    return _demo.stoichiometry.Fe3O4()
 
 
 def _Fe3O4_velocity():
@@ -1396,10 +1191,7 @@ def _Ca3AsBr3_structure():
 
 
 def _Ca3AsBr3_stoichiometry():
-    return raw.Stoichiometry(
-        number_ion_types=np.array((2, 1, 1, 1, 2)),
-        ion_types=np.array(("Ca", "As", "Br", "Ca", "Br"), dtype="S"),
-    )
+    return _demo.stoichiometry.Ca3AsBr3()
 
 
 def _ZnS_structure():
