@@ -2,38 +2,35 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
 import importlib.metadata
-import random
 
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
-from py4vasp import _demo, exception, raw
-from py4vasp._util import check, import_
+from py4vasp import _demo, exception
+from py4vasp._util import check
 
-stats = import_.optional("scipy.stats")
-
-number_steps = 4
-number_atoms = 7
-number_points = 50
-number_bands = 3
-number_valence_bands = 2
-number_conduction_bands = 1
-number_eigenvectors = 5
-number_excitons = 3
-number_samples = 5
-number_chemical_potentials = 3
-number_temperatures = 6
-number_frequencies = (
-    1  # number of frequencies at which the fan self-energy is evaluated
-)
-single_spin = 1
-two_spins = 2
-noncollinear = 4
-axes = 3
-complex_ = 2
-number_modes = axes * number_atoms
-grid_dimensions = (14, 12, 10)  # note: order is z, y, x
+# number_steps = 4
+# number_atoms = 7
+# number_points = 50
+# number_bands = 3
+# number_valence_bands = 2
+# number_conduction_bands = 1
+# number_eigenvectors = 5
+# number_excitons = 3
+# number_samples = 5
+# number_chemical_potentials = 3
+# number_temperatures = 6
+# number_frequencies = (
+#     1  # number of frequencies at which the fan self-energy is evaluated
+# )
+# single_spin = 1
+# two_spins = 2
+# noncollinear = 4
+# axes = 3
+# complex_ = 2
+# number_modes = axes * number_atoms
+# grid_dimensions = (14, 12, 10)  # note: order is z, y, x
 
 
 @pytest.fixture(scope="session")
@@ -345,7 +342,7 @@ class RawDataFactory:
 
     @staticmethod
     def partial_density(selection):
-        return _partial_density(selection)
+        return _demo.partial_density.partial_density(selection)
 
     @staticmethod
     def piezoelectric_tensor(selection):
@@ -448,51 +445,3 @@ class RawDataFactory:
 @pytest.fixture(scope="session")
 def raw_data():
     return RawDataFactory
-
-
-def _partial_density(selection):
-    grid_dim = grid_dimensions
-    if "CaAs3_110" in selection:
-        structure = _demo.structure.CaAs3_110()
-        grid_dim = (240, 40, 32)
-    elif "Sr2TiO4" in selection:
-        structure = _demo.structure.Sr2TiO4()
-    elif "Ca3AsBr3" in selection:
-        structure = _demo.structure.Ca3AsBr3()
-    elif "Ni100" in selection:
-        structure = _demo.structure.Ni100()
-    else:
-        structure = _demo.structure.Graphite()
-        grid_dim = (216, 24, 24)
-    if "split_bands" in selection:
-        bands = raw.VaspData(random.sample(range(1, 51), 3))
-    else:
-        bands = raw.VaspData(np.asarray([0]))
-    if "split_kpoints" in selection:
-        kpoints = raw.VaspData((random.sample(range(1, 26), 5)))
-    else:
-        kpoints = raw.VaspData(np.asarray([0]))
-    if "spin_polarized" in selection:
-        spin_dimension = 2
-    else:
-        spin_dimension = 1
-    grid = raw.VaspData(tuple(reversed(grid_dim)))
-    charge_shape = (len(kpoints), len(bands), spin_dimension, *grid_dim)
-    gaussian_charge = np.zeros(charge_shape)
-    if not _is_core():
-        cov = grid_dim[0] / 10  # standard deviation
-        z = np.arange(grid_dim[0])  # z range
-        for gy in range(grid_dim[1]):
-            for gx in range(grid_dim[2]):
-                m = int(grid_dim[0] / 2) + gy / 10 + gx / 10
-                val = stats.multivariate_normal(mean=m, cov=cov).pdf(z)
-                # Fill the gaussian_charge array
-                gaussian_charge[:, :, :, :, gy, gx] = val
-    gaussian_charge = raw.VaspData(gaussian_charge)
-    return raw.PartialDensity(
-        structure=structure,
-        bands=bands,
-        kpoints=kpoints,
-        partial_charge=gaussian_charge,
-        grid=grid,
-    )
