@@ -271,16 +271,16 @@ class RawDataFactory:
 
     @staticmethod
     def electronic_minimization(selection=None):
-        return _electronic_minimization()
+        return _demo.electronic_minimization.electronic_minimization()
 
     @staticmethod
     def energy(selection, randomize: bool = False):
         if selection == "MD":
-            return _MD_energy(randomize)
+            return _demo.energy.MD(randomize)
         elif selection == "relax":
-            return _relax_energy(randomize)
+            return _demo.energy.relax(randomize)
         elif selection == "afqmc":
-            return _afqmc_energy()
+            return _demo.energy.afqmc()
         else:
             raise exception.NotImplemented()
 
@@ -498,52 +498,6 @@ def _phonon_mode():
     )
 
 
-def _MD_energy(randomize: bool = False):
-    labels = (
-        "ion-electron   TOTEN",
-        "kinetic energy EKIN",
-        "kin. lattice   EKIN_LAT",
-        "temperature    TEIN",
-        "nose potential ES",
-        "nose kinetic   EPS",
-        "total energy   ETOTAL",
-    )
-    return _create_energy(labels, randomize=randomize)
-
-
-def _relax_energy(randomize: bool = False):
-    labels = (
-        "free energy    TOTEN   ",
-        "energy without entropy ",
-        "energy(sigma->0)       ",
-    )
-    return _create_energy(labels, randomize=randomize)
-
-
-def _afqmc_energy():
-    labels = (
-        "step            STEP    ",
-        "One el. energy  E1      ",
-        "Hartree energy  -DENC   ",
-        "exchange        EXHF    ",
-        "free energy     TOTEN   ",
-        "free energy cap TOTENCAP",
-        "weight          WEIGHT  ",
-    )
-    return _create_energy(labels)
-
-
-def _create_energy(labels, randomize: bool = False):
-    labels = np.array(labels, dtype="S")
-    shape = (number_steps, len(labels))
-    if randomize:
-        return raw.Energy(labels=labels, values=np.random.random(shape))
-    else:
-        return raw.Energy(
-            labels=labels, values=np.arange(np.prod(shape)).reshape(shape)
-        )
-
-
 def _qpoints():
     qpoints = _line_kpoints("line", "with_labels")
     qpoints.cell.lattice_vectors = qpoints.cell.lattice_vectors[-1]
@@ -577,24 +531,6 @@ def _workfunction(direction):
         vacuum_potential=_make_arbitrary_data(shape=(2,)),
         reference_potential=_demo.bandgap.bandgap("nonpolarized"),
         fermi_energy=1.234,
-    )
-
-
-def _electronic_minimization():
-    random_convergence_data = np.random.rand(9, 3)
-    iteration_number = np.arange(1, 10)[:, np.newaxis]
-    ncg = np.random.randint(4, 10, (9, 1))
-    random_rms = np.random.rand(9, 2)
-    convergence_data = np.hstack(
-        [iteration_number, random_convergence_data, ncg, random_rms]
-    )
-    convergence_data = raw.VaspData(convergence_data)
-    label = raw.VaspData([b"N", b"E", b"dE", b"deps", b"ncg", b"rms", b"rms(c)"])
-    is_elmin_converged = [0]
-    return raw.ElectronicMinimization(
-        convergence_data=convergence_data,
-        label=label,
-        is_elmin_converged=is_elmin_converged,
     )
 
 

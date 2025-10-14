@@ -17,6 +17,8 @@ from py4vasp._demo import (
     dos,
     elastic_modulus,
     electron_phonon,
+    electronic_minimization,
+    energy,
     force_constant,
     internal_strain,
     kpoint,
