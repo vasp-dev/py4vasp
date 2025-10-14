@@ -11,6 +11,8 @@ from py4vasp._demo import (
     cell,
     current_density,
     density,
+    dielectric_function,
+    dielectric_tensor,
     dispersion,
     kpoint,
     projector,
@@ -21,6 +23,7 @@ from py4vasp._demo import (
 # constants for the shape of demo data
 NUMBER_ATOMS = 7
 NUMBER_BANDS = 3
+NUMBER_POINTS = 50
 NUMBER_STEPS = 4
 # constants for vector dimensions
 AXES = 3
@@ -30,6 +33,8 @@ GRID_DIMENSIONS = (14, 12, 10)  # note: order is z, y, x
 NONPOLARIZED = 1
 COLLINEAR = 2
 NONCOLLINEAR = 4
+# constants to indicate complex data
+COMPLEX = 2
 
 
 def wrap_data(data):

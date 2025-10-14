@@ -210,9 +210,9 @@ class RawDataFactory:
     @staticmethod
     def dielectric_function(selection):
         if selection == "electron":
-            return _electron_dielectric_function()
+            return _demo.dielectric_function.electron()
         elif selection == "ion":
-            return _ion_dielectric_function()
+            return _demo.dielectric_function.ionic()
         else:
             raise exception.NotImplemented()
 
@@ -220,7 +220,7 @@ class RawDataFactory:
     def dielectric_tensor(selection):
         method, with_ion = selection.split()
         with_ion = with_ion == "with_ion"
-        return _dielectric_tensor(method, with_ion)
+        return _demo.dielectric_tensor.dielectric_tensor(method, with_ion)
 
     @staticmethod
     def dispersion(selection):
@@ -460,39 +460,6 @@ def _number_components(selection):
         return 1
     else:
         raise exception.NotImplemented()
-
-
-def _electron_dielectric_function():
-    shape = (2, axes, axes, number_points, complex_)
-    data = np.linspace(0, 1, np.prod(shape)).reshape(shape)
-    return raw.DielectricFunction(
-        energies=np.linspace(0, 1, number_points),
-        dielectric_function=_make_data(data[0]),
-        current_current=_make_data(data[1]),
-    )
-
-
-def _ion_dielectric_function():
-    shape = (axes, axes, number_points, complex_)
-    data = np.linspace(0, 1, np.prod(shape)).reshape(shape)
-    return raw.DielectricFunction(
-        energies=np.linspace(0, 1, number_points),
-        dielectric_function=_make_data(data),
-        current_current=raw.VaspData(None),
-    )
-
-
-def _dielectric_tensor(method, with_ion):
-    shape = (3, axes, axes)
-    data = np.arange(np.prod(shape)).reshape(shape)
-    ion = raw.VaspData(data[1] if with_ion else None)
-    independent_particle = raw.VaspData(data[2] if method in ("dft", "rpa") else None)
-    return raw.DielectricTensor(
-        electron=raw.VaspData(data[0]),
-        ion=ion,
-        independent_particle=independent_particle,
-        method=method.encode(),
-    )
 
 
 def _elastic_modulus():
