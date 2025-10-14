@@ -19,6 +19,7 @@ from py4vasp._demo import (
     electron_phonon,
     electronic_minimization,
     energy,
+    exciton,
     force_constant,
     internal_strain,
     kpoint,
@@ -33,11 +34,15 @@ from py4vasp._demo import (
 NUMBER_ATOMS = 7
 NUMBER_BANDS = 3
 NUMBER_CHEMICAL_POTENTIALS = 3
+NUMBER_CONDUCTION_BANDS = 1
+NUMBER_EIGENVECTORS = 5
+NUMBER_EXCITONS = 3
 NUMBER_FREQUENCIES = 1
 NUMBER_POINTS = 50
 NUMBER_SAMPLES = 5
 NUMBER_STEPS = 4
 NUMBER_TEMPERATURES = 6
+NUMBER_VALENCE_BANDS = 2
 # constants for vector dimensions
 AXES = 3
 # constants for FFT grid dimensions
