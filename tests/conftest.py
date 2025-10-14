@@ -252,7 +252,7 @@ class RawDataFactory:
 
     @staticmethod
     def elastic_modulus(selection):
-        return _elastic_modulus()
+        return _demo.elastic_modulus.elastic_modulus()
 
     @staticmethod
     def electron_phonon_band_gap(selection):
@@ -296,9 +296,9 @@ class RawDataFactory:
     @staticmethod
     def force_constant(selection):
         if selection == "Sr2TiO4 all atoms":
-            return _Sr2TiO4_force_constants(use_selective_dynamics=False)
+            return _demo.force_constant.Sr2TiO4(use_selective_dynamics=False)
         if selection == "Sr2TiO4 selective dynamics":
-            return _Sr2TiO4_force_constants(use_selective_dynamics=True)
+            return _demo.force_constant.Sr2TiO4(use_selective_dynamics=True)
         else:
             raise exception.NotImplemented()
 
@@ -314,7 +314,7 @@ class RawDataFactory:
     @staticmethod
     def internal_strain(selection):
         if selection == "Sr2TiO4":
-            return _Sr2TiO4_internal_strain()
+            return _demo.internal_strain.Sr2TiO4()
         else:
             raise exception.NotImplemented()
 
@@ -350,11 +350,11 @@ class RawDataFactory:
 
     @staticmethod
     def piezoelectric_tensor(selection):
-        return _piezoelectric_tensor()
+        return _demo.piezoelectric_tensor.piezoelectric_tensor()
 
     @staticmethod
     def polarization(selection):
-        return _polarization()
+        return _demo.polarization.polarization()
 
     @staticmethod
     def phonon_band(selection):
@@ -462,12 +462,6 @@ def _number_components(selection):
         raise exception.NotImplemented()
 
 
-def _elastic_modulus():
-    shape = (2, axes, axes, axes, axes)
-    data = np.arange(np.prod(shape)).reshape(shape)
-    return raw.ElasticModulus(clamped_ion=data[0], relaxed_ion=data[1])
-
-
 def _phonon_band():
     dispersion = _phonon_dispersion()
     shape = (*dispersion.eigenvalues.shape, number_atoms, axes, complex_)
@@ -503,12 +497,6 @@ def _phonon_mode():
         frequencies=frequencies.view(np.float64).reshape(-1, 2),
         eigenvectors=_make_unitary_matrix(number_modes),
     )
-
-
-def _piezoelectric_tensor():
-    shape = (2, axes, axes, axes)
-    data = np.arange(np.prod(shape)).reshape(shape)
-    return raw.PiezoelectricTensor(electron=data[0], ion=data[1])
 
 
 def _polarization():
@@ -689,22 +677,6 @@ def _Sr2TiO4_exciton_eigenvector():
     )
 
 
-def _Sr2TiO4_force_constants(use_selective_dynamics):
-    shape = (axes * number_atoms, axes * number_atoms)
-    force_constants = _make_arbitrary_data(shape, seed=51609352)
-    if use_selective_dynamics:
-        mask = 3 * [True] + 5 * [False] + 5 * [True] + 6 * [False] + 2 * [True]
-        force_constants = force_constants[mask][:, mask]
-        selective_dynamics = np.reshape(mask, (number_atoms, axes))
-    else:
-        selective_dynamics = _make_arbitrary_data(None, present=False)
-    return raw.ForceConstant(
-        structure=_Sr2TiO4_structure(),
-        force_constants=0.5 * (force_constants + force_constants[:].T),
-        selective_dynamics=selective_dynamics,
-    )
-
-
 def _Sr2TiO4_forces(randomize):
     shape = (number_steps, number_atoms, axes)
     if randomize:
@@ -714,14 +686,6 @@ def _Sr2TiO4_forces(randomize):
     return raw.Force(
         structure=_Sr2TiO4_structure(),
         forces=forces,
-    )
-
-
-def _Sr2TiO4_internal_strain():
-    shape = (number_atoms, axes, axes, axes)
-    return raw.InternalStrain(
-        structure=_Sr2TiO4_structure(),
-        internal_strain=np.arange(np.prod(shape)).reshape(shape),
     )
 
 
@@ -753,10 +717,6 @@ def _Sr2TiO4_potential(included_potential):
         hartree_potential=_make_arbitrary_data(shape, present=include_hartree),
         ionic_potential=_make_arbitrary_data(shape, present=include_ionic),
     )
-
-
-def _Sr2TiO4_projectors(use_orbitals):
-    return _demo.projector.Sr2TiO4(use_orbitals)
 
 
 def _Sr2TiO4_stress(randomize):
@@ -939,10 +899,6 @@ def _Fe3O4_potential(selection, included_potential):
         hartree_potential=_make_arbitrary_data(shape_trivial, present=include_hartree),
         ionic_potential=_make_arbitrary_data(shape_trivial, present=include_ionic),
     )
-
-
-def _Fe3O4_projectors(use_orbitals):
-    return _demo.projector.Fe3O4(use_orbitals)
 
 
 def _Fe3O4_stress(randomize):
