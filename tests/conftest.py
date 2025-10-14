@@ -2,7 +2,6 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
 import importlib.metadata
-import itertools
 import random
 
 import numpy as np
@@ -256,19 +255,19 @@ class RawDataFactory:
 
     @staticmethod
     def electron_phonon_band_gap(selection):
-        return _electron_phonon_band_gap(selection)
+        return _demo.electron_phonon.bandgap.bandgap(selection)
 
     @staticmethod
     def electron_phonon_chemical_potential(selection):
-        return _electron_phonon_chemical_potential(selection)
+        return _demo.electron_phonon.chemical_potential.chemical_potential(selection)
 
     @staticmethod
     def electron_phonon_self_energy(selection):
-        return _electron_phonon_self_energy(selection)
+        return _demo.electron_phonon.self_energy.self_energy(selection)
 
     @staticmethod
     def electron_phonon_transport(selection):
-        return _electron_phonon_transport(selection)
+        return _demo.electron_phonon.transport.transport(selection)
 
     @staticmethod
     def electronic_minimization(selection=None):
@@ -497,10 +496,6 @@ def _phonon_mode():
         frequencies=frequencies.view(np.float64).reshape(-1, 2),
         eigenvectors=_make_unitary_matrix(number_modes),
     )
-
-
-def _polarization():
-    return raw.Polarization(electron=np.array((1, 2, 3)), ion=np.array((4, 5, 6)))
 
 
 def _MD_energy(randomize: bool = False):
@@ -998,138 +993,6 @@ def _BN_structure():
     )
 
 
-def _electron_phonon_band_gap(selection):
-    number_components = 3 if selection == "collinear" else 1
-    shape_gap = [number_samples, number_components]
-    shape_renorm = [number_samples, number_components, number_temperatures]
-    shape_temperature = [number_samples, number_temperatures]
-    return raw.ElectronPhononBandgap(
-        valid_indices=range(number_samples),
-        nbands_sum=_make_nbands_sum(selection),
-        delta=_make_delta(selection, seed=7824570),
-        chemical_potential=_electron_phonon_chemical_potential(),
-        scattering_approximation=_make_scattering_approximation("bandgap"),
-        fundamental_renorm=_make_arbitrary_data(shape_renorm),
-        direct_renorm=_make_arbitrary_data(shape_renorm),
-        fundamental=_make_arbitrary_data(shape_gap),
-        direct=_make_arbitrary_data(shape_gap),
-        temperatures=_make_arbitrary_data(shape_temperature),
-        id_index=_make_id_index(),
-    )
-
-
-def _electron_phonon_chemical_potential(selection="carrier_den"):
-    seed = 26826821
-    temperature_mesh = np.linspace(0, 500, number_temperatures)
-    return raw.ElectronPhononChemicalPotential(
-        fermi_energy=np.random.randn(),
-        carrier_density=_make_arbitrary_data(
-            [number_chemical_potentials, number_temperatures]
-        ),
-        temperatures=_make_data(temperature_mesh),
-        chemical_potential=_make_arbitrary_data(
-            [number_chemical_potentials, number_temperatures]
-        ),
-        carrier_per_cell=_make_arbitrary_data(
-            [number_chemical_potentials], selection == "carrier_per_cell", seed=seed
-        ),
-        mu=_make_arbitrary_data(
-            [number_chemical_potentials], selection == "mu", seed=seed
-        ),
-        carrier_den=_make_arbitrary_data(
-            [number_chemical_potentials], selection == "carrier_den", seed=seed
-        ),
-    )
-
-
-def _electron_phonon_self_energy(selection):
-    band_start = 1
-    # mock band_kpoint_spin_index array
-    number_kpoints = 2
-    band_kpoint_spin_index_shape = [single_spin, number_kpoints, number_bands]
-    band_kpoint_spin_index = np.full(band_kpoint_spin_index_shape, -1)
-    spin = 0
-    index_ = 0
-    for kpoint, band in itertools.product(range(number_kpoints), range(number_bands)):
-        if kpoint == band:
-            continue  # create a gap in the band_kpoint_spin_index
-        index_ += 1
-        band_kpoint_spin_index[spin, kpoint, band] = index_
-    # mock fan and dw
-    number_indices = np.count_nonzero(band_kpoint_spin_index != -1)
-    fan_shape = [number_indices, number_frequencies, number_temperatures, complex_]
-    debye_waller_shape = [number_indices, number_temperatures]
-    energies_shape = [number_indices, number_frequencies]
-    temperatures_shape = [number_samples, number_temperatures]
-    return raw.ElectronPhononSelfEnergy(
-        valid_indices=range(number_samples),
-        nbands_sum=_make_nbands_sum(selection),
-        delta=_make_delta(selection, seed=18573411),
-        scattering_approximation=_make_scattering_approximation(),
-        chemical_potential=_electron_phonon_chemical_potential(),
-        id_index=_make_id_index(),
-        eigenvalues=_make_arbitrary_data(band_kpoint_spin_index_shape),
-        temperatures=_make_arbitrary_data(temperatures_shape),
-        debye_waller=[
-            _make_arbitrary_data(debye_waller_shape) for _ in range(number_samples)
-        ],
-        fan=[_make_arbitrary_data(fan_shape) for _ in range(number_samples)],
-        energies=[_make_arbitrary_data(energies_shape) for _ in range(number_samples)],
-        band_kpoint_spin_index=[band_kpoint_spin_index for _ in range(number_samples)],
-        band_start=[band_start for _ in range(number_samples)],
-    )
-
-
-def _electron_phonon_transport(selection):
-    temperature_mesh = np.linspace(0, 500, number_temperatures)
-    transport_shape = [number_samples, number_temperatures, number_frequencies, 3, 3]
-    mobility_shape = [number_samples, number_temperatures, 3, 3]
-    return raw.ElectronPhononTransport(
-        valid_indices=range(number_samples),
-        nbands_sum=_make_nbands_sum(selection),
-        chemical_potential=_electron_phonon_chemical_potential(),
-        id_index=_make_id_index(),
-        delta=_make_delta(selection, seed=733144842),
-        temperatures=[temperature_mesh for _ in range(number_samples)],
-        transport_function=_make_arbitrary_data(transport_shape),
-        mobility=_make_arbitrary_data(mobility_shape),
-        seebeck=_make_arbitrary_data(mobility_shape),
-        peltier=_make_arbitrary_data(mobility_shape),
-        electronic_conductivity=_make_arbitrary_data(mobility_shape),
-        electronic_thermal_conductivity=_make_arbitrary_data(mobility_shape),
-        scattering_approximation=_make_scattering_approximation(selection),
-    )
-
-
-def _make_nbands_sum(selection):
-    if selection == "CRTA":
-        return [raw.VaspData(None) for _ in range(number_samples)]
-    return _make_data(np.linspace(10, 100, number_samples, dtype=np.int32))
-
-
-def _make_delta(selection, seed):
-    if selection == "CRTA":
-        return [raw.VaspData(None) for _ in range(number_samples)]
-    return _make_arbitrary_data([number_samples], seed=seed)
-
-
-def _make_id_index():
-    unused = np.full(number_samples, fill_value=9999)
-    index_chemical_potential = np.arange(number_samples) % number_chemical_potentials
-    id_index = np.array([unused, unused, index_chemical_potential + 1, unused]).T
-    return raw.VaspData(id_index)
-
-
-def _make_scattering_approximation(selection="default"):
-    if selection == "bandgap":
-        choices = ["SERTA", "SERTA", "MRTA_TAU", "SERTA", "SERTA"]
-    elif selection == "CRTA":
-        choices = ["CRTA" for _ in range(number_samples)]
-    else:
-        choices = ["SERTA", "ERTA_LAMDBA", "ERTA_TAU", "MRTA_LAMDBA", "MRTA_TAU"]
-    return _make_data(choices)
-
-
 def _make_unitary_matrix(n, seed=None):
     rng = np.random.default_rng(seed)
     matrix = rng.standard_normal((n, n))
@@ -1148,10 +1011,3 @@ def _make_arbitrary_data(shape, present=True, seed=None):
 
 def _make_data(data):
     return raw.VaspData(np.array(data))
-
-
-def _make_orbital_types(use_orbitals, orbital_types):
-    if use_orbitals:
-        return raw.VaspData(np.array(orbital_types.split(), dtype="S"))
-    else:
-        return raw.VaspData(None)
