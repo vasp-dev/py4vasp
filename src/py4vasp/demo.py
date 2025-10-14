@@ -5,7 +5,7 @@ from typing import Optional
 
 import h5py
 
-from py4vasp import exception
+from py4vasp import _demo, exception
 from py4vasp._calculation import Calculation
 from py4vasp._raw.definition import DEFAULT_FILE
 from py4vasp._raw.write import write
@@ -57,12 +57,9 @@ def _generate_calculation_data(h5f, selection):
 
 
 def _generate_default_data(h5f):
-    from py4vasp.demo import band, dos, energy, structure
-
-    write(h5f, dos.raw_data())
-    write(h5f, band.raw_data())
-    write(h5f, structure.raw_data())
-    write(h5f, energy.raw_data(randomize=True))
+    write(h5f, _demo.dos.Sr2TiO4("with_projectors"))
+    write(h5f, _demo.energy.relax(randomize=True))
+    write(h5f, _demo.structure.Sr2TiO4())
 
 
 def _generate_spin_texture_data(h5f):

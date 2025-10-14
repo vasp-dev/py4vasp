@@ -71,9 +71,10 @@ class Calculation:
     Examples
     --------
 
-    Generate a new calculation object
+    Generate a new calculation object from a specific path
 
-    >>> calculation = Calculation.from_path("path/to/calculation")
+    >>> _ = py4vasp.demo.calculation(path)
+    >>> calculation = Calculation.from_path(path)
 
     Plot the density of states (DOS) of a calculation
 
