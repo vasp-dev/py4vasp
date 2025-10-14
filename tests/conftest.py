@@ -175,35 +175,35 @@ class RawDataFactory:
 
     @staticmethod
     def bandgap(selection):
-        return _bandgap(selection)
+        return _demo.bandgap.bandgap(selection)
 
     @staticmethod
     def born_effective_charge(selection):
         if selection == "Sr2TiO4":
-            return _Sr2TiO4_born_effective_charges()
+            return _demo.born_effective_charge.Sr2TiO4()
         else:
             raise exception.NotImplemented()
 
     @staticmethod
     def CONTCAR(selection):
         if selection == "Sr2TiO4":
-            return _Sr2TiO4_CONTCAR()
+            return _demo.CONTCAR.Sr2TiO4()
         elif selection == "Fe3O4":
-            return _Fe3O4_CONTCAR()
+            return _demo.CONTCAR.Fe3O4()
         else:
             raise exception.NotImplemented()
 
     @staticmethod
     def current_density(selection):
-        return _current_density(selection)
+        return _demo.current_density.current_density(selection)
 
     @staticmethod
     def density(selection):
         parts = selection.split()
         if parts[0] == "Sr2TiO4":
-            return _Sr2TiO4_density()
+            return _demo.density.Sr2TiO4()
         elif parts[0] == "Fe3O4":
-            return _Fe3O4_density(parts[1])
+            return _demo.density.Fe3O4(parts[1])
         else:
             raise exception.NotImplemented()
 
@@ -462,33 +462,6 @@ def _number_components(selection):
         raise exception.NotImplemented()
 
 
-def _bandgap(selection):
-    labels = (
-        "valence band maximum",
-        "conduction band minimum",
-        "direct gap bottom",
-        "direct gap top",
-        "Fermi energy",
-        "kx (VBM)",
-        "ky (VBM)",
-        "kz (VBM)",
-        "kx (CBM)",
-        "ky (CBM)",
-        "kz (CBM)",
-        "kx (direct)",
-        "ky (direct)",
-        "kz (direct)",
-    )
-    num_components = 3 if selection == "spin_polarized" else 1
-    shape = (number_steps, num_components, len(labels))
-    data = np.sqrt(np.arange(np.prod(shape)).reshape(shape))
-    if num_components == 3:
-        # only spin-independent Fermi energy implemented
-        data[:, 1, 4] = data[:, 0, 4]
-        data[:, 2, 4] = data[:, 0, 4]
-    return raw.Bandgap(labels=np.array(labels, dtype="S"), values=data)
-
-
 def _electron_dielectric_function():
     shape = (2, axes, axes, number_points, complex_)
     data = np.linspace(0, 1, np.prod(shape)).reshape(shape)
@@ -631,10 +604,6 @@ def _line_kpoints(mode, labels):
     return _demo.kpoint.line_mode(mode, labels)
 
 
-def _grid_kpoints(mode, labels):
-    return _demo.kpoint.grid(mode, labels)
-
-
 def _local_moment(selection):
     lmax = 3 if selection != "noncollinear" else 4
     number_components = _number_components(selection)
@@ -656,7 +625,7 @@ def _workfunction(direction):
         distance=_make_arbitrary_data(shape),
         average_potential=_make_arbitrary_data(shape),
         vacuum_potential=_make_arbitrary_data(shape=(2,)),
-        reference_potential=_bandgap("nonpolarized"),
+        reference_potential=_demo.bandgap.bandgap("nonpolarized"),
         fermi_energy=1.234,
     )
 
@@ -740,31 +709,6 @@ def _partial_density(selection):
         partial_charge=gaussian_charge,
         grid=grid,
     )
-
-
-def _Sr2TiO4_born_effective_charges():
-    shape = (number_atoms, axes, axes)
-    return raw.BornEffectiveCharge(
-        structure=_Sr2TiO4_structure(),
-        charge_tensors=np.arange(np.prod(shape)).reshape(shape),
-    )
-
-
-def _Sr2TiO4_cell():
-    return _demo.cell.Sr2TiO4()
-
-
-def _Sr2TiO4_CONTCAR():
-    structure = _Sr2TiO4_structure()
-    structure.cell.lattice_vectors = structure.cell.lattice_vectors[-1]
-    structure.positions = structure.positions[-1]
-    return raw.CONTCAR(structure=structure, system=b"Sr2TiO4")
-
-
-def _Sr2TiO4_density():
-    structure = _Sr2TiO4_structure()
-    grid = (1, *grid_dimensions)
-    return raw.Density(structure=structure, charge=_make_arbitrary_data(grid))
 
 
 def _Sr2TiO4_dos(projectors):
@@ -1009,55 +953,13 @@ def _CaAs3_110_stoichiometry():
 
 
 def _Sr2TiO4_structure(has_ion_types=True):
-    repetitions = (number_steps, 1, 1)
-    positions = [
-        [0.64529, 0.64529, 0.0],
-        [0.35471, 0.35471, 0.0],
-        [0.00000, 0.00000, 0.0],
-        [0.84178, 0.84178, 0.0],
-        [0.15823, 0.15823, 0.0],
-        [0.50000, 0.00000, 0.5],
-        [0.00000, 0.50000, 0.5],
-    ]
-    return raw.Structure(
-        stoichiometry=_demo.stoichiometry.Sr2TiO4(has_ion_types),
-        cell=_Sr2TiO4_cell(),
-        positions=np.tile(positions, repetitions),
-    )
+    return _demo.structure.Sr2TiO4(has_ion_types=has_ion_types)
 
 
 def _Sr2TiO4_velocity():
     shape = (number_steps, number_atoms, axes)
     velocities = np.arange(np.prod(shape)).reshape(shape)
     return raw.Velocity(structure=_Sr2TiO4_structure(), velocities=velocities)
-
-
-def _Fe3O4_cell():
-    return _demo.cell.Fe3O4()
-
-
-def _Fe3O4_CONTCAR():
-    structure = _Fe3O4_structure()
-    structure.cell.lattice_vectors = structure.cell.lattice_vectors[-1]
-    structure.positions = structure.positions[-1]
-    even_numbers = np.arange(structure.positions.size) % 2 == 0
-    selective_dynamics = even_numbers.reshape(structure.positions.shape)
-    lattice_velocities = 0.1 * structure.cell.lattice_vectors**2 - 0.3
-    shape = structure.positions.shape
-    ion_velocities = np.sqrt(np.arange(np.prod(shape)).reshape(shape))
-    return raw.CONTCAR(
-        structure=structure,
-        system="Fe3O4",
-        selective_dynamics=raw.VaspData(selective_dynamics),
-        lattice_velocities=raw.VaspData(lattice_velocities),
-        ion_velocities=raw.VaspData(ion_velocities),
-    )
-
-
-def _Fe3O4_density(selection):
-    structure = _Fe3O4_structure()
-    grid = (_number_components(selection), *grid_dimensions)
-    return raw.Density(structure=structure, charge=_make_arbitrary_data(grid))
 
 
 def _Fe3O4_dos(projectors):
@@ -1139,25 +1041,7 @@ def _Fe3O4_stress(randomize):
 
 
 def _Fe3O4_structure():
-    positions = [
-        [0.00000, 0.0, 0.00000],
-        [0.50000, 0.0, 0.50000],
-        [0.00000, 0.5, 0.50000],
-        [0.78745, 0.0, 0.28152],
-        [0.26310, 0.5, 0.27611],
-        [0.21255, 0.0, 0.71848],
-        [0.73690, 0.5, 0.72389],
-    ]
-    shift = np.linspace(-0.02, 0.01, number_steps)
-    return raw.Structure(
-        stoichiometry=_Fe3O4_stoichiometry(),
-        cell=_Fe3O4_cell(),
-        positions=np.add.outer(shift, positions),
-    )
-
-
-def _Fe3O4_stoichiometry():
-    return _demo.stoichiometry.Fe3O4()
+    return _demo.structure.Fe3O4()
 
 
 def _Fe3O4_velocity():
@@ -1238,20 +1122,6 @@ def _BN_structure():
             scale=raw.VaspData(3.63),
         ),
         positions=np.array([[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]]),
-    )
-
-
-def _current_density(selection):
-    if selection == "all":
-        valid_indices = ("x", "y", "z")
-    else:
-        valid_indices = [selection]
-    shape = (axes, *grid_dimensions)
-    current_density = [_make_arbitrary_data(shape) for _ in valid_indices]
-    return raw.CurrentDensity(
-        valid_indices=valid_indices,
-        structure=_Fe3O4_structure(),
-        current_density=current_density,
     )
 
 

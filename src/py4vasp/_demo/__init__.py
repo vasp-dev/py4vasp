@@ -2,11 +2,15 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import raw
+from py4vasp import exception, raw
 from py4vasp._demo import (
+    CONTCAR,
     band,
+    bandgap,
     born_effective_charge,
     cell,
+    current_density,
+    density,
     dispersion,
     kpoint,
     projector,
@@ -14,12 +18,14 @@ from py4vasp._demo import (
     structure,
 )
 
-# constants for vector dimensions
-AXES = 3
 # constants for the shape of demo data
 NUMBER_ATOMS = 7
 NUMBER_BANDS = 3
 NUMBER_STEPS = 4
+# constants for vector dimensions
+AXES = 3
+# constants for FFT grid dimensions
+GRID_DIMENSIONS = (14, 12, 10)  # note: order is z, y, x
 # constants for the magnetic configuration
 NONPOLARIZED = 1
 COLLINEAR = 2
@@ -44,3 +50,14 @@ def wrap_orbital_types(use_orbitals, orbital_types):
         return raw.VaspData(np.array(orbital_types.split(), dtype="S"))
     else:
         return raw.VaspData(None)
+
+
+def number_components(selection):
+    if selection == "collinear":
+        return 2
+    elif selection in ("noncollinear", "orbital_moments"):
+        return 4
+    elif selection == "charge_only":
+        return 1
+    else:
+        raise exception.NotImplemented()
