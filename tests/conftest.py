@@ -304,9 +304,9 @@ class RawDataFactory:
     @staticmethod
     def force(selection, randomize: bool = False):
         if selection == "Sr2TiO4":
-            return _Sr2TiO4_forces(randomize)
+            return _demo.force.Sr2TiO4(randomize)
         elif selection == "Fe3O4":
-            return _Fe3O4_forces(randomize)
+            return _demo.force.Fe3O4(randomize)
         else:
             raise exception.NotImplemented()
 
@@ -330,14 +330,14 @@ class RawDataFactory:
 
     @staticmethod
     def local_moment(selection):
-        return _local_moment(selection)
+        return _demo.local_moment.local_moment(selection)
 
     @staticmethod
     def nics(selection):
         if selection == "on-a-grid":
-            return _Sr2TiO4_nics()
+            return _demo.nics.Sr2TiO4()
         if selection == "at-points":
-            return _Fe3O4_nics()
+            return _demo.nics.Fe3O4()
 
     @staticmethod
     def pair_correlation(selection):
@@ -434,9 +434,9 @@ class RawDataFactory:
     @staticmethod
     def velocity(selection):
         if selection == "Sr2TiO4":
-            return _Sr2TiO4_velocity()
+            return _demo.velocity.Sr2TiO4()
         elif selection == "Fe3O4":
-            return _Fe3O4_velocity()
+            return _demo.velocity.Fe3O4()
         else:
             raise exception.NotImplemented()
 
@@ -508,20 +508,6 @@ def _line_kpoints(mode, labels):
     return _demo.kpoint.line_mode(mode, labels)
 
 
-def _local_moment(selection):
-    lmax = 3 if selection != "noncollinear" else 4
-    number_components = _number_components(selection)
-    shape = (number_steps, number_components, number_atoms, lmax)
-    moment = raw.LocalMoment(
-        structure=_Fe3O4_structure(),
-        spin_moments=_make_data(np.arange(np.prod(shape)).reshape(shape)),
-    )
-    if selection == "orbital_moments":
-        remove_charge_and_s_component = moment.spin_moments[:, 1:, :, 1:]
-        moment.orbital_moments = _make_data(np.sqrt(remove_charge_and_s_component))
-    return moment
-
-
 def _workfunction(direction):
     shape = (number_points,)
     return raw.Workfunction(
@@ -580,24 +566,6 @@ def _partial_density(selection):
         partial_charge=gaussian_charge,
         grid=grid,
     )
-
-
-def _Sr2TiO4_forces(randomize):
-    shape = (number_steps, number_atoms, axes)
-    if randomize:
-        forces = np.random.random(shape)
-    else:
-        forces = np.arange(np.prod(shape)).reshape(shape)
-    return raw.Force(
-        structure=_Sr2TiO4_structure(),
-        forces=forces,
-    )
-
-
-def _Sr2TiO4_nics():
-    structure = _Sr2TiO4_structure()
-    grid = (9, *grid_dimensions)
-    return raw.Nics(structure=structure, nics_grid=_make_arbitrary_data(grid))
 
 
 def _Sr2TiO4_pair_correlation():
@@ -757,39 +725,6 @@ def _Sr2TiO4_structure(has_ion_types=True):
     return _demo.structure.Sr2TiO4(has_ion_types=has_ion_types)
 
 
-def _Sr2TiO4_velocity():
-    shape = (number_steps, number_atoms, axes)
-    velocities = np.arange(np.prod(shape)).reshape(shape)
-    return raw.Velocity(structure=_Sr2TiO4_structure(), velocities=velocities)
-
-
-def _Fe3O4_forces(randomize):
-    shape = (number_steps, number_atoms, axes)
-    if randomize:
-        forces = np.random.random(shape)
-    else:
-        forces = np.arange(np.prod(shape)).reshape(shape)
-    return raw.Force(structure=_Fe3O4_structure(), forces=forces)
-
-
-def _Fe3O4_nics():
-    structure = _Fe3O4_structure()
-    seed_nics = 4782838
-    seed_pos = 6375861
-    positions_shape = (axes, number_points)
-    nics_shape = (number_points, axes, axes)
-    nics_data = np.array(_make_arbitrary_data(nics_shape, seed=seed_nics))
-    # intentionally make values very small to check their output
-    nics_data[4, 1, 0] = 1e-108
-    nics_data[9, 0, 2] = -1e-15  # should be rounded
-    nics_data[11, 2, 1] = 1e-14  # should still be there
-    return raw.Nics(
-        structure=structure,
-        nics_points=raw.VaspData(nics_data),
-        positions=_make_arbitrary_data(positions_shape, seed=seed_pos),
-    )
-
-
 def _Fe3O4_potential(selection, included_potential):
     structure = _Fe3O4_structure()
     shape_polarized = (_number_components(selection), *grid_dimensions)
@@ -820,12 +755,6 @@ def _Fe3O4_stress(randomize):
 
 def _Fe3O4_structure():
     return _demo.structure.Fe3O4()
-
-
-def _Fe3O4_velocity():
-    shape = (number_steps, number_atoms, axes)
-    velocities = np.arange(np.prod(shape)).reshape(shape)
-    return raw.Velocity(structure=_Fe3O4_structure(), velocities=velocities)
 
 
 def _Ca3AsBr3_cell():

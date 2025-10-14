@@ -20,14 +20,18 @@ from py4vasp._demo import (
     electronic_minimization,
     energy,
     exciton,
+    force,
     force_constant,
     internal_strain,
     kpoint,
+    local_moment,
+    nics,
     piezoelectric_tensor,
     polarization,
     projector,
     stoichiometry,
     structure,
+    velocity,
 )
 
 # constants for the shape of demo data
