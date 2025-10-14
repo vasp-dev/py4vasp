@@ -14,6 +14,7 @@ from py4vasp._demo import (
     dielectric_function,
     dielectric_tensor,
     dispersion,
+    dos,
     kpoint,
     projector,
     stoichiometry,
