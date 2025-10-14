@@ -3,8 +3,19 @@
 import numpy as np
 
 from py4vasp import raw
-from py4vasp._demo import band, cell, dispersion, kpoint, projector, stoichiometry
+from py4vasp._demo import (
+    band,
+    born_effective_charge,
+    cell,
+    dispersion,
+    kpoint,
+    projector,
+    stoichiometry,
+    structure,
+)
 
+# constants for vector dimensions
+AXES = 3
 # constants for the shape of demo data
 NUMBER_ATOMS = 7
 NUMBER_BANDS = 3
