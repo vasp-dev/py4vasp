@@ -36,6 +36,14 @@ class Band(base.Refinery, graph.Mixin):
     Examples
     --------
 
+    First, we create some example data do that you can follow along. Please define a
+    variable `path` with the path to a directory that exists and does not contain any
+    VASP calculation data. Alternatively, you can use your own data if you have run
+    VASP and construct `calculation` from it.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
     To produce band structure plot use, please check the `to_graph` function for
     a more detailed documentation.
 

@@ -58,6 +58,7 @@ def _generate_calculation_data(h5f, selection):
 
 def _generate_default_data(h5f):
     write(h5f, _demo.dos.Sr2TiO4("with_projectors"))
+    write(h5f, _demo.band.multiple_bands("with_projectors"))
     write(h5f, _demo.energy.relax(randomize=True))
     write(h5f, _demo.structure.Sr2TiO4())
 

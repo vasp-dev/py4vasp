@@ -30,6 +30,14 @@ class Dos(base.Refinery, graph.Mixin):
     Examples
     --------
 
+    First, we create some example data do that you can follow along. Please define a
+    variable `path` with the path to a directory that exists and does not contain any
+    VASP calculation data. Alternatively, you can use your own data if you have run
+    VASP with :tag:`LORBIT`.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
     If you want to visualize the total DOS, you can use the `plot` method. This will
     show the different spin components if :tag:`ISPIN` = 2
 
