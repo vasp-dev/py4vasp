@@ -299,8 +299,8 @@ class DefaultCalculationFactory:
 
     >>> import os
     >>> from py4vasp import demo
-    >>> os.chdir(path)  # change to a temporary directory
     >>> _ = demo.calculation(path)
+    >>> os.chdir(path)  # change to a temporary directory
 
     Then the two following examples are equivalent:
 
