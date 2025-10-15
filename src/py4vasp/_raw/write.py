@@ -22,4 +22,5 @@ def _write_dataset(h5f, target, data):
     elif check.is_none(data) or isinstance(target, Length) or target in h5f:
         return
     else:
+        # TODO: deal with type conversion for strings
         h5f[target] = data

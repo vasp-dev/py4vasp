@@ -62,20 +62,22 @@ def _generate_calculation_data(h5f, selection):
 
 
 def _generate_default_data(h5f):
-    write(h5f, _demo.dos.Sr2TiO4("with_projectors"))
     write(h5f, _demo.band.multiple_bands("with_projectors"))
+    write(h5f, _demo.dos.Sr2TiO4("with_projectors"))
     write(h5f, _demo.energy.relax(randomize=True))
     write(h5f, _demo.structure.Sr2TiO4())
+    write(h5f, _demo.band.line_mode("no_labels"), selection="kpoints_opt")
+    write(h5f, _demo.dos.Sr2TiO4("no_projectors"), selection="kpoints_opt")
 
 
 def _generate_collinear_data(h5f):
-    write(h5f, _demo.dos.Fe3O4("with_projectors"))
     write(h5f, _demo.band.spin_polarized_bands("with_projectors"))
+    write(h5f, _demo.dos.Fe3O4("with_projectors"))
 
 
 def _generate_noncollinear_data(h5f):
-    write(h5f, _demo.dos.Ba2PbO4("noncollinear"))
     write(h5f, _demo.band.noncollinear_bands("with_projectors"))
+    write(h5f, _demo.dos.Ba2PbO4("noncollinear"))
 
 
 _DATA_GENERATORS = {
