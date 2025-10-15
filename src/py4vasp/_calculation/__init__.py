@@ -72,8 +72,8 @@ class Calculation:
     --------
 
     Let's first create some example data in a temporary directory. Please define `path`
-    as the path to a directory that exists and does not contain any VASP calculation data.
-    This command will return a Calculation but we ignore the result here.
+    as the path to a temporary directory that does not exist yet. This command create
+    example data in that directory and will return a Calculation but we ignore the result.
 
     >>> _ = py4vasp.demo.calculation(path)
 

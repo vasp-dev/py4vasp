@@ -18,7 +18,7 @@ def get_calculation_examples():
     try:
         examples = (
             finder.find(_calculation)
-            # + finder.find(_calculation.dos)
+            + finder.find(_calculation.dos)
             # + finder.find(_calculation.band)
         )
     except exception.ModuleNotInstalled:
@@ -50,7 +50,7 @@ def test_calculation(example: doctest.DocTest, tmp_path: pathlib.Path):
     optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
     runner = doctest.DocTestRunner(optionflags=optionflags)
     example.globs["py4vasp"] = py4vasp
-    example.globs["path"] = tmp_path
+    example.globs["path"] = tmp_path / example.name.replace(".", "_")
     result = runner.run(example)
     assert result.failed == 0
     assert result.attempted > 0

@@ -87,6 +87,16 @@ class Dos(base.Refinery, graph.Mixin):
         selection, you will obtain the projected DOS with a label corresponding to the
         projection.
 
+        We create some example data do that you can follow along. Please define a
+        variable `path` with the path to a directory that exists and does not contain any
+        VASP calculation data. Alternatively, you can use your own data if you have run
+        VASP with :tag:`LORBIT`.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> collinear_calculation = demo.calculation(path, selection="collinear")
+        >>> noncollinear_calculation = demo.calculation(path, selection="noncollinear")
+
         Parameters
         ----------
         {selection_doc}
@@ -101,6 +111,7 @@ class Dos(base.Refinery, graph.Mixin):
 
         Examples
         --------
+
         To obtain the total DOS along with the energy mesh and the Fermi energy you
         do not need any arguments. For :tag:`ISPIN` = 2, this will "up" and "down"
         DOS as two separate entries.
@@ -120,13 +131,33 @@ class Dos(base.Refinery, graph.Mixin):
         {{'energies': array(...), 'total': array(...), 'Sr_d': array(...),
             'Ti_d': array(...), 'fermi_energy': ...}}
 
-        Select the spin-up contribution of the first three atoms combined
+        Collinear calculations separate the DOS into two spin components
 
-        >>> calculation.dos.to_dict("up(1:3)")  # doctest: +SKIP
-        {{'energies': array(...), 'total': array(...), '1:3_up': array(...),
+        >>> collinear_calculation.dos.read()
+        {{'energies': array(...), 'up': array(...), 'down': array(...), ...}}
+
+        You can also select spin contribution of specific atoms or orbitals, e.g. the
+        spin-up contribution of the first three atoms combined
+
+        >>> collinear_calculation.dos.to_dict("up(1:3)")
+        {{'energies': array(...), 'up': array(...), 'down': array(...),
+            '1:3_up': array(...), 'fermi_energy': ...}}
+
+        Noncollinear calculations contain four spin components but by default only
+        the total DOS is shown
+
+        >>> noncollinear_calculation.dos.read()
+        {{'energies': array(...), 'total': array(...), 'fermi_energy': ...}}
+
+        You can select specific spin components if you want, e.g. the spin projection
+        along the z axis
+
+        >>> noncollinear_calculation.dos.to_dict("sigma_z")
+        {{'energies': array(...), 'total': array(...), 'sigma_z': array(...),
             'fermi_energy': ...}}
 
-        Add the contribution of three d orbitals
+        You can also use simple addition and subtraction to combine the contributions of
+        different orbitals, e.g. add the contribution of three d orbitals
 
         >>> calculation.dos.to_dict("dxy + dxz + dyz")
         {{'energies': array(...), 'total': array(...), 'dxy + dxz + dyz': array(...),

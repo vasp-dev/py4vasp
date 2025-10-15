@@ -12,7 +12,7 @@ def Sr2TiO4(use_orbitals):
     return raw.Projector(
         stoichiometry=_demo.stoichiometry.Sr2TiO4(),
         orbital_types=_demo.wrap_orbital_types(use_orbitals, LM_RESOLVED_ORBITALS),
-        number_spin_projections=1,
+        number_spin_projections=_demo.NONPOLARIZED,
     )
 
 
@@ -20,7 +20,7 @@ def Fe3O4(use_orbitals):
     return raw.Projector(
         stoichiometry=_demo.stoichiometry.Fe3O4(),
         orbital_types=_demo.wrap_orbital_types(use_orbitals, L_RESOLVED_ORBITALS),
-        number_spin_projections=2,
+        number_spin_projections=_demo.COLLINEAR,
     )
 
 
@@ -28,5 +28,5 @@ def Ba2PbO4(use_orbitals):
     return raw.Projector(
         stoichiometry=_demo.stoichiometry.Ba2PbO4(),
         orbital_types=_demo.wrap_orbital_types(use_orbitals, L_RESOLVED_ORBITALS),
-        number_spin_projections=4,
+        number_spin_projections=_demo.NONCOLLINEAR,
     )
