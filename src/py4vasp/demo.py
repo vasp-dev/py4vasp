@@ -80,9 +80,14 @@ def _generate_noncollinear_data(h5f):
     write(h5f, _demo.dos.Ba2PbO4("noncollinear"))
 
 
+def _generate_spin_texture_data(h5f):
+    write(h5f, _demo.band.spin_texture("with_projectors"))
+
+
 _DATA_GENERATORS = {
     None: _generate_default_data,
     "default": _generate_default_data,
     "collinear": _generate_collinear_data,
     "noncollinear": _generate_noncollinear_data,
+    "spin_texture": _generate_spin_texture_data,
 }

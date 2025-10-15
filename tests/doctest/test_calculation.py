@@ -19,7 +19,7 @@ def get_calculation_examples():
         examples = (
             finder.find(_calculation)
             + finder.find(_calculation.dos)
-            # + finder.find(_calculation.band)
+            + finder.find(_calculation.band)
         )
     except exception.ModuleNotInstalled:
         return []
