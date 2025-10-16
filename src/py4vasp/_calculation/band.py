@@ -380,22 +380,65 @@ class Band(base.Refinery, graph.Mixin):
     @base.data_access
     def to_quiver(
         self,
-        selection: str = "x~y(band[1])",
+        selection: str,
         normal: Optional[str] = None,
         supercell: Optional[ArrayLike] = None,
     ) -> graph.Graph:
         """Generate a quiver plot of spin texture.
 
-        The plane cut will be determined from the kpoints grid. One of the kpoint
-        grid dimensions is required to be 1, and that direction will be cut.
+        Note that plotting the spin texture requires a special setup of the VASP calculation.
+        You need to run a noncollinear calculation and a suitable **k**-point mesh. The
+        **k**-point mesh must be a regular two-dimensional grid, i.e. one of the three
+        reciprocal lattice directions must not be sampled (1 in that direction). py4vasp
+        will check this condition and raise an error if it is not fulfilled.
 
-        The spin texture can only be visualized for noncollinear calculations,
-        and is projected into the plane.
+        The spin texture is represented by arrows in a plane in reciprocal space. The
+        plane is defined by the two reciprocal lattice vectors that are sampled by the
+        **k**-point mesh. The normal of this plane can be rotated to align with a
+        Cartesian axis if desired. The arrows represent the spin expectation value
+        at each **k** point. You can select which components of the spin are shown
+        and which bands are included. You can also select particular atoms and orbitals.
 
         Parameters
         ----------
         selection
-            TODO
+            A string specifying the components of the spin and the bands to be included
+            in the plot. This must be provided and py4vasp will raise an error if it is
+            not in the correct format. The selection string has the following structure:
+
+                <spin_component>~<spin_component>(band=<band_index>)
+
+            where <spin_component> is one of "sigma_x", "sigma_y", or "sigma_z", and
+            <band_index> is the index of the band to be included (1-based). For the
+            spin component, you can also use the alias "x", "y", or "z" and "sigma_1",
+            "sigma_2", or "sigma_3".
+
+            In addition, you can project onto particular atoms and orbitals similar to
+            the other methods in this class:
+
+            -   To specify the **atom**, you can either use its element name (Si, Al, ...)
+                or its index as given in the input file (1, 2, ...). For the latter
+                option it is also possible to specify ranges (e.g. 1:4).
+            -   To select a particular **orbital** you can give a string (s, px, dxz, ...)
+                or select multiple orbitals by their angular momentum (s, p, d, f).
+            -   If you used a different **k**-point mesh choose "kpoints_opt" or "kpoints_wan"
+                to select them instead of the default mesh specified in the KPOINTS file.
+
+            You separate multiple selections by commas or whitespace and can nest them using
+            parenthesis, e.g. `Sr(s, p)` or `s(up), p(down)`. The order of the selections
+            does not matter, but it is case sensitive to distinguish p (angular momentum
+            l = 1) from P (phosphorus).
+
+            It is possible to add or subtract different components, e.g., a selection of
+            "Ti(d) - O(p)" would project onto the d orbitals of Ti and the p orbitals of O and
+            then compute the difference of these two selections.
+
+            If you are unsure about the specific projections that are available, you can use
+
+            >>> calculation.projector.selections()
+            {'atom': [...], 'orbital': [...], 'spin': [...]}
+
+            to get a list of all available ones.
         normal
             Set the Cartesian direction "x", "y", or "z" parallel to which the normal of
             the plane is rotated. Alteratively, set it to "auto" to rotate to the closest
@@ -408,17 +451,22 @@ class Band(base.Refinery, graph.Mixin):
 
         Returns
         -------
-        A quiver plot in the plane spanned by the 2 remaining lattice vectors.
-
+        A quiver plot for the spin texture in the plane spanned by the 2 remaining
+        lattice vectors. The arrows represent the spin expectation value at each **k** point.
+        The plot is replicated periodically according to the specified supercell.
 
         Examples
         --------
-        Plot a projection of the spin texture in reciprocal space, summed over all atoms and orbitals, for the first band and the x and y components.
-        This is also the default behavior, so the following two lines should produce identical plots:
+        Let us generate some example data do that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet. Alternatively,
+        you can use your own data if you have run VASP with an appropriate k-point mesh.
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path, selection="spin_texture")
-        >>> calculation.band.to_quiver("x~y(band[1])")
+
+        Plot a projection of the spin texture in reciprocal space, summed over all atoms and orbitals, for the first band and the x and y components.
+
+        >>> calculation.band.to_quiver("x~y(band=1)")
         Graph(series=[Contour(data=array([[[...
 
         >>> calculation.band.to_quiver()
@@ -478,6 +526,8 @@ class Band(base.Refinery, graph.Mixin):
         #
         selector = self._make_selector(self._raw_data.projections)
         tree = select.Tree.from_selection(selection)
+        for sel in tree.selections():
+            print(sel)
         quiver_plots = [
             graph.Contour(
                 **self._quiver_plot(selector, selection, nkp1, nkp2), **options

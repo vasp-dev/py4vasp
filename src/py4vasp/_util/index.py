@@ -82,6 +82,7 @@ class Selector:
         if not self._data.is_none():
             _raise_error_if_map_out_of_bounds(maps.keys(), self._data.ndim)
         self._map = self._make_map(maps)
+        print(self._map)
         self._use_number_labels = use_number_labels
         self._number_labels = self._make_number_labels(maps)
         self._indices = self._make_default_indices(maps, self._data.ndim)
@@ -185,6 +186,8 @@ class Selector:
             yield self._read_range(selection).set_operator(operator)
         elif _is_pair(selection):
             yield self._read_pair(selection).set_operator(operator)
+        elif isinstance(selection, select.Assignment):
+            yield self._read_assignment(selection).set_operator(operator)
         elif isinstance(selection, select.Operation):
             yield from self._evaluate_operation(selection, operator)
         else:
@@ -232,6 +235,16 @@ class Selector:
         operator = _merge_operator(operator, operation.operator)
         yield from self._get_all_slices(operation.right_operand, operation.operator)
 
+    def _read_assignment(self, assignment):
+        self._raise_key_not_found_error(assignment.left_operand)
+        dimension, mapping = self._map[assignment.left_operand]
+        if not isinstance(mapping, dict):
+            valid_keys = self._map.keys()
+            message = f"""\
+The key {assignment.left_operand} does not support assignments. You used {assignment} \
+but py4vasp only support "{'", "'.join(valid_keys)}"."""
+            raise exception.IncorrectUsage(message)
+
     def _raise_key_not_found_error(self, key):
         if key in self._map:
             return
@@ -254,6 +267,8 @@ def _make_slice(indices):
     if isinstance(indices, int):
         return slice(indices, indices + 1 or None)
     if isinstance(indices, slice):
+        return indices
+    if isinstance(indices, dict):
         return indices
     if np.ndim(indices) == 1:
         return np.array(indices)

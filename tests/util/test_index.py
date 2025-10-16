@@ -17,6 +17,10 @@ def make_pair(left, right):
     return select.Group([left, right], select.pair_separator)
 
 
+def make_assignment(left, right):
+    return select.Assignment(left, right)
+
+
 def make_operation(left, operator, right):
     return select.Operation((left,), operator, (right,))
 
@@ -150,6 +154,63 @@ def test_select_pair(selection, indices):
     map_ = {0: {"total": 0, "A~B": 1, "A~C": 2, "B~C": 3}}
     selector = index.Selector(map_, values)
     assert selector[selection] == np.sum(values[indices])
+
+
+@pytest.mark.parametrize(
+    "selection, indices",
+    [
+        ((make_assignment("int", 1),), 0),
+        ((make_assignment("int", 2),), slice(1, 4)),
+        ((make_assignment("str", "x"),), slice(2, 5)),
+        ((make_assignment("str", "y"),), 3),
+        ((make_assignment("float", -0.5),), slice(5, 10)),
+        ((make_assignment("float", 0),), 4),
+    ],
+)
+def test_select_assignment(selection, indices):
+    values = np.arange(10) ** 2
+    map_ = {
+        0: {
+            "int": {1: 0, 2: slice(1, 4)},
+            "str": {"x": slice(2, 5), "y": 3},
+            "float": {-0.5: slice(5, 10), 1e-8: 4},
+        },
+    }
+    selector = index.Selector(map_, values)
+    assert selector[selection] == np.sum(values[indices])
+    assert selector.label(selection) == str(selection[0])
+
+
+def test_error_if_assignment_key_is_invalid():
+    data = np.zeros((3, 2))
+    map_ = {0: {"x": {}}}
+    selector = index.Selector(map_, data)
+    with pytest.raises(exception.IncorrectUsage):
+        selector[(select.Assignment("y", 1),)]
+
+
+def test_error_if_assignment_value_is_not_present():
+    data = np.zeros((3, 2))
+    map_ = {0: {"x": {1: 0}}}
+    selector = index.Selector(map_, data)
+    with pytest.raises(exception.IncorrectUsage):
+        selector[(select.Assignment("x", 2),)]
+
+
+def test_error_if_assignment_used_on_non_mapping():
+    data = np.zeros((3, 2))
+    map_ = {0: {"x": 1}}
+    selector = index.Selector(map_, data)
+    with pytest.raises(exception.IncorrectUsage):
+        selector[(select.Assignment("x", 1),)]
+
+
+def test_error_if_nonassignment_used_on_mapping():
+    data = np.zeros((3, 2))
+    map_ = {0: {"x": {1: 0}}}
+    selector = index.Selector(map_, data)
+    with pytest.raises(exception.IncorrectUsage):
+        selector[(("x",),)]
 
 
 @pytest.mark.parametrize(
