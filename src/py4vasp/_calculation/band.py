@@ -86,6 +86,7 @@ class Band(base.Refinery, graph.Mixin):
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
         >>> collinear_calculation = demo.calculation(path, selection="collinear")
+        >>> noncollinear_calculation = demo.calculation(path, selection="noncollinear")
 
         Parameters
         ----------
@@ -125,12 +126,34 @@ class Band(base.Refinery, graph.Mixin):
         {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
             'occupations': array(...), 'Sr_d': array(...), 'Ti_d': array(...)}}
 
-        Select the spin-up contribution of the first three atoms combined
+        For collinear calculations, the spin channels are treated separately
+
+        >>> collinear_calculation.band.to_dict()
+        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands_up': array(...),
+            'bands_down': array(...), 'occupations_up': array(...),
+            'occupations_down': array(...)}}
+
+        You can also select particular spin channels, for example the spin-up contribution
+        of the first three atoms combined
 
         >>> collinear_calculation.band.to_dict("up(1:3)")
         {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands_up': array(...),
             'bands_down': array(...), 'occupations_up': array(...),
             'occupations_down': array(...), '1:3_up': array(...)}}
+
+        For noncollinear calculations, the resulting dictionary has the same structure
+        as for the nonpolarized case
+        >>> noncollinear_calculation.band.to_dict()
+        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
+            'occupations': array(...)}}
+
+        If you want to investigate the spin projection of the bands, you can select
+        particular spin components. Here, we select the x and z components of the spin
+
+        >>> noncollinear_calculation.band.to_dict("sigma_x, sigma_z")
+        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
+            'occupations': array(...), 'sigma_x': array(...), 'sigma_z': array(...),
+            'is_spin_projection': ['sigma_x', 'sigma_z']}}
 
         Add the contribution of three d orbitals
 
@@ -183,6 +206,7 @@ class Band(base.Refinery, graph.Mixin):
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
         >>> collinear_calculation = demo.calculation(path, selection="collinear")
+        >>> noncollinear_calculation = demo.calculation(path, selection="noncollinear")
 
         Parameters
         ----------
@@ -222,6 +246,28 @@ class Band(base.Refinery, graph.Mixin):
         >>> calculation.band.to_graph("d(Sr, Ti)")
         Graph(series=[Series(..., label='Sr_d', ...), Series(..., label='Ti_d', ...)], ...)
 
+        For collinear calculations, the spin channels are treated separately
+
+        >>> collinear_calculation.band.to_graph()
+        Graph(series=[Series(..., label='up', ...), Series(..., label='down', ...)], ...)
+
+        You can also select particular spin channels, for example the spin-up contribution
+        of the first three atoms combined
+
+        >>> collinear_calculation.band.to_graph("up(1:3)")
+        Graph(series=[Series(..., label='1:3_up', ...)], ...)
+
+        For noncollinear calculations, the resulting dictionary has the same structure
+        as for the nonpolarized case
+        >>> noncollinear_calculation.band.to_graph()
+        Graph(series=[Series(..., label='bands', ...)], ...)
+
+        If you want to investigate the spin projection of the bands, you can select
+        particular spin components. Here, we select the x component of the spin
+
+        >>> noncollinear_calculation.band.to_graph("sigma_x")
+        Graph(series=[Series(..., label='sigma_x', ...)], ...)
+
         Add the contribution of three d orbitals
 
         >>> calculation.band.to_graph("dxy + dxz + dyz")
@@ -260,6 +306,7 @@ class Band(base.Refinery, graph.Mixin):
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
         >>> collinear_calculation = demo.calculation(path, selection="collinear")
+        >>> noncollinear_calculation = demo.calculation(path, selection="noncollinear")
 
         Parameters
         ----------
@@ -294,6 +341,32 @@ class Band(base.Refinery, graph.Mixin):
 
         >>> calculation.band.to_frame("d(Sr, Ti)")
            kpoint_distances  bands  occupations  Sr_d  Ti_d
+        0  ...
+
+        For collinear calculations, the spin channels are treated separately
+
+        >>> collinear_calculation.band.to_frame()
+           kpoint_distances  bands_up  bands_down  occupations_up  occupations_down
+        0  ...
+
+        You can also select particular spin channels, for example the spin-up contribution
+        of the first three atoms combined
+
+        >>> collinear_calculation.band.to_frame("up(1:3)")
+           kpoint_distances  bands_up  ...  occupations_down    1:3_up
+        0  ...
+
+        For noncollinear calculations, the resulting dictionary has the same structure
+        as for the nonpolarized case
+        >>> noncollinear_calculation.band.to_frame()
+           kpoint_distances  bands  occupations
+        0  ...
+
+        If you want to investigate the spin projection of the bands, you can select
+        particular spin components. Here, we select the x and z components of the spin
+
+        >>> noncollinear_calculation.band.to_frame("sigma_x, sigma_z")
+           kpoint_distances  bands  occupations  sigma_x  sigma_z
         0  ...
 
         Add the contribution of three d orbitals
@@ -538,6 +611,9 @@ class Band(base.Refinery, graph.Mixin):
             if key in relevant_keys:
                 data[key] = _to_series(value)
         for key, value in self._read_projections(selection).items():
+            if key == projector.SPIN_PROJECTION:
+                # do not include spin projection in dataframe
+                continue
             data[key] = _to_series(value)
         return data
 
