@@ -194,13 +194,14 @@ class Selector:
             assert False, f"Reading {selection} is not implemented."
 
     def _read_key(self, key):
-        self._raise_key_not_found_error(key)
+        self._raise_error_if_key_not_found(key)
         dimension, slice_ = self._map[key]
+        self._raise_error_if_only_assignment_allowed(key, slice_)
         return _Slices(self._indices).set(dimension, slice_, key)
 
     def _read_range(self, range_):
-        self._raise_key_not_found_error(range_.group[0])
-        self._raise_key_not_found_error(range_.group[1])
+        self._raise_error_if_key_not_found(range_.group[0])
+        self._raise_error_if_key_not_found(range_.group[1])
         dimension = self._read_dimension(range_)
         slice_ = self._merge_slice(range_)
         return _Slices(self._indices).set(dimension, slice_, range_)
@@ -236,16 +237,22 @@ class Selector:
         yield from self._get_all_slices(operation.right_operand, operation.operator)
 
     def _read_assignment(self, assignment):
-        self._raise_key_not_found_error(assignment.left_operand)
+        self._raise_error_if_key_not_found(assignment.left_operand)
         dimension, mapping = self._map[assignment.left_operand]
-        if not isinstance(mapping, dict):
-            valid_keys = self._map.keys()
-            message = f"""\
-The key {assignment.left_operand} does not support assignments. You used {assignment} \
-but py4vasp only support "{'", "'.join(valid_keys)}"."""
-            raise exception.IncorrectUsage(message)
+        self._raise_error_if_assignment_not_allowed(assignment, mapping)
+        indices = self._find_indices_in_mapping(assignment, mapping)
+        slice_ = _make_slice(indices)
+        return _Slices(self._indices).set(dimension, slice_, str(assignment))
 
-    def _raise_key_not_found_error(self, key):
+    def _find_indices_in_mapping(self, assignment, mapping):
+        if assignment.right_operand in mapping:
+            return mapping[assignment.right_operand]
+        for key, value in mapping.items():
+            if np.isclose(key, assignment.right_operand):
+                return value
+        self._raise_error_that_argument_not_in_mapping(assignment, mapping)
+
+    def _raise_error_if_key_not_found(self, key):
         if key in self._map:
             return
         valid_keys = self._map.keys()
@@ -253,6 +260,32 @@ but py4vasp only support "{'", "'.join(valid_keys)}"."""
 and capitalization. {did_you_mean(key, valid_keys)}py4vasp supports any of the following \
 selections: "{'", "'.join(valid_keys)}". If some of the selections you expected are not \
 available, please check your INCAR file and the VASP version you are using."""
+        raise exception.IncorrectUsage(message)
+
+    def _raise_error_if_assignment_not_allowed(self, assignment, mapping):
+        if isinstance(mapping, dict):
+            return
+        valid_keys = self._map.keys()
+        message = f"""\
+The key "{assignment.left_operand}" does not support assignments. You used "{assignment}" \
+but py4vasp only support "{'", "'.join(valid_keys)}"."""
+        raise exception.IncorrectUsage(message)
+
+    def _raise_error_if_only_assignment_allowed(self, key, mapping):
+        if not isinstance(mapping, dict):
+            return
+        valid_keys = [str(key) for key in mapping.keys()]
+        message = f"""\
+You tried to access the selection "{key}". However, you need to specify which value you \
+want to select like "{key}=<value>" where <value> is one of "{'", "'.join(valid_keys)}"."""
+        raise exception.IncorrectUsage(message)
+
+    def _raise_error_that_argument_not_in_mapping(self, assignment, mapping):
+        valid_keys = [str(key) for key in mapping.keys()]
+        message = f"""\
+Could not parse the selection "{assignment.right_operand}", please check the spelling \
+and capitalization. {did_you_mean(assignment.right_operand, valid_keys)}py4vasp supports \
+any of the following selections: "{'", "'.join(valid_keys)}"."""
         raise exception.IncorrectUsage(message)
 
 

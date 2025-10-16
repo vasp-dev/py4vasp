@@ -205,12 +205,15 @@ def test_error_if_assignment_used_on_non_mapping():
         selector[(select.Assignment("x", 1),)]
 
 
-def test_error_if_nonassignment_used_on_mapping():
+@pytest.mark.parametrize(
+    "selection", [("x",), (make_range("x", "y"),), (make_pair("x", "y"),)]
+)
+def test_error_if_nonassignment_used_on_mapping(selection):
     data = np.zeros((3, 2))
     map_ = {0: {"x": {1: 0}}}
     selector = index.Selector(map_, data)
     with pytest.raises(exception.IncorrectUsage):
-        selector[(("x",),)]
+        selector[selection]
 
 
 @pytest.mark.parametrize(
