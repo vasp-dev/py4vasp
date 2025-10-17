@@ -399,6 +399,13 @@ class Band(base.Refinery, graph.Mixin):
         at each **k** point. You can select which components of the spin are shown
         and which bands are included. You can also select particular atoms and orbitals.
 
+        Let us generate some example data do that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet. Alternatively,
+        you can use your own data if you have run VASP with an appropriate k-point mesh.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, selection="spin_texture")
+
         Parameters
         ----------
         selection
@@ -457,48 +464,44 @@ class Band(base.Refinery, graph.Mixin):
 
         Examples
         --------
-        Let us generate some example data do that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet. Alternatively,
-        you can use your own data if you have run VASP with an appropriate k-point mesh.
-
-        >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, selection="spin_texture")
-
         Plot a projection of the spin texture in reciprocal space, summed over all atoms and orbitals, for the first band and the x and y components.
 
         >>> calculation.band.to_quiver("x~y(band=1)")
-        Graph(series=[Contour(data=array([[[...
-
-        >>> calculation.band.to_quiver()
-        Graph(series=[Contour(data=array([[[...
+        Graph(series=[Contour(data=array([[[...]]]), ..., label='x~y_band=1', ...)], ...,
+            title='Spin Texture')
 
         Select the Ba atom, the third band, the x and z spin components, then sum over all orbitals:
 
-        >>> calculation.band.to_quiver("Ba(sigma_1~sigma_3(band[3]))")
-        Graph(series=[Contour(data=array([[[...
+        >>> calculation.band.to_quiver("Ba(sigma_1~sigma_3(band=3))")
+        Graph(series=[Contour(..., label='Ba_sigma_1~sigma_3_band=3', ...)], ...)
 
         Select the Pb atom, s orbital, second band and the x and y spin components:
 
-        >>> calculation.band.to_quiver("Pb(s(band[2](sigma_x~sigma_y)))")
-        Graph(series=[Contour(data=array([[[...
+        >>> calculation.band.to_quiver("Pb(s(band=2(sigma_x~sigma_y)))")
+        Graph(series=[Contour(..., label='Pb_s_sigma_x~sigma_y_band=2', ...)], ...)
 
-        Select the 4th atom in the POSCAR file, d orbitals, the second band and the y and z spin components.
-        The plot is shown for a 3x3 supercell:
+        To plot a 3x3 supercell of the reciprocal lattice plane:
 
-        >>> calculation.band.to_quiver(selection="4(d(y~z(band[2])))", supercell=3)
-        Graph(series=[Contour(data=array([[[...
+        >>> calculation.band.to_quiver(selection="band=1(x~y)", supercell=3)
+        Graph(series=[Contour(..., supercell=array([3, 3]), ...)], ...)
 
-        Select x & y spin components and the first band (default), sum over atoms and orbitals.
-        Plot a 2x4 supercell, and rotate the plane normal to align with the nearest coordinate axis.
+        You can also provide different replication numbers for the two remaining lattice vectors:
 
-        >>> calculation.band.to_quiver(supercell=np.array([2, 4]), normal="auto") # doctest: +SKIP
-        Graph(series=[Contour(data=array([[[...
+        >>> calculation.band.to_quiver(selection="band=1(x~y)", supercell=np.array([2, 4]))
+        Graph(series=[Contour(..., supercell=array([2, 4]), ...)], ...)
 
-        Select x & y spin components and the first band (default), sum over atoms and orbitals.
-        Rotate the plane normal to align with the y coordinate axis.
+        We can also use KPOINTS_OPT to specify a different mesh. We can use the normal
+        argument to rotate the plane normal to align with the nearest coordinate axis.
 
-        >>> calculation.band.to_quiver(normal="y")
-        Graph(series=[Contour(data=array([[[...
+        >>> calculation.band.to_quiver(selection="kpoints_opt(band=1(x~y))", normal="auto")
+        Graph(series=[Contour(data=array([[[...]]]), ...)], ...)
+
+        The automatic rotation will only work if one of the reciprocal lattice vectors is
+        sufficiently close to a Cartesian axis. If this is not the case, you can manually specify the desired axis.
+        For example, to rotate the plane normal to align with the x coordinate axis:
+
+        >>> calculation.band.to_quiver(selection="band=1(x~y)", normal="x")
+        Graph(series=[Contour(data=array([[[...]]]), ...)], ...)
         """
         reciprocal_lattice_vectors = self._kpoint()._reciprocal_lattice_vectors()
         nkp1, nkp2, cut = self._kmesh()

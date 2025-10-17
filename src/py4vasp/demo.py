@@ -81,7 +81,8 @@ def _generate_noncollinear_data(h5f):
 
 
 def _generate_spin_texture_data(h5f):
-    write(h5f, _demo.band.spin_texture("with_projectors"))
+    write(h5f, _demo.band.spin_texture("x~y"))
+    write(h5f, _demo.band.spin_texture("x~z"), selection="kpoints_opt")
 
 
 _DATA_GENERATORS = {
