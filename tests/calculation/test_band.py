@@ -116,9 +116,16 @@ def spin_texture(raw_data):
     band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
     project_all_xy = np.sum(raw_band.projections[1:3, ..., 1], axis=(1, 2))
-    band.ref.expected_data = np.reshape(project_all_xy, (2, 4, 3))
+    project_Pb_xy = np.sum(raw_band.projections[1:3, 2, :, :, 0], axis=1)
+    project_d_yz = np.sum(raw_band.projections[2:4, :, 2, :, 2], axis=1)
+    project_5_p_zx = raw_band.projections[[1, 3], 4, 1, :, 0]
+    band.ref.expected_data = {
+        "sigma_x~sigma_y_band=2": np.reshape(project_all_xy, (2, 4, 3)),
+        "Pb_sigma_1~sigma_2_band=1": np.reshape(project_Pb_xy, (2, 4, 3)),
+        "d_y~z_band=3": np.reshape(project_d_yz, (2, 4, 3)),
+        "O_2_p_x~z_band=1": np.reshape(project_5_p_zx, (2, 4, 3)),
+    }
     band.ref.expected_lattice = np.array([[1.52216787, 0.0], [0.14521927, 1.51522486]])
-    band.ref.expected_label = "spin texture sigma_x~sigma_y_band=2"
     return band
 
 
@@ -392,20 +399,25 @@ def test_to_quiver_with_incorrect_selection_raises_error(spin_texture):
         spin_texture.to_quiver("band=2")
 
 
-def test_band_to_quiver(spin_texture, Assert):
-    graph = spin_texture.to_quiver("band=2(sigma_x~sigma_y)")
+@pytest.mark.parametrize(
+    "selection",
+    [
+        "band=2(sigma_x~sigma_y)",
+        "Pb(sigma_1~sigma_2(band=1))",
+        "band=3(d(y~z))",
+        "p(5(band=1(z~x)))",
+    ],
+)
+def test_band_to_quiver(spin_texture, selection, Assert):
+    graph = spin_texture.to_quiver(selection)
+    assert graph.title == "Spin Texture"
     assert len(graph) == 1
     series = graph.series[0]
-    Assert.allclose(series.data, spin_texture.ref.expected_data)
     Assert.allclose(
         series.lattice.vectors, spin_texture.ref.expected_lattice, tolerance=1e6
     )
-    Assert.allclose(
-        np.linalg.norm(series.lattice.vectors, axis=1),
-        np.linalg.norm(spin_texture.ref.expected_lattice, axis=1),
-        tolerance=1e6,
-    )
-    assert series.label == spin_texture.ref.expected_label
+    assert series.label in spin_texture.ref.expected_data
+    Assert.allclose(series.data, spin_texture.ref.expected_data[series.label])
 
 
 # def test_texture_to_quiver_sel1(spin_texture, Assert):

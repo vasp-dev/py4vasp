@@ -382,7 +382,10 @@ def test_group_subselection_on_left_raises_error(selection):
         selections(selection)
 
 
-@pytest.mark.parametrize("selection", ["(", "A(", "A,(", ")", "A)"])
+@pytest.mark.parametrize(
+    "selection",
+    ["(", "A(", "A,(", ")", "A)", "A+B)", "A~B)", "A=B)"],
+)
 def test_broken_parenthesis(selection):
     with pytest.raises(exception.IncorrectUsage):
         select.Tree.from_selection(selection)

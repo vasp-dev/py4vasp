@@ -532,13 +532,12 @@ class Band(base.Refinery, graph.Mixin):
             )
             for selection in tree.selections()
         ]
-        return graph.Graph(quiver_plots)
+        return graph.Graph(quiver_plots, title="Spin Texture")
 
     def _quiver_plot(self, selector, selection, nkp1, nkp2):
         data = selector[selection]
         data = data.reshape(2, nkp1, nkp2)
-        label = "spin texture " + selector.label(selection)
-        return {"data": data, "label": label}
+        return {"data": data, "label": selector.label(selection)}
 
     def _make_selector(self, projections):
         maps = self._projector().to_dict()
