@@ -5,7 +5,7 @@ from typing import Optional
 
 import h5py
 
-from py4vasp import _demo, exception
+from py4vasp import _demo, exception, raw
 from py4vasp._calculation import Calculation
 from py4vasp._raw.definition import DEFAULT_FILE
 from py4vasp._raw.write import write
@@ -51,6 +51,7 @@ def _create_path_for_data(path, selection):
 def _generate_calculation_data(h5f, selection):
     generator = _DATA_GENERATORS.get(selection)
     if generator is not None:
+        write(h5f, raw.Version(major=99, minor=99, patch=99))
         generator(h5f)
     else:
         available = ", ".join(filter(None, key) for key in _DATA_GENERATORS.keys())
@@ -73,11 +74,13 @@ def _generate_default_data(h5f):
 def _generate_collinear_data(h5f):
     write(h5f, _demo.band.spin_polarized_bands("with_projectors"))
     write(h5f, _demo.dos.Fe3O4("with_projectors"))
+    write(h5f, _demo.local_moment.local_moment("collinear"))
 
 
 def _generate_noncollinear_data(h5f):
     write(h5f, _demo.band.noncollinear_bands("with_projectors"))
     write(h5f, _demo.dos.Ba2PbO4("noncollinear"))
+    write(h5f, _demo.local_moment.local_moment("orbital_moments"))
 
 
 def _generate_spin_texture_data(h5f):

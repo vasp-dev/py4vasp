@@ -24,7 +24,6 @@ selection : str
 _ORBITAL_PROJECTION = "orbital_projection"
 
 
-@documentation.format(examples=slice_.examples("local_moment"))
 class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     """The local moments describe the charge and magnetization near an atom.
 
@@ -45,7 +44,32 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     may influence the observed moments. Hence, there is no one-to-one correspondence
     to the experimental moments.
 
-    {examples}
+    Examples
+    --------
+    Let us create some example data so that we can illustrate how to use this class.
+    Of course you can also use your own VASP calculation data if you have it available.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path, "collinear")
+
+    If you access the local moments, the result will depend on the steps that you selected
+    with the [] operator. Without any selection the results from the final step will be
+    used.
+
+    >>> calculation.local_moment.number_steps()
+    1
+
+    To select the results for all steps, you don't specify the array boundaries.
+
+    >>> calculation.local_moment[:].number_steps()
+    4
+
+    You can also select specific {step}s or a subset of {step}s as follows
+
+    >>> calculation.local_moment[3].number_steps()
+    1
+    >>> calculation.local_moment[1:4].number_steps()
+    3
     """
 
     _missing_data_message = "Atom resolved magnetic information not present, please verify LORBIT tag is set."
@@ -68,11 +92,13 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
             return magmom + separator.join(generator)
 
     @base.data_access
-    @documentation.format(
-        index_note=_index_note, examples=slice_.examples("local_moment", "to_dict")
-    )
+    @documentation.format(index_note=_index_note)
     def to_dict(self):
         """Read the charges and magnetization data into a dictionary.
+
+        Be careful when comparing the magnetic moments to experimental data. The
+        finite size of the projection sphere may influence the observed moments. Hence,
+        there is no one-to-one correspondence to the experimental moments.
 
         Returns
         -------
@@ -82,7 +108,47 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
         {index_note}
 
-        {examples}
+        Examples
+        --------
+        First we create some example data so that we can illustrate how to use this method.
+        Of course you can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> collinear_calculation = demo.calculation(path, "collinear")
+        >>> noncollinear_calculation = demo.calculation(path, "noncollinear")
+
+        If you use the `to_dict` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> collinear_calculation.local_moment.to_dict()
+        {{'orbital_projection': ['s', 'p', 'd'], 'charge': array([[...]]),
+            'total': array([[...]])}}
+
+        To select the results for all steps, you don't specify the array boundaries.
+        Notice that in this case the charge and the total moment contain an additional
+        dimension for the different steps.
+
+        >>> collinear_calculation.local_moment[:].to_dict()
+        {{'orbital_projection': ['s', 'p', 'd'], 'charge': array([[[...]]]),
+            'total': array([[[...]]])}}
+
+        You can also select specific steps or a subset of steps as follows
+
+        >>> collinear_calculation.local_moment[2].to_dict()
+        {{'orbital_projection': ['s', 'p', 'd'], 'charge': array([[...]]),
+            'total': array([[...]])}}
+        >>> collinear_calculation.local_moment[0:3].to_dict()
+        {{'orbital_projection': ['s', 'p', 'd'], 'charge': array([[[...]]]),
+            'total': array([[[...]]])}}
+
+        For noncollinear calculations, the magnetic moments are vectors. In addition,
+        if the calculation was run with LORBMOM = T, orbital and spin moments are
+        reported separately.
+
+        >>> noncollinear_calculation.local_moment.to_dict()
+        {{'orbital_projection': ['s', 'p', 'd'], 'charge': array([[...]]),
+            'total': array([[[...]]]), 'spin': array([[[...]]]), 'orbital': array([[[...]]])}}
         """
         return {
             _ORBITAL_PROJECTION: self.selections()[_ORBITAL_PROJECTION],
@@ -92,11 +158,14 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         }
 
     @base.data_access
-    @documentation.format(
-        selection=_moment_selection, examples=slice_.examples("local_moment", "to_view")
-    )
+    @documentation.format(selection=_moment_selection)
     def to_view(self, selection="total", supercell=None):
         """Visualize the magnetic moments as arrows inside the structure.
+
+        Be aware that the magnetic moments are rescaled for better visibility. The length
+        of the largest moment is set to :attr:`length_moments`. If your moments are
+        vanishingly small, this may lead to unexpectedly large arrows. Please double check
+        the actual values with :meth:`magnetic`.
 
         Parameters
         ----------
@@ -110,7 +179,49 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
             the moment points in the actual direction; for collinear magnetism
             the moments are aligned along the z axis by convention.
 
-        {examples}
+        Examples
+        --------
+        First we create some example data so that we can illustrate how to use this method.
+        Of course you can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> collinear_calculation = demo.calculation(path, "collinear")
+        >>> noncollinear_calculation = demo.calculation(path, "noncollinear")
+
+        If you use the `to_view` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> collinear_calculation.local_moment.to_view()
+        View(..., ion_arrows=[IonArrow(quantity=array([[[...]]]), label='total moments', ...)], ...)
+
+        For collinear calculations, the magnetic moments are scalars aligned along the
+        z axis. You can see this from the arrows pointing either up or down or x and y
+        components being zero.
+
+        To select the results for all steps, you don't specify the array boundaries.
+
+        >>> collinear_calculation.local_moment[:].to_view()
+        View(..., ion_arrows=[IonArrow(quantity=array([[[...]]]), label='total moments', ...)], ...)
+
+        You can also select specific steps or a subset of steps as follows
+
+        >>> collinear_calculation.local_moment[2].to_view()
+        View(..., ion_arrows=[IonArrow(quantity=array([[[...]]]), label='total moments', ...)], ...)
+        >>> collinear_calculation.local_moment[0:3].to_view()
+        View(..., ion_arrows=[IonArrow(quantity=array([[[...]]]), label='total moments', ...)], ...)
+
+        For noncollinear calculations, the magnetic moments are aligned according to
+        the spin axis (:tag:`SAXIS`). The view has the same interface, but the arrows now
+        point in the actual direction of the magnetic moments.
+
+        >>> noncollinear_calculation.local_moment.to_view()
+        View(..., ion_arrows=[IonArrow(quantity=array([[[...]]]), label='total moments', ...)], ...)
+
+        You can also select spin or orbital moments separately.
+        >>> noncollinear_calculation.local_moment.to_view(selection="spin, orbital")
+        View(..., ion_arrows=[IonArrow(quantity=array([[[...]]]), label='spin moments', ...),
+            IonArrow(quantity=array([[[...]]]), label='orbital moments', ...)], ...)
         """
         viewer = self._structure[self._steps].plot(supercell)
         if not self._is_nonpolarized:
@@ -120,7 +231,6 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         return viewer
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("local_moment", "projected_charge"))
     def projected_charge(self):
         """Read the orbital- and site-projected charges of the selected steps.
 
@@ -129,17 +239,33 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         np.ndarray
             Contains the charges for the selected steps projected on atoms and orbitals.
 
-        {examples}
+        Examples
+        --------
+        First we create some example data so that we can illustrate how to use this method.
+        Of course you can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "collinear")
+
+        If you use the `projected_charge` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> calculation.local_moment.projected_charge()
+        array([[...]])
+
+        To select the results for all steps, you don't specify the array boundaries.
+        Notice that in this case the charge contains an additional dimension for the
+        different steps.
+
+        >>> calculation.local_moment[:].projected_charge()
+        array([[[...]]])
         """
         self._raise_error_if_steps_out_of_bounds()
         return self._raw_data.spin_moments[self._steps, 0]
 
     @base.data_access
-    @documentation.format(
-        selection=_moment_selection,
-        index_note=_index_note,
-        examples=slice_.examples("local_moment", "projected_magnetic"),
-    )
+    @documentation.format(selection=_moment_selection, index_note=_index_note)
     def projected_magnetic(self, selection="total"):
         """Read the orbital- and site-projected magnetic moments of the selected steps.
 
@@ -155,7 +281,49 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
         {index_note}
 
-        {examples}
+        Examples
+        --------
+        First we create some example data so that we can illustrate how to use this method.
+        Of course you can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> collinear_calculation = demo.calculation(path, "collinear")
+        >>> noncollinear_calculation = demo.calculation(path, "noncollinear")
+
+        If you use the `projected_magnetic` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> collinear_calculation.local_moment.projected_magnetic()
+        array([[...]])
+
+        To select the results for all steps, you don't specify the array boundaries.
+
+        >>> collinear_calculation.local_moment[:].projected_magnetic()
+        array([[[...]]])
+
+        You can also select specific steps or a subset of steps as follows
+
+        >>> collinear_calculation.local_moment[2].projected_magnetic()
+        array([[...]])
+        >>> collinear_calculation.local_moment[0:3].projected_magnetic()
+        array([[[...]]])
+
+        To select the results for all steps, you don't specify the array boundaries.
+
+        >>> collinear_calculation.local_moment[:].projected_magnetic()
+        array([[[...]]])
+
+        For noncollinear calculations, the magnetic moments are aligned according to
+        the spin axis (:tag:`SAXIS`). Since the moments are now vectors, the result
+        has an additional dimension for the different directions.
+
+        >>> noncollinear_calculation.local_moment.projected_magnetic()
+        array([[[...]]])
+
+        You can also select spin or orbital moments separately.
+        >>> noncollinear_calculation.local_moment.projected_magnetic(selection="spin")
+        array([[[...]]])
         """
         self._raise_error_if_steps_out_of_bounds()
         self._raise_error_if_no_magnetic_moments()
@@ -164,7 +332,6 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         return np.squeeze(moments)
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("local_moment", "charge"))
     def charge(self):
         """Read the site-projected charges of the selected steps.
 
@@ -174,18 +341,44 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
             Contains the charges for the selected steps projected on atoms. Equivalent
             to summing the projected charges over the orbitals.
 
-        {examples}
+        Examples
+        --------
+        First we create some example data so that we can illustrate how to use this method.
+        Of course you can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "collinear")
+
+        If you use the `charge` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> calculation.local_moment.charge()
+        array([...])
+
+        To select the results for all steps, you don't specify the array boundaries.
+        Notice that in this case the charge contains an additional dimension for the
+        different steps.
+
+        >>> calculation.local_moment[:].charge()
+        array([[...]])
+
+        The charge is equivalent to summing the projected charges over the orbitals
+
+        >>> np.allclose(calculation.local_moment.charge(),
+        ...     calculation.local_moment.projected_charge().sum(axis=-1))
+        True
         """
         return _sum_over_orbitals(self.projected_charge())
 
     @base.data_access
-    @documentation.format(
-        selection=_moment_selection,
-        index_note=_index_note,
-        examples=slice_.examples("local_moment", "magnetic"),
-    )
+    @documentation.format(selection=_moment_selection, index_note=_index_note)
     def magnetic(self, selection="total"):
         """Read the site-projected magnetic moments of the selected steps.
+
+        Be careful when comparing the magnetic moments to experimental data. The
+        finite size of the projection sphere may influence the observed moments. Hence,
+        there is no one-to-one correspondence to the experimental moments.
 
         Parameters
         ----------
@@ -199,7 +392,56 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
         {index_note}
 
-        {examples}
+        Examples
+        --------
+        First we create some example data so that we can illustrate how to use this method.
+        Of course you can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> collinear_calculation = demo.calculation(path, "collinear")
+        >>> noncollinear_calculation = demo.calculation(path, "noncollinear")
+
+        If you use the `magnetic` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> collinear_calculation.local_moment.magnetic()
+        array([...])
+
+        To select the results for all steps, you don't specify the array boundaries.
+
+        >>> collinear_calculation.local_moment[:].magnetic()
+        array([[...]])
+
+        You can also select specific steps or a subset of steps as follows
+
+        >>> collinear_calculation.local_moment[2].magnetic()
+        array([...])
+        >>> collinear_calculation.local_moment[0:3].magnetic()
+        array([[...]])
+
+        To select the results for all steps, you don't specify the array boundaries.
+
+        >>> collinear_calculation.local_moment[:].magnetic()
+        array([[...]])
+
+        For noncollinear calculations, the magnetic moments are aligned according to
+        the spin axis (:tag:`SAXIS`). Since the moments are now vectors, the result
+        has an additional dimension for the different directions.
+
+        >>> noncollinear_calculation.local_moment.magnetic()
+        array([[...]])
+
+        You can also select spin or orbital moments separately.
+        >>> noncollinear_calculation.local_moment.magnetic(selection="spin")
+        array([[...]])
+
+        The magnetic moment is equivalent to summing the projected magnetic moments over
+        the orbitals
+
+        >>> np.allclose(collinear_calculation.local_moment.magnetic(),
+        ...     collinear_calculation.local_moment.projected_magnetic().sum(axis=-1))
+        True
         """
         return _sum_over_orbitals(
             self.projected_magnetic(selection), is_vector=self._is_noncollinear
@@ -219,6 +461,12 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         else:
             result["component"] = ["charge", "total", "spin"]
         return result
+
+    @base.data_access
+    def number_steps(self):
+        """Return the number of local moments in the trajectory."""
+        range_ = range(len(self._raw_data.spin_moments))
+        return len(range_[self._slice])
 
     @property
     def _is_nonpolarized(self):
