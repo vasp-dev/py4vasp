@@ -57,9 +57,15 @@ class Selector:
     maps : dict
         The keys of the dictionary should be integer values indicating the dimension
         of the array described by its values. The values are dictionaries that map
-        labels of the dimension onto corresponding slices of the array. Instead of a
-        slice a single index is allowed as well. If the label is set to None, this
-        particular selection overwrites the default of all indices.
+        labels of the dimension onto corresponding parts of the array. If the label is
+        set to None, this particular selection overwrites the default of all indices.
+        The following options are possible: mapping a string to a single index, mapping
+        a string to a slice, mapping a string to a dictionary of values. The first two
+        options can be combined but the last option is exclusive for each string. The
+        intended usage of the first two options is that the user provides a specific
+        string to select that part of the array. The last option is intended for
+        assignments where the user provides a value to select the corresponding part
+        of the array.
     data : VaspData
         An array read from the VASP calculation. The indices in the maps should be
         compatible with the dimension of this array.
@@ -73,6 +79,20 @@ class Selector:
         have e.g. the label *A* corresponding to the first three elements and *1*
         corresponds to the first element in total, setting this flag will label *1* as
         *A_1* instead.
+
+    Examples
+    --------
+    >>> from py4vasp._util import index, select
+    >>> maps = {
+    ...     0: {None: slice(None), "up": 0, "down": 1},
+    ...     1: {"s": 0, "p": slice(1, 4), "d": slice(4, 9)},
+    ...     2: {"band": {1: 0, 2: 1, 3: 2}},
+    ... }
+    >>> data = np.random.random((2, 9, 3))
+    >>> user_selection = "up(p(band=2))"
+    >>> selector = select.Selector(maps, data)
+    >>> for selection in tree.from_selection(user_selection).selections():
+    >>>     result = selector[selection]
     """
 
     def __init__(self, maps, data, *, reduction=np.sum, use_number_labels=False):
@@ -82,7 +102,6 @@ class Selector:
         if not self._data.is_none():
             _raise_error_if_map_out_of_bounds(maps.keys(), self._data.ndim)
         self._map = self._make_map(maps)
-        print(self._map)
         self._use_number_labels = use_number_labels
         self._number_labels = self._make_number_labels(maps)
         self._indices = self._make_default_indices(maps, self._data.ndim)
@@ -245,12 +264,39 @@ class Selector:
         return _Slices(self._indices).set(dimension, slice_, str(assignment))
 
     def _find_indices_in_mapping(self, assignment, mapping):
-        if assignment.right_operand in mapping:
-            return mapping[assignment.right_operand]
         for key, value in mapping.items():
-            if np.isclose(key, assignment.right_operand):
-                return value
+            if isinstance(key, str):
+                if key == assignment.right_operand:
+                    return value
+            elif isinstance(key, int):
+                cast_operand = self._cast_to_int(key, assignment.right_operand)
+                if key == cast_operand:
+                    return value
+            elif isinstance(key, float):
+                cast_operand = self._cast_to_float(key, assignment.right_operand)
+                if np.isclose(key, cast_operand):
+                    return value
+            else:
+                assert False, f"Mapping key of type {type(key)} is not supported."
         self._raise_error_that_argument_not_in_mapping(assignment, mapping)
+
+    def _cast_to_int(self, key, value):
+        try:
+            return int(value)
+        except ValueError:
+            message = f"""\
+The expected format for '{key}' is integer. The value '{value}' could not be converted \
+to an integer."""
+            raise exception.IncorrectUsage(message)
+
+    def _cast_to_float(self, key, value):
+        try:
+            return float(value)
+        except ValueError:
+            message = f"""\
+The expected format for '{key}' is float. The value '{value}' could not be converted \
+to a float."""
+            raise exception.IncorrectUsage(message)
 
     def _raise_error_if_key_not_found(self, key):
         if key in self._map:

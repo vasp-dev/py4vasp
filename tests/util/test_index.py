@@ -159,12 +159,12 @@ def test_select_pair(selection, indices):
 @pytest.mark.parametrize(
     "selection, indices",
     [
-        ((make_assignment("int", 1),), 0),
-        ((make_assignment("int", 2),), slice(1, 4)),
+        ((make_assignment("int", "1"),), 0),
+        ((make_assignment("int", "2"),), slice(1, 4)),
         ((make_assignment("str", "x"),), slice(2, 5)),
         ((make_assignment("str", "y"),), 3),
-        ((make_assignment("float", -0.5),), slice(5, 10)),
-        ((make_assignment("float", 0),), 4),
+        ((make_assignment("float", "-0.5"),), slice(5, 10)),
+        ((make_assignment("float", "0"),), 4),
     ],
 )
 def test_select_assignment(selection, indices):
@@ -203,6 +203,22 @@ def test_error_if_assignment_used_on_non_mapping():
     selector = index.Selector(map_, data)
     with pytest.raises(exception.IncorrectUsage):
         selector[(select.Assignment("x", 1),)]
+
+
+@pytest.mark.parametrize(
+    "selection",
+    [
+        (make_assignment("x", "invalid"),),
+        (make_assignment("x", "1.5"),),
+        (make_assignment("y", "invalid"),),
+    ],
+)
+def test_error_if_typecasting_fails(selection):
+    data = np.zeros((3, 2))
+    map_ = {0: {"x": {1: 0}, "y": {1.5: 1}}}
+    selector = index.Selector(map_, data)
+    with pytest.raises(exception.IncorrectUsage):
+        selector[selection]
 
 
 @pytest.mark.parametrize(
