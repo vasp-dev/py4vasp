@@ -81,7 +81,7 @@ def noncollinear_bands(projectors):
 
 
 def spin_texture(selection):
-    dispersion = _demo.dispersion.spin_texture()
+    dispersion = _demo.dispersion.spin_texture(selection)
     projectors = _demo.projector.Ba2PbO4(use_orbitals=True)
     number_orbitals = len(projectors.orbital_types)
     shape_occ = dispersion.eigenvalues.shape

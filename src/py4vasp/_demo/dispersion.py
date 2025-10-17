@@ -40,8 +40,8 @@ def noncollinear_bands():
     return raw.Dispersion(kpoints, eigenvalues=_demo.wrap_random_data(shape))
 
 
-def spin_texture():
-    kpoints = _demo.kpoint.slice_("explicit")
+def spin_texture(selection):
+    kpoints = _demo.kpoint.slice_(selection)
     kpoints.cell = _demo.cell.Ba2PbO4()
     shape = (_demo.NONCOLLINEAR, len(kpoints.coordinates), _demo.NUMBER_BANDS)
     eigenvalues = np.arange(np.prod(shape)).reshape(shape)

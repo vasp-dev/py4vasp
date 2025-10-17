@@ -55,22 +55,23 @@ def line_mode(mode, labels):
     return kpoints
 
 
-def slice_(mode):
-    nkpx, nkpy, nkpz = (4, 3, 1)
-    x = np.linspace(0, 1, nkpx, endpoint=False)
-    y = np.linspace(0, 1, nkpy, endpoint=False)
-    z = np.linspace(0, 1, nkpz, endpoint=False) + 1 / 8
+def slice_(selection):
+    if selection == "x~y":
+        number_x, number_y, number_z = 4, 3, 1
+    elif selection == "x~z":
+        number_x, number_y, number_z = 4, 1, 3
+    else:  # selection == "y~z"
+        number_x, number_y, number_z = 1, 4, 3
+    x = np.linspace(0, 1, number_x, endpoint=False)
+    y = np.linspace(0, 1, number_y, endpoint=False)
+    z = np.linspace(0, 1, number_z, endpoint=False)
     coordinates = np.array(list(itertools.product(x, y, z)))
-    number_kpoints = len(coordinates) if mode[0] in ["e", b"e"[0]] else 0
-    number_kpx = nkpx if mode[0] in ["e", b"e"[0]] else 0
-    number_kpy = nkpy if mode[0] in ["e", b"e"[0]] else 0
-    number_kpz = nkpz if mode[0] in ["e", b"e"[0]] else 0
     kpoints = raw.Kpoint(
-        mode=mode,
-        number=number_kpoints,
-        number_x=number_kpx,
-        number_y=number_kpy,
-        number_z=number_kpz,
+        mode="explicit",
+        number=len(coordinates),
+        number_x=number_x,
+        number_y=number_y,
+        number_z=number_z,
         coordinates=coordinates,
         weights=np.arange(len(coordinates)),
         cell=_demo.cell.Ba2PbO4(),

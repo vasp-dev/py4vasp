@@ -8,7 +8,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from py4vasp import exception
-from py4vasp._calculation import _dispersion, base, projector
+from py4vasp._calculation import _dispersion, base, kpoint, projector
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_, index, select, slicing
 
@@ -500,21 +500,8 @@ class Band(base.Refinery, graph.Mixin):
         >>> calculation.band.to_quiver(normal="y")
         Graph(series=[Contour(data=array([[[...
         """
-        # raise exception.NotImplemented("to_quiver is not fully implemented")
-        scale = self._raw_data.dispersion.kpoints.cell.scale
-        latt_vecs = scale * self._raw_data.dispersion.kpoints.cell.lattice_vectors
-        if latt_vecs.shape[0] == 1:
-            latt_vecs = latt_vecs[0]
+        reciprocal_lattice_vectors = self._kpoint()._reciprocal_lattice_vectors()
         nkp1, nkp2, cut = self._kmesh()
-        # latt_vecs = _cell.Cell.from_data(self._raw_data.dispersion.kpoints.cell).lattice_vectors()
-        V: float = np.dot(latt_vecs[0], np.cross(latt_vecs[1], latt_vecs[2]))
-        reciprocal_lattice_vectors = (2.0 * np.pi / V) * np.array(
-            [
-                np.cross(latt_vecs[1], latt_vecs[2]),
-                np.cross(latt_vecs[2], latt_vecs[0]),
-                np.cross(latt_vecs[0], latt_vecs[1]),
-            ]
-        )
         # Plane is defined by KPOINTS file
         options = {
             "lattice": slicing.plane(
@@ -597,6 +584,9 @@ class Band(base.Refinery, graph.Mixin):
 
     def _projector(self):
         return projector.Projector.from_data(self._raw_data.projectors)
+
+    def _kpoint(self):
+        return kpoint.Kpoint.from_data(self._raw_data.dispersion.kpoints)
 
     def _projections(self, selection, width):
         if selection is None:

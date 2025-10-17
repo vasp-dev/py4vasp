@@ -255,6 +255,18 @@ reciprocal"""
             for index, kpoint in enumerate(self._raw_data.coordinates)
         ]
 
+    def _reciprocal_lattice_vectors(self):
+        scale = self._raw_data.cell.scale
+        lattice_vectors = scale * _last_step(self._raw_data.cell.lattice_vectors)
+        volume = np.linalg.det(lattice_vectors)
+        return (2.0 * np.pi / volume) * np.array(
+            [
+                np.cross(lattice_vectors[1], lattice_vectors[2]),
+                np.cross(lattice_vectors[2], lattice_vectors[0]),
+                np.cross(lattice_vectors[0], lattice_vectors[1]),
+            ]
+        )
+
 
 def _last_step(lattice_vectors):
     if lattice_vectors.ndim == 2:
