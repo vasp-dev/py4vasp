@@ -10,7 +10,7 @@ from py4vasp import _calculation, demo, exception
 
 
 def test_creating_default_calculation(tmp_path):
-    demo.calculation(tmp_path)
+    demo.calculation(tmp_path / "specific_example")
 
 
 def get_calculation_examples():
@@ -18,8 +18,9 @@ def get_calculation_examples():
     try:
         examples = (
             finder.find(_calculation)
-            + finder.find(_calculation.dos)
             + finder.find(_calculation.band)
+            + finder.find(_calculation.dos)
+            + finder.find(_calculation.structure)
         )
     except exception.ModuleNotInstalled:
         return []
@@ -37,7 +38,6 @@ def interesting_example(example):
         "local_moment",
         "pair_correlation",
         "stress",
-        "structure",
         "velocity",
     )
     return suffix not in skipped_suffixes

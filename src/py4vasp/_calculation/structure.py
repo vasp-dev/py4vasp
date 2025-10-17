@@ -1,6 +1,5 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import io
 from dataclasses import dataclass
 
 import numpy as np
@@ -8,7 +7,7 @@ import numpy as np
 from py4vasp import exception, raw
 from py4vasp._calculation import _stoichiometry, base, slice_
 from py4vasp._third_party import view
-from py4vasp._util import documentation, import_, parse, reader
+from py4vasp._util import import_, parse, reader
 
 ase = import_.optional("ase")
 ase_io = import_.optional("ase.io")
@@ -47,7 +46,6 @@ class _Format:
         return f"{element:21.16f}"
 
 
-@documentation.format(examples=slice_.examples("structure"))
 class Structure(slice_.Mixin, base.Refinery, view.Mixin):
     """The structure contains the unit cell and the position of all ions within.
 
@@ -67,7 +65,32 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
     along the simulation. Moreover, you could take snapshots along the trajectory
     and further process them by computing more properties.
 
-    {examples}
+    Examples
+    --------
+    Let us create some example data so that we can illustrate how to use this class.
+    Of course you can also use your own VASP calculation data if you have it available.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    If you access the structure, the result will depend on the steps that you selected
+    with the [] operator. Without any selection the results from the final step will be
+    used.
+
+    >>> calculation.structure.number_steps()
+    1
+
+    To select the results for all steps, you don't specify the array boundaries.
+
+    >>> calculation.structure[:].number_steps()
+    4
+
+    You can also select specific {step}s or a subset of {step}s as follows
+
+    >>> calculation.structure[3].number_steps()
+    1
+    >>> calculation.structure[1:4].number_steps()
+    3
     """
 
     A_to_nm = 0.1
@@ -77,6 +100,10 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
     def from_POSCAR(cls, poscar, *, elements=None):
         """Generate a structure from string in POSCAR format.
 
+        The POSCAR format is the standard format to represent crystal structures in
+        VASP. This method allows to create a structure from a POSCAR string.
+        To read more about the POSCAR format, please refer to the `VASP manual <https://vasp.at/wiki/POSCAR>`_.
+
         Parameters
         ----------
         elements : list[str]
@@ -85,6 +112,33 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
             if set it will overwrite the choice in the POSCAR file. Old POSCAR files
             do not specify the name of the elements; in that case this argument is
             required.
+
+        Examples
+        --------
+        We can create a GaAs structure from a POSCAR string as follows
+
+        >>> poscar = '''\\
+        ... GaAs
+        ... 5.65325
+        ... 0.0 0.5 0.5
+        ... 0.5 0.0 0.5
+        ... 0.5 0.5 0.0
+        ... 1 1
+        ... fractional
+        ... 0.0 0.0 0.0
+        ... 0.25 0.25 0.25'''
+        >>> structure = py4vasp.calculation.structure.from_POSCAR(poscar, elements=['Ga', 'As'])
+        >>> print(structure.to_POSCAR())
+        GaAs
+        5.6532...
+        0.0... 0.5... 0.5...
+        0.5... 0.0... 0.5...
+        0.5... 0.5... 0.0...
+        Ga As
+        1 1
+        Direct
+        0.00... 0.00... 0.00...
+        0.25... 0.25... 0.25...
         """
         poscar = _replace_or_set_elements(str(poscar), elements)
         poscar = parse.POSCAR(poscar)
@@ -129,16 +183,23 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         return "\n".join(lines)
 
     @base.data_access
-    @documentation.format(
-        examples=slice_.examples("structure", "to_dict"),
-        ion_types=_stoichiometry.ion_types_documentation,
-    )
     def to_dict(self, ion_types=None):
         """Read the structural information into a dictionary.
 
+        The returned dictionary contains the following keys:
+        - 'lattice_vectors': The lattice vectors of the unit cell.
+        - 'positions': The positions of the atoms in the unit cell.
+        - 'elements': The chemical elements of the atoms in the unit cell.
+        - 'names': The names of the atoms in the unit cell.
+
+        Note that 'elements' and 'names' have the same length as the number of atoms in
+        the unit cell.
+
         Parameters
         ----------
-        {ion_types}
+        ion_types : Sequence
+            Overwrite the ion types present in the raw data. You can use this to quickly
+            generate different stoichiometries without modifying the underlying raw data.
 
         Returns
         -------
@@ -147,7 +208,38 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
             all the atoms in units of the lattice vectors and the elements of
             the atoms for all selected steps.
 
-        {examples}
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this method.
+        You can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        If you use the `to_dict` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> calculation.structure.to_dict()
+        {'lattice_vectors': array([[...]]), 'positions': array([[...]]),
+            'elements': [...], 'names': [...]}
+
+        To select the results for all steps, you don't specify the array boundaries.
+        Notice that in this case the lattice vectors and positions contain an additional
+        dimension for the different steps.
+
+        >>> calculation.structure[:].to_dict()
+        {'lattice_vectors': array([[[...]]]), 'positions': array([[[...]]]),
+            'elements': [...], 'names': [...]}
+
+        You can also select specific steps or a subset of steps as follows
+
+        >>> calculation.structure[1].to_dict()
+        {'lattice_vectors': array([[...]]), 'positions': array([[...]]),
+            'elements': [...], 'names': [...]}
+        >>> calculation.structure[0:2].to_dict()
+        {'lattice_vectors': array([[[...]]]), 'positions': array([[[...]]]),
+            'elements': [...], 'names': [...]}
         """
         return {
             "lattice_vectors": self.lattice_vectors(),
@@ -157,25 +249,66 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         }
 
     @base.data_access
-    @documentation.format(
-        examples=slice_.examples("structure", "to_view"),
-        ion_types=_stoichiometry.ion_types_documentation,
-    )
     def to_view(self, supercell=None, ion_types=None):
         """Generate a 3d representation of the structure(s).
+
+        This method uses the `View` class to create a 3d visualization of the atomic
+        structure(s) in the unit cell.
 
         Parameters
         ----------
         supercell : int or np.ndarray
             If present the structure is replicated the specified number of times
             along each direction.
+        ion_types : Sequence
+            Overwrite the ion types present in the raw data. You can use this to quickly
+            generate different stoichiometries without modifying the underlying raw data.
 
         Returns
         -------
         View
             Visualize the structure(s) as a 3d figure.
 
-        {examples}
+        First, we create some example data so that we can illustrate how to use this method.
+        You can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        If you use the `to_view` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> calculation.structure.to_view()
+        View(elements=array([[...]], dtype=...), lattice_vectors=array([[[...]]]),
+            positions=array([[[...]]]), ...)
+
+        To select the results for all steps, you don't specify the array boundaries.
+        Notice that in this case the lattice vectors and positions contain an additional
+        dimension for the different steps.
+
+        >>> calculation.structure[:].to_view()
+        View(elements=array([[...], ..., [...]], dtype=...), lattice_vectors=array([[[...]], ..., [[...]]]),
+            positions=array([[[...]], ..., [[...]]]), ...)
+
+        You can also select specific steps or a subset of steps as follows
+
+        >>> calculation.structure[1].to_view()
+        View(elements=array([[...]], dtype=...), lattice_vectors=array([[[...]]]),
+            positions=array([[[...]]]), ...)
+        >>> calculation.structure[0:2].to_view()
+        View(elements=array([[...], [...]], dtype=...), lattice_vectors=array([[[...]], [[...]]]),
+            positions=array([[[...]], [[...]]]), ...)
+
+        You may also replicate the structure by specifying a supercell.
+
+        >>> calculation.structure.to_view(supercell=2)
+        View(..., supercell=array([2, 2, 2]), ...)
+
+        The supercell size can also be different for the different directions.
+
+        >>> calculation.structure.to_view(supercell=[2,3,1])
+        View(..., supercell=array([2, 3, 1]), ...)
         """
         make_3d = lambda array: array if array.ndim == 3 else array[np.newaxis]
         positions = make_3d(self.positions())
@@ -189,26 +322,59 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         )
 
     @base.data_access
-    @documentation.format(
-        examples=slice_.examples("structure", "to_ase"),
-        ion_types=_stoichiometry.ion_types_documentation,
-    )
     def to_ase(self, supercell=None, ion_types=None):
-        """Convert the structure to an ase Atoms object.
+        """Convert the structure to an ASE Atoms object.
+
+        ASE (the Atomic Simulation Environment) is a popular Python package for atomistic
+        simulations. This method converts the VASP structure to an ASE Atoms object,
+        which can be used for further analysis and visualization.
 
         Parameters
         ----------
         supercell : int or np.ndarray
             If present the structure is replicated the specified number of times
             along each direction.
-        {ion_types}
+        ion_types : Sequence
+            Overwrite the ion types present in the raw data. You can use this to quickly
+            generate different stoichiometries without modifying the underlying raw data.
 
         Returns
         -------
-        ase.Atoms
-            Structural information for ase package.
+        Atoms
+            Structural information for ASE package. Read more about ASE `here <https://ase-lib.org>`_.
 
-        {examples}
+        First, we create some example data so that we can illustrate how to use this method.
+        You can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        If you use the `to_ase` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> calculation.structure.to_ase()
+        Atoms(symbols='...', pbc=True, cell=[[...]])
+
+        You can also select specific steps as follows
+
+        >>> calculation.structure[1].to_ase()
+        Atoms(symbols='...', pbc=True, cell=[[...]])
+
+        Notice that converting multiple steps to ASE trajectories is not implemented.
+
+        You may also replicate the structure by specifying a supercell. If you compare
+        the cell size with the previous example, you will see that it is doubled in all
+        directions.
+
+        >>> calculation.structure.to_ase(supercell=2)
+        Atoms(symbols='...', pbc=True, cell=[[...]])
+
+        The supercell size can also be different for the different directions. The three
+        lattice vectors will be scaled accordingly.
+
+        >>> calculation.structure.to_ase(supercell=[2,3,1])
+        Atoms(symbols='...', pbc=True, cell=[[...]])
         """
         if self._is_slice:
             message = (
@@ -237,21 +403,43 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         return structure[order]
 
     @base.data_access
-    @documentation.format(
-        examples=slice_.examples("structure", "to_mdtraj"),
-        ion_types=_stoichiometry.ion_types_documentation,
-    )
     def to_mdtraj(self, ion_types=None):
         """Convert the trajectory to mdtraj.Trajectory
+
+        mdtraj is a popular Python package to analyze molecular dynamics trajectories.
+        This method converts the VASP structure trajectory to an mdtraj.Trajectory
+        object, which can be used for further analysis and visualization.
+
+        Parameters
+        ----------
+        ion_types : Sequence
+            Overwrite the ion types present in the raw data. You can use this to quickly
+            generate different stoichiometries without modifying the underlying raw data.
 
         Returns
         -------
         mdtraj.Trajectory
             The mdtraj package offers many functionalities to analyze a MD
-            trajectory. By converting the Vasp data to their format, we facilitate
+            trajectory. By converting the VASP data to their format, we facilitate
             using all functions of that package.
 
-        {examples}
+        First, we create some example data so that we can illustrate how to use this method.
+        You can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        To convert the whole trajectory (all steps), you don't specify the array boundaries.
+
+        >>> calculation.structure[:].to_mdtraj()
+        <mdtraj.Trajectory with ... frames, ... atoms, ...>
+
+        You can also select a subset of steps as follows
+
+        >>> calculation.structure[0:2].to_mdtraj()
+        <mdtraj.Trajectory with 2 frames, ... atoms, ...>
+
+        You cannot convert a single structure to mdtraj.Trajectory.
         """
         if not self._is_slice:
             message = "Converting a single structure to mdtraj is not implemented."
@@ -263,23 +451,44 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         return trajectory
 
     @base.data_access
-    @documentation.format(
-        examples=slice_.examples("structure", "to_POSCAR"),
-        ion_types=_stoichiometry.ion_types_documentation,
-    )
     def to_POSCAR(self, ion_types=None):
-        """Convert the structure(s) to a POSCAR format
+        """Convert the structure(s) to a POSCAR format.
+
+        Use this method to generate a string in POSCAR format representing the
+        structure(s). You can use this string to write a POSCAR file for VASP. This
+        can be useful if you want to use the relaxed structure from a VASP calculation
+        or a snapshot from an MD simulation as input for a new VASP calculation.
 
         Parameters
         ----------
-        {ion_types}
+        ion_types : Sequence
+            Overwrite the ion types present in the raw data. You can use this to quickly
+            generate different stoichiometries without modifying the underlying raw data.
 
         Returns
         -------
-        str or list[str]
-            Returns the POSCAR of the current or all selected steps.
+        str
+            Returns the POSCAR of the selected steps.
 
-        {examples}
+        First, we create some example data so that we can illustrate how to use this method.
+        You can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        If you use the `to_POSCAR` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> poscar = calculation.structure.to_POSCAR()
+        >>> assert poscar == str(calculation.structure)
+
+        You can also select specific steps as follows
+
+        >>> poscar = calculation.structure[1].to_POSCAR()
+        >>> assert poscar == str(calculation.structure[1])
+
+        Notice that converting multiple steps to POSCAR format is not implemented.
         """
         if not self._is_slice:
             return self._create_repr(ion_types=ion_types)
@@ -288,9 +497,12 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
             raise exception.NotImplemented(message)
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("structure", "to_lammps"))
     def to_lammps(self, standard_form=True):
-        """Convert the structure to LAMMPS format
+        """Convert the structure to LAMMPS format.
+
+        LAMMPS is a popular molecular dynamics simulation software. This method
+        converts the structure to a string in LAMMPS format, which can be used as
+        input for LAMMPS simulations.
 
         Parameters
         ----------
@@ -303,7 +515,59 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         str
             Returns a string describing the structure for LAMMPS
 
-        {examples}
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this method.
+        You can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        If you use the `to_lammps` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> print(calculation.structure.to_lammps())
+        Configuration 1: system "..."
+        ... atoms
+        ... atom types
+        ... xlo xhi
+        ... ylo yhi
+        ... zlo zhi
+        ... xy xz yz
+        Atoms # atomic
+        1 1 ...
+
+        You can also select specific steps as follows
+
+        >>> print(calculation.structure[1].to_lammps())
+        Configuration 1: system "..."
+        ... atoms
+        ... atom types
+        ... xlo xhi
+        ... ylo yhi
+        ... zlo zhi
+        ... xy xz yz
+        Atoms # atomic
+        1 1 ...
+
+        Notice that converting multiple steps to LAMMPS format is not implemented.
+
+        LAMMPS requires either a standard form of the unit cell or the transformation
+        from the original cell to the standard form. By default, the standard form is
+        used. You can disable this behavior as follows
+
+        >>> print(calculation.structure.to_lammps(standard_form=False))
+        Configuration 1: system "..."
+        ... atoms
+        ... atom types
+        ... avec
+        ... bvec
+        ... cvec
+        ... abc origin
+        Atoms # atomic
+        1 1 ...
+
         """
         if self._is_slice:
             message = "Converting multiple structures to LAMMPS is not implemented."
@@ -366,6 +630,26 @@ Atoms # atomic
         -------
         np.ndarray
             Lattice vectors of the unit cell in Å.
+
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this method.
+        You can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        If you use the `lattice_vectors` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> calculation.structure.lattice_vectors()
+        array([[...], [...], [...]])
+
+        To select the results for all steps, you don't specify the array boundaries.
+
+        >>> calculation.structure[:].lattice_vectors()
+        array([[[...]], [[...]], [[...]], [[...]]])
         """
         lattice_vectors = _LatticeVectors(self._raw_data.cell.lattice_vectors)
         return self._scale() * lattice_vectors[self._get_steps()]
@@ -381,11 +665,30 @@ Atoms # atomic
         -------
         np.ndarray
             Positions of all ions in terms of the lattice vectors.
+
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this method.
+        You can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        If you use the `positions` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> calculation.structure.positions()
+        array([[...]])
+
+        To select the results for all steps, you don't specify the array boundaries.
+
+        >>> calculation.structure[:].positions()
+        array([[[...]]])
         """
         return self._raw_data.positions[self._get_steps()]
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("structure", "cartesian_positions"))
     def cartesian_positions(self):
         """Convert the positions from direct coordinates to cartesian ones.
 
@@ -394,12 +697,29 @@ Atoms # atomic
         np.ndarray
             Position of all atoms in cartesian coordinates in Å.
 
-        {examples}
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this method.
+        You can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        If you use the `cartesian_positions` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> calculation.structure.cartesian_positions()
+        array([[...]])
+
+        To select the results for all steps, you don't specify the array boundaries.
+
+        >>> calculation.structure[:].cartesian_positions()
+        array([[[...]]])
         """
         return self.positions() @ self.lattice_vectors()
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("structure", "volume"))
     def volume(self):
         """Return the volume of the unit cell for the selected steps.
 
@@ -408,7 +728,25 @@ Atoms # atomic
         float or np.ndarray
             The volume(s) of the selected step(s) in Å³.
 
-        {examples}
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this method.
+        You can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        If you use the `volume` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> calculation.structure.volume()
+        np.float...
+
+        To select the results for all steps, you don't specify the array boundaries.
+
+        >>> calculation.structure[:].volume()
+        array([...])
         """
         return np.abs(np.linalg.det(self.lattice_vectors()))
 
