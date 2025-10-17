@@ -526,8 +526,6 @@ class Band(base.Refinery, graph.Mixin):
         #
         selector = self._make_selector(self._raw_data.projections)
         tree = select.Tree.from_selection(selection)
-        for sel in tree.selections():
-            print(sel)
         quiver_plots = [
             graph.Contour(
                 **self._quiver_plot(selector, selection, nkp1, nkp2), **options
@@ -573,7 +571,7 @@ class Band(base.Refinery, graph.Mixin):
         }
 
     def _band_map(self, num_bands):
-        return {f"band[{band + 1}]": slice(band, band + 1) for band in range(num_bands)}
+        return {"band": {i + 1: i for i in range(num_bands)}}
 
     @base.data_access
     def selections(self) -> dict[str, Any]:

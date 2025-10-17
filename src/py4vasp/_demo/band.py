@@ -80,18 +80,16 @@ def noncollinear_bands(projectors):
     return raw_band
 
 
-def spin_texture(projectors):
+def spin_texture(selection):
     dispersion = _demo.dispersion.spin_texture()
-    shape = dispersion.eigenvalues.shape
-    use_orbitals = projectors in ["with_projectors"]
-    raw_band = raw.Band(
+    projectors = _demo.projector.Ba2PbO4(use_orbitals=True)
+    number_orbitals = len(projectors.orbital_types)
+    shape_occ = dispersion.eigenvalues.shape
+    shape = (_demo.NONCOLLINEAR, _demo.NUMBER_ATOMS, number_orbitals, *shape_occ[1:])
+    return raw.Band(
         dispersion=dispersion,
         fermi_energy=0.0,
-        occupations=np.arange(np.prod(shape)).reshape(shape),
-        projectors=_demo.projector.Ba2PbO4(use_orbitals),
+        occupations=_demo.wrap_random_data(shape_occ),
+        projectors=projectors,
+        projections=_demo.wrap_random_data(shape),
     )
-    if use_orbitals:
-        number_orbitals = len(raw_band.projectors.orbital_types)
-        shape = (_demo.NONCOLLINEAR, _demo.NUMBER_ATOMS, number_orbitals, *shape[1:])
-        raw_band.projections = np.random.random(shape)
-    return raw_band

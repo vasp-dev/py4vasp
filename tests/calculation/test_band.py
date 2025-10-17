@@ -115,11 +115,10 @@ def spin_texture(raw_data):
     raw_band = raw_data.band("spin_texture with_projectors")
     band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
-    band.ref.expected_data = np.reshape(
-        raw_band.projections[1:3, 2, 0, :, 1], (2, 4, 3)
-    )
+    project_all_xy = np.sum(raw_band.projections[1:3, ..., 1], axis=(1, 2))
+    band.ref.expected_data = np.reshape(project_all_xy, (2, 4, 3))
     band.ref.expected_lattice = np.array([[1.52216787, 0.0], [0.14521927, 1.51522486]])
-    band.ref.expected_label = "spin texture Pb_s_sigma_x~sigma_y_band[2]"
+    band.ref.expected_label = "spin texture sigma_x~sigma_y_band=2"
     return band
 
 
@@ -391,6 +390,22 @@ def test_to_quiver_with_incorrect_selection_raises_error(spin_texture):
         spin_texture.to_quiver("x~y")
     with pytest.raises(exception.IncorrectUsage):
         spin_texture.to_quiver("band=2")
+
+
+def test_band_to_quiver(spin_texture, Assert):
+    graph = spin_texture.to_quiver("band=2(sigma_x~sigma_y)")
+    assert len(graph) == 1
+    series = graph.series[0]
+    Assert.allclose(series.data, spin_texture.ref.expected_data)
+    Assert.allclose(
+        series.lattice.vectors, spin_texture.ref.expected_lattice, tolerance=1e6
+    )
+    Assert.allclose(
+        np.linalg.norm(series.lattice.vectors, axis=1),
+        np.linalg.norm(spin_texture.ref.expected_lattice, axis=1),
+        tolerance=1e6,
+    )
+    assert series.label == spin_texture.ref.expected_label
 
 
 # def test_texture_to_quiver_sel1(spin_texture, Assert):
