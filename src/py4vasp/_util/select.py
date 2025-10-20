@@ -234,8 +234,8 @@ class Tree:
 
     def _parse_close_parenthesis(self):
         self._new_selection = True
-        self._raise_error_if_superfluous_closing_parenthesis()
         node = self._finalize_subtree()
+        node._raise_error_if_superfluous_closing_parenthesis()
         return node._parent._parse_space()
 
     def _parse_open_bracket(self):

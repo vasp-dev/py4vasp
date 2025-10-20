@@ -57,9 +57,15 @@ class Selector:
     maps : dict
         The keys of the dictionary should be integer values indicating the dimension
         of the array described by its values. The values are dictionaries that map
-        labels of the dimension onto corresponding slices of the array. Instead of a
-        slice a single index is allowed as well. If the label is set to None, this
-        particular selection overwrites the default of all indices.
+        labels of the dimension onto corresponding parts of the array. If the label is
+        set to None, this particular selection overwrites the default of all indices.
+        The following options are possible: mapping a string to a single index, mapping
+        a string to a slice, mapping a string to a dictionary of values. The first two
+        options can be combined but the last option is exclusive for each string. The
+        intended usage of the first two options is that the user provides a specific
+        string to select that part of the array. The last option is intended for
+        assignments where the user provides a value to select the corresponding part
+        of the array.
     data : VaspData
         An array read from the VASP calculation. The indices in the maps should be
         compatible with the dimension of this array.
@@ -73,6 +79,20 @@ class Selector:
         have e.g. the label *A* corresponding to the first three elements and *1*
         corresponds to the first element in total, setting this flag will label *1* as
         *A_1* instead.
+
+    Examples
+    --------
+    >>> from py4vasp._util import index, select
+    >>> maps = {
+    ...     0: {None: slice(None), "up": 0, "down": 1},
+    ...     1: {"s": 0, "p": slice(1, 4), "d": slice(4, 9)},
+    ...     2: {"band": {1: 0, 2: 1, 3: 2}},
+    ... }
+    >>> data = np.random.random((2, 9, 3))
+    >>> user_selection = "up(p(band=2))"
+    >>> selector = select.Selector(maps, data)
+    >>> for selection in tree.from_selection(user_selection).selections():
+    >>>     result = selector[selection]
     """
 
     def __init__(self, maps, data, *, reduction=np.sum, use_number_labels=False):
@@ -185,19 +205,22 @@ class Selector:
             yield self._read_range(selection).set_operator(operator)
         elif _is_pair(selection):
             yield self._read_pair(selection).set_operator(operator)
+        elif isinstance(selection, select.Assignment):
+            yield self._read_assignment(selection).set_operator(operator)
         elif isinstance(selection, select.Operation):
             yield from self._evaluate_operation(selection, operator)
         else:
             assert False, f"Reading {selection} is not implemented."
 
     def _read_key(self, key):
-        self._raise_key_not_found_error(key)
+        self._raise_error_if_key_not_found(key)
         dimension, slice_ = self._map[key]
+        self._raise_error_if_only_assignment_allowed(key, slice_)
         return _Slices(self._indices).set(dimension, slice_, key)
 
     def _read_range(self, range_):
-        self._raise_key_not_found_error(range_.group[0])
-        self._raise_key_not_found_error(range_.group[1])
+        self._raise_error_if_key_not_found(range_.group[0])
+        self._raise_error_if_key_not_found(range_.group[1])
         dimension = self._read_dimension(range_)
         slice_ = self._merge_slice(range_)
         return _Slices(self._indices).set(dimension, slice_, range_)
@@ -232,7 +255,50 @@ class Selector:
         operator = _merge_operator(operator, operation.operator)
         yield from self._get_all_slices(operation.right_operand, operation.operator)
 
-    def _raise_key_not_found_error(self, key):
+    def _read_assignment(self, assignment):
+        self._raise_error_if_key_not_found(assignment.left_operand)
+        dimension, mapping = self._map[assignment.left_operand]
+        self._raise_error_if_assignment_not_allowed(assignment, mapping)
+        indices = self._find_indices_in_mapping(assignment, mapping)
+        slice_ = _make_slice(indices)
+        return _Slices(self._indices).set(dimension, slice_, str(assignment))
+
+    def _find_indices_in_mapping(self, assignment, mapping):
+        for key, value in mapping.items():
+            if isinstance(key, str):
+                if key == assignment.right_operand:
+                    return value
+            elif isinstance(key, int):
+                cast_operand = self._cast_to_int(key, assignment.right_operand)
+                if key == cast_operand:
+                    return value
+            elif isinstance(key, float):
+                cast_operand = self._cast_to_float(key, assignment.right_operand)
+                if np.isclose(key, cast_operand):
+                    return value
+            else:
+                assert False, f"Mapping key of type {type(key)} is not supported."
+        self._raise_error_that_argument_not_in_mapping(assignment, mapping)
+
+    def _cast_to_int(self, key, value):
+        try:
+            return int(value)
+        except ValueError:
+            message = f"""\
+The expected format for '{key}' is integer. The value '{value}' could not be converted \
+to an integer."""
+            raise exception.IncorrectUsage(message)
+
+    def _cast_to_float(self, key, value):
+        try:
+            return float(value)
+        except ValueError:
+            message = f"""\
+The expected format for '{key}' is float. The value '{value}' could not be converted \
+to a float."""
+            raise exception.IncorrectUsage(message)
+
+    def _raise_error_if_key_not_found(self, key):
         if key in self._map:
             return
         valid_keys = self._map.keys()
@@ -240,6 +306,32 @@ class Selector:
 and capitalization. {did_you_mean(key, valid_keys)}py4vasp supports any of the following \
 selections: "{'", "'.join(valid_keys)}". If some of the selections you expected are not \
 available, please check your INCAR file and the VASP version you are using."""
+        raise exception.IncorrectUsage(message)
+
+    def _raise_error_if_assignment_not_allowed(self, assignment, mapping):
+        if isinstance(mapping, dict):
+            return
+        valid_keys = self._map.keys()
+        message = f"""\
+The key "{assignment.left_operand}" does not support assignments. You used "{assignment}" \
+but py4vasp only support "{'", "'.join(valid_keys)}"."""
+        raise exception.IncorrectUsage(message)
+
+    def _raise_error_if_only_assignment_allowed(self, key, mapping):
+        if not isinstance(mapping, dict):
+            return
+        valid_keys = [str(key) for key in mapping.keys()]
+        message = f"""\
+You tried to access the selection "{key}". However, you need to specify which value you \
+want to select like "{key}=<value>" where <value> is one of "{'", "'.join(valid_keys)}"."""
+        raise exception.IncorrectUsage(message)
+
+    def _raise_error_that_argument_not_in_mapping(self, assignment, mapping):
+        valid_keys = [str(key) for key in mapping.keys()]
+        message = f"""\
+Could not parse the selection "{assignment.right_operand}", please check the spelling \
+and capitalization. {did_you_mean(assignment.right_operand, valid_keys)}py4vasp supports \
+any of the following selections: "{'", "'.join(valid_keys)}"."""
         raise exception.IncorrectUsage(message)
 
 
@@ -254,6 +346,8 @@ def _make_slice(indices):
     if isinstance(indices, int):
         return slice(indices, indices + 1 or None)
     if isinstance(indices, slice):
+        return indices
+    if isinstance(indices, dict):
         return indices
     if np.ndim(indices) == 1:
         return np.array(indices)

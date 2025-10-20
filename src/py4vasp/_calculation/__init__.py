@@ -1,6 +1,5 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import copy
 import importlib
 import pathlib
 
@@ -72,11 +71,17 @@ class Calculation:
     Examples
     --------
 
-    Generate a new calculation object
+    Let's first create some example data in a temporary directory. Please define `path`
+    as the path to a temporary directory that does not exist yet. This command create
+    example data in that directory and will return a Calculation but we ignore the result.
 
-    >>> calculation = Calculation.from_path("path/to/calculation")
+    >>> _ = py4vasp.demo.calculation(path)
 
-    Plot the density of states (DOS) of a calculation
+    We can now, generate a new calculation object to access the data from this path
+
+    >>> calculation = Calculation.from_path(path)
+
+    Plot the density of states (DOS) of the calculation
 
     >>> calculation.dos.plot()
     Graph(series=[Series(x=array(...), y=array(...), label='total', ...)],
@@ -287,8 +292,17 @@ class DefaultCalculationFactory:
 
     `calculation` reads the raw data from the current directory and from the default
     VASP output files. With the :class:`~py4vasp.Calculation` class, you can tailor
-    the location of the files to your needs. Both have access to the same quantities,
-    i.e., the two following examples are equivalent:
+    the location of the files to your needs and both have access to the same quantities.
+
+    We demonstrate this setting up some example data in a temporary directory `path` and
+    changing to it.
+
+    >>> import os
+    >>> from py4vasp import demo
+    >>> _ = demo.calculation(path)
+    >>> os.chdir(path)  # change to a temporary directory
+
+    Then the two following examples are equivalent:
 
     .. rubric:: using :data:`~py4vasp.calculation` object
 
@@ -303,7 +317,8 @@ class DefaultCalculationFactory:
     >>> calculation.dos.read()
     {'energies': array(...), 'total': array(...), 'fermi_energy': ...}
 
-    In the latter example, you can change the path from which the data is extracted.
+    In the latter example, you could directly provide a path and do not need to have
+    the data in the current directory.
     """
 
     def __getattr__(self, attr):
