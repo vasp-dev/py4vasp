@@ -20,6 +20,7 @@ def get_calculation_examples():
             finder.find(_calculation)
             + finder.find(_calculation.band)
             + finder.find(_calculation.dos)
+            + finder.find(_calculation.force)
             + finder.find(_calculation.local_moment)
             + finder.find(_calculation.structure)
         )

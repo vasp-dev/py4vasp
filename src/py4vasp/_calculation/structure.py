@@ -269,6 +269,8 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         View
             Visualize the structure(s) as a 3d figure.
 
+        Examples
+        --------
         First, we create some example data so that we can illustrate how to use this method.
         You can also use your own VASP calculation data if you have it available.
 
