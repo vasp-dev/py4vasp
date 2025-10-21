@@ -15,7 +15,7 @@ go = import_.optional("plotly.graph_objects")
 class Series(trace.Trace):
     """Represents a single series in a graph.
 
-    Typically this corresponds to a single line of x-y data with an optional name used
+    Typically this corresponds to a single line of x-y data with an optional label used
     in the legend of the figure. The look of the series is modified by some of the other
     optional arguments.
     """
@@ -25,10 +25,17 @@ class Series(trace.Trace):
     y: np.ndarray
     """The y coordinates of the series. If the data is 2-dimensional multiple lines are
     generated with a common entry in the legend."""
-    name: str = None
+    label: str = None
     "A label for the series used in the legend."
-    width: np.ndarray = None
-    "When a width is set, the series will be visualized as an area instead of a line."
+    weight: np.ndarray = None
+    "When a weight is set, the series will modify the plot according to weight_mode."
+    weight_mode: str = "size"
+    """If weight_mode is 'size', the size of the plot is adjusted according to the weight.
+    If weight_mode is 'color', the color of the plot is adjusted according to the weight."""
+    annotations: dict = None
+    """If present, stores the metadata for this line or each point of the plot. Note
+    that each element of the dictionary must have either size 1 or the same size as the
+    x coordinates."""
     y2: bool = False
     "Use a secondary y axis to show this series."
     subplot: int = None
@@ -45,16 +52,35 @@ class Series(trace.Trace):
         if len(self.x) != self.y.shape[-1]:
             message = "The length of the two plotted components is inconsistent."
             raise exception.IncorrectUsage(message)
-        if self.width is not None and len(self.x) != self.width.shape[-1]:
-            message = "The length of width and plot is inconsistent."
+        if self.weight is not None and len(self.x) != self.weight.shape[-1]:
+            message = "The length of weight and plot is inconsistent."
             raise exception.IncorrectUsage(message)
+        self._raise_error_if_annotations_length_incorrect()
         self._frozen = True
+
+    def _raise_error_if_annotations_length_incorrect(self):
+        if self.annotations is None:
+            return
+        for key, value in self.annotations.items():
+            if np.ndim(value) == 0:
+                continue
+            if len(value) != len(self.x):
+                message = f"The length of annotation '{key}' must be 1 or match the length of x."
+                raise exception.IncorrectUsage(message)
 
     def __setattr__(self, key, value):
         # prevent adding new attributes to avoid typos, in Python 3.10 this could be
         # handled by setting slots=True when creating the dataclass
         assert not self._frozen or hasattr(self, key)
         super().__setattr__(key, value)
+
+    def __eq__(self, other):
+        if not isinstance(other, Series):
+            return NotImplemented
+        return all(
+            np.array_equal(getattr(self, field.name), getattr(other, field.name))
+            for field in fields(self)
+        )
 
     def to_plotly(self):
         first_trace = True
@@ -63,42 +89,42 @@ class Series(trace.Trace):
             first_trace = False
 
     def _make_trace(self, index, y, first_trace):
-        width = self._get_width(index)
+        weight = self._get_weight(index)
         if self._is_line():
-            options = self._options_line(y, first_trace)
+            specific_options = self._options_line(y)
         elif self._is_area():
-            options = self._options_area(y, width, first_trace)
+            specific_options = self._options_area(y, weight)
+        elif self.weight_mode == "size":
+            specific_options = self._options_scaled_points(y, weight)
         else:
-            options = self._options_points(y, width, first_trace)
-        return go.Scatter(**options)
+            specific_options = self._options_colored_points(y, weight)
+        return go.Scatter(**self._common_options(first_trace), **specific_options)
 
-    def _get_width(self, index):
-        if self.width is None:
+    def _get_weight(self, index):
+        if self.weight is None:
             return None
-        elif self.width.ndim == 1:
-            return self.width
+        elif self.weight.ndim == 1:
+            return self.weight
         else:
-            return self.width[index]
+            return self.weight[index]
 
     def _is_line(self):
-        return (self.width is None) and (self.marker is None)
+        return (self.weight is None) and (self.marker is None)
 
     def _is_area(self):
-        return (self.width is not None) and (self.marker is None)
+        return (self.weight is not None) and (self.marker is None)
 
-    def _options_line(self, y, first_trace):
+    def _options_line(self, y):
         return {
-            **self._common_options(first_trace),
             "x": self.x,
             "y": y,
             "line": {"color": self.color},
         }
 
-    def _options_area(self, y, width, first_trace):
-        upper = y + width
-        lower = y - width
+    def _options_area(self, y, weight):
+        upper = y + weight
+        lower = y - weight
         return {
-            **self._common_options(first_trace),
             "x": np.concatenate((self.x, self.x[::-1])),
             "y": np.concatenate((lower, upper[::-1])),
             "mode": "none",
@@ -107,22 +133,46 @@ class Series(trace.Trace):
             "opacity": 0.5,
         }
 
-    def _options_points(self, y, width, first_trace):
+    def _options_scaled_points(self, y, weight):
         return {
-            **self._common_options(first_trace),
             "x": self.x,
             "y": y,
             "mode": "markers",
-            "marker": {"size": width, "sizemode": "area", "color": self.color},
+            "marker": {"size": weight, "sizemode": "area", "color": self.color},
+        }
+
+    def _options_colored_points(self, y, weight):
+        return {
+            "x": self.x,
+            "y": y,
+            "mode": "markers",
+            "marker": {"color": weight, "coloraxis": "coloraxis"},
         }
 
     def _common_options(self, first_trace):
         return {
-            "name": self.name,
-            "legendgroup": self.name,
+            "name": self.label,
+            "text": self._convert_annotations(),
+            "legendgroup": self.label,
             "showlegend": first_trace,
             "yaxis": "y2" if self.y2 else "y",
         }
+
+    def _convert_annotations(self):
+        if self.annotations is None:
+            return None
+        return [self._convert_annotation(index_) for index_ in range(len(self.x))]
+
+    def _convert_annotation(self, index_):
+        return "<br>".join(
+            f"{key}: {self._get_element(value, index_)}"
+            for key, value in self.annotations.items()
+        )
+
+    def _get_element(self, array_or_scalar, index_):
+        if np.ndim(array_or_scalar) == 0:
+            return array_or_scalar
+        return array_or_scalar[index_]
 
     def _generate_shapes(self):
         return ()

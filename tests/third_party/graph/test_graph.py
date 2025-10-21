@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
+import re
 from unittest.mock import patch
 
 import numpy as np
@@ -16,34 +17,34 @@ px = import_.optional("plotly.express")
 @pytest.fixture
 def parabola():
     x = np.linspace(0, 2, 50)
-    return Series(x=x, y=x**2, name="parabola")
+    return Series(x=x, y=x**2, label="parabola")
 
 
 @pytest.fixture
 def sine():
     x = np.linspace(0, np.pi, 50)
-    return Series(x=x, y=np.sin(x), name="sine", marker="o")
+    return Series(x=x, y=np.sin(x), label="sine", marker="o")
 
 
 @pytest.fixture
 def two_lines():
     x = np.linspace(0, 3, 30)
     y = np.linspace((0, 4), (1, 3), 30).T
-    return Series(x=x, y=y, name="two lines")
+    return Series(x=x, y=y, label="two lines")
 
 
 @pytest.fixture
 def fatband():
     x = np.linspace(-1, 1, 40)
-    return Series(x=x, y=np.abs(x), width=x**2, name="fatband")
+    return Series(x=x, y=np.abs(x), weight=x**2, label="fatband")
 
 
 @pytest.fixture
 def two_fatbands():
     x = np.linspace(0, 3, 30)
     y = np.array((x**2, x**3))
-    width = np.sqrt(y)
-    return Series(x=x, y=y, width=width, name="two fatbands")
+    weight = np.sqrt(y)
+    return Series(x=x, y=y, weight=weight, label="two fatbands")
 
 
 @pytest.fixture
@@ -84,11 +85,38 @@ def tilted_contour():
 
 
 @pytest.fixture
+def tilted_contour_with_sin_cos():
+    xvals = np.linspace(0, 2.0 * np.pi, 16, endpoint=False)
+    yvals = np.linspace(0, 2.0 * np.pi, 20, endpoint=False)
+    X, Y = np.meshgrid(xvals, yvals)
+    Z = np.sin(X + np.pi / 4) * np.cos(Y + np.pi / 4)
+    return Contour(
+        data=Z,
+        lattice=slicing.Plane(np.array([[2, 4], [2, -4]]), cut="b"),
+        label="tilted contour",
+        supercell=(2, 2),
+        show_cell=False,
+    )
+
+
+@pytest.fixture
 def simple_quiver():
     return Contour(
         data=np.array([[(y, x) for x in range(3)] for y in range(5)]).T,
         lattice=slicing.Plane(np.diag((3, 5)), cut="a"),
         label="quiver plot",
+        scale_arrows=1.7,
+    )
+
+
+@pytest.fixture
+def dense_quiver():
+    return Contour(
+        data=np.linspace(-4, 2, 2 * 41 * 25).reshape((2, 41, 25)),
+        lattice=slicing.Plane(np.diag((4, 2)), cut="b"),
+        supercell=(2, 3),
+        label="quiver plot",
+        scale_arrows=0.5,
     )
 
 
@@ -100,6 +128,122 @@ def complex_quiver():
         label="quiver plot",
         supercell=(3, 2),
     )
+
+
+@pytest.mark.parametrize(
+    "color_scheme",
+    [
+        "monochrome",
+        "auto",
+        "sequential",
+        "diverging",
+        "positive",
+        "negative",
+    ],
+)
+def test_contour_color_scheme(color_scheme, not_core):
+    contour = Contour(
+        data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
+        lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
+        label="rectangle contour",
+        color_scheme=color_scheme,
+        isolevels=True,
+    )
+    assert color_scheme == contour.color_scheme
+    graph = Graph(contour)
+    fig = graph.to_plotly()
+    expected_colorscales_dict = {
+        "default": [
+            (0, _config.VASP_COLORS["blue"]),
+            (0.5, "white"),
+            (1, _config.VASP_COLORS["red"]),
+        ],
+        "auto": px.colors.sequential.Reds,
+        "positive": px.colors.sequential.Reds,
+        "negative": px.colors.sequential.Blues_r,
+        "sequential": px.colors.sequential.Viridis,
+        "diverging": px.colors.diverging.RdBu_r,
+        "monochrome": px.colors.sequential.turbid_r,
+    }
+    expected_colorscale = expected_colorscales_dict.get(
+        color_scheme, expected_colorscales_dict.get("default", None)
+    )
+    try:
+        assert (fig.data[0].colorscale == expected_colorscale) or (
+            [s[1] for s in fig.data[0].colorscale] == expected_colorscale
+        )
+    except AssertionError:
+        raise NotImplementedError(
+            f"Color scheme {color_scheme} diverges from expectation:"
+            + "\nExpected vs. actual:\n"
+            + "\n".join(
+                [
+                    "\t" + f"{expect_cs}" + "\t" + f"{actual_cs}" + "\n"
+                    for expect_cs, actual_cs in zip(
+                        expected_colorscale, fig.data[0].colorscale
+                    )
+                ]
+            )
+        )
+
+
+@pytest.mark.xfail
+@pytest.mark.parametrize("contrast_mode", [True, False])
+def test_contour_contrast_mode(contrast_mode, not_core):
+    contour = Contour(
+        data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
+        lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
+        label="rectangle contour",
+        contrast_mode=contrast_mode,
+        isolevels=True,
+    )
+    assert contrast_mode == contour.contrast_mode
+    graph = Graph(contour)
+    raise NotImplementedError("Implementation not yet complete.")
+
+
+@pytest.mark.parametrize(
+    "color_limits", [None, (None, None), (-9, None), (None, 9), (-11, 11)]
+)
+def test_contour_color_limits(color_limits, not_core):
+    contour = Contour(
+        data=np.linspace(-10, 10, 20 * 18).reshape((20, 18)),
+        lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
+        label="rectangle contour",
+        color_limits=color_limits,
+        isolevels=True,
+    )
+    assert color_limits == contour.color_limits
+    graph = Graph(contour)
+    expected_zmin = -10
+    expected_zmax = 10
+    if color_limits is not None:
+        _zmin, _zmax = color_limits
+        if _zmin is not None:
+            expected_zmin = _zmin
+        if _zmax is not None:
+            expected_zmax = _zmax
+    fig = graph.to_plotly()
+    assert fig.data[0].zmin == expected_zmin
+    assert fig.data[0].zmax == expected_zmax
+
+
+@pytest.mark.parametrize("units", ["", None, "px", "m/s"])
+def test_contour_colorbar_label(units, not_core):
+    contour = Contour(
+        data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
+        lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
+        label="rectangle contour",
+        colorbar_label=units,
+        isolevels=True,
+    )
+    assert units == contour.colorbar_label
+    graph = Graph(contour)
+    fig = graph.to_plotly()
+    if units != "":
+        assert fig.data[0].colorbar.title.text == units
+    else:
+        assert fig.data[0].colorbar.title.text == None
 
 
 def test_basic_graph(parabola, Assert, not_core):
@@ -120,7 +264,7 @@ def test_two_series(parabola, sine, Assert, not_core):
 def compare_series(converted, original, Assert):
     Assert.allclose(converted.x, original.x)
     Assert.allclose(converted.y, original.y)
-    assert converted.name == original.name
+    assert converted.name == original.label
 
 
 def test_axis_label(parabola, not_core):
@@ -143,7 +287,7 @@ def test_secondary_yaxis(parabola, sine, Assert, not_core):
 
 
 def check_legend_group(converted, original, first_trace):
-    assert converted.legendgroup == original.name
+    assert converted.legendgroup == original.label
     assert converted.showlegend == first_trace
 
 
@@ -153,23 +297,25 @@ def test_two_lines(two_lines, Assert, not_core):
     assert len(fig.data) == 2
     first_trace = True
     for converted, y in zip(fig.data, two_lines.y):
-        original = Series(x=two_lines.x, y=y, name=two_lines.name)
+        original = Series(x=two_lines.x, y=y, label=two_lines.label)
         compare_series(converted, original, Assert)
         check_legend_group(converted, original, first_trace)
         if first_trace:
-            assert converted.line.color is not None
             color = converted.line.color
+            assert color is not None
+            hex_color_regex = "^#(?:[0-9a-fA-F]{3}){1,2}$"
+            assert re.match(hex_color_regex, color), f"'{color}' is not a hex color"
         assert converted.line.color == color
         first_trace = False
 
 
-def compare_series_with_width(converted, original, Assert):
-    upper = original.y + original.width
-    lower = original.y - original.width
+def compare_series_with_weight(converted, original, Assert):
+    upper = original.y + original.weight
+    lower = original.y - original.weight
     expected = Series(
         x=np.concatenate((original.x, original.x[::-1])),
         y=np.concatenate((lower, upper[::-1])),
-        name=original.name,
+        label=original.label,
     )
     compare_series(converted, expected, Assert)
     assert converted.mode == "none"
@@ -181,7 +327,7 @@ def compare_series_with_width(converted, original, Assert):
 def test_fatband(fatband, Assert, not_core):
     graph = Graph(fatband)
     fig = graph.to_plotly()
-    compare_series_with_width(fig.data[0], fatband, Assert)
+    compare_series_with_weight(fig.data[0], fatband, Assert)
 
 
 def test_two_fatbands(two_fatbands, Assert, not_core):
@@ -189,9 +335,9 @@ def test_two_fatbands(two_fatbands, Assert, not_core):
     fig = graph.to_plotly()
     assert len(fig.data) == 2
     first_trace = True
-    for converted, y, w in zip(fig.data, two_fatbands.y, two_fatbands.width):
-        original = Series(x=two_fatbands.x, y=y, width=w, name=two_fatbands.name)
-        compare_series_with_width(converted, original, Assert)
+    for converted, y, w in zip(fig.data, two_fatbands.y, two_fatbands.weight):
+        original = Series(x=two_fatbands.x, y=y, weight=w, label=two_fatbands.label)
+        compare_series_with_weight(converted, original, Assert)
         check_legend_group(converted, original, first_trace)
         if first_trace:
             assert converted.fillcolor is not None
@@ -217,7 +363,7 @@ def test_fatband_with_marker(fatband, Assert, not_core):
     compare_series(fig.data[0], fatband, Assert)
     assert fig.data[0].mode == "markers"
     assert fig.data[0].marker.sizemode == "area"
-    Assert.allclose(fig.data[0].marker.size, fatband.width)
+    Assert.allclose(fig.data[0].marker.size, fatband.weight)
 
 
 def test_two_fatband_with_marker(two_fatbands, Assert, not_core):
@@ -226,11 +372,25 @@ def test_two_fatband_with_marker(two_fatbands, Assert, not_core):
     fig = graph.to_plotly()
     assert fig.layout.legend.itemsizing == "constant"
     assert len(fig.data) == 2
-    for converted, y, w in zip(fig.data, two_fatbands.y, two_fatbands.width):
-        original = Series(x=two_fatbands.x, y=y, name=two_fatbands.name)
+    for converted, y, w in zip(fig.data, two_fatbands.y, two_fatbands.weight):
+        original = Series(x=two_fatbands.x, y=y, label=two_fatbands.label)
         compare_series(converted, original, Assert)
         assert converted.mode == "markers"
         Assert.allclose(converted.marker.size, w)
+
+
+def test_weight_mode_color(two_fatbands, Assert, not_core):
+    fatbands = dataclasses.replace(two_fatbands, marker="o", weight_mode="color")
+    graph = Graph(fatbands)
+    fig = graph.to_plotly()
+    assert fig.layout.legend.itemsizing == "constant"
+    assert len(fig.data) == 2
+    for converted, y, w in zip(fig.data, two_fatbands.y, two_fatbands.weight):
+        original = Series(x=two_fatbands.x, y=y, label=two_fatbands.label)
+        compare_series(converted, original, Assert)
+        assert converted.mode == "markers"
+        Assert.allclose(converted.marker.color, w)
+        assert converted.marker.coloraxis == "coloraxis"
 
 
 def test_custom_xticks(parabola, not_core):
@@ -251,12 +411,16 @@ def test_title(parabola, not_core):
 
 
 def test_merging_of_fields_of_graph(sine, parabola):
-    init_all_fields = {field.name: field.name for field in dataclasses.fields(Graph)}
-    init_all_fields.pop("series")
+    skipped_fields = ("series", "xsize", "ysize")
+    init_all_fields = {
+        field.name: field.name
+        for field in dataclasses.fields(Graph)
+        if field.name not in skipped_fields
+    }
     graph1 = Graph(sine, **init_all_fields)
     graph2 = Graph(parabola)
     for field in dataclasses.fields(Graph):
-        if field.name == "series":
+        if field.name in skipped_fields:
             continue
         # if only one side is defined, use that one
         graph = graph1 + graph2
@@ -314,8 +478,8 @@ def test_add_label_to_single_line(parabola, Assert):
     assert len(graph.series) == 1
     Assert.allclose(graph.series[0].x, parabola.x)
     Assert.allclose(graph.series[0].y, parabola.y)
-    assert graph.series[0].name == "new label"
-    assert parabola.name == "parabola"
+    assert graph.series[0].label == "new label"
+    assert parabola.label == "parabola"
 
 
 def test_add_label_to_multiple_lines(parabola, sine, Assert):
@@ -323,10 +487,34 @@ def test_add_label_to_multiple_lines(parabola, sine, Assert):
     assert len(graph.series) == 2
     Assert.allclose(graph.series[0].x, parabola.x)
     Assert.allclose(graph.series[0].y, parabola.y)
-    assert graph.series[0].name == "new label parabola"
+    assert graph.series[0].label == "new label parabola"
     Assert.allclose(graph.series[1].x, sine.x)
     Assert.allclose(graph.series[1].y, sine.y)
-    assert graph.series[1].name == "new label sine"
+    assert graph.series[1].label == "new label sine"
+
+
+def test_annotations(parabola, Assert, not_core):
+    num_points = len(parabola.x)
+    metadata = np.linspace(-1, 1, num_points)
+    parabola.annotations = {
+        "index": [str(i) for i in range(num_points)],
+        "meta": metadata,
+        "constant": 12,
+    }
+    fig = Graph(parabola).to_plotly()
+    assert len(fig.data) == 1
+    expected_text = [
+        f"index: {i}<br>meta: {z}<br>constant: 12" for i, z in enumerate(metadata)
+    ]
+    Assert.allclose(fig.data[0].text, expected_text)
+
+
+def test_incorrect_annotations_length():
+    x = np.linspace(0, 1)
+    y = x**2
+    annotations = {"incorrect_length": np.linspace(0, 1, len(x) + 1)}
+    with pytest.raises(exception.IncorrectUsage):
+        Series(x, y, annotations=annotations)
 
 
 def test_convert_parabola_to_frame(parabola, Assert, not_core):
@@ -361,8 +549,8 @@ def test_convert_two_fatbands_to_frame(two_fatbands, Assert, not_core):
     Assert.allclose(df["two_fatbands.x"], two_fatbands.x)
     Assert.allclose(df["two_fatbands.y0"], two_fatbands.y[0])
     Assert.allclose(df["two_fatbands.y1"], two_fatbands.y[1])
-    Assert.allclose(df["two_fatbands.width0"], two_fatbands.width[0])
-    Assert.allclose(df["two_fatbands.width1"], two_fatbands.width[1])
+    Assert.allclose(df["two_fatbands.weight0"], two_fatbands.weight[0])
+    Assert.allclose(df["two_fatbands.weight1"], two_fatbands.weight[1])
 
 
 def test_write_csv(tmp_path, two_fatbands, non_numpy, Assert, not_core):
@@ -387,8 +575,8 @@ def test_convert_different_length_series_to_frame(
     assert len(df) == max(len(parabola.x), len(two_lines.x))
     Assert.allclose(df["parabola.x"], parabola.x)
     Assert.allclose(df["parabola.y"], parabola.y)
-    pad_width = len(parabola.x) - len(two_lines.x)
-    pad_nan = np.repeat(np.nan, pad_width)
+    pad_weight = len(parabola.x) - len(two_lines.x)
+    pad_nan = np.repeat(np.nan, pad_weight)
     padded_two_lines_x = np.hstack((two_lines.x, pad_nan))
     padded_two_lines_y = np.hstack((two_lines.y, np.vstack((pad_nan, pad_nan))))
     Assert.allclose(df["two_lines.x"], padded_two_lines_x)
@@ -446,6 +634,24 @@ def test_contour(rectangle_contour, Assert, not_core):
     assert fig.layout.yaxis.scaleanchor == "x"
 
 
+def test_contour_with_periodic_traces(rectangle_contour, Assert, not_core):
+    rectangle_contour.traces_as_periodic = True
+    graph = Graph(rectangle_contour)
+    fig = graph.to_plotly()
+    assert len(fig.data) == 1
+    # plotly expects y-x order
+    xdim, ydim = rectangle_contour.data.T.shape
+    x_indices = np.arange(0, xdim + 1) % xdim
+    y_indices = np.arange(0, ydim + 1) % ydim
+    expected_data = rectangle_contour.data.T[np.ix_(x_indices, y_indices)]
+    Assert.allclose(fig.data[0].z, expected_data)
+    # shift because the points define the centers of the rectangles
+    Assert.allclose(fig.data[0].x, np.linspace(0, 4, 21, endpoint=True))
+    Assert.allclose(fig.data[0].y, np.linspace(0, 3.6, 19, endpoint=True))
+    check_unit_cell(fig.layout.shapes[0], x="4.0", y="3.6", zero="0.0")
+    check_annotations(rectangle_contour.lattice, fig.layout.annotations, Assert)
+
+
 def test_contour_supercell(rectangle_contour, Assert, not_core):
     supercell = np.asarray((3, 5))
     rectangle_contour.supercell = supercell
@@ -459,6 +665,53 @@ def test_contour_supercell(rectangle_contour, Assert, not_core):
     assert len(fig.layout.shapes) == 1
     check_unit_cell(fig.layout.shapes[0], x="4.0", y="3.6", zero="0.0")
     check_annotations(rectangle_contour.lattice, fig.layout.annotations, Assert)
+
+
+def test_contour_supercell_with_periodic_traces(rectangle_contour, Assert, not_core):
+    supercell = np.asarray((3, 5))
+    rectangle_contour.traces_as_periodic = True
+    rectangle_contour.supercell = supercell
+    graph = Graph(rectangle_contour)
+    fig = graph.to_plotly()
+    assert len(fig.data) == 1
+    # plotly expects y-x order
+    assert all(
+        fig.data[0].z.T.shape
+        == np.array([ls + 1 for ls in supercell * rectangle_contour.data.shape])
+    )
+    assert len(fig.data[0].x) == 61
+    assert len(fig.data[0].y) == 91
+    assert len(fig.layout.shapes) == 1
+    check_unit_cell(fig.layout.shapes[0], x="4.0", y="3.6", zero="0.0")
+    check_annotations(rectangle_contour.lattice, fig.layout.annotations, Assert)
+
+
+@pytest.mark.parametrize("show_contour_values", [True, False, None])
+def test_contour_show_contour_values(rectangle_contour, show_contour_values, not_core):
+    rectangle_contour.show_contour_values = show_contour_values
+    graph = Graph(rectangle_contour)
+    fig = graph.to_plotly()
+    assert len(fig.data) == 1
+    assert fig.data[0].contours.showlabels == show_contour_values
+
+
+def test_legend_positioning(parabola, sine, Assert, not_core):
+    graph = Graph([sine, parabola])
+    fig = graph.to_plotly()
+    assert len(fig.data) == 2
+    assert (
+        fig.layout.legend.x is None
+    )  # actually at 1.02, but plotly does not expose this until set explicitly
+
+
+def test_contour_legend_with_colorbar(rectangle_contour, parabola, Assert, not_core):
+    graph = Graph([rectangle_contour, parabola])
+    fig = graph.to_plotly()
+    assert len(fig.data) == 2
+    assert hasattr(fig.data[0], "colorbar") and fig.data[0].colorbar
+    assert hasattr(fig.data[0].colorbar, "x")
+    assert fig.data[0].colorbar.x == 1.02
+    assert fig.layout.legend.x == pytest.approx(fig.data[0].colorbar.x + 0.18, abs=1e-6)
 
 
 def check_unit_cell(unit_cell, x, y, zero):
@@ -480,29 +733,105 @@ def check_annotations(lattice, annotations, Assert):
         sign *= -1
 
 
-def test_contour_interpolate(tilted_contour, Assert, not_core):
-    graph = Graph(tilted_contour)
-    fig = graph.to_plotly()
-    area_cell = 12.0
-    points_per_area = tilted_contour.data.size / area_cell
-    points_per_line = np.sqrt(points_per_area) * tilted_contour._interpolation_factor
-    lengths = np.array([6, 9])  # this accounts for the 2 x 1 supercell
-    expected_shape = np.ceil(points_per_line * lengths).astype(int)
-    expected_average = np.average(tilted_contour.data)
-    assert len(fig.data) == 1
-    # plotly expects y-x order
-    assert all(fig.data[0].z.T.shape == expected_shape)
-    assert fig.data[0].x.size == expected_shape[0]
-    assert fig.data[0].y.size == expected_shape[1]
+def check_colorscale(fig, data, expect_diverging, Assert, not_core):
+    tolerance = 1e-10
+    if expect_diverging:
+        expected_colorscale = px.colors.diverging.RdBu_r
+    elif np.min(data.data) < -tolerance and np.max(data.data) > tolerance:
+        expected_colorscale = px.colors.sequential.RdBu_r
+    elif np.max(data.data) <= tolerance:
+        expected_colorscale = px.colors.sequential.Blues_r
+    elif np.min(data.data) >= -tolerance:
+        expected_colorscale = px.colors.sequential.Reds
+    else:
+        raise ValueError(
+            f"Unexpected data range: {np.min(data.data)}, {np.max(data.data)}"
+        )
     finite = np.isfinite(fig.data[0].z)
-    assert np.isclose(np.average(fig.data[0].z[finite]), expected_average)
-    assert len(fig.layout.shapes) == 0
-    expected_colorscale = px.colors.get_colorscale("turbid_r")
-    assert len(fig.data[0].colorscale) == len(expected_colorscale)
+    assert len(fig.data[0].colorscale) == len(
+        expected_colorscale
+    ), f"Unexpected colorscale lengths ({len(fig.data[0].colorscale)} vs. {len(expected_colorscale)}) for EXPECTED: min: {np.min(data.data)}, max: {np.max(data.data)}, ACTUAL: min: {np.min(fig.data[0].z[finite])}, max: {np.max(fig.data[0].z[finite])}"
     for actual, expected in zip(fig.data[0].colorscale, expected_colorscale):
-        Assert.allclose(actual[0], expected[0])
-        assert actual[1] == expected[1]
-    check_annotations(tilted_contour.lattice, fig.layout.annotations, Assert)
+        assert (
+            actual[1] == expected
+        ), f"Unexpected colorscale values for min: {np.min(data.data)}, max: {np.max(data.data)}"
+
+
+def check_basic_tilted_contour(
+    curr_contour, with_periodic_traces: bool, Assert, not_core, expected_lengths=[]
+) -> Graph:
+    curr_contour.traces_as_periodic = with_periodic_traces
+    curr_contour.color_scheme = "auto"
+    graph = Graph(curr_contour)
+    fig = graph.to_plotly()
+    if not with_periodic_traces:
+        area_cell = np.linalg.norm(np.cross(*curr_contour.lattice.vectors))
+        points_per_area = curr_contour.data.size / area_cell
+        points_per_line = np.sqrt(points_per_area) * curr_contour._interpolation_factor
+        lengths = np.array(expected_lengths)
+        expected_shape = np.ceil(points_per_line * lengths).astype(int)
+        expected_average = np.average(curr_contour.data)
+        expected_data = curr_contour.data
+
+        assert all(fig.data[0].z.T.shape == expected_shape)
+        assert fig.data[0].x.size == expected_shape[0]
+        assert fig.data[0].y.size == expected_shape[1]
+    else:
+        xdim, ydim = curr_contour.data.shape
+        x_indices = np.arange(0, xdim + 1) % xdim
+        y_indices = np.arange(0, ydim + 1) % ydim
+        expected_data = curr_contour.data[np.ix_(x_indices, y_indices)]
+        expected_average = np.average(expected_data.data)
+
+    assert len(fig.data) == 1
+    check_annotations(curr_contour.lattice, fig.layout.annotations, Assert)
+    # plotly expects y-x order
+    finite = np.isfinite(fig.data[0].z)
+    actual_average = np.average(fig.data[0].z[finite])
+    if np.abs(actual_average) > 2e-3:
+        assert np.isclose(
+            actual_average,
+            expected_average,
+            rtol=1e-1 if with_periodic_traces else 1e-2,
+        )
+    else:
+        assert np.isclose(actual_average, expected_average, atol=2e-3)
+    assert np.any(finite)
+    assert len(fig.layout.shapes) == 0
+    return fig, expected_data
+
+
+def test_contour_interpolate(tilted_contour, Assert, not_core):
+    fig, expected_data = check_basic_tilted_contour(
+        tilted_contour, False, Assert, not_core, expected_lengths=[6, 9]
+    )
+    check_colorscale(fig, expected_data, False, Assert, not_core)
+
+
+# @pytest.mark.xfail
+def test_contour_interpolate_with_periodic_traces(tilted_contour, Assert, not_core):
+    fig, expected_data = check_basic_tilted_contour(
+        tilted_contour, True, Assert, not_core
+    )
+    check_colorscale(fig, expected_data, False, Assert, not_core)
+
+
+def test_contour_interpolate_with_periodic_function(
+    tilted_contour_with_sin_cos, Assert, not_core
+):
+    fig, expected_data = check_basic_tilted_contour(
+        tilted_contour_with_sin_cos, False, Assert, not_core, expected_lengths=[8, 16]
+    )
+    check_colorscale(fig, expected_data, False, Assert, not_core)
+
+
+def test_contour_interpolate_with_periodic_function_and_traces(
+    tilted_contour_with_sin_cos, Assert, not_core
+):
+    fig, expected_data = check_basic_tilted_contour(
+        tilted_contour_with_sin_cos, True, Assert, not_core
+    )
+    check_colorscale(fig, expected_data, False, Assert, not_core)
 
 
 def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
@@ -516,52 +845,223 @@ def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
 
 def test_simple_quiver(simple_quiver, Assert, not_core):
     graph = Graph(simple_quiver)
+    assert simple_quiver.max_number_arrows is None
+    expected_positions, dx, dy = compute_positions(simple_quiver)
+    work = simple_quiver.scale_arrows * simple_quiver.data.T.reshape(-1, 2)
+    expected_positions -= 0.5 * work
+    expected_positions = expected_positions + 0.5 * np.array([dx, dy])
+    expected_tips = expected_positions + work
+    expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
+    #
     fig = graph.to_plotly()
     data_size = simple_quiver.data.size // 2
     assert len(fig.data) == 1
     actual = split_data(fig.data[0], data_size, Assert)
-    arrows = actual.tips - actual.positions
-    for (x, y), (u, v) in zip(actual.positions, arrows):
-        Assert.allclose(x, v)
-        Assert.allclose(y, u)
     assert len(fig.layout.shapes) == 1
     check_unit_cell(fig.layout.shapes[0], x="3", y="5", zero="0")
     check_annotations(simple_quiver.lattice, fig.layout.annotations, Assert)
     assert fig.layout.yaxis.scaleanchor == "x"
+    assert fig.data[0].line.color == _config.VASP_COLORS["dark"]
+    Assert.allclose(actual.positions, expected_positions)
+    Assert.allclose(actual.tips, expected_tips)
+    Assert.allclose(actual.barb_length, expected_barb_length)
+
+
+def test_simple_quiver_with_periodic_traces(simple_quiver, Assert, not_core):
+    simple_quiver.traces_as_periodic = True
+    graph = Graph(simple_quiver)
+    assert simple_quiver.max_number_arrows is None
+    expected_positions, _, _ = compute_positions(simple_quiver, periodic=True)
+    xdim, ydim, _ = simple_quiver.data.T.shape
+    x_indices = np.arange(0, xdim + 1) % xdim
+    y_indices = np.arange(0, ydim + 1) % ydim
+    expected_data = simple_quiver.data.T[np.ix_(x_indices, y_indices)]
+    work = simple_quiver.scale_arrows * expected_data.reshape(-1, 2)
+    assert work.shape == expected_positions.shape
+    expected_positions -= 0.5 * work
+    expected_tips = expected_positions + work
+    expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
+    #
+    fig = graph.to_plotly()
+    data_size = expected_data.size // 2
+    assert len(fig.data) == 1
+    actual = split_data(fig.data[0], data_size, Assert)
+    assert len(fig.layout.shapes) == 1
+    check_unit_cell(fig.layout.shapes[0], x="3", y="5", zero="0")
+    check_annotations(simple_quiver.lattice, fig.layout.annotations, Assert)
+    assert fig.layout.yaxis.scaleanchor == "x"
+    assert fig.data[0].line.color == _config.VASP_COLORS["dark"]
+    Assert.allclose(actual.positions, expected_positions)
+    Assert.allclose(actual.tips, expected_tips)
+    Assert.allclose(actual.barb_length, expected_barb_length)
+
+
+@pytest.mark.parametrize("max_number_arrows", (1025, 1024, 680))
+def test_dense_quiver(dense_quiver, max_number_arrows, Assert, not_core):
+    dense_quiver.max_number_arrows = max_number_arrows
+    if max_number_arrows == 1024:
+        expected_shape = (28, 25)
+        subsampling = (3, 3)
+    elif max_number_arrows == 1025:
+        expected_shape = (41, 25)
+        subsampling = (2, 3)
+    elif max_number_arrows == 680:
+        expected_shape = (28, 19)
+        subsampling = (3, 4)
+    else:
+        raise NotImplemented
+    graph = Graph(dense_quiver)
+    work = dense_quiver.scale_arrows * dense_quiver.data
+    work = np.block([[work, work, work], [work, work, work]]).T
+    # remember that a and b are transposed
+    work = work[:: subsampling[1], :: subsampling[0]]
+    expected_positions, dx, dy = compute_positions(dense_quiver, subsampling)
+    expected_positions -= 0.5 * work.reshape(expected_positions.shape)
+    expected_positions = expected_positions + 0.5 * np.array([dx, dy])
+    expected_tips = expected_positions + work.reshape(expected_positions.shape)
+    expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
+    data_size = np.prod(expected_shape)
+    #
+    fig = graph.to_plotly()
+    assert len(fig.data) == 1
+    actual = split_data(fig.data[0], data_size, Assert)
+    Assert.allclose(actual.positions, expected_positions)
+    Assert.allclose(actual.tips, expected_tips)
+    Assert.allclose(actual.barb_length, expected_barb_length)
+
+
+@pytest.mark.parametrize("max_number_arrows", (1025, 1024, 680))
+def test_dense_quiver_with_periodic_traces(
+    dense_quiver, max_number_arrows, Assert, not_core
+):
+    dense_quiver.traces_as_periodic = True
+    dense_quiver.max_number_arrows = max_number_arrows
+    if max_number_arrows == 1024:
+        expected_shape = (28, 26)
+        subsampling = (3, 3)
+    elif max_number_arrows == 1025:
+        expected_shape = (42, 26)
+        subsampling = (2, 3)
+    elif max_number_arrows == 680:
+        expected_shape = (28, 19)
+        subsampling = (3, 4)
+    else:
+        raise NotImplemented
+    graph = Graph(dense_quiver)
+    work = dense_quiver.scale_arrows * dense_quiver.data
+    work = np.tile(work, (1, dense_quiver.supercell[0], dense_quiver.supercell[1]))
+    # expand work
+    zdim, ydim, xdim = work.shape
+    z_indices = np.arange(0, zdim)
+    x_indices = np.arange(0, xdim + 1) % xdim
+    y_indices = np.arange(0, ydim + 1) % ydim
+    work = work[np.ix_(z_indices, y_indices, x_indices)]
+    work = np.transpose(work, (2, 1, 0))
+    # remember that a and b are transposed
+    work = work[:: subsampling[1], :: subsampling[0]]
+    expected_positions, dx, dy = compute_positions(
+        dense_quiver, subsampling, periodic=True
+    )
+    expected_positions -= 0.5 * work.reshape(expected_positions.shape)
+    expected_tips = expected_positions + work.reshape(expected_positions.shape)
+    expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
+    data_size = np.prod(expected_shape)
+    #
+    fig = graph.to_plotly()
+    assert len(fig.data) == 1
+    actual = split_data(fig.data[0], data_size, Assert)
+    Assert.allclose(actual.positions, expected_positions)
+    Assert.allclose(actual.tips, expected_tips)
+    Assert.allclose(actual.barb_length, expected_barb_length)
 
 
 def test_complex_quiver(complex_quiver, Assert, not_core):
     graph = Graph(complex_quiver)
-    fig = graph.to_plotly()
-    data_size = np.prod(complex_quiver.supercell) * complex_quiver.data.size // 2
-    vectors = np.array(complex_quiver.lattice.vectors)
-    step_a = vectors[0] / complex_quiver.data.shape[1]
-    mesh_a = np.arange(complex_quiver.supercell[0] * complex_quiver.data.shape[1])
-    step_b = vectors[1] / complex_quiver.data.shape[2]
-    mesh_b = np.arange(complex_quiver.supercell[1] * complex_quiver.data.shape[2])
-    expected_positions = np.array(
-        [a * step_a + b * step_b for b in mesh_b for a in mesh_a]
-    )
-    work = complex_quiver.data
+    expected_scale = 0.10015332542313245
+    work = expected_scale * complex_quiver.data
     work = np.block([[work, work], [work, work], [work, work]]).T
+    expected_positions, dx, dy = compute_positions(complex_quiver)
+    expected_positions -= 0.5 * work.reshape(expected_positions.shape)
+    expected_positions = expected_positions + 0.5 * np.array([dx, dy])
     expected_tips = expected_positions + work.reshape(expected_positions.shape)
     expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
+    data_size = np.prod(complex_quiver.supercell) * complex_quiver.data.size // 2
     #
+    fig = graph.to_plotly()
     assert len(fig.data) == 1
     actual = split_data(fig.data[0], data_size, Assert)
-    Assert.allclose(actual.positions, expected_positions, tolerance=10)
-    Assert.allclose(actual.tips, expected_tips, tolerance=10)
+    Assert.allclose(actual.positions, expected_positions)
+    Assert.allclose(actual.tips, expected_tips)
     Assert.allclose(actual.barb_length, expected_barb_length)
     assert len(fig.layout.annotations) == 0
+
+
+def test_complex_quiver_with_periodic_traces(complex_quiver, Assert, not_core):
+    complex_quiver.traces_as_periodic = True
+    graph = Graph(complex_quiver)
+    expected_scale = 0.10015332542313245
+    work = expected_scale * complex_quiver.data
+    work = np.tile(work, (1, complex_quiver.supercell[0], complex_quiver.supercell[1]))
+    # expand work
+    zdim, ydim, xdim = work.shape
+    z_indices = np.arange(0, zdim)
+    x_indices = np.arange(0, xdim + 1) % xdim
+    y_indices = np.arange(0, ydim + 1) % ydim
+    work = work[np.ix_(z_indices, y_indices, x_indices)]
+    work = np.transpose(work, (2, 1, 0))
+    expected_positions, dx, dy = compute_positions(complex_quiver, periodic=True)
+    work = work.reshape(expected_positions.shape)
+    assert work.shape == expected_positions.shape
+    expected_positions -= 0.5 * work
+    expected_tips = expected_positions + work
+    expected_barb_length = 0.3 * np.linalg.norm(work, axis=-1).flatten()
+    data_size = work.shape[0]
+    #
+    fig = graph.to_plotly()
+    assert len(fig.data) == 1
+    actual = split_data(fig.data[0], data_size, Assert)
+    Assert.allclose(actual.positions, expected_positions)
+    Assert.allclose(actual.tips, expected_tips)
+    Assert.allclose(actual.barb_length, expected_barb_length)
+    assert len(fig.layout.annotations) == 0
+
+
+def test_width_and_height(parabola, not_core):
+    fig = Graph(parabola).to_plotly()
+    assert fig.layout.width == 720
+    assert fig.layout.height == 540
+    fig = Graph(parabola, xsize=800, ysize=600).to_plotly()
+    assert fig.layout.width == 800
+    assert fig.layout.height == 600
+
+
+def test_range_for_x_and_y_axis(parabola, Assert, not_core):
+    fig = Graph(parabola).to_plotly()
+    assert fig.layout.xaxis.range is None
+    assert fig.layout.yaxis.range is None
+    graph = Graph(parabola, xrange=[-1.5, 7.2], yrange=(2.1, 4.3))
+    fig = graph.to_plotly()
+    Assert.allclose(fig.layout.xaxis.range, graph.xrange)
+    Assert.allclose(fig.layout.yaxis.range, graph.yrange)
 
 
 @dataclasses.dataclass
 class ContourData:
     positions: np.ndarray = None
-    first_tips: np.ndarray = None
-    second_tips: np.ndarray = None
-    first_barb_length: np.ndarray = None
-    second_barb_length: np.ndarray = None
+    tips: np.ndarray = None
+    barb_length: np.ndarray = None
+
+
+def compute_positions(contour, subsampling=(1, 1), periodic=False):
+    step_a = np.divide(contour.lattice.vectors[0], contour.data.shape[1])
+    step_b = np.divide(contour.lattice.vectors[1], contour.data.shape[2])
+    shape = np.multiply(contour.supercell, contour.data.shape[1:])
+    # remember that the data is transposed
+    range_a = range(0, shape[0] + (1 if periodic else 0), subsampling[0])
+    range_b = range(0, shape[1] + (1 if periodic else 0), subsampling[1])
+    dx = np.linalg.norm(step_a)
+    dy = np.linalg.norm(step_b)
+    return np.array([a * step_a + b * step_b for b in range_b for a in range_a]), dx, dy
 
 
 def split_data(data, data_size, Assert):
@@ -596,3 +1096,7 @@ def split_data(data, data_size, Assert):
     other_barb_length = np.linalg.norm(other_barb - actual.tips, axis=-1)
     Assert.allclose(other_barb_length, actual.barb_length, tolerance=10)
     return actual
+
+
+def test_no_common_names():
+    assert set(Graph._fields).intersection(Series._fields) == set()

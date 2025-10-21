@@ -5,13 +5,14 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import calculation, exception
+from py4vasp import exception
+from py4vasp._calculation.kpoint import Kpoint
 
 
 @pytest.fixture
 def explicit_kpoints(raw_data):
     raw_kpoints = raw_data.kpoint("explicit with_labels")
-    kpoints = calculation.kpoint.from_data(raw_kpoints)
+    kpoints = Kpoint.from_data(raw_kpoints)
     kpoints.ref = types.SimpleNamespace()
     kpoints.ref.mode = "explicit"
     kpoints.ref.line_length = len(raw_kpoints.coordinates)
@@ -30,7 +31,7 @@ def explicit_kpoints(raw_data):
 @pytest.fixture
 def grid_kpoints(raw_data):
     raw_kpoints = raw_data.kpoint("automatic")
-    kpoints = calculation.kpoint.from_data(raw_kpoints)
+    kpoints = Kpoint.from_data(raw_kpoints)
     kpoints.ref = types.SimpleNamespace()
     kpoints.ref.line_length = len(raw_kpoints.coordinates)
     return kpoints
@@ -39,7 +40,7 @@ def grid_kpoints(raw_data):
 @pytest.fixture
 def line_kpoints(raw_data):
     raw_kpoints = raw_data.kpoint("line with_labels")
-    kpoints = calculation.kpoint.from_data(raw_kpoints)
+    kpoints = Kpoint.from_data(raw_kpoints)
     kpoints.ref = types.SimpleNamespace()
     kpoints.ref.line_length = raw_kpoints.number
     kpoints.ref.number_lines = len(raw_kpoints.coordinates) // raw_kpoints.number
@@ -57,7 +58,7 @@ def line_kpoints(raw_data):
 @pytest.fixture
 def qpoints(raw_data):
     raw_kpoints = raw_data.kpoint("qpoints")
-    kpoints = calculation.kpoint.from_data(raw_kpoints)
+    kpoints = Kpoint.from_data(raw_kpoints)
     kpoints.ref = types.SimpleNamespace()
     cartesian = to_cartesian(raw_kpoints.coordinates, raw_kpoints.cell)
     kpoints.ref.distances = multiple_line_distances(cartesian, raw_kpoints.number)
@@ -99,7 +100,7 @@ def test_read(explicit_kpoints, Assert):
 
 
 def test_no_labels_read(grid_kpoints):
-    assert grid_kpoints.read()["labels"] is None
+    assert "labels" not in grid_kpoints.read()
 
 
 def test_mode(raw_data):
@@ -114,12 +115,12 @@ def test_mode(raw_data):
     for ref_mode, formats in allowed_mode_formats.items():
         for format in formats:
             raw_kpoints = raw_data.kpoint(format)
-            actual_mode = calculation.kpoint.from_data(raw_kpoints).mode()
+            actual_mode = Kpoint.from_data(raw_kpoints).mode()
             assert actual_mode == ref_mode
     for unknown_mode in ["x", "y", "z"]:
         with pytest.raises(exception.RefinementError):
             raw_kpoints = raw_data.kpoint(unknown_mode)
-            calculation.kpoint.from_data(raw_kpoints).mode()
+            Kpoint.from_data(raw_kpoints).mode()
 
 
 def test_explicit_kpoints_number_kpoints(explicit_kpoints):
@@ -169,7 +170,7 @@ def test_grid_kpoints_labels_without_data(grid_kpoints):
 
 def test_line_kpoints_labels_without_data(raw_data):
     raw_kpoints = raw_data.kpoint("line")
-    actual = calculation.kpoint.from_data(raw_kpoints).labels()
+    actual = Kpoint.from_data(raw_kpoints).labels()
     ref = [""] * len(raw_kpoints.coordinates)
     ref[0] = r"$[0 0 0]$"
     ref[4] = r"$[0 0 \frac{1}{2}]$"
@@ -267,4 +268,4 @@ reciprocal
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.kpoint("automatic")
     parameters = {"path_indices": {"start": (0, 0, 0), "finish": (1, 1, 1)}}
-    check_factory_methods(calculation.kpoint, data, parameters)
+    check_factory_methods(Kpoint, data, parameters)

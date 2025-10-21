@@ -23,4 +23,4 @@ class Reader:
         try:
             return self._array[key]
         except (ValueError, IndexError, TypeError) as err:
-            raise exception.IncorrectUsage(self.error_message(key, err)) from err
+            raise exception.IncorrectUsage(self.error_message(key, err)) from None

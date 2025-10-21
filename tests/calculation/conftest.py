@@ -24,33 +24,25 @@ def mock_schema():
 
 @pytest.fixture
 def check_factory_methods(mock_schema, not_core):
-    def inner(cls, data, parameters={}):
+    def inner(cls, data, parameters={}, skip_methods=[]):
         instance = cls.from_path()
-        check_instance_accesses_data(instance, data, parameters)
+        check_instance_accesses_data(instance, data, parameters, skip_methods)
         instance = cls.from_file(TEST_FILENAME)
-        check_instance_accesses_data(instance, data, parameters, file=TEST_FILENAME)
+        check_instance_accesses_data(
+            instance, data, parameters, skip_methods, file=TEST_FILENAME
+        )
 
     return inner
 
 
-def check_instance_accesses_data(instance, data, parameters, file=None):
-    failed = []
+def check_instance_accesses_data(instance, data, parameters, skip_methods, file=None):
     for name, method in inspect.getmembers(instance, inspect.ismethod):
-        if should_test_method(name, parameters):
+        if should_test_method(name, parameters, skip_methods):
             kwargs = parameters.get(name, {})
-            try:
-                check_method_accesses_data(data, method, file, **kwargs)
-            except (AttributeError, AssertionError):
-                failed.append(name)
-    if failed:
-        message = (
-            f"The method(s) {', '.join(failed)} do not load the data from file."
-            " The most likely issue is a missing @base.data_access decorator."
-        )
-        raise AssertionError(message)
+            check_method_accesses_data(data, method, file, **kwargs)
 
 
-def should_test_method(name, parameters):
+def should_test_method(name, parameters, skip_methods):
     if name in parameters:
         return True
     if name in ("__str__", "_repr_html_"):
@@ -60,6 +52,8 @@ def should_test_method(name, parameters):
     if name == "to_image":  # would have side effects
         return False
     if name == "to_csv":
+        return False
+    if name in skip_methods:
         return False
     return True
 
@@ -81,7 +75,7 @@ def check_method_accesses_data(data, method_under_test, file, **kwargs):
 def execute_method(method_under_test, **kwargs):
     try:
         method_under_test(**kwargs)
-    except (exception.NotImplemented, exception.IncorrectUsage):
+    except (exception.NotImplemented, exception.IncorrectUsage, exception.DataMismatch):
         # ignore py4vasp error
         pass
 

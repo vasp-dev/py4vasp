@@ -65,20 +65,69 @@ def test_ranges():
     range2 = select.Group(["2", "6"], ":")
     assert selections(selection) == (("foo", range1), (range2,), ("baz",))
     expected = """graph LR
-    foo --> 1:3
-    2:6
+    foo --> _0_[:]
+    _0_[:] --> 1
+    _0_[:] --> 3
+    _1_[:] --> 2
+    _1_[:] --> 6
     baz"""
     assert graph(selection) == expected
 
 
 def test_pair_selection():
-    selection = "foo  ~  bar, baz~foo"
+    selection = "foo  ~  bar, baz~foo(A)"
     pair1 = select.Group(["foo", "bar"], "~")
     pair2 = select.Group(["baz", "foo"], "~")
-    assert selections(selection) == ((pair1,), (pair2,))
+    assert selections(selection) == ((pair1,), (pair2, "A"))
     expected = """graph LR
-    foo~bar
-    baz~foo"""
+    _0_[~] --> foo
+    _0_[~] --> bar
+    _1_[~] --> baz
+    _1_[~] --> foo
+    foo --> A"""
+    assert graph(selection) == expected
+
+
+def test_assignment_selection():
+    selection = "foo  =  bar, baz=foo"
+    assignment1 = select.Assignment("foo", "bar")
+    assignment2 = select.Assignment("baz", "foo")
+    assert selections(selection) == ((assignment1,), (assignment2,))
+    expected = """graph LR
+    _0_[=] --> foo
+    _0_[=] --> bar
+    _1_[=] --> baz
+    _1_[=] --> foo"""
+    assert graph(selection) == expected
+
+
+def test_assignment_with_parenthesis():
+    selection = "A(foo=bar) B=C(baz)"
+    assignment1 = select.Assignment("foo", "bar")
+    assignment2 = select.Assignment("B", "C")
+    assert selections(selection) == (("A", assignment1), (assignment2, "baz"))
+    expected = """graph LR
+    A --> _0_[=]
+    _0_[=] --> foo
+    _0_[=] --> bar
+    _1_[=] --> B
+    _1_[=] --> C
+    C --> baz"""
+    assert graph(selection) == expected
+
+
+# def test_assignment_with_operator():
+#     # one should implement order of operators, such that + is evaluated before =
+
+
+def test_brackets_escape():
+    selection = "foo[a~b] bar[1:3] baz[1+2]"
+    assert selections(selection) == (("foo[a~b]",), ("bar[1:3]",), ("baz[1+2]",))
+    expected = """\
+graph LR
+    foo[a~b]
+    bar[1:3]
+    baz[1+2]"""
     assert graph(selection) == expected
 
 
@@ -166,6 +215,33 @@ def test_nested_operations():
     assert graph(selection) == expected
 
 
+def test_nested_groups():
+    selection = "A(x~y) B:C(z)"
+    assert selections(selection) == (
+        ("A", select.Group(["x", "y"], "~")),
+        (select.Group(["B", "C"], ":"), "z"),
+    )
+    expected = """graph LR
+    A --> _0_[~]
+    _0_[~] --> x
+    _0_[~] --> y
+    _1_[:] --> B
+    _1_[:] --> C
+    C --> z"""
+    assert graph(selection) == expected
+
+
+def test_operation_with_description():
+    selection = "p1/2[+1/2] + d3/2[-3/2]"
+    operation = select.Operation(("p1/2[+1/2]",), "+", ("d3/2[-3/2]",))
+    assert selections(selection) == ((operation,),)
+    expected = """\
+graph LR
+    _0_[+] --> p1/2[+1/2]
+    _0_[+] --> d3/2[-3/2]"""
+    assert graph(selection) == expected
+
+
 def test_complex_nesting():
     selection = "A(B(1:3), C~D(E F)) G(H, J) K"
     expected_selections = (
@@ -178,10 +254,14 @@ def test_complex_nesting():
     )
     expected_graph = """graph LR
     A --> B
-    B --> 1:3
-    A --> C~D
-    C~D --> E
-    C~D --> F
+    B --> _0_[:]
+    _0_[:] --> 1
+    _0_[:] --> 3
+    A --> _1_[~]
+    _1_[~] --> C
+    _1_[~] --> D
+    D --> E
+    D --> F
     G --> H
     G --> J
     K"""
@@ -205,13 +285,17 @@ def test_complex_operation():
     _0_[+] --> x
     _0_[+] --> y
     y --> z
-    _1_[+] --> _3_[-]
-    _3_[-] --> B
-    B --> 1:3
-    B --> _2_[-]
-    _2_[-] --> u
-    _2_[-] --> v
-    _3_[-] --> C~D"""
+    _1_[+] --> _4_[-]
+    _4_[-] --> B
+    B --> _2_[:]
+    _2_[:] --> 1
+    _2_[:] --> 3
+    B --> _3_[-]
+    _3_[-] --> u
+    _3_[-] --> v
+    _4_[-] --> _5_[~]
+    _5_[~] --> C
+    _5_[~] --> D"""
     assert graph(selection) == expected
 
 
@@ -220,12 +304,29 @@ def test_complex_operation():
     [
         ("A(B) B(A)", "B B"),
         ("A(B C)", "B C"),
+        ("A(B:C) B:C(A)", "B:C B:C"),
         ("A~B B~A", "A~B B~A"),
         ("A(B) + C, B - C(A)", "B + C, B - C"),
+        ("A=B", ""),
+        ("A=B(C), B=A(D), C=D", "C, D, C=D"),
+        ("B=C(A) B(A=C) C(B=A)", "B=C, B, C"),
     ],
 )
 def test_selection_filter(unfiltered, filtered):
     assert selections(unfiltered, filter={"A"}) == selections(filtered)
+
+
+@pytest.mark.parametrize(
+    "unfiltered, filtered",
+    [
+        ("A(B(C)), A(C), B(C(A))", "C, C, C"),
+        ("A(B)", ""),
+        ("B(C) + A(D), A(B(C)) - D", "C + D, C - D"),
+        ("A(B=C)", ""),
+    ],
+)
+def test_filter_multiple(unfiltered, filtered):
+    assert selections(unfiltered, filter={"A", "B"}) == selections(filtered)
 
 
 @pytest.mark.parametrize("selection", ("A + B", "B + A", "A - B", "B - A"))
@@ -243,6 +344,7 @@ def test_incorrect_combination(selection):
             "A(x+y(z)) + B(1:3 u-v) - C~D",
             "A(x + y(z)) + B(1:3) - C~D, A(x + y(z)) + B(u - v) - C~D",
         ),
+        ("foo = bar", "foo=bar"),
     ],
 )
 def test_selections_to_string(input, output):
@@ -253,8 +355,8 @@ def test_selections_to_string(input, output):
 @pytest.mark.parametrize(
     "selection, expected",
     [
-        ("A, x(A), A~B, B:A, A + B, C - B - A, x(B - A), A(x y)", True),
-        ("B, y(B), B~C, B:C, B + C, C - B - D, y(B - C), B(x y)", False),
+        ("A, x(A), A~B, B:A, A + B, C - B - A, x(B - A), A(x y), x = A + B", True),
+        ("B, y(B), B~C, B:C, B + C, C - B - D, y(B - C), B(x y), x = B + C", False),
     ],
 )
 def test_contains(selection, expected):
@@ -274,7 +376,16 @@ def test_broken_group_raises_error(selection):
         select.Tree.from_selection(selection)
 
 
-@pytest.mark.parametrize("selection", ["(", "A(", "A,(", ")", "A)"])
+@pytest.mark.parametrize("selection", ["A(B):C", "x(A(1) ~ B)"])
+def test_group_subselection_on_left_raises_error(selection):
+    with pytest.raises(exception.IncorrectUsage):
+        selections(selection)
+
+
+@pytest.mark.parametrize(
+    "selection",
+    ["(", "A(", "A,(", ")", "A)", "A+B)", "A~B)", "A=B)"],
+)
 def test_broken_parenthesis(selection):
     with pytest.raises(exception.IncorrectUsage):
         select.Tree.from_selection(selection)
@@ -284,6 +395,12 @@ def test_broken_parenthesis(selection):
 def test_missing_operand(selection):
     with pytest.raises(exception.IncorrectUsage):
         select.Tree.from_selection(selection)
+
+
+@pytest.mark.parametrize("selection", ["=a", "b=", "a(b)=c"])
+def test_broken_assignment_raises_error(selection):
+    with pytest.raises(exception.IncorrectUsage):
+        selections(selection)
 
 
 @pytest.mark.parametrize("selection", [None, "string"])

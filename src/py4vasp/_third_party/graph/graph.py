@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import itertools
 import uuid
+from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, fields, replace
 
@@ -31,12 +32,20 @@ class Graph(Sequence):
     "One or more series shown in the graph."
     xlabel: str = None
     "Label for the x axis."
+    xrange: tuple = None
+    "Reduce the x axis to this interval."
     xticks: dict = None
     "A dictionary specifying positions and labels where ticks are placed on the x axis."
+    xsize: int = 720
+    "Width of the resulting figure."
     ylabel: str = None
     "Label for the y axis."
+    yrange: tuple = None
+    "Reduce the y axis to this interval."
     y2label: str = None
     "Label for the secondary y axis."
+    ysize: int = 540
+    "Height of the resulting figure."
     title: str = None
     "Title of the graph."
     _frozen = False
@@ -81,6 +90,7 @@ class Graph(Sequence):
                 figure.add_shape(**shape)
             for annotation in options.get("annotations", ()):
                 figure.add_annotation(**annotation)
+        self._set_legend(figure)
         return figure
 
     def show(self):
@@ -103,14 +113,17 @@ class Graph(Sequence):
 
     def _make_label(self, series, new_label):
         if len(self) > 1:
-            new_label = f"{new_label} {series.name}"
-        return replace(series, name=new_label)
+            new_label = f"{new_label} {series.label}"
+        return replace(series, label=new_label)
 
     def _ipython_display_(self):
         self.to_plotly()._ipython_display_()
 
     def _generate_plotly_traces(self):
-        colors = itertools.cycle(VASP_COLORS.values())
+        colors_without_dark = (
+            color for name, color in VASP_COLORS.items() if name != "dark"
+        )
+        colors = itertools.cycle(colors_without_dark)
         for series in self:
             series = _set_color_if_not_present(series, colors)
             yield from series.to_plotly()
@@ -120,6 +133,9 @@ class Graph(Sequence):
         self._set_xaxis_options(figure)
         self._set_yaxis_options(figure)
         figure.layout.title.text = self.title
+        if self.xsize:
+            figure.layout.width = self.xsize
+        figure.layout.height = self.ysize
         figure.layout.legend.itemsizing = "constant"
         return figure
 
@@ -135,6 +151,39 @@ class Graph(Sequence):
         else:
             return go.Figure()
 
+    def _set_legend(self, figure):
+        default_colorbar_x = 1.02
+        colorbar_spacing = 0.18
+        subplot_colorbars = defaultdict(list)
+
+        # Step 1: Group colorbars by subplot (based on axis mapping)
+        for trace in figure.data:
+            if hasattr(trace, "colorbar") and trace.colorbar:
+                xaxis = getattr(trace, "xaxis", "x")
+                yaxis = getattr(trace, "yaxis", "y")
+                subplot_key = f"{xaxis}_{yaxis}"
+                subplot_colorbars[subplot_key].append(trace)
+
+        max_colorbar_x = 1.0  # Track global maximum x for legend placement
+
+        # Step 2: Assign x-positions to colorbars, per subplot
+        for colorbar_list in subplot_colorbars.values():
+            for i, trace in enumerate(colorbar_list):
+                cb = trace.colorbar
+                # If user hasn't explicitly set `x`, place them with spacing
+                if not hasattr(cb, "x") or cb.x is None:
+                    cb.x = default_colorbar_x + i * colorbar_spacing
+                max_colorbar_x = max(max_colorbar_x, cb.x)
+
+        # Step 3: Place legend safely to the right of all colorbars
+        if max_colorbar_x > 1.0:
+            legend_x = max_colorbar_x + colorbar_spacing
+            figure.update_layout(
+                legend=dict(x=legend_x, y=1.0, xanchor="left", yanchor="top")
+            )
+
+        figure.update_layout(margin=dict(r=120))
+
     def _set_xaxis_options(self, figure):
         if self._subplot_on:
             # setting xlabels for subplots
@@ -147,6 +196,8 @@ class Graph(Sequence):
             figure.layout.xaxis.tickmode = "array"
             figure.layout.xaxis.tickvals = tuple(self.xticks.keys())
             figure.layout.xaxis.ticktext = self._xtick_labels()
+        if self.xrange:
+            figure.layout.xaxis.range = self.xrange
         if self._all_are_contour():
             figure.layout.xaxis.visible = False
 
@@ -163,11 +214,12 @@ class Graph(Sequence):
             figure.layout.yaxis.title.text = self.ylabel
             if self.y2label:
                 figure.layout.yaxis2.title.text = self.y2label
+        if self.yrange:
+            figure.layout.yaxis.range = self.yrange
         if self._all_are_contour():
             figure.layout.yaxis.visible = False
         if self._any_are_contour():
             figure.layout.yaxis.scaleanchor = "x"
-            figure.layout.height = 500
 
     def _all_are_contour(self):
         return all(isinstance(series, Contour) for series in self)
@@ -213,15 +265,15 @@ class Graph(Sequence):
         df[self._name_column(series, "x", None)] = series.x
         for idx, series_y in enumerate(np.atleast_2d(series.y)):
             df[self._name_column(series, "y", idx)] = series_y
-        if series.width is not None:
-            assert series.width.ndim == series.y.ndim
-            for idx, series_width in enumerate(np.atleast_2d(series.width)):
-                df[self._name_column(series, "width", idx)] = series_width
+        if series.weight is not None:
+            assert series.weight.ndim == series.y.ndim
+            for idx, series_weight in enumerate(np.atleast_2d(series.weight)):
+                df[self._name_column(series, "weight", idx)] = series_weight
         return df
 
     def _name_column(self, series, suffix, idx=None):
-        if series.name:
-            text_suffix = series.name.replace(" ", "_") + f".{suffix}"
+        if series.label:
+            text_suffix = series.label.replace(" ", "_") + f".{suffix}"
         else:
             text_suffix = "series_" + str(uuid.uuid1())
         if series.y.ndim == 1 or idx is None:

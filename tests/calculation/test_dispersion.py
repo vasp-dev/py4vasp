@@ -5,19 +5,21 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import calculation
+from py4vasp._calculation._dispersion import Dispersion
+from py4vasp._calculation.kpoint import Kpoint
+from py4vasp._calculation.projector import SPIN_PROJECTION
 
 
 @pytest.fixture(params=["single_band", "spin_polarized", "line", "phonon"])
 def dispersion(raw_data, request):
     raw_dispersion = raw_data.dispersion(request.param)
-    dispersion = calculation.dispersion.from_data(raw_dispersion)
+    dispersion = Dispersion.from_data(raw_dispersion)
     dispersion.ref = types.SimpleNamespace()
-    dispersion.ref.kpoints = calculation.kpoint.from_data(raw_dispersion.kpoints)
+    dispersion.ref.kpoints = Kpoint.from_data(raw_dispersion.kpoints)
     dispersion.ref.eigenvalues = raw_dispersion.eigenvalues
     spin_polarized = request.param == "spin_polarized"
     dispersion.ref.spin_polarized = spin_polarized
-    dispersion.ref.names = ("up", "down") if spin_polarized else ("bands",)
+    dispersion.ref.labels = ("up", "down") if spin_polarized else ("bands",)
     dispersion.ref.xticks = expected_xticks(request.param)
     return dispersion
 
@@ -40,20 +42,24 @@ def expected_xticks(selection):
 def test_read_dispersion(dispersion, Assert):
     actual = dispersion.read()
     Assert.allclose(actual["kpoint_distances"], dispersion.ref.kpoints.distances())
-    assert actual["kpoint_labels"] == dispersion.ref.kpoints.labels()
+    kpoint_labels = dispersion.ref.kpoints.labels()
+    if kpoint_labels is None:
+        assert "kpoint_labels" not in actual
+    else:
+        assert actual["kpoint_labels"] == kpoint_labels
     Assert.allclose(actual["eigenvalues"], dispersion.ref.eigenvalues)
 
 
 def test_plot_dispersion(dispersion, Assert):
     graph = dispersion.plot()
-    assert len(graph.series) == len(dispersion.ref.names)
+    assert len(graph.series) == len(dispersion.ref.labels)
     check_xticks(graph.xticks, dispersion.ref, Assert)
     bands = np.atleast_3d(dispersion.ref.eigenvalues.T)
-    for component, (series, name) in enumerate(zip(graph.series, dispersion.ref.names)):
+    for index, (series, label) in enumerate(zip(graph.series, dispersion.ref.labels)):
         Assert.allclose(series.x, dispersion.ref.kpoints.distances())
-        Assert.allclose(series.y, bands[:, :, component])
-        assert series.name == name
-        assert series.width is None
+        Assert.allclose(series.y, bands[:, :, index])
+        assert series.label == label
+        assert series.weight is None
 
 
 def check_xticks(actual, reference, Assert):
@@ -75,17 +81,24 @@ def test_plot_dispersion_with_projections(dispersion, Assert):
         projections = {
             "one": np.random.uniform(low=0.1, high=0.5, size=shape),
             "two": np.random.uniform(low=0.1, high=0.5, size=shape),
+            SPIN_PROJECTION: ["two"],
         }
     graph = dispersion.plot(projections)
+    spin_projections = projections.pop(SPIN_PROJECTION, [])
     assert len(graph.series) == len(projections)
     check_xticks(graph.xticks, dispersion.ref, Assert)
     bands = np.atleast_3d(dispersion.ref.eigenvalues.T)
-    for series, (name, width) in zip(graph.series, projections.items()):
-        component = 1 if "down" in name else 0
+    for series, (label, weight) in zip(graph.series, projections.items()):
+        component = 1 if "down" in label else 0
         Assert.allclose(series.x, dispersion.ref.kpoints.distances())
         Assert.allclose(series.y, bands[:, :, component])
-        assert series.name == name
-        Assert.allclose(series.width, width.T)
+        assert series.label == label
+        Assert.allclose(series.weight, weight.T)
+        if label in spin_projections:
+            assert series.marker == "o"
+            assert series.weight_mode == "color"
+        else:
+            assert series.weight_mode == "size"
 
 
 def test_print(dispersion, format_):
@@ -98,4 +111,4 @@ def test_print(dispersion, format_):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dispersion("single_band")
-    check_factory_methods(calculation.dispersion, data)
+    check_factory_methods(Dispersion, data)

@@ -17,6 +17,10 @@ def make_pair(left, right):
     return select.Group([left, right], select.pair_separator)
 
 
+def make_assignment(left, right):
+    return select.Assignment(left, right)
+
+
 def make_operation(left, operator, right):
     return select.Operation((left,), operator, (right,))
 
@@ -153,6 +157,82 @@ def test_select_pair(selection, indices):
 
 
 @pytest.mark.parametrize(
+    "selection, indices",
+    [
+        ((make_assignment("int", "1"),), 0),
+        ((make_assignment("int", "2"),), slice(1, 4)),
+        ((make_assignment("str", "x"),), slice(2, 5)),
+        ((make_assignment("str", "y"),), 3),
+        ((make_assignment("float", "-0.5"),), slice(5, 10)),
+        ((make_assignment("float", "0"),), 4),
+    ],
+)
+def test_select_assignment(selection, indices):
+    values = np.arange(10) ** 2
+    map_ = {
+        0: {
+            "int": {1: 0, 2: slice(1, 4)},
+            "str": {"x": slice(2, 5), "y": 3},
+            "float": {-0.5: slice(5, 10), 1e-8: 4},
+        },
+    }
+    selector = index.Selector(map_, values)
+    assert selector[selection] == np.sum(values[indices])
+    assert selector.label(selection) == str(selection[0])
+
+
+def test_error_if_assignment_key_is_invalid():
+    data = np.zeros((3, 2))
+    map_ = {0: {"x": {}}}
+    selector = index.Selector(map_, data)
+    with pytest.raises(exception.IncorrectUsage):
+        selector[(select.Assignment("y", 1),)]
+
+
+def test_error_if_assignment_value_is_not_present():
+    data = np.zeros((3, 2))
+    map_ = {0: {"x": {1: 0}}}
+    selector = index.Selector(map_, data)
+    with pytest.raises(exception.IncorrectUsage):
+        selector[(select.Assignment("x", 2),)]
+
+
+def test_error_if_assignment_used_on_non_mapping():
+    data = np.zeros((3, 2))
+    map_ = {0: {"x": 1}}
+    selector = index.Selector(map_, data)
+    with pytest.raises(exception.IncorrectUsage):
+        selector[(select.Assignment("x", 1),)]
+
+
+@pytest.mark.parametrize(
+    "selection",
+    [
+        (make_assignment("x", "invalid"),),
+        (make_assignment("x", "1.5"),),
+        (make_assignment("y", "invalid"),),
+    ],
+)
+def test_error_if_typecasting_fails(selection):
+    data = np.zeros((3, 2))
+    map_ = {0: {"x": {1: 0}, "y": {1.5: 1}}}
+    selector = index.Selector(map_, data)
+    with pytest.raises(exception.IncorrectUsage):
+        selector[selection]
+
+
+@pytest.mark.parametrize(
+    "selection", [("x",), (make_range("x", "y"),), (make_pair("x", "y"),)]
+)
+def test_error_if_nonassignment_used_on_mapping(selection):
+    data = np.zeros((3, 2))
+    map_ = {0: {"x": {1: 0}}}
+    selector = index.Selector(map_, data)
+    with pytest.raises(exception.IncorrectUsage):
+        selector[selection]
+
+
+@pytest.mark.parametrize(
     "selection, expected",
     [
         ((make_operation("A", "+", "B"),), 5),
@@ -214,6 +294,43 @@ def test_equivalent_operation(first_text, second_text, Assert):
         assert first is not None
         assert second is not None
         Assert.allclose(selector[first], selector[second])
+
+
+@pytest.mark.parametrize(
+    "selection, expected",
+    [
+        (("A",), [0.909297426825682, 0.956375928404503]),
+        (("x",), [-1.566975662971037, -3.801910387458235]),
+        (("B", "y"), [0.823172422671085, 0.073694517959313]),
+        (("z", "C"), [0.660919112573909, 0.485842070293535]),
+        ((make_range("B", "D"), "z"), [0.66432711338294, 0.499714623309142]),
+        ((make_operation("x", "+", "y"), "C"), [0.168814278260321, -1.165363630766923]),
+        ((make_operation("D", "-", "z"),), [0.273708667728343, 0.339540822873806]),
+    ],
+)
+def test_dynamic_reduction(selection, expected, Assert):
+    values = np.sin(np.arange(48)).reshape(2, 4, 6)
+    map_ = {
+        1: {"A": 0, "B": 1, "C": 2, "D": 3},
+        2: {"x": 0, "y": slice(1, 3), "z": slice(3, 6)},
+    }
+    selector = index.Selector(map_, values, reduction=ExampleReduction)
+    Assert.allclose(selector[selection], expected)
+
+
+class ExampleReduction(index.Reduction):
+    def __init__(self, keys):
+        if keys[-1] == "x":
+            self._reduction = np.sum
+        elif keys[-1] == "y":
+            self._reduction = np.average
+        elif keys[-1] == "z":
+            self._reduction = np.std
+        else:
+            self._reduction = np.max
+
+    def __call__(self, array, axis):
+        return self._reduction(array, axis=axis)
 
 
 def test_complex_operation(Assert):
@@ -312,7 +429,7 @@ def test_label(selection, label):
     [
         ("A(y) - x(B)", "A_y - B_x"),
         ("A - B(x + y)", "A - B_x - B_y"),
-        ("A:B - z", "A:B - z"),
+        ("z - A:B", "z - A:B"),
         ("x(1) + y(2) - z(4)", "A_1_x + A_2_y - B_1_z"),
         ("up(x + y(2)) - down(z(1 + 2))", "x_up + A_2_y_up - A_1_z_down - A_2_z_down"),
     ],

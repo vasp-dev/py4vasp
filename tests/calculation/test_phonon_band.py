@@ -6,20 +6,23 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import calculation
+from py4vasp._calculation._stoichiometry import Stoichiometry
+from py4vasp._calculation.kpoint import Kpoint
+from py4vasp._calculation.phonon_band import PhononBand
 from py4vasp._util import convert
 
 
 @pytest.fixture
 def phonon_band(raw_data):
     raw_band = raw_data.phonon_band("default")
-    band = calculation.phonon_band.from_data(raw_band)
+    band = PhononBand.from_data(raw_band)
     band.ref = types.SimpleNamespace()
     band.ref.bands = raw_band.dispersion.eigenvalues
     band.ref.modes = convert.to_complex(raw_band.eigenvectors)
     raw_qpoints = raw_band.dispersion.kpoints
-    band.ref.qpoints = calculation.kpoint.from_data(raw_qpoints)
-    band.ref.topology = calculation.topology.from_data(raw_band.topology)
+    band.ref.qpoints = Kpoint.from_data(raw_qpoints)
+    raw_stoichiometry = raw_band.stoichiometry
+    band.ref.stoichiometry = Stoichiometry.from_data(raw_stoichiometry)
     Sr = slice(0, 2)
     band.ref.Sr = np.sum(np.abs(band.ref.modes[:, :, Sr, :]), axis=(2, 3))
     Ti = 2
@@ -43,7 +46,7 @@ def test_plot(phonon_band, Assert):
     graph = phonon_band.plot()
     assert graph.ylabel == "ω (THz)"
     assert len(graph.series) == 1
-    assert graph.series[0].width is None
+    assert graph.series[0].weight is None
     Assert.allclose(graph.series[0].x, phonon_band.ref.qpoints.distances())
     Assert.allclose(graph.series[0].y, phonon_band.ref.bands.T)
     check_ticks(graph, phonon_band.ref.qpoints, Assert)
@@ -77,18 +80,18 @@ class FatbandChecker:
         self.bands = ref.bands
         self.Assert = Assert
 
-    def verify(self, graph, width):
+    def verify(self, graph, weight):
         for item in zip(graph.series, self.projections, self.labels):
-            self.check_series(*item, width)
+            self.check_series(*item, weight)
 
-    def check_series(self, series, projection, label, width):
-        assert series.name == label
+    def check_series(self, series, projection, label, weight):
+        assert series.label == label
         self.Assert.allclose(series.x, self.distances)
         self.Assert.allclose(series.y, self.bands.T)
-        self.Assert.allclose(series.width, width * projection.T)
+        self.Assert.allclose(series.weight, weight * projection.T)
 
 
-@patch("py4vasp.calculation._phonon_band.PhononBand.to_graph")
+@patch.object(PhononBand, "to_graph")
 def test_to_plotly(mock_plot, phonon_band):
     fig = phonon_band.to_plotly("selection", width=0.2)
     mock_plot.assert_called_once_with("selection", width=0.2)
@@ -104,7 +107,7 @@ def test_to_image(phonon_band):
 
 
 def check_to_image(phonon_band, filename_argument, expected_filename):
-    with patch("py4vasp.calculation._phonon_band.PhononBand.to_plotly") as plot:
+    with patch.object(PhononBand, "to_plotly") as plot:
         phonon_band.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
@@ -130,4 +133,4 @@ phonon band data:
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.phonon_band("default")
-    check_factory_methods(calculation.phonon_band, data)
+    check_factory_methods(PhononBand, data)

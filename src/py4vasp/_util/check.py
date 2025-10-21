@@ -3,7 +3,13 @@
 import inspect
 import numbers
 
-from py4vasp import exception
+from py4vasp import exception, raw
+
+
+def is_none(obj):
+    if isinstance(obj, raw.VaspData):
+        return obj.is_none()
+    return obj is None
 
 
 def raise_error_if_not_string(test_if_string, error_message):
@@ -22,4 +28,4 @@ def raise_error_if_not_callable(function, *args, **kwargs):
         signature.bind(*args, **kwargs)
     except TypeError as error:
         message = f"You tried to call {function.__name__}, but the arguments are incorrect! Please double check your input."
-        raise exception.IncorrectUsage(message) from error
+        raise exception.IncorrectUsage(message) from None

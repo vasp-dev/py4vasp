@@ -4,7 +4,8 @@ import types
 
 import pytest
 
-from py4vasp import calculation
+from py4vasp._calculation._CONTCAR import CONTCAR as _CONTCAR
+from py4vasp._calculation.structure import Structure
 
 REF_Sr2TiO4 = """\
 Sr2TiO4
@@ -41,6 +42,7 @@ Direct
    0.2225500000000000    0.0100000000000000    0.7284800000000000  F T F
    0.7469000000000000    0.5100000000000000    0.7338900000000000  T F T
 Lattice velocities and vectors
+1
   2.39789553e+00 -3.00000000e-01 -3.00000000e-01
  -3.00000000e-01  6.54431821e-01 -3.00000000e-01
  -1.10383537e-01 -3.00000000e-01  2.29595993e+00
@@ -61,9 +63,9 @@ Cartesian
 def CONTCAR(raw_data, request):
     selection = request.param
     raw_contcar = raw_data.CONTCAR(selection)
-    contcar = calculation.CONTCAR.from_data(raw_contcar)
+    contcar = _CONTCAR.from_data(raw_contcar)
     contcar.ref = types.SimpleNamespace()
-    structure = calculation.structure.from_data(raw_data.structure(selection))[-1]
+    structure = Structure.from_data(raw_data.structure(selection))[-1]
     contcar.ref.structure = structure
     contcar.ref.system = selection
     contcar.ref.selective_dynamics = raw_contcar.selective_dynamics
@@ -110,10 +112,9 @@ def test_plot(CONTCAR, supercell, Assert):
 
 def test_print(CONTCAR, format_):
     actual, _ = format_(CONTCAR)
-    assert actual["text/plain"] == CONTCAR.ref.string
     assert actual == {"text/plain": CONTCAR.ref.string}
 
 
 def test_factory_methods(raw_data, check_factory_methods):
     raw_contcar = raw_data.CONTCAR("Sr2TiO4")
-    check_factory_methods(calculation.CONTCAR, raw_contcar)
+    check_factory_methods(_CONTCAR, raw_contcar)

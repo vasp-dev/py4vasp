@@ -4,15 +4,16 @@ import types
 
 import pytest
 
-from py4vasp import calculation
+from py4vasp._calculation.born_effective_charge import BornEffectiveCharge
+from py4vasp._calculation.structure import Structure
 
 
 @pytest.fixture
 def Sr2TiO4(raw_data):
     raw_born_charges = raw_data.born_effective_charge("Sr2TiO4")
-    born_charges = calculation.born_effective_charge.from_data(raw_born_charges)
+    born_charges = BornEffectiveCharge.from_data(raw_born_charges)
     born_charges.ref = types.SimpleNamespace()
-    structure = calculation.structure.from_data(raw_born_charges.structure)
+    structure = Structure.from_data(raw_born_charges.structure)
     born_charges.ref.structure = structure
     born_charges.ref.charge_tensors = raw_born_charges.charge_tensors
     return born_charges
@@ -68,4 +69,4 @@ ion    7   O
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.born_effective_charge("Sr2TiO4")
-    check_factory_methods(calculation.born_effective_charge, data)
+    check_factory_methods(BornEffectiveCharge, data)

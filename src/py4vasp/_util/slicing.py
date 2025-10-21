@@ -8,6 +8,38 @@ from py4vasp import exception
 
 INDICES = {"a": 0, "b": 1, "c": 2}
 AXIS = ("x", "y", "z")
+PLANE = """\
+You need to specify a plane defined by two of the lattice vectors by selecting
+a *cut* along the third one. You must only select a single cut and the value
+should correspond to the fractional length along this third lattice vector.
+py4vasp will then create a plane from the other two lattice vectors and
+generate a contour plot within this plane.
+
+Usually, the first remaining lattice vector is aligned with the x-axis and the
+second one such that the angle between the vectors is preserved. You can
+overwrite this choice by defining a normal direction. Then py4vasp will rotate
+the normal vector of the plane to align with the specified direction. This is
+particularly useful if the lattice vector you cut is aligned with a Cartesian
+direction.
+"""
+PARAMETERS = """\
+a, b, c : float
+    You must select exactly one of these to specify which of the three lattice
+    vectors you want to remove to form a plane. The assigned value represents
+    the fractional length along this lattice vector, so `a = 0.3` will remove
+    the first lattice vector and then take the grid points at 30% of the length
+    of the first vector in the b-c plane. The fractional height uses periodic
+    boundary conditions.
+
+normal : str or None
+    If not set, py4vasp will align the first remaining lattice vector with the
+    x-axis and the second one such that the angle between the lattice vectors
+    is preserved. You can set it to "x", "y", or "z"; then py4vasp will rotate
+    the plane in such a way that the normal direction aligns with the specified
+    Cartesian axis. This may look better if the normal direction is close to a
+    Cartesian axis. You may also set it to "auto" so that py4vasp chooses a
+    close Cartesian axis if it can find any.
+"""
 
 
 @dataclasses.dataclass
@@ -21,6 +53,38 @@ class Plane:
     "Lattice vectors of the unit cell."
     cut: str = None
     "Lattice vector cut to get the plane, if not set, no labels will be added"
+    axis_labels: tuple[str, str, str] = ("a", "b", "c")
+
+    def map_raw_labels(self, labels: tuple[str, str]):
+        _raise_error_if_labels_invalid(self.axis_labels)
+        mapping = dict(zip(("a", "b", "c"), self.axis_labels))
+        return tuple(mapping[x] for x in labels)
+
+
+def get_cut(a, b, c):
+    raise_error_cut_selection_incorrect(a, b, c)
+    if a is not None:
+        return "a", a
+    if b is not None:
+        return "b", b
+    return "c", c
+
+
+def raise_error_cut_selection_incorrect(*selections):
+    # only a single element may be selected
+    selected_elements = sum(selection is not None for selection in selections)
+    if selected_elements == 0:
+        raise exception.IncorrectUsage(
+            "You have not selected a lattice vector along which the slice should be "
+            "constructed. Please set exactly one of the keyword arguments (a, b, c) "
+            "to a real number that specifies at which fraction of the lattice vector "
+            "the plane is."
+        )
+    if selected_elements > 1:
+        raise exception.IncorrectUsage(
+            f"You have selected more than a single element. Please use only one of "
+            f"(a, b, c) and not multiple choices."
+        )
 
 
 def grid_scalar(data, plane, fraction):
@@ -110,7 +174,9 @@ def _project_vectors_to_plane(plane, data):
     return au + bv
 
 
-def plane(cell, cut, normal="auto"):
+def plane(
+    cell, cut, normal="auto", axis_labels: tuple[str, str, str] = ("a", "b", "c")
+):
     """Takes a 2d slice of a 3d cell and projects it onto 2d coordinates.
 
     For simplicity in the documentation, we will assume that the cut is in the plane of
@@ -144,18 +210,29 @@ def plane(cell, cut, normal="auto"):
         the plane is rotated. Alteratively, set it to "auto" to rotate to the closest
         Cartesian axis. If you set it to None, the normal will not be considered and
         the first remaining lattice vector will be aligned with the x axis instead.
-
+    axis_labels : tuple[str, str, str]
+        Defines the labels of the plane spanning vectors shown when plotted.
+        Must be exactly a tuple with three unique string elements.
+        
     Returns
     -------
     Plane
         A 2d representation of the plane with some information to transform data to it.
     """
     _raise_error_if_cut_unknown(cut)
+    _raise_error_if_labels_invalid(axis_labels)
     vectors = np.delete(cell, INDICES[cut], axis=0)
     if normal is not None:
-        return Plane(_rotate_normal_to_cartesian_axis(vectors, normal), cell, cut)
+        return Plane(
+            _rotate_normal_to_cartesian_axis(vectors, normal),
+            cell,
+            cut,
+            axis_labels=axis_labels,
+        )
     else:
-        return Plane(_rotate_first_vector_to_x_axis(vectors), cell, cut)
+        return Plane(
+            _rotate_first_vector_to_x_axis(vectors), cell, cut, axis_labels=axis_labels
+        )
 
 
 def _rotate_first_vector_to_x_axis(vectors):
@@ -205,8 +282,20 @@ def _get_rotation_matrix(vectors):
     return np.eye(3) + V + V @ V / (1 + cos_angle)
 
 
-def _get_slice(shape, cut, fraction):
-    return slice_
+def _raise_error_if_labels_invalid(labels: tuple):
+    if labels is None:
+        raise exception.IncorrectUsage(
+            "Labels must be a tuple of (str, str, str), but is None."
+        )
+    if len(labels) != 3:
+        raise exception.IncorrectUsage(
+            f"Labels must be a tuple of (str, str, str) (exactly length 3), but is {labels} of length {len(labels)}."
+        )
+    if any([not (isinstance(x, str)) for x in labels]):
+        raise exception.IncorrectUsage(
+            f"Labels must be a tuple of (str, str, str), but is {labels}."
+        )
+    return
 
 
 def _raise_error_if_cut_unknown(cut):
