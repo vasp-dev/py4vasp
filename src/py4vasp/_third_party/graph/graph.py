@@ -110,7 +110,7 @@ class Graph(Sequence):
         self.to_plotly()._ipython_display_()
 
     def _generate_plotly_traces(self):
-        colors = itertools.cycle(VASP_COLORS)
+        colors = itertools.cycle(VASP_COLORS.values())
         for series in self:
             series = _set_color_if_not_present(series, colors)
             yield from series.to_plotly()
