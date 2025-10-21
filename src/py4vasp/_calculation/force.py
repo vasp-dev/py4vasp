@@ -8,7 +8,6 @@ from py4vasp._third_party import view
 from py4vasp._util import documentation, reader
 
 
-@documentation.format(examples=slice_.examples("force"))
 class Force(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     """The forces determine the path of the atoms in a trajectory.
 
@@ -21,7 +20,32 @@ class Force(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     use this class to visualize the forces in a trajectory or read the values to
     analyze them numerically.
 
-    {examples}
+    Examples
+    --------
+    Let us create some example data so that we can illustrate how to use this class.
+    Of course you can also use your own VASP calculation data if you have it available.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    If you access the forces, the result will depend on the steps that you selected
+    with the [] operator. Without any selection the results from the final step will be
+    used.
+
+    >>> calculation.force.number_steps()
+    1
+
+    To select the results for all steps, you don't specify the array boundaries.
+
+    >>> calculation.force[:].number_steps()
+    4
+
+    You can also select specific steps or a subset of steps as follows
+
+    >>> calculation.force[3].number_steps()
+    1
+    >>> calculation.force[1:4].number_steps()
+    3
     """
 
     force_rescale = 1.5
@@ -92,6 +116,12 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         )
         viewer.ion_arrows = [ion_arrow]
         return viewer
+
+    @base.data_access
+    def number_steps(self):
+        """Return the number of forces in the trajectory."""
+        range_ = range(len(self._raw_data.forces))
+        return len(range_[self._slice])
 
     @property
     def _force(self):

@@ -64,7 +64,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     >>> calculation.local_moment[:].number_steps()
     4
 
-    You can also select specific {step}s or a subset of {step}s as follows
+    You can also select specific steps or a subset of steps as follows
 
     >>> calculation.local_moment[3].number_steps()
     1

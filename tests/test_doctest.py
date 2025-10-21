@@ -35,7 +35,6 @@ def interesting_example(example):
     skipped_suffixes = (
         "bandgap",
         "energy",
-        "force",
         "pair_correlation",
         "stress",
         "velocity",
