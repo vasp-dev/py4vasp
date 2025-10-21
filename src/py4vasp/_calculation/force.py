@@ -152,8 +152,6 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         View(..., ion_arrows=[IonArrow(quantity=array([[...]]), label='forces', ...)], ...)
 
         To select the results for all steps, you don't specify the array boundaries.
-        Notice that in this case the lattice vectors and positions contain an additional
-        dimension for the different steps.
 
         >>> calculation.force[:].to_view()
         View(..., ion_arrows=[IonArrow(quantity=array([[[...]]]), label='forces', ...)], ...)

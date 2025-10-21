@@ -37,7 +37,6 @@ def interesting_example(example):
         "bandgap",
         "energy",
         "pair_correlation",
-        "velocity",
     )
     return suffix not in skipped_suffixes
 

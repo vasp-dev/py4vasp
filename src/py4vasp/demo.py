@@ -69,6 +69,7 @@ def _generate_default_data(h5f):
     write(h5f, _demo.force.Sr2TiO4(randomize=True))
     write(h5f, _demo.stress.Sr2TiO4(randomize=True))
     write(h5f, _demo.structure.Sr2TiO4())
+    write(h5f, _demo.velocity.Sr2TiO4())
     write(h5f, _demo.band.line_mode("no_labels"), selection="kpoints_opt")
     write(h5f, _demo.dos.Sr2TiO4("no_projectors"), selection="kpoints_opt")
 
