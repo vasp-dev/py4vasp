@@ -20,6 +20,7 @@ def get_calculation_examples():
             finder.find(_calculation)
             + finder.find(_calculation.band)
             + finder.find(_calculation.dos)
+            + finder.find(_calculation.force)
             + finder.find(_calculation.local_moment)
             + finder.find(_calculation.structure)
         )
@@ -35,10 +36,7 @@ def interesting_example(example):
     skipped_suffixes = (
         "bandgap",
         "energy",
-        "force",
         "pair_correlation",
-        "stress",
-        "velocity",
     )
     return suffix not in skipped_suffixes
 

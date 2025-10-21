@@ -3,10 +3,9 @@
 import numpy as np
 
 from py4vasp._calculation import base, slice_, structure
-from py4vasp._util import documentation, reader
+from py4vasp._util import reader
 
 
-@documentation.format(examples=slice_.examples("stress"))
 class Stress(slice_.Mixin, base.Refinery, structure.Mixin):
     """The stress describes the force acting on the shape of the unit cell.
 
@@ -20,7 +19,32 @@ class Stress(slice_.Mixin, base.Refinery, structure.Mixin):
     stress in every iteration. You can use this class to read the stress for specific
     steps along the trajectory.
 
-    {examples}
+    Examples
+    --------
+    Let us create some example data so that we can illustrate how to use this class.
+    Of course you can also use your own VASP calculation data if you have it available.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    If you access the stress, the result will depend on the steps that you selected
+    with the [] operator. Without any selection the results from the final step will be
+    used.
+
+    >>> calculation.stress.number_steps()
+    1
+
+    To select the results for all steps, you don't specify the array boundaries.
+
+    >>> calculation.stress[:].number_steps()
+    4
+
+    You can also select specific steps or a subset of steps as follows
+
+    >>> calculation.stress[3].number_steps()
+    1
+    >>> calculation.stress[1:4].number_steps()
+    3
     """
 
     @base.data_access
@@ -39,7 +63,6 @@ in kB   {stress_to_string(stress)}
 """.strip()
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("stress", "to_dict"))
     def to_dict(self):
         """Read the stress and associated structural information for one or more
         selected steps of the trajectory.
@@ -50,12 +73,46 @@ in kB   {stress_to_string(stress)}
             Contains the stress for all selected steps and the structural information
             to know on which cell the stress acts.
 
-        {examples}
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this method.
+        You can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        If you use the `to_dict` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used. The structure is included to provide the necessary context for
+        the stress.
+
+        >>> calculation.stress.to_dict()
+        {'structure': {...}, 'stress': array([[...]])}
+
+        To select the results for all steps, you don't specify the array boundaries.
+        Notice that in this case the stress contains an additional dimension for the
+        different steps.
+
+        >>> calculation.stress[:].to_dict()
+        {'structure': {...}, 'stress': array([[[...]]])}
+
+        You can also select specific steps or a subset of steps as follows
+
+        >>> calculation.stress[1].to_dict()
+        {'structure': {...}, 'stress': array([[...]])}
+        >>> calculation.stress[0:2].to_dict()
+        {'structure': {...}, 'stress': array([[[...]]])}
         """
         return {
             "stress": self._stress[self._steps],
             "structure": self._structure[self._steps].read(),
         }
+
+    @base.data_access
+    def number_steps(self):
+        """Return the number of stress components in the trajectory."""
+        range_ = range(len(self._raw_data.stress))
+        return len(range_[self._slice])
 
     @property
     def _stress(self):

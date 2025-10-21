@@ -5,10 +5,9 @@ import numpy as np
 from py4vasp import _config
 from py4vasp._calculation import base, slice_, structure
 from py4vasp._third_party import view
-from py4vasp._util import documentation, reader
+from py4vasp._util import reader
 
 
-@documentation.format(examples=slice_.examples("force"))
 class Force(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     """The forces determine the path of the atoms in a trajectory.
 
@@ -21,7 +20,32 @@ class Force(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     use this class to visualize the forces in a trajectory or read the values to
     analyze them numerically.
 
-    {examples}
+    Examples
+    --------
+    Let us create some example data so that we can illustrate how to use this class.
+    Of course you can also use your own VASP calculation data if you have it available.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    If you access the forces, the result will depend on the steps that you selected
+    with the [] operator. Without any selection the results from the final step will be
+    used.
+
+    >>> calculation.force.number_steps()
+    1
+
+    To select the results for all steps, you don't specify the array boundaries.
+
+    >>> calculation.force[:].number_steps()
+    4
+
+    You can also select specific steps or a subset of steps as follows
+
+    >>> calculation.force[3].number_steps()
+    1
+    >>> calculation.force[1:4].number_steps()
+    3
     """
 
     force_rescale = 1.5
@@ -43,10 +67,13 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         return result
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("force", "to_dict"))
     def to_dict(self):
-        """Read the forces and associated structural information for one or more
-        selected steps of the trajectory.
+        """Read the forces into a dictionary.
+
+        Forces and associated structural information for one or more selected steps of
+        the trajectory are returned in a dictionary. This includes the lattice vectors,
+        atomic positions, and atomic species in addition to the forces acting on each atom.
+        The forces are in Cartesian coordinates and in units of eV/Å.
 
         Returns
         -------
@@ -54,7 +81,35 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
             Contains the forces for all selected steps and the structural information
             to know on which atoms the forces act.
 
-        {examples}
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this method.
+        You can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        If you use the `to_dict` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used. The structure is included to provide the necessary context for
+        the forces.
+
+        >>> calculation.force.to_dict()
+        {'structure': {...}, 'forces': array([[...]])}
+
+        To select the results for all steps, you don't specify the array boundaries.
+        Notice that in this case the forces contain an additional dimension for the
+        different steps.
+
+        >>> calculation.force[:].to_dict()
+        {'structure': {...}, 'forces': array([[[...]]])}
+
+        You can also select specific steps or a subset of steps as follows
+
+        >>> calculation.force[1].to_dict()
+        {'structure': {...}, 'forces': array([[...]])}
+        >>> calculation.force[0:2].to_dict()
+        {'structure': {...}, 'forces': array([[[...]]])}
         """
         return {
             "structure": self._structure[self._steps].read(),
@@ -62,9 +117,12 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         }
 
     @base.data_access
-    @documentation.format(examples=slice_.examples("force", "to_view"))
     def to_view(self, supercell=None):
         """Visualize the forces showing arrows at the atoms.
+
+        This method adds arrows to the atoms in the structure sized according to the
+        strength of the force. The length of the arrows is scaled by a constant
+        `force_rescale` to convert from eV/Å to a length in Å.
 
         Parameters
         ----------
@@ -78,7 +136,42 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
             Shows the structure with cell and all atoms adding arrows to the atoms
             sized according to the strength of the force.
 
-        {examples}
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this method.
+        You can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        If you use the `to_view` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> calculation.force.to_view()
+        View(..., ion_arrows=[IonArrow(quantity=array([[...]]), label='forces', ...)], ...)
+
+        To select the results for all steps, you don't specify the array boundaries.
+
+        >>> calculation.force[:].to_view()
+        View(..., ion_arrows=[IonArrow(quantity=array([[[...]]]), label='forces', ...)], ...)
+
+        You can also select specific steps or a subset of steps as follows
+
+        >>> calculation.force[1].to_view()
+        View(..., ion_arrows=[IonArrow(quantity=array([[...]]), label='forces', ...)], ...)
+        >>> calculation.force[0:2].to_view()
+        View(..., ion_arrows=[IonArrow(quantity=array([[[...], [...]]]), label='forces', ...)], ...)
+
+        You may also replicate the structure by specifying a supercell.
+
+        >>> calculation.force.to_view(supercell=2)
+        View(..., supercell=array([2, 2, 2]), ...)
+
+        The supercell size can also be different for the different directions.
+
+        >>> calculation.force.to_view(supercell=[2,3,1])
+        View(..., supercell=array([2, 3, 1]), ...)
         """
         viewer = self._structure.plot(supercell)
         forces = self.force_rescale * self._force[self._steps]
@@ -92,6 +185,12 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         )
         viewer.ion_arrows = [ion_arrow]
         return viewer
+
+    @base.data_access
+    def number_steps(self):
+        """Return the number of forces in the trajectory."""
+        range_ = range(len(self._raw_data.forces))
+        return len(range_[self._slice])
 
     @property
     def _force(self):
