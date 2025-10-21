@@ -68,8 +68,12 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
 
     @base.data_access
     def to_dict(self):
-        """Read the forces and associated structural information for one or more
-        selected steps of the trajectory.
+        """Read the forces into a dictionary.
+
+        Forces and associated structural information for one or more selected steps of
+        the trajectory are returned in a dictionary. This includes the lattice vectors,
+        atomic positions, and atomic species in addition to the forces acting on each atom.
+        The forces are in Cartesian coordinates and in units of eV/Å.
 
         Returns
         -------
@@ -115,6 +119,10 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
     @base.data_access
     def to_view(self, supercell=None):
         """Visualize the forces showing arrows at the atoms.
+
+        This method adds arrows to the atoms in the structure sized according to the
+        strength of the force. The length of the arrows is scaled by a constant
+        `force_rescale` to convert from eV/Å to a length in Å.
 
         Parameters
         ----------
