@@ -76,7 +76,6 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
             are available, these are returned, too. Structural information is given for
             reference.
         """
-        _raise_error_if_no_data(self._raw_data.total_potential)
         result = {"structure": self._structure.read()}
         items = [self._generate_items(kind) for kind in VALID_KINDS]
         result.update(itertools.chain(*items))
