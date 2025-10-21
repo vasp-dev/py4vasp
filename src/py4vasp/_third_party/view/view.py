@@ -15,6 +15,7 @@ from py4vasp._util import convert, import_
 ase = import_.optional("ase")
 ase_cube = import_.optional("ase.io.cube")
 nglview = import_.optional("nglview")
+vaspview = import_.optional("vasp_viewer")
 
 CUBE_FILENAME = "quantity.cube"
 
@@ -147,6 +148,91 @@ class View:
         if self.show_axes:
             self._show_axes(widget, trajectory)
         return widget
+
+    def to_vasp_viewer(self):
+        """Create a widget with VASP Viewer
+
+        This method creates the widget required to view a structure, isosurfaces and
+        arrows at atom centers. The attributes of View are added to a dictionary with which
+        to call initialize a VASP Viewer widget."""
+        self._verify()
+        structure: dict = {
+            "positions": self.positions,  # TODO check type
+            "types": self.elements,  # TODO enable trajectory for elements
+            "lattice": self.lattice_vectors,  # TODO enable trajectory for lattice_vectors & check type
+        }
+
+        # === Atoms options ===
+        if self.selective_dynamics:
+            structure["selective_dynamics"] = (
+                self.selective_dynamics
+            )  # TODO query selective dynamics and check type
+
+        # === Vector Group options ===
+        if self.ion_arrows:
+            # TODO handle list of vector groups instead of magnetization only
+            # TODO adjust UI to support this
+            structure["ion_arrows"] = [
+                {
+                    "label": arrow.label,
+                    "direction": arrow.quantity,  # TODO check type
+                    "base_color": arrow.color,  # TODO allow a default fallback color for each Vector Group for colorMode = "off"
+                    "base_radius": arrow.radius,  # TODO tie this to scaling factor on Vector Group
+                }
+                for arrow in self.ion_arrows
+            ]
+        if self.grid_scalars:
+            # TODO merge isosurface branch
+            # TODO handle list of grid scalars instead of single grid scalar only
+            # TODO adjust UI to support this
+            structure["grid_scalars"] = [
+                {
+                    "label": grid_quantity.label,
+                    "data": grid_quantity.quantity,  # TODO check type
+                    "isosurfaces": [  # TODO hook this list to isosurface settings
+                        {
+                            "isolevel": isosurface.isolevel,
+                            "color": isosurface.color,  # TODO interpret this as base color of isosurface
+                            "opacity": isosurface.opacity,  # TODO tie this to opacity on isosurface
+                        }
+                        for isosurface in grid_quantity.isosurfaces
+                    ],
+                }
+                for grid_quantity in self.grid_scalars
+            ]
+
+        # === Lattice options ===
+        if self.shift:
+            structure["constant_shift"] = self.shift  # TODO check type
+        if self.scaling_factor:
+            structure["scaling_factor"] = (
+                self.scaling_factor
+            )  # TODO query scaling factor
+        if self.lattice_vectors_primitive:
+            structure["lattice_primitive"] = (
+                self.lattice_vectors_primitive
+            )  # TODO query primitive lattice
+        if self.supercell:
+            structure["supercell"] = self.supercell  # TODO check type
+
+        # === Visualization options ===
+        if self.camera:
+            structure["camera_mode"] = self.camera
+        if self.show_cell:
+            structure["show_lattice"] = self.show_cell
+        if self.show_axes:
+            structure["show_xyz"] = False
+            structure["show_abc"] = self.show_axes
+            structure["show_xyz_aside"] = self.show_axes
+            structure["show_abc_aside"] = self.show_axes
+        if self.show_axes_at:
+            structure["axes_scene_shift"] = self.show_axes_at
+
+        # === Meta options ===
+        if self.title:
+            structure["descriptor"] = self.title  # TODO query structure name
+
+        return vaspview.Widget(structure)
 
     def _verify(self):
         self._raise_error_if_present_on_multiple_steps(self.grid_scalars)
