@@ -83,6 +83,12 @@ def test_ipython(mock_display, view):
     mock_display.assert_called_once()
 
 
+@patch("vasp_viewer.Widget", autospec=True)
+def test_ipython_auto(mock_display, view):
+    display = view._ipython_display_(mode="auto")
+    mock_display.assert_called_once()
+
+
 @pytest.mark.parametrize("camera", ("orthographic", "perspective"))
 def test_camera(view, camera):
     view.camera = camera

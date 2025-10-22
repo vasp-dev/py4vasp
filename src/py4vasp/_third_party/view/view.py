@@ -123,7 +123,17 @@ class View:
     def __post_init__(self):
         self._verify()
 
-    def _ipython_display_(self, mode="vasp_viewer"):
+    def _ipython_display_(self, mode="auto"):
+        if mode == "auto":
+            if import_.is_imported("vasp_viewer"):
+                mode = "vasp_viewer"
+            elif import_.is_imported("nglview"):
+                mode = "ngl"
+            else:
+                raise exception.IncorrectUsage(
+                    "No supported viewer found. Please install either 'vasp_viewer' or 'nglview' to visualize the structure."
+                )
+
         if mode == "ngl":
             widget = self.to_ngl()
             widget._ipython_display_()
@@ -131,7 +141,7 @@ class View:
             widget = self.to_vasp_viewer()
         else:
             raise exception.IncorrectUsage(
-                f"Mode '{mode}' is not supported. Choose either 'ngl' or 'vasp_viewer'."
+                f"Mode '{mode}' is not supported. Choose either 'auto', 'ngl' or 'vasp_viewer'."
             )
 
     def to_ngl(self):
