@@ -196,7 +196,7 @@ class View:
             structure["ion_arrows"] = [
                 {
                     "label": arrow.label,
-                    "direction": arrow.quantity,  # TODO check type
+                    "quantity": arrow.quantity,  # TODO check type
                     "base_color": arrow.color,  # TODO allow a default fallback color for each Vector Group for colorMode = "off"
                     "base_radius": arrow.radius,  # TODO tie this to scaling factor on Vector Group
                 }
