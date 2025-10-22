@@ -124,8 +124,8 @@ class View:
         self._verify()
 
     def _ipython_display_(self):
-        widget = self.to_ngl()
-        widget._ipython_display_()
+        widget = self.to_vasp_viewer()
+        # widget._ipython_display_()
 
     def to_ngl(self):
         """Create a widget with NGL
@@ -157,19 +157,21 @@ class View:
         to call initialize a VASP Viewer widget."""
         self._verify()
         structure: dict = {
-            "positions": self.positions,  # TODO check type
-            "types": self.elements,  # TODO enable trajectory for elements
-            "lattice": self.lattice_vectors,  # TODO enable trajectory for lattice_vectors & check type
+            "positions": self.positions.tolist(),  # TODO check type
+            "types": self.elements.tolist()[0],  # TODO enable trajectory for elements
+            "lattice": self.lattice_vectors.tolist()[
+                0
+            ],  # TODO enable trajectory for lattice_vectors & check type
         }
 
         # === Atoms options ===
-        if self.selective_dynamics:
-            structure["selective_dynamics"] = (
-                self.selective_dynamics
-            )  # TODO query selective dynamics and check type
+        # if self.selective_dynamics:
+        #    structure["selective_dynamics"] = (
+        #        self.selective_dynamics
+        #    )  # TODO query selective dynamics and check type
 
         # === Vector Group options ===
-        if self.ion_arrows:
+        if self.ion_arrows is not None:
             # TODO handle list of vector groups instead of magnetization only
             # TODO adjust UI to support this
             structure["ion_arrows"] = [
@@ -181,7 +183,7 @@ class View:
                 }
                 for arrow in self.ion_arrows
             ]
-        if self.grid_scalars:
+        if self.grid_scalars is not None:
             # TODO merge isosurface branch
             # TODO handle list of grid scalars instead of single grid scalar only
             # TODO adjust UI to support this
@@ -202,35 +204,35 @@ class View:
             ]
 
         # === Lattice options ===
-        if self.shift:
+        if self.shift is not None:
             structure["constant_shift"] = self.shift  # TODO check type
-        if self.scaling_factor:
-            structure["scaling_factor"] = (
-                self.scaling_factor
-            )  # TODO query scaling factor
-        if self.lattice_vectors_primitive:
-            structure["lattice_primitive"] = (
-                self.lattice_vectors_primitive
-            )  # TODO query primitive lattice
-        if self.supercell:
-            structure["supercell"] = self.supercell  # TODO check type
+        # if self.scaling_factor:
+        #    structure["scaling_factor"] = (
+        #        self.scaling_factor
+        #    )  # TODO query scaling factor
+        # if self.lattice_vectors_primitive:
+        #    structure["lattice_primitive"] = (
+        #        self.lattice_vectors_primitive
+        #    )  # TODO query primitive lattice
+        if self.supercell is not None:
+            structure["supercell"] = self.supercell.tolist()  # TODO check type
 
         # === Visualization options ===
-        if self.camera:
+        if self.camera is not None:
             structure["camera_mode"] = self.camera
-        if self.show_cell:
+        if self.show_cell is not None:
             structure["show_lattice"] = self.show_cell
-        if self.show_axes:
+        if self.show_axes is not None:
             structure["show_xyz"] = False
             structure["show_abc"] = self.show_axes
             structure["show_xyz_aside"] = self.show_axes
             structure["show_abc_aside"] = self.show_axes
-        if self.show_axes_at:
+        if self.show_axes_at is not None:
             structure["axes_scene_shift"] = self.show_axes_at
 
         # === Meta options ===
-        if self.title:
-            structure["descriptor"] = self.title  # TODO query structure name
+        # if self.title:
+        #    structure["descriptor"] = self.title  # TODO query structure name
 
         return vaspview.Widget(structure)
 
