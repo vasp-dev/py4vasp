@@ -125,9 +125,9 @@ class View:
 
     def _ipython_display_(self, mode="auto"):
         if mode == "auto":
-            if import_.is_imported("vasp_viewer"):
+            if import_.is_imported(vaspview):
                 mode = "vasp_viewer"
-            elif import_.is_imported("nglview"):
+            elif import_.is_imported(nglview):
                 mode = "ngl"
             else:
                 raise exception.IncorrectUsage(
