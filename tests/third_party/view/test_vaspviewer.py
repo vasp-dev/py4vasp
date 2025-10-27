@@ -15,6 +15,12 @@ from py4vasp._third_party.view import View
 from py4vasp._third_party.view.view import GridQuantity, IonArrow, Isosurface
 from py4vasp._util import convert, import_
 
+vaspview = import_.optional("vasp_viewer")
+hasVaspView = pytest.mark.skipif(
+    not import_.is_imported(vaspview),
+    reason="vasp_viewer not installed",
+)
+
 
 def base_input_view(is_structure):
     if is_structure:
@@ -59,7 +65,8 @@ def view(request, not_core):
     return view
 
 
-def test_structure_to_view(view: View, Assert):
+@hasVaspView
+def test_structure_to_view(view: View, Assert, not_core):
     widget = view.to_vasp_viewer()
     # check positions
     for idx_traj in range(len(view.lattice_vectors)):
@@ -77,51 +84,60 @@ def test_structure_to_view(view: View, Assert):
     Assert.allclose(expected_elements, output_elements)
 
 
+@hasVaspView
 @patch("vasp_viewer.Widget", autospec=True)
-def test_ipython(mock_display, view):
+def test_ipython(mock_display, view, not_core):
     display = view._ipython_display_(mode="vasp_viewer")
     mock_display.assert_called_once()
 
 
+@hasVaspView
 @patch("vasp_viewer.Widget", autospec=True)
-def test_ipython_auto(mock_display, view):
+def test_ipython_auto(mock_display, view, not_core):
     display = view._ipython_display_(mode="auto")
     mock_display.assert_called_once()
 
 
+@hasVaspView
 @pytest.mark.parametrize("camera", ("orthographic", "perspective"))
-def test_camera(view, camera):
+def test_camera(view, camera, not_core):
     view.camera = camera
     widget = view.to_vasp_viewer()
     camera_message = widget.get_state()["selections_camera_mode"]
     assert camera_message == camera
 
 
+@hasVaspView
 @pytest.mark.skip(reason="Not yet implemented")
-def test_isosurface(view):
+def test_isosurface(view, not_core):
     assert False
 
 
+@hasVaspView
 @pytest.mark.skip(reason="Not yet implemented")
-def test_shifted_isosurface(view):
+def test_shifted_isosurface(view, not_core):
     assert False
 
 
+@hasVaspView
 @pytest.mark.skip(reason="Not yet implemented")
-def test_fail_isosurface(view):
+def test_fail_isosurface(view, not_core):
     assert False
 
 
+@hasVaspView
 @pytest.mark.skip(reason="Not yet implemented")
-def test_ion_arrows(view):
+def test_ion_arrows(view, not_core):
     assert False
 
 
+@hasVaspView
 @pytest.mark.skip(reason="Not yet implemented")
-def test_shifted_ion_arrows(view):
+def test_shifted_ion_arrows(view, not_core):
     assert False
 
 
+@hasVaspView
 @pytest.mark.parametrize("is_structure", [True, False])
 def test_supercell(is_structure, not_core):
     inputs = base_input_view(is_structure)
@@ -138,6 +154,7 @@ def test_supercell(is_structure, not_core):
     assert np.allclose(view.supercell, widget.get_state()["selections_supercell"])
 
 
+@hasVaspView
 @pytest.mark.parametrize(
     ["is_structure", "is_show_cell"],
     [[True, True], [False, True], [True, False], [False, False]],
@@ -150,6 +167,7 @@ def test_showcell(is_structure, is_show_cell, not_core):
     assert widget.get_state()["selections_show_lattice"] == is_show_cell
 
 
+@hasVaspView
 @pytest.mark.parametrize(
     ["is_structure", "is_show_axes"],
     [[True, True], [False, True], [True, False], [False, False]],
@@ -165,6 +183,7 @@ def test_showaxes(is_structure, is_show_axes, not_core):
     assert widget.get_state()["selections_show_abc_aside"] == is_show_axes
 
 
+@hasVaspView
 @pytest.mark.parametrize("is_structure", [True, False])
 def test_showaxes_different_origin(is_structure, not_core):
     inputs = base_input_view(is_structure)
@@ -182,7 +201,8 @@ def test_showaxes_different_origin(is_structure, not_core):
     )
 
 
-def test_different_number_of_steps_raises_error(view):
+@hasVaspView
+def test_different_number_of_steps_raises_error(view, not_core):
     too_many_elements = [element for element in view.elements] + [view.elements[0]]
     with pytest.raises(exception.IncorrectUsage):
         View(too_many_elements, view.lattice_vectors, view.positions)
@@ -208,7 +228,8 @@ def test_different_number_of_steps_raises_error(view):
         broken_view.to_vasp_viewer()
 
 
-def test_incorrect_shape_raises_error(view):
+@hasVaspView
+def test_incorrect_shape_raises_error(view, not_core):
     different_number_atoms = np.zeros((len(view.positions), 7, 3))
     with pytest.raises(exception.IncorrectUsage):
         View(view.elements, view.lattice_vectors, different_number_atoms)
