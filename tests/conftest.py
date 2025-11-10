@@ -247,6 +247,10 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
+    def effective_coulomb(selection):
+        return _demo.effective_coulomb.effective_coulomb()
+
+    @staticmethod
     def elastic_modulus(selection):
         return _demo.elastic_modulus.elastic_modulus()
 

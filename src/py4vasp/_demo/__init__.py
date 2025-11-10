@@ -15,6 +15,7 @@ from py4vasp._demo import (
     dielectric_tensor,
     dispersion,
     dos,
+    effective_coulomb,
     elastic_modulus,
     electron_phonon,
     electronic_minimization,
