@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
+from dataclasses import dataclass
 
 import numpy as np
 import pytest
@@ -10,30 +11,45 @@ from py4vasp._calculation.effective_coulomb import EffectiveCoulomb
 from py4vasp._util import check, convert
 
 
+@dataclass
+class Setup:
+    has_frequencies: bool
+    has_positions: bool
+    is_nonpolarized: bool
+    is_collinear: bool
+
+
 @pytest.fixture(params=["crpa", "crpa_two_center", "crpar", "crpar_two_center"])
 def effective_coulomb(raw_data, request):
     raw_coulomb = raw_data.effective_coulomb(request.param)
     coulomb = EffectiveCoulomb.from_data(raw_coulomb)
     coulomb.ref = types.SimpleNamespace()
+    coulomb.ref.setup = determine_setup(request.param, raw_coulomb)
     coulomb.ref.num_wannier = raw_coulomb.number_wannier_states
-    coulomb.ref.expected = setup_expected_dict(request.param, raw_coulomb)
+    coulomb.ref.expected = setup_expected_dict(coulomb.ref.setup, raw_coulomb)
     return coulomb
 
 
-def setup_expected_dict(param, raw_coulomb):
-    has_frequency = "crpar" in param
-    two_center = "two_center" in param
+def determine_setup(param, raw_coulomb):
+    return Setup(
+        has_frequencies=len(raw_coulomb.frequencies) > 1,
+        has_positions=not check.is_none(raw_coulomb.positions),
+        is_nonpolarized=(len(raw_coulomb.bare_potential_low_cutoff) == 1),
+        is_collinear=(len(raw_coulomb.bare_potential_low_cutoff) == 2),
+    )
+
+
+def setup_expected_dict(setup, raw_coulomb):
     num_wannier = raw_coulomb.number_wannier_states
+    axis_U = 3 if setup.has_frequencies else 2
     C = unpack(num_wannier, raw_coulomb.bare_potential_low_cutoff, axis=2)
     V = unpack(num_wannier, raw_coulomb.bare_potential_high_cutoff, axis=2)
-    U = unpack(
-        num_wannier, raw_coulomb.screened_potential, axis=3 if has_frequency else 2
-    )
-    if two_center:
+    U = unpack(num_wannier, raw_coulomb.screened_potential, axis=axis_U)
+    if setup.has_positions:
         V = np.moveaxis(V, -1, 0)
         U = np.moveaxis(U, -1, 0)
-    if has_frequency:
-        U = np.moveaxis(U, 1 if two_center else 0, -1)
+    if setup.has_frequencies:
+        U = np.moveaxis(U, 1 if setup.has_positions else 0, -1)
         V = V[..., np.newaxis]
         C = C[..., np.newaxis]
     result = {
@@ -41,7 +57,7 @@ def setup_expected_dict(param, raw_coulomb):
         "bare_low_cutoff": C,
         "screened": U,
     }
-    if has_frequency:
+    if setup.has_frequencies:
         result["frequencies"] = convert.to_complex(raw_coulomb.frequencies[:])
     if not check.is_none(raw_coulomb.positions):
         if check.is_none(raw_coulomb.cell.scale):
@@ -72,12 +88,18 @@ def test_read(effective_coulomb, Assert):
 
 
 def test_plot(effective_coulomb, Assert):
-    frequencies = effective_coulomb.ref.expected.get("frequencies")
-    if frequencies is None:
-        with pytest.raises(exception.DataMismatch):
-            effective_coulomb.plot()
-        return
+    if effective_coulomb.ref.setup.has_frequencies:
+        check_plot_has_correct_series(effective_coulomb, Assert)
+    else:
+        check_plot_raises_error(effective_coulomb)
+
+
+def check_plot_has_correct_series(effective_coulomb, Assert):
     graph = effective_coulomb.plot()
+    assert graph.xlabel == "Im(ω) (eV)"
+    assert graph.ylabel == "Coulomb potential (eV)"
+
+    frequencies = effective_coulomb.ref.expected.get("frequencies")
     if "positions" in effective_coulomb.ref.expected:
         screened_potential = effective_coulomb.ref.expected["screened"][0, 0, 0]
         bare_potential = effective_coulomb.ref.expected["bare_high_cutoff"][0, 0, 0]
@@ -90,10 +112,14 @@ def test_plot(effective_coulomb, Assert):
         np.einsum(f"iiiiw->w", bare_potential.real) / num_wannier,
     )
     assert len(graph) == 2
-    assert graph.xlabel == "Im(ω) (eV)"
-    assert graph.ylabel == "U (eV)"
     expected_labels = ["screened", "bare"]
     for series, expected_line, label in zip(graph, expected_lines, expected_labels):
         Assert.allclose(series.x, frequencies.imag)
         Assert.allclose(series.y, expected_line)
         assert series.label == label
+        assert series.label == label
+
+
+def check_plot_raises_error(effective_coulomb):
+    with pytest.raises(exception.DataMismatch):
+        effective_coulomb.plot()

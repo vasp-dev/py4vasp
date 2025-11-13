@@ -2,18 +2,19 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import _demo, raw
+from py4vasp import _demo, exception, raw
 
 
 def crpa(two_center):
     positions = _setup_positions(two_center)
-    shape_C = (_demo.COLLINEAR, _demo.COLLINEAR, _demo.NUMBER_WANNIER**4, _demo.COMPLEX)
     if two_center:
+        shape_C = _shape_C("collinear")
         shape_V = shape_C[:-1] + (len(positions), _demo.COMPLEX)
+        cell = _demo.cell.Fe3O4()
     else:
-        shape_V = shape_C
+        shape_V = shape_C = _shape_C("nonpolarized")
+        cell = _demo.cell.Sr2TiO4()
     shape_U = shape_V
-    cell = _demo.cell.Fe3O4()
     cell.lattice_vectors = cell.lattice_vectors[0]
     return raw.EffectiveCoulomb(
         number_wannier_states=_demo.NUMBER_WANNIER,
@@ -31,18 +32,14 @@ def crpar(two_center):
     frequencies = np.array(
         (np.zeros(_demo.NUMBER_OMEGA), np.linspace(0, 10, _demo.NUMBER_OMEGA))
     ).T.copy()
-    shape_C = (
-        _demo.NONPOLARIZED,
-        _demo.NONPOLARIZED,
-        _demo.NUMBER_WANNIER**4,
-        _demo.COMPLEX,
-    )
     if two_center:
+        shape_C = _shape_C("nonpolarized")
         shape_V = shape_C[:-1] + (len(positions), _demo.COMPLEX)
+        cell = _demo.cell.Sr2TiO4()
     else:
-        shape_V = shape_C
+        shape_V = shape_C = _shape_C("collinear")
+        cell = _demo.cell.Fe3O4()
     shape_U = (_demo.NUMBER_OMEGA,) + shape_V
-    cell = _demo.cell.Sr2TiO4()
     cell.lattice_vectors = cell.lattice_vectors[0]
     return raw.EffectiveCoulomb(
         number_wannier_states=_demo.NUMBER_WANNIER,
@@ -53,6 +50,16 @@ def crpar(two_center):
         cell=cell,
         positions=_setup_positions(two_center),
     )
+
+
+def _shape_C(magnetism):
+    if magnetism == "nonpolarized":
+        spin_dim = _demo.NONPOLARIZED
+    elif magnetism == "collinear":
+        spin_dim = _demo.COLLINEAR
+    else:
+        raise exception.NotImplemented
+    return (spin_dim, spin_dim, _demo.NUMBER_WANNIER**4, _demo.COMPLEX)
 
 
 def _setup_positions(two_center):

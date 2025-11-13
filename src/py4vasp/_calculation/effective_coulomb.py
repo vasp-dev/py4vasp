@@ -83,7 +83,9 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         screened_potential = graph.Series(omega, U, label="screened")
         bare_potential = graph.Series(omega, V, label="bare")
         return graph.Graph(
-            [screened_potential, bare_potential], xlabel="Im(ω) (eV)", ylabel="U (eV)"
+            [screened_potential, bare_potential],
+            xlabel="Im(ω) (eV)",
+            ylabel="Coulomb potential (eV)",
         )
 
     def _read_high_cutoff(self):
