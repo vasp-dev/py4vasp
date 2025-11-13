@@ -212,6 +212,8 @@ class EffectiveCoulomb:
     correlated subspace such as d or f orbitals.
     """
 
+    number_wannier_states: int
+    "Number of Wannier functions used to define the correlated subspace."
     frequencies: VaspData
     "Frequencies at which the effective Coulomb potential is evaluated."
     bare_potential_high_cutoff: VaspData

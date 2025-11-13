@@ -16,6 +16,7 @@ def crpa(two_center):
     cell = _demo.cell.Fe3O4()
     cell.lattice_vectors = cell.lattice_vectors[0]
     return raw.EffectiveCoulomb(
+        number_wannier_states=_demo.NUMBER_WANNIER,
         frequencies=_demo.wrap_data([[0.0, 0.0]]),
         bare_potential_high_cutoff=_demo.wrap_random_data(shape_V),
         bare_potential_low_cutoff=_demo.wrap_random_data(shape_C),
@@ -44,6 +45,7 @@ def crpar(two_center):
     cell = _demo.cell.Sr2TiO4()
     cell.lattice_vectors = cell.lattice_vectors[0]
     return raw.EffectiveCoulomb(
+        number_wannier_states=_demo.NUMBER_WANNIER,
         frequencies=_demo.wrap_data(frequencies),
         bare_potential_high_cutoff=_demo.wrap_random_data(shape_V),
         bare_potential_low_cutoff=_demo.wrap_random_data(shape_C),

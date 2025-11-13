@@ -298,15 +298,17 @@ schema.add(
     projections=f"{group}/dospar",
 )
 #
+group = "results/crpa"
 schema.add(
     raw.EffectiveCoulomb,
     required=raw.Version(6, 6),
-    frequencies="/results/crpa/comega",
-    bare_potential_high_cutoff="/results/crpa/vijkl",
-    bare_potential_low_cutoff="/results/crpa/cijkl",
-    screened_potential="/results/crpa/uijkl",
+    number_wannier_states=f"{group}/nwtot",
+    frequencies=f"{group}/comega",
+    bare_potential_high_cutoff=f"{group}/vijkl",
+    bare_potential_low_cutoff=f"{group}/cijkl",
+    screened_potential=f"{group}/uijkl",
     cell=Link("cell", "final"),
-    positions="/results/crpa/wpos",
+    positions=f"{group}/wpos",
 )
 #
 schema.add(
