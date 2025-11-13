@@ -33,8 +33,8 @@ def setup_expected_dict(param, raw_coulomb):
         V = V[..., np.newaxis]
         C = C[..., np.newaxis]
     result = {
-        "bare high cutoff": V,
-        "bare low cutoff": C,
+        "bare_high_cutoff": V,
+        "bare_low_cutoff": C,
         "screened": U,
     }
     if has_frequency:
@@ -62,8 +62,7 @@ def unpack(data, axis):
 
 def test_read(effective_coulomb, Assert):
     actual = effective_coulomb.read()
-    print(actual.keys())
-    print(effective_coulomb.ref.expected_dict.keys())
     assert actual.keys() == effective_coulomb.ref.expected_dict.keys()
-    # for key in actual.keys():
-    #     Assert(actual[key]).allclose(effective_coulomb.ref.expected_dict[key])
+    for key in actual.keys():
+        assert actual[key].shape == effective_coulomb.ref.expected_dict[key].shape
+        Assert.allclose(actual[key], effective_coulomb.ref.expected_dict[key])

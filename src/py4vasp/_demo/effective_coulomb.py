@@ -13,12 +13,14 @@ def crpa(two_center):
     else:
         shape_V = shape_C
     shape_U = shape_V
+    cell = _demo.cell.Fe3O4()
+    cell.lattice_vectors = cell.lattice_vectors[0]
     return raw.EffectiveCoulomb(
         frequencies=_demo.wrap_data([[0.0, 0.0]]),
         bare_potential_high_cutoff=_demo.wrap_random_data(shape_V),
         bare_potential_low_cutoff=_demo.wrap_random_data(shape_C),
         screened_potential=_demo.wrap_random_data(shape_U),
-        cell=_demo.structure.Fe3O4().cell,
+        cell=cell,
         positions=_setup_positions(two_center),
     )
 
@@ -39,12 +41,14 @@ def crpar(two_center):
     else:
         shape_V = shape_C
     shape_U = (_demo.NUMBER_OMEGA,) + shape_V
+    cell = _demo.cell.Sr2TiO4()
+    cell.lattice_vectors = cell.lattice_vectors[0]
     return raw.EffectiveCoulomb(
         frequencies=_demo.wrap_data(frequencies),
         bare_potential_high_cutoff=_demo.wrap_random_data(shape_V),
         bare_potential_low_cutoff=_demo.wrap_random_data(shape_C),
         screened_potential=_demo.wrap_random_data(shape_U),
-        cell=_demo.structure.Sr2TiO4().cell,
+        cell=cell,
         positions=_setup_positions(two_center),
     )
 

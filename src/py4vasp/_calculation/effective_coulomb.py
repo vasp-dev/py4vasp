@@ -1,7 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp._calculation import base
-from py4vasp._util import check
+import numpy as np
+
+from py4vasp._calculation import base, cell
+from py4vasp._util import check, convert
 
 
 class EffectiveCoulomb(base.Refinery):
@@ -33,19 +35,82 @@ class EffectiveCoulomb(base.Refinery):
         method, https://arxiv.org/abs/2508.15368, 2025.
     """
 
-    def to_dict(self):
-        if len(self._raw_data.frequencies) > 1:
-            frequencies = {"frequencies": 4}
-        else:
-            frequencies = {}
-        if check.is_none(self._raw_data.positions):
-            positions = {}
-        else:
-            positions = {"lattice_vectors": 1, "positions": 2}
+    def to_dict(self) -> dict[str, np.ndarray]:
+        """Convert the effective Coulomb object to a dictionary representation.
+
+        The integrals are evaluated over 4 Wannier functions. For the bare Coulomb
+        interaction, these integrals can be computed with either a high :tag:`ENCUT`
+        or low cutoff :tag:`ENCUTGW` that you set in the INCAR file. The screened Coulomb
+        interaction is evaluated with the dielectric function and will have smaller
+        values than the bare Coulomb potential. If you set :tag:`TWO_CENTER` = `.TRUE.`
+        in the INCAR file, the Coulomb interactions are evaluated also at neighboring
+        cells.
+
+        Returns
+        -------
+        A dictionary containing the effective Coulomb interaction data. In particular,
+        it includes the bare Coulomb interaction with high and low cutoffs, the screened
+        Coulomb interaction, and optionally the frequencies and positions at which the
+        interactions are evaluated.
+        """
         return {
-            "bare high cutoff": 1,
-            "bare low cutoff": 2,
-            "screened": 3,
-            **frequencies,
-            **positions,
+            "bare_high_cutoff": self._read_high_cutoff(),
+            "bare_low_cutoff": self._read_low_cutoff(),
+            "screened": self._read_screened(),
+            **self._read_frequencies(),
+            **self._read_positions(),
         }
+
+    def _read_high_cutoff(self):
+        V = convert.to_complex(self._raw_data.bare_potential_high_cutoff[:])
+        if self._has_positions:
+            V = np.moveaxis(V, -1, 0)
+        V = self._unpack_wannier_indices(V)
+        if self._has_frequencies:
+            V = V[..., np.newaxis]
+        return V
+
+    def _read_low_cutoff(self):
+        C = convert.to_complex(self._raw_data.bare_potential_low_cutoff[:])
+        C = self._unpack_wannier_indices(C)
+        if self._has_frequencies:
+            C = C[..., np.newaxis]
+        return C
+
+    def _read_screened(self):
+        U = convert.to_complex(self._raw_data.screened_potential[:])
+        if self._has_positions:
+            U = np.moveaxis(U, -1, 0)
+        U = self._unpack_wannier_indices(U)
+        if self._has_frequencies:
+            U = np.moveaxis(U, 1 if self._has_positions else 0, -1)
+        return U
+
+    def _unpack_wannier_indices(self, data):
+        num_wannier = int(np.round(data.shape[-1] ** 0.25))
+        new_shape = data.shape[:-1] + 4 * (num_wannier,)
+        return data.reshape(new_shape)
+
+    def _read_frequencies(self):
+        if not self._has_frequencies:
+            return {}
+        return {"frequencies": convert.to_complex(self._raw_data.frequencies[:])}
+
+    def _read_positions(self):
+        if not self._has_positions:
+            return {}
+        return {
+            "lattice_vectors": self._cell().lattice_vectors(),
+            "positions": self._raw_data.positions[:],
+        }
+
+    def _cell(self):
+        return cell.Cell.from_data(self._raw_data.cell)
+
+    @property
+    def _has_frequencies(self):
+        return len(self._raw_data.frequencies) > 1
+
+    @property
+    def _has_positions(self):
+        return not check.is_none(self._raw_data.positions)
