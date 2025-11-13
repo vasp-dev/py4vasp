@@ -27,7 +27,7 @@ def crpar(two_center):
     positions = _setup_positions(two_center)
     frequencies = np.array(
         (np.zeros(_demo.NUMBER_OMEGA), np.linspace(0, 10, _demo.NUMBER_OMEGA))
-    ).T
+    ).T.copy()
     shape_C = (
         _demo.NONPOLARIZED,
         _demo.NONPOLARIZED,

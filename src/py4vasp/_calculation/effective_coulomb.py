@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._calculation import base
+from py4vasp._util import check
 
 
 class EffectiveCoulomb(base.Refinery):
@@ -33,4 +34,18 @@ class EffectiveCoulomb(base.Refinery):
     """
 
     def to_dict(self):
-        return {}
+        if len(self._raw_data.frequencies) > 1:
+            frequencies = {"frequencies": 4}
+        else:
+            frequencies = {}
+        if check.is_none(self._raw_data.positions):
+            positions = {}
+        else:
+            positions = {"lattice_vectors": 1, "positions": 2}
+        return {
+            "bare high cutoff": 1,
+            "bare low cutoff": 2,
+            "screened": 3,
+            **frequencies,
+            **positions,
+        }
