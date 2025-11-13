@@ -38,6 +38,7 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         method, https://arxiv.org/abs/2508.15368, 2025.
     """
 
+    @base.data_access
     def to_dict(self) -> dict[str, np.ndarray]:
         """Convert the effective Coulomb object to a dictionary representation.
 
@@ -64,6 +65,7 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
             **self._read_positions(),
         }
 
+    @base.data_access
     def to_graph(self):
         if not self._has_frequencies:
             raise exception.DataMismatch("The output does not contain frequency data.")

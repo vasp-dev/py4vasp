@@ -16,6 +16,7 @@ QUANTITIES = (
     "dielectric_function",
     "dielectric_tensor",
     "dos",
+    "effective_coulomb",
     "elastic_modulus",
     "electronic_minimization",
     "energy",
