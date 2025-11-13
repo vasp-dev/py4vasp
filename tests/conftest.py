@@ -249,9 +249,13 @@ class RawDataFactory:
     @staticmethod
     def effective_coulomb(selection):
         if selection == "crpa":
-            return _demo.effective_coulomb.crpa()
+            return _demo.effective_coulomb.crpa(two_center=False)
+        elif selection == "crpa_two_center":
+            return _demo.effective_coulomb.crpa(two_center=True)
         elif selection == "crpar":
-            return _demo.effective_coulomb.crpar()
+            return _demo.effective_coulomb.crpar(two_center=False)
+        elif selection == "crpar_two_center":
+            return _demo.effective_coulomb.crpar(two_center=True)
         else:
             raise exception.NotImplemented()
 

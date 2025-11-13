@@ -214,10 +214,16 @@ class EffectiveCoulomb:
 
     frequencies: VaspData
     "Frequencies at which the effective Coulomb potential is evaluated."
-    bare_potential: VaspData
-    "The bare Coulomb potential before screening."
+    bare_potential_high_cutoff: VaspData
+    "The bare Coulomb potential before screening evaluated with a high cutoff."
+    bare_potential_low_cutoff: VaspData
+    "The bare Coulomb potential before screening evaluated with a low cutoff."
     screened_potential: VaspData
     "The screened effective Coulomb potential U."
+    cell: Cell
+    "Unit cell of the crystal."
+    positions: VaspData = NONE()
+    "Positions in units of the lattice vectors where the effective Coulomb potential is evaluated."
 
 
 @dataclasses.dataclass

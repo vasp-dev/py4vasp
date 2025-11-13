@@ -299,6 +299,17 @@ schema.add(
 )
 #
 schema.add(
+    raw.EffectiveCoulomb,
+    required=raw.Version(6, 6),
+    frequencies="/results/crpa/comega",
+    bare_potential_high_cutoff="/results/crpa/vijkl",
+    bare_potential_low_cutoff="/results/crpa/cijkl",
+    screened_potential="/results/crpa/uijkl",
+    cell=Link("cell", "final"),
+    positions="/results/crpa/wpos",
+)
+#
+schema.add(
     raw.Energy,
     labels="intermediate/ion_dynamics/energies_tags",
     values="intermediate/ion_dynamics/energies",

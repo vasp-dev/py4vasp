@@ -7,25 +7,13 @@ import pytest
 from py4vasp._calculation.effective_coulomb import EffectiveCoulomb
 
 
-@pytest.fixture
-def without_frequency(raw_data):
-    raw_coulomb = raw_data.effective_coulomb("crpa")
+@pytest.fixture(params=["crpa", "crpa_two_center", "crpar", "crpar_two_center"])
+def effective_coulomb(raw_data, request):
+    raw_coulomb = raw_data.effective_coulomb(request.param)
     coulomb = EffectiveCoulomb.from_data(raw_coulomb)
     coulomb.ref = types.SimpleNamespace()
     return coulomb
 
 
-@pytest.fixture
-def with_frequency(raw_data):
-    raw_coulomb = raw_data.effective_coulomb("crpar")
-    coulomb = EffectiveCoulomb.from_data(raw_coulomb)
-    coulomb.ref = types.SimpleNamespace()
-    return coulomb
-
-
-def test_read_without_frequency(without_frequency):
-    without_frequency.read()
-
-
-def test_read_with_frequency(with_frequency):
-    with_frequency.read()
+def test_read(effective_coulomb):
+    effective_coulomb.read()
