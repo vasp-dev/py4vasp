@@ -1,7 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
-from math import sqrt
 
 import numpy as np
 import pytest
@@ -91,6 +90,10 @@ def test_plot(effective_coulomb, Assert):
         np.einsum(f"iiiiw->w", bare_potential.real) / num_wannier,
     )
     assert len(graph) == 2
-    for series, expected_line in zip(graph, expected_lines):
+    assert graph.xlabel == "Im(ω) (eV)"
+    assert graph.ylabel == "U (eV)"
+    expected_labels = ["screened", "bare"]
+    for series, expected_line, label in zip(graph, expected_lines, expected_labels):
         Assert.allclose(series.x, frequencies.imag)
         Assert.allclose(series.y, expected_line)
+        assert series.label == label

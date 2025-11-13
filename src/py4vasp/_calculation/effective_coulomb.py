@@ -79,9 +79,12 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
             access_V = (0, 0, _trace_indices, 0)
         U = np.average(self._raw_data.screened_potential[access_U], axis=1)
         V = np.average(self._raw_data.bare_potential_high_cutoff[access_V])
-        screened_potential = graph.Series(omega, U, label="U")
-        bare_potential = graph.Series(omega, np.full_like(U, fill_value=V), label="V")
-        return graph.Graph([screened_potential, bare_potential])
+        V = np.full_like(U, fill_value=V)
+        screened_potential = graph.Series(omega, U, label="screened")
+        bare_potential = graph.Series(omega, V, label="bare")
+        return graph.Graph(
+            [screened_potential, bare_potential], xlabel="Im(ω) (eV)", ylabel="U (eV)"
+        )
 
     def _read_high_cutoff(self):
         V = convert.to_complex(self._raw_data.bare_potential_high_cutoff[:])
