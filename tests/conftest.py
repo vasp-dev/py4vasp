@@ -248,7 +248,12 @@ class RawDataFactory:
 
     @staticmethod
     def effective_coulomb(selection):
-        return _demo.effective_coulomb.effective_coulomb()
+        if selection == "crpa":
+            return _demo.effective_coulomb.crpa()
+        elif selection == "crpar":
+            return _demo.effective_coulomb.crpar()
+        else:
+            raise exception.NotImplemented()
 
     @staticmethod
     def elastic_modulus(selection):

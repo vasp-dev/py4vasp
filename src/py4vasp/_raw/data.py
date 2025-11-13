@@ -203,6 +203,24 @@ class Dos:
 
 
 @dataclasses.dataclass
+class EffectiveCoulomb:
+    """The effective Coulomb potential calculated with a cRPA method.
+
+    The effective Coulomb potential U is calculated in VASP using the constrained Random
+    Phase Approximation (cRPA). This method allows to compute the screened Coulomb
+    interaction by excluding specific screening channels, typically those within a
+    correlated subspace such as d or f orbitals.
+    """
+
+    frequencies: VaspData
+    "Frequencies at which the effective Coulomb potential is evaluated."
+    bare_potential: VaspData
+    "The bare Coulomb potential before screening."
+    screened_potential: VaspData
+    "The screened effective Coulomb potential U."
+
+
+@dataclasses.dataclass
 class ElasticModulus:
     """The elastic modulus calculated in a linear response calculation.
 
