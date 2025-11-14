@@ -70,6 +70,16 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         if not self._has_frequencies:
             raise exception.DataMismatch("The output does not contain frequency data.")
         omega = self._raw_data.frequencies[:, 1]
+        U, V = self._retrieve_effective_potentials()
+        screened_potential = graph.Series(omega, U, label="screened")
+        bare_potential = graph.Series(omega, V, label="bare")
+        return graph.Graph(
+            [screened_potential, bare_potential],
+            xlabel="Im(ω) (eV)",
+            ylabel="Coulomb potential (eV)",
+        )
+
+    def _retrieve_effective_potentials(self):
         wannier_iiii = self._trace_wannier_indices()
         omega_all = slice(None)
         spin_diagonal = slice(None, 2)
@@ -84,13 +94,7 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         U = np.average(self._raw_data.screened_potential[access_U], axis=(1, 2))
         V = np.average(self._raw_data.bare_potential_high_cutoff[access_V])
         V = np.full_like(U, fill_value=V)
-        screened_potential = graph.Series(omega, U, label="screened")
-        bare_potential = graph.Series(omega, V, label="bare")
-        return graph.Graph(
-            [screened_potential, bare_potential],
-            xlabel="Im(ω) (eV)",
-            ylabel="Coulomb potential (eV)",
-        )
+        return U, V
 
     def _read_high_cutoff(self):
         V = convert.to_complex(self._raw_data.bare_potential_high_cutoff[:])
