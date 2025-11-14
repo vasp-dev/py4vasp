@@ -54,12 +54,12 @@ def crpar(two_center):
 
 def _shape_C(magnetism):
     if magnetism == "nonpolarized":
-        spin_dim = _demo.NONPOLARIZED
+        spin_dim = 1
     elif magnetism == "collinear":
-        spin_dim = _demo.COLLINEAR
+        spin_dim = 3
     else:
         raise exception.NotImplemented
-    return (spin_dim, spin_dim, _demo.NUMBER_WANNIER**4, _demo.COMPLEX)
+    return (spin_dim, _demo.NUMBER_WANNIER**4, _demo.COMPLEX)
 
 
 def _setup_positions(two_center):

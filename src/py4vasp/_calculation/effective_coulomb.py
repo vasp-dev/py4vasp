@@ -69,15 +69,19 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
     def to_graph(self):
         if not self._has_frequencies:
             raise exception.DataMismatch("The output does not contain frequency data.")
-        _trace_indices = self._trace_wannier_indices()
         omega = self._raw_data.frequencies[:, 1]
+        wannier_iiii = self._trace_wannier_indices()
+        omega_all = slice(None)
+        spin_diagonal = slice(None, 2)
+        origin = 0
+        real_part = 0
         if self._has_positions:
-            access_U = (slice(None), 0, 0, _trace_indices, 0, 0)
-            access_V = (0, 0, _trace_indices, 0, 0)
+            access_U = (omega_all, spin_diagonal, wannier_iiii, origin, real_part)
+            access_V = (spin_diagonal, wannier_iiii, origin, real_part)
         else:
-            access_U = (slice(None), 0, 0, _trace_indices, 0)
-            access_V = (0, 0, _trace_indices, 0)
-        U = np.average(self._raw_data.screened_potential[access_U], axis=1)
+            access_U = (omega_all, spin_diagonal, wannier_iiii, real_part)
+            access_V = (spin_diagonal, wannier_iiii, real_part)
+        U = np.average(self._raw_data.screened_potential[access_U], axis=(1, 2))
         V = np.average(self._raw_data.bare_potential_high_cutoff[access_V])
         V = np.full_like(U, fill_value=V)
         screened_potential = graph.Series(omega, U, label="screened")

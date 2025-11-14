@@ -35,15 +35,15 @@ def determine_setup(param, raw_coulomb):
         has_frequencies=len(raw_coulomb.frequencies) > 1,
         has_positions=not check.is_none(raw_coulomb.positions),
         is_nonpolarized=(len(raw_coulomb.bare_potential_low_cutoff) == 1),
-        is_collinear=(len(raw_coulomb.bare_potential_low_cutoff) == 2),
+        is_collinear=(len(raw_coulomb.bare_potential_low_cutoff) == 3),
     )
 
 
 def setup_expected_dict(setup, raw_coulomb):
     num_wannier = raw_coulomb.number_wannier_states
-    axis_U = 3 if setup.has_frequencies else 2
-    C = unpack(num_wannier, raw_coulomb.bare_potential_low_cutoff, axis=2)
-    V = unpack(num_wannier, raw_coulomb.bare_potential_high_cutoff, axis=2)
+    axis_U = 2 if setup.has_frequencies else 1
+    C = unpack(num_wannier, raw_coulomb.bare_potential_low_cutoff, axis=1)
+    V = unpack(num_wannier, raw_coulomb.bare_potential_high_cutoff, axis=1)
     U = unpack(num_wannier, raw_coulomb.screened_potential, axis=axis_U)
     if setup.has_positions:
         V = np.moveaxis(V, -1, 0)
@@ -99,7 +99,6 @@ def check_plot_has_correct_series(effective_coulomb, Assert):
     assert len(graph) == 2
     assert graph.xlabel == "Im(ω) (eV)"
     assert graph.ylabel == "Coulomb potential (eV)"
-
     frequencies = effective_coulomb.ref.expected.get("frequencies")
     if effective_coulomb.ref.setup.has_positions:
         screened_potential = effective_coulomb.ref.expected["screened"][0]
@@ -107,10 +106,13 @@ def check_plot_has_correct_series(effective_coulomb, Assert):
     else:
         screened_potential = effective_coulomb.ref.expected["screened"]
         bare_potential = effective_coulomb.ref.expected["bare_high_cutoff"]
-    num_wannier = effective_coulomb.ref.num_wannier
+    if effective_coulomb.ref.setup.is_nonpolarized:
+        weight = 1 / effective_coulomb.ref.num_wannier
+    else:
+        weight = 0.5 / effective_coulomb.ref.num_wannier
     expected_lines = (
-        np.einsum(f"ssiiiiw->w", screened_potential.real) / num_wannier,
-        np.einsum(f"ssiiiiw->w", bare_potential.real) / num_wannier,
+        np.einsum(f"siiiiw->w", screened_potential[:2].real) * weight,
+        np.einsum(f"siiiiw->w", bare_potential[:2].real) * weight,
     )
     expected_labels = ["screened", "bare"]
     for series, expected_line, label in zip(graph, expected_lines, expected_labels):
