@@ -214,6 +214,8 @@ class EffectiveCoulomb:
 
     number_wannier_states: int
     "Number of Wannier functions used to define the correlated subspace."
+    spin_labels: VaspData
+    "Labels for the spin channels used in the calculation."
     frequencies: VaspData
     "Frequencies at which the effective Coulomb potential is evaluated."
     bare_potential_high_cutoff: VaspData

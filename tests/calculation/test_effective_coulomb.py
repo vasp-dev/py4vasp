@@ -21,10 +21,24 @@ class Setup:
 
 @pytest.fixture(params=["crpa", "crpa_two_center", "crpar", "crpar_two_center"])
 def effective_coulomb(raw_data, request):
-    raw_coulomb = raw_data.effective_coulomb(request.param)
+    return create_coulomb_reference(raw_data, request.param)
+
+
+@pytest.fixture
+def nonpolarized_crpar(raw_data):
+    return create_coulomb_reference(raw_data, "crpar_two_center")
+
+
+@pytest.fixture
+def collinear_crpar(raw_data):
+    return create_coulomb_reference(raw_data, "crpar")
+
+
+def create_coulomb_reference(raw_data, param):
+    raw_coulomb = raw_data.effective_coulomb(param)
     coulomb = EffectiveCoulomb.from_data(raw_coulomb)
     coulomb.ref = types.SimpleNamespace()
-    coulomb.ref.setup = determine_setup(request.param, raw_coulomb)
+    coulomb.ref.setup = determine_setup(param, raw_coulomb)
     coulomb.ref.num_wannier = raw_coulomb.number_wannier_states
     coulomb.ref.expected = setup_expected_dict(coulomb.ref.setup, raw_coulomb)
     return coulomb
@@ -119,9 +133,44 @@ def check_plot_has_correct_series(effective_coulomb, Assert):
         Assert.allclose(series.x, frequencies.imag)
         Assert.allclose(series.y, expected_line)
         assert series.label == label
-        assert series.label == label
 
 
 def check_plot_raises_error(effective_coulomb):
     with pytest.raises(exception.DataMismatch):
         effective_coulomb.plot()
+
+
+@pytest.mark.parametrize("selection", ["total", "up~up", "down~down", "up~down"])
+def test_plot_selected_spin(collinear_crpar, selection, Assert):
+    effective_coulomb = collinear_crpar
+    graph = effective_coulomb.plot(selection)
+    assert len(graph) == 2
+    screened_potential = effective_coulomb.ref.expected["screened"]
+    bare_potential = effective_coulomb.ref.expected["bare_high_cutoff"]
+    if selection == "total":
+        weight = 0.5 / effective_coulomb.ref.num_wannier
+        spin_selection = slice(None, 2)
+        suffix = ""
+    else:
+        weight = 1 / effective_coulomb.ref.num_wannier
+        spin_map = {"up~up": 0, "down~down": 1, "up~down": 2}
+        spin_selection = slice(spin_map[selection], spin_map[selection] + 1)
+        suffix = f"_{selection}"
+    expected_lines = (
+        np.einsum(f"siiiiw->w", screened_potential[spin_selection].real) * weight,
+        np.einsum(f"siiiiw->w", bare_potential[spin_selection].real) * weight,
+    )
+    expected_labels = [f"screened{suffix}", f"bare{suffix}"]
+    for series, expected_line, label in zip(graph, expected_lines, expected_labels):
+        Assert.allclose(series.y, expected_line)
+        assert series.label == label
+
+
+@pytest.mark.parametrize(
+    "selection", ["up~up", "down~down", "up~down", "invalid_selection"]
+)
+def test_plot_invalid_selection(nonpolarized_crpar, selection):
+    # must not use magnetism-specific selections for nonpolarized data
+    effective_coulomb = nonpolarized_crpar
+    with pytest.raises(exception.IncorrectUsage):
+        effective_coulomb.plot(selection)

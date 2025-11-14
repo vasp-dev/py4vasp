@@ -6,7 +6,7 @@ from py4vasp import exception
 from py4vasp._calculation import base, cell
 from py4vasp._raw import data
 from py4vasp._third_party import graph
-from py4vasp._util import check, convert
+from py4vasp._util import check, convert, index, select
 
 
 class EffectiveCoulomb(base.Refinery, graph.Mixin):
@@ -65,36 +65,17 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
             **self._read_positions(),
         }
 
-    @base.data_access
-    def to_graph(self):
-        if not self._has_frequencies:
-            raise exception.DataMismatch("The output does not contain frequency data.")
-        omega = self._raw_data.frequencies[:, 1]
-        U, V = self._retrieve_effective_potentials()
-        screened_potential = graph.Series(omega, U, label="screened")
-        bare_potential = graph.Series(omega, V, label="bare")
-        return graph.Graph(
-            [screened_potential, bare_potential],
-            xlabel="Im(ω) (eV)",
-            ylabel="Coulomb potential (eV)",
-        )
+    @property
+    def _has_frequencies(self):
+        return len(self._raw_data.frequencies) > 1
 
-    def _retrieve_effective_potentials(self):
-        wannier_iiii = self._trace_wannier_indices()
-        omega_all = slice(None)
-        spin_diagonal = slice(None, 2)
-        origin = 0
-        real_part = 0
-        if self._has_positions:
-            access_U = (omega_all, spin_diagonal, wannier_iiii, origin, real_part)
-            access_V = (spin_diagonal, wannier_iiii, origin, real_part)
-        else:
-            access_U = (omega_all, spin_diagonal, wannier_iiii, real_part)
-            access_V = (spin_diagonal, wannier_iiii, real_part)
-        U = np.average(self._raw_data.screened_potential[access_U], axis=(1, 2))
-        V = np.average(self._raw_data.bare_potential_high_cutoff[access_V])
-        V = np.full_like(U, fill_value=V)
-        return U, V
+    @property
+    def _has_positions(self):
+        return not check.is_none(self._raw_data.positions)
+
+    @property
+    def _is_collinear(self):
+        return len(self._raw_data.bare_potential_low_cutoff) == 3
 
     def _read_high_cutoff(self):
         V = convert.to_complex(self._raw_data.bare_potential_high_cutoff[:])
@@ -142,15 +123,32 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
     def _cell(self):
         return cell.Cell.from_data(self._raw_data.cell)
 
-    @property
-    def _has_frequencies(self):
-        return len(self._raw_data.frequencies) > 1
+    @base.data_access
+    def to_graph(self, selection="total") -> graph.Graph:
+        if not self._has_frequencies:
+            raise exception.DataMismatch("The output does not contain frequency data.")
+        tree = select.Tree.from_selection(selection)
+        potentials = self._retrieve_effective_potentials()
+        series = list(self._generate_series(tree, potentials))
+        return graph.Graph(series, xlabel="Im(ω) (eV)", ylabel="Coulomb potential (eV)")
 
-    @property
-    def _has_positions(self):
-        return not check.is_none(self._raw_data.positions)
+    def _retrieve_effective_potentials(self):
+        wannier_iiii = self._wannier_indices_iiii()
+        all_omega = all_spin = slice(None)
+        origin = 0
+        real_part = 0
+        if self._has_positions:
+            access_U = (all_omega, all_spin, wannier_iiii, origin, real_part)
+            access_V = (all_spin, wannier_iiii, origin, real_part)
+        else:
+            access_U = (all_omega, all_spin, wannier_iiii, real_part)
+            access_V = (all_spin, wannier_iiii, real_part)
+        U = np.average(self._raw_data.screened_potential[access_U], axis=-1)
+        V = np.average(self._raw_data.bare_potential_high_cutoff[access_V], axis=-1)
+        V = np.tile(V, (U.shape[0], 1))
+        return {"screened": U, "bare": V}
 
-    def _trace_wannier_indices(self):
+    def _wannier_indices_iiii(self):
         """Return the indices that trace over diagonal of the 4 Wannier states. This
         should be equivalent to `np.einsum('iiii->', data[..., 0])`
         if there are no other indices."""
@@ -158,3 +156,23 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         step = n**3 + n**2 + n + 1
         stop = n**4
         return range(0, stop, step)
+
+    def _generate_series(self, tree, potentials):
+        omega = self._raw_data.frequencies[:, 1]
+        maps = self._create_map()
+        for label, potential in potentials.items():
+            selector = index.Selector(maps, potential, reduction=np.average)
+            for selection in tree.selections():
+                selector_label = selector.label(selection)
+                suffix = f"_{selector_label}" if selector_label != "total" else ""
+                yield graph.Series(omega, selector[selection], label=f"{label}{suffix}")
+
+    def _create_map(self):
+        if self._is_collinear:
+            spin_map = {
+                convert.text_to_string(label): i
+                for i, label in enumerate(self._raw_data.spin_labels[:])
+            }
+            return {1: {"total": slice(0, 2), **spin_map}}
+        else:
+            return {1: {"total": 0}}

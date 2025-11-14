@@ -303,6 +303,7 @@ schema.add(
     raw.EffectiveCoulomb,
     required=raw.Version(6, 6),
     number_wannier_states=f"{group}/nwtot",
+    spin_labels=f"{group}/spin_labels",
     frequencies=f"{group}/comega",
     bare_potential_high_cutoff=f"{group}/vijkl",
     bare_potential_low_cutoff=f"{group}/cijkl",

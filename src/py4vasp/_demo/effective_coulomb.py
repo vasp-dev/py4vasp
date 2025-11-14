@@ -11,13 +11,16 @@ def crpa(two_center):
         shape_C = _shape_C("collinear")
         shape_V = shape_C[:-1] + (len(positions), _demo.COMPLEX)
         cell = _demo.cell.Fe3O4()
+        spin_labels = _demo.wrap_data(["up~up", "down~down", "up~down"])
     else:
         shape_V = shape_C = _shape_C("nonpolarized")
         cell = _demo.cell.Sr2TiO4()
+        spin_labels = _demo.wrap_data([b"total"])
     shape_U = shape_V
     cell.lattice_vectors = cell.lattice_vectors[0]
     return raw.EffectiveCoulomb(
         number_wannier_states=_demo.NUMBER_WANNIER,
+        spin_labels=spin_labels,
         frequencies=_demo.wrap_data([[0.0, 0.0]]),
         bare_potential_high_cutoff=_demo.wrap_random_data(shape_V),
         bare_potential_low_cutoff=_demo.wrap_random_data(shape_C),
@@ -36,13 +39,16 @@ def crpar(two_center):
         shape_C = _shape_C("nonpolarized")
         shape_V = shape_C[:-1] + (len(positions), _demo.COMPLEX)
         cell = _demo.cell.Sr2TiO4()
+        spin_labels = _demo.wrap_data(["total"])
     else:
         shape_V = shape_C = _shape_C("collinear")
         cell = _demo.cell.Fe3O4()
+        spin_labels = _demo.wrap_data([b"up~up", b"down~down", b"up~down"])
     shape_U = (_demo.NUMBER_OMEGA,) + shape_V
     cell.lattice_vectors = cell.lattice_vectors[0]
     return raw.EffectiveCoulomb(
         number_wannier_states=_demo.NUMBER_WANNIER,
+        spin_labels=spin_labels,
         frequencies=_demo.wrap_data(frequencies),
         bare_potential_high_cutoff=_demo.wrap_random_data(shape_V),
         bare_potential_low_cutoff=_demo.wrap_random_data(shape_C),
