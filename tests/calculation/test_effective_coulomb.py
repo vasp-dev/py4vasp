@@ -96,22 +96,22 @@ def test_plot(effective_coulomb, Assert):
 
 def check_plot_has_correct_series(effective_coulomb, Assert):
     graph = effective_coulomb.plot()
+    assert len(graph) == 2
     assert graph.xlabel == "Im(ω) (eV)"
     assert graph.ylabel == "Coulomb potential (eV)"
 
     frequencies = effective_coulomb.ref.expected.get("frequencies")
-    if "positions" in effective_coulomb.ref.expected:
-        screened_potential = effective_coulomb.ref.expected["screened"][0, 0, 0]
-        bare_potential = effective_coulomb.ref.expected["bare_high_cutoff"][0, 0, 0]
+    if effective_coulomb.ref.setup.has_positions:
+        screened_potential = effective_coulomb.ref.expected["screened"][0]
+        bare_potential = effective_coulomb.ref.expected["bare_high_cutoff"][0]
     else:
-        screened_potential = effective_coulomb.ref.expected["screened"][0, 0]
-        bare_potential = effective_coulomb.ref.expected["bare_high_cutoff"][0, 0]
+        screened_potential = effective_coulomb.ref.expected["screened"]
+        bare_potential = effective_coulomb.ref.expected["bare_high_cutoff"]
     num_wannier = effective_coulomb.ref.num_wannier
     expected_lines = (
-        np.einsum(f"iiiiw->w", screened_potential.real) / num_wannier,
-        np.einsum(f"iiiiw->w", bare_potential.real) / num_wannier,
+        np.einsum(f"ssiiiiw->w", screened_potential.real) / num_wannier,
+        np.einsum(f"ssiiiiw->w", bare_potential.real) / num_wannier,
     )
-    assert len(graph) == 2
     expected_labels = ["screened", "bare"]
     for series, expected_line, label in zip(graph, expected_lines, expected_labels):
         Assert.allclose(series.x, frequencies.imag)
