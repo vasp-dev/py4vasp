@@ -197,10 +197,14 @@ class View:
         if self.ion_arrows is not None:
             structure["ion_arrows"] = [
                 {
-                    "label": arrow.label,
-                    "quantity": self._convert_to_list(arrow.quantity),
-                    "base_color": arrow.color,  # TODO allow a default fallback color for each Vector Group for colorMode = "off"
-                    "base_radius": arrow.radius,
+                    "label": arrow.get("label", None),
+                    "quantity": self._convert_to_list(arrow["quantity"]),
+                    "base_color": arrow.get(
+                        "color", "#0000FF"
+                    ),  # TODO fallback color for widget vector group
+                    "base_radius": arrow.get(
+                        "radius", 1.0
+                    ),  # TODO scaling factor for widget vector group
                 }
                 for arrow in self.ion_arrows
             ]
@@ -267,13 +271,16 @@ class View:
         if not attributes:
             return
         for attribute in attributes:
-            if len(attribute.quantity) > 1:
-                raise exception.NotImplemented(
-                    """\
-Currently isosurfaces and ion arrows are implemented only for cases where there is only
-one frame in the trajectory. Make sure that either only one frame for the positions
-attribute is supplied with its corresponding grid scalar or ion arrow component."""
-                )
+            try:
+                if len(attribute.quantity) > 1:
+                    raise exception.NotImplemented(
+                        """\
+    Currently isosurfaces and ion arrows are implemented only for cases where there is only
+    one frame in the trajectory. Make sure that either only one frame for the positions
+    attribute is supplied with its corresponding grid scalar or ion arrow component."""
+                    )
+            except AttributeError:
+                pass
 
     def _raise_error_if_number_steps_inconsistent(self):
         if len(self.elements) == len(self.lattice_vectors) == len(self.positions):

@@ -115,15 +115,41 @@ def test_fail_isosurface(view, not_core):
 
 
 @hasVaspView
-@pytest.mark.skip(reason="Not yet implemented")
-def test_ion_arrows(view, not_core):
-    assert False
-
-
-@hasVaspView
-@pytest.mark.skip(reason="Not yet implemented")
-def test_shifted_ion_arrows(view, not_core):
-    assert False
+@pytest.mark.parametrize("is_structure", [True, False])
+def test_ion_arrows(is_structure, Assert, not_core):
+    inputs = base_input_view(is_structure)
+    view = View(
+        **inputs,
+        ion_arrows=[
+            {
+                "label": "Magnetization",
+                "quantity": np.random.rand(
+                    len(inputs["positions"]), len(inputs["positions"][0]), 3
+                ),
+                "color": "#00FFFF",
+                "radius": 0.25,
+            },
+            {
+                "label": "Velocities",
+                "quantity": np.random.rand(
+                    len(inputs["positions"]), len(inputs["positions"][0]), 3
+                ),
+                "color": "#84FF00",
+                "radius": 0.13,
+            },
+        ]
+    )
+    state = view.to_vasp_viewer().get_state()
+    for arrow_group_view, arrow_group_state in zip(
+        view.ion_arrows, state["ion_arrow_groups"]
+    ):
+        Assert.allclose(arrow_group_view["quantity"], arrow_group_state["quantity"])
+        assert arrow_group_view["label"] == arrow_group_state["label"]
+        assert (
+            convert.color_to_hex(arrow_group_view["base_color"])
+            == arrow_group_state["base_color"]
+        )
+        assert arrow_group_view["base_radius"] == arrow_group_state["base_radius"]
 
 
 @hasVaspView
