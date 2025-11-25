@@ -119,6 +119,8 @@ class View:
     """Defines the shift of the origin"""
     camera: str = "orthographic"
     """Defines the camera view type (orthographic or perspective)"""
+    atom_radius: float = None
+    """Defines the radius of the atoms in VASP Viewer"""
 
     def __post_init__(self):
         self._verify()
@@ -188,11 +190,11 @@ class View:
         #    structure["selective_dynamics"] = (
         #        self.selective_dynamics
         #    )  # TODO query selective dynamics and check type
+        if self.atom_radius:
+            structure["atom_radius"] = self.atom_radius
 
         # === Vector Group options ===
         if self.ion_arrows is not None:
-            # TODO handle list of vector groups instead of magnetization only
-            # TODO adjust UI to support this
             structure["ion_arrows"] = [
                 {
                     "label": arrow.label,
