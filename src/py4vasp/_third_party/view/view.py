@@ -121,6 +121,8 @@ class View:
     """Defines the camera view type (orthographic or perspective)"""
     atom_radius: float = None
     """Defines the radius of the atoms in VASP Viewer"""
+    structure_title: str = None
+    """Title of the structure to be shown in VASP Viewer"""
 
     def __post_init__(self):
         self._verify()
@@ -177,20 +179,12 @@ class View:
         self._verify()
         structure: dict = {
             "positions": self._convert_to_list(self.positions),
-            "types": (
-                self._convert_to_list(self.elements[0])
-            ),  # TODO enable trajectory for elements
-            "lattice": (
-                self._convert_to_list(self.lattice_vectors[0])
-            ),  # TODO enable trajectory for lattice_vectors
+            "types": self._convert_to_list(self.elements),
+            "lattice": self._convert_to_list(self.lattice_vectors),
         }
 
         # === Atoms options ===
-        # if self.selective_dynamics:
-        #    structure["selective_dynamics"] = (
-        #        self.selective_dynamics
-        #    )  # TODO query selective dynamics and check type
-        if self.atom_radius:
+        if self.atom_radius is not None:
             structure["atom_radius"] = self.atom_radius
 
         # === Vector Group options ===
@@ -199,12 +193,8 @@ class View:
                 {
                     "label": arrow.get("label", None),
                     "quantity": self._convert_to_list(arrow["quantity"]),
-                    "base_color": arrow.get(
-                        "color", "#0000FF"
-                    ),  # TODO fallback color for widget vector group
-                    "base_radius": arrow.get(
-                        "radius", 1.0
-                    ),  # TODO scaling factor for widget vector group
+                    "base_color": arrow.get("color", None),
+                    "base_radius": arrow.get("radius", None),
                 }
                 for arrow in self.ion_arrows
             ]
@@ -231,14 +221,6 @@ class View:
         # === Lattice options ===
         if self.shift is not None:
             structure["constant_shift"] = self._convert_to_list(self.shift)
-        # if self.scaling_factor:
-        #    structure["scaling_factor"] = (
-        #        self.scaling_factor
-        #    )  # TODO query scaling factor
-        # if self.lattice_vectors_primitive:
-        #    structure["lattice_primitive"] = (
-        #        self.lattice_vectors_primitive
-        #    )  # TODO query primitive lattice
         if self.supercell is not None:
             structure["supercell"] = self._convert_to_list(self.supercell)
 
@@ -256,8 +238,8 @@ class View:
             structure["axes_scene_shift"] = self._convert_to_list(self.show_axes_at)
 
         # === Meta options ===
-        # if self.title:
-        #    structure["descriptor"] = self.title  # TODO query structure name
+        if self.structure_title:
+            structure["descriptor"] = self.structure_title
 
         return vaspview.Widget(structure)
 

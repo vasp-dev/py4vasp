@@ -145,11 +145,8 @@ def test_ion_arrows(is_structure, Assert, not_core):
     ):
         Assert.allclose(arrow_group_view["quantity"], arrow_group_state["quantity"])
         assert arrow_group_view["label"] == arrow_group_state["label"]
-        assert (
-            convert.color_to_hex(arrow_group_view["base_color"])
-            == arrow_group_state["base_color"]
-        )
-        assert arrow_group_view["base_radius"] == arrow_group_state["base_radius"]
+        assert arrow_group_view["color"] == arrow_group_state["base_color"]
+        assert arrow_group_view["radius"] == arrow_group_state["base_radius"]
 
 
 @hasVaspView
@@ -204,6 +201,15 @@ def test_atom_radius(atom_radius, not_core):
     view = View(**base_input_view(is_structure=True), atom_radius=atom_radius)
     state = view.to_vasp_viewer().get_state()
     assert state["selections_atom_radius"] == atom_radius
+
+
+@hasVaspView
+def test_structure_title(not_core):
+    view = View(
+        **base_input_view(is_structure=True), structure_title="My Structure Title"
+    )
+    state = view.to_vasp_viewer().get_state()
+    assert state["selections_descriptor"] == view.structure_title
 
 
 @hasVaspView
