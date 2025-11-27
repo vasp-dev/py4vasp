@@ -50,6 +50,7 @@ class HugoBuilder(Builder):
             doctree: The Sphinx document tree to convert.
         """
         filename = self.hugo_dir / f"{docname}.md"
+        filename.parent.mkdir(parents=True, exist_ok=True)
         with open(filename, "w", encoding="utf-8") as outfile:
             markdown_content = self._doctree_to_markdown(doctree)
             outfile.write(markdown_content)
