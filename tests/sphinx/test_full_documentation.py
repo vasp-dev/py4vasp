@@ -4,10 +4,14 @@ import pytest
 
 application = pytest.importorskip("sphinx.application")
 
+
 @pytest.fixture(scope="module")
 def sphinx_app_trial(not_core):
     from os import mkdir, path
-    tmp_path = path.abspath(path.join(path.dirname(path.abspath(__file__)), "_trial_build"))
+
+    tmp_path = path.abspath(
+        path.join(path.dirname(path.abspath(__file__)), "_trial_build")
+    )
     if not path.exists(tmp_path):
         mkdir(tmp_path)
     srcdir = "src/py4vasp"
@@ -26,6 +30,7 @@ def sphinx_app_trial(not_core):
     )
     app.build(force_all=True)
     return app
+
 
 def test_build_analysis(sphinx_app_trial, not_core):
     """Test that the analysis module builds without errors."""
