@@ -70,8 +70,8 @@ def test_structure_to_view(view: View, Assert, not_core):
     state = view.to_vasp_viewer().get_state()
     # check positions, lattice and element types
     Assert.allclose(view.positions, state["atoms_trajectory"])
-    Assert.allclose(view.elements[0], state["atoms_types"])
-    Assert.allclose(view.lattice_vectors[0], state["lattice_vectors"])
+    Assert.allclose(view.elements, state["atoms_types"])
+    Assert.allclose(view.lattice_vectors, state["lattice_vectors"])
 
 
 @hasVaspView
@@ -121,32 +121,32 @@ def test_ion_arrows(is_structure, Assert, not_core):
     view = View(
         **inputs,
         ion_arrows=[
-            {
-                "label": "Magnetization",
-                "quantity": np.random.rand(
+            IonArrow(
+                np.random.rand(
                     len(inputs["positions"]), len(inputs["positions"][0]), 3
                 ),
-                "color": "#00FFFF",
-                "radius": 0.25,
-            },
-            {
-                "label": "Velocities",
-                "quantity": np.random.rand(
+                label="Magnetization",
+                color="#00FFFF",
+                radius=0.25,
+            ),
+            IonArrow(
+                np.random.rand(
                     len(inputs["positions"]), len(inputs["positions"][0]), 3
                 ),
-                "color": "#84FF00",
-                "radius": 0.13,
-            },
+                label="Velocities",
+                color="#84FF00",
+                radius=0.13,
+            ),
         ]
     )
     state = view.to_vasp_viewer().get_state()
     for arrow_group_view, arrow_group_state in zip(
         view.ion_arrows, state["ion_arrow_groups"]
     ):
-        Assert.allclose(arrow_group_view["quantity"], arrow_group_state["quantity"])
-        assert arrow_group_view["label"] == arrow_group_state["label"]
-        assert arrow_group_view["color"] == arrow_group_state["base_color"]
-        assert arrow_group_view["radius"] == arrow_group_state["base_radius"]
+        Assert.allclose(arrow_group_view.quantity, arrow_group_state["quantity"])
+        assert arrow_group_view.label == arrow_group_state["label"]
+        assert arrow_group_view.color == arrow_group_state["base_color"]
+        assert arrow_group_view.radius == arrow_group_state["base_radius"]
 
 
 @hasVaspView

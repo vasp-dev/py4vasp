@@ -155,7 +155,7 @@ class View:
         arrows at atom centers. The attributes of View are used as a starting point to
         determine which methods are called (either isosurface, arrows, etc).
         """
-        self._verify()
+        self._verify("ngl")
         trajectory = [self._create_atoms(i) for i in self._iterate_trajectory_frames()]
         ngl_trajectory = nglview.ASETrajectory(trajectory)
         widget = nglview.NGLWidget(ngl_trajectory)
@@ -191,10 +191,10 @@ class View:
         if self.ion_arrows is not None:
             structure["ion_arrows"] = [
                 {
-                    "label": arrow.get("label", None),
-                    "quantity": self._convert_to_list(arrow["quantity"]),
-                    "base_color": arrow.get("color", None),
-                    "base_radius": arrow.get("radius", None),
+                    "label": arrow.label,
+                    "quantity": self._convert_to_list(arrow.quantity),
+                    "base_color": arrow.color,
+                    "base_radius": arrow.radius,
                 }
                 for arrow in self.ion_arrows
             ]
@@ -243,24 +243,25 @@ class View:
 
         return vaspview.Widget(structure)
 
-    def _verify(self):
-        self._raise_error_if_present_on_multiple_steps(self.grid_scalars)
-        self._raise_error_if_present_on_multiple_steps(self.ion_arrows)
+    def _verify(self, mode=None):
+        self._raise_error_if_present_on_multiple_steps(self.grid_scalars, mode)
+        self._raise_error_if_present_on_multiple_steps(self.ion_arrows, mode)
         self._raise_error_if_number_steps_inconsistent()
         self._raise_error_if_any_shape_is_incorrect()
 
-    def _raise_error_if_present_on_multiple_steps(self, attributes):
+    def _raise_error_if_present_on_multiple_steps(self, attributes, mode=None):
         if not attributes:
             return
         for attribute in attributes:
             try:
                 if len(attribute.quantity) > 1:
-                    raise exception.NotImplemented(
-                        """\
+                    if mode == "ngl":
+                        raise exception.NotImplemented(
+                            """\
     Currently isosurfaces and ion arrows are implemented only for cases where there is only
     one frame in the trajectory. Make sure that either only one frame for the positions
     attribute is supplied with its corresponding grid scalar or ion arrow component."""
-                    )
+                        )
             except AttributeError:
                 pass
 
@@ -294,9 +295,15 @@ class View:
 
     def _convert_to_list(self, attribute):
         if isinstance(attribute, list):
-            return attribute
-        elif isinstance(attribute, tuple):
-            return list(attribute)
+            if len(attribute) == 0 or not isinstance(attribute[0], np.ndarray):
+                return attribute
+            else:
+                return [a.tolist() for a in attribute]
+        if isinstance(attribute, tuple):
+            if len(attribute) == 0 or not isinstance(attribute[0], np.ndarray):
+                return list(attribute)
+            else:
+                return [a.tolist() for a in attribute]
         elif isinstance(attribute, np.ndarray):
             return attribute.tolist()
         else:
