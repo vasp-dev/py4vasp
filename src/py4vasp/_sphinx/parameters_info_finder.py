@@ -189,7 +189,14 @@ def _get_param_raw_info_from_left_string(
         # If we have a type annotation, format it
         type_annotation = sig_types
         if len(sep_around_type) > 1:
-            types = sep_around_type[1].split(")")[0].strip()
+            # Use rsplit to handle markdown links like [text](#anchor) correctly
+            # This splits from the right, getting the last ) which is the closing paren of the type
+            types_part = sep_around_type[1].rsplit(")", 1)
+            if len(types_part) > 1:
+                types = types_part[0].strip()
+            else:
+                # No closing paren found, use the whole string
+                types = sep_around_type[1].strip()
             types_and_optional = types.split(",")
             pure_types = [
                 t.strip(" `") for t in types_and_optional if not ("optional" in t)
