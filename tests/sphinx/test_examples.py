@@ -505,7 +505,7 @@ def test_convert_example_dos_class(sphinx_app):
 ## *class* **Dos** [¶](#example_dos.Dos)
 (
 - *data_context*,
-- *kwargs*
+- ***kwargs*
 
 )
 
