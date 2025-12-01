@@ -720,7 +720,8 @@ title = "{node.astext()}"
 
     def _get_formatted_param(self, name, annotation, default):
         """Format a single parameter with its name, type, and default value."""
-        param = f"*{name}*"
+        formatted_name = (f"*{name}" if name=="args" else f"**{name}" if name =="kwargs" else name)
+        param = f"*{formatted_name}*"
         if default or annotation:
             param += ": " + ("[optional] " if default else "")
         if annotation:
