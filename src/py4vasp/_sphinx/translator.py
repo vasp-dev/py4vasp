@@ -693,7 +693,7 @@ title = "{node.astext()}"
         if default or annotation:
             param += ": " + ("[optional] " if default else "")
         if annotation:
-            param += f"`{annotation}`"
+            param += f"`{annotation.replace('` or `', ' or ').replace(' or ', '` or `')}`"
         if default:
             param += f" [default: {default}]"
         return param
