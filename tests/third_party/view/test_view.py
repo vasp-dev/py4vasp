@@ -170,7 +170,7 @@ def test_structure_to_view(view, Assert):
 
 @patch("nglview.NGLWidget._ipython_display_", autospec=True)
 def test_ipython(mock_display, view):
-    display = view._ipython_display_()
+    display = view._ipython_display_(mode="ngl")
     mock_display.assert_called_once()
 
 
