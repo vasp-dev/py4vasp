@@ -8,10 +8,13 @@ application = pytest.importorskip("sphinx.application")
 @pytest.fixture(scope="module")
 def sphinx_app_trial(not_core):
     from os import mkdir, path
+    import shutil
 
     tmp_path = path.abspath(
         path.join(path.dirname(path.abspath(__file__)), "_trial_build")
     )
+    if path.exists(tmp_path):
+        shutil.rmtree(tmp_path)
     if not path.exists(tmp_path):
         mkdir(tmp_path)
     srcdir = "src/py4vasp"

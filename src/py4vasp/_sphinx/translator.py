@@ -262,20 +262,41 @@ title = "{node.astext()}"
         """
         self.content += "**"
 
+    def visit_math(self, node):
+        """Handle inline math nodes by converting to KaTeX format.
+        
+        Sphinx :math: role creates math nodes. We convert these to $...$ 
+        for KaTeX/MathJax rendering in Hugo.
+        """
+        self.content += "$"
+    
+    def depart_math(self, node):
+        """Close inline math with dollar sign."""
+        self.content += "$"
+
     def visit_literal(self, node):
         """Add opening backtick for inline code.
 
         Single backticks are used for inline code spans in Markdown. This handles
         simple cases where the literal text doesn't contain backticks itself.
+        Skip backticks if the literal contains a pending cross-reference (xref),
+        since those should be rendered as links, not code.
         """
-        self.content += "`"
+        # Check if this literal contains a pending_xref (for :meth:, :class:, etc.)
+        has_xref = any(child.__class__.__name__ == 'pending_xref' for child in node.children)
+        if not has_xref:
+            self.content += "`"
+        self._literal_has_xref = has_xref
 
     def depart_literal(self, node):
         """Add closing backtick to complete inline code markup.
 
         Matching backticks are required to properly delimit the code span.
+        Skip if this literal contained a cross-reference.
         """
-        self.content += "`"
+        if not getattr(self, '_literal_has_xref', False):
+            self.content += "`"
+        self._literal_has_xref = False
 
     # list handling methods
 
@@ -499,9 +520,13 @@ title = "{node.astext()}"
         Pending cross-references are unresolved references that Sphinx will
         process later. We extract the target from the 'reftarget' attribute
         and create a link assuming it will resolve to an internal anchor.
+        For method references (:meth:), we'll add () suffix after the link.
         """
-        # Use reftarget for anchor
-        self._reference_uri = f"#{node.get('reftarget', '')}"
+        # Store reftype to handle special cases like meth
+        self._xref_reftype = node.get('reftype', '')
+        reftarget = node.get('reftarget', '')
+        # For cross-file references, use the full target as anchor
+        self._reference_uri = f"#{reftarget}"
         self.content += "["
 
     def depart_pending_xref(self, node):
@@ -509,10 +534,16 @@ title = "{node.astext()}"
 
         Similar to regular references, we close the link with the URI that was
         stored in visit and clean up the temporary state.
+        For method references, add () suffix after the link.
         """
         uri = getattr(self, "_reference_uri", "")
+        reftype = getattr(self, "_xref_reftype", "")
         self.content += f"]({uri})"
+        # Add () suffix for method references
+        if reftype == "meth":
+            self.content += "()"
         self._reference_uri = None
+        self._xref_reftype = None
 
     # Code block handling methods
 
@@ -693,7 +724,11 @@ title = "{node.astext()}"
         if default or annotation:
             param += ": " + ("[optional] " if default else "")
         if annotation:
-            param += f"`{annotation.replace('` or `', ' or ').replace(' or ', '` or `')}`"
+            formatted_annotation = annotation.replace("` or `", " or ").replace(" or ", "` | `")
+            formatted_annotation = f"`{formatted_annotation}`"
+            # now make sure Markdown links are formatted correctly
+            formatted_annotation = formatted_annotation.replace("`[", "[").replace(")`", ")")
+            param += formatted_annotation
         if default:
             param += f" [default: {default}]"
         return param
@@ -918,13 +953,10 @@ title = "{node.astext()}"
                 # Split "name (type) – description"
                 opened_description_list = False
                 left, desc = line.split(" – ", 1)
-                formatted_param = self._get_formatted_param(
-                    *(
-                        _get_param_raw_info_from_left_string(
-                            left, self._current_signature_dict
-                        )
-                    )
+                param_info = _get_param_raw_info_from_left_string(
+                    left, self._current_signature_dict
                 )
+                formatted_param = self._get_formatted_param(*param_info)
                 new_str_content += f"\n\n{formatted_param}\n"
                 if desc:
                     new_str_content += f": <!---->\n    {desc}"
