@@ -725,7 +725,7 @@ title = "{node.astext()}"
         if default or annotation:
             param += ": " + ("[optional] " if default else "")
         if annotation:
-            formatted_annotation = annotation.replace("` or `", " or ").replace(" or ", "` | `")
+            formatted_annotation = annotation.replace("` or `", " or ").replace(" or ", " | ")
             formatted_annotation = f"`{formatted_annotation}`"
             # now make sure Markdown links are formatted correctly
             formatted_annotation = formatted_annotation.replace("`[", "[").replace(")`", ")")
