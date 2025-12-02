@@ -30,7 +30,6 @@ jobs:
         pip install --progress-bar=off .
         pip install --progress-bar=off pytest hypothesis
         pip install --progress-bar=off ipykernel
-
     - name: Configure conda channel priority
       shell: bash -el {0}
       run: |
