@@ -8,6 +8,7 @@ from py4vasp._sphinx.anchors_finder import AnchorsFinder
 from py4vasp._sphinx.parameters_info_finder import (
     ParametersInfoFinder,
     _get_param_raw_info_from_left_string,
+    SIG_TYPE_DEFAULT
 )
 from py4vasp._sphinx.return_type_finder import ReturnTypeFinder
 
@@ -739,7 +740,8 @@ title = "{node.astext()}"
             formatted_annotation = formatted_annotation.replace("`[", "[").replace(")`", ")")
             param += formatted_annotation
         if default:
-            param += f" = {default} [optional]"
+            formatted_default = f" = {default}" if not(default == SIG_TYPE_DEFAULT) else ""
+            param += f"{formatted_default} [optional]"
         return param
 
     def _get_parameter_list_str(self, parameters):

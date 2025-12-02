@@ -3,6 +3,7 @@
 
 from docutils.nodes import NodeVisitor, SkipNode
 
+SIG_TYPE_DEFAULT = "`?_UNKNOWN_?`"
 
 def _normalize_param_name(name: str) -> str:
     """Remove all asterisks from parameter name for comparison purposes.
@@ -284,5 +285,5 @@ def _get_param_raw_info_from_left_string(
             ]
             type_annotation = " | ".join(pure_types)
             if (sig_default == None) and ("optional" in types):
-                sig_default = "`?_UNKNOWN_?`"
+                sig_default = SIG_TYPE_DEFAULT
     return final_name, type_annotation, sig_default
