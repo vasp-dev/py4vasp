@@ -13,6 +13,8 @@ API Reference
    :recursive:
 
    py4vasp._calculation
+   py4vasp._calculation.base
+   py4vasp._calculation.slice_
    py4vasp._analysis
    py4vasp._control
    py4vasp._raw
