@@ -142,7 +142,6 @@ Combine a float and a string in a tuple.
 : <!---->
     A string to be included in the tuple.
 
-
 #### **Returns:**
 
 
@@ -187,7 +186,6 @@ Return value 2.
 *value2*: `float | str`
 : <!---->
     The second value, which can be a float or a string.
-
 
 ### **Returns:**
 
@@ -234,7 +232,6 @@ Return value 2.
 : <!---->
     The second value, which can be a float or a string.
 
-
 ### **Returns:**
 
 `float | str`
@@ -277,14 +274,12 @@ Return value 2.
 : <!---->
     The second value, which can be a float or a string.
 
-
 ### **Returns:**
 
 
 `float | str`
 : <!---->
     The second value.
-
     With another line!
 
 """
@@ -323,7 +318,6 @@ Return value 2.
 *value2*: `float | str`
 : <!---->
     The second value, which can be a float or a string.
-
 
 ### **Returns:**
 
@@ -659,7 +653,6 @@ projection.
 
 
 
-
 #### ***Examples***
 
 To obtain the total DOS along with the energy mesh and the Fermi energy you
@@ -779,6 +772,7 @@ corresponding to the selected projections.
     to get a list of all available ones.
 
 
+
 #### **Returns:**
 
 
@@ -788,7 +782,6 @@ corresponding to the selected projections.
     the resulting DOS is spin resolved and the spin-down DOS is plotted
     towards negative values. If a selection is given the orbital-resolved
     DOS is given for the specified projectors.
-
 
 
 
