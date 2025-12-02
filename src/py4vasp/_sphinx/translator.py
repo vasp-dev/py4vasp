@@ -726,7 +726,7 @@ title = "{node.astext()}"
         formatted_name = (f"*{name}" if name=="args" else f"**{name}" if name =="kwargs" else name)
         param = f"*{formatted_name}*"
         if default or annotation:
-            param += ": " + ("[optional] " if default else "")
+            param += ": "
         if annotation:
             formatted_annotation = annotation.replace("` or `", " or ").replace(" or ", " | ")
             formatted_annotation = f"`{formatted_annotation}`"
@@ -734,7 +734,7 @@ title = "{node.astext()}"
             formatted_annotation = formatted_annotation.replace("`[", "[").replace(")`", ")")
             param += formatted_annotation
         if default:
-            param += f" [default: {default}]"
+            param += f" = {default} [optional]"
         return param
 
     def _get_parameter_list_str(self, parameters):
