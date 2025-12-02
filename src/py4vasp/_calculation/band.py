@@ -260,6 +260,7 @@ class Band(base.Refinery, graph.Mixin):
 
         For noncollinear calculations, the resulting dictionary has the same structure
         as for the nonpolarized case
+        
         >>> noncollinear_calculation.band.to_graph()
         Graph(series=[Series(..., label='bands', ...)], ...)
 
@@ -359,7 +360,7 @@ class Band(base.Refinery, graph.Mixin):
 
         For noncollinear calculations, the resulting dictionary has the same structure
         as for the nonpolarized case
-        
+
         >>> noncollinear_calculation.band.to_frame()
            kpoint_distances  bands  occupations
         0  ...

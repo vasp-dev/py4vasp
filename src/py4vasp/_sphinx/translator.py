@@ -695,12 +695,15 @@ title = "{node.astext()}"
     def visit_desc(self, node):
         self._construct_new_anchor_id(node)
         self.section_level += 1
+        objtype = self._get_latest_objtype()
+        self.content += f"\n\n<div class='{objtype}'>"
         pass
 
     def depart_desc(self, node):
         if self.anchor_id_stack:
             self.anchor_id_stack.pop()
         self.section_level -= 1
+        self.content += "\n\n</div>\n\n"
         self._move_content_to_lines()
         pass
 
