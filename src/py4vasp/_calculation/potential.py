@@ -162,6 +162,7 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         >>> calculation.potential.to_contour(c=0)
 
         Plot the Hartree potential in the (100) plane crossing at 0.5 fractional coordinate
+        
         >>> calculation.potential.to_contour(selection="hartree", a=0.5)
 
         Plot the sigma_z-component of the xc potential in a 2x2 supercell in the plane

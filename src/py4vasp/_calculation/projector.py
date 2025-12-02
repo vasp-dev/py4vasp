@@ -97,7 +97,7 @@ class Projector(base.Refinery):
         Examples
         --------
 
-        For nonpolarized SrTiO3 with :tag:`LORBIT = 10, this would work like this
+        For nonpolarized SrTiO3 with :tag:`LORBIT` = 10, this would work like this
 
         >>> calculation.projector.to_dict()
         {
