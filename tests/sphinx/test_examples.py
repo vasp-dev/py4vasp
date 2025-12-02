@@ -373,7 +373,7 @@ def test_convert_example_params_types_only_in_field(sphinx_app):
 ## *function* **params_types_only_in_field** [¶](#example.params_types_only_in_field)
 (
 - *value1*: `float`,
-- *value2*: `float | str` = `?_UNKNOWN_?` [optional]
+- *value2*: `float | str` [optional]
 
 )
 
@@ -392,7 +392,7 @@ Example function with parameter types only in the field.
 : <!---->
     The first value.
 
-*value2*: `float | str` = `?_UNKNOWN_?` [optional]
+*value2*: `float | str` [optional]
 : <!---->
     The second value, which can be a float or a string.
 """
