@@ -1002,16 +1002,20 @@ title = "{node.astext()}"
         if self._current_return_type:
             new_str_content = f"\n`{self._current_return_type}`"
         new_str_content += "\n: <!---->"
-        new_str_content += "\n    " + "\n    ".join(
-            [
-                (
-                    c.lstrip("*   `").rstrip("`")
-                    if c.startswith("*   `") and c.endswith("`")
-                    else c
-                )
-                for c in pure_str_content
-            ]
-        )
+        
+        # Filter out empty lines and find minimum indentation
+        non_empty_lines = [c for c in pure_str_content if c.strip()]
+        if non_empty_lines:
+            min_indent = min(len(c) - len(c.lstrip()) for c in non_empty_lines)
+            # Process each line: remove min indent, add 4 spaces
+            for c in pure_str_content:
+                if c.strip():
+                    # Remove the backtick wrapping if present (for backward compatibility)
+                    line = c.lstrip("*   `").rstrip("`") if c.startswith("*   `") and c.endswith("`") else c
+                    # Remove base indentation and add exactly 4 spaces
+                    new_str_content += "\n    " + line[min_indent:]
+                # Skip empty lines entirely - don't add blank lines within the description
+        
         self.content = new_str_content + "\n\n"
         if not (self._prevent_content_stash_deletion):
             self._content_stash = []

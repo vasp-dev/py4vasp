@@ -138,11 +138,9 @@ Combine a float and a string in a tuple.
 : <!---->
     A value to be included in the tuple.
 
-
 *some_string*: [optional] `str` [default: '']
 : <!---->
     A string to be included in the tuple.
-
 
 
 #### **Returns:**
@@ -186,11 +184,9 @@ Return value 2.
 : <!---->
     The first value.
 
-
 *value2*: `float | str`
 : <!---->
     The second value, which can be a float or a string.
-
 
 
 ### **Returns:**
@@ -234,11 +230,9 @@ Return value 2.
 : <!---->
     The first value.
 
-
 *value2*: `float | str`
 : <!---->
     The second value, which can be a float or a string.
-
 
 
 ### **Returns:**
@@ -279,11 +273,9 @@ Return value 2.
 : <!---->
     The first value.
 
-
 *value2*: `float | str`
 : <!---->
     The second value, which can be a float or a string.
-
 
 
 ### **Returns:**
@@ -328,11 +320,9 @@ Return value 2.
 : <!---->
     The first value.
 
-
 *value2*: `float | str`
 : <!---->
     The second value, which can be a float or a string.
-
 
 
 ### **Returns:**
@@ -372,11 +362,9 @@ Example function with parameter types only in the signature.
 : <!---->
     The first value.
 
-
 *value2*: [optional] `float | str` [default: 0]
 : <!---->
     The second value, which can be a float or a string.
-
 """
     assert expected_method_content in content
 
@@ -410,11 +398,9 @@ Example function with parameter types only in the field.
 : <!---->
     The first value.
 
-
 *value2*: [optional] `float | str` [default: `?_UNKNOWN_?`]
 : <!---->
     The second value, which can be a float or a string.
-
 """
     assert expected_method_content in content
 
@@ -448,11 +434,9 @@ Example function with parameter types mixed in both field and signature.
 : <!---->
     The first value.
 
-
 *value2*: [optional] `float | str` [default: 0]
 : <!---->
     The second value, which can be a float or a string.
-
 """
     assert expected_method_content in content
 
@@ -486,11 +470,9 @@ Example function with parameter types mismatched.
 : <!---->
     The first value.
 
-
 *value2*: [optional] `float | str` [default: 0]
 : <!---->
     The second value, which can be a float or a string.
-
 """
     assert expected_method_content in content
 
@@ -795,7 +777,6 @@ corresponding to the selected projections.
     ~~~
 
     to get a list of all available ones.
-
 
 
 #### **Returns:**
