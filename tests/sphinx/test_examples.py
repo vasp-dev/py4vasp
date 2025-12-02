@@ -119,7 +119,7 @@ def test_convert_example_combined_returns_signature(sphinx_app):
 ### **combined_returns** [¶](#example.Example.combined_returns)
 (
 - *some_value*: `float`,
-- *some_string*: [optional] `str | None` [default: '']
+- *some_string*: `str | None` = '' [optional]
 
 ) → `tuple[float, str | None]`
 
@@ -138,7 +138,7 @@ Combine a float and a string in a tuple.
 : <!---->
     A value to be included in the tuple.
 
-*some_string*: [optional] `str` [default: '']
+*some_string*: `str` = '' [optional]
 : <!---->
     A string to be included in the tuple.
 
@@ -337,7 +337,7 @@ def test_convert_example_params_types_only_in_signature(sphinx_app):
 ## *function* **params_types_only_in_signature** [¶](#example.params_types_only_in_signature)
 (
 - *value1*: `float`,
-- *value2*: [optional] `float | str` [default: 0]
+- *value2*: `float | str` = 0 [optional]
 
 )
 
@@ -356,7 +356,7 @@ Example function with parameter types only in the signature.
 : <!---->
     The first value.
 
-*value2*: [optional] `float | str` [default: 0]
+*value2*: `float | str` = 0 [optional]
 : <!---->
     The second value, which can be a float or a string.
 """
@@ -373,7 +373,7 @@ def test_convert_example_params_types_only_in_field(sphinx_app):
 ## *function* **params_types_only_in_field** [¶](#example.params_types_only_in_field)
 (
 - *value1*: `float`,
-- *value2*: [optional] `float | str` [default: `?_UNKNOWN_?`]
+- *value2*: `float | str` = `?_UNKNOWN_?` [optional]
 
 )
 
@@ -392,7 +392,7 @@ Example function with parameter types only in the field.
 : <!---->
     The first value.
 
-*value2*: [optional] `float | str` [default: `?_UNKNOWN_?`]
+*value2*: `float | str` = `?_UNKNOWN_?` [optional]
 : <!---->
     The second value, which can be a float or a string.
 """
@@ -409,7 +409,7 @@ def test_convert_example_params_types_in_signature_and_field(sphinx_app):
 ## *function* **params_types_in_signature_and_field** [¶](#example.params_types_in_signature_and_field)
 (
 - *value1*: `float`,
-- *value2*: [optional] `float | str` [default: 0]
+- *value2*: `float | str` = 0 [optional]
 
 )
 
@@ -428,7 +428,7 @@ Example function with parameter types mixed in both field and signature.
 : <!---->
     The first value.
 
-*value2*: [optional] `float | str` [default: 0]
+*value2*: `float | str` = 0 [optional]
 : <!---->
     The second value, which can be a float or a string.
 """
@@ -445,7 +445,7 @@ def test_convert_example_params_types_mismatched(sphinx_app):
 ## *function* **params_types_mismatched** [¶](#example.params_types_mismatched)
 (
 - *value1*: `float`,
-- *value2*: [optional] `float | str` [default: 0]
+- *value2*: `float | str` = 0 [optional]
 
 )
 
@@ -464,7 +464,7 @@ Example function with parameter types mismatched.
 : <!---->
     The first value.
 
-*value2*: [optional] `float | str` [default: 0]
+*value2*: `float | str` = 0 [optional]
 : <!---->
     The second value, which can be a float or a string.
 """
@@ -581,7 +581,7 @@ def test_convert_example_dos_to_dict(sphinx_app):
 
 <a id='example_dos.Dos.to_dict'></a>
 
-### **to_dict** [¶](#example_dos.Dos.to_dict)(*selection*: [optional] `str` [default: None]) → `dict`
+### **to_dict** [¶](#example_dos.Dos.to_dict)(*selection*: `str` = None [optional]) → `dict`
 
 </div>
 
@@ -603,7 +603,7 @@ projection.
 
 
 
-*selection*: [optional] `str` [default: None]
+*selection*: `str` = None [optional]
 : <!---->
     A string specifying the projection of the orbitals. There are four distinct
     possibilities:
@@ -715,7 +715,7 @@ def test_convert_example_dos_to_graph(sphinx_app):
 
 <a id='example_dos.Dos.to_graph'></a>
 
-### **to_graph** [¶](#example_dos.Dos.to_graph)(*selection*: [optional] `str` [default: None]) → `Graph`
+### **to_graph** [¶](#example_dos.Dos.to_graph)(*selection*: `str` = None [optional]) → `Graph`
 
 </div>
 
@@ -735,7 +735,7 @@ corresponding to the selected projections.
 
 
 
-*selection*: [optional] `str` [default: None]
+*selection*: `str` = None [optional]
 : <!---->
     A string specifying the projection of the orbitals. There are four distinct
     possibilities:
