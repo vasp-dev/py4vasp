@@ -327,7 +327,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
 
         Returns
         -------
-        graph
+        Graph
             A contour plot in the plane spanned by the 2 remaining lattice vectors.
 
 
@@ -388,7 +388,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
 
         Returns
         -------
-        graph
+        Graph
             A quiver plot in the plane spanned by the 2 remaining lattice vectors.
 
 
