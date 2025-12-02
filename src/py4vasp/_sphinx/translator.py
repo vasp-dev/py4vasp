@@ -713,18 +713,23 @@ title = "{node.astext()}"
         parameters_dict = parameters_info_finder.find_parameters_info(
             node, skip_content=skip_content
         )
-        parameters = [
-            (name, info.get("type"), info.get("default"))
-            for name, info in parameters_dict.items()
-        ]
+        parameters = []
+        for name, info in parameters_dict.items():
+            # Reconstruct name with asterisks from signature
+            asterisks = info.get('asterisks', '')
+            full_name = asterisks + name
+            parameters.append((full_name, info.get("type"), info.get("default")))
+        
         if parameters:
             self._current_signature_dict["sig_parameters"] = parameters.copy()
         return parameters
 
     def _get_formatted_param(self, name, annotation, default):
-        """Format a single parameter with its name, type, and default value."""
-        formatted_name = (f"*{name}" if name=="args" else f"**{name}" if name =="kwargs" else name)
-        param = f"*{formatted_name}*"
+        """Format a single parameter with its name, type, and default value.
+        
+        The name already includes any unpacking asterisks (*args, **kwargs) from the signature.
+        """
+        param = f"*{name}*"
         if default or annotation:
             param += ": "
         if annotation:

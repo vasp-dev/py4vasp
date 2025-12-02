@@ -4,6 +4,36 @@
 from docutils.nodes import NodeVisitor, SkipNode
 
 
+def _normalize_param_name(name: str) -> str:
+    """Remove all asterisks from parameter name for comparison purposes.
+    
+    Examples:
+        '*args' -> 'args'
+        '**kwargs' -> 'kwargs'
+        '*args*' -> 'args'
+        'normal' -> 'normal'
+    """
+    return name.strip('*')
+
+
+def _extract_leading_asterisks(name: str) -> str:
+    """Extract leading asterisks from parameter name (unpacking operators).
+    
+    Examples:
+        '*args' -> '*'
+        '**kwargs' -> '**'
+        '*args*' -> '*'
+        'normal' -> ''
+    """
+    count = 0
+    for char in name:
+        if char == '*':
+            count += 1
+        else:
+            break
+    return '*' * count
+
+
 class ParametersInfoFinder(NodeVisitor):
     """A docutils NodeVisitor that finds parameters info in Sphinx document trees."""
 
@@ -74,10 +104,32 @@ class ParametersInfoFinder(NodeVisitor):
 
     def visit_desc_sig_name(self, node):
         if not (self._next_is_type):
-            self._current_parameter_name = node.astext()
+            raw_name = node.astext()
+            
+            # Check if there's a desc_sig_operator sibling before this node (for * or **)
+            leading_asterisks = ''
+            parent = node.parent
+            if parent and hasattr(parent, 'children'):
+                for child in parent.children:
+                    if child == node:
+                        break  # Stop when we reach the current node
+                    if child.tagname == 'desc_sig_operator':
+                        op_text = child.astext()
+                        if op_text in ('*', '**'):
+                            leading_asterisks = op_text
+            
+            normalized_name = _normalize_param_name(raw_name)
+            
+            # Store with normalized name but keep asterisks
+            self._current_parameter_name = normalized_name
             self._next_is_type = True
-            if not (self._parameters.get(self._current_parameter_name)):
-                self._parameters[self._current_parameter_name] = {}
+            
+            if not (self._parameters.get(normalized_name)):
+                self._parameters[normalized_name] = {}
+            
+            # Store the asterisks if present
+            if leading_asterisks:
+                self._parameters[normalized_name]['asterisks'] = leading_asterisks
         elif self._current_parameter_name:
             if self._parameters[self._current_parameter_name].get("type") == None:
                 self._parameters[self._current_parameter_name]["type"] = node.astext()
@@ -141,13 +193,21 @@ class ParametersInfoFinder(NodeVisitor):
                 name, type_, default = _get_param_raw_info_from_left_string(
                     left, _construction_dict=self._parameters
                 )
-                if name not in self._parameters:
-                    self._parameters[name] = {}
+                # Normalize the name for storage
+                normalized_name = _normalize_param_name(name)
+                
+                if normalized_name not in self._parameters:
+                    self._parameters[normalized_name] = {}
+                
+                # Preserve asterisks if present in the returned name
+                asterisks = _extract_leading_asterisks(name)
+                if asterisks and not self._parameters[normalized_name].get('asterisks'):
+                    self._parameters[normalized_name]['asterisks'] = asterisks
 
-                if self._parameters[name].get("type") == None:
-                    self._parameters[name]["type"] = type_
-                if self._parameters[name].get("default") == None:
-                    self._parameters[name]["default"] = default
+                if self._parameters[normalized_name].get("type") == None:
+                    self._parameters[normalized_name]["type"] = type_
+                if self._parameters[normalized_name].get("default") == None:
+                    self._parameters[normalized_name]["default"] = default
 
     def visit_paragraph(self, node):
         if self._in_parameters_field:
@@ -167,22 +227,43 @@ class ParametersInfoFinder(NodeVisitor):
 def _get_param_raw_info_from_left_string(
     left: str, _current_signature_dict: dict = {}, _construction_dict: dict = {}
 ) -> tuple[str, str, str]:
-    """Extract parameter name, type, and default value from the left part of a field."""
+    """Extract parameter name, type, and default value from the left part of a field.
+    
+    Returns the name WITH asterisks preserved from signature."""
     sep_around_type = left.split(" (")
-    left = sep_around_type[0].strip("* ")
+    # Strip emphasis asterisks (*name*) but preserve leading asterisks for matching
+    raw_name = sep_around_type[0].strip("* ")
+    normalized_name = _normalize_param_name(raw_name)
+    
     sig_default = None
     sig_types = None
+    sig_asterisks = ""
+    
     if _current_signature_dict.get("sig_parameters"):
-        # Check if the name is found in sig_parameters
-        for param, _type, default in _current_signature_dict["sig_parameters"]:
-            if param == left:
+        # Check if the name is found in sig_parameters (using normalized names)
+        for param_info in _current_signature_dict["sig_parameters"]:
+            param, _type, default = param_info
+            # Also check if param is a dict with asterisks info
+            if isinstance(param, dict):
+                param_asterisks = param.get('asterisks', '')
+                param_name = param.get('name', '')
+            else:
+                param_asterisks = _extract_leading_asterisks(param)
+                param_name = _normalize_param_name(param)
+            
+            if param_name == normalized_name:
                 sig_default = default
                 sig_types = _type
+                sig_asterisks = param_asterisks
                 break
     elif _construction_dict:
-        if _construction_dict.get(left):
-            sig_default = _construction_dict[left].get("default", None)
-            sig_types = _construction_dict[left].get("type", None)
+        if _construction_dict.get(normalized_name):
+            sig_default = _construction_dict[normalized_name].get("default", None)
+            sig_types = _construction_dict[normalized_name].get("type", None)
+            sig_asterisks = _construction_dict[normalized_name].get("asterisks", "")
+
+    # Reconstruct the name with asterisks from signature
+    final_name = sig_asterisks + normalized_name if sig_asterisks else normalized_name
 
     type_annotation = None
     if len(sep_around_type) > 1 or sig_types:
@@ -204,4 +285,4 @@ def _get_param_raw_info_from_left_string(
             type_annotation = " | ".join(pure_types)
             if (sig_default == None) and ("optional" in types):
                 sig_default = "`?_UNKNOWN_?`"
-    return left, type_annotation, sig_default
+    return final_name, type_annotation, sig_default
