@@ -944,13 +944,31 @@ title = "{node.astext()}"
         pure_str_content = self._content_stash
         new_str_content = ""
         opened_description_list = False
+        description_lines = []  # Collect lines for a single parameter description
+        
         for line in pure_str_content:
             if not (" – " in line):
                 if not (opened_description_list):
                     new_str_content += "\n: <!---->"
                     opened_description_list = True
-                new_str_content += "\n" + f"    {line}"
+                # Collect description lines to process as a group
+                description_lines.append(line)
             else:
+                # Process any accumulated description lines first
+                if description_lines:
+                    # Find minimum indentation (excluding empty lines)
+                    non_empty_lines = [l for l in description_lines if l.strip()]
+                    if non_empty_lines:
+                        min_indent = min(len(l) - len(l.lstrip()) for l in non_empty_lines)
+                        # Remove base indentation and add exactly 4 spaces
+                        for desc_line in description_lines:
+                            if desc_line.strip():
+                                # Remove min_indent, then add 4 spaces
+                                new_str_content += "\n" + "    " + desc_line[min_indent:]
+                            else:
+                                new_str_content += "\n"
+                    description_lines = []
+                
                 # Split "name (type) – description"
                 opened_description_list = False
                 left, desc = line.split(" – ", 1)
@@ -962,6 +980,18 @@ title = "{node.astext()}"
                 if desc:
                     new_str_content += f": <!---->\n    {desc}"
                     opened_description_list = True
+        
+        # Process any remaining description lines
+        if description_lines:
+            non_empty_lines = [l for l in description_lines if l.strip()]
+            if non_empty_lines:
+                min_indent = min(len(l) - len(l.lstrip()) for l in non_empty_lines)
+                for desc_line in description_lines:
+                    if desc_line.strip():
+                        new_str_content += "\n" + "    " + desc_line[min_indent:]
+                    else:
+                        new_str_content += "\n"
+        
         self.content = new_str_content
         if not (self._prevent_content_stash_deletion):
             self._content_stash = []
