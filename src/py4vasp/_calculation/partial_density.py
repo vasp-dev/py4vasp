@@ -28,6 +28,8 @@ _SPINS = ("up", "down", "total")
 class STM_settings:
     """Settings for the STM simulation.
 
+    Parameters
+    ----------
     sigma_z : float
         The standard deviation of the Gaussian filter in the z-direction.
         The default is 4.0.
