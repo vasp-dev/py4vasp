@@ -32,6 +32,12 @@ jobs:
       run: |
         poetry --version
         poetry install
+    - name: Configure conda channel priority
+      shell: bash -el {0}
+      run: |
+        conda config --set channel_priority strict
+        conda config --remove channels defaults
+        conda config --add channels conda-forge
     - name: Install mdtraj with conda
       shell: bash -el {0}
       run: |
