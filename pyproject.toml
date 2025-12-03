@@ -42,6 +42,9 @@ Repository = "https://github.com/vasp-dev/py4vasp"
 py4vasp = "py4vasp.cli:cli"
 error-analysis = "py4vasp.scripts.error_analysis:main"
 
+[project.entry-points."sphinx.builders"]
+hugo = "py4vasp._sphinx:setup"
+
 [dependency-groups]
 dev = [
     "pytest>=8.0",
