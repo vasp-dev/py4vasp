@@ -42,10 +42,14 @@ dev = [
     "pre-commit>=3.3.3",
 ]
 
-[tool.uv]
-default-groups = [
-    "dev",
-]
+[tool.hatch.build.targets.sdist]
+include = ["src/py4vasp"]
+
+[tool.hatch.build.targets.wheel]
+include = ["src/py4vasp"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/py4vasp" = "py4vasp"
 
 [build-system]
 requires = ["hatchling"]
