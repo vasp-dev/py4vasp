@@ -89,6 +89,7 @@ class HugoTranslator(NodeVisitor):
         self._in_returns_field = False
         self._in_examples_field = False
         self._expect_returns_field = False
+        self._is_docstring_open = False
         self._current_return_type = None
         self._current_signature_dict = {}
         self._prevent_move_content = False
@@ -168,8 +169,10 @@ class HugoTranslator(NodeVisitor):
         self._create_hugo_front_matter(node)
         self.content += f"\n{_construct_hugo_shortcode('sphinx')}\n\n"
         self._move_content_to_lines()
-        raise SkipNode
-        # self.content += f"{self.section_level * '#'} "
+        if self.section_level > 1:
+            self.content += f"{self.section_level * '#'} "
+        else:
+            raise SkipNode
 
     def depart_title(self, node):
         self._move_content_to_lines()
@@ -724,6 +727,11 @@ weight = HUGO_WEIGHT_PLACEHOLDER
         module = self._get_module()
         objtype = self._get_latest_objtype()
         name = self._get_latest_name()
+
+        if self._is_docstring_open:
+            self.content += _construct_hugo_shortcode("/docstring")
+            self._is_docstring_open = False
+
         if objtype in ["method", "property", "attribute"]:
             class_name = ""
             if module:
@@ -742,6 +750,11 @@ weight = HUGO_WEIGHT_PLACEHOLDER
         if self.anchor_id_stack:
             self.anchor_id_stack.pop()
         self.section_level -= 1
+
+        if self._is_docstring_open:
+            self.content += _construct_hugo_shortcode("/docstring")
+            self._is_docstring_open = False
+
         self.content += f"\n\n{_construct_hugo_shortcode(f'/{objtype}')}\n\n"
         self._move_content_to_lines()
         pass
@@ -791,7 +804,7 @@ weight = HUGO_WEIGHT_PLACEHOLDER
     def _get_parameter_list_str(self, parameters):
         """Get a string representation of the parameter list with types."""
         if not parameters:
-            return "()"
+            return "\n()"
         param_strs = []
         for name, annotation, default in parameters:
             param = self._get_formatted_param(name, annotation, default)
@@ -799,7 +812,7 @@ weight = HUGO_WEIGHT_PLACEHOLDER
         if len(param_strs) == 1:
             return f"\n({param_strs[0]})"
         concat_str = ",\n- ".join(param_strs)
-        return "\n(\n- " + concat_str + "\n\n)"
+        return "\n(\n- " + concat_str + "\n)"
 
     def _get_return_type(self, node):
         """Get the return type annotation from a desc_signature node."""
@@ -828,14 +841,22 @@ weight = HUGO_WEIGHT_PLACEHOLDER
 
         self._current_signature_dict = {}
         self._current_return_type = None
-        if objtype in ["function", "method", "class", "exception"]:
+        if objtype in [
+            "function",
+            "method",
+            "class",
+            "exception",
+            "property",
+            "attribute",
+        ]:
             parameters = self._get_parameter_list_and_types(
                 node, not (objtype in ["function", "method"])
             )
             parameters_str = self._get_parameter_list_str(parameters)
             self.content += "\n" + _construct_hugo_shortcode("signature")
-            self.content += parameters_str
-            if objtype in ["function", "method"]:
+            if not (objtype in ["property", "attribute"]):
+                self.content += parameters_str
+            if objtype in ["function", "method", "property", "attribute"]:
                 return_type = self._get_return_type(node)
                 if return_type:
                     return_str = f" → `{return_type}`"
@@ -859,10 +880,10 @@ weight = HUGO_WEIGHT_PLACEHOLDER
 
     def visit_desc_content(self, node):
         self.content += _construct_hugo_shortcode("docstring") + "\n"
+        self._is_docstring_open = True
         pass
 
     def depart_desc_content(self, node):
-        self.content += _construct_hugo_shortcode("/docstring")
         self._move_content_to_lines()
 
     def visit_desc_addname(self, node):

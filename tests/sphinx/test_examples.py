@@ -40,10 +40,10 @@ def test_convert_example_autodata(sphinx_app):
 
 {{< data name="Example" module="example" >}}
 
-
+{{< docstring >}}
 An example class for demonstration purposes.
 
-
+{{< /docstring >}}
 
 {{< /data >}}
 
@@ -56,12 +56,16 @@ def test_convert_example_autoclass_signature(sphinx_app):
     expected_class_content = """\
 
 {{< class name="Example" module="example" >}}
+{{< signature >}}
 (*value*: `float`)
+{{< /signature >}}
 
-
+{{< docstring >}}
 Bases: `object`
 
 An example class for demonstration purposes.
+
+{{< /docstring >}}
 
 """
     assert expected_class_content in content
@@ -72,9 +76,11 @@ def test_convert_example_init_signature(sphinx_app):
     expected_private_method_content = """\
 
 {{< method class="Example" name="__init__" module="example" >}}
+{{< signature >}}
 (*value*: `float`)
+{{< /signature >}}
 
-
+{{< docstring >}}
 Initialize the Example class with a value.
 
 *   some list entry
@@ -92,7 +98,7 @@ Initialize the Example class with a value.
 : <!---->
     The value to be stored in the instance.
 
-
+{{< /docstring >}}
 
 {{< /method >}}
 """
@@ -104,13 +110,14 @@ def test_convert_example_combined_returns_signature(sphinx_app):
     expected_public_method_content = """\
 
 {{< method class="Example" name="combined_returns" module="example" >}}
+{{< signature >}}
 (
 - *some_value*: `float`,
 - *some_string*: `str | None` = '' [optional]
-
 ) → `tuple[float, str | None]`
+{{< /signature >}}
 
-
+{{< docstring >}}
 Combine a float and a string in a tuple.
 
 
@@ -142,13 +149,14 @@ def test_convert_example_returns_type_without_desc_returns_signature(sphinx_app)
     content = read_file_content(sphinx_app.outdir, "example_return_types.md")
     expected_method_content = """\
 {{< function name="returns_type_without_desc_returns" module="example" >}}
+{{< signature >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str`
-
 ) → `float | str`
+{{< /signature >}}
 
-
+{{< docstring >}}
 Return value 2.
 
 
@@ -174,7 +182,7 @@ Return value 2.
 
 
 
-
+{{< /docstring >}}
 
 {{< /function >}}
 """
@@ -186,13 +194,14 @@ def test_convert_example_returns_type_without_returns_field_signature(sphinx_app
     expected_method_content = """\
 
 {{< function name="returns_type_without_returns_field" module="example" >}}
+{{< signature >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str`
-
 ) → `float | str`
+{{< /signature >}}
 
-
+{{< docstring >}}
 Return value 2.
 
 
@@ -214,7 +223,7 @@ Return value 2.
 `float | str`
 
 
-
+{{< /docstring >}}
 
 {{< /function >}}
 """
@@ -225,13 +234,14 @@ def test_convert_example_returns_type_without_returns_field_type_signature(sphin
     content = read_file_content(sphinx_app.outdir, "example_return_types.md")
     expected_method_content = """\
 {{< function name="returns_type_without_returns_field_type" module="example" >}}
+{{< signature >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str`
-
 ) → `float | str`
+{{< /signature >}}
 
-
+{{< docstring >}}
 Return value 2.
 
 
@@ -258,7 +268,7 @@ Return value 2.
 
 
 
-
+{{< /docstring >}}
 
 {{< /function >}}
 """
@@ -269,13 +279,14 @@ def test_convert_example_returns_type_without_returns_field_desc_signature(sphin
     content = read_file_content(sphinx_app.outdir, "example_return_types.md")
     expected_method_content = """\
 {{< function name="returns_type_without_returns_field_desc" module="example" >}}
+{{< signature >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str`
-
 ) → `float | str`
+{{< /signature >}}
 
-
+{{< docstring >}}
 Return value 2.
 
 
@@ -297,7 +308,7 @@ Return value 2.
 `float | str`
 
 
-
+{{< /docstring >}}
 
 {{< /function >}}
 """
@@ -308,13 +319,14 @@ def test_convert_example_params_types_only_in_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
     expected_method_content = """\
 {{< function name="params_types_only_in_signature" module="example" >}}
+{{< signature >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str` = 0 [optional]
-
 )
+{{< /signature >}}
 
-
+{{< docstring >}}
 Example function with parameter types only in the signature.
 
 
@@ -338,13 +350,14 @@ def test_convert_example_params_types_only_in_field(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
     expected_method_content = """\
 {{< function name="params_types_only_in_field" module="example" >}}
+{{< signature >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str` [optional]
-
 )
+{{< /signature >}}
 
-
+{{< docstring >}}
 Example function with parameter types only in the field.
 
 
@@ -368,13 +381,14 @@ def test_convert_example_params_types_in_signature_and_field(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
     expected_method_content = """\
 {{< function name="params_types_in_signature_and_field" module="example" >}}
+{{< signature >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str` = 0 [optional]
-
 )
+{{< /signature >}}
 
-
+{{< docstring >}}
 Example function with parameter types mixed in both field and signature.
 
 
@@ -398,13 +412,14 @@ def test_convert_example_params_types_mismatched(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
     expected_method_content = """\
 {{< function name="params_types_mismatched" module="example" >}}
+{{< signature >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str` = 0 [optional]
-
 )
+{{< /signature >}}
 
-
+{{< docstring >}}
 Example function with parameter types mismatched.
 
 
@@ -428,13 +443,14 @@ def test_convert_example_dos_class(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
     expected_class_content = """
 {{< class name="Dos" module="example_dos" >}}
+{{< signature >}}
 (
 - *data_context*,
 - ***kwargs*
-
 )
+{{< /signature >}}
 
-
+{{< docstring >}}
 Bases: `Refinery`, `Mixin`
 
 The density of states (DOS) describes the number of states per energy.
@@ -488,10 +504,14 @@ These methods also accept selections for specific orbitals if you used VASP with
 
 def test_convert_example_dos_selections(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
+    print(content)
     expected_class_content = """
-{{< method class="Dos" name="selections" module="example_dos" >}}() → `dict`
+{{< method class="Dos" name="selections" module="example_dos" >}}
+{{< signature >}}
+() → `dict`
+{{< /signature >}}
 
-
+{{< docstring >}}
 Returns possible alternatives for this particular quantity VASP can produce.
 
 The returned dictionary contains a single item with the name of the quantity
@@ -516,12 +536,13 @@ other routines.
 
 def test_convert_example_dos_to_dict(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
-    print(content)
     expected_class_content = """
 {{< method class="Dos" name="to_dict" module="example_dos" >}}
+{{< signature >}}
 (*selection*: `str` = None [optional]) → `dict`
+{{< /signature >}}
 
-
+{{< docstring >}}
 Read the DOS into a dictionary.
 
 You will always get an “energies” component that describes the energy mesh for
@@ -648,9 +669,11 @@ def test_convert_example_dos_to_graph(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
     expected_class_content = """
 {{< method class="Dos" name="to_graph" module="example_dos" >}}
+{{< signature >}}
 (*selection*: `str` = None [optional]) → `Graph`
+{{< /signature >}}
 
-
+{{< docstring >}}
 Read the DOS and convert it into a graph.
 
 The x axis is the energy mesh used in the calculation shifted such that the

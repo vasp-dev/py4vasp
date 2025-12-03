@@ -42,7 +42,6 @@ def test_index_page(sphinx_app):
     """Test that the index page is created correctly."""
     content = read_file_content(sphinx_app.outdir, "index.md")
     assert 'title = "Main page"' in content
-    assert "# Main page" in content
     assert (
         "This is the main page of the documentation. It serves as an index for the content available in this project."
         in content
@@ -66,7 +65,7 @@ def test_convert_headings(sphinx_app):
     lines = content.splitlines()
     # find all headers
     headers = []
-    headers.append(lines.index("# Chapter"))
+    # headers.append(lines.index("# Chapter"))
     for section in range(1, 3):
         section_header = f"## Section {section}"
         headers.append(lines.index(section_header))
@@ -91,11 +90,11 @@ def test_convert_inline_markup(sphinx_app):
     expected_content = """\
 +++
 title = "Inline markup example"
+weight = HUGO_WEIGHT_PLACEHOLDER
 +++
 
 {{< sphinx >}}
 
-# Inline markup example
 *this text is emphasized*, **this text is strong**, `this text is code`
 
 
