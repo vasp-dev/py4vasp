@@ -1,66 +1,72 @@
-[tool.poetry]
+[project]
 name = "py4vasp"
 version = "0.10.4"
 description = "Tool for assisting with the analysis and setup of VASP calculations."
 authors = [
-    "VASP Software GmbH <py4vasp@vasp.at>",
-    "Martin Schlipf <martin.schlipf@gmail.com>",
-    "Henrique Miranda <miranda.henrique@gmail.com>",
-    "Orest Dubay <orest-d@users.noreply.github.com>",
-    "Jonathan Lahnsteiner <jonathan.lahnsteiner@gmx.at>",
-    "Eisuke Kawashima <e-kwsm@users.noreply.github.com>",
-    "Sudarshan Vijay <sudarshan.vijay@protonmail.com>",
-    "Marie-Therese Huebsch <marie-therese.huebsch@vasp.at>",
-    "Michael Wolloch <michael.wolloch@vasp.at>",
-    "Andreas Singraber <andreas.singraber@vasp.at>",
-    "Alexey Tal <alexey.tal@vasp.at>",
-    "Tomáš Bučko <tomas.bucko@uniba.sk>",
-    "Max Liebetreu <max.liebetreu@vasp.at>",
+    { name = "VASP Software GmbH", email = "py4vasp@vasp.at" },
+    { name = "Martin Schlipf", email = "martin.schlipf@gmail.com" },
+    { name = "Henrique Miranda", email = "miranda.henrique@gmail.com" },
+    { name = "Orest Dubay", email = "orest-d@users.noreply.github.com" },
+    { name = "Jonathan Lahnsteiner", email = "jonathan.lahnsteiner@gmx.at" },
+    { name = "Eisuke Kawashima", email = "e-kwsm@users.noreply.github.com" },
+    { name = "Sudarshan Vijay", email = "sudarshan.vijay@protonmail.com" },
+    { name = "Marie-Therese Huebsch", email = "marie-therese.huebsch@vasp.at" },
+    { name = "Michael Wolloch", email = "michael.wolloch@vasp.at" },
+    { name = "Andreas Singraber", email = "andreas.singraber@vasp.at" },
+    { name = "Alexey Tal", email = "alexey.tal@vasp.at" },
+    { name = "Tomáš Bučko", email = "tomas.bucko@uniba.sk" },
+    { name = "Max Liebetreu", email = "max.liebetreu@vasp.at" },
 ]
-license = "Apache-2.0"
+requires-python = ">=3.10"
 readme = "README.md"
-homepage = "https://vasp.at/py4vasp/latest"
-repository = "https://github.com/vasp-dev/py4vasp"
+license = "Apache-2.0"
+dependencies = [
+    "numpy>=2.0",
+    "h5py>=3.9.0",
+    "pandas>=2.0",
+    "nglview>=3.0.5",
+    "ase>=3.23",
+    "plotly>=5.23",
+    "kaleido>=1.0",
+    "ipython>=8.26",
+    "scipy>=1.12.0",
+    "click>=8.1.8",
+]
 
-[tool.poetry.urls]
+[project.urls]
+Homepage = "https://vasp.at/py4vasp/latest"
+Repository = "https://github.com/vasp-dev/py4vasp"
 "Support Forum" = "https://vasp.at/forum/"
 
-
-[tool.poetry.dependencies]
-python = ">=3.10"
-numpy = ">=2.0"
-h5py = ">=3.9.0"
-pandas = ">=2.0"
-nglview = ">=3.0.5"
-ase = ">=3.23"
-plotly = ">=5.23"
-kaleido = ">=1.0"
-ipython = ">=8.26"
-scipy = ">=1.12.0"
-click = ">=8.1.8"
-
-[tool.poetry.group.dev.dependencies]
-pytest = ">=8.0"
-pytest-cov = ">=5.0"
-pylint = ">=3.0"
-hypothesis = ">=6.79"
-black = ">=23.7"
-isort = ">=5.13"
-ipykernel = ">=6.25.0"
-pre-commit = ">=3.3.3"
-
-[tool.poetry.group.doc.dependencies]
-sphinx = ">=8.0"
-sphinx-automodapi = ">=0.16"
-
-[tool.poetry.scripts]
+[project.scripts]
 py4vasp = "py4vasp.cli:cli"
 error-analysis = "py4vasp.scripts.error_analysis:main"
 
-[tool.isort]
-profile = "black"
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "pylint>=3.0",
+    "hypothesis>=6.79",
+    "black>=23.7",
+    "isort>=5.13",
+    "ipykernel>=6.25.0",
+    "pre-commit>=3.3.3",
+]
+doc = [
+    "sphinx>=8.0",
+    "sphinx-automodapi>=0.16",
+]
 
+[tool.uv]
+default-groups = [
+    "dev",
+    "doc",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.isort]
+profile = "black"
