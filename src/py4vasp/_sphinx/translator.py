@@ -830,12 +830,14 @@ title = "{node.astext()}"
                 node, not (objtype in ["function", "method"])
             )
             parameters_str = self._get_parameter_list_str(parameters)
+            self.content += "\n" + _construct_hugo_shortcode('signature')
             self.content += parameters_str
-        if objtype in ["function", "method"]:
-            return_type = self._get_return_type(node)
-            if return_type:
-                return_str = f" → `{return_type}`"
-                self.content += return_str
+            if objtype in ["function", "method"]:
+                return_type = self._get_return_type(node)
+                if return_type:
+                    return_str = f" → `{return_type}`"
+                    self.content += return_str
+            self.content += "\n" + _construct_hugo_shortcode('/signature')
 
         self.content += "\n\n"  # + "</div>\n\n"
 
@@ -853,10 +855,11 @@ title = "{node.astext()}"
         pass
 
     def visit_desc_content(self, node):
-        self.content += "\n"
+        self.content += _construct_hugo_shortcode("docstring") + "\n"
         pass
 
     def depart_desc_content(self, node):
+        self.content += _construct_hugo_shortcode("/docstring")
         self._move_content_to_lines()
 
     def visit_desc_addname(self, node):

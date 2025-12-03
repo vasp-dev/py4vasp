@@ -114,7 +114,7 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
         *,
         tip_height: float = 2.0,
         current: float = 1.0,
-        supercell: Union[int, np.array] = 2,
+        supercell: Union[int, np.ndarray] = 2,
         stm_settings: STM_settings = STM_settings(),
     ) -> Graph:
         """Generate STM image data from the partial charge density.
@@ -131,7 +131,7 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
         current : float
             The tunneling current in nA. The default is 1.
             Only used in "constant_current" mode.
-        supercell : int | np.array
+        supercell : int | np.ndarray
             The supercell to be used for plotting the STM. The default is 2.
         stm_settings : STM_settings
             Settings for the STM simulation concerning smoothening parameters
