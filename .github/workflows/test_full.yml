@@ -45,15 +45,15 @@ jobs:
     - name: Test with pytest
       shell: bash -el {0}
       run: |
-        uv run pytest --version
-        uv run pytest --cov=py4vasp --cov-report term
+        uv run --active pytest --version
+        uv run --active pytest --cov=py4vasp --cov-report term
     - name: Check code style
       shell: bash -el {0}
       run: |
-        uv run isort --version
-        uv run isort --check src
-        uv run isort --check tests
-        uv run black --version
-        uv run black --check src
-        uv run black --check tests
+        uv run --active isort --version
+        uv run --active isort --check src
+        uv run --active isort --check tests
+        uv run --active black --version
+        uv run --active black --check src
+        uv run --active black --check tests
 
