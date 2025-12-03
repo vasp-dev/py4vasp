@@ -25,8 +25,8 @@ print(f"DEBUG: templates_path = {templates_path}")
 
 # Keep type aliases unexpanded in documentation
 autodoc_type_aliases = {
-    'ArrayLike': 'ArrayLike',
-    'float | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes]': 'ArrayLike',
+    "ArrayLike": "ArrayLike",
+    "float | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes]": "ArrayLike",
 }
 
 napoleon_include_init_with_doc = True
@@ -37,8 +37,8 @@ napoleon_use_rtype = True
 napoleon_use_ivar = False
 napoleon_preprocess_types = True
 napoleon_type_aliases = {
-    'ArrayLike': 'ArrayLike',
-    'float | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes]': 'ArrayLike',
+    "ArrayLike": "ArrayLike",
+    "float | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes]": "ArrayLike",
 }
 napoleon_attr_annotations = True
 napoleon_include_default_value = True

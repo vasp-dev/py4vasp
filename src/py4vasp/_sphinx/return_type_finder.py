@@ -66,7 +66,13 @@ class ReturnTypeFinder(NodeVisitor):
 
     def visit_desc_returns(self, node):
         if not (self._return_type):
-            self._return_type = node.astext().lstrip(" -> ").strip().replace("` or `", " or ").replace(" or ", " | ")
+            self._return_type = (
+                node.astext()
+                .lstrip(" -> ")
+                .strip()
+                .replace("` or `", " or ")
+                .replace(" or ", " | ")
+            )
         raise SkipNode
 
     def visit_field_name(self, node):
@@ -77,7 +83,12 @@ class ReturnTypeFinder(NodeVisitor):
     def visit_field_body(self, node):
         if self._in_returns_type_field:
             if not (self._return_type):
-                self._return_type = node.astext().strip().replace("` or `", " or ").replace(" or ", " | ")
+                self._return_type = (
+                    node.astext()
+                    .strip()
+                    .replace("` or `", " or ")
+                    .replace(" or ", " | ")
+                )
         raise SkipNode
 
     def depart_field(self, node):

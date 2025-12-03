@@ -6,15 +6,17 @@ from docutils.nodes import NodeVisitor, SkipNode
 
 from py4vasp._sphinx.anchors_finder import AnchorsFinder
 from py4vasp._sphinx.parameters_info_finder import (
+    SIG_TYPE_DEFAULT,
     ParametersInfoFinder,
     _get_param_raw_info_from_left_string,
-    SIG_TYPE_DEFAULT
 )
 from py4vasp._sphinx.return_type_finder import ReturnTypeFinder
+
 
 def _construct_hugo_shortcode(text: str) -> str:
     """Wrap text in Hugo shortcode delimiters."""
     return f"{{{{< {text} >}}}}"
+
 
 class Indentation:
     """A simple data class to track the current indentation level."""
@@ -273,12 +275,12 @@ title = "{node.astext()}"
 
     def visit_math(self, node):
         """Handle inline math nodes by converting to KaTeX format.
-        
-        Sphinx :math: role creates math nodes. We convert these to $...$ 
+
+        Sphinx :math: role creates math nodes. We convert these to $...$
         for KaTeX/MathJax rendering in Hugo.
         """
         self.content += "$"
-    
+
     def depart_math(self, node):
         """Close inline math with dollar sign."""
         self.content += "$"
@@ -292,7 +294,9 @@ title = "{node.astext()}"
         since those should be rendered as links, not code.
         """
         # Check if this literal contains a pending_xref (for :meth:, :class:, etc.)
-        has_xref = any(child.__class__.__name__ == 'pending_xref' for child in node.children)
+        has_xref = any(
+            child.__class__.__name__ == "pending_xref" for child in node.children
+        )
         if not has_xref:
             self.content += "`"
         self._literal_has_xref = has_xref
@@ -303,7 +307,7 @@ title = "{node.astext()}"
         Matching backticks are required to properly delimit the code span.
         Skip if this literal contained a cross-reference.
         """
-        if not getattr(self, '_literal_has_xref', False):
+        if not getattr(self, "_literal_has_xref", False):
             self.content += "`"
         self._literal_has_xref = False
 
@@ -532,8 +536,8 @@ title = "{node.astext()}"
         For method references (:meth:), we'll add () suffix after the link.
         """
         # Store reftype to handle special cases like meth
-        self._xref_reftype = node.get('reftype', '')
-        reftarget = node.get('reftarget', '')
+        self._xref_reftype = node.get("reftype", "")
+        reftarget = node.get("reftarget", "")
         # For cross-file references, use the full target as anchor
         self._reference_uri = f"#{reftarget}"
         self.content += "["
@@ -674,7 +678,7 @@ title = "{node.astext()}"
                 if anchor
             ]
             return ".".join(list_to_join)
-        
+
     def _get_module(self) -> str | None:
         """Get the module name from the anchor_id_stack."""
         full_anchor = self._get_anchor_id()
@@ -717,15 +721,17 @@ title = "{node.astext()}"
         module = self._get_module()
         objtype = self._get_latest_objtype()
         name = self._get_latest_name()
-        if (objtype in ["method", "property", "attribute"]):
+        if objtype in ["method", "property", "attribute"]:
             class_name = ""
             if module:
                 class_name = module.split(".")[-1]
                 module = ".".join(module.split(".")[:-1])
             shortcode_str = f"{objtype} class=\"{class_name}\" name=\"{name}\" module=\"{module if module else ''}\""
         else:
-            shortcode_str = f"{objtype} name=\"{name}\" module=\"{module if module else ''}\""
-        self.content += f'\n\n{_construct_hugo_shortcode(shortcode_str)}'
+            shortcode_str = (
+                f"{objtype} name=\"{name}\" module=\"{module if module else ''}\""
+            )
+        self.content += f"\n\n{_construct_hugo_shortcode(shortcode_str)}"
         pass
 
     def depart_desc(self, node):
@@ -746,30 +752,36 @@ title = "{node.astext()}"
         parameters = []
         for name, info in parameters_dict.items():
             # Reconstruct name with asterisks from signature
-            asterisks = info.get('asterisks', '')
+            asterisks = info.get("asterisks", "")
             full_name = asterisks + name
             parameters.append((full_name, info.get("type"), info.get("default")))
-        
+
         if parameters:
             self._current_signature_dict["sig_parameters"] = parameters.copy()
         return parameters
 
     def _get_formatted_param(self, name, annotation, default):
         """Format a single parameter with its name, type, and default value.
-        
+
         The name already includes any unpacking asterisks (*args, **kwargs) from the signature.
         """
         param = f"*{name}*"
         if default or annotation:
             param += ": "
         if annotation:
-            formatted_annotation = annotation.replace("` or `", " or ").replace(" or ", " | ")
+            formatted_annotation = annotation.replace("` or `", " or ").replace(
+                " or ", " | "
+            )
             formatted_annotation = f"`{formatted_annotation}`"
             # now make sure Markdown links are formatted correctly
-            formatted_annotation = formatted_annotation.replace("`[", "[").replace(")`", ")")
+            formatted_annotation = formatted_annotation.replace("`[", "[").replace(
+                ")`", ")"
+            )
             param += formatted_annotation
         if default:
-            formatted_default = f" = {default}" if not(default == SIG_TYPE_DEFAULT) else ""
+            formatted_default = (
+                f" = {default}" if not (default == SIG_TYPE_DEFAULT) else ""
+            )
             param += f"{formatted_default} [optional]"
         return param
 
@@ -809,7 +821,7 @@ title = "{node.astext()}"
 
         name = self._get_latest_name()
         name_str = f"**{name}**"
-        #self.content += f"{anchor_str}\n\n{self.section_level * '#'} {objtype_str}{name_str}{ref_str}"
+        # self.content += f"{anchor_str}\n\n{self.section_level * '#'} {objtype_str}{name_str}{ref_str}"
 
         self._current_signature_dict = {}
         self._current_return_type = None
@@ -825,7 +837,7 @@ title = "{node.astext()}"
                 return_str = f" → `{return_type}`"
                 self.content += return_str
 
-        self.content += "\n\n" # + "</div>\n\n"
+        self.content += "\n\n"  # + "</div>\n\n"
 
         if self._current_return_type:
             self._expect_returns_field = True
@@ -984,7 +996,7 @@ title = "{node.astext()}"
         new_str_content = ""
         opened_description_list = False
         description_lines = []  # Collect lines for a single parameter description
-        
+
         for line in pure_str_content:
             if not (" – " in line):
                 if not (opened_description_list):
@@ -998,16 +1010,20 @@ title = "{node.astext()}"
                     # Find minimum indentation (excluding empty lines)
                     non_empty_lines = [l for l in description_lines if l.strip()]
                     if non_empty_lines:
-                        min_indent = min(len(l) - len(l.lstrip()) for l in non_empty_lines)
+                        min_indent = min(
+                            len(l) - len(l.lstrip()) for l in non_empty_lines
+                        )
                         # Remove base indentation and add exactly 4 spaces
                         for desc_line in description_lines:
                             if desc_line.strip():
                                 # Remove min_indent, then add 4 spaces
-                                new_str_content += "\n" + "    " + desc_line[min_indent:]
+                                new_str_content += (
+                                    "\n" + "    " + desc_line[min_indent:]
+                                )
                             else:
                                 new_str_content += "\n"
                     description_lines = []
-                
+
                 # Split "name (type) – description"
                 opened_description_list = False
                 left, desc = line.split(" – ", 1)
@@ -1019,7 +1035,7 @@ title = "{node.astext()}"
                 if desc:
                     new_str_content += f": <!---->\n    {desc}"
                     opened_description_list = True
-        
+
         # Process any remaining description lines
         if description_lines:
             non_empty_lines = [l for l in description_lines if l.strip()]
@@ -1030,7 +1046,7 @@ title = "{node.astext()}"
                         new_str_content += "\n" + "    " + desc_line[min_indent:]
                     else:
                         new_str_content += "\n"
-        
+
         self.content = new_str_content
         if not (self._prevent_content_stash_deletion):
             self._content_stash = []
@@ -1041,7 +1057,7 @@ title = "{node.astext()}"
         if self._current_return_type:
             new_str_content = f"\n`{self._current_return_type}`"
         new_str_content += "\n: <!---->"
-        
+
         # Filter out empty lines and find minimum indentation
         non_empty_lines = [c for c in pure_str_content if c.strip()]
         if non_empty_lines:
@@ -1050,11 +1066,15 @@ title = "{node.astext()}"
             for c in pure_str_content:
                 if c.strip():
                     # Remove the backtick wrapping if present (for backward compatibility)
-                    line = c.lstrip("*   `").rstrip("`") if c.startswith("*   `") and c.endswith("`") else c
+                    line = (
+                        c.lstrip("*   `").rstrip("`")
+                        if c.startswith("*   `") and c.endswith("`")
+                        else c
+                    )
                     # Remove base indentation and add exactly 4 spaces
                     new_str_content += "\n    " + line[min_indent:]
                 # Skip empty lines entirely - don't add blank lines within the description
-        
+
         self.content = new_str_content + "\n\n"
         if not (self._prevent_content_stash_deletion):
             self._content_stash = []

@@ -435,7 +435,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         array([[...]])
 
         You can also select spin or orbital moments separately.
-        
+
         >>> noncollinear_calculation.local_moment.magnetic(selection="spin")
         array([[...]])
 
