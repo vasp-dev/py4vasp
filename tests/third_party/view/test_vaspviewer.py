@@ -137,7 +137,7 @@ def test_ion_arrows(is_structure, Assert, not_core):
                 color="#84FF00",
                 radius=0.13,
             ),
-        ]
+        ],
     )
     state = view.to_vasp_viewer().get_state()
     for arrow_group_view, arrow_group_state in zip(

@@ -15,46 +15,48 @@ jobs:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Set up conda
       uses: conda-incubator/setup-miniconda@v3
       with:
         auto-update-conda: true
         python-version: ${{ matrix.python-version }}
-    - name: Set up poetry
-      shell: bash -el {0}
-      run: |
-        python --version
-        python -m pip install --progress-bar=off --upgrade pip
-        pip install --progress-bar=off poetry
-    - name: Install py4vasp
-      shell: bash -el {0}
-      run: |
-        poetry --version
-        poetry install
     - name: Configure conda channel priority
       shell: bash -el {0}
       run: |
         conda config --set channel_priority strict
         conda config --remove channels defaults
         conda config --add channels conda-forge
+    - name: Set up uv
+      shell: bash -el {0}
+      run: |
+        conda install -q conda-forge::uv
+        uv --version
+    - name: Install py4vasp
+      shell: bash -el {0}
+      run: |
+        export VIRTUAL_ENV=$CONDA_PREFIX
+        uv sync --active
+        uv version
     - name: Install mdtraj with conda
       shell: bash -el {0}
       run: |
         conda info
-        conda install -q -c conda-forge mdtraj
+        conda install -q conda-forge::mdtraj
     - name: Test with pytest
       shell: bash -el {0}
       run: |
-        poetry run pytest --version
-        poetry run pytest --cov=py4vasp --cov-report term
+        export VIRTUAL_ENV=$CONDA_PREFIX
+        uv run --active pytest --version
+        uv run --active pytest --cov=py4vasp --cov-report term
     - name: Check code style
       shell: bash -el {0}
       run: |
-        poetry run isort --version
-        poetry run isort --check src
-        poetry run isort --check tests
-        poetry run black --version
-        poetry run black --check src
-        poetry run black --check tests
+        export VIRTUAL_ENV=$CONDA_PREFIX
+        uv run --active isort --version
+        uv run --active isort --check src
+        uv run --active isort --check tests
+        uv run --active black --version
+        uv run --active black --check src
+        uv run --active black --check tests
 
