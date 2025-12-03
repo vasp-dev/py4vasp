@@ -20,12 +20,11 @@ jobs:
       uses: astral-sh/setup-uv@v7
       with:
         python-version: ${{ matrix.python-version }}
-      run: |
-        uv --version
-        python --version
     - name: Install py4vasp-core
       run: |
         cp core/* .
+        uv --version
+        python --version
         uv sync --locked --all-extras --dev
         uv version
     - name: Test with pytest
