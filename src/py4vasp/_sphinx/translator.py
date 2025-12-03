@@ -717,7 +717,7 @@ title = "{node.astext()}"
         module = self._get_module()
         objtype = self._get_latest_objtype()
         name = self._get_latest_name()
-        if (objtype in ["method", "property"]):
+        if (objtype in ["method", "property", "attribute"]):
             class_name = ""
             if module:
                 class_name = module.split(".")[-1]
