@@ -88,12 +88,19 @@ def test_convert_headings(sphinx_app):
 
 def test_convert_inline_markup(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "inline_markup.md")
-    expected_content = f"""\
+    expected_content = """\
 +++
 title = "Inline markup example"
 +++
+
+{{< sphinx >}}
+
 # Inline markup example
 *this text is emphasized*, **this text is strong**, `this text is code`
+
+
+
+{{< /sphinx >}}
 """
     assert expected_content in content
 
@@ -154,7 +161,7 @@ def test_convert_reference(sphinx_app):
     # Internal reference (Markdown link to anchor)
     assert "[internal-label](#internal-label)" in content
     # Internal anchor
-    assert '<a name="internal-label"></a>' in content
+    assert '{{< anchor name="internal-label" >}}' in content
     # Target section text
     assert "This is the internal target section." in content
 
@@ -162,30 +169,30 @@ def test_convert_reference(sphinx_app):
 def test_convert_compound(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "compound.md")
     expected_content = """\
-<div class="compound">
+{{< compound >}}
 
 This is inside a compound block.
 
 Another paragraph inside compound.
 
 
-</div>
+{{< /compound >}}
 """
     assert expected_content in content
     expected_content_nested = """\
-<div class="compound">
+{{< compound >}}
 
 This is inside a compound block.
 
 
-<div class="compound">
+{{< compound >}}
 
 This is a nested compound block.
 
 
-</div>
+{{< /compound >}}
 
-</div>
+{{< /compound >}}
 """
     assert expected_content_nested in content
 

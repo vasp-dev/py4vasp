@@ -38,16 +38,14 @@ def test_convert_example_autodata(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_autodata_content = """\
 
-<div class='data signature'>
-
-<a id='example.Example'></a>
-
-## *data* **Example** [¶](#example.Example)
-
-</div>
+{{< data name="Example" module="example" >}}
 
 
 An example class for demonstration purposes.
+
+
+
+{{< /data >}}
 
 """
     assert expected_autodata_content in content
@@ -57,13 +55,8 @@ def test_convert_example_autoclass_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_class_content = """\
 
-<div class='class signature'>
-
-<a id='example.Example'></a>
-
-## *class* **Example** [¶](#example.Example)(*value*: `float`)
-
-</div>
+{{< class name="Example" module="example" >}}
+(*value*: `float`)
 
 
 Bases: `object`
@@ -78,13 +71,8 @@ def test_convert_example_init_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_private_method_content = """\
 
-<div class='method signature'>
-
-<a id='example.Example.__init__'></a>
-
-### **__init__** [¶](#example.Example.__init__)(*value*: `float`)
-
-</div>
+{{< method class="Example" name="__init__" module="example" >}}
+(*value*: `float`)
 
 
 Initialize the Example class with a value.
@@ -104,6 +92,9 @@ Initialize the Example class with a value.
 : <!---->
     The value to be stored in the instance.
 
+
+
+{{< /method >}}
 """
     assert expected_private_method_content in content
 
@@ -112,18 +103,12 @@ def test_convert_example_combined_returns_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_public_method_content = """\
 
-<div class='method signature'>
-
-<a id='example.Example.combined_returns'></a>
-
-### **combined_returns** [¶](#example.Example.combined_returns)
+{{< method class="Example" name="combined_returns" module="example" >}}
 (
 - *some_value*: `float`,
 - *some_string*: `str | None` = '' [optional]
 
 ) → `tuple[float, str | None]`
-
-</div>
 
 
 Combine a float and a string in a tuple.
@@ -157,18 +142,12 @@ def test_convert_example_returns_type_without_desc_returns_signature(sphinx_app)
     content = read_file_content(sphinx_app.outdir, "example_return_types.md")
     expected_method_content = """\
 
-<div class='function signature'>
-
-<a id='example.returns_type_without_desc_returns'></a>
-
-## *function* **returns_type_without_desc_returns** [¶](#example.returns_type_without_desc_returns)
+{{< function name="returns_type_without_desc_returns" module="example" >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str`
 
 ) → `float | str`
-
-</div>
 
 
 Return value 2.
@@ -194,6 +173,10 @@ Return value 2.
 : <!---->
     The second value.
 
+
+
+
+{{< /function >}}
 """
     assert expected_method_content in content
 
@@ -202,18 +185,12 @@ def test_convert_example_returns_type_without_returns_field_signature(sphinx_app
     content = read_file_content(sphinx_app.outdir, "example_return_types.md")
     expected_method_content = """\
 
-<div class='function signature'>
-
-<a id='example.returns_type_without_returns_field'></a>
-
-## *function* **returns_type_without_returns_field** [¶](#example.returns_type_without_returns_field)
+{{< function name="returns_type_without_returns_field" module="example" >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str`
 
 ) → `float | str`
-
-</div>
 
 
 Return value 2.
@@ -236,6 +213,10 @@ Return value 2.
 
 `float | str`
 
+
+
+
+{{< /function >}}
 """
     assert expected_method_content in content
 
@@ -244,18 +225,12 @@ def test_convert_example_returns_type_without_returns_field_type_signature(sphin
     content = read_file_content(sphinx_app.outdir, "example_return_types.md")
     expected_method_content = """\
 
-<div class='function signature'>
-
-<a id='example.returns_type_without_returns_field_type'></a>
-
-## *function* **returns_type_without_returns_field_type** [¶](#example.returns_type_without_returns_field_type)
+{{< function name="returns_type_without_returns_field_type" module="example" >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str`
 
 ) → `float | str`
-
-</div>
 
 
 Return value 2.
@@ -282,6 +257,10 @@ Return value 2.
     The second value.
     With another line!
 
+
+
+
+{{< /function >}}
 """
     assert expected_method_content in content
 
@@ -289,18 +268,12 @@ Return value 2.
 def test_convert_example_returns_type_without_returns_field_desc_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_return_types.md")
     expected_method_content = """\
-<div class='function signature'>
-
-<a id='example.returns_type_without_returns_field_desc'></a>
-
-## *function* **returns_type_without_returns_field_desc** [¶](#example.returns_type_without_returns_field_desc)
+{{< function name="returns_type_without_returns_field_desc" module="example" >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str`
 
 ) → `float | str`
-
-</div>
 
 
 Return value 2.
@@ -323,6 +296,10 @@ Return value 2.
 
 `float | str`
 
+
+
+
+{{< /function >}}
 """
     assert expected_method_content in content
 

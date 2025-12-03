@@ -12,6 +12,9 @@ from py4vasp._sphinx.parameters_info_finder import (
 )
 from py4vasp._sphinx.return_type_finder import ReturnTypeFinder
 
+def _construct_hugo_shortcode(text: str) -> str:
+    """Wrap text in Hugo shortcode delimiters."""
+    return f"{{{{< {text} >}}}}"
 
 class Indentation:
     """A simple data class to track the current indentation level."""
@@ -148,6 +151,10 @@ class HugoTranslator(NodeVisitor):
         """
         pass
 
+    def depart_document(self, node):
+        self.content += f"\n\n{_construct_hugo_shortcode('/sphinx')}\n"
+        self._move_content_to_lines()
+
     def visit_title(self, node):
         """Handle title nodes by generating Hugo front matter and Markdown headers.
 
@@ -157,7 +164,8 @@ class HugoTranslator(NodeVisitor):
         the current section depth.
         """
         self._create_hugo_front_matter(node)
-        self.content = f"{self.section_level * '#'} "
+        self.content += f"\n{_construct_hugo_shortcode('sphinx')}\n\n"
+        self.content += f"{self.section_level * '#'} "
 
     def depart_title(self, node):
         self._move_content_to_lines()
@@ -472,7 +480,7 @@ title = "{node.astext()}"
         refid = node.get("refid")
         if refid:
             # Insert an anchor for internal references
-            self.content += f'<a name="{refid}"></a>'
+            self.content += _construct_hugo_shortcode(f'anchor name="{refid}"')
         # For external targets (refuri), do nothing (handled by reference)
 
     def depart_target(self, node):
@@ -634,11 +642,11 @@ title = "{node.astext()}"
 
     def visit_compound(self, node):
         # Start a div to preserve grouping in Markdown
-        self.content += '\n<div class="compound">\n\n'
+        self.content += f'\n{_construct_hugo_shortcode("compound")}\n\n'
 
     def depart_compound(self, node):
         # End the div
-        self.content += "\n</div>\n"
+        self.content += f"\n{_construct_hugo_shortcode('/compound')}\n"
         self._move_content_to_lines()
 
     def visit_compact_paragraph(self, node):
@@ -666,6 +674,16 @@ title = "{node.astext()}"
                 if anchor
             ]
             return ".".join(list_to_join)
+        
+    def _get_module(self) -> str | None:
+        """Get the module name from the anchor_id_stack."""
+        full_anchor = self._get_anchor_id()
+        if full_anchor:
+            name = self._get_latest_name()
+            if name and full_anchor.endswith(name):
+                module = full_anchor[: -len(name)].rstrip(".")
+                return module if module else None
+        return None
 
     def _construct_new_anchor_id(self, node) -> tuple[str, str, str]:
         anchors_finder = AnchorsFinder(self.document)
@@ -696,15 +714,26 @@ title = "{node.astext()}"
     def visit_desc(self, node):
         self._construct_new_anchor_id(node)
         self.section_level += 1
+        module = self._get_module()
         objtype = self._get_latest_objtype()
-        self.content += f"\n\n<div class='{objtype}'>"
+        name = self._get_latest_name()
+        if (objtype in ["method", "property"]):
+            class_name = ""
+            if module:
+                class_name = module.split(".")[-1]
+                module = ".".join(module.split(".")[:-1])
+            shortcode_str = f"{objtype} class=\"{class_name}\" name=\"{name}\" module=\"{module if module else ''}\""
+        else:
+            shortcode_str = f"{objtype} name=\"{name}\" module=\"{module if module else ''}\""
+        self.content += f'\n\n{_construct_hugo_shortcode(shortcode_str)}'
         pass
 
     def depart_desc(self, node):
+        objtype = self._get_latest_objtype()
         if self.anchor_id_stack:
             self.anchor_id_stack.pop()
         self.section_level -= 1
-        self.content += "\n\n</div>\n\n"
+        self.content += f"\n\n{_construct_hugo_shortcode(f'/{objtype}')}\n\n"
         self._move_content_to_lines()
         pass
 
@@ -753,7 +782,7 @@ title = "{node.astext()}"
             param = self._get_formatted_param(name, annotation, default)
             param_strs.append(param)
         if len(param_strs) == 1:
-            return f"({param_strs[0]})"
+            return f"\n({param_strs[0]})"
         concat_str = ",\n- ".join(param_strs)
         return "\n(\n- " + concat_str + "\n\n)"
 
@@ -773,14 +802,14 @@ title = "{node.astext()}"
         ref_str = f" [¶](#{anchor_id})" if anchor_id else ""
         objtype = self._get_latest_objtype()
         objtype_str = f"*{objtype}* " if (objtype != "method") else ""
-        if objtype:
-            self.content += (
-                f"\n\n<div class='{f'{objtype} ' if objtype else ''}signature'>"
-            )
+        # if objtype:
+        #     self.content += (
+        #         f"\n\n<div class='{f'{objtype} ' if objtype else ''}signature'>"
+        #     )
 
         name = self._get_latest_name()
         name_str = f"**{name}**"
-        self.content += f"{anchor_str}\n\n{self.section_level * '#'} {objtype_str}{name_str}{ref_str}"
+        #self.content += f"{anchor_str}\n\n{self.section_level * '#'} {objtype_str}{name_str}{ref_str}"
 
         self._current_signature_dict = {}
         self._current_return_type = None
@@ -796,7 +825,7 @@ title = "{node.astext()}"
                 return_str = f" → `{return_type}`"
                 self.content += return_str
 
-        self.content += f"\n\n</div>\n\n"
+        self.content += "\n\n" # + "</div>\n\n"
 
         if self._current_return_type:
             self._expect_returns_field = True
