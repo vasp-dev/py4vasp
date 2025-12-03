@@ -46,6 +46,6 @@ napoleon_include_default_value = True
 # Autodoc configuration for inherited members
 autodoc_inherit_docstrings = True
 autodoc_default_options = {
-    'inherited-members': True,
-    'undoc-members': True,
+    "inherited-members": True,
+    "undoc-members": True,
 }

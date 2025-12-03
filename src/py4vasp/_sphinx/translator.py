@@ -169,7 +169,7 @@ class HugoTranslator(NodeVisitor):
         self.content += f"\n{_construct_hugo_shortcode('sphinx')}\n\n"
         self._move_content_to_lines()
         raise SkipNode
-        #self.content += f"{self.section_level * '#'} "
+        # self.content += f"{self.section_level * '#'} "
 
     def depart_title(self, node):
         self._move_content_to_lines()
@@ -833,14 +833,14 @@ weight = HUGO_WEIGHT_PLACEHOLDER
                 node, not (objtype in ["function", "method"])
             )
             parameters_str = self._get_parameter_list_str(parameters)
-            self.content += "\n" + _construct_hugo_shortcode('signature')
+            self.content += "\n" + _construct_hugo_shortcode("signature")
             self.content += parameters_str
             if objtype in ["function", "method"]:
                 return_type = self._get_return_type(node)
                 if return_type:
                     return_str = f" → `{return_type}`"
                     self.content += return_str
-            self.content += "\n" + _construct_hugo_shortcode('/signature')
+            self.content += "\n" + _construct_hugo_shortcode("/signature")
 
         self.content += "\n\n"  # + "</div>\n\n"
 
