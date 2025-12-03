@@ -7,8 +7,8 @@ application = pytest.importorskip("sphinx.application")
 
 @pytest.fixture(scope="module")
 def sphinx_app_trial(not_core):
-    from os import mkdir, path
     import shutil
+    from os import mkdir, path
 
     tmp_path = path.abspath(
         path.join(path.dirname(path.abspath(__file__)), "_trial_build")

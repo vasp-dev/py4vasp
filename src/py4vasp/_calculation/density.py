@@ -223,11 +223,11 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
 
         Plot isosurfaces for positive (blue) and negative (red) magnetization
         of a spin-polarized calculation (ISPIN=2)
-        
+
         >>> calculation.density.plot("m")
-        
+
         Plot the isosurface for the third component of a noncollinear magnetization
-        
+
         >>> calculation.density.plot("m(3)")
         """
         _raise_error_if_no_data(self._raw_data.charge)

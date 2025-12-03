@@ -181,7 +181,7 @@ nucleus-independent chemical shift:
         >>> calculation.nics.plot(selection="xx")
 
         Plot the isotropic chemical shift with specified isolevel as a 3d isosurface.
-        
+
         >>> calculation.nics.plot(isolevel=0.6)
         """
         self._raise_error_if_used_in_points_mode()
