@@ -35,6 +35,7 @@ jobs:
     - name: Install py4vasp
       shell: bash -el {0}
       run: |
+        export VIRTUAL_ENV=$CONDA_PREFIX
         uv sync --active
         uv version
     - name: Install mdtraj with conda
@@ -45,11 +46,13 @@ jobs:
     - name: Test with pytest
       shell: bash -el {0}
       run: |
+        export VIRTUAL_ENV=$CONDA_PREFIX
         uv run --active pytest --version
         uv run --active pytest --cov=py4vasp --cov-report term
     - name: Check code style
       shell: bash -el {0}
       run: |
+        export VIRTUAL_ENV=$CONDA_PREFIX
         uv run --active isort --version
         uv run --active isort --check src
         uv run --active isort --check tests

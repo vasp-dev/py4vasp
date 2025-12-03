@@ -23,9 +23,10 @@ conda activate py4vasp-env
 conda install conda-forge::uv
 git clone git@github.com:vasp-dev/py4vasp.git
 cd py4vasp
+export VIRTUAL_ENV=$CONDA_PREFIX
 uv sync --active
 conda install conda-forge::mdtraj
-uv run pytest
+uv run --active pytest
 ~~~
 Note that this will install py4vasp into the conda environment. This isolates the code
 from all packages you have installed in other conda environments. Using uv makes
