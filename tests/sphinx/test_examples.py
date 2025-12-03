@@ -141,7 +141,6 @@ Combine a float and a string in a tuple.
 def test_convert_example_returns_type_without_desc_returns_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_return_types.md")
     expected_method_content = """\
-
 {{< function name="returns_type_without_desc_returns" module="example" >}}
 (
 - *value1*: `float`,
@@ -172,6 +171,7 @@ Return value 2.
 `float | str`
 : <!---->
     The second value.
+
 
 
 
@@ -224,7 +224,6 @@ Return value 2.
 def test_convert_example_returns_type_without_returns_field_type_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_return_types.md")
     expected_method_content = """\
-
 {{< function name="returns_type_without_returns_field_type" module="example" >}}
 (
 - *value1*: `float`,
@@ -256,6 +255,7 @@ Return value 2.
 : <!---->
     The second value.
     With another line!
+
 
 
 
@@ -307,18 +307,12 @@ Return value 2.
 def test_convert_example_params_types_only_in_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
     expected_method_content = """\
-<div class='function signature'>
-
-<a id='example.params_types_only_in_signature'></a>
-
-## *function* **params_types_only_in_signature** [¶](#example.params_types_only_in_signature)
+{{< function name="params_types_only_in_signature" module="example" >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str` = 0 [optional]
 
 )
-
-</div>
 
 
 Example function with parameter types only in the signature.
@@ -343,18 +337,12 @@ Example function with parameter types only in the signature.
 def test_convert_example_params_types_only_in_field(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
     expected_method_content = """\
-<div class='function signature'>
-
-<a id='example.params_types_only_in_field'></a>
-
-## *function* **params_types_only_in_field** [¶](#example.params_types_only_in_field)
+{{< function name="params_types_only_in_field" module="example" >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str` [optional]
 
 )
-
-</div>
 
 
 Example function with parameter types only in the field.
@@ -379,18 +367,12 @@ Example function with parameter types only in the field.
 def test_convert_example_params_types_in_signature_and_field(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
     expected_method_content = """\
-<div class='function signature'>
-
-<a id='example.params_types_in_signature_and_field'></a>
-
-## *function* **params_types_in_signature_and_field** [¶](#example.params_types_in_signature_and_field)
+{{< function name="params_types_in_signature_and_field" module="example" >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str` = 0 [optional]
 
 )
-
-</div>
 
 
 Example function with parameter types mixed in both field and signature.
@@ -415,18 +397,12 @@ Example function with parameter types mixed in both field and signature.
 def test_convert_example_params_types_mismatched(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
     expected_method_content = """\
-<div class='function signature'>
-
-<a id='example.params_types_mismatched'></a>
-
-## *function* **params_types_mismatched** [¶](#example.params_types_mismatched)
+{{< function name="params_types_mismatched" module="example" >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str` = 0 [optional]
 
 )
-
-</div>
 
 
 Example function with parameter types mismatched.
@@ -450,19 +426,13 @@ Example function with parameter types mismatched.
 
 def test_convert_example_dos_class(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
-    expected_class_content = """\
-<div class='class signature'>
-
-<a id='example_dos.Dos'></a>
-
-## *class* **Dos** [¶](#example_dos.Dos)
+    expected_class_content = """
+{{< class name="Dos" module="example_dos" >}}
 (
 - *data_context*,
 - ***kwargs*
 
 )
-
-</div>
 
 
 Bases: `Refinery`, `Mixin`
@@ -518,14 +488,8 @@ These methods also accept selections for specific orbitals if you used VASP with
 
 def test_convert_example_dos_selections(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
-    expected_class_content = """\
-<div class='method signature'>
-
-<a id='example_dos.Dos.selections'></a>
-
-### **selections** [¶](#example_dos.Dos.selections)() → `dict`
-
-</div>
+    expected_class_content = """
+{{< method class="Dos" name="selections" module="example_dos" >}}() → `dict`
 
 
 Returns possible alternatives for this particular quantity VASP can produce.
@@ -553,14 +517,9 @@ other routines.
 def test_convert_example_dos_to_dict(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
     print(content)
-    expected_class_content = """\
-<div class='method signature'>
-
-<a id='example_dos.Dos.to_dict'></a>
-
-### **to_dict** [¶](#example_dos.Dos.to_dict)(*selection*: `str` = None [optional]) → `dict`
-
-</div>
+    expected_class_content = """
+{{< method class="Dos" name="to_dict" module="example_dos" >}}
+(*selection*: `str` = None [optional]) → `dict`
 
 
 Read the DOS into a dictionary.
@@ -687,14 +646,9 @@ file
 
 def test_convert_example_dos_to_graph(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
-    expected_class_content = """\
-<div class='method signature'>
-
-<a id='example_dos.Dos.to_graph'></a>
-
-### **to_graph** [¶](#example_dos.Dos.to_graph)(*selection*: `str` = None [optional]) → `Graph`
-
-</div>
+    expected_class_content = """
+{{< method class="Dos" name="to_graph" module="example_dos" >}}
+(*selection*: `str` = None [optional]) → `Graph`
 
 
 Read the DOS and convert it into a graph.
