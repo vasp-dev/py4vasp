@@ -167,7 +167,9 @@ class HugoTranslator(NodeVisitor):
         """
         self._create_hugo_front_matter(node)
         self.content += f"\n{_construct_hugo_shortcode('sphinx')}\n\n"
-        self.content += f"{self.section_level * '#'} "
+        self._move_content_to_lines()
+        raise SkipNode
+        #self.content += f"{self.section_level * '#'} "
 
     def depart_title(self, node):
         self._move_content_to_lines()
@@ -182,6 +184,7 @@ class HugoTranslator(NodeVisitor):
         self.content = f"""\
 +++
 title = "{node.astext()}"
+weight = HUGO_WEIGHT_PLACEHOLDER
 +++\n"""
         self._move_content_to_lines()
         self.frontmatter_created = True
