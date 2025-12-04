@@ -5,6 +5,7 @@ from typing import Optional
 from docutils.nodes import NodeVisitor, SkipNode
 
 from py4vasp._sphinx.anchors_finder import AnchorsFinder
+from py4vasp._sphinx.attribute_info_finder import AttributeInfoFinder
 from py4vasp._sphinx.parameters_info_finder import (
     SIG_TYPE_DEFAULT,
     ParametersInfoFinder,
@@ -814,9 +815,8 @@ weight = HUGO_WEIGHT_PLACEHOLDER
         The name already includes any unpacking asterisks (*args, **kwargs) from the signature.
         """
         param = f"*{name}*"
-        if default or annotation:
-            param += ": "
         if annotation:
+            param += ": "
             formatted_annotation = annotation.replace("` or `", " or ").replace(
                 " or ", " | "
             )
@@ -858,6 +858,11 @@ weight = HUGO_WEIGHT_PLACEHOLDER
             self._expect_returns_field = True
         return return_type
 
+    def _get_attribute_info(self, node):
+        """Get type annotation and default value for an attribute/property using AttributeInfoFinder."""
+        attribute_info_finder = AttributeInfoFinder(self.document)
+        return attribute_info_finder.find_attribute_info(node)
+
     def visit_desc_signature(self, node):
         anchor_id = self._get_anchor_id()
         anchor_str = f"\n\n<a id='{anchor_id}'></a>" if anchor_id else ""
@@ -883,18 +888,34 @@ weight = HUGO_WEIGHT_PLACEHOLDER
             "property",
             "attribute",
         ]:
-            parameters = self._get_parameter_list_and_types(
-                node, not (objtype in ["function", "method"])
-            )
-            parameters_str = self._get_parameter_list_str(parameters)
             self.content += "\n" + _construct_hugo_shortcode("signature")
-            if not (objtype in ["property", "attribute"]):
+            
+            # For attributes/properties, show type and default in signature
+            if objtype in ["property", "attribute"]:
+                type_annotation, default_value = self._get_attribute_info(node)
+                if type_annotation or default_value:
+                    type_str = f": `{type_annotation}`" if type_annotation else ""
+                    default_str = f" = {default_value}" if default_value else ""
+                    self.content += f"{type_str}{default_str}"
+                # Try to get return type for properties
+                if objtype == "property":
+                    return_type = self._get_return_type(node)
+                    if return_type:
+                        return_str = f" → `{return_type}`"
+                        self.content += return_str
+            else:
+                # For methods/functions/classes, show parameters normally
+                parameters = self._get_parameter_list_and_types(
+                    node, not (objtype in ["function", "method"])
+                )
+                parameters_str = self._get_parameter_list_str(parameters)
                 self.content += parameters_str
-            if objtype in ["function", "method", "property", "attribute"]:
-                return_type = self._get_return_type(node)
-                if return_type:
-                    return_str = f" → `{return_type}`"
-                    self.content += return_str
+                if objtype in ["function", "method"]:
+                    return_type = self._get_return_type(node)
+                    if return_type:
+                        return_str = f" → `{return_type}`"
+                        self.content += return_str
+                        
             self.content += "\n" + _construct_hugo_shortcode("/signature")
 
         self.content += "\n\n"  # + "</div>\n\n"
