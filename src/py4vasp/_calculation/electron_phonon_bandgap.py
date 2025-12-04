@@ -105,14 +105,17 @@ class ElectronPhononBandgapInstance(ElectronPhononInstance, graph.Mixin):
         dict
             A dictionary containing:
             - "metadata": A dictionary with metadata about the calculation, including:
+
                 - "nbands_sum": The sum of the number of bands.
                 - "selfen_delta": The self-energy delta value.
                 - <mu_tag>: The chemical potential value for the current index.
+
             - "direct_renorm": The renormalized direct bandgap values.
             - "direct": The direct bandgap values.
             - "fundamental_renorm": The renormalized fundamental bandgap values.
             - "fundamental": The fundamental bandgap values.
             - "temperatures": The temperatures at which the calculations were performed.
+
         Notes
         -----
         The <mu_tag> key in the metadata will be dynamically set based on the chemical

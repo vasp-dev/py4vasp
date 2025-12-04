@@ -135,24 +135,27 @@ def generate_quantity_docs(app):
     folder = app.srcdir / "calculation"
     folder.mkdir(exist_ok=True, parents=True)
     for quantity in _calculation.QUANTITIES:
-        if quantity.startswith("_"):
-            continue
+        write_docstring(app, folder, quantity)
+    for group, members in _calculation.GROUPS.items():
+        for member in members:
+            write_docstring(app, folder, f"{group}_{member}")
+
+
+def write_docstring(app, folder, quantity):
+    if quantity.startswith("_"):
+        return
+    outfile = folder / f"{quantity}.rst"
+    if outfile.exists():
         infile = app.srcdir / f"../src/py4vasp/_calculation/{quantity}.py"
-        outfile = folder / f"{quantity}.rst"
-        if outfile.exists():
-            infile_mtime = os.path.getmtime(infile)
-            outfile_mtime = os.path.getmtime(outfile)
-            if outfile_mtime >= infile_mtime:
-                continue
-        with open(outfile, "w", encoding="utf-8") as file:
-            write_docstring(file, quantity)
-
-
-def write_docstring(file, quantity):
-    file.write(f"{quantity}\n")
-    file.write("=" * len(quantity) + "\n\n")
-    file.write(f".. automodule:: py4vasp._calculation.{quantity}\n")
-    file.write("   :members:\n")
+        infile_mtime = os.path.getmtime(infile)
+        outfile_mtime = os.path.getmtime(outfile)
+        if outfile_mtime >= infile_mtime:
+            return
+    with open(outfile, "w", encoding="utf-8") as file:
+        file.write(f"{quantity}\n")
+        file.write("=" * len(quantity) + "\n\n")
+        file.write(f".. automodule:: py4vasp._calculation.{quantity}\n")
+        file.write("   :members:\n")
 
 
 def setup(app):

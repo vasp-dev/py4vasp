@@ -18,6 +18,17 @@ Available quantities
             {%- endfor -%}
         {%- endif -%}
     {% endfor %}
+    {% for group, members in calculation.GROUPS.items() %}
+        {% for member in members %}
+            ~py4vasp._calculation.{{ group }}_{{ member }}.
+            {%- for part in group.split("_") -%}
+                {{ part.capitalize() }}
+            {%- endfor -%}
+            {%- for part in member.split("_") -%}
+                {{ part.capitalize() }}
+            {%- endfor -%}
+        {% endfor %}
+    {% endfor %}
 
 .. autoclass:: py4vasp.Calculation
    :members: from_path, from_file, path
