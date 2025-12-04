@@ -53,6 +53,8 @@ autodoc_default_options = {
     "inherited-members": True,
     "undoc-members": True,
 }
+# Preserve default argument values as written in source code
+autodoc_preserve_defaults = True
 
 # Configuration of Napoleon extension
 napoleon_include_init_with_doc = True
