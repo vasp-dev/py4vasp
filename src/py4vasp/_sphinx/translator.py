@@ -253,10 +253,10 @@ weight = HUGO_WEIGHT_PLACEHOLDER
         self._add_new_line()
 
     def visit_rubric(self, node):
-        self.content = "\n" + (self.section_level + 1) * "#" + " ***"
+        self.content = "\n" + (self.section_level + 1) * "#" + " "
 
     def depart_rubric(self, node):
-        self.content += "***\n\n"
+        self.content += "\n\n"
         self._move_content_to_lines()
 
     def visit_Text(self, node):
@@ -837,8 +837,10 @@ weight = HUGO_WEIGHT_PLACEHOLDER
             param_strs.append(param)
         if len(param_strs) == 1:
             return f"\n({param_strs[0]})"
+        elif len(param_strs) == 2 and param_strs == ["**args*", "***kwargs*"]:
+            return "\n(**args*, ***kwargs*)"
         concat_str = ",\n- ".join(param_strs)
-        return "\n(\n- " + concat_str + "\n)"
+        return "\n(\n- " + concat_str + "\n\n)"
 
     def _get_return_type(self, node):
         """Get the return type annotation from a desc_signature node."""
@@ -993,7 +995,7 @@ weight = HUGO_WEIGHT_PLACEHOLDER
 
     def _get_formatted_field_header(self, field_name):
         """Format the field name for Markdown headers."""
-        return f"\n{(self.section_level + 1) * '#'} **{field_name.capitalize()}:**\n\n"
+        return f"\n{(self.section_level + 1) * '#'} {field_name.capitalize()}\n\n"
 
     def visit_field(self, node):
         # Identify the field name

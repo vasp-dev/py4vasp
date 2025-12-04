@@ -90,7 +90,7 @@ Initialize the Example class with a value.
 
 
 
-#### **Parameters:**
+#### Parameters
 
 
 
@@ -114,6 +114,7 @@ def test_convert_example_combined_returns_signature(sphinx_app):
 (
 - *some_value*: `float`,
 - *some_string*: `str | None` = '' [optional]
+
 ) → `tuple[float, str | None]`
 {{< /signature >}}
 
@@ -122,7 +123,7 @@ Combine a float and a string in a tuple.
 
 
 
-#### **Parameters:**
+#### Parameters
 
 
 
@@ -134,7 +135,7 @@ Combine a float and a string in a tuple.
 : <!---->
     A string to be included in the tuple.
 
-#### **Returns:**
+#### Returns
 
 
 `tuple[float, str | None]`
@@ -153,6 +154,7 @@ def test_convert_example_returns_type_without_desc_returns_signature(sphinx_app)
 (
 - *value1*: `float`,
 - *value2*: `float | str`
+
 ) → `float | str`
 {{< /signature >}}
 
@@ -161,7 +163,7 @@ Return value 2.
 
 
 
-### **Parameters:**
+### Parameters
 
 
 
@@ -173,7 +175,7 @@ Return value 2.
 : <!---->
     The second value, which can be a float or a string.
 
-### **Returns:**
+### Returns
 
 
 `float | str`
@@ -198,6 +200,7 @@ def test_convert_example_returns_type_without_returns_field_signature(sphinx_app
 (
 - *value1*: `float`,
 - *value2*: `float | str`
+
 ) → `float | str`
 {{< /signature >}}
 
@@ -206,7 +209,7 @@ Return value 2.
 
 
 
-### **Parameters:**
+### Parameters
 
 
 
@@ -218,7 +221,7 @@ Return value 2.
 : <!---->
     The second value, which can be a float or a string.
 
-### **Returns:**
+### Returns
 
 `float | str`
 
@@ -238,6 +241,7 @@ def test_convert_example_returns_type_without_returns_field_type_signature(sphin
 (
 - *value1*: `float`,
 - *value2*: `float | str`
+
 ) → `float | str`
 {{< /signature >}}
 
@@ -246,7 +250,7 @@ Return value 2.
 
 
 
-### **Parameters:**
+### Parameters
 
 
 
@@ -258,7 +262,7 @@ Return value 2.
 : <!---->
     The second value, which can be a float or a string.
 
-### **Returns:**
+### Returns
 
 
 `float | str`
@@ -283,6 +287,7 @@ def test_convert_example_returns_type_without_returns_field_desc_signature(sphin
 (
 - *value1*: `float`,
 - *value2*: `float | str`
+
 ) → `float | str`
 {{< /signature >}}
 
@@ -291,7 +296,7 @@ Return value 2.
 
 
 
-### **Parameters:**
+### Parameters
 
 
 
@@ -303,7 +308,7 @@ Return value 2.
 : <!---->
     The second value, which can be a float or a string.
 
-### **Returns:**
+### Returns
 
 `float | str`
 
@@ -323,6 +328,7 @@ def test_convert_example_params_types_only_in_signature(sphinx_app):
 (
 - *value1*: `float`,
 - *value2*: `float | str` = 0 [optional]
+
 )
 {{< /signature >}}
 
@@ -331,7 +337,7 @@ Example function with parameter types only in the signature.
 
 
 
-### **Parameters:**
+### Parameters
 
 
 
@@ -354,6 +360,7 @@ def test_convert_example_params_types_only_in_field(sphinx_app):
 (
 - *value1*: `float`,
 - *value2*: `float | str` [optional]
+
 )
 {{< /signature >}}
 
@@ -362,7 +369,7 @@ Example function with parameter types only in the field.
 
 
 
-### **Parameters:**
+### Parameters
 
 
 
@@ -385,6 +392,7 @@ def test_convert_example_params_types_in_signature_and_field(sphinx_app):
 (
 - *value1*: `float`,
 - *value2*: `float | str` = 0 [optional]
+
 )
 {{< /signature >}}
 
@@ -393,7 +401,7 @@ Example function with parameter types mixed in both field and signature.
 
 
 
-### **Parameters:**
+### Parameters
 
 
 
@@ -416,6 +424,7 @@ def test_convert_example_params_types_mismatched(sphinx_app):
 (
 - *value1*: `float`,
 - *value2*: `float | str` = 0 [optional]
+
 )
 {{< /signature >}}
 
@@ -424,7 +433,7 @@ Example function with parameter types mismatched.
 
 
 
-### **Parameters:**
+### Parameters
 
 
 
@@ -447,6 +456,7 @@ def test_convert_example_dos_class(sphinx_app):
 (
 - *data_context*,
 - ***kwargs*
+
 )
 {{< /signature >}}
 
@@ -472,7 +482,7 @@ generated a projected DOS, you can use this class to select which subset of
 these orbitals to read or plot.
 
 
-### ***Examples***
+### Examples
 
 If you want to visualize the total DOS, you can use the *plot* method. This will
 show the different spin components if [ISPIN](https://vasp.at/wiki/index.php/ISPIN) = 2
@@ -522,7 +532,7 @@ other routines.
 
 
 
-#### **Returns:**
+#### Returns
 
 
 `dict`
@@ -556,7 +566,7 @@ projection.
 
 
 
-#### **Parameters:**
+#### Parameters
 
 
 
@@ -598,7 +608,7 @@ projection.
 
 
 
-#### **Returns:**
+#### Returns
 
 
 `dict`
@@ -610,7 +620,7 @@ projection.
 
 
 
-#### ***Examples***
+#### Examples
 
 To obtain the total DOS along with the energy mesh and the Fermi energy you
 do not need any arguments. For [ISPIN](https://vasp.at/wiki/index.php/ISPIN) = 2, this will “up” and “down”
@@ -685,7 +695,7 @@ corresponding to the selected projections.
 
 
 
-#### **Parameters:**
+#### Parameters
 
 
 
@@ -727,7 +737,7 @@ corresponding to the selected projections.
 
 
 
-#### **Returns:**
+#### Returns
 
 
 `Graph`
@@ -739,7 +749,7 @@ corresponding to the selected projections.
 
 
 
-#### ***Examples***
+#### Examples
 
 For the total DOS, you do not need any arguments. py4vasp will automatically
 use two separate lines, if you used [ISPIN](https://vasp.at/wiki/index.php/ISPIN) = 2 in the VASP calculation

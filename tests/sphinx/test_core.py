@@ -82,7 +82,7 @@ def test_convert_headings(sphinx_app):
                     headers.append(lines.index(paragraph_header))
     # check that headers are in order
     assert sorted(headers) == headers
-    assert "###### ***Header not in table of contents***\n" in content
+    assert "###### Header not in table of contents\n" in content
 
 
 def test_convert_inline_markup(sphinx_app):
