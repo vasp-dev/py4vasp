@@ -21,4 +21,4 @@ help:
 
 clean:
 	@$(SPHINXBUILD) -M clean "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
-	@rm -r $(SOURCEDIR)/calculation
+	@find calculation -type f ! -name "_index.rst" -delete

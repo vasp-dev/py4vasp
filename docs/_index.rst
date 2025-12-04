@@ -144,7 +144,6 @@ which we found to be more robust than pip.
    :hidden:
    :glob:
 
-   calculation
    calculation/*
    
 .. currentmodule:: py4vasp

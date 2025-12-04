@@ -35,7 +35,7 @@ goto end
 
 :clean
 %SPHINXBUILD% -M clean %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
-del /s /q %SOURCEDIR%\calculation
+FOR /F "delims=" %%i IN ('dir "calculation\*" /A:-D /B ^| findstr /V /I "_index.rst"') DO DEL "calculation\%%i"
 
 :end
 popd
