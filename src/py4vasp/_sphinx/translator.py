@@ -513,7 +513,7 @@ weight = HUGO_WEIGHT_PLACEHOLDER
         if refid:
             # Insert an anchor for internal references
             self.content += _construct_hugo_shortcode(f'anchor name="{refid}"')
-            self.content += _construct_hugo_shortcode(f'/anchor')
+            self.content += _construct_hugo_shortcode(f"/anchor")
         # For external targets (refuri), do nothing (handled by reference)
 
     def depart_target(self, node):
@@ -755,14 +755,21 @@ weight = HUGO_WEIGHT_PLACEHOLDER
 
         if objtype in ["method", "property", "attribute"]:
             class_name = ""
+            disp_name = ""
             if module:
-                class_name = module.split(".")[-1]
-                module = ".".join(module.split(".")[:-1])
-            shortcode_str = f"{objtype} class=\"{class_name}\" name=\"{name}\" module=\"{module if module else ''}\""
+                class_name = module.split(".")[-2]
+                disp_name = module.split(".")[-1]
+                module = ".".join([m.lstrip("_") for m in module.split(".")[1:-2]])
+            shortcode_str = f"{objtype} class=\"{class_name}\" cname=\"{disp_name}\" name=\"{name}\" module=\"{module if module else ''}\""
         else:
-            shortcode_str = (
-                f"{objtype} name=\"{name}\" module=\"{module if module else ''}\""
-            )
+            disp_name = name
+            if module:
+                disp_name = module.split(".")[-1]
+                module = ".".join([m.lstrip("_") for m in module.split(".")[1:-1]])
+            if objtype == "class":
+                shortcode_str = f"{objtype} name=\"{disp_name}\" cname=\"{name}\" module=\"{module if module else ''}\""
+            else:
+                shortcode_str = f"{objtype} name=\"{name}\" file=\"{disp_name}\" module=\"{module if module else ''}\""
         self.content += f"\n\n{_construct_hugo_shortcode(shortcode_str)}"
         pass
 
@@ -1154,3 +1161,63 @@ weight = HUGO_WEIGHT_PLACEHOLDER
 
     def depart_title_reference(self, node):
         self.content += "*"
+
+    def visit_tabular_col_spec(self, node):
+        pass
+
+    def depart_tabular_col_spec(self, node):
+        pass
+
+    def visit_autosummary_table(self, node):
+        pass
+
+    def depart_autosummary_table(self, node):
+        pass
+
+    def visit_table(self, node):
+        pass
+
+    def depart_table(self, node):
+        pass
+
+    def visit_tgroup(self, node):
+        pass
+
+    def depart_tgroup(self, node):
+        pass
+
+    def visit_colspec(self, node):
+        pass
+
+    def depart_colspec(self, node):
+        pass
+
+    def visit_tbody(self, node):
+        pass
+
+    def depart_tbody(self, node):
+        pass
+
+    def visit_row(self, node):
+        pass
+
+    def depart_row(self, node):
+        pass
+
+    def visit_transition(self, node):
+        pass
+
+    def depart_transition(self, node):
+        pass
+
+    def visit_entry(self, node):
+        pass
+
+    def depart_entry(self, node):
+        pass
+
+    def visit_block_quote(self, node):
+        pass
+
+    def depart_block_quote(self, node):
+        pass

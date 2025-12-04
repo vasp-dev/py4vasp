@@ -38,7 +38,7 @@ def test_convert_example_autodata(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_autodata_content = """\
 
-{{< data name="Example" module="example" >}}
+{{< data name="Example" file="example" module="" >}}
 
 {{< docstring >}}
 An example class for demonstration purposes.
@@ -55,7 +55,7 @@ def test_convert_example_autoclass_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_class_content = """\
 
-{{< class name="Example" module="example" >}}
+{{< class name="example" cname="Example" module="" >}}
 {{< signature >}}
 (*value*: `float`)
 {{< /signature >}}
@@ -75,7 +75,7 @@ def test_convert_example_init_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_private_method_content = """\
 
-{{< method class="Example" name="__init__" module="example" >}}
+{{< method class="example" cname="Example" name="__init__" module="" >}}
 {{< signature >}}
 (*value*: `float`)
 {{< /signature >}}
@@ -109,7 +109,7 @@ def test_convert_example_combined_returns_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_public_method_content = """\
 
-{{< method class="Example" name="combined_returns" module="example" >}}
+{{< method class="example" cname="Example" name="combined_returns" module="" >}}
 {{< signature >}}
 (
 - *some_value*: `float`,
@@ -148,7 +148,7 @@ Combine a float and a string in a tuple.
 def test_convert_example_returns_type_without_desc_returns_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_return_types.md")
     expected_method_content = """\
-{{< function name="returns_type_without_desc_returns" module="example" >}}
+{{< function name="returns_type_without_desc_returns" file="example" module="" >}}
 {{< signature >}}
 (
 - *value1*: `float`,
@@ -193,7 +193,7 @@ def test_convert_example_returns_type_without_returns_field_signature(sphinx_app
     content = read_file_content(sphinx_app.outdir, "example_return_types.md")
     expected_method_content = """\
 
-{{< function name="returns_type_without_returns_field" module="example" >}}
+{{< function name="returns_type_without_returns_field" file="example" module="" >}}
 {{< signature >}}
 (
 - *value1*: `float`,
@@ -233,7 +233,7 @@ Return value 2.
 def test_convert_example_returns_type_without_returns_field_type_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_return_types.md")
     expected_method_content = """\
-{{< function name="returns_type_without_returns_field_type" module="example" >}}
+{{< function name="returns_type_without_returns_field_type" file="example" module="" >}}
 {{< signature >}}
 (
 - *value1*: `float`,
@@ -278,7 +278,7 @@ Return value 2.
 def test_convert_example_returns_type_without_returns_field_desc_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_return_types.md")
     expected_method_content = """\
-{{< function name="returns_type_without_returns_field_desc" module="example" >}}
+{{< function name="returns_type_without_returns_field_desc" file="example" module="" >}}
 {{< signature >}}
 (
 - *value1*: `float`,
@@ -318,7 +318,7 @@ Return value 2.
 def test_convert_example_params_types_only_in_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
     expected_method_content = """\
-{{< function name="params_types_only_in_signature" module="example" >}}
+{{< function name="params_types_only_in_signature" file="example" module="" >}}
 {{< signature >}}
 (
 - *value1*: `float`,
@@ -349,7 +349,7 @@ Example function with parameter types only in the signature.
 def test_convert_example_params_types_only_in_field(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
     expected_method_content = """\
-{{< function name="params_types_only_in_field" module="example" >}}
+{{< function name="params_types_only_in_field" file="example" module="" >}}
 {{< signature >}}
 (
 - *value1*: `float`,
@@ -380,7 +380,7 @@ Example function with parameter types only in the field.
 def test_convert_example_params_types_in_signature_and_field(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
     expected_method_content = """\
-{{< function name="params_types_in_signature_and_field" module="example" >}}
+{{< function name="params_types_in_signature_and_field" file="example" module="" >}}
 {{< signature >}}
 (
 - *value1*: `float`,
@@ -411,7 +411,7 @@ Example function with parameter types mixed in both field and signature.
 def test_convert_example_params_types_mismatched(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
     expected_method_content = """\
-{{< function name="params_types_mismatched" module="example" >}}
+{{< function name="params_types_mismatched" file="example" module="" >}}
 {{< signature >}}
 (
 - *value1*: `float`,
@@ -442,7 +442,7 @@ Example function with parameter types mismatched.
 def test_convert_example_dos_class(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
     expected_class_content = """
-{{< class name="Dos" module="example_dos" >}}
+{{< class name="example_dos" cname="Dos" module="" >}}
 {{< signature >}}
 (
 - *data_context*,
@@ -506,7 +506,7 @@ def test_convert_example_dos_selections(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
     print(content)
     expected_class_content = """
-{{< method class="Dos" name="selections" module="example_dos" >}}
+{{< method class="example_dos" cname="Dos" name="selections" module="" >}}
 {{< signature >}}
 () → `dict`
 {{< /signature >}}
@@ -537,7 +537,7 @@ other routines.
 def test_convert_example_dos_to_dict(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
     expected_class_content = """
-{{< method class="Dos" name="to_dict" module="example_dos" >}}
+{{< method class="example_dos" cname="Dos" name="to_dict" module="" >}}
 {{< signature >}}
 (*selection*: `str` = None [optional]) → `dict`
 {{< /signature >}}
@@ -668,7 +668,7 @@ file
 def test_convert_example_dos_to_graph(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
     expected_class_content = """
-{{< method class="Dos" name="to_graph" module="example_dos" >}}
+{{< method class="example_dos" cname="Dos" name="to_graph" module="" >}}
 {{< signature >}}
 (*selection*: `str` = None [optional]) → `Graph`
 {{< /signature >}}
