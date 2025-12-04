@@ -26,31 +26,23 @@ _SPINS = ("up", "down", "total")
 
 @dataclasses.dataclass
 class STM_settings:
-    """Settings for the STM simulation.
-
-    Parameters
-    ----------
-    sigma_z : float
-        The standard deviation of the Gaussian filter in the z-direction.
-        The default is 4.0.
-    sigma_xy : float
-        The standard deviation of the Gaussian filter in the xy-plane.
-        The default is 4.0.
-    truncate : float
-        The truncation of the Gaussian filter. The default is 3.0.
-    enhancement_factor : float
-        The enhancement factor for the output of the constant heigth
-        STM image. The default is 1000.
-    interpolation_factor : int
-        The interpolation factor for the z-direction in case of
-        constant current mode. The default is 10.
-    """
-
+    """Settings for the STM simulation."""
+    
     sigma_z: float = 4.0
+    """The standard deviation of the Gaussian filter in the z-direction. 
+    The default is 4.0."""
     sigma_xy: float = 4.0
+    """The standard deviation of the Gaussian filter in the xy-plane. 
+    The default is 4.0."""
     truncate: float = 3.0
+    """The truncation of the Gaussian filter. 
+    The default is 3.0."""
     enhancement_factor: float = 1000
+    """The enhancement factor for the output of the constant height STM image. 
+    The default is 1000."""
     interpolation_factor: int = 10
+    """The interpolation factor for the z-direction in case of constant current mode. 
+    The default is 10."""
 
 
 class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
