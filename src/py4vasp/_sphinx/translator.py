@@ -222,6 +222,9 @@ weight = HUGO_WEIGHT_PLACEHOLDER
         hash symbols (# vs ## vs ###) to maintain the document hierarchy.
         """
         self.section_level += 1
+        # Open docstring for content sections (between desc nodes)
+        if self.section_level > 1 and self._is_shortcode_sphinx_open:
+            self._shortcode_docstring(close=False)
 
     def depart_section(self, node):
         """Decrement section nesting level when leaving a section.
@@ -230,6 +233,9 @@ weight = HUGO_WEIGHT_PLACEHOLDER
         nesting level after processing all content within a section. Without this,
         subsequent sections at the same level would get incorrect header depths.
         """
+        # Close docstring for content sections
+        if self.section_level > 1 and self._is_shortcode_docstring_open:
+            self._shortcode_docstring(close=True)
         self.section_level -= 1
 
     def visit_paragraph(self, node):
@@ -1171,10 +1177,10 @@ weight = HUGO_WEIGHT_PLACEHOLDER
         pass
 
     def visit_autosummary_table(self, node):
-        pass
+        self._shortcode_docstring(close=False)
 
     def depart_autosummary_table(self, node):
-        pass
+        self._shortcode_docstring(close=True)
 
     def visit_table(self, node):
         pass
