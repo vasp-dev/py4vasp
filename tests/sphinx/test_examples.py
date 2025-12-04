@@ -113,7 +113,7 @@ def test_convert_example_combined_returns_signature(sphinx_app):
 {{< signature >}}
 (
 - *some_value*: `float`,
-- *some_string*: `str | None` = '' [optional]
+- *some_string*: `str | None` = ''
 
 ) → `tuple[float, str | None]`
 {{< /signature >}}
@@ -131,7 +131,7 @@ Combine a float and a string in a tuple.
 : <!---->
     A value to be included in the tuple.
 
-*some_string*: `str` = '' [optional]
+*some_string*: `str` = ''
 : <!---->
     A string to be included in the tuple.
 
@@ -327,7 +327,7 @@ def test_convert_example_params_types_only_in_signature(sphinx_app):
 {{< signature >}}
 (
 - *value1*: `float`,
-- *value2*: `float | str` = 0 [optional]
+- *value2*: `float | str` = 0
 
 )
 {{< /signature >}}
@@ -345,7 +345,7 @@ Example function with parameter types only in the signature.
 : <!---->
     The first value.
 
-*value2*: `float | str` = 0 [optional]
+*value2*: `float | str` = 0
 : <!---->
     The second value, which can be a float or a string.
 """
@@ -359,7 +359,7 @@ def test_convert_example_params_types_only_in_field(sphinx_app):
 {{< signature >}}
 (
 - *value1*: `float`,
-- *value2*: `float | str` [optional]
+- *value2*: `float | str`
 
 )
 {{< /signature >}}
@@ -377,7 +377,7 @@ Example function with parameter types only in the field.
 : <!---->
     The first value.
 
-*value2*: `float | str` [optional]
+*value2*: `float | str`
 : <!---->
     The second value, which can be a float or a string.
 """
@@ -391,7 +391,7 @@ def test_convert_example_params_types_in_signature_and_field(sphinx_app):
 {{< signature >}}
 (
 - *value1*: `float`,
-- *value2*: `float | str` = 0 [optional]
+- *value2*: `float | str` = 0
 
 )
 {{< /signature >}}
@@ -409,7 +409,7 @@ Example function with parameter types mixed in both field and signature.
 : <!---->
     The first value.
 
-*value2*: `float | str` = 0 [optional]
+*value2*: `float | str` = 0
 : <!---->
     The second value, which can be a float or a string.
 """
@@ -423,7 +423,7 @@ def test_convert_example_params_types_mismatched(sphinx_app):
 {{< signature >}}
 (
 - *value1*: `float`,
-- *value2*: `float | str` = 0 [optional]
+- *value2*: `float | str` = 0
 
 )
 {{< /signature >}}
@@ -441,7 +441,7 @@ Example function with parameter types mismatched.
 : <!---->
     The first value.
 
-*value2*: `float | str` = 0 [optional]
+*value2*: `float | str` = 0
 : <!---->
     The second value, which can be a float or a string.
 """
@@ -549,7 +549,7 @@ def test_convert_example_dos_to_dict(sphinx_app):
     expected_class_content = """
 {{< method class="example_dos" cname="Dos" name="to_dict" module="" >}}
 {{< signature >}}
-(*selection*: `str` = None [optional]) → `dict`
+(*selection*: `str` = None) → `dict`
 {{< /signature >}}
 
 {{< docstring >}}
@@ -570,7 +570,7 @@ projection.
 
 
 
-*selection*: `str` = None [optional]
+*selection*: `str` = None
 : <!---->
     A string specifying the projection of the orbitals. There are four distinct
     possibilities:
@@ -680,7 +680,7 @@ def test_convert_example_dos_to_graph(sphinx_app):
     expected_class_content = """
 {{< method class="example_dos" cname="Dos" name="to_graph" module="" >}}
 {{< signature >}}
-(*selection*: `str` = None [optional]) → `Graph`
+(*selection*: `str` = None) → `Graph`
 {{< /signature >}}
 
 {{< docstring >}}
@@ -699,7 +699,7 @@ corresponding to the selected projections.
 
 
 
-*selection*: `str` = None [optional]
+*selection*: `str` = None
 : <!---->
     A string specifying the projection of the orbitals. There are four distinct
     possibilities:
