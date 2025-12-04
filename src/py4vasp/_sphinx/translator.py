@@ -830,7 +830,7 @@ weight = HUGO_WEIGHT_PLACEHOLDER
             formatted_default = (
                 f" = {default}" if not (default == SIG_TYPE_DEFAULT) else ""
             )
-            param += f"{formatted_default} [optional]"
+            param += f"{formatted_default}"
         return param
 
     def _get_parameter_list_str(self, parameters):
