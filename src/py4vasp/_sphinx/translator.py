@@ -89,7 +89,8 @@ class HugoTranslator(NodeVisitor):
         self._in_returns_field = False
         self._in_examples_field = False
         self._expect_returns_field = False
-        self._is_docstring_open = False
+        self._is_shortcode_docstring_open = False
+        self._is_shortcode_sphinx_open = False
         self._current_return_type = None
         self._current_signature_dict = {}
         self._prevent_move_content = False
@@ -98,6 +99,26 @@ class HugoTranslator(NodeVisitor):
 
     def __str__(self):
         return "\n".join(self.lines) + "\n"
+
+    def _shortcode_sphinx(self, close: bool = False):
+        if close:
+            if self._is_shortcode_sphinx_open:
+                self.content += f"\n\n{_construct_hugo_shortcode('/sphinx')}\n"
+                self._is_shortcode_sphinx_open = False
+        else:
+            if not self._is_shortcode_sphinx_open:
+                self.content += f"\n{_construct_hugo_shortcode('sphinx')}\n\n"
+                self._is_shortcode_sphinx_open = True
+
+    def _shortcode_docstring(self, close: bool = False):
+        if close:
+            if self._is_shortcode_docstring_open:
+                self.content += f"{_construct_hugo_shortcode('/docstring')}"
+                self._is_shortcode_docstring_open = False
+        else:
+            if not self._is_shortcode_docstring_open:
+                self.content += f"{_construct_hugo_shortcode('docstring')}\n"
+                self._is_shortcode_docstring_open = True
 
     def _add_new_line(self):
         if self._prevent_move_content:
@@ -155,7 +176,8 @@ class HugoTranslator(NodeVisitor):
         pass
 
     def depart_document(self, node):
-        self.content += f"\n\n{_construct_hugo_shortcode('/sphinx')}\n"
+        self._shortcode_docstring(close=True)
+        self._shortcode_sphinx(close=True)
         self._move_content_to_lines()
 
     def visit_title(self, node):
@@ -167,7 +189,7 @@ class HugoTranslator(NodeVisitor):
         the current section depth.
         """
         self._create_hugo_front_matter(node)
-        self.content += f"\n{_construct_hugo_shortcode('sphinx')}\n\n"
+        self._shortcode_sphinx()
         self._move_content_to_lines()
         if self.section_level > 1:
             self.content += f"{self.section_level * '#'} "
@@ -491,6 +513,7 @@ weight = HUGO_WEIGHT_PLACEHOLDER
         if refid:
             # Insert an anchor for internal references
             self.content += _construct_hugo_shortcode(f'anchor name="{refid}"')
+            self.content += _construct_hugo_shortcode(f'/anchor')
         # For external targets (refuri), do nothing (handled by reference)
 
     def depart_target(self, node):
@@ -728,9 +751,7 @@ weight = HUGO_WEIGHT_PLACEHOLDER
         objtype = self._get_latest_objtype()
         name = self._get_latest_name()
 
-        if self._is_docstring_open:
-            self.content += _construct_hugo_shortcode("/docstring")
-            self._is_docstring_open = False
+        self._shortcode_docstring(close=True)
 
         if objtype in ["method", "property", "attribute"]:
             class_name = ""
@@ -751,9 +772,7 @@ weight = HUGO_WEIGHT_PLACEHOLDER
             self.anchor_id_stack.pop()
         self.section_level -= 1
 
-        if self._is_docstring_open:
-            self.content += _construct_hugo_shortcode("/docstring")
-            self._is_docstring_open = False
+        self._shortcode_docstring(close=True)
 
         self.content += f"\n\n{_construct_hugo_shortcode(f'/{objtype}')}\n\n"
         self._move_content_to_lines()
@@ -879,8 +898,7 @@ weight = HUGO_WEIGHT_PLACEHOLDER
         pass
 
     def visit_desc_content(self, node):
-        self.content += _construct_hugo_shortcode("docstring") + "\n"
-        self._is_docstring_open = True
+        self._shortcode_docstring()
         pass
 
     def depart_desc_content(self, node):
