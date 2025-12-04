@@ -4,9 +4,8 @@ calculation
 .. autodata:: py4vasp.calculation
    :annotation:
 
-.. autoclass:: py4vasp.Calculation
-   :members: from_path, from_file, path
-
+Available quantities
+--------------------
 
 .. jinja::
     .. autosummary::
@@ -20,6 +19,8 @@ calculation
         {%- endif -%}
     {% endfor %}
 
+.. autoclass:: py4vasp.Calculation
+   :members: from_path, from_file, path
 
 .. .. autosummary::
     :recursive:

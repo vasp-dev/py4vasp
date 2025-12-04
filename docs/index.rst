@@ -142,10 +142,11 @@ which we found to be more robust than pip.
 
 .. toctree::
    :hidden:
+   :glob:
 
    calculation
-   generate
-
+   calculation/*
+   
 .. currentmodule:: py4vasp
 
 .. autosummary::
