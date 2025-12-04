@@ -5,6 +5,7 @@ from typing import Optional
 from docutils.nodes import NodeVisitor, SkipNode
 
 from py4vasp._sphinx.anchors_finder import AnchorsFinder
+from py4vasp._sphinx.attribute_info_finder import AttributeInfoFinder
 from py4vasp._sphinx.parameters_info_finder import (
     SIG_TYPE_DEFAULT,
     ParametersInfoFinder,
@@ -858,72 +859,9 @@ weight = HUGO_WEIGHT_PLACEHOLDER
         return return_type
 
     def _get_attribute_info(self, node):
-        """Get type annotation and default value for an attribute/property.
-        
-        For attributes, Sphinx stores the type in various places depending on how
-        the attribute was defined (dataclass field, regular class attribute, property).
-        """
-        type_annotation = None
-        default_value = None
-        
-        # Get all text from the signature to see what we're working with
-        sig_text = node.astext()
-        
-        # Look for type annotation and default in signature
-        for child in node.findall():
-            class_name = child.__class__.__name__
-            
-            # Type annotation nodes
-            if class_name in ('desc_type', 'desc_annotation', 'pending_xref'):
-                text = child.astext().strip()
-                # Skip annotation markers and assignment operators
-                if text and text not in ('property', 'attribute', ':', '=', '') and not text.startswith('='):
-                    type_annotation = text.lstrip(':').strip()
-            
-            # Look for literal numbers/strings after "=" 
-            elif class_name in ('desc_sig_literal_number', 'desc_sig_literal_string', 'inline'):
-                # Check if this comes after an "=" in the signature
-                if '=' in sig_text:
-                    val = child.astext().strip()
-                    if val and val != '=':
-                        default_value = val
-        
-        # Fallback: parse signature text for type and default using simple patterns
-        if not type_annotation or not default_value:
-            # Pattern: "name: type = default" or "name = default"
-            import re
-            # Remove attribute/property keywords
-            clean_sig = re.sub(r'^(attribute|property)\s+', '', sig_text)
-            # Look for ": type" (type is everything between : and = or end, excluding =)
-            type_match = re.search(r':\s*([^=]+?)(?:\s*=|$)', clean_sig)
-            if type_match and not type_annotation:
-                potential_type = type_match.group(1).strip()
-                # Make sure it's not empty and doesn't start with =
-                if potential_type and not potential_type.startswith('='):
-                    type_annotation = potential_type
-            # Look for "= value"
-            default_match = re.search(r'=\s*(.+)$', clean_sig)
-            if default_match and not default_value:
-                default_value = default_match.group(1).strip()
-        
-        # If still no type, check field_list in content
-        if not type_annotation:
-            desc_node = node.parent
-            for desc_content in desc_node.findall():
-                if desc_content.__class__.__name__ == 'desc_content':
-                    for field_list in desc_content.findall():
-                        if field_list.__class__.__name__ == 'field_list':
-                            for field in field_list.children:
-                                if field.__class__.__name__ == 'field':
-                                    for field_name in field.findall():
-                                        if field_name.__class__.__name__ == 'field_name':
-                                            if 'type' in field_name.astext().lower():
-                                                for field_body in field.findall():
-                                                    if field_body.__class__.__name__ == 'field_body':
-                                                        type_annotation = field_body.astext().strip()
-                                                        break
-        
-        return type_annotation, default_value
+        """Get type annotation and default value for an attribute/property using AttributeInfoFinder."""
+        attribute_info_finder = AttributeInfoFinder(self.document)
+        return attribute_info_finder.find_attribute_info(node)
 
     def visit_desc_signature(self, node):
         anchor_id = self._get_anchor_id()
