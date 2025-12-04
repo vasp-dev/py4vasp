@@ -44,6 +44,7 @@ autosummary_ignore_module_all = False
 # Keep type aliases unexpanded in documentation
 autodoc_type_aliases = {
     "ArrayLike": "ArrayLike",
+    "Buffer | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | float | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes]": "ArrayLike",
     "float | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes]": "ArrayLike",
 }
 # Autodoc configuration for inherited members
@@ -63,6 +64,7 @@ napoleon_use_ivar = False
 napoleon_preprocess_types = True
 napoleon_type_aliases = {
     "ArrayLike": "ArrayLike",
+    "Buffer | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | float | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes]": "ArrayLike",
     "float | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes]": "ArrayLike",
 }
 napoleon_attr_annotations = True

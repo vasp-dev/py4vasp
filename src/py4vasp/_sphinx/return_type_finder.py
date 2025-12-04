@@ -4,6 +4,25 @@
 from docutils.nodes import NodeVisitor, SkipNode
 
 
+def _extract_type_text(node) -> str:
+    """Extract type text from a node, handling TypeAliasForwardRef properly.
+    
+    The issue is that node.astext() returns the string representation of 
+    TypeAliasForwardRef objects like "TypeAliasForwardRef('ArrayLike')" 
+    instead of just "ArrayLike". We need to extract text from child Text nodes
+    and then parse out the actual type name from the TypeAliasForwardRef wrapper.
+    """
+    import re
+    from docutils.nodes import Text
+    text_parts = []
+    for child in node.findall(Text):
+        text_parts.append(str(child))
+    text = ''.join(text_parts)
+    # Replace TypeAliasForwardRef('TypeName') with just TypeName
+    text = re.sub(r"TypeAliasForwardRef\('([^']+)'\)", r'\1', text)
+    return text
+
+
 class ReturnTypeFinder(NodeVisitor):
     """A docutils NodeVisitor that finds return types in Sphinx document trees."""
 
@@ -67,7 +86,7 @@ class ReturnTypeFinder(NodeVisitor):
     def visit_desc_returns(self, node):
         if not (self._return_type):
             self._return_type = (
-                node.astext()
+                _extract_type_text(node)
                 .lstrip(" -> ")
                 .strip()
                 .replace("` or `", " or ")
@@ -84,7 +103,7 @@ class ReturnTypeFinder(NodeVisitor):
         if self._in_returns_type_field:
             if not (self._return_type):
                 self._return_type = (
-                    node.astext()
+                    _extract_type_text(node)
                     .strip()
                     .replace("` or `", " or ")
                     .replace(" or ", " | ")
