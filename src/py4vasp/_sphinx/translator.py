@@ -179,6 +179,7 @@ class HugoTranslator(NodeVisitor):
         pass
 
     def depart_document(self, node):
+        """Close all open shortcodes and finalize document."""
         self._shortcode_docstring(close=True)
         self._shortcode_sphinx(close=True)
         self._move_content_to_lines()
@@ -193,6 +194,7 @@ class HugoTranslator(NodeVisitor):
         """
         self._create_hugo_front_matter(node)
         self._shortcode_sphinx()
+        self._shortcode_docstring()
         self._move_content_to_lines()
         if self.section_level > 1:
             self.content += f"{self.section_level * '#'} "
@@ -231,7 +233,7 @@ date = "{current_date}"
         """
         self.section_level += 1
         # Open docstring for content sections (between desc nodes)
-        if self.section_level > 1 and self._is_shortcode_sphinx_open:
+        if self._is_shortcode_sphinx_open:
             self._shortcode_docstring(close=False)
 
     def depart_section(self, node):
@@ -241,8 +243,9 @@ date = "{current_date}"
         nesting level after processing all content within a section. Without this,
         subsequent sections at the same level would get incorrect header depths.
         """
-        # Close docstring for content sections
-        if self.section_level > 1 and self._is_shortcode_docstring_open:
+        # Close docstring for content sections, but not if we need to reopen it
+        # (e.g., after a compound or admonition)
+        if self._is_shortcode_docstring_open and not self._needs_reopen_docstring:
             self._shortcode_docstring(close=True)
         self.section_level -= 1
 
@@ -700,12 +703,20 @@ date = "{current_date}"
     # Compound handling methods
 
     def visit_compound(self, node):
+        # Close docstring before compound, like we do for admonitions
+        if self._is_shortcode_docstring_open:
+            self._shortcode_docstring(close=True)
+            self._needs_reopen_docstring = True
         # Start a div to preserve grouping in Markdown
         self.content += f'\n{_construct_hugo_shortcode("compound")}\n\n'
 
     def depart_compound(self, node):
         # End the div
         self.content += f"\n{_construct_hugo_shortcode('/compound')}\n"
+        # Reopen docstring after compound if needed
+        if self._needs_reopen_docstring:
+            self._shortcode_docstring()
+            # DON'T reset _needs_reopen_docstring - let the parent container handle it
         self._move_content_to_lines()
 
     def visit_compact_paragraph(self, node):
@@ -1220,7 +1231,13 @@ date = "{current_date}"
         self._shortcode_docstring(close=False)
 
     def depart_autosummary_table(self, node):
-        self._shortcode_docstring(close=True)
+        # Close docstring for autosummary table content, but not if we need to reopen it
+        if not self._needs_reopen_docstring:
+            self._shortcode_docstring(close=True)
+        # If we had closed the docstring for a compound/admonition, reopen it now
+        else:
+            self._shortcode_docstring()
+            self._needs_reopen_docstring = False
 
     def visit_table(self, node):
         pass
