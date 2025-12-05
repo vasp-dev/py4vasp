@@ -87,10 +87,13 @@ def test_convert_headings(sphinx_app):
 
 def test_convert_inline_markup(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "inline_markup.md")
+    from datetime import datetime
+    current_date = datetime.now().strftime("%Y-%m-%d")
     expected_content = """\
 +++
 title = "Inline markup example"
 weight = HUGO_WEIGHT_PLACEHOLDER
+""" + f"""date = \"{current_date}\"""" + """
 +++
 
 {{< sphinx >}}

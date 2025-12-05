@@ -92,6 +92,7 @@ class HugoTranslator(NodeVisitor):
         self._expect_returns_field = False
         self._is_shortcode_docstring_open = False
         self._is_shortcode_sphinx_open = False
+        self._needs_reopen_docstring = False
         self._current_return_type = None
         self._current_signature_dict = {}
         self._prevent_move_content = False
@@ -103,6 +104,7 @@ class HugoTranslator(NodeVisitor):
 
     def _shortcode_sphinx(self, close: bool = False):
         if close:
+            self._shortcode_docstring(close=True)
             if self._is_shortcode_sphinx_open:
                 self.content += f"\n\n{_construct_hugo_shortcode('/sphinx')}\n"
                 self._is_shortcode_sphinx_open = False
@@ -205,12 +207,17 @@ class HugoTranslator(NodeVisitor):
         This method generates the TOML front matter required by Hugo, which includes
         the document title. It is called only once, when the first title node is visited.
         """
+        from datetime import datetime
+        
         if self.frontmatter_created:
             return
-        self.content = f"""\
+        
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        self.content += f"""\
 +++
 title = "{node.astext()}"
 weight = HUGO_WEIGHT_PLACEHOLDER
+date = "{current_date}"
 +++\n"""
         self._move_content_to_lines()
         self.frontmatter_created = True
@@ -260,7 +267,7 @@ weight = HUGO_WEIGHT_PLACEHOLDER
         self._add_new_line()
 
     def visit_rubric(self, node):
-        self.content = "\n" + (self.section_level + 1) * "#" + " "
+        self.content += "\n" + (self.section_level + 1) * "#" + " "
 
     def depart_rubric(self, node):
         self.content += "\n\n"
@@ -404,7 +411,7 @@ weight = HUGO_WEIGHT_PLACEHOLDER
             level=len(self.list_stack), level_in_first_row=len(self.list_stack) - 1
         )
         self.indentation_stack.append(indentation)
-        self.content = f"{self.list_stack[-1]:4}"
+        self.content += f"{self.list_stack[-1]:4}"
 
     def depart_list_item(self, node):
         self.indentation_stack.pop()
@@ -518,9 +525,15 @@ weight = HUGO_WEIGHT_PLACEHOLDER
         # Internal targets have 'refid'; external have 'refuri'
         refid = node.get("refid")
         if refid:
+            docstring_cont = False
+            if self._is_shortcode_docstring_open:
+                docstring_cont = True
+                self._shortcode_docstring(close=True)
             # Insert an anchor for internal references
             self.content += _construct_hugo_shortcode(f'anchor name="{refid}"')
             self.content += _construct_hugo_shortcode(f"/anchor")
+            if docstring_cont:
+                self._shortcode_docstring()
         # For external targets (refuri), do nothing (handled by reference)
 
     def depart_target(self, node):
@@ -631,6 +644,9 @@ weight = HUGO_WEIGHT_PLACEHOLDER
         self._visit_admonition("danger")
 
     def _visit_admonition(self, type):
+        if (self._is_shortcode_docstring_open):
+            self._shortcode_docstring(close=True)
+            self._needs_reopen_docstring = True
         self.content += f'{{{{< admonition type="{type}" >}}}}\n'
         self._move_content_to_lines()
         self.indentation_stack.append(Indentation(0))
@@ -654,6 +670,9 @@ weight = HUGO_WEIGHT_PLACEHOLDER
         self._strip_blank_lines()
         self.indentation_stack.pop()
         self.content += "{{< /admonition >}}\n"
+        if self._needs_reopen_docstring:
+            self._shortcode_docstring()
+            self._needs_reopen_docstring = False
         self._move_content_to_lines()
 
     # Footnote handling methods
@@ -1128,7 +1147,7 @@ weight = HUGO_WEIGHT_PLACEHOLDER
                     else:
                         new_str_content += "\n"
 
-        self.content = new_str_content
+        self.content += new_str_content
         if not (self._prevent_content_stash_deletion):
             self._content_stash = []
 
@@ -1156,7 +1175,7 @@ weight = HUGO_WEIGHT_PLACEHOLDER
                     new_str_content += "\n    " + line[min_indent:]
                 # Skip empty lines entirely - don't add blank lines within the description
 
-        self.content = new_str_content + "\n\n"
+        self.content += new_str_content + "\n\n"
         if not (self._prevent_content_stash_deletion):
             self._content_stash = []
 

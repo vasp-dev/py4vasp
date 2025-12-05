@@ -546,6 +546,7 @@ other routines.
 
 def test_convert_example_dos_to_dict(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
+    print(content)
     expected_class_content = """
 {{< method class="example_dos" cname="Dos" name="to_dict" module="" >}}
 {{< signature >}}
@@ -617,6 +618,7 @@ projection.
     Fermi energy and the total DOS or the spin-resolved DOS for
     spin-polarized calculations. If available and a selection is passed,
     the orbital resolved DOS for the selected orbitals is included.
+
 
 
 
@@ -746,6 +748,7 @@ corresponding to the selected projections.
     the resulting DOS is spin resolved and the spin-down DOS is plotted
     towards negative values. If a selection is given the orbital-resolved
     DOS is given for the specified projectors.
+
 
 
 
