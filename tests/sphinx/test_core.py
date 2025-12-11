@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from datetime import datetime
+
 import pytest
 
 application = pytest.importorskip("sphinx.application")
@@ -42,7 +44,6 @@ def test_index_page(sphinx_app):
     """Test that the index page is created correctly."""
     content = read_file_content(sphinx_app.outdir, "index.md")
     assert 'title = "Main page"' in content
-    assert "# Main page" in content
     assert (
         "This is the main page of the documentation. It serves as an index for the content available in this project."
         in content
@@ -66,7 +67,7 @@ def test_convert_headings(sphinx_app):
     lines = content.splitlines()
     # find all headers
     headers = []
-    headers.append(lines.index("# Chapter"))
+    # headers.append(lines.index("# Chapter"))
     for section in range(1, 3):
         section_header = f"## Section {section}"
         headers.append(lines.index(section_header))
@@ -83,25 +84,31 @@ def test_convert_headings(sphinx_app):
                     headers.append(lines.index(paragraph_header))
     # check that headers are in order
     assert sorted(headers) == headers
-    assert "###### ***Header not in table of contents***\n" in content
+    assert "###### Header not in table of contents\n" in content
 
 
 def test_convert_inline_markup(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "inline_markup.md")
-    expected_content = """\
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    expected_content = (
+        """\
 +++
 title = "Inline markup example"
+weight = HUGO_WEIGHT_PLACEHOLDER
+"""
+        + f"""date = \"{current_date}\""""
+        + """
 +++
 
 {{< sphinx >}}
 
-# Inline markup example
 *this text is emphasized*, **this text is strong**, `this text is code`
 
 
 
 {{< /sphinx >}}
 """
+    )
     assert expected_content in content
 
 

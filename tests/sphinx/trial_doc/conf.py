@@ -42,3 +42,12 @@ napoleon_type_aliases = {
 }
 napoleon_attr_annotations = True
 napoleon_include_default_value = True
+
+# Autodoc configuration for inherited members
+autodoc_inherit_docstrings = True
+autodoc_default_options = {
+    "inherited-members": True,
+    "undoc-members": True,
+}
+# Preserve default argument values as written in source code
+autodoc_preserve_defaults = True

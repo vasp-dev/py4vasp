@@ -6,6 +6,27 @@ from docutils.nodes import NodeVisitor, SkipNode
 SIG_TYPE_DEFAULT = "`?_UNKNOWN_?`"
 
 
+def _extract_type_text(node) -> str:
+    """Extract type text from a node, handling TypeAliasForwardRef properly.
+
+    The issue is that node.astext() returns the string representation of
+    TypeAliasForwardRef objects like "TypeAliasForwardRef('ArrayLike')"
+    instead of just "ArrayLike". We need to extract text from child Text nodes
+    and then parse out the actual type name from the TypeAliasForwardRef wrapper.
+    """
+    import re
+
+    from docutils.nodes import Text
+
+    text_parts = []
+    for child in node.findall(Text):
+        text_parts.append(str(child))
+    text = "".join(text_parts)
+    # Replace TypeAliasForwardRef('TypeName') with just TypeName
+    text = re.sub(r"TypeAliasForwardRef\('([^']+)'\)", r"\1", text)
+    return text
+
+
 def _normalize_param_name(name: str) -> str:
     """Remove all asterisks from parameter name for comparison purposes.
 
@@ -134,7 +155,9 @@ class ParametersInfoFinder(NodeVisitor):
                 self._parameters[normalized_name]["asterisks"] = leading_asterisks
         elif self._current_parameter_name:
             if self._parameters[self._current_parameter_name].get("type") == None:
-                self._parameters[self._current_parameter_name]["type"] = node.astext()
+                self._parameters[self._current_parameter_name]["type"] = (
+                    _extract_type_text(node)
+                )
             self._next_is_type = False
 
     def visit_desc_sig_operator(self, node):

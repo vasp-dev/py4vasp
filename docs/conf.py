@@ -10,29 +10,67 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath("."))
 
 
 # -- Project information -----------------------------------------------------
 
 project = "py4vasp"
-copyright = "2024, VASP Software GmbH"
+copyright = "2025, VASP Software GmbH"
 author = "VASP Software GmbH"
 
 # The full version, including alpha/beta/rc tags
-release = "0.10.0"
-
+release = "0.11.0"
+root_doc = "_index"
 
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.napoleon", "sphinx_automodapi.automodapi"]
-automodapi_inheritance_diagram = False
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.napoleon",
+]
+# Settings for autosummary
+autosummary_generate = True
+autosummary_generate_overwrite = True
 autosummary_ignore_module_all = False
+
+# Keep type aliases unexpanded in documentation
+autodoc_type_aliases = {
+    "ArrayLike": "ArrayLike",
+    "Buffer | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | float | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes]": "ArrayLike",
+    "float | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes]": "ArrayLike",
+}
+# Autodoc configuration for inherited members
+autodoc_inherit_docstrings = True
+autodoc_default_options = {
+    "inherited-members": True,
+    "undoc-members": True,
+}
+# Preserve default argument values as written in source code
+autodoc_preserve_defaults = True
+
+# Configuration of Napoleon extension
+napoleon_include_init_with_doc = True
+napoleon_include_private_with_doc = False
+napoleon_include_special_with_doc = False
+napoleon_use_param = True
+napoleon_use_rtype = True
+napoleon_use_ivar = False
+napoleon_preprocess_types = True
+napoleon_type_aliases = {
+    "ArrayLike": "ArrayLike",
+    "Buffer | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | float | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes]": "ArrayLike",
+    "float | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes]": "ArrayLike",
+}
+napoleon_attr_annotations = True
+napoleon_include_default_value = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -97,7 +135,35 @@ class JinjaDirective(Directive):
         return node.children
 
 
+def generate_quantity_docs(app):
+    folder = app.srcdir / "calculation"
+    folder.mkdir(exist_ok=True, parents=True)
+    for quantity in _calculation.QUANTITIES:
+        write_docstring(app, folder, quantity)
+    for group, members in _calculation.GROUPS.items():
+        for member in members:
+            write_docstring(app, folder, f"{group}_{member}")
+
+
+def write_docstring(app, folder, quantity):
+    if quantity.startswith("_"):
+        return
+    outfile = folder / f"{quantity}.rst"
+    if outfile.exists():
+        infile = app.srcdir / f"../src/py4vasp/_calculation/{quantity}.py"
+        infile_mtime = os.path.getmtime(infile)
+        outfile_mtime = os.path.getmtime(outfile)
+        if outfile_mtime >= infile_mtime:
+            return
+    with open(outfile, "w", encoding="utf-8") as file:
+        file.write(f"{quantity}\n")
+        file.write("=" * len(quantity) + "\n\n")
+        file.write(f".. automodule:: py4vasp._calculation.{quantity}\n")
+        file.write("   :members:\n")
+
+
 def setup(app):
     app.add_directive("jinja", JinjaDirective)
     app.add_role("tag", tag_role)
+    app.connect("builder-inited", generate_quantity_docs)
     return

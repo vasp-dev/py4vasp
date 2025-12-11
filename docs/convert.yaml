@@ -1,9 +1,0 @@
-latest:
-    - dirhtml
-    - calculation:
-        - dirhtml/_packages/py4vasp.calculation
-        - dirhtml/_classes/py4vasp.Calculation
-        - dirhtml/_packages/py4vasp.calculation.*
-    - exception:
-        - dirhtml/exception
-        - dirhtml/api/py4vasp.exception.*

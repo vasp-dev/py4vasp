@@ -5,6 +5,7 @@ from typing import Optional
 from docutils.nodes import NodeVisitor, SkipNode
 
 from py4vasp._sphinx.anchors_finder import AnchorsFinder
+from py4vasp._sphinx.attribute_info_finder import AttributeInfoFinder
 from py4vasp._sphinx.parameters_info_finder import (
     SIG_TYPE_DEFAULT,
     ParametersInfoFinder,
@@ -89,6 +90,9 @@ class HugoTranslator(NodeVisitor):
         self._in_returns_field = False
         self._in_examples_field = False
         self._expect_returns_field = False
+        self._is_shortcode_docstring_open = False
+        self._is_shortcode_sphinx_open = False
+        self._needs_reopen_docstring = False
         self._current_return_type = None
         self._current_signature_dict = {}
         self._prevent_move_content = False
@@ -97,6 +101,27 @@ class HugoTranslator(NodeVisitor):
 
     def __str__(self):
         return "\n".join(self.lines) + "\n"
+
+    def _shortcode_sphinx(self, close: bool = False):
+        if close:
+            self._shortcode_docstring(close=True)
+            if self._is_shortcode_sphinx_open:
+                self.content += f"\n\n{_construct_hugo_shortcode('/sphinx')}\n"
+                self._is_shortcode_sphinx_open = False
+        else:
+            if not self._is_shortcode_sphinx_open:
+                self.content += f"\n{_construct_hugo_shortcode('sphinx')}\n\n"
+                self._is_shortcode_sphinx_open = True
+
+    def _shortcode_docstring(self, close: bool = False):
+        if close:
+            if self._is_shortcode_docstring_open:
+                self.content += f"{_construct_hugo_shortcode('/docstring')}"
+                self._is_shortcode_docstring_open = False
+        else:
+            if not self._is_shortcode_docstring_open:
+                self.content += f"{_construct_hugo_shortcode('docstring')}\n"
+                self._is_shortcode_docstring_open = True
 
     def _add_new_line(self):
         if self._prevent_move_content:
@@ -154,7 +179,9 @@ class HugoTranslator(NodeVisitor):
         pass
 
     def depart_document(self, node):
-        self.content += f"\n\n{_construct_hugo_shortcode('/sphinx')}\n"
+        """Close all open shortcodes and finalize document."""
+        self._shortcode_docstring(close=True)
+        self._shortcode_sphinx(close=True)
         self._move_content_to_lines()
 
     def visit_title(self, node):
@@ -166,8 +193,13 @@ class HugoTranslator(NodeVisitor):
         the current section depth.
         """
         self._create_hugo_front_matter(node)
-        self.content += f"\n{_construct_hugo_shortcode('sphinx')}\n\n"
-        self.content += f"{self.section_level * '#'} "
+        self._shortcode_sphinx()
+        self._shortcode_docstring()
+        self._move_content_to_lines()
+        if self.section_level > 1:
+            self.content += f"{self.section_level * '#'} "
+        else:
+            raise SkipNode
 
     def depart_title(self, node):
         self._move_content_to_lines()
@@ -177,11 +209,17 @@ class HugoTranslator(NodeVisitor):
         This method generates the TOML front matter required by Hugo, which includes
         the document title. It is called only once, when the first title node is visited.
         """
+        from datetime import datetime
+
         if self.frontmatter_created:
             return
-        self.content = f"""\
+
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        self.content += f"""\
 +++
 title = "{node.astext()}"
+weight = HUGO_WEIGHT_PLACEHOLDER
+date = "{current_date}"
 +++\n"""
         self._move_content_to_lines()
         self.frontmatter_created = True
@@ -194,6 +232,9 @@ title = "{node.astext()}"
         hash symbols (# vs ## vs ###) to maintain the document hierarchy.
         """
         self.section_level += 1
+        # Open docstring for content sections (between desc nodes)
+        if self._is_shortcode_sphinx_open:
+            self._shortcode_docstring(close=False)
 
     def depart_section(self, node):
         """Decrement section nesting level when leaving a section.
@@ -202,6 +243,10 @@ title = "{node.astext()}"
         nesting level after processing all content within a section. Without this,
         subsequent sections at the same level would get incorrect header depths.
         """
+        # Close docstring for content sections, but not if we need to reopen it
+        # (e.g., after a compound or admonition)
+        if self._is_shortcode_docstring_open and not self._needs_reopen_docstring:
+            self._shortcode_docstring(close=True)
         self.section_level -= 1
 
     def visit_paragraph(self, node):
@@ -225,10 +270,10 @@ title = "{node.astext()}"
         self._add_new_line()
 
     def visit_rubric(self, node):
-        self.content = "\n" + (self.section_level + 1) * "#" + " ***"
+        self.content += "\n" + (self.section_level + 1) * "#" + " "
 
     def depart_rubric(self, node):
-        self.content += "***\n\n"
+        self.content += "\n\n"
         self._move_content_to_lines()
 
     def visit_Text(self, node):
@@ -369,7 +414,7 @@ title = "{node.astext()}"
             level=len(self.list_stack), level_in_first_row=len(self.list_stack) - 1
         )
         self.indentation_stack.append(indentation)
-        self.content = f"{self.list_stack[-1]:4}"
+        self.content += f"{self.list_stack[-1]:4}"
 
     def depart_list_item(self, node):
         self.indentation_stack.pop()
@@ -483,8 +528,15 @@ title = "{node.astext()}"
         # Internal targets have 'refid'; external have 'refuri'
         refid = node.get("refid")
         if refid:
+            docstring_cont = False
+            if self._is_shortcode_docstring_open:
+                docstring_cont = True
+                self._shortcode_docstring(close=True)
             # Insert an anchor for internal references
             self.content += _construct_hugo_shortcode(f'anchor name="{refid}"')
+            self.content += _construct_hugo_shortcode(f"/anchor")
+            if docstring_cont:
+                self._shortcode_docstring()
         # For external targets (refuri), do nothing (handled by reference)
 
     def depart_target(self, node):
@@ -595,6 +647,9 @@ title = "{node.astext()}"
         self._visit_admonition("danger")
 
     def _visit_admonition(self, type):
+        if self._is_shortcode_docstring_open:
+            self._shortcode_docstring(close=True)
+            self._needs_reopen_docstring = True
         self.content += f'{{{{< admonition type="{type}" >}}}}\n'
         self._move_content_to_lines()
         self.indentation_stack.append(Indentation(0))
@@ -618,6 +673,9 @@ title = "{node.astext()}"
         self._strip_blank_lines()
         self.indentation_stack.pop()
         self.content += "{{< /admonition >}}\n"
+        if self._needs_reopen_docstring:
+            self._shortcode_docstring()
+            self._needs_reopen_docstring = False
         self._move_content_to_lines()
 
     # Footnote handling methods
@@ -645,12 +703,20 @@ title = "{node.astext()}"
     # Compound handling methods
 
     def visit_compound(self, node):
+        # Close docstring before compound, like we do for admonitions
+        if self._is_shortcode_docstring_open:
+            self._shortcode_docstring(close=True)
+            self._needs_reopen_docstring = True
         # Start a div to preserve grouping in Markdown
         self.content += f'\n{_construct_hugo_shortcode("compound")}\n\n'
 
     def depart_compound(self, node):
         # End the div
         self.content += f"\n{_construct_hugo_shortcode('/compound')}\n"
+        # Reopen docstring after compound if needed
+        if self._needs_reopen_docstring:
+            self._shortcode_docstring()
+            # DON'T reset _needs_reopen_docstring - let the parent container handle it
         self._move_content_to_lines()
 
     def visit_compact_paragraph(self, node):
@@ -721,16 +787,26 @@ title = "{node.astext()}"
         module = self._get_module()
         objtype = self._get_latest_objtype()
         name = self._get_latest_name()
+
+        self._shortcode_docstring(close=True)
+
         if objtype in ["method", "property", "attribute"]:
             class_name = ""
+            disp_name = ""
             if module:
-                class_name = module.split(".")[-1]
-                module = ".".join(module.split(".")[:-1])
-            shortcode_str = f"{objtype} class=\"{class_name}\" name=\"{name}\" module=\"{module if module else ''}\""
+                class_name = module.split(".")[-2]
+                disp_name = module.split(".")[-1]
+                module = ".".join([m.lstrip("_") for m in module.split(".")[1:-2]])
+            shortcode_str = f"{objtype} class=\"{class_name}\" cname=\"{disp_name}\" name=\"{name}\" module=\"{module if module else ''}\""
         else:
-            shortcode_str = (
-                f"{objtype} name=\"{name}\" module=\"{module if module else ''}\""
-            )
+            disp_name = name
+            if module:
+                disp_name = module.split(".")[-1]
+                module = ".".join([m.lstrip("_") for m in module.split(".")[1:-1]])
+            if objtype == "class":
+                shortcode_str = f"{objtype} name=\"{disp_name}\" cname=\"{name}\" module=\"{module if module else ''}\""
+            else:
+                shortcode_str = f"{objtype} name=\"{name}\" file=\"{disp_name}\" module=\"{module if module else ''}\""
         self.content += f"\n\n{_construct_hugo_shortcode(shortcode_str)}"
         pass
 
@@ -739,6 +815,9 @@ title = "{node.astext()}"
         if self.anchor_id_stack:
             self.anchor_id_stack.pop()
         self.section_level -= 1
+
+        self._shortcode_docstring(close=True)
+
         self.content += f"\n\n{_construct_hugo_shortcode(f'/{objtype}')}\n\n"
         self._move_content_to_lines()
         pass
@@ -766,9 +845,8 @@ title = "{node.astext()}"
         The name already includes any unpacking asterisks (*args, **kwargs) from the signature.
         """
         param = f"*{name}*"
-        if default or annotation:
-            param += ": "
         if annotation:
+            param += ": "
             formatted_annotation = annotation.replace("` or `", " or ").replace(
                 " or ", " | "
             )
@@ -782,19 +860,21 @@ title = "{node.astext()}"
             formatted_default = (
                 f" = {default}" if not (default == SIG_TYPE_DEFAULT) else ""
             )
-            param += f"{formatted_default} [optional]"
+            param += f"{formatted_default}"
         return param
 
     def _get_parameter_list_str(self, parameters):
         """Get a string representation of the parameter list with types."""
         if not parameters:
-            return "()"
+            return "\n()"
         param_strs = []
         for name, annotation, default in parameters:
             param = self._get_formatted_param(name, annotation, default)
             param_strs.append(param)
         if len(param_strs) == 1:
             return f"\n({param_strs[0]})"
+        elif len(param_strs) == 2 and param_strs == ["**args*", "***kwargs*"]:
+            return "\n(**args*, ***kwargs*)"
         concat_str = ",\n- ".join(param_strs)
         return "\n(\n- " + concat_str + "\n\n)"
 
@@ -807,6 +887,11 @@ title = "{node.astext()}"
             self._current_return_type = return_type
             self._expect_returns_field = True
         return return_type
+
+    def _get_attribute_info(self, node):
+        """Get type annotation and default value for an attribute/property using AttributeInfoFinder."""
+        attribute_info_finder = AttributeInfoFinder(self.document)
+        return attribute_info_finder.find_attribute_info(node)
 
     def visit_desc_signature(self, node):
         anchor_id = self._get_anchor_id()
@@ -825,17 +910,43 @@ title = "{node.astext()}"
 
         self._current_signature_dict = {}
         self._current_return_type = None
-        if objtype in ["function", "method", "class", "exception"]:
-            parameters = self._get_parameter_list_and_types(
-                node, not (objtype in ["function", "method"])
-            )
-            parameters_str = self._get_parameter_list_str(parameters)
-            self.content += parameters_str
-        if objtype in ["function", "method"]:
-            return_type = self._get_return_type(node)
-            if return_type:
-                return_str = f" → `{return_type}`"
-                self.content += return_str
+        if objtype in [
+            "function",
+            "method",
+            "class",
+            "exception",
+            "property",
+            "attribute",
+        ]:
+            self.content += "\n" + _construct_hugo_shortcode("signature")
+
+            # For attributes/properties, show type and default in signature
+            if objtype in ["property", "attribute"]:
+                type_annotation, default_value = self._get_attribute_info(node)
+                if type_annotation or default_value:
+                    type_str = f": `{type_annotation}`" if type_annotation else ""
+                    default_str = f" = {default_value}" if default_value else ""
+                    self.content += f"{type_str}{default_str}"
+                # Try to get return type for properties
+                if objtype == "property":
+                    return_type = self._get_return_type(node)
+                    if return_type:
+                        return_str = f" → `{return_type}`"
+                        self.content += return_str
+            else:
+                # For methods/functions/classes, show parameters normally
+                parameters = self._get_parameter_list_and_types(
+                    node, not (objtype in ["function", "method"])
+                )
+                parameters_str = self._get_parameter_list_str(parameters)
+                self.content += parameters_str
+                if objtype in ["function", "method"]:
+                    return_type = self._get_return_type(node)
+                    if return_type:
+                        return_str = f" → `{return_type}`"
+                        self.content += return_str
+
+            self.content += "\n" + _construct_hugo_shortcode("/signature")
 
         self.content += "\n\n"  # + "</div>\n\n"
 
@@ -853,7 +964,7 @@ title = "{node.astext()}"
         pass
 
     def visit_desc_content(self, node):
-        self.content += "\n"
+        self._shortcode_docstring()
         pass
 
     def depart_desc_content(self, node):
@@ -941,7 +1052,7 @@ title = "{node.astext()}"
 
     def _get_formatted_field_header(self, field_name):
         """Format the field name for Markdown headers."""
-        return f"\n{(self.section_level + 1) * '#'} **{field_name.capitalize()}:**\n\n"
+        return f"\n{(self.section_level + 1) * '#'} {field_name.capitalize()}\n\n"
 
     def visit_field(self, node):
         # Identify the field name
@@ -1047,7 +1158,7 @@ title = "{node.astext()}"
                     else:
                         new_str_content += "\n"
 
-        self.content = new_str_content
+        self.content += new_str_content
         if not (self._prevent_content_stash_deletion):
             self._content_stash = []
 
@@ -1075,7 +1186,7 @@ title = "{node.astext()}"
                     new_str_content += "\n    " + line[min_indent:]
                 # Skip empty lines entirely - don't add blank lines within the description
 
-        self.content = new_str_content + "\n\n"
+        self.content += new_str_content + "\n\n"
         if not (self._prevent_content_stash_deletion):
             self._content_stash = []
 
@@ -1109,3 +1220,69 @@ title = "{node.astext()}"
 
     def depart_title_reference(self, node):
         self.content += "*"
+
+    def visit_tabular_col_spec(self, node):
+        pass
+
+    def depart_tabular_col_spec(self, node):
+        pass
+
+    def visit_autosummary_table(self, node):
+        self._shortcode_docstring(close=False)
+
+    def depart_autosummary_table(self, node):
+        # Close docstring for autosummary table content, but not if we need to reopen it
+        if not self._needs_reopen_docstring:
+            self._shortcode_docstring(close=True)
+        # If we had closed the docstring for a compound/admonition, reopen it now
+        else:
+            self._shortcode_docstring()
+            self._needs_reopen_docstring = False
+
+    def visit_table(self, node):
+        pass
+
+    def depart_table(self, node):
+        pass
+
+    def visit_tgroup(self, node):
+        pass
+
+    def depart_tgroup(self, node):
+        pass
+
+    def visit_colspec(self, node):
+        pass
+
+    def depart_colspec(self, node):
+        pass
+
+    def visit_tbody(self, node):
+        pass
+
+    def depart_tbody(self, node):
+        pass
+
+    def visit_row(self, node):
+        pass
+
+    def depart_row(self, node):
+        pass
+
+    def visit_transition(self, node):
+        pass
+
+    def depart_transition(self, node):
+        pass
+
+    def visit_entry(self, node):
+        pass
+
+    def depart_entry(self, node):
+        pass
+
+    def visit_block_quote(self, node):
+        pass
+
+    def depart_block_quote(self, node):
+        pass
