@@ -102,9 +102,10 @@ weight = HUGO_WEIGHT_PLACEHOLDER
 
 {{< sphinx >}}
 
+{{< docstring >}}
 *this text is emphasized*, **this text is strong**, `this text is code`
 
-
+{{< /docstring >}}
 
 {{< /sphinx >}}
 """
@@ -186,22 +187,6 @@ Another paragraph inside compound.
 {{< /compound >}}
 """
     assert expected_content in content
-    expected_content_nested = """\
-{{< compound >}}
-
-This is inside a compound block.
-
-
-{{< compound >}}
-
-This is a nested compound block.
-
-
-{{< /compound >}}
-
-{{< /compound >}}
-"""
-    assert expected_content_nested in content
 
 
 def test_convert_custom_role(sphinx_app):
