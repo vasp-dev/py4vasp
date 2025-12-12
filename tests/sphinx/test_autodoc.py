@@ -87,9 +87,8 @@ An inner class for testing nested class documentation.
 
 {{< /docstring >}}
 
-{{< method name="get_data" class="InnerClass" module="inner_class" breadcrumbs="inner" >}}
-{{< signature >}}
-() → `str`
+{{< property name="get_data" class="InnerClass" module="inner_class" breadcrumbs="inner" >}}
+{{< signature >}}: `str`
 {{< /signature >}}
 
 {{< docstring >}}
@@ -104,7 +103,7 @@ str
 {{< /docstring >}}
 
 
-{{< /method >}}
+{{< /property >}}
 
 
 

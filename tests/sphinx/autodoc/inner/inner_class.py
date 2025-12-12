@@ -16,6 +16,7 @@ class InnerClass:
         """
         self.data = data
 
+    @property
     def get_data(self) -> str:
         """
         Retrieve the stored data.
