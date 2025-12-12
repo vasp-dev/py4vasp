@@ -35,7 +35,7 @@ goto end
 
 :clean
 %SPHINXBUILD% -M clean %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
-git clean -f calculation/*.rst
+git clean -Xf calculation/*.rst
 goto end
 
 :end
