@@ -36,30 +36,49 @@ def tag_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
 def generate_quantity_docs(app):
     if app.config.py4vasp_testing:
         return
-    folder = app.srcdir / "calculation"
-    folder.mkdir(exist_ok=True, parents=True)
+    included_folder = app.srcdir / "calculation"
+    included_folder.mkdir(exist_ok=True, parents=True)
+    hidden_folder = app.srcdir / "hidden" / "calculation"
+    hidden_folder.mkdir(exist_ok=True, parents=True)
     for quantity in _calculation.QUANTITIES:
-        write_docstring(app, folder, quantity)
-    for group, members in _calculation.GROUPS.items():
-        for member in members:
-            write_docstring(app, folder, f"{group}_{member}")
+        if not should_write(app, included_folder, quantity):
+            continue
+        write_docstring(included_folder, quantity)
+        write_hidden_docstring(hidden_folder, quantity)
+    # for group, members in _calculation.GROUPS.items():
+    #     for member in members:
+    #         write_docstring(app, included_folder, f"{group}_{member}")
 
 
-def write_docstring(app, folder, quantity):
+def should_write(app, folder, quantity):
     if quantity.startswith("_"):
-        return
+        return False
     outfile = folder / f"{quantity}.rst"
     if outfile.exists():
         infile = app.srcdir / f"../src/py4vasp/_calculation/{quantity}.py"
         infile_mtime = os.path.getmtime(infile)
         outfile_mtime = os.path.getmtime(outfile)
         if outfile_mtime >= infile_mtime:
-            return
+            return False
+    return True
+
+
+def write_docstring(folder, quantity):
+    outfile = folder / f"{quantity}.rst"
     with open(outfile, "w", encoding="utf-8") as file:
         file.write(f"{quantity}\n")
         file.write("=" * len(quantity) + "\n\n")
         file.write(f".. automodule:: py4vasp._calculation.{quantity}\n")
         file.write("   :members:\n")
+        file.write("   :inherited-members:\n")
+
+
+def write_hidden_docstring(folder, quantity):
+    outfile = folder / f"{quantity}.rst"
+    with open(outfile, "w", encoding="utf-8") as file:
+        file.write(f"{quantity}\n")
+        file.write("=" * len(quantity) + "\n\n")
+        file.write(f".. autoproperty:: py4vasp.Calculation.{quantity}\n")
 
 
 def on_build_finished(app, exception):

@@ -22,3 +22,4 @@ help:
 clean:
 	@$(SPHINXBUILD) -M clean "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 	@git clean -Xf calculation/*.rst
+	@git clean -Xfd hidden/

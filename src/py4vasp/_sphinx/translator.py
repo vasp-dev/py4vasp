@@ -78,6 +78,7 @@ class HugoTranslator(NodeVisitor):
         docutils sections are hierarchical, so we need to convert the tree structure to the
         appropriate number of hash symbols.
         """
+        # print("DEBUG:", document.pformat())
         self.document = document
         self.frontmatter_created = False
         self.section_level = 0
@@ -513,9 +514,13 @@ date = "{current_date}"
         if not reference:
             self.content += f"]()"
             return
-        reference = reference.replace("py4vasp.Calculation", "py4vasp.calculation")
-        reference = reference.removeprefix("py4vasp.")
-        reference = reference.replace(".", "/")
+        if reference.startswith("py4vasp._calculation"):
+            parts = reference.split(".")
+            assert len(parts) >= 3
+            reference = f"calculation/{parts[2]}"
+        else:
+            reference = reference.removeprefix("py4vasp.")
+            reference = reference.replace(".", "/")
         reference = pathlib.Path(reference)
         # index files are represented by folder names in Hugo
         source = self.document.source
@@ -791,20 +796,22 @@ date = "{current_date}"
         self._construct_new_anchor_id(node)
         self.section_level += 1
         breadcrumbs = self._get_breadcrumbs()
+        if breadcrumbs and breadcrumbs[0] == "py4vasp":
+            breadcrumbs.pop(0)
+        if breadcrumbs and breadcrumbs[0] == "_calculation":
+            breadcrumbs[0] = "calculation"
         objtype = self._get_latest_objtype()
         name = self._get_latest_name()
 
         self._shortcode_docstring(close=True)
 
         if objtype in ["method", "property", "attribute"]:
-            message = "breadcrumbs should contain at least the class and module name"
-            assert len(breadcrumbs) >= 2, message
+            assert breadcrumbs, "breadcrumbs should contain at least the class name"
             class_name = breadcrumbs.pop()
-            module_name = breadcrumbs.pop()
+            module_name = breadcrumbs.pop() if breadcrumbs else ""
             shortcode_str = f"{objtype} name=\"{name}\" class=\"{class_name}\" module=\"{module_name}\" breadcrumbs=\"{'.'.join(breadcrumbs)}\""
         elif objtype in ["class", "function", "data"]:
-            assert breadcrumbs, "breadcrumbs should contain at least the module name"
-            module_name = breadcrumbs.pop()
+            module_name = breadcrumbs.pop() if breadcrumbs else ""
             shortcode_str = f"{objtype} name=\"{name}\" module=\"{module_name}\" breadcrumbs=\"{'.'.join(breadcrumbs)}\""
         else:
             raise NotImplementedError(f"Unsupported objtype '{objtype}' in visit_desc.")

@@ -49,10 +49,6 @@ autodoc_type_aliases = {
 }
 # Autodoc configuration for inherited members
 autodoc_inherit_docstrings = True
-autodoc_default_options = {
-    "inherited-members": True,
-    "undoc-members": True,
-}
 # Preserve default argument values as written in source code
 autodoc_preserve_defaults = True
 
