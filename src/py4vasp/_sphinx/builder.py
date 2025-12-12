@@ -49,6 +49,8 @@ class HugoBuilder(Builder):
             docname (str): The name of the document being written.
             doctree: The Sphinx document tree to convert.
         """
+        if not doctree.source:
+            doctree.source = docname
         filename = self.hugo_dir / f"{docname}.md"
         filename.parent.mkdir(parents=True, exist_ok=True)
         with open(filename, "w", encoding="utf-8") as outfile:

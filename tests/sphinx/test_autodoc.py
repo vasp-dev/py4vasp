@@ -34,6 +34,32 @@ def read_file_content(outdir, source_file):
     return content
 
 
+def test_autosummary(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "index.md")
+    expected_content = """\
+[`ExampleClass`](example_class/ExampleClass)
+: <!---->
+    This is an example class for testing Sphinx autodoc.
+
+[`ExampleModule`](example_module/ExampleModule)
+: <!---->
+    A simple example module to demonstrate Sphinx autodoc capabilities.
+
+[`ExampleDataClass`](example_module/ExampleDataClass)
+: <!---->
+    An example data class for testing Sphinx autodoc.
+
+[`InnerClass`](inner/inner_class/InnerClass)
+: <!---->
+    An inner class for testing nested class documentation.
+
+[`inner_data`](inner/inner_data/inner_data)
+: <!---->
+    An inner class for testing nested class documentation."""
+    print(content)
+    assert expected_content in content
+
+
 def test_autodoc_class(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_class.md")
     expected_content = """\

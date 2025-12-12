@@ -6,6 +6,7 @@ import sys
 extensions = [
     "py4vasp._sphinx",
     "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
 ]
 
 py4vasp_testing = True

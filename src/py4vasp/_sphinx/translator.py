@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import pathlib
 from typing import Optional
 
 from docutils.nodes import NodeVisitor, SkipNode
@@ -499,9 +500,6 @@ date = "{current_date}"
         anchor links. The URI is stored as an instance variable because we need
         it in the depart method after processing the link text.
         """
-        self._reference_uri = node.get("refuri") or (
-            f"#{node.get('refid')}" if node.get("refid") else ""
-        )
         self.content += "["
 
     def depart_reference(self, node):
@@ -511,11 +509,19 @@ date = "{current_date}"
         so we can now close the link with the URI that was stored in visit.
         We clean up the temporary state to avoid interference with other links.
         """
-        uri = getattr(self, "_reference_uri", "")
-        if (uri) and uri.startswith("#"):
-            uri = uri.replace(" ", "-").rstrip("-")
-        self.content += f"]({uri})"
-        self._reference_uri = None
+        reference = node.get("reftitle", "")
+        if not reference:
+            self.content += f"]()"
+            return
+        reference = reference.replace("py4vasp.Calculation", "py4vasp.calculation")
+        reference = reference.removeprefix("py4vasp.")
+        reference = reference.replace(".", "/")
+        reference = pathlib.Path(reference)
+        # index files are represented by folder names in Hugo
+        source = self.document.source
+        source = source.removesuffix("_index").removesuffix("index")
+        source = pathlib.Path(source)
+        self.content += f"]({reference.relative_to(source, walk_up=True).as_posix()})"
 
     def visit_target(self, node):
         """Create HTML anchor tags for internal reference targets.
@@ -814,7 +820,6 @@ date = "{current_date}"
 
         self.content += f"\n\n{_construct_hugo_shortcode(f'/{objtype}')}\n\n"
         self._move_content_to_lines()
-        pass
 
     def _get_parameter_list_and_types(self, node, skip_content: bool = False):
         """Extract parameter names, types, and default values from a desc_signature node."""
@@ -888,20 +893,7 @@ date = "{current_date}"
         return attribute_info_finder.find_attribute_info(node)
 
     def visit_desc_signature(self, node):
-        anchor_id = self._get_anchor_id()
-        anchor_str = f"\n\n<a id='{anchor_id}'></a>" if anchor_id else ""
-        ref_str = f" [¶](#{anchor_id})" if anchor_id else ""
         objtype = self._get_latest_objtype()
-        objtype_str = f"*{objtype}* " if (objtype != "method") else ""
-        # if objtype:
-        #     self.content += (
-        #         f"\n\n<div class='{f'{objtype} ' if objtype else ''}signature'>"
-        #     )
-
-        name = self._get_latest_name()
-        name_str = f"**{name}**"
-        # self.content += f"{anchor_str}\n\n{self.section_level * '#'} {objtype_str}{name_str}{ref_str}"
-
         self._current_signature_dict = {}
         self._current_return_type = None
         if objtype in [
@@ -942,7 +934,7 @@ date = "{current_date}"
 
             self.content += "\n" + _construct_hugo_shortcode("/signature")
 
-        self.content += "\n\n"  # + "</div>\n\n"
+        self.content += "\n\n"
 
         if self._current_return_type:
             self._expect_returns_field = True
@@ -959,7 +951,6 @@ date = "{current_date}"
 
     def visit_desc_content(self, node):
         self._shortcode_docstring()
-        pass
 
     def depart_desc_content(self, node):
         self._move_content_to_lines()
@@ -1200,7 +1191,6 @@ date = "{current_date}"
         self._prevent_move_content = False
         self.content += "\n"
         self._move_content_to_lines()
-        pass
 
     def visit_literal_strong(self, node):
         # Strong literal (e.g., for emphasized code)
@@ -1223,6 +1213,7 @@ date = "{current_date}"
 
     def visit_autosummary_table(self, node):
         self._shortcode_docstring(close=False)
+        self._table_style = "autosummary"
 
     def depart_autosummary_table(self, node):
         # Close docstring for autosummary table content, but not if we need to reopen it
@@ -1232,6 +1223,7 @@ date = "{current_date}"
         else:
             self._shortcode_docstring()
             self._needs_reopen_docstring = False
+        self._table_style = ""
 
     def visit_table(self, node):
         pass
@@ -1258,7 +1250,7 @@ date = "{current_date}"
         pass
 
     def visit_row(self, node):
-        pass
+        self._entry_count = 0
 
     def depart_row(self, node):
         pass
@@ -1270,7 +1262,13 @@ date = "{current_date}"
         pass
 
     def visit_entry(self, node):
-        pass
+        self._entry_count += 1
+        table_style = getattr(self, "_table_style", "")
+        if table_style == "autosummary":
+            if self._entry_count == 2:
+                while not self.lines[-1]:
+                    self.lines.pop()
+                self.content += ": <!---->\n    "
 
     def depart_entry(self, node):
         pass
