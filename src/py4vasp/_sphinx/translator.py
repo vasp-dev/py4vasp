@@ -791,25 +791,17 @@ date = "{current_date}"
         self._shortcode_docstring(close=True)
 
         if objtype in ["method", "property", "attribute"]:
-            class_name = ""
-            module_name = ""
-            if breadcrumbs:
-                class_name = breadcrumbs.pop()
-            if breadcrumbs:
-                module_name = breadcrumbs.pop()
+            message = "breadcrumbs should contain at least the class and module name"
+            assert len(breadcrumbs) >= 2, message
+            class_name = breadcrumbs.pop()
+            module_name = breadcrumbs.pop()
             shortcode_str = f"{objtype} name=\"{name}\" class=\"{class_name}\" module=\"{module_name}\" breadcrumbs=\"{'.'.join(breadcrumbs)}\""
-        elif objtype in ["class", "function"]:
-            module_name = ""
-            if breadcrumbs:
-                module_name = breadcrumbs.pop()
+        elif objtype in ["class", "function", "data"]:
+            assert breadcrumbs, "breadcrumbs should contain at least the module name"
+            module_name = breadcrumbs.pop()
             shortcode_str = f"{objtype} name=\"{name}\" module=\"{module_name}\" breadcrumbs=\"{'.'.join(breadcrumbs)}\""
         else:
-            module = ".".join(breadcrumbs) if breadcrumbs else ""
-            disp_name = name
-            if module:
-                disp_name = module.split(".")[-1]
-                module = ".".join([m.lstrip("_") for m in module.split(".")[1:-1]])
-            shortcode_str = f"{objtype} name=\"{name}\" file=\"{disp_name}\" module=\"{module if module else ''}\""
+            raise NotImplementedError(f"Unsupported objtype '{objtype}' in visit_desc.")
         self.content += f"\n\n{_construct_hugo_shortcode(shortcode_str)}"
 
     def depart_desc(self, node):

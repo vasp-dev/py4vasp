@@ -231,5 +231,18 @@ int
 
 
 {{< /function >}}"""
-    print(content)
     assert function_content in content
+
+
+def test_autodoc_data(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "inner_data.md")
+    expected_content = """\
+{{< data name="inner_data" module="inner_data" breadcrumbs="inner" >}}
+
+{{< docstring >}}
+An inner class for testing nested class documentation.
+
+{{< /docstring >}}
+
+{{< /data >}}"""
+    assert expected_content in content
