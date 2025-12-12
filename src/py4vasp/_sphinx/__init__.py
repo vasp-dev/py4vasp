@@ -34,6 +34,8 @@ def tag_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
 
 
 def generate_quantity_docs(app):
+    if app.config.py4vasp_testing:
+        return
     folder = app.srcdir / "calculation"
     folder.mkdir(exist_ok=True, parents=True)
     for quantity in _calculation.QUANTITIES:
@@ -87,6 +89,7 @@ def on_build_finished(app, exception):
 
 def setup(app):
     app.add_builder(HugoBuilder)
+    app.add_config_value("py4vasp_testing", False, "env")
     app.add_directive("jinja", JinjaDirective)
     app.add_role("tag", tag_role)
     app.connect("builder-inited", generate_quantity_docs)

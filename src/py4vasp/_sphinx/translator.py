@@ -150,11 +150,11 @@ class HugoTranslator(NodeVisitor):
 
     def unknown_visit(self, node):
         """Handle unknown node types by logging them for debugging."""
-        print(f"DEBUG: Unknown node type: {node.__class__.__name__}")
-        print(f"DEBUG: Node attributes: {node.attributes}")
-        print(
-            f"DEBUG: Node children: {[child.__class__.__name__ for child in node.children]}"
-        )
+        # print(f"DEBUG: Unknown node type: {node.__class__.__name__}")
+        # print(f"DEBUG: Node attributes: {node.attributes}")
+        # print(
+        #     f"DEBUG: Node children: {[child.__class__.__name__ for child in node.children]}"
+        # )
         # Don't raise error, just skip for now
         return
         raise NotImplementedError(
@@ -745,15 +745,15 @@ date = "{current_date}"
             ]
             return ".".join(list_to_join)
 
-    def _get_module(self) -> str | None:
+    def _get_breadcrumbs(self) -> list[str]:
         """Get the module name from the anchor_id_stack."""
         full_anchor = self._get_anchor_id()
         if full_anchor:
             name = self._get_latest_name()
             if name and full_anchor.endswith(name):
                 module = full_anchor[: -len(name)].rstrip(".")
-                return module if module else None
-        return None
+                return module.split(".") if module else []
+        return []
 
     def _construct_new_anchor_id(self, node) -> tuple[str, str, str]:
         anchors_finder = AnchorsFinder(self.document)
@@ -784,7 +784,7 @@ date = "{current_date}"
     def visit_desc(self, node):
         self._construct_new_anchor_id(node)
         self.section_level += 1
-        module = self._get_module()
+        breadcrumbs = self._get_breadcrumbs()
         objtype = self._get_latest_objtype()
         name = self._get_latest_name()
 
@@ -792,23 +792,25 @@ date = "{current_date}"
 
         if objtype in ["method", "property", "attribute"]:
             class_name = ""
-            disp_name = ""
-            if module:
-                class_name = module.split(".")[-2]
-                disp_name = module.split(".")[-1]
-                module = ".".join([m.lstrip("_") for m in module.split(".")[1:-2]])
-            shortcode_str = f"{objtype} class=\"{class_name}\" cname=\"{disp_name}\" name=\"{name}\" module=\"{module if module else ''}\""
+            module_name = ""
+            if breadcrumbs:
+                class_name = breadcrumbs.pop()
+            if breadcrumbs:
+                module_name = breadcrumbs.pop()
+            shortcode_str = f"{objtype} name=\"{name}\" class=\"{class_name}\" module=\"{module_name}\" breadcrumbs=\"{'.'.join(breadcrumbs)}\""
+        elif objtype == "class":
+            module_name = ""
+            if breadcrumbs:
+                module_name = breadcrumbs.pop()
+            shortcode_str = f"{objtype} name=\"{name}\" module=\"{module_name}\" breadcrumbs=\"{'.'.join(breadcrumbs)}\""
         else:
+            module = ".".join(breadcrumbs) if breadcrumbs else ""
             disp_name = name
             if module:
                 disp_name = module.split(".")[-1]
                 module = ".".join([m.lstrip("_") for m in module.split(".")[1:-1]])
-            if objtype == "class":
-                shortcode_str = f"{objtype} name=\"{disp_name}\" cname=\"{name}\" module=\"{module if module else ''}\""
-            else:
-                shortcode_str = f"{objtype} name=\"{name}\" file=\"{disp_name}\" module=\"{module if module else ''}\""
+            shortcode_str = f"{objtype} name=\"{name}\" file=\"{disp_name}\" module=\"{module if module else ''}\""
         self.content += f"\n\n{_construct_hugo_shortcode(shortcode_str)}"
-        pass
 
     def depart_desc(self, node):
         objtype = self._get_latest_objtype()
