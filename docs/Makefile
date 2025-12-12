@@ -21,4 +21,4 @@ help:
 
 clean:
 	@$(SPHINXBUILD) -M clean "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
-	@find calculation -type f ! -name "_index.rst" -delete
+	@git clean -f calculation/*.rst

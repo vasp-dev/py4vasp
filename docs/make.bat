@@ -35,7 +35,8 @@ goto end
 
 :clean
 %SPHINXBUILD% -M clean %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
-FOR /F "delims=" %%i IN ('dir "calculation\*" /A:-D /B ^| findstr /V /I "_index.rst"') DO DEL "calculation\%%i"
+git clean -f calculation/*.rst
+goto end
 
 :end
 popd
