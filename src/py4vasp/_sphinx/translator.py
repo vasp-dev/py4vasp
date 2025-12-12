@@ -798,7 +798,7 @@ date = "{current_date}"
             if breadcrumbs:
                 module_name = breadcrumbs.pop()
             shortcode_str = f"{objtype} name=\"{name}\" class=\"{class_name}\" module=\"{module_name}\" breadcrumbs=\"{'.'.join(breadcrumbs)}\""
-        elif objtype == "class":
+        elif objtype in ["class", "function"]:
             module_name = ""
             if breadcrumbs:
                 module_name = breadcrumbs.pop()

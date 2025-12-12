@@ -109,3 +109,127 @@ str
 
 {{< /class >}}"""
     assert expected_content in content
+
+
+def test_autodoc_module(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_module.md")
+    class_content = """\
+{{< class name="ExampleModule" module="example_module" breadcrumbs="" >}}
+{{< signature >}}
+()
+{{< /signature >}}
+
+{{< docstring >}}
+A simple example module to demonstrate Sphinx autodoc capabilities.
+
+{{< /docstring >}}
+
+{{< method name="example_method" class="ExampleModule" module="example_module" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *param1*,
+- *param2*
+
+)
+{{< /signature >}}
+
+{{< docstring >}}
+An example function that adds two parameters.
+
+#### Parameters
+param1
+int: <!---->
+    The first parameter.
+
+param2
+int: <!---->
+    The second parameter.
+
+
+{{< /docstring >}}{{< docstring >}}
+#### Returns
+int
+: <!---->
+    The sum of param1 and param2.
+
+
+{{< /docstring >}}
+
+
+{{< /method >}}
+
+
+
+{{< /class >}}"""
+    assert class_content in content
+    dataclass_content = """\
+{{< class name="ExampleDataClass" module="example_module" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *attribute1*: `int`,
+- *attribute2*: `str`
+
+)
+{{< /signature >}}
+
+{{< docstring >}}
+An example data class for testing Sphinx autodoc.
+
+{{< /docstring >}}
+
+{{< attribute name="attribute1" class="ExampleDataClass" module="example_module" breadcrumbs="" >}}
+{{< signature >}}: `int`
+{{< /signature >}}
+
+{{< docstring >}}
+An integer attribute.
+
+{{< /docstring >}}
+
+{{< /attribute >}}
+
+
+
+{{< attribute name="attribute2" class="ExampleDataClass" module="example_module" breadcrumbs="" >}}
+{{< signature >}}: `str`
+{{< /signature >}}
+
+{{< docstring >}}
+A string attribute.
+
+{{< /docstring >}}
+
+{{< /attribute >}}
+
+
+
+{{< /class >}}"""
+    assert dataclass_content in content
+    function_content = """\
+{{< function name="example_function" module="example_module" breadcrumbs="" >}}
+{{< signature >}}
+(*x*)
+{{< /signature >}}
+
+{{< docstring >}}
+An example function that squares its input.
+
+### Parameters
+x
+int: <!---->
+    An integer to be squared.
+
+
+{{< /docstring >}}{{< docstring >}}
+### Returns
+int
+: <!---->
+    The square of the input integer.
+
+
+{{< /docstring >}}
+
+
+{{< /function >}}"""
+    print(content)
+    assert function_content in content
