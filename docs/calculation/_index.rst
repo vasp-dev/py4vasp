@@ -12,12 +12,11 @@ Available quantities
         :nosignatures:
     {% for quantity in calculation.QUANTITIES %}
         {% if not quantity.startswith("_") -%}
-            ~py4vasp._calculation.{{ quantity }}.
-            {%- for part in quantity.split("_") -%}
-                {{ part.capitalize() }}
-            {%- endfor -%}
+            ~py4vasp.Calculation.{{ quantity }}
         {%- endif -%}
     {% endfor %}
+
+..
     {% for group, members in calculation.GROUPS.items() %}
         {% for member in members %}
             ~py4vasp._calculation.{{ group }}_{{ member }}.
@@ -30,9 +29,3 @@ Available quantities
         {% endfor %}
     {% endfor %}
 
-.. autoclass:: py4vasp.Calculation
-   :members: from_path, from_file, path
-
-.. .. autosummary::
-    :recursive:
-    py4vasp.Calculation
