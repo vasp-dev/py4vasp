@@ -514,9 +514,11 @@ date = "{current_date}"
         if not reference:
             self.content += f"]()"
             return
-        if reference.startswith("py4vasp._calculation"):
+        if reference == "py4vasp.Calculation":
+            reference = "calculation/calculation"
+        elif reference.startswith("py4vasp.Calculation"):
             parts = reference.split(".")
-            assert len(parts) >= 3
+            assert len(parts) >= 3, f"Invalid reference format: {reference}"
             reference = f"calculation/{parts[2]}"
         else:
             reference = reference.removeprefix("py4vasp.")
