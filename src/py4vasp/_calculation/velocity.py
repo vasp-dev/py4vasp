@@ -17,9 +17,7 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     :tag:`TEEND`) unless you set them explicitly in the POSCAR file. Since the
     velocities are not something you typically need, VASP will only store them during
     the simulation if you set :tag:`VELOCITY` = T in the INCAR file. In that case you
-    can read the velocities of each step along the trajectory. If you are only
-    interested in the final velocities, please consider the :data:'~py4vasp.data.CONTCAR`
-    class.
+    can read the velocities of each step along the trajectory.
 
     Examples
     --------
