@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import os
+from enum import member
 from pathlib import Path
 
 from docutils import nodes
@@ -45,9 +46,13 @@ def generate_quantity_docs(app):
             continue
         write_docstring(included_folder, quantity)
         write_hidden_docstring(hidden_folder, quantity)
-    # for group, members in _calculation.GROUPS.items():
-    #     for member in members:
-    #         write_docstring(app, included_folder, f"{group}_{member}")
+    for group, members in _calculation.GROUPS.items():
+        for member in members:
+            quantity = f"{group}_{member}"
+            if not should_write(app, included_folder, quantity):
+                continue
+            write_docstring(included_folder, quantity, title=f"{group}.{member}")
+            # write_hidden_docstring(hidden_folder, quantity)
 
 
 def should_write(app, folder, quantity):
@@ -63,11 +68,13 @@ def should_write(app, folder, quantity):
     return True
 
 
-def write_docstring(folder, quantity):
+def write_docstring(folder, quantity, title=None):
+    if title is None:
+        title = quantity
     outfile = folder / f"{quantity}.rst"
     with open(outfile, "w", encoding="utf-8") as file:
-        file.write(f"{quantity}\n")
-        file.write("=" * len(quantity) + "\n\n")
+        file.write(f"{title}\n")
+        file.write("=" * len(title) + "\n\n")
         file.write(f".. automodule:: py4vasp._calculation.{quantity}\n")
         file.write("   :members:\n")
         file.write("   :inherited-members:\n")

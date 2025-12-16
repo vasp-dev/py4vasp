@@ -514,7 +514,6 @@ These methods also accept selections for specific orbitals if you used VASP with
 
 def test_convert_example_dos_selections(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
-    print(content)
     expected_class_content = """
 {{< method class="example_dos" cname="Dos" name="selections" module="" >}}
 {{< signature >}}

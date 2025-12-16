@@ -52,4 +52,3 @@ def example_function(x):
         The square of the input integer.
     """
     return x * x
-    return x * x

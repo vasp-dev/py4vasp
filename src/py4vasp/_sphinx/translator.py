@@ -1,10 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import pathlib
+from datetime import datetime
 from typing import Optional
 
 from docutils.nodes import NodeVisitor, SkipNode
 
+from py4vasp import _calculation
 from py4vasp._sphinx.anchors_finder import AnchorsFinder
 from py4vasp._sphinx.attribute_info_finder import AttributeInfoFinder
 from py4vasp._sphinx.parameters_info_finder import (
@@ -211,11 +213,8 @@ class HugoTranslator(NodeVisitor):
         This method generates the TOML front matter required by Hugo, which includes
         the document title. It is called only once, when the first title node is visited.
         """
-        from datetime import datetime
-
         if self.frontmatter_created:
             return
-
         current_date = datetime.now().strftime("%Y-%m-%d")
         self.content += f"""\
 +++
@@ -822,14 +821,22 @@ date = "{current_date}"
         if objtype in ["method", "property", "attribute"]:
             assert breadcrumbs, "breadcrumbs should contain at least the class name"
             class_name = breadcrumbs.pop()
-            module_name = breadcrumbs.pop() if breadcrumbs else ""
+            module_name = self._get_module_name(breadcrumbs)
             shortcode_str = f"{objtype} name=\"{name}\" class=\"{class_name}\" module=\"{module_name}\" breadcrumbs=\"{'.'.join(breadcrumbs)}\""
         elif objtype in ["class", "function", "data"]:
-            module_name = breadcrumbs.pop() if breadcrumbs else ""
+            module_name = self._get_module_name(breadcrumbs)
             shortcode_str = f"{objtype} name=\"{name}\" module=\"{module_name}\" breadcrumbs=\"{'.'.join(breadcrumbs)}\""
         else:
             raise NotImplementedError(f"Unsupported objtype '{objtype}' in visit_desc.")
         self.content += f"\n\n{_construct_hugo_shortcode(shortcode_str)}"
+
+    def _get_module_name(self, breadcrumbs):
+        module_name = breadcrumbs.pop() if breadcrumbs else ""
+        for group, members in _calculation.GROUPS.items():
+            for member in members:
+                if module_name == f"{group}_{member}":
+                    return f"{group}.{member}"
+        return module_name
 
     def depart_desc(self, node):
         objtype = self._get_latest_objtype()
