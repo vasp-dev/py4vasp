@@ -13,6 +13,8 @@ ase = import_.optional("ase")
 ase_io = import_.optional("ase.io")
 mdtraj = import_.optional("mdtraj")
 
+__all__ = ["Structure"]
+
 
 @dataclass
 class _Format:
