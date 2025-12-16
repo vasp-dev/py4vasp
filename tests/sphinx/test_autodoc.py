@@ -271,3 +271,29 @@ def test_autosummary(sphinx_app):
 : <!---->
     An inner class for testing nested class documentation."""
     assert expected_content in content
+
+
+def test_multiple_autosummary(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "multiple_autosummary.md")
+    expected_content = """\
+{{< docstring >}}
+This tests whether multiple autosummary directives are correctly processed.
+
+[`ExampleClass`](../example_class/ExampleClass)
+: <!---->
+    This is an example class for testing Sphinx autodoc.
+
+Text in between.
+
+[`ExampleModule`](../example_module/ExampleModule)
+: <!---->
+    A simple example module to demonstrate Sphinx autodoc capabilities.
+
+Text in between.
+
+[`ExampleDataClass`](../example_module/ExampleDataClass)
+: <!---->
+    An example data class for testing Sphinx autodoc.
+
+{{< /docstring >}}"""
+    assert expected_content in content

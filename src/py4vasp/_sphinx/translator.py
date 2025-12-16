@@ -80,7 +80,7 @@ class HugoTranslator(NodeVisitor):
         docutils sections are hierarchical, so we need to convert the tree structure to the
         appropriate number of hash symbols.
         """
-        # print("DEBUG:", document.pformat())
+        print("DEBUG:", document.pformat())
         self.document = document
         self.frontmatter_created = False
         self.section_level = 0
@@ -1246,17 +1246,9 @@ date = "{current_date}"
         pass
 
     def visit_autosummary_table(self, node):
-        self._shortcode_docstring(close=False)
         self._table_style = "autosummary"
 
     def depart_autosummary_table(self, node):
-        # Close docstring for autosummary table content, but not if we need to reopen it
-        if not self._needs_reopen_docstring:
-            self._shortcode_docstring(close=True)
-        # If we had closed the docstring for a compound/admonition, reopen it now
-        else:
-            self._shortcode_docstring()
-            self._needs_reopen_docstring = False
         self._table_style = ""
 
     def visit_table(self, node):
