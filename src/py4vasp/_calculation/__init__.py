@@ -251,20 +251,22 @@ def _make_property(quantity):
     return property(get_quantity, doc=class_.__doc__)
 
 
-class Group:
-    pass
-
-
 def _make_group(group_name, quantities):
     # The Group class for each group is constructed on the fly. Alternatively you could
     # create a Group for every instance needed and construct the required properties as
-    # needed.
-    group = Group()
-    for quantity in quantities:
-        full_name = f"{group_name}_{quantity}"
-        setattr(group, quantity, _make_property(full_name))
+    # needed. It is important that they are distinct classes.
+    def get_group(self):
+        class Group:
+            def __init__(self, calculation):
+                self._path = calculation._path
+                self._file = calculation._file
 
-    return group
+        for quantity in quantities:
+            full_name = f"{group_name}_{quantity}"
+            setattr(Group, quantity, _make_property(full_name))
+        return Group(self)
+
+    return property(get_group)
 
 
 Calculation = _add_all_refinement_classes(Calculation)
