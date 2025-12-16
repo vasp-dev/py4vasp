@@ -52,7 +52,7 @@ def generate_quantity_docs(app):
             if not should_write(app, included_folder, quantity):
                 continue
             write_docstring(included_folder, quantity, title=f"{group}.{member}")
-            # write_hidden_docstring(hidden_folder, quantity)
+            write_hidden_docstring(hidden_folder, group, member=member)
 
 
 def should_write(app, folder, quantity):
@@ -80,7 +80,9 @@ def write_docstring(folder, quantity, title=None):
         file.write("   :inherited-members:\n")
 
 
-def write_hidden_docstring(folder, quantity):
+def write_hidden_docstring(folder, quantity, member=None):
+    if member is not None:
+        quantity = f"{quantity}.{member}"
     outfile = folder / f"{quantity}.rst"
     with open(outfile, "w", encoding="utf-8") as file:
         file.write(f"{quantity}\n")

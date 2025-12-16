@@ -520,7 +520,13 @@ date = "{current_date}"
         elif reference.startswith("py4vasp.Calculation"):
             parts = reference.split(".")
             assert len(parts) >= 3, f"Invalid reference format: {reference}"
-            reference = f"calculation/{parts[2]}"
+            members = _calculation.GROUPS.get(parts[2], [])
+            if members:
+                message = f"Invalid member: {parts[3]} of group {parts[2]}"
+                assert len(parts) >= 4 and parts[3] in members, message
+                reference = f"calculation/{parts[2]}_{parts[3]}"
+            else:
+                reference = f"calculation/{parts[2]}"
         elif reference.startswith("py4vasp._calculation"):
             parts = reference.split(".")
             assert len(parts) >= 3, f"Invalid reference format: {reference}"
