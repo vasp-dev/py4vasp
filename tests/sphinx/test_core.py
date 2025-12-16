@@ -156,11 +156,10 @@ next term
 
 def test_convert_reference(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "reference.md")
-    # doctree = sphinx_app.env.get_doctree("reference")
-    # print(doctree.pformat())
     ## CAREFUL: internal references are first shown as pending_xref nodes,
     ## then converted to inline nodes with class "xref std std-ref"
     ## therefore, the processing by the translator must be done in visit/depart_inline
+    print(content)
 
     # External links
     assert "This is a link to the [VASP website](https://www.vasp.at)." in content

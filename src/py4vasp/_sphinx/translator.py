@@ -513,7 +513,8 @@ date = "{current_date}"
         reference = node.get("reftitle", "")
         anchor = ""
         if not reference:
-            self.content += f"]()"
+            link = node.get("refuri", "")
+            self.content += f"]({link})"
             return
         if reference == "py4vasp.Calculation":
             reference = "calculation/calculation"
