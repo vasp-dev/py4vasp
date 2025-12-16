@@ -511,6 +511,7 @@ date = "{current_date}"
         We clean up the temporary state to avoid interference with other links.
         """
         reference = node.get("reftitle", "")
+        anchor = ""
         if not reference:
             self.content += f"]()"
             return
@@ -520,6 +521,12 @@ date = "{current_date}"
             parts = reference.split(".")
             assert len(parts) >= 3, f"Invalid reference format: {reference}"
             reference = f"calculation/{parts[2]}"
+        elif reference.startswith("py4vasp._calculation"):
+            parts = reference.split(".")
+            assert len(parts) >= 3, f"Invalid reference format: {reference}"
+            reference = f"calculation/{parts[2]}"
+            if len(parts) >= 5:
+                anchor = f"{parts[3]}-{parts[4]}"
         else:
             reference = reference.removeprefix("py4vasp.")
             reference = reference.replace(".", "/")
@@ -528,7 +535,11 @@ date = "{current_date}"
         source = self.document.source
         source = source.removesuffix("_index").removesuffix("index")
         source = pathlib.Path(source)
-        self.content += f"]({reference.relative_to(source, walk_up=True).as_posix()})"
+        relative_path = reference.relative_to(source, walk_up=True).as_posix()
+        if anchor:
+            self.content += f"]({relative_path}#{anchor})"
+        else:
+            self.content += f"]({relative_path})"
 
     def visit_target(self, node):
         """Create HTML anchor tags for internal reference targets.
