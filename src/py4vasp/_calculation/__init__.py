@@ -2,7 +2,6 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import importlib
 import pathlib
-from enum import member
 
 from py4vasp import exception
 from py4vasp._util import convert
