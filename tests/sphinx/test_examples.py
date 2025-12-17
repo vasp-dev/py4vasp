@@ -804,3 +804,206 @@ Graph(series=[Series(..., label='total', ...)], ...)
 
 """
     assert expected_class_content in content
+
+def test_complicated_signatures_no_return_info(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content_no_return_info = """\
+{{< function name="no_return_info" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `None`
+{{< /signature >}}
+
+{{< docstring >}}
+Function without return type information in the docstring.
+
+
+
+### Parameters
+
+
+
+*a*: `int`
+: <!---->
+    An integer parameter.
+
+*b*: `str`
+: <!---->
+    A string parameter.
+
+### Returns
+
+`None`
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content_no_return_info in content
+
+def test_complicated_signatures_no_return_description(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content_no_return_description = """\
+{{< function name="no_return_description" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with return type in signature but no Returns field.
+
+
+
+### Returns
+
+`int`
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content_no_return_description in content
+
+def test_complicated_signatures_return_with_description(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content_with_return_description = """\
+{{< function name="return_with_description" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with return type and description in Returns field.
+
+
+
+### Returns
+
+
+`int`
+: <!---->
+    The sum of the integer and the length of the string.
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content_with_return_description in content
+
+def test_complicated_signatures_return_with_type_only(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content_with_type_only = """\
+{{< function name="return_with_type_only" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with return type only in Returns field.
+
+
+
+### Returns
+
+`int`
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content_with_type_only in content
+
+@pytest.mark.skip(reason="Currently the return type is inferred as 'int' but no description is shown")
+def test_complicated_signatures_return_with_description_only(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content_with_description_only = """\
+{{< function name="return_with_description_only" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with return description only in Returns field.
+
+
+
+### Returns
+
+`int`
+: <!---->
+    The sum of the integer and the length of the string.
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content_with_description_only in content
+
+@pytest.mark.skip(reason="Currently the return type is inferred as '-' but no description is shown")
+def test_complicated_signatures_return_with_no_info(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    print(content)
+    expected_content_with_no_info = """\
+{{< function name="return_with_no_info" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `-`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with no return type information.
+
+
+
+### Parameters
+
+
+
+*a*: `int`
+: <!---->
+    An integer parameter.
+
+*b*: `str`
+: <!---->
+    A string parameter.
+
+### Returns
+
+`-`
+: <!---->
+    Returns a multiple of a.
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content_with_no_info in content

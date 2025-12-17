@@ -55,7 +55,7 @@ It demonstrates how to document a class with attributes and methods.
 
 {{< method name="get_value" class="ExampleClass" module="example_class" breadcrumbs="" >}}
 {{< signature >}}
-()
+() → `int`
 {{< /signature >}}
 
 {{< docstring >}}
@@ -134,7 +134,7 @@ A simple example module to demonstrate Sphinx autodoc capabilities.
 - *param1*,
 - *param2*
 
-)
+) → `int`
 {{< /signature >}}
 
 {{< docstring >}}
@@ -212,7 +212,7 @@ A string attribute.
     function_content = """\
 {{< function name="example_function" module="example_module" breadcrumbs="" >}}
 {{< signature >}}
-(*x*)
+(*x*) → `int`
 {{< /signature >}}
 
 {{< docstring >}}
@@ -303,9 +303,9 @@ Text in between.
     assert expected_content in content
 
 
-@pytest.mark.skip(
-    reason="Currently, parsing the three equivalent functions does not produce the same result."
-)
+# @pytest.mark.skip(
+#     reason="Currently, parsing the three equivalent functions does not produce the same result."
+# )
 def test_autodoc_equivalent_function(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "equivalent_function.md")
     expected_content = """\

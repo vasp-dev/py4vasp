@@ -46,6 +46,10 @@ autodoc_type_aliases = {
     "ArrayLike": "ArrayLike",
     "Buffer | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | float | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes]": "ArrayLike",
     "float | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes]": "ArrayLike",
+    "Buffer | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes]": "ArrayLike",
+    "float | Buffer | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes] | None": "float | ArrayLike | None",
+    "ndarray": "np.ndarray",
+    "DataFrame": "pd.DataFrame",
 }
 # Autodoc configuration for inherited members
 autodoc_inherit_docstrings = True
@@ -59,11 +63,15 @@ napoleon_include_special_with_doc = False
 napoleon_use_param = True
 napoleon_use_rtype = True
 napoleon_use_ivar = False
-napoleon_preprocess_types = True
+napoleon_preprocess_types = False
 napoleon_type_aliases = {
     "ArrayLike": "ArrayLike",
     "Buffer | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | float | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes]": "ArrayLike",
     "float | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes]": "ArrayLike",
+    "Buffer | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes]": "ArrayLike",
+    "float | Buffer | _SupportsArray[dtype[Any]] | _NestedSequence[_SupportsArray[dtype[Any]]] | bool | int | complex | str | bytes | _NestedSequence[bool | int | float | complex | str | bytes] | None": "float | ArrayLike | None",
+    "ndarray": "np.ndarray",
+    "DataFrame": "pd.DataFrame",
 }
 napoleon_attr_annotations = True
 napoleon_include_default_value = True

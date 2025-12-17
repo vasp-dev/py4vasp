@@ -26,18 +26,25 @@ def _extract_type_text(node) -> str:
 
 
 class ReturnTypeFinder(NodeVisitor):
-    """A docutils NodeVisitor that finds return types in Sphinx document trees."""
+    """A docutils NodeVisitor that finds return types in Sphinx document trees.
+    
+    Extracts return type from both the function signature annotation and the 
+    Returns field in the docstring, with signature taking priority.
+    """
 
     def __init__(self, document):
         super().__init__(document)
-        self._return_type = None
-        self._in_returns_type_field = False
+        self._signature_return_type = None
+        self._docstring_return_type = None
+        self._in_returns_field = False
 
     def __str__(self):
         return "\n".join(self.lines) + "\n"
 
-    def find_return_type(self, node) -> str:
+    def find_return_type(self, node) -> tuple[str, str]:
         """Retrieves the return type from a desc_signature node.
+
+        Extracts return type from both signature annotation and docstring Returns field.
 
         Parameters
         ----------
@@ -46,20 +53,23 @@ class ReturnTypeFinder(NodeVisitor):
 
         Returns
         -------
-        str
-            The return type of the function or method.
+        tuple[str, str]
+            A tuple of (signature_return_type, docstring_return_type).
+            Either can be None or empty string if not present.
         """
         if node.__class__.__name__ != "desc_signature":
             raise UserWarning(
-                "Node passed to get_return_type is not a desc_signature node. Return type not retrieved."
+                "Node passed to find_return_type is not a desc_signature node. Return type not retrieved."
             )
         else:
-            self._return_type = ""
+            self._signature_return_type = ""
+            self._docstring_return_type = ""
             node.parent.walkabout(self)
-        return self._return_type
+        return self._signature_return_type, self._docstring_return_type
 
     def unknown_visit(self, node):
-        raise SkipNode
+        # Don't skip unknown nodes, let traversal continue
+        pass
 
     def unknown_departure(self, node):
         """Handle departure from nodes that don't have specific depart methods.
@@ -83,11 +93,26 @@ class ReturnTypeFinder(NodeVisitor):
         pass
 
     def visit_field(self, node):
+        # Check if this is a Returns or Return type field
+        for child in node.children:
+            if child.__class__.__name__ == "field_name":
+                field_name = child.astext().strip().lower()
+                if field_name == "return type":
+                    # Extract the return type from this field's body
+                    for field_child in node.children:
+                        if field_child.__class__.__name__ == "field_body":
+                            # The type is in a paragraph, possibly in a literal node
+                            type_text = field_child.astext().strip()
+                            if type_text and not self._docstring_return_type:
+                                self._set_docstring_return_type_if_applicable(type_text)
+                elif "return" in field_name and field_name != "return type":
+                    self._in_returns_field = True
+                break
         pass
 
     def visit_desc_returns(self, node):
-        if not (self._return_type):
-            self._return_type = (
+        if not (self._signature_return_type):
+            self._signature_return_type = (
                 _extract_type_text(node)
                 .lstrip(" -> ")
                 .strip()
@@ -96,22 +121,48 @@ class ReturnTypeFinder(NodeVisitor):
             )
         raise SkipNode
 
-    def visit_field_name(self, node):
-        if node.astext().lower() == "return type":
-            self._in_returns_type_field = True
-        raise SkipNode
-
-    def visit_field_body(self, node):
-        if self._in_returns_type_field:
-            if not (self._return_type):
-                self._return_type = (
-                    _extract_type_text(node)
-                    .strip()
-                    .replace("` or `", " or ")
-                    .replace(" or ", " | ")
-                )
-        raise SkipNode
-
-    def depart_field(self, node):
-        self._in_returns_type_field = False
+    def visit_section(self, node):
+        # Check if this is a Returns section
+        for child in node.children:
+            if child.__class__.__name__ == "title":
+                title_text = child.astext().lower()
+                if "return" in title_text:
+                    self._in_returns_field = True
+                break
+    
+    def depart_section(self, node):
+        # Reset the flag when leaving any section
+        self._in_returns_field = False
+    
+    def visit_definition_list(self, node):
+        # NumPy-style Returns sections are converted to definition lists
         pass
+    
+    def visit_definition_list_item(self, node):        
+        if self._in_returns_field and not self._docstring_return_type:
+            # The term contains the type, definition contains the description
+            for child in node.children:
+                if child.__class__.__name__ == "term":
+                    term_text = child.astext().strip().strip('`')
+                    self._set_docstring_return_type_if_applicable(term_text)
+                    break
+
+    def _set_docstring_return_type_if_applicable(self, term_text: str):
+        """Set the docstring return type if the term text looks like a type."""
+        if not self._docstring_return_type:
+            # if it looks like a type, set it
+            # heuristic: types are usually short, single words or simple unions
+            # heuristic: types are given on a separate line from their description
+            # heuristic: a description might not be available
+            # heuristic: the entire line might be a description
+            separated = term_text.split("\n")
+            if (len(separated[0].strip().split(" "))) == 1:
+                self._docstring_return_type = separated[0].strip()
+            elif (" | " in separated[0] or " or " in separated[0]) and all(
+                len(part.strip().split(" ")) == 1
+                for part in separated[0].replace(" or ", " | ").split(" | ")
+            ):
+                self._docstring_return_type = separated[0].strip().replace(" or ", " | ")
+            else:
+                self._docstring_return_type = "-"
+

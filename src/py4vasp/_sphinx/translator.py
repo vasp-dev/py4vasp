@@ -80,7 +80,6 @@ class HugoTranslator(NodeVisitor):
         docutils sections are hierarchical, so we need to convert the tree structure to the
         appropriate number of hash symbols.
         """
-        # print("DEBUG:", document.pformat())
         self.document = document
         self.frontmatter_created = False
         self.section_level = 0
@@ -102,6 +101,9 @@ class HugoTranslator(NodeVisitor):
         self._prevent_move_content = False
         self._prevent_content_stash_deletion = False
         self._content_stash = []
+        self._in_returns_section = False
+        self._returns_has_definition_list = False
+        self._returns_paragraph_content = []
 
     def __str__(self):
         return "\n".join(self.lines) + "\n"
@@ -236,6 +238,17 @@ date = "{current_date}"
         # Open docstring for content sections (between desc nodes)
         if self._is_shortcode_sphinx_open:
             self._shortcode_docstring(close=False)
+        
+        # Check if this is a Returns section
+        section_title = ""
+        for child in node.children:
+            if child.__class__.__name__ == "title":
+                section_title = child.astext().lower()
+                break
+        if "return" in section_title:
+            self._in_returns_section = True
+            self._returns_has_definition_list = False
+            self._returns_paragraph_content = []
 
     def depart_section(self, node):
         """Decrement section nesting level when leaving a section.
@@ -244,6 +257,21 @@ date = "{current_date}"
         nesting level after processing all content within a section. Without this,
         subsequent sections at the same level would get incorrect header depths.
         """
+        # Handle Returns section with paragraph-only content
+        if self._in_returns_section:
+            if not self._returns_has_definition_list and self._returns_paragraph_content and self._current_return_type:
+                # We have a return type from signature but docstring only has description paragraphs
+                # Format as definition list: type on first line, description indented
+                self._strip_blank_lines()
+                formatted_returns = f"{self._current_return_type}\n: <!---->\n"
+                for para_content in self._returns_paragraph_content:
+                    formatted_returns += f"    {para_content}\n"
+                formatted_returns += "\n"
+                self.lines.append(formatted_returns)
+            self._in_returns_section = False
+            self._returns_has_definition_list = False
+            self._returns_paragraph_content = []
+        
         # Close docstring for content sections, but not if we need to reopen it
         # (e.g., after a compound or admonition)
         if self._is_shortcode_docstring_open and not self._needs_reopen_docstring:
@@ -258,7 +286,11 @@ date = "{current_date}"
         Inside lists only a single newline is required because the list item separate
         the paragraphs.
         """
-        pass
+        # If we're in a Returns section, capture paragraph content for special formatting
+        # BUT NOT if we're already processing field_body content (which has its own handling)
+        if self._in_returns_section and not self._returns_has_definition_list and not self._prevent_move_content:
+            self._capturing_returns_paragraph = True
+            self._paragraph_start_pos = len(self.content)
 
     def depart_paragraph(self, node):
         """Add newline after paragraph content for proper Markdown separation.
@@ -267,8 +299,18 @@ date = "{current_date}"
         rather than visit because we need the newline after all the paragraph's content
         has been processed, not before it.
         """
-        self._move_content_to_lines()
-        self._add_new_line()
+        # If we captured a Returns paragraph, save it and skip normal processing
+        if getattr(self, "_capturing_returns_paragraph", False):
+            # Only extract the paragraph content, preserve what was there before
+            paragraph_start = getattr(self, "_paragraph_start_pos", 0)
+            paragraph_content = self.content[paragraph_start:].strip()
+            self._returns_paragraph_content.append(paragraph_content)
+            # Restore content to what it was before the paragraph
+            self.content = self.content[:paragraph_start]
+            self._capturing_returns_paragraph = False
+        else:
+            self._move_content_to_lines()
+            self._add_new_line()
 
     def visit_rubric(self, node):
         self.content += "\n" + (self.section_level + 1) * "#" + " "
@@ -425,6 +467,9 @@ date = "{current_date}"
 
     def visit_definition_list(self, node):
         self.list_stack.append("description")
+        # Mark that Returns section has a definition list (type+description format)
+        if self._in_returns_section:
+            self._returns_has_definition_list = True
 
     def depart_definition_list(self, node):
         self._depart_list()
@@ -712,7 +757,7 @@ date = "{current_date}"
     # Footnote handling methods
 
     def visit_footnote_reference(self, node):
-        self.content = self.content.strip() + "[^"
+        self.content += self.content.strip() + "[^"
 
     def depart_footnote_reference(self, node):
         self.content += "]"
@@ -724,7 +769,7 @@ date = "{current_date}"
         self.indentation_stack.pop()
 
     def visit_label(self, node):
-        self.content = "[^"
+        self.content += "[^"
 
     def depart_label(self, node):
         self.content += "]:"
@@ -822,6 +867,11 @@ date = "{current_date}"
             breadcrumbs[0] = "calculation"
         objtype = self._get_latest_objtype()
         name = self._get_latest_name()
+        
+        # Reset Returns section tracking for each new desc (function/method/class)
+        self._in_returns_section = False
+        self._returns_has_definition_list = False
+        self._returns_paragraph_content = []
 
         self._shortcode_docstring(close=True)
 
@@ -923,9 +973,14 @@ date = "{current_date}"
     def _get_return_type(self, node):
         """Get the return type annotation from a desc_signature node."""
         return_type_finder = ReturnTypeFinder(self.document)
-        return_type = return_type_finder.find_return_type(node)
+        signature_return_type, docstring_return_type = return_type_finder.find_return_type(node)
+        
+        # Priority: signature type > docstring type
+        return_type = signature_return_type or docstring_return_type
+        
         if return_type:
-            self._current_signature_dict["sig_return_type"] = return_type
+            if signature_return_type:
+                self._current_signature_dict["sig_return_type"] = signature_return_type
             self._current_return_type = return_type
             self._expect_returns_field = True
         return return_type
@@ -952,16 +1007,18 @@ date = "{current_date}"
             # For attributes/properties, show type and default in signature
             if objtype in ["property", "attribute"]:
                 type_annotation, default_value = self._get_attribute_info(node)
+                type_str = ""
+                default_str = ""
                 if type_annotation or default_value:
                     type_str = f": `{type_annotation}`" if type_annotation else ""
                     default_str = f" = {default_value}" if default_value else ""
-                    self.content += f"{type_str}{default_str}"
                 # Try to get return type for properties
                 if objtype == "property":
                     return_type = self._get_return_type(node)
-                    if return_type:
-                        return_str = f" → `{return_type}`"
-                        self.content += return_str
+                    if return_type and not type_annotation:
+                        type_annotation = return_type
+                        type_str = f": `{type_annotation}`"
+                self.content += f"{type_str}{default_str}"
             else:
                 # For methods/functions/classes, show parameters normally
                 parameters = self._get_parameter_list_and_types(
@@ -1191,29 +1248,105 @@ date = "{current_date}"
             self._content_stash = []
 
     def _restructure_returns_field_body(self):
+        """Restructure the Returns field body to have consistent type+description format.
+        
+        Handles these cases:
+        1. Signature has type, docstring has only description -> use signature type
+        2. Signature has type, docstring has type+description -> use signature type (priority)
+        3. No signature type, docstring has type+description -> use docstring type (already in signature)
+        4. No signature type, docstring has only description -> no type, just description
+        
+        The docstring can have two formats:
+        - Type+description: First line is type (no indent), subsequent lines are indented description
+        - Description only: All lines at same indentation level (description only)
+        """
         pure_str_content = self._content_stash.copy()
-        new_str_content = "\n"
-        if self._current_return_type:
-            new_str_content = f"\n`{self._current_return_type}`"
-        new_str_content += "\n: <!---->"
+        
+        # Separate type and description from the docstring Returns field
+        docstring_type = None
+        description_lines = []
+        
+        if pure_str_content:
+            # Filter out empty lines
+            non_empty_lines = [c for c in pure_str_content if c.strip()]
+            
+            if non_empty_lines:
+                # Check if this is type+description format by looking for indentation pattern
+                # If the first non-empty line has less indentation than the rest, it's likely the type
+                first_line = non_empty_lines[0]
+                first_indent = len(first_line) - len(first_line.lstrip())
+                
+                # Check if subsequent lines have more indentation
+                has_type_format = False
+                if len(non_empty_lines) > 1:
+                    # Check if at least one subsequent line has more indentation
+                    for line in non_empty_lines[1:]:
+                        line_indent = len(line) - len(line.lstrip())
+                        if line_indent > first_indent:
+                            has_type_format = True
+                            break
+                
+                if has_type_format:
+                    # First line is the type, rest is description
+                    docstring_type = first_line.strip()
+                    # Remove backticks if present (for backward compatibility)
+                    if docstring_type.startswith("`") and docstring_type.endswith("`"):
+                        docstring_type = docstring_type[1:-1]
+                    # Collect description lines (skip first line which is the type)
+                    # Find index of first line in original content
+                    first_line_idx = next(i for i, line in enumerate(pure_str_content) if line.strip() == first_line.strip())
+                    description_lines = pure_str_content[first_line_idx + 1:]
+                else:
+                    # No type in docstring field body, everything is description
+                    description_lines = pure_str_content
+        
+        # Determine final return type (signature/already set takes priority)
+        final_return_type = self._current_return_type or docstring_type
 
-        # Filter out empty lines and find minimum indentation
-        non_empty_lines = [c for c in pure_str_content if c.strip()]
-        if non_empty_lines:
-            min_indent = min(len(c) - len(c.lstrip()) for c in non_empty_lines)
-            # Process each line: remove min indent, add 4 spaces
-            for c in pure_str_content:
-                if c.strip():
-                    # Remove the backtick wrapping if present (for backward compatibility)
-                    line = (
-                        c.lstrip("*   `").rstrip("`")
-                        if c.startswith("*   `") and c.endswith("`")
-                        else c
-                    )
-                    # Remove base indentation and add exactly 4 spaces
-                    new_str_content += "\n    " + line[min_indent:]
-                # Skip empty lines entirely - don't add blank lines within the description
-
+        # Build the output
+        new_str_content = ""
+        
+        if final_return_type and final_return_type != "-":
+            # We have a type, format as definition list
+            new_str_content = f"\n`{final_return_type}`\n: <!---->"
+            
+            # Add description if present
+            if description_lines:
+                # Find minimum indentation in description lines
+                desc_non_empty = [c for c in description_lines if c.strip()]
+                if desc_non_empty:
+                    min_indent = min(len(c) - len(c.lstrip()) for c in desc_non_empty)
+                    # Process each line: remove min indent, add 4 spaces
+                    for c in description_lines:
+                        if c.strip():
+                            # Remove the backtick/asterisk wrapping if present
+                            line = (
+                                c.lstrip("*   `").rstrip("`")
+                                if c.startswith("*   `") and c.endswith("`")
+                                else c.lstrip("*   *").rstrip("*")
+                                if c.startswith("*   *") and c.endswith("*")
+                                else c
+                            )
+                            # Remove base indentation and add exactly 4 spaces
+                            new_str_content += "\n    " + line[min_indent:]
+        else:
+            # No type available, just output description
+            if description_lines:
+                new_str_content = f"\n`-`\n: <!---->"
+                desc_non_empty = [c for c in description_lines if c.strip()]
+                if desc_non_empty:
+                    min_indent = min(len(c) - len(c.lstrip()) for c in desc_non_empty)
+                    for c in description_lines:
+                        if c.strip():
+                            line = (
+                                c.lstrip("*   `").rstrip("`")
+                                if c.startswith("*   `") and c.endswith("`")
+                                else c.lstrip("*   *").rstrip("*")
+                                if c.startswith("*   *") and c.endswith("*")
+                                else c
+                            )
+                            new_str_content += "\n    " + line[min_indent:]
+        
         self.content += new_str_content + "\n\n"
         if not (self._prevent_content_stash_deletion):
             self._content_stash = []
