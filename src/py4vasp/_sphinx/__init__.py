@@ -57,6 +57,9 @@ def generate_quantity_docs(app):
 def should_write(app, folder, quantity):
     if quantity.startswith("_"):
         return False
+    if quantity == "electron_phonon_bandgap":
+        # Handled manually to adjust the order of classes
+        return False
     outfile = folder / f"{quantity}.rst"
     if outfile.exists():
         infile = app.srcdir / f"../src/py4vasp/_calculation/{quantity}.py"

@@ -80,7 +80,7 @@ class HugoTranslator(NodeVisitor):
         docutils sections are hierarchical, so we need to convert the tree structure to the
         appropriate number of hash symbols.
         """
-        print("DEBUG:", document.pformat())
+        # print("DEBUG:", document.pformat())
         self.document = document
         self.frontmatter_created = False
         self.section_level = 0
@@ -353,6 +353,9 @@ date = "{current_date}"
         Matching backticks are required to properly delimit the code span.
         Skip if this literal contained a cross-reference.
         """
+        if getattr(self, "_table_style", "") == "autosummary":
+            for quantity_name, alias in _calculation.GROUP_TYPE_ALIAS.items():
+                self.content = self.content.replace(quantity_name, alias)
         if not getattr(self, "_literal_has_xref", False):
             self.content += "`"
         self._literal_has_xref = False
