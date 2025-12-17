@@ -9,7 +9,7 @@ application = pytest.importorskip("sphinx.application")
 
 @pytest.fixture(scope="module")
 def sphinx_app(tmp_path_factory, not_core):
-    if sys.version_info <= (3, 11):
+    if sys.version_info < (3, 12):
         pytest.skip("Sphinx autodoc tests require Python 3.12 or higher.")
     tmp_path = tmp_path_factory.mktemp("sphinx")
     srcdir = "tests/sphinx/autodoc"
