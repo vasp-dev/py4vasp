@@ -825,7 +825,7 @@ date = "{current_date}"
 
         self._shortcode_docstring(close=True)
 
-        if objtype in ["method", "property", "attribute"]:
+        if objtype in ["attribute", "method", "property"]:
             assert breadcrumbs, "breadcrumbs should contain at least the class name"
             class_name = breadcrumbs.pop()
             should_skip = (
@@ -838,7 +838,7 @@ date = "{current_date}"
                 raise SkipNode
             module_name = self._get_module_name(breadcrumbs)
             shortcode_str = f"{objtype} name=\"{name}\" class=\"{class_name}\" module=\"{module_name}\" breadcrumbs=\"{'.'.join(breadcrumbs)}\""
-        elif objtype in ["class", "function", "data"]:
+        elif objtype in ["class", "data", "exception", "function"]:
             module_name = self._get_module_name(breadcrumbs)
             shortcode_str = f"{objtype} name=\"{name}\" module=\"{module_name}\" breadcrumbs=\"{'.'.join(breadcrumbs)}\""
         else:

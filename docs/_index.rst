@@ -145,13 +145,16 @@ which we found to be more robust than pip.
    :glob:
 
    calculation/*
-   
+
 .. currentmodule:: py4vasp
 
 .. autosummary::
+  :nosignatures:
 
    calculation
    Calculation
+   plot
+   exception
 
 
 ----------------------------------------------------------------------------------------
