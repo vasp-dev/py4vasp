@@ -5,15 +5,15 @@
 TEST ?= tests
 
 test:
-	poetry run pytest $(TEST)
+	pytest $(TEST)
 
 coverage:
-	poetry run pytest --cov=py4vasp --cov-report html
+	pytest --cov=py4vasp --cov-report html
 
 format: import style
 
 style:
-	poetry run black .
+	black .
 
 import:
-	poetry run isort .
+	isort .
