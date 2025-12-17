@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from enum import member
 import importlib
 import pathlib
 
@@ -45,6 +46,26 @@ GROUPS = {
     "exciton": ("density", "eigenvector"),
     "phonon": ("band", "dos", "mode"),
 }
+GROUP_TYPE_ALIAS = {
+    convert.to_camelcase(f"{group}_{member}"): f"{group}.{member}"
+    for group, members in GROUPS.items()
+    for member in members
+}
+
+AUTOSUMMARY_QUANTITIES = [
+    (quantity, f"~py4vasp.Calculation.{quantity}")
+    for quantity in QUANTITIES
+    if not quantity.startswith("_")
+]
+AUTOSUMMARY_GROUPS = [
+    (
+        f"{group}.{member}",
+        f"~py4vasp._calculation.{group}_{member}.{convert.to_camelcase(f"{group}_{member}")}",
+    )
+    for group, members in GROUPS.items()
+    for member in members
+]
+AUTOSUMMARIES = sorted(AUTOSUMMARY_QUANTITIES + AUTOSUMMARY_GROUPS)
 
 __all__ = QUANTITIES
 
