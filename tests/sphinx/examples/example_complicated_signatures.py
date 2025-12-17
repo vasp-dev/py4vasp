@@ -10,6 +10,7 @@ def no_return_info(a: int, b: str) -> None:
     """
     return None
 
+
 def no_return_description(a: int, b: str):
     """Function with return type in signature but no Returns field.
 
@@ -18,6 +19,7 @@ def no_return_description(a: int, b: str):
     int
     """
     return a + len(b)
+
 
 def return_with_description(a: int, b: str):
     """Function with return type and description in Returns field.
@@ -29,6 +31,7 @@ def return_with_description(a: int, b: str):
     """
     return a + len(b)
 
+
 def return_with_type_only(a: int, b: str):
     """Function with return type only in Returns field.
 
@@ -38,6 +41,7 @@ def return_with_type_only(a: int, b: str):
     """
     return a + len(b)
 
+
 def return_with_description_only(a: int, b: str) -> int:
     """Function with return description only in Returns field.
 
@@ -46,6 +50,7 @@ def return_with_description_only(a: int, b: str) -> int:
     The sum of the integer and the length of the string.
     """
     return a + len(b)
+
 
 def return_with_no_info(a: int, b: str):
     """Function with no return type information.

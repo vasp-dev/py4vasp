@@ -27,8 +27,8 @@ def _extract_type_text(node) -> str:
 
 class ReturnTypeFinder(NodeVisitor):
     """A docutils NodeVisitor that finds return types in Sphinx document trees.
-    
-    Extracts return type from both the function signature annotation and the 
+
+    Extracts return type from both the function signature annotation and the
     Returns field in the docstring, with signature taking priority.
     """
 
@@ -129,21 +129,21 @@ class ReturnTypeFinder(NodeVisitor):
                 if "return" in title_text:
                     self._in_returns_field = True
                 break
-    
+
     def depart_section(self, node):
         # Reset the flag when leaving any section
         self._in_returns_field = False
-    
+
     def visit_definition_list(self, node):
         # NumPy-style Returns sections are converted to definition lists
         pass
-    
-    def visit_definition_list_item(self, node):        
+
+    def visit_definition_list_item(self, node):
         if self._in_returns_field and not self._docstring_return_type:
             # The term contains the type, definition contains the description
             for child in node.children:
                 if child.__class__.__name__ == "term":
-                    term_text = child.astext().strip().strip('`')
+                    term_text = child.astext().strip().strip("`")
                     self._set_docstring_return_type_if_applicable(term_text)
                     break
 
@@ -162,7 +162,8 @@ class ReturnTypeFinder(NodeVisitor):
                 len(part.strip().split(" ")) == 1
                 for part in separated[0].replace(" or ", " | ").split(" | ")
             ):
-                self._docstring_return_type = separated[0].strip().replace(" or ", " | ")
+                self._docstring_return_type = (
+                    separated[0].strip().replace(" or ", " | ")
+                )
             else:
                 self._docstring_return_type = "-"
-

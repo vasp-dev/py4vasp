@@ -238,7 +238,7 @@ date = "{current_date}"
         # Open docstring for content sections (between desc nodes)
         if self._is_shortcode_sphinx_open:
             self._shortcode_docstring(close=False)
-        
+
         # Check if this is a Returns section
         section_title = ""
         for child in node.children:
@@ -259,7 +259,11 @@ date = "{current_date}"
         """
         # Handle Returns section with paragraph-only content
         if self._in_returns_section:
-            if not self._returns_has_definition_list and self._returns_paragraph_content and self._current_return_type:
+            if (
+                not self._returns_has_definition_list
+                and self._returns_paragraph_content
+                and self._current_return_type
+            ):
                 # We have a return type from signature but docstring only has description paragraphs
                 # Format as definition list: type on first line, description indented
                 self._strip_blank_lines()
@@ -271,7 +275,7 @@ date = "{current_date}"
             self._in_returns_section = False
             self._returns_has_definition_list = False
             self._returns_paragraph_content = []
-        
+
         # Close docstring for content sections, but not if we need to reopen it
         # (e.g., after a compound or admonition)
         if self._is_shortcode_docstring_open and not self._needs_reopen_docstring:
@@ -288,7 +292,11 @@ date = "{current_date}"
         """
         # If we're in a Returns section, capture paragraph content for special formatting
         # BUT NOT if we're already processing field_body content (which has its own handling)
-        if self._in_returns_section and not self._returns_has_definition_list and not self._prevent_move_content:
+        if (
+            self._in_returns_section
+            and not self._returns_has_definition_list
+            and not self._prevent_move_content
+        ):
             self._capturing_returns_paragraph = True
             self._paragraph_start_pos = len(self.content)
 
@@ -867,7 +875,7 @@ date = "{current_date}"
             breadcrumbs[0] = "calculation"
         objtype = self._get_latest_objtype()
         name = self._get_latest_name()
-        
+
         # Reset Returns section tracking for each new desc (function/method/class)
         self._in_returns_section = False
         self._returns_has_definition_list = False
@@ -973,11 +981,16 @@ date = "{current_date}"
     def _get_return_type(self, node):
         """Get the return type annotation from a desc_signature node."""
         return_type_finder = ReturnTypeFinder(self.document)
-        signature_return_type, docstring_return_type = return_type_finder.find_return_type(node)
-        
+        signature_return_type, docstring_return_type = (
+            return_type_finder.find_return_type(node)
+        )
+
+        # Store docstring return type for later check
+        self._docstring_return_type = docstring_return_type
+
         # Priority: signature type > docstring type
         return_type = signature_return_type or docstring_return_type
-        
+
         if return_type:
             if signature_return_type:
                 self._current_signature_dict["sig_return_type"] = signature_return_type
@@ -1148,11 +1161,21 @@ date = "{current_date}"
                 break
 
         if field_name == "return type":
-            if not (self._current_return_type):
-                self._current_return_type = getattr(
-                    self._current_signature_dict, "sig_return_type", None
-                )
-            raise SkipNode
+            # Check if this "Return type" field actually contains a description
+            # (when Napoleon incorrectly parses a description-only Returns section)
+            if getattr(self, "_docstring_return_type", None) == "-":
+                # Treat this as a Returns field with description only
+                self.content += self._get_formatted_field_header("Returns")
+                self._in_returns_field = True
+                self._move_content_to_lines()
+                return
+            else:
+                # Normal return type - skip it
+                if not (self._current_return_type):
+                    self._current_return_type = getattr(
+                        self._current_signature_dict, "sig_return_type", None
+                    )
+                raise SkipNode
 
         if field_name == "returns":
             self.content += self._get_formatted_field_header("Returns")
@@ -1249,43 +1272,44 @@ date = "{current_date}"
 
     def _restructure_returns_field_body(self):
         """Restructure the Returns field body to have consistent type+description format.
-        
+
         Handles these cases:
         1. Signature has type, docstring has only description -> use signature type
         2. Signature has type, docstring has type+description -> use signature type (priority)
         3. No signature type, docstring has type+description -> use docstring type (already in signature)
         4. No signature type, docstring has only description -> no type, just description
-        
+
         The docstring can have two formats:
         - Type+description: First line is type (no indent), subsequent lines are indented description
+        - Type only: Single line with type only
         - Description only: All lines at same indentation level (description only)
         """
         pure_str_content = self._content_stash.copy()
-        
+
         # Separate type and description from the docstring Returns field
         docstring_type = None
         description_lines = []
-        
+
         if pure_str_content:
             # Filter out empty lines
             non_empty_lines = [c for c in pure_str_content if c.strip()]
-            
+
             if non_empty_lines:
                 # Check if this is type+description format by looking for indentation pattern
                 # If the first non-empty line has less indentation than the rest, it's likely the type
                 first_line = non_empty_lines[0]
                 first_indent = len(first_line) - len(first_line.lstrip())
-                
+
                 # Check if subsequent lines have more indentation
                 has_type_format = False
                 if len(non_empty_lines) > 1:
                     # Check if at least one subsequent line has more indentation
-                    for line in non_empty_lines[1:]:
+                    for line in non_empty_lines[1:2]:
                         line_indent = len(line) - len(line.lstrip())
                         if line_indent > first_indent:
                             has_type_format = True
                             break
-                
+
                 if has_type_format:
                     # First line is the type, rest is description
                     docstring_type = first_line.strip()
@@ -1294,22 +1318,26 @@ date = "{current_date}"
                         docstring_type = docstring_type[1:-1]
                     # Collect description lines (skip first line which is the type)
                     # Find index of first line in original content
-                    first_line_idx = next(i for i, line in enumerate(pure_str_content) if line.strip() == first_line.strip())
-                    description_lines = pure_str_content[first_line_idx + 1:]
+                    first_line_idx = next(
+                        i
+                        for i, line in enumerate(pure_str_content)
+                        if line.strip() == first_line.strip()
+                    )
+                    description_lines = pure_str_content[first_line_idx + 1 :]
                 else:
                     # No type in docstring field body, everything is description
                     description_lines = pure_str_content
-        
+
         # Determine final return type (signature/already set takes priority)
         final_return_type = self._current_return_type or docstring_type
 
         # Build the output
         new_str_content = ""
-        
+
         if final_return_type and final_return_type != "-":
             # We have a type, format as definition list
             new_str_content = f"\n`{final_return_type}`\n: <!---->"
-            
+
             # Add description if present
             if description_lines:
                 # Find minimum indentation in description lines
@@ -1323,14 +1351,20 @@ date = "{current_date}"
                             line = (
                                 c.lstrip("*   `").rstrip("`")
                                 if c.startswith("*   `") and c.endswith("`")
-                                else c.lstrip("*   *").rstrip("*")
-                                if c.startswith("*   *") and c.endswith("*")
-                                else c
+                                else (
+                                    c.lstrip("*   *").rstrip("*")
+                                    if c.startswith("*   *") and c.endswith("*")
+                                    else c
+                                )
                             )
+                            # Remove ALL backticks (Napoleon wraps words in backticks when it incorrectly parses descriptions as types)
+                            import re
+
+                            original_line = line
+                            line = re.sub(r"`([^`]+)`", r"\1", line)
                             # Remove base indentation and add exactly 4 spaces
                             new_str_content += "\n    " + line[min_indent:]
         else:
-            # No type available, just output description
             if description_lines:
                 new_str_content = f"\n`-`\n: <!---->"
                 desc_non_empty = [c for c in description_lines if c.strip()]
@@ -1341,12 +1375,18 @@ date = "{current_date}"
                             line = (
                                 c.lstrip("*   `").rstrip("`")
                                 if c.startswith("*   `") and c.endswith("`")
-                                else c.lstrip("*   *").rstrip("*")
-                                if c.startswith("*   *") and c.endswith("*")
-                                else c
+                                else (
+                                    c.lstrip("*   *").rstrip("*")
+                                    if c.startswith("*   *") and c.endswith("*")
+                                    else c
+                                )
                             )
+                            # Remove ALL backticks (Napoleon wraps words in backticks when it incorrectly parses descriptions as types)
+                            import re
+
+                            line = re.sub(r"`([^`]+)`", r"\1", line)
                             new_str_content += "\n    " + line[min_indent:]
-        
+
         self.content += new_str_content + "\n\n"
         if not (self._prevent_content_stash_deletion):
             self._content_stash = []
