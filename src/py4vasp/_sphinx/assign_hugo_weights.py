@@ -32,13 +32,9 @@ def get_module_and_file_mappings(hugo_dir: Path) -> Dict[str, int]:
     weights = {}
 
     # Special case: index.md at root gets weight 10000
-    index_file = hugo_dir / "index.md"
+    index_file = hugo_dir / "_index.md"
     if index_file.exists():
-        weights["index.md"] = 10000
-    else:
-        index_file = hugo_dir / "_index.md"
-        if index_file.exists():
-            weights["_index.md"] = 10000
+        weights["_index.md"] = 10000
 
     # Get all subdirectories (modules) and sort them alphabetically
     modules = sorted([d for d in hugo_dir.iterdir() if d.is_dir()])
@@ -46,17 +42,18 @@ def get_module_and_file_mappings(hugo_dir: Path) -> Dict[str, int]:
     for module_idx, module_dir in enumerate(modules, start=1):
         module_name = module_dir.name
 
-        # Module index file (e.g., calculation.md in hugo/calculation/)
-        # This should actually be at hugo/calculation.md, not hugo/calculation/calculation.md
-        module_index = hugo_dir / f"{module_name}.md"
+        # Module index file _index.md in hugo/<module_name>/
+        module_index = module_dir / "_index.md"
         if module_index.exists():
             # Module gets weight: 10000 + 100 * module_idx
-            weights[f"{module_name}.md"] = 10000 + 100 * module_idx
+            weights[f"{module_name}/_index.md"] = 10000 + 100 * module_idx
 
         # Get all .md files in the module directory and sort alphabetically
         module_files = sorted([f for f in module_dir.glob("*.md")])
 
         for file_idx, md_file in enumerate(module_files, start=1):
+            if md_file.name == "_index.md":
+                continue  # Already handled module index file
             relative_path = f"{module_name}/{md_file.name}"
             # File gets weight: 10000 + 100 * module_idx + file_idx
             weights[relative_path] = 10000 + 100 * module_idx + file_idx
