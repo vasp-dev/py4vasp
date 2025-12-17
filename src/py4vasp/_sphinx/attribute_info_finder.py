@@ -7,20 +7,21 @@ from sphinx import addnodes
 
 def _extract_type_text(node) -> str:
     """Extract type text from a node, handling TypeAliasForwardRef properly.
-    
-    The issue is that node.astext() returns the string representation of 
-    TypeAliasForwardRef objects like "TypeAliasForwardRef('ArrayLike')" 
+
+    The issue is that node.astext() returns the string representation of
+    TypeAliasForwardRef objects like "TypeAliasForwardRef('ArrayLike')"
     instead of just "ArrayLike". We need to extract text from child Text nodes
     and then parse out the actual type name from the TypeAliasForwardRef wrapper.
     """
     import re
     from docutils.nodes import Text
+
     text_parts = []
     for child in node.findall(Text):
         text_parts.append(str(child))
-    text = ''.join(text_parts)
+    text = "".join(text_parts)
     # Replace TypeAliasForwardRef('TypeName') with just TypeName
-    text = re.sub(r"TypeAliasForwardRef\('([^']+)'\)", r'\1', text)
+    text = re.sub(r"TypeAliasForwardRef\('([^']+)'\)", r"\1", text)
     return text
 
 
@@ -51,42 +52,42 @@ class AttributeInfoFinder(NodeVisitor):
             raise UserWarning(
                 "Node passed to find_attribute_info is not a desc_signature node."
             )
-        
+
         self._type_annotation = None
         self._default_value = None
         self._sig_text = node.astext()
-        
+
         # Walk the node tree to find type and default
         node.walkabout(self)
-        
+
         # If we didn't find them in the tree, try regex parsing
         if not self._type_annotation or not self._default_value:
             self._parse_signature_text()
-        
+
         return self._type_annotation, self._default_value
 
     def _parse_signature_text(self):
         """Parse signature text using regex as fallback."""
         import re
-        
+
         if not self._sig_text:
             return
-        
+
         # Remove attribute/property keywords
-        clean_sig = re.sub(r'^(attribute|property)\s+', '', self._sig_text)
-        
+        clean_sig = re.sub(r"^(attribute|property)\s+", "", self._sig_text)
+
         # Look for ": type" (type is everything between : and = or end, excluding =)
         if not self._type_annotation:
-            type_match = re.search(r':\s*([^=]+?)(?:\s*=|$)', clean_sig)
+            type_match = re.search(r":\s*([^=]+?)(?:\s*=|$)", clean_sig)
             if type_match:
                 potential_type = type_match.group(1).strip()
                 # Make sure it's not empty and doesn't start with =
-                if potential_type and not potential_type.startswith('='):
+                if potential_type and not potential_type.startswith("="):
                     self._type_annotation = potential_type
-        
+
         # Look for "= value"
         if not self._default_value:
-            default_match = re.search(r'=\s*(.+)$', clean_sig)
+            default_match = re.search(r"=\s*(.+)$", clean_sig)
             if default_match:
                 self._default_value = default_match.group(1).strip()
 
@@ -107,52 +108,64 @@ class AttributeInfoFinder(NodeVisitor):
         if not self._type_annotation:
             text = _extract_type_text(node).strip()
             # Skip annotation markers and assignment operators
-            if text and text not in ('property', 'attribute', ':', '=', '') and not text.startswith('='):
-                self._type_annotation = text.lstrip(':').strip()
+            if (
+                text
+                and text not in ("property", "attribute", ":", "=", "")
+                and not text.startswith("=")
+            ):
+                self._type_annotation = text.lstrip(":").strip()
         raise SkipNode
 
     def visit_desc_annotation(self, node):
         """Extract default value from desc_annotation node."""
         text = node.astext().strip()
         # Skip annotation markers and assignment operators
-        if text and text not in ('property', 'attribute', ':', '=', '') and not text.startswith('='):
+        if (
+            text
+            and text not in ("property", "attribute", ":", "=", "")
+            and not text.startswith("=")
+        ):
             # Check if this is a default value (starts with =)
-            if text.startswith('=') and not self._default_value:
+            if text.startswith("=") and not self._default_value:
                 self._default_value = text[1:].strip()
             # Check if this is a type annotation
-            elif not text.startswith('=') and not self._type_annotation:
-                self._type_annotation = text.lstrip(':').strip()
+            elif not text.startswith("=") and not self._type_annotation:
+                self._type_annotation = text.lstrip(":").strip()
         raise SkipNode
 
     def visit_pending_xref(self, node):
         """Extract type from pending cross-reference nodes."""
         if not self._type_annotation:
             text = _extract_type_text(node).strip()
-            if text and text not in ('property', 'attribute', ':', '=', '') and not text.startswith('='):
+            if (
+                text
+                and text not in ("property", "attribute", ":", "=", "")
+                and not text.startswith("=")
+            ):
                 self._type_annotation = text
         raise SkipNode
 
     def visit_desc_sig_literal_number(self, node):
         """Extract numeric default value."""
-        if not self._default_value and '=' in self._sig_text:
+        if not self._default_value and "=" in self._sig_text:
             val = node.astext().strip()
-            if val and val != '=':
+            if val and val != "=":
                 self._default_value = val
         raise SkipNode
 
     def visit_desc_sig_literal_string(self, node):
         """Extract string default value."""
-        if not self._default_value and '=' in self._sig_text:
+        if not self._default_value and "=" in self._sig_text:
             val = node.astext().strip()
-            if val and val != '=':
+            if val and val != "=":
                 self._default_value = val
         raise SkipNode
 
     def visit_inline(self, node):
         """Extract default value from inline nodes."""
-        if not self._default_value and '=' in self._sig_text:
+        if not self._default_value and "=" in self._sig_text:
             val = node.astext().strip()
-            if val and val != '=':
+            if val and val != "=":
                 self._default_value = val
         raise SkipNode
 
@@ -166,7 +179,7 @@ class AttributeInfoFinder(NodeVisitor):
 
     def visit_field_name(self, node):
         """Check field name for 'type'."""
-        if 'type' in node.astext().lower():
+        if "type" in node.astext().lower():
             self._in_type_field = True
         raise SkipNode
 
