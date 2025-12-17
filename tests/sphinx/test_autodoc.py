@@ -297,3 +297,32 @@ Text in between.
 
 {{< /docstring >}}"""
     assert expected_content in content
+
+
+@pytest.mark.skip(
+    reason="Currently, parsing the three equivalent functions does not produce the same result."
+)
+def test_autodoc_equivalent_function(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "equivalent_function.md")
+    expected_content = """\
+{{< function name="METHOD_NAME" module="equivalent_function" breadcrumbs="" >}}
+{{< signature >}}
+() → `str`
+{{< /signature >}}
+
+{{< docstring >}}
+docstring
+
+### Returns
+str
+: <!---->
+    bar
+
+
+{{< /docstring >}}
+
+
+{{< /function >}}"""
+    assert expected_content.replace("METHOD_NAME", "foo1") in content
+    assert expected_content.replace("METHOD_NAME", "foo2") in content
+    assert expected_content.replace("METHOD_NAME", "foo3") in content
