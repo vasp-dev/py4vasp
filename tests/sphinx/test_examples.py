@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import sys
+
 import pytest
 
 application = pytest.importorskip("sphinx.application")
@@ -7,6 +9,8 @@ application = pytest.importorskip("sphinx.application")
 
 @pytest.fixture(scope="module")
 def sphinx_app(tmp_path_factory, not_core):
+    if sys.version_info <= (3, 11):
+        pytest.skip("Sphinx example tests require Python 3.12 or higher.")
     tmp_path = tmp_path_factory.mktemp("sphinx")
     srcdir = "tests/sphinx/examples"
     confdir = "tests/sphinx/examples"

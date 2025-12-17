@@ -10,28 +10,6 @@ from numpy.testing import assert_allclose
 from py4vasp import _demo, exception
 from py4vasp._util import check
 
-# number_steps = 4
-# number_atoms = 7
-# number_points = 50
-# number_bands = 3
-# number_valence_bands = 2
-# number_conduction_bands = 1
-# number_eigenvectors = 5
-# number_excitons = 3
-# number_samples = 5
-# number_chemical_potentials = 3
-# number_temperatures = 6
-# number_frequencies = (
-#     1  # number of frequencies at which the fan self-energy is evaluated
-# )
-# single_spin = 1
-# two_spins = 2
-# noncollinear = 4
-# axes = 3
-# complex_ = 2
-# number_modes = axes * number_atoms
-# grid_dimensions = (14, 12, 10)  # note: order is z, y, x
-
 
 @pytest.fixture(scope="session")
 def only_core():
