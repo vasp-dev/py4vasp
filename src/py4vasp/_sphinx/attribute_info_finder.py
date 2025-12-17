@@ -14,6 +14,7 @@ def _extract_type_text(node) -> str:
     and then parse out the actual type name from the TypeAliasForwardRef wrapper.
     """
     import re
+
     from docutils.nodes import Text
 
     text_parts = []
