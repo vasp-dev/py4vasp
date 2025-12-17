@@ -1,8 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from enum import member
 import importlib
 import pathlib
+from enum import member
 
 from py4vasp import exception
 from py4vasp._util import convert
@@ -60,7 +60,7 @@ AUTOSUMMARY_QUANTITIES = [
 AUTOSUMMARY_GROUPS = [
     (
         f"{group}.{member}",
-        f"~py4vasp._calculation.{group}_{member}.{convert.to_camelcase(f"{group}_{member}")}",
+        f"~py4vasp._calculation.{group}_{member}.{convert.to_camelcase(f'{group}_{member}')}",
     )
     for group, members in GROUPS.items()
     for member in members
