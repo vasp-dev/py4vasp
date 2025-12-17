@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-.PHONY: test format style import coverage
+.PHONY: test format style import coverage doc clean
 
 TEST ?= tests
 
@@ -17,3 +17,9 @@ style:
 
 import:
 	isort .
+
+doc:
+	make -C docs hugo
+
+clean:
+	make -C docs clean

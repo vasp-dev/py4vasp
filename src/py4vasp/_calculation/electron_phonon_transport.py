@@ -56,16 +56,16 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
 
         Returns
         -------
-        A dictionary containing:
-        - "metadata": Metadata about the instance, including chemical potential,
-            number of bands summed, delta, and scattering approximation.
-        - "temperatures": Array of temperatures at which transport properties are computed.
-        - "transport_function": The transport function data.
-        - "electronic_conductivity": Electronic conductivity values.
-        - "mobility": Mobility values.
-        - "seebeck": Seebeck coefficient values.
-        - "peltier": Peltier coefficient values.
-        - "electronic_thermal_conductivity": Electronic thermal conductivity values.
+        dict
+            A dictionary containing:
+            - "metadata": Metadata about the instance, including chemical potential, number of bands summed, delta, and scattering approximation.
+            - "temperatures": Array of temperatures at which transport properties are computed.
+            - "transport_function": The transport function data.
+            - "electronic_conductivity": Electronic conductivity values.
+            - "mobility": Mobility values.
+            - "seebeck": Seebeck coefficient values.
+            - "peltier": Peltier coefficient values.
+            - "electronic_thermal_conductivity": Electronic thermal conductivity values.
         """
         names = [
             "temperatures",

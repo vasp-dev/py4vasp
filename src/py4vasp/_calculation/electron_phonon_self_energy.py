@@ -183,7 +183,7 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
 
     @base.data_access
     def select(self, selection):
-        """Return a list of ElectronPhononSelfEnergyInstance objects matching the selection.
+        """Return a list of SelfEnergyInstance objects matching the selection.
 
         Parameters
         ----------
@@ -193,7 +193,7 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
 
         Returns
         -------
-        list of ElectronPhononSelfEnergyInstance
+        list[SelfEnergyInstance]
             Instances that match the selection criteria.
         """
         indices = self._accumulator().select_indices(selection)
@@ -209,7 +209,7 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
 
         Returns
         -------
-        numpy.ndarray
+        np.ndarray
             Array containing eigenvalues for all k-points, bands, and spin channels.
         """
         return self._raw_data.eigenvalues[:]
