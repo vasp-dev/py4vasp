@@ -828,6 +828,14 @@ date = "{current_date}"
         if objtype in ["method", "property", "attribute"]:
             assert breadcrumbs, "breadcrumbs should contain at least the class name"
             class_name = breadcrumbs.pop()
+            should_skip = (
+                class_name != "Calculation"
+                and objtype == "method"
+                and name in ("from_path", "from_file", "from_data")
+            )
+            if should_skip:
+                self.section_level -= 1
+                raise SkipNode
             module_name = self._get_module_name(breadcrumbs)
             shortcode_str = f"{objtype} name=\"{name}\" class=\"{class_name}\" module=\"{module_name}\" breadcrumbs=\"{'.'.join(breadcrumbs)}\""
         elif objtype in ["class", "function", "data"]:
