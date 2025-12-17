@@ -34,7 +34,7 @@ UNITS = {
 }
 
 
-class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
+class TransportInstance(ElectronPhononInstance, graph.Mixin):
     """
     Represents a single instance of electron-phonon transport calculations.
 
@@ -384,7 +384,7 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         return self._accumulator().get_data(name, index)
 
     @base.data_access
-    def select(self, selection: str) -> List[ElectronPhononTransportInstance]:
+    def select(self, selection: str) -> List[TransportInstance]:
         """Return a list of ElectronPhononSelfEnergyInstance objects matching the selection.
 
         Parameters
@@ -418,7 +418,7 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
     def _select_instances(self, selection, filter_keys=()):
         indices = self._accumulator().select_indices(selection, *filter_keys)
-        return [ElectronPhononTransportInstance(self, index) for index in indices]
+        return [TransportInstance(self, index) for index in indices]
 
     @base.data_access
     def to_graph(self, selection: str) -> graph.Graph:
@@ -479,7 +479,7 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
     @base.data_access
     def __getitem__(self, key):
         if 0 <= key < len(self._raw_data.valid_indices):
-            return ElectronPhononTransportInstance(self, key)
+            return TransportInstance(self, key)
         raise IndexError("Index out of range for electron-phonon transport instance.")
 
     @base.data_access
@@ -546,9 +546,7 @@ class _SeriesBuilderBase:
 
 
 class _SeriesBuilderInstance(_SeriesBuilderBase):
-    def build(
-        self, selection: Tuple, instance: ElectronPhononTransportInstance
-    ) -> graph.Series:
+    def build(self, selection: Tuple, instance: TransportInstance) -> graph.Series:
         """Build a graph series for a single instance based on the selection.
 
         This will plot selected quantity over temperature."""
@@ -562,7 +560,7 @@ class _SeriesBuilderInstance(_SeriesBuilderBase):
 
 class _SeriesBuilderMapping(_SeriesBuilderBase):
     def build(
-        self, selection: Tuple, instances: List[ElectronPhononTransportInstance]
+        self, selection: Tuple, instances: List[TransportInstance]
     ) -> Generator[graph.Series, None, None]:
         """Build graph series for multiple instances based on the selection.
         This will plot selected quantity over chemical potential tag for each temperature.
