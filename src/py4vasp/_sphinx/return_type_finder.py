@@ -118,21 +118,16 @@ class ReturnTypeFinder(NodeVisitor):
                 elif "return" in field_name and field_name != "return type":
                     self._in_returns_field = True
                     # Capture the field_body content for later parsing
-                    print("DEBUG visit_field: Found Returns field")
                     for field_child in node.children:
                         if field_child.__class__.__name__ == "field_body":
-                            print("DEBUG visit_field: Found field_body, capturing...")
                             self._capture_field_body_content(field_child)
-                            print("DEBUG visit_field: Captured {} items".format(len(self._returns_field_body_content)))
                 break
         pass
     
     def _capture_field_body_content(self, field_body_node):
         """Capture the structure and content of the Returns field body."""
-        print("DEBUG _capture_field_body_content: {} children".format(len(field_body_node.children)))
         for child in field_body_node.children:
             child_type = child.__class__.__name__
-            print("DEBUG   child type: {}".format(child_type))
             if child_type == "paragraph":
                 # Single or multi-line paragraph
                 text = child.astext().strip()
@@ -223,10 +218,7 @@ class ReturnTypeFinder(NodeVisitor):
         if not self._returns_field_body_content:
             return
         
-        print("DEBUG _parse_returns_field_body: {} items".format(len(self._returns_field_body_content)))
-        
         for item in self._returns_field_body_content:
-            print("DEBUG   Processing item type={}".format(item['type']))
             if item['type'] == 'definition_list_item':
                 # NumPy-style: term is type, definition is description
                 term = item['term'].strip().strip('`')
@@ -239,20 +231,14 @@ class ReturnTypeFinder(NodeVisitor):
             elif item['type'] == 'paragraph':
                 # Check if it's a single line that looks like a type
                 lines = item['lines']
-                print("DEBUG   Paragraph has {} lines".format(len(lines)))
                 if len(lines) == 1:
                     # Single line - check if it's a type
                     line = lines[0].strip()
-                    print("DEBUG   Single line: {!r}".format(line))
-                    is_type = self._is_type_like(line)
-                    print("DEBUG   _is_type_like returned: {}".format(is_type))
-                    if is_type:
+                    if self._is_type_like(line):
                         self._returns_field_type = line
-                        print("DEBUG   Set _returns_field_type = {!r}".format(line))
                     else:
                         # Single line description
                         self._returns_field_description = line
-                        print("DEBUG   Set _returns_field_description = {!r}".format(line))
                 else:
                     # Multiple lines - check if first line is type (NumPy style without definition_list)
                     # This happens when Napoleon processes the docstring
