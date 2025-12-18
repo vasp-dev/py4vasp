@@ -35,17 +35,20 @@ class ReturnTypeFinder(NodeVisitor):
     def __init__(self, document):
         super().__init__(document)
         self._signature_return_type = None
-        self._docstring_return_type = None
+        self._returns_field_type = None
+        self._returns_field_description = None
+        self._returns_field_body_content = []
         self._in_returns_field = False
         self._visited_definition_list_in_returns = False
 
     def __str__(self):
         return "\n".join(self.lines) + "\n"
 
-    def find_return_type(self, node) -> tuple[str, str]:
-        """Retrieves the return type from a desc_signature node.
+    def find_return_type(self, node) -> tuple[str, str, str]:
+        """Retrieves return type information from a desc_signature node.
 
-        Extracts return type from both signature annotation and docstring Returns field.
+        Extracts return type from signature annotation and separates Returns field
+        type from description.
 
         Parameters
         ----------
@@ -54,9 +57,11 @@ class ReturnTypeFinder(NodeVisitor):
 
         Returns
         -------
-        tuple[str, str]
-            A tuple of (signature_return_type, docstring_return_type).
-            Either can be None or empty string if not present.
+        tuple[str, str, str]
+            A tuple of (signature_return_type, returns_field_type, returns_field_description).
+            signature_return_type: Type from function signature annotation (empty string if none)
+            returns_field_type: Type extracted from Returns field (empty string if none)
+            returns_field_description: Description text from Returns field (empty string if none)
         """
         if node.__class__.__name__ != "desc_signature":
             raise UserWarning(
@@ -64,9 +69,13 @@ class ReturnTypeFinder(NodeVisitor):
             )
         else:
             self._signature_return_type = ""
-            self._docstring_return_type = ""
+            self._returns_field_type = ""
+            self._returns_field_description = ""
+            self._returns_field_body_content = []
             node.parent.walkabout(self)
-        return self._signature_return_type, self._docstring_return_type
+            # Process collected Returns field body content
+            self._parse_returns_field_body()
+        return self._signature_return_type, self._returns_field_type, self._returns_field_description
 
     def unknown_visit(self, node):
         # Don't skip unknown nodes, let traversal continue
@@ -104,13 +113,53 @@ class ReturnTypeFinder(NodeVisitor):
                         if field_child.__class__.__name__ == "field_body":
                             # The type is in a paragraph, possibly in a literal node
                             type_text = field_child.astext().strip()
-                            if type_text and not self._docstring_return_type:
-                                self._set_docstring_return_type_if_applicable(type_text)
+                            if type_text and not self._returns_field_type:
+                                self._returns_field_type = type_text
                 elif "return" in field_name and field_name != "return type":
                     self._in_returns_field = True
+                    # Capture the field_body content for later parsing
+                    print("DEBUG visit_field: Found Returns field")
+                    for field_child in node.children:
+                        if field_child.__class__.__name__ == "field_body":
+                            print("DEBUG visit_field: Found field_body, capturing...")
+                            self._capture_field_body_content(field_child)
+                            print("DEBUG visit_field: Captured {} items".format(len(self._returns_field_body_content)))
                 break
         pass
     
+    def _capture_field_body_content(self, field_body_node):
+        """Capture the structure and content of the Returns field body."""
+        print("DEBUG _capture_field_body_content: {} children".format(len(field_body_node.children)))
+        for child in field_body_node.children:
+            child_type = child.__class__.__name__
+            print("DEBUG   child type: {}".format(child_type))
+            if child_type == "paragraph":
+                # Single or multi-line paragraph
+                text = child.astext().strip()
+                self._returns_field_body_content.append({
+                    'type': 'paragraph',
+                    'text': text,
+                    'lines': text.split('\n')
+                })
+            elif child_type == "definition_list":
+                # NumPy-style with type and description
+                self._visited_definition_list_in_returns = True
+                for item in child.children:
+                    if item.__class__.__name__ == "definition_list_item":
+                        term = None
+                        definition = None
+                        for item_child in item.children:
+                            if item_child.__class__.__name__ == "term":
+                                term = item_child.astext().strip()
+                            elif item_child.__class__.__name__ == "definition":
+                                definition = item_child.astext().strip()
+                        if term:
+                            self._returns_field_body_content.append({
+                                'type': 'definition_list_item',
+                                'term': term,
+                                'definition': definition or ''
+                            })
+
     def depart_field(self, node):
         # Reset flag when leaving a Returns field
         for child in node.children:
@@ -155,10 +204,7 @@ class ReturnTypeFinder(NodeVisitor):
                 break
 
     def depart_section(self, node):
-        # When leaving a Returns section, if we haven't set a type AND didn't visit a definition_list, set it to "-"
-        if self._in_returns_field and not self._docstring_return_type and not self._visited_definition_list_in_returns:
-            self._docstring_return_type = "-"
-        # Reset the flag when leaving any section
+        # Reset flags when leaving any section
         self._in_returns_field = False
         self._visited_definition_list_in_returns = False
 
@@ -169,44 +215,95 @@ class ReturnTypeFinder(NodeVisitor):
         pass
 
     def visit_definition_list_item(self, node):
-        if self._in_returns_field and not self._docstring_return_type:
-            # The term contains the type, definition contains the description
-            for child in node.children:
-                if child.__class__.__name__ == "term":
-                    term_text = child.astext().strip().strip("`")
-                    self._set_docstring_return_type_if_applicable(term_text)
-                    break
+        # Content is captured in _capture_field_body_content
+        pass
 
-    def _set_docstring_return_type_if_applicable(self, term_text: str):
-        """Set the docstring return type if the term text looks like a type."""
+    def _parse_returns_field_body(self):
+        """Parse Returns field body to separate type from description."""
+        if not self._returns_field_body_content:
+            return
+        
+        print("DEBUG _parse_returns_field_body: {} items".format(len(self._returns_field_body_content)))
+        
+        for item in self._returns_field_body_content:
+            print("DEBUG   Processing item type={}".format(item['type']))
+            if item['type'] == 'definition_list_item':
+                # NumPy-style: term is type, definition is description
+                term = item['term'].strip().strip('`')
+                if self._is_type_like(term):
+                    self._returns_field_type = term
+                    self._returns_field_description = item['definition']
+                else:
+                    # Term doesn't look like a type, treat as description
+                    self._returns_field_description = "{}\\n{}".format(term, item['definition']) if item['definition'] else term
+            elif item['type'] == 'paragraph':
+                # Check if it's a single line that looks like a type
+                lines = item['lines']
+                print("DEBUG   Paragraph has {} lines".format(len(lines)))
+                if len(lines) == 1:
+                    # Single line - check if it's a type
+                    line = lines[0].strip()
+                    print("DEBUG   Single line: {!r}".format(line))
+                    is_type = self._is_type_like(line)
+                    print("DEBUG   _is_type_like returned: {}".format(is_type))
+                    if is_type:
+                        self._returns_field_type = line
+                        print("DEBUG   Set _returns_field_type = {!r}".format(line))
+                    else:
+                        # Single line description
+                        self._returns_field_description = line
+                        print("DEBUG   Set _returns_field_description = {!r}".format(line))
+                else:
+                    # Multiple lines - check if first line is type (NumPy style without definition_list)
+                    # This happens when Napoleon processes the docstring
+                    first_line = lines[0].strip()
+                    # Check indentation of second line relative to first
+                    if len(lines) > 1:
+                        # If all lines after the first are indented, first line might be type
+                        rest_lines = lines[1:]
+                        # Check if subsequent lines look like continuation (indented or empty)
+                        if all(line.startswith(' ') or not line.strip() for line in rest_lines):
+                            # First line is likely a type
+                            if self._is_type_like(first_line):
+                                self._returns_field_type = first_line
+                                self._returns_field_description = '\\n'.join(rest_lines).strip()
+                            else:
+                                # Even with indentation, first line doesn't look like a type
+                                self._returns_field_description = item['text']
+                        else:
+                            # Multiple non-indented lines = all description
+                            self._returns_field_description = item['text']
+                    else:
+                        self._returns_field_description = item['text']
+
+    def _is_type_like(self, text: str) -> bool:
+        """Check if text looks like a type annotation."""
         import re
         
-        if not self._docstring_return_type:
-            # if it looks like a type, set it
-            # heuristic: types are usually short, single words or simple unions
-            # heuristic: types are given on a separate line from their description
-            # heuristic: a description might not be available
-            # heuristic: the entire line might be a description
-            separated = term_text.split("\n")
-            first_line = separated[0].strip()
-            
-            # Check if it's a single word (simple type)
-            if len(first_line.split(" ")) == 1:
-                self._docstring_return_type = first_line
-            # Check if it's a generic type like Type[...], Union[...], Tuple[...], etc.
-            elif re.match(r'^[A-Za-z_][A-Za-z0-9_]*\[.+\]$', first_line):
-                self._docstring_return_type = first_line
-            # Check if it's a union with | or "or"
-            elif (" | " in first_line or " or " in first_line):
-                # Check if all parts are simple types or generic types
-                parts = first_line.replace(" or ", " | ").split(" | ")
-                if all(
-                    len(part.strip().split(" ")) == 1 or 
-                    re.match(r'^[A-Za-z_][A-Za-z0-9_]*\[.+\]$', part.strip())
-                    for part in parts
-                ):
-                    self._docstring_return_type = first_line.replace(" or ", " | ")
-                else:
-                    self._docstring_return_type = "-"
-            else:
-                self._docstring_return_type = "-"
+        text = text.strip().strip('`')
+        if not text:
+            return False
+        
+        # Single word (simple type)
+        if len(text.split()) == 1 and text.replace('_', '').replace('.', '').replace('[', '').replace(']', '').replace(',', '').isalnum():
+            return True
+        
+        # Generic type like Type[...], Union[...], Tuple[...], etc.
+        if re.match(r'^[A-Za-z_][A-Za-z0-9_]*\[.+\]$', text):
+            return True
+        
+        # Union with | or "or"
+        if " | " in text or " or " in text:
+            parts = text.replace(" or ", " | ").split(" | ")
+            if all(
+                len(part.strip().split()) == 1 or 
+                re.match(r'^[A-Za-z_][A-Za-z0-9_]*\[.+\]$', part.strip())
+                for part in parts
+            ):
+                return True
+        
+        return False
+
+    def _set_docstring_return_type_if_applicable(self, term_text: str):
+        """Deprecated - kept for compatibility but replaced by _is_type_like and _parse_returns_field_body."""
+        pass

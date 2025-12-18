@@ -97,6 +97,9 @@ class HugoTranslator(NodeVisitor):
         self._is_shortcode_sphinx_open = False
         self._needs_reopen_docstring = False
         self._current_return_type = None
+        self._signature_return_type = None
+        self._returns_field_type = None
+        self._returns_field_description = None
         self._current_signature_dict = {}
         self._prevent_move_content = False
         self._prevent_content_stash_deletion = False
@@ -979,36 +982,42 @@ date = "{current_date}"
         return "\n(\n- " + concat_str + "\n\n)"
 
     def _get_return_type(self, node):
-        """Get the return type annotation from a desc_signature node."""
+        """Get the return type annotation from a desc_signature node.
+        
+        Returns the appropriate type to display in the signature, following priority:
+        1. Signature type annotation (if present)
+        2. Returns field type (if present)
+        3. "-" (if Returns field exists but has no type)
+        """
         return_type_finder = ReturnTypeFinder(self.document)
-        signature_return_type, docstring_return_type = (
+        signature_return_type, returns_field_type, returns_field_description = (
             return_type_finder.find_return_type(node)
         )
 
-        # Store docstring return type for later check
-        self._docstring_return_type = docstring_return_type
+        # Store all return information for later use in _restructure_returns_field_body
+        self._signature_return_type = signature_return_type
+        self._returns_field_type = returns_field_type
+        self._returns_field_description = returns_field_description
 
-        # Priority: signature type > docstring type
-        return_type = signature_return_type or docstring_return_type
-
-        if return_type:
-            if signature_return_type:
-                self._current_signature_dict["sig_return_type"] = signature_return_type
-            elif return_type == "-":
-                # No signature type but docstring indicates "-", store it
-                self._current_signature_dict["sig_return_type"] = None
-            self._current_return_type = return_type
+        # Determine what to show in the signature (priority: signature > field type > "-" if field exists)
+        if signature_return_type:
+            return_type = signature_return_type
+            self._current_signature_dict["sig_return_type"] = signature_return_type
             self._expect_returns_field = True
-        elif docstring_return_type == "-":
-            # If docstring explicitly indicates no type with "-", use that
-            self._current_return_type = "-"
+        elif returns_field_type:
+            return_type = returns_field_type
+            self._current_signature_dict["sig_return_type"] = returns_field_type
             self._expect_returns_field = True
+        elif returns_field_description:
+            # Has Returns field but no type - use "-"
             return_type = "-"
-        elif (docstring_return_type is None or docstring_return_type == "") and signature_return_type == "":
-            # Neither signature nor docstring has a type - might have Returns section with no type
-            # Check if we're expecting a Returns field by seeing if docstring exists
-            # For now, return empty to not show anything in signature
+            self._current_signature_dict["sig_return_type"] = None
+            self._expect_returns_field = True
+        else:
+            # No return information at all
             return_type = ""
+        
+        self._current_return_type = return_type
         return return_type
 
     def _get_attribute_info(self, node):
@@ -1288,159 +1297,64 @@ date = "{current_date}"
             self._content_stash = []
 
     def _restructure_returns_field_body(self):
-        """Restructure the Returns field body to have consistent type+description format.
+        """Restructure the Returns field body with proper type+description format.
 
-        Handles these cases:
-        1. Signature has type, docstring has only description -> use signature type
-        2. Signature has type, docstring has type+description -> use signature type (priority)
-        3. No signature type, docstring has type+description -> use docstring type (already in signature)
-        4. No signature type, docstring has only description -> no type, just description
+        Uses information from return_type_finder which has already separated:
+        - signature_return_type: Type from function signature
+        - returns_field_type: Type from Returns field
+        - returns_field_description: Description from Returns field
 
-        The docstring can have two formats:
-        - Type+description: First line is type (no indent), subsequent lines are indented description
-        - Type only: Single line with type only
-        - Description only: All lines at same indentation level (description only)
+        Priority for type display:
+        1. Signature type (if present)
+        2. Returns field type (if present)
+        3. "-" (if Returns field has description but no type)
         """
-        pure_str_content = self._content_stash.copy()
-
-        # Separate type and description from the docstring Returns field
-        docstring_type = None
-        description_lines = []
-
-        if pure_str_content:
-            # Filter out empty lines
-            non_empty_lines = [c for c in pure_str_content if c.strip()]
-
-            if non_empty_lines:
-                # Check if this is type+description format by looking for indentation pattern
-                # If the first non-empty line has less indentation than the rest, it's likely the type
-                first_line = non_empty_lines[0]
-                first_indent = len(first_line) - len(first_line.lstrip())
-
-                # Check if subsequent lines have more indentation
-                has_type_format = False
-                if len(non_empty_lines) > 1:
-                    # Check if at least one subsequent line has more indentation
-                    for line in non_empty_lines[1:2]:
-                        line_indent = len(line) - len(line.lstrip())
-                        if line_indent > first_indent:
-                            has_type_format = True
-                            break
-
-                if has_type_format:
-                    # First line is the type, rest is description
-                    docstring_type = first_line.strip()
-                    # Remove backticks if present (for backward compatibility)
-                    if docstring_type.startswith("`") and docstring_type.endswith("`"):
-                        docstring_type = docstring_type[1:-1]
-                    # Collect description lines (skip first line which is the type)
-                    # Find index of first line in original content
-                    first_line_idx = next(
-                        i
-                        for i, line in enumerate(pure_str_content)
-                        if line.strip() == first_line.strip()
-                    )
-                    description_lines = pure_str_content[first_line_idx + 1 :]
-                elif len(non_empty_lines) == 1:
-                    # Only one line - check if it looks like a type or a description
-                    first_line_stripped = first_line.strip()
-                    # Use similar heuristics as return_type_finder
-                    import re
-                    is_type = (
-                        len(first_line_stripped.split(" ")) == 1 or  # Single word
-                        re.match(r'^[A-Za-z_][A-Za-z0-9_]*\[.+\]$', first_line_stripped) or  # Generic type
-                        (" | " in first_line_stripped or " or " in first_line_stripped) and all(  # Union type
-                            len(part.strip().split(" ")) == 1 or 
-                            re.match(r'^[A-Za-z_][A-Za-z0-9_]*\[.+\]$', part.strip())
-                            for part in first_line_stripped.replace(" or ", " | ").split(" | ")
-                        )
-                    )
-                    if is_type:
-                        docstring_type = first_line_stripped
-                        # Remove backticks if present
-                        if docstring_type.startswith("`") and docstring_type.endswith("`"):
-                            docstring_type = docstring_type[1:-1]
-                        description_lines = []
-                    else:
-                        # It's a description
-                        description_lines = pure_str_content
-                else:
-                    # No type in docstring field body, everything is description
-                    description_lines = pure_str_content
-
-        # Determine final return type for the Returns section
-        # Priority: signature type if available, else docstring type from field body, else docstring type from finder
-        # Use signature type when available to keep signature and Returns section consistent
-        sig_return_type = self._current_signature_dict.get("sig_return_type")
+        # Determine which type to display (already computed in _get_return_type)
+        sig_return_type = self._signature_return_type or ""
+        field_return_type = self._returns_field_type or ""
+        field_description = self._returns_field_description or ""
         
+        # Type priority: signature > field type > "-" if has description
         if sig_return_type:
-            # Signature has a type - use it
-            final_return_type = sig_return_type
-        elif docstring_type and docstring_type != "-":
-            # No signature type, but field body has a type
-            final_return_type = docstring_type
-        elif self._docstring_return_type and self._docstring_return_type != "-":
-            # No signature type, but finder detected a type
-            final_return_type = self._docstring_return_type
+            display_type = sig_return_type
+        elif field_return_type:
+            display_type = field_return_type
+        elif field_description:
+            display_type = "-"
         else:
-            # Fall back to current return type (which might be "-" or empty)
-            final_return_type = self._current_return_type
+            # No Returns field content at all - shouldn't happen if we're in this method
+            display_type = ""
 
         # Build the output
         new_str_content = ""
 
-        if final_return_type and final_return_type != "-":
-            # We have a type, format as definition list
-            new_str_content = f"\n`{final_return_type}`\n: <!---->"
-
-            # Add description if present
-            if description_lines:
-                # Find minimum indentation in description lines
-                desc_non_empty = [c for c in description_lines if c.strip()]
-                if desc_non_empty:
-                    min_indent = min(len(c) - len(c.lstrip()) for c in desc_non_empty)
-                    # Process each line: remove min indent, add 4 spaces
-                    for c in description_lines:
-                        if c.strip():
-                            # Remove the backtick/asterisk wrapping if present
-                            line = (
-                                c.lstrip("*   `").rstrip("`")
-                                if c.startswith("*   `") and c.endswith("`")
-                                else (
-                                    c.lstrip("*   *").rstrip("*")
-                                    if c.startswith("*   *") and c.endswith("*")
-                                    else c
-                                )
-                            )
-                            # Remove ALL backticks (Napoleon wraps words in backticks when it incorrectly parses descriptions as types)
-                            import re
-
-                            original_line = line
-                            line = re.sub(r"`([^`]+)`", r"\1", line)
-                            # Remove base indentation and add exactly 4 spaces
-                            new_str_content += "\n    " + line[min_indent:]
+        if display_type and display_type != "-":
+            # Format as definition list with type and optional description
+            new_str_content = f"\n`{display_type}`"
+            
+            # Only add description if:
+            # 1. We have a description AND
+            # 2. Either we're using signature type OR field has no type (just description)
+            # If field has both type and description, and we're using signature type, skip field type line
+            if field_description:
+                # Add as definition list item
+                new_str_content += "\n: <!---->"
+                # Format description with proper indentation
+                for line in field_description.split('\n'):
+                    if line.strip():
+                        new_str_content += f"\n    {line.strip()}"
+            # else: type only, no description
+            
+        elif display_type == "-":
+            # Has description but no type - show "-" with description
+            new_str_content = f"\n`-`\n: <!---->"
+            for line in field_description.split('\n'):
+                if line.strip():
+                    new_str_content += f"\n    {line.strip()}"
         else:
-            if description_lines:
-                new_str_content = f"\n`-`\n: <!---->"
-                desc_non_empty = [c for c in description_lines if c.strip()]
-                if desc_non_empty:
-                    min_indent = min(len(c) - len(c.lstrip()) for c in desc_non_empty)
-                    for c in description_lines:
-                        if c.strip():
-                            line = (
-                                c.lstrip("*   `").rstrip("`")
-                                if c.startswith("*   `") and c.endswith("`")
-                                else (
-                                    c.lstrip("*   *").rstrip("*")
-                                    if c.startswith("*   *") and c.endswith("*")
-                                    else c
-                                )
-                            )
-                            # Remove ALL backticks (Napoleon wraps words in backticks when it incorrectly parses descriptions as types)
-                            import re
-
-                            line = re.sub(r"`([^`]+)`", r"\1", line)
-                            new_str_content += "\n    " + line[min_indent:]
+            # Just display the type (no description)
+            if self._current_return_type:
+                new_str_content = f"\n`{self._current_return_type}`"
 
         self.content += new_str_content + "\n\n"
         if not (self._prevent_content_stash_deletion):
