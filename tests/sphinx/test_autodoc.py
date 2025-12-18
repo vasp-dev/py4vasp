@@ -61,14 +61,18 @@ It demonstrates how to document a class with attributes and methods.
 {{< docstring >}}
 Return the stored value.
 
+
+
 #### Returns
-int
+
+
+`int`
 : <!---->
     The integer value stored in the instance.
 
 
-{{< /docstring >}}
 
+{{< /docstring >}}
 
 {{< /method >}}
 
@@ -98,14 +102,18 @@ An inner class for testing nested class documentation.
 {{< docstring >}}
 Retrieve the stored data.
 
+
+
 #### Returns
-str
+
+
+`str`
 : <!---->
     The data stored in the inner class.
 
 
-{{< /docstring >}}
 
+{{< /docstring >}}
 
 {{< /property >}}
 
@@ -303,9 +311,6 @@ Text in between.
     assert expected_content in content
 
 
-# @pytest.mark.skip(
-#     reason="Currently, parsing the three equivalent functions does not produce the same result."
-# )
 def test_autodoc_equivalent_function(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "equivalent_function.md")
     expected_content = """\

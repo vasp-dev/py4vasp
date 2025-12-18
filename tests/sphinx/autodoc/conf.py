@@ -6,6 +6,7 @@ import sys
 extensions = [
     "py4vasp._sphinx",
     "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
     "sphinx.ext.autosummary",
 ]
 
