@@ -994,8 +994,21 @@ date = "{current_date}"
         if return_type:
             if signature_return_type:
                 self._current_signature_dict["sig_return_type"] = signature_return_type
+            elif return_type == "-":
+                # No signature type but docstring indicates "-", store it
+                self._current_signature_dict["sig_return_type"] = None
             self._current_return_type = return_type
             self._expect_returns_field = True
+        elif docstring_return_type == "-":
+            # If docstring explicitly indicates no type with "-", use that
+            self._current_return_type = "-"
+            self._expect_returns_field = True
+            return_type = "-"
+        elif (docstring_return_type is None or docstring_return_type == "") and signature_return_type == "":
+            # Neither signature nor docstring has a type - might have Returns section with no type
+            # Check if we're expecting a Returns field by seeing if docstring exists
+            # For now, return empty to not show anything in signature
+            return_type = ""
         return return_type
 
     def _get_attribute_info(self, node):
@@ -1042,6 +1055,10 @@ date = "{current_date}"
                 if objtype in ["function", "method"]:
                     return_type = self._get_return_type(node)
                     if return_type:
+                        return_str = f" → `{return_type}`"
+                        self.content += return_str
+                    elif return_type == "-":
+                        # Explicitly show "-" when there's no type but there is a Returns field
                         return_str = f" → `{return_type}`"
                         self.content += return_str
 
@@ -1324,12 +1341,50 @@ date = "{current_date}"
                         if line.strip() == first_line.strip()
                     )
                     description_lines = pure_str_content[first_line_idx + 1 :]
+                elif len(non_empty_lines) == 1:
+                    # Only one line - check if it looks like a type or a description
+                    first_line_stripped = first_line.strip()
+                    # Use similar heuristics as return_type_finder
+                    import re
+                    is_type = (
+                        len(first_line_stripped.split(" ")) == 1 or  # Single word
+                        re.match(r'^[A-Za-z_][A-Za-z0-9_]*\[.+\]$', first_line_stripped) or  # Generic type
+                        (" | " in first_line_stripped or " or " in first_line_stripped) and all(  # Union type
+                            len(part.strip().split(" ")) == 1 or 
+                            re.match(r'^[A-Za-z_][A-Za-z0-9_]*\[.+\]$', part.strip())
+                            for part in first_line_stripped.replace(" or ", " | ").split(" | ")
+                        )
+                    )
+                    if is_type:
+                        docstring_type = first_line_stripped
+                        # Remove backticks if present
+                        if docstring_type.startswith("`") and docstring_type.endswith("`"):
+                            docstring_type = docstring_type[1:-1]
+                        description_lines = []
+                    else:
+                        # It's a description
+                        description_lines = pure_str_content
                 else:
                     # No type in docstring field body, everything is description
                     description_lines = pure_str_content
 
-        # Determine final return type (signature/already set takes priority)
-        final_return_type = self._current_return_type or docstring_type
+        # Determine final return type for the Returns section
+        # Priority: signature type if available, else docstring type from field body, else docstring type from finder
+        # Use signature type when available to keep signature and Returns section consistent
+        sig_return_type = self._current_signature_dict.get("sig_return_type")
+        
+        if sig_return_type:
+            # Signature has a type - use it
+            final_return_type = sig_return_type
+        elif docstring_type and docstring_type != "-":
+            # No signature type, but field body has a type
+            final_return_type = docstring_type
+        elif self._docstring_return_type and self._docstring_return_type != "-":
+            # No signature type, but finder detected a type
+            final_return_type = self._docstring_return_type
+        else:
+            # Fall back to current return type (which might be "-" or empty)
+            final_return_type = self._current_return_type
 
         # Build the output
         new_str_content = ""

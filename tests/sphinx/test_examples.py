@@ -1167,7 +1167,7 @@ def test_complicated_signatures_return_with_multiline_type_description_union_sig
 - *a*: `int`,
 - *b*: `str`
 
-) → `Union[int, str]`
+) → `int | str`
 {{< /signature >}}
 
 {{< docstring >}}
@@ -1178,7 +1178,7 @@ Function with type description across multiple lines and Union type given in sig
 ### Returns
 
 
-`Union[int, str]`
+`int | str`
 : <!---->
     This integer is returned
     and represents the sum of a
@@ -1353,7 +1353,7 @@ Function with type description across multiple lines and conflicting types.
 ### Returns
 
 
-`int | str`
+`int`
 : <!---->
     This integer is returned
     and represents the sum of a
@@ -1387,7 +1387,7 @@ Function with type description across multiple lines and conflicting types.
 
 ### Returns
 
-`int | str`
+`int`
 
 
 {{< /docstring >}}
@@ -1417,7 +1417,7 @@ Function with type description across multiple lines and conflicting types.
 ### Returns
 
 
-`int`
+`int | str`
 : <!---->
     This integer is returned
     and represents the sum of a

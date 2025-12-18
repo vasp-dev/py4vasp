@@ -37,6 +37,7 @@ class ReturnTypeFinder(NodeVisitor):
         self._signature_return_type = None
         self._docstring_return_type = None
         self._in_returns_field = False
+        self._visited_definition_list_in_returns = False
 
     def __str__(self):
         return "\n".join(self.lines) + "\n"
@@ -109,16 +110,39 @@ class ReturnTypeFinder(NodeVisitor):
                     self._in_returns_field = True
                 break
         pass
+    
+    def depart_field(self, node):
+        # Reset flag when leaving a Returns field
+        for child in node.children:
+            if child.__class__.__name__ == "field_name":
+                field_name = child.astext().strip().lower()
+                if "return" in field_name and field_name != "return type":
+                    self._in_returns_field = False
+                    self._visited_definition_list_in_returns = False
+                break
 
     def visit_desc_returns(self, node):
         if not (self._signature_return_type):
-            self._signature_return_type = (
+            raw_type = (
                 _extract_type_text(node)
                 .lstrip(" -> ")
                 .strip()
-                .replace("` or `", " or ")
-                .replace(" or ", " | ")
             )
+            # Only replace " or " with " | " if it's not inside brackets
+            # This prevents Union[int, str] or Tuple[int, str] from being mangled
+            import re
+
+            # Check if there are brackets in the type
+            if '[' in raw_type and ']' in raw_type:
+                # Don't replace " or " inside brackets
+                self._signature_return_type = raw_type
+            else:
+                # Safe to replace " or " with " | " for simple union types
+                self._signature_return_type = (
+                    raw_type
+                    .replace("` or `", " or ")
+                    .replace(" or ", " | ")
+                )
         raise SkipNode
 
     def visit_section(self, node):
@@ -131,11 +155,17 @@ class ReturnTypeFinder(NodeVisitor):
                 break
 
     def depart_section(self, node):
+        # When leaving a Returns section, if we haven't set a type AND didn't visit a definition_list, set it to "-"
+        if self._in_returns_field and not self._docstring_return_type and not self._visited_definition_list_in_returns:
+            self._docstring_return_type = "-"
         # Reset the flag when leaving any section
         self._in_returns_field = False
+        self._visited_definition_list_in_returns = False
 
     def visit_definition_list(self, node):
         # NumPy-style Returns sections are converted to definition lists
+        if self._in_returns_field:
+            self._visited_definition_list_in_returns = True
         pass
 
     def visit_definition_list_item(self, node):
@@ -149,6 +179,8 @@ class ReturnTypeFinder(NodeVisitor):
 
     def _set_docstring_return_type_if_applicable(self, term_text: str):
         """Set the docstring return type if the term text looks like a type."""
+        import re
+        
         if not self._docstring_return_type:
             # if it looks like a type, set it
             # heuristic: types are usually short, single words or simple unions
@@ -156,14 +188,25 @@ class ReturnTypeFinder(NodeVisitor):
             # heuristic: a description might not be available
             # heuristic: the entire line might be a description
             separated = term_text.split("\n")
-            if (len(separated[0].strip().split(" "))) == 1:
-                self._docstring_return_type = separated[0].strip()
-            elif (" | " in separated[0] or " or " in separated[0]) and all(
-                len(part.strip().split(" ")) == 1
-                for part in separated[0].replace(" or ", " | ").split(" | ")
-            ):
-                self._docstring_return_type = (
-                    separated[0].strip().replace(" or ", " | ")
-                )
+            first_line = separated[0].strip()
+            
+            # Check if it's a single word (simple type)
+            if len(first_line.split(" ")) == 1:
+                self._docstring_return_type = first_line
+            # Check if it's a generic type like Type[...], Union[...], Tuple[...], etc.
+            elif re.match(r'^[A-Za-z_][A-Za-z0-9_]*\[.+\]$', first_line):
+                self._docstring_return_type = first_line
+            # Check if it's a union with | or "or"
+            elif (" | " in first_line or " or " in first_line):
+                # Check if all parts are simple types or generic types
+                parts = first_line.replace(" or ", " | ").split(" | ")
+                if all(
+                    len(part.strip().split(" ")) == 1 or 
+                    re.match(r'^[A-Za-z_][A-Za-z0-9_]*\[.+\]$', part.strip())
+                    for part in parts
+                ):
+                    self._docstring_return_type = first_line.replace(" or ", " | ")
+                else:
+                    self._docstring_return_type = "-"
             else:
                 self._docstring_return_type = "-"
