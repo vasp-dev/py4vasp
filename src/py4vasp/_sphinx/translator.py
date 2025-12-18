@@ -1187,16 +1187,28 @@ date = "{current_date}"
                 break
 
         if field_name == "return type":
+            # Check if we have a description stored (from rejected non-type in "return type" field)
+            field_description = self._returns_field_description or ""
+            
+            # If we have a description but no type, treat this "return type" field as a "returns" field
+            if field_description and not self._returns_field_type:
+                self.content += self._get_formatted_field_header("Returns")
+                self._in_returns_field = True
+                self._in_parameters_field = False
+                self._move_content_to_lines()
+                return
             # Check if this "Return type" field actually contains a description
             # (when Napoleon incorrectly parses a description-only Returns section)
-            if getattr(self, "_docstring_return_type", None) == "-":
+            elif getattr(self, "_docstring_return_type", None) == "-":
                 # Treat this as a Returns field with description only
                 self.content += self._get_formatted_field_header("Returns")
                 self._in_returns_field = True
+                self._in_parameters_field = False  # Reset parameters flag
                 self._move_content_to_lines()
                 return
             else:
-                # Normal return type - skip it
+                # Normal return type - skip it, but first reset any field flags
+                self._in_parameters_field = False
                 if not (self._current_return_type):
                     self._current_return_type = getattr(
                         self._current_signature_dict, "sig_return_type", None
@@ -1206,6 +1218,7 @@ date = "{current_date}"
         if field_name == "returns":
             self.content += self._get_formatted_field_header("Returns")
             self._in_returns_field = True
+            self._in_parameters_field = False  # Reset parameters flag
             self._move_content_to_lines()
             return
 
