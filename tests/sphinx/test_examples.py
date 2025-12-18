@@ -1016,7 +1016,9 @@ Function with no return type information.
     assert expected_content_with_no_info in content
 
 
-def test_complicated_signatures_return_with_multiline_type_description_no_type(sphinx_app):
+def test_complicated_signatures_return_with_multiline_type_description_no_type(
+    sphinx_app,
+):
     content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
     print(content)
     expected_content = """\
@@ -1052,7 +1054,9 @@ Function with type description across multiple lines and no type given.
     assert expected_content in content
 
 
-def test_complicated_signatures_return_with_multiline_type_description_field_type(sphinx_app):
+def test_complicated_signatures_return_with_multiline_type_description_field_type(
+    sphinx_app,
+):
     content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
     expected_content = """\
 {{< function name="return_with_multiline_type_description_field_type" module="example_complicated_signatures" breadcrumbs="" >}}
@@ -1087,7 +1091,9 @@ Function with type description across multiple lines and type given in Returns f
     assert expected_content in content
 
 
-def test_complicated_signatures_return_with_multiline_type_description_sig_type(sphinx_app):
+def test_complicated_signatures_return_with_multiline_type_description_sig_type(
+    sphinx_app,
+):
     content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
     expected_content = """\
 {{< function name="return_with_multiline_type_description_sig_type" module="example_complicated_signatures" breadcrumbs="" >}}
@@ -1122,7 +1128,9 @@ Function with type description across multiple lines and type given in signature
     assert expected_content in content
 
 
-def test_complicated_signatures_return_with_multiline_type_description_tuple_sig_type(sphinx_app):
+def test_complicated_signatures_return_with_multiline_type_description_tuple_sig_type(
+    sphinx_app,
+):
     content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
     expected_content = """\
 {{< function name="return_with_multiline_type_description_tuple_sig_type" module="example_complicated_signatures" breadcrumbs="" >}}
@@ -1157,7 +1165,9 @@ Function with type description across multiple lines and Tuple type given in sig
     assert expected_content in content
 
 
-def test_complicated_signatures_return_with_multiline_type_description_union_sig_type(sphinx_app):
+def test_complicated_signatures_return_with_multiline_type_description_union_sig_type(
+    sphinx_app,
+):
     content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
     expected_content = """\
 {{< function name="return_with_multiline_type_description_union_sig_type" module="example_complicated_signatures" breadcrumbs="" >}}
@@ -1192,7 +1202,9 @@ Function with type description across multiple lines and Union type given in sig
     assert expected_content in content
 
 
-def test_complicated_signatures_return_with_multiline_type_description_union2_sig_type(sphinx_app):
+def test_complicated_signatures_return_with_multiline_type_description_union2_sig_type(
+    sphinx_app,
+):
     content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
     expected_content = """\
 {{< function name="return_with_multiline_type_description_union2_sig_type" module="example_complicated_signatures" breadcrumbs="" >}}
@@ -1227,7 +1239,9 @@ Function with type description across multiple lines and Union2 type given in si
     assert expected_content in content
 
 
-def test_complicated_signatures_return_with_multiline_type_description_tuple_field_type(sphinx_app):
+def test_complicated_signatures_return_with_multiline_type_description_tuple_field_type(
+    sphinx_app,
+):
     content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
     expected_content = """\
 {{< function name="return_with_multiline_type_description_tuple_field_type" module="example_complicated_signatures" breadcrumbs="" >}}
@@ -1262,7 +1276,9 @@ Function with type description across multiple lines and Tuple type given in Ret
     assert expected_content in content
 
 
-def test_complicated_signatures_return_with_multiline_type_description_union_field_type(sphinx_app):
+def test_complicated_signatures_return_with_multiline_type_description_union_field_type(
+    sphinx_app,
+):
     content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
     expected_content = """\
 {{< function name="return_with_multiline_type_description_union_field_type" module="example_complicated_signatures" breadcrumbs="" >}}
@@ -1297,7 +1313,9 @@ Function with type description across multiple lines and Union type given in Ret
     assert expected_content in content
 
 
-def test_complicated_signatures_return_with_multiline_type_description_union2_field_type(sphinx_app):
+def test_complicated_signatures_return_with_multiline_type_description_union2_field_type(
+    sphinx_app,
+):
     content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
     expected_content = """\
 {{< function name="return_with_multiline_type_description_union2_field_type" module="example_complicated_signatures" breadcrumbs="" >}}
@@ -1332,7 +1350,9 @@ Function with type description across multiple lines and Union2 type given in Re
     assert expected_content in content
 
 
-def test_complicated_signatures_return_with_multiline_type_description_conflicting_type_01(sphinx_app):
+def test_complicated_signatures_return_with_multiline_type_description_conflicting_type_01(
+    sphinx_app,
+):
     content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
     expected_content = """\
 {{< function name="return_with_multiline_type_description_conflicting_type_01" module="example_complicated_signatures" breadcrumbs="" >}}
@@ -1367,7 +1387,9 @@ Function with type description across multiple lines and conflicting types.
     assert expected_content in content
 
 
-def test_complicated_signatures_return_with_multiline_type_description_conflicting_type_02(sphinx_app):
+def test_complicated_signatures_return_with_multiline_type_description_conflicting_type_02(
+    sphinx_app,
+):
     content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
     expected_content = """\
 {{< function name="return_with_multiline_type_description_conflicting_type_02" module="example_complicated_signatures" breadcrumbs="" >}}
@@ -1396,7 +1418,9 @@ Function with type description across multiple lines and conflicting types.
     assert expected_content in content
 
 
-def test_complicated_signatures_return_with_multiline_type_description_conflicting_type_03(sphinx_app):
+def test_complicated_signatures_return_with_multiline_type_description_conflicting_type_03(
+    sphinx_app,
+):
     content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
     expected_content = """\
 {{< function name="return_with_multiline_type_description_conflicting_type_03" module="example_complicated_signatures" breadcrumbs="" >}}

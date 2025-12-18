@@ -75,7 +75,11 @@ class ReturnTypeFinder(NodeVisitor):
             node.parent.walkabout(self)
             # Process collected Returns field body content
             self._parse_returns_field_body()
-        return self._signature_return_type, self._returns_field_type, self._returns_field_description
+        return (
+            self._signature_return_type,
+            self._returns_field_type,
+            self._returns_field_description,
+        )
 
     def unknown_visit(self, node):
         # Don't skip unknown nodes, let traversal continue
@@ -129,7 +133,7 @@ class ReturnTypeFinder(NodeVisitor):
                             self._capture_field_body_content(field_child)
                 break
         pass
-    
+
     def _capture_field_body_content(self, field_body_node):
         """Capture the structure and content of the Returns field body."""
         for child in field_body_node.children:
@@ -137,11 +141,9 @@ class ReturnTypeFinder(NodeVisitor):
             if child_type == "paragraph":
                 # Single or multi-line paragraph
                 text = child.astext().strip()
-                self._returns_field_body_content.append({
-                    'type': 'paragraph',
-                    'text': text,
-                    'lines': text.split('\n')
-                })
+                self._returns_field_body_content.append(
+                    {"type": "paragraph", "text": text, "lines": text.split("\n")}
+                )
             elif child_type == "definition_list":
                 # NumPy-style with type and description
                 self._visited_definition_list_in_returns = True
@@ -155,11 +157,13 @@ class ReturnTypeFinder(NodeVisitor):
                             elif item_child.__class__.__name__ == "definition":
                                 definition = item_child.astext().strip()
                         if term:
-                            self._returns_field_body_content.append({
-                                'type': 'definition_list_item',
-                                'term': term,
-                                'definition': definition or ''
-                            })
+                            self._returns_field_body_content.append(
+                                {
+                                    "type": "definition_list_item",
+                                    "term": term,
+                                    "definition": definition or "",
+                                }
+                            )
 
     def depart_field(self, node):
         # Reset flag when leaving a Returns field
@@ -173,26 +177,20 @@ class ReturnTypeFinder(NodeVisitor):
 
     def visit_desc_returns(self, node):
         if not (self._signature_return_type):
-            raw_type = (
-                _extract_type_text(node)
-                .lstrip(" -> ")
-                .strip()
-            )
+            raw_type = _extract_type_text(node).lstrip(" -> ").strip()
             # Only replace " or " with " | " if it's not inside brackets
             # This prevents Union[int, str] or Tuple[int, str] from being mangled
             import re
 
             # Check if there are brackets in the type
-            if '[' in raw_type and ']' in raw_type:
+            if "[" in raw_type and "]" in raw_type:
                 # Don't replace " or " inside brackets
                 self._signature_return_type = raw_type
             else:
                 # Safe to replace " or " with " | " for simple union types
-                self._signature_return_type = (
-                    raw_type
-                    .replace("` or `", " or ")
-                    .replace(" or ", " | ")
-                )
+                self._signature_return_type = raw_type.replace(
+                    "` or `", " or "
+                ).replace(" or ", " | ")
         raise SkipNode
 
     def visit_section(self, node):
@@ -223,21 +221,23 @@ class ReturnTypeFinder(NodeVisitor):
         """Parse Returns field body to separate type from description."""
         if not self._returns_field_body_content:
             return
-        
+
         for item in self._returns_field_body_content:
-            if item['type'] == 'definition_list_item':
+            if item["type"] == "definition_list_item":
                 # NumPy-style: term is type, definition is description
-                term = item['term'].strip().strip('`')
+                term = item["term"].strip().strip("`")
                 if self._is_type_like(term):
                     self._returns_field_type = term
-                    self._returns_field_description = item['definition']
+                    self._returns_field_description = item["definition"]
                 else:
                     # Term doesn't look like a type, treat as description
-                    desc = f"{term}\n{item['definition']}" if item['definition'] else term
+                    desc = (
+                        f"{term}\n{item['definition']}" if item["definition"] else term
+                    )
                     self._returns_field_description = desc
-            elif item['type'] == 'paragraph':
+            elif item["type"] == "paragraph":
                 # Check if it's a single line that looks like a type
-                lines = item['lines']
+                lines = item["lines"]
                 if len(lines) == 1:
                     # Single line - check if it's a type
                     line = lines[0].strip()
@@ -255,47 +255,58 @@ class ReturnTypeFinder(NodeVisitor):
                         # If all lines after the first are indented, first line might be type
                         rest_lines = lines[1:]
                         # Check if subsequent lines look like continuation (indented or empty)
-                        if all(line.startswith(' ') or not line.strip() for line in rest_lines):
+                        if all(
+                            line.startswith(" ") or not line.strip()
+                            for line in rest_lines
+                        ):
                             # First line is likely a type
                             if self._is_type_like(first_line):
                                 self._returns_field_type = first_line
-                                desc = '\n'.join(rest_lines).strip()
+                                desc = "\n".join(rest_lines).strip()
                                 self._returns_field_description = desc
                             else:
                                 # Even with indentation, first line doesn't look like a type
-                                self._returns_field_description = item['text']
+                                self._returns_field_description = item["text"]
                         else:
                             # Multiple non-indented lines = all description
-                            self._returns_field_description = item['text']
+                            self._returns_field_description = item["text"]
                     else:
-                        self._returns_field_description = item['text']
+                        self._returns_field_description = item["text"]
 
     def _is_type_like(self, text: str) -> bool:
         """Check if text looks like a type annotation."""
         import re
-        
-        text = text.strip().strip('`')
+
+        text = text.strip().strip("`")
         if not text:
             return False
-        
+
         # Single word (simple type)
-        if len(text.split()) == 1 and text.replace('_', '').replace('.', '').replace('[', '').replace(']', '').replace(',', '').isalnum():
+        if (
+            len(text.split()) == 1
+            and text.replace("_", "")
+            .replace(".", "")
+            .replace("[", "")
+            .replace("]", "")
+            .replace(",", "")
+            .isalnum()
+        ):
             return True
-        
+
         # Generic type like Type[...], Union[...], Tuple[...], etc.
-        if re.match(r'^[A-Za-z_][A-Za-z0-9_]*\[.+\]$', text):
+        if re.match(r"^[A-Za-z_][A-Za-z0-9_]*\[.+\]$", text):
             return True
-        
+
         # Union with | or "or"
         if " | " in text or " or " in text:
             parts = text.replace(" or ", " | ").split(" | ")
             if all(
-                len(part.strip().split()) == 1 or 
-                re.match(r'^[A-Za-z_][A-Za-z0-9_]*\[.+\]$', part.strip())
+                len(part.strip().split()) == 1
+                or re.match(r"^[A-Za-z_][A-Za-z0-9_]*\[.+\]$", part.strip())
                 for part in parts
             ):
                 return True
-        
+
         return False
 
     def _set_docstring_return_type_if_applicable(self, term_text: str):

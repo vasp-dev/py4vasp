@@ -68,16 +68,18 @@ def return_with_no_info(a: int, b: str):
     """
     return a * 2
 
+
 def return_with_multiline_type_description_no_type(a: int, b: str):
     """Function with type description across multiple lines and no type given.
 
     Returns
     -------
     This integer is returned
-    and represents the sum of a 
+    and represents the sum of a
     and length of b.
     """
     return a + len(b)
+
 
 def return_with_multiline_type_description_field_type(a: int, b: str):
     """Function with type description across multiple lines and type given in Returns field.
@@ -86,10 +88,11 @@ def return_with_multiline_type_description_field_type(a: int, b: str):
     -------
     int
         This integer is returned
-        and represents the sum of a 
+        and represents the sum of a
         and length of b.
     """
     return a + len(b)
+
 
 def return_with_multiline_type_description_sig_type(a: int, b: str) -> int:
     """Function with type description across multiple lines and type given in signature.
@@ -97,35 +100,42 @@ def return_with_multiline_type_description_sig_type(a: int, b: str) -> int:
     Returns
     -------
     This integer is returned
-    and represents the sum of a 
+    and represents the sum of a
     and length of b.
     """
     return a + len(b)
 
+
 from typing import Tuple, Union
 
 
-def return_with_multiline_type_description_tuple_sig_type(a: int, b: str) -> Tuple[int, str]:
+def return_with_multiline_type_description_tuple_sig_type(
+    a: int, b: str
+) -> Tuple[int, str]:
     """Function with type description across multiple lines and Tuple type given in signature.
 
     Returns
     -------
     This integer is returned
-    and represents the sum of a 
+    and represents the sum of a
     and length of b.
     """
     return a + len(b)
 
-def return_with_multiline_type_description_union_sig_type(a: int, b: str) -> Union[int, str]:
+
+def return_with_multiline_type_description_union_sig_type(
+    a: int, b: str
+) -> Union[int, str]:
     """Function with type description across multiple lines and Union type given in signature.
 
     Returns
     -------
     This integer is returned
-    and represents the sum of a 
+    and represents the sum of a
     and length of b.
     """
     return a + len(b)
+
 
 def return_with_multiline_type_description_union2_sig_type(a: int, b: str) -> int | str:
     """Function with type description across multiple lines and Union2 type given in signature.
@@ -133,10 +143,11 @@ def return_with_multiline_type_description_union2_sig_type(a: int, b: str) -> in
     Returns
     -------
     This integer is returned
-    and represents the sum of a 
+    and represents the sum of a
     and length of b.
     """
     return a + len(b)
+
 
 def return_with_multiline_type_description_tuple_field_type(a: int, b: str):
     """Function with type description across multiple lines and Tuple type given in Returns field.
@@ -145,10 +156,11 @@ def return_with_multiline_type_description_tuple_field_type(a: int, b: str):
     -------
     Tuple[int, str]
         This integer is returned
-        and represents the sum of a 
+        and represents the sum of a
         and length of b.
     """
     return a + len(b)
+
 
 def return_with_multiline_type_description_union_field_type(a: int, b: str):
     """Function with type description across multiple lines and Union type given in Returns field.
@@ -157,10 +169,11 @@ def return_with_multiline_type_description_union_field_type(a: int, b: str):
     -------
     Union[int, str]
         This integer is returned
-        and represents the sum of a 
+        and represents the sum of a
         and length of b.
     """
     return a + len(b)
+
 
 def return_with_multiline_type_description_union2_field_type(a: int, b: str):
     """Function with type description across multiple lines and Union2 type given in Returns field.
@@ -169,10 +182,11 @@ def return_with_multiline_type_description_union2_field_type(a: int, b: str):
     -------
     int | str
         This integer is returned
-        and represents the sum of a 
+        and represents the sum of a
         and length of b.
     """
     return a + len(b)
+
 
 def return_with_multiline_type_description_conflicting_type_01(a: int, b: str) -> int:
     """Function with type description across multiple lines and conflicting types.
@@ -181,10 +195,11 @@ def return_with_multiline_type_description_conflicting_type_01(a: int, b: str) -
     -------
     int | str
         This integer is returned
-        and represents the sum of a 
+        and represents the sum of a
         and length of b.
     """
     return a + len(b)
+
 
 def return_with_multiline_type_description_conflicting_type_02(a: int, b: str) -> int:
     """Function with type description across multiple lines and conflicting types.
@@ -195,14 +210,17 @@ def return_with_multiline_type_description_conflicting_type_02(a: int, b: str) -
     """
     return a + len(b)
 
-def return_with_multiline_type_description_conflicting_type_03(a: int, b: str) -> int | str:
+
+def return_with_multiline_type_description_conflicting_type_03(
+    a: int, b: str
+) -> int | str:
     """Function with type description across multiple lines and conflicting types.
 
     Returns
     -------
     int
         This integer is returned
-        and represents the sum of a 
+        and represents the sum of a
         and length of b.
     """
     return a + len(b)

@@ -983,7 +983,7 @@ date = "{current_date}"
 
     def _get_return_type(self, node):
         """Get the return type annotation from a desc_signature node.
-        
+
         Returns the appropriate type to display in the signature, following priority:
         1. Signature type annotation (if present)
         2. Returns field type (if present)
@@ -1016,7 +1016,7 @@ date = "{current_date}"
         else:
             # No return information at all
             return_type = ""
-        
+
         self._current_return_type = return_type
         return return_type
 
@@ -1189,7 +1189,7 @@ date = "{current_date}"
         if field_name == "return type":
             # Check if we have a description stored (from rejected non-type in "return type" field)
             field_description = self._returns_field_description or ""
-            
+
             # If we have a description but no type, treat this "return type" field as a "returns" field
             if field_description and not self._returns_field_type:
                 self.content += self._get_formatted_field_header("Returns")
@@ -1326,7 +1326,7 @@ date = "{current_date}"
         sig_return_type = self._signature_return_type or ""
         field_return_type = self._returns_field_type or ""
         field_description = self._returns_field_description or ""
-        
+
         # Type priority: signature > field type > "-" if has description
         if sig_return_type:
             display_type = sig_return_type
@@ -1344,7 +1344,7 @@ date = "{current_date}"
         if display_type and display_type != "-":
             # Format as definition list with type and optional description
             new_str_content = f"\n`{display_type}`"
-            
+
             # Only add description if:
             # 1. We have a description AND
             # 2. Either we're using signature type OR field has no type (just description)
@@ -1353,15 +1353,15 @@ date = "{current_date}"
                 # Add as definition list item
                 new_str_content += "\n: <!---->"
                 # Format description with proper indentation
-                for line in field_description.split('\n'):
+                for line in field_description.split("\n"):
                     if line.strip():
                         new_str_content += f"\n    {line.strip()}"
             # else: type only, no description
-            
+
         elif display_type == "-":
             # Has description but no type - show "-" with description
             new_str_content = f"\n`-`\n: <!---->"
-            for line in field_description.split('\n'):
+            for line in field_description.split("\n"):
                 if line.strip():
                     new_str_content += f"\n    {line.strip()}"
         else:
