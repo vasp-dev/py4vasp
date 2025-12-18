@@ -107,6 +107,9 @@ class ReturnTypeFinder(NodeVisitor):
         for child in node.children:
             if child.__class__.__name__ == "field_name":
                 field_name = child.astext().strip().lower()
+                import sys
+                if "return" in field_name:
+                    print(f"DEBUG visit_field: field_name={field_name!r}", flush=True, file=sys.stderr)
                 if field_name == "return type":
                     # Extract the return type from this field's body
                     for field_child in node.children:
@@ -114,7 +117,13 @@ class ReturnTypeFinder(NodeVisitor):
                             # The type is in a paragraph, possibly in a literal node
                             type_text = field_child.astext().strip()
                             if type_text and not self._returns_field_type:
-                                self._returns_field_type = type_text
+                                import sys
+                                print(f"DEBUG SET _returns_field_type (visit_field): {type_text!r}", flush=True, file=sys.stderr)
+                                # Validate that it looks like a type annotation
+                                if self._is_type_like(type_text):
+                                    self._returns_field_type = type_text
+                                else:
+                                    print(f"DEBUG REJECTED as non-type: {type_text!r}", flush=True, file=sys.stderr)
                 elif "return" in field_name and field_name != "return type":
                     self._in_returns_field = True
                     # Capture the field_body content for later parsing
@@ -126,11 +135,17 @@ class ReturnTypeFinder(NodeVisitor):
     
     def _capture_field_body_content(self, field_body_node):
         """Capture the structure and content of the Returns field body."""
+        import sys
         for child in field_body_node.children:
             child_type = child.__class__.__name__
+            print(f"DEBUG _capture child type: {child_type}, has {len(child.children) if hasattr(child, 'children') else 0} children", flush=True, file=sys.stderr)
             if child_type == "paragraph":
                 # Single or multi-line paragraph
                 text = child.astext().strip()
+                print(f"DEBUG _capture paragraph text: {text!r}", flush=True, file=sys.stderr)
+                # Check if it's wrapped in emphasis (Napoleon does this)
+                if len(child.children) == 1 and child.children[0].__class__.__name__ == 'emphasis':
+                    print(f"DEBUG: Paragraph is wrapped in emphasis!", flush=True, file=sys.stderr)
                 self._returns_field_body_content.append({
                     'type': 'paragraph',
                     'text': text,
@@ -215,6 +230,7 @@ class ReturnTypeFinder(NodeVisitor):
 
     def _parse_returns_field_body(self):
         """Parse Returns field body to separate type from description."""
+        import sys
         if not self._returns_field_body_content:
             return
         
@@ -223,21 +239,32 @@ class ReturnTypeFinder(NodeVisitor):
                 # NumPy-style: term is type, definition is description
                 term = item['term'].strip().strip('`')
                 if self._is_type_like(term):
+                    import sys
+                    print(f"DEBUG SET _returns_field_type (definition_list_item): {term!r}", flush=True, file=sys.stderr)
                     self._returns_field_type = term
+                    print(f"DEBUG SET _returns_field_description (definition_list_item): {item['definition']!r}", flush=True, file=sys.stderr)
                     self._returns_field_description = item['definition']
                 else:
                     # Term doesn't look like a type, treat as description
-                    self._returns_field_description = "{}\\n{}".format(term, item['definition']) if item['definition'] else term
+                    import sys
+                    desc = f"{term}\n{item['definition']}" if item['definition'] else term
+                    print(f"DEBUG SET _returns_field_description (non-type term): {desc!r}", flush=True, file=sys.stderr)
+                    self._returns_field_description = desc
             elif item['type'] == 'paragraph':
                 # Check if it's a single line that looks like a type
                 lines = item['lines']
+                print(f"DEBUG _parse paragraph: {len(lines)} lines, text={item['text']!r}", flush=True, file=sys.stderr)
                 if len(lines) == 1:
                     # Single line - check if it's a type
                     line = lines[0].strip()
                     if self._is_type_like(line):
+                        import sys
+                        print(f"DEBUG SET _returns_field_type (single-line paragraph): {line!r}", flush=True, file=sys.stderr)
                         self._returns_field_type = line
                     else:
                         # Single line description
+                        import sys
+                        print(f"DEBUG SET _returns_field_description (single-line paragraph): {line!r}", flush=True, file=sys.stderr)
                         self._returns_field_description = line
                 else:
                     # Multiple lines - check if first line is type (NumPy style without definition_list)
@@ -251,15 +278,25 @@ class ReturnTypeFinder(NodeVisitor):
                         if all(line.startswith(' ') or not line.strip() for line in rest_lines):
                             # First line is likely a type
                             if self._is_type_like(first_line):
+                                import sys
+                                print(f"DEBUG SET _returns_field_type (multi-line first-line-is-type): {first_line!r}", flush=True, file=sys.stderr)
                                 self._returns_field_type = first_line
-                                self._returns_field_description = '\\n'.join(rest_lines).strip()
+                                desc = '\n'.join(rest_lines).strip()
+                                print(f"DEBUG SET _returns_field_description (multi-line first-line-is-type): {desc!r}", flush=True, file=sys.stderr)
+                                self._returns_field_description = desc
                             else:
                                 # Even with indentation, first line doesn't look like a type
+                                import sys
+                                print(f"DEBUG SET _returns_field_description (multi-line first-line-not-type): {item['text']!r}", flush=True, file=sys.stderr)
                                 self._returns_field_description = item['text']
                         else:
                             # Multiple non-indented lines = all description
+                            import sys
+                            print(f"DEBUG SET _returns_field_description (multi-line non-indented): {item['text']!r}", flush=True, file=sys.stderr)
                             self._returns_field_description = item['text']
                     else:
+                        import sys
+                        print(f"DEBUG SET _returns_field_description (fallback): {item['text']!r}", flush=True, file=sys.stderr)
                         self._returns_field_description = item['text']
 
     def _is_type_like(self, text: str) -> bool:
@@ -269,6 +306,9 @@ class ReturnTypeFinder(NodeVisitor):
         text = text.strip().strip('`')
         if not text:
             return False
+
+        import sys
+        print("DEBUG: " + text, flush=True, file=sys.stderr)
         
         # Single word (simple type)
         if len(text.split()) == 1 and text.replace('_', '').replace('.', '').replace('[', '').replace(']', '').replace(',', '').isalnum():

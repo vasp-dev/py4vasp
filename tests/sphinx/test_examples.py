@@ -973,7 +973,7 @@ Function with return description only in Returns field.
 
 def test_complicated_signatures_return_with_no_info(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
-    print(content)
+    #print(content)
     expected_content_with_no_info = """\
 {{< function name="return_with_no_info" module="example_complicated_signatures" breadcrumbs="" >}}
 {{< signature >}}
