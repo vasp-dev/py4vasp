@@ -139,8 +139,8 @@ A simple example module to demonstrate Sphinx autodoc capabilities.
 {{< method name="example_method" class="ExampleModule" module="example_module" breadcrumbs="" >}}
 {{< signature >}}
 (
-- *param1*,
-- *param2*
+- *param1*: `int`,
+- *param2*: `int`
 
 ) → `int`
 {{< /signature >}}
@@ -148,25 +148,30 @@ A simple example module to demonstrate Sphinx autodoc capabilities.
 {{< docstring >}}
 An example function that adds two parameters.
 
+
+
 #### Parameters
-param1
-int: <!---->
+
+
+
+*param1*: `int`
+: <!---->
     The first parameter.
 
-param2
-int: <!---->
+*param2*: `int`
+: <!---->
     The second parameter.
 
-
-{{< /docstring >}}{{< docstring >}}
 #### Returns
-int
+
+
+`int`
 : <!---->
     The sum of param1 and param2.
 
 
-{{< /docstring >}}
 
+{{< /docstring >}}
 
 {{< /method >}}
 
@@ -220,27 +225,32 @@ A string attribute.
     function_content = """\
 {{< function name="example_function" module="example_module" breadcrumbs="" >}}
 {{< signature >}}
-(*x*) → `int`
+(*x*: `int`) → `int`
 {{< /signature >}}
 
 {{< docstring >}}
 An example function that squares its input.
 
+
+
 ### Parameters
-x
-int: <!---->
+
+
+
+*x*: `int`
+: <!---->
     An integer to be squared.
 
-
-{{< /docstring >}}{{< docstring >}}
 ### Returns
-int
+
+
+`int`
 : <!---->
     The square of the input integer.
 
 
-{{< /docstring >}}
 
+{{< /docstring >}}
 
 {{< /function >}}"""
     assert function_content in content
@@ -322,14 +332,18 @@ def test_autodoc_equivalent_function(sphinx_app):
 {{< docstring >}}
 docstring
 
+
+
 ### Returns
-str
+
+
+`str`
 : <!---->
-    bar
+    bar is not just a type
+
 
 
 {{< /docstring >}}
-
 
 {{< /function >}}"""
     assert expected_content.replace("METHOD_NAME", "foo1") in content

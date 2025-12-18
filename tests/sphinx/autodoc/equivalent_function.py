@@ -5,7 +5,7 @@ def foo1() -> str:
 
     Returns
     -------
-    bar
+    bar is not just a type
     """
 
 
@@ -15,7 +15,7 @@ def foo2() -> str:
     Returns
     -------
     str
-        bar
+        bar is not just a type
     """
 
 
@@ -25,5 +25,5 @@ def foo3():
     Returns
     -------
     str
-        bar
+        bar is not just a type
     """

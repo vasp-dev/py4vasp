@@ -132,7 +132,6 @@ class ReturnTypeFinder(NodeVisitor):
     
     def _capture_field_body_content(self, field_body_node):
         """Capture the structure and content of the Returns field body."""
-        import sys
         for child in field_body_node.children:
             child_type = child.__class__.__name__
             if child_type == "paragraph":
@@ -278,9 +277,6 @@ class ReturnTypeFinder(NodeVisitor):
         text = text.strip().strip('`')
         if not text:
             return False
-
-        import sys
-        print("DEBUG: " + text, flush=True, file=sys.stderr)
         
         # Single word (simple type)
         if len(text.split()) == 1 and text.replace('_', '').replace('.', '').replace('[', '').replace(']', '').replace(',', '').isalnum():
