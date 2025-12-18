@@ -186,7 +186,7 @@ instead of the constructor Calculation()."""
 
         Parameters
         ----------
-        file_name : str of pathlib.Path
+        file_name : str or pathlib.Path
             Name of the file from which the data is read.
 
         Returns
