@@ -1015,3 +1015,418 @@ Function with no return type information.
 {{< /function >}}
 """
     assert expected_content_with_no_info in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_no_type(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    print(content)
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_no_type" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `-`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and no type given.
+
+
+
+### Returns
+
+
+`-`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_field_type(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_field_type" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and type given in Returns field.
+
+
+
+### Returns
+
+
+`int`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_sig_type(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_sig_type" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and type given in signature.
+
+
+
+### Returns
+
+
+`int`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_tuple_sig_type(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_tuple_sig_type" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `Tuple[int, str]`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and Tuple type given in signature.
+
+
+
+### Returns
+
+
+`Tuple[int, str]`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_union_sig_type(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_union_sig_type" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `Union[int, str]`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and Union type given in signature.
+
+
+
+### Returns
+
+
+`Union[int, str]`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_union2_sig_type(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_union2_sig_type" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int | str`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and Union2 type given in signature.
+
+
+
+### Returns
+
+
+`int | str`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_tuple_field_type(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_tuple_field_type" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `Tuple[int, str]`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and Tuple type given in Returns field.
+
+
+
+### Returns
+
+
+`Tuple[int, str]`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_union_field_type(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_union_field_type" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `Union[int, str]`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and Union type given in Returns field.
+
+
+
+### Returns
+
+
+`Union[int, str]`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_union2_field_type(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_union2_field_type" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int | str`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and Union2 type given in Returns field.
+
+
+
+### Returns
+
+
+`int | str`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_conflicting_type_01(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_conflicting_type_01" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and conflicting types.
+
+
+
+### Returns
+
+
+`int | str`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_conflicting_type_02(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_conflicting_type_02" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and conflicting types.
+
+
+
+### Returns
+
+`int | str`
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_conflicting_type_03(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_conflicting_type_03" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int | str`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and conflicting types.
+
+
+
+### Returns
+
+
+`int`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
