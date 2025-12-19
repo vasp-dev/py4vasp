@@ -1,3 +1,2 @@
-api
-_packages
-_classes
+calculation/*.rst
+hidden/

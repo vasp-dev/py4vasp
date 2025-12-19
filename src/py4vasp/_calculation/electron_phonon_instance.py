@@ -36,8 +36,9 @@ class ElectronPhononInstance(abc.ABC):
 
         Returns
         -------
-        A dictionary containing the metadata for this instance. The keys correspond to
-        settings in the INCAR file, and the values are the respective settings used.
+        -
+            A dictionary containing the metadata for this instance. The keys correspond to
+            settings in the INCAR file, and the values are the respective settings used.
         """
         mu_tag, mu_val = self.parent.chemical_potential_mu_tag()
         optional_metadata = {}

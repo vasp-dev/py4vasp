@@ -221,6 +221,12 @@ reciprocal"""
 
         Parameters
         ----------
+        start : ArrayLike
+            The starting k-point of the path segment.
+            Expects exactly 3 coordinates.
+        finish : ArrayLike
+            The ending k-point of the path segment.
+            Expects exactly 3 coordinates.
         {selection}
 
         Returns

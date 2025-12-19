@@ -11,7 +11,7 @@ from py4vasp._third_party import graph
 from py4vasp._util import index, select
 
 
-class ElectronPhononBandgapInstance(ElectronPhononInstance, graph.Mixin):
+class BandgapInstance(ElectronPhononInstance, graph.Mixin):
     """
     Represents an instance of electron-phonon band gap calculations.
 
@@ -104,15 +104,13 @@ class ElectronPhononBandgapInstance(ElectronPhononInstance, graph.Mixin):
         -------
         dict
             A dictionary containing:
-            - "metadata": A dictionary with metadata about the calculation, including:
-                - "nbands_sum": The sum of the number of bands.
-                - "selfen_delta": The self-energy delta value.
-                - <mu_tag>: The chemical potential value for the current index.
+            - "metadata": A dictionary with metadata about the calculation, including *nbands_sum* (the sum of the number of bands), *selfen_delta* (the self-energy delta value), and *<mu_tag>* (the chemical potential value for the current index).
             - "direct_renorm": The renormalized direct bandgap values.
             - "direct": The direct bandgap values.
             - "fundamental_renorm": The renormalized fundamental bandgap values.
             - "fundamental": The fundamental bandgap values.
             - "temperatures": The temperatures at which the calculations were performed.
+
         Notes
         -----
         The <mu_tag> key in the metadata will be dynamically set based on the chemical
@@ -187,7 +185,7 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
 
         Returns
         -------
-        tuple of (str, numpy.ndarray)
+        tuple[str, numpy.ndarray]
             The INCAR tag name and its corresponding value as set in the calculation.
             Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
         """
@@ -195,7 +193,7 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
 
     @base.data_access
     def select(self, selection):
-        """Return a list of ElectronPhononBandgapInstance objects matching the selection.
+        """Return a list of BandgapInstance objects matching the selection.
 
         Parameters
         ----------
@@ -207,13 +205,13 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
 
         Returns
         -------
-        list of ElectronPhononBandgapInstance
+        list[BandgapInstance]
             Instances that match the selection criteria.
         """
         indices = self._accumulator().select_indices(
             selection, scattering_approximation="SERTA"
         )
-        return [ElectronPhononBandgapInstance(self, index) for index in indices]
+        return [BandgapInstance(self, index) for index in indices]
 
     @base.data_access
     def _get_data(self, name, index):
@@ -224,7 +222,7 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
         if 0 <= key < len(self):
             mask = np.equal(self._raw_data.scattering_approximation, "SERTA")
             index_ = np.arange(len(mask))[mask][key]
-            return ElectronPhononBandgapInstance(self, index_)
+            return BandgapInstance(self, index_)
         raise IndexError("Index out of range for electron phonon bandgap instance.")
 
     @base.data_access

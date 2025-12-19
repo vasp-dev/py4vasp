@@ -34,7 +34,7 @@ UNITS = {
 }
 
 
-class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
+class TransportInstance(ElectronPhononInstance, graph.Mixin):
     """
     Represents a single instance of electron-phonon transport calculations.
 
@@ -56,16 +56,16 @@ class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
 
         Returns
         -------
-        A dictionary containing:
-        - "metadata": Metadata about the instance, including chemical potential,
-            number of bands summed, delta, and scattering approximation.
-        - "temperatures": Array of temperatures at which transport properties are computed.
-        - "transport_function": The transport function data.
-        - "electronic_conductivity": Electronic conductivity values.
-        - "mobility": Mobility values.
-        - "seebeck": Seebeck coefficient values.
-        - "peltier": Peltier coefficient values.
-        - "electronic_thermal_conductivity": Electronic thermal conductivity values.
+        dict
+            A dictionary containing:
+            - "metadata": Metadata about the instance, including chemical potential, number of bands summed, delta, and scattering approximation.
+            - "temperatures": Array of temperatures at which transport properties are computed.
+            - "transport_function": The transport function data.
+            - "electronic_conductivity": Electronic conductivity values.
+            - "mobility": Mobility values.
+            - "seebeck": Seebeck coefficient values.
+            - "peltier": Peltier coefficient values.
+            - "electronic_thermal_conductivity": Electronic thermal conductivity values.
         """
         names = [
             "temperatures",
@@ -85,7 +85,8 @@ class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
 
         Returns
         -------
-        A numpy array of temperatures in Kelvin.
+        -
+            A numpy array of temperatures in Kelvin.
         """
         return self._get_data("temperatures")
 
@@ -103,8 +104,9 @@ class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
 
         Returns
         -------
-        A numpy array of electronic conductivity values in S/m for the specified
-        direction, or a dictionary of arrays if multiple directions are selected.
+        -
+            A numpy array of electronic conductivity values in S/m for the specified
+            direction, or a dictionary of arrays if multiple directions are selected.
 
         Examples
         --------
@@ -133,8 +135,9 @@ class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
 
         Returns
         -------
-        A numpy array of mobility values in cm^2/(V.s) for the specified direction,
-        or a dictionary of arrays if multiple directions are selected.
+        -
+            A numpy array of mobility values in cm^2/(V.s) for the specified direction,
+            or a dictionary of arrays if multiple directions are selected.
 
         Examples
         --------
@@ -163,8 +166,9 @@ class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
 
         Returns
         -------
-        A numpy array of Seebeck coefficient values in V/K for the specified direction,
-        or a dictionary of arrays if multiple directions are selected.
+        -
+            A numpy array of Seebeck coefficient values in V/K for the specified direction,
+            or a dictionary of arrays if multiple directions are selected.
 
         Examples
         --------
@@ -193,8 +197,9 @@ class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
 
         Returns
         -------
-        A numpy array of Peltier coefficient values in V for the specified direction,
-        or a dictionary of arrays if multiple directions are selected.
+        -
+            A numpy array of Peltier coefficient values in V for the specified direction,
+            or a dictionary of arrays if multiple directions are selected.
 
         Examples
         --------
@@ -225,8 +230,9 @@ class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
 
         Returns
         -------
-        A numpy array of electronic thermal conductivity values in W/(m.K) for the
-        specified direction, or a dictionary of arrays if multiple directions are selected.
+        -
+            A numpy array of electronic thermal conductivity values in W/(m.K) for the
+            specified direction, or a dictionary of arrays if multiple directions are selected.
 
         Examples
         --------
@@ -264,7 +270,8 @@ class ElectronPhononTransportInstance(ElectronPhononInstance, graph.Mixin):
 
         Returns
         -------
-        A numpy array of dimensionless figure of merit values at each temperature.
+        -
+            A numpy array of dimensionless figure of merit values at each temperature.
 
         Examples
         --------
@@ -337,7 +344,8 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
         Returns
         -------
-        Dictionary containing information about the available accumulators.
+        -
+            Dictionary containing information about the available accumulators.
         """
         return self._accumulator().to_dict()
 
@@ -347,8 +355,9 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
         Returns
         -------
-        Dictionary containing available selection options with their possible values.
-        Keys include selection criteria like "nbands_sum", "selfen_approx", "selfen_delta".
+        -
+            Dictionary containing available selection options with their possible values.
+            Keys include selection criteria like "nbands_sum", "selfen_approx", "selfen_delta".
         """
         base_selections = {
             **super().selections(),
@@ -362,8 +371,9 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
         Returns
         -------
-        Dictionary containing transport quantities as keys and their corresponding
-        physical units as values.
+        -
+            Dictionary containing transport quantities as keys and their corresponding
+            physical units as values.
         """
         return UNITS
 
@@ -374,8 +384,9 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
         Returns
         -------
-        The INCAR tag name and its corresponding value as set in the calculation.
-        Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
+        -
+            The INCAR tag name and its corresponding value as set in the calculation.
+            Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
         """
         return self._accumulator().chemical_potential_mu_tag()
 
@@ -384,7 +395,7 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         return self._accumulator().get_data(name, index)
 
     @base.data_access
-    def select(self, selection: str) -> List[ElectronPhononTransportInstance]:
+    def select(self, selection: str) -> List[TransportInstance]:
         """Return a list of ElectronPhononSelfEnergyInstance objects matching the selection.
 
         Parameters
@@ -397,7 +408,8 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
         Returns
         -------
-        Instances that match the selection criteria.
+        -
+            Instances that match the selection criteria.
 
         Examples
         --------
@@ -418,7 +430,7 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
     def _select_instances(self, selection, filter_keys=()):
         indices = self._accumulator().select_indices(selection, *filter_keys)
-        return [ElectronPhononTransportInstance(self, index) for index in indices]
+        return [TransportInstance(self, index) for index in indices]
 
     @base.data_access
     def to_graph(self, selection: str) -> graph.Graph:
@@ -439,10 +451,11 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
         Returns
         -------
-        A graph object containing the requested data. Each series corresponds to one
-        temperature and plots the requested transport quantity as a function of the
-        chemical potential tag. If the instances share the same metadata, the series
-        is connected with a line.
+        -
+            A graph object containing the requested data. Each series corresponds to one
+            temperature and plots the requested transport quantity as a function of the
+            chemical potential tag. If the instances share the same metadata, the series
+            is connected with a line.
 
         Examples
         --------
@@ -479,7 +492,7 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
     @base.data_access
     def __getitem__(self, key):
         if 0 <= key < len(self._raw_data.valid_indices):
-            return ElectronPhononTransportInstance(self, key)
+            return TransportInstance(self, key)
         raise IndexError("Index out of range for electron-phonon transport instance.")
 
     @base.data_access
@@ -546,9 +559,7 @@ class _SeriesBuilderBase:
 
 
 class _SeriesBuilderInstance(_SeriesBuilderBase):
-    def build(
-        self, selection: Tuple, instance: ElectronPhononTransportInstance
-    ) -> graph.Series:
+    def build(self, selection: Tuple, instance: TransportInstance) -> graph.Series:
         """Build a graph series for a single instance based on the selection.
 
         This will plot selected quantity over temperature."""
@@ -562,7 +573,7 @@ class _SeriesBuilderInstance(_SeriesBuilderBase):
 
 class _SeriesBuilderMapping(_SeriesBuilderBase):
     def build(
-        self, selection: Tuple, instances: List[ElectronPhononTransportInstance]
+        self, selection: Tuple, instances: List[TransportInstance]
     ) -> Generator[graph.Series, None, None]:
         """Build graph series for multiple instances based on the selection.
         This will plot selected quantity over chemical potential tag for each temperature.

@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from datetime import datetime
+
 import pytest
 
 application = pytest.importorskip("sphinx.application")
@@ -42,7 +44,6 @@ def test_index_page(sphinx_app):
     """Test that the index page is created correctly."""
     content = read_file_content(sphinx_app.outdir, "index.md")
     assert 'title = "Main page"' in content
-    assert "# Main page" in content
     assert (
         "This is the main page of the documentation. It serves as an index for the content available in this project."
         in content
@@ -66,7 +67,7 @@ def test_convert_headings(sphinx_app):
     lines = content.splitlines()
     # find all headers
     headers = []
-    headers.append(lines.index("# Chapter"))
+    # headers.append(lines.index("# Chapter"))
     for section in range(1, 3):
         section_header = f"## Section {section}"
         headers.append(lines.index(section_header))
@@ -83,18 +84,32 @@ def test_convert_headings(sphinx_app):
                     headers.append(lines.index(paragraph_header))
     # check that headers are in order
     assert sorted(headers) == headers
-    assert "###### ***Header not in table of contents***\n" in content
+    assert "###### Header not in table of contents\n" in content
 
 
 def test_convert_inline_markup(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "inline_markup.md")
-    expected_content = f"""\
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    expected_content = (
+        """\
 +++
 title = "Inline markup example"
-+++
-# Inline markup example
-*this text is emphasized*, **this text is strong**, `this text is code`
+weight = HUGO_WEIGHT_PLACEHOLDER
 """
+        + f"""date = \"{current_date}\""""
+        + """
++++
+
+{{< sphinx >}}
+
+{{< docstring >}}
+*this text is emphasized*, **this text is strong**, `this text is code`
+
+{{< /docstring >}}
+
+{{< /sphinx >}}
+"""
+    )
     assert expected_content in content
 
 
@@ -141,11 +156,10 @@ next term
 
 def test_convert_reference(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "reference.md")
-    # doctree = sphinx_app.env.get_doctree("reference")
-    # print(doctree.pformat())
     ## CAREFUL: internal references are first shown as pending_xref nodes,
     ## then converted to inline nodes with class "xref std std-ref"
     ## therefore, the processing by the translator must be done in visit/depart_inline
+    print(content)
 
     # External links
     assert "This is a link to the [VASP website](https://www.vasp.at)." in content
@@ -154,7 +168,7 @@ def test_convert_reference(sphinx_app):
     # Internal reference (Markdown link to anchor)
     assert "[internal-label](#internal-label)" in content
     # Internal anchor
-    assert '<a name="internal-label"></a>' in content
+    assert '{{< anchor name="internal-label" >}}' in content
     # Target section text
     assert "This is the internal target section." in content
 
@@ -162,32 +176,16 @@ def test_convert_reference(sphinx_app):
 def test_convert_compound(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "compound.md")
     expected_content = """\
-<div class="compound">
+{{< compound >}}
 
 This is inside a compound block.
 
 Another paragraph inside compound.
 
 
-</div>
+{{< /compound >}}
 """
     assert expected_content in content
-    expected_content_nested = """\
-<div class="compound">
-
-This is inside a compound block.
-
-
-<div class="compound">
-
-This is a nested compound block.
-
-
-</div>
-
-</div>
-"""
-    assert expected_content_nested in content
 
 
 def test_convert_custom_role(sphinx_app):

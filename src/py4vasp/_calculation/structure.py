@@ -13,6 +13,8 @@ ase = import_.optional("ase")
 ase_io = import_.optional("ase.io")
 mdtraj = import_.optional("mdtraj")
 
+__all__ = ["Structure"]
+
 
 @dataclass
 class _Format:
@@ -345,6 +347,8 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         Atoms
             Structural information for ASE package. Read more about ASE `here <https://ase-lib.org>`_.
 
+        Examples
+        --------
         First, we create some example data so that we can illustrate how to use this method.
         You can also use your own VASP calculation data if you have it available.
 
@@ -425,6 +429,8 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
             trajectory. By converting the VASP data to their format, we facilitate
             using all functions of that package.
 
+        Examples
+        --------
         First, we create some example data so that we can illustrate how to use this method.
         You can also use your own VASP calculation data if you have it available.
 
@@ -472,6 +478,8 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         str
             Returns the POSCAR of the selected steps.
 
+        Examples
+        --------
         First, we create some example data so that we can illustrate how to use this method.
         You can also use your own VASP calculation data if you have it available.
 

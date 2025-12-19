@@ -1,15 +1,25 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import pathlib
+from datetime import datetime
 from typing import Optional
 
 from docutils.nodes import NodeVisitor, SkipNode
 
+from py4vasp import _calculation
 from py4vasp._sphinx.anchors_finder import AnchorsFinder
+from py4vasp._sphinx.attribute_info_finder import AttributeInfoFinder
 from py4vasp._sphinx.parameters_info_finder import (
+    SIG_TYPE_DEFAULT,
     ParametersInfoFinder,
     _get_param_raw_info_from_left_string,
 )
 from py4vasp._sphinx.return_type_finder import ReturnTypeFinder
+
+
+def _construct_hugo_shortcode(text: str) -> str:
+    """Wrap text in Hugo shortcode delimiters."""
+    return f"{{{{< {text} >}}}}"
 
 
 class Indentation:
@@ -83,14 +93,44 @@ class HugoTranslator(NodeVisitor):
         self._in_returns_field = False
         self._in_examples_field = False
         self._expect_returns_field = False
+        self._is_shortcode_docstring_open = False
+        self._is_shortcode_sphinx_open = False
+        self._needs_reopen_docstring = False
         self._current_return_type = None
+        self._signature_return_type = None
+        self._returns_field_type = None
+        self._returns_field_description = None
         self._current_signature_dict = {}
         self._prevent_move_content = False
         self._prevent_content_stash_deletion = False
         self._content_stash = []
+        self._in_returns_section = False
+        self._returns_has_definition_list = False
+        self._returns_paragraph_content = []
 
     def __str__(self):
         return "\n".join(self.lines) + "\n"
+
+    def _shortcode_sphinx(self, close: bool = False):
+        if close:
+            self._shortcode_docstring(close=True)
+            if self._is_shortcode_sphinx_open:
+                self.content += f"\n\n{_construct_hugo_shortcode('/sphinx')}\n"
+                self._is_shortcode_sphinx_open = False
+        else:
+            if not self._is_shortcode_sphinx_open:
+                self.content += f"\n{_construct_hugo_shortcode('sphinx')}\n\n"
+                self._is_shortcode_sphinx_open = True
+
+    def _shortcode_docstring(self, close: bool = False):
+        if close:
+            if self._is_shortcode_docstring_open:
+                self.content += f"{_construct_hugo_shortcode('/docstring')}"
+                self._is_shortcode_docstring_open = False
+        else:
+            if not self._is_shortcode_docstring_open:
+                self.content += f"{_construct_hugo_shortcode('docstring')}\n"
+                self._is_shortcode_docstring_open = True
 
     def _add_new_line(self):
         if self._prevent_move_content:
@@ -119,11 +159,11 @@ class HugoTranslator(NodeVisitor):
 
     def unknown_visit(self, node):
         """Handle unknown node types by logging them for debugging."""
-        print(f"DEBUG: Unknown node type: {node.__class__.__name__}")
-        print(f"DEBUG: Node attributes: {node.attributes}")
-        print(
-            f"DEBUG: Node children: {[child.__class__.__name__ for child in node.children]}"
-        )
+        # print(f"DEBUG: Unknown node type: {node.__class__.__name__}")
+        # print(f"DEBUG: Node attributes: {node.attributes}")
+        # print(
+        #     f"DEBUG: Node children: {[child.__class__.__name__ for child in node.children]}"
+        # )
         # Don't raise error, just skip for now
         return
         raise NotImplementedError(
@@ -147,6 +187,12 @@ class HugoTranslator(NodeVisitor):
         """
         pass
 
+    def depart_document(self, node):
+        """Close all open shortcodes and finalize document."""
+        self._shortcode_docstring(close=True)
+        self._shortcode_sphinx(close=True)
+        self._move_content_to_lines()
+
     def visit_title(self, node):
         """Handle title nodes by generating Hugo front matter and Markdown headers.
 
@@ -156,7 +202,13 @@ class HugoTranslator(NodeVisitor):
         the current section depth.
         """
         self._create_hugo_front_matter(node)
-        self.content = f"{self.section_level * '#'} "
+        self._shortcode_sphinx()
+        self._shortcode_docstring()
+        self._move_content_to_lines()
+        if self.section_level > 1:
+            self.content += f"{self.section_level * '#'} "
+        else:
+            raise SkipNode
 
     def depart_title(self, node):
         self._move_content_to_lines()
@@ -168,9 +220,12 @@ class HugoTranslator(NodeVisitor):
         """
         if self.frontmatter_created:
             return
-        self.content = f"""\
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        self.content += f"""\
 +++
 title = "{node.astext()}"
+weight = HUGO_WEIGHT_PLACEHOLDER
+date = "{current_date}"
 +++\n"""
         self._move_content_to_lines()
         self.frontmatter_created = True
@@ -183,6 +238,20 @@ title = "{node.astext()}"
         hash symbols (# vs ## vs ###) to maintain the document hierarchy.
         """
         self.section_level += 1
+        # Open docstring for content sections (between desc nodes)
+        if self._is_shortcode_sphinx_open:
+            self._shortcode_docstring(close=False)
+
+        # Check if this is a Returns section
+        section_title = ""
+        for child in node.children:
+            if child.__class__.__name__ == "title":
+                section_title = child.astext().lower()
+                break
+        if "return" in section_title:
+            self._in_returns_section = True
+            self._returns_has_definition_list = False
+            self._returns_paragraph_content = []
 
     def depart_section(self, node):
         """Decrement section nesting level when leaving a section.
@@ -191,6 +260,29 @@ title = "{node.astext()}"
         nesting level after processing all content within a section. Without this,
         subsequent sections at the same level would get incorrect header depths.
         """
+        # Handle Returns section with paragraph-only content
+        if self._in_returns_section:
+            if (
+                not self._returns_has_definition_list
+                and self._returns_paragraph_content
+                and self._current_return_type
+            ):
+                # We have a return type from signature but docstring only has description paragraphs
+                # Format as definition list: type on first line, description indented
+                self._strip_blank_lines()
+                formatted_returns = f"{self._current_return_type}\n: <!---->\n"
+                for para_content in self._returns_paragraph_content:
+                    formatted_returns += f"    {para_content}\n"
+                formatted_returns += "\n"
+                self.lines.append(formatted_returns)
+            self._in_returns_section = False
+            self._returns_has_definition_list = False
+            self._returns_paragraph_content = []
+
+        # Close docstring for content sections, but not if we need to reopen it
+        # (e.g., after a compound or admonition)
+        if self._is_shortcode_docstring_open and not self._needs_reopen_docstring:
+            self._shortcode_docstring(close=True)
         self.section_level -= 1
 
     def visit_paragraph(self, node):
@@ -201,7 +293,15 @@ title = "{node.astext()}"
         Inside lists only a single newline is required because the list item separate
         the paragraphs.
         """
-        pass
+        # If we're in a Returns section, capture paragraph content for special formatting
+        # BUT NOT if we're already processing field_body content (which has its own handling)
+        if (
+            self._in_returns_section
+            and not self._returns_has_definition_list
+            and not self._prevent_move_content
+        ):
+            self._capturing_returns_paragraph = True
+            self._paragraph_start_pos = len(self.content)
 
     def depart_paragraph(self, node):
         """Add newline after paragraph content for proper Markdown separation.
@@ -210,14 +310,24 @@ title = "{node.astext()}"
         rather than visit because we need the newline after all the paragraph's content
         has been processed, not before it.
         """
-        self._move_content_to_lines()
-        self._add_new_line()
+        # If we captured a Returns paragraph, save it and skip normal processing
+        if getattr(self, "_capturing_returns_paragraph", False):
+            # Only extract the paragraph content, preserve what was there before
+            paragraph_start = getattr(self, "_paragraph_start_pos", 0)
+            paragraph_content = self.content[paragraph_start:].strip()
+            self._returns_paragraph_content.append(paragraph_content)
+            # Restore content to what it was before the paragraph
+            self.content = self.content[:paragraph_start]
+            self._capturing_returns_paragraph = False
+        else:
+            self._move_content_to_lines()
+            self._add_new_line()
 
     def visit_rubric(self, node):
-        self.content = "\n" + (self.section_level + 1) * "#" + " ***"
+        self.content += "\n" + (self.section_level + 1) * "#" + " "
 
     def depart_rubric(self, node):
-        self.content += "***\n\n"
+        self.content += "\n\n"
         self._move_content_to_lines()
 
     def visit_Text(self, node):
@@ -262,20 +372,46 @@ title = "{node.astext()}"
         """
         self.content += "**"
 
+    def visit_math(self, node):
+        """Handle inline math nodes by converting to KaTeX format.
+
+        Sphinx :math: role creates math nodes. We convert these to $...$
+        for KaTeX/MathJax rendering in Hugo.
+        """
+        self.content += "$"
+
+    def depart_math(self, node):
+        """Close inline math with dollar sign."""
+        self.content += "$"
+
     def visit_literal(self, node):
         """Add opening backtick for inline code.
 
         Single backticks are used for inline code spans in Markdown. This handles
         simple cases where the literal text doesn't contain backticks itself.
+        Skip backticks if the literal contains a pending cross-reference (xref),
+        since those should be rendered as links, not code.
         """
-        self.content += "`"
+        # Check if this literal contains a pending_xref (for :meth:, :class:, etc.)
+        has_xref = any(
+            child.__class__.__name__ == "pending_xref" for child in node.children
+        )
+        if not has_xref:
+            self.content += "`"
+        self._literal_has_xref = has_xref
 
     def depart_literal(self, node):
         """Add closing backtick to complete inline code markup.
 
         Matching backticks are required to properly delimit the code span.
+        Skip if this literal contained a cross-reference.
         """
-        self.content += "`"
+        if getattr(self, "_table_style", "") == "autosummary":
+            for quantity_name, alias in _calculation.GROUP_TYPE_ALIAS.items():
+                self.content = self.content.replace(quantity_name, alias)
+        if not getattr(self, "_literal_has_xref", False):
+            self.content += "`"
+        self._literal_has_xref = False
 
     # list handling methods
 
@@ -286,7 +422,9 @@ title = "{node.astext()}"
         to know what marker to use, and asterisks are chosen over dashes for
         better Hugo/CommonMark compatibility.
         """
-        self.list_stack.append("*")
+        # Skip bullet list markers in Returns fields (treat as paragraphs)
+        if not self._in_returns_field:
+            self.list_stack.append("*")
 
     def depart_bullet_list(self, node):
         """Clean up bullet list state when exiting the list.
@@ -294,7 +432,9 @@ title = "{node.astext()}"
         Uses the shared depart_list method because the cleanup logic is identical
         for both bullet and enumerated lists - only the markers differ.
         """
-        self._depart_list()
+        # Only depart if we pushed a marker (not in Returns field)
+        if not self._in_returns_field:
+            self._depart_list()
 
     def visit_enumerated_list(self, node):
         """Initialize enumerated list state with numbered marker.
@@ -331,17 +471,24 @@ title = "{node.astext()}"
         Two spaces per level is the Markdown standard for nested list indentation.
         The marker comes from the stack top, so it matches the current list type.
         """
-        indentation = Indentation(
-            level=len(self.list_stack), level_in_first_row=len(self.list_stack) - 1
-        )
-        self.indentation_stack.append(indentation)
-        self.content = f"{self.list_stack[-1]:4}"
+        # Skip list item markers in Returns fields (treat as paragraphs)
+        if not self._in_returns_field and self.list_stack:
+            indentation = Indentation(
+                level=len(self.list_stack), level_in_first_row=len(self.list_stack) - 1
+            )
+            self.indentation_stack.append(indentation)
+            self.content += f"{self.list_stack[-1]:4}"
 
     def depart_list_item(self, node):
-        self.indentation_stack.pop()
+        # Only pop indentation if we pushed it (not in Returns field)
+        if not self._in_returns_field and self.list_stack:
+            self.indentation_stack.pop()
 
     def visit_definition_list(self, node):
         self.list_stack.append("description")
+        # Mark that Returns section has a definition list (type+description format)
+        if self._in_returns_section:
+            self._returns_has_definition_list = True
 
     def depart_definition_list(self, node):
         self._depart_list()
@@ -420,9 +567,6 @@ title = "{node.astext()}"
         anchor links. The URI is stored as an instance variable because we need
         it in the depart method after processing the link text.
         """
-        self._reference_uri = node.get("refuri") or (
-            f"#{node.get('refid')}" if node.get("refid") else ""
-        )
         self.content += "["
 
     def depart_reference(self, node):
@@ -432,11 +576,41 @@ title = "{node.astext()}"
         so we can now close the link with the URI that was stored in visit.
         We clean up the temporary state to avoid interference with other links.
         """
-        uri = getattr(self, "_reference_uri", "")
-        if (uri) and uri.startswith("#"):
-            uri = uri.replace(" ", "-").rstrip("-")
-        self.content += f"]({uri})"
-        self._reference_uri = None
+        reference = node.get("reftitle", "")
+        anchor = ""
+        if not reference:
+            link = node.get("refuri", "")
+            self.content += f"]({link})"
+            return
+        if reference == "py4vasp.Calculation":
+            reference = "calculation/calculation"
+        elif reference.startswith("py4vasp.Calculation"):
+            parts = reference.split(".")
+            assert len(parts) == 3, f"Invalid reference format: {reference}"
+            if parts[2] in _calculation.QUANTITIES:
+                reference = f"calculation/{parts[2]}"
+            else:
+                reference = f"calculation/calculation"
+                anchor = f"Calculation-{parts[2]}"
+        elif reference.startswith("py4vasp._calculation"):
+            parts = reference.split(".")
+            assert len(parts) >= 3, f"Invalid reference format: {reference}"
+            reference = f"calculation/{parts[2]}"
+            if len(parts) >= 5:
+                anchor = f"{parts[3]}-{parts[4]}"
+        else:
+            reference = reference.removeprefix("py4vasp.")
+            reference = reference.replace(".", "/")
+        reference = pathlib.Path(reference)
+        # index files are represented by folder names in Hugo
+        source = self.document.source
+        source = source.removesuffix("_index").removesuffix("index")
+        source = pathlib.Path(source)
+        relative_path = reference.relative_to(source, walk_up=True).as_posix()
+        if anchor:
+            self.content += f"]({relative_path}#{anchor})"
+        else:
+            self.content += f"]({relative_path})"
 
     def visit_target(self, node):
         """Create HTML anchor tags for internal reference targets.
@@ -449,8 +623,15 @@ title = "{node.astext()}"
         # Internal targets have 'refid'; external have 'refuri'
         refid = node.get("refid")
         if refid:
+            docstring_cont = False
+            if self._is_shortcode_docstring_open:
+                docstring_cont = True
+                self._shortcode_docstring(close=True)
             # Insert an anchor for internal references
-            self.content += f'<a name="{refid}"></a>'
+            self.content += _construct_hugo_shortcode(f'anchor name="{refid}"')
+            self.content += _construct_hugo_shortcode(f"/anchor")
+            if docstring_cont:
+                self._shortcode_docstring()
         # For external targets (refuri), do nothing (handled by reference)
 
     def depart_target(self, node):
@@ -499,9 +680,13 @@ title = "{node.astext()}"
         Pending cross-references are unresolved references that Sphinx will
         process later. We extract the target from the 'reftarget' attribute
         and create a link assuming it will resolve to an internal anchor.
+        For method references (:meth:), we'll add () suffix after the link.
         """
-        # Use reftarget for anchor
-        self._reference_uri = f"#{node.get('reftarget', '')}"
+        # Store reftype to handle special cases like meth
+        self._xref_reftype = node.get("reftype", "")
+        reftarget = node.get("reftarget", "")
+        # For cross-file references, use the full target as anchor
+        self._reference_uri = f"#{reftarget}"
         self.content += "["
 
     def depart_pending_xref(self, node):
@@ -509,10 +694,16 @@ title = "{node.astext()}"
 
         Similar to regular references, we close the link with the URI that was
         stored in visit and clean up the temporary state.
+        For method references, add () suffix after the link.
         """
         uri = getattr(self, "_reference_uri", "")
+        reftype = getattr(self, "_xref_reftype", "")
         self.content += f"]({uri})"
+        # Add () suffix for method references
+        if reftype == "meth":
+            self.content += "()"
         self._reference_uri = None
+        self._xref_reftype = None
 
     # Code block handling methods
 
@@ -551,6 +742,9 @@ title = "{node.astext()}"
         self._visit_admonition("danger")
 
     def _visit_admonition(self, type):
+        if self._is_shortcode_docstring_open:
+            self._shortcode_docstring(close=True)
+            self._needs_reopen_docstring = True
         self.content += f'{{{{< admonition type="{type}" >}}}}\n'
         self._move_content_to_lines()
         self.indentation_stack.append(Indentation(0))
@@ -574,12 +768,15 @@ title = "{node.astext()}"
         self._strip_blank_lines()
         self.indentation_stack.pop()
         self.content += "{{< /admonition >}}\n"
+        if self._needs_reopen_docstring:
+            self._shortcode_docstring()
+            self._needs_reopen_docstring = False
         self._move_content_to_lines()
 
     # Footnote handling methods
 
     def visit_footnote_reference(self, node):
-        self.content = self.content.strip() + "[^"
+        self.content += self.content.strip() + "[^"
 
     def depart_footnote_reference(self, node):
         self.content += "]"
@@ -591,7 +788,7 @@ title = "{node.astext()}"
         self.indentation_stack.pop()
 
     def visit_label(self, node):
-        self.content = "[^"
+        self.content += "[^"
 
     def depart_label(self, node):
         self.content += "]:"
@@ -601,12 +798,20 @@ title = "{node.astext()}"
     # Compound handling methods
 
     def visit_compound(self, node):
+        # Close docstring before compound, like we do for admonitions
+        if self._is_shortcode_docstring_open:
+            self._shortcode_docstring(close=True)
+            self._needs_reopen_docstring = True
         # Start a div to preserve grouping in Markdown
-        self.content += '\n<div class="compound">\n\n'
+        self.content += f'\n{_construct_hugo_shortcode("compound")}\n\n'
 
     def depart_compound(self, node):
         # End the div
-        self.content += "\n</div>\n"
+        self.content += f"\n{_construct_hugo_shortcode('/compound')}\n"
+        # Reopen docstring after compound if needed
+        if self._needs_reopen_docstring:
+            self._shortcode_docstring()
+            # DON'T reset _needs_reopen_docstring - let the parent container handle it
         self._move_content_to_lines()
 
     def visit_compact_paragraph(self, node):
@@ -634,6 +839,16 @@ title = "{node.astext()}"
                 if anchor
             ]
             return ".".join(list_to_join)
+
+    def _get_breadcrumbs(self) -> list[str]:
+        """Get the module name from the anchor_id_stack."""
+        full_anchor = self._get_anchor_id()
+        if full_anchor:
+            name = self._get_latest_name()
+            if name and full_anchor.endswith(name):
+                module = full_anchor[: -len(name)].rstrip(".")
+                return module.split(".") if module else []
+        return []
 
     def _construct_new_anchor_id(self, node) -> tuple[str, str, str]:
         anchors_finder = AnchorsFinder(self.document)
@@ -664,14 +879,59 @@ title = "{node.astext()}"
     def visit_desc(self, node):
         self._construct_new_anchor_id(node)
         self.section_level += 1
-        pass
+        breadcrumbs = self._get_breadcrumbs()
+        if breadcrumbs and breadcrumbs[0] == "py4vasp":
+            breadcrumbs.pop(0)
+        if breadcrumbs and breadcrumbs[0] == "_calculation":
+            breadcrumbs[0] = "calculation"
+        objtype = self._get_latest_objtype()
+        name = self._get_latest_name()
+
+        # Reset Returns section tracking for each new desc (function/method/class)
+        self._in_returns_section = False
+        self._returns_has_definition_list = False
+        self._returns_paragraph_content = []
+
+        self._shortcode_docstring(close=True)
+
+        if objtype in ["attribute", "method", "property"]:
+            assert breadcrumbs, "breadcrumbs should contain at least the class name"
+            class_name = breadcrumbs.pop()
+            should_skip = (
+                class_name != "Calculation"
+                and objtype == "method"
+                and name in ("from_path", "from_file", "from_data")
+            )
+            if should_skip:
+                self.section_level -= 1
+                raise SkipNode
+            module_name = self._get_module_name(breadcrumbs)
+            shortcode_str = f"{objtype} name=\"{name}\" class=\"{class_name}\" module=\"{module_name}\" breadcrumbs=\"{'.'.join(breadcrumbs)}\""
+        elif objtype in ["class", "data", "exception", "function"]:
+            module_name = self._get_module_name(breadcrumbs)
+            shortcode_str = f"{objtype} name=\"{name}\" module=\"{module_name}\" breadcrumbs=\"{'.'.join(breadcrumbs)}\""
+        else:
+            raise NotImplementedError(f"Unsupported objtype '{objtype}' in visit_desc.")
+        self.content += f"\n\n{_construct_hugo_shortcode(shortcode_str)}"
+
+    def _get_module_name(self, breadcrumbs):
+        module_name = breadcrumbs.pop() if breadcrumbs else ""
+        for group, members in _calculation.GROUPS.items():
+            for member in members:
+                if module_name == f"{group}_{member}":
+                    return f"{group}.{member}"
+        return module_name
 
     def depart_desc(self, node):
+        objtype = self._get_latest_objtype()
         if self.anchor_id_stack:
             self.anchor_id_stack.pop()
         self.section_level -= 1
+
+        self._shortcode_docstring(close=True)
+
+        self.content += f"\n\n{_construct_hugo_shortcode(f'/{objtype}')}\n\n"
         self._move_content_to_lines()
-        pass
 
     def _get_parameter_list_and_types(self, node, skip_content: bool = False):
         """Extract parameter names, types, and default values from a desc_signature node."""
@@ -679,78 +939,149 @@ title = "{node.astext()}"
         parameters_dict = parameters_info_finder.find_parameters_info(
             node, skip_content=skip_content
         )
-        parameters = [
-            (name, info.get("type"), info.get("default"))
-            for name, info in parameters_dict.items()
-        ]
+        parameters = []
+        for name, info in parameters_dict.items():
+            # Reconstruct name with asterisks from signature
+            asterisks = info.get("asterisks", "")
+            full_name = asterisks + name
+            parameters.append((full_name, info.get("type"), info.get("default")))
+
         if parameters:
             self._current_signature_dict["sig_parameters"] = parameters.copy()
         return parameters
 
     def _get_formatted_param(self, name, annotation, default):
-        """Format a single parameter with its name, type, and default value."""
+        """Format a single parameter with its name, type, and default value.
+
+        The name already includes any unpacking asterisks (*args, **kwargs) from the signature.
+        """
         param = f"*{name}*"
-        if default or annotation:
-            param += ": " + ("[optional] " if default else "")
         if annotation:
-            param += f"`{annotation}`"
+            param += ": "
+            formatted_annotation = annotation.replace("` or `", " or ").replace(
+                " or ", " | "
+            )
+            formatted_annotation = f"`{formatted_annotation}`"
+            # now make sure Markdown links are formatted correctly
+            formatted_annotation = formatted_annotation.replace("`[", "[").replace(
+                ")`", ")"
+            )
+            param += formatted_annotation
         if default:
-            param += f" [default: {default}]"
+            formatted_default = (
+                f" = {default}" if not (default == SIG_TYPE_DEFAULT) else ""
+            )
+            param += f"{formatted_default}"
         return param
 
     def _get_parameter_list_str(self, parameters):
         """Get a string representation of the parameter list with types."""
         if not parameters:
-            return "()"
+            return "\n()"
         param_strs = []
         for name, annotation, default in parameters:
             param = self._get_formatted_param(name, annotation, default)
             param_strs.append(param)
         if len(param_strs) == 1:
-            return f"({param_strs[0]})"
+            return f"\n({param_strs[0]})"
+        elif len(param_strs) == 2 and param_strs == ["**args*", "***kwargs*"]:
+            return "\n(**args*, ***kwargs*)"
         concat_str = ",\n- ".join(param_strs)
         return "\n(\n- " + concat_str + "\n\n)"
 
     def _get_return_type(self, node):
-        """Get the return type annotation from a desc_signature node."""
+        """Get the return type annotation from a desc_signature node.
+
+        Returns the appropriate type to display in the signature, following priority:
+        1. Signature type annotation (if present)
+        2. Returns field type (if present)
+        3. "-" (if Returns field exists but has no type)
+        """
         return_type_finder = ReturnTypeFinder(self.document)
-        return_type = return_type_finder.find_return_type(node)
-        if return_type:
-            self._current_signature_dict["sig_return_type"] = return_type
-            self._current_return_type = return_type
+        signature_return_type, returns_field_type, returns_field_description = (
+            return_type_finder.find_return_type(node)
+        )
+
+        # Store all return information for later use in _restructure_returns_field_body
+        self._signature_return_type = signature_return_type
+        self._returns_field_type = returns_field_type
+        self._returns_field_description = returns_field_description
+
+        # Determine what to show in the signature (priority: signature > field type > "-" if field exists)
+        if signature_return_type:
+            return_type = signature_return_type
+            self._current_signature_dict["sig_return_type"] = signature_return_type
             self._expect_returns_field = True
+        elif returns_field_type:
+            return_type = returns_field_type
+            self._current_signature_dict["sig_return_type"] = returns_field_type
+            self._expect_returns_field = True
+        elif returns_field_description:
+            # Has Returns field but no type - use "-"
+            return_type = "-"
+            self._current_signature_dict["sig_return_type"] = None
+            self._expect_returns_field = True
+        else:
+            # No return information at all
+            return_type = ""
+
+        self._current_return_type = return_type
         return return_type
 
+    def _get_attribute_info(self, node):
+        """Get type annotation and default value for an attribute/property using AttributeInfoFinder."""
+        attribute_info_finder = AttributeInfoFinder(self.document)
+        return attribute_info_finder.find_attribute_info(node)
+
     def visit_desc_signature(self, node):
-        anchor_id = self._get_anchor_id()
-        anchor_str = f"\n\n<a id='{anchor_id}'></a>" if anchor_id else ""
-        ref_str = f" [¶](#{anchor_id})" if anchor_id else ""
         objtype = self._get_latest_objtype()
-        objtype_str = f"*{objtype}* " if (objtype != "method") else ""
-        if objtype:
-            self.content += (
-                f"\n\n<div class='{f'{objtype} ' if objtype else ''}signature'>"
-            )
-
-        name = self._get_latest_name()
-        name_str = f"**{name}**"
-        self.content += f"{anchor_str}\n\n{self.section_level * '#'} {objtype_str}{name_str}{ref_str}"
-
         self._current_signature_dict = {}
         self._current_return_type = None
-        if objtype in ["function", "method", "class", "exception"]:
-            parameters = self._get_parameter_list_and_types(
-                node, not (objtype in ["function", "method"])
-            )
-            parameters_str = self._get_parameter_list_str(parameters)
-            self.content += parameters_str
-        if objtype in ["function", "method"]:
-            return_type = self._get_return_type(node)
-            if return_type:
-                return_str = f" → `{return_type}`"
-                self.content += return_str
+        if objtype in [
+            "function",
+            "method",
+            "class",
+            "exception",
+            "property",
+            "attribute",
+        ]:
+            self.content += "\n" + _construct_hugo_shortcode("signature")
 
-        self.content += f"\n\n</div>\n\n"
+            # For attributes/properties, show type and default in signature
+            if objtype in ["property", "attribute"]:
+                type_annotation, default_value = self._get_attribute_info(node)
+                type_str = ""
+                default_str = ""
+                if type_annotation or default_value:
+                    type_str = f": `{type_annotation}`" if type_annotation else ""
+                    default_str = f" = {default_value}" if default_value else ""
+                # Try to get return type for properties
+                if objtype == "property":
+                    return_type = self._get_return_type(node)
+                    if return_type and not type_annotation:
+                        type_annotation = return_type
+                        type_str = f": `{type_annotation}`"
+                self.content += f"{type_str}{default_str}"
+            else:
+                # For methods/functions/classes, show parameters normally
+                parameters = self._get_parameter_list_and_types(
+                    node, not (objtype in ["function", "method"])
+                )
+                parameters_str = self._get_parameter_list_str(parameters)
+                self.content += parameters_str
+                if objtype in ["function", "method"]:
+                    return_type = self._get_return_type(node)
+                    if return_type:
+                        return_str = f" → `{return_type}`"
+                        self.content += return_str
+                    elif return_type == "-":
+                        # Explicitly show "-" when there's no type but there is a Returns field
+                        return_str = f" → `{return_type}`"
+                        self.content += return_str
+
+            self.content += "\n" + _construct_hugo_shortcode("/signature")
+
+        self.content += "\n\n"
 
         if self._current_return_type:
             self._expect_returns_field = True
@@ -766,8 +1097,7 @@ title = "{node.astext()}"
         pass
 
     def visit_desc_content(self, node):
-        self.content += "\n"
-        pass
+        self._shortcode_docstring()
 
     def depart_desc_content(self, node):
         self._move_content_to_lines()
@@ -854,7 +1184,7 @@ title = "{node.astext()}"
 
     def _get_formatted_field_header(self, field_name):
         """Format the field name for Markdown headers."""
-        return f"\n{(self.section_level + 1) * '#'} **{field_name.capitalize()}:**\n\n"
+        return f"\n{(self.section_level + 1) * '#'} {field_name.capitalize()}\n\n"
 
     def visit_field(self, node):
         # Identify the field name
@@ -865,15 +1195,55 @@ title = "{node.astext()}"
                 break
 
         if field_name == "return type":
-            if not (self._current_return_type):
-                self._current_return_type = getattr(
-                    self._current_signature_dict, "sig_return_type", None
-                )
-            raise SkipNode
+            # Check if the field body is empty
+            field_body_text = ""
+            for child in node.children:
+                if child.__class__.__name__ == "field_body":
+                    field_body_text = child.astext().strip()
+                    break
+
+            # Skip empty "return type" fields (Napoleon creates these for "-" type)
+            if not field_body_text:
+                self._in_parameters_field = False
+                raise SkipNode
+
+            # Check if we have a description stored (from rejected non-type in "return type" field)
+            field_description = self._returns_field_description or ""
+
+            # Skip "return type" field if it's "-" since we already processed the "returns" field
+            if self._returns_field_type == "-":
+                self._in_parameters_field = False
+                raise SkipNode
+
+            # If we have a description but no type, treat this "return type" field as a "returns" field
+            if field_description and not self._returns_field_type:
+                self.content += self._get_formatted_field_header("Returns")
+                self._in_returns_field = True
+                self._in_parameters_field = False
+                self._move_content_to_lines()
+                return
+            # Check if this "Return type" field actually contains a description
+            # (when Napoleon incorrectly parses a description-only Returns section)
+            elif getattr(self, "_docstring_return_type", None) == "-":
+                # Treat this as a Returns field with description only
+                self.content += self._get_formatted_field_header("Returns")
+                self._in_returns_field = True
+                self._in_parameters_field = False  # Reset parameters flag
+                self._move_content_to_lines()
+                return
+            else:
+                # Normal return type - skip it, but first reset any field flags
+                self._in_parameters_field = False
+                if not (self._current_return_type):
+                    self._current_return_type = getattr(
+                        self._current_signature_dict, "sig_return_type", None
+                    )
+                raise SkipNode
 
         if field_name == "returns":
             self.content += self._get_formatted_field_header("Returns")
             self._in_returns_field = True
+            self._in_parameters_field = False  # Reset parameters flag
             self._move_content_to_lines()
             return
 
@@ -908,48 +1278,177 @@ title = "{node.astext()}"
         pure_str_content = self._content_stash
         new_str_content = ""
         opened_description_list = False
+        description_lines = []  # Collect lines for a single parameter description
+
         for line in pure_str_content:
             if not (" – " in line):
                 if not (opened_description_list):
                     new_str_content += "\n: <!---->"
                     opened_description_list = True
-                new_str_content += "\n" + f"    {line}"
+                # Collect description lines to process as a group
+                description_lines.append(line)
             else:
+                # Process any accumulated description lines first
+                if description_lines:
+                    # Find minimum indentation (excluding empty lines)
+                    non_empty_lines = [l for l in description_lines if l.strip()]
+                    if non_empty_lines:
+                        min_indent = min(
+                            len(l) - len(l.lstrip()) for l in non_empty_lines
+                        )
+                        # Remove base indentation and add exactly 4 spaces
+                        for desc_line in description_lines:
+                            if desc_line.strip():
+                                # Remove min_indent, then add 4 spaces
+                                new_str_content += (
+                                    "\n" + "    " + desc_line[min_indent:]
+                                )
+                            else:
+                                new_str_content += "\n"
+                    description_lines = []
+
                 # Split "name (type) – description"
                 opened_description_list = False
                 left, desc = line.split(" – ", 1)
-                formatted_param = self._get_formatted_param(
-                    *(
-                        _get_param_raw_info_from_left_string(
-                            left, self._current_signature_dict
-                        )
-                    )
+                param_info = _get_param_raw_info_from_left_string(
+                    left, self._current_signature_dict
                 )
+                formatted_param = self._get_formatted_param(*param_info)
                 new_str_content += f"\n\n{formatted_param}\n"
                 if desc:
                     new_str_content += f": <!---->\n    {desc}"
                     opened_description_list = True
-        self.content = new_str_content
+
+        # Process any remaining description lines
+        if description_lines:
+            non_empty_lines = [l for l in description_lines if l.strip()]
+            if non_empty_lines:
+                min_indent = min(len(l) - len(l.lstrip()) for l in non_empty_lines)
+                for desc_line in description_lines:
+                    if desc_line.strip():
+                        new_str_content += "\n" + "    " + desc_line[min_indent:]
+                    else:
+                        new_str_content += "\n"
+
+        self.content += new_str_content
         if not (self._prevent_content_stash_deletion):
             self._content_stash = []
 
     def _restructure_returns_field_body(self):
-        pure_str_content = self._content_stash.copy()
-        new_str_content = "\n"
-        if self._current_return_type:
-            new_str_content = f"\n`{self._current_return_type}`"
-        new_str_content += "\n: <!---->"
-        new_str_content += "\n    " + "\n    ".join(
-            [
-                (
-                    c.lstrip("*   `").rstrip("`")
-                    if c.startswith("*   `") and c.endswith("`")
-                    else c
-                )
-                for c in pure_str_content
-            ]
-        )
-        self.content = new_str_content + "\n\n"
+        """Restructure the Returns field body with proper type+description format.
+
+        Uses information from return_type_finder which has already separated:
+        - signature_return_type: Type from function signature
+        - returns_field_type: Type from Returns field
+        - returns_field_description: Description from Returns field (plain text, may be empty)
+
+        The actual formatted description content is in _content_stash (already processed by translator).
+
+        Priority for type display:
+        1. Signature type (if present)
+        2. Returns field type (if present)
+        3. "-" (if Returns field has description but no type)
+        """
+        # Determine which type to display
+        sig_return_type = self._signature_return_type or ""
+        field_return_type = self._returns_field_type or ""
+        field_description = self._returns_field_description or ""
+
+        # Get the already-processed content from _content_stash
+        # This preserves formatting like emphasis, references, etc.
+        processed_content = self._content_stash or []
+
+        # Clean up processed_content if it contains definition_list markup
+        # When Napoleon creates a definition_list, processed_content will have:
+        # - The term line (type) - may be indented
+        # - A ": <!---->" marker line
+        # - The description lines (what we want) - already indented
+        # We need to remove the term and marker lines, and de-indent the description
+        if processed_content:
+            cleaned_content = []
+            found_term = False
+            skip_next_marker = False
+
+            for i, line in enumerate(processed_content):
+                stripped = line.strip()
+
+                # Skip the term line if it matches the type (only check first few lines)
+                if not found_term and i < 3 and field_return_type:
+                    # Check if this line is just the type (with or without backticks)
+                    if stripped.strip("`") == field_return_type.strip().strip("`"):
+                        found_term = True
+                        skip_next_marker = True
+                        continue
+
+                # Skip the ": <!---->" marker line that follows the term
+                if skip_next_marker and stripped == ": <!---->":
+                    skip_next_marker = False
+                    continue
+
+                # Keep description lines - they're already indented from definition processing
+                # Remove the extra indentation that definition node added (4 spaces)
+                if line.startswith("    "):
+                    cleaned_content.append(line[4:])  # Remove 4-space indent
+                else:
+                    cleaned_content.append(line)
+
+            processed_content = cleaned_content
+
+        # Type priority: signature > field type > "-" if has description
+        if sig_return_type:
+            display_type = sig_return_type
+        elif field_return_type:
+            display_type = field_return_type
+        elif field_description or processed_content:
+            # Has description content but no type
+            display_type = "-"
+        else:
+            # No Returns field content at all
+            display_type = ""
+
+        # Build the output
+        new_str_content = ""
+
+        if display_type and display_type != "-":
+            # Format as definition list with type and optional description
+            new_str_content = f"\n`{display_type}`"
+
+            # Prefer processed_content (formatted) over field_description (plain text)
+            # processed_content preserves formatting like emphasis, inline code, etc.
+            if processed_content:
+                new_str_content += "\n: <!---->"
+                for line in processed_content:
+                    if line.strip():
+                        new_str_content += f"\n    {line}"
+                    else:
+                        new_str_content += "\n"
+            elif field_description:
+                # Fallback to plain text from return_type_finder
+                new_str_content += "\n: <!---->"
+                for line in field_description.split("\n"):
+                    if line.strip():
+                        new_str_content += f"\n    {line.strip()}"
+            # else: type only, no description
+
+        elif display_type == "-":
+            # Has description but no type - show "-" with description
+            new_str_content = f"\n`-`\n: <!---->"
+            if processed_content:
+                for line in processed_content:
+                    if line.strip():
+                        new_str_content += f"\n    {line}"
+                    else:
+                        new_str_content += "\n"
+            elif field_description:
+                for line in field_description.split("\n"):
+                    if line.strip():
+                        new_str_content += f"\n    {line.strip()}"
+        else:
+            # Just display the type (no description)
+            if self._current_return_type:
+                new_str_content = f"\n`{self._current_return_type}`"
+
+        self.content += new_str_content + "\n\n"
         if not (self._prevent_content_stash_deletion):
             self._content_stash = []
 
@@ -969,7 +1468,6 @@ title = "{node.astext()}"
         self._prevent_move_content = False
         self.content += "\n"
         self._move_content_to_lines()
-        pass
 
     def visit_literal_strong(self, node):
         # Strong literal (e.g., for emphasized code)
@@ -983,3 +1481,69 @@ title = "{node.astext()}"
 
     def depart_title_reference(self, node):
         self.content += "*"
+
+    def visit_tabular_col_spec(self, node):
+        pass
+
+    def depart_tabular_col_spec(self, node):
+        pass
+
+    def visit_autosummary_table(self, node):
+        self._table_style = "autosummary"
+
+    def depart_autosummary_table(self, node):
+        self._table_style = ""
+
+    def visit_table(self, node):
+        pass
+
+    def depart_table(self, node):
+        pass
+
+    def visit_tgroup(self, node):
+        pass
+
+    def depart_tgroup(self, node):
+        pass
+
+    def visit_colspec(self, node):
+        pass
+
+    def depart_colspec(self, node):
+        pass
+
+    def visit_tbody(self, node):
+        pass
+
+    def depart_tbody(self, node):
+        pass
+
+    def visit_row(self, node):
+        self._entry_count = 0
+
+    def depart_row(self, node):
+        pass
+
+    def visit_transition(self, node):
+        pass
+
+    def depart_transition(self, node):
+        pass
+
+    def visit_entry(self, node):
+        self._entry_count += 1
+        table_style = getattr(self, "_table_style", "")
+        if table_style == "autosummary":
+            if self._entry_count == 2:
+                while not self.lines[-1]:
+                    self.lines.pop()
+                self.content += ": <!---->\n    "
+
+    def depart_entry(self, node):
+        pass
+
+    def visit_block_quote(self, node):
+        pass
+
+    def depart_block_quote(self, node):
+        pass

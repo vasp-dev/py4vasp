@@ -11,14 +11,14 @@ from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, select
 
 
-class Gap(typing.NamedTuple):
+class _Gap(typing.NamedTuple):
     bottom: str
     top: str
 
 
 GAPS = {
-    "fundamental": Gap("valence band maximum", "conduction band minimum"),
-    "direct": Gap("direct gap bottom", "direct gap top"),
+    "fundamental": _Gap("valence band maximum", "conduction band minimum"),
+    "direct": _Gap("direct gap bottom", "direct gap top"),
 }
 
 COMPONENTS = ("independent", "up", "down")

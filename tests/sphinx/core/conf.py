@@ -3,3 +3,5 @@
 
 # dummy sphinx conf.py file
 extensions = ["py4vasp._sphinx"]
+
+py4vasp_testing = True

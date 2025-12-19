@@ -143,6 +143,7 @@ class Band(base.Refinery, graph.Mixin):
 
         For noncollinear calculations, the resulting dictionary has the same structure
         as for the nonpolarized case
+
         >>> noncollinear_calculation.band.to_dict()
         {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
             'occupations': array(...)}}
@@ -259,6 +260,7 @@ class Band(base.Refinery, graph.Mixin):
 
         For noncollinear calculations, the resulting dictionary has the same structure
         as for the nonpolarized case
+
         >>> noncollinear_calculation.band.to_graph()
         Graph(series=[Series(..., label='bands', ...)], ...)
 
@@ -358,6 +360,7 @@ class Band(base.Refinery, graph.Mixin):
 
         For noncollinear calculations, the resulting dictionary has the same structure
         as for the nonpolarized case
+
         >>> noncollinear_calculation.band.to_frame()
            kpoint_distances  bands  occupations
         0  ...
@@ -458,9 +461,10 @@ class Band(base.Refinery, graph.Mixin):
 
         Returns
         -------
-        A quiver plot for the spin texture in the plane spanned by the 2 remaining
-        lattice vectors. The arrows represent the spin expectation value at each **k** point.
-        The plot is replicated periodically according to the specified supercell.
+        Graph
+            A quiver plot for the spin texture in the plane spanned by the 2 remaining
+            lattice vectors. The arrows represent the spin expectation value at each **k** point.
+            The plot is replicated periodically according to the specified supercell.
 
         Examples
         --------

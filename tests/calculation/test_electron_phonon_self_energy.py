@@ -11,7 +11,7 @@ import pytest
 from py4vasp import exception
 from py4vasp._calculation.electron_phonon_self_energy import (
     ElectronPhononSelfEnergy,
-    ElectronPhononSelfEnergyInstance,
+    SelfEnergyInstance,
     SparseTensor,
 )
 from py4vasp._util import convert
@@ -79,10 +79,10 @@ def test_len(self_energy):
 def test_indexing_and_iteration(self_energy):
     # Indexing and iteration should yield instances
     for i, instance in enumerate(self_energy):
-        assert isinstance(instance, ElectronPhononSelfEnergyInstance)
+        assert isinstance(instance, SelfEnergyInstance)
         assert instance.index == i
         assert instance.parent is self_energy
-    assert isinstance(self_energy[0], ElectronPhononSelfEnergyInstance)
+    assert isinstance(self_energy[0], SelfEnergyInstance)
 
 
 def test_read_mapping(self_energy):
@@ -148,7 +148,7 @@ def test_select_returns_instances(self_energy, attribute):
     selected = self_energy.select(f"{attribute}={choice.item()}")
     assert len(selected) == len(indices)
     for index_, instance in zip(indices, selected):
-        assert isinstance(instance, ElectronPhononSelfEnergyInstance)
+        assert isinstance(instance, SelfEnergyInstance)
         assert instance.index == index_
 
 
@@ -162,7 +162,7 @@ def test_select_multiple(self_energy):
     selected = self_energy.select(selection)
     assert len(selected) == len(indices)
     for index_, instance in zip(indices, selected):
-        assert isinstance(instance, ElectronPhononSelfEnergyInstance)
+        assert isinstance(instance, SelfEnergyInstance)
         assert instance.index == index_
 
 
@@ -176,7 +176,7 @@ def test_select_nested(self_energy):
     selected = self_energy.select(selection)
     assert len(selected) == 1
     instance = selected[0]
-    assert isinstance(instance, ElectronPhononSelfEnergyInstance)
+    assert isinstance(instance, SelfEnergyInstance)
     assert instance.index == index_
 
 

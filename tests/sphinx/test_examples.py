@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import sys
+
 import pytest
 
 application = pytest.importorskip("sphinx.application")
@@ -7,6 +9,8 @@ application = pytest.importorskip("sphinx.application")
 
 @pytest.fixture(scope="module")
 def sphinx_app(tmp_path_factory, not_core):
+    if sys.version_info < (3, 12):
+        pytest.skip("Sphinx example tests require Python 3.12 or higher.")
     tmp_path = tmp_path_factory.mktemp("sphinx")
     srcdir = "tests/sphinx/examples"
     confdir = "tests/sphinx/examples"
@@ -38,16 +42,14 @@ def test_convert_example_autodata(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_autodata_content = """\
 
-<div class='data signature'>
+{{< data name="Example" module="example" breadcrumbs="" >}}
 
-<a id='example.Example'></a>
-
-## *data* **Example** [¶](#example.Example)
-
-</div>
-
-
+{{< docstring >}}
 An example class for demonstration purposes.
+
+{{< /docstring >}}
+
+{{< /data >}}
 
 """
     assert expected_autodata_content in content
@@ -57,18 +59,17 @@ def test_convert_example_autoclass_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_class_content = """\
 
-<div class='class signature'>
+{{< class name="Example" module="example" breadcrumbs="" >}}
+{{< signature >}}
+(*value*: `float`)
+{{< /signature >}}
 
-<a id='example.Example'></a>
-
-## *class* **Example** [¶](#example.Example)(*value*: `float`)
-
-</div>
-
-
+{{< docstring >}}
 Bases: `object`
 
 An example class for demonstration purposes.
+
+{{< /docstring >}}
 
 """
     assert expected_class_content in content
@@ -78,15 +79,12 @@ def test_convert_example_init_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_private_method_content = """\
 
-<div class='method signature'>
+{{< method name="__init__" class="Example" module="example" breadcrumbs="" >}}
+{{< signature >}}
+(*value*: `float`)
+{{< /signature >}}
 
-<a id='example.Example.__init__'></a>
-
-### **__init__** [¶](#example.Example.__init__)(*value*: `float`)
-
-</div>
-
-
+{{< docstring >}}
 Initialize the Example class with a value.
 
 *   some list entry
@@ -96,7 +94,7 @@ Initialize the Example class with a value.
 
 
 
-#### **Parameters:**
+#### Parameters
 
 
 
@@ -104,6 +102,9 @@ Initialize the Example class with a value.
 : <!---->
     The value to be stored in the instance.
 
+{{< /docstring >}}
+
+{{< /method >}}
 """
     assert expected_private_method_content in content
 
@@ -112,25 +113,21 @@ def test_convert_example_combined_returns_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example.md")
     expected_public_method_content = """\
 
-<div class='method signature'>
-
-<a id='example.Example.combined_returns'></a>
-
-### **combined_returns** [¶](#example.Example.combined_returns)
+{{< method name="combined_returns" class="Example" module="example" breadcrumbs="" >}}
+{{< signature >}}
 (
 - *some_value*: `float`,
-- *some_string*: [optional] `str | None` [default: '']
+- *some_string*: `str | None` = ''
 
 ) → `tuple[float, str | None]`
+{{< /signature >}}
 
-</div>
-
-
+{{< docstring >}}
 Combine a float and a string in a tuple.
 
 
 
-#### **Parameters:**
+#### Parameters
 
 
 
@@ -138,14 +135,11 @@ Combine a float and a string in a tuple.
 : <!---->
     A value to be included in the tuple.
 
-
-*some_string*: [optional] `str` [default: '']
+*some_string*: `str` = ''
 : <!---->
     A string to be included in the tuple.
 
-
-
-#### **Returns:**
+#### Returns
 
 
 `tuple[float, str | None]`
@@ -159,26 +153,21 @@ Combine a float and a string in a tuple.
 def test_convert_example_returns_type_without_desc_returns_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_return_types.md")
     expected_method_content = """\
-
-<div class='function signature'>
-
-<a id='example.returns_type_without_desc_returns'></a>
-
-## *function* **returns_type_without_desc_returns** [¶](#example.returns_type_without_desc_returns)
+{{< function name="returns_type_without_desc_returns" module="example" breadcrumbs="" >}}
+{{< signature >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str`
 
 ) → `float | str`
+{{< /signature >}}
 
-</div>
-
-
+{{< docstring >}}
 Return value 2.
 
 
 
-### **Parameters:**
+### Parameters
 
 
 
@@ -186,20 +175,23 @@ Return value 2.
 : <!---->
     The first value.
 
-
 *value2*: `float | str`
 : <!---->
     The second value, which can be a float or a string.
 
-
-
-### **Returns:**
+### Returns
 
 
 `float | str`
 : <!---->
     The second value.
 
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
 """
     assert expected_method_content in content
 
@@ -208,25 +200,21 @@ def test_convert_example_returns_type_without_returns_field_signature(sphinx_app
     content = read_file_content(sphinx_app.outdir, "example_return_types.md")
     expected_method_content = """\
 
-<div class='function signature'>
-
-<a id='example.returns_type_without_returns_field'></a>
-
-## *function* **returns_type_without_returns_field** [¶](#example.returns_type_without_returns_field)
+{{< function name="returns_type_without_returns_field" module="example" breadcrumbs="" >}}
+{{< signature >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str`
 
 ) → `float | str`
+{{< /signature >}}
 
-</div>
-
-
+{{< docstring >}}
 Return value 2.
 
 
 
-### **Parameters:**
+### Parameters
 
 
 
@@ -234,17 +222,18 @@ Return value 2.
 : <!---->
     The first value.
 
-
 *value2*: `float | str`
 : <!---->
     The second value, which can be a float or a string.
 
-
-
-### **Returns:**
+### Returns
 
 `float | str`
 
+
+{{< /docstring >}}
+
+{{< /function >}}
 """
     assert expected_method_content in content
 
@@ -252,26 +241,21 @@ Return value 2.
 def test_convert_example_returns_type_without_returns_field_type_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_return_types.md")
     expected_method_content = """\
-
-<div class='function signature'>
-
-<a id='example.returns_type_without_returns_field_type'></a>
-
-## *function* **returns_type_without_returns_field_type** [¶](#example.returns_type_without_returns_field_type)
+{{< function name="returns_type_without_returns_field_type" module="example" breadcrumbs="" >}}
+{{< signature >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str`
 
 ) → `float | str`
+{{< /signature >}}
 
-</div>
-
-
+{{< docstring >}}
 Return value 2.
 
 
 
-### **Parameters:**
+### Parameters
 
 
 
@@ -279,22 +263,24 @@ Return value 2.
 : <!---->
     The first value.
 
-
 *value2*: `float | str`
 : <!---->
     The second value, which can be a float or a string.
 
-
-
-### **Returns:**
+### Returns
 
 
 `float | str`
 : <!---->
     The second value.
-
     With another line!
 
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
 """
     assert expected_method_content in content
 
@@ -302,25 +288,21 @@ Return value 2.
 def test_convert_example_returns_type_without_returns_field_desc_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_return_types.md")
     expected_method_content = """\
-<div class='function signature'>
-
-<a id='example.returns_type_without_returns_field_desc'></a>
-
-## *function* **returns_type_without_returns_field_desc** [¶](#example.returns_type_without_returns_field_desc)
+{{< function name="returns_type_without_returns_field_desc" module="example" breadcrumbs="" >}}
+{{< signature >}}
 (
 - *value1*: `float`,
 - *value2*: `float | str`
 
 ) → `float | str`
+{{< /signature >}}
 
-</div>
-
-
+{{< docstring >}}
 Return value 2.
 
 
 
-### **Parameters:**
+### Parameters
 
 
 
@@ -328,17 +310,18 @@ Return value 2.
 : <!---->
     The first value.
 
-
 *value2*: `float | str`
 : <!---->
     The second value, which can be a float or a string.
 
-
-
-### **Returns:**
+### Returns
 
 `float | str`
 
+
+{{< /docstring >}}
+
+{{< /function >}}
 """
     assert expected_method_content in content
 
@@ -346,25 +329,21 @@ Return value 2.
 def test_convert_example_params_types_only_in_signature(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
     expected_method_content = """\
-<div class='function signature'>
-
-<a id='example.params_types_only_in_signature'></a>
-
-## *function* **params_types_only_in_signature** [¶](#example.params_types_only_in_signature)
+{{< function name="params_types_only_in_signature" module="example" breadcrumbs="" >}}
+{{< signature >}}
 (
 - *value1*: `float`,
-- *value2*: [optional] `float | str` [default: 0]
+- *value2*: `float | str` = 0
 
 )
+{{< /signature >}}
 
-</div>
-
-
+{{< docstring >}}
 Example function with parameter types only in the signature.
 
 
 
-### **Parameters:**
+### Parameters
 
 
 
@@ -372,11 +351,9 @@ Example function with parameter types only in the signature.
 : <!---->
     The first value.
 
-
-*value2*: [optional] `float | str` [default: 0]
+*value2*: `float | str` = 0
 : <!---->
     The second value, which can be a float or a string.
-
 """
     assert expected_method_content in content
 
@@ -384,25 +361,21 @@ Example function with parameter types only in the signature.
 def test_convert_example_params_types_only_in_field(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
     expected_method_content = """\
-<div class='function signature'>
-
-<a id='example.params_types_only_in_field'></a>
-
-## *function* **params_types_only_in_field** [¶](#example.params_types_only_in_field)
+{{< function name="params_types_only_in_field" module="example" breadcrumbs="" >}}
+{{< signature >}}
 (
 - *value1*: `float`,
-- *value2*: [optional] `float | str` [default: `?_UNKNOWN_?`]
+- *value2*: `float | str`
 
 )
+{{< /signature >}}
 
-</div>
-
-
+{{< docstring >}}
 Example function with parameter types only in the field.
 
 
 
-### **Parameters:**
+### Parameters
 
 
 
@@ -410,11 +383,9 @@ Example function with parameter types only in the field.
 : <!---->
     The first value.
 
-
-*value2*: [optional] `float | str` [default: `?_UNKNOWN_?`]
+*value2*: `float | str`
 : <!---->
     The second value, which can be a float or a string.
-
 """
     assert expected_method_content in content
 
@@ -422,25 +393,21 @@ Example function with parameter types only in the field.
 def test_convert_example_params_types_in_signature_and_field(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
     expected_method_content = """\
-<div class='function signature'>
-
-<a id='example.params_types_in_signature_and_field'></a>
-
-## *function* **params_types_in_signature_and_field** [¶](#example.params_types_in_signature_and_field)
+{{< function name="params_types_in_signature_and_field" module="example" breadcrumbs="" >}}
+{{< signature >}}
 (
 - *value1*: `float`,
-- *value2*: [optional] `float | str` [default: 0]
+- *value2*: `float | str` = 0
 
 )
+{{< /signature >}}
 
-</div>
-
-
+{{< docstring >}}
 Example function with parameter types mixed in both field and signature.
 
 
 
-### **Parameters:**
+### Parameters
 
 
 
@@ -448,11 +415,9 @@ Example function with parameter types mixed in both field and signature.
 : <!---->
     The first value.
 
-
-*value2*: [optional] `float | str` [default: 0]
+*value2*: `float | str` = 0
 : <!---->
     The second value, which can be a float or a string.
-
 """
     assert expected_method_content in content
 
@@ -460,25 +425,21 @@ Example function with parameter types mixed in both field and signature.
 def test_convert_example_params_types_mismatched(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_param_types.md")
     expected_method_content = """\
-<div class='function signature'>
-
-<a id='example.params_types_mismatched'></a>
-
-## *function* **params_types_mismatched** [¶](#example.params_types_mismatched)
+{{< function name="params_types_mismatched" module="example" breadcrumbs="" >}}
+{{< signature >}}
 (
 - *value1*: `float`,
-- *value2*: [optional] `float | str` [default: 0]
+- *value2*: `float | str` = 0
 
 )
+{{< /signature >}}
 
-</div>
-
-
+{{< docstring >}}
 Example function with parameter types mismatched.
 
 
 
-### **Parameters:**
+### Parameters
 
 
 
@@ -486,32 +447,26 @@ Example function with parameter types mismatched.
 : <!---->
     The first value.
 
-
-*value2*: [optional] `float | str` [default: 0]
+*value2*: `float | str` = 0
 : <!---->
     The second value, which can be a float or a string.
-
 """
     assert expected_method_content in content
 
 
 def test_convert_example_dos_class(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
-    expected_class_content = """\
-<div class='class signature'>
-
-<a id='example_dos.Dos'></a>
-
-## *class* **Dos** [¶](#example_dos.Dos)
+    expected_class_content = """
+{{< class name="Dos" module="example_dos" breadcrumbs="" >}}
+{{< signature >}}
 (
 - *data_context*,
-- *kwargs*
+- ***kwargs*
 
 )
+{{< /signature >}}
 
-</div>
-
-
+{{< docstring >}}
 Bases: `Refinery`, `Mixin`
 
 The density of states (DOS) describes the number of states per energy.
@@ -533,7 +488,7 @@ generated a projected DOS, you can use this class to select which subset of
 these orbitals to read or plot.
 
 
-### ***Examples***
+### Examples
 
 If you want to visualize the total DOS, you can use the *plot* method. This will
 show the different spin components if [ISPIN](https://vasp.at/wiki/index.php/ISPIN) = 2
@@ -565,16 +520,13 @@ These methods also accept selections for specific orbitals if you used VASP with
 
 def test_convert_example_dos_selections(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
-    expected_class_content = """\
-<div class='method signature'>
+    expected_class_content = """
+{{< method name="selections" class="Dos" module="example_dos" breadcrumbs="" >}}
+{{< signature >}}
+() → `dict`
+{{< /signature >}}
 
-<a id='example_dos.Dos.selections'></a>
-
-### **selections** [¶](#example_dos.Dos.selections)() → `dict`
-
-</div>
-
-
+{{< docstring >}}
 Returns possible alternatives for this particular quantity VASP can produce.
 
 The returned dictionary contains a single item with the name of the quantity
@@ -585,7 +537,7 @@ other routines.
 
 
 
-#### **Returns:**
+#### Returns
 
 
 `dict`
@@ -599,17 +551,13 @@ other routines.
 
 def test_convert_example_dos_to_dict(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
-    print(content)
-    expected_class_content = """\
-<div class='method signature'>
+    expected_class_content = """
+{{< method name="to_dict" class="Dos" module="example_dos" breadcrumbs="" >}}
+{{< signature >}}
+(*selection*: `str` = None) → `dict`
+{{< /signature >}}
 
-<a id='example_dos.Dos.to_dict'></a>
-
-### **to_dict** [¶](#example_dos.Dos.to_dict)(*selection*: [optional] `str` [default: None]) → `dict`
-
-</div>
-
-
+{{< docstring >}}
 Read the DOS into a dictionary.
 
 You will always get an “energies” component that describes the energy mesh for
@@ -623,11 +571,11 @@ projection.
 
 
 
-#### **Parameters:**
+#### Parameters
 
 
 
-*selection*: [optional] `str` [default: None]
+*selection*: `str` = None
 : <!---->
     A string specifying the projection of the orbitals. There are four distinct
     possibilities:
@@ -665,7 +613,7 @@ projection.
 
 
 
-#### **Returns:**
+#### Returns
 
 
 `dict`
@@ -678,7 +626,8 @@ projection.
 
 
 
-#### ***Examples***
+
+#### Examples
 
 To obtain the total DOS along with the energy mesh and the Fermi energy you
 do not need any arguments. For [ISPIN](https://vasp.at/wiki/index.php/ISPIN) = 2, this will “up” and “down”
@@ -735,16 +684,13 @@ file
 
 def test_convert_example_dos_to_graph(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
-    expected_class_content = """\
-<div class='method signature'>
+    expected_class_content = """
+{{< method name="to_graph" class="Dos" module="example_dos" breadcrumbs="" >}}
+{{< signature >}}
+(*selection*: `str` = None) → `Graph`
+{{< /signature >}}
 
-<a id='example_dos.Dos.to_graph'></a>
-
-### **to_graph** [¶](#example_dos.Dos.to_graph)(*selection*: [optional] `str` [default: None]) → `Graph`
-
-</div>
-
-
+{{< docstring >}}
 Read the DOS and convert it into a graph.
 
 The x axis is the energy mesh used in the calculation shifted such that the
@@ -756,11 +702,11 @@ corresponding to the selected projections.
 
 
 
-#### **Parameters:**
+#### Parameters
 
 
 
-*selection*: [optional] `str` [default: None]
+*selection*: `str` = None
 : <!---->
     A string specifying the projection of the orbitals. There are four distinct
     possibilities:
@@ -798,7 +744,7 @@ corresponding to the selected projections.
 
 
 
-#### **Returns:**
+#### Returns
 
 
 `Graph`
@@ -811,7 +757,8 @@ corresponding to the selected projections.
 
 
 
-#### ***Examples***
+
+#### Examples
 
 For the total DOS, you do not need any arguments. py4vasp will automatically
 use two separate lines, if you used [ISPIN](https://vasp.at/wiki/index.php/ISPIN) = 2 in the VASP calculation
@@ -861,3 +808,708 @@ Graph(series=[Series(..., label='total', ...)], ...)
 
 """
     assert expected_class_content in content
+
+
+def test_complicated_signatures_no_return_info(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content_no_return_info = """\
+{{< function name="no_return_info" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `None`
+{{< /signature >}}
+
+{{< docstring >}}
+Function without return type information in the docstring.
+
+
+
+### Parameters
+
+
+
+*a*: `int`
+: <!---->
+    An integer parameter.
+
+*b*: `str`
+: <!---->
+    A string parameter.
+
+### Returns
+
+`None`
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content_no_return_info in content
+
+
+def test_complicated_signatures_no_return_description(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content_no_return_description = """\
+{{< function name="no_return_description" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with return type in signature but no Returns field.
+
+
+
+### Returns
+
+`int`
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content_no_return_description in content
+
+
+def test_complicated_signatures_return_with_description(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content_with_return_description = """\
+{{< function name="return_with_description" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with return type and description in Returns field.
+
+
+
+### Returns
+
+
+`int`
+: <!---->
+    The sum of the integer and the length of the string.
+
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content_with_return_description in content
+
+
+def test_complicated_signatures_return_with_type_only(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content_with_type_only = """\
+{{< function name="return_with_type_only" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with return type only in Returns field.
+
+
+
+### Returns
+
+`int`
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content_with_type_only in content
+
+
+def test_complicated_signatures_return_with_description_only(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content_with_description_only = """\
+{{< function name="return_with_description_only" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with return description only in Returns field.
+
+
+
+### Returns
+
+
+`int`
+: <!---->
+    The sum of the integer and the length of the string.
+
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content_with_description_only in content
+
+
+def test_complicated_signatures_return_with_no_info(sphinx_app):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content_with_no_info = """\
+{{< function name="return_with_no_info" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `-`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with no return type information.
+
+
+
+### Parameters
+
+
+
+*a*: `int`
+: <!---->
+    An integer parameter.
+
+*b*: `str`
+: <!---->
+    A string parameter.
+
+### Returns
+
+
+`-`
+: <!---->
+    Returns a multiple of a.
+
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content_with_no_info in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_no_type(
+    sphinx_app,
+):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_no_type" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `-`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and no type given.
+
+
+
+### Returns
+
+
+`-`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_field_type(
+    sphinx_app,
+):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_field_type" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and type given in Returns field.
+
+
+
+### Returns
+
+
+`int`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_sig_type(
+    sphinx_app,
+):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_sig_type" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and type given in signature.
+
+
+
+### Returns
+
+
+`int`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_tuple_sig_type(
+    sphinx_app,
+):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_tuple_sig_type" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `Tuple[int, str]`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and Tuple type given in signature.
+
+
+
+### Returns
+
+
+`Tuple[int, str]`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_union_sig_type(
+    sphinx_app,
+):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_union_sig_type" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int | str`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and Union type given in signature.
+
+
+
+### Returns
+
+
+`int | str`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_union2_sig_type(
+    sphinx_app,
+):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_union2_sig_type" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int | str`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and Union2 type given in signature.
+
+
+
+### Returns
+
+
+`int | str`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_tuple_field_type(
+    sphinx_app,
+):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_tuple_field_type" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `Tuple[int, str]`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and Tuple type given in Returns field.
+
+
+
+### Returns
+
+
+`Tuple[int, str]`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_union_field_type(
+    sphinx_app,
+):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_union_field_type" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `Union[int, str]`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and Union type given in Returns field.
+
+
+
+### Returns
+
+
+`Union[int, str]`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_union2_field_type(
+    sphinx_app,
+):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_union2_field_type" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int | str`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and Union2 type given in Returns field.
+
+
+
+### Returns
+
+
+`int | str`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_conflicting_type_01(
+    sphinx_app,
+):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_conflicting_type_01" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and conflicting types.
+
+
+
+### Returns
+
+
+`int`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_conflicting_type_02(
+    sphinx_app,
+):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_conflicting_type_02" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and conflicting types.
+
+
+
+### Returns
+
+`int`
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_signatures_return_with_multiline_type_description_conflicting_type_03(
+    sphinx_app,
+):
+    content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
+    expected_content = """\
+{{< function name="return_with_multiline_type_description_conflicting_type_03" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int | str`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with type description across multiple lines and conflicting types.
+
+
+
+### Returns
+
+
+`int | str`
+: <!---->
+    This integer is returned
+    and represents the sum of a
+    and length of b.
+
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    assert expected_content in content
+
+
+def test_complicated_formatted_returns(
+    sphinx_app,
+):
+    content = read_file_content(sphinx_app.outdir, "example_formatted_returns.md")
+    expected_content = """\
+{{< function name="return_with_formatted_return_PLACEHOLDER" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int | str`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with special formatting in Returns field.
+
+
+
+### Returns
+
+
+`int | str`
+: <!---->
+    This integer is **returned**
+    and represents the sum of *a*
+    and length of ‘’’b’’’.
+
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    expected_content_01 = expected_content.replace("PLACEHOLDER", "01")
+    assert expected_content_01 in content
+    expected_content_02 = expected_content.replace("PLACEHOLDER", "02")
+    assert expected_content_02 in content
+    expected_content_03 = expected_content.replace("PLACEHOLDER", "03")
+    assert expected_content_03 in content

@@ -179,7 +179,7 @@ class Dos(base.Refinery, graph.Mixin):
         """Read the DOS and convert it into a graph.
 
         The x axis is the energy mesh used in the calculation shifted such that the
-        Fermi energy is at 0. On the y axis, we show the DOS. For :tag:`ISPIN = 2, the
+        Fermi energy is at 0. On the y axis, we show the DOS. For :tag:`ISPIN` = 2, the
         different spin components are shown with opposite sign: "up" with a positive
         sign and "down" with a negative one. If you used :tag:`LORBIT` in your VASP
         calculation and you pass in a selection, py4vasp will add additional lines

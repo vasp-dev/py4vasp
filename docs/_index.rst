@@ -20,8 +20,8 @@ Installation
 .. _PyPI: https://pypi.org/project/py4vasp
 
 While this is not required to be able to run *py4vasp*, you may want to consider
-creating a separate environment for installation to avoid interference with other
-installed packages. [#environment]_
+creating a separate :ref:`environment <environment_>` for installation to avoid
+interference with other installed packages.
 You can then install *py4vasp* from PyPI_ using the pip package installer
 
 .. code-block:: bash
@@ -142,49 +142,58 @@ which we found to be more robust than pip.
 
 .. toctree::
    :hidden:
+   :glob:
 
-   calculation
-   generate
+   calculation/*
 
 .. currentmodule:: py4vasp
 
 .. autosummary::
+  :nosignatures:
 
    calculation
    Calculation
+   plot
+   exception
 
 
 ----------------------------------------------------------------------------------------
 
+.. _environment:
+
+Virtual environment
+-------------------
+
+To create a separate *py4vasp* from the rest of your packages you
+can create an environment with venv_ or conda_. The advantage of the former is
+that it comes with your Python installation, the latter requires the installation
+of Miniconda or Anaconda. Nevertheless, it may be a good idea to go with *conda*
+in particular on Windows and macOS, because it can help install dependencies
+of *py4vasp*. Below you find the instructions on how to create the environment
+depending on your environment managing tool and your operating system.
+
+venv (Linux / MacOS)
+  .. code-block:: bash
+
+    python3 -m venv py4vasp-env
+    source py4vasp-env/bin/activate.sh
+
+venv (Windows)
+  .. code-block:: bash
+
+    python3 -m venv py4vasp-env
+    py4vasp-env\Scripts\activate.bat
+
+conda (Linux / MacOS / Windows)
+  .. code-block:: bash
+
+    conda create --name py4vasp-env python
+    conda activate py4vasp-env
+
+.. note::
+  You will need to run the activation part of the command again if you open a
+  new shell.
+
 .. _venv: https://docs.python.org/3/tutorial/venv.html
 .. _conda: https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html
 
-.. [#environment] To create a separate *py4vasp* from the rest of your packages you
-  can create an environment with venv_ or conda_. The advantage of the former is
-  that it comes with your Python installation, the latter requires the installation
-  of Miniconda or Anaconda. Nevertheless, it may be a good idea to go with *conda*
-  in particular on Windows and macOS, because it can help install dependencies
-  of *py4vasp*. Below you find the instructions on how to create the environment
-  depending on your environment managing tool and your operating system.
-
-  venv (Linux / MacOS)
-    .. code-block:: bash
-
-      python3 -m venv py4vasp-env
-      source py4vasp-env/bin/activate.sh
-
-  venv (Windows)
-    .. code-block:: bash
-
-      python3 -m venv py4vasp-env
-      py4vasp-env\Scripts\activate.bat
-
-  conda (Linux / MacOS / Windows)
-    .. code-block:: bash
-
-      conda create --name py4vasp-env python
-      conda activate py4vasp-env
-
-  .. note::
-    You will need to run the activation part of the command again if you open a
-    new shell.

@@ -121,7 +121,9 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         >>> calculation = py4vasp.Calculation.from_path(".")
         >>> calculation.density.to_dict("n")
         >>> calculation.density.plot("magnetization")
+
         Using synonyms and nesting
+
         >>> calculation.density.plot("n m(1,2) mag(sigma_z)")
         """
         sources = super().selections()
@@ -212,13 +214,20 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
 
         Examples
         --------
+
         >>> calculation = py4vasp.Calculation.from_path(".")
+
         Plot an isosurface of the electronic charge density
+
         >>> calculation.density.plot()
+
         Plot isosurfaces for positive (blue) and negative (red) magnetization
         of a spin-polarized calculation (ISPIN=2)
+
         >>> calculation.density.plot("m")
+
         Plot the isosurface for the third component of a noncollinear magnetization
+
         >>> calculation.density.plot("m(3)")
         """
         _raise_error_if_no_data(self._raw_data.charge)
@@ -327,7 +336,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
 
         Returns
         -------
-        graph
+        Graph
             A contour plot in the plane spanned by the 2 remaining lattice vectors.
 
 
@@ -388,7 +397,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
 
         Returns
         -------
-        graph
+        Graph
             A quiver plot in the plane spanned by the 2 remaining lattice vectors.
 
 

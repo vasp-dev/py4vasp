@@ -21,8 +21,8 @@ class DielectricTensor(base.Refinery):
         Returns
         -------
         dict
-        Contains the dielectric tensor and a string describing the method it
-        was obtained.
+            Contains the dielectric tensor and a string describing the method it
+            was obtained.
         """
         return {
             "clamped_ion": self._raw_data.electron[:],

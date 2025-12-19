@@ -53,6 +53,7 @@ class Refinery:
 
         Returns
         -------
+        Refinery
             A Refinery instance to handle the passed data.
         """
         repr_ = f".from_data({repr(raw_data)})"

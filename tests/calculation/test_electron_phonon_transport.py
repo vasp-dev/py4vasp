@@ -11,7 +11,7 @@ from py4vasp import exception
 from py4vasp._calculation.electron_phonon_transport import (
     DIRECTIONS,
     ElectronPhononTransport,
-    ElectronPhononTransportInstance,
+    TransportInstance,
 )
 
 
@@ -96,10 +96,10 @@ def test_len(transport):
 def test_indexing_and_iteration(transport):
     # Indexing and iteration should yield instances
     for i, instance in enumerate(transport):
-        assert isinstance(instance, ElectronPhononTransportInstance)
+        assert isinstance(instance, TransportInstance)
         assert instance.index == i
         assert instance.parent is transport
-    assert isinstance(transport[0], ElectronPhononTransportInstance)
+    assert isinstance(transport[0], TransportInstance)
 
 
 def test_read_mapping(transport):
@@ -192,7 +192,7 @@ def test_select_returns_instances(transport, attribute):
     selected = transport.select(f"{attribute}={choice.item()}")
     assert len(selected) == len(indices)
     for index_, instance in zip(indices, selected):
-        assert isinstance(instance, ElectronPhononTransportInstance)
+        assert isinstance(instance, TransportInstance)
         assert instance.index == index_
 
 
@@ -206,7 +206,7 @@ def test_select_multiple(transport):
     selected = transport.select(selection)
     assert len(selected) == len(indices)
     for index_, instance in zip(indices, selected):
-        assert isinstance(instance, ElectronPhononTransportInstance)
+        assert isinstance(instance, TransportInstance)
         assert instance.index == index_
 
 
@@ -220,7 +220,7 @@ def test_select_nested(transport):
     selected = transport.select(selection)
     assert len(selected) == 1
     instance = selected[0]
-    assert isinstance(instance, ElectronPhononTransportInstance)
+    assert isinstance(instance, TransportInstance)
     assert instance.index == index_
 
 
