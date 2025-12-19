@@ -1453,3 +1453,44 @@ Function with type description across multiple lines and conflicting types.
 {{< /function >}}
 """
     assert expected_content in content
+
+
+def test_complicated_formatted_returns(
+    sphinx_app,
+):
+    content = read_file_content(sphinx_app.outdir, "example_formatted_returns.md")
+    print(content)
+    expected_content = """\
+{{< function name="return_with_formatted_return_PLACEHOLDER" module="example_complicated_signatures" breadcrumbs="" >}}
+{{< signature >}}
+(
+- *a*: `int`,
+- *b*: `str`
+
+) → `int | str`
+{{< /signature >}}
+
+{{< docstring >}}
+Function with special formatting in Returns field.
+
+
+
+### Returns
+
+
+`int | str`
+: <!---->
+    This integer is **returned**
+    and represents the sum of *a*
+    and length of ‘’’b’’’.
+
+
+
+{{< /docstring >}}
+
+{{< /function >}}
+"""
+    expected_content_01 = expected_content.replace("PLACEHOLDER", "01")
+    assert expected_content_01 in content
+    expected_content_02 = expected_content.replace("PLACEHOLDER", "02")
+    assert expected_content_02 in content

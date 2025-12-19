@@ -224,3 +224,31 @@ def return_with_multiline_type_description_conflicting_type_03(
         and length of b.
     """
     return a + len(b)
+
+
+def return_with_formatted_return_01(
+    a: int, b: str
+) -> int | str:
+    """Function with special formatting in Returns field.
+
+    Returns
+    -------
+    int
+        This integer is **returned**
+        and represents the sum of `a`
+        and length of '''b'''.
+    """
+    return a + len(b)
+
+def return_with_formatted_return_02(
+    a: int, b: str
+) -> int | str:
+    """Function with special formatting in Returns field.
+
+    Returns
+    -------
+    This integer is **returned**
+    and represents the sum of `a`
+    and length of '''b'''.
+    """
+    return a + len(b)
