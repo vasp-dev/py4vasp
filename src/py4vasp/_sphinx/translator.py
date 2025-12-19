@@ -1195,8 +1195,25 @@ date = "{current_date}"
                 break
 
         if field_name == "return type":
+            # Check if the field body is empty
+            field_body_text = ""
+            for child in node.children:
+                if child.__class__.__name__ == "field_body":
+                    field_body_text = child.astext().strip()
+                    break
+
+            # Skip empty "return type" fields (Napoleon creates these for "-" type)
+            if not field_body_text:
+                self._in_parameters_field = False
+                raise SkipNode
+
             # Check if we have a description stored (from rejected non-type in "return type" field)
             field_description = self._returns_field_description or ""
+
+            # Skip "return type" field if it's "-" since we already processed the "returns" field
+            if self._returns_field_type == "-":
+                self._in_parameters_field = False
+                raise SkipNode
 
             # If we have a description but no type, treat this "return type" field as a "returns" field
             if field_description and not self._returns_field_type:
@@ -1336,11 +1353,11 @@ date = "{current_date}"
         sig_return_type = self._signature_return_type or ""
         field_return_type = self._returns_field_type or ""
         field_description = self._returns_field_description or ""
-        
+
         # Get the already-processed content from _content_stash
         # This preserves formatting like emphasis, references, etc.
         processed_content = self._content_stash or []
-        
+
         # Clean up processed_content if it contains definition_list markup
         # When Napoleon creates a definition_list, processed_content will have:
         # - The term line (type) - may be indented
@@ -1351,30 +1368,30 @@ date = "{current_date}"
             cleaned_content = []
             found_term = False
             skip_next_marker = False
-            
+
             for i, line in enumerate(processed_content):
                 stripped = line.strip()
-                
+
                 # Skip the term line if it matches the type (only check first few lines)
                 if not found_term and i < 3 and field_return_type:
                     # Check if this line is just the type (with or without backticks)
-                    if stripped.strip('`') == field_return_type.strip().strip('`'):
+                    if stripped.strip("`") == field_return_type.strip().strip("`"):
                         found_term = True
                         skip_next_marker = True
                         continue
-                
+
                 # Skip the ": <!---->" marker line that follows the term
-                if skip_next_marker and stripped == ': <!---->':
+                if skip_next_marker and stripped == ": <!---->":
                     skip_next_marker = False
                     continue
-                
+
                 # Keep description lines - they're already indented from definition processing
                 # Remove the extra indentation that definition node added (4 spaces)
-                if line.startswith('    '):
+                if line.startswith("    "):
                     cleaned_content.append(line[4:])  # Remove 4-space indent
                 else:
                     cleaned_content.append(line)
-            
+
             processed_content = cleaned_content
 
         # Type priority: signature > field type > "-" if has description

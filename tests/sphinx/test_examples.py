@@ -551,7 +551,6 @@ other routines.
 
 def test_convert_example_dos_to_dict(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
-    print(content)
     expected_class_content = """
 {{< method name="to_dict" class="Dos" module="example_dos" breadcrumbs="" >}}
 {{< signature >}}
@@ -1028,7 +1027,6 @@ def test_complicated_signatures_return_with_multiline_type_description_no_type(
     sphinx_app,
 ):
     content = read_file_content(sphinx_app.outdir, "example_complicated_signatures.md")
-    print(content)
     expected_content = """\
 {{< function name="return_with_multiline_type_description_no_type" module="example_complicated_signatures" breadcrumbs="" >}}
 {{< signature >}}
@@ -1478,7 +1476,6 @@ def test_complicated_formatted_returns(
     sphinx_app,
 ):
     content = read_file_content(sphinx_app.outdir, "example_formatted_returns.md")
-    print(content)
     expected_content = """\
 {{< function name="return_with_formatted_return_PLACEHOLDER" module="example_complicated_signatures" breadcrumbs="" >}}
 {{< signature >}}

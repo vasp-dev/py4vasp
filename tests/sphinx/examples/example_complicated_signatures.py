@@ -233,9 +233,7 @@ def return_with_multiline_type_description_conflicting_type_03(
     return a + len(b)
 
 
-def return_with_formatted_return_01(
-    a: int, b: str
-) -> int | str:
+def return_with_formatted_return_01(a: int, b: str) -> int | str:
     """Function with special formatting in Returns field.
 
     Returns
@@ -247,9 +245,8 @@ def return_with_formatted_return_01(
     """
     return a + len(b)
 
-def return_with_formatted_return_02(
-    a: int, b: str
-) -> int | str:
+
+def return_with_formatted_return_02(a: int, b: str) -> int | str:
     """Function with special formatting in Returns field.
 
     Returns
@@ -261,9 +258,8 @@ def return_with_formatted_return_02(
     """
     return a + len(b)
 
-def return_with_formatted_return_03(
-    a: int, b: str
-):
+
+def return_with_formatted_return_03(a: int, b: str):
     """Function with special formatting in Returns field.
 
     Returns
