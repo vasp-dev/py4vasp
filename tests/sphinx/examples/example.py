@@ -128,8 +128,9 @@ def returns_type_without_returns_field_type(
 
     Returns
     -------
-    The second value.
-    With another line!
+    -
+        The second value.
+        With another line!
     """
     return value2
 

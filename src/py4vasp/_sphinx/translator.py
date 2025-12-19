@@ -422,7 +422,9 @@ date = "{current_date}"
         to know what marker to use, and asterisks are chosen over dashes for
         better Hugo/CommonMark compatibility.
         """
-        self.list_stack.append("*")
+        # Skip bullet list markers in Returns fields (treat as paragraphs)
+        if not self._in_returns_field:
+            self.list_stack.append("*")
 
     def depart_bullet_list(self, node):
         """Clean up bullet list state when exiting the list.
@@ -430,7 +432,9 @@ date = "{current_date}"
         Uses the shared depart_list method because the cleanup logic is identical
         for both bullet and enumerated lists - only the markers differ.
         """
-        self._depart_list()
+        # Only depart if we pushed a marker (not in Returns field)
+        if not self._in_returns_field:
+            self._depart_list()
 
     def visit_enumerated_list(self, node):
         """Initialize enumerated list state with numbered marker.
@@ -467,14 +471,18 @@ date = "{current_date}"
         Two spaces per level is the Markdown standard for nested list indentation.
         The marker comes from the stack top, so it matches the current list type.
         """
-        indentation = Indentation(
-            level=len(self.list_stack), level_in_first_row=len(self.list_stack) - 1
-        )
-        self.indentation_stack.append(indentation)
-        self.content += f"{self.list_stack[-1]:4}"
+        # Skip list item markers in Returns fields (treat as paragraphs)
+        if not self._in_returns_field and self.list_stack:
+            indentation = Indentation(
+                level=len(self.list_stack), level_in_first_row=len(self.list_stack) - 1
+            )
+            self.indentation_stack.append(indentation)
+            self.content += f"{self.list_stack[-1]:4}"
 
     def depart_list_item(self, node):
-        self.indentation_stack.pop()
+        # Only pop indentation if we pushed it (not in Returns field)
+        if not self._in_returns_field and self.list_stack:
+            self.indentation_stack.pop()
 
     def visit_definition_list(self, node):
         self.list_stack.append("description")
@@ -1315,27 +1323,70 @@ date = "{current_date}"
         Uses information from return_type_finder which has already separated:
         - signature_return_type: Type from function signature
         - returns_field_type: Type from Returns field
-        - returns_field_description: Description from Returns field
+        - returns_field_description: Description from Returns field (plain text, may be empty)
+
+        The actual formatted description content is in _content_stash (already processed by translator).
 
         Priority for type display:
         1. Signature type (if present)
         2. Returns field type (if present)
         3. "-" (if Returns field has description but no type)
         """
-        # Determine which type to display (already computed in _get_return_type)
+        # Determine which type to display
         sig_return_type = self._signature_return_type or ""
         field_return_type = self._returns_field_type or ""
         field_description = self._returns_field_description or ""
+        
+        # Get the already-processed content from _content_stash
+        # This preserves formatting like emphasis, references, etc.
+        processed_content = self._content_stash or []
+        
+        # Clean up processed_content if it contains definition_list markup
+        # When Napoleon creates a definition_list, processed_content will have:
+        # - The term line (type) - may be indented
+        # - A ": <!---->" marker line
+        # - The description lines (what we want) - already indented
+        # We need to remove the term and marker lines, and de-indent the description
+        if processed_content:
+            cleaned_content = []
+            found_term = False
+            skip_next_marker = False
+            
+            for i, line in enumerate(processed_content):
+                stripped = line.strip()
+                
+                # Skip the term line if it matches the type (only check first few lines)
+                if not found_term and i < 3 and field_return_type:
+                    # Check if this line is just the type (with or without backticks)
+                    if stripped.strip('`') == field_return_type.strip().strip('`'):
+                        found_term = True
+                        skip_next_marker = True
+                        continue
+                
+                # Skip the ": <!---->" marker line that follows the term
+                if skip_next_marker and stripped == ': <!---->':
+                    skip_next_marker = False
+                    continue
+                
+                # Keep description lines - they're already indented from definition processing
+                # Remove the extra indentation that definition node added (4 spaces)
+                if line.startswith('    '):
+                    cleaned_content.append(line[4:])  # Remove 4-space indent
+                else:
+                    cleaned_content.append(line)
+            
+            processed_content = cleaned_content
 
         # Type priority: signature > field type > "-" if has description
         if sig_return_type:
             display_type = sig_return_type
         elif field_return_type:
             display_type = field_return_type
-        elif field_description:
+        elif field_description or processed_content:
+            # Has description content but no type
             display_type = "-"
         else:
-            # No Returns field content at all - shouldn't happen if we're in this method
+            # No Returns field content at all
             display_type = ""
 
         # Build the output
@@ -1345,14 +1396,18 @@ date = "{current_date}"
             # Format as definition list with type and optional description
             new_str_content = f"\n`{display_type}`"
 
-            # Only add description if:
-            # 1. We have a description AND
-            # 2. Either we're using signature type OR field has no type (just description)
-            # If field has both type and description, and we're using signature type, skip field type line
-            if field_description:
-                # Add as definition list item
+            # Prefer processed_content (formatted) over field_description (plain text)
+            # processed_content preserves formatting like emphasis, inline code, etc.
+            if processed_content:
                 new_str_content += "\n: <!---->"
-                # Format description with proper indentation
+                for line in processed_content:
+                    if line.strip():
+                        new_str_content += f"\n    {line}"
+                    else:
+                        new_str_content += "\n"
+            elif field_description:
+                # Fallback to plain text from return_type_finder
+                new_str_content += "\n: <!---->"
                 for line in field_description.split("\n"):
                     if line.strip():
                         new_str_content += f"\n    {line.strip()}"
@@ -1361,9 +1416,16 @@ date = "{current_date}"
         elif display_type == "-":
             # Has description but no type - show "-" with description
             new_str_content = f"\n`-`\n: <!---->"
-            for line in field_description.split("\n"):
-                if line.strip():
-                    new_str_content += f"\n    {line.strip()}"
+            if processed_content:
+                for line in processed_content:
+                    if line.strip():
+                        new_str_content += f"\n    {line}"
+                    else:
+                        new_str_content += "\n"
+            elif field_description:
+                for line in field_description.split("\n"):
+                    if line.strip():
+                        new_str_content += f"\n    {line.strip()}"
         else:
             # Just display the type (no description)
             if self._current_return_type:

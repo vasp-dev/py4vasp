@@ -5,7 +5,8 @@ def foo1() -> str:
 
     Returns
     -------
-    bar is not just a type
+    -
+        bar is not just a type
     """
 
 

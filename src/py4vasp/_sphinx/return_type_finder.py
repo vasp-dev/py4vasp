@@ -150,18 +150,15 @@ class ReturnTypeFinder(NodeVisitor):
                 for item in child.children:
                     if item.__class__.__name__ == "definition_list_item":
                         term = None
-                        definition = None
                         for item_child in item.children:
                             if item_child.__class__.__name__ == "term":
                                 term = item_child.astext().strip()
-                            elif item_child.__class__.__name__ == "definition":
-                                definition = item_child.astext().strip()
+                                break
                         if term:
                             self._returns_field_body_content.append(
                                 {
                                     "type": "definition_list_item",
                                     "term": term,
-                                    "definition": definition or "",
                                 }
                             )
 
@@ -224,17 +221,14 @@ class ReturnTypeFinder(NodeVisitor):
 
         for item in self._returns_field_body_content:
             if item["type"] == "definition_list_item":
-                # NumPy-style: term is type, definition is description
+                # NumPy-style: term is type
                 term = item["term"].strip().strip("`")
                 if self._is_type_like(term):
                     self._returns_field_type = term
-                    self._returns_field_description = item["definition"]
+                    # Don't extract description - let translator process it naturally
                 else:
                     # Term doesn't look like a type, treat as description
-                    desc = (
-                        f"{term}\n{item['definition']}" if item["definition"] else term
-                    )
-                    self._returns_field_description = desc
+                    self._returns_field_description = term
             elif item["type"] == "paragraph":
                 # Check if it's a single line that looks like a type
                 lines = item["lines"]
@@ -280,6 +274,10 @@ class ReturnTypeFinder(NodeVisitor):
         text = text.strip().strip("`")
         if not text:
             return False
+
+        # Special sentinel value for "no type"
+        if text == "-":
+            return True
 
         # Single word (simple type)
         if (

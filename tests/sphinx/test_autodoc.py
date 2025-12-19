@@ -72,6 +72,7 @@ Return the stored value.
 
 
 
+
 {{< /docstring >}}
 
 {{< /method >}}
@@ -110,6 +111,7 @@ Retrieve the stored data.
 `str`
 : <!---->
     The data stored in the inner class.
+
 
 
 
@@ -168,6 +170,7 @@ An example function that adds two parameters.
 `int`
 : <!---->
     The sum of param1 and param2.
+
 
 
 
@@ -247,6 +250,7 @@ An example function that squares its input.
 `int`
 : <!---->
     The square of the input integer.
+
 
 
 
@@ -343,9 +347,12 @@ docstring
 
 
 
+
 {{< /docstring >}}
 
 {{< /function >}}"""
     assert expected_content.replace("METHOD_NAME", "foo1") in content
     assert expected_content.replace("METHOD_NAME", "foo2") in content
     assert expected_content.replace("METHOD_NAME", "foo3") in content
+    #{{< function name="foo1" module="equivalent_function" breadcrumbs="" >}}\n{{< signature >}}\n() → `str`\n{{< /signature >}}\n\n{{< docstring >}}\ndocstring\n\n\n\n### Returns\n\n\n`str`\n: <!---->\n    bar is not just a type\n\n\n\n\n{{< /docstring >}}\n\n{{< /function >}}
+    #{{< function name="foo1" module="equivalent_function" breadcrumbs="" >}}\n{{< signature >}}\n() → `str`\n{{< /signature >}}\n\n{{< docstring >}}\ndocstring\n\n\n\n### Returns\n\n\n`str`\n: <!---->\n    bar is not just a type\n\n\n\n\n### Returns\n\n\n`str`\n: <!---->\n\n\n\n\n{{< /docstring >}}\n\n{{< /function >}}

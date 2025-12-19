@@ -47,7 +47,8 @@ def return_with_description_only(a: int, b: str) -> int:
 
     Returns
     -------
-    The sum of the integer and the length of the string.
+    -
+        The sum of the integer and the length of the string.
     """
     return a + len(b)
 
@@ -64,7 +65,8 @@ def return_with_no_info(a: int, b: str):
 
     Returns
     -------
-    Returns a multiple of a.
+    -
+        Returns a multiple of a.
     """
     return a * 2
 
@@ -74,9 +76,10 @@ def return_with_multiline_type_description_no_type(a: int, b: str):
 
     Returns
     -------
-    This integer is returned
-    and represents the sum of a
-    and length of b.
+    -
+        This integer is returned
+        and represents the sum of a
+        and length of b.
     """
     return a + len(b)
 
@@ -99,9 +102,10 @@ def return_with_multiline_type_description_sig_type(a: int, b: str) -> int:
 
     Returns
     -------
-    This integer is returned
-    and represents the sum of a
-    and length of b.
+    -
+        This integer is returned
+        and represents the sum of a
+        and length of b.
     """
     return a + len(b)
 
@@ -116,9 +120,10 @@ def return_with_multiline_type_description_tuple_sig_type(
 
     Returns
     -------
-    This integer is returned
-    and represents the sum of a
-    and length of b.
+    -
+        This integer is returned
+        and represents the sum of a
+        and length of b.
     """
     return a + len(b)
 
@@ -130,9 +135,10 @@ def return_with_multiline_type_description_union_sig_type(
 
     Returns
     -------
-    This integer is returned
-    and represents the sum of a
-    and length of b.
+    -
+        This integer is returned
+        and represents the sum of a
+        and length of b.
     """
     return a + len(b)
 
@@ -142,9 +148,10 @@ def return_with_multiline_type_description_union2_sig_type(a: int, b: str) -> in
 
     Returns
     -------
-    This integer is returned
-    and represents the sum of a
-    and length of b.
+    -
+        This integer is returned
+        and represents the sum of a
+        and length of b.
     """
     return a + len(b)
 
@@ -247,8 +254,23 @@ def return_with_formatted_return_02(
 
     Returns
     -------
-    This integer is **returned**
-    and represents the sum of `a`
-    and length of '''b'''.
+    -
+        This integer is **returned**
+        and represents the sum of `a`
+        and length of '''b'''.
+    """
+    return a + len(b)
+
+def return_with_formatted_return_03(
+    a: int, b: str
+):
+    """Function with special formatting in Returns field.
+
+    Returns
+    -------
+    int | str
+        This integer is **returned**
+        and represents the sum of `a`
+        and length of '''b'''.
     """
     return a + len(b)

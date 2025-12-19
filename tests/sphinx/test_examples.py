@@ -188,6 +188,7 @@ Return value 2.
 
 
 
+
 {{< /docstring >}}
 
 {{< /function >}}
@@ -273,6 +274,7 @@ Return value 2.
 : <!---->
     The second value.
     With another line!
+
 
 
 
@@ -549,6 +551,7 @@ other routines.
 
 def test_convert_example_dos_to_dict(sphinx_app):
     content = read_file_content(sphinx_app.outdir, "example_dos.md")
+    print(content)
     expected_class_content = """
 {{< method name="to_dict" class="Dos" module="example_dos" breadcrumbs="" >}}
 {{< signature >}}
@@ -620,6 +623,7 @@ projection.
     Fermi energy and the total DOS or the spin-resolved DOS for
     spin-polarized calculations. If available and a selection is passed,
     the orbital resolved DOS for the selected orbitals is included.
+
 
 
 
@@ -750,6 +754,7 @@ corresponding to the selected projections.
     the resulting DOS is spin resolved and the spin-down DOS is plotted
     towards negative values. If a selection is given the orbital-resolved
     DOS is given for the specified projectors.
+
 
 
 
@@ -902,6 +907,7 @@ Function with return type and description in Returns field.
 
 
 
+
 {{< /docstring >}}
 
 {{< /function >}}
@@ -964,6 +970,7 @@ Function with return description only in Returns field.
 
 
 
+
 {{< /docstring >}}
 
 {{< /function >}}
@@ -1009,6 +1016,7 @@ Function with no return type information.
 
 
 
+
 {{< /docstring >}}
 
 {{< /function >}}
@@ -1044,6 +1052,7 @@ Function with type description across multiple lines and no type given.
     This integer is returned
     and represents the sum of a
     and length of b.
+
 
 
 
@@ -1084,6 +1093,7 @@ Function with type description across multiple lines and type given in Returns f
 
 
 
+
 {{< /docstring >}}
 
 {{< /function >}}
@@ -1118,6 +1128,7 @@ Function with type description across multiple lines and type given in signature
     This integer is returned
     and represents the sum of a
     and length of b.
+
 
 
 
@@ -1158,6 +1169,7 @@ Function with type description across multiple lines and Tuple type given in sig
 
 
 
+
 {{< /docstring >}}
 
 {{< /function >}}
@@ -1192,6 +1204,7 @@ Function with type description across multiple lines and Union type given in sig
     This integer is returned
     and represents the sum of a
     and length of b.
+
 
 
 
@@ -1232,6 +1245,7 @@ Function with type description across multiple lines and Union2 type given in si
 
 
 
+
 {{< /docstring >}}
 
 {{< /function >}}
@@ -1266,6 +1280,7 @@ Function with type description across multiple lines and Tuple type given in Ret
     This integer is returned
     and represents the sum of a
     and length of b.
+
 
 
 
@@ -1306,6 +1321,7 @@ Function with type description across multiple lines and Union type given in Ret
 
 
 
+
 {{< /docstring >}}
 
 {{< /function >}}
@@ -1343,6 +1359,7 @@ Function with type description across multiple lines and Union2 type given in Re
 
 
 
+
 {{< /docstring >}}
 
 {{< /function >}}
@@ -1377,6 +1394,7 @@ Function with type description across multiple lines and conflicting types.
     This integer is returned
     and represents the sum of a
     and length of b.
+
 
 
 
@@ -1448,6 +1466,7 @@ Function with type description across multiple lines and conflicting types.
 
 
 
+
 {{< /docstring >}}
 
 {{< /function >}}
@@ -1486,6 +1505,7 @@ Function with special formatting in Returns field.
 
 
 
+
 {{< /docstring >}}
 
 {{< /function >}}
@@ -1494,3 +1514,5 @@ Function with special formatting in Returns field.
     assert expected_content_01 in content
     expected_content_02 = expected_content.replace("PLACEHOLDER", "02")
     assert expected_content_02 in content
+    expected_content_03 = expected_content.replace("PLACEHOLDER", "03")
+    assert expected_content_03 in content
