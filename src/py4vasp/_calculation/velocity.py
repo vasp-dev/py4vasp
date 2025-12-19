@@ -189,7 +189,8 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
         Returns
         -------
-        A numpy array of the velocities of the selected steps.
+        -
+            A numpy array of the velocities of the selected steps.
 
         Examples
         --------

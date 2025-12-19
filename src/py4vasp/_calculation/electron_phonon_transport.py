@@ -85,7 +85,8 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
 
         Returns
         -------
-        A numpy array of temperatures in Kelvin.
+        -
+            A numpy array of temperatures in Kelvin.
         """
         return self._get_data("temperatures")
 
@@ -103,8 +104,9 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
 
         Returns
         -------
-        A numpy array of electronic conductivity values in S/m for the specified
-        direction, or a dictionary of arrays if multiple directions are selected.
+        -
+            A numpy array of electronic conductivity values in S/m for the specified
+            direction, or a dictionary of arrays if multiple directions are selected.
 
         Examples
         --------
@@ -133,8 +135,9 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
 
         Returns
         -------
-        A numpy array of mobility values in cm^2/(V.s) for the specified direction,
-        or a dictionary of arrays if multiple directions are selected.
+        -
+            A numpy array of mobility values in cm^2/(V.s) for the specified direction,
+            or a dictionary of arrays if multiple directions are selected.
 
         Examples
         --------
@@ -163,8 +166,9 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
 
         Returns
         -------
-        A numpy array of Seebeck coefficient values in V/K for the specified direction,
-        or a dictionary of arrays if multiple directions are selected.
+        -
+            A numpy array of Seebeck coefficient values in V/K for the specified direction,
+            or a dictionary of arrays if multiple directions are selected.
 
         Examples
         --------
@@ -193,8 +197,9 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
 
         Returns
         -------
-        A numpy array of Peltier coefficient values in V for the specified direction,
-        or a dictionary of arrays if multiple directions are selected.
+        -
+            A numpy array of Peltier coefficient values in V for the specified direction,
+            or a dictionary of arrays if multiple directions are selected.
 
         Examples
         --------
@@ -225,8 +230,9 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
 
         Returns
         -------
-        A numpy array of electronic thermal conductivity values in W/(m.K) for the
-        specified direction, or a dictionary of arrays if multiple directions are selected.
+        -
+            A numpy array of electronic thermal conductivity values in W/(m.K) for the
+            specified direction, or a dictionary of arrays if multiple directions are selected.
 
         Examples
         --------
@@ -264,7 +270,8 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
 
         Returns
         -------
-        A numpy array of dimensionless figure of merit values at each temperature.
+        -
+            A numpy array of dimensionless figure of merit values at each temperature.
 
         Examples
         --------
@@ -337,7 +344,8 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
         Returns
         -------
-        Dictionary containing information about the available accumulators.
+        -
+            Dictionary containing information about the available accumulators.
         """
         return self._accumulator().to_dict()
 
@@ -347,8 +355,9 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
         Returns
         -------
-        Dictionary containing available selection options with their possible values.
-        Keys include selection criteria like "nbands_sum", "selfen_approx", "selfen_delta".
+        -
+            Dictionary containing available selection options with their possible values.
+            Keys include selection criteria like "nbands_sum", "selfen_approx", "selfen_delta".
         """
         base_selections = {
             **super().selections(),
@@ -362,8 +371,9 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
         Returns
         -------
-        Dictionary containing transport quantities as keys and their corresponding
-        physical units as values.
+        -
+            Dictionary containing transport quantities as keys and their corresponding
+            physical units as values.
         """
         return UNITS
 
@@ -374,8 +384,9 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
         Returns
         -------
-        The INCAR tag name and its corresponding value as set in the calculation.
-        Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
+        -
+            The INCAR tag name and its corresponding value as set in the calculation.
+            Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
         """
         return self._accumulator().chemical_potential_mu_tag()
 
@@ -397,7 +408,8 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
         Returns
         -------
-        Instances that match the selection criteria.
+        -
+            Instances that match the selection criteria.
 
         Examples
         --------
@@ -439,10 +451,11 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
         Returns
         -------
-        A graph object containing the requested data. Each series corresponds to one
-        temperature and plots the requested transport quantity as a function of the
-        chemical potential tag. If the instances share the same metadata, the series
-        is connected with a line.
+        -
+            A graph object containing the requested data. Each series corresponds to one
+            temperature and plots the requested transport quantity as a function of the
+            chemical potential tag. If the instances share the same metadata, the series
+            is connected with a line.
 
         Examples
         --------

@@ -51,8 +51,9 @@ class ElectronPhononChemicalPotential(base.Refinery):
 
         Returns
         -------
-        The INCAR tag name and its corresponding value as set in the calculation.
-        Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
+        -
+            The INCAR tag name and its corresponding value as set in the calculation.
+            Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
 
         Notes
         -----
@@ -78,7 +79,8 @@ class ElectronPhononChemicalPotential(base.Refinery):
 
         Returns
         -------
-        A label indicating the type of data contained in this object and its units.
+        -
+            A label indicating the type of data contained in this object and its units.
         """
         if not check.is_none(self._raw_data.carrier_den):
             return "Carrier density (cm^-3)"
@@ -97,8 +99,9 @@ class ElectronPhononChemicalPotential(base.Refinery):
 
         Returns
         -------
-        A dictionary containing the Fermi energy, chemical potential, carrier density,
-        temperatures, and the INCAR tag/value used to set the carrier density.
+        -
+            A dictionary containing the Fermi energy, chemical potential, carrier density,
+            temperatures, and the INCAR tag/value used to set the carrier density.
         """
         tag, value = self.mu_tag()
         return {
