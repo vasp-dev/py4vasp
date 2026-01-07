@@ -2,9 +2,14 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import importlib
 import pathlib
+from typing import Tuple, Union
 
 from py4vasp import exception
-from py4vasp._util import convert
+from py4vasp._util import convert, import_
+
+DEFAULT_VASP_DB_NAME = "vasp_database.db"
+
+vaspdb = import_.optional("vaspdb")
 
 INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
 QUANTITIES = (
@@ -213,6 +218,106 @@ instead of the constructor Calculation()."""
         calc._path = pathlib.Path(file_name).expanduser().resolve().parent
         calc._file = file_name
         return calc
+
+    def _clean_db_properties(
+        self, db_name: Union[str, None], db_path: Union[str, pathlib.Path, None]
+    ) -> Tuple[Union[str, None], Union[pathlib.Path, None]]:
+        out_path = pathlib.Path(db_path) if db_path is not None else pathlib.Path.cwd()
+
+        # Define database file name
+        out_db_file = (
+            db_name if (db_name is None or db_name.endswith(".db")) else f"{db_name}.db"
+        )
+
+        # Check if db_path contains .db file ending
+        if db_path is not None and out_path.name.endswith(".db"):
+            if out_db_file is None:
+                out_db_file = out_path.name
+            elif not (out_db_file == out_path.name):
+                message = f"""\
+The provided `db_name` '{db_name}' does not match the database file name 
+in `db_path` '{out_path.name}'."""
+                raise exception.IncorrectUsage(message)
+            if out_path.name.endswith(".db"):
+                out_path = (
+                    out_path.parent
+                    if out_path.parent != pathlib.Path("")
+                    else pathlib.Path.cwd()
+                )
+
+        if out_db_file is None:
+            out_db_file = DEFAULT_VASP_DB_NAME
+
+        # Create path if it does not exist
+        try:
+            out_path.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            raise Exception(f"Failed to create directory {out_path}: {e}")
+        return out_db_file, out_path
+
+    def to_database(
+        self,
+        db_path: Union[str, pathlib.Path, None] = None,
+        db_name: Union[str, None] = None,
+    ):
+        """
+        Write the data of the calculation to a VASP database.
+
+        Parameters
+        ----------
+        db_path
+            Path to the database file.
+            If this path ends in `.db`, `db_name` will be inferred.
+            If None is provided, the current working directory will be used.
+            Path will be created if it does not exist.
+        db_name
+            Name of a database to which the data will be written.
+            If None is provided, a default database will be used.
+
+        Examples
+        --------
+        Write the calculation data to the default database in the current working directory:
+
+        >>> calculation = Calculation.from_path("path/to/calculation")
+        >>> calculation.to_database()
+
+        Write the calculation data to a specific database file at the specified path:
+
+        >>> calculation = Calculation.from_path("path/to/calculation")
+        >>> calculation.to_database(db_path="/path/to/database/", db_name="my_database.db")
+
+        Automatically infer database name from path:
+
+        >>> calculation = Calculation.from_path("path/to/calculation")
+        >>> calculation.to_database(db_path="/path/to/database/my_database.db")
+        """
+        # Check if module is imported
+        if not(import_.is_imported(vaspdb)):
+            message = """\
+The 'vaspdb' module is required to write data to a database.
+Please install it via `pip install vaspdb`."""
+            raise exception.ModuleNotInstalled(message)
+
+        out_db_file, out_path = self._clean_db_properties(db_name, db_path)
+
+        # Create database connection
+        message = (
+            f"Opening database connection to "
+            + (
+                "default database"
+                if db_name is None
+                else f"database file '{out_db_file}'"
+            )
+            + f" at path '{out_path}'..."
+        )
+        print(message)
+        # TODO Open database connection
+
+        # TODO Write data to database
+        with open(out_path / out_db_file, "w") as f:
+            f.write("Database writing is not yet implemented.\n")
+
+        # TODO Close database connection
 
     def path(self):
         "Return the path in which the calculation is run."

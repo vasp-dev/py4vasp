@@ -125,6 +125,14 @@ class CurrentDensity(mapping.Mapping):
 
 
 @dataclasses.dataclass
+class DatabaseData:
+    """A collection of dataclasses desired to be available and stored in the database."""
+
+    version: Version
+    "The version of VASP used to generate the data."
+
+
+@dataclasses.dataclass
 class Density:
     "The electronic charge and magnetization density on the Fourier grid."
 

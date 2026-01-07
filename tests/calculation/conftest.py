@@ -55,6 +55,8 @@ def should_test_method(name, parameters, skip_methods):
         return False
     if name == "to_vasp_viewer":
         return False  # requires vasp_viewer package
+    if name == "to_database":
+        return False  # requires vaspdb package
     if name in skip_methods:
         return False
     return True
