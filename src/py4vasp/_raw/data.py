@@ -168,6 +168,9 @@ class CalculationMetaData:
     potcar: Optional[Union[str, pathlib.Path]] = None
     "The path to the POTCAR file used for the calculation."
 
+    runtime_data: Optional[RuntimeData] = None
+    "Data about the runtime environment of the VASP calculation."
+
     # These should be handled by vaspdb
     added_at: Optional[datetime] = None
     "The date and time when the calculation data was added to the database."
