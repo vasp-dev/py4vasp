@@ -278,18 +278,18 @@ Please install it via `pip install vaspdb`."""
                 f"The HDF5 file {hdf5_path} does not exist."
             )
 
-        # Obtain runtime data from h5 file
-        runtime_data = None
-        runtime_data = access("runtime_data", file=self._file, path=self._path)
-        #print(runtime_data.vasp_version)
-        print(runtime_data)
-
         # Obtain DatabaseData instance
-        database_data = DatabaseData(metadata=CalculationMetaData(
-            hdf5=hdf5_path,
-            infer_none_files=True,
-            runtime_data=runtime_data,
-        ))
+        # Obtain runtime data from h5 file
+        database_data = None
+        with access("runtime_data", file=self._file, path=self._path) as runtime_data:
+            database_data = DatabaseData(metadata=CalculationMetaData(
+                hdf5=hdf5_path,
+                infer_none_files=True,
+                runtime_data=runtime_data,
+            ))
+            print(runtime_data)
+            print(runtime_data.vasp_version)
+        print(database_data.metadata.runtime_data)
 
         # TODO Check available quantities and compute additional properties
 
