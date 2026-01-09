@@ -265,11 +265,11 @@ instead of the constructor Calculation()."""
         >>> calculation.to_database(tags=["relaxation", "vaspdb", "testing some stuff"])
         """
         # Check if module is imported
-        if not(import_.is_imported(vaspdb)):
-            message = """\
-The 'vaspdb' module is required to write data to a database.
-Please install it via `pip install vaspdb`."""
-            raise exception.ModuleNotInstalled(message)
+#         if not(import_.is_imported(vaspdb)):
+#             message = """\
+# The 'vaspdb' module is required to write data to a database.
+# Please install it via `pip install vaspdb`."""
+#             raise exception.ModuleNotInstalled(message)
 
         hdf5_path: pathlib.Path = self._path / (self._file or "vaspout.h5")
 
@@ -294,7 +294,7 @@ Please install it via `pip install vaspdb`."""
         print(database_data.available_quantities)
 
 
-        # TODO Call VaspDB
+        # TODO Return DatabaseData object for VaspDB to process
 
 
     def path(self):
