@@ -2,11 +2,12 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import importlib
 import pathlib
-from typing import Any, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union
 
 from py4vasp import exception
 from py4vasp._raw.access import access
 from py4vasp._raw.data import CalculationMetaData, DatabaseData
+from py4vasp._raw.definition import selections
 from py4vasp._util import convert, import_
 
 DEFAULT_VASP_DB_NAME = "vasp_database.db"
@@ -287,14 +288,14 @@ Please install it via `pip install vaspdb`."""
                 infer_none_files=True,
                 runtime_data=runtime_data,
             ))
-            print(runtime_data)
-            print(runtime_data.vasp_version)
-        print(database_data.metadata.runtime_data)
 
-        # TODO Check available quantities and compute additional properties
+        # Check available quantities and compute additional properties
+        database_data.available_quantities, database_data.additional_properties = self._compute_database_data()
+        print(database_data.available_quantities)
+
 
         # TODO Call VaspDB
-        
+
 
     def path(self):
         "Return the path in which the calculation is run."
@@ -328,6 +329,52 @@ Please install it via `pip install vaspdb`."""
     # def POSCAR(self, poscar):
     #     self._POSCAR.write(str(poscar))
 
+    def _compute_quantity_db_data(self, group, selection, quantity_name) -> Tuple[bool, dict]:
+        "Compute additional data to be stored in the database."
+        is_available = False
+        additional_properties = {}
+        quantity_data = None
+
+        try:
+            # attempt to read
+            quantity_data = getattr(group, quantity_name).read(selection=str(selection))
+            is_available = True
+            # attempt to compute additional properties if any are requested
+        except exception.NoData:
+            pass # happens when some required data is missing
+        except exception.OutdatedVaspVersion:
+            pass # happens when VASP version is too old for this quantity
+        except exception.FileAccessError:
+            pass # happens when vaspout.h5 or vaspwave.h5 (where relevant) are missing
+        except Exception as e:
+            print(f"Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:", e)
+
+        if quantity_data is not None:
+            # TODO compute additional properties as requested in schema
+            pass
+        return is_available, additional_properties
+
+    def _loop_quantities(self, quantities, available_quantities, additional_properties, group_name = None):
+        group_instance = self if group_name is None else getattr(self, group_name)
+        for quantity in quantities:
+            try:
+                _selections = selections(quantity) if group_name is None else selections(f"{group_name}_{quantity}")
+            except exception.FileAccessError:
+                _selections = ["default"]
+            for selection in _selections:
+                is_available, props = self._compute_quantity_db_data(group_instance, selection, quantity)
+                if is_available:
+                    available_quantities.append((f"{group_name}." if group_name else "") + quantity + (f":{selection}" if (selection and selection != "default") else ""))
+                    # TODO additional_properties.update(props)
+
+    def _compute_database_data(self) -> Tuple[List[str], dict]:
+        "Return a list of all available quantities in the calculation."
+        available_quantities = []
+        additional_properties = {}
+        self._loop_quantities(QUANTITIES, available_quantities, additional_properties)
+        for group, quantities in GROUPS.items():
+            self._loop_quantities(quantities, available_quantities, additional_properties, group_name=group)
+        return available_quantities, additional_properties
 
 def _add_all_refinement_classes(calc):
     for quantity in QUANTITIES:
