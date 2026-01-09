@@ -224,21 +224,16 @@ instead of the constructor Calculation()."""
 
     def to_database(
         self,
-        path: Optional[Union[str, pathlib.Path]] = None,
         tags: Optional[Union[str, list[str]]] = None,
     ):
         """
-        Write the data of the calculation to a VASP database.
+        Retrieve the data of the calculation needed to write it to a VASP database.
 
-        Will copy all relevant files belonging to that calculation to the database
-        and compute metadata to facilitate searching the database later on.
+        The actual database write is handled by external modules, e.g., the `vaspdb`
+        package. This method prepares all the data that is needed for the database.
 
         Parameters
         ----------
-        path
-            Directory path where the database is located or should be created.
-            If None is provided, the default path is assumed.
-            The default path can be configured via the `.bashrc` file.
         tags
             Tags to associate with the calculation in the database.
             Can be a single string or a list of strings.
@@ -251,20 +246,12 @@ instead of the constructor Calculation()."""
         >>> calculation = Calculation.from_path("path/to/calculation")
         >>> calc_data = calculation.to_database()
 
-        Prepare the calculation data for a database file at the specified path:
-
-        >>> from py4vasp import Calculation
-        >>> calculation = Calculation.from_path("path/to/calculation")
-        >>> calc_data = calculation.to_database(path="/path/to/database/")
-
         Tag your calculation when writing it to the database:
 
         >>> from py4vasp import Calculation
         >>> calculation = Calculation.from_path("path/to/calculation")
         >>> calc_data = calculation.to_database(tags=["relaxation", "vaspdb", "testing some stuff"])
         """
-        # TODO add tags to DatabaseData and pass them to VaspDB
-
         hdf5_path: pathlib.Path = self._path / (self._file or "vaspout.h5")
 
         # Check h5 file existence
@@ -280,6 +267,7 @@ instead of the constructor Calculation()."""
             database_data = DatabaseData(
                 metadata=CalculationMetaData(
                     hdf5=hdf5_path,
+                    tags=tags,
                     infer_none_files=True,
                     runtime_data=runtime_data,
                 )

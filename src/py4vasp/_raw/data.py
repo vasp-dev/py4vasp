@@ -5,7 +5,7 @@ from __future__ import annotations
 import dataclasses
 import pathlib
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any, Iterable, Optional, Union
 
 from py4vasp._raw import mapping
 from py4vasp._raw.data_wrapper import VaspData
@@ -155,6 +155,9 @@ class CalculationMetaData:
 
     hdf5: Union[str, pathlib.Path]
     """The path to the HDF5 file from which the data can be read."""
+
+    tags: Union[str, Iterable[str], None]
+    """Tags associated with the calculation."""
 
     infer_none_files: bool = False
     """Whether to infer links to None files like INCAR etc. where possible."""
