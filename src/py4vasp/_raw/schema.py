@@ -26,6 +26,7 @@ class Schema:
         file=None,
         required=None,
         data_factory=None,
+        database_additions=None,
         **kwargs,
     ):
         """Add a new quantity to the schema.
@@ -56,6 +57,9 @@ class Schema:
             the data can be read without error.
         data_factory : function
             Overwrite the default method to read data from file.
+        database_additions : dict
+            Additional information that should be stored in the database along with the
+            data of this quantity. A dict of names of callables.
         kwargs
             You need to specify for all the fields of the class from where in the HDF5
             file they can be obtained.

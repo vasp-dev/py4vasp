@@ -2,9 +2,11 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import importlib
 import pathlib
-from typing import Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
 from py4vasp import exception
+from py4vasp._raw.access import access
+from py4vasp._raw.data import CalculationMetaData, DatabaseData
 from py4vasp._util import convert, import_
 
 DEFAULT_VASP_DB_NAME = "vasp_database.db"
@@ -218,78 +220,48 @@ instead of the constructor Calculation()."""
         calc._path = pathlib.Path(file_name).expanduser().resolve().parent
         calc._file = file_name
         return calc
-
-    def _clean_db_properties(
-        self, db_name: Union[str, None], db_path: Union[str, pathlib.Path, None]
-    ) -> Tuple[Union[str, None], Union[pathlib.Path, None]]:
-        out_path = pathlib.Path(db_path) if db_path is not None else pathlib.Path.cwd()
-
-        # Define database file name
-        out_db_file = (
-            db_name if (db_name is None or db_name.endswith(".db")) else f"{db_name}.db"
-        )
-
-        # Check if db_path contains .db file ending
-        if db_path is not None and out_path.name.endswith(".db"):
-            if out_db_file is None:
-                out_db_file = out_path.name
-            elif not (out_db_file == out_path.name):
-                message = f"""\
-The provided `db_name` '{db_name}' does not match the database file name 
-in `db_path` '{out_path.name}'."""
-                raise exception.IncorrectUsage(message)
-            if out_path.name.endswith(".db"):
-                out_path = (
-                    out_path.parent
-                    if out_path.parent != pathlib.Path("")
-                    else pathlib.Path.cwd()
-                )
-
-        if out_db_file is None:
-            out_db_file = DEFAULT_VASP_DB_NAME
-
-        # Create path if it does not exist
-        try:
-            out_path.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            raise Exception(f"Failed to create directory {out_path}: {e}")
-        return out_db_file, out_path
+        
 
     def to_database(
         self,
-        db_path: Union[str, pathlib.Path, None] = None,
-        db_name: Union[str, None] = None,
+        path: Optional[Union[str, pathlib.Path]] = None,
+        tags: Optional[Union[str, list[str]]] = None,
     ):
         """
         Write the data of the calculation to a VASP database.
 
+        Will copy all relevant files belonging to that calculation to the database 
+        and compute metadata to facilitate searching the database later on.
+
         Parameters
         ----------
-        db_path
-            Path to the database file.
-            If this path ends in `.db`, `db_name` will be inferred.
-            If None is provided, the current working directory will be used.
-            Path will be created if it does not exist.
-        db_name
-            Name of a database to which the data will be written.
-            If None is provided, a default database will be used.
+        path
+            Directory path where the database is located or should be created.
+            If None is provided, the default path is assumed.
+            The default path can be configured via the `.bashrc` file.
+        tags
+            Tags to associate with the calculation in the database.
+            Can be a single string or a list of strings.
 
         Examples
         --------
-        Write the calculation data to the default database in the current working directory:
+        Write the calculation data to the default database:
 
+        >>> from py4vasp import Calculation
         >>> calculation = Calculation.from_path("path/to/calculation")
         >>> calculation.to_database()
 
-        Write the calculation data to a specific database file at the specified path:
+        Write the calculation data to a database file at the specified path:
 
+        >>> from py4vasp import Calculation
         >>> calculation = Calculation.from_path("path/to/calculation")
-        >>> calculation.to_database(db_path="/path/to/database/", db_name="my_database.db")
+        >>> calculation.to_database(path="/path/to/database/")
 
-        Automatically infer database name from path:
+        Tag your calculation when writing it to the database:
 
+        >>> from py4vasp import Calculation
         >>> calculation = Calculation.from_path("path/to/calculation")
-        >>> calculation.to_database(db_path="/path/to/database/my_database.db")
+        >>> calculation.to_database(tags=["relaxation", "vaspdb", "testing some stuff"])
         """
         # Check if module is imported
         if not(import_.is_imported(vaspdb)):
@@ -298,26 +270,31 @@ The 'vaspdb' module is required to write data to a database.
 Please install it via `pip install vaspdb`."""
             raise exception.ModuleNotInstalled(message)
 
-        out_db_file, out_path = self._clean_db_properties(db_name, db_path)
+        hdf5_path: pathlib.Path = self._path / (self._file or "vaspout.h5")
 
-        # Create database connection
-        message = (
-            f"Opening database connection to "
-            + (
-                "default database"
-                if db_name is None
-                else f"database file '{out_db_file}'"
+        # Check h5 file existence
+        if not hdf5_path.exists():
+            raise exception.FileAccessError(
+                f"The HDF5 file {hdf5_path} does not exist."
             )
-            + f" at path '{out_path}'..."
-        )
-        print(message)
-        # TODO Open database connection
 
-        # TODO Write data to database
-        with open(out_path / out_db_file, "w") as f:
-            f.write("Database writing is not yet implemented.\n")
+        # Obtain runtime data from h5 file
+        runtime_data = None
+        runtime_data = access("runtime_data", file=self._file, path=self._path)
+        #print(runtime_data.vasp_version)
+        print(runtime_data)
 
-        # TODO Close database connection
+        # Obtain DatabaseData instance
+        database_data = DatabaseData(metadata=CalculationMetaData(
+            hdf5=hdf5_path,
+            infer_none_files=True,
+            runtime_data=runtime_data,
+        ))
+
+        # TODO Check available quantities and compute additional properties
+
+        # TODO Call VaspDB
+        
 
     def path(self):
         "Return the path in which the calculation is run."

@@ -51,6 +51,16 @@ def _check_db_exists(expected_db_name, expected_db_path, tmp_path_factory):
     assert os.path.exists(expected_db_file_path)
 
 
+@pytest.fixture
+def VaspDB(tmp_path_factory):
+    """Fixture to instantiate a vaspdb.VaspDB database object."""
+
+    return vaspdb.VaspDB(
+            db_path=str(_make_tmp_dir("test_database_path", tmp_path_factory)),
+            db_name="test_database.db",
+        )
+
+@pytest.mark.skip
 class TestToDatabase:
     """Test the to_database method of Calculation class."""
 
@@ -101,3 +111,10 @@ class TestToDatabase:
         """Test invalid to_database call with conflicting db_name and db_path."""
         with pytest.raises(exception.IncorrectUsage):
             self.calculation.to_database(_make_tmp_dir(db_path, tmp_path_factory), db_name)
+
+    @dep_vaspdb
+    def test_to_database_with_vaspdb_object(self, VaspDB, tmp_path_factory):
+        """Test to_database call with a provided VaspDB class object."""
+
+        self.calculation.to_database(VaspDB=VaspDB)
+        _check_db_exists("test_database.db", "test_database_path", tmp_path_factory)

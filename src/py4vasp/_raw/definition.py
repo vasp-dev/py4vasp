@@ -690,3 +690,12 @@ schema.add(
     reference_potential=Link("bandgap", DEFAULT_SOURCE),
     fermi_energy="results/electron_dos/efermi",
 )
+#
+schema.add(
+    raw.RuntimeData,
+    vasp_version=Link("version", DEFAULT_SOURCE),
+    calculation_time="calculation/meta_data/calculation_time",
+    calculation_start="calculation/meta_data/calculation_start",
+    n_cpus="calculation/meta_data/n_cpus",
+    n_gpus="calculation/meta_data/n_gpus",
+)
