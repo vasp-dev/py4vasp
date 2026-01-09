@@ -221,7 +221,6 @@ instead of the constructor Calculation()."""
         calc._path = pathlib.Path(file_name).expanduser().resolve().parent
         calc._file = file_name
         return calc
-        
 
     def to_database(
         self,
@@ -231,7 +230,7 @@ instead of the constructor Calculation()."""
         """
         Write the data of the calculation to a VASP database.
 
-        Will copy all relevant files belonging to that calculation to the database 
+        Will copy all relevant files belonging to that calculation to the database
         and compute metadata to facilitate searching the database later on.
 
         Parameters
@@ -246,30 +245,25 @@ instead of the constructor Calculation()."""
 
         Examples
         --------
-        Write the calculation data to the default database:
+        Prepare the calculation data for the default database:
 
         >>> from py4vasp import Calculation
         >>> calculation = Calculation.from_path("path/to/calculation")
-        >>> calculation.to_database()
+        >>> calc_data = calculation.to_database()
 
-        Write the calculation data to a database file at the specified path:
+        Prepare the calculation data for a database file at the specified path:
 
         >>> from py4vasp import Calculation
         >>> calculation = Calculation.from_path("path/to/calculation")
-        >>> calculation.to_database(path="/path/to/database/")
+        >>> calc_data = calculation.to_database(path="/path/to/database/")
 
         Tag your calculation when writing it to the database:
 
         >>> from py4vasp import Calculation
         >>> calculation = Calculation.from_path("path/to/calculation")
-        >>> calculation.to_database(tags=["relaxation", "vaspdb", "testing some stuff"])
+        >>> calc_data = calculation.to_database(tags=["relaxation", "vaspdb", "testing some stuff"])
         """
-        # Check if module is imported
-#         if not(import_.is_imported(vaspdb)):
-#             message = """\
-# The 'vaspdb' module is required to write data to a database.
-# Please install it via `pip install vaspdb`."""
-#             raise exception.ModuleNotInstalled(message)
+        # TODO add tags to DatabaseData and pass them to VaspDB
 
         hdf5_path: pathlib.Path = self._path / (self._file or "vaspout.h5")
 
@@ -283,19 +277,21 @@ instead of the constructor Calculation()."""
         # Obtain runtime data from h5 file
         database_data = None
         with access("runtime_data", file=self._file, path=self._path) as runtime_data:
-            database_data = DatabaseData(metadata=CalculationMetaData(
-                hdf5=hdf5_path,
-                infer_none_files=True,
-                runtime_data=runtime_data,
-            ))
+            database_data = DatabaseData(
+                metadata=CalculationMetaData(
+                    hdf5=hdf5_path,
+                    infer_none_files=True,
+                    runtime_data=runtime_data,
+                )
+            )
 
         # Check available quantities and compute additional properties
-        database_data.available_quantities, database_data.additional_properties = self._compute_database_data()
-        print(database_data.available_quantities)
+        database_data.available_quantities, database_data.additional_properties = (
+            self._compute_database_data()
+        )
 
-
-        # TODO Return DatabaseData object for VaspDB to process
-
+        # Return DatabaseData object for VaspDB to process
+        return database_data
 
     def path(self):
         "Return the path in which the calculation is run."
@@ -329,7 +325,9 @@ instead of the constructor Calculation()."""
     # def POSCAR(self, poscar):
     #     self._POSCAR.write(str(poscar))
 
-    def _compute_quantity_db_data(self, group, selection, quantity_name) -> Tuple[bool, dict]:
+    def _compute_quantity_db_data(
+        self, group, selection, quantity_name
+    ) -> Tuple[bool, dict]:
         "Compute additional data to be stored in the database."
         is_available = False
         additional_properties = {}
@@ -341,30 +339,48 @@ instead of the constructor Calculation()."""
             is_available = True
             # attempt to compute additional properties if any are requested
         except exception.NoData:
-            pass # happens when some required data is missing
+            pass  # happens when some required data is missing
         except exception.OutdatedVaspVersion:
-            pass # happens when VASP version is too old for this quantity
+            pass  # happens when VASP version is too old for this quantity
         except exception.FileAccessError:
-            pass # happens when vaspout.h5 or vaspwave.h5 (where relevant) are missing
+            pass  # happens when vaspout.h5 or vaspwave.h5 (where relevant) are missing
         except Exception as e:
-            print(f"Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:", e)
+            # print(f"Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:", e)
+            pass  # catch any other errors during reading
 
         if quantity_data is not None:
             # TODO compute additional properties as requested in schema
+            # TODO find a way to ensure properties are only re-computed if they don't already exist
             pass
         return is_available, additional_properties
 
-    def _loop_quantities(self, quantities, available_quantities, additional_properties, group_name = None):
+    def _loop_quantities(
+        self, quantities, available_quantities, additional_properties, group_name=None
+    ):
         group_instance = self if group_name is None else getattr(self, group_name)
         for quantity in quantities:
             try:
-                _selections = selections(quantity) if group_name is None else selections(f"{group_name}_{quantity}")
+                _selections = (
+                    selections(quantity)
+                    if group_name is None
+                    else selections(f"{group_name}_{quantity}")
+                )
             except exception.FileAccessError:
                 _selections = ["default"]
             for selection in _selections:
-                is_available, props = self._compute_quantity_db_data(group_instance, selection, quantity)
+                is_available, props = self._compute_quantity_db_data(
+                    group_instance, selection, quantity
+                )
                 if is_available:
-                    available_quantities.append((f"{group_name}." if group_name else "") + quantity + (f":{selection}" if (selection and selection != "default") else ""))
+                    available_quantities.append(
+                        (f"{group_name}." if group_name else "")
+                        + quantity
+                        + (
+                            f":{selection}"
+                            if (selection and selection != "default")
+                            else ""
+                        )
+                    )
                     # TODO additional_properties.update(props)
 
     def _compute_database_data(self) -> Tuple[List[str], dict]:
@@ -373,8 +389,14 @@ instead of the constructor Calculation()."""
         additional_properties = {}
         self._loop_quantities(QUANTITIES, available_quantities, additional_properties)
         for group, quantities in GROUPS.items():
-            self._loop_quantities(quantities, available_quantities, additional_properties, group_name=group)
+            self._loop_quantities(
+                quantities,
+                available_quantities,
+                additional_properties,
+                group_name=group,
+            )
         return available_quantities, additional_properties
+
 
 def _add_all_refinement_classes(calc):
     for quantity in QUANTITIES:

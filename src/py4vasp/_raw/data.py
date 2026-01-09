@@ -126,6 +126,7 @@ class CurrentDensity(mapping.Mapping):
     current_density: VaspData
     "The current density on a grid in the unit cell."
 
+
 @dataclasses.dataclass
 class RuntimeData:
     """Data about the runtime environment of the VASP calculation."""
@@ -145,6 +146,7 @@ class RuntimeData:
     def __post_init__(self):
         if isinstance(self.vasp_version, Version):
             self.vasp_version = f"{self.vasp_version.major}.{self.vasp_version.minor}.{self.vasp_version.patch}"
+
 
 @dataclasses.dataclass
 class CalculationMetaData:
@@ -179,7 +181,7 @@ class CalculationMetaData:
 
     def __post_init__(self):
         # Convert paths to pathlib Paths
-        for file_attr in ["hdf5","incar", "poscar", "kpoints", "potcar"]:
+        for file_attr in ["hdf5", "incar", "poscar", "kpoints", "potcar"]:
             file_path = getattr(self, file_attr)
             if isinstance(file_path, str):
                 object.__setattr__(self, file_attr, pathlib.Path(file_path))
@@ -192,6 +194,7 @@ class CalculationMetaData:
                     trial_path = self.hdf5.parent / file_attr.upper()
                     if trial_path.exists():
                         object.__setattr__(self, file_attr, trial_path)
+
 
 @dataclasses.dataclass
 class DatabaseData:
@@ -236,6 +239,7 @@ for key, callFunc in database_additions.items():
 """
 
     # TODO decide whether there are any important properties that do not belong to a schema / dataclass
+
 
 @dataclasses.dataclass
 class Density:

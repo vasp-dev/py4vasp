@@ -56,9 +56,10 @@ def VaspDB(tmp_path_factory):
     """Fixture to instantiate a vaspdb.VaspDB database object."""
 
     return vaspdb.VaspDB(
-            db_path=str(_make_tmp_dir("test_database_path", tmp_path_factory)),
-            db_name="test_database.db",
-        )
+        db_path=str(_make_tmp_dir("test_database_path", tmp_path_factory)),
+        db_name="test_database.db",
+    )
+
 
 @pytest.mark.skip
 class TestToDatabase:
@@ -107,10 +108,14 @@ class TestToDatabase:
             ("test_database", "test_database_path.db"),
         ],
     )
-    def test_to_database_duplicate_specification(self, db_name, db_path, tmp_path_factory):
+    def test_to_database_duplicate_specification(
+        self, db_name, db_path, tmp_path_factory
+    ):
         """Test invalid to_database call with conflicting db_name and db_path."""
         with pytest.raises(exception.IncorrectUsage):
-            self.calculation.to_database(_make_tmp_dir(db_path, tmp_path_factory), db_name)
+            self.calculation.to_database(
+                _make_tmp_dir(db_path, tmp_path_factory), db_name
+            )
 
     @dep_vaspdb
     def test_to_database_with_vaspdb_object(self, VaspDB, tmp_path_factory):
