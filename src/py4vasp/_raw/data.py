@@ -9,6 +9,7 @@ from typing import Any, Iterable, Optional, Union
 
 from py4vasp._raw import mapping
 from py4vasp._raw.data_wrapper import VaspData
+from py4vasp._util.convert_database import _length_or_none, _shape_or_none, _to_database
 
 
 def NONE():
@@ -26,6 +27,17 @@ class Version:
     patch: int = 0
     "Indicates number of bugfixes since last minor release."
     __str__ = lambda self: f"version {self.major}.{self.minor}.{self.patch}"
+
+    def to_database(self, level=None) -> dict[str, Any]:
+        return _to_database(
+            level=level,
+            primary_dict={
+                "major": self.major,
+                "minor": self.minor,
+                "patch": self.patch,
+            },
+            secondary_dict={},
+        )
 
 
 @dataclasses.dataclass
@@ -47,6 +59,17 @@ class Band:
     "Projector information (element, angular momentum, spin)."
     projections: VaspData = NONE()
     "If present, orbital projections of the bands."
+
+    def to_database(self, level=None) -> dict[str, Any]:
+        return _to_database(
+            level=level,
+            primary_dict={
+                "fermi_energy": self.fermi_energy,
+            },
+            secondary_dict={
+                "dispersion": self.dispersion,
+            },
+        )
 
 
 @dataclasses.dataclass
@@ -111,6 +134,20 @@ class CONTCAR:
     "The current velocities of the ions in Cartesian coordinates."
     _predictor_corrector: VaspData = NONE()
     "Internal algorithmic data relevant for restarting calculations."
+
+    def to_database(self, level=None) -> dict[str, Any]:
+        return _to_database(
+            level=level,
+            primary_dict={
+                "system": self.system,
+                "selective_dynamics_length": _length_or_none(self.selective_dynamics),
+                "lattice_velocities_length": _length_or_none(self.lattice_velocities),
+                "ion_velocities_length": _length_or_none(self.ion_velocities),
+            },
+            secondary_dict={
+                "structure": self.structure,
+            },
+        )
 
 
 @dataclasses.dataclass
@@ -521,6 +558,16 @@ class Energy:
     values: VaspData
     "Energy specified by labels for all iteration steps."
 
+    def to_database(self, level=None) -> dict[str, Any]:
+        return _to_database(
+            level=level,
+            primary_dict={
+                f"{k}_initial": v[0] for k, v in zip(self.labels, self.values)
+            }
+            | {f"{k}_final": v[-1] for k, v in zip(self.labels, self.values)},
+            secondary_dict={},
+        )
+
 
 @dataclasses.dataclass
 class ExcitonDensity:
@@ -558,6 +605,24 @@ class Force:
     "Structural information about the system to inform about the forces."
     forces: VaspData
     "The values of the forces at the atoms."
+
+    def to_database(self, level=None) -> dict[str, Any]:
+        min_f, max_f = self._min_max_force()
+        return _to_database(
+            level=level,
+            primary_dict={
+                "abs_min": min_f,
+                "abs_max": max_f,
+            },
+            secondary_dict={
+                "structure": self.structure,
+            },
+        )
+
+    def _min_max_force(self) -> tuple[float, float]:
+        import numpy as np
+
+        return np.min(np.abs(self.forces)), np.max(np.abs(self.forces))
 
 
 @dataclasses.dataclass
@@ -830,12 +895,36 @@ class Structure:
     positions: VaspData
     "Position of all atoms in the unit cell in units of the lattice vectors."
 
+    def to_database(self, level=None) -> dict[str, Any]:
+        return _to_database(
+            level=level,
+            primary_dict={
+                "total_ion_count": sum(self.stoichiometry.number_ion_types),
+                "min_distance": self._get_minimum_distance(),
+            },
+            secondary_dict={},
+        )
+
+    def _get_minimum_distance(self) -> float:
+        if not (getattr(self, "_minimum_distance", None)):
+            self._minimum_distance = float("inf")
+        return self._minimum_distance
+
 
 @dataclasses.dataclass
 class System:
     "The name of the system set in the input."
 
     system: str
+
+    def to_database(self, level=None) -> dict[str, Any]:
+        return _to_database(
+            level=level,
+            primary_dict={
+                "system": self.system,
+            },
+            secondary_dict={},
+        )
 
 
 @dataclasses.dataclass
