@@ -314,7 +314,7 @@ instead of the constructor Calculation()."""
     #     self._POSCAR.write(str(poscar))
 
     def _compute_quantity_db_data(
-        self, group, selection, quantity_name
+        self, group, selection, quantity_name, group_name=None
     ) -> Tuple[bool, dict]:
         "Compute additional data to be stored in the database."
         is_available = False
@@ -337,35 +337,43 @@ instead of the constructor Calculation()."""
             pass  # catch any other errors during reading
 
         if quantity_data is not None:
-            # retrieve the addtional properties requested from the schema
-            requested_properties = schema._sources.get(quantity_name, {}).get(str(selection), {})
-            if requested_properties:
-                requested_properties = getattr(requested_properties, "database_additions", [])
-
-            # TODO find a way to ensure properties are only re-computed if they don't already exist
-            # TODO find a way to inherit properties from Links
-
-            for property_data in requested_properties:
-                # property_data is a DatabasePropertyData instance
-                computed_value = None
-                try:
-                    # check if requested property is a callable function
-                    prop_args = [getattr(quantity_data, v) for v in property_data.function_args if getattr(quantity_data, v, None) is not None]
-                    prop_kwargs = {k: getattr(quantity_data, v) for k, v in property_data.function_kwargs.items() if getattr(quantity_data, v, None) is not None}
-                    computed_value = getattr(quantity_data, property_data.callable_name)(*prop_args, **prop_kwargs)
-                except:
+            try:
+                with access(
+                    str.strip(quantity_name, "_"),
+                    selection=selection,
+                    file=self._file,
+                    path=self._path,
+                ) as quantity_data:
                     try:
-                        # try to read it as an attribute
-                        computed_value = getattr(quantity_data, property_data.callable_name)
+                        full_key_prefix = (
+                            (f"{group_name}_" if group_name else "")
+                            + (f"{quantity_name}_" if quantity_name else "")
+                            + (
+                                f"{selection}_"
+                                if (selection and selection != "default")
+                                else ""
+                            )
+                        )
+                        additional_properties = {
+                            f"{full_key_prefix}{k}": v
+                            for k, v in quantity_data.to_database().items()
+                        }
                     except:
                         pass
-
-                if computed_value is not None:
-                    # store the computed value in the additional properties dict
-                    additional_properties[property_data.key] = computed_value
-
-                # TODO we add the computation under "{group}_{quantity_name}_{selection}_{key}" to avoid name clashes
+            except exception.FileAccessError as e:
                 pass
+
+            # TODO find a way to ensure properties are only re-computed if they don't already exist
+            #       --> probably via private functions and setting private variables on first computation
+            # TODO think about whether additional properties should be specified in data.py or the implementation class
+            #       --> probably better to have it close to the implementation so that data.py stays clean
+            #       --> so instead of to_dict, we implement a to_database function in the implementation class that calls _to_database
+            #       --> TODO BUT then how do we avoid duplicate recomputes?
+            #       --> duplicate recomputes can also occur right now, see e.g., structure.to_database being called multiple times
+            #       --> unless I am mistaken, a new Structure instance is created every time structure.read() is called
+            #       --> so I could write a wrapper function that calls a function for computing only if a given (specified) key does not yet exist in additional_properties
+            #       --> TODO AND how do I ensure selections are correct when calling to_database?
+            #       --> I guess I pass selection on the class implementation of to_database, via the base.data_access decorator.
         return is_available, additional_properties
 
     def _loop_quantities(
@@ -383,7 +391,7 @@ instead of the constructor Calculation()."""
                 _selections = ["default"]
             for selection in _selections:
                 is_available, props = self._compute_quantity_db_data(
-                    group_instance, selection, quantity
+                    group_instance, selection, quantity, group_name
                 )
                 if is_available:
                     available_quantities.append(
@@ -395,15 +403,18 @@ instead of the constructor Calculation()."""
                             else ""
                         )
                     )
-                    # TODO additional_properties.update(props)
+                    additional_properties = additional_properties | props
+        return available_quantities, additional_properties
 
     def _compute_database_data(self) -> Tuple[List[str], dict]:
         "Return a list of all available quantities in the calculation."
         available_quantities = []
         additional_properties = {}
-        self._loop_quantities(QUANTITIES, available_quantities, additional_properties)
+        available_quantities, additional_properties = self._loop_quantities(
+            QUANTITIES, available_quantities, additional_properties
+        )
         for group, quantities in GROUPS.items():
-            self._loop_quantities(
+            available_quantities, additional_properties = self._loop_quantities(
                 quantities,
                 available_quantities,
                 additional_properties,

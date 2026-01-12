@@ -5,7 +5,7 @@ from __future__ import annotations
 import dataclasses
 import textwrap
 from collections import abc
-from typing import Optional
+from typing import Any, Callable, Optional
 
 import numpy as np
 
@@ -27,7 +27,6 @@ class Schema:
         file=None,
         required=None,
         data_factory=None,
-        database_additions=[],
         **kwargs,
     ):
         """Add a new quantity to the schema.
@@ -58,9 +57,6 @@ class Schema:
             the data can be read without error.
         data_factory : function
             Overwrite the default method to read data from file.
-        database_additions : list[DatabasePropertyData]
-            Additional information that should be stored in the database along with the
-            data of this quantity.
         kwargs
             You need to specify for all the fields of the class from where in the HDF5
             file they can be obtained.
@@ -72,7 +68,14 @@ class Schema:
             self._raise_error_if_already_in_schema(quantity, label)
             alias_for = name if label != name else None
             data = cls(**kwargs) if data_factory is None else None
-            source = Source(data, file, required, alias_for, data_factory, database_additions)
+            source = Source(
+                data,
+                file,
+                required,
+                alias_for,
+                data_factory,
+                getattr(cls, "to_database", None),
+            )
             self._sources[quantity][label] = source
         self._verified = False
 
@@ -150,7 +153,7 @@ class Source:
     required: Version = None
     alias_for: str = None
     data_factory: Callable = None
-    database_additions: Optional[list[DatabasePropertyData]] = dataclasses.field(default_factory=list)
+    to_database: Callable = None
 
 
 @dataclasses.dataclass
@@ -180,24 +183,6 @@ class Sequence(abc.Sequence):
             if key != "size"
         }
         return dataclasses.replace(self, size=1, **elements)
-
-@dataclasses.dataclass
-class DatabasePropertyData:
-    key: str
-    """The key under which the property is stored in the database."""
-    callable_name: Optional[str] = None
-    """The name of the function to compute the property, or the name of the property.
-    Calling will be attempted first."""
-    function_args: Optional[list[str]] = None
-    """list of argument names to pass to the function, if relevant"""
-    function_kwargs: Optional[dict[str, str]] = None
-    """keyword arguments to pass to the function, if relevant"""
-    expected_type: Optional[str] = None
-    """the expected return type of the function or property"""
-    group_sensitive: Optional[bool] = None
-    """whether the property depends on the group"""
-    quantity_sensitive: Optional[bool] = None
-    """whether the property depends on the quantity"""
 
 
 def _parse_version(version):
