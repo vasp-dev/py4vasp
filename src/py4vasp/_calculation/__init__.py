@@ -10,10 +10,6 @@ from py4vasp._raw.data import CalculationMetaData, DatabaseData
 from py4vasp._raw.definition import schema, selections
 from py4vasp._util import convert, import_
 
-DEFAULT_VASP_DB_NAME = "vasp_database.db"
-
-vaspdb = import_.optional("vaspdb")
-
 INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
 QUANTITIES = (
     "band",
