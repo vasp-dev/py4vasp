@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import py4vasp._raw.data as raw
 from py4vasp._raw import read
-from py4vasp._raw.schema import Length, Link, Schema
+from py4vasp._raw.schema import DatabasePropertyData, Length, Link, Schema
 
 DEFAULT_FILE = "vaspout.h5"
 DEFAULT_SOURCE = "default"
@@ -28,6 +28,9 @@ schema.add(
     occupations="results/electron_eigenvalues/fermiweights",
     projectors=Link("projector", DEFAULT_SOURCE),
     projections="results/projectors/par",
+    database_additions=[
+        DatabasePropertyData("fermi_energy", "fermi_energy", expected_type=float)
+    ]
 )
 group = "results/electron_eigenvalues_kpoints_opt"
 schema.add(
@@ -38,6 +41,9 @@ schema.add(
     occupations="results/electron_eigenvalues_kpoints_opt/fermiweights",
     projectors=Link("projector", "kpoints_opt"),
     projections="results/projectors_kpoints_opt/par",
+    database_additions=[
+        DatabasePropertyData("fermi_energy", "fermi_energy", expected_type=float)
+    ]
 )
 schema.add(
     raw.Band,
@@ -47,6 +53,9 @@ schema.add(
     occupations="results/electron_eigenvalues_kpoints_wan/fermiweights",
     projectors=Link("projector", "kpoints_wan"),
     projections="results/projectors_kpoints_wan/par",
+    database_additions=[
+        DatabasePropertyData("fermi_energy", "fermi_energy", expected_type=float)
+    ]
 )
 #
 schema.add(

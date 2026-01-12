@@ -7,7 +7,7 @@ from typing import Any, List, Optional, Tuple, Union
 from py4vasp import exception
 from py4vasp._raw.access import access
 from py4vasp._raw.data import CalculationMetaData, DatabaseData
-from py4vasp._raw.definition import selections
+from py4vasp._raw.definition import schema, selections
 from py4vasp._util import convert, import_
 
 DEFAULT_VASP_DB_NAME = "vasp_database.db"
@@ -337,9 +337,35 @@ instead of the constructor Calculation()."""
             pass  # catch any other errors during reading
 
         if quantity_data is not None:
-            # TODO compute additional properties as requested in schema
+            # retrieve the addtional properties requested from the schema
+            requested_properties = schema._sources.get(quantity_name, {}).get(str(selection), {})
+            if requested_properties:
+                requested_properties = getattr(requested_properties, "database_additions", [])
+
             # TODO find a way to ensure properties are only re-computed if they don't already exist
-            pass
+            # TODO find a way to inherit properties from Links
+
+            for property_data in requested_properties:
+                # property_data is a DatabasePropertyData instance
+                computed_value = None
+                try:
+                    # check if requested property is a callable function
+                    prop_args = [getattr(quantity_data, v) for v in property_data.function_args if getattr(quantity_data, v, None) is not None]
+                    prop_kwargs = {k: getattr(quantity_data, v) for k, v in property_data.function_kwargs.items() if getattr(quantity_data, v, None) is not None}
+                    computed_value = getattr(quantity_data, property_data.callable_name)(*prop_args, **prop_kwargs)
+                except:
+                    try:
+                        # try to read it as an attribute
+                        computed_value = getattr(quantity_data, property_data.callable_name)
+                    except:
+                        pass
+
+                if computed_value is not None:
+                    # store the computed value in the additional properties dict
+                    additional_properties[property_data.key] = computed_value
+
+                # TODO we add the computation under "{group}_{quantity_name}_{selection}_{key}" to avoid name clashes
+                pass
         return is_available, additional_properties
 
     def _loop_quantities(
