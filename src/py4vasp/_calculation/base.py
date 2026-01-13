@@ -136,6 +136,23 @@ class Refinery:
         "Convenient wrapper around to_dict. Check that function for examples and optional arguments."
         return self.to_dict(*args, **kwargs)
 
+    def _read_to_database(self, *args, **kwargs):
+        """Internal method to convert the data to a database format.
+
+        This method is intended for internal use only and should not be called
+        directly by users. It converts the data into a format suitable for
+        database storage.
+
+        Returns
+        -------
+        dict
+            A dictionary representation of the data suitable for database storage.
+        """
+        try:
+            return self._to_database(*args, **kwargs)
+        except AttributeError:
+            return {}
+
     @data_access
     def selections(self):
         """Returns possible alternatives for this particular quantity VASP can produce.

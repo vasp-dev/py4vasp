@@ -37,6 +37,13 @@ class Dispersion(base.Refinery):
             "eigenvalues": self._raw_data.eigenvalues[:],
         }
 
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        kpoint_labels = self._kpoints.labels()
+        return {
+            "dispersion": {},
+        } | self._kpoints._to_database(*args, **kwargs)
+
     @property
     def _kpoints(self):
         return kpoint.Kpoint.from_data(self._raw_data.kpoints)

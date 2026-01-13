@@ -329,49 +329,43 @@ instead of the constructor Calculation()."""
         except exception.FileAccessError:
             pass  # happens when vaspout.h5 or vaspwave.h5 (where relevant) are missing
         except Exception as e:
-            # print(f"Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:", e)
+            # print(f"[CHECK] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:", e)
             pass  # catch any other errors during reading
 
         if quantity_data is not None:
             try:
-                with access(
-                    str.strip(quantity_name, "_"),
-                    selection=selection,
-                    file=self._file,
-                    path=self._path,
-                ) as quantity_data:
-                    try:
-                        full_key_prefix = (
-                            (f"{group_name}_" if group_name else "")
-                            + (f"{quantity_name}_" if quantity_name else "")
-                            + (
-                                f"{selection}_"
-                                if (selection and selection != "default")
-                                else ""
-                            )
-                        )
-                        additional_properties = {
-                            f"{full_key_prefix}{k}": v
-                            for k, v in quantity_data.to_database().items()
-                        }
-                    except:
-                        pass
-            except exception.FileAccessError as e:
-                pass
+                database_data = getattr(group, quantity_name)._read_to_database(
+                    selection=str(selection)
+                )
+                full_key, has_selection = self._construct_database_data_key(
+                    group_name, quantity_name, selection
+                )
+                additional_properties[full_key] = database_data
+                # TODO I could check selection here and potentially flatten the dict slightly
+                # e.g., if selection is default, I could just store the dict like:
+                # additional_properties = additional_properties | database_data
+                # TODO but I might do the same for other selections by first suffixing primary keys with that selection,
+                # and then storing the dict as above
+            except Exception as e:
+                # print(f"[ADD] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:", e)
+                pass  # catch any other errors during reading
 
             # TODO find a way to ensure properties are only re-computed if they don't already exist
             #       --> probably via private functions and setting private variables on first computation
-            # TODO think about whether additional properties should be specified in data.py or the implementation class
-            #       --> probably better to have it close to the implementation so that data.py stays clean
-            #       --> so instead of to_dict, we implement a to_database function in the implementation class that calls _to_database
             #       --> TODO BUT then how do we avoid duplicate recomputes?
             #       --> duplicate recomputes can also occur right now, see e.g., structure.to_database being called multiple times
             #       --> unless I am mistaken, a new Structure instance is created every time structure.read() is called
             #       --> so I could write a wrapper function that calls a function for computing only if a given (specified) key does not yet exist in additional_properties
-            #       --> TODO AND how do I ensure selections are correct when calling to_database?
-            #       --> I guess I pass selection on the class implementation of to_database, via the base.data_access decorator.
             # TODO decide if I want to return a nested dictionary or a flat one (and redesign the keys if necessary)
         return is_available, additional_properties
+
+    def _construct_database_data_key(self, group_name, quantity_name, selection):
+        "Construct the key for storing database data."
+        has_selection = selection and selection != "default"
+        full_key = quantity_name + (f":{selection}" if has_selection else "")
+        if group_name is not None:
+            full_key = f"{group_name}.{full_key}"
+        return full_key, has_selection
 
     def _loop_quantities(
         self, quantities, available_quantities, additional_properties, group_name=None
