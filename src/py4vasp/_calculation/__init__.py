@@ -6,7 +6,7 @@ from typing import Any, List, Optional, Tuple, Union
 
 from py4vasp import exception
 from py4vasp._raw.access import access
-from py4vasp._raw.data import CalculationMetaData, DatabaseData
+from py4vasp._raw.data import CalculationMetaData, _DatabaseData
 from py4vasp._raw.definition import schema, selections
 from py4vasp._util import convert, import_
 
@@ -218,7 +218,7 @@ instead of the constructor Calculation()."""
         calc._file = file_name
         return calc
 
-    def to_database(
+    def _to_database(
         self,
         tags: Optional[Union[str, list[str]]] = None,
     ):
@@ -260,7 +260,7 @@ instead of the constructor Calculation()."""
         # Obtain runtime data from h5 file
         database_data = None
         with access("runtime_data", file=self._file, path=self._path) as runtime_data:
-            database_data = DatabaseData(
+            database_data = _DatabaseData(
                 metadata=CalculationMetaData(
                     hdf5=hdf5_path,
                     tags=tags,
@@ -356,10 +356,11 @@ instead of the constructor Calculation()."""
             #       --> duplicate recomputes can also occur right now, see e.g., structure.to_database being called multiple times
             #       --> unless I am mistaken, a new Structure instance is created every time structure.read() is called
             #       --> so I could write a wrapper function that calls a function for computing only if a given (specified) key does not yet exist in additional_properties
-            # TODO decide if I want to return a nested dictionary or a flat one (and redesign the keys if necessary)
         return is_available, additional_properties
 
-    def _construct_database_data_key(self, group_name, quantity_name, selection):
+    def _construct_database_data_key(
+        self, group_name, quantity_name, selection
+    ) -> Tuple[str, bool]:
         "Construct the key for storing database data."
         has_selection = selection and selection != "default"
         full_key = quantity_name + (f":{selection}" if has_selection else "")
@@ -369,7 +370,7 @@ instead of the constructor Calculation()."""
 
     def _loop_quantities(
         self, quantities, available_quantities, additional_properties, group_name=None
-    ):
+    ) -> Tuple[dict[str, bool], dict[str, dict]]:
         group_instance = self if group_name is None else getattr(self, group_name)
         for quantity in quantities:
             try:
@@ -380,26 +381,34 @@ instead of the constructor Calculation()."""
                 )
             except exception.FileAccessError:
                 _selections = ["default"]
+            # TODO skip selections that are already present by alias
             for selection in _selections:
                 is_available, props = self._compute_quantity_db_data(
                     group_instance, selection, quantity, group_name
                 )
+                availability_key, _ = self._construct_database_data_key(
+                    group_name, quantity, selection
+                )
+                available_quantities[availability_key] = is_available
                 if is_available:
-                    available_quantities.append(
-                        (f"{group_name}." if group_name else "")
-                        + quantity
-                        + (
-                            f":{selection}"
-                            if (selection and selection != "default")
-                            else ""
-                        )
-                    )
                     additional_properties = additional_properties | props
         return available_quantities, additional_properties
 
-    def _compute_database_data(self) -> Tuple[List[str], dict]:
-        "Return a list of all available quantities in the calculation."
-        available_quantities = []
+    def _compute_database_data(self) -> Tuple[dict[str, bool], dict[str, dict]]:
+        """Computes a dict of available py4vasp dataclasses and all available database data.
+
+        Returns
+        -------
+        Tuple[dict[str, bool], dict[str, dict]]
+            - dict[str, bool]
+                A dictionary indicating the availability of each quantity (and selection) in the calculation.
+                The keys may take the form 'group.quantity', 'quantity', 'group.quantity:selection', or 'quantity:selection'.
+                The default selection is always omitted from the key.
+            - dict[str, dict]
+                A dictionary containing all additional properties to be stored in the database.
+                The keys follow the same convention as above. The values are dictionaries with the actual data to be stored.
+        """
+        available_quantities = {}
         additional_properties = {}
         available_quantities, additional_properties = self._loop_quantities(
             QUANTITIES, available_quantities, additional_properties

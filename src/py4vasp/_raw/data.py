@@ -134,13 +134,13 @@ class RuntimeData:
     vasp_version: Union[str, Version] = None
     "The version of VASP used for the calculation."
 
-    calculation_time: Optional[float] = NONE()
+    calculation_time: Optional[float] = None
     "The time taken for the calculation in seconds."
-    calculation_start: Optional[Union[datetime, str]] = NONE()
+    calculation_start: Optional[Union[datetime, str]] = None
     "The date and time when the calculation was started."
-    n_cpus: Optional[int] = NONE()
+    n_cpus: Optional[int] = None
     "The number of CPUs used for the calculation."
-    n_gpus: Optional[int] = NONE()
+    n_gpus: Optional[int] = None
     "The number of GPUs used for the calculation."
 
     def __post_init__(self):
@@ -161,8 +161,6 @@ class CalculationMetaData:
 
     infer_none_files: bool = False
     """Whether to infer links to None files like INCAR etc. where possible."""
-    infer_none_properties: bool = True
-    """Whether to infer properties that are None by checking the HDF5 file."""
 
     incar: Optional[Union[str, pathlib.Path]] = None
     "The path to the INCAR file used for the calculation."
@@ -196,50 +194,25 @@ class CalculationMetaData:
                 if file_path is None and self.hdf5.exists():
                     trial_path = self.hdf5.parent / file_attr.upper()
                     if trial_path.exists():
-                        object.__setattr__(self, file_attr, trial_path)
+                        setattr(self, file_attr, trial_path)
 
 
 @dataclasses.dataclass
-class DatabaseData:
-    """All additional data that should be written to the database."""
+class _DatabaseData:
+    """All additional data that should be written to the database.
+    This dataclass is not available for Calculation instances."""
 
     metadata: CalculationMetaData
 
-    available_quantities: list[str] = dataclasses.field(default_factory=list)
-    """List of all py4vasp quantities that can be read from the HDF5 file.
-    
-Still need to figure out how to populate this automatically,
-and how to consider valid selection options for quantities that
-have multiple valid selections (e.g. energy, band, ...).
-
-To construct this, I need to figure out how to access the schema
-and construct the dataclasses contained within it, and define
-how to clearly identify dataclasses as specific unique strings
-that might take additional selections into account."""
+    available_quantities: Optional[dict[str, bool]] = None
+    """Dict of all py4vasp dataclasses that can be read from the HDF5 file.
+    Keys are constructed like 'group.quantity:selection' where group and
+    selection are optional. The values are booleans indicating whether the quantity is available."""
 
     additional_properties: Optional[dict[str, Any]] = None
     """Additional properties that get stored in the database.
-These are defined as part of the definitions in `py4vasp._raw.definition.py`
-and passed to a Schema as a dict[str, str], with the value being the name of a
-class method that computes the property.
-
-(likely necessary to make this a dict[str, dict[str, Any]] in order to
-store properties of available quantities (str key) with multiple attributes (dict value))    
-
-schema.add(
-    SomeClass,
-    ...,
-    database_additions = {
-        "free_energy": "free_energy"
-    }
-)
-
-And then use this like:
-
-for key, callFunc in database_additions.items():
-    value = getattr(some_instance, callFunc)()
-    additional_properties[some_instance.__class__.__name__+ "_" + (quantity.name + "_") if not(quantity.name is None) else "" + key] = value
-"""
+    Keys are constructed like 'group.quantity:selection' where group and
+    selection are optional. The values are dictionaries of properties."""
 
     # TODO decide whether there are any important properties that do not belong to a schema / dataclass
 
