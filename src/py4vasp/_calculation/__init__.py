@@ -334,22 +334,30 @@ instead of the constructor Calculation()."""
 
         if quantity_data is not None:
             try:
-                database_data = getattr(group, quantity_name)._read_to_database(
-                    selection=str(selection)
-                )
-                full_key, has_selection = self._construct_database_data_key(
+                database_data: dict[str, dict[str, Any]] = getattr(
+                    group, quantity_name
+                )._read_to_database(selection=str(selection))
+                _, has_selection = self._construct_database_data_key(
                     group_name, quantity_name, selection
                 )
-                additional_properties[full_key] = database_data
-                # TODO I could check selection here and potentially flatten the dict slightly
-                # e.g., if selection is default, I could just store the dict like:
-                # additional_properties = additional_properties | database_data
-                # TODO but I might do the same for other selections by first suffixing primary keys with that selection,
-                # and then storing the dict as above
+                if has_selection:
+                    # suffix primary keys with selection
+                    database_data = dict(
+                        zip(
+                            [f"{key}:{selection}" for key in database_data.keys()],
+                            database_data.values(),
+                        )
+                    )
+                additional_properties = additional_properties | database_data
             except Exception as e:
-                # print(f"[ADD] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:", e)
-                pass  # catch any other errors during reading
+                raise Exception(
+                    f"[ADD] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:",
+                    e,
+                ) from e
+                # pass  # catch any other errors during reading
 
+            # TODO add general dataclass for timesteps_count etc.
+            # TODO bandgap = bandgap:kpoint --> what does that selection do, do I need to exclude some selections? / alias?
             # TODO find a way to ensure properties are only re-computed if they don't already exist
             #       --> probably via private functions and setting private variables on first computation
             #       --> TODO BUT then how do we avoid duplicate recomputes?
