@@ -370,6 +370,7 @@ instead of the constructor Calculation()."""
             #       --> so I could write a wrapper function that calls a function for computing only if a given (specified) key does not yet exist in additional_properties
             #       --> TODO AND how do I ensure selections are correct when calling to_database?
             #       --> I guess I pass selection on the class implementation of to_database, via the base.data_access decorator.
+            # TODO decide if I want to return a nested dictionary or a flat one (and redesign the keys if necessary)
         return is_available, additional_properties
 
     def _loop_quantities(
