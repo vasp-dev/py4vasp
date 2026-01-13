@@ -95,7 +95,7 @@ class TestToDatabase:
         self, db_name, db_path, expected_db_name, expected_db_path, tmp_path_factory
     ):
         """Test valid to_database call with several valid specifications."""
-        self.calculation.to_database(_make_tmp_dir(db_path, tmp_path_factory), db_name)
+        self.calculation._to_database(_make_tmp_dir(db_path, tmp_path_factory), db_name)
         _check_db_exists(expected_db_name, expected_db_path, tmp_path_factory)
 
         # TODO add more checks to verify content of the database
@@ -113,7 +113,7 @@ class TestToDatabase:
     ):
         """Test invalid to_database call with conflicting db_name and db_path."""
         with pytest.raises(exception.IncorrectUsage):
-            self.calculation.to_database(
+            self.calculation._to_database(
                 _make_tmp_dir(db_path, tmp_path_factory), db_name
             )
 
@@ -121,5 +121,5 @@ class TestToDatabase:
     def test_to_database_with_vaspdb_object(self, VaspDB, tmp_path_factory):
         """Test to_database call with a provided VaspDB class object."""
 
-        self.calculation.to_database(VaspDB=VaspDB)
+        self.calculation._to_database(VaspDB=VaspDB)
         _check_db_exists("test_database.db", "test_database_path", tmp_path_factory)
