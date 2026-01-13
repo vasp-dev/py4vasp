@@ -111,6 +111,20 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
         }
 
     @base.data_access
+    def _to_database(self, *args, **kwargs):
+        default_dict = self._default_dict()
+        energy_dict = {}
+        for k, v in default_dict.items():
+            try:
+                energy_dict[k] = {"initial": v[0], "final": v[-1]}
+            except:
+                try:
+                    energy_dict[k] = {"initial": None, "final": float(v)}
+                except:
+                    pass
+        return {"energy": energy_dict}
+
+    @base.data_access
     @documentation.format(
         selection=_selection_string("the total energy"),
         examples=slice_.examples("energy", "to_graph"),
