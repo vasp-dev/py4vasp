@@ -78,6 +78,17 @@ reciprocal"""
         }
 
     @base.data_access
+    def _to_database(self, *args, **kwargs):
+        return {
+            "kpoint": {
+                "mode": self.mode(),
+                "line_length": self.line_length(),
+                "number_kpoints": self.number_kpoints(),
+                "labels": self.labels(),
+            }
+        }
+
+    @base.data_access
     @documentation.format(selection=_kpoints_selection)
     def line_length(self):
         """Get the number of points per line in the Brillouin zone.

@@ -181,6 +181,39 @@ class Band(base.Refinery, graph.Mixin):
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
+    def _to_database(
+        self, selection: Optional[str] = None, fermi_energy: Optional[float] = None
+    ) -> dict[str, Any]:
+        """Read the data into a database object.
+
+        Parameters
+        ----------
+        {selection_doc}
+        fermi_energy : float
+            Overwrite the Fermi energy of the band structure calculation with a more
+            accurate one from a different calculation. This is recommended for metallic
+            systems where the Fermi energy may be significantly different.
+
+        Returns
+        -------
+        dict
+            Contains the **k**-point path for plotting band structures with the
+            eigenvalues shifted to bring the Fermi energy to 0. If available
+            and a selection is passed, the projections of these bands on the
+            selected projectors are included. If you specified '''k'''-point labels
+            in the KPOINTS file, these are returned as well.
+        """
+        dispersion = self._dispersion()._to_database()
+        return {
+            "band": {
+                "raw_fermi_energy": self._raw_data.fermi_energy,
+                "fermi_energy": fermi_energy or self._raw_data.fermi_energy,
+                "is_collinear": self._is_collinear(),
+            },
+        } | dispersion
+
+    @base.data_access
+    @documentation.format(selection_doc=projector.selection_doc)
     def to_graph(
         self,
         selection: Optional[str] = None,

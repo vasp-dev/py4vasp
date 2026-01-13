@@ -74,7 +74,6 @@ class Schema:
                 required,
                 alias_for,
                 data_factory,
-                getattr(cls, "to_database", None),
             )
             self._sources[quantity][label] = source
         self._verified = False
@@ -153,7 +152,6 @@ class Source:
     required: Version = None
     alias_for: str = None
     data_factory: Callable = None
-    to_database: Callable = None
 
 
 @dataclasses.dataclass
