@@ -7,7 +7,7 @@ from typing import Any, List, Optional, Tuple, Union
 from py4vasp import exception
 from py4vasp._raw.access import access
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
-from py4vasp._raw.definition import schema, selections
+from py4vasp._raw.definition import schema, selections, unique_selections
 from py4vasp._util import convert, import_
 
 INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
@@ -329,7 +329,10 @@ instead of the constructor Calculation()."""
         except exception.FileAccessError:
             pass  # happens when vaspout.h5 or vaspwave.h5 (where relevant) are missing
         except Exception as e:
-            print(f"[CHECK] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:", e)
+            # print(
+            #     f"[CHECK] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:",
+            #     e,
+            # )
             pass  # catch any other errors during reading
 
         if quantity_data is not None:
@@ -356,14 +359,11 @@ instead of the constructor Calculation()."""
                 ) from e
                 # pass  # catch any other errors during reading
 
-            # TODO add general dataclass for timesteps_count etc.
-            # TODO bandgap = bandgap:kpoint --> what does that selection do, do I need to exclude some selections? / alias?
+            # TODO bandgap = bandgap:kpoint --> if selections are factually identical but could be different, we should still add both variants to the db, right?
             # TODO find a way to ensure properties are only re-computed if they don't already exist
-            #       --> probably via private functions and setting private variables on first computation
-            #       --> TODO BUT then how do we avoid duplicate recomputes?
-            #       --> duplicate recomputes can also occur right now, see e.g., structure.to_database being called multiple times
-            #       --> unless I am mistaken, a new Structure instance is created every time structure.read() is called
-            #       --> so I could write a wrapper function that calls a function for computing only if a given (specified) key does not yet exist in additional_properties
+            #       --> I need to pass additional_properties (at least the keys) down to avoid recomputing them
+            #       --> I also need to pass down the future suffix for the selection (because I may compute structure for phonon:structure, and that would not overwrite structure)
+            #       --> with this approach, I could also avoid suffix sensitivity for some quantities by not passing the suffix further down
         return is_available, additional_properties
 
     def _construct_database_data_key(
@@ -383,13 +383,13 @@ instead of the constructor Calculation()."""
         for quantity in quantities:
             try:
                 _selections = (
-                    selections(quantity)
+                    unique_selections(quantity)
                     if group_name is None
-                    else selections(f"{group_name}_{quantity}")
+                    else unique_selections(f"{group_name}_{quantity}")
                 )
             except exception.FileAccessError:
                 _selections = ["default"]
-            # TODO skip selections that are already present by alias
+
             for selection in _selections:
                 is_available, props = self._compute_quantity_db_data(
                     group_instance, selection, quantity, group_name
