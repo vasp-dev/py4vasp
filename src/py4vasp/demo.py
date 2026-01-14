@@ -28,7 +28,8 @@ def calculation(path: Path, selection: Optional[str] = None) -> Calculation:
 
     Returns
     -------
-    A calculation that accesses the generated data.
+    -
+        A calculation that accesses the generated data.
     """
     path = _create_path_for_data(path, selection)
     filename = path / DEFAULT_FILE

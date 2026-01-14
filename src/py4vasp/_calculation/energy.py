@@ -8,11 +8,13 @@ from py4vasp._util import convert, documentation, index, select
 
 
 def _selection_string(default):
-    return f"""selection : str or None
+    return f"""\
+selection : str or None
     String specifying the labels of the energy to be read. If no energy is selected
     this will default to selecting {default}. Separate distinct labels by commas or
     whitespace. You can add or subtract different contributions e.g. `TOTEN + EKIN`.
     For a complete list of all possible selections, please use
+    
     >>> calculation.energy.selections()
 """
 

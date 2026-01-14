@@ -12,7 +12,7 @@ class ElectronicMinimization(slice_.Mixin, base.Refinery, graph.Mixin):
     """Access the convergence data for each electronic step.
 
     The OSZICAR file written out by VASP stores information related to convergence.
-    Please check the vasp-wiki (https://www.vasp.at/wiki/index.php/OSZICAR) for more
+    Please check the `vasp-wiki <https://www.vasp.at/wiki/index.php/OSZICAR>`__ for more
     details about the exact outputs generated for each combination of INCAR tags."""
 
     def _more_than_one_ionic_step(self, data):
