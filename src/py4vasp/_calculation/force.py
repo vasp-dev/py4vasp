@@ -115,7 +115,7 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
             "structure": self._structure[self._steps].read(),
             "forces": self._force[self._steps],
         }
-    
+
     @base.data_access
     def _to_database(self, *args, **kwargs):
         structure = self._structure[self._steps]._read_to_database()

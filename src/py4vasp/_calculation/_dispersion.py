@@ -42,7 +42,7 @@ class Dispersion(base.Refinery):
         kpoint_labels = self._kpoints.labels()
         return {
             "dispersion": {},
-        } | self._kpoints._to_database(*args, **kwargs)
+        } | self._kpoints._read_to_database()
 
     @property
     def _kpoints(self):

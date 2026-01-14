@@ -97,6 +97,17 @@ class Schema:
         except KeyError as error:
             raise exception.FileAccessError(error_message(self, quantity)) from None
 
+    def unique_selections(self, quantity):
+        try:
+            sources = self._sources[quantity]
+        except KeyError as error:
+            raise exception.FileAccessError(error_message(self, quantity)) from None
+        unique_keys = []
+        for name, source in sources.items():
+            if source.alias_for is None:
+                unique_keys.append(name)
+        return unique_keys
+
     @property
     def verified(self):
         return self._verified

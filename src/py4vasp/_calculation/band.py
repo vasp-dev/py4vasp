@@ -203,7 +203,7 @@ class Band(base.Refinery, graph.Mixin):
             selected projectors are included. If you specified '''k'''-point labels
             in the KPOINTS file, these are returned as well.
         """
-        dispersion = self._dispersion()._to_database()
+        dispersion = self._dispersion()._read_to_database()
         return {
             "band": {
                 "raw_fermi_energy": self._raw_data.fermi_energy,

@@ -21,6 +21,11 @@ def selections(quantity):
     return schema.selections(quantity)
 
 
+def unique_selections(quantity):
+    "Return all unique selections for a particular quantity."
+    return schema.unique_selections(quantity)
+
+
 schema.add(
     raw.Band,
     dispersion=Link("dispersion", DEFAULT_SOURCE),
