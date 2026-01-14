@@ -174,6 +174,16 @@ class Dos(base.Refinery, graph.Mixin):
         return {**data, "fermi_energy": self._raw_data.fermi_energy}
 
     @base.data_access
+    def _to_database(self, *args, **kwargs):
+        return {
+            "dos": {
+                "fermi_energy": float(self._raw_data.fermi_energy),
+                "is_collinear": self._is_collinear(),
+                "is_noncollinear": self._is_noncollinear(),
+            }
+        }
+
+    @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
     def to_graph(self, selection=None):
         """Read the DOS and convert it into a graph.

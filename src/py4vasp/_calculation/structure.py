@@ -253,11 +253,16 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
     @base.data_access
     def _to_database(self, *args, **kwargs):
         stoichiometry = self._stoichiometry()._read_to_database()
+        cell = {
+            "cell": {
+                "is_changing": False if len(self.lattice_vectors()) == 1 else np.allclose(self.lattice_vectors()[:-1], self.lattice_vectors()[1:], atol=1e-7),
+            }
+        } # TODO add cell._read_to_database() when it exists
         return {
             "structure": {
                 "total_ion_count": self.number_atoms(),
             },
-        } | stoichiometry
+        } | stoichiometry | cell
 
     @base.data_access
     def to_view(self, supercell=None, ion_types=None):

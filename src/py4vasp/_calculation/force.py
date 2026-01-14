@@ -115,6 +115,19 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
             "structure": self._structure[self._steps].read(),
             "forces": self._force[self._steps],
         }
+    
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        structure = self._structure[self._steps]._read_to_database()
+        force_norms = np.linalg.norm(self._force[self._steps], axis=-1)
+        return {
+            "force": {
+                "min_force": np.min(force_norms),
+                "median_force": np.median(force_norms),
+                "mean_force": np.mean(force_norms),
+                "max_force": np.max(force_norms),
+            },
+        } | structure
 
     @base.data_access
     def to_view(self, supercell=None):
