@@ -9,8 +9,8 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._calculation.electron_phonon_bandgap import (
+    BandgapInstance,
     ElectronPhononBandgap,
-    ElectronPhononBandgapInstance,
 )
 
 
@@ -150,10 +150,10 @@ def test_len(band_gap):
 def test_indexing_and_iteration(band_gap):
     # Indexing and iteration should yield instances
     for i, instance in enumerate(band_gap):
-        assert isinstance(instance, ElectronPhononBandgapInstance)
+        assert isinstance(instance, BandgapInstance)
         assert instance.index == band_gap.ref.indices[i]
         assert instance.parent is band_gap
-    assert isinstance(band_gap[0], ElectronPhononBandgapInstance)
+    assert isinstance(band_gap[0], BandgapInstance)
 
 
 def test_read_mapping(band_gap):
@@ -239,7 +239,7 @@ def test_select_returns_instances(band_gap, attribute):
     selected = band_gap.select(f"{attribute}={choice.item()}")
     assert len(selected) == len(indices)
     for index_, instance in zip(indices, selected):
-        assert isinstance(instance, ElectronPhononBandgapInstance)
+        assert isinstance(instance, BandgapInstance)
         assert instance.index == index_
 
 
@@ -263,7 +263,7 @@ def test_select_multiple(band_gap):
     selected = band_gap.select(selection)
     assert len(selected) == len(indices)
     for index_, instance in zip(indices, selected):
-        assert isinstance(instance, ElectronPhononBandgapInstance)
+        assert isinstance(instance, BandgapInstance)
         assert instance.index == index_
 
 
@@ -277,7 +277,7 @@ def test_select_nested(band_gap):
     selected = band_gap.select(selection)
     assert len(selected) == 1
     instance = selected[0]
-    assert isinstance(instance, ElectronPhononBandgapInstance)
+    assert isinstance(instance, BandgapInstance)
     assert instance.index == index_
 
 

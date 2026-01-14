@@ -46,6 +46,26 @@ GROUPS = {
     "exciton": ("density", "eigenvector"),
     "phonon": ("band", "dos", "mode"),
 }
+GROUP_TYPE_ALIAS = {
+    convert.to_camelcase(f"{group}_{member}"): f"{group}.{member}"
+    for group, members in GROUPS.items()
+    for member in members
+}
+
+AUTOSUMMARY_QUANTITIES = [
+    (quantity, f"~py4vasp.Calculation.{quantity}")
+    for quantity in QUANTITIES
+    if not quantity.startswith("_")
+]
+AUTOSUMMARY_GROUPS = [
+    (
+        f"{group}.{member}",
+        f"~py4vasp._calculation.{group}_{member}.{convert.to_camelcase(f'{group}_{member}')}",
+    )
+    for group, members in GROUPS.items()
+    for member in members
+]
+AUTOSUMMARIES = sorted(AUTOSUMMARY_QUANTITIES + AUTOSUMMARY_GROUPS)
 
 __all__ = QUANTITIES
 
@@ -167,7 +187,7 @@ instead of the constructor Calculation()."""
 
         Parameters
         ----------
-        file_name : str of pathlib.Path
+        file_name : str or pathlib.Path
             Name of the file from which the data is read.
 
         Returns

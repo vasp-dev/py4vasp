@@ -11,6 +11,7 @@ set SOURCEDIR=.
 set BUILDDIR=_build
 
 if "%1" == "" goto help
+if "%1" == "clean" goto clean
 
 %SPHINXBUILD% >NUL 2>NUL
 if errorlevel 9009 (
@@ -30,6 +31,13 @@ goto end
 
 :help
 %SPHINXBUILD% -M help %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
+goto end
+
+:clean
+%SPHINXBUILD% -M clean %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
+git clean -Xf calculation/*.rst
+git clean -Xfd hidden/
+goto end
 
 :end
 popd

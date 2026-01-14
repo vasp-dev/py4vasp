@@ -161,6 +161,7 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         >>> calculation.potential.to_contour(c=0)
 
         Plot the Hartree potential in the (100) plane crossing at 0.5 fractional coordinate
+
         >>> calculation.potential.to_contour(selection="hartree", a=0.5)
 
         Plot the sigma_z-component of the xc potential in a 2x2 supercell in the plane
@@ -250,12 +251,12 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         _raise_error_if_component_selected(component)
         potential = self._get_potential(kind)
         _raise_error_if_nonpolarized_potential(potential)
-        return index.Selector(maps={}, data=potential, reduction=PotentialReduction)
+        return index.Selector(maps={}, data=potential, reduction=_PotentialReduction)
 
     def _create_nonmagnetic_selector(self, kind):
         potential = self._get_potential(kind)
         maps = {0: self._create_map(potential)}
-        return index.Selector(maps, potential, reduction=PotentialReduction)
+        return index.Selector(maps, potential, reduction=_PotentialReduction)
 
     def _get_potential(self, kind):
         return getattr(self._raw_data, f"{kind}_potential")
@@ -276,7 +277,7 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         }
 
 
-class PotentialReduction(index.Reduction):
+class _PotentialReduction(index.Reduction):
     def __init__(self, keys):
         self._selection = keys[0]
 

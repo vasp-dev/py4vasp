@@ -38,3 +38,17 @@ class Mixin(abc.ABC):
             A widget to display the structure and other quantities in the unit cell.
         """
         return self.to_view(*args, **kwargs).to_ngl()
+
+    def to_vasp_viewer(self, *args, **kwargs):
+        """Convert the view to a VASP Viewer widget.
+
+        This method wraps the :meth:`to_view` method and converts the resulting View
+        to a VASP Viewer widget. The :meth:`to_view` method documents all the possible
+        arguments of this function.
+
+        Returns
+        -------
+        VASPViewerWidget
+            A widget to display the structure and other quantities in the unit cell.
+        """
+        return self.to_view(*args, **kwargs).to_vasp_viewer()

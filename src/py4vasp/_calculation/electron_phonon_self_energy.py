@@ -9,7 +9,7 @@ from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
 from py4vasp._util import convert
 
 
-class ElectronPhononSelfEnergyInstance(ElectronPhononInstance):
+class SelfEnergyInstance(ElectronPhononInstance):
     """
     Represents a single instance of electron-phonon self-energy calculations.
     This class provides access to the electron-phonon self-energy data for a specific
@@ -183,7 +183,7 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
 
     @base.data_access
     def select(self, selection):
-        """Return a list of ElectronPhononSelfEnergyInstance objects matching the selection.
+        """Return a list of SelfEnergyInstance objects matching the selection.
 
         Parameters
         ----------
@@ -193,11 +193,11 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
 
         Returns
         -------
-        list of ElectronPhononSelfEnergyInstance
+        list[SelfEnergyInstance]
             Instances that match the selection criteria.
         """
         indices = self._accumulator().select_indices(selection)
-        return [ElectronPhononSelfEnergyInstance(self, index) for index in indices]
+        return [SelfEnergyInstance(self, index) for index in indices]
 
     @base.data_access
     def _get_data(self, name, index):
@@ -209,7 +209,7 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
 
         Returns
         -------
-        numpy.ndarray
+        np.ndarray
             Array containing eigenvalues for all k-points, bands, and spin channels.
         """
         return self._raw_data.eigenvalues[:]
@@ -217,7 +217,7 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
     @base.data_access
     def __getitem__(self, key):
         if 0 <= key < len(self._raw_data.valid_indices):
-            return ElectronPhononSelfEnergyInstance(self, key)
+            return SelfEnergyInstance(self, key)
         raise IndexError("Index out of range for electron-phonon self energy instance.")
 
     @base.data_access

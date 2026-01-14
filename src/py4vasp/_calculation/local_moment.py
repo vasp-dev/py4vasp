@@ -219,6 +219,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         View(..., ion_arrows=[IonArrow(quantity=array([[[...]]]), label='total moments', ...)], ...)
 
         You can also select spin or orbital moments separately.
+
         >>> noncollinear_calculation.local_moment.to_view(selection="spin, orbital")
         View(..., ion_arrows=[IonArrow(quantity=array([[[...]]]), label='spin moments', ...),
             IonArrow(quantity=array([[[...]]]), label='orbital moments', ...)], ...)
@@ -322,6 +323,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         array([[[...]]])
 
         You can also select spin or orbital moments separately.
+
         >>> noncollinear_calculation.local_moment.projected_magnetic(selection="spin")
         array([[[...]]])
         """
@@ -433,6 +435,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         array([[...]])
 
         You can also select spin or orbital moments separately.
+
         >>> noncollinear_calculation.local_moment.magnetic(selection="spin")
         array([[...]])
 
