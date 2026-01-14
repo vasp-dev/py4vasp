@@ -190,8 +190,6 @@ class _DatabaseData:
     Keys are constructed like 'group.quantity:selection' where group and
     selection are optional. The values are dictionaries of properties."""
 
-    # TODO decide whether there are any important properties that do not belong to a schema / dataclass
-
 
 @dataclasses.dataclass
 class Density:
