@@ -128,27 +128,6 @@ class CurrentDensity(mapping.Mapping):
 
 
 @dataclasses.dataclass
-class RuntimeData:
-    """Data about the runtime environment of the VASP calculation."""
-
-    vasp_version: Union[str, Version] = None
-    "The version of VASP used for the calculation."
-
-    calculation_time: Optional[float] = None
-    "The time taken for the calculation in seconds."
-    calculation_start: Optional[Union[datetime, str]] = None
-    "The date and time when the calculation was started."
-    n_cpus: Optional[int] = None
-    "The number of CPUs used for the calculation."
-    n_gpus: Optional[int] = None
-    "The number of GPUs used for the calculation."
-
-    def __post_init__(self):
-        if isinstance(self.vasp_version, Version):
-            self.vasp_version = f"{self.vasp_version.major}.{self.vasp_version.minor}.{self.vasp_version.patch}"
-
-
-@dataclasses.dataclass
 class CalculationMetaData:
     """Metadata about the VASP calculation.
     This dataclass is not available for Calculation instances."""
@@ -170,9 +149,6 @@ class CalculationMetaData:
     "The path to the KPOINTS file used for the calculation."
     potcar: Optional[Union[str, pathlib.Path]] = None
     "The path to the POTCAR file used for the calculation."
-
-    runtime_data: Optional[RuntimeData] = None
-    "Data about the runtime environment of the VASP calculation."
 
     # These should be handled by vaspdb
     added_at: Optional[datetime] = None
@@ -767,6 +743,37 @@ class Projector:
     "Character indicating the orbital angular momentum."
     number_spin_projections: int
     "This is 1 for nonpolarized calculations, 2 for spin polarized ones, and 4 for noncollinear calculations."
+
+
+@dataclasses.dataclass
+class RunInfo:
+    "Contains information about the VASP run."
+
+    runtime_data: RuntimeData
+    "Data about the runtime environment of the VASP calculation."
+    structure: Structure
+    "Structural information about the system."
+
+
+@dataclasses.dataclass
+class RuntimeData:
+    """Data about the runtime environment of the VASP calculation."""
+
+    vasp_version: Union[str, Version] = None
+    "The version of VASP used for the calculation."
+
+    calculation_time: Optional[float] = None
+    "The time taken for the calculation in seconds."
+    calculation_start: Optional[Union[datetime, str]] = None
+    "The date and time when the calculation was started."
+    n_cpus: Optional[int] = None
+    "The number of CPUs used for the calculation."
+    n_gpus: Optional[int] = None
+    "The number of GPUs used for the calculation."
+
+    def __post_init__(self):
+        if isinstance(self.vasp_version, Version):
+            self.vasp_version = f"{self.vasp_version.major}.{self.vasp_version.minor}.{self.vasp_version.patch}"
 
 
 @dataclasses.dataclass

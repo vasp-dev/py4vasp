@@ -81,6 +81,15 @@ class Stoichiometry(base.Refinery):
         return {**self._default_selection(), **self._specific_selection(ion_types)}
 
     @base.data_access
+    def _to_database(self, *args, **kwargs):
+        return {
+            "stoichiometry": {
+                "ion_types": list(self.ion_types()),
+                "number_ion_types": list(self._raw_data.number_ion_types),
+            }
+        }
+
+    @base.data_access
     @documentation.format(ion_types=ion_types_documentation)
     def to_frame(self, ion_types=None):
         """Convert the stoichiometry to a DataFrame

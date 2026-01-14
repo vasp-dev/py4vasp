@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp._calculation import _stoichiometry, base, structure
+from py4vasp._calculation import _stoichiometry, base, structure, system
 from py4vasp._third_party import view
 from py4vasp._util import convert
 
@@ -30,6 +30,18 @@ class CONTCAR(base.Refinery, view.Mixin, structure.Mixin):
             **self._read("lattice_velocities"),
             **self._read("ion_velocities"),
         }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        structure = self._structure._read_to_database()
+        return {
+            "contcar": {
+                "has_selective_dynamics": self._read("selective_dynamics") != {},
+                "has_lattice_velocities": self._read("lattice_velocities") != {},
+                "has_ion_velocities": self._read("ion_velocities") != {},
+                "system": convert.text_to_string(self._raw_data.system),
+            }
+        } | structure
 
     def _read(self, key):
         data = getattr(self._raw_data, key)

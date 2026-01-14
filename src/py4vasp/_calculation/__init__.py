@@ -36,6 +36,7 @@ QUANTITIES = (
     "polarization",
     "potential",
     "projector",
+    "run_info",
     "stress",
     "structure",
     "system",
@@ -265,7 +266,6 @@ instead of the constructor Calculation()."""
                     hdf5=hdf5_path,
                     tags=tags,
                     infer_none_files=True,
-                    runtime_data=runtime_data,
                 )
             )
 
@@ -329,7 +329,7 @@ instead of the constructor Calculation()."""
         except exception.FileAccessError:
             pass  # happens when vaspout.h5 or vaspwave.h5 (where relevant) are missing
         except Exception as e:
-            # print(f"[CHECK] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:", e)
+            print(f"[CHECK] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:", e)
             pass  # catch any other errors during reading
 
         if quantity_data is not None:
@@ -351,7 +351,7 @@ instead of the constructor Calculation()."""
                 additional_properties = additional_properties | database_data
             except Exception as e:
                 raise Exception(
-                    f"[ADD] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:",
+                    f"[ADD] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection} (please consider filing a bug report):",
                     e,
                 ) from e
                 # pass  # catch any other errors during reading
