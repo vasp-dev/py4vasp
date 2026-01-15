@@ -5,6 +5,7 @@ import dataclasses
 import functools
 import inspect
 import pathlib
+from typing import Optional
 
 from py4vasp import exception, raw
 from py4vasp._util import check, convert, select
@@ -136,12 +137,65 @@ class Refinery:
         "Convenient wrapper around to_dict. Check that function for examples and optional arguments."
         return self.to_dict(*args, **kwargs)
 
-    def _read_to_database(self, *args, **kwargs):
+    def _read_to_database(
+        self,
+        *args,
+        db_key_suffix: Optional[str] = None,
+        current_db: Optional[dict[str, dict]] = None,
+        **kwargs,
+    ):
         """Internal method to convert the data to a database format.
 
         This method is intended for internal use only and should not be called
         directly by users. It converts the data into a format suitable for
         database storage.
+
+        Example implementation for Quantity._to_database:
+
+        ```python
+        from py4vasp._util import database
+
+        class Quantity(base.Refinery):
+            @base.data_access
+            def _to_database(self, *args, **kwargs):
+                return database.combine_db_dicts({
+                    "quantity": { ... }
+                },
+                {
+                    "cell:special_selection": { "variable_only_from_structure": ... },
+                },
+                some_other_quantity._read_to_database(*args, **kwargs))
+        ```
+        Note 1: that the combining of multiple database dictionaries is optional. If
+        your quantity only needs to return a single dictionary, you can return it
+        directly without using `database.combine_db_dicts`.
+
+        Note 2: also that you can add specific quantity:selection combinations here,
+        see the "cell:special_selection" example above. This allows you to set properties
+        on other quantities that are not directly part of this quantity, maybe even
+        for completely different selections.
+
+        Note 3: that when the dataclass loads other quantities, you should call their
+        `_read_to_database` method directly to avoid re-selecting the data again.
+        The approach with loading quantities is the same as is, e.g., done for to_dict
+        in structure - _other_quantity.OtherQuantity.from_data(self._raw_data.other_quantity)
+        to obtain the class, then call _read_to_database on that instance.
+        Make sure to pass *args and **kwargs to these calls to propagate any relevant options,
+        primarily db_key_suffix and current_db (otherwise, caching will not work properly).
+
+        Note 4: that you do not need to manually add the db_key_suffix to the keys
+        in the returned dictionary. This is handled automatically after this method
+        returns, unless a selection is already specified on a key.
+
+        Parameters
+        ----------
+        db_key_suffix : str, optional
+            Suffix to append to all database keys returned by this method. This is used
+            to distinguish different selections of the same quantity in the database.
+        current_db : dict, optional
+            If provided, this dictionary contains the already computed database entries.
+            This will be used to avoid recomputing quantities that are already present
+            in the database.
 
         Returns
         -------
@@ -149,8 +203,27 @@ class Refinery:
             A dictionary representation of the data suitable for database storage.
         """
         try:
-            return self._to_database(*args, **kwargs)
-        except AttributeError:
+            raw_db_key = _quantity(self.__class__)
+            expected_db_key = _clean_db_key(raw_db_key, db_key_suffix=db_key_suffix)
+            if current_db is not None and expected_db_key in current_db:
+                # if quantity already exists in db, return it without recomputing
+                return {expected_db_key: current_db[expected_db_key]}
+            # otherwise, compute the database representation
+            database_data = self._to_database(
+                *args, db_key_suffix=db_key_suffix, current_db=current_db, **kwargs
+            )
+            database_data = dict(
+                zip(
+                    [
+                        _clean_db_key(key, db_key_suffix=db_key_suffix)
+                        for key in database_data.keys()
+                    ],
+                    database_data.values(),
+                )
+            )
+            return database_data
+        except AttributeError as e:
+            # if the particular quantity does not implement database reading, return empty dict
             return {}
 
     @data_access
@@ -181,6 +254,10 @@ class Refinery:
 
 def _quantity(cls):
     return convert.quantity_name(cls.__name__)
+
+
+def _clean_db_key(key: str, db_key_suffix: Optional[str] = None) -> str:
+    return key + (db_key_suffix or "") if not (":" in key) else key
 
 
 def _get_path_to_file(file):

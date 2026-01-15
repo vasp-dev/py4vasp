@@ -10,7 +10,15 @@ from numpy.typing import ArrayLike
 from py4vasp import exception
 from py4vasp._calculation import _dispersion, base, kpoint, projector
 from py4vasp._third_party import graph
-from py4vasp._util import check, documentation, import_, index, select, slicing
+from py4vasp._util import (
+    check,
+    database,
+    documentation,
+    import_,
+    index,
+    select,
+    slicing,
+)
 
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
@@ -182,7 +190,12 @@ class Band(base.Refinery, graph.Mixin):
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
     def _to_database(
-        self, selection: Optional[str] = None, fermi_energy: Optional[float] = None
+        self,
+        selection: Optional[str] = None,
+        fermi_energy: Optional[float] = None,
+        db_key_suffix: str = None,
+        current_db: Optional[dict[str, Any]] = None,
+        **kwargs,
     ) -> dict[str, Any]:
         """Read the data into a database object.
 
@@ -203,14 +216,19 @@ class Band(base.Refinery, graph.Mixin):
             selected projectors are included. If you specified '''k'''-point labels
             in the KPOINTS file, these are returned as well.
         """
-        dispersion = self._dispersion()._read_to_database()
-        return {
-            "band": {
-                "raw_fermi_energy": self._raw_data.fermi_energy,
-                "fermi_energy": fermi_energy or self._raw_data.fermi_energy,
-                "is_collinear": self._is_collinear(),
+        dispersion = self._dispersion()._read_to_database(
+            db_key_suffix=db_key_suffix, current_db=current_db, **kwargs
+        )
+        return database.combine_db_dicts(
+            {
+                "band": {
+                    "raw_fermi_energy": self._raw_data.fermi_energy,
+                    "fermi_energy": fermi_energy or self._raw_data.fermi_energy,
+                    "is_collinear": self._is_collinear(),
+                },
             },
-        } | dispersion
+            dispersion,
+        )
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
