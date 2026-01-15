@@ -4,7 +4,7 @@ import numpy as np
 
 import py4vasp._third_party.graph as _graph
 from py4vasp._calculation import base, kpoint, projector
-from py4vasp._util import check
+from py4vasp._util import check, database
 
 
 class Dispersion(base.Refinery):
@@ -40,9 +40,12 @@ class Dispersion(base.Refinery):
     @base.data_access
     def _to_database(self, *args, **kwargs):
         kpoint_labels = self._kpoints.labels()
-        return {
-            "dispersion": {},
-        } | self._kpoints._read_to_database()
+        return database.combine_db_dicts(
+            {
+                "dispersion": {},
+            },
+            self._kpoints._read_to_database(*args, **kwargs),
+        )
 
     @property
     def _kpoints(self):

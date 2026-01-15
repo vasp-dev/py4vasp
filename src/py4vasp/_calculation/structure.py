@@ -7,7 +7,7 @@ import numpy as np
 from py4vasp import exception, raw
 from py4vasp._calculation import _stoichiometry, base, cell, slice_
 from py4vasp._third_party import view
-from py4vasp._util import import_, parse
+from py4vasp._util import database, import_, parse
 
 ase = import_.optional("ase")
 ase_io = import_.optional("ase.io")
@@ -252,7 +252,7 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        stoichiometry = self._stoichiometry()._read_to_database()
+        stoichiometry = self._stoichiometry()._read_to_database(*args, **kwargs)
         cell = {
             "cell": {
                 "is_changing": (
@@ -266,14 +266,14 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
                 ),
             }
         }  # TODO add cell._read_to_database() when it exists
-        return (
+        return database.combine_db_dicts(
             {
                 "structure": {
                     "total_ion_count": self.number_atoms(),
                 },
-            }
-            | stoichiometry
-            | cell
+            },
+            stoichiometry,
+            cell,
         )
 
     @base.data_access

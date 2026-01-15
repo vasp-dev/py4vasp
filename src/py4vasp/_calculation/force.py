@@ -5,7 +5,7 @@ import numpy as np
 from py4vasp import _config
 from py4vasp._calculation import base, slice_, structure
 from py4vasp._third_party import view
-from py4vasp._util import reader
+from py4vasp._util import database, reader
 
 
 class Force(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
@@ -118,16 +118,19 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        structure = self._structure[self._steps]._read_to_database()
+        structure = self._structure[self._steps]._read_to_database(*args, **kwargs)
         force_norms = np.linalg.norm(self._force[self._steps], axis=-1)
-        return {
-            "force": {
-                "min_force": np.min(force_norms),
-                "median_force": np.median(force_norms),
-                "mean_force": np.mean(force_norms),
-                "max_force": np.max(force_norms),
+        return database.combine_db_dicts(
+            {
+                "force": {
+                    "min_force": np.min(force_norms),
+                    "median_force": np.median(force_norms),
+                    "mean_force": np.mean(force_norms),
+                    "max_force": np.max(force_norms),
+                },
             },
-        } | structure
+            structure,
+        )
 
     @base.data_access
     def to_view(self, supercell=None):

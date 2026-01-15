@@ -8,7 +8,7 @@ from py4vasp import exception
 from py4vasp._raw.access import access
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
 from py4vasp._raw.definition import schema, selections, unique_selections
-from py4vasp._util import convert, import_
+from py4vasp._util import convert, database, import_
 
 INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
 QUANTITIES = (
@@ -309,99 +309,6 @@ instead of the constructor Calculation()."""
     # def POSCAR(self, poscar):
     #     self._POSCAR.write(str(poscar))
 
-    def _compute_quantity_db_data(
-        self, group, selection, quantity_name, group_name=None
-    ) -> Tuple[bool, dict]:
-        "Compute additional data to be stored in the database."
-        is_available = False
-        additional_properties = {}
-        quantity_data = None
-
-        try:
-            # attempt to read
-            quantity_data = getattr(group, quantity_name).read(selection=str(selection))
-            is_available = True
-            # attempt to compute additional properties if any are requested
-        except exception.NoData:
-            pass  # happens when some required data is missing
-        except exception.OutdatedVaspVersion:
-            pass  # happens when VASP version is too old for this quantity
-        except exception.FileAccessError:
-            pass  # happens when vaspout.h5 or vaspwave.h5 (where relevant) are missing
-        except Exception as e:
-            # print(
-            #     f"[CHECK] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:",
-            #     e,
-            # )
-            pass  # catch any other errors during reading
-
-        if quantity_data is not None:
-            try:
-                database_data: dict[str, dict[str, Any]] = getattr(
-                    group, quantity_name
-                )._read_to_database(selection=str(selection))
-                _, has_selection = self._construct_database_data_key(
-                    group_name, quantity_name, selection
-                )
-                if has_selection:
-                    # suffix primary keys with selection
-                    database_data = dict(
-                        zip(
-                            [f"{key}:{selection}" for key in database_data.keys()],
-                            database_data.values(),
-                        )
-                    )
-                additional_properties = additional_properties | database_data
-            except Exception as e:
-                raise Exception(
-                    f"[ADD] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection} (please consider filing a bug report):",
-                    e,
-                ) from e
-                # pass  # catch any other errors during reading
-
-            # TODO bandgap = bandgap:kpoint --> if selections are factually identical but could be different, we should still add both variants to the db, right?
-            # TODO find a way to ensure properties are only re-computed if they don't already exist
-            #       --> I need to pass additional_properties (at least the keys) down to avoid recomputing them
-            #       --> I also need to pass down the future suffix for the selection (because I may compute structure for phonon:structure, and that would not overwrite structure)
-            #       --> with this approach, I could also avoid suffix sensitivity for some quantities by not passing the suffix further down
-        return is_available, additional_properties
-
-    def _construct_database_data_key(
-        self, group_name, quantity_name, selection
-    ) -> Tuple[str, bool]:
-        "Construct the key for storing database data."
-        has_selection = selection and selection != "default"
-        full_key = quantity_name + (f":{selection}" if has_selection else "")
-        if group_name is not None:
-            full_key = f"{group_name}.{full_key}"
-        return full_key, has_selection
-
-    def _loop_quantities(
-        self, quantities, available_quantities, additional_properties, group_name=None
-    ) -> Tuple[dict[str, bool], dict[str, dict]]:
-        group_instance = self if group_name is None else getattr(self, group_name)
-        for quantity in quantities:
-            try:
-                _selections = (
-                    unique_selections(quantity)
-                    if group_name is None
-                    else unique_selections(f"{group_name}_{quantity}")
-                )
-            except exception.FileAccessError:
-                _selections = ["default"]
-
-            for selection in _selections:
-                is_available, props = self._compute_quantity_db_data(
-                    group_instance, selection, quantity, group_name
-                )
-                availability_key, _ = self._construct_database_data_key(
-                    group_name, quantity, selection
-                )
-                available_quantities[availability_key] = is_available
-                if is_available:
-                    additional_properties = additional_properties | props
-        return available_quantities, additional_properties
-
     def _compute_database_data(self) -> Tuple[dict[str, bool], dict[str, dict]]:
         """Computes a dict of available py4vasp dataclasses and all available database data.
 
@@ -429,6 +336,90 @@ instead of the constructor Calculation()."""
                 group_name=group,
             )
         return available_quantities, additional_properties
+
+    def _loop_quantities(
+        self, quantities, available_quantities, additional_properties, group_name=None
+    ) -> Tuple[dict[str, bool], dict[str, dict]]:
+        group_instance = self if group_name is None else getattr(self, group_name)
+        for quantity in quantities:
+            try:
+                _selections = (
+                    unique_selections(quantity)
+                    if group_name is None
+                    else unique_selections(f"{group_name}_{quantity}")
+                )
+            except exception.FileAccessError:
+                _selections = ["default"]
+
+            for selection in _selections:
+                is_available, props = self._compute_quantity_db_data(
+                    group_instance,
+                    selection,
+                    quantity,
+                    group_name,
+                    additional_properties,
+                )
+                availability_key, _ = database.construct_database_data_key(
+                    group_name, quantity, selection
+                )
+                available_quantities[availability_key] = is_available
+                if is_available:
+                    additional_properties = database.combine_db_dicts(
+                        additional_properties, props
+                    )
+        return available_quantities, additional_properties
+
+    def _compute_quantity_db_data(
+        self, group, selection, quantity_name, group_name=None, current_db={}
+    ) -> Tuple[bool, dict]:
+        "Compute additional data to be stored in the database."
+        is_available = False
+        additional_properties = {}
+        quantity_data = None
+
+        try:
+            # attempt to read
+            quantity_data = getattr(group, quantity_name).read(selection=str(selection))
+            is_available = True
+            # attempt to compute additional properties if any are requested
+        except exception.NoData:
+            pass  # happens when some required data is missing
+        except exception.OutdatedVaspVersion:
+            pass  # happens when VASP version is too old for this quantity
+        except exception.FileAccessError:
+            pass  # happens when vaspout.h5 or vaspwave.h5 (where relevant) are missing
+        except Exception as e:
+            # print(
+            #     f"[CHECK] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:",
+            #     e,
+            # )
+            pass  # catch any other errors during reading
+
+        if quantity_data is not None:
+            try:
+                _, has_selection = database.construct_database_data_key(
+                    group_name, quantity_name, selection
+                )
+                key_suffix = f":{selection}" if has_selection else ""
+                additional_properties: dict[str, dict[str, Any]] = getattr(
+                    group, quantity_name
+                )._read_to_database(
+                    selection=str(selection),
+                    db_key_suffix=key_suffix,
+                    current_db=current_db,
+                )
+            except Exception as e:
+                raise Exception(
+                    f"[ADD] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection} (please consider filing a bug report):",
+                    e,
+                ) from e
+                # pass  # catch any other errors during reading
+
+            # TODO bandgap = bandgap:kpoint --> if selections are factually identical but could be different, we should still add both variants to the db, right?
+            # TODO why is the contcar system unknown?
+            # TODO respect different selections for other quantity reads (e.g. in someX:someY actually construct a someZ or someZ:someA selection internally)
+            # TODO ensure Link(..., selection) is respected in key construction
+        return is_available, additional_properties
 
 
 def _add_all_refinement_classes(calc):
