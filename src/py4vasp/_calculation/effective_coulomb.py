@@ -125,6 +125,12 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
 
     @base.data_access
     def to_graph(self, selection="total", omega=None) -> graph.Graph:
+        if omega is None or np.ndim(omega) > 0:
+            return self._frequency_plot(selection, omega)
+        else:
+            return self._radial_plot(selection)
+
+    def _frequency_plot(self, selection, omega):
         omega_in = self._read_frequencies().get("frequencies")
         if omega_in is None:
             raise exception.DataMismatch("The output does not contain frequency data.")
@@ -187,3 +193,9 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
             return {0: {"total": slice(0, 2), **spin_map}}
         else:
             return {0: {"total": 0}}
+
+    def _radial_plot(self, selection):
+        series = [1, 2]
+        return graph.Graph(
+            series, xlabel="Distance (Å)", ylabel="Coulomb potential (eV)"
+        )
