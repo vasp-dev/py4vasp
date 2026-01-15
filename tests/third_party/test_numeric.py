@@ -22,7 +22,7 @@ def lorentzian(z):
 
 def test_analytic_continuation_for_higher_dimensions(Assert):
     z_in = np.random.rand(3)
-    f_in = np.random.rand(3, 4, 5)
+    f_in = np.random.rand(5, 4, 3)
     z_out = z_in
     f_out = analytic_continuation(z_in, f_in, z_out)
     Assert.allclose(f_out, f_in)
