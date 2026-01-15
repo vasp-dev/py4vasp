@@ -2,13 +2,13 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
 from dataclasses import dataclass
-from unittest.mock import patch
 
 import numpy as np
 import pytest
 
 from py4vasp import exception
 from py4vasp._calculation.effective_coulomb import EffectiveCoulomb
+from py4vasp._third_party.numeric import analytic_continuation
 from py4vasp._util import check, convert
 
 
@@ -181,22 +181,16 @@ def test_plot_invalid_selection(nonpolarized_crpar, selection):
 
 
 def test_plot_with_analytic_continuation(nonpolarized_crpar, Assert):
-    effective_coulomb = nonpolarized_crpar
+    plot_data = nonpolarized_crpar.ref.plot_data
     omega = np.linspace(0, 10, 20)
-    analytic_continuation = "py4vasp._third_party.numeric.analytic_continuation"
-    mock_data = np.random.rand(len(omega), 1)
-    with patch(analytic_continuation, return_value=mock_data) as mock_analytic:
-        graph = effective_coulomb.plot(omega=omega)
-        mock_analytic.assert_called_once()
-        z_in, f_in, z_out = mock_analytic.call_args.args
-        Assert.allclose(z_in, effective_coulomb.ref.plot_data["frequencies"])
-        Assert.allclose(f_in, effective_coulomb.ref.plot_data["screened"])
-        Assert.allclose(z_out, omega)
-
+    expected_output = analytic_continuation(
+        plot_data["frequencies"], plot_data["screened"], omega
+    )
+    graph = nonpolarized_crpar.plot(omega=omega)
     assert len(graph) == 2
     assert graph.xlabel == "ω (eV)"
     assert graph.ylabel == "Coulomb potential (eV)"
-    expected_lines = [np.squeeze(mock_data), effective_coulomb.ref.plot_data["bare"]]
+    expected_lines = [np.squeeze(expected_output), plot_data["bare"]]
     expected_labels = ["screened", "bare"]
     for series, expected_line, label in zip(graph, expected_lines, expected_labels):
         Assert.allclose(series.x, omega)
