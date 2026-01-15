@@ -248,6 +248,18 @@ instead of the constructor Calculation()."""
         >>> from py4vasp import Calculation
         >>> calculation = Calculation.from_path("path/to/calculation")
         >>> calc_data = calculation.to_database(tags=["relaxation", "vaspdb", "testing some stuff"])
+
+        Notes
+        -----
+        To add a variable to the database data, implement a `_to_database` method
+        in a `base.Refinery` subclass (see `base.Refinery._read_to_database` for reference) listed in QUANTITIES.
+        For example, the `_calculation.energy.Energy` class implements such a method to add energy-related
+        data to the database.
+
+        If you do not know which quantity to add it to, consider `_calculation.run_info.RunInfo` if you can
+        guarantee the quantity will always be available. If not, implement your own dataclass - just make sure
+        to implement the base dataclass in `_raw.data`, add its schema in `_raw.definition`, write an implementation
+        for `_calculation.your_quantity.YourQuantity` and add it to the QUANTITIES list.
         """
         hdf5_path: pathlib.Path = self._path / (self._file or "vaspout.h5")
 
@@ -417,8 +429,7 @@ instead of the constructor Calculation()."""
 
             # TODO bandgap = bandgap:kpoint --> if selections are factually identical but could be different, we should still add both variants to the db, right?
             # TODO why is the contcar system unknown?
-            # TODO respect different selections for other quantity reads (e.g. in someX:someY actually construct a someZ or someZ:someA selection internally)
-            # TODO ensure Link(..., selection) is respected in key construction
+            # TODO ensure Link(..., selection) is respected in key construction as a specific selection
         return is_available, additional_properties
 
 

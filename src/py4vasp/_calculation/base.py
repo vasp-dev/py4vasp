@@ -150,10 +150,28 @@ class Refinery:
         directly by users. It converts the data into a format suitable for
         database storage.
 
+        Parameters
+        ----------
+        db_key_suffix : str, optional
+            Suffix to append to all database keys returned by this method. This is used
+            to distinguish different selections of the same quantity in the database.
+        current_db : dict, optional
+            If provided, this dictionary contains the already computed database entries.
+            This will be used to avoid recomputing quantities that are already present
+            in the database.
+
+        Returns
+        -------
+        dict
+            A dictionary representation of the data suitable for database storage.
+
+        Notes
+        -----
         Example implementation for Quantity._to_database:
 
         ```python
         from py4vasp._util import database
+        from py4vasp._calculation import base
 
         class Quantity(base.Refinery):
             @base.data_access
@@ -178,29 +196,14 @@ class Refinery:
         Note 3: that when the dataclass loads other quantities, you should call their
         `_read_to_database` method directly to avoid re-selecting the data again.
         The approach with loading quantities is the same as is, e.g., done for to_dict
-        in structure - _other_quantity.OtherQuantity.from_data(self._raw_data.other_quantity)
-        to obtain the class, then call _read_to_database on that instance.
-        Make sure to pass *args and **kwargs to these calls to propagate any relevant options,
-        primarily db_key_suffix and current_db (otherwise, caching will not work properly).
+        in structure - `_other_quantity.OtherQuantity.from_data(self._raw_data.other_quantity)`
+        to obtain the class, then call `_read_to_database` on that instance.
+        Make sure to pass `*args` and `**kwargs` to these calls to propagate any relevant options,
+        primarily `db_key_suffix` and `current_db` (otherwise, caching will not work properly).
 
-        Note 4: that you do not need to manually add the db_key_suffix to the keys
+        Note 4: that you do not need to manually add the `db_key_suffix` to the keys
         in the returned dictionary. This is handled automatically after this method
         returns, unless a selection is already specified on a key.
-
-        Parameters
-        ----------
-        db_key_suffix : str, optional
-            Suffix to append to all database keys returned by this method. This is used
-            to distinguish different selections of the same quantity in the database.
-        current_db : dict, optional
-            If provided, this dictionary contains the already computed database entries.
-            This will be used to avoid recomputing quantities that are already present
-            in the database.
-
-        Returns
-        -------
-        dict
-            A dictionary representation of the data suitable for database storage.
         """
         try:
             raw_db_key = _quantity(self.__class__)
