@@ -5,7 +5,7 @@ import numpy as np
 from py4vasp import exception
 from py4vasp._calculation import base, cell
 from py4vasp._raw import data
-from py4vasp._third_party import graph
+from py4vasp._third_party import graph, numeric
 from py4vasp._util import check, convert, index, select
 
 
@@ -124,15 +124,18 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         return cell.Cell.from_data(self._raw_data.cell)
 
     @base.data_access
-    def to_graph(self, selection="total") -> graph.Graph:
+    def to_graph(self, selection="total", omega=None) -> graph.Graph:
         if not self._has_frequencies:
             raise exception.DataMismatch("The output does not contain frequency data.")
         tree = select.Tree.from_selection(selection)
-        potentials = self._retrieve_effective_potentials()
-        series = list(self._generate_series(tree, potentials))
-        return graph.Graph(series, xlabel="Im(ω) (eV)", ylabel="Coulomb potential (eV)")
+        omega_in = convert.to_complex(self._raw_data.frequencies[:])
+        omega_out = omega if omega is not None else omega_in
+        potentials = self._retrieve_effective_potentials(omega_in, omega_out)
+        series = list(self._generate_series(tree, omega_out, potentials))
+        xlabel = "Im(ω) (eV)" if omega is None else "ω (eV)"
+        return graph.Graph(series, xlabel=xlabel, ylabel="Coulomb potential (eV)")
 
-    def _retrieve_effective_potentials(self):
+    def _retrieve_effective_potentials(self, omega_in, omega_out):
         wannier_iiii = self._wannier_indices_iiii()
         all_omega = all_spin = slice(None)
         origin = 0
@@ -144,6 +147,10 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
             access_U = (all_omega, all_spin, wannier_iiii, real_part)
             access_V = (all_spin, wannier_iiii, real_part)
         U = np.average(self._raw_data.screened_potential[access_U], axis=-1)
+        U2 = self._read_screened()
+        if not omega_in is omega_out:
+            print(f"{U.shape=}, {U2.shape=}")
+            U = numeric.analytic_continuation(omega_in, U, omega_out)
         V = np.average(self._raw_data.bare_potential_high_cutoff[access_V], axis=-1)
         V = np.tile(V, (U.shape[0], 1))
         return {"screened": U, "bare": V}
@@ -157,8 +164,11 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         stop = n**4
         return range(0, stop, step)
 
-    def _generate_series(self, tree, potentials):
-        omega = self._raw_data.frequencies[:, 1]
+    def _generate_series(self, tree, omega, potentials):
+        if np.isclose(omega.real, omega).all():
+            omega = omega.real
+        else:
+            omega = omega.imag
         maps = self._create_map()
         for label, potential in potentials.items():
             selector = index.Selector(maps, potential, reduction=np.average)

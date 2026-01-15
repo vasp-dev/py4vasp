@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
 from dataclasses import dataclass
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -174,3 +175,41 @@ def test_plot_invalid_selection(nonpolarized_crpar, selection):
     effective_coulomb = nonpolarized_crpar
     with pytest.raises(exception.IncorrectUsage):
         effective_coulomb.plot(selection)
+
+
+def test_plot_with_analytic_continuation(nonpolarized_crpar, Assert):
+    effective_coulomb = nonpolarized_crpar
+    frequencies = effective_coulomb.ref.expected["frequencies"]
+    weight = 1 / effective_coulomb.ref.num_wannier
+    screened_potential = (
+        np.einsum(f"siiiiw->w", effective_coulomb.ref.expected["screened"][0, :2])
+        * weight
+    )
+    bare_potential = (
+        np.einsum(
+            f"siiiiw->w", effective_coulomb.ref.expected["bare_high_cutoff"][0, :2].real
+        )
+        * weight
+    )
+
+    omega = np.linspace(0, 10, 50)
+    analytic_continuation = "py4vasp._third_party.numeric.analytic_continuation"
+    mock_data = np.random.rand(len(omega), 1)
+    with patch(analytic_continuation, return_value=mock_data) as mock_analytic:
+        graph = effective_coulomb.plot(omega=omega)
+        mock_analytic.assert_called_once()
+        z_in, f_in, z_out = mock_analytic.call_args.args
+        Assert.allclose(z_in, frequencies)
+        Assert.allclose(f_in, screened_potential)
+        Assert.allclose(z_out, omega)
+
+    assert len(graph) == 2
+    assert graph.xlabel == "ω (eV)"
+    assert graph.ylabel == "Coulomb potential (eV)"
+    expected_lines = [mock_data, bare_potential]
+    expected_labels = ["screened", "bare"]
+    for series, expected_line, label in zip(graph, expected_lines, expected_labels):
+        Assert.allclose(series.x, omega)
+        Assert.allclose(series.y, expected_line)
+        assert series.label == label
+    assert False
