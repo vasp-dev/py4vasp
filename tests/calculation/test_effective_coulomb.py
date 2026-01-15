@@ -192,7 +192,7 @@ def test_plot_with_analytic_continuation(nonpolarized_crpar, Assert):
         * weight
     )
 
-    omega = np.linspace(0, 10, 50)
+    omega = np.linspace(0, 10, 20)
     analytic_continuation = "py4vasp._third_party.numeric.analytic_continuation"
     mock_data = np.random.rand(len(omega), 1)
     with patch(analytic_continuation, return_value=mock_data) as mock_analytic:
@@ -200,13 +200,13 @@ def test_plot_with_analytic_continuation(nonpolarized_crpar, Assert):
         mock_analytic.assert_called_once()
         z_in, f_in, z_out = mock_analytic.call_args.args
         Assert.allclose(z_in, frequencies)
-        Assert.allclose(f_in, screened_potential)
+        Assert.allclose(f_in.T, screened_potential)
         Assert.allclose(z_out, omega)
 
     assert len(graph) == 2
     assert graph.xlabel == "ω (eV)"
     assert graph.ylabel == "Coulomb potential (eV)"
-    expected_lines = [mock_data, bare_potential]
+    expected_lines = [np.squeeze(mock_data), bare_potential]
     expected_labels = ["screened", "bare"]
     for series, expected_line, label in zip(graph, expected_lines, expected_labels):
         Assert.allclose(series.x, omega)

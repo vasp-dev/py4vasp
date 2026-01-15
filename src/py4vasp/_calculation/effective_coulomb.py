@@ -125,17 +125,21 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
 
     @base.data_access
     def to_graph(self, selection="total", omega=None) -> graph.Graph:
-        if not self._has_frequencies:
+        frequencies = self._read_frequencies().get("frequencies")
+        if frequencies is None:
             raise exception.DataMismatch("The output does not contain frequency data.")
         tree = select.Tree.from_selection(selection)
-        omega_in = convert.to_complex(self._raw_data.frequencies[:])
-        omega_out = omega if omega is not None else omega_in
-        potentials = self._retrieve_effective_potentials(omega_in, omega_out)
-        series = list(self._generate_series(tree, omega_out, potentials))
-        xlabel = "Im(ω) (eV)" if omega is None else "ω (eV)"
+        if omega is None:
+            omega = frequencies
+            potentials = self._retrieve_effective_potentials()
+            xlabel = "Im(ω) (eV)"
+        else:
+            potentials = self._interpolate_effective_potentials(frequencies, omega)
+            xlabel = "ω (eV)"
+        series = list(self._generate_series(tree, omega, potentials))
         return graph.Graph(series, xlabel=xlabel, ylabel="Coulomb potential (eV)")
 
-    def _retrieve_effective_potentials(self, omega_in, omega_out):
+    def _retrieve_effective_potentials(self):
         wannier_iiii = self._wannier_indices_iiii()
         all_omega = all_spin = slice(None)
         origin = 0
@@ -147,13 +151,27 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
             access_U = (all_omega, all_spin, wannier_iiii, real_part)
             access_V = (all_spin, wannier_iiii, real_part)
         U = np.average(self._raw_data.screened_potential[access_U], axis=-1)
-        U2 = self._read_screened()
-        if not omega_in is omega_out:
-            print(f"{U.shape=}, {U2.shape=}")
-            U = numeric.analytic_continuation(omega_in, U, omega_out)
         V = np.average(self._raw_data.bare_potential_high_cutoff[access_V], axis=-1)
         V = np.tile(V, (U.shape[0], 1))
         return {"screened": U, "bare": V}
+
+    def _interpolate_effective_potentials(self, omega_in, omega_out):
+        wannier_iiii = self._wannier_indices_iiii()
+        all_omega = all_spin = complex_ = slice(None)
+        origin = 0
+        real_part = 0
+        if self._has_positions:
+            access_U = (all_omega, all_spin, wannier_iiii, origin, complex_)
+            access_V = (all_spin, wannier_iiii, origin, real_part)
+        else:
+            access_U = (all_omega, all_spin, wannier_iiii, complex_)
+            access_V = (all_spin, wannier_iiii, real_part)
+        U = convert.to_complex(self._raw_data.screened_potential[access_U])
+        U_in = np.average(U, axis=-1)
+        U_out = numeric.analytic_continuation(omega_in, U_in, omega_out)
+        V = np.average(self._raw_data.bare_potential_high_cutoff[access_V], axis=-1)
+        V = np.tile(V, (U_out.shape[0], 1))
+        return {"screened": U_out, "bare": V}
 
     def _wannier_indices_iiii(self):
         """Return the indices that trace over diagonal of the 4 Wannier states. This
