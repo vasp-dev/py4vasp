@@ -196,3 +196,17 @@ def test_plot_with_analytic_continuation(nonpolarized_crpar, Assert):
         Assert.allclose(series.x, omega)
         Assert.allclose(series.y, expected_line.real)
         assert series.label == label
+
+
+def test_plot_with_analytic_continuation_and_spin_selection(collinear_crpar, Assert):
+    plot_data = collinear_crpar.ref.plot_data
+    omega = np.linspace(0, 10, 20)
+    expected_output = 2 * analytic_continuation(
+        plot_data["frequencies"], plot_data["screened"], omega
+    )
+    graph = collinear_crpar.plot("down~down", omega=omega)
+    assert len(graph) == 2
+    series = graph[0]
+    Assert.allclose(series.x, omega)
+    Assert.allclose(series.y, expected_output[1].real)
+    assert series.label == "screened_down~down"
