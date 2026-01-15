@@ -168,7 +168,7 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
             access_V = (all_spin, wannier_iiii, real_part)
         U = convert.to_complex(self._raw_data.screened_potential[access_U])
         U_in = np.average(U, axis=-1)
-        U_out = numeric.analytic_continuation(omega_in, U_in, omega_out)
+        U_out = numeric.analytic_continuation(omega_in, U_in.T, omega_out)
         V = np.average(self._raw_data.bare_potential_high_cutoff[access_V], axis=-1)
         V = np.tile(V, (U_out.shape[0], 1))
         return {"screened": U_out, "bare": V}

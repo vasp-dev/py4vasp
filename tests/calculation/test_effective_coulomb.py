@@ -18,6 +18,7 @@ class Setup:
     has_positions: bool
     is_nonpolarized: bool
     is_collinear: bool
+    number_wannier: int
 
 
 @pytest.fixture(params=["crpa", "crpa_two_center", "crpar", "crpar_two_center"])
@@ -39,27 +40,27 @@ def create_coulomb_reference(raw_data, param):
     raw_coulomb = raw_data.effective_coulomb(param)
     coulomb = EffectiveCoulomb.from_data(raw_coulomb)
     coulomb.ref = types.SimpleNamespace()
-    coulomb.ref.setup = determine_setup(param, raw_coulomb)
-    coulomb.ref.num_wannier = raw_coulomb.number_wannier_states
-    coulomb.ref.expected = setup_expected_dict(coulomb.ref.setup, raw_coulomb)
+    setup = determine_setup(raw_coulomb)
+    coulomb.ref.read_data = setup_read_data(setup, raw_coulomb)
+    coulomb.ref.plot_data = setup_plot_data(setup, coulomb.ref.read_data)
     return coulomb
 
 
-def determine_setup(param, raw_coulomb):
+def determine_setup(raw_coulomb):
     return Setup(
         has_frequencies=len(raw_coulomb.frequencies) > 1,
         has_positions=not check.is_none(raw_coulomb.positions),
         is_nonpolarized=(len(raw_coulomb.bare_potential_low_cutoff) == 1),
         is_collinear=(len(raw_coulomb.bare_potential_low_cutoff) == 3),
+        number_wannier=raw_coulomb.number_wannier_states,
     )
 
 
-def setup_expected_dict(setup, raw_coulomb):
-    num_wannier = raw_coulomb.number_wannier_states
+def setup_read_data(setup, raw_coulomb):
     axis_U = 2 if setup.has_frequencies else 1
-    C = unpack(num_wannier, raw_coulomb.bare_potential_low_cutoff, axis=1)
-    V = unpack(num_wannier, raw_coulomb.bare_potential_high_cutoff, axis=1)
-    U = unpack(num_wannier, raw_coulomb.screened_potential, axis=axis_U)
+    C = unpack(setup.number_wannier, raw_coulomb.bare_potential_low_cutoff, axis=1)
+    V = unpack(setup.number_wannier, raw_coulomb.bare_potential_high_cutoff, axis=1)
+    U = unpack(setup.number_wannier, raw_coulomb.screened_potential, axis=axis_U)
     if setup.has_positions:
         V = np.moveaxis(V, -1, 0)
         U = np.moveaxis(U, -1, 0)
@@ -84,6 +85,26 @@ def setup_expected_dict(setup, raw_coulomb):
     return result
 
 
+def setup_plot_data(setup, read_data):
+    if not setup.has_frequencies:
+        return None
+    if setup.has_positions:
+        screened_potential = read_data["screened"][0]
+        bare_potential = read_data["bare_high_cutoff"][0]
+    else:
+        screened_potential = read_data["screened"]
+        bare_potential = read_data["bare_high_cutoff"]
+    if setup.is_nonpolarized:
+        weight = 1 / setup.number_wannier
+    else:
+        weight = 0.5 / setup.number_wannier
+    return {
+        "frequencies": read_data.get("frequencies"),
+        "screened": np.einsum(f"siiiiw->sw", screened_potential) * weight,
+        "bare": np.einsum(f"siiiiw->sw", bare_potential) * weight,
+    }
+
+
 def unpack(num_wannier, data, axis):
     data = convert.to_complex(data[:])
     shape = (
@@ -96,14 +117,14 @@ def unpack(num_wannier, data, axis):
 
 def test_read(effective_coulomb, Assert):
     actual = effective_coulomb.read()
-    assert actual.keys() == effective_coulomb.ref.expected.keys()
+    assert actual.keys() == effective_coulomb.ref.read_data.keys()
     for key in actual.keys():
-        assert actual[key].shape == effective_coulomb.ref.expected[key].shape
-        Assert.allclose(actual[key], effective_coulomb.ref.expected[key])
+        assert actual[key].shape == effective_coulomb.ref.read_data[key].shape
+        Assert.allclose(actual[key], effective_coulomb.ref.read_data[key])
 
 
 def test_plot(effective_coulomb, Assert):
-    if effective_coulomb.ref.setup.has_frequencies:
+    if effective_coulomb.ref.plot_data is not None:
         check_plot_has_correct_series(effective_coulomb, Assert)
     else:
         check_plot_raises_error(effective_coulomb)
@@ -114,25 +135,11 @@ def check_plot_has_correct_series(effective_coulomb, Assert):
     assert len(graph) == 2
     assert graph.xlabel == "Im(ω) (eV)"
     assert graph.ylabel == "Coulomb potential (eV)"
-    frequencies = effective_coulomb.ref.expected.get("frequencies")
-    if effective_coulomb.ref.setup.has_positions:
-        screened_potential = effective_coulomb.ref.expected["screened"][0]
-        bare_potential = effective_coulomb.ref.expected["bare_high_cutoff"][0]
-    else:
-        screened_potential = effective_coulomb.ref.expected["screened"]
-        bare_potential = effective_coulomb.ref.expected["bare_high_cutoff"]
-    if effective_coulomb.ref.setup.is_nonpolarized:
-        weight = 1 / effective_coulomb.ref.num_wannier
-    else:
-        weight = 0.5 / effective_coulomb.ref.num_wannier
-    expected_lines = (
-        np.einsum(f"siiiiw->w", screened_potential[:2].real) * weight,
-        np.einsum(f"siiiiw->w", bare_potential[:2].real) * weight,
-    )
     expected_labels = ["screened", "bare"]
-    for series, expected_line, label in zip(graph, expected_lines, expected_labels):
-        Assert.allclose(series.x, frequencies.imag)
-        Assert.allclose(series.y, expected_line)
+    for series, label in zip(graph, expected_labels):
+        Assert.allclose(series.x, effective_coulomb.ref.plot_data["frequencies"].imag)
+        potential = effective_coulomb.ref.plot_data[label]
+        Assert.allclose(series.y, np.sum(potential[:2], axis=0).real)
         assert series.label == label
 
 
@@ -144,27 +151,23 @@ def check_plot_raises_error(effective_coulomb):
 @pytest.mark.parametrize("selection", ["total", "up~up", "down~down", "up~down"])
 def test_plot_selected_spin(collinear_crpar, selection, Assert):
     effective_coulomb = collinear_crpar
-    graph = effective_coulomb.plot(selection)
-    assert len(graph) == 2
-    screened_potential = effective_coulomb.ref.expected["screened"]
-    bare_potential = effective_coulomb.ref.expected["bare_high_cutoff"]
     if selection == "total":
-        weight = 0.5 / effective_coulomb.ref.num_wannier
         spin_selection = slice(None, 2)
         suffix = ""
+        factor = 1.0
     else:
-        weight = 1 / effective_coulomb.ref.num_wannier
         spin_map = {"up~up": 0, "down~down": 1, "up~down": 2}
         spin_selection = slice(spin_map[selection], spin_map[selection] + 1)
         suffix = f"_{selection}"
-    expected_lines = (
-        np.einsum(f"siiiiw->w", screened_potential[spin_selection].real) * weight,
-        np.einsum(f"siiiiw->w", bare_potential[spin_selection].real) * weight,
-    )
-    expected_labels = [f"screened{suffix}", f"bare{suffix}"]
-    for series, expected_line, label in zip(graph, expected_lines, expected_labels):
-        Assert.allclose(series.y, expected_line)
-        assert series.label == label
+        factor = 2.0
+
+    graph = effective_coulomb.plot(selection)
+    assert len(graph) == 2
+    expected_labels = ["screened", "bare"]
+    for series, label in zip(graph, expected_labels):
+        potential = factor * effective_coulomb.ref.plot_data[label]
+        Assert.allclose(series.y, np.sum(potential[spin_selection], axis=0).real)
+        assert series.label == f"{label}{suffix}"
 
 
 @pytest.mark.parametrize(
@@ -179,19 +182,6 @@ def test_plot_invalid_selection(nonpolarized_crpar, selection):
 
 def test_plot_with_analytic_continuation(nonpolarized_crpar, Assert):
     effective_coulomb = nonpolarized_crpar
-    frequencies = effective_coulomb.ref.expected["frequencies"]
-    weight = 1 / effective_coulomb.ref.num_wannier
-    screened_potential = (
-        np.einsum(f"siiiiw->w", effective_coulomb.ref.expected["screened"][0, :2])
-        * weight
-    )
-    bare_potential = (
-        np.einsum(
-            f"siiiiw->w", effective_coulomb.ref.expected["bare_high_cutoff"][0, :2].real
-        )
-        * weight
-    )
-
     omega = np.linspace(0, 10, 20)
     analytic_continuation = "py4vasp._third_party.numeric.analytic_continuation"
     mock_data = np.random.rand(len(omega), 1)
@@ -199,17 +189,16 @@ def test_plot_with_analytic_continuation(nonpolarized_crpar, Assert):
         graph = effective_coulomb.plot(omega=omega)
         mock_analytic.assert_called_once()
         z_in, f_in, z_out = mock_analytic.call_args.args
-        Assert.allclose(z_in, frequencies)
-        Assert.allclose(f_in.T, screened_potential)
+        Assert.allclose(z_in, effective_coulomb.ref.plot_data["frequencies"])
+        Assert.allclose(f_in, effective_coulomb.ref.plot_data["screened"])
         Assert.allclose(z_out, omega)
 
     assert len(graph) == 2
     assert graph.xlabel == "ω (eV)"
     assert graph.ylabel == "Coulomb potential (eV)"
-    expected_lines = [np.squeeze(mock_data), bare_potential]
+    expected_lines = [np.squeeze(mock_data), effective_coulomb.ref.plot_data["bare"]]
     expected_labels = ["screened", "bare"]
     for series, expected_line, label in zip(graph, expected_lines, expected_labels):
         Assert.allclose(series.x, omega)
-        Assert.allclose(series.y, expected_line)
+        Assert.allclose(series.y, expected_line.real)
         assert series.label == label
-    assert False
