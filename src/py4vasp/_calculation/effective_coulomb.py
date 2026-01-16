@@ -236,24 +236,24 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         V_in = np.average(self._raw_data.bare_potential_high_cutoff[access_V], axis=1)
         needs_interpolation = radius_in is not radius_out
         if needs_interpolation:
-            U_avg = np.average(U_in[:2], axis=0)
-            U_out = (
-                U_avg[0]
-                * numeric.interpolate_with_function(
-                    self.ohno_potential, radius_in, U_avg / U_avg[0], radius_out
-                )[np.newaxis]
-            )
-            V_avg = np.average(V_in[:2], axis=0)
-            V_out = (
-                V_in[:, 0]
-                * numeric.interpolate_with_function(
-                    self.ohno_potential, radius_in, V_avg / V_avg[0], radius_out
-                )[np.newaxis]
-            )
+            U_out = self._ohno_interpolation(radius_in, U_in, radius_out)
+            V_out = self._ohno_interpolation(radius_in, V_in, radius_out)
         else:
             U_out = U_in
             V_out = V_in
         return {"screened": U_out, "bare": V_out}
+
+    def _ohno_interpolation(self, radius_in, spin_potential, radius_out):
+        potential = np.average(spin_potential[:2], axis=0)
+        interpolation = numeric.interpolate_with_function(
+            self.ohno_potential, radius_in, potential / potential[0], radius_out
+        )
+        return np.multiply.outer(spin_potential[:, 0], interpolation)
+
+    @staticmethod
+    def ohno_potential(radius, delta):
+        delta = np.abs(delta)
+        return np.sqrt(delta / (radius + delta))
 
     def _generate_series_radial(self, tree, radius, potentials):
         maps = self._create_map()
@@ -265,7 +265,3 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
                 yield graph.Series(
                     radius, selector[selection], label=f"{label}{suffix}", marker="*"
                 )
-
-    @staticmethod
-    def ohno_potential(radius, delta):
-        return np.sqrt(delta / (radius + np.abs(delta)))

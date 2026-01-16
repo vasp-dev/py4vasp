@@ -321,3 +321,19 @@ def test_plot_radial_interpolation(nonpolarized_crpar, Assert):
         Assert.allclose(series.x, radius)
         Assert.allclose(series.y, expected_line, tolerance=100)
         assert series.label == label
+
+
+def test_plot_with_analytic_continuation_and_spin_selection(collinear_crpa, Assert):
+    effective_coulomb = collinear_crpa
+    radius = np.linspace(0, 10)
+    raw_data = effective_coulomb.plot("up~down", radius=...)
+    interpolated_total = effective_coulomb.plot(radius=radius)
+    expected_U = raw_data[0].y[0] * interpolated_total[0].y / interpolated_total[0].y[0]
+    expected_V = raw_data[1].y[0] * interpolated_total[1].y / interpolated_total[1].y[0]
+
+    graph = effective_coulomb.plot("up~down", radius=radius)
+    assert len(graph) == 2
+    Assert.allclose(graph[0].y, expected_U)
+    Assert.allclose(graph[1].y, expected_V)
+    assert graph[0].label == "screened_up~down"
+    assert graph[1].label == "bare_up~down"
