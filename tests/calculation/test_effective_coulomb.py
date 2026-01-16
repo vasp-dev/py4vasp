@@ -8,7 +8,7 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._calculation.effective_coulomb import EffectiveCoulomb
-from py4vasp._third_party.numeric import analytic_continuation
+from py4vasp._third_party import numeric
 from py4vasp._util import check, convert
 
 
@@ -137,8 +137,8 @@ def setup_radial_data(setup, read_data):
     positions = read_data["lattice_vectors"] @ read_data["positions"][:].T
     return {
         "radius": np.linalg.norm(positions, axis=0),
-        "screened": np.einsum("rsiiii->sr", screened_potential) * weight,
-        "bare": np.einsum("rsiiii->sr", bare_potential) * weight,
+        "screened": np.einsum("rsiiii->sr", screened_potential.real) * weight,
+        "bare": np.einsum("rsiiii->sr", bare_potential.real) * weight,
     }
 
 
@@ -211,7 +211,7 @@ def test_plot_invalid_selection(nonpolarized_crpar, selection):
 def test_plot_with_analytic_continuation(nonpolarized_crpar, Assert):
     omega_data = nonpolarized_crpar.ref.omega_data
     omega = np.linspace(0, 10, 20)
-    expected_output = analytic_continuation(
+    expected_output = numeric.analytic_continuation(
         omega_data["frequencies"], omega_data["screened"], omega
     )
     graph = nonpolarized_crpar.plot(omega=omega)
@@ -229,7 +229,7 @@ def test_plot_with_analytic_continuation(nonpolarized_crpar, Assert):
 def test_plot_with_analytic_continuation_and_spin_selection(collinear_crpar, Assert):
     omega_data = collinear_crpar.ref.omega_data
     omega = np.linspace(0, 10, 20)
-    expected_output = 2 * analytic_continuation(
+    expected_output = 2 * numeric.analytic_continuation(
         omega_data["frequencies"], omega_data["screened"], omega
     )
     graph = collinear_crpar.plot("down~down", omega=omega)
@@ -255,7 +255,7 @@ def check_radial_plot_has_correct_series(effective_coulomb, Assert):
     expected_labels = ["screened", "bare"]
     for series, label in zip(graph, expected_labels):
         Assert.allclose(series.x, effective_coulomb.ref.radial_data["radius"])
-        potential = effective_coulomb.ref.radial_data[label].real
+        potential = effective_coulomb.ref.radial_data[label]
         Assert.allclose(series.y, np.sum(potential[:2], axis=0))
         assert series.label == label
         assert series.marker == "*"
@@ -284,7 +284,7 @@ def test_plot_radial_selected_spin(collinear_crpa, selection, Assert):
     expected_labels = ["screened", "bare"]
     for series, label in zip(graph, expected_labels):
         potential = factor * effective_coulomb.ref.radial_data[label]
-        Assert.allclose(series.y, np.sum(potential[spin_selection], axis=0).real)
+        Assert.allclose(series.y, np.sum(potential[spin_selection], axis=0))
         assert series.label == f"{label}{suffix}"
 
 
@@ -296,3 +296,28 @@ def test_plot_radial_invalid_selection(nonpolarized_crpar, selection):
     effective_coulomb = nonpolarized_crpar
     with pytest.raises(exception.IncorrectUsage):
         effective_coulomb.plot(selection, radius=...)
+
+
+def test_plot_radial_interpolation(nonpolarized_crpar, Assert):
+    radial_data = nonpolarized_crpar.ref.radial_data
+    radius = np.linspace(0.0, np.max(radial_data["radius"]), 30)
+    ref_graph = nonpolarized_crpar.plot(radius=...)
+    U = ref_graph[0].y
+    expected_U = U[0] * numeric.interpolate_with_function(
+        EffectiveCoulomb.ohno_potential, radial_data["radius"], U / U[0], radius
+    )
+    V = ref_graph[1].y
+    expected_V = V[0] * numeric.interpolate_with_function(
+        EffectiveCoulomb.ohno_potential, radial_data["radius"], V / V[0], radius
+    )
+
+    graph = nonpolarized_crpar.plot(radius=radius)
+    assert len(graph) == 2
+    assert graph.xlabel == "Radius (Å)"
+    assert graph.ylabel == "Coulomb potential (eV)"
+    expected_lines = [expected_U, expected_V]
+    expected_labels = ["screened", "bare"]
+    for series, expected_line, label in zip(graph, expected_lines, expected_labels):
+        Assert.allclose(series.x, radius)
+        Assert.allclose(series.y, expected_line, tolerance=100)
+        assert series.label == label
