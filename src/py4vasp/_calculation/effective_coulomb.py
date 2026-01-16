@@ -125,23 +125,23 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
 
     @base.data_access
     def to_graph(self, selection="total", omega=None) -> graph.Graph:
+        tree = select.Tree.from_selection(selection)
         if omega is None or np.ndim(omega) > 0:
-            return self._frequency_plot(selection, omega)
+            return self._frequency_plot(tree, omega)
         else:
-            return self._radial_plot(selection)
+            return self._radial_plot(tree)
 
-    def _frequency_plot(self, selection, omega):
+    def _frequency_plot(self, tree, omega):
         omega_in = self._read_frequencies().get("frequencies")
         if omega_in is None:
             raise exception.DataMismatch("The output does not contain frequency data.")
-        tree = select.Tree.from_selection(selection)
         omega_out = omega_in if omega is None else omega
-        potentials = self._get_effective_potentials(omega_in, omega_out)
-        series = list(self._generate_series(tree, omega_out, potentials))
+        potentials = self._get_effective_potentials_omega(omega_in, omega_out)
+        series = list(self._generate_series_omega(tree, omega_out, potentials))
         xlabel = "Im(ω) (eV)" if omega is None else "ω (eV)"
         return graph.Graph(series, xlabel=xlabel, ylabel="Coulomb potential (eV)")
 
-    def _get_effective_potentials(self, omega_in, omega_out):
+    def _get_effective_potentials_omega(self, omega_in, omega_out):
         wannier_iiii = self._wannier_indices_iiii()
         all_omega = all_spin = complex_ = slice(None)
         origin = real_part = 0
@@ -169,9 +169,9 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         n = self._raw_data.number_wannier_states
         step = n**3 + n**2 + n + 1
         stop = n**4
-        return range(0, stop, step)
+        return slice(0, stop, step)
 
-    def _generate_series(self, tree, omega, potentials):
+    def _generate_series_omega(self, tree, omega, potentials):
         if np.isclose(omega.real, omega).all():
             omega = omega.real
         else:
@@ -194,8 +194,34 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         else:
             return {0: {"total": 0}}
 
-    def _radial_plot(self, selection):
+    def _radial_plot(self, tree):
         series = [1, 2]
+        positions = self._transform_positions_to_radial()
+        potentials = self._get_effective_potentials_radial()
+        series = list(self._generate_series_radial(tree, positions, potentials))
         return graph.Graph(
             series, xlabel="Distance (Å)", ylabel="Coulomb potential (eV)"
         )
+
+    def _transform_positions_to_radial(self):
+        positions = self._read_positions()
+        return np.linalg.norm(
+            positions["lattice_vectors"] @ positions["positions"].T, axis=0
+        )
+
+    def _get_effective_potentials_radial(self):
+        wannier_iiii = self._wannier_indices_iiii()
+        all_positions = all_spin = slice(None)
+        omega_zero = real_part = 0
+        if self._has_frequencies:
+            access_U = (omega_zero, all_spin, wannier_iiii, all_positions, real_part)
+        else:
+            access_U = (all_spin, wannier_iiii, all_positions, real_part)
+        access_V = (all_spin, wannier_iiii, all_positions, real_part)
+        U_in = np.average(self._raw_data.screened_potential[access_U], axis=1)
+        V_in = np.average(self._raw_data.bare_potential_high_cutoff[access_V], axis=1)
+        return {"screened": U_in, "bare": V_in}
+
+    def _generate_series_radial(self, tree, positions, potentials):
+        for label, potential in potentials.items():
+            yield graph.Series(positions, potential, label=label)

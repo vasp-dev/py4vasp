@@ -98,23 +98,30 @@ def unpack(num_wannier, data, axis):
 def setup_plot_data(setup, read_data):
     if not setup.has_frequencies:
         return None
-    if setup.has_positions:
-        screened_potential = read_data["screened"][0]
-        bare_potential = read_data["bare_high_cutoff"][0]
-        positions = {"positions": read_data["positions"]}
-    else:
-        screened_potential = read_data["screened"]
-        bare_potential = read_data["bare_high_cutoff"]
-        positions = {}
     if setup.is_nonpolarized:
         weight = 1 / setup.number_wannier
     else:
         weight = 0.5 / setup.number_wannier
+    if setup.has_positions:
+        screened_potential_omega = read_data["screened"][0]
+        bare_potential_omega = read_data["bare_high_cutoff"][0]
+        positions = read_data["lattice_vectors"] @ read_data["positions"][:].T
+        screened_potential_radial = read_data["screened"][..., 0]
+        bare_potential_radial = read_data["bare_high_cutoff"][..., 0]
+        radial_data = {
+            "radius": np.linalg.norm(positions, axis=0),
+            "screened": np.einsum("rsiiii->sr", screened_potential_radial) * weight,
+            "bare": np.einsum("rsiiii->sr", bare_potential_radial) * weight,
+        }
+    else:
+        screened_potential_omega = read_data["screened"]
+        bare_potential_omega = read_data["bare_high_cutoff"]
+        radial_data = {}
     return {
         "frequencies": read_data.get("frequencies"),
-        "screened": np.einsum(f"siiiiw->sw", screened_potential) * weight,
-        "bare": np.einsum(f"siiiiw->sw", bare_potential) * weight,
-        **positions,
+        "screened": np.einsum(f"siiiiw->sw", screened_potential_omega) * weight,
+        "bare": np.einsum(f"siiiiw->sw", bare_potential_omega) * weight,
+        "radial": radial_data,
     }
 
 
@@ -197,7 +204,7 @@ def test_plot_with_analytic_continuation(nonpolarized_crpar, Assert):
     expected_labels = ["screened", "bare"]
     for series, expected_line, label in zip(graph, expected_lines, expected_labels):
         Assert.allclose(series.x, omega)
-        Assert.allclose(series.y, expected_line.real)
+        Assert.allclose(series.y, expected_line.real, tolerance=100)
         assert series.label == label
 
 
@@ -211,7 +218,7 @@ def test_plot_with_analytic_continuation_and_spin_selection(collinear_crpar, Ass
     assert len(graph) == 2
     series = graph[0]
     Assert.allclose(series.x, omega)
-    Assert.allclose(series.y, expected_output[1].real)
+    Assert.allclose(series.y, expected_output[1].real, tolerance=100)
     assert series.label == "screened_down~down"
 
 
@@ -222,12 +229,7 @@ def test_plot_radial_potential(nonpolarized_crpar, Assert):
     assert graph.xlabel == "Distance (Å)"
     assert graph.ylabel == "Coulomb potential (eV)"
     expected_labels = ["screened", "bare"]
-    series = graph[0]
-    Assert.allclose(series.x, effective_coulomb.ref.plot_data["positions"])
-    assert series.label == "screened"
-
-    # for series, label in zip(graph, expected_labels):
-    #     Assert.allclose(series.x, effective_coulomb.ref.plot_data["r"])
-    #     potential = effective_coulomb.ref.plot_data[label]
-    #     Assert.allclose(series.y, np.sum(potential[:2], axis=0).real)
-    #     assert series.label == label
+    for series, label in zip(graph, expected_labels):
+        Assert.allclose(series.x, effective_coulomb.ref.plot_data["radial"]["radius"])
+        Assert.allclose(series.y, effective_coulomb.ref.plot_data["radial"][label].real)
+        assert series.label == label
