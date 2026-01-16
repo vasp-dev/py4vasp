@@ -124,21 +124,35 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         return cell.Cell.from_data(self._raw_data.cell)
 
     @base.data_access
-    def to_graph(self, selection="total", omega=None) -> graph.Graph:
+    def to_graph(self, selection="total", omega=None, radius=None) -> graph.Graph:
+        selected_dimension = self._select_dimension(omega, radius)
         tree = select.Tree.from_selection(selection)
-        if omega is None or np.ndim(omega) > 0:
+        if selected_dimension == "frequency":
             return self._frequency_plot(tree, omega)
-        else:
+        elif selected_dimension == "radial":
             return self._radial_plot(tree)
+        else:
+            raise exception.NotImplemented(
+                f"Plotting for the selected dimension {selected_dimension} is not implemented."
+            )
+
+    def _select_dimension(self, omega, radius):
+        if omega is not None:
+            return "frequency"
+        elif radius is not None:
+            return "radial"
+        else:
+            return "frequency"
 
     def _frequency_plot(self, tree, omega):
         omega_in = self._read_frequencies().get("frequencies")
+        omega_set = omega is None or omega is ...
         if omega_in is None:
             raise exception.DataMismatch("The output does not contain frequency data.")
-        omega_out = omega_in if omega is None else omega
+        omega_out = omega_in if omega_set else omega
         potentials = self._get_effective_potentials_omega(omega_in, omega_out)
         series = list(self._generate_series_omega(tree, omega_out, potentials))
-        xlabel = "Im(ω) (eV)" if omega is None else "ω (eV)"
+        xlabel = "Im(ω) (eV)" if omega_set else "ω (eV)"
         return graph.Graph(series, xlabel=xlabel, ylabel="Coulomb potential (eV)")
 
     def _get_effective_potentials_omega(self, omega_in, omega_out):
@@ -201,9 +215,7 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         positions = self._transform_positions_to_radial(positions)
         potentials = self._get_effective_potentials_radial()
         series = list(self._generate_series_radial(tree, positions, potentials))
-        return graph.Graph(
-            series, xlabel="Distance (Å)", ylabel="Coulomb potential (eV)"
-        )
+        return graph.Graph(series, xlabel="Radius (Å)", ylabel="Coulomb potential (eV)")
 
     def _transform_positions_to_radial(self, positions):
         return np.linalg.norm(

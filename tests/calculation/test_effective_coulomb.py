@@ -158,7 +158,7 @@ def test_plot(effective_coulomb, Assert):
 
 
 def check_plot_has_correct_series(effective_coulomb, Assert):
-    graph = effective_coulomb.plot()
+    graph = effective_coulomb.plot(omega=...)
     assert len(graph) == 2
     assert graph.xlabel == "Im(ω) (eV)"
     assert graph.ylabel == "Coulomb potential (eV)"
@@ -172,7 +172,7 @@ def check_plot_has_correct_series(effective_coulomb, Assert):
 
 def check_plot_raises_error(effective_coulomb):
     with pytest.raises(exception.DataMismatch):
-        effective_coulomb.plot()
+        effective_coulomb.plot(omega=...)
 
 
 @pytest.mark.parametrize("selection", ["total", "up~up", "down~down", "up~down"])
@@ -188,6 +188,7 @@ def test_plot_selected_spin(collinear_crpar, selection, Assert):
         suffix = f"_{selection}"
         factor = 2.0
 
+    # not specifying omega or radius defaults to frequency plot
     graph = effective_coulomb.plot(selection)
     assert len(graph) == 2
     expected_labels = ["screened", "bare"]
@@ -247,9 +248,9 @@ def test_plot_radial_potential(effective_coulomb, Assert):
 
 
 def check_radial_plot_has_correct_series(effective_coulomb, Assert):
-    graph = effective_coulomb.plot(omega=0)
+    graph = effective_coulomb.plot(radius=...)
     assert len(graph) == 2
-    assert graph.xlabel == "Distance (Å)"
+    assert graph.xlabel == "Radius (Å)"
     assert graph.ylabel == "Coulomb potential (eV)"
     expected_labels = ["screened", "bare"]
     for series, label in zip(graph, expected_labels):
@@ -262,7 +263,7 @@ def check_radial_plot_has_correct_series(effective_coulomb, Assert):
 
 def check_radial_plot_raises_error(effective_coulomb):
     with pytest.raises(exception.DataMismatch):
-        effective_coulomb.plot(omega=0)
+        effective_coulomb.plot(radius=...)
 
 
 @pytest.mark.parametrize("selection", ["total", "up~up", "down~down", "up~down"])
@@ -278,7 +279,7 @@ def test_plot_radial_selected_spin(collinear_crpa, selection, Assert):
         suffix = f"_{selection}"
         factor = 2.0
 
-    graph = effective_coulomb.plot(selection, omega=0)
+    graph = effective_coulomb.plot(selection, radius=...)
     assert len(graph) == 2
     expected_labels = ["screened", "bare"]
     for series, label in zip(graph, expected_labels):
@@ -290,8 +291,8 @@ def test_plot_radial_selected_spin(collinear_crpa, selection, Assert):
 @pytest.mark.parametrize(
     "selection", ["up~up", "down~down", "up~down", "invalid_selection"]
 )
-def test_plot_invalid_selection(nonpolarized_crpar, selection):
+def test_plot_radial_invalid_selection(nonpolarized_crpar, selection):
     # must not use magnetism-specific selections for nonpolarized data
     effective_coulomb = nonpolarized_crpar
     with pytest.raises(exception.IncorrectUsage):
-        effective_coulomb.plot(selection, omega=0)
+        effective_coulomb.plot(selection, radius=...)
