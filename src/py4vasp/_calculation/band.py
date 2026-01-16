@@ -197,6 +197,9 @@ class Band(base.Refinery, graph.Mixin):
     ) -> dict[str, Any]:
         """Read the data into a database object.
 
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        
         Parameters
         ----------
         {selection_doc}

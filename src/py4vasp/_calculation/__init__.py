@@ -244,15 +244,13 @@ instead of the constructor Calculation()."""
         --------
         Prepare the calculation data for the default database:
 
-        >>> from py4vasp import Calculation
-        >>> calculation = Calculation.from_path("path/to/calculation")
-        >>> calc_data = calculation.to_database()
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calc_data = calculation._to_database()
 
         Tag your calculation when writing it to the database:
 
-        >>> from py4vasp import Calculation
-        >>> calculation = Calculation.from_path("path/to/calculation")
-        >>> calc_data = calculation.to_database(tags=["relaxation", "vaspdb", "testing some stuff"])
+        >>> calc_data = calculation._to_database(tags=["relaxation", "vaspdb", "testing some stuff"])
 
         Notes
         -----
