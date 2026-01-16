@@ -5,10 +5,12 @@ import dataclasses
 import functools
 import inspect
 import pathlib
-from typing import Optional
+from typing import Optional, Tuple
 
 from py4vasp import exception, raw
-from py4vasp._util import check, convert, select
+from py4vasp._raw.definition import DEFAULT_SOURCE, schema
+from py4vasp._raw.schema import Link, Source
+from py4vasp._util import check, convert, database, select
 
 
 def data_access(func):
@@ -142,6 +144,8 @@ class Refinery:
         *args,
         db_key_suffix: Optional[str] = None,
         current_db: Optional[dict[str, dict]] = None,
+        original_quantity: Optional[str] = None,
+        original_selection: Optional[str] = None,
         **kwargs,
     ):
         """Internal method to convert the data to a database format.
@@ -159,6 +163,16 @@ class Refinery:
             If provided, this dictionary contains the already computed database entries.
             This will be used to avoid recomputing quantities that are already present
             in the database.
+        original_quantity : str, optional
+            The original quantity name for which the database representation is being
+            generated. This is passed down to support nested calls to this method.
+            That, in turn, is important to determine the actual active selection for a
+            quantity that is part of another quantity.
+        original_selection : str, optional
+            The original selection for which the database representation is being
+            generated. This is passed down to support nested calls to this method. That,
+            in turn, is important to determine the actual active selection for a
+            quantity that is part of another quantity.
 
         Returns
         -------
@@ -204,30 +218,85 @@ class Refinery:
         Note 4: that you do not need to manually add the `db_key_suffix` to the keys
         in the returned dictionary. This is handled automatically after this method
         returns, unless a selection is already specified on a key.
+
+        Note 5: that you do not need to set the `original_quantity` and
+        `original_selection` parameters when calling other quantities' `_read_to_database`
+        methods. These are set automatically to the current quantity and selection
+        when calling this method.
         """
         try:
             raw_db_key = _quantity(self.__class__)
-            expected_db_key = _clean_db_key(raw_db_key, db_key_suffix=db_key_suffix)
+            # Check original quantity vs. raw_db_key to avoid cyclic calls
+            if original_quantity is not None and original_quantity == raw_db_key:
+                raise exception._Py4VaspInternalError(
+                    f"_read_to_database called for quantity '{raw_db_key}' from within itself. This suggests a cyclic _read_to_database call."
+                )
+            if original_quantity is None:
+                original_quantity = raw_db_key
+            # Get active selection for this quantity
+            active_selection, original_selection = self._get_processed_selections(
+                original_quantity,
+                original_selection,
+                raw_db_key,
+                db_key_suffix,
+                **kwargs,
+            )
+            # Obtain expected key for database entry
+            expected_db_key = database.clean_db_key(
+                raw_db_key, db_key_suffix=active_selection
+            )
             if current_db is not None and expected_db_key in current_db:
-                # if quantity already exists in db, return it without recomputing
-                return {expected_db_key: current_db[expected_db_key]}
+                # if quantity already exists in db, return empty dict to avoid recomputation
+                return {}  # {expected_db_key: current_db[expected_db_key]}
             # otherwise, compute the database representation
             database_data = self._to_database(
-                *args, db_key_suffix=db_key_suffix, current_db=current_db, **kwargs
+                *args,
+                db_key_suffix=active_selection,
+                current_db=current_db,
+                original_quantity=original_quantity,
+                original_selection=original_selection,
+                **kwargs,
             )
             database_data = dict(
                 zip(
                     [
-                        _clean_db_key(key, db_key_suffix=db_key_suffix)
+                        database.clean_db_key(key, db_key_suffix=active_selection)
                         for key in database_data.keys()
                     ],
                     database_data.values(),
                 )
             )
+            # Check if the expected key is present in the returned data
+            if not (expected_db_key in database_data) and database_data != {}:
+                raise exception._Py4VaspInternalError(
+                    f"Database key '{expected_db_key}' not found in the database data returned by _to_database for quantity '{raw_db_key}' with selection '{active_selection}'. Keys are {list(database_data.keys())}."
+                )
+            if active_selection:
+                print(database_data.keys())
             return database_data
         except AttributeError as e:
             # if the particular quantity does not implement database reading, return empty dict
             return {}
+
+    def _get_processed_selections(
+        self, original_quantity, original_selection, raw_db_key, db_key_suffix, **kwargs
+    ) -> Tuple[str, Optional[str]]:
+        """Return actual selection depending on which quantity we are computing."""
+        active_selection = kwargs.get("selection", None)
+        if original_quantity is not None and original_selection is not None:
+            active_selection = _get_selection_for_subquantity(
+                raw_db_key, original_quantity, original_selection
+            )
+        if original_selection is None:
+            original_selection = active_selection
+
+        if active_selection:
+            if active_selection is not None:
+                active_selection = f":{active_selection}"
+            print(
+                f"DEBUG: active_selection found as {active_selection}>{database.clean_db_key(raw_db_key, db_key_suffix=active_selection or db_key_suffix)} for {raw_db_key} vs. {db_key_suffix}"
+            )
+        return active_selection or db_key_suffix, original_selection
 
     @data_access
     def selections(self):
@@ -259,16 +328,45 @@ def _quantity(cls):
     return convert.quantity_name(cls.__name__)
 
 
-def _clean_db_key(key: str, db_key_suffix: Optional[str] = None) -> str:
-    return key + (db_key_suffix or "") if not (":" in key) else key
-
-
 def _get_path_to_file(file):
     try:
         file = pathlib.Path(file)
     except TypeError:
         file = pathlib.Path(file.name)
     return file.parent
+
+
+def _get_selection_for_subquantity(
+    quantity, original_quantity, original_selection
+) -> Optional[str]:
+    print(
+        f"DEBUG: get selection for subquantity {quantity} from {original_quantity}:{original_selection}"
+    )
+    original_quantity_schema = schema._sources.get(original_quantity, {})
+    print(f"DEBUG: original_quantity_schema = {original_quantity_schema}")
+    try:
+        original_selection_schema: Source = original_quantity_schema[
+            original_selection
+        ].data
+        print(f"DEBUG: original_selection_schema = {original_selection_schema}")
+    except KeyError as e:
+        raise exception._Py4VaspInternalError(
+            f"Could not find selection '{original_selection}' for quantity '{original_quantity}' in schema."
+        ) from e
+    original_subquantity_link = getattr(original_selection_schema, quantity, None)
+    if original_subquantity_link is None or not isinstance(
+        original_subquantity_link, Link
+    ):
+        print(
+            f"DEBUG: no link found for subquantity {quantity} from {original_quantity}:{original_selection}"
+        )
+        return original_selection
+    else:
+        original_subquantity_selection = original_subquantity_link.source
+        print(
+            f"DEBUG: found selection {original_subquantity_selection} for subquantity {quantity} from {original_quantity}:{original_selection}"
+        )
+        return original_subquantity_selection
 
 
 class _FunctionWrapper:

@@ -1,7 +1,7 @@
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple
 
 from py4vasp import exception
-from py4vasp._raw.definition import unique_selections
+from py4vasp._raw.definition import DEFAULT_SOURCE, unique_selections
 
 
 def combine_db_dicts(*args) -> dict:
@@ -52,8 +52,12 @@ def construct_database_data_key(
     group_name, quantity_name, selection
 ) -> Tuple[str, bool]:
     "Construct the key for storing database data."
-    has_selection = selection and selection != "default"
+    has_selection = selection and selection != DEFAULT_SOURCE
     full_key = quantity_name + (f":{selection}" if has_selection else "")
     if group_name is not None:
         full_key = f"{group_name}.{full_key}"
     return full_key, has_selection
+
+
+def clean_db_key(key: str, db_key_suffix: Optional[str] = None) -> str:
+    return (key + (db_key_suffix or "")) if not (":" in key) else key

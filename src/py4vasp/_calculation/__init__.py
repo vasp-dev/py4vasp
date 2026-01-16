@@ -7,7 +7,12 @@ from typing import Any, List, Optional, Tuple, Union
 from py4vasp import exception
 from py4vasp._raw.access import access
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
-from py4vasp._raw.definition import schema, selections, unique_selections
+from py4vasp._raw.definition import (
+    DEFAULT_SOURCE,
+    schema,
+    selections,
+    unique_selections,
+)
 from py4vasp._util import convert, database, import_
 
 INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
@@ -327,6 +332,7 @@ instead of the constructor Calculation()."""
         Returns
         -------
         Tuple[dict[str, bool], dict[str, dict]]
+            A tuple containing:
             - dict[str, bool]
                 A dictionary indicating the availability of each quantity (and selection) in the calculation.
                 The keys may take the form 'group.quantity', 'quantity', 'group.quantity:selection', or 'quantity:selection'.
@@ -347,6 +353,20 @@ instead of the constructor Calculation()."""
                 additional_properties,
                 group_name=group,
             )
+
+        additional_properties = dict(
+            zip(
+                [
+                    (
+                        key
+                        if not (key.endswith(f":{DEFAULT_SOURCE}"))
+                        else key[: -len(f":{DEFAULT_SOURCE}")]
+                    )
+                    for key in additional_properties.keys()
+                ],
+                additional_properties.values(),
+            )
+        )
         return available_quantities, additional_properties
 
     def _loop_quantities(
@@ -430,6 +450,11 @@ instead of the constructor Calculation()."""
             # TODO bandgap = bandgap:kpoint --> if selections are factually identical but could be different, we should still add both variants to the db, right?
             # TODO why is the contcar system unknown?
             # TODO ensure Link(..., selection) is respected in key construction as a specific selection
+            # --> try this with CurrentDensity:nmr -- structure should be default selection, not nmr
+            # --> see begun computation in base.Refinery._read_to_database (active_selection)
+            # --> the hope is that active_selection will reflect the selection used to create that specific instance so I can react
+            # TODO tests
+            # TODO check recomputation logic - maybe return {} if known to be safe
         return is_available, additional_properties
 
 
