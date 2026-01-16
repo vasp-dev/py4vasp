@@ -2,14 +2,14 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp._third_party.numeric import analytic_continuation
+from py4vasp._third_party import numeric
 
 
 def test_analytic_continuation_for_lorentzian(Assert):
     z_in = 1j * np.array([0.1, 1.0, 10.0])
     f_in = lorentzian(z_in)
     z_out = np.linspace(0.0, 2.5, 6)
-    f_out = analytic_continuation(z_in, f_in, z_out)
+    f_out = numeric.analytic_continuation(z_in, f_in, z_out)
     f_expected = lorentzian(z_out)
     Assert.allclose(f_out, f_expected)
 
@@ -24,5 +24,23 @@ def test_analytic_continuation_for_higher_dimensions(Assert):
     z_in = np.random.rand(3)
     f_in = np.random.rand(5, 4, 3)
     z_out = z_in
-    f_out = analytic_continuation(z_in, f_in, z_out)
+    f_out = numeric.analytic_continuation(z_in, f_in, z_out)
     Assert.allclose(f_out, f_in)
+
+
+def test_interpolate_with_function(Assert):
+    x_in = np.array([0.1, 0.5, 1.0, 2.0])
+    amplitude = 3.0
+    stddev = 0.5
+    y_in = gaussian(x_in, amplitude=amplitude, stddev=stddev)
+    x_out = np.linspace(0.0, 3.0, 12)
+    interpolation = numeric.interpolate_with_function(gaussian, x_in, y_in, x_out)
+    y_out = interpolation(x_out)
+    y_expected = gaussian(x_out, amplitude=amplitude, stddev=stddev)
+    Assert.allclose(y_out, y_expected, tolerance=1e6)
+
+
+def gaussian(x, amplitude=1.0, mean=0.0, stddev=1.0):
+    coeff = amplitude / (stddev * np.sqrt(2 * np.pi))
+    exponent = -0.5 * ((x - mean) / stddev) ** 2
+    return coeff * np.exp(exponent)
