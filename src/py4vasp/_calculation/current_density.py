@@ -6,7 +6,7 @@ import numpy as np
 from py4vasp import exception
 from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import graph
-from py4vasp._util import documentation, import_, slicing
+from py4vasp._util import database, documentation, import_, slicing
 from py4vasp._util.density import SliceArguments, Visualizer
 
 pretty = import_.optional("IPython.lib.pretty")
@@ -59,6 +59,24 @@ current density:
     def _read_current_density(self, key=None):
         key = key or self._raw_data.valid_indices[-1]
         return f"current_{key}", self._raw_data[key].current_density[:].T
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        density_dict = {"current_density": {}}
+        try:
+            key = self._raw_data.valid_indices[-1]
+            grid = self._raw_data[key].current_density.shape[1:]
+            density_dict = {
+                "current_density": {
+                    "grid": [grid[2], grid[1], grid[0]],
+                }
+            }
+        except Exception as exc:
+            pass
+        structure_ = structure.Structure.from_data(
+            self._raw_data.structure
+        )._read_to_database(*args, **kwargs)
+        return database.combine_db_dicts(density_dict, structure_)
 
     @base.data_access
     @documentation.format(plane=slicing.PLANE, parameters=_COMMON_PARAMETERS)
