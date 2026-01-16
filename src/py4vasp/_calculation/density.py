@@ -165,9 +165,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         density_dict = {}
         try:
             _raise_error_if_no_data(self._raw_data.charge)
-            density_dict = {
-                "density": dict(self._read_density())
-            }
+            density_dict = {"density": dict(self._read_density())}
         except Exception as exc:
             pass
         return database.combine_db_dicts(density_dict, structure)
