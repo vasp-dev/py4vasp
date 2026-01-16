@@ -73,6 +73,7 @@ def spin_polarized(raw_data):
     band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
     assert raw_band.fermi_energy == 0
+    band.ref.fermi_energy = raw_band.fermi_energy
     band.ref.bands_up = raw_band.dispersion.eigenvalues[0]
     band.ref.bands_down = raw_band.dispersion.eigenvalues[1]
     band.ref.occupations_up = raw_band.occupations[0]
@@ -500,6 +501,27 @@ spin polarized band data:
 {spin_projectors.ref.projectors_string}
     """.strip()
     assert actual == {"text/plain": reference}
+
+
+def _check_to_database(_band, expect_collinear):
+    database_data = _band._read_to_database()
+    assert "band:default" in database_data
+    assert "fermi_energy" in database_data["band:default"]
+    assert "is_collinear" in database_data["band:default"]
+    assert database_data["band:default"]["fermi_energy"] == _band.ref.fermi_energy
+    assert database_data["band:default"]["is_collinear"] == expect_collinear
+
+
+def test_to_database_single_band(single_band):
+    _check_to_database(single_band, expect_collinear=False)
+
+
+def test_to_database_multiple_bands(multiple_bands):
+    _check_to_database(multiple_bands, expect_collinear=False)
+
+
+def test_to_database_spin_polarized(spin_polarized):
+    _check_to_database(spin_polarized, expect_collinear=True)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

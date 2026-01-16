@@ -442,7 +442,8 @@ instead of the constructor Calculation()."""
 
             # TODO bandgap = bandgap:kpoint --> if selections are factually identical but could be different, we should still add both variants to the db, right?
             # TODO why is the contcar system unknown?
-            # TODO tests
+            # TODO if I call _read_to_database on a .from_data(...) object from a _to_database method, will it load the data again (how to handle selection)?
+            # TODO integration tests (start with testing specific _to_database methods first)
         return is_available, additional_properties
 
 
