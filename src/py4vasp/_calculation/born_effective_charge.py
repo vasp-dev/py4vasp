@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._calculation import base, structure
+from py4vasp._util import database
 
 
 class BornEffectiveCharge(base.Refinery, structure.Mixin):
@@ -50,3 +51,14 @@ ion {ion + 1:4d}   {element}
             "structure": self._structure.read(),
             "charge_tensors": self._raw_data.charge_tensors[:],
         }
+    
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        structure = self._structure._read_to_database(*args, **kwargs)
+        return database.combine_db_dicts(
+            {
+                "born_effective_charges": {
+                }
+            },
+            structure,
+        )

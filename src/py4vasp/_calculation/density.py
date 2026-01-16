@@ -5,7 +5,7 @@ import numpy as np
 from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import graph, view
-from py4vasp._util import documentation, import_, index, select, slicing
+from py4vasp._util import database, documentation, import_, index, select, slicing
 from py4vasp._util.density import SliceArguments, Visualizer
 
 pretty = import_.optional("IPython.lib.pretty")
@@ -158,6 +158,19 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         result = {"structure": self._structure.read()}
         result.update(self._read_density())
         return result
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        structure = self._structure._read_to_database(*args, **kwargs)
+        density_dict = {}
+        try:
+            _raise_error_if_no_data(self._raw_data.charge)
+            density_dict = {
+                "density": dict(self._read_density())
+            }
+        except Exception as exc:
+            pass
+        return database.combine_db_dicts(density_dict, structure)
 
     def _read_density(self):
         density = self.to_numpy()
