@@ -52,7 +52,9 @@ def construct_database_data_key(
     group_name, quantity_name, selection
 ) -> Tuple[str, bool]:
     "Construct the key for storing database data."
-    has_selection = selection and selection != DEFAULT_SOURCE
+    has_selection = (
+        selection is not None and selection != "" and selection != DEFAULT_SOURCE
+    )
     full_key = quantity_name + (f":{selection}" if has_selection else "")
     if group_name is not None:
         full_key = f"{group_name}.{full_key}"

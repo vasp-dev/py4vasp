@@ -51,14 +51,11 @@ ion {ion + 1:4d}   {element}
             "structure": self._structure.read(),
             "charge_tensors": self._raw_data.charge_tensors[:],
         }
-    
+
     @base.data_access
     def _to_database(self, *args, **kwargs):
         structure = self._structure._read_to_database(*args, **kwargs)
         return database.combine_db_dicts(
-            {
-                "born_effective_charges": {
-                }
-            },
+            {"born_effective_charges": {}},
             structure,
         )

@@ -87,7 +87,7 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         items = [self._generate_items(kind) for kind in VALID_KINDS]
         result.update(itertools.chain(*items))
         return result
-    
+
     def _generate_items(self, kind):
         potential = self._get_potential(kind)
         if potential.is_none():
@@ -105,19 +105,23 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         structure = self._structure._read_to_database(*args, **kwargs)
         potential_dict = {"potential": {}}
         for kind in VALID_KINDS:
-            potential  = self._get_potential(kind)
+            potential = self._get_potential(kind)
             for specifier in ["", "up", "down", "magnetization"]:
                 for computation in ["max", "min", "median", "mean"]:
-                    potential_dict["potential"][f"{kind}_{(specifier + '_') if specifier else ''}{computation}"] = None
+                    potential_dict["potential"][
+                        f"{kind}_{(specifier + '_') if specifier else ''}{computation}"
+                    ] = None
             if potential.is_none():
                 continue
             else:
                 potential_data = np.moveaxis(potential, 0, -1).T
                 for specifier in ["", "up", "down", "magnetization"]:
-                    potential_dict["potential"] = potential_dict["potential"] | self._get_potential_statistics(potential, kind, specifier)
-                
+                    potential_dict["potential"] = potential_dict[
+                        "potential"
+                    ] | self._get_potential_statistics(potential, kind, specifier)
+
         return database.combine_db_dicts(potential_dict, structure)
-    
+
     def _get_potential_statistics(self, potential, kind, specifier):
         stats = {}
         if specifier == "":
@@ -131,10 +135,18 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         else:
             return stats
         arrow_lengths = np.linalg.norm(data, axis=-1)
-        stats[f"{kind}_{(specifier + '_') if specifier else ''}max"] = np.max(arrow_lengths)
-        stats[f"{kind}_{(specifier + '_') if specifier else ''}min"] = np.min(arrow_lengths)
-        stats[f"{kind}_{(specifier + '_') if specifier else ''}median"] = np.median(arrow_lengths)
-        stats[f"{kind}_{(specifier + '_') if specifier else ''}mean"] = np.mean(arrow_lengths)
+        stats[f"{kind}_{(specifier + '_') if specifier else ''}max"] = np.max(
+            arrow_lengths
+        )
+        stats[f"{kind}_{(specifier + '_') if specifier else ''}min"] = np.min(
+            arrow_lengths
+        )
+        stats[f"{kind}_{(specifier + '_') if specifier else ''}median"] = np.median(
+            arrow_lengths
+        )
+        stats[f"{kind}_{(specifier + '_') if specifier else ''}mean"] = np.mean(
+            arrow_lengths
+        )
         return stats
 
     @base.data_access
