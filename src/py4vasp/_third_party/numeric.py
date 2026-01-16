@@ -19,6 +19,18 @@ def _analytic_continuation_single(z_in, f_in, z_out):
     return aaa(z_out)
 
 
-def interpolate_with_function(func, x_in, y_in, x_out):
-    popt, _ = curve_fit(func, x_in, y_in)
-    return lambda x: func(x, *popt)
+def interpolate_with_function(function, x_in, y_in, x_out):
+    shape = y_in.shape
+    data_sets = y_in.reshape((-1, shape[-1]))
+    y_out = np.array(
+        [
+            _interpolate_with_function_single(function, x_in, data_set, x_out)
+            for data_set in data_sets
+        ]
+    )
+    return y_out.reshape(shape[:-1] + (len(x_out),))
+
+
+def _interpolate_with_function_single(function, x_in, y_in, x_out):
+    parameters, _ = curve_fit(function, x_in, y_in)
+    return function(x_out, *parameters)

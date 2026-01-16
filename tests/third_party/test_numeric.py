@@ -34,13 +34,26 @@ def test_interpolate_with_function(Assert):
     stddev = 0.5
     y_in = gaussian(x_in, amplitude=amplitude, stddev=stddev)
     x_out = np.linspace(0.0, 3.0, 12)
-    interpolation = numeric.interpolate_with_function(gaussian, x_in, y_in, x_out)
-    y_out = interpolation(x_out)
+    y_out = numeric.interpolate_with_function(gaussian, x_in, y_in, x_out)
     y_expected = gaussian(x_out, amplitude=amplitude, stddev=stddev)
     Assert.allclose(y_out, y_expected, tolerance=1e6)
 
 
 def gaussian(x, amplitude=1.0, mean=0.0, stddev=1.0):
+    x = np.tile(x, np.shape(amplitude) + (1,))
+    amplitude = amplitude[..., np.newaxis] if np.ndim(amplitude) else amplitude
+    mean = mean[..., np.newaxis] if np.ndim(mean) else mean
+    stddev = stddev[..., np.newaxis] if np.ndim(stddev) else stddev
     coeff = amplitude / (stddev * np.sqrt(2 * np.pi))
     exponent = -0.5 * ((x - mean) / stddev) ** 2
     return coeff * np.exp(exponent)
+
+
+def test_interpolate_with_function_higher_dimensions(Assert):
+    x_in = np.random.rand(5)
+    amplitude = np.random.rand(3, 2)
+    mean = np.random.rand(3, 2)
+    y_in = gaussian(x_in, amplitude=amplitude, mean=mean)
+    x_out = x_in
+    y_out = numeric.interpolate_with_function(gaussian, x_in, y_in, x_out)
+    Assert.allclose(y_out, y_in)
