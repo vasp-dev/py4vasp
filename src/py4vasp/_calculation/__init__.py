@@ -429,15 +429,10 @@ instead of the constructor Calculation()."""
 
         if quantity_data is not None:
             try:
-                _, has_selection = database.construct_database_data_key(
-                    group_name, quantity_name, selection
-                )
-                key_suffix = f":{selection}" if has_selection else ""
                 additional_properties: dict[str, dict[str, Any]] = getattr(
                     group, quantity_name
                 )._read_to_database(
                     selection=str(selection),
-                    db_key_suffix=key_suffix,
                     current_db=current_db,
                 )
             except Exception as e:
@@ -449,12 +444,7 @@ instead of the constructor Calculation()."""
 
             # TODO bandgap = bandgap:kpoint --> if selections are factually identical but could be different, we should still add both variants to the db, right?
             # TODO why is the contcar system unknown?
-            # TODO ensure Link(..., selection) is respected in key construction as a specific selection
-            # --> try this with CurrentDensity:nmr -- structure should be default selection, not nmr
-            # --> see begun computation in base.Refinery._read_to_database (active_selection)
-            # --> the hope is that active_selection will reflect the selection used to create that specific instance so I can react
             # TODO tests
-            # TODO check recomputation logic - maybe return {} if known to be safe
         return is_available, additional_properties
 
 

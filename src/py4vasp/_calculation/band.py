@@ -193,8 +193,6 @@ class Band(base.Refinery, graph.Mixin):
         self,
         selection: Optional[str] = None,
         fermi_energy: Optional[float] = None,
-        db_key_suffix: str = None,
-        current_db: Optional[dict[str, Any]] = None,
         **kwargs,
     ) -> dict[str, Any]:
         """Read the data into a database object.
@@ -216,9 +214,7 @@ class Band(base.Refinery, graph.Mixin):
             selected projectors are included. If you specified '''k'''-point labels
             in the KPOINTS file, these are returned as well.
         """
-        dispersion = self._dispersion()._read_to_database(
-            db_key_suffix=db_key_suffix, current_db=current_db, **kwargs
-        )
+        dispersion = self._dispersion()._read_to_database(**kwargs)
         return database.combine_db_dicts(
             {
                 "band": {
