@@ -157,24 +157,33 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
 
     def _get_effective_potentials_omega(self, omega_in, omega_out):
         wannier_iiii = self._wannier_indices_iiii()
+        wannier_ijij = self._wannier_indices_ijij()
         all_omega = all_spin = complex_ = slice(None)
         origin = real_part = 0
         if self._has_positions:
             access_U = (all_omega, all_spin, wannier_iiii, origin, complex_)
+            access_J = (all_omega, all_spin, wannier_ijij, origin, complex_)
             access_V = (all_spin, wannier_iiii, origin, real_part)
         else:
             access_U = (all_omega, all_spin, wannier_iiii, complex_)
+            access_J = (all_omega, all_spin, wannier_ijij, complex_)
             access_V = (all_spin, wannier_iiii, real_part)
+
         U_in = convert.to_complex(self._raw_data.screened_potential[access_U])
         U_in = np.average(U_in, axis=-1)
+        J_in = convert.to_complex(self._raw_data.screened_potential[access_J])
+        J_in = np.average(J_in, axis=-1)
+        V_in = np.average(self._raw_data.bare_potential_high_cutoff[access_V], axis=-1)
+        V_out = np.repeat(V_in, len(omega_out)).reshape(-1, len(omega_out))
+
         needs_interpolation = omega_in is not omega_out
         if needs_interpolation:
             U_out = numeric.analytic_continuation(omega_in, U_in.T, omega_out).real
+            J_out = numeric.analytic_continuation(omega_in, J_in.T, omega_out).real
         else:
             U_out = U_in.T.real
-        V_in = np.average(self._raw_data.bare_potential_high_cutoff[access_V], axis=-1)
-        V_out = np.repeat(V_in, len(omega_out)).reshape(-1, len(omega_out))
-        return {"screened U": U_out, "bare V": V_out}
+            J_out = J_in.T.real
+        return {"screened U": U_out, "screened J": J_out, "bare V": V_out}
 
     def _wannier_indices_iiii(self):
         """Return the indices that trace over diagonal of the 4 Wannier states. This
@@ -184,6 +193,17 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         step = n**3 + n**2 + n + 1
         stop = n**4
         return slice(0, stop, step)
+
+    def _wannier_indices_ijij(self):
+        """Return the indices that trace over diagonal of the 4 Wannier states. This
+        should be equivalent to `np.einsum('ijij->', data[..., 0])`
+        if there are no other indices."""
+        n = self._raw_data.number_wannier_states
+        stop = n**4
+        slice_included = slice(0, stop, n**2 + 1)
+        slice_excluded = slice(0, stop, n**3 + n**2 + n + 1)
+        indices = np.arange(stop)
+        return np.setdiff1d(indices[slice_included], indices[slice_excluded])
 
     def _generate_series_omega(self, tree, omega, potentials):
         if np.isclose(omega.real, omega).all():
@@ -225,23 +245,27 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
 
     def _get_effective_potentials_radial(self, radius_in, radius_out):
         wannier_iiii = self._wannier_indices_iiii()
+        wannier_ijij = self._wannier_indices_ijij()
         all_positions = all_spin = slice(None)
         omega_zero = real_part = 0
         if self._has_frequencies:
             access_U = (omega_zero, all_spin, wannier_iiii, all_positions, real_part)
+            access_J = (omega_zero, all_spin, wannier_ijij, all_positions, real_part)
         else:
             access_U = (all_spin, wannier_iiii, all_positions, real_part)
+            access_J = (all_spin, wannier_ijij, all_positions, real_part)
         access_V = (all_spin, wannier_iiii, all_positions, real_part)
         U_in = np.average(self._raw_data.screened_potential[access_U], axis=1)
+        J_in = np.average(self._raw_data.screened_potential[access_J], axis=0)
         V_in = np.average(self._raw_data.bare_potential_high_cutoff[access_V], axis=1)
         needs_interpolation = radius_in is not radius_out
         if needs_interpolation:
             U_out = self._ohno_interpolation(radius_in, U_in, radius_out)
             V_out = self._ohno_interpolation(radius_in, V_in, radius_out)
+            print("this branch")
+            return {"screened U": U_out, "bare V": V_out}
         else:
-            U_out = U_in
-            V_out = V_in
-        return {"screened U": U_out, "bare V": V_out}
+            return {"screened U": U_in, "screened J": J_in, "bare V": V_in}
 
     def _ohno_interpolation(self, radius_in, spin_potential, radius_out):
         potential = np.average(spin_potential[:2], axis=0)
