@@ -174,7 +174,7 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
             U_out = U_in.T.real
         V_in = np.average(self._raw_data.bare_potential_high_cutoff[access_V], axis=-1)
         V_out = np.repeat(V_in, len(omega_out)).reshape(-1, len(omega_out))
-        return {"screened": U_out, "bare": V_out}
+        return {"screened U": U_out, "bare V": V_out}
 
     def _wannier_indices_iiii(self):
         """Return the indices that trace over diagonal of the 4 Wannier states. This
@@ -241,7 +241,7 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         else:
             U_out = U_in
             V_out = V_in
-        return {"screened": U_out, "bare": V_out}
+        return {"screened U": U_out, "bare V": V_out}
 
     def _ohno_interpolation(self, radius_in, spin_potential, radius_out):
         potential = np.average(spin_potential[:2], axis=0)

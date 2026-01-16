@@ -116,8 +116,8 @@ def setup_omega_data(setup, read_data):
         bare_potential = read_data["bare_high_cutoff"]
     return {
         "frequencies": read_data.get("frequencies"),
-        "screened": np.einsum(f"siiiiw->sw", screened_potential) * weight,
-        "bare": np.einsum(f"siiiiw->sw", bare_potential) * weight,
+        "screened U": np.einsum(f"siiiiw->sw", screened_potential) * weight,
+        "bare V": np.einsum(f"siiiiw->sw", bare_potential) * weight,
     }
 
 
@@ -137,8 +137,8 @@ def setup_radial_data(setup, read_data):
     positions = read_data["lattice_vectors"] @ read_data["positions"][:].T
     return {
         "radius": np.linalg.norm(positions, axis=0),
-        "screened": np.einsum("rsiiii->sr", screened_potential.real) * weight,
-        "bare": np.einsum("rsiiii->sr", bare_potential.real) * weight,
+        "screened U": np.einsum("rsiiii->sr", screened_potential.real) * weight,
+        "bare V": np.einsum("rsiiii->sr", bare_potential.real) * weight,
     }
 
 
@@ -162,7 +162,7 @@ def check_plot_has_correct_series(effective_coulomb, Assert):
     assert len(graph) == 2
     assert graph.xlabel == "Im(ω) (eV)"
     assert graph.ylabel == "Coulomb potential (eV)"
-    expected_labels = ["screened", "bare"]
+    expected_labels = ["screened U", "bare V"]
     for series, label in zip(graph, expected_labels):
         Assert.allclose(series.x, effective_coulomb.ref.omega_data["frequencies"].imag)
         potential = effective_coulomb.ref.omega_data[label]
@@ -191,7 +191,7 @@ def test_plot_selected_spin(collinear_crpar, selection, Assert):
     # not specifying omega or radius defaults to frequency plot
     graph = effective_coulomb.plot(selection)
     assert len(graph) == 2
-    expected_labels = ["screened", "bare"]
+    expected_labels = ["screened U", "bare V"]
     for series, label in zip(graph, expected_labels):
         potential = factor * effective_coulomb.ref.omega_data[label]
         Assert.allclose(series.y, np.sum(potential[spin_selection], axis=0).real)
@@ -212,14 +212,14 @@ def test_plot_with_analytic_continuation(nonpolarized_crpar, Assert):
     omega_data = nonpolarized_crpar.ref.omega_data
     omega = np.linspace(0, 10, 20)
     expected_output = numeric.analytic_continuation(
-        omega_data["frequencies"], omega_data["screened"], omega
+        omega_data["frequencies"], omega_data["screened U"], omega
     )
     graph = nonpolarized_crpar.plot(omega=omega)
     assert len(graph) == 2
     assert graph.xlabel == "ω (eV)"
     assert graph.ylabel == "Coulomb potential (eV)"
-    expected_lines = [np.squeeze(expected_output), omega_data["bare"]]
-    expected_labels = ["screened", "bare"]
+    expected_lines = [np.squeeze(expected_output), omega_data["bare V"]]
+    expected_labels = ["screened U", "bare V"]
     for series, expected_line, label in zip(graph, expected_lines, expected_labels):
         Assert.allclose(series.x, omega)
         Assert.allclose(series.y, expected_line.real, tolerance=100)
@@ -230,14 +230,14 @@ def test_plot_with_analytic_continuation_and_spin_selection(collinear_crpar, Ass
     omega_data = collinear_crpar.ref.omega_data
     omega = np.linspace(0, 10, 20)
     expected_output = 2 * numeric.analytic_continuation(
-        omega_data["frequencies"], omega_data["screened"], omega
+        omega_data["frequencies"], omega_data["screened U"], omega
     )
     graph = collinear_crpar.plot("down~down", omega=omega)
     assert len(graph) == 2
     series = graph[0]
     Assert.allclose(series.x, omega)
     Assert.allclose(series.y, expected_output[1].real, tolerance=100)
-    assert series.label == "screened_down~down"
+    assert series.label == "screened U_down~down"
 
 
 def test_plot_radial_potential(effective_coulomb, Assert):
@@ -252,7 +252,7 @@ def check_radial_plot_has_correct_series(effective_coulomb, Assert):
     assert len(graph) == 2
     assert graph.xlabel == "Radius (Å)"
     assert graph.ylabel == "Coulomb potential (eV)"
-    expected_labels = ["screened", "bare"]
+    expected_labels = ["screened U", "bare V"]
     for series, label in zip(graph, expected_labels):
         Assert.allclose(series.x, effective_coulomb.ref.radial_data["radius"])
         potential = effective_coulomb.ref.radial_data[label]
@@ -281,7 +281,7 @@ def test_plot_radial_selected_spin(collinear_crpa, selection, Assert):
 
     graph = effective_coulomb.plot(selection, radius=...)
     assert len(graph) == 2
-    expected_labels = ["screened", "bare"]
+    expected_labels = ["screened U", "bare V"]
     for series, label in zip(graph, expected_labels):
         potential = factor * effective_coulomb.ref.radial_data[label]
         Assert.allclose(series.y, np.sum(potential[spin_selection], axis=0))
@@ -316,7 +316,7 @@ def test_plot_radial_interpolation(nonpolarized_crpar, Assert):
     assert graph.xlabel == "Radius (Å)"
     assert graph.ylabel == "Coulomb potential (eV)"
     expected_lines = [expected_U, expected_V]
-    expected_labels = ["screened", "bare"]
+    expected_labels = ["screened U", "bare V"]
     for series, expected_line, label in zip(graph, expected_lines, expected_labels):
         Assert.allclose(series.x, radius)
         Assert.allclose(series.y, expected_line, tolerance=100)
@@ -335,5 +335,5 @@ def test_plot_with_analytic_continuation_and_spin_selection(collinear_crpa, Asse
     assert len(graph) == 2
     Assert.allclose(graph[0].y, expected_U)
     Assert.allclose(graph[1].y, expected_V)
-    assert graph[0].label == "screened_up~down"
-    assert graph[1].label == "bare_up~down"
+    assert graph[0].label == "screened U_up~down"
+    assert graph[1].label == "bare V_up~down"
