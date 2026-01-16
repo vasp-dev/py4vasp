@@ -199,7 +199,7 @@ class Band(base.Refinery, graph.Mixin):
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
-        
+
         Parameters
         ----------
         {selection_doc}

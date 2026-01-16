@@ -320,7 +320,7 @@ def _get_selections_for_subquantities(
     actual_selections = {}
     original_quantity_schema = schema.sources.get(original_quantity, {})
     original_selection_schema: Source = original_quantity_schema[
-        original_selection
+        original_selection or "default"
     ].data
     for subquantity, link in original_selection_schema.__dataclass_fields__.items():
         actual_link = getattr(original_selection_schema, subquantity)
@@ -343,11 +343,11 @@ def _get_selections_for_subquantities(
 def _get_processed_selection(
     quantity: str,
     original_quantity: str,
-    original_selection: str,
+    original_selection: Optional[str],
     original_subquantity_selections: dict,
 ) -> Optional[str]:
     if quantity == original_quantity:
-        return original_selection
+        return original_selection or "default"
     else:
         if quantity in original_subquantity_selections:
             return original_subquantity_selections[quantity]
@@ -355,7 +355,7 @@ def _get_processed_selection(
             for key in original_subquantity_selections.keys():
                 if key.endswith(f".{quantity}"):
                     return original_subquantity_selections[key]
-    return original_selection
+    return original_selection or "default"
 
 
 class _FunctionWrapper:
