@@ -2,10 +2,10 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import py4vasp._raw.data as raw
 from py4vasp._raw import read
-from py4vasp._raw.schema import Length, Link, Schema
+from py4vasp._raw.schema import DEFAULT_SELECTION, Length, Link, Schema
 
 DEFAULT_FILE = "vaspout.h5"
-DEFAULT_SOURCE = "default"
+DEFAULT_SOURCE = DEFAULT_SELECTION
 VERSION_DATA = raw.Version("version/major", "version/minor", "version/patch")
 
 schema = Schema(VERSION_DATA)

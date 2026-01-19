@@ -6,6 +6,7 @@ import pytest
 from util import (
     VERSION,
     Complex,
+    ComplexNested,
     Mapping,
     OptionalArgument,
     Simple,
@@ -14,7 +15,7 @@ from util import (
 )
 
 from py4vasp import raw
-from py4vasp._raw.schema import Length, Link, Schema, Source
+from py4vasp._raw.schema import DEFAULT_SELECTION, Length, Link, Schema, Source
 
 
 @pytest.fixture
@@ -47,28 +48,38 @@ def complex_schema():
         Link("with_link", "default"),
         Link("mapping", "my_list"),
     )
+    third = ComplexNested(
+        Link("complex", name),
+        Link("with_link", "not_so_simple"),
+    )
     schema = Schema(VERSION)
     schema.add(Simple, file=filename, **as_dict(simple))
     schema.add(Simple, name="factory", file=filename, data_factory=make_data)
     schema.add(OptionalArgument, name=name, **as_dict(only_mandatory))
     schema.add(OptionalArgument, **as_dict(both))
     schema.add(WithLink, required=version, **as_dict(pointer))
+    schema.add(WithLink, name="not_so_simple", required=version, **as_dict(pointer))
     schema.add(WithLength, alias="alias_name", **as_dict(length))
     schema.add(Mapping, **as_dict(mapping))
     schema.add(Mapping, name="my_list", **as_dict(list_))
     schema.add(Complex, **as_dict(first))
     schema.add(Complex, name=name, **as_dict(second))
+    schema.add(ComplexNested, name="nested", **as_dict(third))
     other_file_source = Source(simple, file=filename)
-    data_factory_source = Source(None, file=filename, data_factory=make_data)
-    alias_source = Source(length, alias_for="default")
+    data_factory_source = Source(None, file=filename, data_factory=make_data, labels=["factory"])
+    alias_source = Source(length, alias_for=DEFAULT_SELECTION, labels=[DEFAULT_SELECTION, "alias_name"])
     reference = {
-        "version": {"default": Source(VERSION)},
-        "simple": {"default": other_file_source, "factory": data_factory_source},
-        "optional_argument": {"default": Source(both), name: Source(only_mandatory)},
-        "with_link": {"default": Source(pointer, required=version)},
-        "with_length": {"default": Source(length), "alias_name": alias_source},
-        "mapping": {"default": Source(mapping), "my_list": Source(list_)},
-        "complex": {"default": Source(first), name: Source(second)},
+        "version": {DEFAULT_SELECTION: Source(VERSION)},
+        "simple": {DEFAULT_SELECTION: other_file_source, "factory": data_factory_source},
+        "optional_argument": {DEFAULT_SELECTION: Source(both), name: Source(only_mandatory, labels=[name])},
+        "with_link": {
+            DEFAULT_SELECTION: Source(pointer, required=version),
+            "not_so_simple": Source(pointer, required=version, labels=["not_so_simple"]),
+        },
+        "with_length": {DEFAULT_SELECTION: Source(length, labels=[DEFAULT_SELECTION, "alias_name"]), "alias_name": alias_source},
+        "mapping": {DEFAULT_SELECTION: Source(mapping, labels=[DEFAULT_SELECTION]), "my_list": Source(list_, labels=["my_list"])},
+        "complex": {DEFAULT_SELECTION: Source(first, labels=[DEFAULT_SELECTION]), name: Source(second, labels=[name])},
+        "complex_nested": {"nested": Source(third, labels=["nested"])},
     }
     return schema, reference
 

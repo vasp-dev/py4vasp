@@ -324,23 +324,27 @@ instead of the constructor Calculation()."""
     # def POSCAR(self, poscar):
     #     self._POSCAR.write(str(poscar))
 
-    def _compute_database_data(self) -> Tuple[dict[str, bool], dict[str, dict]]:
+    def _compute_database_data(
+        self,
+    ) -> Tuple[dict[str, tuple[bool, list[str]]], dict[str, dict]]:
         """Computes a dict of available py4vasp dataclasses and all available database data.
 
         Returns
         -------
-        Tuple[dict[str, bool], dict[str, dict]]
+        Tuple[dict[str, tuple[bool, list[str]]], dict[str, dict]]
             A tuple containing:
-            - dict[str, bool]
+            - dict[str, tuple[bool, list[str]]]
                 A dictionary indicating the availability of each quantity (and selection) in the calculation.
                 The keys may take the form 'group.quantity', 'quantity', 'group.quantity:selection', or 'quantity:selection'.
                 The default selection is always omitted from the key.
+                Also includes a list of aliases for each quantity/selection combination.
             - dict[str, dict]
                 A dictionary containing all additional properties to be stored in the database.
                 The keys follow the same convention as above. The values are dictionaries with the actual data to be stored.
         """
         available_quantities = {}
         additional_properties = {}
+
         available_quantities, additional_properties = self._loop_quantities(
             QUANTITIES, available_quantities, additional_properties
         )
@@ -369,7 +373,7 @@ instead of the constructor Calculation()."""
 
     def _loop_quantities(
         self, quantities, available_quantities, additional_properties, group_name=None
-    ) -> Tuple[dict[str, bool], dict[str, dict]]:
+    ) -> Tuple[dict[str, tuple[bool, list[str]]], dict[str, dict]]:
         group_instance = self if group_name is None else getattr(self, group_name)
         for quantity in quantities:
             try:
@@ -382,7 +386,7 @@ instead of the constructor Calculation()."""
                 _selections = ["default"]
 
             for selection in _selections:
-                is_available, props = self._compute_quantity_db_data(
+                is_available, props, aliases_ = self._compute_quantity_db_data(
                     group_instance,
                     selection,
                     quantity,
@@ -392,7 +396,7 @@ instead of the constructor Calculation()."""
                 availability_key, _ = database.construct_database_data_key(
                     group_name, quantity, selection
                 )
-                available_quantities[availability_key] = is_available
+                available_quantities[availability_key] = (is_available, aliases_)
                 if is_available:
                     additional_properties = database.combine_db_dicts(
                         additional_properties, props
@@ -401,9 +405,17 @@ instead of the constructor Calculation()."""
 
     def _compute_quantity_db_data(
         self, group, selection, quantity_name, group_name=None, current_db={}
-    ) -> Tuple[bool, dict]:
+    ) -> Tuple[bool, dict, list[str]]:
         "Compute additional data to be stored in the database."
         is_available = False
+        aliases_ = schema._aliases(
+            (
+                f"{group_name}_{quantity_name}"
+                if group_name is not None
+                else quantity_name
+            ),
+            selection,
+        )
         additional_properties = {}
         quantity_data = None
 
@@ -440,11 +452,11 @@ instead of the constructor Calculation()."""
                 ) from e
                 # pass  # catch any other errors during reading
 
-            # TODO bandgap = bandgap:kpoint --> if selections are factually identical but could be different, we should still add both variants to the db, right?
-            # TODO why is the contcar system unknown?
-            # TODO if I call _read_to_database on a .from_data(...) object from a _to_database method, will it load the data again (how to handle selection)?
             # TODO integration tests (start with testing specific _to_database methods first)
-        return is_available, additional_properties
+            #     --> use demo and tmp_path_factory fixtures to create test calculations
+            # TODO implement a base.Refinery.is_available() method to check schema and dataclass read accessibility
+            #     --> use it here to determine is_available instead of try/except read
+        return is_available, additional_properties, aliases_
 
 
 def _add_all_refinement_classes(calc):
