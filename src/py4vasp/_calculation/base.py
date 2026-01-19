@@ -9,7 +9,12 @@ from typing import Optional, Tuple
 
 from py4vasp import exception, raw
 from py4vasp._raw.definition import DEFAULT_SOURCE, schema
-from py4vasp._raw.schema import Link, Source
+from py4vasp._raw.schema import (
+    Link,
+    Source,
+    _get_processed_selection,
+    _get_selections_for_subquantities,
+)
 from py4vasp._util import check, convert, database, select
 
 
@@ -146,6 +151,7 @@ class Refinery:
         original_quantity: Optional[str] = None,
         original_selection: Optional[str] = None,
         original_subquantity_selections: Optional[dict[str, Optional[str]]] = None,
+        subquantity_chain: Optional[str] = None,
         **kwargs,
     ):
         """Internal method to convert the data to a database format.
@@ -174,6 +180,9 @@ class Refinery:
             A mapping from subquantity names to their active selections. This is used
             to determine the correct selection for subquantities when they are part
             of a larger quantity.
+        subquantity_chain : str, optional
+            A str that indicates the chain of subquantities leading to this call.
+            We use this to parse the original_subquantity_selections correctly.
 
         Returns
         -------
@@ -232,13 +241,20 @@ class Refinery:
                 original_quantity = raw_db_key
                 original_selection = kwargs.get("selection", None)
                 original_subquantity_selections = _get_selections_for_subquantities(
-                    original_quantity, original_selection
+                    original_quantity, original_selection, schema
+                )
+            else:
+                subquantity_chain = (
+                    raw_db_key
+                    if subquantity_chain is None
+                    else f"{subquantity_chain}.{raw_db_key}"
                 )
             active_selection = _get_processed_selection(
                 raw_db_key,
                 original_quantity,
                 original_selection,
                 original_subquantity_selections,
+                subquantity_chain,
             )
             active_selection = f":{active_selection}"
             # Obtain expected key for database entry
@@ -255,6 +271,7 @@ class Refinery:
                 original_quantity=original_quantity,
                 original_selection=original_selection,
                 original_subquantity_selections=original_subquantity_selections,
+                subquantity_chain=subquantity_chain,
                 **kwargs,
             )
             database_data = dict(
@@ -312,50 +329,6 @@ def _get_path_to_file(file):
     except TypeError:
         file = pathlib.Path(file.name)
     return file.parent
-
-
-def _get_selections_for_subquantities(
-    original_quantity, original_selection
-) -> dict[str, Optional[str]]:
-    actual_selections = {}
-    original_quantity_schema = schema.sources.get(original_quantity, {})
-    original_selection_schema: Source = original_quantity_schema[
-        original_selection or "default"
-    ].data
-    for subquantity, link in original_selection_schema.__dataclass_fields__.items():
-        actual_link = getattr(original_selection_schema, subquantity)
-        if not isinstance(actual_link, Link):
-            continue
-        actual_selections[subquantity] = actual_link.source
-        further_selections = _get_selections_for_subquantities(
-            actual_link.quantity, actual_link.source
-        )
-        further_selections = dict(
-            zip(
-                [f"{actual_link.quantity}.{key}" for key in further_selections.keys()],
-                further_selections.values(),
-            )
-        )
-        actual_selections = actual_selections | further_selections
-    return actual_selections
-
-
-def _get_processed_selection(
-    quantity: str,
-    original_quantity: str,
-    original_selection: Optional[str],
-    original_subquantity_selections: dict,
-) -> Optional[str]:
-    if quantity == original_quantity:
-        return original_selection or "default"
-    else:
-        if quantity in original_subquantity_selections:
-            return original_subquantity_selections[quantity]
-        else:
-            for key in original_subquantity_selections.keys():
-                if key.endswith(f".{quantity}"):
-                    return original_subquantity_selections[key]
-    return original_selection or "default"
 
 
 class _FunctionWrapper:

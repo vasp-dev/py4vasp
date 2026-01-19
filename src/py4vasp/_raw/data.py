@@ -180,10 +180,12 @@ class _DatabaseData:
 
     metadata: CalculationMetaData
 
-    available_quantities: Optional[dict[str, bool]] = None
+    available_quantities: Optional[dict[str, tuple[bool, list[str]]]] = None
     """Dict of all py4vasp dataclasses that can be read from the HDF5 file.
     Keys are constructed like 'group.quantity:selection' where group and
-    selection are optional. The values are booleans indicating whether the quantity is available."""
+    selection are optional. The values are booleans indicating whether the quantity is available.
+    The string list contains all aliases that can be used to refer to this particular combination
+    of group, quantity and selection."""
 
     additional_properties: Optional[dict[str, Any]] = None
     """Additional properties that get stored in the database.

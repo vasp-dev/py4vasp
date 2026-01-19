@@ -43,3 +43,9 @@ class Complex:
     link: WithLink
     mapping: Mapping
     length: WithLength = None
+
+
+@dataclasses.dataclass
+class ComplexNested:
+    complex: Complex
+    link: WithLink
