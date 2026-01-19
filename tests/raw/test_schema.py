@@ -29,7 +29,12 @@ def test_two_sources():
     schema = Schema(VERSION)
     schema.add(Simple, foo=first.foo, bar=first.bar)
     schema.add(Simple, name=name, foo=second.foo, bar=second.bar)
-    reference = {"simple": {"default": Source(first, labels=["default"]), name: Source(second, labels=[name])}}
+    reference = {
+        "simple": {
+            "default": Source(first, labels=["default"]),
+            name: Source(second, labels=[name]),
+        }
+    }
     assert remove_version(schema.sources) == reference
 
 
@@ -38,7 +43,9 @@ def test_file_argument():
     filename = "other_file"
     schema = Schema(VERSION)
     schema.add(Simple, file=filename, foo=source.foo, bar=source.bar)
-    reference = {"simple": {"default": Source(source, file=filename, labels=["default"])}}
+    reference = {
+        "simple": {"default": Source(source, file=filename, labels=["default"])}
+    }
     assert remove_version(schema.sources) == reference
 
 
@@ -47,7 +54,9 @@ def test_required_argument():
     version = raw.Version(1, 2, 3)
     schema = Schema(VERSION)
     schema.add(Simple, foo=source.foo, bar=source.bar, required=version)
-    reference = {"simple": {"default": Source(source, required=version, labels=["default"])}}
+    reference = {
+        "simple": {"default": Source(source, required=version, labels=["default"])}
+    }
     assert remove_version(schema.sources) == reference
 
 
@@ -59,7 +68,10 @@ def test_optional_argument():
     schema.add(OptionalArgument, name=name, mandatory=only_mandatory.mandatory)
     schema.add(OptionalArgument, mandatory=both.mandatory, optional=both.optional)
     reference = {
-        "optional_argument": {name: Source(only_mandatory, labels=["mandatory"]), "default": Source(both, labels=["default"])}
+        "optional_argument": {
+            name: Source(only_mandatory, labels=["mandatory"]),
+            "default": Source(both, labels=["default"]),
+        }
     }
     assert remove_version(schema.sources) == reference
 
@@ -94,8 +106,12 @@ def test_alias():
     reference = {
         "simple": {
             "default": Source(first, labels=["default", "first", "other"]),
-            "first": Source(first, alias_for="default", labels=["default", "first", "other"]),
-            "other": Source(first, alias_for="default", labels=["default", "first", "other"]),
+            "first": Source(
+                first, alias_for="default", labels=["default", "first", "other"]
+            ),
+            "other": Source(
+                first, alias_for="default", labels=["default", "first", "other"]
+            ),
             "second": Source(second, labels=["second", "more"]),
             "more": Source(second, alias_for="second", labels=["second", "more"]),
         },
@@ -109,7 +125,9 @@ def test_custom_data_source():
 
     schema = Schema(VERSION)
     schema.add(Simple, file="filename", data_factory=make_data)
-    data_factory_source = Source(data=None, file="filename", data_factory=make_data, labels=["default"])
+    data_factory_source = Source(
+        data=None, file="filename", data_factory=make_data, labels=["default"]
+    )
     reference = {"simple": {"default": data_factory_source}}
     assert remove_version(schema.sources) == reference
 
