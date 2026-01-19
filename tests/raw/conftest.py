@@ -66,19 +66,40 @@ def complex_schema():
     schema.add(Complex, name=name, **as_dict(second))
     schema.add(ComplexNested, name="nested", **as_dict(third))
     other_file_source = Source(simple, file=filename)
-    data_factory_source = Source(None, file=filename, data_factory=make_data, labels=["factory"])
-    alias_source = Source(length, alias_for=DEFAULT_SELECTION, labels=[DEFAULT_SELECTION, "alias_name"])
+    data_factory_source = Source(
+        None, file=filename, data_factory=make_data, labels=["factory"]
+    )
+    alias_source = Source(
+        length, alias_for=DEFAULT_SELECTION, labels=[DEFAULT_SELECTION, "alias_name"]
+    )
     reference = {
         "version": {DEFAULT_SELECTION: Source(VERSION)},
-        "simple": {DEFAULT_SELECTION: other_file_source, "factory": data_factory_source},
-        "optional_argument": {DEFAULT_SELECTION: Source(both), name: Source(only_mandatory, labels=[name])},
+        "simple": {
+            DEFAULT_SELECTION: other_file_source,
+            "factory": data_factory_source,
+        },
+        "optional_argument": {
+            DEFAULT_SELECTION: Source(both),
+            name: Source(only_mandatory, labels=[name]),
+        },
         "with_link": {
             DEFAULT_SELECTION: Source(pointer, required=version),
-            "not_so_simple": Source(pointer, required=version, labels=["not_so_simple"]),
+            "not_so_simple": Source(
+                pointer, required=version, labels=["not_so_simple"]
+            ),
         },
-        "with_length": {DEFAULT_SELECTION: Source(length, labels=[DEFAULT_SELECTION, "alias_name"]), "alias_name": alias_source},
-        "mapping": {DEFAULT_SELECTION: Source(mapping, labels=[DEFAULT_SELECTION]), "my_list": Source(list_, labels=["my_list"])},
-        "complex": {DEFAULT_SELECTION: Source(first, labels=[DEFAULT_SELECTION]), name: Source(second, labels=[name])},
+        "with_length": {
+            DEFAULT_SELECTION: Source(length, labels=[DEFAULT_SELECTION, "alias_name"]),
+            "alias_name": alias_source,
+        },
+        "mapping": {
+            DEFAULT_SELECTION: Source(mapping, labels=[DEFAULT_SELECTION]),
+            "my_list": Source(list_, labels=["my_list"]),
+        },
+        "complex": {
+            DEFAULT_SELECTION: Source(first, labels=[DEFAULT_SELECTION]),
+            name: Source(second, labels=[name]),
+        },
         "complex_nested": {"nested": Source(third, labels=["nested"])},
     }
     return schema, reference
