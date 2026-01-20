@@ -1,7 +1,11 @@
 from typing import Any, Optional, Tuple
 
+from h5py import File
+
 from py4vasp import exception
-from py4vasp._raw.definition import DEFAULT_SOURCE, unique_selections
+from py4vasp._raw.data import Version
+from py4vasp._raw.definition import DEFAULT_SOURCE, Schema, unique_selections
+from py4vasp._raw.schema import Length, Link
 
 
 def combine_db_dicts(*args) -> dict:
@@ -55,11 +59,63 @@ def construct_database_data_key(
     has_selection = (
         selection is not None and selection != "" and selection != DEFAULT_SOURCE
     )
-    full_key = quantity_name + (f":{selection}" if has_selection else "")
+    full_key = quantity_name.lstrip("_") + (f":{selection}" if has_selection else "")
     if group_name is not None:
         full_key = f"{group_name}.{full_key}"
     return full_key, has_selection
 
 
+def should_load(
+    quantity: str,
+    source: str,
+    h5file: File,
+    schema: Schema,
+    version: Optional[Version] = None,
+) -> tuple[bool, Optional[Version], bool]:
+    should_load_ = False
+    if quantity in schema.sources:
+        required = schema.sources[quantity][source].required
+        check_success, version = check_version(h5file, required, schema, version)
+        if not check_success:
+            return False, version, False
+        source_info = schema.sources[quantity][source].data
+        if source_info is None:
+            return False, version, True
+        quantity_dict = {}
+        for key, _ in source_info.__dataclass_fields__.items():
+            link = getattr(source_info, key)
+            if isinstance(link, Link):
+                quantity_dict[key], version, _ = should_load(
+                    link.quantity, link.source, h5file, schema, version
+                )
+            elif isinstance(link, Length):
+                quantity_dict[key] = link.dataset in h5file
+            elif link is not None and isinstance(link, str):
+                quantity_dict[key] = link in h5file
+        quantity_dict = {k: v for k, v in quantity_dict.items() if v is True}
+        try:
+            new_class = source_info.__class__(**quantity_dict)
+            should_load_ = True
+        except Exception as e:
+            should_load_ = False
+    return should_load_, version, False
+
+
+def check_version(h5f, required, schema, current_version=None):
+    if not required:
+        return True, current_version
+    if current_version is None:
+        current_version = Version(
+            major=h5f[schema.version.major][()],
+            minor=h5f[schema.version.minor][()],
+            patch=h5f[schema.version.patch][()],
+        )
+    return not (current_version < required), current_version
+
+
 def clean_db_key(key: str, db_key_suffix: Optional[str] = None) -> str:
-    return (key + (db_key_suffix or "")) if not (":" in key) else key
+    return (
+        (key.lstrip("_") + (db_key_suffix or ""))
+        if not (":" in key)
+        else key.lstrip("_")
+    )

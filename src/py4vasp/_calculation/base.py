@@ -5,13 +5,11 @@ import dataclasses
 import functools
 import inspect
 import pathlib
-from typing import Optional, Tuple
+from typing import Optional
 
 from py4vasp import exception, raw
-from py4vasp._raw.definition import DEFAULT_SOURCE, schema
+from py4vasp._raw.definition import schema
 from py4vasp._raw.schema import (
-    Link,
-    Source,
     _get_processed_selection,
     _get_selections_for_subquantities,
 )
@@ -231,7 +229,13 @@ class Refinery:
         when calling this method.
         """
         try:
+            if self.__class__.__name__ == "stoichiometry":
+                print(
+                    f"[DEBUG] Entering _read_to_database of {self.__class__.__name__} (original: {original_quantity}:{original_selection}, {subquantity_chain})"
+                )
             raw_db_key = _quantity(self.__class__)
+            if self.__class__.__name__ == "stoichiometry":
+                print(f"[DEBUG] raw_db_key: {raw_db_key}")
             # Check original quantity vs. raw_db_key to avoid cyclic calls
             if original_quantity is not None and original_quantity == raw_db_key:
                 raise exception._Py4VaspInternalError(
@@ -243,6 +247,10 @@ class Refinery:
                 original_subquantity_selections = _get_selections_for_subquantities(
                     original_quantity, original_selection, schema
                 )
+                if raw_db_key == "stoichiometry":
+                    print(
+                        f"[DEBUG] original_quantity: {original_quantity}, original_selection: {original_selection}, original_subquantity_selections: {original_subquantity_selections}"
+                    )
             else:
                 subquantity_chain = (
                     raw_db_key
@@ -257,10 +265,16 @@ class Refinery:
                 subquantity_chain,
             )
             active_selection = f":{active_selection}"
+            if raw_db_key == "stoichiometry":
+                print(f"[DEBUG] active_selection: {active_selection}")
             # Obtain expected key for database entry
             expected_db_key = database.clean_db_key(
                 raw_db_key, db_key_suffix=active_selection
             )
+            if raw_db_key == "stoichiometry":
+                print(
+                    f"[DEBUG] expected_db_key: {expected_db_key}, active_selection: {active_selection}, subquantity_chain: {subquantity_chain}, {expected_db_key in current_db if current_db is not None else 'N/A'}"
+                )
             if current_db is not None and expected_db_key in current_db:
                 # if quantity already exists in db, return empty dict to avoid recomputation
                 return {}  # {expected_db_key: current_db[expected_db_key]}
@@ -274,6 +288,8 @@ class Refinery:
                 subquantity_chain=subquantity_chain,
                 **kwargs,
             )
+            if raw_db_key == "stoichiometry":
+                print(f"[DEBUG] database_data before key cleaning: {database_data}")
             database_data = dict(
                 zip(
                     [
@@ -290,6 +306,9 @@ class Refinery:
                 )
             return database_data
         except AttributeError as e:
+            # print(
+            #     f"[CHECK] AttributeError in _read_to_database of {self.__class__.__name__} (original: {original_quantity}:{original_selection}, {subquantity_chain}): {e}"
+            # )
             # if the particular quantity does not implement database reading, return empty dict
             return {}
 
