@@ -213,7 +213,11 @@ class Refinery:
         Note 2: also that you can add specific quantity:selection combinations here,
         see the "cell:special_selection" example above. This allows you to set properties
         on other quantities that are not directly part of this quantity, maybe even
-        for completely different selections.
+        for completely different selections. However, beware: This might mean a regular
+        calculation of that same quantity later on may be skipped. To avoid, make sure
+        that the base quantity is added before the current quantity in Calculation.QUANTITIES.
+        Example: if you add "cell:special_selection" in this example for a quantity "quantity",
+        make sure that "cell" is listed before "quantity" in Calculation.QUANTITIES.
 
         Note 3: that when the dataclass loads other quantities, you should call their
         `_read_to_database` method directly to avoid re-selecting the data again.
