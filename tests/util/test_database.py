@@ -1,3 +1,9 @@
+from pathlib import Path
+
+import pytest
+
+from py4vasp import Calculation, demo
+from py4vasp._raw.data import CalculationMetaData, _DatabaseData
 from py4vasp._raw.definition import DEFAULT_SOURCE
 from py4vasp._util import database
 
@@ -62,3 +68,67 @@ def test_construct_database_data_key():
     assert database.construct_database_data_key(
         "group", "quantity", DEFAULT_SOURCE
     ) == ("group.quantity", False)
+
+
+def basic_db_checks(demo_calc_db: _DatabaseData):
+    assert demo_calc_db is not None
+    assert isinstance(demo_calc_db, _DatabaseData)
+    assert demo_calc_db.metadata is not None
+    assert isinstance(demo_calc_db.metadata, CalculationMetaData)
+    assert isinstance(demo_calc_db.available_quantities, dict)
+    assert isinstance(demo_calc_db.additional_properties, dict)
+
+    # Check metadata fields
+    assert isinstance(demo_calc_db.metadata.hdf5, Path)
+
+    # Check that available_quantities has correct structure
+    # and that the loaded data is non-trivial
+    true_counter = 0
+    has_non_default_selections = False
+    for key, value in demo_calc_db.available_quantities.items():
+        available, aliases = value
+        assert isinstance(available, bool)
+        assert isinstance(aliases, list)
+        assert len(aliases) >= 1
+        assert isinstance(aliases[0], str)
+        true_counter += int(available)
+        if ":" in key and not key.endswith(f":{DEFAULT_SOURCE}"):
+            has_non_default_selections = True
+    assert has_non_default_selections
+    assert true_counter > 5
+
+    # Check that additional_properties has correct structure and
+    # Check that additional_properties has only entries that are listed in available_quantities
+    non_empty_counter = 0
+    for key in demo_calc_db.additional_properties:
+        if not (key in demo_calc_db.available_quantities):
+            if not (key.startswith("cell")):
+                raise AssertionError(
+                    f"Key {key} in additional_properties missing from available_quantities"
+                )
+        elif not demo_calc_db.available_quantities[key][0]:
+            raise AssertionError(
+                f"Key {key} in additional_properties marked as unavailable in available_quantities"
+            )
+
+        if demo_calc_db.additional_properties[key] not in (None, {}, []):
+            non_empty_counter += 1
+    assert non_empty_counter > 5
+
+
+def test_demo_db(tmp_path):
+    """Check basic _to_database functionality on demo calculation."""
+    actual_path = tmp_path / "demo_calculation"
+    demo_calc = demo.calculation(actual_path)
+    demo_calc_db = demo_calc._to_database()
+    basic_db_checks(demo_calc_db)
+
+
+@pytest.mark.parametrize("tags", [None, "test", ["test", "demo"]])
+def test_demo_db_with_tags(tags, tmp_path):
+    """Check _to_database functionality with tags on demo calculation."""
+    actual_path = tmp_path / "demo_calculation"
+    demo_calc = demo.calculation(actual_path)
+    demo_calc_db = demo_calc._to_database(tags=tags)
+    basic_db_checks(demo_calc_db)
+    assert demo_calc_db.metadata.tags == tags
