@@ -4,6 +4,8 @@ import importlib
 import pathlib
 from typing import Any, List, Optional, Tuple, Union
 
+import h5py
+
 from py4vasp import exception
 from py4vasp._raw.access import access
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
@@ -13,6 +15,7 @@ from py4vasp._raw.definition import (
     selections,
     unique_selections,
 )
+from py4vasp._raw.schema import Link
 from py4vasp._util import convert, database, import_
 
 INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
@@ -286,7 +289,7 @@ instead of the constructor Calculation()."""
 
         # Check available quantities and compute additional properties
         database_data.available_quantities, database_data.additional_properties = (
-            self._compute_database_data()
+            self._compute_database_data(hdf5_path)
         )
 
         # Return DatabaseData object for VaspDB to process
@@ -325,7 +328,7 @@ instead of the constructor Calculation()."""
     #     self._POSCAR.write(str(poscar))
 
     def _compute_database_data(
-        self,
+        self, hdf5_path: pathlib.Path
     ) -> Tuple[dict[str, tuple[bool, list[str]]], dict[str, dict]]:
         """Computes a dict of available py4vasp dataclasses and all available database data.
 
@@ -346,10 +349,11 @@ instead of the constructor Calculation()."""
         additional_properties = {}
 
         available_quantities, additional_properties = self._loop_quantities(
-            QUANTITIES, available_quantities, additional_properties
+            hdf5_path, QUANTITIES, available_quantities, additional_properties
         )
         for group, quantities in GROUPS.items():
             available_quantities, additional_properties = self._loop_quantities(
+                hdf5_path,
                 quantities,
                 available_quantities,
                 additional_properties,
@@ -372,21 +376,27 @@ instead of the constructor Calculation()."""
         return available_quantities, additional_properties
 
     def _loop_quantities(
-        self, quantities, available_quantities, additional_properties, group_name=None
+        self,
+        hdf5_path: pathlib.Path,
+        quantities,
+        available_quantities,
+        additional_properties,
+        group_name=None,
     ) -> Tuple[dict[str, tuple[bool, list[str]]], dict[str, dict]]:
         group_instance = self if group_name is None else getattr(self, group_name)
         for quantity in quantities:
             try:
                 _selections = (
-                    unique_selections(quantity)
+                    unique_selections(quantity.lstrip("_"))
                     if group_name is None
-                    else unique_selections(f"{group_name}_{quantity}")
+                    else unique_selections(f"{group_name}_{quantity.lstrip('_')}")
                 )
             except exception.FileAccessError:
                 _selections = ["default"]
 
             for selection in _selections:
                 is_available, props, aliases_ = self._compute_quantity_db_data(
+                    hdf5_path,
                     group_instance,
                     selection,
                     quantity,
@@ -404,25 +414,51 @@ instead of the constructor Calculation()."""
         return available_quantities, additional_properties
 
     def _compute_quantity_db_data(
-        self, group, selection, quantity_name, group_name=None, current_db={}
+        self,
+        hdf5_path: pathlib.Path,
+        group,
+        selection: Optional[str],
+        quantity_name: str,
+        group_name: Optional[str] = None,
+        current_db: dict = {},
     ) -> Tuple[bool, dict, list[str]]:
         "Compute additional data to be stored in the database."
         is_available = False
+        schema_quantity_name = quantity_name.lstrip("_")
         aliases_ = schema._aliases(
             (
-                f"{group_name}_{quantity_name}"
+                f"{group_name}_{schema_quantity_name}"
                 if group_name is not None
-                else quantity_name
+                else schema_quantity_name
             ),
             selection,
         )
         additional_properties = {}
-        quantity_data = None
 
         try:
-            # attempt to read
-            quantity_data = getattr(group, quantity_name).read(selection=str(selection))
-            is_available = True
+            # check if readable
+            expected_key = (
+                f"{group_name}_{schema_quantity_name}"
+                if group_name is not None
+                else schema_quantity_name
+            )
+            should_load = True
+            with h5py.File(hdf5_path, "r") as h5file:
+                should_load, _, should_attempt_read = database.should_load(
+                    expected_key, selection, h5file, schema
+                )
+
+                if should_attempt_read:
+                    raw_class = getattr(group, quantity_name)
+            # should_load = True
+            if should_load or should_attempt_read:
+                if should_attempt_read:
+                    # attempt to read; if it passes: available
+                    # this is relevant for quantities that read from files other than h5
+                    quantity_data = getattr(group, quantity_name).read(
+                        selection=str(selection)
+                    )
+                is_available = True
             # attempt to compute additional properties if any are requested
         except exception.NoData:
             pass  # happens when some required data is missing
@@ -431,13 +467,13 @@ instead of the constructor Calculation()."""
         except exception.FileAccessError:
             pass  # happens when vaspout.h5 or vaspwave.h5 (where relevant) are missing
         except Exception as e:
-            # print(
-            #     f"[CHECK] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:",
-            #     e,
-            # )
+            print(
+                f"[CHECK] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:",
+                e,
+            )
             pass  # catch any other errors during reading
 
-        if quantity_data is not None:
+        if is_available:
             try:
                 additional_properties: dict[str, dict[str, Any]] = getattr(
                     group, quantity_name
@@ -454,8 +490,6 @@ instead of the constructor Calculation()."""
 
             # TODO integration tests (start with testing specific _to_database methods first)
             #     --> use demo and tmp_path_factory fixtures to create test calculations
-            # TODO implement a base.Refinery.is_available() method to check schema and dataclass read accessibility
-            #     --> use it here to determine is_available instead of try/except read
         return is_available, additional_properties, aliases_
 
 
