@@ -70,7 +70,7 @@ def test_construct_database_data_key():
     ) == ("group.quantity", False)
 
 
-def basic_db_checks(demo_calc_db: _DatabaseData):
+def basic_db_checks(demo_calc_db: _DatabaseData, minimum_counter=1):
     assert demo_calc_db is not None
     assert isinstance(demo_calc_db, _DatabaseData)
     assert demo_calc_db.metadata is not None
@@ -95,7 +95,7 @@ def basic_db_checks(demo_calc_db: _DatabaseData):
         if ":" in key and not key.endswith(f":{DEFAULT_SOURCE}"):
             has_non_default_selections = True
     assert has_non_default_selections
-    assert true_counter > 5
+    assert true_counter > minimum_counter
 
     # Check that additional_properties has correct structure and
     # Check that additional_properties has only entries that are listed in available_quantities
@@ -113,15 +113,18 @@ def basic_db_checks(demo_calc_db: _DatabaseData):
 
         if demo_calc_db.additional_properties[key] not in (None, {}, []):
             non_empty_counter += 1
-    assert non_empty_counter > 5
+    assert non_empty_counter > minimum_counter
 
 
-def test_demo_db(tmp_path):
+@pytest.mark.parametrize(
+    ["selection", "minimum_counter"], [(None, 5), ("collinear", 1), ("noncollinear", 5), ("spin_texture", 2)]
+)
+def test_demo_db(tmp_path, selection, minimum_counter):
     """Check basic _to_database functionality on demo calculation."""
     actual_path = tmp_path / "demo_calculation"
-    demo_calc = demo.calculation(actual_path)
+    demo_calc = demo.calculation(actual_path, selection=selection)
     demo_calc_db = demo_calc._to_database()
-    basic_db_checks(demo_calc_db)
+    basic_db_checks(demo_calc_db, minimum_counter=minimum_counter)
 
 
 @pytest.mark.parametrize("tags", [None, "test", ["test", "demo"]])
