@@ -467,10 +467,10 @@ instead of the constructor Calculation()."""
         except exception.FileAccessError:
             pass  # happens when vaspout.h5 or vaspwave.h5 (where relevant) are missing
         except Exception as e:
-            print(
-                f"[CHECK] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:",
-                e,
-            )
+            # print(
+            #     f"[CHECK] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:",
+            #     e,
+            # )
             pass  # catch any other errors during reading
 
         if is_available:
