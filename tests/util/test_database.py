@@ -2,29 +2,44 @@ from pathlib import Path
 
 import pytest
 
-from py4vasp import Calculation, demo
+from py4vasp import demo
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
 from py4vasp._raw.definition import DEFAULT_SOURCE
 from py4vasp._util import database
 
 
-def test_clean_db_key():
+@pytest.mark.parametrize(
+    ["key", "db_key_suffix", "group_name", "expected"],
+    [
+        ("group.quantity", ":selection", None, "group.quantity:selection"),
+        ("group.quantity", None, None, "group.quantity"),
+        ("group_quantity", None, "group", "group.quantity"),
+        ("group_other_quantity", None, "group", "group.other_quantity"),
+        (
+            "group_other_quantity",
+            ":selection",
+            "group",
+            "group.other_quantity:selection",
+        ),
+        (
+            "group_other_quantity:selection",
+            ":other_selection",
+            "group",
+            "group.other_quantity:selection",
+        ),
+        ("group.quantity:selection", None, None, "group.quantity:selection"),
+        (
+            "group.quantity:selection",
+            ":other_selection",
+            None,
+            "group.quantity:selection",
+        ),
+    ],
+)
+def test_clean_db_key(key, db_key_suffix, group_name, expected):
     assert (
-        database.clean_db_key("group.quantity", db_key_suffix=":selection")
-        == "group.quantity:selection"
-    )
-    assert (
-        database.clean_db_key("group.quantity", db_key_suffix=None) == "group.quantity"
-    )
-    assert (
-        database.clean_db_key("group.quantity:selection", db_key_suffix=None)
-        == "group.quantity:selection"
-    )
-    assert (
-        database.clean_db_key(
-            "group.quantity:selection", db_key_suffix=":other_selection"
-        )
-        == "group.quantity:selection"
+        database.clean_db_key(key, db_key_suffix=db_key_suffix, group_name=group_name)
+        == expected
     )
 
 
@@ -117,7 +132,8 @@ def basic_db_checks(demo_calc_db: _DatabaseData, minimum_counter=1):
 
 
 @pytest.mark.parametrize(
-    ["selection", "minimum_counter"], [(None, 5), ("collinear", 1), ("noncollinear", 5), ("spin_texture", 2)]
+    ["selection", "minimum_counter"],
+    [(None, 5), ("collinear", 1), ("noncollinear", 5), ("spin_texture", 2)],
 )
 def test_demo_db(tmp_path, selection, minimum_counter):
     """Check basic _to_database functionality on demo calculation."""
