@@ -150,6 +150,7 @@ class Refinery:
         original_selection: Optional[str] = None,
         original_subquantity_selections: Optional[dict[str, Optional[str]]] = None,
         subquantity_chain: Optional[str] = None,
+        original_group_name: Optional[str] = None,
         **kwargs,
     ):
         """Internal method to convert the data to a database format.
@@ -261,7 +262,9 @@ class Refinery:
             active_selection = f":{active_selection}"
             # Obtain expected key for database entry
             expected_db_key = database.clean_db_key(
-                raw_db_key, db_key_suffix=active_selection
+                raw_db_key,
+                db_key_suffix=active_selection,
+                group_name=original_group_name,
             )
             if current_db is not None and expected_db_key in current_db:
                 # if quantity already exists in db, return empty dict to avoid recomputation
@@ -279,7 +282,11 @@ class Refinery:
             database_data = dict(
                 zip(
                     [
-                        database.clean_db_key(key, db_key_suffix=active_selection)
+                        database.clean_db_key(
+                            key,
+                            db_key_suffix=active_selection,
+                            group_name=original_group_name,
+                        )
                         for key in database_data.keys()
                     ],
                     database_data.values(),
@@ -287,6 +294,11 @@ class Refinery:
             )
             # Check if the expected key is present in the returned data
             if not (expected_db_key in database_data) and database_data != {}:
+                print(f"[CHECK] database_data keys: {list(database_data.keys())}")
+                print(
+                    f"[CHECK] expected_db_key: {expected_db_key}, original_quantity: {original_quantity}, original_selection: {original_selection}, subquantity_chain: {subquantity_chain}"
+                )
+                print(original_subquantity_selections)
                 raise exception._Py4VaspInternalError(
                     f"Database key '{expected_db_key}' not found in the database data returned by _to_database for quantity '{raw_db_key}' with selection '{active_selection}'. Keys are {list(database_data.keys())}."
                 )

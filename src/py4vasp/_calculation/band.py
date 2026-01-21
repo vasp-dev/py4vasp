@@ -224,6 +224,11 @@ class Band(base.Refinery, graph.Mixin):
                     "raw_fermi_energy": self._raw_data.fermi_energy,
                     "fermi_energy": fermi_energy or self._raw_data.fermi_energy,
                     "is_collinear": self._is_collinear(),
+                    "is_noncollinear": (
+                        self._is_noncollinear()
+                        if not (check.is_none(self._raw_data.projections))
+                        else None
+                    ),
                 },
             },
             dispersion,

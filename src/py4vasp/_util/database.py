@@ -113,9 +113,16 @@ def check_version(h5f, required, schema, current_version=None):
     return not (current_version < required), current_version
 
 
-def clean_db_key(key: str, db_key_suffix: Optional[str] = None) -> str:
-    return (
+def clean_db_key(
+    key: str, db_key_suffix: Optional[str] = None, group_name: Optional[str] = None
+) -> str:
+    key = (
         (key.lstrip("_") + (db_key_suffix or ""))
         if not (":" in key)
         else key.lstrip("_")
     )
+    if group_name is not None and key.startswith(group_name):
+        key_first, key_second = key[: len(group_name)], key[len(group_name) :]
+        if key_second.startswith("_"):
+            key = f"{key_first}.{key_second.lstrip('_')}"
+    return key

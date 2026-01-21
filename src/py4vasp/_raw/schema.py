@@ -294,6 +294,7 @@ def _get_selections_for_subquantities(
     original_selection_schema = original_selection_schema.data
     if original_selection_schema is None:
         return actual_selections
+
     for subquantity, link in original_selection_schema.__dataclass_fields__.items():
         actual_link = getattr(original_selection_schema, subquantity)
         if not isinstance(actual_link, Link):

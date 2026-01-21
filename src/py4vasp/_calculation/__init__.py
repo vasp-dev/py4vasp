@@ -480,6 +480,7 @@ instead of the constructor Calculation()."""
                 )._read_to_database(
                     selection=str(selection),
                     current_db=current_db,
+                    original_group_name=group_name,
                 )
             except Exception as e:
                 raise Exception(
