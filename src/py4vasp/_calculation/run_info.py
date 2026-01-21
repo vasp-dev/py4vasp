@@ -13,7 +13,7 @@ class RunInfo(base.Refinery):
         number_steps = 1 if positions.ndim == 2 else positions.shape[0]
         return {
             "vasp_version": self._raw_data.runtime_data.vasp_version,
-            "number_steps": number_steps, # TODO move away or declare RunInfo the common quantity
+            "number_steps": number_steps,  # TODO move away or declare RunInfo the common quantity
             # TODO add more run info
         }
 

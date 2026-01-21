@@ -53,7 +53,7 @@ class PhononDos(phonon.Mixin, base.Refinery, graph.Mixin):
             "total": self._raw_data.dos[:],
             **self._read_data(selection),
         }
-    
+
     @base.data_access
     def _to_database(self, *args, **kwargs):
         return {

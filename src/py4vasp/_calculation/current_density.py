@@ -70,7 +70,7 @@ current density:
                 "current_density": {
                     # TODO move to Setup dataclass instead
                     "grid_shape_coarse": [grid[2], grid[1], grid[0]],
-                    "grid_shape_fine": None, # TODO implement
+                    "grid_shape_fine": None,  # TODO implement
                 }
             }
         except Exception as exc:

@@ -52,7 +52,7 @@ class ExcitonEigenvector(base.Refinery):
             "first_valence_band": self._raw_data.first_valence_band[:] - 1,
             "first_conduction_band": self._raw_data.first_conduction_band[:] - 1,
         }
-    
+
     @base.data_access
     def _to_database(self, *args, **kwargs):
         return {

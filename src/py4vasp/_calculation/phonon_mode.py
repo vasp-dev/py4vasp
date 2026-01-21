@@ -59,7 +59,7 @@ class PhononMode(base.Refinery, structure.Mixin):
             "frequencies": self.frequencies(),
             "eigenvectors": self._raw_data.eigenvectors[:],
         }
-    
+
     @base.data_access
     def _to_database(self, *args, **kwargs):
         return {

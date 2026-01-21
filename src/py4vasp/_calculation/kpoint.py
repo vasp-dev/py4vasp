@@ -84,8 +84,8 @@ reciprocal"""
                 "mode": self.mode(),
                 "line_length": self.line_length(),
                 "number_kpoints": self.number_kpoints(),
-                "grid_kpoints": None, # TODO implement where available
-                "labels": None, # TODO implement as raw labels as specified by user, and only if
+                "grid_kpoints": None,  # TODO implement where available
+                "labels": None,  # TODO implement as raw labels as specified by user, and only if
             }
         }
 

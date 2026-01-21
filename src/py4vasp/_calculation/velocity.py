@@ -111,7 +111,7 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
             "structure": self._structure[self._steps].read(),
             "velocities": self.to_numpy(),
         }
-    
+
     @base.data_access
     def _to_database(self, *args, **kwargs):
         return {

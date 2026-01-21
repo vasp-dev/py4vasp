@@ -176,9 +176,10 @@ class Dos(base.Refinery, graph.Mixin):
     @base.data_access
     def _to_database(self, *args, **kwargs):
         import numpy as np
+
         return {
             "dos": {
-                "dos_at_fermi": None, # TODO implement with up/down and total
+                "dos_at_fermi": None,  # TODO implement with up/down and total
                 "min_energy": float(np.min(self._raw_data.energies[:])),
                 "max_energy": float(np.max(self._raw_data.energies[:])),
             }
