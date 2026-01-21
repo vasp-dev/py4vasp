@@ -58,6 +58,7 @@ class PhononBand(phonon.Mixin, base.Refinery, graph.Mixin):
         return database.combine_db_dicts(
             {
                 "phonon.band": {
+                    # TODO probably move to common quantity
                     "num_qpoints": self._raw_data.dispersion.eigenvalues.shape[0],
                     "num_modes": self._raw_data.dispersion.eigenvalues.shape[1],
                 }

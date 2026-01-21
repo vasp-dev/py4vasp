@@ -113,13 +113,16 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
     @base.data_access
     def _to_database(self, *args, **kwargs):
         default_dict = self._default_dict()
+        # TODO calculation.energy[:] -- don't take default_dict but read ALL steps
         energy_dict = {}
         for k, v in default_dict.items():
             try:
-                energy_dict[k] = {"initial": v[0], "final": v[-1]}
+                energy_dict[f"{k}_initial"] = v[0]
+                energy_dict[f"{k}_final"] = v[-1]
             except:
                 try:
-                    energy_dict[k] = {"initial": None, "final": float(v)}
+                    energy_dict[f"{k}_initial"] = None
+                    energy_dict[f"{k}_final"] = float(v)
                 except:
                     pass
         return {"energy": energy_dict}

@@ -68,6 +68,15 @@ class PairCorrelation(slice_.Mixin, base.Refinery, graph.Mixin):
             **self._read_data(selection),
         }
 
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        return {
+            "pair_correlation": {
+                # TODO min and max distance if min != 0
+            }
+        }
+
     @base.data_access
     @documentation.format(
         selection=_selection_string("the total pair correlation is used"),

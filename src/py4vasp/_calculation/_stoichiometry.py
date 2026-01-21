@@ -86,6 +86,9 @@ class Stoichiometry(base.Refinery):
             "stoichiometry": {
                 "ion_types": list(self.ion_types()),
                 "number_ion_types": list(self._raw_data.number_ion_types),
+                "number_ion_types_primitive": None, # TODO implement
+                "formula": None,  # TODO implement SiO2 check ASE for example conventions for order
+                "compound": None,  # TODO implement Si-O
             }
         }
 

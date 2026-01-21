@@ -53,6 +53,15 @@ class PhononDos(phonon.Mixin, base.Refinery, graph.Mixin):
             "total": self._raw_data.dos[:],
             **self._read_data(selection),
         }
+    
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        return {
+            "phonon_dos": {
+                "min_energy": float(self._raw_data.energies[0]),
+                "max_energy": float(self._raw_data.energies[-1]),
+            }
+        }
 
     @base.data_access
     @documentation.format(selection=phonon.selection_doc)

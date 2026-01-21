@@ -41,3 +41,11 @@ electronic dipole moment: {vec_to_string(self._raw_data.electron[:])}
             "electron_dipole": self._raw_data.electron[:],
             "ion_dipole": self._raw_data.ion[:],
         }
+    
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        return {
+            "polarization": {
+                **self.to_dict(), # TODO check keys and consider norm of the sum of both as total_polarization
+            }
+        }

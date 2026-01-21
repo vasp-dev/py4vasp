@@ -253,6 +253,8 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
     @base.data_access
     def _to_database(self, *args, **kwargs):
         stoichiometry = self._stoichiometry()._read_to_database(*args, **kwargs)
+
+        # TODO add more structure properties and discuss
         cell = {
             "cell": {
                 "is_changing": (

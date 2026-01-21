@@ -68,7 +68,9 @@ current density:
             grid = self._raw_data[key].current_density.shape[1:]
             density_dict = {
                 "current_density": {
-                    "grid": [grid[2], grid[1], grid[0]],
+                    # TODO move to Setup dataclass instead
+                    "grid_shape_coarse": [grid[2], grid[1], grid[0]],
+                    "grid_shape_fine": None, # TODO implement
                 }
             }
         except Exception as exc:

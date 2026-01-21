@@ -156,6 +156,17 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
             **self._add_total_magnetic_moment(),
             **self._add_spin_and_orbital_moments(),
         }
+    
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        data_dict = {
+            "local_moment": {
+                "has_orbital_moments": None, # TODO implement
+                "spin_moment_min": None, # TODO implement but think about noncollinear systems - z-axis projection?
+                "spin_moment_max": None, # TODO implement but think about whether to use linalg.norm or project to z for signed norm
+            }
+        }
+        return data_dict
 
     @base.data_access
     @documentation.format(selection=_moment_selection)

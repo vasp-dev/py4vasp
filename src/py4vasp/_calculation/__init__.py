@@ -489,8 +489,10 @@ instead of the constructor Calculation()."""
                 ) from e
                 # pass  # catch any other errors during reading
 
-            # TODO integration tests (start with testing specific _to_database methods first)
-            #     --> use demo and tmp_path_factory fixtures to create test calculations
+            # TODO can I load POSCAR and CONTCAR with correct available_quantities representations on nested quantities?
+            # TODO think about how to handle private quantities like dispersion, CONTCAR, etc.
+            # TODO think about how to handle :phonon selections and make them available under phonon.(...)
+            # TODO add CONTCAR, OUTCAR paths to _DatabaseData
         return is_available, additional_properties, aliases_
 
 

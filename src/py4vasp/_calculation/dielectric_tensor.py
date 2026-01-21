@@ -31,6 +31,14 @@ class DielectricTensor(base.Refinery):
             "method": convert.text_to_string(self._raw_data.method),
         }
 
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        dielectric_tensor_db = {
+            "dielectric_tensor": self.to_dict(), # TODO decide which quantity best describes the tensor - epsilon? Trace? --> store it separately, maybe only one tensor
+        }
+        return dielectric_tensor_db
+
     @base.data_access
     def __str__(self):
         data = self.to_dict()

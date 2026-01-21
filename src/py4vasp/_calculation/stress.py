@@ -107,6 +107,15 @@ in kB   {stress_to_string(stress)}
             "stress": self._stress[self._steps],
             "structure": self._structure[self._steps].read(),
         }
+    
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        return {
+            "stress": {
+                "avg_stress_final": None, # TODO compute average stress of final frame = trace / 3
+                "stress_tensor_final": None, # TODO add final stress tensor
+            }
+        }
 
     @base.data_access
     def number_steps(self):

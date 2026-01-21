@@ -349,11 +349,11 @@ class ElectronPhononBandgap(mapping.Mapping):
     "Value of the direct bandgap"
     temperatures: VaspData
     "List of temperatures at which the bandgap renormalization was computed"
-    nbands_sum: int
+    nbands_sum: list[int]
     "Number of bands that were summed over in this instance"
-    delta: float
+    delta: list[float]
     "Value of the imaginary broadening parameter used to evaluate the electron self-energy"
-    scattering_approximation: str
+    scattering_approximation: list[str]
     "Scattering approximation used to compute the electron self-energy"
     id_index: VaspData
     "Index of the elements on each list of variables used to generate instances"
@@ -535,7 +535,7 @@ class InternalStrain:
     structure: Structure
     "Structural information about the system to inform about the unit cell."
     internal_strain: VaspData
-    "The  data of the internal strain."
+    "The data of the internal strain."
 
 
 @dataclasses.dataclass

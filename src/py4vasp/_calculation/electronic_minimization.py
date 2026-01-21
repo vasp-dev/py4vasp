@@ -75,6 +75,19 @@ N, E, dE, deps, ncg, rms, rms(c)"""
         for key in keys_to_include:
             return_data[key] = self._read(key)
         return return_data
+    
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        return {
+            "electronic_minimization": {
+                "max_electronic_steps_per_ionic_step": None, # TODO check max electronic steps per ionic step, ...
+                "num_electronic_steps_to_converge": None, # TODO implement
+
+                # TODO move to common properties and consider ALL steps
+                "is_converged": np.all(self.is_converged().tolist()),
+                "num_ionic_steps": None, # TODO implement
+            }
+        }
 
     def _from_bytes_to_utf(self, quantity: list):
         return [_quantity.decode("utf-8") for _quantity in quantity]

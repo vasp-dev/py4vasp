@@ -221,14 +221,18 @@ class Band(base.Refinery, graph.Mixin):
         return database.combine_db_dicts(
             {
                 "band": {
-                    "raw_fermi_energy": self._raw_data.fermi_energy,
-                    "fermi_energy": fermi_energy or self._raw_data.fermi_energy,
+                    "num_occupied_bands": None, # TODO implement (spin up/down check number of occupations > 0)
+
+                    # TODO move all to common property
+                    "fermi_energy": fermi_energy or self._raw_data.fermi_energy, 
                     "is_collinear": self._is_collinear(),
                     "is_noncollinear": (
                         self._is_noncollinear()
                         if not (check.is_none(self._raw_data.projections))
                         else None
                     ),
+                    "is_magnetic": None, # TODO implement
+                    "magnetic_order": None, # TODO implement, maybe as magnetic_space_group (ferromagnetic, antiferromagnetic, ...)
                 },
             },
             dispersion,
