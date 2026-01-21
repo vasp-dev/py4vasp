@@ -52,13 +52,13 @@ class PiezoelectricTensor(base.Refinery):
             "clamped_ion": electron_data,
             "relaxed_ion": electron_data + self._raw_data.ion[:],
         }
-    
+
     @base.data_access
     def _to_database(self, *args, **kwargs):
         data = self.to_dict()
         return {
             "piezoelectric_tensor": {
-                **self.to_dict(), # TODO check keys and check WIKI for constants
+                **self.to_dict(),  # TODO check keys and check WIKI for constants
             }
         }
 

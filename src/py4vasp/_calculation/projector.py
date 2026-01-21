@@ -131,11 +131,7 @@ class Projector(base.Refinery):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        return {
-            "projector": {
-                "orbital_types": list(self._orbital_types())
-            }
-        }
+        return {"projector": {"orbital_types": list(self._orbital_types())}}
 
     def _init_atom_dict(self):
         return {

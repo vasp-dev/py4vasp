@@ -58,12 +58,12 @@ class Workfunction(base.Refinery, graph.Mixin):
             "fermi_energy": self._raw_data.fermi_energy,
             **band_extrema,
         }
-    
+
     @base.data_access
     def _to_database(self, *args, **kwargs):
         return {
             "workfunction": {
-                "direction": self._raw_data.idipol, # index of lattice vector
+                "direction": self._raw_data.idipol,  # index of lattice vector
                 # TODO is_metallic from bandgap in RunInfo or so
                 "workfunction": None,  # TODO workfunction value = vacuum potential - fermi energy if METAL, check
             }

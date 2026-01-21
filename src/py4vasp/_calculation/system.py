@@ -15,11 +15,11 @@ class System(base.Refinery):
     def to_dict(self):
         "Returns a dictionary containing the system tag."
         return {"system": str(self)}
-    
+
     @base.data_access
     def _to_database(self, *args, **kwargs):
         return {
             "system": {
-                "tag": str(self), # TODO move to RunInfo
+                "tag": str(self),  # TODO move to RunInfo
             }
         }

@@ -68,7 +68,6 @@ class PairCorrelation(slice_.Mixin, base.Refinery, graph.Mixin):
             **self._read_data(selection),
         }
 
-
     @base.data_access
     def _to_database(self, *args, **kwargs):
         return {

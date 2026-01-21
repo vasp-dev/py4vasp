@@ -56,9 +56,11 @@ ion {ion + 1:4d}   {element}
     def _to_database(self, *args, **kwargs):
         structure = self._structure._read_to_database(*args, **kwargs)
         return database.combine_db_dicts(
-            {"born_effective_charges": {
-                "max_eigenvalue": None,  # TODO implement
-                "min_eigenvalue": None,  # TODO implement - is 3x3xN tensor, take traces of 3x3, then min/max
-            }},
+            {
+                "born_effective_charges": {
+                    "max_eigenvalue": None,  # TODO implement
+                    "min_eigenvalue": None,  # TODO implement - is 3x3xN tensor, take traces of 3x3, then min/max
+                }
+            },
             structure,
         )
