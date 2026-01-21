@@ -144,9 +144,6 @@ Fermi energy:    {fermi_energy}"""
                 ),
                 "direct": self._output_gap("direct", to_string=False),
                 "kpoint_direct": self._output_kpoint("direct", to_string=False),
-                "fermi_energy": self._output_energy(
-                    "Fermi energy", component=slice(0, 1), to_string=False
-                ),
             }
         }
 

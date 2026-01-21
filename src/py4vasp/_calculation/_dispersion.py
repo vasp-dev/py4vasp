@@ -42,7 +42,10 @@ class Dispersion(base.Refinery):
         kpoint_labels = self._kpoints.labels()
         return database.combine_db_dicts(
             {
-                "dispersion": {},
+                "dispersion": {
+                    "min_eigenvalue": np.min(self._raw_data.eigenvalues[:]),
+                    "max_eigenvalue": np.max(self._raw_data.eigenvalues[:]),
+                },
             },
             self._kpoints._read_to_database(*args, **kwargs),
         )

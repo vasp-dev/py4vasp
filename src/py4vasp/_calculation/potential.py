@@ -103,7 +103,12 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
     @base.data_access
     def _to_database(self, *args, **kwargs):
         structure = self._structure._read_to_database(*args, **kwargs)
-        potential_dict = {"potential": {}}
+        potential_dict = {"potential": {
+            "has_hartree": None, # TODO implement ALL types
+        }}
+
+        # TODO add mean of total potential (may be None)
+
         for kind in VALID_KINDS:
             potential = self._get_potential(kind)
             for specifier in ["", "up", "down", "magnetization"]:

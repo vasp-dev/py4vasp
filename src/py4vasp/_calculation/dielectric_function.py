@@ -59,6 +59,16 @@ dielectric function:
             **self._add_current_current_if_available(),
         }
 
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        dielectric_function_db = {
+            "dielectric_function": {
+                "min_energy": float(np.min(self._raw_data.energies[:])),
+                "max_energy": float(np.max(self._raw_data.energies[:])),
+            }
+        }
+        return dielectric_function_db
+
     def _add_current_current_if_available(self):
         if self._has_current_component():
             data = convert.to_complex(np.array(self._raw_data.current_current))

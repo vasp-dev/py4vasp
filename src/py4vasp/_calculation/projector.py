@@ -129,6 +129,14 @@ class Projector(base.Refinery):
         spin_dict = self._init_spin_dict()
         return {"atom": atom_dict, "orbital": orbital_dict, "spin": spin_dict}
 
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        return {
+            "projector": {
+                "orbital_types": list(self._orbital_types())
+            }
+        }
+
     def _init_atom_dict(self):
         return {
             key: value.indices

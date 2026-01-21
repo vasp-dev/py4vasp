@@ -175,11 +175,12 @@ class Dos(base.Refinery, graph.Mixin):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
+        import numpy as np
         return {
             "dos": {
-                "fermi_energy": float(self._raw_data.fermi_energy),
-                "is_collinear": self._is_collinear(),
-                "is_noncollinear": self._is_noncollinear(),
+                "dos_at_fermi": None, # TODO implement with up/down and total
+                "min_energy": float(np.min(self._raw_data.energies[:])),
+                "max_energy": float(np.max(self._raw_data.energies[:])),
             }
         }
 

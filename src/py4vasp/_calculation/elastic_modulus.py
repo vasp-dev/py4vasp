@@ -31,6 +31,15 @@ class ElasticModulus(base.Refinery):
             "clamped_ion": self._raw_data.clamped_ion[:],
             "relaxed_ion": self._raw_data.relaxed_ion[:],
         }
+    
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        return {
+            "elastic_modulus": {
+                # TODO add scalar quantities
+                "placeholder": None, # TODO implement like dielectric tensor
+            }
+        }
 
     @base.data_access
     def __str__(self):

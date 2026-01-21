@@ -111,6 +111,15 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
             "structure": self._structure[self._steps].read(),
             "velocities": self.to_numpy(),
         }
+    
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        return {
+            "velocity": {
+                "max_magnitude": None,  # TODO implement like forces & stats
+                "min_magnitude": None,  # TODO implement
+            }
+        }
 
     @base.data_access
     def to_view(self, supercell=None):
