@@ -73,34 +73,44 @@ def should_load(
     h5file: File,
     schema: Schema,
     version: Optional[Version] = None,
-) -> tuple[bool, Optional[Version], bool]:
-    should_load_ = False
+) -> tuple[bool, Optional[Version], bool, list[str]]:
+    should_load_ = True
+    should_attempt_read = False
+    additional_keys = []
     if quantity in schema.sources:
         required = schema.sources[quantity][source].required
         check_success, version = check_version(h5file, required, schema, version)
         if not check_success:
-            return False, version, False
-        source_info = schema.sources[quantity][source].data
-        if source_info is None:
-            return False, version, True
-        quantity_dict = {}
-        for key, _ in source_info.__dataclass_fields__.items():
-            link = getattr(source_info, key)
-            if isinstance(link, Link):
-                quantity_dict[key], version, _ = should_load(
-                    link.quantity, link.source, h5file, schema, version
-                )
-            elif isinstance(link, Length):
-                quantity_dict[key] = link.dataset in h5file
-            elif link is not None and isinstance(link, str):
-                quantity_dict[key] = link in h5file
-        quantity_dict = {k: v for k, v in quantity_dict.items() if v is True}
-        try:
-            new_class = source_info.__class__(**quantity_dict)
-            should_load_ = True
-        except Exception as e:
             should_load_ = False
-    return should_load_, version, False
+        source_info = schema.sources[quantity][source].data
+        if source_info is not None:
+            quantity_dict = {}
+            for key, _ in source_info.__dataclass_fields__.items():
+                link = getattr(source_info, key)
+                if isinstance(link, Link):
+                    quantity_dict[key], version, _, subquantity_additional_keys = (
+                        should_load(link.quantity, link.source, h5file, schema, version)
+                    )
+                    additional_keys.append(f"{link.quantity}:{link.source}")
+                    additional_keys.extend(subquantity_additional_keys)
+                elif isinstance(link, Length):
+                    quantity_dict[key] = link.dataset in h5file
+                elif link is not None and isinstance(link, str):
+                    quantity_dict[key] = link in h5file
+            quantity_dict = {k: v for k, v in quantity_dict.items() if v is True}
+            try:
+                new_class = source_info.__class__(**quantity_dict)
+                should_load_ = True
+            except Exception as e:
+                should_load_ = False
+        else:
+            should_attempt_read = True
+            # data_factory might be set
+            if schema.sources[quantity][source].data_factory is not None:
+                _, version, _, additional_keys = should_load(
+                    quantity, DEFAULT_SOURCE, h5file, schema, version
+                )
+    return should_load_, version, should_attempt_read, additional_keys
 
 
 def check_version(h5f, required, schema, current_version=None):
