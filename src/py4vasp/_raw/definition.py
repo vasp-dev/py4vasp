@@ -702,6 +702,7 @@ schema.add(
 )
 schema.add(
     raw.RunInfo,
-    runtime_data=Link("runtime_data", DEFAULT_SOURCE),
+    runtime=Link("runtime_data", DEFAULT_SOURCE),
     structure=Link("structure", DEFAULT_SOURCE),
+    contcar=Link("CONTCAR", DEFAULT_SOURCE),
 )

@@ -1,4 +1,5 @@
 import functools
+from math import gcd
 from typing import Any, Optional, Tuple
 
 from h5py import File
@@ -138,3 +139,52 @@ def clean_db_key(
         if key_second.startswith("_"):
             key = f"{key_first}.{key_second.lstrip('_')}"
     return key
+
+
+def get_primitive_ion_numbers(
+    number_ion_types: list[int],
+) -> list[int]:
+    """Calculate the number of ions in the primitive cell.
+
+    Parameters
+    ----------
+    number_ion_types : list[int]
+        Number of ions of each type in the conventional cell.
+
+    Returns
+    -------
+    list[int]
+        Number of ions of each type in the primitive cell.
+    """
+    _gcd = functools.reduce(gcd, number_ion_types)
+    return [n // _gcd for n in number_ion_types]
+
+
+def get_formula_and_compound(
+    ion_types: list[str], number_ion_types: list[int]
+) -> Tuple[str, str]:
+    """Generate the chemical formula and compound name.
+
+    Parameters
+    ----------
+    ion_types : list[str]
+        List of unique ion types.
+    number_ion_types : list[int]
+        Number of ions of each type.
+
+    Returns
+    -------
+    tuple[str, str]
+        The chemical formula and compound name.
+    """
+    primitive_numbers = get_primitive_ion_numbers(number_ion_types)
+    formula_parts = []
+    compound_parts = []
+    sorted_types = sorted(zip(ion_types, primitive_numbers), key=lambda x: x[0])
+    for ion_type, number in sorted_types:
+        if number > 0:
+            formula_parts.append(f"{ion_type}{number if number > 1 else ''}")
+            compound_parts.append(f"{ion_type}")
+    formula = "".join(formula_parts)
+    compound = "-".join(compound_parts)
+    return formula, compound

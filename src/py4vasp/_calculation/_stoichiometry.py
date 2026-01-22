@@ -82,13 +82,18 @@ class Stoichiometry(base.Refinery):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
+        ion_types = list(self.ion_types())
+        num_ion_types = list(self._raw_data.number_ion_types)
+        formula, compound = database.get_formula_and_compound(ion_types, num_ion_types)
         return {
             "stoichiometry": {
-                "ion_types": list(self.ion_types()),
-                "number_ion_types": list(self._raw_data.number_ion_types),
-                "number_ion_types_primitive": None,  # TODO implement
-                "formula": None,  # TODO implement SiO2 check ASE for example conventions for order
-                "compound": None,  # TODO implement Si-O
+                "ion_types": ion_types,
+                "number_ion_types": num_ion_types,
+                "number_ion_types_primitive": database.get_primitive_ion_numbers(
+                    num_ion_types
+                ),
+                "formula": formula,
+                "compound": compound,
             }
         }
 

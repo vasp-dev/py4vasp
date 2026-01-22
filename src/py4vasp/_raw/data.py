@@ -759,10 +759,12 @@ class Projector:
 class RunInfo:
     "Contains information about the VASP run."
 
-    runtime_data: RuntimeData
+    runtime: Optional[RuntimeData] = None
     "Data about the runtime environment of the VASP calculation."
-    structure: Structure
+    structure: Optional[Structure] = None
     "Structural information about the system."
+    contcar: Optional[CONTCAR] = None
+    "The data corresponding to the CONTCAR file."
 
 
 @dataclasses.dataclass

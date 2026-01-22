@@ -85,6 +85,41 @@ def test_construct_database_data_key():
     ) == ("group.quantity", False)
 
 
+@pytest.mark.parametrize(
+    ["ion_numbers", "expected"],
+    [
+        ([4, 8, 4], [1, 2, 1]),
+        ([8, 32, 8], [1, 4, 1]),
+        ([10], [1]),
+        ([2, 2, 4], [1, 1, 2]),
+        ([4, 6, 8], [2, 3, 4]),
+        ([3, 5, 7], [3, 5, 7]),
+        ([3, 5, 6], [3, 5, 6]),
+    ],
+)
+def test_get_primitive_ion_numbers(ion_numbers, expected):
+    assert database.get_primitive_ion_numbers(ion_numbers) == expected
+
+
+@pytest.mark.parametrize(
+    ["ion_types", "ion_numbers", "expected_formula", "expected_compound"],
+    [
+        (["Si", "O"], [1, 2], "O2Si", "O-Si"),
+        (["H", "O"], [4, 2], "H2O", "H-O"),
+        (["Na", "Cl"], [1, 1], "ClNa", "Cl-Na"),
+        (["C"], [1], "C", "C"),
+        (["Fe", "O"], [2, 3], "Fe2O3", "Fe-O"),
+        (["Al", "O", "Mg"], [2, 3, 6], "Al2Mg6O3", "Al-Mg-O"),
+    ],
+)
+def test_get_formula_and_compound(
+    ion_types, ion_numbers, expected_formula, expected_compound
+):
+    formula, compound = database.get_formula_and_compound(ion_types, ion_numbers)
+    assert formula == expected_formula
+    assert compound == expected_compound
+
+
 def basic_db_checks(demo_calc_db: _DatabaseData, minimum_counter=1):
     assert demo_calc_db is not None
     assert isinstance(demo_calc_db, _DatabaseData)
