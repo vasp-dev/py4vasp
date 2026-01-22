@@ -395,18 +395,26 @@ instead of the constructor Calculation()."""
                 _selections = ["default"]
 
             for selection in _selections:
-                is_available, props, aliases_ = self._compute_quantity_db_data(
-                    hdf5_path,
-                    group_instance,
-                    selection,
-                    quantity,
-                    group_name,
-                    additional_properties,
+                is_available, props, aliases_, additional_related_keys = (
+                    self._compute_quantity_db_data(
+                        hdf5_path,
+                        group_instance,
+                        selection,
+                        quantity,
+                        group_name,
+                        additional_properties,
+                    )
                 )
                 availability_key, _ = database.construct_database_data_key(
                     group_name, quantity, selection
                 )
                 available_quantities[availability_key] = (is_available, aliases_)
+                # fix data_factory linked quantities and their selections
+                for key in additional_related_keys:
+                    split1, split2 = key.rsplit(":", 1)
+                    actual_key = f"{split1}:{selection}"
+                    if not (actual_key in available_quantities):
+                        available_quantities[actual_key] = (is_available, aliases_)
                 if is_available:
                     additional_properties = database.combine_db_dicts(
                         additional_properties, props
@@ -434,6 +442,7 @@ instead of the constructor Calculation()."""
             selection,
         )
         additional_properties = {}
+        additional_related_keys = []
 
         try:
             # check if readable
@@ -444,12 +453,14 @@ instead of the constructor Calculation()."""
             )
             should_load = True
             with h5py.File(hdf5_path, "r") as h5file:
-                should_load, _, should_attempt_read = database.should_load(
-                    expected_key, selection, h5file, schema
+                should_load, _, should_attempt_read, additional_related_keys = (
+                    database.should_load(expected_key, selection, h5file, schema)
                 )
 
-                if should_attempt_read:
-                    raw_class = getattr(group, quantity_name)
+                if not (should_attempt_read):
+                    # we don't need to add these keys; they should automatically be considered --> clear list!
+                    # the list is passed one level up and may otherwise create duplicates or wrong keys
+                    additional_related_keys = []
             # should_load = True
             if should_load or should_attempt_read:
                 if should_attempt_read:
@@ -489,8 +500,7 @@ instead of the constructor Calculation()."""
                 ) from e
                 # pass  # catch any other errors during reading
 
-            # TODO can I load POSCAR and CONTCAR with correct available_quantities representations on nested quantities?
-        return is_available, additional_properties, aliases_
+        return is_available, additional_properties, aliases_, additional_related_keys
 
 
 def _add_all_refinement_classes(calc):
@@ -591,7 +601,7 @@ def _clean_db_dict_keys(
         ]
         for key in relevant_keys:
             split1, split2 = key.rsplit(":", 1)
-            dict_to_clean[f"{split2}._{split1}"] = dict_to_clean.pop(key)
+            dict_to_clean[f"{split2}._{split1.lstrip('_')}"] = dict_to_clean.pop(key)
 
     return dict_to_clean
 
