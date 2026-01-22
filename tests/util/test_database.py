@@ -94,7 +94,7 @@ def basic_db_checks(demo_calc_db: _DatabaseData, minimum_counter=1):
     assert isinstance(demo_calc_db.additional_properties, dict)
 
     # Check metadata fields
-    assert isinstance(demo_calc_db.metadata.hdf5, Path)
+    assert isinstance(demo_calc_db.metadata.hdf5_original_path, Path)
 
     # Check that available_quantities has correct structure
     # and that the loaded data is non-trivial

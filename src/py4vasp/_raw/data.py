@@ -132,23 +132,28 @@ class CalculationMetaData:
     """Metadata about the VASP calculation.
     This dataclass is not available for Calculation instances."""
 
-    hdf5: Union[str, pathlib.Path]
-    """The path to the HDF5 file from which the data can be read."""
-
+    hdf5_original_path: Union[str, pathlib.Path]
+    """The path to the HDF5 file of the original calculation."""
     tags: Union[str, Iterable[str], None]
     """Tags associated with the calculation."""
 
+    hdf5_internal_path: Optional[Union[str, pathlib.Path]] = None
+    """The path under which vaspdb has stored the calculation files."""
+
     infer_none_files: bool = False
     """Whether to infer links to None files like INCAR etc. where possible."""
-
-    incar: Optional[Union[str, pathlib.Path]] = None
-    "The path to the INCAR file used for the calculation."
-    poscar: Optional[Union[str, pathlib.Path]] = None
-    "The path to the POSCAR file used for the calculation."
-    kpoints: Optional[Union[str, pathlib.Path]] = None
-    "The path to the KPOINTS file used for the calculation."
-    potcar: Optional[Union[str, pathlib.Path]] = None
-    "The path to the POTCAR file used for the calculation."
+    has_incar: bool = False
+    "Whether an INCAR file is associated with the calculation."
+    has_poscar: bool = False
+    "Whether a POSCAR file is associated with the calculation."
+    has_kpoints: bool = False
+    "Whether a KPOINTS file is associated with the calculation."
+    has_potcar: bool = False
+    "Whether a POTCAR file is associated with the calculation."
+    has_contcar: bool = False
+    "Whether a CONTCAR file is associated with the calculation."
+    has_outcar: bool = False
+    "Whether an OUTCAR file is associated with the calculation."
 
     # These should be handled by vaspdb
     added_at: Optional[datetime] = None
@@ -158,19 +163,24 @@ class CalculationMetaData:
 
     def __post_init__(self):
         # Convert paths to pathlib Paths
-        for file_attr in ["hdf5", "incar", "poscar", "kpoints", "potcar"]:
+        for file_attr in ["hdf5_original_path", "hdf5_internal_path"]:
             file_path = getattr(self, file_attr)
             if isinstance(file_path, str):
                 object.__setattr__(self, file_attr, pathlib.Path(file_path))
 
         # Check existence of INCAR, POSCAR, KPOINTS, POTCAR files
         if self.infer_none_files:
-            for file_attr in ["incar", "poscar", "kpoints", "potcar"]:
-                file_path = getattr(self, file_attr)
-                if file_path is None and self.hdf5.exists():
-                    trial_path = self.hdf5.parent / file_attr.upper()
-                    if trial_path.exists():
-                        setattr(self, file_attr, trial_path)
+            for file_attr in [
+                "incar",
+                "poscar",
+                "kpoints",
+                "potcar",
+                "contcar",
+                "outcar",
+            ]:
+                trial_path = self.hdf5_original_path.parent / file_attr.upper()
+                if trial_path.exists():
+                    setattr(self, f"has_{file_attr}", True)
 
 
 @dataclasses.dataclass

@@ -272,6 +272,9 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
             {
                 "structure": {
                     "total_ion_count": self.number_atoms(),
+                    "minimum_ion_distance": None,  # TODO implement
+                    "minimum_ion_distance_index1": None,  # TODO implement
+                    "minimum_ion_distance_index2": None,  # TODO implement
                 },
             },
             stoichiometry,
