@@ -37,10 +37,6 @@ class CONTCAR(base.Refinery, view.Mixin, structure.Mixin):
         return database.combine_db_dicts(
             {
                 "CONTCAR": {
-                    # TODO add this to a Setup dataclass instead
-                    "has_selective_dynamics": self._read("selective_dynamics") != {},
-                    "has_lattice_velocities": self._read("lattice_velocities") != {},
-                    "has_ion_velocities": self._read("ion_velocities") != {},
                     "system": convert.text_to_string(self._raw_data.system),
                 }
             },

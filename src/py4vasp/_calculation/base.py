@@ -304,9 +304,9 @@ class Refinery:
                 )
             return database_data
         except AttributeError as e:
-            # print(
-            #     f"[CHECK] AttributeError in _read_to_database of {self.__class__.__name__} (original: {original_quantity}:{original_selection}, {subquantity_chain}): {e}"
-            # )
+            print(
+                f"[CHECK] AttributeError in _read_to_database of {self.__class__.__name__} (original: {original_quantity}:{original_selection}, {subquantity_chain}): {e}"
+            )
             # if the particular quantity does not implement database reading, return empty dict
             return {}
 
