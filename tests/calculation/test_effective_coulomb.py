@@ -109,9 +109,11 @@ def setup_omega_data(setup, read_data):
     if setup.has_positions:
         screened_potential = read_data["screened"][0]
         bare_potential = read_data["bare_high_cutoff"][0]
+        U_for_both = weight * np.einsum(f"rsiiiiw->rw", read_data["screened"])
     else:
         screened_potential = read_data["screened"]
         bare_potential = read_data["bare_high_cutoff"]
+        U_for_both = None
     U = weight * np.einsum(f"siiiiw->sw", screened_potential)
     J = weight_j * (weight * np.einsum(f"sijijw->sw", screened_potential) - U)
     return {
@@ -119,6 +121,7 @@ def setup_omega_data(setup, read_data):
         "screened U": U,
         "screened J": J,
         "bare V": np.einsum(f"siiiiw->sw", bare_potential) * weight,
+        "U for both": U_for_both,
     }
 
 
@@ -141,6 +144,7 @@ def setup_radial_data(setup, read_data):
         "screened U": U,
         "screened J": J,
         "bare V": np.einsum("rsiiii->sr", bare_potential.real) * weight,
+        "label for both": [f"U @ {position}" for position in read_data["positions"]],
     }
 
 
@@ -342,3 +346,22 @@ def test_plot_radial_interpolation_spin_selection(collinear_crpa, Assert):
     Assert.allclose(graph[1].y, expected_V)
     assert graph[0].label == "screened U_up~down"
     assert graph[1].label == "bare V_up~down"
+
+
+def test_plot_radial_and_frequency(effective_coulomb, Assert):
+    omega_data = effective_coulomb.ref.omega_data
+    radial_data = effective_coulomb.ref.radial_data
+    if radial_data is None or omega_data is None:
+        with pytest.raises(exception.DataMismatch):
+            effective_coulomb.plot(omega=..., radius=...)
+        return
+    graph = effective_coulomb.plot(omega=..., radius=...)
+    assert len(graph) == len(radial_data["radius"])
+    assert graph.xlabel == "ω (eV)"
+    assert graph.ylabel == "Coulomb potential (eV)"
+    expected_labels = radial_data["label for both"]
+    expected_lines = omega_data["U for both"].real
+    for series, expected_line, label in zip(graph, expected_lines, expected_labels):
+        Assert.allclose(series.x, omega_data["frequencies"].imag)
+        Assert.allclose(series.y, expected_line)
+        assert series.label == label

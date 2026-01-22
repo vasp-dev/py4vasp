@@ -35,7 +35,7 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
     References
     ----------
     .. [1] Kaltak, M., *et al.*, Constrained Random Phase Approximation: the spectral
-        method, https://arxiv.org/abs/2508.15368, 2025.
+        method, Phys. Rev. B 112, 245102 (2025), https://doi.org/10.1103/m3gh-g6r6
     """
 
     @base.data_access
@@ -128,23 +128,27 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         selected_dimension = self._select_dimension(omega, radius)
         tree = select.Tree.from_selection(selection)
         if selected_dimension == "frequency":
-            return self._frequency_plot(tree, omega)
+            return self._plot_frequency(tree, omega)
         elif selected_dimension == "radial":
-            return self._radial_plot(tree, radius)
+            return self._plot_radial(tree, radius)
+        elif selected_dimension == "both":
+            return self._plot_both(tree, omega, radius)
         else:
             raise exception.NotImplemented(
                 f"Plotting for the selected dimension {selected_dimension} is not implemented."
             )
 
     def _select_dimension(self, omega, radius):
-        if omega is not None:
+        if omega is not None and radius is not None:
+            return "both"
+        elif omega is not None:
             return "frequency"
         elif radius is not None:
             return "radial"
         else:
             return "frequency"
 
-    def _frequency_plot(self, tree, omega):
+    def _plot_frequency(self, tree, omega):
         omega_in = self._read_frequencies().get("frequencies")
         omega_set = omega is None or omega is ...
         if omega_in is None:
@@ -155,15 +159,15 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         xlabel = "Im(ω) (eV)" if omega_set else "ω (eV)"
         return graph.Graph(series, xlabel=xlabel, ylabel="Coulomb potential (eV)")
 
-    def _get_effective_potentials_omega(self, omega_in, omega_out):
+    def _get_effective_potentials_omega(self, omega_in, omega_out, position=0):
         wannier_iiii = self._wannier_indices_iiii()
         wannier_ijij = self._wannier_indices_ijij()
         all_omega = all_spin = complex_ = slice(None)
-        origin = real_part = 0
+        real_part = 0
         if self._has_positions:
-            access_U = (all_omega, all_spin, wannier_iiii, origin, complex_)
-            access_J = (all_omega, all_spin, wannier_ijij, origin, complex_)
-            access_V = (all_spin, wannier_iiii, origin, real_part)
+            access_U = (all_omega, all_spin, wannier_iiii, position, complex_)
+            access_J = (all_omega, all_spin, wannier_ijij, position, complex_)
+            access_V = (all_spin, wannier_iiii, position, real_part)
         else:
             access_U = (all_omega, all_spin, wannier_iiii, complex_)
             access_J = (all_omega, all_spin, wannier_ijij, complex_)
@@ -228,7 +232,7 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         else:
             return {0: {"total": 0}}
 
-    def _radial_plot(self, tree, radius):
+    def _plot_radial(self, tree, radius):
         positions = self._read_positions()
         if not positions:
             raise exception.DataMismatch("The output does not contain position data.")
@@ -262,7 +266,6 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         if needs_interpolation:
             U_out = self._ohno_interpolation(radius_in, U_in, radius_out)
             V_out = self._ohno_interpolation(radius_in, V_in, radius_out)
-            print("this branch")
             return {"screened U": U_out, "bare V": V_out}
         else:
             return {"screened U": U_in, "screened J": J_in, "bare V": V_in}
@@ -289,3 +292,19 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
                 yield graph.Series(
                     radius, selector[selection], label=f"{label}{suffix}", marker="*"
                 )
+
+    def _plot_both(self, tree, omega, radius):
+        omega_in = self._read_frequencies().get("frequencies")
+        omega_set = omega is ...
+        if omega_in is None:
+            raise exception.DataMismatch("The output does not contain frequency data.")
+        omega_out = omega_in if omega_set else omega
+        positions = self._read_positions()
+        if not positions:
+            raise exception.DataMismatch("The output does not contain position data.")
+        potentials = {}
+        for i, position in enumerate(positions["positions"]):
+            data = self._get_effective_potentials_omega(omega_in, omega_out, position=i)
+            potentials[f"U @ {position}"] = data["screened U"]
+        series = list(self._generate_series_omega(tree, omega_out, potentials))
+        return graph.Graph(series, xlabel="ω (eV)", ylabel="Coulomb potential (eV)")
