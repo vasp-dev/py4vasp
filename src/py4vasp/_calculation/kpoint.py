@@ -79,13 +79,33 @@ reciprocal"""
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
+        number_x = self._raw_data.number_x
+        number_y = self._raw_data.number_y
+        number_z = self._raw_data.number_z
+        grid_kpoints = (
+            None
+            if any(n is None for n in (number_x, number_y, number_z))
+            else (
+                number_x,
+                number_y,
+                number_z,
+            )
+        )
+
+        user_labels = None
+        if not self._raw_data.label_indices.is_none():
+            user_labels = [k for k in self._labels_from_file() if k != ""]
+            user_labels = None if len(user_labels) == 0 else user_labels
+        sampled_points = sorted(set(user_labels)) if user_labels is not None else None
+
         return {
             "kpoint": {
                 "mode": self.mode(),
                 "line_length": self.line_length(),
-                "number_kpoints": self.number_kpoints(),
-                "grid_kpoints": None,  # TODO implement where available
-                "labels": None,  # TODO implement as raw labels as specified by user, and only if
+                "num_kpoints_total": self.number_kpoints(),
+                "num_kpoints_grid": grid_kpoints,
+                "labels": user_labels,
+                "labels_unique": sampled_points,
             }
         }
 

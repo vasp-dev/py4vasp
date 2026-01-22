@@ -56,13 +56,7 @@ class PhononBand(phonon.Mixin, base.Refinery, graph.Mixin):
         stoichiometry = self._stoichiometry()._read_to_database(*args, **kwargs)
         dispersion = self._dispersion()._read_to_database(*args, **kwargs)
         return database.combine_db_dicts(
-            {
-                "phonon.band": {
-                    # TODO probably move to common quantity
-                    "num_qpoints": self._raw_data.dispersion.eigenvalues.shape[0],
-                    "num_modes": self._raw_data.dispersion.eigenvalues.shape[1],
-                }
-            },
+            {"phonon.band": {}},
             stoichiometry,
             dispersion,
         )

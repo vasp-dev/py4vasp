@@ -114,10 +114,18 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
+        final_velocity_norms = np.linalg.norm(self._velocity[-1], axis=-1)
+        initial_velocity_norms = np.linalg.norm(self._velocity[0], axis=-1)
         return {
             "velocity": {
-                "max_magnitude": None,  # TODO implement like forces & stats
-                "min_magnitude": None,  # TODO implement
+                "final_velocity_min": float(np.min(final_velocity_norms)),
+                "final_velocity_max": float(np.max(final_velocity_norms)),
+                "final_velocity_mean": float(np.mean(final_velocity_norms)),
+                "final_velocity_median": float(np.median(final_velocity_norms)),
+                "final_index_velocity_max": int(np.argmax(final_velocity_norms)),
+                "initial_velocity_min": float(np.min(initial_velocity_norms)),
+                "initial_velocity_max": float(np.max(initial_velocity_norms)),
+                "initial_index_velocity_max": int(np.argmax(initial_velocity_norms)),
             }
         }
 
@@ -232,6 +240,10 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         array([[[...], [...]]])
         """
         return _VelocityReader(self._raw_data.velocities)[self._steps]
+
+    @property
+    def _velocity(self):
+        return _VelocityReader(self._raw_data.velocities)
 
     @base.data_access
     def number_steps(self):
