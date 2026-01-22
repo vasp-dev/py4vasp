@@ -494,6 +494,7 @@ instead of the constructor Calculation()."""
                     original_group_name=group_name,
                 )
             except Exception as e:
+                # TODO delete this debug print once everything is stable
                 print(
                     f"[ADD] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection} (please consider filing a bug report):",
                     e,

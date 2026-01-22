@@ -759,12 +759,16 @@ class Projector:
 class RunInfo:
     "Contains information about the VASP run."
 
+    system: Optional[System] = None
+    "Data of the system."
     runtime: Optional[RuntimeData] = None
     "Data about the runtime environment of the VASP calculation."
     structure: Optional[Structure] = None
     "Structural information about the system."
     contcar: Optional[CONTCAR] = None
     "The data corresponding to the CONTCAR file."
+    phonon_dispersion: Optional[Dispersion] = None
+    "The phonon dispersion of the system."
 
 
 @dataclasses.dataclass

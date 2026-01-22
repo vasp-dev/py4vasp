@@ -702,7 +702,9 @@ schema.add(
 )
 schema.add(
     raw.RunInfo,
+    system=Link("system", DEFAULT_SOURCE),
     runtime=Link("runtime_data", DEFAULT_SOURCE),
     structure=Link("structure", DEFAULT_SOURCE),
     contcar=Link("CONTCAR", DEFAULT_SOURCE),
+    phonon_dispersion=Link("dispersion", "phonon"),
 )

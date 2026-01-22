@@ -72,7 +72,9 @@ class PairCorrelation(slice_.Mixin, base.Refinery, graph.Mixin):
     def _to_database(self, *args, **kwargs):
         return {
             "pair_correlation": {
-                # TODO min and max distance if min != 0
+                "distance_min": float(self._raw_data.distances[0]),
+                "distance_max": float(self._raw_data.distances[-1]),
+                # TODO check that min != 0
             }
         }
 

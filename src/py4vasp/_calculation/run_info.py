@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._calculation import base
+from py4vasp._calculation._dispersion import Dispersion
 
 
 class RunInfo(base.Refinery):
@@ -10,19 +11,14 @@ class RunInfo(base.Refinery):
     def to_dict(self):
         "Convert the run information to a dictionary."
 
-        # Structure
-        positions = self._read("structure", "positions")
-        number_steps = (
-            None
-            if positions is None
-            else (1 if positions.ndim == 2 else positions.shape[0])
-        )
-
         return {
             **self._dict_from_runtime(),
+            **self._dict_from_system(),
             **self._dict_from_structure(),
             **self._dict_from_contcar(),
+            **self._dict_from_phonon_dispersion(),
             # TODO add more run info
+            # TODO make these exception-safe
         }
 
     def _read(self, *keys: str) -> dict:
@@ -31,7 +27,16 @@ class RunInfo(base.Refinery):
             data = getattr(data, key, None)
             if data is None:
                 return None
-        return data[:] if not data.is_none() else None
+        try:
+            is_none = data.is_none() or data is None
+        except AttributeError:
+            is_none = False
+        return data[:] if not is_none else None
+
+    def _dict_from_system(self) -> dict:
+        return {
+            "system_tag": self._read("system", "system"),
+        }
 
     def _dict_from_runtime(self) -> dict:
         runtime_data = self._raw_data.runtime
@@ -68,6 +73,21 @@ class RunInfo(base.Refinery):
             "has_ion_velocities": (
                 None if contcar is None else ion_velocities is not None
             ),
+        }
+
+    def _dict_from_phonon_dispersion(self) -> dict:
+        phonon_num_qpoints = None
+        phonon_num_modes = None
+
+        try:
+            eigenvalues = self._raw_data.phonon_dispersion.eigenvalues
+            phonon_num_qpoints = eigenvalues.shape[0]
+            phonon_num_modes = eigenvalues.shape[1]
+        except:
+            pass
+        return {
+            "phonon_num_qpoints": phonon_num_qpoints,
+            "phonon_num_modes": phonon_num_modes,
         }
 
     @base.data_access
