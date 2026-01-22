@@ -1,3 +1,4 @@
+import functools
 from typing import Any, Optional, Tuple
 
 from h5py import File
@@ -65,6 +66,7 @@ def construct_database_data_key(
     return full_key, has_selection
 
 
+@functools.cache
 def should_load(
     quantity: str,
     source: str,
