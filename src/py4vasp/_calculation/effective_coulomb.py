@@ -39,6 +39,99 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
     """
 
     @base.data_access
+    def __str__(self):
+        data = self._read_data_at_origin()
+        return f"""\
+averaged bare interaction
+bare Hubbard U = {data["V"].real:8.4f} {data["V"].imag:8.4f}
+bare Hubbard u = {data["v"].real:8.4f} {data["v"].imag:8.4f}
+bare Hubbard J = {data["Vj"].real:8.4f} {data["Vj"].imag:8.4f}
+
+averaged interaction parameter
+screened Hubbard U = {data["U"].real:8.4f} {data["U"].imag:8.4f}
+screened Hubbard u = {data["u"].real:8.4f} {data["u"].imag:8.4f}
+screened Hubbard J = {data["J"].real:8.4f} {data["J"].imag:8.4f}
+"""
+
+    def _read_data_at_origin(self):
+        wannier_iiii = self._wannier_indices_iiii()
+        wannier_ijji = self._wannier_indices_ijji()
+        wannier_ijij = self._wannier_indices_ijij()
+        spin_diagonal = slice(None, 2)
+        omega_0 = origin = 0
+        complex_ = slice(None)
+        if self._has_positions and self._has_frequencies:
+            access_U = (omega_0, spin_diagonal, wannier_iiii, origin, complex_)
+            access_u = (omega_0, spin_diagonal, wannier_ijji, origin, complex_)
+            access_J = (omega_0, spin_diagonal, wannier_ijij, origin, complex_)
+            access_V = (spin_diagonal, wannier_iiii, origin, complex_)
+            access_v = (spin_diagonal, wannier_ijji, origin, complex_)
+            access_Vj = (spin_diagonal, wannier_ijij, origin, complex_)
+        elif self._has_frequencies:
+            access_U = (omega_0, spin_diagonal, wannier_iiii, complex_)
+            access_u = (omega_0, spin_diagonal, wannier_ijji, complex_)
+            access_J = (omega_0, spin_diagonal, wannier_ijij, complex_)
+            access_V = (spin_diagonal, wannier_iiii, complex_)
+            access_v = (spin_diagonal, wannier_ijji, complex_)
+            access_Vj = (spin_diagonal, wannier_ijij, complex_)
+        elif self._has_positions:
+            access_U = access_V = (spin_diagonal, wannier_iiii, origin, complex_)
+            access_u = access_v = (spin_diagonal, wannier_ijji, origin, complex_)
+            access_J = access_Vj = (spin_diagonal, wannier_ijij, origin, complex_)
+        else:
+            access_U = access_V = (spin_diagonal, wannier_iiii, complex_)
+            access_u = access_v = (spin_diagonal, wannier_ijji, complex_)
+            access_J = access_Vj = (spin_diagonal, wannier_ijij, complex_)
+        U = convert.to_complex(self._raw_data.screened_potential[access_U])
+        u = convert.to_complex(self._raw_data.screened_potential[access_u])
+        J = convert.to_complex(self._raw_data.screened_potential[access_J])
+        V = convert.to_complex(self._raw_data.bare_potential_high_cutoff[access_V])
+        v = convert.to_complex(self._raw_data.bare_potential_high_cutoff[access_v])
+        Vj = convert.to_complex(self._raw_data.bare_potential_high_cutoff[access_Vj])
+        return {
+            "U": np.average(U),
+            "u": np.average(u),
+            "J": np.average(J),
+            "V": np.average(V),
+            "v": np.average(v),
+            "Vj": np.average(Vj),
+        }
+
+    def _wannier_indices_iiii(self):
+        """Return the indices that trace over diagonal of the 4 Wannier states. This
+        should be equivalent to `np.einsum('iiii->', data)` if data is a reshaped array
+        of 4 Wannier indices."""
+        n = self._raw_data.number_wannier_states
+        step = n**3 + n**2 + n + 1
+        stop = n**4
+        return slice(0, stop, step)
+
+    def _wannier_indices_ijij(self):
+        """Return the indices that run over pairs of Wannier states. This should be
+        equivalent to `np.einsum('ijij->', data` if data is a reshaped array of 4
+        Wannier indices and the diagonal is set to 0."""
+        n = self._raw_data.number_wannier_states
+        stop = n**4
+        slice_included = slice(0, stop, n**2 + 1)
+        slice_excluded = slice(0, stop, n**3 + n**2 + n + 1)
+        indices = np.arange(stop)
+        return np.setdiff1d(indices[slice_included], indices[slice_excluded])
+
+    def _wannier_indices_ijji(self):
+        """Return the indices that run over pairs of Wannier states. This should be
+        equivalent to `np.einsum('ijji->', data` if data is a reshaped array of 4
+        Wannier indices and the diagonal is set to 0."""
+        n = self._raw_data.number_wannier_states
+        stop = n**4
+        indices_included = np.concatenate(
+            [i * (n**3 + 1) + np.arange(0, n**3, n**2 + n) for i in range(n)]
+        )
+        slice_excluded = slice(0, stop, n**3 + n**2 + n + 1)
+        indices = np.arange(stop)
+        print(np.setdiff1d(indices_included, indices[slice_excluded]))
+        return np.setdiff1d(indices_included, indices[slice_excluded])
+
+    @base.data_access
     def to_dict(self) -> dict[str, np.ndarray]:
         """Convert the effective Coulomb object to a dictionary representation.
 
@@ -188,26 +281,6 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
             U_out = U_in.T.real
             J_out = J_in.T.real
         return {"screened U": U_out, "screened J": J_out, "bare V": V_out}
-
-    def _wannier_indices_iiii(self):
-        """Return the indices that trace over diagonal of the 4 Wannier states. This
-        should be equivalent to `np.einsum('iiii->', data[..., 0])`
-        if there are no other indices."""
-        n = self._raw_data.number_wannier_states
-        step = n**3 + n**2 + n + 1
-        stop = n**4
-        return slice(0, stop, step)
-
-    def _wannier_indices_ijij(self):
-        """Return the indices that trace over diagonal of the 4 Wannier states. This
-        should be equivalent to `np.einsum('ijij->', data[..., 0])`
-        if there are no other indices."""
-        n = self._raw_data.number_wannier_states
-        stop = n**4
-        slice_included = slice(0, stop, n**2 + 1)
-        slice_excluded = slice(0, stop, n**3 + n**2 + n + 1)
-        indices = np.arange(stop)
-        return np.setdiff1d(indices[slice_included], indices[slice_excluded])
 
     def _generate_series_omega(self, tree, omega, potentials):
         if np.isclose(omega.real, omega).all():

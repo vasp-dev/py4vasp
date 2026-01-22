@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import re
 import types
 from dataclasses import dataclass
 
@@ -370,3 +371,19 @@ def test_plot_radial_and_frequency(effective_coulomb, Assert):
 def test_plot_radial_and_frequency_nondefault_radius(nonpolarized_crpar, Assert):
     with pytest.raises(exception.NotImplemented):
         nonpolarized_crpar.plot(omega=..., radius=np.array([1.0, 2.0]))
+
+
+def test_print(effective_coulomb, format_):
+    expected_result = r"""averaged bare interaction
+bare Hubbard U =\s+[-\d.]+\s+[-\d.]+
+bare Hubbard u =\s+[-\d.]+\s+[-\d.]+
+bare Hubbard J =\s+[-\d.]+\s+[-\d.]+
+
+averaged interaction parameter
+screened Hubbard U =\s+[-\d.]+\s+[-\d.]+
+screened Hubbard u =\s+[-\d.]+\s+[-\d.]+
+screened Hubbard J =\s+[-\d.]+\s+[-\d.]+"""
+    actual, _ = format_(effective_coulomb)
+    assert actual.keys() == {"text/plain"}
+    print(actual["text/plain"])
+    assert re.search(expected_result, actual["text/plain"], re.MULTILINE)
