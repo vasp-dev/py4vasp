@@ -302,6 +302,10 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         positions = self._read_positions()
         if not positions:
             raise exception.DataMismatch("The output does not contain position data.")
+        if radius is not ...:
+            raise exception.NotImplemented(
+                "Interpolating radial data for frequency plots is not implemented."
+            )
         potentials = {}
         for i, position in enumerate(positions["positions"]):
             data = self._get_effective_potentials_omega(omega_in, omega_out, position=i)

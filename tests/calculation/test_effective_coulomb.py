@@ -365,3 +365,8 @@ def test_plot_radial_and_frequency(effective_coulomb, Assert):
         Assert.allclose(series.x, omega_data["frequencies"].imag)
         Assert.allclose(series.y, expected_line)
         assert series.label == label
+
+
+def test_plot_radial_and_frequency_nondefault_radius(nonpolarized_crpar, Assert):
+    with pytest.raises(exception.NotImplemented):
+        nonpolarized_crpar.plot(omega=..., radius=np.array([1.0, 2.0]))
