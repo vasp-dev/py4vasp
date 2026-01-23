@@ -128,7 +128,6 @@ screened Hubbard J = {data["J"].real:8.4f} {data["J"].imag:8.4f}
         )
         slice_excluded = slice(0, stop, n**3 + n**2 + n + 1)
         indices = np.arange(stop)
-        print(np.setdiff1d(indices_included, indices[slice_excluded]))
         return np.setdiff1d(indices_included, indices[slice_excluded])
 
     @base.data_access

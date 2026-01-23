@@ -385,5 +385,9 @@ screened Hubbard u =\s+[-\d.]+\s+[-\d.]+
 screened Hubbard J =\s+[-\d.]+\s+[-\d.]+"""
     actual, _ = format_(effective_coulomb)
     assert actual.keys() == {"text/plain"}
-    print(actual["text/plain"])
     assert re.search(expected_result, actual["text/plain"], re.MULTILINE)
+
+
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.effective_coulomb("crpa")
+    check_factory_methods(EffectiveCoulomb, data)
