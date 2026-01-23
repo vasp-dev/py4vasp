@@ -352,8 +352,11 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
             raise exception.DataMismatch("The output does not contain position data.")
         radius_in = self._transform_positions_to_radial(positions)
         radius_out = radius_in if radius is ... else radius
+        marker = "*" if radius is ... else None
         potentials = self._get_effective_potentials_radial(radius_in, radius_out)
-        series = list(self._generate_series_radial(tree, radius_out, potentials))
+        series = list(
+            self._generate_series_radial(tree, radius_out, potentials, marker)
+        )
         return graph.Graph(series, xlabel="Radius (Å)", ylabel="Coulomb potential (eV)")
 
     def _transform_positions_to_radial(self, positions):
@@ -412,7 +415,7 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
         delta = np.abs(delta)
         return np.sqrt(delta / (radius + delta))
 
-    def _generate_series_radial(self, tree, radius, potentials):
+    def _generate_series_radial(self, tree, radius, potentials, marker):
         maps = self._create_map()
         for label, potential in potentials.items():
             selector = index.Selector(maps, potential, reduction=np.average)
@@ -420,7 +423,7 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
                 selector_label = selector.label(selection)
                 suffix = f"_{selector_label}" if selector_label != "total" else ""
                 yield graph.Series(
-                    radius, selector[selection], label=f"{label}{suffix}", marker="*"
+                    radius, selector[selection], label=f"{label}{suffix}", marker=marker
                 )
 
     def _plot_both(self, tree, omega, radius):

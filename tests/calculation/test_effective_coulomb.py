@@ -364,6 +364,7 @@ def test_plot_radial_interpolation(nonpolarized_crpar, not_core, Assert):
         Assert.allclose(series.x, radius)
         Assert.allclose(series.y, expected_line, tolerance=100)
         assert series.label == label
+        assert series.marker is None
 
 
 def test_plot_radial_interpolation_spin_selection(collinear_crpa, not_core, Assert):
