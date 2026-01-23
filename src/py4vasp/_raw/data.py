@@ -764,6 +764,13 @@ class RunInfo:
     runtime: Optional[RuntimeData] = None
     "Data about the runtime environment of the VASP calculation."
 
+    fermi_energy: Optional[float] = None
+    "Fermi energy obtained by VASP."
+    band_dispersion_eigenvalues: Optional[VaspData] = NONE()
+    "The eigenvalues of the band structure dispersion."
+    band_projections: Optional[VaspData] = NONE()
+    "If present, orbital projections of the band structure."
+
     structure: Optional[Structure] = None
     "Structural information about the system."
     contcar: Optional[CONTCAR] = None

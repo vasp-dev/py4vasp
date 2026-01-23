@@ -3,7 +3,7 @@
 import numpy as np
 
 from py4vasp._calculation import base, slice_, structure
-from py4vasp._util import reader, symmetry
+from py4vasp._util import reader, tensor
 
 
 class Stress(slice_.Mixin, base.Refinery, structure.Mixin):
@@ -52,7 +52,7 @@ class Stress(slice_.Mixin, base.Refinery, structure.Mixin):
         "Convert the stress to a format similar to the OUTCAR file."
         step = self._last_step_in_slice
         eV_to_kB = 1.602176634e3 / self._structure[step].volume()
-        stress = symmetry.symmetry_reduce(self._stress[step])
+        stress = tensor.symmetry_reduce(self._stress[step])
         stress_to_string = lambda stress: " ".join(f"{x:11.5f}" for x in stress)
         return f"""
 FORCE on cell =-STRESS in cart. coord.  units (eV):
@@ -117,7 +117,7 @@ in kB   {stress_to_string(stress)}
             "stress": {
                 "initial_stress_mean": np.trace(initial_stress_tensor) / 3.0,
                 "final_stress_mean": np.trace(final_stress_tensor) / 3.0,
-                "final_stress_tensor": symmetry.symmetry_reduce(final_stress_tensor),
+                "final_stress_tensor": tensor.symmetry_reduce(final_stress_tensor),
             }
         }
 

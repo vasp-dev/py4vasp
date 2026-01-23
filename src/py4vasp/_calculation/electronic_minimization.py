@@ -80,8 +80,8 @@ N, E, dE, deps, ncg, rms, rms(c)"""
     def _to_database(self, *args, **kwargs):
         return {
             "electronic_minimization": {
-                "max_electronic_steps_per_ionic_step": None,  # TODO check max electronic steps per ionic step, ...
-                "num_electronic_steps_to_converge": None,  # TODO implement
+                "max_num_electronic_steps_per_ionic": None,  # TODO check max electronic steps per ionic step, ...
+                "num_electronic_steps": None,  # TODO implement
                 # TODO move to common properties and consider ALL steps
                 "is_converged": np.all(self.is_converged().tolist()),
                 "num_ionic_steps": None,  # TODO implement

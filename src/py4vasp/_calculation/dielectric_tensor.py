@@ -1,8 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import numpy as np
+
 from py4vasp import exception
 from py4vasp._calculation import base
 from py4vasp._util import convert
+from py4vasp._util.tensor import symmetry_reduce, tensor_constants
 
 
 class DielectricTensor(base.Refinery):
@@ -33,8 +36,24 @@ class DielectricTensor(base.Refinery):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
+        the_dict = self.to_dict()
+
+        isotropic_constant = None
+        anisotropic_constants = None
+        try:
+            isotropic_constant, anisotropic_constants = tensor_constants(
+                the_dict["clamped_ion"]
+            )
+        except:
+            pass
+
         dielectric_tensor_db = {
-            "dielectric_tensor": self.to_dict(),  # TODO decide which quantity best describes the tensor - epsilon? Trace? --> store it separately, maybe only one tensor
+            "dielectric_tensor": {
+                "method": the_dict["method"],
+                "clamped_ion_tensor": list(symmetry_reduce(the_dict["clamped_ion"])),
+                "static_dielectric_constant_isotropic": isotropic_constant,
+                "static_dielectric_constant_anisotropic": anisotropic_constants,  # TODO DISCUSS if this is correct
+            },
         }
         return dielectric_tensor_db
 

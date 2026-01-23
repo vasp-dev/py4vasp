@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import numpy as np
+
 from py4vasp._calculation import base
 
 
@@ -46,6 +48,12 @@ electronic dipole moment: {vec_to_string(self._raw_data.electron[:])}
     def _to_database(self, *args, **kwargs):
         return {
             "polarization": {
-                **self.to_dict(),  # TODO check keys and consider norm of the sum of both as total_polarization
+                "polarization_norm_ionic": np.linalg.norm(self._raw_data.ion[:]),
+                "polarization_norm_electronic": np.linalg.norm(
+                    self._raw_data.electron[:]
+                ),
+                "polarization_norm_total": np.linalg.norm(
+                    self._raw_data.electron[:] + self._raw_data.ion[:]
+                ),  # TODO check keys and consider norm of the sum of both as total_polarization
             }
         }

@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._calculation import base, exception
 from py4vasp._calculation._dispersion import Dispersion
+from py4vasp._util import check
 
 
 class RunInfo(base.Refinery):
@@ -15,6 +16,7 @@ class RunInfo(base.Refinery):
             **self._dict_from_runtime(),
             **self._dict_from_system(),
             **self._dict_from_structure(),
+            **self._dict_additional_collection(),
             **self._dict_from_contcar(),
             **self._dict_from_phonon_dispersion(),
             # TODO add more run info
@@ -31,6 +33,49 @@ class RunInfo(base.Refinery):
         except AttributeError:
             is_none = False
         return data[:] if not is_none else None
+
+    def _dict_additional_collection(self) -> dict:
+        fermi_energy = None
+        try:
+            fermi_energy = self._raw_data.fermi_energy
+        except exception.NoData:
+            pass
+
+        is_collinear = self._is_collinear()
+        is_noncollinear = self._is_noncollinear()
+        is_magnetic = None  # TODO implement
+        magnetic_order = None  # TODO implement, maybe as magnetic_space_group (ferromagnetic, antiferromagnetic, ...)
+
+        grid_coarse_shape = (
+            None  # TODO implement for FFT grid (currently not written to H5)
+        )
+        grid_fine_shape = (
+            None  # TODO implement for FFT grid (currently not written to H5)
+        )
+
+        return {
+            "grid_coarse_shape": grid_coarse_shape,
+            "grid_fine_shape": grid_fine_shape,
+            "fermi_energy": fermi_energy,
+            "is_collinear": is_collinear,
+            "is_noncollinear": is_noncollinear,
+            "is_magnetic": is_magnetic,
+            "magnetic_order": magnetic_order,
+        }
+
+    def _is_collinear(self):
+        try:
+            return len(self._raw_data.band_dispersion_eigenvalues) == 2
+        except exception.NoData:
+            return None
+
+    def _is_noncollinear(self):
+        try:
+            if check.is_none(self._raw_data.band_projections):
+                return None
+            return len(self._raw_data.band_projections) == 4
+        except exception.NoData:
+            return None
 
     def _dict_from_system(self) -> dict:
         system_tag = None
