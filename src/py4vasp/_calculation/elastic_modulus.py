@@ -3,6 +3,7 @@
 import numpy as np
 
 from py4vasp._calculation import base
+from py4vasp._util.tensor import symmetry_reduce, tensor_constants
 
 
 class ElasticModulus(base.Refinery):
@@ -34,10 +35,22 @@ class ElasticModulus(base.Refinery):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
+        isotropic_constant = None
+        anisotropic_constants = None
+        try:
+            isotropic_constant, anisotropic_constants = tensor_constants(
+                self._raw_data.clamped_ion[:]
+            )
+        except:
+            pass
+
         return {
             "elastic_modulus": {
-                # TODO add scalar quantities
-                "placeholder": None,  # TODO implement like dielectric tensor
+                "clamped_ion_tensor": list(
+                    symmetry_reduce(self._raw_data.clamped_ion[:])
+                ),
+                "elastic_constant_isotropic": isotropic_constant,
+                "elastic_constant_anisotropic": anisotropic_constants,  # TODO DISCUSS if this is correct
             }
         }
 
@@ -51,21 +64,8 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
 
 
 def _elastic_modulus_string(tensor, label):
-    compact_tensor = _compact(_compact(tensor).T).T
+    compact_tensor = symmetry_reduce(symmetry_reduce(tensor).T).T
     line = lambda dir_, vec: dir_ + 6 * " " + " ".join(f"{x:11.4f}" for x in vec)
     directions = ("XX", "YY", "ZZ", "XY", "YZ", "ZX")
     lines = (line(dir_, vec) for dir_, vec in zip(directions, compact_tensor))
     return f"{label:^79}".rstrip() + "\n" + "\n".join(lines)
-
-
-def _compact(tensor):
-    x, y, z = range(3)
-    symmetrized = (
-        tensor[x, x],
-        tensor[y, y],
-        tensor[z, z],
-        0.5 * (tensor[x, y] + tensor[y, x]),
-        0.5 * (tensor[y, z] + tensor[z, y]),
-        0.5 * (tensor[z, x] + tensor[x, z]),
-    )
-    return np.array(symmetrized)

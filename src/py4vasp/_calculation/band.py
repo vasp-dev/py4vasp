@@ -222,7 +222,8 @@ class Band(base.Refinery, graph.Mixin):
             {
                 "band": {
                     "num_occupied_bands": None,  # TODO implement (spin up/down check number of occupations > 0)
-                    # TODO move all to common property
+                    # TODO DISCUSS removing these (different selections of band!)
+                    # TODO implement is_magnetic and magnetic_order
                     "fermi_energy": fermi_energy or self._raw_data.fermi_energy,
                     "is_collinear": self._is_collinear(),
                     "is_noncollinear": (
@@ -230,8 +231,8 @@ class Band(base.Refinery, graph.Mixin):
                         if not (check.is_none(self._raw_data.projections))
                         else None
                     ),
-                    "is_magnetic": None,  # TODO implement
-                    "magnetic_order": None,  # TODO implement, maybe as magnetic_space_group (ferromagnetic, antiferromagnetic, ...)
+                    "is_magnetic": None,
+                    "magnetic_order": None,
                 },
             },
             dispersion,

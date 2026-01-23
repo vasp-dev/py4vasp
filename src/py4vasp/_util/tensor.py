@@ -13,3 +13,10 @@ def symmetry_reduce(tensor):
         0.5 * (tensor[0, 2] + tensor[2, 0]),
     ]
     return np.array(symmetry_reduced_tensor)
+
+
+def tensor_constants(tensor):
+    eigenvalues, _ = np.linalg.eig(tensor)
+    anisotropic_constants = list(eigenvalues)
+    isotropic_constant = sum(eigenvalues) / 3.0
+    return isotropic_constant, anisotropic_constants
