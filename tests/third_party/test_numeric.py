@@ -5,7 +5,7 @@ import numpy as np
 from py4vasp._third_party import numeric
 
 
-def test_analytic_continuation_for_lorentzian(Assert):
+def test_analytic_continuation_for_lorentzian(not_core, Assert):
     z_in = 1j * np.array([0.1, 1.0, 10.0])
     f_in = lorentzian(z_in)
     z_out = np.linspace(0.0, 2.5, 6)
@@ -20,7 +20,7 @@ def lorentzian(z):
     return 1 / (z - z0 + 1j * gamma)
 
 
-def test_analytic_continuation_for_higher_dimensions(Assert):
+def test_analytic_continuation_for_higher_dimensions(not_core, Assert):
     z_in = np.random.rand(3)
     f_in = np.random.rand(5, 4, 3)
     z_out = z_in
@@ -28,7 +28,7 @@ def test_analytic_continuation_for_higher_dimensions(Assert):
     Assert.allclose(f_out, f_in)
 
 
-def test_interpolate_with_function(Assert):
+def test_interpolate_with_function(not_core, Assert):
     x_in = np.array([0.1, 0.5, 1.0, 2.0])
     amplitude = 3.0
     stddev = 0.5
@@ -49,7 +49,7 @@ def gaussian(x, amplitude=1.0, mean=0.0, stddev=1.0):
     return coeff * np.exp(exponent)
 
 
-def test_interpolate_with_function_higher_dimensions(Assert):
+def test_interpolate_with_function_higher_dimensions(not_core, Assert):
     x_in = np.random.rand(5)
     amplitude = np.random.rand(3, 2)
     mean = np.random.rand(3, 2)

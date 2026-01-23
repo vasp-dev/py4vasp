@@ -1,8 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
-from scipy.interpolate import AAA
-from scipy.optimize import curve_fit
+
+from py4vasp._util import import_
+
+interpolate = import_.optional("scipy.interpolate")
+optimize = import_.optional("scipy.optimize")
 
 
 def analytic_continuation(z_in, f_in, z_out):
@@ -15,7 +18,7 @@ def analytic_continuation(z_in, f_in, z_out):
 
 
 def _analytic_continuation_single(z_in, f_in, z_out):
-    aaa = AAA(z_in, f_in)
+    aaa = interpolate.AAA(z_in, f_in)
     return aaa(z_out)
 
 
@@ -32,5 +35,5 @@ def interpolate_with_function(function, x_in, y_in, x_out):
 
 
 def _interpolate_with_function_single(function, x_in, y_in, x_out):
-    parameters, _ = curve_fit(function, x_in, y_in)
+    parameters, _ = optimize.curve_fit(function, x_in, y_in)
     return function(x_out, *parameters)

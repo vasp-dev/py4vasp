@@ -339,7 +339,7 @@ def test_plot_radial_invalid_selection(nonpolarized_crpar, selection):
         effective_coulomb.plot(selection, radius=...)
 
 
-def test_plot_radial_interpolation(nonpolarized_crpar, Assert):
+def test_plot_radial_interpolation(nonpolarized_crpar, not_core, Assert):
     radial_data = nonpolarized_crpar.ref.radial_data
     radius = np.linspace(0.0, np.max(radial_data["radius"]), 30)
     ref_graph = nonpolarized_crpar.plot(radius=...)
@@ -364,7 +364,7 @@ def test_plot_radial_interpolation(nonpolarized_crpar, Assert):
         assert series.label == label
 
 
-def test_plot_radial_interpolation_spin_selection(collinear_crpa, Assert):
+def test_plot_radial_interpolation_spin_selection(collinear_crpa, not_coreAssert):
     effective_coulomb = collinear_crpa
     radius = np.linspace(0, 10)
     raw_data = effective_coulomb.plot("up~down", radius=...)
