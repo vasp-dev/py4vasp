@@ -1,3 +1,5 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from pathlib import Path
 
 import pytest
@@ -164,6 +166,9 @@ def basic_db_checks(demo_calc_db: _DatabaseData, minimum_counter=1):
         if demo_calc_db.additional_properties[key] not in (None, {}, []):
             non_empty_counter += 1
     assert non_empty_counter > minimum_counter
+
+    assert demo_calc_db.available_quantities.get("run_info", (False, []))[0]
+    assert "run_info" in demo_calc_db.additional_properties
 
 
 @pytest.mark.parametrize(

@@ -103,58 +103,45 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
     @base.data_access
     def _to_database(self, *args, **kwargs):
         structure = self._structure._read_to_database(*args, **kwargs)
+
+        total_potential_mean = None
+        total_potential_mean_up = None
+        total_potential_mean_down = None
+        total_potential_mean_magnetization = None
+        total_potential = self._get_potential("total")
+        if not total_potential.is_none():
+            total_potential = np.moveaxis(total_potential, 0, -1).T
+            total_potential_mean = float(np.mean(total_potential[0]))
+            total_potential_mean_up = (
+                float(np.mean(total_potential[0] + total_potential[1]))
+                if _is_collinear(total_potential)
+                else total_potential_mean / 2.0
+            )
+            total_potential_mean_down = (
+                float(np.mean(total_potential[0] - total_potential[1]))
+                if _is_collinear(total_potential)
+                else total_potential_mean / 2.0
+            )
+            total_potential_mean_magnetization = (
+                float(np.mean(np.linalg.norm(total_potential[1:], axis=-1)))
+                if _is_noncollinear(total_potential)
+                else None
+            )
+
         potential_dict = {
             "potential": {
-                "has_hartree": None,  # TODO implement ALL types
+                **{
+                    f"has_{kind}_potential": not self._get_potential(kind).is_none()
+                    for kind in VALID_KINDS
+                },
+                "total_potential_mean": total_potential_mean,
+                "total_potential_mean_up": total_potential_mean_up,
+                "total_potential_mean_down": total_potential_mean_down,
+                "total_potential_mean_magnetization": total_potential_mean_magnetization,
             }
         }
 
-        # TODO add mean of total potential (may be None)
-
-        for kind in VALID_KINDS:
-            potential = self._get_potential(kind)
-            for specifier in ["", "up", "down", "magnetization"]:
-                for computation in ["max", "min", "median", "mean"]:
-                    potential_dict["potential"][
-                        f"{kind}_{(specifier + '_') if specifier else ''}{computation}"
-                    ] = None
-            if potential.is_none():
-                continue
-            else:
-                potential_data = np.moveaxis(potential, 0, -1).T
-                for specifier in ["", "up", "down", "magnetization"]:
-                    potential_dict["potential"] = potential_dict[
-                        "potential"
-                    ] | self._get_potential_statistics(potential, kind, specifier)
-
         return database.combine_db_dicts(potential_dict, structure)
-
-    def _get_potential_statistics(self, potential, kind, specifier):
-        stats = {}
-        if specifier == "":
-            data = potential[0]
-        elif specifier == "up" and _is_collinear(potential):
-            data = potential[0] + potential[1]
-        elif specifier == "down" and _is_collinear(potential):
-            data = potential[0] - potential[1]
-        elif specifier == "magnetization" and _is_noncollinear(potential):
-            data = potential[1:]
-        else:
-            return stats
-        arrow_lengths = np.linalg.norm(data, axis=-1)
-        stats[f"{kind}_{(specifier + '_') if specifier else ''}max"] = np.max(
-            arrow_lengths
-        )
-        stats[f"{kind}_{(specifier + '_') if specifier else ''}min"] = np.min(
-            arrow_lengths
-        )
-        stats[f"{kind}_{(specifier + '_') if specifier else ''}median"] = np.median(
-            arrow_lengths
-        )
-        stats[f"{kind}_{(specifier + '_') if specifier else ''}mean"] = np.mean(
-            arrow_lengths
-        )
-        return stats
 
     @base.data_access
     def to_view(self, selection="total", supercell=None, **user_options):

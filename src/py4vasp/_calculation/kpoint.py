@@ -82,14 +82,23 @@ reciprocal"""
         number_x = self._raw_data.number_x
         number_y = self._raw_data.number_y
         number_z = self._raw_data.number_z
+
+        has_grid = True
+        try:
+            has_grid = not (
+                any(n is None or n.is_none() for n in (number_x, number_y, number_z))
+            )
+        except AttributeError:
+            pass
+
         grid_kpoints = (
             None
-            if any(n is None for n in (number_x, number_y, number_z))
-            else (
+            if not (has_grid)
+            else [
                 number_x,
                 number_y,
                 number_z,
-            )
+            ]
         )
 
         user_labels = None
