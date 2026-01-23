@@ -1,6 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from types import EllipsisType
+
 import numpy as np
+from numpy.typing import ArrayLike
 
 from py4vasp import exception
 from py4vasp._calculation import base, cell
@@ -144,10 +147,11 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
 
         Returns
         -------
-        A dictionary containing the effective Coulomb interaction data. In particular,
-        it includes the bare Coulomb interaction with high and low cutoffs, the screened
-        Coulomb interaction, and optionally the frequencies and positions at which the
-        interactions are evaluated.
+        -
+            A dictionary containing the effective Coulomb interaction data. In particular,
+            it includes the bare Coulomb interaction with high and low cutoffs, the screened
+            Coulomb interaction, and optionally the frequencies and positions at which the
+            interactions are evaluated.
         """
         return {
             "bare_high_cutoff": self._read_high_cutoff(),
@@ -216,7 +220,45 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
         return cell.Cell.from_data(self._raw_data.cell)
 
     @base.data_access
-    def to_graph(self, selection="total", omega=None, radius=None) -> graph.Graph:
+    def to_graph(
+        self,
+        selection: str = "total",
+        omega: None | EllipsisType | np.ndarray = None,
+        radius: None | EllipsisType | np.ndarray = None,
+    ) -> graph.Graph:
+        """Generate a graph representation of the effective Coulomb interaction.
+
+        The method automatically determines the plot type based on which parameters
+        are provided:
+
+        - If only omega is given: creates a frequency-dependent plot
+        - If only radius is given: creates a radial-dependent plot
+        - If both omega and radius are given: creates a frequency plot for all radii
+
+        Parameters
+        ----------
+        selection
+            Specifies which data to plot. Default is "total". For collinear calculations,
+            you can select a specific spin coupling like "up~up" or "up~down".
+
+        omega
+            Frequency values for frequency-dependent plots. If not set, or set to
+            ellipsis (...), the frequency points along the imaginary axis are used.
+            You can also provide specific frequencies on the real axis, then the data
+            will be analytically continued and plotted for the selected frequencies.
+
+        radius
+            Radial distance values for radial-dependent plots. If not set, the plot
+            will be for r=0. If set to ellipsis (...), the radial points used in VASP
+            are used. You can also provide specific radii, then the data  will be
+            interpolated to the selected radii.
+
+        Returns
+        -------
+        -
+            A graph object containing the visualization of the effective Coulomb
+            interaction data.
+        """
         selected_dimension = self._select_dimension(omega, radius)
         tree = select.Tree.from_selection(selection)
         if selected_dimension == "frequency":
@@ -350,7 +392,23 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
         return np.multiply.outer(spin_potential[:, 0], interpolation)
 
     @staticmethod
-    def ohno_potential(radius, delta):
+    def ohno_potential(radius: ArrayLike, delta: float) -> np.ndarray:
+        """Ohno potential for given radius/radii and delta.
+
+        This is used to interpolate the Coulomb potential to other radii.
+
+        Parameters
+        ----------
+        radius
+            The radial distance(s) at which to evaluate the potential.
+        delta
+            The delta parameter for the Ohno potential.
+
+        Returns
+        -------
+        -
+            The Ohno potential evaluated at the given radius/radii.
+        """
         delta = np.abs(delta)
         return np.sqrt(delta / (radius + delta))
 
