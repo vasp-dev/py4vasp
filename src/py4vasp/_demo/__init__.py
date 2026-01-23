@@ -15,6 +15,7 @@ from py4vasp._demo import (
     dielectric_tensor,
     dispersion,
     dos,
+    effective_coulomb,
     elastic_modulus,
     electron_phonon,
     electronic_minimization,
@@ -51,11 +52,13 @@ NUMBER_EIGENVECTORS = 5
 NUMBER_EXCITONS = 3
 NUMBER_FREQUENCIES = 1
 NUMBER_MODES = NUMBER_ATOMS * AXES
+NUMBER_OMEGA = 12
 NUMBER_POINTS = 50
 NUMBER_SAMPLES = 5
 NUMBER_STEPS = 4
 NUMBER_TEMPERATURES = 6
 NUMBER_VALENCE_BANDS = 2
+NUMBER_WANNIER = 5
 # constants for FFT grid dimensions
 GRID_DIMENSIONS = (14, 12, 10)  # note: order is z, y, x
 # constants for the magnetic configuration

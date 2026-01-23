@@ -5,9 +5,9 @@ from dataclasses import dataclass
 import numpy as np
 
 from py4vasp import exception, raw
-from py4vasp._calculation import _stoichiometry, base, slice_
+from py4vasp._calculation import _stoichiometry, base, cell, slice_
 from py4vasp._third_party import view
-from py4vasp._util import import_, parse, reader
+from py4vasp._util import import_, parse
 
 ase = import_.optional("ase")
 ase_io = import_.optional("ase.io")
@@ -176,7 +176,7 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         step = self._get_last_step()
         lines = (
             format_.comment_line(self._stoichiometry(), self._step_string(), ion_types),
-            format_.scaling_factor(self._scale()),
+            format_.scaling_factor(self._cell().scale()),
             format_.vectors_to_table(self._raw_data.cell.lattice_vectors[step]),
             format_.ion_list(self._stoichiometry(), ion_types),
             format_.coordinate_system(),
@@ -661,8 +661,7 @@ Atoms # atomic
         >>> calculation.structure[:].lattice_vectors()
         array([[[...]], [[...]], [[...]], [[...]]])
         """
-        lattice_vectors = _LatticeVectors(self._raw_data.cell.lattice_vectors)
-        return self._scale() * lattice_vectors[self._get_steps()]
+        return self._cell().lattice_vectors()
 
     @base.data_access
     def positions(self):
@@ -802,13 +801,8 @@ Atoms # atomic
     def _stoichiometry(self):
         return _stoichiometry.Stoichiometry.from_data(self._raw_data.stoichiometry)
 
-    def _scale(self):
-        if isinstance(self._raw_data.cell.scale, np.float64):
-            return self._raw_data.cell.scale
-        if not self._raw_data.cell.scale.is_none():
-            return self._raw_data.cell.scale[()]
-        else:
-            return 1.0
+    def _cell(self):
+        return cell.Cell.from_data(self._raw_data.cell)[self._steps]
 
     def _get_steps(self):
         return self._steps if self._is_trajectory else ()
@@ -835,17 +829,6 @@ Atoms # atomic
     @property
     def _is_trajectory(self):
         return self._raw_data.positions.ndim == 3
-
-
-class _LatticeVectors(reader.Reader):
-    def error_message(self, key, err):
-        key = np.array(key)
-        steps = key if key.ndim == 0 else key[0]
-        return (
-            f"Error reading the lattice vectors. Please check if the steps "
-            f"`{steps}` are properly formatted and within the boundaries. "
-            "Additionally, you may consider the original error message:\n" + err.args[0]
-        )
 
 
 def _cell_from_ase(structure):

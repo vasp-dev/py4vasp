@@ -203,6 +203,34 @@ class Dos:
 
 
 @dataclasses.dataclass
+class EffectiveCoulomb:
+    """The effective Coulomb potential calculated with a cRPA method.
+
+    The effective Coulomb potential U is calculated in VASP using the constrained Random
+    Phase Approximation (cRPA). This method allows to compute the screened Coulomb
+    interaction by excluding specific screening channels, typically those within a
+    correlated subspace such as d or f orbitals.
+    """
+
+    number_wannier_states: int
+    "Number of Wannier functions used to define the correlated subspace."
+    spin_labels: VaspData
+    "Labels for the spin channels used in the calculation."
+    frequencies: VaspData
+    "Frequencies at which the effective Coulomb potential is evaluated."
+    bare_potential_high_cutoff: VaspData
+    "The bare Coulomb potential before screening evaluated with a high cutoff."
+    bare_potential_low_cutoff: VaspData
+    "The bare Coulomb potential before screening evaluated with a low cutoff."
+    screened_potential: VaspData
+    "The screened effective Coulomb potential U."
+    cell: Cell
+    "Unit cell of the crystal."
+    positions: VaspData = NONE()
+    "Positions in units of the lattice vectors where the effective Coulomb potential is evaluated."
+
+
+@dataclasses.dataclass
 class ElasticModulus:
     """The elastic modulus calculated in a linear response calculation.
 

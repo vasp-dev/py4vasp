@@ -1,0 +1,86 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import numpy as np
+
+from py4vasp import _demo, exception, raw
+
+
+def crpa(two_center):
+    positions = _setup_positions(two_center)
+    if two_center:
+        shape_C = _shape_C("collinear")
+        shape_V = shape_C[:-1] + (len(positions), _demo.COMPLEX)
+        cell = _demo.cell.Fe3O4()
+        spin_labels = _demo.wrap_data(["up~up", "down~down", "up~down"])
+    else:
+        shape_V = shape_C = _shape_C("nonpolarized")
+        cell = _demo.cell.Sr2TiO4()
+        spin_labels = _demo.wrap_data([b"total"])
+    shape_U = shape_V
+    cell.lattice_vectors = cell.lattice_vectors[0]
+    return raw.EffectiveCoulomb(
+        number_wannier_states=_demo.NUMBER_WANNIER,
+        spin_labels=spin_labels,
+        frequencies=_demo.wrap_data([[0.0, 0.0]]),
+        bare_potential_high_cutoff=_demo.wrap_random_data(shape_V),
+        bare_potential_low_cutoff=_demo.wrap_random_data(shape_C),
+        screened_potential=_demo.wrap_random_data(shape_U),
+        cell=cell,
+        positions=_setup_positions(two_center),
+    )
+
+
+def crpar(two_center):
+    positions = _setup_positions(two_center)
+    frequencies = np.array(
+        (np.zeros(_demo.NUMBER_OMEGA), np.linspace(0, 10, _demo.NUMBER_OMEGA))
+    ).T.copy()
+    if two_center:
+        shape_C = _shape_C("nonpolarized")
+        shape_V = shape_C[:-1] + (len(positions), _demo.COMPLEX)
+        cell = _demo.cell.Sr2TiO4()
+        spin_labels = _demo.wrap_data(["total"])
+    else:
+        shape_V = shape_C = _shape_C("collinear")
+        cell = _demo.cell.Fe3O4()
+        spin_labels = _demo.wrap_data([b"up~up", b"down~down", b"up~down"])
+    shape_U = (_demo.NUMBER_OMEGA,) + shape_V
+    cell.lattice_vectors = cell.lattice_vectors[0]
+    return raw.EffectiveCoulomb(
+        number_wannier_states=_demo.NUMBER_WANNIER,
+        spin_labels=spin_labels,
+        frequencies=_demo.wrap_data(frequencies),
+        bare_potential_high_cutoff=_demo.wrap_random_data(shape_V),
+        bare_potential_low_cutoff=_demo.wrap_random_data(shape_C),
+        screened_potential=_demo.wrap_random_data(shape_U),
+        cell=cell,
+        positions=_setup_positions(two_center),
+    )
+
+
+def _shape_C(magnetism):
+    if magnetism == "nonpolarized":
+        spin_dim = 1
+    elif magnetism == "collinear":
+        spin_dim = 3
+    else:
+        raise exception.NotImplemented
+    return (spin_dim, _demo.NUMBER_WANNIER**4, _demo.COMPLEX)
+
+
+def _setup_positions(two_center):
+    if two_center:
+        return _demo.wrap_data(
+            [
+                [0, 0, 0],
+                [0, 0, 1],
+                [0, 1, 0],
+                [1, 0, 0],
+                [1, 1, 0],
+                [1, 0, 1],
+                [0, 1, 1],
+                [1, 1, 1],
+            ]
+        )
+    else:
+        return raw.VaspData(None)

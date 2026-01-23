@@ -298,6 +298,20 @@ schema.add(
     projections=f"{group}/dospar",
 )
 #
+group = "results/crpa"
+schema.add(
+    raw.EffectiveCoulomb,
+    required=raw.Version(6, 6),
+    number_wannier_states=f"{group}/nwtot",
+    spin_labels=f"{group}/spin_labels",
+    frequencies=f"{group}/comega",
+    bare_potential_high_cutoff=f"{group}/vijkl",
+    bare_potential_low_cutoff=f"{group}/cijkl",
+    screened_potential=f"{group}/uijkl",
+    cell=Link("cell", "final"),
+    positions=f"{group}/wpos",
+)
+#
 schema.add(
     raw.Energy,
     labels="intermediate/ion_dynamics/energies_tags",
