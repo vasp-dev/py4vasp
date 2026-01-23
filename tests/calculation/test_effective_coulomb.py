@@ -50,6 +50,7 @@ def create_coulomb_reference(raw_data, param):
     coulomb.ref.read_data = setup_read_data(setup, raw_coulomb)
     coulomb.ref.omega_data = setup_omega_data(setup, coulomb.ref.read_data)
     coulomb.ref.radial_data = setup_radial_data(setup, coulomb.ref.read_data)
+    coulomb.ref.overview_data = setup_overview_data(setup, coulomb.ref.read_data)
     return coulomb
 
 
@@ -146,6 +147,36 @@ def setup_radial_data(setup, read_data):
         "screened J": J,
         "bare V": np.einsum("rsiiii->sr", bare_potential.real) * weight,
         "label for both": [f"U @ {position}" for position in read_data["positions"]],
+    }
+
+
+def setup_overview_data(setup, read_data):
+    weight = (1 if setup.is_nonpolarized else 0.5) / setup.number_wannier
+    weight_j = 1 / (setup.number_wannier - 1)
+    U_ijkl = read_data["screened"]
+    V_ijkl = read_data["bare_high_cutoff"]
+    if setup.has_frequencies:  # only omega = 0
+        U_ijkl = U_ijkl[..., 0]
+        V_ijkl = V_ijkl[..., 0]
+    if setup.has_positions:  # only r = 0
+        U_ijkl = U_ijkl[0]
+        V_ijkl = V_ijkl[0]
+    # make spin diagonal
+    U_ijkl = U_ijkl[:2]
+    V_ijkl = V_ijkl[:2]
+    U = weight * np.einsum("siiii->", U_ijkl)
+    u = weight_j * (weight * np.einsum("sijji->", U_ijkl) - U)
+    J = weight_j * (weight * np.einsum("sijij->", U_ijkl) - U)
+    V = weight * np.einsum("siiii->", V_ijkl)
+    v = weight_j * (weight * np.einsum("sijji->", V_ijkl) - V)
+    Vj = weight_j * (weight * np.einsum("sijij->", V_ijkl) - V)
+    return {
+        "screened_U": U,
+        "screened_u": u,
+        "screened_J": J,
+        "bare_V": V,
+        "bare_v": v,
+        "bare_J": Vj,
     }
 
 
@@ -371,6 +402,13 @@ def test_plot_radial_and_frequency(effective_coulomb, Assert):
 def test_plot_radial_and_frequency_nondefault_radius(nonpolarized_crpar, Assert):
     with pytest.raises(exception.NotImplemented):
         nonpolarized_crpar.plot(omega=..., radius=np.array([1.0, 2.0]))
+
+
+def test_to_database(effective_coulomb, Assert):
+    data = effective_coulomb._to_database()["effective_coulomb"]
+    assert data.keys() == effective_coulomb.ref.overview_data.keys()
+    for key in data.keys():
+        Assert.allclose(data[key], effective_coulomb.ref.overview_data[key])
 
 
 def test_print(effective_coulomb, format_):
