@@ -246,7 +246,7 @@ def test_plot_invalid_selection(nonpolarized_crpar, selection):
         effective_coulomb.plot(selection)
 
 
-def test_plot_with_analytic_continuation(nonpolarized_crpar, Assert):
+def test_plot_with_analytic_continuation(nonpolarized_crpar, not_core, Assert):
     omega_data = nonpolarized_crpar.ref.omega_data
     omega = np.linspace(0, 10, 20)
     expected_U = numeric.analytic_continuation(
@@ -267,7 +267,9 @@ def test_plot_with_analytic_continuation(nonpolarized_crpar, Assert):
         assert series.label == label
 
 
-def test_plot_with_analytic_continuation_and_spin_selection(collinear_crpar, Assert):
+def test_plot_with_analytic_continuation_and_spin_selection(
+    collinear_crpar, not_core, Assert
+):
     omega_data = collinear_crpar.ref.omega_data
     omega = np.linspace(0, 10, 20)
     expected_output = 2 * numeric.analytic_continuation(
@@ -364,7 +366,7 @@ def test_plot_radial_interpolation(nonpolarized_crpar, not_core, Assert):
         assert series.label == label
 
 
-def test_plot_radial_interpolation_spin_selection(collinear_crpa, not_coreAssert):
+def test_plot_radial_interpolation_spin_selection(collinear_crpa, not_core, Assert):
     effective_coulomb = collinear_crpa
     radius = np.linspace(0, 10)
     raw_data = effective_coulomb.plot("up~down", radius=...)
