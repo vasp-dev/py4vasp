@@ -159,18 +159,6 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         result.update(self._read_density())
         return result
 
-    @base.data_access
-    def _to_database(self, *args, **kwargs):
-        structure = self._structure._read_to_database(*args, **kwargs)
-        density_dict = {}
-        try:
-            _raise_error_if_no_data(self._raw_data.charge)
-            # TODO remove
-            density_dict = {"density": dict(self._read_density())}
-        except Exception as exc:
-            pass
-        return database.combine_db_dicts(density_dict, structure)
-
     def _read_density(self):
         density = self.to_numpy()
         if self._selection:

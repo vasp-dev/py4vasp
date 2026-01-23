@@ -3,7 +3,7 @@
 import numpy as np
 
 from py4vasp._calculation import base, slice_, structure
-from py4vasp._util import reader
+from py4vasp._util import reader, symmetry
 
 
 class Stress(slice_.Mixin, base.Refinery, structure.Mixin):
@@ -52,7 +52,7 @@ class Stress(slice_.Mixin, base.Refinery, structure.Mixin):
         "Convert the stress to a format similar to the OUTCAR file."
         step = self._last_step_in_slice
         eV_to_kB = 1.602176634e3 / self._structure[step].volume()
-        stress = _symmetry_reduce(self._stress[step])
+        stress = symmetry.symmetry_reduce(self._stress[step])
         stress_to_string = lambda stress: " ".join(f"{x:11.5f}" for x in stress)
         return f"""
 FORCE on cell =-STRESS in cart. coord.  units (eV):
@@ -110,10 +110,14 @@ in kB   {stress_to_string(stress)}
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
+        initial_stress_tensor = self._stress[0]
+        final_stress_tensor = self._stress[-1]
+
         return {
             "stress": {
-                "avg_stress_final": None,  # TODO compute average stress of final frame = trace / 3
-                "stress_tensor_final": None,  # TODO add final stress tensor
+                "initial_stress_mean": np.trace(initial_stress_tensor) / 3.0,
+                "final_stress_mean": np.trace(final_stress_tensor) / 3.0,
+                "final_stress_tensor": symmetry.symmetry_reduce(final_stress_tensor),
             }
         }
 
@@ -137,15 +141,3 @@ class _StressReader(reader.Reader):
             f"`{steps}` are properly formatted and within the boundaries. "
             "Additionally, you may consider the original error message:\n" + err.args[0]
         )
-
-
-def _symmetry_reduce(stress_tensor):
-    symmetry_reduced_tensor = [
-        stress_tensor[0, 0],
-        stress_tensor[1, 1],
-        stress_tensor[2, 2],
-        0.5 * (stress_tensor[0, 1] + stress_tensor[1, 0]),
-        0.5 * (stress_tensor[1, 2] + stress_tensor[2, 1]),
-        0.5 * (stress_tensor[0, 2] + stress_tensor[2, 0]),
-    ]
-    return np.array(symmetry_reduced_tensor)

@@ -255,30 +255,30 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         stoichiometry = self._stoichiometry()._read_to_database(*args, **kwargs)
 
         # TODO add more structure properties and discuss
-        cell = {
-            "cell": {
-                "is_changing": (
-                    False
-                    if len(self.lattice_vectors()) == 1
-                    else np.allclose(
-                        self.lattice_vectors()[:-1],
-                        self.lattice_vectors()[1:],
-                        atol=1e-7,
-                    )
-                ),
-            }
-        }  # TODO add cell._read_to_database() when it exists
+        # TODO add minimum distance between ions and corresponding indices
+        lattice = self.lattice_vectors()
+        if lattice.ndim != 2:
+            lattice = [None, None, None]
+        volume = None
+        try:
+            volume = self.volume()
+        except Exception:
+            pass
+
         return database.combine_db_dicts(
             {
                 "structure": {
                     "total_ion_count": self.number_atoms(),
-                    "minimum_ion_distance": None,  # TODO implement
-                    "minimum_ion_distance_index1": None,  # TODO implement
-                    "minimum_ion_distance_index2": None,  # TODO implement
+                    "cell_volume": volume,
+                    "lattice_a": list(lattice[0]) if lattice[0] is not None else None,
+                    "lattice_b": list(lattice[1]) if lattice[1] is not None else None,
+                    "lattice_c": list(lattice[2]) if lattice[2] is not None else None,
+                    "minimum_ion_distance": None,
+                    "minimum_ion_distance_index1": None,
+                    "minimum_ion_distance_index2": None,
                 },
             },
             stoichiometry,
-            cell,
         )
 
     @base.data_access

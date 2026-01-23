@@ -11,7 +11,7 @@ def Ba2PbO4():
         [0.0, 4.34, 0.0],
         [-2.17, -2.17, 6.682],
     ]
-    return raw.Cell(lattice_vectors=np.array(lattice_vectors), scale=1.0)
+    return raw.Cell(np.asarray(lattice_vectors), scale=raw.VaspData(1.0))
 
 
 def Ca3AsBr3():
