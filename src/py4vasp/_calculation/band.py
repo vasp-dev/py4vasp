@@ -218,21 +218,27 @@ class Band(base.Refinery, graph.Mixin):
             in the KPOINTS file, these are returned as well.
         """
         dispersion = self._dispersion()._read_to_database(**kwargs)
+
+        # Find occupations
+        occupations = self._read_occupations()
+        num_total_occupied = getattr(occupations, "occupations", None)
+        if num_total_occupied is not None:
+            num_total_occupied = np.sum(num_total_occupied > 0)
+        num_occupied_up = getattr(occupations, "occupations_up", None)
+        num_occupied_down = getattr(occupations, "occupations_down", None)
+        if num_occupied_up is not None:
+            num_occupied_up = np.sum(num_occupied_up > 0)
+        if num_occupied_down is not None:
+            num_occupied_down = np.sum(num_occupied_down > 0)
+
         return database.combine_db_dicts(
             {
                 "band": {
-                    "num_occupied_bands": None,  # TODO implement (spin up/down check number of occupations > 0)
-                    # TODO DISCUSS removing these (different selections of band!)
-                    # TODO implement is_magnetic and magnetic_order
+                    "num_occupied_bands": num_total_occupied,
+                    "num_occupied_bands_up": num_occupied_up,
+                    "num_occupied_bands_down": num_occupied_down,
+                    "fermi_energy_raw": self._raw_data.fermi_energy,
                     "fermi_energy": fermi_energy or self._raw_data.fermi_energy,
-                    "is_collinear": self._is_collinear(),
-                    "is_noncollinear": (
-                        self._is_noncollinear()
-                        if not (check.is_none(self._raw_data.projections))
-                        else None
-                    ),
-                    "is_magnetic": None,
-                    "magnetic_order": None,
                 },
             },
             dispersion,

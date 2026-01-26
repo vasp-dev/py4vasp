@@ -506,10 +506,9 @@ spin polarized band data:
 def _check_to_database(_band, expect_collinear):
     database_data = _band._read_to_database()
     assert "band:default" in database_data
-    assert "fermi_energy" in database_data["band:default"]
-    assert "is_collinear" in database_data["band:default"]
-    assert database_data["band:default"]["fermi_energy"] == _band.ref.fermi_energy
-    assert database_data["band:default"]["is_collinear"] == expect_collinear
+    assert "fermi_energy_raw" in database_data["band:default"]
+    assert "num_occupied_bands" in database_data["band:default"]
+    assert database_data["band:default"]["fermi_energy_raw"] == _band.ref.fermi_energy
 
 
 def test_to_database_single_band(single_band):

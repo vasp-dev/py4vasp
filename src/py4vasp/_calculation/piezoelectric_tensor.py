@@ -3,6 +3,7 @@
 import numpy as np
 
 from py4vasp._calculation import base
+from py4vasp._util.tensor import symmetry_reduce, tensor_constants
 
 
 class PiezoelectricTensor(base.Refinery):
@@ -56,9 +57,49 @@ class PiezoelectricTensor(base.Refinery):
     @base.data_access
     def _to_database(self, *args, **kwargs):
         data = self.to_dict()
+
+        isotropic_constant_x = None
+        isotropic_constant_y = None
+        isotropic_constant_z = None
+        tensor_x = None
+        tensor_y = None
+        tensor_z = None
+        reduced_tensor_x = None
+        reduced_tensor_y = None
+        reduced_tensor_z = None
+        try:
+            tensor_x = data["clamped_ion"][0]
+            reduced_tensor_x = list(symmetry_reduce(tensor_x))
+        except:
+            pass
+
+        try:
+            tensor_y = data["clamped_ion"][1]
+            reduced_tensor_y = list(symmetry_reduce(tensor_y))
+        except:
+            pass
+
+        try:
+            tensor_z = data["clamped_ion"][2]
+            reduced_tensor_z = list(symmetry_reduce(tensor_z))
+        except:
+            pass
+
+        try:
+            isotropic_constant_x, _ = tensor_constants(tensor_x)
+            isotropic_constant_y, _ = tensor_constants(tensor_y)
+            isotropic_constant_z, _ = tensor_constants(tensor_z)
+        except:
+            pass
+
         return {
             "piezoelectric_tensor": {
-                **self.to_dict(),  # TODO check keys and check WIKI for constants
+                "clamped_ion_tensor_x": reduced_tensor_x,
+                "clamped_ion_tensor_y": reduced_tensor_y,
+                "clamped_ion_tensor_z": reduced_tensor_z,
+                "piezoelectric_constant_isotropic_x": isotropic_constant_x,
+                "piezoelectric_constant_isotropic_y": isotropic_constant_y,
+                "piezoelectric_constant_isotropic_z": isotropic_constant_z,
             }
         }
 

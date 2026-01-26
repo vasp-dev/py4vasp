@@ -57,7 +57,7 @@ class ExcitonEigenvector(base.Refinery):
     def _to_database(self, *args, **kwargs):
         return {
             "exciton_eigenvector": {
-                # TODO add scalar quantities of eigenvectors
+                # TODO add scalar quantities of eigenvectors -- Pedro oder Alexey
             }
         }
 

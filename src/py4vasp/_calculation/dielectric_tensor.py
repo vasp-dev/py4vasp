@@ -39,11 +39,8 @@ class DielectricTensor(base.Refinery):
         the_dict = self.to_dict()
 
         isotropic_constant = None
-        anisotropic_constants = None
         try:
-            isotropic_constant, anisotropic_constants = tensor_constants(
-                the_dict["clamped_ion"]
-            )
+            isotropic_constant, _ = tensor_constants(the_dict["clamped_ion"])
         except:
             pass
 
@@ -52,7 +49,6 @@ class DielectricTensor(base.Refinery):
                 "method": the_dict["method"],
                 "clamped_ion_tensor": list(symmetry_reduce(the_dict["clamped_ion"])),
                 "static_dielectric_constant_isotropic": isotropic_constant,
-                "static_dielectric_constant_anisotropic": anisotropic_constants,  # TODO DISCUSS if this is correct
             },
         }
         return dielectric_tensor_db

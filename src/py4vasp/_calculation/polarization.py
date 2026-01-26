@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
+from py4vasp import exception
 from py4vasp._calculation import base
 
 
@@ -46,14 +47,34 @@ electronic dipole moment: {vec_to_string(self._raw_data.electron[:])}
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
+        ionic_norm = None
+        electronic_norm = None
+        total_norm = None
+
+        electron_dipole = None
+        ion_dipole = None
+        total_dipole = None
+
+        try:
+            electron_dipole = list(self._raw_data.electron[:])
+            ion_dipole = list(self._raw_data.ion[:])
+            total_dipole = list(self._raw_data.electron[:] + self._raw_data.ion[:])
+
+            ionic_norm = np.linalg.norm(self._raw_data.ion[:])
+            electronic_norm = np.linalg.norm(self._raw_data.electron[:])
+            total_norm = np.linalg.norm(
+                self._raw_data.electron[:] + self._raw_data.ion[:]
+            )
+        except exception.NoData:
+            pass
+
         return {
             "polarization": {
-                "polarization_norm_ionic": np.linalg.norm(self._raw_data.ion[:]),
-                "polarization_norm_electronic": np.linalg.norm(
-                    self._raw_data.electron[:]
-                ),
-                "polarization_norm_total": np.linalg.norm(
-                    self._raw_data.electron[:] + self._raw_data.ion[:]
-                ),  # TODO check keys and consider norm of the sum of both as total_polarization
+                "polarization_norm_ionic": ionic_norm,
+                "polarization_norm_electronic": electronic_norm,
+                "polarization_norm_total": total_norm,
+                "dipole_moment_ionic": ion_dipole,
+                "dipole_moment_electronic": electron_dipole,
+                "dipole_moment_total": total_dipole,
             }
         }
