@@ -78,15 +78,65 @@ N, E, dE, deps, ncg, rms, rms(c)"""
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
+        num_max_electronic_steps_per_ionic = None
+        num_min_electronic_steps_per_ionic = None
+        num_electronic_steps = None
+        elmin_is_converged_all = None
+        elmin_is_converged_final = None
+
+        try:
+            elmin_is_converged_all = np.all(self._raw_data.is_elmin_converged[:] == 0)
+            elmin_is_converged_final = np.all(
+                self._raw_data.is_elmin_converged[-1] == 0
+            )
+        except exception.NoData:
+            pass
+
+        try:
+            (
+                num_max_electronic_steps_per_ionic,
+                num_min_electronic_steps_per_ionic,
+                num_electronic_steps,
+            ) = self._get_electronic_steps_info()
+        except exception.NoData:
+            pass
+
         return {
             "electronic_minimization": {
-                "max_num_electronic_steps_per_ionic": None,  # TODO check max electronic steps per ionic step, ...
-                "num_electronic_steps": None,  # TODO implement
-                # TODO move to common properties and consider ALL steps
-                "is_converged": np.all(self.is_converged().tolist()),
-                "num_ionic_steps": None,  # TODO implement
+                "num_electronic_steps": num_electronic_steps,
+                "elmin_is_converged_all": elmin_is_converged_all,
+                "elmin_is_converged_final": elmin_is_converged_final,
+                "num_max_electronic_steps_per_ionic": num_max_electronic_steps_per_ionic,
+                "num_min_electronic_steps_per_ionic": num_min_electronic_steps_per_ionic,
             }
         }
+
+    def _get_electronic_steps_info(self) -> dict:
+        data = getattr(self._raw_data, "convergence_data")
+        iteration_number = data[:, 0]
+        split_index = np.where(iteration_number == 1)[0]
+        data = [raw.VaspData(_data) for _data in np.vsplit(data, split_index)[1:][:]]
+
+        labels = [label.decode("utf-8") for label in self._raw_data.label]
+        data_index = labels.index("N")
+        N_data = [list(_data[:, data_index]) for _data in data]
+        num_electronic_steps_per_ionic = [len(_data) for _data in N_data]
+        is_none = [_data.is_none() for _data in data]
+        if np.all(is_none):
+            return None, None, None
+
+        if (len(num_electronic_steps_per_ionic)) == 0:
+            return None, None, None
+
+        num_max_electronic_steps_per_ionic = max(num_electronic_steps_per_ionic)
+        num_min_electronic_steps_per_ionic = min(num_electronic_steps_per_ionic)
+        num_electronic_steps = sum(num_electronic_steps_per_ionic)
+
+        return (
+            num_max_electronic_steps_per_ionic,
+            num_min_electronic_steps_per_ionic,
+            num_electronic_steps,
+        )
 
     def _from_bytes_to_utf(self, quantity: list):
         return [_quantity.decode("utf-8") for _quantity in quantity]

@@ -230,6 +230,7 @@ instead of the constructor Calculation()."""
     def _to_database(
         self,
         tags: Optional[Union[str, list[str]]] = None,
+        fermi_energy: Optional[float] = None,
     ):
         """
         Retrieve the data of the calculation needed to write it to a VASP database.
@@ -242,6 +243,10 @@ instead of the constructor Calculation()."""
         tags
             Tags to associate with the calculation in the database.
             Can be a single string or a list of strings.
+        fermi_energy: float
+            If provided, this Fermi energy will be used for database computations
+            instead of the one read from the calculation data, e.g., for band structure.
+            This is relevant, e.g., for metallic systems where the Fermi energy may be significantly different.
 
         Examples
         --------
@@ -289,7 +294,7 @@ instead of the constructor Calculation()."""
 
         # Check available quantities and compute additional properties
         database_data.available_quantities, database_data.additional_properties = (
-            self._compute_database_data(hdf5_path)
+            self._compute_database_data(hdf5_path, fermi_energy=fermi_energy)
         )
 
         # Return DatabaseData object for VaspDB to process
@@ -328,7 +333,7 @@ instead of the constructor Calculation()."""
     #     self._POSCAR.write(str(poscar))
 
     def _compute_database_data(
-        self, hdf5_path: pathlib.Path
+        self, hdf5_path: pathlib.Path, fermi_energy: Optional[float] = None
     ) -> Tuple[dict[str, tuple[bool, list[str]]], dict[str, dict]]:
         """Computes a dict of available py4vasp dataclasses and all available database data.
 
@@ -354,7 +359,11 @@ instead of the constructor Calculation()."""
         # Obtain quantities
         # --- MAIN LOOP FOR QUANTITIES ---
         available_quantities, additional_properties = self._loop_quantities(
-            hdf5_path, QUANTITIES, available_quantities, additional_properties
+            hdf5_path,
+            QUANTITIES,
+            available_quantities,
+            additional_properties,
+            fermi_energy=fermi_energy,
         )
         for group, quantities in GROUPS.items():
             available_quantities, additional_properties = self._loop_quantities(
@@ -363,6 +372,7 @@ instead of the constructor Calculation()."""
                 available_quantities,
                 additional_properties,
                 group_name=group,
+                fermi_energy=fermi_energy,
             )
         # --------------------------------
 
@@ -382,6 +392,7 @@ instead of the constructor Calculation()."""
         available_quantities,
         additional_properties,
         group_name=None,
+        fermi_energy: Optional[float] = None,
     ) -> Tuple[dict[str, tuple[bool, list[str]]], dict[str, dict]]:
         group_instance = self if group_name is None else getattr(self, group_name)
         for quantity in quantities:
@@ -403,6 +414,7 @@ instead of the constructor Calculation()."""
                         quantity,
                         group_name,
                         additional_properties,
+                        fermi_energy=fermi_energy,
                     )
                 )
                 availability_key, _ = database.construct_database_data_key(
@@ -429,6 +441,7 @@ instead of the constructor Calculation()."""
         quantity_name: str,
         group_name: Optional[str] = None,
         current_db: dict = {},
+        fermi_energy: Optional[float] = None,
     ) -> Tuple[bool, dict, list[str]]:
         "Compute additional data to be stored in the database."
         is_available = False
@@ -492,6 +505,7 @@ instead of the constructor Calculation()."""
                     selection=str(selection),
                     current_db=current_db,
                     original_group_name=group_name,
+                    fermi_energy=fermi_energy,
                 )
             except Exception as e:
                 # TODO delete this debug print once everything is stable

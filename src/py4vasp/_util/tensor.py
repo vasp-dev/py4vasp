@@ -4,6 +4,8 @@ import numpy as np
 
 
 def symmetry_reduce(tensor):
+    if tensor is None:
+        return None
     symmetry_reduced_tensor = [
         tensor[0, 0],
         tensor[1, 1],
@@ -16,6 +18,8 @@ def symmetry_reduce(tensor):
 
 
 def tensor_constants(tensor):
+    if tensor is None:
+        return None, None
     eigenvalues, _ = np.linalg.eig(tensor)
     anisotropic_constants = list(eigenvalues)
     isotropic_constant = sum(eigenvalues) / 3.0

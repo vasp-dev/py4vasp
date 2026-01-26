@@ -36,11 +36,8 @@ class ElasticModulus(base.Refinery):
     @base.data_access
     def _to_database(self, *args, **kwargs):
         isotropic_constant = None
-        anisotropic_constants = None
         try:
-            isotropic_constant, anisotropic_constants = tensor_constants(
-                self._raw_data.clamped_ion[:]
-            )
+            isotropic_constant, _ = tensor_constants(self._raw_data.clamped_ion[:])
         except:
             pass
 
@@ -50,7 +47,6 @@ class ElasticModulus(base.Refinery):
                     symmetry_reduce(self._raw_data.clamped_ion[:])
                 ),
                 "elastic_constant_isotropic": isotropic_constant,
-                "elastic_constant_anisotropic": anisotropic_constants,  # TODO DISCUSS if this is correct
             }
         }
 

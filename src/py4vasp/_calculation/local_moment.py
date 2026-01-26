@@ -159,16 +159,26 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        orbital_moments = getattr(self._raw_data, "orbital_moments", None)
-        has_orbital_moments = (
-            False if orbital_moments is None else not orbital_moments.is_none()
-        )
+        if self._is_nonpolarized or self._is_noncollinear:
+            spin_moments_total = self._raw_data.spin_moments[-1, 0]
+        elif self._is_collinear:
+            spin_moments_total = (
+                self._raw_data.spin_moments[-1, 0] + self._raw_data.spin_moments[-1, 1]
+            )
+        else:
+            spin_moments_total = None
+
+        spin_moment_total_min = None
+        spin_moment_total_max = None
+        if spin_moments_total is not None:
+            spin_moment_total_min = float(np.min(spin_moments_total))
+            spin_moment_total_max = float(np.max(spin_moments_total))
 
         data_dict = {
             "local_moment": {
-                "has_orbital_moments": has_orbital_moments,
-                "spin_moment_min": None,  # TODO implement but think about noncollinear systems - z-axis projection?
-                "spin_moment_max": None,  # TODO implement but think about whether to use linalg.norm or project to z for signed norm
+                "has_orbital_moments": self._has_orbital_moments,
+                "final_spin_moment_total_min": spin_moment_total_min,
+                "final_spin_moment_total_max": spin_moment_total_max,
             }
         }
         return data_dict

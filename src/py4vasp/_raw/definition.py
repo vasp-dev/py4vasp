@@ -627,6 +627,24 @@ schema.add(
 )
 #
 schema.add(
+    raw.RuntimeData,
+    vasp_version=Link("version", DEFAULT_SOURCE),
+)
+schema.add(
+    raw.RunInfo,
+    system=Link("system", DEFAULT_SOURCE),
+    runtime=Link("runtime_data", DEFAULT_SOURCE),
+    fermi_energy="results/electron_dos/efermi",
+    bandgap=Link("bandgap", DEFAULT_SOURCE),
+    band_dispersion_eigenvalues="results/electron_eigenvalues/eigenvalues",
+    band_projections="results/projectors/par",
+    len_dos=Length("results/electron_dos/dos"),
+    structure=Link("structure", DEFAULT_SOURCE),
+    contcar=Link("CONTCAR", DEFAULT_SOURCE),
+    phonon_dispersion=Link("dispersion", "phonon"),
+)
+#
+schema.add(
     raw.Stoichiometry,
     ion_types="results/positions/ion_types",
     number_ion_types="results/positions/number_ion_types",
@@ -694,20 +712,4 @@ schema.add(
     vacuum_potential="results/potential/vacuum_potential",
     reference_potential=Link("bandgap", DEFAULT_SOURCE),
     fermi_energy="results/electron_dos/efermi",
-)
-#
-schema.add(
-    raw.RuntimeData,
-    vasp_version=Link("version", DEFAULT_SOURCE),
-)
-schema.add(
-    raw.RunInfo,
-    system=Link("system", DEFAULT_SOURCE),
-    runtime=Link("runtime_data", DEFAULT_SOURCE),
-    fermi_energy="results/electron_dos/efermi",
-    band_dispersion_eigenvalues="results/electron_eigenvalues/eigenvalues",
-    band_projections="results/projectors/par",
-    structure=Link("structure", DEFAULT_SOURCE),
-    contcar=Link("CONTCAR", DEFAULT_SOURCE),
-    phonon_dispersion=Link("dispersion", "phonon"),
 )
