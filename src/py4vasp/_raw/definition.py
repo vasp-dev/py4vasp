@@ -337,6 +337,7 @@ schema.add(
     required=raw.Version(6, 3),
     clamped_ion=f"{group}/clamped_ion_elastic_modulus",
     relaxed_ion=f"{group}/relaxed_ion_elastic_modulus",
+    structure=Link("structure", DEFAULT_SOURCE),
 )
 #
 schema.add(
@@ -429,6 +430,8 @@ schema.add(
     eigenvectors=f"{group}/bse_fatbands",
     first_valence_band=f"{group}/bse_vbmin",
     first_conduction_band=f"{group}/bse_cbmin",
+    NBANDSO="input/incar/NBANDSO",
+    NBANDSV="input/incar/NBANDSV",
 )
 #
 schema.add(
