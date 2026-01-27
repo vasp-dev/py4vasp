@@ -157,7 +157,9 @@ def setup_radial_data(setup, read_data):
         "screened U": U,
         "screened J": J,
         "bare V": np.einsum("rsiiii->sr", bare_potential.real) * weight,
-        "label for both": [f"U @ {position}" for position in read_data["positions"]],
+        "label for both": [
+            f"screened U @ {position}" for position in read_data["positions"]
+        ],
     }
 
 
@@ -402,17 +404,16 @@ def interpolate(radial_data, potential, radius):
     return U0 * interpolation
 
 
-@pytest.mark.xfail
 def test_plot_radial_and_frequency(effective_coulomb, Assert):
     omega_data = effective_coulomb.ref.omega_data
     radial_data = effective_coulomb.ref.radial_data
     if radial_data is None or omega_data is None:
         with pytest.raises(exception.DataMismatch):
-            effective_coulomb.plot(omega=..., radius=...)
+            effective_coulomb.plot("U", omega=..., radius=...)
         return
-    graph = effective_coulomb.plot(omega=..., radius=...)
+    graph = effective_coulomb.plot("U", omega=..., radius=...)
     assert len(graph) == len(radial_data["radius"])
-    assert graph.xlabel == "ω (eV)"
+    assert graph.xlabel == "Im(ω) (eV)"
     assert graph.ylabel == "Coulomb potential (eV)"
     expected_labels = radial_data["label for both"]
     expected_lines = omega_data["U for both"].real
@@ -422,7 +423,6 @@ def test_plot_radial_and_frequency(effective_coulomb, Assert):
         assert series.label == label
 
 
-@pytest.mark.xfail
 def test_plot_radial_and_frequency_nondefault_radius(nonpolarized_crpar, Assert):
     with pytest.raises(exception.NotImplemented):
         nonpolarized_crpar.plot(omega=..., radius=np.array([1.0, 2.0]))

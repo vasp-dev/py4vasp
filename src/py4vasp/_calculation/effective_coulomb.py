@@ -12,23 +12,6 @@ from py4vasp._third_party import graph, numeric
 from py4vasp._util import check, convert, index, select
 
 
-@dataclass
-class _CoulombPotential:
-    component: str
-    selector_label: str
-    strength: ArrayLike
-
-    def to_omega_series(self, omega):
-        label = f"{self.component} {self.selector_label}"
-        strength = self.strength if self.strength.ndim == 1 else self.strength[:, 0]
-        return graph.Series(omega, strength.real, label=label)
-
-    def to_radial_series(self, radius, marker):
-        label = f"{self.component} {self.selector_label}"
-        strength = self.strength if self.strength.ndim == 1 else self.strength[0]
-        return graph.Series(radius, strength.real, label=label, marker=marker)
-
-
 class EffectiveCoulomb(base.Refinery, graph.Mixin):
     """Effective Coulomb interaction U obtained with the constrained random phase approximation (cRPA).
 
@@ -277,46 +260,41 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
             A graph object containing the visualization of the effective Coulomb
             interaction data.
         """
-        selected_dimension = self._select_dimension(omega, radius)
         tree = select.Tree.from_selection(selection)
-        if selected_dimension == "frequency":
-            return self._plot_frequency(tree, omega)
-        elif selected_dimension == "radial":
-            return self._plot_radial(tree, radius)
-        elif selected_dimension == "both":
-            return self._plot_both(tree, omega, radius)
-        else:
-            raise exception.NotImplemented(
-                f"Plotting for the selected dimension {selected_dimension} is not implemented."
-            )
+        plotter = self._make_plotter(omega, radius)
+        potentials = self._get_effective_potentials(tree, plotter)
+        series = plotter.make_all_series(potentials)
+        return graph.Graph(
+            series, xlabel=plotter.xlabel, ylabel="Coulomb potential (eV)"
+        )
 
-    def _select_dimension(self, omega, radius):
+    def _make_plotter(self, omega, radius):
         if omega is not None and radius is not None:
-            return "both"
-        elif omega is not None:
-            return "frequency"
-        elif radius is not None:
-            return "radial"
+            if radius is not ...:
+                raise exception.NotImplemented(
+                    "Interpolating radial data for frequency plots is not implemented."
+                )
+            omega_in = self._read_frequencies().get("frequencies")
+            positions = self._read_positions()
+            return _OmegaPlotter(omega_in, omega, positions)
+        if radius is not None:
+            positions = self._read_positions()
+            return _RadialPlotter(positions, radius)
         else:
-            return "frequency"
+            omega_in = self._read_frequencies().get("frequencies")
+            return _OmegaPlotter(omega_in, omega)
 
-    def _plot_frequency(self, tree, omega):
-        omega_in = self._read_frequencies().get("frequencies")
-        omega_set = omega is None or omega is ...
-        if omega_in is None:
-            raise exception.DataMismatch("The output does not contain frequency data.")
-        omega_out = omega_in if omega_set else omega
-        selected_potentials = self._get_potentials_omega(tree, omega_in, omega_out)
-        xlabel = "Im(ω) (eV)" if omega_set else "ω (eV)"
-        series = list(self._generate_series_omega(omega_out, selected_potentials))
-        return graph.Graph(series, xlabel=xlabel, ylabel="Coulomb potential (eV)")
+    def _get_effective_potentials(self, tree, plotter):
+        return [
+            self._get_effective_potential(selection, plotter)
+            for selection in tree.selections()
+        ]
 
-    def _get_potentials_omega(self, tree, omega_in, omega_out):
-        for selection in tree.selections():
-            if self._bare_potential_selected(selection):
-                yield self._get_bare_potential(selection, len(omega_out))
-            else:
-                yield self._get_screened_potential(selection, omega_in, omega_out)
+    def _get_effective_potential(self, selection, plotter):
+        if self._bare_potential_selected(selection):
+            return self._get_bare_potential(selection, plotter)
+        else:
+            return self._get_screened_potential(selection, plotter)
 
     def _bare_potential_selected(self, selection):
         if select.contains(selection, "bare"):
@@ -325,24 +303,22 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
             return False
         return select.contains(selection, "V") or select.contains(selection, "v")
 
-    def _get_bare_potential(self, selection, num_omega):
+    def _get_bare_potential(self, selection, plotter):
         selection = self._filter_component_from_selection(selection)
         maps = self._create_map("bare")
         potential = self._raw_data.bare_potential_high_cutoff
         selector = index.Selector(maps, potential, reduction=np.average)
         V = convert.to_complex(selector[selection])
-        V = np.broadcast_to(V, (num_omega,) + V.shape)
+        V = plotter.interpolate_bare_if_necessary(V)
         return _CoulombPotential("bare", selector.label(selection), V)
 
-    def _get_screened_potential(self, selection, omega_in, omega_out):
+    def _get_screened_potential(self, selection, plotter):
         selection = self._filter_component_from_selection(selection)
         maps = self._create_map("screened")
         potential = self._raw_data.screened_potential
         selector = index.Selector(maps, potential, reduction=np.average)
         U = convert.to_complex(selector[selection])
-        needs_interpolation = omega_in is not omega_out
-        if needs_interpolation:
-            U = numeric.analytic_continuation(omega_in, U.T, omega_out).T
+        U = plotter.interpolate_screened_if_necessary(U)
         return _CoulombPotential("screened", selector.label(selection), U)
 
     def _filter_component_from_selection(self, selection):
@@ -373,68 +349,6 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
         else:
             return {1: spin_map, 2: component_map}
 
-    def _generate_series_omega(self, omega, selected_potentials):
-        if np.isclose(omega.real, omega).all():
-            omega = omega.real
-        else:
-            omega = omega.imag
-        for coulomb_potential in selected_potentials:
-            yield coulomb_potential.to_omega_series(omega)
-
-    def _plot_radial(self, tree, radius):
-        positions = self._read_positions()
-        if not positions:
-            raise exception.DataMismatch("The output does not contain position data.")
-        radius_in = self._transform_positions_to_radial(positions)
-        radius_out = radius_in if radius is ... else radius
-        marker = "*" if radius is ... else None
-        potentials = self._get_effective_potentials_radial(tree, radius_in, radius_out)
-        series = list(self._generate_series_radial(radius_out, potentials, marker))
-        return graph.Graph(series, xlabel="Radius (Å)", ylabel="Coulomb potential (eV)")
-
-    def _transform_positions_to_radial(self, positions):
-        return np.linalg.norm(
-            positions["lattice_vectors"] @ positions["positions"].T, axis=0
-        )
-
-    def _get_effective_potentials_radial(self, tree, radius_in, radius_out):
-        for selection in tree.selections():
-            if self._bare_potential_selected(selection):
-                potential = self._get_bare_potential2(selection)
-            else:
-                potential = self._get_screened_potential2(selection)
-            needs_interpolation = radius_in is not radius_out
-            if needs_interpolation:
-                potential.strength = self._ohno_interpolation(
-                    radius_in, potential.strength.real, radius_out
-                )
-            yield potential
-
-    def _get_bare_potential2(self, selection):
-        selection = self._filter_component_from_selection(selection)
-        maps = self._create_map("bare")
-        potential = self._raw_data.bare_potential_high_cutoff
-        selector = index.Selector(maps, potential, reduction=np.average)
-        V = convert.to_complex(selector[selection])
-        return _CoulombPotential("bare", selector.label(selection), V)
-
-    def _get_screened_potential2(self, selection):
-        selection = self._filter_component_from_selection(selection)
-        maps = self._create_map("screened")
-        potential = self._raw_data.screened_potential
-        selector = index.Selector(maps, potential, reduction=np.average)
-        U = convert.to_complex(selector[selection])
-        return _CoulombPotential("screened", selector.label(selection), U)
-
-    def _ohno_interpolation(self, radius_in, potential, radius_out):
-        if potential.ndim == 2:
-            # if multiple frequencies are present, take only omega = 0
-            potential = potential[0]
-        interpolation = numeric.interpolate_with_function(
-            self.ohno_potential, radius_in, potential / potential[0], radius_out
-        )
-        return potential[0] * interpolation
-
     @staticmethod
     def ohno_potential(radius: ArrayLike, delta: float) -> np.ndarray:
         """Ohno potential for given radius/radii and delta.
@@ -456,10 +370,6 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
         delta = np.abs(delta)
         return np.sqrt(delta / (radius + delta))
 
-    def _generate_series_radial(self, radius, selected_potentials, marker):
-        for coulomb_potential in selected_potentials:
-            yield coulomb_potential.to_radial_series(radius, marker)
-
     def _plot_both(self, tree, omega, radius):
         omega_in = self._read_frequencies().get("frequencies")
         omega_set = omega is ...
@@ -473,9 +383,109 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
             raise exception.NotImplemented(
                 "Interpolating radial data for frequency plots is not implemented."
             )
-        potentials = {}
-        for i, position in enumerate(positions["positions"]):
-            data = self._get_effective_potentials_omega(omega_in, omega_out, position=i)
-            potentials[f"U @ {position}"] = data["screened U"]
-        series = list(self._generate_series_omega(tree, omega_out, potentials))
+        potentials = self._get_effective_potentials(tree, omega_in, omega_out)
+        series = list(self._generate_series_omega(omega_out, potentials))
+        # for i, position in enumerate(positions["positions"]):
+        #     data = self._get_effective_potentials_omega(omega_in, omega_out, position=i)
+        #     potentials[f"U @ {position}"] = data["screened U"]
+        # series = list(self._generate_series_omega(tree, omega_out, potentials))
         return graph.Graph(series, xlabel="ω (eV)", ylabel="Coulomb potential (eV)")
+
+
+@dataclass
+class _CoulombPotential:
+    component: str
+    selector_label: str
+    strength: ArrayLike
+
+
+class _OmegaPlotter:
+    def __init__(self, omega_in, omega_out, positions=None):
+        self.omega_in = omega_in
+        self.interpolate = omega_out is not None and omega_out is not ...
+        if omega_in is None:
+            raise exception.DataMismatch("The output does not contain frequency data.")
+        if positions is not None and not positions:
+            raise exception.DataMismatch("The output does not contain position data.")
+        self.omega_out = omega_out if self.interpolate else omega_in
+        self.xlabel = "ω (eV)" if self.interpolate else "Im(ω) (eV)"
+        self.positions = positions
+
+    def interpolate_bare_if_necessary(self, potential):
+        num_omega = len(self.omega_out)
+        return np.broadcast_to(potential, (num_omega,) + potential.shape)
+
+    def interpolate_screened_if_necessary(self, potential):
+        if not self.interpolate:
+            return potential
+        return numeric.analytic_continuation(
+            self.omega_in, potential.T, self.omega_out
+        ).T
+
+    def make_all_series(self, potentials):
+        if self.positions:
+            return [
+                self._make_one_series(potential, position=i, suffix=f" @ {position}")
+                for potential in potentials
+                for i, position in enumerate(self.positions["positions"])
+            ]
+        else:
+            return [self._make_one_series(potential) for potential in potentials]
+
+    def _make_one_series(self, potential, position=0, suffix=""):
+        omega = self.omega_out.real if self.interpolate else self.omega_out.imag
+        label = f"{potential.component} {potential.selector_label}{suffix}"
+        if potential.strength.ndim == 1:
+            strength = potential.strength
+        else:
+            strength = potential.strength[:, position]
+        return graph.Series(omega, strength.real, label=label)
+
+
+class _RadialPlotter:
+    xlabel = "Radius (Å)"
+
+    def __init__(self, positions, radius_out):
+        if not positions:
+            raise exception.DataMismatch("The output does not contain position data.")
+        self.radius_in = self._transform_positions_to_radial(positions)
+        self.interpolate = radius_out is not None and radius_out is not ...
+        self.radius_out = radius_out if self.interpolate else self.radius_in
+        self.marker = None if self.interpolate else "*"
+
+    def _transform_positions_to_radial(self, positions):
+        return np.linalg.norm(
+            positions["lattice_vectors"] @ positions["positions"].T, axis=0
+        )
+
+    def interpolate_bare_if_necessary(self, potential):
+        return self._ohno_interpolation(potential)
+
+    def interpolate_screened_if_necessary(self, potential):
+        return self._ohno_interpolation(potential)
+
+    def _ohno_interpolation(self, potential):
+        if not self.interpolate:
+            return potential.real
+        potential = potential.real
+        if potential.ndim == 2:
+            # if multiple frequencies are present, take only omega = 0
+            potential = potential[0]
+        return potential[0] * numeric.interpolate_with_function(
+            EffectiveCoulomb.ohno_potential,
+            self.radius_in,
+            potential / potential[0],
+            self.radius_out,
+        )
+
+    def make_all_series(self, potentials):
+        return [self._make_one_series(potential) for potential in potentials]
+
+    def _make_one_series(self, potential):
+        label = f"{potential.component} {potential.selector_label}"
+        if potential.strength.ndim == 1:
+            strength = potential.strength
+        else:
+            # use only omega = 0
+            strength = potential.strength[0]
+        return graph.Series(self.radius_out, strength, label=label, marker=self.marker)
