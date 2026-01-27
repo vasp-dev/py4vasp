@@ -464,7 +464,7 @@ instead of the constructor Calculation()."""
                 if group_name is not None
                 else schema_quantity_name
             )
-            should_load = True
+            should_load = False
             with h5py.File(hdf5_path, "r") as h5file:
                 should_load, _, should_attempt_read, additional_related_keys = (
                     database.should_load(expected_key, selection, h5file, schema)
@@ -506,24 +506,18 @@ instead of the constructor Calculation()."""
                     current_db=current_db,
                     original_group_name=group_name,
                     fermi_energy=fermi_energy,
-                    none_for_outdated=True,
                 )
-            except exception.OutdatedVaspVersion:
-                print(
-                    f"[ADD] VASP version too old for {quantity_name} (group={type(group)}) with selection {selection}. Skipping."
-                )
+            except exception.OutdatedVaspVersion as e:
+                # print(
+                #     f"[ADD] VASP version too old for {quantity_name} (group={type(group)}) with selection {selection}. Got error: {e}"
+                # )
                 pass  # happens when VASP version is too old for this quantity
             except Exception as e:
-                # TODO delete this debug print once everything is stable.
-                print(
-                    f"[ADD] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection} (please consider filing a bug report):",
-                    e,
-                )
-                raise Exception(
-                    f"[ADD] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection} (please consider filing a bug report):",
-                    e,
-                ) from e
-                # pass  # catch any other errors during reading
+                # print(
+                #     f"[ADD] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection} (please consider filing a bug report):",
+                #     e,
+                # )
+                pass  # catch any other errors during reading
 
         return is_available, additional_properties, aliases_, additional_related_keys
 

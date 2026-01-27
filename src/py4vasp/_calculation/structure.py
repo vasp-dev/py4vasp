@@ -254,7 +254,7 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
     def _to_database(self, *args, **kwargs):
         stoichiometry = self._stoichiometry()._read_to_database(*args, **kwargs)
 
-        # TODO DISCUSS add more structure properties
+        # TODO add more structure properties
         lattice = self.lattice_vectors()
         if lattice.ndim != 2:
             lattice = [None, None, None]

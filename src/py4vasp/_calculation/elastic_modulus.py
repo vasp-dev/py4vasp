@@ -50,8 +50,6 @@ class ElasticModulus(base.Refinery):
         except:
             pass
 
-        # TODO verify dielectric tensor, piezoelectric tensor in same way or different
-
         # Properties from elastic tensor
         elastic_properties = self._compute_elastic_properties(
             voigt_tensor, volume_per_atom=volume_per_atom

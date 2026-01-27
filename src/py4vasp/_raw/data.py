@@ -87,7 +87,7 @@ class Cell:
 
     lattice_vectors: VaspData
     "Lattice vectors defining the unit cell."
-    scale: float
+    scale: Optional[float] = 1.0
     "Global scaling factor applied to all lattice vectors."
 
 
