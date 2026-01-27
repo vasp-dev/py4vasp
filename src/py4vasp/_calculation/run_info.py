@@ -91,7 +91,9 @@ class RunInfo(base.Refinery):
         try:
             gap = bandgap.Bandgap.from_data(self._raw_data.bandgap)
             return gap._output_gap("fundamental", to_string=False) <= 0.0
-        except exception.NoData:
+        except (exception.OutdatedVaspVersion, exception.NoData):
+            return None
+        except:
             return None
 
     def _dict_from_system(self) -> dict:
@@ -173,6 +175,7 @@ class RunInfo(base.Refinery):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
+        print("Converting run info to database format.")
         return {
             "run_info": self.to_dict(),
         }

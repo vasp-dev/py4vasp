@@ -82,9 +82,7 @@ def should_load(
     should_attempt_read = False
     additional_keys = []
     if print_debug:
-        print(
-            f"[CHECK] Checking availability of quantity {quantity} with source {source}."
-        )
+        print(f"[CHECK] Checking availability of quantity {quantity}:{source}.")
     if quantity in schema.sources:
         required = schema.sources[quantity][source].required
         check_success, version = check_version(h5file, required, schema, version)
@@ -92,7 +90,7 @@ def should_load(
             should_load_ = False
             if print_debug:
                 print(
-                    f"[CHECK] VASP version too old for {quantity} with source {source}."
+                    f"[CHECK-Should-Load] VASP version too old for {quantity}:{source}."
                 )
         source_info = schema.sources[quantity][source].data
         if source_info is not None:
@@ -101,7 +99,14 @@ def should_load(
                 link = getattr(source_info, key)
                 if isinstance(link, Link):
                     quantity_dict[key], version, _, subquantity_additional_keys = (
-                        should_load(link.quantity, link.source, h5file, schema, version)
+                        should_load(
+                            link.quantity,
+                            link.source,
+                            h5file,
+                            schema,
+                            version,
+                            print_debug,
+                        )
                     )
                     additional_keys.append(f"{link.quantity}:{link.source}")
                     additional_keys.extend(subquantity_additional_keys)
@@ -112,7 +117,6 @@ def should_load(
             quantity_dict = {k: v for k, v in quantity_dict.items() if v is True}
             try:
                 new_class = source_info.__class__(**quantity_dict)
-                should_load_ = True
             except Exception as e:
                 if print_debug:
                     print(
@@ -123,11 +127,12 @@ def should_load(
                     )
                 should_load_ = False
         else:
+            should_load_ = False
             should_attempt_read = True
             # data_factory might be set
             if schema.sources[quantity][source].data_factory is not None:
                 _, version, _, additional_keys = should_load(
-                    quantity, DEFAULT_SOURCE, h5file, schema, version
+                    quantity, DEFAULT_SOURCE, h5file, schema, version, print_debug
                 )
     if not should_load_ and print_debug:
         print(f"[CHECK] Quantity {quantity} with source {source} is not available.")
