@@ -506,7 +506,13 @@ instead of the constructor Calculation()."""
                     current_db=current_db,
                     original_group_name=group_name,
                     fermi_energy=fermi_energy,
+                    none_for_outdated=True,
                 )
+            except exception.OutdatedVaspVersion:
+                print(
+                    f"[ADD] VASP version too old for {quantity_name} (group={type(group)}) with selection {selection}. Skipping."
+                )
+                pass  # happens when VASP version is too old for this quantity
             except Exception as e:
                 # TODO delete this debug print once everything is stable.
                 print(

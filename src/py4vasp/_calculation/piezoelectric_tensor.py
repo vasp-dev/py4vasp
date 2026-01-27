@@ -68,19 +68,19 @@ class PiezoelectricTensor(base.Refinery):
         reduced_tensor_y = None
         reduced_tensor_z = None
         try:
-            tensor_x = data["clamped_ion"][0]
+            tensor_x = data["relaxed_ion"][0]
             reduced_tensor_x = list(symmetry_reduce(tensor_x))
         except:
             pass
 
         try:
-            tensor_y = data["clamped_ion"][1]
+            tensor_y = data["relaxed_ion"][1]
             reduced_tensor_y = list(symmetry_reduce(tensor_y))
         except:
             pass
 
         try:
-            tensor_z = data["clamped_ion"][2]
+            tensor_z = data["relaxed_ion"][2]
             reduced_tensor_z = list(symmetry_reduce(tensor_z))
         except:
             pass
@@ -94,9 +94,9 @@ class PiezoelectricTensor(base.Refinery):
 
         return {
             "piezoelectric_tensor": {
-                "clamped_ion_tensor_x": reduced_tensor_x,
-                "clamped_ion_tensor_y": reduced_tensor_y,
-                "clamped_ion_tensor_z": reduced_tensor_z,
+                "relaxed_ion_tensor_x": reduced_tensor_x,
+                "relaxed_ion_tensor_y": reduced_tensor_y,
+                "relaxed_ion_tensor_z": reduced_tensor_z,
                 "piezoelectric_constant_isotropic_x": isotropic_constant_x,
                 "piezoelectric_constant_isotropic_y": isotropic_constant_y,
                 "piezoelectric_constant_isotropic_z": isotropic_constant_z,

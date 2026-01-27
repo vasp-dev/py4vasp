@@ -40,14 +40,14 @@ class DielectricTensor(base.Refinery):
 
         isotropic_constant = None
         try:
-            isotropic_constant, _ = tensor_constants(the_dict["clamped_ion"])
+            isotropic_constant, _ = tensor_constants(the_dict["relaxed_ion"])
         except:
             pass
 
         dielectric_tensor_db = {
             "dielectric_tensor": {
                 "method": the_dict["method"],
-                "clamped_ion_tensor": list(symmetry_reduce(the_dict["clamped_ion"])),
+                "relaxed_ion_tensor": list(symmetry_reduce(the_dict["relaxed_ion"])),
                 "static_dielectric_constant_isotropic": isotropic_constant,
             },
         }

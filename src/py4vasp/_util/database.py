@@ -76,15 +76,24 @@ def should_load(
     h5file: File,
     schema: Schema,
     version: Optional[Version] = None,
+    print_debug: bool = False,
 ) -> tuple[bool, Optional[Version], bool, list[str]]:
     should_load_ = True
     should_attempt_read = False
     additional_keys = []
+    if print_debug:
+        print(
+            f"[CHECK] Checking availability of quantity {quantity} with source {source}."
+        )
     if quantity in schema.sources:
         required = schema.sources[quantity][source].required
         check_success, version = check_version(h5file, required, schema, version)
         if not check_success:
             should_load_ = False
+            if print_debug:
+                print(
+                    f"[CHECK] VASP version too old for {quantity} with source {source}."
+                )
         source_info = schema.sources[quantity][source].data
         if source_info is not None:
             quantity_dict = {}
@@ -105,6 +114,13 @@ def should_load(
                 new_class = source_info.__class__(**quantity_dict)
                 should_load_ = True
             except Exception as e:
+                if print_debug:
+                    print(
+                        "[CHECK] Error when instantiating class:",
+                        source_info.__class__,
+                        quantity_dict,
+                        e,
+                    )
                 should_load_ = False
         else:
             should_attempt_read = True
@@ -113,6 +129,8 @@ def should_load(
                 _, version, _, additional_keys = should_load(
                     quantity, DEFAULT_SOURCE, h5file, schema, version
                 )
+    if not should_load_ and print_debug:
+        print(f"[CHECK] Quantity {quantity} with source {source} is not available.")
     return should_load_, version, should_attempt_read, additional_keys
 
 

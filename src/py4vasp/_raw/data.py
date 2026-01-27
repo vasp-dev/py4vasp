@@ -322,6 +322,8 @@ class ElasticModulus:
     "Elastic modulus when the ions are clamped into their positions."
     relaxed_ion: VaspData
     "Elastic modulus when the position of the ions is relaxed."
+    structure: Optional[Structure] = None
+    "The structure for which the elastic modulus was calculated."
 
 
 @dataclasses.dataclass
@@ -507,6 +509,10 @@ class ExcitonEigenvector:
     "Index of the first valence band."
     first_conduction_band: int
     "Index of the first conduction band."
+    NBANDSO: Optional[int] = NONE()
+    "Number of bands used for the valence states in the BSE calculation."
+    NBANDSV: Optional[int] = NONE()
+    "Number of bands used for the conduction states in the BSE calculation."
 
 
 @dataclasses.dataclass

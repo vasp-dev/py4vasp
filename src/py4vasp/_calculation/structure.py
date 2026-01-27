@@ -264,14 +264,35 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         except Exception:
             pass
 
+        lengths = [None, None, None]
+        angles = [None, None, None]
+        try:
+            cell = self._cell()
+            lengths = list(cell.lengths())
+            angles = list(cell.angles())
+        except:
+            pass
+
         return database.combine_db_dicts(
             {
                 "structure": {
-                    "total_ion_count": self.number_atoms(),
-                    "cell_volume": volume,
-                    "lattice_a": list(lattice[0]) if lattice[0] is not None else None,
-                    "lattice_b": list(lattice[1]) if lattice[1] is not None else None,
-                    "lattice_c": list(lattice[2]) if lattice[2] is not None else None,
+                    "ion_count_total": self.number_atoms(),
+                    "volume_cell": volume,
+                    "lattice_vector_a": (
+                        list(lattice[0]) if lattice[0] is not None else None
+                    ),
+                    "lattice_vector_b": (
+                        list(lattice[1]) if lattice[1] is not None else None
+                    ),
+                    "lattice_vector_c": (
+                        list(lattice[2]) if lattice[2] is not None else None
+                    ),
+                    "lattice_vector_length_a": lengths[0],
+                    "lattice_vector_length_b": lengths[1],
+                    "lattice_vector_length_c": lengths[2],
+                    "angle_alpha": angles[0],
+                    "angle_beta": angles[1],
+                    "angle_gamma": angles[2],
                 },
             },
             stoichiometry,
