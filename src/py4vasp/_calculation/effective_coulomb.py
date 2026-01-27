@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from dataclasses import dataclass
 from types import EllipsisType
 
 import numpy as np
@@ -9,6 +10,23 @@ from py4vasp import exception
 from py4vasp._calculation import base, cell
 from py4vasp._third_party import graph, numeric
 from py4vasp._util import check, convert, index, select
+
+
+@dataclass
+class _CoulombPotential:
+    component: str
+    selector_label: str
+    strength: ArrayLike
+
+    def to_omega_series(self, omega):
+        label = f"{self.component} {self.selector_label}"
+        strength = self.strength if self.strength.ndim == 1 else self.strength[:, 0]
+        return graph.Series(omega, strength.real, label=label)
+
+    def to_radial_series(self, radius, marker):
+        label = f"{self.component} {self.selector_label}"
+        strength = self.strength if self.strength.ndim == 1 else self.strength[0]
+        return graph.Series(radius, strength.real, label=label, marker=marker)
 
 
 class EffectiveCoulomb(base.Refinery, graph.Mixin):
@@ -222,7 +240,7 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
     @base.data_access
     def to_graph(
         self,
-        selection: str = "total",
+        selection: str = "U J V",
         omega: None | EllipsisType | np.ndarray = None,
         radius: None | EllipsisType | np.ndarray = None,
     ) -> graph.Graph:
@@ -288,63 +306,80 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
         if omega_in is None:
             raise exception.DataMismatch("The output does not contain frequency data.")
         omega_out = omega_in if omega_set else omega
-        potentials = self._get_effective_potentials_omega(omega_in, omega_out)
-        series = list(self._generate_series_omega(tree, omega_out, potentials))
+        selected_potentials = self._get_potentials_omega(tree, omega_in, omega_out)
         xlabel = "Im(ω) (eV)" if omega_set else "ω (eV)"
+        series = list(self._generate_series_omega(omega_out, selected_potentials))
         return graph.Graph(series, xlabel=xlabel, ylabel="Coulomb potential (eV)")
 
-    def _get_effective_potentials_omega(self, omega_in, omega_out, position=0):
-        wannier_iiii = self._wannier_indices_iiii()
-        wannier_ijij = self._wannier_indices_ijij()
-        all_omega = all_spin = complex_ = slice(None)
-        real_part = 0
-        if self._has_positions:
-            access_U = (all_omega, all_spin, wannier_iiii, position, complex_)
-            access_J = (all_omega, all_spin, wannier_ijij, position, complex_)
-            access_V = (all_spin, wannier_iiii, position, real_part)
-        else:
-            access_U = (all_omega, all_spin, wannier_iiii, complex_)
-            access_J = (all_omega, all_spin, wannier_ijij, complex_)
-            access_V = (all_spin, wannier_iiii, real_part)
+    def _get_potentials_omega(self, tree, omega_in, omega_out):
+        for selection in tree.selections():
+            if self._bare_potential_selected(selection):
+                yield self._get_bare_potential(selection, len(omega_out))
+            else:
+                yield self._get_screened_potential(selection, omega_in, omega_out)
 
-        U_in = convert.to_complex(self._raw_data.screened_potential[access_U])
-        U_in = np.average(U_in, axis=-1)
-        J_in = convert.to_complex(self._raw_data.screened_potential[access_J])
-        J_in = np.average(J_in, axis=-1)
-        V_in = np.average(self._raw_data.bare_potential_high_cutoff[access_V], axis=-1)
-        V_out = np.repeat(V_in, len(omega_out)).reshape(-1, len(omega_out))
+    def _bare_potential_selected(self, selection):
+        if select.contains(selection, "bare"):
+            return True
+        if select.contains(selection, "screened"):
+            return False
+        return select.contains(selection, "V") or select.contains(selection, "v")
 
+    def _get_bare_potential(self, selection, num_omega):
+        selection = self._filter_component_from_selection(selection)
+        maps = self._create_map("bare")
+        potential = self._raw_data.bare_potential_high_cutoff
+        selector = index.Selector(maps, potential, reduction=np.average)
+        V = convert.to_complex(selector[selection])
+        V = np.broadcast_to(V, (num_omega,) + V.shape)
+        return _CoulombPotential("bare", selector.label(selection), V)
+
+    def _get_screened_potential(self, selection, omega_in, omega_out):
+        selection = self._filter_component_from_selection(selection)
+        maps = self._create_map("screened")
+        potential = self._raw_data.screened_potential
+        selector = index.Selector(maps, potential, reduction=np.average)
+        U = convert.to_complex(selector[selection])
         needs_interpolation = omega_in is not omega_out
         if needs_interpolation:
-            U_out = numeric.analytic_continuation(omega_in, U_in.T, omega_out).real
-            J_out = numeric.analytic_continuation(omega_in, J_in.T, omega_out).real
-        else:
-            U_out = U_in.T.real
-            J_out = J_in.T.real
-        return {"screened U": U_out, "screened J": J_out, "bare V": V_out}
+            U = numeric.analytic_continuation(omega_in, U.T, omega_out).T
+        return _CoulombPotential("screened", selector.label(selection), U)
 
-    def _generate_series_omega(self, tree, omega, potentials):
+    def _filter_component_from_selection(self, selection):
+        return tuple(part for part in selection if part not in {"bare", "screened"})
+
+    def _create_map(self, component):
+        if self._is_collinear:
+            spin_map = {
+                convert.text_to_string(label): slice(i, i + 1)
+                for i, label in enumerate(self._raw_data.spin_labels[:])
+            }
+            spin_map[None] = spin_map["total"] = slice(0, 2)
+        else:
+            spin_map = {None: slice(None), "total": slice(None)}
+        wannier_iiii = self._wannier_indices_iiii()
+        wannier_ijij = self._wannier_indices_ijij()
+        wannier_ijji = self._wannier_indices_ijji()
+        component_map = {
+            None: wannier_iiii,
+            "U": wannier_iiii,
+            "u": wannier_ijji,
+            "J": wannier_ijij,
+            "V": wannier_iiii,
+            "v": wannier_ijji,
+        }
+        if component == "bare" or not self._has_frequencies:
+            return {0: spin_map, 1: component_map}
+        else:
+            return {1: spin_map, 2: component_map}
+
+    def _generate_series_omega(self, omega, selected_potentials):
         if np.isclose(omega.real, omega).all():
             omega = omega.real
         else:
             omega = omega.imag
-        maps = self._create_map()
-        for label, potential in potentials.items():
-            selector = index.Selector(maps, potential, reduction=np.average)
-            for selection in tree.selections():
-                selector_label = selector.label(selection)
-                suffix = f"_{selector_label}" if selector_label != "total" else ""
-                yield graph.Series(omega, selector[selection], label=f"{label}{suffix}")
-
-    def _create_map(self):
-        if self._is_collinear:
-            spin_map = {
-                convert.text_to_string(label): i
-                for i, label in enumerate(self._raw_data.spin_labels[:])
-            }
-            return {0: {"total": slice(0, 2), **spin_map}}
-        else:
-            return {0: {"total": 0}}
+        for coulomb_potential in selected_potentials:
+            yield coulomb_potential.to_omega_series(omega)
 
     def _plot_radial(self, tree, radius):
         positions = self._read_positions()
@@ -353,10 +388,8 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
         radius_in = self._transform_positions_to_radial(positions)
         radius_out = radius_in if radius is ... else radius
         marker = "*" if radius is ... else None
-        potentials = self._get_effective_potentials_radial(radius_in, radius_out)
-        series = list(
-            self._generate_series_radial(tree, radius_out, potentials, marker)
-        )
+        potentials = self._get_effective_potentials_radial(tree, radius_in, radius_out)
+        series = list(self._generate_series_radial(radius_out, potentials, marker))
         return graph.Graph(series, xlabel="Radius (Å)", ylabel="Coulomb potential (eV)")
 
     def _transform_positions_to_radial(self, positions):
@@ -364,28 +397,37 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
             positions["lattice_vectors"] @ positions["positions"].T, axis=0
         )
 
-    def _get_effective_potentials_radial(self, radius_in, radius_out):
-        wannier_iiii = self._wannier_indices_iiii()
-        wannier_ijij = self._wannier_indices_ijij()
-        all_positions = all_spin = slice(None)
-        omega_zero = real_part = 0
-        if self._has_frequencies:
-            access_U = (omega_zero, all_spin, wannier_iiii, all_positions, real_part)
-            access_J = (omega_zero, all_spin, wannier_ijij, all_positions, real_part)
-        else:
-            access_U = (all_spin, wannier_iiii, all_positions, real_part)
-            access_J = (all_spin, wannier_ijij, all_positions, real_part)
-        access_V = (all_spin, wannier_iiii, all_positions, real_part)
-        U_in = np.average(self._raw_data.screened_potential[access_U], axis=1)
-        J_in = np.average(self._raw_data.screened_potential[access_J], axis=0)
-        V_in = np.average(self._raw_data.bare_potential_high_cutoff[access_V], axis=1)
-        needs_interpolation = radius_in is not radius_out
-        if needs_interpolation:
-            U_out = self._ohno_interpolation(radius_in, U_in, radius_out)
-            V_out = self._ohno_interpolation(radius_in, V_in, radius_out)
-            return {"screened U": U_out, "bare V": V_out}
-        else:
-            return {"screened U": U_in, "screened J": J_in, "bare V": V_in}
+    def _get_effective_potentials_radial(self, tree, radius_in, radius_out):
+        for selection in tree.selections():
+            if self._bare_potential_selected(selection):
+                potential = self._get_bare_potential2(selection)
+            else:
+                potential = self._get_screened_potential2(selection)
+            needs_interpolation = radius_in is not radius_out
+            print(selection, potential.strength.shape)
+            if needs_interpolation:
+                print(selection, potential.strength.shape)
+                potential.strength = self._ohno_interpolation(
+                    radius_in, potential.strength, radius_out
+                )
+            yield potential
+
+    def _get_bare_potential2(self, selection):
+        selection = self._filter_component_from_selection(selection)
+        maps = self._create_map("bare")
+        potential = self._raw_data.bare_potential_high_cutoff
+        selector = index.Selector(maps, potential, reduction=np.average)
+        V = convert.to_complex(selector[selection])
+        return _CoulombPotential("bare", selector.label(selection), V)
+
+    def _get_screened_potential2(self, selection):
+        selection = self._filter_component_from_selection(selection)
+        maps = self._create_map("screened")
+        potential = self._raw_data.screened_potential
+        print(selection, f"{potential.shape=}", maps)
+        selector = index.Selector(maps, potential, reduction=np.average)
+        U = convert.to_complex(selector[selection])
+        return _CoulombPotential("screened", selector.label(selection), U)
 
     def _ohno_interpolation(self, radius_in, spin_potential, radius_out):
         potential = np.average(spin_potential[:2], axis=0)
@@ -415,16 +457,9 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
         delta = np.abs(delta)
         return np.sqrt(delta / (radius + delta))
 
-    def _generate_series_radial(self, tree, radius, potentials, marker):
-        maps = self._create_map()
-        for label, potential in potentials.items():
-            selector = index.Selector(maps, potential, reduction=np.average)
-            for selection in tree.selections():
-                selector_label = selector.label(selection)
-                suffix = f"_{selector_label}" if selector_label != "total" else ""
-                yield graph.Series(
-                    radius, selector[selection], label=f"{label}{suffix}", marker=marker
-                )
+    def _generate_series_radial(self, radius, selected_potentials, marker):
+        for coulomb_potential in selected_potentials:
+            yield coulomb_potential.to_radial_series(radius, marker)
 
     def _plot_both(self, tree, omega, radius):
         omega_in = self._read_frequencies().get("frequencies")
