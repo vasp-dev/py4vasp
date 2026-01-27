@@ -323,25 +323,9 @@ def check_radial_plot_has_correct_series(effective_coulomb, Assert):
     assert graph.xlabel == "Radius (Å)"
     assert graph.ylabel == "Coulomb potential (eV)"
     expected_labels = ["screened U", "screened J", "bare V"]
-    U = effective_coulomb.ref.read_data["screened"]
-    print("U shape", U.shape)
-    sum_ = np.zeros(U.shape[:2])
-    count = 0
-    for i in range(5):
-        for j in range(5):
-            if i != j:
-                if U.ndim == 6:
-                    sum_ += U[..., i, j, i, j].real
-                else:
-                    sum_ += U[..., i, j, i, j, 0].real
-                count += 1
-    sum_ /= count
-    print(f"{sum_=}")
-    print("J=", effective_coulomb.ref.radial_data["screened J"])
     for series, label in zip(graph, expected_labels):
         Assert.allclose(series.x, effective_coulomb.ref.radial_data["radius"])
         potential = effective_coulomb.ref.radial_data[label]
-        print(label, potential.shape, series.y)
         Assert.allclose(series.y, np.sum(potential[:2], axis=0))
         assert series.label == label
         assert series.marker == "*"
@@ -384,42 +368,38 @@ def test_plot_radial_interpolation(nonpolarized_crpar, not_core, Assert):
     radial_data = nonpolarized_crpar.ref.radial_data
     radius = np.linspace(0.0, np.max(radial_data["radius"]), 30)
     ref_graph = nonpolarized_crpar.plot(radius=...)
-    U = ref_graph[0].y
-    expected_U = U[0] * numeric.interpolate_with_function(
-        EffectiveCoulomb.ohno_potential, radial_data["radius"], U / U[0], radius
-    )
-    V = ref_graph[2].y
-    expected_V = V[0] * numeric.interpolate_with_function(
-        EffectiveCoulomb.ohno_potential, radial_data["radius"], V / V[0], radius
-    )
-
     graph = nonpolarized_crpar.plot(radius=radius)
-    assert len(graph) == 2
+    assert len(graph) == len(ref_graph)
     assert graph.xlabel == "Radius (Å)"
     assert graph.ylabel == "Coulomb potential (eV)"
-    expected_lines = [expected_U, expected_V]
-    expected_labels = ["screened U", "bare V"]
-    for series, expected_line, label in zip(graph, expected_lines, expected_labels):
+    for series, ref_series in zip(graph, ref_graph):
         Assert.allclose(series.x, radius)
-        Assert.allclose(series.y, expected_line, tolerance=100)
-        assert series.label == label
+        expected_interpolated_values = interpolate(radial_data, ref_series.y, radius)
+        Assert.allclose(series.y, expected_interpolated_values, tolerance=100)
+        assert series.label == ref_series.label
         assert series.marker is None
 
 
 def test_plot_radial_interpolation_spin_selection(collinear_crpa, not_core, Assert):
     effective_coulomb = collinear_crpa
+    radial_data = effective_coulomb.ref.radial_data
     radius = np.linspace(0, 10)
-    raw_data = effective_coulomb.plot("up~down(U V)", radius=...)
-    interpolated_total = effective_coulomb.plot("U V", radius=radius)
-    expected_U = raw_data[0].y[0] * interpolated_total[0].y / interpolated_total[0].y[0]
-    expected_V = raw_data[1].y[0] * interpolated_total[1].y / interpolated_total[1].y[0]
-
+    ref_graph = effective_coulomb.plot("up~down(U V)", radius=...)
     graph = effective_coulomb.plot("up~down(U V)", radius=radius)
-    assert len(graph) == 2
-    Assert.allclose(graph[0].y, expected_U)
-    Assert.allclose(graph[1].y, expected_V)
-    assert graph[0].label == "screened U_up~down"
-    assert graph[1].label == "bare V_up~down"
+    expected_labels = ["screened up~down_U", "bare up~down_V"]
+    assert len(graph) == len(ref_graph)
+    for series, ref_series, label in zip(graph, ref_graph, expected_labels):
+        Assert.allclose(series.x, radius)
+        Assert.allclose(series.y, interpolate(radial_data, ref_series.y, radius))
+        assert series.label == label
+
+
+def interpolate(radial_data, potential, radius):
+    U0 = potential[0]
+    interpolation = numeric.interpolate_with_function(
+        EffectiveCoulomb.ohno_potential, radial_data["radius"], potential / U0, radius
+    )
+    return U0 * interpolation
 
 
 @pytest.mark.xfail

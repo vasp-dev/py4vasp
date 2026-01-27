@@ -404,11 +404,9 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
             else:
                 potential = self._get_screened_potential2(selection)
             needs_interpolation = radius_in is not radius_out
-            print(selection, potential.strength.shape)
             if needs_interpolation:
-                print(selection, potential.strength.shape)
                 potential.strength = self._ohno_interpolation(
-                    radius_in, potential.strength, radius_out
+                    radius_in, potential.strength.real, radius_out
                 )
             yield potential
 
@@ -424,17 +422,18 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
         selection = self._filter_component_from_selection(selection)
         maps = self._create_map("screened")
         potential = self._raw_data.screened_potential
-        print(selection, f"{potential.shape=}", maps)
         selector = index.Selector(maps, potential, reduction=np.average)
         U = convert.to_complex(selector[selection])
         return _CoulombPotential("screened", selector.label(selection), U)
 
-    def _ohno_interpolation(self, radius_in, spin_potential, radius_out):
-        potential = np.average(spin_potential[:2], axis=0)
+    def _ohno_interpolation(self, radius_in, potential, radius_out):
+        if potential.ndim == 2:
+            # if multiple frequencies are present, take only omega = 0
+            potential = potential[0]
         interpolation = numeric.interpolate_with_function(
             self.ohno_potential, radius_in, potential / potential[0], radius_out
         )
-        return np.multiply.outer(spin_potential[:, 0], interpolation)
+        return potential[0] * interpolation
 
     @staticmethod
     def ohno_potential(radius: ArrayLike, delta: float) -> np.ndarray:
