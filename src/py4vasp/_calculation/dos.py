@@ -206,12 +206,12 @@ class Dos(base.Refinery, graph.Mixin):
                 "dos_at_raw_fermi_total": dos_at_raw_fermi_total,
                 "dos_at_raw_fermi_up": dos_at_raw_fermi_up,
                 "dos_at_raw_fermi_down": dos_at_raw_fermi_down,
-                "min_energy": (
+                "energy_min": (
                     float(np.min(self._raw_data.energies[:]))
                     if not check.is_none(self._raw_data.energies)
                     else None
                 ),
-                "max_energy": (
+                "energy_max": (
                     float(np.max(self._raw_data.energies[:]))
                     if not check.is_none(self._raw_data.energies)
                     else None
