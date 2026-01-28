@@ -21,6 +21,7 @@ def single_band(raw_data):
     band.ref.fermi_energy = 0.0
     band.ref.bands = raw_band.dispersion.eigenvalues[0] - band.ref.fermi_energy_argument
     band.ref.occupations = raw_band.occupations[0]
+    band.ref.num_occupied_bands = [int(np.sum(band.ref.occupations > 0))]
     band.ref.kpoints = Kpoint.from_data(raw_band.dispersion.kpoints)
     return band
 
@@ -33,6 +34,9 @@ def multiple_bands(raw_data):
     band.ref.fermi_energy = raw_band.fermi_energy
     band.ref.bands = raw_band.dispersion.eigenvalues[0] - raw_band.fermi_energy
     band.ref.occupations = raw_band.occupations[0]
+    band.ref.num_occupied_bands = [
+        int(n) for n in np.sum(band.ref.occupations > 0, axis=0)
+    ]
     band.ref.kpoints = Kpoint.from_data(raw_band.dispersion.kpoints)
     return band
 
@@ -77,7 +81,13 @@ def spin_polarized(raw_data):
     band.ref.bands_up = raw_band.dispersion.eigenvalues[0]
     band.ref.bands_down = raw_band.dispersion.eigenvalues[1]
     band.ref.occupations_up = raw_band.occupations[0]
+    band.ref.num_occupied_bands_up = [
+        int(n) for n in np.sum(band.ref.occupations_up > 0, axis=0)
+    ]
     band.ref.occupations_down = raw_band.occupations[1]
+    band.ref.num_occupied_bands_down = [
+        int(n) for n in np.sum(band.ref.occupations_down > 0, axis=0)
+    ]
     return band
 
 
@@ -504,11 +514,35 @@ spin polarized band data:
 
 
 def _check_to_database(_band, expect_collinear):
-    database_data = _band._read_to_database()
+    database_data = _band._read_to_database(
+        fermi_energy=getattr(_band.ref, "fermi_energy_argument", None)
+    )
     assert "band:default" in database_data
     assert "fermi_energy_raw" in database_data["band:default"]
     assert "num_occupied_bands" in database_data["band:default"]
+    assert "num_occupied_bands_up" in database_data["band:default"]
+    assert "num_occupied_bands_down" in database_data["band:default"]
     assert database_data["band:default"]["fermi_energy_raw"] == _band.ref.fermi_energy
+    assert database_data["band:default"]["fermi_energy"] == getattr(
+        _band.ref, "fermi_energy_argument", _band.ref.fermi_energy
+    )
+    if getattr(_band.ref, "num_occupied_bands", None) is not None:
+        assert (
+            database_data["band:default"]["num_occupied_bands"]
+            == _band.ref.num_occupied_bands
+        )
+    elif (
+        getattr(_band.ref, "occupations_up", None) is not None
+        and getattr(_band.ref, "occupations_down", None) is not None
+    ):
+        assert (
+            database_data["band:default"]["num_occupied_bands_up"]
+            == _band.ref.num_occupied_bands_up
+        )
+        assert (
+            database_data["band:default"]["num_occupied_bands_down"]
+            == _band.ref.num_occupied_bands_down
+        )
 
 
 def test_to_database_single_band(single_band):
