@@ -1,8 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import numpy as np
+
 from py4vasp import exception
 from py4vasp._calculation import base
-from py4vasp._util import convert
+from py4vasp._util import check, convert
+from py4vasp._util.tensor import symmetry_reduce, tensor_constants
 
 
 class DielectricTensor(base.Refinery):
@@ -32,6 +35,41 @@ class DielectricTensor(base.Refinery):
         }
 
     @base.data_access
+    def _to_database(self, *args, **kwargs):
+        relaxed_ion_tensor, ion_isotropic_constant = None, None
+        try:
+            relaxed_ion_tensor = self._read_relaxed_ion()
+            ion_isotropic_constant, _ = tensor_constants(relaxed_ion_tensor)
+        except:
+            pass
+
+        clamped_ion_tensor = self._raw_data.electron[:]
+        electron_isotropic_constant, _ = tensor_constants(clamped_ion_tensor)
+
+        dielectric_tensor_db = {
+            "dielectric_tensor": {
+                "method": (
+                    convert.text_to_string(self._raw_data.method)
+                    if not check.is_none(self._raw_data.method)
+                    else None
+                ),
+                "tensor_relaxed_ion": (
+                    None
+                    if relaxed_ion_tensor is None
+                    else list(symmetry_reduce(relaxed_ion_tensor))
+                ),
+                "static_dielectric_constant_relaxed_ion": ion_isotropic_constant,
+                "tensor_clamped_ion": (
+                    None
+                    if clamped_ion_tensor is None
+                    else list(symmetry_reduce(clamped_ion_tensor))
+                ),
+                "static_dielectric_constant_clamped_ion": electron_isotropic_constant,
+            },
+        }
+        return dielectric_tensor_db
+
+    @base.data_access
     def __str__(self):
         data = self.to_dict()
         return f"""
@@ -43,7 +81,7 @@ Macroscopic static dielectric tensor (dimensionless)
 """.strip()
 
     def _read_relaxed_ion(self):
-        if self._raw_data.ion.is_none():
+        if check.is_none(self._raw_data.ion):
             return None
         else:
             return self._raw_data.electron[:] + self._raw_data.ion[:]

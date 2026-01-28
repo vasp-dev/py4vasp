@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._calculation import base, phonon
 from py4vasp._third_party import graph
-from py4vasp._util import documentation, index, select
+from py4vasp._util import check, documentation, index, select
 
 
 class PhononDos(phonon.Mixin, base.Refinery, graph.Mixin):
@@ -52,6 +52,23 @@ class PhononDos(phonon.Mixin, base.Refinery, graph.Mixin):
             "energies": self._raw_data.energies[:],
             "total": self._raw_data.dos[:],
             **self._read_data(selection),
+        }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        return {
+            "phonon_dos": {
+                "min_energy": (
+                    float(self._raw_data.energies[0])
+                    if not check.is_none(self._raw_data.energies)
+                    else None
+                ),
+                "max_energy": (
+                    float(self._raw_data.energies[-1])
+                    if not check.is_none(self._raw_data.energies)
+                    else None
+                ),
+            }
         }
 
     @base.data_access

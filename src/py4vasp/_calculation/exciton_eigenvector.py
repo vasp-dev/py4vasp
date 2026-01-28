@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._calculation import _dispersion, base
-from py4vasp._util import convert
+from py4vasp._util import check, convert
 
 
 class ExcitonEigenvector(base.Refinery):
@@ -51,6 +51,23 @@ class ExcitonEigenvector(base.Refinery):
             "fermi_energy": self._raw_data.fermi_energy,
             "first_valence_band": self._raw_data.first_valence_band[:] - 1,
             "first_conduction_band": self._raw_data.first_conduction_band[:] - 1,
+        }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        num_bands_valence = None
+        num_bands_conduction = None
+
+        if not check.is_none(self._raw_data.NBANDSV):
+            num_bands_valence = int(self._raw_data.NBANDSV)
+        if not check.is_none(self._raw_data.NBANDSO):
+            num_bands_conduction = int(self._raw_data.NBANDSO)
+
+        return {
+            "exciton_eigenvector": {
+                "num_bands_valence": num_bands_valence,
+                "num_bands_conduction": num_bands_conduction,
+            }
         }
 
     @property

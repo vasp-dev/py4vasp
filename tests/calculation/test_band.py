@@ -21,6 +21,7 @@ def single_band(raw_data):
     band.ref.fermi_energy = 0.0
     band.ref.bands = raw_band.dispersion.eigenvalues[0] - band.ref.fermi_energy_argument
     band.ref.occupations = raw_band.occupations[0]
+    band.ref.num_occupied_bands = [int(np.sum(band.ref.occupations > 0))]
     band.ref.kpoints = Kpoint.from_data(raw_band.dispersion.kpoints)
     return band
 
@@ -33,6 +34,9 @@ def multiple_bands(raw_data):
     band.ref.fermi_energy = raw_band.fermi_energy
     band.ref.bands = raw_band.dispersion.eigenvalues[0] - raw_band.fermi_energy
     band.ref.occupations = raw_band.occupations[0]
+    band.ref.num_occupied_bands = [
+        int(n) for n in np.sum(band.ref.occupations > 0, axis=0)
+    ]
     band.ref.kpoints = Kpoint.from_data(raw_band.dispersion.kpoints)
     return band
 
@@ -73,10 +77,17 @@ def spin_polarized(raw_data):
     band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
     assert raw_band.fermi_energy == 0
+    band.ref.fermi_energy = raw_band.fermi_energy
     band.ref.bands_up = raw_band.dispersion.eigenvalues[0]
     band.ref.bands_down = raw_band.dispersion.eigenvalues[1]
     band.ref.occupations_up = raw_band.occupations[0]
+    band.ref.num_occupied_bands_up = [
+        int(n) for n in np.sum(band.ref.occupations_up > 0, axis=0)
+    ]
     band.ref.occupations_down = raw_band.occupations[1]
+    band.ref.num_occupied_bands_down = [
+        int(n) for n in np.sum(band.ref.occupations_down > 0, axis=0)
+    ]
     return band
 
 
@@ -107,6 +118,11 @@ def noncollinear_projectors(raw_data):
     band.ref.sigma_x = np.sum(raw_band.projections[1], axis=(0, 1))
     band.ref.Ba_sigma_y = np.sum(raw_band.projections[2, 0:2], axis=(0, 1))
     band.ref.d_sigma_z = np.sum(raw_band.projections[3, :, 2], axis=0)
+    band.ref.occupations = raw_band.occupations[0]
+    band.ref.num_occupied_bands = [
+        int(n) for n in np.sum(band.ref.occupations > 0, axis=0)
+    ]
+    band.ref.fermi_energy = raw_band.fermi_energy
     return band
 
 
@@ -500,6 +516,60 @@ spin polarized band data:
 {spin_projectors.ref.projectors_string}
     """.strip()
     assert actual == {"text/plain": reference}
+
+
+def _check_to_database(_band):
+    database_data = _band._read_to_database(
+        fermi_energy=getattr(_band.ref, "fermi_energy_argument", None)
+    )
+    assert "band:default" in database_data
+
+    for k in [
+        "fermi_energy",
+        "fermi_energy_raw",
+        "num_occupied_bands",
+        "num_occupied_bands_up",
+        "num_occupied_bands_down",
+    ]:
+        assert k in database_data["band:default"]
+
+    assert database_data["band:default"]["fermi_energy_raw"] == _band.ref.fermi_energy
+    assert database_data["band:default"]["fermi_energy"] == getattr(
+        _band.ref, "fermi_energy_argument", _band.ref.fermi_energy
+    )
+    if getattr(_band.ref, "num_occupied_bands", None) is not None:
+        assert (
+            database_data["band:default"]["num_occupied_bands"]
+            == _band.ref.num_occupied_bands
+        )
+    elif (
+        getattr(_band.ref, "occupations_up", None) is not None
+        and getattr(_band.ref, "occupations_down", None) is not None
+    ):
+        assert (
+            database_data["band:default"]["num_occupied_bands_up"]
+            == _band.ref.num_occupied_bands_up
+        )
+        assert (
+            database_data["band:default"]["num_occupied_bands_down"]
+            == _band.ref.num_occupied_bands_down
+        )
+
+
+def test_to_database_single_band(single_band):
+    _check_to_database(single_band)
+
+
+def test_to_database_multiple_bands(multiple_bands):
+    _check_to_database(multiple_bands)
+
+
+def test_to_database_spin_polarized(spin_polarized):
+    _check_to_database(spin_polarized)
+
+
+def test_to_database_noncollinear_projectors(noncollinear_projectors):
+    _check_to_database(noncollinear_projectors)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

@@ -3,8 +3,9 @@
 import numpy as np
 
 from py4vasp._calculation import _dispersion, base, phonon
+from py4vasp._raw import data
 from py4vasp._third_party import graph
-from py4vasp._util import convert, documentation, index, select
+from py4vasp._util import convert, database, documentation, index, select
 
 
 class PhononBand(phonon.Mixin, base.Refinery, graph.Mixin):
@@ -49,6 +50,16 @@ class PhononBand(phonon.Mixin, base.Refinery, graph.Mixin):
             "bands": dispersion["eigenvalues"],
             "modes": self._modes(),
         }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        stoichiometry = self._stoichiometry()._read_to_database(*args, **kwargs)
+        dispersion = self._dispersion()._read_to_database(*args, **kwargs)
+        return database.combine_db_dicts(
+            {"phonon.band": {}},
+            stoichiometry,
+            dispersion,
+        )
 
     @base.data_access
     @documentation.format(selection=phonon.selection_doc)

@@ -82,18 +82,24 @@ Fermi energy:    {fermi_energy}"""
         else:
             return "      spin independent"
 
-    def _output_energy(self, label, component=slice(None)):
+    def _output_energy(self, label, component=slice(None), to_string=True):
         energies = self._get(label, steps=self._last_step_in_slice, component=component)
+        if not (to_string):
+            return energies[0]
         return (9 * " ").join(map("{:20.6f}".format, energies))
 
-    def _output_gap(self, label):
+    def _output_gap(self, label, to_string=True):
         gaps = self._gap(label, steps=self._last_step_in_slice)
+        if not (to_string):
+            return gaps[0]
         return (9 * " ").join(map("{:20.6f}".format, gaps))
 
-    def _output_kpoint(self, label):
+    def _output_kpoint(self, label, to_string=True):
         kpoints = self._kpoint(label, steps=self._last_step_in_slice)
-        to_string = lambda kpoint: " ".join(map("{:8.4f}".format, kpoint))
-        return " " + "   ".join(map(to_string, kpoints))
+        to_string_convert = lambda kpoint: " ".join(map("{:8.4f}".format, kpoint))
+        if not (to_string):
+            return np.array(kpoints).tolist()
+        return " " + "   ".join(map(to_string_convert, kpoints))
 
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "to_dict"))
@@ -115,6 +121,30 @@ Fermi energy:    {fermi_energy}"""
             **self._gap_dict("direct"),
             **self._kpoint_dict("direct"),
             "fermi_energy": self._get("Fermi energy", component=0),
+        }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        return {
+            "bandgap": {
+                "valence_band_maximum": self._output_energy(
+                    "valence band maximum", to_string=False
+                ),
+                "conduction_band_minimum": self._output_energy(
+                    "conduction band minimum", to_string=False
+                ),
+                "fundamental": self._output_gap("fundamental", to_string=False),
+                "kpoint_vbm": self._output_kpoint("VBM", to_string=False),
+                "kpoint_cbm": self._output_kpoint("CBM", to_string=False),
+                "lower_band_direct": self._output_energy(
+                    "direct gap bottom", to_string=False
+                ),
+                "upper_band_direct": self._output_energy(
+                    "direct gap top", to_string=False
+                ),
+                "direct": self._output_gap("direct", to_string=False),
+                "kpoint_direct": self._output_kpoint("direct", to_string=False),
+            }
         }
 
     def _gap_dict(self, label):

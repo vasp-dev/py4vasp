@@ -5,9 +5,15 @@ import dataclasses
 import functools
 import inspect
 import pathlib
+from typing import Optional
 
 from py4vasp import exception, raw
-from py4vasp._util import check, convert, select
+from py4vasp._raw.definition import schema
+from py4vasp._raw.schema import (
+    _get_processed_selection,
+    _get_selections_for_subquantities,
+)
+from py4vasp._util import check, convert, database, select
 
 
 def data_access(func):
@@ -135,6 +141,174 @@ class Refinery:
     def read(self, *args, **kwargs):
         "Convenient wrapper around to_dict. Check that function for examples and optional arguments."
         return self.to_dict(*args, **kwargs)
+
+    def _read_to_database(
+        self,
+        *args,
+        current_db: Optional[dict[str, dict]] = None,
+        original_quantity: Optional[str] = None,
+        original_selection: Optional[str] = None,
+        original_subquantity_selections: Optional[dict[str, Optional[str]]] = None,
+        subquantity_chain: Optional[str] = None,
+        original_group_name: Optional[str] = None,
+        **kwargs,
+    ):
+        """Internal method to convert the data to a database format.
+
+        This method is intended for internal use only and should not be called
+        directly by users. It converts the data into a format suitable for
+        database storage.
+
+        Parameters
+        ----------
+        current_db : dict, optional
+            If provided, this dictionary contains the already computed database entries.
+            This will be used to avoid recomputing quantities that are already present
+            in the database.
+        original_quantity : str, optional
+            The original quantity name for which the database representation is being
+            generated. This is passed down to support nested calls to this method.
+            That, in turn, is important to determine the actual active selection for a
+            quantity that is part of another quantity.
+        original_selection : str, optional
+            The original selection for which the database representation is being
+            generated. This is passed down to support nested calls to this method. That,
+            in turn, is important to determine the actual active selection for a
+            quantity that is part of another quantity.
+        original_subquantity_selections : dict, optional
+            A mapping from subquantity names to their active selections. This is used
+            to determine the correct selection for subquantities when they are part
+            of a larger quantity.
+        subquantity_chain : str, optional
+            A str that indicates the chain of subquantities leading to this call.
+            We use this to parse the original_subquantity_selections correctly.
+
+        Returns
+        -------
+        dict
+            A dictionary representation of the data suitable for database storage.
+
+        Notes
+        -----
+        Example implementation for Quantity._to_database:
+
+        ```python
+        from py4vasp._util import database
+        from py4vasp._calculation import base
+
+        class Quantity(base.Refinery):
+            @base.data_access
+            def _to_database(self, *args, **kwargs):
+                return database.combine_db_dicts({
+                    "quantity": { ... }
+                },
+                {
+                    "cell:special_selection": { "variable_only_from_structure": ... },
+                },
+                some_other_quantity._read_to_database(*args, **kwargs))
+        ```
+        Note 1: that the combining of multiple database dictionaries is optional. If
+        your quantity only needs to return a single dictionary, you can return it
+        directly without using `database.combine_db_dicts`.
+
+        Note 2: also that you can add specific quantity:selection combinations here,
+        see the "cell:special_selection" example above. This allows you to set properties
+        on other quantities that are not directly part of this quantity, maybe even
+        for completely different selections. However, beware: This might mean a regular
+        calculation of that same quantity later on may be skipped. To avoid, make sure
+        that the base quantity is added before the current quantity in Calculation.QUANTITIES.
+        Example: if you add "cell:special_selection" in this example for a quantity "quantity",
+        make sure that "cell" is listed before "quantity" in Calculation.QUANTITIES.
+
+        Note 3: that when the dataclass loads other quantities, you should call their
+        `_read_to_database` method directly to avoid re-selecting the data again.
+        The approach with loading quantities is the same as is, e.g., done for to_dict
+        in structure - `_other_quantity.OtherQuantity.from_data(self._raw_data.other_quantity)`
+        to obtain the class, then call `_read_to_database` on that instance.
+        Make sure to pass `*args` and `**kwargs` to these calls to propagate any relevant options,
+        primarily `current_db` (otherwise, caching will not work properly).
+
+        Note 4: that you do not need to set the `original_quantity`, `original_subquantity_selections`, and
+        `original_selection` parameters when calling other quantities' `_read_to_database`
+        methods. These are set automatically to the current quantity and selection
+        when calling this method.
+        """
+        try:
+            raw_db_key = _quantity(self.__class__)
+            # Check original quantity vs. raw_db_key to avoid cyclic calls
+            if original_quantity is not None and original_quantity == raw_db_key:
+                raise exception._Py4VaspInternalError(
+                    f"_read_to_database called for quantity '{raw_db_key}' from within itself. This suggests a cyclic _read_to_database call."
+                )
+            if original_quantity is None:
+                original_quantity = raw_db_key
+                original_selection = kwargs.get("selection", None)
+                original_subquantity_selections = _get_selections_for_subquantities(
+                    original_quantity, original_selection, schema
+                )
+            else:
+                subquantity_chain = (
+                    raw_db_key
+                    if subquantity_chain is None
+                    else f"{subquantity_chain}.{raw_db_key}"
+                )
+            active_selection = _get_processed_selection(
+                raw_db_key,
+                original_quantity,
+                original_selection,
+                original_subquantity_selections,
+                subquantity_chain,
+            )
+            active_selection = f":{active_selection}"
+            # Obtain expected key for database entry
+            expected_db_key = database.clean_db_key(
+                raw_db_key,
+                db_key_suffix=active_selection,
+                group_name=original_group_name,
+            )
+            if current_db is not None and expected_db_key in current_db:
+                # if quantity already exists in db, return empty dict to avoid recomputation
+                return {}  # {expected_db_key: current_db[expected_db_key]}
+            # otherwise, compute the database representation
+            database_data = self._to_database(
+                *args,
+                current_db=current_db,
+                original_quantity=original_quantity,
+                original_selection=original_selection,
+                original_subquantity_selections=original_subquantity_selections,
+                subquantity_chain=subquantity_chain,
+                **kwargs,
+            )
+            database_data = dict(
+                zip(
+                    [
+                        database.clean_db_key(
+                            key,
+                            db_key_suffix=active_selection,
+                            group_name=original_group_name,
+                        )
+                        for key in database_data.keys()
+                    ],
+                    database_data.values(),
+                )
+            )
+            # Check if the expected key is present in the returned data
+            if not (expected_db_key in database_data) and database_data != {}:
+                print(f"[CHECK] database_data keys: {list(database_data.keys())}")
+                print(
+                    f"[CHECK] expected_db_key: {expected_db_key}, original_quantity: {original_quantity}, original_selection: {original_selection}, subquantity_chain: {subquantity_chain}"
+                )
+                print(original_subquantity_selections)
+                raise exception._Py4VaspInternalError(
+                    f"Database key '{expected_db_key}' not found in the database data returned by _to_database for quantity '{raw_db_key}' with selection '{active_selection}'. Keys are {list(database_data.keys())}."
+                )
+            return database_data
+        except AttributeError as e:
+            print(
+                f"[CHECK] AttributeError in _read_to_database of {self.__class__.__name__} (original: {original_quantity}:{original_selection}, {subquantity_chain}): {e}"
+            )
+            # if the particular quantity does not implement database reading, return empty dict
+            return {}
 
     @data_access
     def selections(self):

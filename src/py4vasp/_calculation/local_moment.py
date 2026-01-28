@@ -158,6 +158,33 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         }
 
     @base.data_access
+    def _to_database(self, *args, **kwargs):
+        spin_moments_total = None
+        if not check.is_none(self._raw_data.spin_moments):
+            if self._is_nonpolarized or self._is_noncollinear:
+                spin_moments_total = self._raw_data.spin_moments[-1, 0]
+            elif self._is_collinear:
+                spin_moments_total = (
+                    self._raw_data.spin_moments[-1, 0]
+                    + self._raw_data.spin_moments[-1, 1]
+                )
+
+        spin_moment_total_min = None
+        spin_moment_total_max = None
+        if spin_moments_total is not None:
+            spin_moment_total_min = float(np.min(spin_moments_total))
+            spin_moment_total_max = float(np.max(spin_moments_total))
+
+        data_dict = {
+            "local_moment": {
+                "has_orbital_moments": self._has_orbital_moments,
+                "final_spin_moment_total_min": spin_moment_total_min,
+                "final_spin_moment_total_max": spin_moment_total_max,
+            }
+        }
+        return data_dict
+
+    @base.data_access
     @documentation.format(selection=_moment_selection)
     def to_view(self, selection="total", supercell=None):
         """Visualize the magnetic moments as arrows inside the structure.

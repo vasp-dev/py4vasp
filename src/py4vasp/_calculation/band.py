@@ -10,7 +10,15 @@ from numpy.typing import ArrayLike
 from py4vasp import exception
 from py4vasp._calculation import _dispersion, base, kpoint, projector
 from py4vasp._third_party import graph
-from py4vasp._util import check, documentation, import_, index, select, slicing
+from py4vasp._util import (
+    check,
+    database,
+    documentation,
+    import_,
+    index,
+    select,
+    slicing,
+)
 
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
@@ -178,6 +186,71 @@ class Band(base.Refinery, graph.Mixin):
             **self._read_occupations(),
             **self._read_projections(selection),
         }
+
+    @base.data_access
+    @documentation.format(selection_doc=projector.selection_doc)
+    def _to_database(
+        self,
+        selection: Optional[str] = None,
+        fermi_energy: Optional[float] = None,
+        **kwargs,
+    ) -> dict[str, Any]:
+        """Read the data into a database object.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Parameters
+        ----------
+        {selection_doc}
+        fermi_energy : float
+            Overwrite the Fermi energy of the band structure calculation with a more
+            accurate one from a different calculation. This is recommended for metallic
+            systems where the Fermi energy may be significantly different.
+
+        Returns
+        -------
+        dict
+            Contains the **k**-point path for plotting band structures with the
+            eigenvalues shifted to bring the Fermi energy to 0. If available
+            and a selection is passed, the projections of these bands on the
+            selected projectors are included. If you specified '''k'''-point labels
+            in the KPOINTS file, these are returned as well.
+        """
+        dispersion = self._dispersion()._read_to_database(**kwargs)
+
+        # Find occupations
+        occupations = self._read_occupations()
+        num_total_occupied = occupations.get("occupations", None)
+        if num_total_occupied is not None:
+            num_total_occupied = [
+                int(n) for n in np.sum(num_total_occupied > 0, axis=0)
+            ]
+        num_occupied_up = occupations.get("occupations_up", None)
+        num_occupied_down = occupations.get("occupations_down", None)
+        if num_occupied_up is not None:
+            num_occupied_up = [int(n) for n in np.sum(num_occupied_up > 0, axis=0)]
+        if num_occupied_down is not None:
+            num_occupied_down = [int(n) for n in np.sum(num_occupied_down > 0, axis=0)]
+
+        raw_fermi_energy = (
+            self._raw_data.fermi_energy
+            if not check.is_none(self._raw_data.fermi_energy)
+            else None
+        )
+
+        return database.combine_db_dicts(
+            {
+                "band": {
+                    "num_occupied_bands": num_total_occupied,
+                    "num_occupied_bands_up": num_occupied_up,
+                    "num_occupied_bands_down": num_occupied_down,
+                    "fermi_energy_raw": raw_fermi_energy,
+                    "fermi_energy": fermi_energy or raw_fermi_energy,
+                },
+            },
+            dispersion,
+        )
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)

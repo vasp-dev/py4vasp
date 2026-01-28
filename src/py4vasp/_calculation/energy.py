@@ -39,6 +39,26 @@ _SELECTIONS = {
     "weight          WEIGHT": ["weight", "WEIGHT"],
 }
 
+_DB_KEYS = {
+    "ion-electron   TOTEN": "ion_electron",
+    "kinetic energy EKIN": "kinetic_energy",
+    "kin. lattice   EKIN_LAT": "kinetic_energy_lattice",
+    "temperature    TEIN": "temperature",
+    "nose potential ES": "nose_potential",
+    "nose kinetic   EPS": "nose_kinetic",
+    "total energy   ETOTAL": "total_energy",
+    "free energy    TOTEN": "free_energy",
+    "energy without entropy": "energy_without_entropy",
+    "energy(sigma->0)": "energy_sigma_0",
+    "step            STEP": "step",
+    "One el. energy  E1": "one_electron_energy",
+    "Hartree energy  -DENC": "hartree_energy",
+    "exchange        EXHF": "exchange_energy",
+    "free energy     TOTEN": "free_energy",
+    "free energy cap TOTENCAP": "free_energy_cap",
+    "weight          WEIGHT": "weight",
+}
+
 
 @documentation.format(examples=slice_.examples("energy"))
 class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
@@ -109,6 +129,28 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
             convert.text_to_string(label).strip(): value[self._steps]
             for label, value in zip(self._raw_data.labels, raw_values)
         }
+
+    def _default_dict_all(self):
+        raw_values = np.array(self._raw_data.values).T
+        return {
+            convert.text_to_string(label).strip(): value[:]
+            for label, value in zip(self._raw_data.labels, raw_values)
+        }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        default_dict = self._default_dict_all()
+        energy_dict = {}
+        for k, v in default_dict.items():
+            v = np.array(v)
+            key = _DB_KEYS.get(
+                k, convert.text_to_string(k).strip().lower().replace(" ", "_")
+            )
+            energy_dict[f"{key}_initial"] = v[0]
+            energy_dict[f"{key}_min"] = np.min(v)
+            energy_dict[f"{key}_step_min"] = int(np.argmin(v))
+            energy_dict[f"{key}_final"] = v[-1]
+        return {"energy": energy_dict}
 
     @base.data_access
     @documentation.format(

@@ -2,10 +2,10 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import _config
+from py4vasp import _config, exception
 from py4vasp._calculation import base, slice_, structure
 from py4vasp._third_party import view
-from py4vasp._util import reader
+from py4vasp._util import check, database, reader
 
 
 class Force(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
@@ -114,6 +114,25 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         return {
             "structure": self._structure[self._steps].read(),
             "forces": self._force[self._steps],
+        }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        if check.is_none(self._force):
+            raise exception.NoData("No force data available to write to database.")
+        final_force_norms = np.linalg.norm(self._force[-1], axis=-1)
+        initial_force_norms = np.linalg.norm(self._force[0], axis=-1)
+        return {
+            "force": {
+                "final_force_min": np.min(final_force_norms),
+                "final_force_median": np.median(final_force_norms),
+                "final_force_mean": np.mean(final_force_norms),
+                "final_force_max": np.max(final_force_norms),
+                "final_index_force_max": np.argmax(final_force_norms),
+                "initial_force_min": np.min(initial_force_norms),
+                "initial_force_max": np.max(initial_force_norms),
+                "initial_index_force_max": np.argmax(initial_force_norms),
+            },
         }
 
     @base.data_access

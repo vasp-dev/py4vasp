@@ -2,10 +2,10 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import py4vasp._raw.data as raw
 from py4vasp._raw import read
-from py4vasp._raw.schema import Length, Link, Schema
+from py4vasp._raw.schema import DEFAULT_SELECTION, Length, Link, Schema
 
 DEFAULT_FILE = "vaspout.h5"
-DEFAULT_SOURCE = "default"
+DEFAULT_SOURCE = DEFAULT_SELECTION
 VERSION_DATA = raw.Version("version/major", "version/minor", "version/patch")
 
 schema = Schema(VERSION_DATA)
@@ -19,6 +19,11 @@ def get_schema():
 def selections(quantity):
     "Return all possible selections for a particular quantity."
     return schema.selections(quantity)
+
+
+def unique_selections(quantity):
+    "Return all unique selections for a particular quantity."
+    return schema.unique_selections(quantity)
 
 
 schema.add(
@@ -332,6 +337,7 @@ schema.add(
     required=raw.Version(6, 3),
     clamped_ion=f"{group}/clamped_ion_elastic_modulus",
     relaxed_ion=f"{group}/relaxed_ion_elastic_modulus",
+    structure=Link("structure", DEFAULT_SOURCE),
 )
 #
 schema.add(
@@ -424,6 +430,8 @@ schema.add(
     eigenvectors=f"{group}/bse_fatbands",
     first_valence_band=f"{group}/bse_vbmin",
     first_conduction_band=f"{group}/bse_cbmin",
+    NBANDSO="input/incar/NBANDSO",
+    NBANDSV="input/incar/NBANDSV",
 )
 #
 schema.add(
@@ -619,6 +627,24 @@ schema.add(
     stoichiometry=Link("stoichiometry", DEFAULT_SOURCE),
     orbital_types="results/projectors_kpoints_wan/lchar",
     number_spin_projections=Length("results/projectors_kpoints_wan/par"),
+)
+#
+schema.add(
+    raw.RuntimeData,
+    vasp_version=Link("version", DEFAULT_SOURCE),
+)
+schema.add(
+    raw.RunInfo,
+    system=Link("system", DEFAULT_SOURCE),
+    runtime=Link("runtime_data", DEFAULT_SOURCE),
+    fermi_energy="results/electron_dos/efermi",
+    bandgap=Link("bandgap", DEFAULT_SOURCE),
+    band_dispersion_eigenvalues="results/electron_eigenvalues/eigenvalues",
+    band_projections="results/projectors/par",
+    len_dos=Length("results/electron_dos/dos"),
+    structure=Link("structure", DEFAULT_SOURCE),
+    contcar=Link("CONTCAR", DEFAULT_SOURCE),
+    phonon_dispersion=Link("dispersion", "phonon"),
 )
 #
 schema.add(

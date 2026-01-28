@@ -1,8 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import numpy as np
+
 from py4vasp._calculation import base, projector
 from py4vasp._third_party import graph
-from py4vasp._util import documentation, import_
+from py4vasp._util import check, documentation, import_
 
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
@@ -172,6 +174,85 @@ class Dos(base.Refinery, graph.Mixin):
         data = self._read_data(selection)
         data.pop(projector.SPIN_PROJECTION, None)
         return {**data, "fermi_energy": self._raw_data.fermi_energy}
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        import numpy as np
+
+        fermi_energy = kwargs.get("fermi_energy", None)
+        raw_fermi_energy = (
+            self._raw_data.fermi_energy
+            if not check.is_none(self._raw_data.fermi_energy)
+            else None
+        )
+
+        dos_at_fermi_dict = self._dos_at_energy(fermi_energy or raw_fermi_energy)
+        dos_at_raw_fermi_dict = self._dos_at_energy(raw_fermi_energy)
+
+        dos_at_fermi_total = dos_at_fermi_dict.get("total", None)
+        dos_at_raw_fermi_total = dos_at_raw_fermi_dict.get("total", None)
+
+        dos_at_fermi_up = dos_at_fermi_dict.get("up", None)
+        dos_at_fermi_down = dos_at_fermi_dict.get("down", None)
+
+        dos_at_raw_fermi_up = dos_at_raw_fermi_dict.get("up", None)
+        dos_at_raw_fermi_down = dos_at_raw_fermi_dict.get("down", None)
+
+        return {
+            "dos": {
+                "dos_at_fermi_total": dos_at_fermi_total,
+                "dos_at_fermi_up": dos_at_fermi_up,
+                "dos_at_fermi_down": dos_at_fermi_down,
+                "dos_at_raw_fermi_total": dos_at_raw_fermi_total,
+                "dos_at_raw_fermi_up": dos_at_raw_fermi_up,
+                "dos_at_raw_fermi_down": dos_at_raw_fermi_down,
+                "energy_min": (
+                    float(np.min(self._raw_data.energies[:]))
+                    if not check.is_none(self._raw_data.energies)
+                    else None
+                ),
+                "energy_max": (
+                    float(np.max(self._raw_data.energies[:]))
+                    if not check.is_none(self._raw_data.energies)
+                    else None
+                ),
+            }
+        }
+
+    def _dos_at_energy(self, energy):
+        try:
+            energies = self._raw_data.energies[:]
+            dos_dict = self._read_total_dos()
+            # interpolate between DOS at closest energies
+            dos_at_energy = {}
+            for key, dos in dos_dict.items():
+                idx = (np.abs(energies - energy)).argmin()
+                if energies[idx] == energy:
+                    dos_at_energy[key] = float(dos[idx])
+                else:
+                    if energies[idx] < energy:
+                        idx_low = idx
+                        idx_high = idx + 1
+                    else:
+                        idx_low = idx - 1
+                        idx_high = idx
+                    if (idx_low < 0) or (idx_high >= len(energies)):
+                        dos_at_energy[key] = None  # energy outside range
+                        continue
+                    dos_low = dos[idx_low]
+                    dos_high = dos[idx_high]
+                    energy_low = energies[idx_low]
+                    energy_high = energies[idx_high]
+                    # linear interpolation
+                    dos_at_energy[key] = float(
+                        dos_low
+                        + (dos_high - dos_low)
+                        * (energy - energy_low)
+                        / (energy_high - energy_low)
+                    )
+            return dos_at_energy
+        except:
+            return {}
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)

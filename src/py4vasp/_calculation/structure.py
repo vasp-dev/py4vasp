@@ -7,7 +7,7 @@ import numpy as np
 from py4vasp import exception, raw
 from py4vasp._calculation import _stoichiometry, base, cell, slice_
 from py4vasp._third_party import view
-from py4vasp._util import import_, parse
+from py4vasp._util import database, import_, parse
 
 ase = import_.optional("ase")
 ase_io = import_.optional("ase.io")
@@ -249,6 +249,54 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
             "elements": self._stoichiometry().elements(ion_types),
             "names": self._stoichiometry().names(ion_types),
         }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        stoichiometry = self._stoichiometry()._read_to_database(*args, **kwargs)
+
+        # TODO add more structure properties
+        lattice = self.lattice_vectors()
+        if lattice.ndim != 2:
+            lattice = [None, None, None]
+        volume = None
+        try:
+            volume = self.volume()
+        except Exception:
+            pass
+
+        lengths = [None, None, None]
+        angles = [None, None, None]
+        try:
+            cell = self._cell()
+            lengths = list(cell.lengths())
+            angles = list(cell.angles())
+        except:
+            pass
+
+        return database.combine_db_dicts(
+            {
+                "structure": {
+                    "ion_count_total": self.number_atoms(),
+                    "volume_cell": volume,
+                    "lattice_vector_a": (
+                        list(lattice[0]) if lattice[0] is not None else None
+                    ),
+                    "lattice_vector_b": (
+                        list(lattice[1]) if lattice[1] is not None else None
+                    ),
+                    "lattice_vector_c": (
+                        list(lattice[2]) if lattice[2] is not None else None
+                    ),
+                    "lattice_vector_length_a": lengths[0],
+                    "lattice_vector_length_b": lengths[1],
+                    "lattice_vector_length_c": lengths[2],
+                    "angle_alpha": angles[0],
+                    "angle_beta": angles[1],
+                    "angle_gamma": angles[2],
+                },
+            },
+            stoichiometry,
+        )
 
     @base.data_access
     def to_view(self, supercell=None, ion_types=None):

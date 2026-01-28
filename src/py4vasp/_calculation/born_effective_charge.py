@@ -1,6 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import numpy as np
+
+from py4vasp import exception
 from py4vasp._calculation import base, structure
+from py4vasp._util import check, database
 
 
 class BornEffectiveCharge(base.Refinery, structure.Mixin):
@@ -50,3 +54,37 @@ ion {ion + 1:4d}   {element}
             "structure": self._structure.read(),
             "charge_tensors": self._raw_data.charge_tensors[:],
         }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        structure = self._structure._read_to_database(*args, **kwargs)
+
+        eigenvalue_max = None
+        eigenvalue_max_index = None
+        eigenvalue_min = None
+        eigenvalue_min_index = None
+
+        if not check.is_none(self._raw_data.charge_tensors):
+            charge_tensors = self._raw_data.charge_tensors[:]
+            # compute traces of 3x3 tensors, charge_tensors.shape = (num_ions, 3, 3)
+            traces = (
+                charge_tensors[:, 0, 0]
+                + charge_tensors[:, 1, 1]
+                + charge_tensors[:, 2, 2]
+            )
+            eigenvalue_max = float(np.max(traces))
+            eigenvalue_min = float(np.min(traces))
+            eigenvalue_max_index = int(np.argmax(traces))
+            eigenvalue_min_index = int(np.argmin(traces))
+
+        return database.combine_db_dicts(
+            {
+                "born_effective_charge": {
+                    "eigenvalue_min": eigenvalue_min,
+                    "eigenvalue_min_index": eigenvalue_min_index,
+                    "eigenvalue_max": eigenvalue_max,
+                    "eigenvalue_max_index": eigenvalue_max_index,
+                }
+            },
+            structure,
+        )

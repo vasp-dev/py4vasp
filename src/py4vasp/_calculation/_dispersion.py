@@ -4,7 +4,7 @@ import numpy as np
 
 import py4vasp._third_party.graph as _graph
 from py4vasp._calculation import base, kpoint, projector
-from py4vasp._util import check
+from py4vasp._util import check, database
 
 
 class Dispersion(base.Refinery):
@@ -36,6 +36,40 @@ class Dispersion(base.Refinery):
             **labels_dict,
             "eigenvalues": self._raw_data.eigenvalues[:],
         }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        eigenvalues = (
+            self._raw_data.eigenvalues[:]
+            if not check.is_none(self._raw_data.eigenvalues)
+            else None
+        )
+        min_eigenvalue = float(np.min(eigenvalues)) if eigenvalues is not None else None
+        max_eigenvalue = float(np.max(eigenvalues)) if eigenvalues is not None else None
+
+        min_eigenvalue_up, max_eigenvalue_up = None, None
+        min_eigenvalue_down, max_eigenvalue_down = None, None
+        if self._spin_polarized():
+            eigenvalues_up = eigenvalues[0]
+            eigenvalues_down = eigenvalues[1]
+            min_eigenvalue_up = float(np.min(eigenvalues_up))
+            max_eigenvalue_up = float(np.max(eigenvalues_up))
+            min_eigenvalue_down = float(np.min(eigenvalues_down))
+            max_eigenvalue_down = float(np.max(eigenvalues_down))
+
+        return database.combine_db_dicts(
+            {
+                "dispersion": {
+                    "eigenvalue_min": min_eigenvalue,
+                    "eigenvalue_max": max_eigenvalue,
+                    "eigenvalue_min_up": min_eigenvalue_up,
+                    "eigenvalue_max_up": max_eigenvalue_up,
+                    "eigenvalue_min_down": min_eigenvalue_down,
+                    "eigenvalue_max_down": max_eigenvalue_down,
+                },
+            },
+            self._kpoints._read_to_database(*args, **kwargs),
+        )
 
     @property
     def _kpoints(self):

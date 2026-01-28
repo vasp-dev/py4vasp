@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import dataclasses
+import pathlib
+from datetime import datetime
+from typing import Any, Iterable, Optional, Union
 
 from py4vasp._raw import mapping
 from py4vasp._raw.data_wrapper import VaspData
@@ -84,7 +87,7 @@ class Cell:
 
     lattice_vectors: VaspData
     "Lattice vectors defining the unit cell."
-    scale: float
+    scale: Optional[float] = NONE()
     "Global scaling factor applied to all lattice vectors."
 
 
@@ -122,6 +125,82 @@ class CurrentDensity(mapping.Mapping):
     "The structure for which the current density was calculated."
     current_density: VaspData
     "The current density on a grid in the unit cell."
+
+
+@dataclasses.dataclass
+class CalculationMetaData:
+    """Metadata about the VASP calculation.
+    This dataclass is not available for Calculation instances."""
+
+    hdf5_original_path: Union[str, pathlib.Path]
+    """The path to the HDF5 file of the original calculation."""
+    tags: Union[str, Iterable[str], None]
+    """Tags associated with the calculation."""
+
+    hdf5_internal_path: Optional[Union[str, pathlib.Path]] = None
+    """The path under which vaspdb has stored the calculation files."""
+
+    infer_none_files: bool = False
+    """Whether to infer links to None files like INCAR etc. where possible."""
+    has_incar: bool = False
+    "Whether an INCAR file is associated with the calculation."
+    has_poscar: bool = False
+    "Whether a POSCAR file is associated with the calculation."
+    has_kpoints: bool = False
+    "Whether a KPOINTS file is associated with the calculation."
+    has_potcar: bool = False
+    "Whether a POTCAR file is associated with the calculation."
+    has_contcar: bool = False
+    "Whether a CONTCAR file is associated with the calculation."
+    has_outcar: bool = False
+    "Whether an OUTCAR file is associated with the calculation."
+
+    # These should be handled by vaspdb
+    added_at: Optional[datetime] = None
+    "The date and time when the calculation data was added to the database."
+    updated_at: Optional[datetime] = None
+    "The date and time when the calculation data was last updated in the database."
+
+    def __post_init__(self):
+        # Convert paths to pathlib Paths
+        for file_attr in ["hdf5_original_path", "hdf5_internal_path"]:
+            file_path = getattr(self, file_attr)
+            if isinstance(file_path, str):
+                object.__setattr__(self, file_attr, pathlib.Path(file_path))
+
+        # Check existence of INCAR, POSCAR, KPOINTS, POTCAR files
+        if self.infer_none_files:
+            for file_attr in [
+                "incar",
+                "poscar",
+                "kpoints",
+                "potcar",
+                "contcar",
+                "outcar",
+            ]:
+                trial_path = self.hdf5_original_path.parent / file_attr.upper()
+                if trial_path.exists():
+                    setattr(self, f"has_{file_attr}", True)
+
+
+@dataclasses.dataclass
+class _DatabaseData:
+    """All additional data that should be written to the database.
+    This dataclass is not available for Calculation instances."""
+
+    metadata: CalculationMetaData
+
+    available_quantities: Optional[dict[str, tuple[bool, list[str]]]] = None
+    """Dict of all py4vasp dataclasses that can be read from the HDF5 file.
+    Keys are constructed like 'group.quantity:selection' where group and
+    selection are optional. The values are booleans indicating whether the quantity is available.
+    The string list contains all aliases that can be used to refer to this particular combination
+    of group, quantity and selection."""
+
+    additional_properties: Optional[dict[str, Any]] = None
+    """Additional properties that get stored in the database.
+    Keys are constructed like 'group.quantity:selection' where group and
+    selection are optional. The values are dictionaries of properties."""
 
 
 @dataclasses.dataclass
@@ -243,6 +322,8 @@ class ElasticModulus:
     "Elastic modulus when the ions are clamped into their positions."
     relaxed_ion: VaspData
     "Elastic modulus when the position of the ions is relaxed."
+    structure: Optional[Structure] = None
+    "The structure for which the elastic modulus was calculated."
 
 
 @dataclasses.dataclass
@@ -280,11 +361,11 @@ class ElectronPhononBandgap(mapping.Mapping):
     "Value of the direct bandgap"
     temperatures: VaspData
     "List of temperatures at which the bandgap renormalization was computed"
-    nbands_sum: int
+    nbands_sum: list[int]
     "Number of bands that were summed over in this instance"
-    delta: float
+    delta: list[float]
     "Value of the imaginary broadening parameter used to evaluate the electron self-energy"
-    scattering_approximation: str
+    scattering_approximation: list[str]
     "Scattering approximation used to compute the electron self-energy"
     id_index: VaspData
     "Index of the elements on each list of variables used to generate instances"
@@ -428,6 +509,10 @@ class ExcitonEigenvector:
     "Index of the first valence band."
     first_conduction_band: int
     "Index of the first conduction band."
+    NBANDSO: Optional[int] = NONE()
+    "Number of bands used for the valence states in the BSE calculation."
+    NBANDSV: Optional[int] = NONE()
+    "Number of bands used for the conduction states in the BSE calculation."
 
 
 @dataclasses.dataclass
@@ -466,7 +551,7 @@ class InternalStrain:
     structure: Structure
     "Structural information about the system to inform about the unit cell."
     internal_strain: VaspData
-    "The  data of the internal strain."
+    "The data of the internal strain."
 
 
 @dataclasses.dataclass
@@ -674,6 +759,56 @@ class Projector:
     "Character indicating the orbital angular momentum."
     number_spin_projections: int
     "This is 1 for nonpolarized calculations, 2 for spin polarized ones, and 4 for noncollinear calculations."
+
+
+@dataclasses.dataclass
+class RunInfo:
+    "Contains information about the VASP run."
+
+    system: Optional[System] = None
+    "Data of the system."
+    runtime: Optional[RuntimeData] = None
+    "Data about the runtime environment of the VASP calculation."
+
+    fermi_energy: Optional[float] = None
+    "Fermi energy obtained by VASP."
+    bandgap: Optional[Bandgap] = None
+    "The bandgap of the system."
+    len_dos: Optional[int] = None
+    "Dimensionality of DOS data. (1 for non-polarized, 2 for spin polarized, 4 for non-collinear calculations.)"
+    band_dispersion_eigenvalues: Optional[VaspData] = NONE()
+    "The eigenvalues of the band structure dispersion."
+    band_projections: Optional[VaspData] = NONE()
+    "If present, orbital projections of the band structure."
+
+    structure: Optional[Structure] = None
+    "Structural information about the system."
+    contcar: Optional[CONTCAR] = None
+    "The data corresponding to the CONTCAR file."
+
+    phonon_dispersion: Optional[Dispersion] = None
+    "The phonon dispersion of the system."
+
+
+@dataclasses.dataclass
+class RuntimeData:
+    """Data about the runtime environment of the VASP calculation."""
+
+    vasp_version: Union[str, Version] = None
+    "The version of VASP used for the calculation."
+
+    calculation_time: Optional[float] = None
+    "The time taken for the calculation in seconds."
+    calculation_start: Optional[Union[datetime, str]] = None
+    "The date and time when the calculation was started."
+    n_cpus: Optional[int] = None
+    "The number of CPUs used for the calculation."
+    n_gpus: Optional[int] = None
+    "The number of GPUs used for the calculation."
+
+    def __post_init__(self):
+        if isinstance(self.vasp_version, Version):
+            self.vasp_version = f"{self.vasp_version.major}.{self.vasp_version.minor}.{self.vasp_version.patch}"
 
 
 @dataclasses.dataclass

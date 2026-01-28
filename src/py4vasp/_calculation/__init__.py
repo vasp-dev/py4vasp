@@ -2,9 +2,21 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import importlib
 import pathlib
+from typing import Any, List, Optional, Tuple, Union
+
+import h5py
 
 from py4vasp import exception
-from py4vasp._util import convert
+from py4vasp._raw.access import access
+from py4vasp._raw.data import CalculationMetaData, _DatabaseData
+from py4vasp._raw.definition import (
+    DEFAULT_SOURCE,
+    schema,
+    selections,
+    unique_selections,
+)
+from py4vasp._raw.schema import Link
+from py4vasp._util import convert, database, import_
 
 INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
 QUANTITIES = (
@@ -32,6 +44,7 @@ QUANTITIES = (
     "polarization",
     "potential",
     "projector",
+    "run_info",
     "stress",
     "structure",
     "system",
@@ -214,6 +227,79 @@ instead of the constructor Calculation()."""
         calc._file = file_name
         return calc
 
+    def _to_database(
+        self,
+        tags: Optional[Union[str, list[str]]] = None,
+        fermi_energy: Optional[float] = None,
+    ):
+        """
+        Retrieve the data of the calculation needed to write it to a VASP database.
+
+        The actual database write is handled by external modules, e.g., the `vaspdb`
+        package. This method prepares all the data that is needed for the database.
+
+        Parameters
+        ----------
+        tags
+            Tags to associate with the calculation in the database.
+            Can be a single string or a list of strings.
+        fermi_energy: float
+            If provided, this Fermi energy will be used for database computations
+            instead of the one read from the calculation data, e.g., for band structure.
+            This is relevant, e.g., for metallic systems where the Fermi energy may be significantly different.
+
+        Examples
+        --------
+        Prepare the calculation data for the default database:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calc_data = calculation._to_database()
+
+        Tag your calculation when writing it to the database:
+
+        >>> calc_data = calculation._to_database(tags=["relaxation", "vaspdb", "testing some stuff"])
+
+        Notes
+        -----
+        To add a variable to the database data, implement a `_to_database` method
+        in a `base.Refinery` subclass (see `base.Refinery._read_to_database` for reference) listed in QUANTITIES.
+        For example, the `_calculation.energy.Energy` class implements such a method to add energy-related
+        data to the database.
+
+        If you do not know which quantity to add it to, consider `_calculation.run_info.RunInfo` if you can
+        guarantee the quantity will always be available. If not, implement your own dataclass - just make sure
+        to implement the base dataclass in `_raw.data`, add its schema in `_raw.definition`, write an implementation
+        for `_calculation.your_quantity.YourQuantity` and add it to the QUANTITIES list.
+        """
+        hdf5_path: pathlib.Path = self._path / (self._file or "vaspout.h5")
+
+        # Check h5 file existence
+        if not hdf5_path.exists():
+            raise exception.FileAccessError(
+                f"The HDF5 file {hdf5_path} does not exist."
+            )
+
+        # Obtain DatabaseData instance
+        # Obtain runtime data from h5 file
+        database_data = None
+        with access("runtime_data", file=self._file, path=self._path) as runtime_data:
+            database_data = _DatabaseData(
+                metadata=CalculationMetaData(
+                    hdf5_original_path=hdf5_path,
+                    tags=tags,
+                    infer_none_files=True,
+                )
+            )
+
+        # Check available quantities and compute additional properties
+        database_data.available_quantities, database_data.additional_properties = (
+            self._compute_database_data(hdf5_path, fermi_energy=fermi_energy)
+        )
+
+        # Return DatabaseData object for VaspDB to process
+        return database_data
+
     def path(self):
         "Return the path in which the calculation is run."
         return self._path
@@ -245,6 +331,198 @@ instead of the constructor Calculation()."""
     # @POSCAR.setter
     # def POSCAR(self, poscar):
     #     self._POSCAR.write(str(poscar))
+
+    def _compute_database_data(
+        self, hdf5_path: pathlib.Path, fermi_energy: Optional[float] = None
+    ) -> Tuple[dict[str, tuple[bool, list[str]]], dict[str, dict]]:
+        """Computes a dict of available py4vasp dataclasses and all available database data.
+
+        Returns
+        -------
+        Tuple[dict[str, tuple[bool, list[str]]], dict[str, dict]]
+            A tuple containing:
+            - dict[str, tuple[bool, list[str]]]
+                A dictionary indicating the availability of each quantity (and selection) in the calculation.
+                The keys may take the form 'group.quantity', 'quantity', 'group.quantity:selection', or 'quantity:selection'.
+                The default selection is always omitted from the key.
+                Also includes a list of aliases for each quantity/selection combination.
+            - dict[str, dict]
+                A dictionary containing all additional properties to be stored in the database.
+                The keys follow the same convention as above. The values are dictionaries with the actual data to be stored.
+        """
+        available_quantities = {}
+        additional_properties = {}
+
+        # clear cached calls to should_load
+        database.should_load.cache_clear()
+
+        # Obtain quantities
+        # --- MAIN LOOP FOR QUANTITIES ---
+        available_quantities, additional_properties = self._loop_quantities(
+            hdf5_path,
+            QUANTITIES,
+            available_quantities,
+            additional_properties,
+            fermi_energy=fermi_energy,
+        )
+        for group, quantities in GROUPS.items():
+            available_quantities, additional_properties = self._loop_quantities(
+                hdf5_path,
+                quantities,
+                available_quantities,
+                additional_properties,
+                group_name=group,
+                fermi_energy=fermi_energy,
+            )
+        # --------------------------------
+
+        # clear cached calls to should_load
+        database.should_load.cache_clear()
+
+        # post-process dictionary keys
+        available_quantities = _clean_db_dict_keys(available_quantities)
+        additional_properties = _clean_db_dict_keys(additional_properties)
+
+        return available_quantities, additional_properties
+
+    def _loop_quantities(
+        self,
+        hdf5_path: pathlib.Path,
+        quantities,
+        available_quantities,
+        additional_properties,
+        group_name=None,
+        fermi_energy: Optional[float] = None,
+    ) -> Tuple[dict[str, tuple[bool, list[str]]], dict[str, dict]]:
+        group_instance = self if group_name is None else getattr(self, group_name)
+        for quantity in quantities:
+            try:
+                _selections = (
+                    unique_selections(quantity.lstrip("_"))
+                    if group_name is None
+                    else unique_selections(f"{group_name}_{quantity.lstrip('_')}")
+                )
+            except exception.FileAccessError:
+                _selections = ["default"]
+
+            for selection in _selections:
+                is_available, props, aliases_, additional_related_keys = (
+                    self._compute_quantity_db_data(
+                        hdf5_path,
+                        group_instance,
+                        selection,
+                        quantity,
+                        group_name,
+                        additional_properties,
+                        fermi_energy=fermi_energy,
+                    )
+                )
+                availability_key, _ = database.construct_database_data_key(
+                    group_name, quantity, selection
+                )
+                available_quantities[availability_key] = (is_available, aliases_)
+                # fix data_factory linked quantities and their selections
+                for key in additional_related_keys:
+                    split1, split2 = key.rsplit(":", 1)
+                    actual_key = f"{split1}:{selection}"
+                    # fix only if not already present and the base quantity is available
+                    if (split1 in QUANTITIES or f"_{split1}" in QUANTITIES) and not (
+                        actual_key in available_quantities
+                    ):
+                        available_quantities[actual_key] = (is_available, aliases_)
+                if is_available:
+                    additional_properties = database.combine_db_dicts(
+                        additional_properties, props
+                    )
+        return available_quantities, additional_properties
+
+    def _compute_quantity_db_data(
+        self,
+        hdf5_path: pathlib.Path,
+        group,
+        selection: Optional[str],
+        quantity_name: str,
+        group_name: Optional[str] = None,
+        current_db: dict = {},
+        fermi_energy: Optional[float] = None,
+    ) -> Tuple[bool, dict, list[str]]:
+        "Compute additional data to be stored in the database."
+        is_available = False
+        schema_quantity_name = quantity_name.lstrip("_")
+        aliases_ = schema._aliases(
+            (
+                f"{group_name}_{schema_quantity_name}"
+                if group_name is not None
+                else schema_quantity_name
+            ),
+            selection,
+        )
+        additional_properties = {}
+        additional_related_keys = []
+
+        try:
+            # check if readable
+            expected_key = (
+                f"{group_name}_{schema_quantity_name}"
+                if group_name is not None
+                else schema_quantity_name
+            )
+            should_load = False
+            with h5py.File(hdf5_path, "r") as h5file:
+                should_load, _, should_attempt_read, additional_related_keys = (
+                    database.should_load(expected_key, selection, h5file, schema)
+                )
+
+                if not (should_attempt_read):
+                    # we don't need to add these keys; they should automatically be considered --> clear list!
+                    # the list is passed one level up and may otherwise create duplicates or wrong keys
+                    additional_related_keys = []
+            # should_load = True
+            if should_load or should_attempt_read:
+                if should_attempt_read:
+                    # attempt to read; if it passes: available
+                    # this is relevant for quantities that read from files other than h5
+                    quantity_data = getattr(group, quantity_name).read(
+                        selection=str(selection)
+                    )
+                is_available = True
+            # attempt to compute additional properties if any are requested
+        except exception.NoData:
+            pass  # happens when some required data is missing
+        except exception.OutdatedVaspVersion:
+            pass  # happens when VASP version is too old for this quantity
+        except exception.FileAccessError:
+            pass  # happens when vaspout.h5 or vaspwave.h5 (where relevant) are missing
+        except Exception as e:
+            # print(
+            #     f"[CHECK] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:",
+            #     e,
+            # )
+            pass  # catch any other errors during reading
+
+        if is_available:
+            try:
+                additional_properties: dict[str, dict[str, Any]] = getattr(
+                    group, quantity_name
+                )._read_to_database(
+                    selection=str(selection),
+                    current_db=current_db,
+                    original_group_name=group_name,
+                    fermi_energy=fermi_energy,
+                )
+            except exception.OutdatedVaspVersion as e:
+                # print(
+                #     f"[ADD] VASP version too old for {quantity_name} (group={type(group)}) with selection {selection}. Got error: {e}"
+                # )
+                pass  # happens when VASP version is too old for this quantity
+            except Exception as e:
+                # print(
+                #     f"[ADD] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection} (please consider filing a bug report):",
+                #     e,
+                # )
+                pass  # catch any other errors during reading
+
+        return is_available, additional_properties, aliases_, additional_related_keys
 
 
 def _add_all_refinement_classes(calc):
@@ -288,6 +566,66 @@ def _make_group(group_name, quantities):
         return Group(self)
 
     return property(get_group)
+
+
+def _clean_db_dict_keys(
+    dict_to_clean: dict, rid_default_selection: bool = True
+) -> dict:
+    if rid_default_selection:
+        # Fix keys to remove default selection suffixes
+        dict_to_clean = dict(
+            zip(
+                [
+                    (
+                        key
+                        if not (key.endswith(f":{DEFAULT_SOURCE}"))
+                        else key[: -len(f":{DEFAULT_SOURCE}")]
+                    )
+                    for key in dict_to_clean.keys()
+                ],
+                dict_to_clean.values(),
+            )
+        )
+
+    # Find private quantities
+    private_quantities = [
+        (None, quantity) for quantity in QUANTITIES if quantity.startswith("_")
+    ] + [
+        (group, quantity)
+        for group, quantities in GROUPS.items()
+        for quantity in quantities
+        if quantity.startswith("_")
+    ]
+
+    # Fix keys to change private quantity keys back to private
+    relevant_keys = []
+    for group, quantity in private_quantities:
+        if group is None:
+            expected_key = quantity.lstrip("_")
+        else:
+            expected_key = f"{group}.{quantity.lstrip('_')}"
+        relevant_keys = relevant_keys + [
+            key
+            for key in dict_to_clean.keys()
+            if key.startswith(f"{expected_key}:") or key == expected_key
+        ]
+    relevant_keys = set(relevant_keys)
+    for key in relevant_keys:
+        if key in dict_to_clean:
+            dict_to_clean[f"_{key}"] = dict_to_clean.pop(key)
+
+    # Fix keys to resolve group selections
+    relevant_keys = []
+    for group, _ in GROUPS.items():
+        expected_key = group
+        relevant_keys = [
+            key for key in dict_to_clean.keys() if key.endswith(f":{group}")
+        ]
+        for key in relevant_keys:
+            split1, split2 = key.rsplit(":", 1)
+            dict_to_clean[f"{split2}._{split1.lstrip('_')}"] = dict_to_clean.pop(key)
+
+    return dict_to_clean
 
 
 Calculation = _add_all_refinement_classes(Calculation)
