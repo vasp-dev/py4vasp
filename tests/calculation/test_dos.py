@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
+from tabnanny import check
 from unittest.mock import patch
 
 import numpy as np
@@ -72,6 +73,7 @@ def Ba2PbO4(raw_data):
     dos = Dos.from_data(raw_dos)
     dos.ref = types.SimpleNamespace()
     dos.ref.energies = raw_dos.energies - raw_dos.fermi_energy
+    dos.ref.fermi_energy = raw_dos.fermi_energy
     dos.ref.dos = raw_dos.dos[0]
     dos.ref.dos_z = np.sum(raw_dos.projections[3], axis=(0, 1))
     dos.ref.Ba_x = np.sum(raw_dos.projections[1, 0:2, :, :], axis=(0, 1))
@@ -334,3 +336,73 @@ projectors:
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dos("Sr2TiO4")
     check_factory_methods(Dos, data)
+
+
+def _check_to_database(dos, fermi_energy=None):
+    db_dict = dos._read_to_database(fermi_energy=fermi_energy)
+    assert "dos:default" in db_dict
+    dos_db = db_dict["dos:default"]
+
+    for k in [
+        "energy_min",
+        "energy_max",
+        "dos_at_fermi_total",
+        "dos_at_fermi_up",
+        "dos_at_fermi_down",
+        "dos_at_raw_fermi_total",
+        "dos_at_raw_fermi_up",
+        "dos_at_raw_fermi_down",
+    ]:
+        assert k in dos_db
+    _fermi_energy = fermi_energy if fermi_energy is not None else dos.ref.fermi_energy
+    _raw_fermi_energy = dos.ref.fermi_energy
+
+    assert np.isclose(
+        dos_db["energy_min"], float(np.min(dos.ref.energies + _raw_fermi_energy))
+    )
+    assert np.isclose(
+        dos_db["energy_max"], float(np.max(dos.ref.energies + _raw_fermi_energy))
+    )
+
+    if hasattr(dos.ref, "dos"):
+        for k in ["dos_at_fermi_total", "dos_at_raw_fermi_total"]:
+            assert dos_db[k] is not None
+        for k in [
+            "dos_at_fermi_up",
+            "dos_at_fermi_down",
+            "dos_at_raw_fermi_up",
+            "dos_at_raw_fermi_down",
+        ]:
+            assert dos_db[k] is None
+    else:
+        for k in ["dos_at_fermi_total", "dos_at_raw_fermi_total"]:
+            assert dos_db[k] is None
+        for k in [
+            "dos_at_fermi_up",
+            "dos_at_fermi_down",
+            "dos_at_raw_fermi_up",
+            "dos_at_raw_fermi_down",
+        ]:
+            assert dos_db[k] is not None
+    for kstr in ["up", "down", "total"]:
+        if _fermi_energy == _raw_fermi_energy:
+            k1 = f"dos_at_fermi_{kstr}"
+            k2 = f"dos_at_raw_fermi_{kstr}"
+            assert (dos_db[k1] is None and dos_db[k2] is None) or np.isclose(
+                dos_db[k1], dos_db[k2]
+            )
+
+
+def test_to_database_Sr2TiO4(Sr2TiO4):
+    _check_to_database(Sr2TiO4)
+    _check_to_database(Sr2TiO4, fermi_energy=Sr2TiO4.ref.fermi_energy + 0.5)
+
+
+def test_to_database_Fe3O4(Fe3O4):
+    _check_to_database(Fe3O4)
+    _check_to_database(Fe3O4, fermi_energy=Fe3O4.ref.fermi_energy + 0.5)
+
+
+def test_to_database_Ba2PbO4(Ba2PbO4):
+    _check_to_database(Ba2PbO4)
+    _check_to_database(Ba2PbO4, fermi_energy=Ba2PbO4.ref.fermi_energy + 0.5)
