@@ -4,7 +4,7 @@ import numpy as np
 
 from py4vasp._calculation import base, projector
 from py4vasp._third_party import graph
-from py4vasp._util import documentation, import_
+from py4vasp._util import check, documentation, import_
 
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
@@ -180,11 +180,14 @@ class Dos(base.Refinery, graph.Mixin):
         import numpy as np
 
         fermi_energy = kwargs.get("fermi_energy", None)
-
-        dos_at_fermi_dict = self._dos_at_energy(
-            fermi_energy or self._raw_data.fermi_energy
+        raw_fermi_energy = (
+            self._raw_data.fermi_energy
+            if not check.is_none(self._raw_data.fermi_energy)
+            else None
         )
-        dos_at_raw_fermi_dict = self._dos_at_energy(self._raw_data.fermi_energy)
+
+        dos_at_fermi_dict = self._dos_at_energy(fermi_energy or raw_fermi_energy)
+        dos_at_raw_fermi_dict = self._dos_at_energy(raw_fermi_energy)
 
         dos_at_fermi_total = dos_at_fermi_dict.get("total", None)
         dos_at_raw_fermi_total = dos_at_raw_fermi_dict.get("total", None)
@@ -203,8 +206,16 @@ class Dos(base.Refinery, graph.Mixin):
                 "dos_at_raw_fermi_total": dos_at_raw_fermi_total,
                 "dos_at_raw_fermi_up": dos_at_raw_fermi_up,
                 "dos_at_raw_fermi_down": dos_at_raw_fermi_down,
-                "min_energy": float(np.min(self._raw_data.energies[:])),
-                "max_energy": float(np.max(self._raw_data.energies[:])),
+                "min_energy": (
+                    float(np.min(self._raw_data.energies[:]))
+                    if not check.is_none(self._raw_data.energies)
+                    else None
+                ),
+                "max_energy": (
+                    float(np.max(self._raw_data.energies[:]))
+                    if not check.is_none(self._raw_data.energies)
+                    else None
+                ),
             }
         }
 

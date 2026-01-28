@@ -39,12 +39,19 @@ class Dispersion(base.Refinery):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        kpoint_labels = self._kpoints.labels()
+        eigenvalues = (
+            self._raw_data.eigenvalues[:]
+            if not check.is_none(self._raw_data.eigenvalues)
+            else None
+        )
+        min_eigenvalue = np.min(eigenvalues) if eigenvalues is not None else None
+        max_eigenvalue = np.max(eigenvalues) if eigenvalues is not None else None
+
         return database.combine_db_dicts(
             {
                 "dispersion": {
-                    "min_eigenvalue": np.min(self._raw_data.eigenvalues[:]),
-                    "max_eigenvalue": np.max(self._raw_data.eigenvalues[:]),
+                    "min_eigenvalue": min_eigenvalue,
+                    "max_eigenvalue": max_eigenvalue,
                 },
             },
             self._kpoints._read_to_database(*args, **kwargs),

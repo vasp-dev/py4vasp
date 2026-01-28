@@ -89,6 +89,8 @@ class RunInfo(base.Refinery):
 
     def _is_metallic(self):
         try:
+            if check.is_none(self._raw_data.bandgap):
+                return None
             gap = bandgap.Bandgap.from_data(self._raw_data.bandgap)
             return gap._output_gap("fundamental", to_string=False) <= 0.0
         except (exception.OutdatedVaspVersion, exception.NoData):
@@ -126,9 +128,9 @@ class RunInfo(base.Refinery):
 
         try:
             positions = self._read("structure", "positions")
-            if positions is not None:
+            if not check.is_none(positions):
                 num_ion_steps = 1 if positions.ndim == 2 else positions.shape[0]
-        except exception.NoData:
+        except (exception.NoData, AttributeError):
             pass
 
         return {
@@ -141,13 +143,15 @@ class RunInfo(base.Refinery):
         has_ion_velocities = None
 
         try:
-            has_selective_dynamics = (
-                self._read("contcar", "selective_dynamics") is not None
+            has_selective_dynamics = not check.is_none(
+                self._read("contcar", "selective_dynamics")
             )
-            has_lattice_velocities = (
-                self._read("contcar", "lattice_velocities") is not None
+            has_lattice_velocities = not check.is_none(
+                self._read("contcar", "lattice_velocities")
             )
-            has_ion_velocities = self._read("contcar", "ion_velocities") is not None
+            has_ion_velocities = not check.is_none(
+                self._read("contcar", "ion_velocities")
+            )
         except exception.NoData:
             pass
 

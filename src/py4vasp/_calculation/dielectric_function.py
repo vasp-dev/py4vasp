@@ -4,7 +4,7 @@ import numpy as np
 
 from py4vasp._calculation import base
 from py4vasp._third_party import graph
-from py4vasp._util import convert, index, select
+from py4vasp._util import check, convert, index, select
 
 
 class DielectricFunction(base.Refinery, graph.Mixin):
@@ -63,8 +63,16 @@ dielectric function:
     def _to_database(self, *args, **kwargs):
         dielectric_function_db = {
             "dielectric_function": {
-                "min_energy": float(np.min(self._raw_data.energies[:])),
-                "max_energy": float(np.max(self._raw_data.energies[:])),
+                "min_energy": (
+                    float(np.min(self._raw_data.energies[:]))
+                    if not check.is_none(self._raw_data.energies)
+                    else None
+                ),
+                "max_energy": (
+                    float(np.max(self._raw_data.energies[:]))
+                    if not check.is_none(self._raw_data.energies)
+                    else None
+                ),
             }
         }
         return dielectric_function_db
@@ -77,7 +85,7 @@ dielectric function:
             return {}
 
     def _has_current_component(self):
-        return not self._raw_data.current_current.is_none()
+        return not check.is_none(self._raw_data.current_current)
 
     @base.data_access
     def to_graph(self, selection=None):

@@ -181,6 +181,9 @@ def get_primitive_ion_numbers(
     list[int]
         Number of ions of each type in the primitive cell.
     """
+    if number_ion_types is None:
+        return None
+
     _gcd = functools.reduce(gcd, number_ion_types)
     return [n // _gcd for n in number_ion_types]
 
@@ -202,6 +205,9 @@ def get_formula_and_compound(
     tuple[str, str]
         The chemical formula and compound name.
     """
+    if ion_types is None or number_ion_types is None:
+        return None, None
+
     primitive_numbers = get_primitive_ion_numbers(number_ion_types)
     formula_parts = []
     compound_parts = []

@@ -3,7 +3,7 @@
 import numpy as np
 
 from py4vasp._calculation import base, structure
-from py4vasp._util import convert
+from py4vasp._util import check, convert
 
 
 class PhononMode(base.Refinery, structure.Mixin):
@@ -62,10 +62,20 @@ class PhononMode(base.Refinery, structure.Mixin):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
+        frequencies = (
+            self.frequencies()
+            if not check.is_none(self._raw_data.frequencies)
+            else None
+        )
+
         return {
             "phonon_mode": {
-                "max_real_frequencies": float(np.max(self.frequencies().real)),
-                "max_imag_frequencies": float(np.max(self.frequencies().imag)),
+                "max_real_frequencies": (
+                    float(np.max(frequencies.real)) if frequencies is not None else None
+                ),
+                "max_imag_frequencies": (
+                    float(np.max(frequencies.imag)) if frequencies is not None else None
+                ),
             }
         }
 

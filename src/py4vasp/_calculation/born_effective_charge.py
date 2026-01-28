@@ -4,7 +4,7 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._calculation import base, structure
-from py4vasp._util import database
+from py4vasp._util import check, database
 
 
 class BornEffectiveCharge(base.Refinery, structure.Mixin):
@@ -63,14 +63,10 @@ ion {ion + 1:4d}   {element}
         eigenvalue_max_index = None
         eigenvalue_min = None
         eigenvalue_min_index = None
-        try:
+
+        if not check.is_none(self._raw_data.charge_tensors):
             charge_tensors = self._raw_data.charge_tensors[:]
             # compute traces of 3x3 tensors, charge_tensors.shape = (num_ions, 3, 3)
-            assert (
-                charge_tensors.ndim == 3
-                and charge_tensors.shape[1] == 3
-                and charge_tensors.shape[2] == 3
-            )
             traces = (
                 charge_tensors[:, 0, 0]
                 + charge_tensors[:, 1, 1]
@@ -80,8 +76,6 @@ ion {ion + 1:4d}   {element}
             eigenvalue_min = float(np.min(traces))
             eigenvalue_max_index = int(np.argmax(traces))
             eigenvalue_min_index = int(np.argmin(traces))
-        except exception.NoData:
-            pass
 
         return database.combine_db_dicts(
             {

@@ -3,6 +3,7 @@
 import numpy as np
 
 from py4vasp._calculation import base, structure
+from py4vasp._util import check
 from py4vasp._util.tensor import symmetry_reduce, tensor_constants
 
 
@@ -35,20 +36,23 @@ class ElasticModulus(base.Refinery):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        tensor = self._raw_data.relaxed_ion[:]
-        compact_tensor = symmetry_reduce(symmetry_reduce(tensor).T).T
-        voigt_tensor = _get_C_voigt_from_4d_tensor(self._raw_data.relaxed_ion[:])
+        if not check.is_none(self._raw_data.relaxed_ion):
+            tensor = self._raw_data.relaxed_ion[:]
+            compact_tensor = symmetry_reduce(symmetry_reduce(tensor).T).T
+            voigt_tensor = _get_C_voigt_from_4d_tensor(self._raw_data.relaxed_ion[:])
+        else:
+            compact_tensor = None
+            voigt_tensor = None
         # shape of implementation is consistent, but order is changed:
         # compact tensor: XX YY ZZ XY YZ ZX
         # voigt tensor:   XX YY ZZ YZ ZX XY
+
         volume_per_atom = None
-        try:
+        if not check.is_none(self._raw_data.structure):
             structure_obj = structure.Structure.from_data(self._raw_data.structure)
             volume = structure_obj.volume()
             num_atoms = structure_obj.number_atoms()
             volume_per_atom = volume / num_atoms if num_atoms > 0 else None
-        except:
-            pass
 
         # Properties from elastic tensor
         elastic_properties = self._compute_elastic_properties(
@@ -57,8 +61,12 @@ class ElasticModulus(base.Refinery):
 
         return {
             "elastic_modulus": {
-                "elastic_modulus_as_voigt": list(
-                    [list(l) for l in compact_tensor],
+                "elastic_modulus_as_voigt": (
+                    list(
+                        [list(l) for l in compact_tensor],
+                    )
+                    if compact_tensor is not None
+                    else None
                 ),
                 **elastic_properties,
             }
@@ -83,27 +91,32 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
             fracture_toughness,
         ) = (None, None, None, None, None, None, None)
 
-        elastic_tensor = _ElasticTensor.from_array(voigt_tensor)
-
         try:
-            bulk_modulus, shear_modulus, youngs_modulus, poisson_ratio = (
-                elastic_tensor.get_VRH()
-            )
+            elastic_tensor = _ElasticTensor.from_array(voigt_tensor)
+
+            try:
+                bulk_modulus, shear_modulus, youngs_modulus, poisson_ratio = (
+                    elastic_tensor.get_VRH()
+                )
+            except:
+                pass
+
+            try:
+                pugh_ratio = (
+                    shear_modulus / bulk_modulus
+                    if (bulk_modulus != 0 and shear_modulus != 0)
+                    else 0.0 if shear_modulus == 0 else None
+                )
+                vickers_hardness = elastic_tensor.get_hardness()
+                fracture_toughness = elastic_tensor.get_fracture_toughness(
+                    volume_per_atom
+                )
+            except:
+                pass
         except:
             pass
 
-        try:
-            pugh_ratio = (
-                shear_modulus / bulk_modulus
-                if (bulk_modulus != 0 and shear_modulus != 0)
-                else 0.0 if shear_modulus == 0 else None
-            )
-            vickers_hardness = elastic_tensor.get_hardness()
-            fracture_toughness = elastic_tensor.get_fracture_toughness(volume_per_atom)
-        except:
-            pass
-
-        elastic_properties = {
+        return {
             "bulk_modulus": bulk_modulus,  # GPa
             "shear_modulus": shear_modulus,  # GPa
             "youngs_modulus": youngs_modulus,  # GPa
@@ -112,8 +125,6 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
             "vickers_hardness": vickers_hardness,  # GPa
             "fracture_toughness": fracture_toughness,  # MPa m^1/2
         }
-
-        return elastic_properties
 
 
 def _elastic_modulus_string(tensor, label):

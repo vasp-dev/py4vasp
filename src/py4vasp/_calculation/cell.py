@@ -3,7 +3,7 @@
 import numpy as np
 
 from py4vasp._calculation import base, slice_
-from py4vasp._util import reader
+from py4vasp._util import check, reader
 
 
 class Cell(slice_.Mixin, base.Refinery):
@@ -18,7 +18,7 @@ class Cell(slice_.Mixin, base.Refinery):
         """Scale factor of the simulation cell."""
         if isinstance(self._raw_data.scale, np.float64):
             return self._raw_data.scale
-        if not self._raw_data.scale.is_none():
+        if not check.is_none(self._raw_data.scale):
             return self._raw_data.scale[()]
         else:
             return 1.0
