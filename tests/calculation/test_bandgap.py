@@ -40,6 +40,8 @@ def setup_bandgap(raw_gap):
     bandgap.ref.kpoint_vbm = raw_gap.values[..., KPOINT_VBM]
     bandgap.ref.kpoint_cbm = raw_gap.values[..., KPOINT_CBM]
     bandgap.ref.direct = raw_gap.values[..., TOP] - raw_gap.values[..., BOTTOM]
+    bandgap.ref.lower_band_direct = raw_gap.values[..., BOTTOM]
+    bandgap.ref.upper_band_direct = raw_gap.values[..., TOP]
     bandgap.ref.kpoint_direct = raw_gap.values[..., KPOINT_DIRECT]
     bandgap.ref.fermi_energy = raw_gap.values[:, 0, FERMI]
     return bandgap
@@ -312,3 +314,43 @@ Fermi energy:               11.401754"""
 def test_factory_methods(raw_data, check_factory_methods):
     raw_gap = raw_data.bandgap("default")
     check_factory_methods(Bandgap, raw_gap)
+
+
+def _check_to_database(_bandgap, Assert):
+    database_data = _bandgap._read_to_database()
+    db_dict = database_data["bandgap:default"]
+
+    for k in [
+        "valence_band_maximum",
+        "conduction_band_minimum",
+        "fundamental",
+        "kpoint_vbm",
+        "kpoint_cbm",
+        "lower_band_direct",
+        "upper_band_direct",
+        "direct",
+        "kpoint_direct",
+    ]:
+        assert k in db_dict, f"Expected key '{k}' missing from database output."
+
+    assert db_dict["valence_band_maximum"] == pytest.approx(_bandgap.ref.vbm[-1, 0])
+    assert db_dict["conduction_band_minimum"] == pytest.approx(_bandgap.ref.cbm[-1, 0])
+    assert db_dict["fundamental"] == pytest.approx(_bandgap.ref.fundamental[-1, 0])
+    Assert.allclose(db_dict["kpoint_vbm"], _bandgap.ref.kpoint_vbm[-1])
+    Assert.allclose(db_dict["kpoint_cbm"], _bandgap.ref.kpoint_cbm[-1])
+    assert db_dict["direct"] == pytest.approx(_bandgap.ref.direct[-1, 0])
+    Assert.allclose(db_dict["kpoint_direct"], _bandgap.ref.kpoint_direct[-1])
+    assert db_dict["lower_band_direct"] == pytest.approx(
+        _bandgap.ref.lower_band_direct[-1, 0]
+    )
+    assert db_dict["upper_band_direct"] == pytest.approx(
+        _bandgap.ref.upper_band_direct[-1, 0]
+    )
+
+
+def test_to_database_default(bandgap, Assert):
+    _check_to_database(bandgap, Assert)
+
+
+def test_to_database_spin_polarized(spin_polarized, Assert):
+    _check_to_database(spin_polarized, Assert)
