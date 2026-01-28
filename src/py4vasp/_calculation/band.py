@@ -233,14 +233,20 @@ class Band(base.Refinery, graph.Mixin):
         if num_occupied_down is not None:
             num_occupied_down = [int(n) for n in np.sum(num_occupied_down > 0, axis=0)]
 
+        raw_fermi_energy = (
+            self._raw_data.fermi_energy
+            if not check.is_none(self._raw_data.fermi_energy)
+            else None
+        )
+
         return database.combine_db_dicts(
             {
                 "band": {
                     "num_occupied_bands": num_total_occupied,
                     "num_occupied_bands_up": num_occupied_up,
                     "num_occupied_bands_down": num_occupied_down,
-                    "fermi_energy_raw": self._raw_data.fermi_energy,
-                    "fermi_energy": fermi_energy or self._raw_data.fermi_energy,
+                    "fermi_energy_raw": raw_fermi_energy,
+                    "fermi_energy": fermi_energy or raw_fermi_energy,
                 },
             },
             dispersion,

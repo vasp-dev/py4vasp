@@ -8,6 +8,7 @@ from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._third_party import view
 from py4vasp._util import (
+    check,
     database,
     density,
     documentation,
@@ -90,7 +91,7 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
 
     def _generate_items(self, kind):
         potential = self._get_potential(kind)
-        if potential.is_none():
+        if check.is_none(potential):
             return
         potential = np.moveaxis(potential, 0, -1).T
         yield kind, potential[0]
@@ -109,7 +110,7 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         total_potential_mean_down = None
         total_potential_mean_magnetization = None
         total_potential = self._get_potential("total")
-        if not total_potential.is_none():
+        if not check.is_none(total_potential):
             total_potential = np.moveaxis(total_potential, 0, -1).T
             total_potential_mean = float(np.mean(total_potential[0]))
             total_potential_mean_up = (
@@ -131,7 +132,9 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         potential_dict = {
             "potential": {
                 **{
-                    f"has_{kind}_potential": not self._get_potential(kind).is_none()
+                    f"has_{kind}_potential": not check.is_none(
+                        self._get_potential(kind)
+                    )
                     for kind in VALID_KINDS
                 },
                 "total_potential_mean": total_potential_mean,

@@ -159,14 +159,15 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        if self._is_nonpolarized or self._is_noncollinear:
-            spin_moments_total = self._raw_data.spin_moments[-1, 0]
-        elif self._is_collinear:
-            spin_moments_total = (
-                self._raw_data.spin_moments[-1, 0] + self._raw_data.spin_moments[-1, 1]
-            )
-        else:
-            spin_moments_total = None
+        spin_moments_total = None
+        if not check.is_none(self._raw_data.spin_moments):
+            if self._is_nonpolarized or self._is_noncollinear:
+                spin_moments_total = self._raw_data.spin_moments[-1, 0]
+            elif self._is_collinear:
+                spin_moments_total = (
+                    self._raw_data.spin_moments[-1, 0]
+                    + self._raw_data.spin_moments[-1, 1]
+                )
 
         spin_moment_total_min = None
         spin_moment_total_max = None

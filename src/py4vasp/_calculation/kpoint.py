@@ -7,7 +7,7 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._calculation import base
-from py4vasp._util import convert, documentation
+from py4vasp._util import check, convert, documentation
 
 _kpoints_selection = """\
 selection : str, optional
@@ -83,13 +83,7 @@ reciprocal"""
         number_y = self._raw_data.number_y
         number_z = self._raw_data.number_z
 
-        has_grid = True
-        try:
-            has_grid = not (
-                any(n is None or n.is_none() for n in (number_x, number_y, number_z))
-            )
-        except AttributeError:
-            pass
+        has_grid = not (any(check.is_none(n) for n in (number_x, number_y, number_z)))
 
         grid_kpoints = (
             None
@@ -102,7 +96,7 @@ reciprocal"""
         )
 
         user_labels = None
-        if not self._raw_data.label_indices.is_none():
+        if not check.is_none(self._raw_data.label_indices):
             user_labels = [k for k in self._labels_from_file() if k != ""]
             user_labels = None if len(user_labels) == 0 else user_labels
         sampled_points = sorted(set(user_labels)) if user_labels is not None else None

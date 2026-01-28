@@ -6,6 +6,7 @@ import numpy as np
 from py4vasp import exception, raw
 from py4vasp._calculation import base, slice_
 from py4vasp._third_party import graph
+from py4vasp._util import check
 
 
 class ElectronicMinimization(slice_.Mixin, base.Refinery, graph.Mixin):
@@ -85,11 +86,14 @@ N, E, dE, deps, ncg, rms, rms(c)"""
         elmin_is_converged_final = None
 
         try:
-            elmin_is_converged_all = np.all(self._raw_data.is_elmin_converged[:] == 0)
-            elmin_is_converged_final = np.all(
-                self._raw_data.is_elmin_converged[-1] == 0
-            )
-        except exception.NoData:
+            if not check.is_none(self._raw_data.is_elmin_converged):
+                elmin_is_converged_all = np.all(
+                    self._raw_data.is_elmin_converged[:] == 0
+                )
+                elmin_is_converged_final = np.all(
+                    self._raw_data.is_elmin_converged[-1] == 0
+                )
+        except:
             pass
 
         try:
@@ -111,7 +115,10 @@ N, E, dE, deps, ncg, rms, rms(c)"""
             }
         }
 
-    def _get_electronic_steps_info(self) -> dict:
+    def _get_electronic_steps_info(self) -> tuple[int, int, int]:
+        if check.is_none(self._raw_data.convergence_data):
+            return None, None, None
+
         data = getattr(self._raw_data, "convergence_data")
         iteration_number = data[:, 0]
         split_index = np.where(iteration_number == 1)[0]

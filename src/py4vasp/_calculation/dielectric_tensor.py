@@ -4,7 +4,7 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._calculation import base
-from py4vasp._util import convert
+from py4vasp._util import check, convert
 from py4vasp._util.tensor import symmetry_reduce, tensor_constants
 
 
@@ -36,18 +36,17 @@ class DielectricTensor(base.Refinery):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        the_dict = self.to_dict()
-
-        isotropic_constant = None
-        try:
-            isotropic_constant, _ = tensor_constants(the_dict["relaxed_ion"])
-        except:
-            pass
+        relaxed_ion_tensor = self._read_relaxed_ion()
+        isotropic_constant, _ = tensor_constants(relaxed_ion_tensor)
 
         dielectric_tensor_db = {
             "dielectric_tensor": {
-                "method": the_dict["method"],
-                "relaxed_ion_tensor": list(symmetry_reduce(the_dict["relaxed_ion"])),
+                "method": (
+                    convert.text_to_string(self._raw_data.method)
+                    if not check.is_none(self._raw_data.method)
+                    else None
+                ),
+                "relaxed_ion_tensor": list(symmetry_reduce(relaxed_ion_tensor)),
                 "static_dielectric_constant_isotropic": isotropic_constant,
             },
         }
@@ -65,7 +64,7 @@ Macroscopic static dielectric tensor (dimensionless)
 """.strip()
 
     def _read_relaxed_ion(self):
-        if self._raw_data.ion.is_none():
+        if check.is_none(self._raw_data.ion):
             return None
         else:
             return self._raw_data.electron[:] + self._raw_data.ion[:]

@@ -82,8 +82,16 @@ class Stoichiometry(base.Refinery):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        ion_types = list(self.ion_types())
-        num_ion_types = list(self._raw_data.number_ion_types)
+        ion_types = (
+            list(self.ion_types())
+            if not check.is_none(self._raw_data.ion_types)
+            else None
+        )
+        num_ion_types = (
+            list(self._raw_data.number_ion_types)
+            if not check.is_none(self._raw_data.number_ion_types)
+            else None
+        )
         formula, compound = database.get_formula_and_compound(ion_types, num_ion_types)
         return {
             "stoichiometry": {
