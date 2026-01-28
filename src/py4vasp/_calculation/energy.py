@@ -14,7 +14,7 @@ selection : str or None
     this will default to selecting {default}. Separate distinct labels by commas or
     whitespace. You can add or subtract different contributions e.g. `TOTEN + EKIN`.
     For a complete list of all possible selections, please use
-    
+
     >>> calculation.energy.selections()
 """
 
@@ -163,7 +163,15 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
         return np.squeeze([values for _, values in self._read_data(tree, self._steps)])
 
     @base.data_access
-    def selections(self):
+    def selections(self) -> dict[str, list[str]]:
+        """Return a dictionary describing what kind of energies are available.
+
+        Returns
+        -------
+        -
+            Dictionary containing available selection options with their possible values.
+            Keys include the selection criteria "energy" and "component".
+        """
         components = list(self._init_selection_dict().keys())
         return {**super().selections(), "component": components}
 

@@ -51,6 +51,7 @@ def create_coulomb_reference(raw_data, param):
     coulomb.ref.omega_data = setup_omega_data(setup, coulomb.ref.read_data)
     coulomb.ref.radial_data = setup_radial_data(setup, coulomb.ref.read_data)
     coulomb.ref.overview_data = setup_overview_data(setup, coulomb.ref.read_data)
+    coulomb.ref.is_collinear = setup.is_collinear
     return coulomb
 
 
@@ -428,10 +429,16 @@ def test_plot_radial_and_frequency_nondefault_radius(nonpolarized_crpar, Assert)
         nonpolarized_crpar.plot(omega=..., radius=np.array([1.0, 2.0]))
 
 
-@pytest.mark.xfail
 def test_selections(effective_coulomb):
-    # TODO implement
-    assert False
+    selections = effective_coulomb.selections()
+    selections.pop("effective_coulomb")
+    assert selections.keys() == {"spin", "potential", "screening"}
+    assert selections["screening"] == ["screened", "bare"]
+    assert set(selections["potential"]) == {"U", "u", "J", "V", "v"}
+    if effective_coulomb.ref.is_collinear:
+        assert set(selections["spin"]) == {"total", "up~up", "down~down", "up~down"}
+    else:
+        assert set(selections["spin"]) == {"total"}
 
 
 def test_to_database(effective_coulomb, Assert):

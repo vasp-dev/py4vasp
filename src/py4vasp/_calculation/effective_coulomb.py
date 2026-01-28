@@ -325,6 +325,14 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
         return tuple(part for part in selection if part not in {"bare", "screened"})
 
     def _create_map(self, component):
+        spin_map = self._create_spin_map()
+        component_map = self._create_component_map()
+        if component == "bare" or not self._has_frequencies:
+            return {0: spin_map, 1: component_map}
+        else:
+            return {1: spin_map, 2: component_map}
+
+    def _create_spin_map(self):
         if self._is_collinear:
             spin_map = {
                 convert.text_to_string(label): slice(i, i + 1)
@@ -333,10 +341,13 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
             spin_map[None] = spin_map["total"] = slice(0, 2)
         else:
             spin_map = {None: slice(None), "total": slice(None)}
+        return spin_map
+
+    def _create_component_map(self):
         wannier_iiii = self._wannier_indices_iiii()
         wannier_ijij = self._wannier_indices_ijij()
         wannier_ijji = self._wannier_indices_ijji()
-        component_map = {
+        return {
             None: wannier_iiii,
             "U": wannier_iiii,
             "u": wannier_ijji,
@@ -344,10 +355,6 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
             "V": wannier_iiii,
             "v": wannier_ijji,
         }
-        if component == "bare" or not self._has_frequencies:
-            return {0: spin_map, 1: component_map}
-        else:
-            return {1: spin_map, 2: component_map}
 
     @staticmethod
     def ohno_potential(radius: ArrayLike, delta: float) -> np.ndarray:
@@ -370,26 +377,24 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
         delta = np.abs(delta)
         return np.sqrt(delta / (radius + delta))
 
-    def _plot_both(self, tree, omega, radius):
-        omega_in = self._read_frequencies().get("frequencies")
-        omega_set = omega is ...
-        if omega_in is None:
-            raise exception.DataMismatch("The output does not contain frequency data.")
-        omega_out = omega_in if omega_set else omega
-        positions = self._read_positions()
-        if not positions:
-            raise exception.DataMismatch("The output does not contain position data.")
-        if radius is not ...:
-            raise exception.NotImplemented(
-                "Interpolating radial data for frequency plots is not implemented."
-            )
-        potentials = self._get_effective_potentials(tree, omega_in, omega_out)
-        series = list(self._generate_series_omega(omega_out, potentials))
-        # for i, position in enumerate(positions["positions"]):
-        #     data = self._get_effective_potentials_omega(omega_in, omega_out, position=i)
-        #     potentials[f"U @ {position}"] = data["screened U"]
-        # series = list(self._generate_series_omega(tree, omega_out, potentials))
-        return graph.Graph(series, xlabel="ω (eV)", ylabel="Coulomb potential (eV)")
+    @base.data_access
+    def selections(self) -> dict[str, list[str]]:
+        """Return a dictionary describing what kind of data are available.
+
+        Returns
+        -------
+        -
+            Dictionary containing available selection options with their possible values.
+            Keys include the selection criteria "spin", "screening", and "potential".
+        """
+        spin_map = self._create_spin_map()
+        component_map = self._create_component_map()
+        return {
+            **super().selections(),
+            "spin": [str(key) for key in spin_map if key is not None],
+            "screening": ["screened", "bare"],
+            "potential": [str(key) for key in component_map if key is not None],
+        }
 
 
 @dataclass
