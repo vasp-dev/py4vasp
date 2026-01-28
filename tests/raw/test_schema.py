@@ -178,6 +178,10 @@ simple:
     factory:  &simple-factory
         file: other_file
         data_factory: complex_schema.<locals>.make_data
+    require_version:  &simple-require_version
+        required: 1.2.3
+        foo: foo_dataset
+        bar: bar_dataset
 
 optional_argument:
     mandatory:  &optional_argument-mandatory
@@ -195,6 +199,10 @@ with_link:
         required: 1.2.3
         baz: baz_dataset
         simple: *simple-default
+
+with_optional_link:
+    default:  &with_optional_link-default
+        simple: *simple-require_version
 
 with_length:
     default:  &with_length-default
