@@ -21,6 +21,6 @@ def tensor_constants(tensor):
     if tensor is None:
         return None, None
     eigenvalues, _ = np.linalg.eig(tensor)
-    anisotropic_constants = list(eigenvalues)
+    anisotropic_constants = [float(ev) for ev in eigenvalues]
     isotropic_constant = np.trace(np.diag(eigenvalues)) / float(len(eigenvalues))
-    return isotropic_constant, anisotropic_constants
+    return float(isotropic_constant), anisotropic_constants
