@@ -221,15 +221,17 @@ class Band(base.Refinery, graph.Mixin):
 
         # Find occupations
         occupations = self._read_occupations()
-        num_total_occupied = getattr(occupations, "occupations", None)
+        num_total_occupied = occupations.get("occupations", None)
         if num_total_occupied is not None:
-            num_total_occupied = np.sum(num_total_occupied > 0)
-        num_occupied_up = getattr(occupations, "occupations_up", None)
-        num_occupied_down = getattr(occupations, "occupations_down", None)
+            num_total_occupied = [
+                int(n) for n in np.sum(num_total_occupied > 0, axis=0)
+            ]
+        num_occupied_up = occupations.get("occupations_up", None)
+        num_occupied_down = occupations.get("occupations_down", None)
         if num_occupied_up is not None:
-            num_occupied_up = np.sum(num_occupied_up > 0)
+            num_occupied_up = [int(n) for n in np.sum(num_occupied_up > 0, axis=0)]
         if num_occupied_down is not None:
-            num_occupied_down = np.sum(num_occupied_down > 0)
+            num_occupied_down = [int(n) for n in np.sum(num_occupied_down > 0, axis=0)]
 
         return database.combine_db_dicts(
             {

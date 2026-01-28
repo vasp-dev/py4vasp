@@ -112,6 +112,7 @@ reciprocal"""
                 "mode": self.mode(),
                 "line_length": self.line_length(),
                 "num_kpoints_total": self.number_kpoints(),
+                "num_lines": self.number_lines(),
                 "num_kpoints_grid": grid_kpoints,
                 "labels": user_labels,
                 "labels_unique": sampled_points,
