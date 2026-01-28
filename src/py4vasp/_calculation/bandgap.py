@@ -98,7 +98,7 @@ Fermi energy:    {fermi_energy}"""
         kpoints = self._kpoint(label, steps=self._last_step_in_slice)
         to_string_convert = lambda kpoint: " ".join(map("{:8.4f}".format, kpoint))
         if not (to_string):
-            return np.array(kpoints[0]).round(4).tolist()
+            return np.array(kpoints).tolist()
         return " " + "   ".join(map(to_string_convert, kpoints))
 
     @base.data_access
