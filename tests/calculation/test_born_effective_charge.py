@@ -16,6 +16,7 @@ def Sr2TiO4(raw_data):
     structure = Structure.from_data(raw_born_charges.structure)
     born_charges.ref.structure = structure
     born_charges.ref.charge_tensors = raw_born_charges.charge_tensors
+    born_charges.ref.minmax_info = (12, 0, 174, 6)
     return born_charges
 
 
@@ -70,3 +71,12 @@ ion    7   O
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.born_effective_charge("Sr2TiO4")
     check_factory_methods(BornEffectiveCharge, data)
+
+
+def test_to_database(Sr2TiO4):
+    database_data = Sr2TiO4._read_to_database()
+    born_db = database_data["born_effective_charge:default"]
+    assert born_db["eigenvalue_min"] == Sr2TiO4.ref.minmax_info[0]
+    assert born_db["eigenvalue_max"] == Sr2TiO4.ref.minmax_info[2]
+    assert born_db["eigenvalue_min_index"] == Sr2TiO4.ref.minmax_info[1]
+    assert born_db["eigenvalue_max_index"] == Sr2TiO4.ref.minmax_info[3]

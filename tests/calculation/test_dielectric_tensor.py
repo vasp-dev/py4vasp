@@ -125,3 +125,43 @@ Macroscopic static dielectric tensor (dimensionless)
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dielectric_tensor("dft with_ion")
     check_factory_methods(DielectricTensor, data)
+
+
+def _check_to_database(tensor, Assert):
+    actual = tensor._read_to_database()
+    db_dict = actual["dielectric_tensor:default"]
+
+    assert db_dict["method"] == tensor.ref.method
+    import numpy as np
+
+    if tensor.ref.relaxed_ion is None:
+        assert db_dict["tensor_relaxed_ion"] is None
+        assert db_dict["static_dielectric_constant_relaxed_ion"] is None
+    else:
+        relaxed_ion_expected_list = [9.0, 17.0, 25.0, 13.0, 21.0, 17.0]
+        Assert.allclose(db_dict["tensor_relaxed_ion"], relaxed_ion_expected_list)
+        assert db_dict["static_dielectric_constant_relaxed_ion"] == pytest.approx(
+            float(np.trace(tensor.ref.relaxed_ion) / 3.0)
+        )
+
+    clamped_ion_expected_list = [0.0, 4.0, 8.0, 2.0, 6.0, 4.0]
+    Assert.allclose(db_dict["tensor_clamped_ion"], clamped_ion_expected_list)
+    assert db_dict["static_dielectric_constant_clamped_ion"] == pytest.approx(
+        float(np.trace(tensor.ref.clamped_ion) / 3.0)
+    )
+
+
+def test_to_database_dft(dft_tensor, Assert):
+    _check_to_database(dft_tensor, Assert)
+
+
+def test_to_database_rpa(rpa_tensor, Assert):
+    _check_to_database(rpa_tensor, Assert)
+
+
+def test_to_database_scf(scf_tensor, Assert):
+    _check_to_database(scf_tensor, Assert)
+
+
+def test_to_database_nscf(nscf_tensor, Assert):
+    _check_to_database(nscf_tensor, Assert)

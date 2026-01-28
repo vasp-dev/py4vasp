@@ -36,8 +36,15 @@ class DielectricTensor(base.Refinery):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        relaxed_ion_tensor = self._read_relaxed_ion()
-        isotropic_constant, _ = tensor_constants(relaxed_ion_tensor)
+        relaxed_ion_tensor, ion_isotropic_constant = None, None
+        try:
+            relaxed_ion_tensor = self._read_relaxed_ion()
+            ion_isotropic_constant, _ = tensor_constants(relaxed_ion_tensor)
+        except:
+            pass
+
+        clamped_ion_tensor = self._raw_data.electron[:]
+        electron_isotropic_constant, _ = tensor_constants(clamped_ion_tensor)
 
         dielectric_tensor_db = {
             "dielectric_tensor": {
@@ -46,8 +53,18 @@ class DielectricTensor(base.Refinery):
                     if not check.is_none(self._raw_data.method)
                     else None
                 ),
-                "relaxed_ion_tensor": list(symmetry_reduce(relaxed_ion_tensor)),
-                "static_dielectric_constant_isotropic": isotropic_constant,
+                "tensor_relaxed_ion": (
+                    None
+                    if relaxed_ion_tensor is None
+                    else list(symmetry_reduce(relaxed_ion_tensor))
+                ),
+                "static_dielectric_constant_relaxed_ion": ion_isotropic_constant,
+                "tensor_clamped_ion": (
+                    None
+                    if clamped_ion_tensor is None
+                    else list(symmetry_reduce(clamped_ion_tensor))
+                ),
+                "static_dielectric_constant_clamped_ion": electron_isotropic_constant,
             },
         }
         return dielectric_tensor_db

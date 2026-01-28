@@ -112,3 +112,26 @@ def test_print(dispersion, format_):
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dispersion("single_band")
     check_factory_methods(Dispersion, data)
+
+
+def _check_to_database(dispersion_):
+    data = dispersion_._read_to_database()
+    db_dict = data["dispersion:default"]
+
+    eigenvalues = dispersion_.ref.eigenvalues
+    assert np.isclose(db_dict["eigenvalue_min"], float(np.min(eigenvalues)))
+    assert np.isclose(db_dict["eigenvalue_max"], float(np.max(eigenvalues)))
+    if dispersion_.ref.spin_polarized:
+        assert np.isclose(db_dict["eigenvalue_min_up"], float(np.min(eigenvalues[0])))
+        assert np.isclose(db_dict["eigenvalue_max_up"], float(np.max(eigenvalues[0])))
+        assert np.isclose(db_dict["eigenvalue_min_down"], float(np.min(eigenvalues[1])))
+        assert np.isclose(db_dict["eigenvalue_max_down"], float(np.max(eigenvalues[1])))
+    else:
+        assert db_dict["eigenvalue_min_up"] is None
+        assert db_dict["eigenvalue_max_up"] is None
+        assert db_dict["eigenvalue_min_down"] is None
+        assert db_dict["eigenvalue_max_down"] is None
+
+
+def test_to_database(dispersion):
+    _check_to_database(dispersion)

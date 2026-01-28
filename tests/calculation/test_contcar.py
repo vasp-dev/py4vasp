@@ -118,3 +118,11 @@ def test_print(CONTCAR, format_):
 def test_factory_methods(raw_data, check_factory_methods):
     raw_contcar = raw_data.CONTCAR("Sr2TiO4")
     check_factory_methods(_CONTCAR, raw_contcar)
+
+
+def test_to_database(CONTCAR):
+    database_data = CONTCAR._read_to_database()
+    db_dict = database_data["CONTCAR:default"]
+
+    assert "system" in db_dict
+    assert db_dict["system"] == CONTCAR.ref.system
