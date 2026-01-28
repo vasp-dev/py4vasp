@@ -175,7 +175,6 @@ class RunInfo(base.Refinery):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        print("Converting run info to database format.")
         return {
             "run_info": self.to_dict(),
         }
