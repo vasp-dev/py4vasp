@@ -425,7 +425,10 @@ instead of the constructor Calculation()."""
                 for key in additional_related_keys:
                     split1, split2 = key.rsplit(":", 1)
                     actual_key = f"{split1}:{selection}"
-                    if not (actual_key in available_quantities):
+                    # fix only if not already present and the base quantity is available
+                    if (split1 in QUANTITIES or f"_{split1}" in QUANTITIES) and not (
+                        actual_key in available_quantities
+                    ):
                         available_quantities[actual_key] = (is_available, aliases_)
                 if is_available:
                     additional_properties = database.combine_db_dicts(
