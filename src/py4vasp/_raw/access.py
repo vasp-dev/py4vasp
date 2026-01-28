@@ -148,13 +148,19 @@ class _State:
         if key is None:
             return raw.VaspData(None)
         if isinstance(key, Link):
-            return self.access(key.quantity, source=key.source)
+            return self._resolve_link(key)
         if isinstance(key, Length):
             dataset = h5f.get(key.dataset)
-            return len(dataset) if dataset else None
+            return len(dataset) if dataset else raw.VaspData(None)
         if key.format(0) == key or valid_indices is None:
             return self._parse_dataset(h5f, key)
         return [self._parse_dataset(h5f, key, index) for index in valid_indices]
+
+    def _resolve_link(self, key):
+        try:
+            return self.access(key.quantity, source=key.source)
+        except (exception.OutdatedVaspVersion, exception.FileAccessError):
+            return raw.VaspData(None)
 
     def _parse_dataset(self, h5f, key, index=None):
         if index is not None:

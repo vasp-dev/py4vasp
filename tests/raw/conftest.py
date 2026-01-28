@@ -12,6 +12,7 @@ from util import (
     Simple,
     WithLength,
     WithLink,
+    WithOptionalLink,
 )
 
 from py4vasp import raw
@@ -29,6 +30,7 @@ def complex_schema():
     name = "mandatory"
     both = OptionalArgument("mandatory2", "optional")
     pointer = WithLink("baz_dataset", Link("simple", "default"))
+    with_optional = WithOptionalLink(Link("simple", "require_version"))
     version = raw.Version(1, 2, 3)
     length = WithLength(Length("dataset"))
     mapping = Mapping(
@@ -55,10 +57,12 @@ def complex_schema():
     schema = Schema(VERSION)
     schema.add(Simple, file=filename, **as_dict(simple))
     schema.add(Simple, name="factory", file=filename, data_factory=make_data)
+    schema.add(Simple, name="require_version", **as_dict(simple), required=version)
     schema.add(OptionalArgument, name=name, **as_dict(only_mandatory))
     schema.add(OptionalArgument, **as_dict(both))
     schema.add(WithLink, required=version, **as_dict(pointer))
     schema.add(WithLink, name="not_so_simple", required=version, **as_dict(pointer))
+    schema.add(WithOptionalLink, **as_dict(with_optional))
     schema.add(WithLength, alias="alias_name", **as_dict(length))
     schema.add(Mapping, **as_dict(mapping))
     schema.add(Mapping, name="my_list", **as_dict(list_))
@@ -77,6 +81,9 @@ def complex_schema():
         "simple": {
             DEFAULT_SELECTION: other_file_source,
             "factory": data_factory_source,
+            "require_version": Source(
+                simple, required=version, labels=["require_version"]
+            ),
         },
         "optional_argument": {
             DEFAULT_SELECTION: Source(both),
@@ -87,6 +94,9 @@ def complex_schema():
             "not_so_simple": Source(
                 pointer, required=version, labels=["not_so_simple"]
             ),
+        },
+        "with_optional_link": {
+            DEFAULT_SELECTION: Source(with_optional),
         },
         "with_length": {
             DEFAULT_SELECTION: Source(length, labels=[DEFAULT_SELECTION, "alias_name"]),
