@@ -391,7 +391,7 @@ def _check_to_database(dos, fermi_energy=None):
             assert (dos_db[k1] is None and dos_db[k2] is None) or np.isclose(
                 dos_db[k1], dos_db[k2]
             )
-    for k,v in dos_db.items():
+    for k, v in dos_db.items():
         assert v is None or isinstance(v, (int, float))
 
 

@@ -87,9 +87,9 @@ N, E, dE, deps, ncg, rms, rms(c)"""
 
         try:
             if not check.is_none(self._raw_data.is_elmin_converged):
-                elmin_is_converged_all = bool(np.all(
-                    np.array(self._raw_data.is_elmin_converged[:]) == 0.0
-                    ))
+                elmin_is_converged_all = bool(
+                    np.all(np.array(self._raw_data.is_elmin_converged[:]) == 0.0)
+                )
                 elmin_is_converged_final = self._raw_data.is_elmin_converged[-1] == 0.0
         except:
             pass

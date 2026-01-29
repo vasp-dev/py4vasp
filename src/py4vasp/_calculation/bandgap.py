@@ -126,33 +126,39 @@ Fermi energy:    {fermi_energy}"""
     @base.data_access
     def _to_database(self, *args, **kwargs):
         bandgap_dict = {
-                "valence_band_maximum": self._output_energy(
-                    "valence band maximum", to_string=False
-                ),
-                "conduction_band_minimum": self._output_energy(
-                    "conduction band minimum", to_string=False
-                ),
-                "fundamental": self._output_gap("fundamental", to_string=False),
-                "kpoint_vbm": self._output_kpoint("VBM", to_string=False),
-                "kpoint_cbm": self._output_kpoint("CBM", to_string=False),
-                "lower_band_direct": self._output_energy(
-                    "direct gap bottom", to_string=False
-                ),
-                "upper_band_direct": self._output_energy(
-                    "direct gap top", to_string=False
-                ),
-                "direct": self._output_gap("direct", to_string=False),
-                "kpoint_direct": self._output_kpoint("direct", to_string=False),
-            }
-    
+            "valence_band_maximum": self._output_energy(
+                "valence band maximum", to_string=False
+            ),
+            "conduction_band_minimum": self._output_energy(
+                "conduction band minimum", to_string=False
+            ),
+            "fundamental": self._output_gap("fundamental", to_string=False),
+            "kpoint_vbm": self._output_kpoint("VBM", to_string=False),
+            "kpoint_cbm": self._output_kpoint("CBM", to_string=False),
+            "lower_band_direct": self._output_energy(
+                "direct gap bottom", to_string=False
+            ),
+            "upper_band_direct": self._output_energy("direct gap top", to_string=False),
+            "direct": self._output_gap("direct", to_string=False),
+            "kpoint_direct": self._output_kpoint("direct", to_string=False),
+        }
+
         final_dict = {}
         for k, v in bandgap_dict.items():
-            final_dict[f"{k}_spin_independent"] = v[0] if not isinstance(v, float) else float(v)
-            final_dict[f"{k}_spin_up"] = (v[1] if not isinstance(v[1], float) else float(v[1])) if self._spin_polarized() else None
-            final_dict[f"{k}_spin_down"] = (v[2] if not isinstance(v[2], float) else float(v[2])) if self._spin_polarized() else None
-        return {
-            "bandgap": final_dict
-        }
+            final_dict[f"{k}_spin_independent"] = (
+                v[0] if not isinstance(v, float) else float(v)
+            )
+            final_dict[f"{k}_spin_up"] = (
+                (v[1] if not isinstance(v[1], float) else float(v[1]))
+                if self._spin_polarized()
+                else None
+            )
+            final_dict[f"{k}_spin_down"] = (
+                (v[2] if not isinstance(v[2], float) else float(v[2]))
+                if self._spin_polarized()
+                else None
+            )
+        return {"bandgap": final_dict}
 
     def _gap_dict(self, label):
         gaps = self._gap(label).T

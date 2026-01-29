@@ -98,18 +98,28 @@ def test_is_converged(electronic_minimization):
     expected = electronic_minimization.ref.is_elmin_converged
     assert actual == expected
 
+
 def test_to_database(electronic_minimization):
-    database_data = electronic_minimization._read_to_database()["electronic_minimization:default"]
+    database_data = electronic_minimization._read_to_database()[
+        "electronic_minimization:default"
+    ]
     overview_data = electronic_minimization.ref.overview_data
-    
+
     for k in database_data:
         assert k in overview_data, f"{k} is missing in reference data"
-    for k,v in overview_data.items():
-        assert v == database_data[k], f"{k} has unexpected value {database_data[k]}, expected {v}"
+    for k, v in overview_data.items():
+        assert (
+            v == database_data[k]
+        ), f"{k} has unexpected value {database_data[k]}, expected {v}"
         if k.startswith("num"):
-            assert isinstance(database_data[k], (int, type(None))), f"{k} has unexpected type {type(database_data[k])}: {database_data[k]}"
+            assert isinstance(
+                database_data[k], (int, type(None))
+            ), f"{k} has unexpected type {type(database_data[k])}: {database_data[k]}"
         elif k.startswith("elmin_is_converged"):
-            assert isinstance(database_data[k], (bool, type(None))), f"{k} has unexpected type {type(database_data[k])}: {database_data[k]}"
+            assert isinstance(
+                database_data[k], (bool, type(None))
+            ), f"{k} has unexpected type {type(database_data[k])}: {database_data[k]}"
+
 
 # def test_factory_methods(raw_data, check_factory_methods):
 #     data = raw_data.electronic_minimization()

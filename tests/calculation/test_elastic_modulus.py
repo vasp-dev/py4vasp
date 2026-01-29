@@ -18,6 +18,7 @@ def elastic_modulus(raw_data):
     elastic_modulus.ref.overview_data = _setup_overview_data(elastic_modulus)
     return elastic_modulus
 
+
 def _setup_overview_data(modulus_obj):
     tensor = modulus_obj.ref.relaxed_ion
     compact_tensor = symmetry_reduce(symmetry_reduce(tensor).T).T
@@ -69,7 +70,10 @@ def test_to_database(elastic_modulus):
     ref_overview = elastic_modulus.ref.overview_data
     for key, value in ref_overview.items():
         if value is None:
-            assert overview[key] is not None or (key == "fracture_toughness" and elastic_modulus._raw_data.structure is None), f"{key} is None in database output: {overview}"
+            assert overview[key] is not None or (
+                key == "fracture_toughness"
+                and elastic_modulus._raw_data.structure is None
+            ), f"{key} is None in database output: {overview}"
         else:
             assert overview[key] == value
 

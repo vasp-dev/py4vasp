@@ -114,7 +114,10 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
 
 def test_to_database(forces):
     db_dict = forces._read_to_database()["force:default"]
-    for (prefix, suffix_) in [("final", ["min", "median", "mean", "max"]), ("initial", ["min", "max"])]:
+    for prefix, suffix_ in [
+        ("final", ["min", "median", "mean", "max"]),
+        ("initial", ["min", "max"]),
+    ]:
         for suffix in suffix_:
             assert f"{prefix}_force_{suffix}" in db_dict
             assert isinstance(db_dict[f"{prefix}_force_{suffix}"], (float, type(None)))
@@ -122,7 +125,12 @@ def test_to_database(forces):
         index = db_dict[f"{prefix}_index_force_max"]
         assert isinstance(index, (int, type(None)))
         assert 0 <= index < forces.ref.forces.shape[1]
-        assert index == np.argmax(np.linalg.norm((forces.ref.forces[-1] if prefix == "final" else forces.ref.forces[0]), axis=-1))
+        assert index == np.argmax(
+            np.linalg.norm(
+                (forces.ref.forces[-1] if prefix == "final" else forces.ref.forces[0]),
+                axis=-1,
+            )
+        )
 
 
 def test_factory_methods(raw_data, check_factory_methods):

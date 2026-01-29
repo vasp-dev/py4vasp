@@ -81,7 +81,7 @@ def test_to_database(Sr2TiO4):
     assert born_db["eigenvalue_min_index"] == Sr2TiO4.ref.minmax_info[1]
     assert born_db["eigenvalue_max_index"] == Sr2TiO4.ref.minmax_info[3]
 
-    for k,v in born_db.items():
+    for k, v in born_db.items():
         if k.endswith("index"):
             assert v is None or isinstance(v, int)
         else:

@@ -19,7 +19,11 @@ def explicit_kpoints(raw_data):
     kpoints.ref.coordinates = raw_kpoints.coordinates
     kpoints.ref.weights = raw_kpoints.weights
     kpoints.ref.labels = [""] * len(raw_kpoints.coordinates)
-    kpoints.ref.grid = [raw_kpoints.number_x, raw_kpoints.number_y, raw_kpoints.number_z]
+    kpoints.ref.grid = [
+        raw_kpoints.number_x,
+        raw_kpoints.number_y,
+        raw_kpoints.number_z,
+    ]
     # note index difference between Fortran and Python
     kpoints.ref.labels[8] = "foo"
     kpoints.ref.labels[24] = "bar"
@@ -36,7 +40,11 @@ def grid_kpoints(raw_data):
     kpoints.ref = types.SimpleNamespace()
     kpoints.ref.mode = "automatic"
     kpoints.ref.line_length = len(raw_kpoints.coordinates)
-    kpoints.ref.grid = [raw_kpoints.number_x, raw_kpoints.number_y, raw_kpoints.number_z]
+    kpoints.ref.grid = [
+        raw_kpoints.number_x,
+        raw_kpoints.number_y,
+        raw_kpoints.number_z,
+    ]
     return kpoints
 
 
@@ -271,6 +279,7 @@ reciprocal
     """.strip()
     assert actual == {"text/plain": reference}
 
+
 def _check_to_database(data):
     db_dict = data._read_to_database()["kpoint:default"]
     assert db_dict["mode"] == data.ref.mode
@@ -284,17 +293,19 @@ def _check_to_database(data):
     unique_labels = sorted(set(labels)) if labels is not None else None
     assert db_dict["labels"] == labels
     assert db_dict["labels_unique"] == unique_labels
-        
 
 
 def test_to_database_explicit(explicit_kpoints):
     _check_to_database(explicit_kpoints)
 
+
 def test_to_database_grid(grid_kpoints):
     _check_to_database(grid_kpoints)
 
+
 def test_to_database_line(line_kpoints):
     _check_to_database(line_kpoints)
+
 
 def test_to_database_qpoints(qpoints):
     _check_to_database(qpoints)

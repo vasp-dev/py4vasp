@@ -333,7 +333,9 @@ def _check_to_database(_bandgap, Assert):
     ]:
         for suffix in ["spin_independent", "spin_up", "spin_down"]:
             actual_key = f"{k}_{suffix}"
-            assert actual_key in db_dict, f"Expected key '{actual_key}' missing from database output."
+            assert (
+                actual_key in db_dict
+            ), f"Expected key '{actual_key}' missing from database output."
 
     def _check_quantity(dict_, key_, ref_value):
         for idx, suffix in enumerate(["spin_independent", "spin_up", "spin_down"]):
@@ -341,12 +343,21 @@ def _check_to_database(_bandgap, Assert):
             if idx == 0 or _bandgap._spin_polarized():
                 Assert.allclose(dict_[actual_key], ref_value[idx], 1e6)
             else:
-                assert dict_[actual_key] is None, f"Expected None for key '{actual_key}', but got {dict_[actual_key]}."
+                assert (
+                    dict_[actual_key] is None
+                ), f"Expected None for key '{actual_key}', but got {dict_[actual_key]}."
             if actual_key.startswith("kpoint"):
-                assert dict_[actual_key] is None or (isinstance(dict_[actual_key], list) and all(isinstance(i, float) for i in dict_[actual_key])), f"{actual_key} has unexpected type {type(dict_[actual_key])}: {dict_[actual_key]}"
-                assert dict_[actual_key] is None or (len(dict_[actual_key]) == 3), f"{actual_key} has unexpected length {len(dict_[actual_key])}: {dict_[actual_key]}"
+                assert dict_[actual_key] is None or (
+                    isinstance(dict_[actual_key], list)
+                    and all(isinstance(i, float) for i in dict_[actual_key])
+                ), f"{actual_key} has unexpected type {type(dict_[actual_key])}: {dict_[actual_key]}"
+                assert dict_[actual_key] is None or (
+                    len(dict_[actual_key]) == 3
+                ), f"{actual_key} has unexpected length {len(dict_[actual_key])}: {dict_[actual_key]}"
             else:
-                assert dict_[actual_key] is None or isinstance(dict_[actual_key], float), f"{actual_key} has unexpected type {type(dict_[actual_key])}: {dict_[actual_key]}"
+                assert dict_[actual_key] is None or isinstance(
+                    dict_[actual_key], float
+                ), f"{actual_key} has unexpected type {type(dict_[actual_key])}: {dict_[actual_key]}"
 
     _check_quantity(db_dict, "valence_band_maximum", _bandgap.ref.vbm[-1])
     _check_quantity(db_dict, "conduction_band_minimum", _bandgap.ref.cbm[-1])

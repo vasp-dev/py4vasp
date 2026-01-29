@@ -112,7 +112,9 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                     volume_per_atom
                 )
             except Exception as e:
-                raise Exception(f"Could not compute hardness or fracture toughness: {e}") from e
+                raise Exception(
+                    f"Could not compute hardness or fracture toughness: {e}"
+                ) from e
         except Exception as e:
             raise Exception(f"Could not compute elastic properties: {e}") from e
 

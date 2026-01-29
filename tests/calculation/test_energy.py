@@ -197,12 +197,13 @@ def test_print(steps, step_label, MD_energy, format_):
     ]
     assert actual == {"text/plain": "\n".join(lines)}
 
+
 def test_to_database(MD_energy):
     database_data = MD_energy._read_to_database()["energy:default"]
-    
+
     assert len(MD_energy.ref.labels) > 0
 
-    for idx,_label in enumerate(MD_energy.ref.labels):
+    for idx, _label in enumerate(MD_energy.ref.labels):
         ref_values = MD_energy.ref.values[idx]
         label = _DB_KEYS.get(_label)
         try:
@@ -211,7 +212,9 @@ def test_to_database(MD_energy):
             assert database_data[f"{label}_min"] == float(np.min(ref_values))
             assert database_data[f"{label}_step_min"] == int(np.argmin(ref_values))
         except KeyError as e:
-            raise AssertionError(f"Missing key {e} in database data, keys: {list(database_data.keys())}") from e
+            raise AssertionError(
+                f"Missing key {e} in database data, keys: {list(database_data.keys())}"
+            ) from e
 
 
 def test_factory_methods(raw_data, check_factory_methods):

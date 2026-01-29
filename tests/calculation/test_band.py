@@ -79,9 +79,13 @@ def spin_polarized(raw_data):
     band.ref.bands_up = raw_band.dispersion.eigenvalues[0]
     band.ref.bands_down = raw_band.dispersion.eigenvalues[1]
     band.ref.occupations_up = raw_band.occupations[0]
-    band.ref.num_occupied_bands_up = int(np.max(np.sum(band.ref.occupations_up > 0, axis=-1)))
+    band.ref.num_occupied_bands_up = int(
+        np.max(np.sum(band.ref.occupations_up > 0, axis=-1))
+    )
     band.ref.occupations_down = raw_band.occupations[1]
-    band.ref.num_occupied_bands_down = int(np.max(np.sum(band.ref.occupations_down > 0, axis=-1)))
+    band.ref.num_occupied_bands_down = int(
+        np.max(np.sum(band.ref.occupations_down > 0, axis=-1))
+    )
     return band
 
 
@@ -531,28 +535,26 @@ def _check_to_database(_band):
     )
 
     if getattr(_band.ref, "num_occupied_bands", None) is not None:
-        assert (
-            database_data["num_occupied_bands"]
-            == _band.ref.num_occupied_bands
-        )
+        assert database_data["num_occupied_bands"] == _band.ref.num_occupied_bands
     elif (
         getattr(_band.ref, "occupations_up", None) is not None
         and getattr(_band.ref, "occupations_down", None) is not None
     ):
-        assert (
-            database_data["num_occupied_bands_up"]
-            == _band.ref.num_occupied_bands_up
-        )
+        assert database_data["num_occupied_bands_up"] == _band.ref.num_occupied_bands_up
         assert (
             database_data["num_occupied_bands_down"]
             == _band.ref.num_occupied_bands_down
         )
 
-    for k,v in database_data.items():
+    for k, v in database_data.items():
         if k.startswith("num"):
-            assert v is None or isinstance(v, int), f"{k} has unexpected type {type(v)}: {v}"
+            assert v is None or isinstance(
+                v, int
+            ), f"{k} has unexpected type {type(v)}: {v}"
         else:
-            assert v is None or isinstance(v, float), f"{k} has unexpected type {type(v)}: {v}"
+            assert v is None or isinstance(
+                v, float
+            ), f"{k} has unexpected type {type(v)}: {v}"
 
 
 def test_to_database_single_band(single_band):

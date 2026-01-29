@@ -132,7 +132,7 @@ def _check_to_database(dispersion_):
         assert db_dict["eigenvalue_min_down"] is None
         assert db_dict["eigenvalue_max_down"] is None
 
-    for k,v in db_dict.items():
+    for k, v in db_dict.items():
         assert v is None or isinstance(v, (int, float))
 
 

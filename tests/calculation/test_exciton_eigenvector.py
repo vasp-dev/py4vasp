@@ -62,6 +62,7 @@ def test_to_database(exciton_eigenvector):
         if k.startswith("num_"):
             assert isinstance(db_dict[k], (int, type(None)))
 
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.exciton_eigenvector("default")
     check_factory_methods(ExcitonEigenvector, data)

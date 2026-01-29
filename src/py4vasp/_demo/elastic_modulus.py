@@ -7,5 +7,5 @@ from py4vasp import _demo, raw
 
 def elastic_modulus():
     shape = (2, _demo.AXES, _demo.AXES, _demo.AXES, _demo.AXES)
-    data = np.arange(np.prod(shape)).reshape(shape)+1.0
+    data = np.arange(np.prod(shape)).reshape(shape) + 1.0
     return raw.ElasticModulus(clamped_ion=data[0], relaxed_ion=data[1])
