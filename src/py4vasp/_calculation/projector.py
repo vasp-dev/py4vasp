@@ -134,7 +134,7 @@ class Projector(base.Refinery):
         return {
             "projector": {
                 "orbital_types": (
-                    list(self._init_orbital_dict().keys())
+                    sorted(list(self._init_orbital_dict().keys()), key=self._sort_key)
                     if not check.is_none(self._raw_data.orbital_types)
                     else None
                 )
