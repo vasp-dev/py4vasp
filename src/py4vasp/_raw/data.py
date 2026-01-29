@@ -43,7 +43,7 @@ class Band:
     "Fermi energy obtained by VASP."
     occupations: VaspData
     "The occupations of the different bands."
-    projectors: Projector
+    projectors: Projector = NONE()
     "Projector information (element, angular momentum, spin)."
     projections: VaspData = NONE()
     "If present, orbital projections of the bands."
@@ -509,10 +509,6 @@ class ExcitonEigenvector:
     "Index of the first valence band."
     first_conduction_band: int
     "Index of the first conduction band."
-    NBANDSO: Optional[int] = NONE()
-    "Number of bands used for the valence states in the BSE calculation."
-    NBANDSV: Optional[int] = NONE()
-    "Number of bands used for the conduction states in the BSE calculation."
 
 
 @dataclasses.dataclass
@@ -755,10 +751,10 @@ class Projector:
 
     stoichiometry: Stoichiometry
     "The stoichiometry of the system used, i.e., which elements are contained."
-    orbital_types: VaspData
-    "Character indicating the orbital angular momentum."
     number_spin_projections: int
     "This is 1 for nonpolarized calculations, 2 for spin polarized ones, and 4 for noncollinear calculations."
+    orbital_types: VaspData = NONE()
+    "Character indicating the orbital angular momentum."
 
 
 @dataclasses.dataclass

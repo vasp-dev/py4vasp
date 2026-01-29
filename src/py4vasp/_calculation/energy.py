@@ -146,10 +146,10 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
             key = _DB_KEYS.get(
                 k, convert.text_to_string(k).strip().lower().replace(" ", "_")
             )
-            energy_dict[f"{key}_initial"] = v[0]
-            energy_dict[f"{key}_min"] = np.min(v)
+            energy_dict[f"{key}_initial"] = float(v[0])
+            energy_dict[f"{key}_min"] = float(np.min(v))
             energy_dict[f"{key}_step_min"] = int(np.argmin(v))
-            energy_dict[f"{key}_final"] = v[-1]
+            energy_dict[f"{key}_final"] = float(v[-1])
         return {"energy": energy_dict}
 
     @base.data_access

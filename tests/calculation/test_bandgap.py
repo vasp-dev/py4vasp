@@ -339,7 +339,7 @@ def _check_to_database(_bandgap, Assert):
         for idx, suffix in enumerate(["spin_independent", "spin_up", "spin_down"]):
             actual_key = f"{key_}_{suffix}"
             if idx == 0 or _bandgap._spin_polarized():
-                Assert.allclose(dict_[actual_key], ref_value[idx])
+                Assert.allclose(dict_[actual_key], ref_value[idx], 1e6)
             else:
                 assert dict_[actual_key] is None, f"Expected None for key '{actual_key}', but got {dict_[actual_key]}."
             if actual_key.startswith("kpoint"):

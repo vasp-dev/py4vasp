@@ -23,6 +23,8 @@ from py4vasp._util import (
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
 
+_OCCUPATION_CUTOFF = 1e-2 # TODO decide appropriate cutoff
+
 
 class Band(base.Refinery, graph.Mixin):
     """The band structure contains the **k** point resolved eigenvalues.
@@ -222,16 +224,17 @@ class Band(base.Refinery, graph.Mixin):
         # Find occupations
         occupations = self._read_occupations()
         num_total_occupied = occupations.get("occupations", None)
+        num_checked_bands = None
         if num_total_occupied is not None:
-            num_total_occupied = [
-                int(n) for n in np.sum(num_total_occupied > 0, axis=0)
-            ]
+            num_checked_bands = np.shape(num_total_occupied)[-1]
+            num_total_occupied = int(np.max(np.sum(num_total_occupied > _OCCUPATION_CUTOFF, axis=-1)))
         num_occupied_up = occupations.get("occupations_up", None)
         num_occupied_down = occupations.get("occupations_down", None)
         if num_occupied_up is not None:
-            num_occupied_up = [int(n) for n in np.sum(num_occupied_up > 0, axis=0)]
+            num_checked_bands = np.shape(num_occupied_up)[-1]
+            num_occupied_up = int(np.max(np.sum(num_occupied_up > _OCCUPATION_CUTOFF, axis=-1)))
         if num_occupied_down is not None:
-            num_occupied_down = [int(n) for n in np.sum(num_occupied_down > 0, axis=0)]
+            num_occupied_down = int(np.max(np.sum(num_occupied_down > _OCCUPATION_CUTOFF, axis=-1)))
 
         raw_fermi_energy = (
             self._raw_data.fermi_energy
@@ -242,6 +245,7 @@ class Band(base.Refinery, graph.Mixin):
         return database.combine_db_dicts(
             {
                 "band": {
+                    "num_considered_bands": num_checked_bands,
                     "num_occupied_bands": num_total_occupied,
                     "num_occupied_bands_up": num_occupied_up,
                     "num_occupied_bands_down": num_occupied_down,

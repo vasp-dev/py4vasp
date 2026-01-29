@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import numpy as np
+
 from py4vasp._calculation import _dispersion, base
 from py4vasp._util import check, convert
 
@@ -58,15 +60,15 @@ class ExcitonEigenvector(base.Refinery):
         num_bands_valence = None
         num_bands_conduction = None
 
-        if not check.is_none(self._raw_data.NBANDSV):
-            num_bands_valence = int(self._raw_data.NBANDSV)
-        if not check.is_none(self._raw_data.NBANDSO):
-            num_bands_conduction = int(self._raw_data.NBANDSO)
+        if not check.is_none(self._raw_data.bse_index):
+            bse_index = self._raw_data.bse_index[:]
+            num_bands_conduction = np.shape(bse_index)[2]
+            num_bands_valence = np.shape(bse_index)[3]
 
         return {
             "exciton_eigenvector": {
-                "num_bands_valence": num_bands_valence,
-                "num_bands_conduction": num_bands_conduction,
+                "num_valence_bands": num_bands_valence,
+                "num_conduction_bands": num_bands_conduction,
             }
         }
 

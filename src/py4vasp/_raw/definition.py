@@ -430,8 +430,6 @@ schema.add(
     eigenvectors=f"{group}/bse_fatbands",
     first_valence_band=f"{group}/bse_vbmin",
     first_conduction_band=f"{group}/bse_cbmin",
-    NBANDSO="input/incar/NBANDSO",
-    NBANDSV="input/incar/NBANDSV",
 )
 #
 schema.add(
