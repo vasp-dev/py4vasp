@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from py4vasp import _config, exception, raw
-from py4vasp._calculation.potential import Potential
+from py4vasp._calculation.potential import VALID_KINDS, Potential
 from py4vasp._calculation.structure import Structure
 from py4vasp._third_party.view import Isosurface
 from py4vasp._util import slicing
@@ -368,6 +368,41 @@ def test_to_quiver_fails_for_component(noncollinear_potential):
 def test_print(reference_potential, format_):
     actual, _ = format_(reference_potential)
     assert actual == {"text/plain": reference_potential.ref.string}
+
+
+def test_to_database(reference_potential):
+    db_dict = reference_potential._read_to_database()["potential:default"]
+    ref_kind = reference_potential.ref.included_kinds
+    if ref_kind != "all":
+        for kind in VALID_KINDS:
+            has_kind_ref = (kind == ref_kind) or (kind == "total")
+            assert db_dict[f"has_{kind}_potential"] == has_kind_ref
+    else:
+        for kind in VALID_KINDS:
+            assert db_dict[f"has_{kind}_potential"] == True
+    total_potential = reference_potential.ref.output["total"]
+    total_potential_mean = float(np.mean(total_potential))
+    total_potential_up = reference_potential.ref.output.get("total_up", None)
+    total_potential_down = reference_potential.ref.output.get("total_down", None)
+    total_potential_magnetization = reference_potential.ref.output.get(
+        "total_magnetization", None
+    )
+    assert db_dict["total_potential_mean"] == total_potential_mean
+    assert db_dict["total_potential_mean_up"] == (
+        float(np.mean(total_potential_up))
+        if (total_potential_up is not None)
+        else total_potential_mean / 2.0
+    )
+    assert db_dict["total_potential_mean_down"] == (
+        float(np.mean(total_potential_down))
+        if (total_potential_down is not None)
+        else total_potential_mean / 2.0
+    )
+    assert db_dict["total_potential_mean_magnetization"] == (
+        float(np.mean(np.linalg.norm(total_potential_magnetization, axis=-1)))
+        if (total_potential_magnetization is not None)
+        else None
+    )
 
 
 def test_factory_methods(raw_data, check_factory_methods):

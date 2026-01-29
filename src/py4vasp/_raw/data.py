@@ -43,7 +43,7 @@ class Band:
     "Fermi energy obtained by VASP."
     occupations: VaspData
     "The occupations of the different bands."
-    projectors: Projector = NONE()
+    projectors: Projector
     "Projector information (element, angular momentum, spin)."
     projections: VaspData = NONE()
     "If present, orbital projections of the bands."
@@ -753,7 +753,7 @@ class Projector:
     "The stoichiometry of the system used, i.e., which elements are contained."
     number_spin_projections: int
     "This is 1 for nonpolarized calculations, 2 for spin polarized ones, and 4 for noncollinear calculations."
-    orbital_types: VaspData = NONE()
+    orbital_types: VaspData
     "Character indicating the orbital angular momentum."
 
 

@@ -56,7 +56,7 @@ class PhononBand(phonon.Mixin, base.Refinery, graph.Mixin):
         stoichiometry = self._stoichiometry()._read_to_database(*args, **kwargs)
         dispersion = self._dispersion()._read_to_database(*args, **kwargs)
         return database.combine_db_dicts(
-            {"phonon.band": {}},
+            {"phonon_band": {}},
             stoichiometry,
             dispersion,
         )

@@ -58,12 +58,12 @@ class PhononDos(phonon.Mixin, base.Refinery, graph.Mixin):
     def _to_database(self, *args, **kwargs):
         return {
             "phonon_dos": {
-                "min_energy": (
+                "energy_min": (
                     float(self._raw_data.energies[0])
                     if not check.is_none(self._raw_data.energies)
                     else None
                 ),
-                "max_energy": (
+                "energy_max": (
                     float(self._raw_data.energies[-1])
                     if not check.is_none(self._raw_data.energies)
                     else None

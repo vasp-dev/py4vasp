@@ -314,6 +314,25 @@ def test_incorrect_step(example_moments):
         example_moments[out_of_bounds].charge()
 
 
+@pytest.mark.xfail
+def test_to_database(example_moments):
+    db_dict = example_moments._read_to_database()["local_moment:default"]
+    orbital_moments = getattr(example_moments.ref, "orbital_moments", None)
+    assert db_dict["has_orbital_moments"] == (orbital_moments is not None)
+    # TODO correct
+    total_final_spin_moment = getattr(example_moments.ref, "magnetic", None)
+    assert db_dict["final_spin_moment_total_min"] == (
+        total_final_spin_moment[-1].shape
+        if (total_final_spin_moment is not None)
+        else None
+    )
+    assert db_dict["final_spin_moment_total_max"] == (
+        float(np.max(total_final_spin_moment[-1]))
+        if (total_final_spin_moment is not None)
+        else None
+    )
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.local_moment("collinear")
     check_factory_methods(LocalMoment, data)

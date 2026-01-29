@@ -520,6 +520,11 @@ def test_print(nics, format_):
     assert actual == {"text/plain": nics.ref.string}
 
 
+def test_to_database(nics):
+    db_dict = nics._read_to_database()["nics:default"]
+    assert db_dict["method"] == nics.ref.output["method"]
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.nics("on-a-grid")
     check_factory_methods(Nics, data)

@@ -70,10 +70,10 @@ class PhononMode(base.Refinery, structure.Mixin):
 
         return {
             "phonon_mode": {
-                "max_real_frequencies": (
+                "frequencies_real_max": (
                     float(np.max(frequencies.real)) if frequencies is not None else None
                 ),
-                "max_imag_frequencies": (
+                "frequencies_imag_max": (
                     float(np.max(frequencies.imag)) if frequencies is not None else None
                 ),
             }

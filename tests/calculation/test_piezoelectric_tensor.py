@@ -5,6 +5,7 @@ import types
 import pytest
 
 from py4vasp._calculation.piezoelectric_tensor import PiezoelectricTensor
+from py4vasp._util.tensor import symmetry_reduce, tensor_constants
 
 
 @pytest.fixture
@@ -39,6 +40,18 @@ Piezoelectric tensor (C/m²)
  z    63.00000    71.00000    79.00000    67.00000    75.00000    71.00000
 """.strip()
     assert actual == {"text/plain": reference}
+
+
+def test_to_database(piezoelectric_tensor):
+    db_dict = piezoelectric_tensor._read_to_database()["piezoelectric_tensor:default"]
+    for idx, suffix in enumerate(["x", "y", "z"]):
+        assert db_dict[f"relaxed_ion_tensor_{suffix}"] == list(
+            symmetry_reduce(piezoelectric_tensor.ref.relaxed_ion[idx])
+        )
+        assert (
+            db_dict[f"piezoelectric_constant_isotropic_{suffix}"]
+            == tensor_constants(piezoelectric_tensor.ref.relaxed_ion[idx])[0]
+        )
 
 
 def test_factory_methods(raw_data, check_factory_methods):

@@ -108,6 +108,9 @@ def should_load(
                             print_debug,
                         )
                     )
+                    quantity_dict[key] = (
+                        True  # overwrite for Link quantities on should_load
+                    )
                     additional_keys.append(f"{link.quantity}:{link.source}")
                     additional_keys.extend(subquantity_additional_keys)
                 elif isinstance(link, Length):

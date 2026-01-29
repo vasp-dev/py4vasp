@@ -172,8 +172,14 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         spin_moment_total_min = None
         spin_moment_total_max = None
         if spin_moments_total is not None:
-            spin_moment_total_min = float(np.min(spin_moments_total))
-            spin_moment_total_max = float(np.max(spin_moments_total))
+            # TODO make sure this is correctly understood
+            spin_moments_total_norm = (
+                np.linalg.norm(spin_moments_total, axis=-1)
+                if not self._is_noncollinear
+                else np.linalg.norm(spin_moments_total[:, 1:], axis=-1)
+            )
+            spin_moment_total_min = float(np.min(spin_moments_total_norm))
+            spin_moment_total_max = float(np.max(spin_moments_total_norm))
 
         data_dict = {
             "local_moment": {

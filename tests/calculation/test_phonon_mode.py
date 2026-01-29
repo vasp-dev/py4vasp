@@ -61,6 +61,16 @@ def test_print(phonon_mode, format_):
     assert actual == {"text/plain": expected_text}
 
 
+def test_to_database(phonon_mode):
+    db_dict = phonon_mode._read_to_database()["phonon_mode:default"]
+    assert db_dict["frequencies_real_max"] == float(
+        np.max(phonon_mode.ref.frequencies.real)
+    )
+    assert db_dict["frequencies_imag_max"] == float(
+        np.max(phonon_mode.ref.frequencies.imag)
+    )
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.phonon_mode("Sr2TiO4")
     check_factory_methods(PhononMode, data)
