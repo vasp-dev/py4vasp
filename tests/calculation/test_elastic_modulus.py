@@ -4,7 +4,8 @@ import types
 
 import pytest
 
-from py4vasp._calculation.elastic_modulus import ElasticModulus
+from py4vasp._calculation.elastic_modulus import ElasticModulus, _ElasticTensor
+from py4vasp._util.tensor import symmetry_reduce
 
 
 @pytest.fixture
@@ -14,7 +15,22 @@ def elastic_modulus(raw_data):
     elastic_modulus.ref = types.SimpleNamespace()
     elastic_modulus.ref.clamped_ion = raw_elastic_modulus.clamped_ion
     elastic_modulus.ref.relaxed_ion = raw_elastic_modulus.relaxed_ion
+    elastic_modulus.ref.overview_data = _setup_overview_data(elastic_modulus)
     return elastic_modulus
+
+def _setup_overview_data(modulus_obj):
+    tensor = modulus_obj.ref.relaxed_ion
+    compact_tensor = symmetry_reduce(symmetry_reduce(tensor).T).T
+    return {
+        "elastic_modulus_reduced": list([list(l) for l in compact_tensor]),
+        "bulk_modulus": None,
+        "shear_modulus": None,
+        "youngs_modulus": None,
+        "poisson_ratio": None,
+        "pugh_ratio": None,
+        "vickers_hardness": None,
+        "fracture_toughness": None,
+    }
 
 
 def test_read(elastic_modulus, Assert):
@@ -30,21 +46,32 @@ Elastic modulus (kBar)
 Direction    XX          YY          ZZ          XY          YZ          ZX
 --------------------------------------------------------------------------------
                                   clamped-ion
-XX           0.0000      4.0000      8.0000      2.0000      6.0000      4.0000
-YY          36.0000     40.0000     44.0000     38.0000     42.0000     40.0000
-ZZ          72.0000     76.0000     80.0000     74.0000     78.0000     76.0000
-XY          18.0000     22.0000     26.0000     20.0000     24.0000     22.0000
-YZ          54.0000     58.0000     62.0000     56.0000     60.0000     58.0000
-ZX          36.0000     40.0000     44.0000     38.0000     42.0000     40.0000
+XX           1.0000      5.0000      9.0000      3.0000      7.0000      5.0000
+YY          37.0000     41.0000     45.0000     39.0000     43.0000     41.0000
+ZZ          73.0000     77.0000     81.0000     75.0000     79.0000     77.0000
+XY          19.0000     23.0000     27.0000     21.0000     25.0000     23.0000
+YZ          55.0000     59.0000     63.0000     57.0000     61.0000     59.0000
+ZX          37.0000     41.0000     45.0000     39.0000     43.0000     41.0000
                                   relaxed-ion
-XX          81.0000     85.0000     89.0000     83.0000     87.0000     85.0000
-YY         117.0000    121.0000    125.0000    119.0000    123.0000    121.0000
-ZZ         153.0000    157.0000    161.0000    155.0000    159.0000    157.0000
-XY          99.0000    103.0000    107.0000    101.0000    105.0000    103.0000
-YZ         135.0000    139.0000    143.0000    137.0000    141.0000    139.0000
-ZX         117.0000    121.0000    125.0000    119.0000    123.0000    121.0000
+XX          82.0000     86.0000     90.0000     84.0000     88.0000     86.0000
+YY         118.0000    122.0000    126.0000    120.0000    124.0000    122.0000
+ZZ         154.0000    158.0000    162.0000    156.0000    160.0000    158.0000
+XY         100.0000    104.0000    108.0000    102.0000    106.0000    104.0000
+YZ         136.0000    140.0000    144.0000    138.0000    142.0000    140.0000
+ZX         118.0000    122.0000    126.0000    120.0000    124.0000    122.0000
 """.strip()
     assert actual == {"text/plain": reference}
+
+
+def test_to_database(elastic_modulus):
+    database_data = elastic_modulus._to_database()
+    overview = database_data["elastic_modulus"]
+    ref_overview = elastic_modulus.ref.overview_data
+    for key, value in ref_overview.items():
+        if value is None:
+            assert overview[key] is not None or (key == "fracture_toughness" and elastic_modulus._raw_data.structure is None), f"{key} is None in database output: {overview}"
+        else:
+            assert overview[key] == value
 
 
 def test_factory_methods(raw_data, check_factory_methods):

@@ -126,3 +126,4 @@ def test_to_database(CONTCAR):
 
     assert "system" in db_dict
     assert db_dict["system"] == CONTCAR.ref.system
+    assert isinstance(db_dict["system"], (str, type(None)))

@@ -61,7 +61,7 @@ class ElasticModulus(base.Refinery):
 
         return {
             "elastic_modulus": {
-                "elastic_modulus_as_voigt": (
+                "elastic_modulus_reduced": (
                     list(
                         [list(l) for l in compact_tensor],
                     )
@@ -98,8 +98,8 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                 bulk_modulus, shear_modulus, youngs_modulus, poisson_ratio = (
                     elastic_tensor.get_VRH()
                 )
-            except:
-                pass
+            except Exception as e:
+                raise Exception(f"Could not compute VRH averages: {e}") from e
 
             try:
                 pugh_ratio = (
@@ -111,10 +111,10 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                 fracture_toughness = elastic_tensor.get_fracture_toughness(
                     volume_per_atom
                 )
-            except:
-                pass
-        except:
-            pass
+            except Exception as e:
+                raise Exception(f"Could not compute hardness or fracture toughness: {e}") from e
+        except Exception as e:
+            raise Exception(f"Could not compute elastic properties: {e}") from e
 
         return {
             "bulk_modulus": bulk_modulus,  # GPa
@@ -207,18 +207,14 @@ class _ElasticTensor:
     def from_array(cls, C: np.ndarray):
         return cls(C)
 
-    @classmethod
-    def from_py4vasp(cls, calc):
-        return cls(get_C_from_py4vasp(calc))
-
     # ---------- Tensor / row conversion ----------
 
     @staticmethod
     def _row_to_tensor(row: np.ndarray) -> np.ndarray:
         C = np.zeros((6, 6))
-        C[np.diag_indices(6)] = row[ElasticTensor._diag_indices]
+        C[np.diag_indices(6)] = row[_ElasticTensor._diag_indices]
 
-        idx = ElasticTensor._diag_indices.copy()
+        idx = _ElasticTensor._diag_indices.copy()
         for k in range(1, 6):
             idx = idx[:-1] + 1
             C += np.diag(row[idx], k=k) + np.diag(row[idx], k=-k)

@@ -506,7 +506,7 @@ def test_selections(effective_coulomb):
 
 
 def test_to_database(effective_coulomb, Assert):
-    data = effective_coulomb._to_database()["effective_coulomb"]
+    data = effective_coulomb._read_to_database()["effective_coulomb:default"]
     assert data.keys() == effective_coulomb.ref.overview_data.keys()
     for key in data.keys():
         Assert.allclose(data[key], effective_coulomb.ref.overview_data[key])

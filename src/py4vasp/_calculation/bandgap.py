@@ -85,13 +85,13 @@ Fermi energy:    {fermi_energy}"""
     def _output_energy(self, label, component=slice(None), to_string=True):
         energies = self._get(label, steps=self._last_step_in_slice, component=component)
         if not (to_string):
-            return energies[0]
+            return energies
         return (9 * " ").join(map("{:20.6f}".format, energies))
 
     def _output_gap(self, label, to_string=True):
         gaps = self._gap(label, steps=self._last_step_in_slice)
         if not (to_string):
-            return gaps[0]
+            return gaps
         return (9 * " ").join(map("{:20.6f}".format, gaps))
 
     def _output_kpoint(self, label, to_string=True):
@@ -125,8 +125,7 @@ Fermi energy:    {fermi_energy}"""
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        return {
-            "bandgap": {
+        bandgap_dict = {
                 "valence_band_maximum": self._output_energy(
                     "valence band maximum", to_string=False
                 ),
@@ -145,6 +144,14 @@ Fermi energy:    {fermi_energy}"""
                 "direct": self._output_gap("direct", to_string=False),
                 "kpoint_direct": self._output_kpoint("direct", to_string=False),
             }
+    
+        final_dict = {}
+        for k, v in bandgap_dict.items():
+            final_dict[f"{k}_spin_independent"] = v[0] if not isinstance(v, float) else float(v)
+            final_dict[f"{k}_spin_up"] = (v[1] if not isinstance(v[1], float) else float(v[1])) if self._spin_polarized() else None
+            final_dict[f"{k}_spin_down"] = (v[2] if not isinstance(v[2], float) else float(v[2])) if self._spin_polarized() else None
+        return {
+            "bandgap": final_dict
         }
 
     def _gap_dict(self, label):

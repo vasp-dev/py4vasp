@@ -56,7 +56,7 @@ screened Hubbard u = {data["screened_u"].real:8.4f} {data["screened_u"].imag:8.4
 screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4f}
 """
 
-    def _to_database(self):
+    def _to_database(self, *args, **kwargs) -> dict[str, dict]:
         wannier_iiii = self._wannier_indices_iiii()
         wannier_ijji = self._wannier_indices_ijji()
         wannier_ijij = self._wannier_indices_ijij()

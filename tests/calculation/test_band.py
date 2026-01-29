@@ -555,6 +555,12 @@ def _check_to_database(_band):
             == _band.ref.num_occupied_bands_down
         )
 
+    for k,v in database_data["band:default"].items():
+        if k.startswith("num_occupied_bands"):
+            assert v is None or isinstance(v, int), f"{k} has unexpected type {type(v)}: {v}"
+        else:
+            assert v is None or isinstance(v, float), f"{k} has unexpected type {type(v)}: {v}"
+
 
 def test_to_database_single_band(single_band):
     _check_to_database(single_band)

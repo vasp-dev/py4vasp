@@ -63,12 +63,12 @@ dielectric function:
     def _to_database(self, *args, **kwargs):
         dielectric_function_db = {
             "dielectric_function": {
-                "min_energy": (
+                "energy_min": (
                     float(np.min(self._raw_data.energies[:]))
                     if not check.is_none(self._raw_data.energies)
                     else None
                 ),
-                "max_energy": (
+                "energy_max": (
                     float(np.max(self._raw_data.energies[:]))
                     if not check.is_none(self._raw_data.energies)
                     else None

@@ -331,21 +331,32 @@ def _check_to_database(_bandgap, Assert):
         "direct",
         "kpoint_direct",
     ]:
-        assert k in db_dict, f"Expected key '{k}' missing from database output."
+        for suffix in ["spin_independent", "spin_up", "spin_down"]:
+            actual_key = f"{k}_{suffix}"
+            assert actual_key in db_dict, f"Expected key '{actual_key}' missing from database output."
 
-    assert db_dict["valence_band_maximum"] == pytest.approx(_bandgap.ref.vbm[-1, 0])
-    assert db_dict["conduction_band_minimum"] == pytest.approx(_bandgap.ref.cbm[-1, 0])
-    assert db_dict["fundamental"] == pytest.approx(_bandgap.ref.fundamental[-1, 0])
-    Assert.allclose(db_dict["kpoint_vbm"], _bandgap.ref.kpoint_vbm[-1])
-    Assert.allclose(db_dict["kpoint_cbm"], _bandgap.ref.kpoint_cbm[-1])
-    assert db_dict["direct"] == pytest.approx(_bandgap.ref.direct[-1, 0])
-    Assert.allclose(db_dict["kpoint_direct"], _bandgap.ref.kpoint_direct[-1])
-    assert db_dict["lower_band_direct"] == pytest.approx(
-        _bandgap.ref.lower_band_direct[-1, 0]
-    )
-    assert db_dict["upper_band_direct"] == pytest.approx(
-        _bandgap.ref.upper_band_direct[-1, 0]
-    )
+    def _check_quantity(dict_, key_, ref_value):
+        for idx, suffix in enumerate(["spin_independent", "spin_up", "spin_down"]):
+            actual_key = f"{key_}_{suffix}"
+            if idx == 0 or _bandgap._spin_polarized():
+                Assert.allclose(dict_[actual_key], ref_value[idx])
+            else:
+                assert dict_[actual_key] is None, f"Expected None for key '{actual_key}', but got {dict_[actual_key]}."
+            if actual_key.startswith("kpoint"):
+                assert dict_[actual_key] is None or (isinstance(dict_[actual_key], list) and all(isinstance(i, float) for i in dict_[actual_key])), f"{actual_key} has unexpected type {type(dict_[actual_key])}: {dict_[actual_key]}"
+                assert dict_[actual_key] is None or (len(dict_[actual_key]) == 3), f"{actual_key} has unexpected length {len(dict_[actual_key])}: {dict_[actual_key]}"
+            else:
+                assert dict_[actual_key] is None or isinstance(dict_[actual_key], float), f"{actual_key} has unexpected type {type(dict_[actual_key])}: {dict_[actual_key]}"
+
+    _check_quantity(db_dict, "valence_band_maximum", _bandgap.ref.vbm[-1])
+    _check_quantity(db_dict, "conduction_band_minimum", _bandgap.ref.cbm[-1])
+    _check_quantity(db_dict, "fundamental", _bandgap.ref.fundamental[-1,])
+    _check_quantity(db_dict, "kpoint_vbm", _bandgap.ref.kpoint_vbm[-1])
+    _check_quantity(db_dict, "kpoint_cbm", _bandgap.ref.kpoint_cbm[-1])
+    _check_quantity(db_dict, "direct", _bandgap.ref.direct[-1])
+    _check_quantity(db_dict, "kpoint_direct", _bandgap.ref.kpoint_direct[-1])
+    _check_quantity(db_dict, "lower_band_direct", _bandgap.ref.lower_band_direct[-1])
+    _check_quantity(db_dict, "upper_band_direct", _bandgap.ref.upper_band_direct[-1])
 
 
 def test_to_database_default(bandgap, Assert):

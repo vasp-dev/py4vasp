@@ -150,6 +150,15 @@ def _check_to_database(tensor, Assert):
         float(np.trace(tensor.ref.clamped_ion) / 3.0)
     )
 
+    for k,v in db_dict.items():
+        if k.startswith("static_dielectric_constant"):
+            assert v is None or isinstance(v, (int, float))
+        elif k.startswith("tensor"):
+            assert v is None or (isinstance(v, list) and all(isinstance(i, (int, float)) for i in v))
+            assert v is None or len(v) == 6
+        elif k == "method":
+            assert v is None or isinstance(v, str)
+
 
 def test_to_database_dft(dft_tensor, Assert):
     _check_to_database(dft_tensor, Assert)

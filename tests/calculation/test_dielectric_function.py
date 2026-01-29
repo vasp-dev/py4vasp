@@ -371,8 +371,11 @@ def _check_to_database(dielectric_function):
     database_data = dielectric_function._read_to_database()
     assert "dielectric_function:default" in database_data
     db_dict = database_data["dielectric_function:default"]
-    assert db_dict["min_energy"] == float(np.min(dielectric_function.ref.energies))
-    assert db_dict["max_energy"] == float(np.max(dielectric_function.ref.energies))
+    assert db_dict["energy_min"] == float(np.min(dielectric_function.ref.energies))
+    assert db_dict["energy_max"] == float(np.max(dielectric_function.ref.energies))
+
+    for k,v in db_dict.items():
+        assert v is None or isinstance(v, float)
 
 
 def test_to_database_electronic(electronic):
