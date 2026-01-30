@@ -377,6 +377,13 @@ class RawDataFactory:
             return _demo.projector.Sr2TiO4(use_orbitals=False)
         else:
             raise exception.NotImplemented()
+        
+    @staticmethod
+    def run_info(selection: str):
+        if selection == "Sr2TiO4":
+            return _demo.run_info.Sr2TiO4()
+        else:
+            raise exception.NotImplemented()
 
     @staticmethod
     def stress(selection, randomize: bool = False):

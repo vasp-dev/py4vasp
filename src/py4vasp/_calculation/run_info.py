@@ -92,11 +92,12 @@ class RunInfo(base.Refinery):
             if check.is_none(self._raw_data.bandgap):
                 return None
             gap = bandgap.Bandgap.from_data(self._raw_data.bandgap)
-            return gap._output_gap("fundamental", to_string=False) <= 0.0
+            return all(gap._output_gap("fundamental", to_string=False) <= 0.0)
         except (exception.OutdatedVaspVersion, exception.NoData):
             return None
         except:
             return None
+
 
     def _dict_from_system(self) -> dict:
         system_tag = None
