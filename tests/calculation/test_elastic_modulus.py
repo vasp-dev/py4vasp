@@ -65,15 +65,16 @@ ZX         118.0000    122.0000    126.0000    120.0000    124.0000    122.0000
 
 
 def test_to_database(elastic_modulus):
-    database_data = elastic_modulus._to_database()
-    overview = database_data["elastic_modulus"]
+    # TODO improve test with actual numbers or write unit tests for _ElasticTensor
+    database_data = elastic_modulus._read_to_database()
+    overview = database_data["elastic_modulus:default"]
     ref_overview = elastic_modulus.ref.overview_data
     for key, value in ref_overview.items():
         if value is None:
-            assert overview[key] is not None or (
-                key == "fracture_toughness"
-                and elastic_modulus._raw_data.structure is None
-            ), f"{key} is None in database output: {overview}"
+            assert ((overview[key] is not None) or (
+                (key == "fracture_toughness")
+                and (elastic_modulus._raw_data.structure is None)
+            )), f"{key} is None in database output: {overview}"
         else:
             assert overview[key] == value
 
