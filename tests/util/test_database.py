@@ -104,22 +104,46 @@ def test_get_primitive_ion_numbers(ion_numbers, expected):
 
 
 @pytest.mark.parametrize(
-    ["ion_types", "ion_numbers", "expected_formula", "expected_compound"],
+    ["ion_types", "ion_numbers", "expectations"],
     [
-        (["Si", "O"], [1, 2], "O2Si", "O-Si"),
-        (["H", "O"], [4, 2], "H2O", "H-O"),
-        (["Na", "Cl"], [1, 1], "ClNa", "Cl-Na"),
-        (["C"], [1], "C", "C"),
-        (["Fe", "O"], [2, 3], "Fe2O3", "Fe-O"),
-        (["Al", "O", "Mg"], [2, 3, 6], "Al2Mg6O3", "Al-Mg-O"),
+        (["Si", "O"], [1, 2], ("O2Si", "O-Si", ["O", "Si"], [2, 1], [2, 1])),
+        (["H", "O"], [4, 2], ("H2O", "H-O", ["H", "O"], [4, 2], [2, 1])),
+        (["Na", "Cl"], [1, 1], ("ClNa", "Cl-Na", ["Cl", "Na"], [1, 1], [1, 1])),
+        (["C"], [1], ("C", "C", ["C"], [1], [1])),
+        (["Fe", "O"], [2, 3], ("Fe2O3", "Fe-O", ["Fe", "O"], [2, 3], [2, 3])),
+        (
+            ["Al", "O", "Mg"],
+            [2, 3, 6],
+            ("Al2Mg6O3", "Al-Mg-O", ["Al", "Mg", "O"], [2, 6, 3], [2, 6, 3]),
+        ),
+        (
+            ["Ca", "As", "Br", "Ca", "Br"],
+            [2, 1, 1, 1, 2],
+            ("AsBr3Ca3", "As-Br-Ca", ["As", "Br", "Ca"], [1, 3, 3], [1, 3, 3]),
+        ),
+        (
+            ["Ca", "As", "Br", "Ca", "Br"],
+            [2, 3, 1, 1, 2],
+            ("AsBrCa", "As-Br-Ca", ["As", "Br", "Ca"], [3, 3, 3], [1, 1, 1]),
+        ),
     ],
 )
-def test_get_formula_and_compound(
-    ion_types, ion_numbers, expected_formula, expected_compound
-):
-    formula, compound = database.get_formula_and_compound(ion_types, ion_numbers)
+def test_get_formula_and_compound(ion_types, ion_numbers, expectations):
+    (
+        expected_formula,
+        expected_compound,
+        expected_simple_types,
+        expected_simple_nums,
+        expected_primitive_nums,
+    ) = expectations
+    formula, compound, simple_types, simple_nums, primitive_nums = (
+        database.get_formula_and_compound(ion_types, ion_numbers)
+    )
     assert formula == expected_formula
     assert compound == expected_compound
+    assert simple_types == expected_simple_types
+    assert simple_nums == expected_simple_nums
+    assert primitive_nums == expected_primitive_nums
 
 
 def basic_db_checks(demo_calc_db: _DatabaseData, minimum_counter=1):

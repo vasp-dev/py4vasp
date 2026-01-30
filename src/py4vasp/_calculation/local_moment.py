@@ -159,27 +159,19 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        spin_moments_total = None
+        spin_moments_orbitals = None
         if not check.is_none(self._raw_data.spin_moments):
-            if self._is_nonpolarized or self._is_noncollinear:
-                spin_moments_total = self._raw_data.spin_moments[-1, 0]
-            elif self._is_collinear:
-                spin_moments_total = (
-                    self._raw_data.spin_moments[-1, 0]
-                    + self._raw_data.spin_moments[-1, 1]
-                )
+            if not self._is_nonpolarized:
+                spin_moments_orbitals = self._raw_data.spin_moments[-1, -1]
 
         spin_moment_total_min = None
         spin_moment_total_max = None
-        if spin_moments_total is not None:
-            # TODO make sure this is correctly understood
-            spin_moments_total_norm = (
-                np.linalg.norm(spin_moments_total, axis=-1)
-                if not self._is_noncollinear
-                else np.linalg.norm(spin_moments_total[:, 1:], axis=-1)
-            )
-            spin_moment_total_min = float(np.min(spin_moments_total_norm))
-            spin_moment_total_max = float(np.max(spin_moments_total_norm))
+        if spin_moments_orbitals is not None:
+            spin_moments_total = np.sum(
+                spin_moments_orbitals, axis=-1
+            )  # sum over orbitals
+            spin_moment_total_min = float(np.min(spin_moments_total))
+            spin_moment_total_max = float(np.max(spin_moments_total))
 
         data_dict = {
             "local_moment": {

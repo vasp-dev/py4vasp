@@ -3,7 +3,7 @@
 from py4vasp import _demo, raw
 
 
-def runtime_data(system_name: str=None):
+def runtime_data(system_name: str = None):
     return raw.RuntimeData(
         vasp_version=raw.Version(99, 99, 99),
     )

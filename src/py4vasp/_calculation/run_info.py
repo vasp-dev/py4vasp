@@ -98,7 +98,6 @@ class RunInfo(base.Refinery):
         except:
             return None
 
-
     def _dict_from_system(self) -> dict:
         system_tag = None
 

@@ -205,20 +205,37 @@ def get_formula_and_compound(
 
     Returns
     -------
-    tuple[str, str]
-        The chemical formula and compound name.
+    tuple[str, str, list[str], list[int], list[int]]
+        The chemical formula and compound name, followed by unique ion types, their
+        counts in the conventional cell, and their counts in the primitive cell.
     """
     if ion_types is None or number_ion_types is None:
-        return None, None
+        return None, None, None, None, None
 
-    primitive_numbers = get_primitive_ion_numbers(number_ion_types)
-    formula_parts = []
-    compound_parts = []
-    sorted_types = sorted(zip(ion_types, primitive_numbers), key=lambda x: x[0])
+    formula_dict = {}
+    # first sort, then count up numbers in case any ion type is non-unique
+    sorted_types = sorted(zip(ion_types, number_ion_types), key=lambda x: x[0])
     for ion_type, number in sorted_types:
         if number > 0:
-            formula_parts.append(f"{ion_type}{number if number > 1 else ''}")
-            compound_parts.append(f"{ion_type}")
+            formula_dict[ion_type] = formula_dict.get(ion_type, 0) + number
+    simple_numbers = list(formula_dict.values())
+
+    # now compute primitive numbers and set in formula_dict
+    primitive_numbers = get_primitive_ion_numbers(simple_numbers)
+    for k, n in zip(formula_dict.keys(), primitive_numbers):
+        formula_dict[k] = n
+    # compound and formula are constructed from the primitive counts
+    compound_parts = list(formula_dict.keys())
+    formula_parts = [
+        f"{ion}{formula_dict[ion] if formula_dict[ion] > 1 else ''}"
+        for ion in compound_parts
+    ]
     formula = "".join(formula_parts)
     compound = "-".join(compound_parts)
-    return formula, compound
+    return (
+        formula,
+        compound,
+        list(formula_dict.keys()),
+        simple_numbers,
+        primitive_numbers,
+    )

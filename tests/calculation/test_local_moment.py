@@ -314,22 +314,24 @@ def test_incorrect_step(example_moments):
         example_moments[out_of_bounds].charge()
 
 
-@pytest.mark.xfail
 def test_to_database(example_moments):
     db_dict = example_moments._read_to_database()["local_moment:default"]
     orbital_moments = getattr(example_moments.ref, "orbital_moments", None)
     assert db_dict["has_orbital_moments"] == (orbital_moments is not None)
-    # TODO correct
-    total_final_spin_moment = getattr(example_moments.ref, "magnetic", None)
+
+    total_final_spin_moment = getattr(example_moments.ref, "spin_moments", None)
+    sums_moments = None
+    if total_final_spin_moment is not None:
+        if example_moments._is_collinear:
+            total_final_spin_moment = total_final_spin_moment[-1, :]
+        elif example_moments._is_noncollinear:
+            total_final_spin_moment = total_final_spin_moment[-1, :, :, -1]
+        sums_moments = np.sum(total_final_spin_moment, axis=-1)
     assert db_dict["final_spin_moment_total_min"] == (
-        total_final_spin_moment[-1].shape
-        if (total_final_spin_moment is not None)
-        else None
+        np.min(sums_moments) if (sums_moments is not None) else None
     )
     assert db_dict["final_spin_moment_total_max"] == (
-        float(np.max(total_final_spin_moment[-1]))
-        if (total_final_spin_moment is not None)
-        else None
+        np.max(sums_moments) if (sums_moments is not None) else None
     )
 
 
