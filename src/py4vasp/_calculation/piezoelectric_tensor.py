@@ -95,6 +95,7 @@ class PiezoelectricTensor(base.Refinery):
         except:
             pass
 
+        # TODO add additional quantities as computed in vaspdb module
         return {
             "piezoelectric_tensor": {
                 "relaxed_ion_tensor_x": reduced_tensor_x,

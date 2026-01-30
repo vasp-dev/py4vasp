@@ -102,7 +102,7 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                     elastic_tensor.get_VRH()
                 )
             except Exception as e:
-                raise Exception(f"Could not compute VRH averages: {e}") from e
+                pass
 
             try:
                 pugh_ratio = (
@@ -110,16 +110,22 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                     if (bulk_modulus != 0 and shear_modulus != 0)
                     else 0.0 if shear_modulus == 0 else None
                 )
+            except Exception as e:
+                pass
+
+            try:
                 vickers_hardness = elastic_tensor.get_hardness()
+            except Exception as e:
+                pass
+
+            try:
                 fracture_toughness = elastic_tensor.get_fracture_toughness(
                     volume_per_atom
                 )
             except Exception as e:
-                raise Exception(
-                    f"Could not compute hardness or fracture toughness: {e}"
-                ) from e
+                pass
         except Exception as e:
-            raise Exception(f"Could not compute elastic properties: {e}") from e
+            pass
 
         return {
             "bulk_modulus": bulk_modulus,  # GPa

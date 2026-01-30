@@ -49,6 +49,7 @@ class DielectricTensor(base.Refinery):
         clamped_ion_tensor = self._raw_data.electron[:]
         electron_isotropic_constant, _ = tensor_constants(clamped_ion_tensor)
 
+        # TODO add additional quantities as computed in vaspdb module
         dielectric_tensor_db = {
             "dielectric_tensor": {
                 "method": (

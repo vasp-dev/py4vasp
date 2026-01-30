@@ -239,3 +239,8 @@ def get_formula_and_compound(
         simple_numbers,
         primitive_numbers,
     )
+
+
+def get_all_possible_keys():
+    # TODO implement
+    return {}
