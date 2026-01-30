@@ -29,16 +29,20 @@ def Fe3O4(raw_data):
     return stress
 
 
-def test_read_Sr2TiO4(Sr2TiO4, Assert):
-    check_read_stress(Sr2TiO4.read(), Sr2TiO4.ref, -1, Assert)
-    for steps in (slice(None), slice(1, 3), 0):
-        check_read_stress(Sr2TiO4[steps].read(), Sr2TiO4.ref, steps, Assert)
+@pytest.fixture(params=["Sr2TiO4", "Fe3O4"])
+def stresses(request, raw_data):
+    raw_stress = raw_data.stress(request.param)
+    stress = Stress.from_data(raw_stress)
+    stress.ref = types.SimpleNamespace()
+    stress.ref.structure = Structure.from_data(raw_stress.structure)
+    stress.ref.stress = raw_stress.stress
+    return stress
 
 
-def test_read_Fe3O4(Fe3O4, Assert):
-    check_read_stress(Fe3O4.read(), Fe3O4.ref, -1, Assert)
+def test_read(stresses, Assert):
+    check_read_stress(stresses.read(), stresses.ref, -1, Assert)
     for steps in (slice(None), slice(1, 3), 0):
-        check_read_stress(Fe3O4[steps].read(), Fe3O4.ref, steps, Assert)
+        check_read_stress(stresses[steps].read(), stresses.ref, steps, Assert)
 
 
 def check_read_stress(actual, reference, steps, Assert):
@@ -89,6 +93,30 @@ Total       1.09908     1.34332     1.58756     1.22120     1.46544     1.34332
 in kB      18.00000    22.00000    26.00000    20.00000    24.00000    22.00000
 """.strip()
     assert actual == {"text/plain": ref_plain}
+
+
+def test_to_database(stresses, Assert):
+    db_dict = stresses._read_to_database()["stress:default"]
+    initial_tensor = stresses.ref.stress[0]
+    final_tensor = stresses.ref.stress[-1]
+
+    assert db_dict["initial_stress_mean"] == pytest.approx(
+        (initial_tensor[0, 0] + initial_tensor[1, 1] + initial_tensor[2, 2]) / 3.0
+    )
+    assert db_dict["final_stress_mean"] == pytest.approx(
+        (final_tensor[0, 0] + final_tensor[1, 1] + final_tensor[2, 2]) / 3.0
+    )
+
+    reduced_final_tensor = [
+        final_tensor[0, 0],
+        final_tensor[1, 1],
+        final_tensor[2, 2],
+        0.5 * (final_tensor[0, 1] + final_tensor[1, 0]),
+        0.5 * (final_tensor[1, 2] + final_tensor[2, 1]),
+        0.5 * (final_tensor[0, 2] + final_tensor[2, 0]),
+    ]
+
+    Assert.allclose(db_dict["final_stress_tensor"], reduced_final_tensor)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

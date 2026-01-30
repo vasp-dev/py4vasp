@@ -121,6 +121,11 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
                 "final_velocity_min": float(np.min(final_velocity_norms)),
                 "final_velocity_max": float(np.max(final_velocity_norms)),
                 "final_velocity_mean": float(np.mean(final_velocity_norms)),
+                "final_velocity_std": (
+                    float(np.std(final_velocity_norms))
+                    if len(final_velocity_norms) > 1
+                    else 0.0
+                ),
                 "final_velocity_median": float(np.median(final_velocity_norms)),
                 "final_index_velocity_max": int(np.argmax(final_velocity_norms)),
                 "initial_velocity_min": float(np.min(initial_velocity_norms)),

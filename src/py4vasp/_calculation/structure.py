@@ -276,7 +276,7 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         return database.combine_db_dicts(
             {
                 "structure": {
-                    "ion_count_total": self.number_atoms(),
+                    "num_ions": self.number_atoms(),
                     "volume_cell": volume,
                     "lattice_vector_a": (
                         list(lattice[0]) if lattice[0] is not None else None
@@ -287,9 +287,9 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
                     "lattice_vector_c": (
                         list(lattice[2]) if lattice[2] is not None else None
                     ),
-                    "lattice_vector_length_a": lengths[0],
-                    "lattice_vector_length_b": lengths[1],
-                    "lattice_vector_length_c": lengths[2],
+                    "lattice_vector_a_length": lengths[0],
+                    "lattice_vector_b_length": lengths[1],
+                    "lattice_vector_c_length": lengths[2],
                     "angle_alpha": angles[0],
                     "angle_beta": angles[1],
                     "angle_gamma": angles[2],

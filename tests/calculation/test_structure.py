@@ -140,6 +140,13 @@ def ZnS(raw_data):
     return make_structure(raw_data.structure("ZnS"))
 
 
+@pytest.fixture(
+    params=["Sr2TiO4", "Sr2TiO4 without ion types", "Fe3O4", "Ca3AsBr3", "ZnS"]
+)
+def structures(request, raw_data):
+    return make_structure(raw_data.structure(request.param))
+
+
 @pytest.fixture(params=[None, 2, (3, 2, 1)])
 def supercell(request):
     return request.param
@@ -158,6 +165,7 @@ def make_structure(raw_structure):
     else:
         scale = 1.0
     structure.ref.lattice_vectors = scale * raw_structure.cell.lattice_vectors
+    structure.ref.volume = np.abs(np.linalg.det(structure.ref.lattice_vectors))
     structure.ref.positions = raw_structure.positions
     if check.is_none(raw_structure.stoichiometry.ion_types):
         structure.ion_type_arg = {"ion_types": ("Sr", "Ti", "O")}
@@ -485,6 +493,50 @@ def get_reference_output(steps, ion_types=None):
 def test_print_Ca3AsBr3(Ca3AsBr3, format_):
     actual, _ = format_(Ca3AsBr3)
     assert actual["text/plain"] == REF_Ca3AsBr3
+
+
+def test_to_database(structures, Assert):
+    db_dict = structures._read_to_database()["structure:default"]
+    has_timesteps = structures.ref.positions.ndim == 3
+    final_positions = (
+        structures.ref.positions[-1] if has_timesteps else structures.ref.positions
+    )
+    final_volume = structures.ref.volume[-1] if has_timesteps else structures.ref.volume
+    final_lattice_vectors = (
+        structures.ref.lattice_vectors[-1]
+        if has_timesteps
+        else structures.ref.lattice_vectors
+    )
+    assert db_dict["num_ions"] == len(final_positions)
+    assert db_dict["volume_cell"] == pytest.approx(final_volume)
+    Assert.allclose(db_dict["lattice_vector_a"], final_lattice_vectors[0])
+    Assert.allclose(db_dict["lattice_vector_b"], final_lattice_vectors[1])
+    Assert.allclose(db_dict["lattice_vector_c"], final_lattice_vectors[2])
+    assert db_dict["lattice_vector_a_length"] == pytest.approx(
+        np.linalg.norm(final_lattice_vectors[0])
+    )
+    assert db_dict["lattice_vector_b_length"] == pytest.approx(
+        np.linalg.norm(final_lattice_vectors[1])
+    )
+    assert db_dict["lattice_vector_c_length"] == pytest.approx(
+        np.linalg.norm(final_lattice_vectors[2])
+    )
+
+    alpha, beta, gamma = (
+        np.degrees(
+            np.arccos(
+                np.dot(final_lattice_vectors[i], final_lattice_vectors[j])
+                / (
+                    np.linalg.norm(final_lattice_vectors[i])
+                    * np.linalg.norm(final_lattice_vectors[j])
+                )
+            )
+        )
+        for i, j in ((1, 2), (0, 2), (0, 1))
+    )
+    assert db_dict["angle_alpha"] == pytest.approx(alpha)
+    assert db_dict["angle_beta"] == pytest.approx(beta)
+    assert db_dict["angle_gamma"] == pytest.approx(gamma)
 
 
 def test_factory_methods(raw_data, check_factory_methods):
