@@ -8,6 +8,7 @@ from numpy.typing import ArrayLike
 
 from py4vasp import exception, interpolate
 from py4vasp._calculation import base, cell
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph, numeric
 from py4vasp._util import check, convert, index, select
 
@@ -40,6 +41,8 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
     .. [1] Kaltak, M., *et al.*, Constrained Random Phase Approximation: the spectral
         method, Phys. Rev. B 112, 245102 (2025), https://doi.org/10.1103/m3gh-g6r6
     """
+
+    _raw_data: raw_data.EffectiveCoulomb
 
     @base.data_access
     def __str__(self):

@@ -3,6 +3,7 @@
 import numpy as np
 
 from py4vasp._calculation import base, structure
+from py4vasp._raw import data as raw_data
 from py4vasp._util import check, convert
 
 
@@ -14,6 +15,8 @@ class PhononMode(base.Refinery, structure.Mixin):
     and a displacement pattern that shows how atoms move relative to each other.
     Low-frequency modes correspond to long-wavelength vibrations, while
     high-frequency modes involve more localized atomic motion."""
+
+    _raw_data: raw_data.PhononMode
 
     @base.data_access
     def __str__(self):

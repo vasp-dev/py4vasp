@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._calculation import base, structure
+from py4vasp._raw import data as raw_data
 
 
 class InternalStrain(base.Refinery, structure.Mixin):
@@ -13,6 +14,8 @@ class InternalStrain(base.Refinery, structure.Mixin):
     stress occurs when the atoms are displaced. VASP computes the internal strain
     with linear response and this class provides access to the resulting data.
     """
+
+    _raw_data: raw_data.InternalStrain
 
     @base.data_access
     def __str__(self):

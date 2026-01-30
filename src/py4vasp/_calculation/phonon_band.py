@@ -4,6 +4,7 @@ import numpy as np
 
 from py4vasp._calculation import _dispersion, base, phonon
 from py4vasp._raw import data
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph
 from py4vasp._util import convert, database, documentation, index, select
 
@@ -25,6 +26,8 @@ class PhononBand(phonon.Mixin, base.Refinery, graph.Mixin):
     conductivity. Furthermore, phonons with imaginary frequencies indicate the presence
     of a structural instability.
     """
+
+    _raw_data: raw_data.PhononBand
 
     @base.data_access
     def __str__(self):

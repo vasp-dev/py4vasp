@@ -3,6 +3,7 @@
 import numpy as np
 
 from py4vasp._calculation import base, structure
+from py4vasp._raw import data as raw_data
 from py4vasp._util import check
 from py4vasp._util.tensor import symmetry_reduce, tensor_constants
 
@@ -19,6 +20,8 @@ class ElasticModulus(base.Refinery):
     but the ions are kept in their positions; (ii) in the relaxed-ion one the
     atoms are allowed to relax when the cell is deformed.
     """
+
+    _raw_data: raw_data.ElasticModulus
 
     @base.data_access
     def to_dict(self):

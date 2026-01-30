@@ -9,6 +9,7 @@ from numpy.typing import ArrayLike
 
 from py4vasp import exception
 from py4vasp._calculation import _dispersion, base, kpoint, projector
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph
 from py4vasp._util import (
     check,
@@ -66,6 +67,8 @@ class Band(base.Refinery, graph.Mixin):
     {'band': ['default', 'kpoints_opt', 'kpoints_wan'],
         'atom': [...], 'orbital': [...], 'spin': [...]}
     """
+
+    _raw_data: raw_data.Band
 
     @base.data_access
     def __str__(self) -> str:

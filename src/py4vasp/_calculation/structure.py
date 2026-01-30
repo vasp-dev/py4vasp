@@ -6,6 +6,7 @@ import numpy as np
 
 from py4vasp import exception, raw
 from py4vasp._calculation import _stoichiometry, base, cell, slice_
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import view
 from py4vasp._util import database, import_, parse
 
@@ -94,6 +95,8 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
     >>> calculation.structure[1:4].number_steps()
     3
     """
+
+    _raw_data: raw_data.Structure
 
     A_to_nm = 0.1
     "Converting Å to nm used for mdtraj trajectories."

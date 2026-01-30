@@ -3,6 +3,7 @@
 import numpy as np
 
 from py4vasp._calculation import base, slice_, structure
+from py4vasp._raw import data as raw_data
 from py4vasp._util import reader, tensor
 
 
@@ -46,6 +47,8 @@ class Stress(slice_.Mixin, base.Refinery, structure.Mixin):
     >>> calculation.stress[1:4].number_steps()
     3
     """
+
+    _raw_data: raw_data.Stress
 
     @base.data_access
     def __str__(self):

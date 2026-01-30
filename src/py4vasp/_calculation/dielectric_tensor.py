@@ -4,6 +4,7 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._calculation import base
+from py4vasp._raw import data as raw_data
 from py4vasp._util import check, convert
 from py4vasp._util.tensor import symmetry_reduce, tensor_constants
 
@@ -16,6 +17,8 @@ class DielectricTensor(base.Refinery):
     anisotropic nature of a material's dielectric properties. Each element of the
     tensor corresponds to the dielectric function along a specific crystallographic
     axis."""
+
+    _raw_data: raw_data.DielectricTensor
 
     @base.data_access
     def to_dict(self):

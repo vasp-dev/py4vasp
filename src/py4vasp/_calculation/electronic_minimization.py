@@ -5,6 +5,7 @@ import numpy as np
 
 from py4vasp import exception, raw
 from py4vasp._calculation import base, slice_
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph
 from py4vasp._util import check
 
@@ -15,6 +16,8 @@ class ElectronicMinimization(slice_.Mixin, base.Refinery, graph.Mixin):
     The OSZICAR file written out by VASP stores information related to convergence.
     Please check the `vasp-wiki <https://www.vasp.at/wiki/index.php/OSZICAR>`__ for more
     details about the exact outputs generated for each combination of INCAR tags."""
+
+    _raw_data: raw_data.ElectronicMinimization
 
     def _more_than_one_ionic_step(self, data):
         return any(isinstance(_data, list) for _data in data) == True

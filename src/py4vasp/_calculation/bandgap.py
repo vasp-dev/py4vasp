@@ -7,6 +7,7 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._calculation import base, slice_
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, select
 
@@ -43,6 +44,8 @@ class Bandgap(slice_.Mixin, base.Refinery, graph.Mixin):
 
     {examples}
     """
+
+    _raw_data: raw_data.Bandgap
 
     @base.data_access
     def __str__(self):

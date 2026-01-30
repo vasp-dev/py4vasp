@@ -5,6 +5,7 @@ import warnings
 
 from py4vasp import exception
 from py4vasp._calculation import _stoichiometry, base
+from py4vasp._raw import data as raw_data
 from py4vasp._util import check, convert, documentation, index, select
 
 SPIN_PROJECTION = "is_spin_projection"
@@ -51,6 +52,7 @@ class Projector(base.Refinery):
     selections that you can use in the methods that project on orbitals or atoms.
     """
 
+    _raw_data: raw_data.Projector
     _missing_data_message = "No projectors found, please verify the LORBIT tag is set."
 
     @base.data_access

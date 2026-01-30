@@ -3,6 +3,7 @@
 import numpy as np
 
 from py4vasp._calculation import base
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph
 from py4vasp._util import check, convert, index, select
 
@@ -27,6 +28,8 @@ class DielectricFunction(base.Refinery, graph.Mixin):
     dielectric function but you can also select specific components by providing
     one of the six components as selection.
     """
+
+    _raw_data: raw_data.DielectricFunction
 
     @base.data_access
     def __str__(self):

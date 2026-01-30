@@ -6,6 +6,7 @@ from numpy.typing import NDArray
 
 from py4vasp import exception
 from py4vasp._calculation import base
+from py4vasp._raw import data as raw_data
 from py4vasp._util import check
 
 
@@ -18,6 +19,8 @@ class ElectronPhononChemicalPotential(base.Refinery):
     carrier density, Fermi energy, and related quantities as computed in electron-phonon
     calculations. It also provides access to the INCAR tag used to set the carrier density.
     """
+
+    _raw_data: raw_data.ElectronPhononChemicalPotential
 
     @base.data_access
     def __str__(self) -> str:

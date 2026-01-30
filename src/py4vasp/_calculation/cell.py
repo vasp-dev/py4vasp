@@ -3,11 +3,14 @@
 import numpy as np
 
 from py4vasp._calculation import base, slice_
+from py4vasp._raw import data as raw_data
 from py4vasp._util import check, reader
 
 
 class Cell(slice_.Mixin, base.Refinery):
     """Cell parameters of the simulation cell."""
+
+    _raw_data: raw_data.Cell
 
     def lattice_vectors(self):
         """Lattice vectors of the simulation cell for all selected steps."""

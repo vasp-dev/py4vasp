@@ -2,11 +2,14 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._calculation import bandgap, base, exception
 from py4vasp._calculation._dispersion import Dispersion
+from py4vasp._raw import data as raw_data
 from py4vasp._util import check
 
 
 class RunInfo(base.Refinery):
     "Contains information about the VASP run."
+
+    _raw_data: raw_data.RunInfo
 
     @base.data_access
     def to_dict(self):

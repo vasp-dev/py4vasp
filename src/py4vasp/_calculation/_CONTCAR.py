@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._calculation import _stoichiometry, base, structure, system
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import view
 from py4vasp._util import check, convert, database
 
@@ -12,6 +13,8 @@ class CONTCAR(base.Refinery, view.Mixin, structure.Mixin):
     input for the next calculation if desired. Depending on the particular setup the
     CONTCAR might contain additional information about the system such as the ion
     and lattice velocities."""
+
+    _raw_data: raw_data.CONTCAR
 
     @base.data_access
     def to_dict(self):

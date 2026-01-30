@@ -4,6 +4,7 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._calculation import base, structure
+from py4vasp._raw import data as raw_data
 from py4vasp._util import check, database
 
 
@@ -18,6 +19,8 @@ class BornEffectiveCharge(base.Refinery, structure.Mixin):
     help understanding the material's response to external stimuli, such as
     piezoelectric and ferroelectric behavior.
     """
+
+    _raw_data: raw_data.BornEffectiveCharge
 
     @base.data_access
     def __str__(self):

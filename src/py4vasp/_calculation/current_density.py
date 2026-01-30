@@ -5,6 +5,7 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._calculation import _stoichiometry, base, structure
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph
 from py4vasp._util import database, documentation, import_, slicing
 from py4vasp._util.density import SliceArguments, Visualizer
@@ -29,6 +30,8 @@ class CurrentDensity(base.Refinery, structure.Mixin):
     A current density j is a vectorial quantity (j_x, j_y, j_z) on every grid point.
     It describes how the current flows at every point in space.
     """
+
+    _raw_data: raw_data.CurrentDensity
 
     @base.data_access
     def __str__(self):

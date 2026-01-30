@@ -4,6 +4,7 @@ import numpy as np
 
 import py4vasp._third_party.graph as _graph
 from py4vasp._calculation import base, kpoint, projector
+from py4vasp._raw import data as raw_data
 from py4vasp._util import check, database
 
 
@@ -12,6 +13,8 @@ class Dispersion(base.Refinery):
 
     Provides some utility functionalities common to all dispersions to avoid duplication
     of code."""
+
+    _raw_data: raw_data.Dispersion
 
     @base.data_access
     def __str__(self):

@@ -7,6 +7,7 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._calculation import base
+from py4vasp._raw import data as raw_data
 from py4vasp._util import check, convert, documentation
 
 _kpoints_selection = """\
@@ -38,6 +39,8 @@ class Kpoint(base.Refinery):
     generate a band structure. It may also be used to programmatically analyze the
     selected **k** point mesh or take subsets along high symmetry lines.
     """
+
+    _raw_data: raw_data.Kpoint
 
     @base.data_access
     def __str__(self):

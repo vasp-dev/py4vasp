@@ -1,11 +1,14 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._calculation import base
+from py4vasp._raw import data as raw_data
 from py4vasp._util import convert
 
 
 class System(base.Refinery):
     "The :tag:`SYSTEM` tag in the INCAR file is a title you choose for a VASP calculation."
+
+    _raw_data: raw_data.System
 
     @base.data_access
     def __str__(self):

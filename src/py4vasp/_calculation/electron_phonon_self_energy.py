@@ -6,6 +6,7 @@ from py4vasp import exception
 from py4vasp._calculation import base
 from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
 from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
+from py4vasp._raw import data as raw_data
 from py4vasp._util import convert
 
 
@@ -24,6 +25,8 @@ class SelfEnergyInstance(ElectronPhononInstance):
     >>> data = instance.to_dict()
     >>> fan_value = instance.get_fan((iband, ikpt, isp))
     """
+
+    _raw_data: raw_data.ElectronPhononSelfEnergy
 
     def __str__(self):
         """

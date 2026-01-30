@@ -4,6 +4,7 @@ import numpy as np
 
 from py4vasp import _config
 from py4vasp._calculation import base, slice_, structure
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import view
 from py4vasp._util import reader
 
@@ -47,6 +48,7 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     3
     """
 
+    _raw_data: raw_data.Velocity
     velocity_rescale = 200
 
     @base.data_access

@@ -4,6 +4,7 @@ import numpy as np
 
 from py4vasp import _config, exception
 from py4vasp._calculation import base, slice_, structure
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import view
 from py4vasp._util import check, documentation, select
 
@@ -72,6 +73,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     3
     """
 
+    _raw_data: raw_data.LocalMoment
     _missing_data_message = "Atom resolved magnetic information not present, please verify LORBIT tag is set."
 
     length_moments = 1.5

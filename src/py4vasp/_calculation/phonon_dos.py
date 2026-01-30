@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._calculation import base, phonon
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, index, select
 
@@ -22,6 +23,8 @@ class PhononDos(phonon.Mixin, base.Refinery, graph.Mixin):
     projection allows for the identification of localized modes or vibrations associated
     with specific atomic species.
     """
+
+    _raw_data: raw_data.PhononDos
 
     @base.data_access
     def __str__(self):

@@ -3,6 +3,7 @@
 import numpy as np
 
 from py4vasp._calculation import _dispersion, base
+from py4vasp._raw import data as raw_data
 from py4vasp._util import check, convert
 
 
@@ -17,6 +18,8 @@ class ExcitonEigenvector(base.Refinery):
     approach helps understanding of the electronic transitions and excitonic
     behavior in materials.
     """
+
+    _raw_data: raw_data.ExcitonEigenvector
 
     @base.data_access
     def __str__(self):

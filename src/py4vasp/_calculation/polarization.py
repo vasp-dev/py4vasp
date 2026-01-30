@@ -4,6 +4,7 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._calculation import base
+from py4vasp._raw import data as raw_data
 
 
 class Polarization(base.Refinery):
@@ -20,6 +21,8 @@ class Polarization(base.Refinery):
     charge or ion leaves one side of the unit cell and reenters at the opposite
     side. Therefore you always need to compare changes of polarization.
     """
+
+    _raw_data: raw_data.Polarization
 
     @base.data_access
     def __str__(self):

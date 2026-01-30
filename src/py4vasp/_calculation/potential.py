@@ -6,6 +6,7 @@ import numpy as np
 
 from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry, base, structure
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import view
 from py4vasp._util import (
     check,
@@ -51,6 +52,8 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
     the methods to read and visualize the potential. If you are interested in the
     average potential, you may also look at the :data:`~py4vasp.calculation.workfunction`.
     """
+
+    _raw_data: raw_data.Potential
 
     @base.data_access
     def __str__(self):

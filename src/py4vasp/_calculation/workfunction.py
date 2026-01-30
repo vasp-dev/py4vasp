@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import exception
 from py4vasp._calculation import bandgap, base
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph
 
 
@@ -17,6 +18,8 @@ class Workfunction(base.Refinery, graph.Mixin):
     flag in the INCAR file. This class provides then the functionality to analyze the
     resulting potential.
     """
+
+    _raw_data: raw_data.Workfunction
 
     @base.data_access
     def __str__(self):

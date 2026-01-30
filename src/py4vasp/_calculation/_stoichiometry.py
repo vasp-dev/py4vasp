@@ -7,6 +7,7 @@ import numpy as np
 from py4vasp import exception, raw
 from py4vasp._calculation import base
 from py4vasp._calculation.selection import Selection
+from py4vasp._raw import data as raw_data
 from py4vasp._util import check, convert, database, documentation, import_, select
 
 mdtraj = import_.optional("mdtraj")
@@ -22,6 +23,8 @@ ion_types : Sequence
 
 class Stoichiometry(base.Refinery):
     """The stoichiometry of the crystal describes how many ions of each type exist in a crystal."""
+
+    _raw_data: raw_data.Stoichiometry
 
     @classmethod
     def from_ase(cls, structure):

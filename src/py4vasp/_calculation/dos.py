@@ -3,6 +3,7 @@
 import numpy as np
 
 from py4vasp._calculation import base, projector
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_
 
@@ -60,6 +61,7 @@ class Dos(base.Refinery, graph.Mixin):
     """
 
     _missing_data_message = "No DOS data found, please verify that LORBIT flag is set."
+    _raw_data: raw_data.Dos
 
     @base.data_access
     def __str__(self):

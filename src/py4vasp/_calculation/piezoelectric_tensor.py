@@ -3,6 +3,7 @@
 import numpy as np
 
 from py4vasp._calculation import base
+from py4vasp._raw import data as raw_data
 from py4vasp._util.tensor import symmetry_reduce, tensor_constants
 
 
@@ -24,6 +25,8 @@ class PiezoelectricTensor(base.Refinery):
     calculations and experiment can reveal underlying flaws in the characterization of
     the crystal structure.
     """
+
+    _raw_data: raw_data.PiezoelectricTensor
 
     @base.data_access
     def __str__(self):
