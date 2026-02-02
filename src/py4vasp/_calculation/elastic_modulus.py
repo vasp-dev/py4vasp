@@ -106,11 +106,12 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                 print(f"[CHECK] Error when computing VRH moduli: {e}")
 
             try:
-                pugh_ratio = (
-                    shear_modulus / bulk_modulus
-                    if (bulk_modulus != 0 and shear_modulus != 0)
-                    else 0.0 if shear_modulus == 0 else None
-                )
+                if shear_modulus is not None and bulk_modulus is not None:
+                    pugh_ratio = (
+                        shear_modulus / bulk_modulus
+                        if (bulk_modulus != 0 and shear_modulus != 0)
+                        else 0.0 if shear_modulus == 0 else None
+                    )
             except Exception as e:
                 print(f"[CHECK] Error when computing Pugh ratio: {e}")
 
@@ -254,7 +255,11 @@ class _ElasticTensor:
     @property
     def compliance_tensor(self) -> np.ndarray:
         if self._compliance is None:
-            self._compliance = np.linalg.inv(self.tensor)
+            try:
+                self._compliance = np.linalg.inv(self.tensor)
+            except np.linalg.LinAlgError as e:
+                print(f"[CHECK] Error when computing compliance tensor from tensor: {self.tensor}: {e}")
+                self._compliance = None
         return self._compliance
 
     # ---------- Internal helpers ----------
