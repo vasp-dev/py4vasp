@@ -248,7 +248,7 @@ def get_formula_and_compound(
 def get_all_possible_keys(to_print: bool = False) -> Dict[str, List[str]]:
     """
     Extract all possible keys from _to_database methods in calculation classes.
-    
+
     Returns
     -------
     Dict[str, List[str]]
@@ -258,11 +258,11 @@ def get_all_possible_keys(to_print: bool = False) -> Dict[str, List[str]]:
     """
     calculation_dir = Path(__file__).parent.parent / "_calculation"
     all_keys = {}
-    
+
     for py_file in calculation_dir.glob("*.py"):
         if py_file.name == "__init__.py":
             continue
-            
+
         try:
             file_keys, classes_without_method = _extract_keys_from_file(py_file)
             for key, nested_keys in file_keys.items():
@@ -274,48 +274,53 @@ def get_all_possible_keys(to_print: bool = False) -> Dict[str, List[str]]:
                         all_keys[key] = nested_keys
                 else:
                     all_keys[key] = nested_keys
-            
+
             # Add classes without _to_database method
             for class_name in classes_without_method:
                 if class_name not in all_keys:
                     all_keys[class_name] = None
-                    
+
         except Exception as e:
             print(f"Warning: Could not process {py_file.name}: {e}")
             import traceback
+
             traceback.print_exc()
             continue
-    
+
     if to_print:
+        print("--- PARSED KEYS: ---")
+        for k, v in sorted(all_keys.items()):
+            if (v is not None) and (len(v) > 0):
+                print(f"\t{k}:")
+                for subkey in v:
+                    print(f"\t\t- {subkey}")
+        print("\n--- EMPTY KEYS ---")
+        for k, v in sorted(all_keys.items()):
+            if (v is not None) and (len(v) == 0):
+                print(f"\t{k}: EMPTY KEY LIST")
+        print("\n--- MISSING _to_database ---")
         for k, v in sorted(all_keys.items()):
             if v is None:
-                print(f"{k}: ! NO _to_database METHOD !")
-            elif not v:
-                print(f"{k}: ! EMPTY !")
-            else:
-                print(f"{k}:")
-                for subkey in sorted(v):
-                    print(f"\t- {subkey}")
-    
+                print(f"\t{k}: MISSING _to_database METHOD")
     return all_keys
 
 
 def _extract_keys_from_file(filepath: Path) -> tuple[Dict[str, List[str]], List[str]]:
     """Extract database keys from a single Python file.
-    
+
     Returns
     -------
     tuple[Dict[str, List[str]], List[str]]
         Dictionary of keys and list of Refinery class names without _to_database method.
     """
-    with open(filepath, 'r') as f:
+    with open(filepath, "r") as f:
         content = f.read()
         tree = ast.parse(content, filename=str(filepath))
-    
+
     keys = {}
     refinery_classes = set()
     classes_with_method = set()
-    
+
     # First pass: find all Refinery classes
     for node in tree.body:
         if isinstance(node, ast.ClassDef):
@@ -323,31 +328,43 @@ def _extract_keys_from_file(filepath: Path) -> tuple[Dict[str, List[str]], List[
             for base in node.bases:
                 base_name = ""
                 if isinstance(base, ast.Attribute):
-                    base_name = f"{base.value.id}.{base.attr}" if isinstance(base.value, ast.Name) else ""
+                    base_name = (
+                        f"{base.value.id}.{base.attr}"
+                        if isinstance(base.value, ast.Name)
+                        else ""
+                    )
                 elif isinstance(base, ast.Name):
                     base_name = base.id
-                
+
                 if "Refinery" in base_name:
                     # Convert class name to snake_case for database key
                     class_key = convert._to_snakecase(node.name)
                     refinery_classes.add(class_key)
-                    
+
                     # Look for _to_database method
                     for item in node.body:
-                        if isinstance(item, ast.FunctionDef) and item.name == "_to_database":
+                        if (
+                            isinstance(item, ast.FunctionDef)
+                            and item.name == "_to_database"
+                        ):
                             classes_with_method.add(class_key)
                             file_keys = _extract_keys_from_function(item, tree)
                             keys.update(file_keys)
-    
+
     classes_without_method = list(refinery_classes - classes_with_method)
     return keys, classes_without_method
 
 
-def _extract_keys_from_function(func_node: ast.FunctionDef, tree: ast.AST) -> Dict[str, List[str]]:
+def _extract_keys_from_function(
+    func_node: ast.FunctionDef, tree: ast.AST
+) -> Dict[str, List[str]]:
     """Extract keys from a _to_database function node."""
-    keys = {}
-    
-    # First try to find direct return statements
+    # First try the comprehensive body analysis (handles complex cases)
+    file_keys = _extract_keys_from_body(func_node, tree)
+    if file_keys:
+        return file_keys
+
+    # Fallback: look for simple direct returns
     for stmt in func_node.body:
         if isinstance(stmt, ast.Return) and stmt.value:
             if isinstance(stmt.value, ast.Dict):
@@ -358,41 +375,210 @@ def _extract_keys_from_function(func_node: ast.FunctionDef, tree: ast.AST) -> Di
                 file_keys = _extract_keys_from_call_return(stmt.value, func_node, tree)
                 if file_keys:
                     return file_keys
-    
-    # If no direct return, analyze the whole function body
-    file_keys = _extract_keys_from_body(func_node, tree)
-    return file_keys
+
+    return {}
 
 
-def _extract_keys_from_body(func_node: ast.FunctionDef, tree: ast.AST) -> Dict[str, List[str]]:
+def _extract_keys_from_dict(
+    dict_node: ast.Dict, func_node: ast.FunctionDef, tree: ast.AST
+) -> Dict[str, List[str]]:
+    """Extract keys from a dictionary AST node."""
+    result = {}
+
+    if not dict_node.keys:
+        return result
+
+    # Get the first key only (as per requirements)
+    first_key_node = dict_node.keys[0]
+    first_value_node = dict_node.values[0]
+
+    if isinstance(first_key_node, ast.Constant):
+        first_key = first_key_node.value
+        nested_keys = _extract_nested_keys(first_value_node, func_node, tree)
+        result[first_key] = nested_keys
+    elif isinstance(first_key_node, ast.Str):
+        first_key = first_key_node.s
+        nested_keys = _extract_nested_keys(first_value_node, func_node, tree)
+        result[first_key] = nested_keys
+
+    return result
+
+
+def _extract_nested_keys(
+    value_node: ast.AST, func_node: ast.FunctionDef, tree: ast.AST
+) -> List[str]:
+    """Extract nested keys from a value node."""
+    keys = []
+
+    if isinstance(value_node, ast.Dict):
+        # Collect all keys including from **unpacking
+        for i, key_node in enumerate(value_node.keys):
+            if key_node is None:
+                # **dict unpacking
+                val_node = value_node.values[i]
+                if isinstance(val_node, ast.Call):
+                    unpacked_keys = _extract_keys_from_method_call(
+                        val_node, func_node, tree
+                    )
+                    keys.extend(unpacked_keys)
+            elif isinstance(key_node, ast.Constant):
+                keys.append(key_node.value)
+            elif isinstance(key_node, ast.Str):
+                keys.append(key_node.s)
+    elif isinstance(value_node, ast.Call):
+        # The entire value is a method call
+        keys = _extract_keys_from_method_call(value_node, func_node, tree)
+
+    return keys
+
+
+def _extract_keys_from_body(
+    func_node: ast.FunctionDef, tree: ast.AST
+) -> Dict[str, List[str]]:
     """Analyze entire function body to extract keys."""
     result = {}
     intermediate_dicts = {}
-    
+    return_found = False
+
     for stmt in func_node.body:
         # Track variable assignments
         if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1:
             target = stmt.targets[0]
             if isinstance(target, ast.Name):
                 var_name = target.id
-                
+
                 # Track dict literals
                 if isinstance(stmt.value, ast.Dict):
-                    intermediate_dicts[var_name] = _get_all_dict_keys(stmt.value, func_node, tree, intermediate_dicts)
-        
+                    intermediate_dicts[var_name] = _get_all_dict_keys(
+                        stmt.value, func_node, tree, intermediate_dicts
+                    )
+                # Track method calls that return dicts
+                elif isinstance(stmt.value, ast.Call):
+                    method_keys = _extract_keys_from_method_call(
+                        stmt.value, func_node, tree
+                    )
+                    if method_keys:
+                        intermediate_dicts[var_name] = method_keys
+
         # Check for loop-based dict construction
         elif isinstance(stmt, ast.For):
             _track_dict_construction_in_loop(stmt, intermediate_dicts, func_node, tree)
-        
+
         # Find return statement
         elif isinstance(stmt, ast.Return) and stmt.value:
+            return_found = True
             if isinstance(stmt.value, ast.Dict):
-                return _resolve_return_dict(stmt.value, intermediate_dicts, func_node, tree)
-    
+                result = _resolve_return_dict(
+                    stmt.value, intermediate_dicts, func_node, tree
+                )
+                if result:
+                    return result
+
     return result
 
 
-def _track_dict_construction_in_loop(for_stmt: ast.For, intermediate_dicts: dict, func_node: ast.FunctionDef, tree: ast.AST):
+def _resolve_return_dict(
+    dict_node: ast.Dict,
+    intermediate_dicts: dict,
+    func_node: ast.FunctionDef,
+    tree: ast.AST,
+) -> Dict[str, List[str]]:
+    """Resolve the final return dictionary."""
+    result = {}
+
+    if not dict_node.keys:
+        return result
+
+    # Get first key
+    first_key_node = dict_node.keys[0]
+    first_value_node = dict_node.values[0]
+
+    if not isinstance(first_key_node, (ast.Constant, ast.Str)):
+        return result
+
+    first_key = (
+        first_key_node.value
+        if isinstance(first_key_node, ast.Constant)
+        else first_key_node.s
+    )
+
+    # Check if value references an intermediate dict variable
+    if isinstance(first_value_node, ast.Name):
+        var_name = first_value_node.id
+        if var_name in intermediate_dicts:
+            result[first_key] = intermediate_dicts[var_name]
+            return result
+
+    # Check if value is a dict literal (possibly with unpacking)
+    if isinstance(first_value_node, ast.Dict):
+        nested_keys = _get_all_dict_keys(
+            first_value_node, func_node, tree, intermediate_dicts
+        )
+        result[first_key] = nested_keys
+        return result
+
+    # Check if value is a method call
+    if isinstance(first_value_node, ast.Call):
+        method_keys = _extract_keys_from_method_call(first_value_node, func_node, tree)
+        if method_keys:
+            result[first_key] = method_keys
+            return result
+
+    return result
+
+
+def _extract_keys_from_method_call(
+    call_node: ast.Call, func_node: ast.FunctionDef, tree: ast.AST
+) -> List[str]:
+    """Extract keys from a method call that returns a dictionary."""
+    keys = []
+
+    # Get the method name
+    method_name = None
+    if isinstance(call_node.func, ast.Attribute):
+        method_name = call_node.func.attr
+    elif isinstance(call_node.func, ast.Name):
+        method_name = call_node.func.id
+
+    if method_name is None:
+        return keys
+
+    # Find the method definition in the same file
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef):
+            for class_item in node.body:
+                if (
+                    isinstance(class_item, ast.FunctionDef)
+                    and class_item.name == method_name
+                ):
+                    # Recursively analyze this method
+                    method_result = _extract_keys_from_body(class_item, tree)
+                    if method_result:
+                        # This method returns a dict with one key, get its nested keys
+                        for _, nested_keys in method_result.items():
+                            return nested_keys
+
+                    # Fallback: find return statements directly
+                    for stmt in class_item.body:
+                        if isinstance(stmt, ast.Return) and stmt.value:
+                            if isinstance(stmt.value, ast.Dict):
+                                for key_node in stmt.value.keys:
+                                    if key_node is not None:
+                                        if isinstance(key_node, ast.Constant):
+                                            keys.append(key_node.value)
+                                        elif isinstance(key_node, ast.Str):
+                                            keys.append(key_node.s)
+                    return keys
+
+    return keys
+
+
+def _track_dict_construction_in_loop(
+    for_stmt: ast.For,
+    intermediate_dicts: dict,
+    func_node: ast.FunctionDef,
+    tree: ast.AST,
+):
     """Track dictionaries being built in loops."""
     # Find dict being populated in loop body
     for stmt in for_stmt.body:
@@ -401,10 +587,13 @@ def _track_dict_construction_in_loop(for_stmt: ast.For, intermediate_dicts: dict
                 if isinstance(target, ast.Subscript):
                     if isinstance(target.value, ast.Name):
                         dict_name = target.value.id
-                        
+
                         # Try to infer keys from the loop source
                         if isinstance(for_stmt.iter, ast.Call):
-                            if isinstance(for_stmt.iter.func, ast.Attribute) and for_stmt.iter.func.attr == "items":
+                            if (
+                                isinstance(for_stmt.iter.func, ast.Attribute)
+                                and for_stmt.iter.func.attr == "items"
+                            ):
                                 # Iterating over another dict's items
                                 if isinstance(for_stmt.iter.func.value, ast.Name):
                                     source_dict = for_stmt.iter.func.value.id
@@ -413,17 +602,21 @@ def _track_dict_construction_in_loop(for_stmt: ast.For, intermediate_dicts: dict
                                         transformed_keys = _transform_keys_from_loop(
                                             intermediate_dicts[source_dict],
                                             target.slice,
-                                            for_stmt
+                                            for_stmt,
                                         )
                                         if dict_name not in intermediate_dicts:
                                             intermediate_dicts[dict_name] = []
-                                        intermediate_dicts[dict_name].extend(transformed_keys)
+                                        intermediate_dicts[dict_name].extend(
+                                            transformed_keys
+                                        )
 
 
-def _transform_keys_from_loop(source_keys: List[str], slice_node: ast.AST, for_node: ast.For) -> List[str]:
+def _transform_keys_from_loop(
+    source_keys: List[str], slice_node: ast.AST, for_node: ast.For
+) -> List[str]:
     """Transform keys based on f-string or concatenation pattern."""
     transformed = []
-    
+
     # Check if using f-string
     if isinstance(slice_node, ast.JoinedStr):
         # Extract suffix patterns
@@ -436,72 +629,56 @@ def _transform_keys_from_loop(source_keys: List[str], slice_node: ast.AST, for_n
                 suffixes.append(part.s)
             elif isinstance(part, ast.FormattedValue):
                 has_variable = True
-        
+
         # If there's a variable in the f-string, assume it's iterating source keys
         if has_variable and suffixes:
             # Apply suffix to each source key
-            suffix = ''.join(suffixes)
+            suffix = "".join(suffixes)
             for key in source_keys:
                 transformed.append(f"{key}{suffix}")
         else:
             transformed = source_keys
     else:
         transformed = source_keys
-    
+
     return transformed
 
 
-def _resolve_return_dict(dict_node: ast.Dict, intermediate_dicts: dict, func_node: ast.FunctionDef, tree: ast.AST) -> Dict[str, List[str]]:
-    """Resolve the final return dictionary."""
-    result = {}
-    
-    if not dict_node.keys:
-        return result
-    
-    # Get first key
-    first_key_node = dict_node.keys[0]
-    first_value_node = dict_node.values[0]
-    
-    if isinstance(first_key_node, (ast.Constant, ast.Str)):
-        first_key = first_key_node.value if isinstance(first_key_node, ast.Constant) else first_key_node.s
-        
-        # Check if value references an intermediate dict
-        if isinstance(first_value_node, ast.Name):
-            var_name = first_value_node.id
-            if var_name in intermediate_dicts:
-                result[first_key] = intermediate_dicts[var_name]
-        # Check if value is a dict with unpacking
-        elif isinstance(first_value_node, ast.Dict):
-            nested_keys = _get_all_dict_keys(first_value_node, func_node, tree, intermediate_dicts)
-            result[first_key] = nested_keys
-    
-    return result
-
-
-def _get_all_dict_keys(dict_node: ast.Dict, func_node: ast.FunctionDef, tree: ast.AST, intermediate_dicts: dict = None) -> List[str]:
+def _get_all_dict_keys(
+    dict_node: ast.Dict,
+    func_node: ast.FunctionDef,
+    tree: ast.AST,
+    intermediate_dicts: dict = None,
+) -> List[str]:
     """Get all keys from a dict node, including unpacked dicts."""
     if intermediate_dicts is None:
         intermediate_dicts = {}
-    
+
     keys = []
-    
+
     for i, (key_node, val_node) in enumerate(zip(dict_node.keys, dict_node.values)):
         if key_node is None:
             # **dict unpacking
             if isinstance(val_node, ast.Call):
                 unpacked = _extract_keys_from_method_call(val_node, func_node, tree)
                 keys.extend(unpacked)
-            elif isinstance(val_node, ast.Name) and intermediate_dicts and val_node.id in intermediate_dicts:
+            elif (
+                isinstance(val_node, ast.Name)
+                and intermediate_dicts
+                and val_node.id in intermediate_dicts
+            ):
                 keys.extend(intermediate_dicts[val_node.id])
         elif isinstance(key_node, ast.Constant):
             keys.append(key_node.value)
         elif isinstance(key_node, ast.Str):
             keys.append(key_node.s)
-    
+
     return keys
 
 
-def _extract_keys_from_call_return(call_node: ast.Call, func_node: ast.FunctionDef, tree: ast.AST) -> Dict[str, List[str]]:
+def _extract_keys_from_call_return(
+    call_node: ast.Call, func_node: ast.FunctionDef, tree: ast.AST
+) -> Dict[str, List[str]]:
     """Extract keys from a return statement that calls a function."""
     # If it's combine_db_dicts or similar, look at the first argument
     if call_node.args:
@@ -509,84 +686,3 @@ def _extract_keys_from_call_return(call_node: ast.Call, func_node: ast.FunctionD
         if isinstance(first_arg, ast.Dict):
             return _extract_keys_from_dict(first_arg, func_node, tree)
     return {}
-
-
-def _extract_keys_from_dict(dict_node: ast.Dict, func_node: ast.FunctionDef, tree: ast.AST) -> Dict[str, List[str]]:
-    """Extract keys from a dictionary AST node."""
-    result = {}
-    
-    if not dict_node.keys:
-        return result
-    
-    # Get the first key only (as per requirements)
-    first_key_node = dict_node.keys[0]
-    first_value_node = dict_node.values[0]
-    
-    if isinstance(first_key_node, ast.Constant):
-        first_key = first_key_node.value
-        nested_keys = _extract_nested_keys(first_value_node, func_node, tree)
-        result[first_key] = nested_keys
-    elif isinstance(first_key_node, ast.Str):  # Python 3.7 compatibility
-        first_key = first_key_node.s
-        nested_keys = _extract_nested_keys(first_value_node, func_node, tree)
-        result[first_key] = nested_keys
-    
-    return result
-
-
-def _extract_nested_keys(value_node: ast.AST, func_node: ast.FunctionDef, tree: ast.AST) -> List[str]:
-    """Extract nested keys from a value node."""
-    keys = []
-    
-    if isinstance(value_node, ast.Dict):
-        # First pass: collect explicit keys
-        for i, key_node in enumerate(value_node.keys):
-            if key_node is None:
-                # This is a **dict unpacking - handle the corresponding value
-                val_node = value_node.values[i]
-                if isinstance(val_node, ast.Call):
-                    unpacked_keys = _extract_keys_from_method_call(val_node, func_node, tree)
-                    keys.extend(unpacked_keys)
-            elif isinstance(key_node, ast.Constant):
-                keys.append(key_node.value)
-            elif isinstance(key_node, ast.Str):  # Python 3.7 compatibility
-                keys.append(key_node.s)
-    elif isinstance(value_node, ast.Call):
-        # The entire value is a method call
-        keys = _extract_keys_from_method_call(value_node, func_node, tree)
-    
-    return keys
-
-
-def _extract_keys_from_method_call(call_node: ast.Call, func_node: ast.FunctionDef, tree: ast.AST) -> List[str]:
-    """Extract keys from a method call that returns a dictionary."""
-    keys = []
-    
-    # Get the method name
-    method_name = None
-    if isinstance(call_node.func, ast.Attribute):
-        method_name = call_node.func.attr
-    elif isinstance(call_node.func, ast.Name):
-        method_name = call_node.func.id
-    
-    if method_name is None:
-        return keys
-    
-    # Find the method definition in the same file
-    for node in tree.body:
-        if isinstance(node, ast.ClassDef):
-            for class_item in node.body:
-                if isinstance(class_item, ast.FunctionDef) and class_item.name == method_name:
-                    # Find return statements in this method
-                    for stmt in class_item.body:
-                        if isinstance(stmt, ast.Return) and stmt.value:
-                            if isinstance(stmt.value, ast.Dict):
-                                for key_node in stmt.value.keys:
-                                    if key_node is not None:
-                                        if isinstance(key_node, ast.Constant):
-                                            keys.append(key_node.value)
-                                        elif isinstance(key_node, ast.Str):
-                                            keys.append(key_node.s)
-                    return keys
-    
-    return keys
