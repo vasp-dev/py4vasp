@@ -367,7 +367,11 @@ def get_all_possible_keys(
         print("\n--- PARSED KEYS: ---")
         for k, v in sorted(all_keys.items()):
             if v is not None and len(v) > 0:
-                print(f"\t{_quantity_label_to_db_key(k)}:(" + _get_unique_selections_str(k) + ")")
+                print(
+                    f"\t{_quantity_label_to_db_key(k)}:("
+                    + _get_unique_selections_str(k)
+                    + ")"
+                )
                 should_sort = k in ["energy"]
                 vsort = sorted(v) if should_sort else v
                 for subkey in vsort:
@@ -376,36 +380,50 @@ def get_all_possible_keys(
         print("\n--- EMPTY KEYS ---")
         for k, v in sorted(all_keys.items()):
             if v is not None and len(v) == 0:
-                print(f"\t{_quantity_label_to_db_key(k)}:(" + _get_unique_selections_str(k) + ")")
+                print(
+                    f"\t{_quantity_label_to_db_key(k)}:("
+                    + _get_unique_selections_str(k)
+                    + ")"
+                )
 
         print("\n--- MISSING _to_database ---")
         for k, v in sorted(all_keys.items()):
             if v is None:
-                print(f"\t{_quantity_label_to_db_key(k)}:(" + _get_unique_selections_str(k) + ")")
+                print(
+                    f"\t{_quantity_label_to_db_key(k)}:("
+                    + _get_unique_selections_str(k)
+                    + ")"
+                )
+
+    # TODO fix remaining EMPTY KEYS where they should not be empty
+    # TODO discuss with Martin and/or Zahed whether the keys in the dictionary should be group.quantity:selection or quantity:selection
+    # (then selection can also be a group) -- decide this for get_all_possible_keys and available_quantities, then fix accordingly
 
     for k in list(all_keys.keys()):
         new_label = _quantity_label_to_db_key(k)
         if new_label != k:
             all_keys[new_label] = all_keys.pop(k)
-    
+
     all_keys = {k: v for k, v in sorted(all_keys.items(), key=lambda item: item[0])}
     return all_keys
+
 
 def _get_unique_selections_str(key: str) -> str:
     """Get a string representation of unique selections for a given key."""
     selections = []
-    try: 
+    try:
         selections = unique_selections(key)
         return ", ".join(selections)
     except:
         return "NONE"
 
+
 def _quantity_label_to_db_key(label: str) -> str:
     """Convert a quantity label to a database key format.
-    
+
     Expected input format:
     <group_name>_<quantity_name>:<selection>
-    
+
     Returns format:
     <group_name>.<quantity_name>:<selection>
     """
@@ -416,8 +434,8 @@ def _quantity_label_to_db_key(label: str) -> str:
         for quantity in quantities:
             expected_label = f"{group}_{quantity.lstrip('_')}"
             if label.startswith(expected_label):
-                split1, split2 = label[:len(group)], label[(len(group) + 1):]
-                if (quantity.startswith("_")):
+                split1, split2 = label[: len(group)], label[(len(group) + 1) :]
+                if quantity.startswith("_"):
                     split2 = f"_{split2}"
                 db_key = f"{split1}.{split2}"
                 return db_key
@@ -425,11 +443,10 @@ def _quantity_label_to_db_key(label: str) -> str:
         expected_label = quantity.lstrip("_")
         if label.startswith(expected_label):
             db_key = label
-            if (quantity.startswith("_")):
+            if quantity.startswith("_"):
                 db_key = f"_{db_key}"
             return db_key
     return label
-    
 
 
 def _extract_keys_from_file(
