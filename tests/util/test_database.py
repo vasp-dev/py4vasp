@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from py4vasp import demo
+from py4vasp._calculation import GROUPS, QUANTITIES
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
 from py4vasp._raw.definition import DEFAULT_SOURCE
 from py4vasp._util import database
@@ -144,6 +145,20 @@ def test_get_formula_and_compound(ion_types, ion_numbers, expectations):
     assert simple_types == expected_simple_types
     assert simple_nums == expected_simple_nums
     assert primitive_nums == expected_primitive_nums
+
+
+def test_get_all_possible_keys():
+    """Test that get_all_possible_keys runs without error and returns a non-empty dict."""
+    all_keys = database.get_all_possible_keys(to_print=False, debug=False)
+    assert isinstance(all_keys, dict)
+    assert len(all_keys) > 0
+    for k in QUANTITIES:
+        assert k in all_keys
+    for group, k in GROUPS.items():
+        key = f"{group}.{k}"
+        assert key in all_keys
+
+    assert sum([1 for v in all_keys.values() if v[0]]) > 10
 
 
 def basic_db_checks(demo_calc_db: _DatabaseData, minimum_counter=1):

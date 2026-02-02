@@ -67,12 +67,11 @@ current density:
     def _to_database(self, *args, **kwargs):
         density_dict = {"current_density": {}}
         try:
-            density_dict = {"current_density": {}}
-        except Exception:
-            pass
-        structure_ = structure.Structure.from_data(
-            self._raw_data.structure
-        )._read_to_database(*args, **kwargs)
+            structure_ = structure.Structure.from_data(
+                self._raw_data.structure
+            )._read_to_database(*args, **kwargs)
+        except:
+            structure_ = {}
         return database.combine_db_dicts(density_dict, structure_)
 
     @base.data_access

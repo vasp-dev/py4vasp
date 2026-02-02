@@ -173,6 +173,66 @@ def clean_db_key(
     return key
 
 
+def clean_db_dict_keys(dict_to_clean: dict, rid_default_selection: bool = True) -> dict:
+    if rid_default_selection:
+        # Fix keys to remove default selection suffixes
+        dict_to_clean = dict(
+            zip(
+                [
+                    (
+                        key
+                        if not (key.endswith(f":{DEFAULT_SOURCE}"))
+                        else key[: -len(f":{DEFAULT_SOURCE}")]
+                    )
+                    for key in dict_to_clean.keys()
+                ],
+                dict_to_clean.values(),
+            )
+        )
+
+    from py4vasp._calculation import GROUPS, QUANTITIES
+
+    # Find private quantities
+    private_quantities = [
+        (None, quantity) for quantity in QUANTITIES if quantity.startswith("_")
+    ] + [
+        (group, quantity)
+        for group, quantities in GROUPS.items()
+        for quantity in quantities
+        if quantity.startswith("_")
+    ]
+
+    # Fix keys to change private quantity keys back to private
+    relevant_keys = []
+    for group, quantity in private_quantities:
+        if group is None:
+            expected_key = quantity.lstrip("_")
+        else:
+            expected_key = f"{group}.{quantity.lstrip('_')}"
+        relevant_keys = relevant_keys + [
+            key
+            for key in dict_to_clean.keys()
+            if key.startswith(f"{expected_key}:") or key == expected_key
+        ]
+    relevant_keys = set(relevant_keys)
+    for key in relevant_keys:
+        if key in dict_to_clean:
+            dict_to_clean[f"_{key}"] = dict_to_clean.pop(key)
+
+    # Fix keys to resolve group selections
+    relevant_keys = []
+    for group, _ in GROUPS.items():
+        expected_key = group
+        relevant_keys = [
+            key for key in dict_to_clean.keys() if key.endswith(f":{group}")
+        ]
+        for key in relevant_keys:
+            split1, split2 = key.rsplit(":", 1)
+            dict_to_clean[f"{split2}._{split1.lstrip('_')}"] = dict_to_clean.pop(key)
+
+    return dict_to_clean
+
+
 def get_primitive_ion_numbers(
     number_ion_types: list[int],
 ) -> list[int]:
@@ -294,6 +354,8 @@ def get_all_possible_keys(
 
                 traceback.print_exc()
             continue
+
+    all_keys = clean_db_dict_keys(all_keys)
 
     if to_print:
         print("\n--- PARSED KEYS: ---")

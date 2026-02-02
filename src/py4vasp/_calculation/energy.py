@@ -151,20 +151,22 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
             if v is not None:
                 v = np.array(v)
 
-            energy_dict[f"{db_key}_initial"] = float(v[0])
-            energy_dict[f"{db_key}_min"] = float(np.min(v))
-            energy_dict[f"{db_key}_step_min"] = int(np.argmin(v))
-            energy_dict[f"{db_key}_final"] = float(v[-1])
+            energy_dict[f"{db_key}_initial"] = None if v is None else float(v[0])
+            energy_dict[f"{db_key}_min"] = None if v is None else float(np.min(v))
+            energy_dict[f"{db_key}_step_min"] = None if v is None else int(np.argmin(v))
+            energy_dict[f"{db_key}_final"] = None if v is None else float(v[-1])
 
         # Handle any additional keys not in _DB_KEYS
         for k, v in default_dict.items():
             if k not in _DB_KEYS:
-                v = np.array(v)
+                vs = np.array(v) if v is not None else None
                 key = convert.text_to_string(k).strip().lower().replace(" ", "_")
-                energy_dict[f"{key}_initial"] = float(v[0])
-                energy_dict[f"{key}_min"] = float(np.min(v))
-                energy_dict[f"{key}_step_min"] = int(np.argmin(v))
-                energy_dict[f"{key}_final"] = float(v[-1])
+                energy_dict[f"{key}_initial"] = None if v is None else float(vs[0])
+                energy_dict[f"{key}_min"] = None if v is None else float(np.min(vs))
+                energy_dict[f"{key}_step_min"] = (
+                    None if v is None else int(np.argmin(vs))
+                )
+                energy_dict[f"{key}_final"] = None if v is None else float(vs[-1])
 
         return {"energy": energy_dict}
 
