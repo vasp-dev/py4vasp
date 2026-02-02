@@ -13,9 +13,11 @@ from py4vasp._util.tensor import symmetry_reduce
 def elastic_modulus(raw_data):
     return _setup_elastic_modulus(raw_data, "dft")
 
+
 @pytest.fixture(params=["dft", "dft with structure"])
 def elastic_moduli(raw_data, request):
     return _setup_elastic_modulus(raw_data, request.param)
+
 
 def _setup_elastic_modulus(raw_data, selection):
     raw_elastic_modulus = raw_data.elastic_modulus(selection)
@@ -79,14 +81,12 @@ def test_to_database(elastic_moduli):
     overview = database_data["elastic_modulus:default"]
     ref_overview = elastic_moduli.ref.overview_data
     for key, value in ref_overview.items():
-        if value is None:
-            is_key_none = overview[key] is None
-            if (key == "fracture_toughness") and (elastic_moduli.ref.structure is None):
-                assert is_key_none
-            else:
-                assert not is_key_none, f"Expected {key} to be not None but is {overview[key]}"
+        if (key == "fracture_toughness") and (elastic_moduli.ref.structure is None):
+            assert overview[key] is None, f"fracture_toughness requires structure data: but returned db value is {overview[key]}."
+        elif value is None:
+            assert overview[key] is not None, f"expected non-None value for {key}, but got {overview[key]}."
         else:
-            assert overview[key] == value
+            assert np.all(np.array(np.isclose(overview[key], value))), f"mismatch in {key}: expected {value}, got {overview[key]}."
 
 
 def test_factory_methods(raw_data, check_factory_methods):
