@@ -82,11 +82,17 @@ def test_to_database(elastic_moduli):
     ref_overview = elastic_moduli.ref.overview_data
     for key, value in ref_overview.items():
         if (key == "fracture_toughness") and (elastic_moduli.ref.structure is None):
-            assert overview[key] is None, f"fracture_toughness requires structure data: but returned db value is {overview[key]}."
+            assert (
+                overview[key] is None
+            ), f"fracture_toughness requires structure data: but returned db value is {overview[key]}."
         elif value is None:
-            assert overview[key] is not None, f"expected non-None value for {key}, but got {overview[key]}."
+            assert (
+                overview[key] is not None
+            ), f"expected non-None value for {key}, but got {overview[key]}."
         else:
-            assert np.all(np.array(np.isclose(overview[key], value))), f"mismatch in {key}: expected {value}, got {overview[key]}."
+            assert np.all(
+                np.array(np.isclose(overview[key], value))
+            ), f"mismatch in {key}: expected {value}, got {overview[key]}."
 
 
 def test_factory_methods(raw_data, check_factory_methods):
