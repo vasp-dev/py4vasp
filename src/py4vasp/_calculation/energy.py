@@ -144,15 +144,27 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
     def _to_database(self, *args, **kwargs):
         default_dict = self._default_dict_all()
         energy_dict = {}
+        
+        # Loop over known DB keys to ensure consistent key extraction
+        for original_label, db_key in _DB_KEYS.items():
+            v = default_dict.get(original_label, None)
+            if v is not None: v = np.array(v)
+
+            energy_dict[f"{db_key}_initial"] = float(v[0])
+            energy_dict[f"{db_key}_min"] = float(np.min(v))
+            energy_dict[f"{db_key}_step_min"] = int(np.argmin(v))
+            energy_dict[f"{db_key}_final"] = float(v[-1])
+        
+        # Handle any additional keys not in _DB_KEYS
         for k, v in default_dict.items():
-            v = np.array(v)
-            key = _DB_KEYS.get(
-                k, convert.text_to_string(k).strip().lower().replace(" ", "_")
-            )
-            energy_dict[f"{key}_initial"] = float(v[0])
-            energy_dict[f"{key}_min"] = float(np.min(v))
-            energy_dict[f"{key}_step_min"] = int(np.argmin(v))
-            energy_dict[f"{key}_final"] = float(v[-1])
+            if k not in _DB_KEYS:
+                v = np.array(v)
+                key = convert.text_to_string(k).strip().lower().replace(" ", "_")
+                energy_dict[f"{key}_initial"] = float(v[0])
+                energy_dict[f"{key}_min"] = float(np.min(v))
+                energy_dict[f"{key}_step_min"] = int(np.argmin(v))
+                energy_dict[f"{key}_final"] = float(v[-1])
+        
         return {"energy": energy_dict}
 
     @base.data_access

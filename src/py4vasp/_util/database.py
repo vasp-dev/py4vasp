@@ -626,7 +626,21 @@ def _track_dict_construction_in_loop(
                                 # Iterating over another dict's items
                                 if isinstance(for_stmt.iter.func.value, ast.Name):
                                     source_dict = for_stmt.iter.func.value.id
-                                    if source_dict in intermediate_dicts:
+                                    
+                                    # Check if iterating over a known global dict (like _DB_KEYS)
+                                    source_keys = _get_keys_from_global_dict(source_dict, tree)
+                                    if source_keys:
+                                        transformed_keys = _transform_keys_from_loop(
+                                            source_keys,
+                                            target.slice,
+                                            for_stmt,
+                                        )
+                                        if dict_name not in intermediate_dicts:
+                                            intermediate_dicts[dict_name] = []
+                                        intermediate_dicts[dict_name].extend(
+                                            transformed_keys
+                                        )
+                                    elif source_dict in intermediate_dicts:
                                         # Apply transformation based on the key pattern
                                         transformed_keys = _transform_keys_from_loop(
                                             intermediate_dicts[source_dict],
@@ -638,6 +652,24 @@ def _track_dict_construction_in_loop(
                                         intermediate_dicts[dict_name].extend(
                                             transformed_keys
                                         )
+
+
+def _get_keys_from_global_dict(dict_name: str, tree: ast.AST) -> List[str]:
+    """Extract keys from a global dictionary definition in the file."""
+    # Look for module-level assignments like _DB_KEYS = {...}
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == dict_name:
+                    if isinstance(node.value, ast.Dict):
+                        keys = []
+                        for key_node in node.value.keys:
+                            if isinstance(key_node, ast.Constant):
+                                keys.append(key_node.value)
+                            elif isinstance(key_node, ast.Str):
+                                keys.append(key_node.s)
+                        return keys
+    return []
 
 
 def _transform_keys_from_loop(
