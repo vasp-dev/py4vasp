@@ -2,11 +2,11 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import _demo, raw
+from py4vasp import _demo, exception, raw
 
 
 def elastic_modulus(selection="dft"):
-    if selection.startswith("dft"):
+    if selection in ["dft", "dft with structure"]:
         structure = (
             None if (selection != "dft with structure") else _demo.structure.Fe3O4()
         )
@@ -133,6 +133,6 @@ def elastic_modulus(selection="dft"):
             clamped_ion=clamped_ion, relaxed_ion=relaxed_ion, structure=structure
         )
     else:
-        raise NotImplementedError(
+        raise exception.NotImplemented(
             f"Demo data for Elastic Modulus and selection '{selection}' is not implemented."
         )
