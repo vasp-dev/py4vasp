@@ -239,7 +239,7 @@ class RawDataFactory:
 
     @staticmethod
     def elastic_modulus(selection):
-        return _demo.elastic_modulus.elastic_modulus()
+        return _demo.elastic_modulus.elastic_modulus(selection)
 
     @staticmethod
     def electron_phonon_band_gap(selection):

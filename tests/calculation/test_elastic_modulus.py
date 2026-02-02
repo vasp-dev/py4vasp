@@ -11,9 +11,17 @@ from py4vasp._util.tensor import symmetry_reduce
 
 @pytest.fixture
 def elastic_modulus(raw_data):
-    raw_elastic_modulus = raw_data.elastic_modulus("dft")
+    return _setup_elastic_modulus(raw_data, "dft")
+
+@pytest.fixture(params=["dft", "dft with structure"])
+def elastic_moduli(raw_data, request):
+    return _setup_elastic_modulus(raw_data, request.param)
+
+def _setup_elastic_modulus(raw_data, selection):
+    raw_elastic_modulus = raw_data.elastic_modulus(selection)
     elastic_modulus = ElasticModulus.from_data(raw_elastic_modulus)
     elastic_modulus.ref = types.SimpleNamespace()
+    elastic_modulus.ref.structure = raw_elastic_modulus.structure
     elastic_modulus.ref.clamped_ion = raw_elastic_modulus.clamped_ion
     elastic_modulus.ref.relaxed_ion = raw_elastic_modulus.relaxed_ion
     elastic_modulus.ref.overview_data = _setup_overview_data(elastic_modulus)
@@ -65,22 +73,18 @@ ZX         118.0000    122.0000    126.0000    120.0000    124.0000    122.0000
     assert actual == {"text/plain": reference}
 
 
-def test_to_database(elastic_modulus):
+def test_to_database(elastic_moduli):
     # TODO improve test with actual numbers or write unit tests for _ElasticTensor
-    database_data = elastic_modulus._read_to_database()
+    database_data = elastic_moduli._read_to_database()
     overview = database_data["elastic_modulus:default"]
-    ref_overview = elastic_modulus.ref.overview_data
+    ref_overview = elastic_moduli.ref.overview_data
     for key, value in ref_overview.items():
         if value is None:
-            is_key_none = overview[key] is not None
-            assert (
-                is_key_none
-                or (
-                    ("elastic_modulus_reduced" == key)
-                    and (np.isclose(overview[key], value))
-                )
-                or ("fracture_toughness" == key)
-            ), f"{key} is None in database output: \n{overview}\nAs compared to reference:\n{ref_overview}"
+            is_key_none = overview[key] is None
+            if (key == "fracture_toughness") and (elastic_moduli.ref.structure is None):
+                assert is_key_none
+            else:
+                assert not is_key_none, f"Expected {key} to be not None but is {overview[key]}"
         else:
             assert overview[key] == value
 
