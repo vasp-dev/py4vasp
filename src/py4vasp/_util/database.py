@@ -1,8 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import ast
 import functools
+import inspect
 from math import gcd
-from typing import Any, Optional, Tuple
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from h5py import File
 
@@ -241,6 +244,132 @@ def get_formula_and_compound(
     )
 
 
-def get_all_possible_keys():
-    # TODO implement
-    return {}
+def get_all_possible_keys(to_print: bool = False) -> Dict[str, List[str]]:
+    """
+    Extract all possible keys from _to_database methods in calculation classes.
+    
+    Returns
+    -------
+    Dict[str, List[str]]
+        A dictionary where keys are the top-level database keys and values are
+        lists of nested keys within each top-level key.
+    """
+    calculation_dir = Path(__file__).parent.parent / "_calculation"
+    all_keys = {}
+    
+    for py_file in calculation_dir.glob("*.py"):
+        if py_file.name == "__init__.py":
+            continue
+            
+        try:
+            file_keys = _extract_keys_from_file(py_file)
+            for key, nested_keys in file_keys.items():
+                if key in all_keys:
+                    # Merge nested keys, keeping unique ones
+                    all_keys[key] = list(set(all_keys[key] + nested_keys))
+                else:
+                    all_keys[key] = nested_keys
+        except Exception as e:
+            print(f"Warning: Could not process {py_file.name}: {e}")
+            continue
+    if to_print:
+        for k,v in all_keys.items():
+            print(f"{k}: " + ("! EMPTY !" if not v else ""))
+            for subkey in v:
+                print(f"\t- {subkey}")
+    return all_keys
+
+
+def _extract_keys_from_file(filepath: Path) -> Dict[str, List[str]]:
+    """Extract database keys from a single Python file."""
+    with open(filepath, 'r') as f:
+        tree = ast.parse(f.read(), filename=str(filepath))
+    
+    keys = {}
+    
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "_to_database":
+            file_keys = _extract_keys_from_function(node, tree)
+            keys.update(file_keys)
+    
+    return keys
+
+
+def _extract_keys_from_function(func_node: ast.FunctionDef, tree: ast.AST) -> Dict[str, List[str]]:
+    """Extract keys from a _to_database function node."""
+    keys = {}
+    
+    # Find all return statements
+    for node in ast.walk(func_node):
+        if isinstance(node, ast.Return) and node.value:
+            if isinstance(node.value, ast.Dict):
+                file_keys = _extract_keys_from_dict(node.value, func_node, tree)
+                # Only take the first key as per requirements
+                if file_keys:
+                    first_key = list(file_keys.keys())[0]
+                    keys[first_key] = file_keys[first_key]
+    
+    return keys
+
+
+def _extract_keys_from_dict(dict_node: ast.Dict, func_node: ast.FunctionDef, tree: ast.AST) -> Dict[str, List[str]]:
+    """Extract keys from a dictionary AST node."""
+    result = {}
+    
+    if not dict_node.keys:
+        return result
+    
+    # Get the first key only (as per requirements)
+    first_key_node = dict_node.keys[0]
+    first_value_node = dict_node.values[0]
+    
+    if isinstance(first_key_node, ast.Constant):
+        first_key = first_key_node.value
+        nested_keys = _extract_nested_keys(first_value_node, func_node, tree)
+        result[first_key] = nested_keys
+    
+    return result
+
+
+def _extract_nested_keys(value_node: ast.AST, func_node: ast.FunctionDef, tree: ast.AST) -> List[str]:
+    """Extract nested keys from a value node."""
+    keys = []
+    
+    if isinstance(value_node, ast.Dict):
+        for key_node in value_node.keys:
+            if isinstance(key_node, ast.Constant):
+                keys.append(key_node.value)
+            elif key_node is None:
+                # This is a **dict unpacking
+                pass
+        
+        # Handle **dict unpacking
+        for val_node in value_node.values:
+            if isinstance(val_node, ast.Call):
+                # Handle function calls like self._dict_from_runtime()
+                unpacked_keys = _extract_keys_from_method_call(val_node, func_node, tree)
+                keys.extend(unpacked_keys)
+    
+    return keys
+
+
+def _extract_keys_from_method_call(call_node: ast.Call, func_node: ast.FunctionDef, tree: ast.AST) -> List[str]:
+    """Extract keys from a method call that returns a dictionary."""
+    keys = []
+    
+    # Get the method name
+    if isinstance(call_node.func, ast.Attribute):
+        method_name = call_node.func.attr
+        
+        # Find the method definition in the same class
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == method_name:
+                # Find return statements in this method
+                for ret_node in ast.walk(node):
+                    if isinstance(ret_node, ast.Return) and ret_node.value:
+                        if isinstance(ret_node.value, ast.Dict):
+                            for key_node in ret_node.value.keys:
+                                if isinstance(key_node, ast.Constant):
+                                    keys.append(key_node.value)
+    
+    return keys
