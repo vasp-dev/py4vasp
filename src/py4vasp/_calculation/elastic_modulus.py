@@ -258,7 +258,9 @@ class _ElasticTensor:
             try:
                 self._compliance = np.linalg.inv(self.tensor)
             except np.linalg.LinAlgError as e:
-                print(f"[CHECK] Error when computing compliance tensor from tensor: {self.tensor}: {e}")
+                print(
+                    f"[CHECK] Error when computing compliance tensor from tensor: {self.tensor}: {e}"
+                )
                 self._compliance = None
         return self._compliance
 

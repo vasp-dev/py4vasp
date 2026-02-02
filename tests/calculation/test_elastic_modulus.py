@@ -5,7 +5,11 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp._calculation.elastic_modulus import ElasticModulus, _ElasticTensor
+from py4vasp._calculation.elastic_modulus import (
+    ElasticModulus,
+    _ElasticTensor,
+    _get_C_voigt_from_4d_tensor,
+)
 from py4vasp._util.tensor import symmetry_reduce
 
 
@@ -86,9 +90,17 @@ def test_to_database(elastic_moduli):
                 overview[key] is None
             ), f"fracture_toughness requires structure data: but returned db value is {overview[key]}."
         elif value is None:
-            assert (
-                overview[key] is not None
-            ), f"expected non-None value for {key}, but got {overview[key]}."
+            if (
+                np.abs(
+                    np.linalg.det(
+                        _get_C_voigt_from_4d_tensor(elastic_moduli.ref.relaxed_ion)
+                    )
+                )
+                > 1e-14
+            ):
+                assert (
+                    overview[key] is not None
+                ), f"expected non-None value for {key}, but got {overview[key]}."
         else:
             assert np.all(
                 np.array(np.isclose(overview[key], value))
