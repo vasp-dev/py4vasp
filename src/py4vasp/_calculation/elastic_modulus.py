@@ -102,7 +102,8 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                     elastic_tensor.get_VRH()
                 )
             except Exception as e:
-                pass
+                # TODO revert logging to debug once tested
+                print(f"[CHECK] Error when computing VRH moduli: {e}")
 
             try:
                 pugh_ratio = (
@@ -111,21 +112,21 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                     else 0.0 if shear_modulus == 0 else None
                 )
             except Exception as e:
-                pass
+                print(f"[CHECK] Error when computing Pugh ratio: {e}")
 
             try:
                 vickers_hardness = elastic_tensor.get_hardness()
             except Exception as e:
-                pass
+                print(f"[CHECK] Error when computing Vickers hardness: {e}")
 
             try:
                 fracture_toughness = elastic_tensor.get_fracture_toughness(
                     volume_per_atom
                 )
             except Exception as e:
-                pass
+                print(f"[CHECK] Error when computing Fracture toughness: {e}")
         except Exception as e:
-            pass
+            print(f"[CHECK] Error when initializing ElasticTensor: {e}")
 
         return {
             "bulk_modulus": bulk_modulus,  # GPa
