@@ -13,6 +13,7 @@ from py4vasp import exception
 from py4vasp._raw.data import Version
 from py4vasp._raw.definition import DEFAULT_SOURCE, Schema, unique_selections
 from py4vasp._raw.schema import Length, Link
+from py4vasp._util import convert
 
 
 def combine_db_dicts(*args) -> dict:
@@ -328,7 +329,7 @@ def _extract_keys_from_file(filepath: Path) -> tuple[Dict[str, List[str]], List[
                 
                 if "Refinery" in base_name:
                     # Convert class name to snake_case for database key
-                    class_key = _class_name_to_snake_case(node.name)
+                    class_key = convert._to_snakecase(node.name)
                     refinery_classes.add(class_key)
                     
                     # Look for _to_database method
@@ -342,33 +343,160 @@ def _extract_keys_from_file(filepath: Path) -> tuple[Dict[str, List[str]], List[
     return keys, classes_without_method
 
 
-def _class_name_to_snake_case(name: str) -> str:
-    """Convert CamelCase to snake_case."""
-    import re
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-
-
 def _extract_keys_from_function(func_node: ast.FunctionDef, tree: ast.AST) -> Dict[str, List[str]]:
     """Extract keys from a _to_database function node."""
     keys = {}
     
-    # Look specifically in the function body for return statements
+    # First try to find direct return statements
     for stmt in func_node.body:
         if isinstance(stmt, ast.Return) and stmt.value:
             if isinstance(stmt.value, ast.Dict):
                 file_keys = _extract_keys_from_dict(stmt.value, func_node, tree)
                 if file_keys:
-                    first_key = list(file_keys.keys())[0]
-                    keys[first_key] = file_keys[first_key]
-                    return keys  # Return after first return statement found
+                    return file_keys
             elif isinstance(stmt.value, ast.Call):
-                # Handle return combine_db_dicts(...) or similar
                 file_keys = _extract_keys_from_call_return(stmt.value, func_node, tree)
                 if file_keys:
-                    first_key = list(file_keys.keys())[0]
-                    keys[first_key] = file_keys[first_key]
-                    return keys
+                    return file_keys
+    
+    # If no direct return, analyze the whole function body
+    file_keys = _extract_keys_from_body(func_node, tree)
+    return file_keys
+
+
+def _extract_keys_from_body(func_node: ast.FunctionDef, tree: ast.AST) -> Dict[str, List[str]]:
+    """Analyze entire function body to extract keys."""
+    result = {}
+    intermediate_dicts = {}
+    
+    for stmt in func_node.body:
+        # Track variable assignments
+        if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1:
+            target = stmt.targets[0]
+            if isinstance(target, ast.Name):
+                var_name = target.id
+                
+                # Track dict literals
+                if isinstance(stmt.value, ast.Dict):
+                    intermediate_dicts[var_name] = _get_all_dict_keys(stmt.value, func_node, tree, intermediate_dicts)
+        
+        # Check for loop-based dict construction
+        elif isinstance(stmt, ast.For):
+            _track_dict_construction_in_loop(stmt, intermediate_dicts, func_node, tree)
+        
+        # Find return statement
+        elif isinstance(stmt, ast.Return) and stmt.value:
+            if isinstance(stmt.value, ast.Dict):
+                return _resolve_return_dict(stmt.value, intermediate_dicts, func_node, tree)
+    
+    return result
+
+
+def _track_dict_construction_in_loop(for_stmt: ast.For, intermediate_dicts: dict, func_node: ast.FunctionDef, tree: ast.AST):
+    """Track dictionaries being built in loops."""
+    # Find dict being populated in loop body
+    for stmt in for_stmt.body:
+        if isinstance(stmt, ast.Assign):
+            for target in stmt.targets:
+                if isinstance(target, ast.Subscript):
+                    if isinstance(target.value, ast.Name):
+                        dict_name = target.value.id
+                        
+                        # Try to infer keys from the loop source
+                        if isinstance(for_stmt.iter, ast.Call):
+                            if isinstance(for_stmt.iter.func, ast.Attribute) and for_stmt.iter.func.attr == "items":
+                                # Iterating over another dict's items
+                                if isinstance(for_stmt.iter.func.value, ast.Name):
+                                    source_dict = for_stmt.iter.func.value.id
+                                    if source_dict in intermediate_dicts:
+                                        # Apply transformation based on the key pattern
+                                        transformed_keys = _transform_keys_from_loop(
+                                            intermediate_dicts[source_dict],
+                                            target.slice,
+                                            for_stmt
+                                        )
+                                        if dict_name not in intermediate_dicts:
+                                            intermediate_dicts[dict_name] = []
+                                        intermediate_dicts[dict_name].extend(transformed_keys)
+
+
+def _transform_keys_from_loop(source_keys: List[str], slice_node: ast.AST, for_node: ast.For) -> List[str]:
+    """Transform keys based on f-string or concatenation pattern."""
+    transformed = []
+    
+    # Check if using f-string
+    if isinstance(slice_node, ast.JoinedStr):
+        # Extract suffix patterns
+        suffixes = []
+        has_variable = False
+        for part in slice_node.values:
+            if isinstance(part, ast.Constant):
+                suffixes.append(part.value)
+            elif isinstance(part, ast.Str):
+                suffixes.append(part.s)
+            elif isinstance(part, ast.FormattedValue):
+                has_variable = True
+        
+        # If there's a variable in the f-string, assume it's iterating source keys
+        if has_variable and suffixes:
+            # Apply suffix to each source key
+            suffix = ''.join(suffixes)
+            for key in source_keys:
+                transformed.append(f"{key}{suffix}")
+        else:
+            transformed = source_keys
+    else:
+        transformed = source_keys
+    
+    return transformed
+
+
+def _resolve_return_dict(dict_node: ast.Dict, intermediate_dicts: dict, func_node: ast.FunctionDef, tree: ast.AST) -> Dict[str, List[str]]:
+    """Resolve the final return dictionary."""
+    result = {}
+    
+    if not dict_node.keys:
+        return result
+    
+    # Get first key
+    first_key_node = dict_node.keys[0]
+    first_value_node = dict_node.values[0]
+    
+    if isinstance(first_key_node, (ast.Constant, ast.Str)):
+        first_key = first_key_node.value if isinstance(first_key_node, ast.Constant) else first_key_node.s
+        
+        # Check if value references an intermediate dict
+        if isinstance(first_value_node, ast.Name):
+            var_name = first_value_node.id
+            if var_name in intermediate_dicts:
+                result[first_key] = intermediate_dicts[var_name]
+        # Check if value is a dict with unpacking
+        elif isinstance(first_value_node, ast.Dict):
+            nested_keys = _get_all_dict_keys(first_value_node, func_node, tree, intermediate_dicts)
+            result[first_key] = nested_keys
+    
+    return result
+
+
+def _get_all_dict_keys(dict_node: ast.Dict, func_node: ast.FunctionDef, tree: ast.AST, intermediate_dicts: dict = None) -> List[str]:
+    """Get all keys from a dict node, including unpacked dicts."""
+    if intermediate_dicts is None:
+        intermediate_dicts = {}
+    
+    keys = []
+    
+    for i, (key_node, val_node) in enumerate(zip(dict_node.keys, dict_node.values)):
+        if key_node is None:
+            # **dict unpacking
+            if isinstance(val_node, ast.Call):
+                unpacked = _extract_keys_from_method_call(val_node, func_node, tree)
+                keys.extend(unpacked)
+            elif isinstance(val_node, ast.Name) and intermediate_dicts and val_node.id in intermediate_dicts:
+                keys.extend(intermediate_dicts[val_node.id])
+        elif isinstance(key_node, ast.Constant):
+            keys.append(key_node.value)
+        elif isinstance(key_node, ast.Str):
+            keys.append(key_node.s)
     
     return keys
 
