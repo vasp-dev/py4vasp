@@ -245,10 +245,12 @@ def get_formula_and_compound(
     )
 
 
-def get_all_possible_keys(to_print: bool = False, debug: bool = False) -> Dict[str, List[str]]:
+def get_all_possible_keys(
+    to_print: bool = False, debug: bool = False
+) -> Dict[str, List[str]]:
     """
     Extract all possible keys from _to_database methods in calculation classes.
-    
+
     Returns
     -------
     Dict[str, List[str]]
@@ -258,18 +260,18 @@ def get_all_possible_keys(to_print: bool = False, debug: bool = False) -> Dict[s
     """
     calculation_dir = Path(__file__).parent.parent / "_calculation"
     all_keys = {}
-    
+
     for py_file in calculation_dir.glob("*.py"):
         if py_file.name == "__init__.py":
             continue
-            
+
         try:
             file_keys, classes_without_method = _extract_keys_from_file(py_file, debug)
-            
-            if debug and py_file.stem in ["run_info", "energy", "phonon_band"]:
+
+            if debug:
                 print(f"\n=== DEBUG {py_file.name} ===")
                 print(f"file_keys: {file_keys}")
-            
+
             for key, nested_keys in file_keys.items():
                 if key in all_keys:
                     if all_keys[key] is not None and nested_keys is not None:
@@ -279,41 +281,46 @@ def get_all_possible_keys(to_print: bool = False, debug: bool = False) -> Dict[s
                         all_keys[key] = nested_keys
                 else:
                     all_keys[key] = nested_keys
-            
+
             # Add classes without _to_database method
             for class_name in classes_without_method:
                 if class_name not in all_keys:
                     all_keys[class_name] = None
-                    
+
         except Exception as e:
             print(f"Warning: Could not process {py_file.name}: {e}")
             if debug:
                 import traceback
+
                 traceback.print_exc()
             continue
-    
+
     if to_print:
         print("\n--- PARSED KEYS: ---")
         for k, v in sorted(all_keys.items()):
             if v is not None and len(v) > 0:
                 print(f"\t{k}:")
-                for subkey in sorted(v):
+                should_sort = k in ["energy"]
+                vsort = sorted(v) if should_sort else v
+                for subkey in vsort:
                     print(f"\t\t- {subkey}")
-        
+
         print("\n--- EMPTY KEYS ---")
         for k, v in sorted(all_keys.items()):
             if v is not None and len(v) == 0:
                 print(f"\t{k}: EMPTY KEY LIST")
-        
+
         print("\n--- MISSING _to_database ---")
         for k, v in sorted(all_keys.items()):
             if v is None:
                 print(f"\t{k}: MISSING _to_database METHOD")
-    
+
     return all_keys
 
 
-def _extract_keys_from_file(filepath: Path, debug: bool = False) -> tuple[Dict[str, List[str]], List[str]]:
+def _extract_keys_from_file(
+    filepath: Path, debug: bool = False
+) -> tuple[Dict[str, List[str]], List[str]]:
     """Extract database keys from a single Python file."""
     with open(filepath, "r") as f:
         content = f.read()
@@ -322,7 +329,7 @@ def _extract_keys_from_file(filepath: Path, debug: bool = False) -> tuple[Dict[s
     keys = {}
     refinery_classes = set()
     classes_with_method = set()
-    
+
     is_debug_file = debug and filepath.stem in ["run_info", "energy", "phonon_band"]
 
     # First pass: find all Refinery classes
@@ -354,7 +361,9 @@ def _extract_keys_from_file(filepath: Path, debug: bool = False) -> tuple[Dict[s
                             classes_with_method.add(class_key)
                             if is_debug_file:
                                 print(f"\n[{filepath.stem}] Found _to_database method")
-                            file_keys = _extract_keys_from_function(item, tree, is_debug_file)
+                            file_keys = _extract_keys_from_function(
+                                item, tree, is_debug_file
+                            )
                             if is_debug_file:
                                 print(f"[{filepath.stem}] Result: {file_keys}")
                             keys.update(file_keys)
@@ -382,7 +391,9 @@ def _extract_keys_from_function(
                 if file_keys:
                     return file_keys
             elif isinstance(stmt.value, ast.Call):
-                file_keys = _extract_keys_from_call_return(stmt.value, func_node, tree, {}, debug)
+                file_keys = _extract_keys_from_call_return(
+                    stmt.value, func_node, tree, {}, debug
+                )
                 if file_keys:
                     return file_keys
 
@@ -448,7 +459,7 @@ def _extract_keys_from_body(
     """Analyze entire function body to extract keys."""
     result = {}
     intermediate_dicts = {}
-    
+
     if debug:
         print(f"[BODY] Analyzing function body with {len(func_node.body)} statements")
 
@@ -525,7 +536,7 @@ def _resolve_return_dict(
         if isinstance(first_key_node, ast.Constant)
         else first_key_node.s
     )
-    
+
     if debug:
         print(f"[RESOLVE] First key: {first_key}")
         print(f"[RESOLVE] Value node type: {type(first_value_node).__name__}")
@@ -534,7 +545,9 @@ def _resolve_return_dict(
     if isinstance(first_value_node, ast.Call):
         if debug:
             print(f"[RESOLVE] Calling _extract_keys_from_method_call")
-        method_keys = _extract_keys_from_method_call(first_value_node, func_node, tree, debug)
+        method_keys = _extract_keys_from_method_call(
+            first_value_node, func_node, tree, debug
+        )
         if debug:
             print(f"[RESOLVE] Got keys: {method_keys}")
         if method_keys:
@@ -558,6 +571,7 @@ def _resolve_return_dict(
 
     return result
 
+
 def _extract_keys_from_method_call(
     call_node: ast.Call, func_node: ast.FunctionDef, tree: ast.AST, debug: bool = False
 ) -> List[str]:
@@ -573,7 +587,7 @@ def _extract_keys_from_method_call(
 
     if method_name is None:
         return keys
-    
+
     if debug:
         print(f"[METHOD] Looking for method: {method_name}")
 
@@ -594,7 +608,9 @@ def _extract_keys_from_method_call(
                                 if debug:
                                     print(f"[METHOD] {method_name} returns a Dict")
                                 # Use _get_all_dict_keys to handle **unpacking
-                                all_keys = _get_all_dict_keys(stmt.value, class_item, tree, {}, debug)
+                                all_keys = _get_all_dict_keys(
+                                    stmt.value, class_item, tree, {}, debug
+                                )
                                 if debug:
                                     print(f"[METHOD] Extracted keys: {all_keys}")
                                 return all_keys
@@ -626,9 +642,12 @@ def _track_dict_construction_in_loop(
                                 # Iterating over another dict's items
                                 if isinstance(for_stmt.iter.func.value, ast.Name):
                                     source_dict = for_stmt.iter.func.value.id
-                                    
+
                                     # Check if iterating over a known global dict (like _DB_KEYS)
-                                    source_keys = _get_keys_from_global_dict(source_dict, tree)
+                                    # When iterating over .items(), we want the values, not keys
+                                    source_keys = _get_keys_from_global_dict(
+                                        source_dict, tree, use_values=True
+                                    )
                                     if source_keys:
                                         transformed_keys = _transform_keys_from_loop(
                                             source_keys,
@@ -654,21 +673,36 @@ def _track_dict_construction_in_loop(
                                         )
 
 
-def _get_keys_from_global_dict(dict_name: str, tree: ast.AST) -> List[str]:
-    """Extract keys from a global dictionary definition in the file."""
+def _get_keys_from_global_dict(
+    dict_name: str, tree: ast.AST, use_values: bool = False
+) -> List[str]:
+    """Extract keys or values from a global dictionary definition in the file.
+
+    Parameters
+    ----------
+    dict_name : str
+        Name of the dictionary variable to find
+    tree : ast.AST
+        The AST tree to search
+    use_values : bool
+        If True, extract dictionary values instead of keys (useful for .items() loops)
+    """
     # Look for module-level assignments like _DB_KEYS = {...}
     for node in tree.body:
         if isinstance(node, ast.Assign):
             for target in node.targets:
                 if isinstance(target, ast.Name) and target.id == dict_name:
                     if isinstance(node.value, ast.Dict):
-                        keys = []
-                        for key_node in node.value.keys:
-                            if isinstance(key_node, ast.Constant):
-                                keys.append(key_node.value)
-                            elif isinstance(key_node, ast.Str):
-                                keys.append(key_node.s)
-                        return keys
+                        items = []
+                        nodes_to_extract = (
+                            node.value.values if use_values else node.value.keys
+                        )
+                        for item_node in nodes_to_extract:
+                            if isinstance(item_node, ast.Constant):
+                                items.append(item_node.value)
+                            elif isinstance(item_node, ast.Str):
+                                items.append(item_node.s)
+                        return items
     return []
 
 
@@ -724,7 +758,9 @@ def _get_all_dict_keys(
             if debug:
                 print(f"[UNPACK] Found ** unpacking")
             if isinstance(val_node, ast.Call):
-                unpacked = _extract_keys_from_method_call(val_node, func_node, tree, debug)
+                unpacked = _extract_keys_from_method_call(
+                    val_node, func_node, tree, debug
+                )
                 if debug:
                     print(f"[UNPACK] Got keys: {unpacked}")
                 keys.extend(unpacked)
@@ -750,7 +786,7 @@ def _extract_keys_from_call_return(
     """Extract keys from a return statement that calls a function."""
     if intermediate_dicts is None:
         intermediate_dicts = {}
-    
+
     # Handle combine_db_dicts or similar functions
     func_name = None
     if isinstance(call_node.func, ast.Name):
@@ -768,17 +804,21 @@ def _extract_keys_from_call_return(
                 if first_arg.keys and len(first_arg.keys) > 0:
                     first_key_node = first_arg.keys[0]
                     first_value_node = first_arg.values[0]
-                    
+
                     if isinstance(first_key_node, (ast.Constant, ast.Str)):
                         first_key = (
                             first_key_node.value
                             if isinstance(first_key_node, ast.Constant)
                             else first_key_node.s
                         )
-                        
+
                         # Get all nested keys including from **unpacking
                         nested_keys = _get_all_dict_keys(
-                            first_value_node if isinstance(first_value_node, ast.Dict) else first_arg,
+                            (
+                                first_value_node
+                                if isinstance(first_value_node, ast.Dict)
+                                else first_arg
+                            ),
                             func_node,
                             tree,
                             intermediate_dicts,
