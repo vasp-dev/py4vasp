@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
 
+import numpy as np
 import pytest
 
 from py4vasp._calculation.elastic_modulus import ElasticModulus, _ElasticTensor
@@ -71,10 +72,15 @@ def test_to_database(elastic_modulus):
     ref_overview = elastic_modulus.ref.overview_data
     for key, value in ref_overview.items():
         if value is None:
-            assert ((overview[key] is not None) or (
-                (key == "fracture_toughness")
-                and (elastic_modulus._raw_data.structure is None)
-            )), f"{key} is None in database output: {overview}"
+            is_key_none = overview[key] is not None
+            assert (
+                is_key_none
+                or (
+                    ("elastic_modulus_reduced" == key)
+                    and (np.isclose(overview[key], value))
+                )
+                or ("fracture_toughness" == key)
+            ), f"{key} is None in database output: \n{overview}\nAs compared to reference:\n{ref_overview}"
         else:
             assert overview[key] == value
 
