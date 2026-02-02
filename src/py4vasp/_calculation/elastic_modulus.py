@@ -102,8 +102,7 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                     elastic_tensor.get_VRH()
                 )
             except Exception as e:
-                # TODO revert logging to debug once tested
-                print(f"[CHECK] Error when computing VRH moduli: {e}")
+                pass
 
             try:
                 if shear_modulus is not None and bulk_modulus is not None:
@@ -113,21 +112,21 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                         else 0.0 if shear_modulus == 0 else None
                     )
             except Exception as e:
-                print(f"[CHECK] Error when computing Pugh ratio: {e}")
+                pass
 
             try:
                 vickers_hardness = elastic_tensor.get_hardness()
             except Exception as e:
-                print(f"[CHECK] Error when computing Vickers hardness: {e}")
+                pass
 
             try:
                 fracture_toughness = elastic_tensor.get_fracture_toughness(
                     volume_per_atom
                 )
             except Exception as e:
-                print(f"[CHECK] Error when computing Fracture toughness: {e}")
+                pass
         except Exception as e:
-            print(f"[CHECK] Error when initializing ElasticTensor: {e}")
+            pass
 
         return {
             "bulk_modulus": bulk_modulus,  # GPa
@@ -255,13 +254,7 @@ class _ElasticTensor:
     @property
     def compliance_tensor(self) -> np.ndarray:
         if self._compliance is None:
-            try:
-                self._compliance = np.linalg.inv(self.tensor)
-            except np.linalg.LinAlgError as e:
-                print(
-                    f"[CHECK] Error when computing compliance tensor from tensor: {self.tensor}: {e}"
-                )
-                self._compliance = None
+            self._compliance = np.linalg.inv(self.tensor)
         return self._compliance
 
     # ---------- Internal helpers ----------

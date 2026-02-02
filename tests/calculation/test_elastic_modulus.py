@@ -88,7 +88,6 @@ ZX         117.0000    121.0000    125.0000    119.0000    123.0000    121.0000
 
 
 def test_to_database(elastic_moduli):
-    # TODO improve test with actual numbers or write unit tests for _ElasticTensor
     database_data = elastic_moduli._read_to_database()
     overview = database_data["elastic_modulus:default"]
     ref_overview = elastic_moduli.ref.overview_data
@@ -109,6 +108,8 @@ def test_to_database(elastic_moduli):
                 assert (
                     overview[key] is not None
                 ), f"expected non-None value for {key}, but got {overview[key]}."
+            # if matrix is close to singular, some properties can probably not be computed
+            # in that case, skip assertion -- np.linalg.inv may or may not throw an error depending on system
         else:
             assert np.all(
                 np.array(np.isclose(overview[key], value))
