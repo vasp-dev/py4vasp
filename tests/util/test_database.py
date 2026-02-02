@@ -154,11 +154,12 @@ def test_get_all_possible_keys():
     assert len(all_keys) > 0
     for k in QUANTITIES:
         assert k in all_keys
-    for group, k in GROUPS.items():
-        key = f"{group}.{k}"
-        assert key in all_keys
+    for group, quantities in GROUPS.items():
+        for quantity in quantities:
+            key = f"{group}.{quantity}"
+            assert key in all_keys
 
-    assert sum([1 for v in all_keys.values() if v[0]]) > 10
+    assert sum([1 for v in all_keys.values() if ((v is not None) and len(v) > 0) and (v[0] is not None) ]) > 10
 
 
 def basic_db_checks(demo_calc_db: _DatabaseData, minimum_counter=1):

@@ -332,6 +332,9 @@ def get_all_possible_keys(
                 print(f"\n=== DEBUG {py_file.name} ===")
                 print(f"file_keys: {file_keys}")
 
+            if (len(file_keys) == 0) and (len(classes_without_method) == 0):
+                all_keys[py_file.stem] = []
+
             for key, nested_keys in file_keys.items():
                 if key in all_keys:
                     if all_keys[key] is not None and nested_keys is not None:
@@ -355,13 +358,16 @@ def get_all_possible_keys(
                 traceback.print_exc()
             continue
 
-    all_keys = clean_db_dict_keys(all_keys)
+    for k in list(all_keys.keys()):
+        selections = _get_unique_selections_str(k)
+        if selections == "NONE":
+            all_keys.pop(k)
 
     if to_print:
         print("\n--- PARSED KEYS: ---")
         for k, v in sorted(all_keys.items()):
             if v is not None and len(v) > 0:
-                print(f"\t{k}:")
+                print(f"\t{_quantity_label_to_db_key(k)}:(" + _get_unique_selections_str(k) + ")")
                 should_sort = k in ["energy"]
                 vsort = sorted(v) if should_sort else v
                 for subkey in vsort:
@@ -370,14 +376,60 @@ def get_all_possible_keys(
         print("\n--- EMPTY KEYS ---")
         for k, v in sorted(all_keys.items()):
             if v is not None and len(v) == 0:
-                print(f"\t{k}: EMPTY KEY LIST")
+                print(f"\t{_quantity_label_to_db_key(k)}:(" + _get_unique_selections_str(k) + ")")
 
         print("\n--- MISSING _to_database ---")
         for k, v in sorted(all_keys.items()):
             if v is None:
-                print(f"\t{k}: MISSING _to_database METHOD")
+                print(f"\t{_quantity_label_to_db_key(k)}:(" + _get_unique_selections_str(k) + ")")
 
+    for k in list(all_keys.keys()):
+        new_label = _quantity_label_to_db_key(k)
+        if new_label != k:
+            all_keys[new_label] = all_keys.pop(k)
+    
+    all_keys = {k: v for k, v in sorted(all_keys.items(), key=lambda item: item[0])}
     return all_keys
+
+def _get_unique_selections_str(key: str) -> str:
+    """Get a string representation of unique selections for a given key."""
+    selections = []
+    try: 
+        selections = unique_selections(key)
+        return ", ".join(selections)
+    except:
+        return "NONE"
+
+def _quantity_label_to_db_key(label: str) -> str:
+    """Convert a quantity label to a database key format.
+    
+    Expected input format:
+    <group_name>_<quantity_name>:<selection>
+    
+    Returns format:
+    <group_name>.<quantity_name>:<selection>
+    """
+    from py4vasp._calculation import GROUPS, QUANTITIES
+
+    # Split label into group and quantity parts
+    for group, quantities in GROUPS.items():
+        for quantity in quantities:
+            expected_label = f"{group}_{quantity.lstrip('_')}"
+            if label.startswith(expected_label):
+                split1, split2 = label[:len(group)], label[(len(group) + 1):]
+                if (quantity.startswith("_")):
+                    split2 = f"_{split2}"
+                db_key = f"{split1}.{split2}"
+                return db_key
+    for quantity in QUANTITIES:
+        expected_label = quantity.lstrip("_")
+        if label.startswith(expected_label):
+            db_key = label
+            if (quantity.startswith("_")):
+                db_key = f"_{db_key}"
+            return db_key
+    return label
+    
 
 
 def _extract_keys_from_file(
