@@ -435,23 +435,6 @@ Types are always keys that are in all_keys."""
     return main_keys, output_type_dict
 
 
-def _get_unique_selections_str(key: str) -> str:
-    """Get a string representation of unique selections for a given key."""
-    selections = []
-    try:
-        from py4vasp._calculation import GROUPS
-
-        for group in GROUPS.keys():
-            if key.startswith(f"{group}._"):
-                return f"{group}"
-
-        selections = unique_selections(key)
-        selections = [sel for sel in selections if sel not in GROUPS.keys()]
-        return ", ".join(selections)
-    except:
-        return "NONE"
-
-
 def _quantity_label_to_db_key(label: str) -> str:
     """Convert a quantity label to a database key format.
 
@@ -487,8 +470,6 @@ def _get_constant_value(node: ast.AST) -> Optional[str]:
     """Extract constant string value from AST node."""
     if isinstance(node, ast.Constant):
         return node.value
-    elif isinstance(node, ast.Str):
-        return node.s
     return None
 
 
@@ -886,8 +867,6 @@ def _transform_keys_from_loop(
         for part in slice_node.values:
             if isinstance(part, ast.Constant):
                 suffixes.append(part.value)
-            elif isinstance(part, ast.Str):
-                suffixes.append(part.s)
             elif isinstance(part, ast.FormattedValue):
                 has_variable = True
 
