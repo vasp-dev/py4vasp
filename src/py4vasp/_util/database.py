@@ -644,6 +644,14 @@ def _extract_keys_from_body(
                     )
                     # Also store the AST node itself for structure analysis
                     intermediate_dicts[f"_ast_{var_name}"] = stmt.value
+                # Track dictionary comprehensions
+                elif isinstance(stmt.value, ast.DictComp):
+                    # Extract keys from dict comprehension
+                    comp_keys = _extract_keys_from_dict_comp(
+                        stmt.value, func_node, tree
+                    )
+                    if comp_keys:
+                        intermediate_dicts[var_name] = comp_keys
                 # Track method calls that return dicts
                 elif isinstance(stmt.value, ast.Call):
                     method_keys = _extract_keys_from_method_call(
@@ -693,6 +701,93 @@ def _extract_keys_from_body(
                         return result
 
     return result
+
+
+def _extract_keys_from_dict_comp(
+    comp_node: ast.DictComp, func_node: ast.FunctionDef, tree: ast.AST
+) -> List[str]:
+    """Extract keys from a dictionary comprehension.
+
+    For example: {f"has_{kind}_potential": ... for kind in VALID_KINDS}
+    We need to evaluate the f-string pattern with the iteration variable.
+    """
+    keys = []
+
+    # Get the key pattern (usually an f-string)
+    key_node = comp_node.key
+
+    # Find what we're iterating over
+    for generator in comp_node.generators:
+        iter_node = generator.iter
+
+        # Try to get the values we're iterating over
+        iter_values = []
+        if isinstance(iter_node, ast.Name):
+            # Iterating over a variable - try to find it
+            iter_values = _get_values_from_global_var(iter_node.id, tree)
+        elif isinstance(iter_node, ast.Tuple) or isinstance(iter_node, ast.List):
+            # Iterating over a literal tuple/list
+            iter_values = [
+                elt.value if isinstance(elt, ast.Constant) else elt.s
+                for elt in iter_node.elts
+                if isinstance(elt, (ast.Constant, ast.Str))
+            ]
+
+        # Now generate keys based on the pattern
+        if isinstance(key_node, ast.JoinedStr):
+            # f-string pattern
+            for value in iter_values:
+                key = _evaluate_fstring_with_value(key_node, generator.target, value)
+                if key:
+                    keys.append(key)
+        elif isinstance(key_node, ast.Constant):
+            # Static key (unusual but possible)
+            keys.append(key_node.value)
+
+    return keys
+
+
+def _get_values_from_global_var(var_name: str, tree: ast.AST) -> List[str]:
+    """Get values from a global variable (like VALID_KINDS tuple)."""
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == var_name:
+                    if isinstance(node.value, ast.Tuple) or isinstance(
+                        node.value, ast.List
+                    ):
+                        return [
+                            elt.value if isinstance(elt, ast.Constant) else elt.s
+                            for elt in node.value.elts
+                            if isinstance(elt, (ast.Constant, ast.Str))
+                        ]
+    return []
+
+
+def _evaluate_fstring_with_value(
+    fstring_node: ast.JoinedStr, target_node: ast.AST, value: str
+) -> Optional[str]:
+    """Evaluate an f-string pattern by substituting the iteration variable.
+
+    For example: f"has_{kind}_potential" with kind="total" -> "has_total_potential"
+    """
+    result_parts = []
+    target_name = target_node.id if isinstance(target_node, ast.Name) else None
+
+    for part in fstring_node.values:
+        if isinstance(part, ast.Constant):
+            result_parts.append(part.value)
+        elif isinstance(part, ast.Str):
+            result_parts.append(part.s)
+        elif isinstance(part, ast.FormattedValue):
+            # Check if the formatted value is the iteration variable
+            if isinstance(part.value, ast.Name) and part.value.id == target_name:
+                result_parts.append(value)
+            else:
+                # Can't evaluate this - give up
+                return None
+
+    return "".join(result_parts)
 
 
 def _resolve_variable_return(
@@ -1048,11 +1143,17 @@ def _extract_keys_from_call_return(
                         result[first_key] = nested_keys
                         return result
             elif isinstance(first_arg, ast.Name):
-                # Variable reference
-                if first_arg.id in intermediate_dicts:
-                    # Need to reconstruct the top-level key
-                    # This is tricky - we need more context
-                    pass
+                # Variable reference - resolve it using the stored AST node
+                var_name = first_arg.id
+                if debug:
+                    print(
+                        f"[CALL_RETURN] combine_db_dicts called with variable: {var_name}"
+                    )
+                result = _resolve_variable_return(
+                    var_name, func_node, intermediate_dicts, tree, debug
+                )
+                if result:
+                    return result
 
     # Fallback
     if call_node.args:
