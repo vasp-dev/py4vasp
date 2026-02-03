@@ -635,11 +635,15 @@ def _extract_keys_from_body(
             if isinstance(target, ast.Name):
                 var_name = target.id
 
-                # Track dict literals
+                # Track dict literals - but we need to preserve structure for return analysis
+                # Store both the dict node itself and extracted keys for different uses
                 if isinstance(stmt.value, ast.Dict):
+                    # For nested dict values, store just the keys
                     intermediate_dicts[var_name] = _get_all_dict_keys(
                         stmt.value, func_node, tree, intermediate_dicts
                     )
+                    # Also store the AST node itself for structure analysis
+                    intermediate_dicts[f"_ast_{var_name}"] = stmt.value
                 # Track method calls that return dicts
                 elif isinstance(stmt.value, ast.Call):
                     method_keys = _extract_keys_from_method_call(
@@ -672,8 +676,61 @@ def _extract_keys_from_body(
                 )
                 if result:
                     return result
+            elif isinstance(stmt.value, ast.Name):
+                # Handle return of a variable that was assigned earlier
+                var_name = stmt.value.id
+                if debug:
+                    print(f"[BODY] Return value is a Name: {var_name}")
+                if var_name in intermediate_dicts:
+                    if debug:
+                        print(f"[BODY] Found {var_name} in intermediate_dicts")
+                    # The variable should contain a dict like {"key": nested_dict}
+                    # We need to find the original assignment to extract structure
+                    result = _resolve_variable_return(
+                        var_name, func_node, intermediate_dicts, tree, debug
+                    )
+                    if result:
+                        return result
 
     return result
+
+
+def _resolve_variable_return(
+    var_name: str,
+    func_node: ast.FunctionDef,
+    intermediate_dicts: dict,
+    tree: ast.AST,
+    debug: bool = False,
+) -> Dict[str, List[str]]:
+    """Resolve a return statement that returns a variable.
+
+    Looks for the assignment of that variable to extract its structure.
+    """
+    # Check if we stored the AST node
+    ast_key = f"_ast_{var_name}"
+    if ast_key in intermediate_dicts:
+        if debug:
+            print(f"[VAR_RETURN] Using stored AST node for {var_name}")
+        return _resolve_return_dict(
+            intermediate_dicts[ast_key], intermediate_dicts, func_node, tree, debug
+        )
+
+    # Fallback: Find the assignment statement for this variable
+    for stmt in func_node.body:
+        if isinstance(stmt, ast.Assign):
+            for target in stmt.targets:
+                if isinstance(target, ast.Name) and target.id == var_name:
+                    # Found the assignment
+                    if isinstance(stmt.value, ast.Dict):
+                        if debug:
+                            print(
+                                f"[VAR_RETURN] Found assignment of {var_name} to a Dict"
+                            )
+                        # Process this dict to extract its structure
+                        return _resolve_return_dict(
+                            stmt.value, intermediate_dicts, func_node, tree, debug
+                        )
+    return {}
 
 
 def _resolve_return_dict(

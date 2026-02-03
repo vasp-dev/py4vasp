@@ -132,14 +132,14 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
                 else None
             )
 
+        has_potential_dict = {
+            f"has_{kind}_potential": not check.is_none(self._get_potential(kind))
+            for kind in VALID_KINDS
+        }
+
         potential_dict = {
             "potential": {
-                **{
-                    f"has_{kind}_potential": not check.is_none(
-                        self._get_potential(kind)
-                    )
-                    for kind in VALID_KINDS
-                },
+                **has_potential_dict,
                 "total_potential_mean": total_potential_mean,
                 "total_potential_mean_up": total_potential_mean_up,
                 "total_potential_mean_down": total_potential_mean_down,
