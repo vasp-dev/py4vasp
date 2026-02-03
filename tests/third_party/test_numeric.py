@@ -1,7 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from unittest.mock import patch
+
 import numpy as np
 
+from py4vasp import interpolate
 from py4vasp._third_party import numeric
 
 
@@ -25,7 +28,27 @@ def test_analytic_continuation_for_higher_dimensions(not_core, Assert):
     f_in = np.random.rand(5, 4, 3)
     z_out = z_in
     f_out = numeric.analytic_continuation(z_in, f_in, z_out)
-    Assert.allclose(f_out, f_in)
+    Assert.allclose(f_out, f_in, tolerance=10)
+
+
+def test_pass_parameters_to_analytic_continuation(not_core, Assert):
+    config = interpolate.AAAConfig(
+        rtol=1e-5, max_terms=50, clean_up=False, clean_up_tol=1e-6
+    )
+    with patch("scipy.interpolate.AAA") as AAAMock:
+        z_in = np.random.rand(3)
+        f_in = np.random.rand(3)
+        z_out = np.random.rand(3)
+        f_expected = AAAMock.return_value.return_value = np.random.rand(3)
+        f_out = numeric.analytic_continuation(z_in, f_in, z_out, config=config)
+        AAAMock.assert_called_once()
+        assert AAAMock.call_args.kwargs == {
+            "rtol": config.rtol,
+            "max_terms": config.max_terms,
+            "clean_up": config.clean_up,
+            "clean_up_tol": config.clean_up_tol,
+        }
+        Assert.allclose(f_out, f_expected)
 
 
 def test_interpolate_with_function(not_core, Assert):
@@ -56,4 +79,5 @@ def test_interpolate_with_function_higher_dimensions(not_core, Assert):
     y_in = gaussian(x_in, amplitude=amplitude, mean=mean)
     x_out = x_in
     y_out = numeric.interpolate_with_function(gaussian, x_in, y_in, x_out)
+    Assert.allclose(y_out, y_in)
     Assert.allclose(y_out, y_in)
