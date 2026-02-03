@@ -483,6 +483,15 @@ def _quantity_label_to_db_key(label: str) -> str:
     return label
 
 
+def _get_constant_value(node: ast.AST) -> Optional[str]:
+    """Extract constant string value from AST node."""
+    if isinstance(node, ast.Constant):
+        return node.value
+    elif isinstance(node, ast.Str):
+        return node.s
+    return None
+
+
 def _extract_keys_from_file(
     filepath: Path, debug: bool = False
 ) -> tuple[Dict[str, List[str]], List[str]]:
@@ -551,71 +560,54 @@ def _extract_keys_from_function(
     # Fallback: look for simple direct returns
     for stmt in func_node.body:
         if isinstance(stmt, ast.Return) and stmt.value:
-            if isinstance(stmt.value, ast.Dict):
-                file_keys = _extract_keys_from_dict(stmt.value, func_node, tree, debug)
-                if file_keys:
-                    return file_keys
-            elif isinstance(stmt.value, ast.Call):
-                file_keys = _extract_keys_from_call_return(
-                    stmt.value, func_node, tree, {}, debug
-                )
-                if file_keys:
-                    return file_keys
+            file_keys = _resolve_return(stmt.value, {}, func_node, tree, debug)
+            if file_keys:
+                return file_keys
 
     return {}
 
 
-def _extract_keys_from_dict(
-    dict_node: ast.Dict, func_node: ast.FunctionDef, tree: ast.AST
+def _extract_dict_structure(
+    dict_node: ast.Dict,
+    func_node: ast.FunctionDef,
+    tree: ast.AST,
+    intermediate_dicts: dict = None,
 ) -> Dict[str, List[str]]:
-    """Extract keys from a dictionary AST node."""
-    result = {}
+    """Extract first key and all nested keys from a dict node.
 
+    Handles **unpacking, method calls, and variable references.
+    """
+    if intermediate_dicts is None:
+        intermediate_dicts = {}
+
+    result = {}
     if not dict_node.keys:
         return result
 
-    # Get the first key only (as per requirements)
-    first_key_node = dict_node.keys[0]
-    first_value_node = dict_node.values[0]
+    # Get first key
+    first_key = _get_constant_value(dict_node.keys[0])
+    if not first_key:
+        return result
 
-    if isinstance(first_key_node, ast.Constant):
-        first_key = first_key_node.value
-        nested_keys = _extract_nested_keys(first_value_node, func_node, tree)
-        result[first_key] = nested_keys
-    elif isinstance(first_key_node, ast.Str):
-        first_key = first_key_node.s
-        nested_keys = _extract_nested_keys(first_value_node, func_node, tree)
-        result[first_key] = nested_keys
+    # Extract nested keys from the first value
+    first_value = dict_node.values[0]
 
+    if isinstance(first_value, ast.Dict):
+        # Nested dict - extract all its keys
+        nested_keys = _extract_all_dict_keys(
+            first_value, func_node, tree, intermediate_dicts
+        )
+    elif isinstance(first_value, ast.Call):
+        # Method call - resolve it
+        nested_keys = _resolve_call(first_value, func_node, tree)
+    elif isinstance(first_value, ast.Name) and first_value.id in intermediate_dicts:
+        # Variable reference
+        nested_keys = intermediate_dicts[first_value.id]
+    else:
+        nested_keys = []
+
+    result[first_key] = nested_keys
     return result
-
-
-def _extract_nested_keys(
-    value_node: ast.AST, func_node: ast.FunctionDef, tree: ast.AST
-) -> List[str]:
-    """Extract nested keys from a value node."""
-    keys = []
-
-    if isinstance(value_node, ast.Dict):
-        # Collect all keys including from **unpacking
-        for i, key_node in enumerate(value_node.keys):
-            if key_node is None:
-                # **dict unpacking
-                val_node = value_node.values[i]
-                if isinstance(val_node, ast.Call):
-                    unpacked_keys = _extract_keys_from_method_call(
-                        val_node, func_node, tree
-                    )
-                    keys.extend(unpacked_keys)
-            elif isinstance(key_node, ast.Constant):
-                keys.append(key_node.value)
-            elif isinstance(key_node, ast.Str):
-                keys.append(key_node.s)
-    elif isinstance(value_node, ast.Call):
-        # The entire value is a method call
-        keys = _extract_keys_from_method_call(value_node, func_node, tree)
-
-    return keys
 
 
 def _extract_keys_from_body(
@@ -635,28 +627,22 @@ def _extract_keys_from_body(
             if isinstance(target, ast.Name):
                 var_name = target.id
 
-                # Track dict literals - but we need to preserve structure for return analysis
-                # Store both the dict node itself and extracted keys for different uses
+                # Track dict literals
                 if isinstance(stmt.value, ast.Dict):
-                    # For nested dict values, store just the keys
-                    intermediate_dicts[var_name] = _get_all_dict_keys(
+                    intermediate_dicts[var_name] = _extract_all_dict_keys(
                         stmt.value, func_node, tree, intermediate_dicts
                     )
-                    # Also store the AST node itself for structure analysis
                     intermediate_dicts[f"_ast_{var_name}"] = stmt.value
                 # Track dictionary comprehensions
                 elif isinstance(stmt.value, ast.DictComp):
-                    # Extract keys from dict comprehension
                     comp_keys = _extract_keys_from_dict_comp(
                         stmt.value, func_node, tree
                     )
                     if comp_keys:
                         intermediate_dicts[var_name] = comp_keys
-                # Track method calls that return dicts
+                # Track method calls
                 elif isinstance(stmt.value, ast.Call):
-                    method_keys = _extract_keys_from_method_call(
-                        stmt.value, func_node, tree
-                    )
+                    method_keys = _resolve_call(stmt.value, func_node, tree)
                     if method_keys:
                         intermediate_dicts[var_name] = method_keys
 
@@ -666,249 +652,153 @@ def _extract_keys_from_body(
 
         # Find return statement
         if isinstance(stmt, ast.Return) and stmt.value:
-            if debug:
-                print(f"[BODY] Found return statement")
-            if isinstance(stmt.value, ast.Dict):
-                if debug:
-                    print(f"[BODY] Return value is a Dict")
-                result = _resolve_return_dict(
-                    stmt.value, intermediate_dicts, func_node, tree, debug
-                )
-                if result:
-                    return result
-            elif isinstance(stmt.value, ast.Call):
-                if debug:
-                    print(f"[BODY] Return value is a Call")
-                result = _extract_keys_from_call_return(
-                    stmt.value, func_node, tree, intermediate_dicts, debug
-                )
-                if result:
-                    return result
-            elif isinstance(stmt.value, ast.Name):
-                # Handle return of a variable that was assigned earlier
-                var_name = stmt.value.id
-                if debug:
-                    print(f"[BODY] Return value is a Name: {var_name}")
-                if var_name in intermediate_dicts:
-                    if debug:
-                        print(f"[BODY] Found {var_name} in intermediate_dicts")
-                    # The variable should contain a dict like {"key": nested_dict}
-                    # We need to find the original assignment to extract structure
-                    result = _resolve_variable_return(
-                        var_name, func_node, intermediate_dicts, tree, debug
-                    )
-                    if result:
-                        return result
+            result = _resolve_return(
+                stmt.value, intermediate_dicts, func_node, tree, debug
+            )
+            if result:
+                return result
 
     return result
+
+
+def _get_global_var_items(
+    var_name: str, tree: ast.AST, use_dict_values: bool = False
+) -> List[str]:
+    """Extract items from a global variable (dict, tuple, or list).
+
+    Parameters
+    ----------
+    var_name : str
+        Name of the global variable
+    tree : ast.AST
+        AST tree to search
+    use_dict_values : bool
+        For dicts, extract values instead of keys (for .items() loops)
+    """
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == var_name:
+                    value = node.value
+
+                    # Handle dict
+                    if isinstance(value, ast.Dict):
+                        nodes = value.values if use_dict_values else value.keys
+                        return [
+                            _get_constant_value(n)
+                            for n in nodes
+                            if _get_constant_value(n)
+                        ]
+
+                    # Handle tuple/list
+                    elif isinstance(value, (ast.Tuple, ast.List)):
+                        return [
+                            _get_constant_value(elt)
+                            for elt in value.elts
+                            if _get_constant_value(elt)
+                        ]
+    return []
 
 
 def _extract_keys_from_dict_comp(
     comp_node: ast.DictComp, func_node: ast.FunctionDef, tree: ast.AST
 ) -> List[str]:
-    """Extract keys from a dictionary comprehension.
-
-    For example: {f"has_{kind}_potential": ... for kind in VALID_KINDS}
-    We need to evaluate the f-string pattern with the iteration variable.
-    """
+    """Extract keys from a dictionary comprehension."""
     keys = []
-
-    # Get the key pattern (usually an f-string)
     key_node = comp_node.key
 
-    # Find what we're iterating over
     for generator in comp_node.generators:
         iter_node = generator.iter
-
-        # Try to get the values we're iterating over
         iter_values = []
+
         if isinstance(iter_node, ast.Name):
-            # Iterating over a variable - try to find it
-            iter_values = _get_values_from_global_var(iter_node.id, tree)
-        elif isinstance(iter_node, ast.Tuple) or isinstance(iter_node, ast.List):
-            # Iterating over a literal tuple/list
+            iter_values = _get_global_var_items(iter_node.id, tree)
+        elif isinstance(iter_node, (ast.Tuple, ast.List)):
             iter_values = [
-                elt.value if isinstance(elt, ast.Constant) else elt.s
+                _get_constant_value(elt)
                 for elt in iter_node.elts
-                if isinstance(elt, (ast.Constant, ast.Str))
+                if _get_constant_value(elt)
             ]
 
-        # Now generate keys based on the pattern
+        # Generate keys from pattern
         if isinstance(key_node, ast.JoinedStr):
-            # f-string pattern
             for value in iter_values:
-                key = _evaluate_fstring_with_value(key_node, generator.target, value)
+                key = _evaluate_fstring(key_node, generator.target, value)
                 if key:
                     keys.append(key)
-        elif isinstance(key_node, ast.Constant):
-            # Static key (unusual but possible)
-            keys.append(key_node.value)
+        elif key_node:
+            static_key = _get_constant_value(key_node)
+            if static_key:
+                keys.append(static_key)
 
     return keys
 
 
-def _get_values_from_global_var(var_name: str, tree: ast.AST) -> List[str]:
-    """Get values from a global variable (like VALID_KINDS tuple)."""
-    for node in tree.body:
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == var_name:
-                    if isinstance(node.value, ast.Tuple) or isinstance(
-                        node.value, ast.List
-                    ):
-                        return [
-                            elt.value if isinstance(elt, ast.Constant) else elt.s
-                            for elt in node.value.elts
-                            if isinstance(elt, (ast.Constant, ast.Str))
-                        ]
-    return []
-
-
-def _evaluate_fstring_with_value(
+def _evaluate_fstring(
     fstring_node: ast.JoinedStr, target_node: ast.AST, value: str
 ) -> Optional[str]:
-    """Evaluate an f-string pattern by substituting the iteration variable.
-
-    For example: f"has_{kind}_potential" with kind="total" -> "has_total_potential"
-    """
+    """Evaluate f-string by substituting iteration variable."""
     result_parts = []
     target_name = target_node.id if isinstance(target_node, ast.Name) else None
 
     for part in fstring_node.values:
-        if isinstance(part, ast.Constant):
-            result_parts.append(part.value)
-        elif isinstance(part, ast.Str):
-            result_parts.append(part.s)
+        const_val = _get_constant_value(part)
+        if const_val:
+            result_parts.append(const_val)
         elif isinstance(part, ast.FormattedValue):
-            # Check if the formatted value is the iteration variable
             if isinstance(part.value, ast.Name) and part.value.id == target_name:
                 result_parts.append(value)
             else:
-                # Can't evaluate this - give up
-                return None
+                return None  # Can't evaluate
 
     return "".join(result_parts)
 
 
-def _resolve_variable_return(
-    var_name: str,
-    func_node: ast.FunctionDef,
+def _resolve_return(
+    return_node: ast.AST,
     intermediate_dicts: dict,
+    func_node: ast.FunctionDef,
     tree: ast.AST,
     debug: bool = False,
 ) -> Dict[str, List[str]]:
-    """Resolve a return statement that returns a variable.
+    """Resolve a return statement to extract database keys."""
+    # Handle variable returns
+    if isinstance(return_node, ast.Name):
+        var_name = return_node.id
+        ast_key = f"_ast_{var_name}"
+        if ast_key in intermediate_dicts:
+            return_node = intermediate_dicts[ast_key]
+        elif var_name in intermediate_dicts:
+            # Return cached keys if dict structure already known
+            return {var_name: intermediate_dicts[var_name]}
 
-    Looks for the assignment of that variable to extract its structure.
-    """
-    # Check if we stored the AST node
-    ast_key = f"_ast_{var_name}"
-    if ast_key in intermediate_dicts:
-        if debug:
-            print(f"[VAR_RETURN] Using stored AST node for {var_name}")
-        return _resolve_return_dict(
-            intermediate_dicts[ast_key], intermediate_dicts, func_node, tree, debug
+    # Handle dict returns
+    if isinstance(return_node, ast.Dict):
+        return _extract_dict_structure(return_node, func_node, tree, intermediate_dicts)
+
+    # Handle call returns (like combine_db_dicts)
+    if isinstance(return_node, ast.Call):
+        return _resolve_call_return(
+            return_node, func_node, tree, intermediate_dicts, debug
         )
 
-    # Fallback: Find the assignment statement for this variable
-    for stmt in func_node.body:
-        if isinstance(stmt, ast.Assign):
-            for target in stmt.targets:
-                if isinstance(target, ast.Name) and target.id == var_name:
-                    # Found the assignment
-                    if isinstance(stmt.value, ast.Dict):
-                        if debug:
-                            print(
-                                f"[VAR_RETURN] Found assignment of {var_name} to a Dict"
-                            )
-                        # Process this dict to extract its structure
-                        return _resolve_return_dict(
-                            stmt.value, intermediate_dicts, func_node, tree, debug
-                        )
     return {}
 
 
-def _resolve_return_dict(
-    dict_node: ast.Dict,
-    intermediate_dicts: dict,
-    func_node: ast.FunctionDef,
-    tree: ast.AST,
-    debug: bool = False,
-) -> Dict[str, List[str]]:
-    """Resolve the final return dictionary."""
-    result = {}
-
-    if not dict_node.keys:
-        return result
-
-    # Get first key
-    first_key_node = dict_node.keys[0]
-    first_value_node = dict_node.values[0]
-
-    if not isinstance(first_key_node, (ast.Constant, ast.Str)):
-        return result
-
-    first_key = (
-        first_key_node.value
-        if isinstance(first_key_node, ast.Constant)
-        else first_key_node.s
-    )
-
-    if debug:
-        print(f"[RESOLVE] First key: {first_key}")
-        print(f"[RESOLVE] Value node type: {type(first_value_node).__name__}")
-
-    # Check if value is a method call (like self.to_dict())
-    if isinstance(first_value_node, ast.Call):
-        if debug:
-            print(f"[RESOLVE] Calling _extract_keys_from_method_call")
-        method_keys = _extract_keys_from_method_call(
-            first_value_node, func_node, tree, debug
-        )
-        if debug:
-            print(f"[RESOLVE] Got keys: {method_keys}")
-        if method_keys:
-            result[first_key] = method_keys
-            return result
-
-    # Check if value references an intermediate dict variable
-    if isinstance(first_value_node, ast.Name):
-        var_name = first_value_node.id
-        if var_name in intermediate_dicts:
-            result[first_key] = intermediate_dicts[var_name]
-            return result
-
-    # Check if value is a dict literal (possibly with unpacking)
-    if isinstance(first_value_node, ast.Dict):
-        nested_keys = _get_all_dict_keys(
-            first_value_node, func_node, tree, intermediate_dicts
-        )
-        result[first_key] = nested_keys
-        return result
-
-    return result
-
-
-def _extract_keys_from_method_call(
+def _resolve_call(
     call_node: ast.Call, func_node: ast.FunctionDef, tree: ast.AST, debug: bool = False
 ) -> List[str]:
-    """Extract keys from a method call that returns a dictionary."""
-    keys = []
-
-    # Get the method name
+    """Resolve a method/function call to extract returned dict keys."""
     method_name = None
     if isinstance(call_node.func, ast.Attribute):
         method_name = call_node.func.attr
     elif isinstance(call_node.func, ast.Name):
         method_name = call_node.func.id
 
-    if method_name is None:
-        return keys
+    if not method_name:
+        return []
 
-    if debug:
-        print(f"[METHOD] Looking for method: {method_name}")
-
-    # Find the method definition in the same file
+    # Find method definition
     for node in tree.body:
         if isinstance(node, ast.ClassDef):
             for class_item in node.body:
@@ -916,23 +806,15 @@ def _extract_keys_from_method_call(
                     isinstance(class_item, ast.FunctionDef)
                     and class_item.name == method_name
                 ):
-                    if debug:
-                        print(f"[METHOD] Found {method_name}")
-                    # Look for return statements in this method
+                    # Look for dict return
                     for stmt in class_item.body:
-                        if isinstance(stmt, ast.Return) and stmt.value:
-                            if isinstance(stmt.value, ast.Dict):
-                                if debug:
-                                    print(f"[METHOD] {method_name} returns a Dict")
-                                # Use _get_all_dict_keys to handle **unpacking
-                                all_keys = _get_all_dict_keys(
-                                    stmt.value, class_item, tree, {}, debug
-                                )
-                                if debug:
-                                    print(f"[METHOD] Extracted keys: {all_keys}")
-                                return all_keys
-
-    return keys
+                        if isinstance(stmt, ast.Return) and isinstance(
+                            stmt.value, ast.Dict
+                        ):
+                            return _extract_all_dict_keys(
+                                stmt.value, class_item, tree, {}
+                            )
+    return []
 
 
 def _track_dict_construction_in_loop(
@@ -962,8 +844,8 @@ def _track_dict_construction_in_loop(
 
                                     # Check if iterating over a known global dict (like _DB_KEYS)
                                     # When iterating over .items(), we want the values, not keys
-                                    source_keys = _get_keys_from_global_dict(
-                                        source_dict, tree, use_values=True
+                                    source_keys = _get_global_var_items(
+                                        source_dict, tree, use_dict_values=True
                                     )
                                     if source_keys:
                                         transformed_keys = _transform_keys_from_loop(
@@ -988,39 +870,6 @@ def _track_dict_construction_in_loop(
                                         intermediate_dicts[dict_name].extend(
                                             transformed_keys
                                         )
-
-
-def _get_keys_from_global_dict(
-    dict_name: str, tree: ast.AST, use_values: bool = False
-) -> List[str]:
-    """Extract keys or values from a global dictionary definition in the file.
-
-    Parameters
-    ----------
-    dict_name : str
-        Name of the dictionary variable to find
-    tree : ast.AST
-        The AST tree to search
-    use_values : bool
-        If True, extract dictionary values instead of keys (useful for .items() loops)
-    """
-    # Look for module-level assignments like _DB_KEYS = {...}
-    for node in tree.body:
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == dict_name:
-                    if isinstance(node.value, ast.Dict):
-                        items = []
-                        nodes_to_extract = (
-                            node.value.values if use_values else node.value.keys
-                        )
-                        for item_node in nodes_to_extract:
-                            if isinstance(item_node, ast.Constant):
-                                items.append(item_node.value)
-                            elif isinstance(item_node, ast.Str):
-                                items.append(item_node.s)
-                        return items
-    return []
 
 
 def _transform_keys_from_loop(
@@ -1056,109 +905,66 @@ def _transform_keys_from_loop(
     return transformed
 
 
-def _get_all_dict_keys(
+def _extract_all_dict_keys(
     dict_node: ast.Dict,
     func_node: ast.FunctionDef,
     tree: ast.AST,
     intermediate_dicts: dict = None,
-    debug: bool = False,
 ) -> List[str]:
-    """Get all keys from a dict node, including unpacked dicts."""
+    """Extract all keys from a dict node, including **unpacked dicts."""
     if intermediate_dicts is None:
         intermediate_dicts = {}
 
     keys = []
-
-    for i, (key_node, val_node) in enumerate(zip(dict_node.keys, dict_node.values)):
+    for key_node, val_node in zip(dict_node.keys, dict_node.values):
         if key_node is None:
             # **dict unpacking
-            if debug:
-                print(f"[UNPACK] Found ** unpacking")
             if isinstance(val_node, ast.Call):
-                unpacked = _extract_keys_from_method_call(
-                    val_node, func_node, tree, debug
-                )
-                if debug:
-                    print(f"[UNPACK] Got keys: {unpacked}")
-                keys.extend(unpacked)
-            elif isinstance(val_node, ast.Name):
-                # Variable reference
-                if intermediate_dicts and val_node.id in intermediate_dicts:
-                    keys.extend(intermediate_dicts[val_node.id])
-        elif isinstance(key_node, ast.Constant):
-            keys.append(key_node.value)
-        elif isinstance(key_node, ast.Str):
-            keys.append(key_node.s)
+                keys.extend(_resolve_call(val_node, func_node, tree))
+            elif isinstance(val_node, ast.Name) and val_node.id in intermediate_dicts:
+                keys.extend(intermediate_dicts[val_node.id])
+        else:
+            const_key = _get_constant_value(key_node)
+            if const_key:
+                keys.append(const_key)
 
     return keys
 
 
-def _extract_keys_from_call_return(
+def _resolve_call_return(
     call_node: ast.Call,
     func_node: ast.FunctionDef,
     tree: ast.AST,
     intermediate_dicts: dict = None,
     debug: bool = False,
 ) -> Dict[str, List[str]]:
-    """Extract keys from a return statement that calls a function."""
+    """Extract keys from a function call in a return statement."""
     if intermediate_dicts is None:
         intermediate_dicts = {}
 
-    # Handle combine_db_dicts or similar functions
     func_name = None
     if isinstance(call_node.func, ast.Name):
         func_name = call_node.func.id
     elif isinstance(call_node.func, ast.Attribute):
         func_name = call_node.func.attr
 
-    # If it's combine_db_dicts, look at the first argument
-    if func_name and "combine" in func_name.lower():
-        if call_node.args:
-            first_arg = call_node.args[0]
-            if isinstance(first_arg, ast.Dict):
-                # Process the first dict argument
-                result = {}
-                if first_arg.keys and len(first_arg.keys) > 0:
-                    first_key_node = first_arg.keys[0]
-                    first_value_node = first_arg.values[0]
-
-                    if isinstance(first_key_node, (ast.Constant, ast.Str)):
-                        first_key = (
-                            first_key_node.value
-                            if isinstance(first_key_node, ast.Constant)
-                            else first_key_node.s
-                        )
-
-                        # Get all nested keys including from **unpacking
-                        nested_keys = _get_all_dict_keys(
-                            (
-                                first_value_node
-                                if isinstance(first_value_node, ast.Dict)
-                                else first_arg
-                            ),
-                            func_node,
-                            tree,
-                            intermediate_dicts,
-                        )
-                        result[first_key] = nested_keys
-                        return result
-            elif isinstance(first_arg, ast.Name):
-                # Variable reference - resolve it using the stored AST node
-                var_name = first_arg.id
-                if debug:
-                    print(
-                        f"[CALL_RETURN] combine_db_dicts called with variable: {var_name}"
-                    )
-                result = _resolve_variable_return(
-                    var_name, func_node, intermediate_dicts, tree, debug
-                )
-                if result:
-                    return result
-
-    # Fallback
-    if call_node.args:
+    # Handle combine_db_dicts - look at first argument
+    if func_name and "combine" in func_name.lower() and call_node.args:
         first_arg = call_node.args[0]
+
         if isinstance(first_arg, ast.Dict):
-            return _extract_keys_from_dict(first_arg, func_node, tree)
+            return _extract_dict_structure(
+                first_arg, func_node, tree, intermediate_dicts
+            )
+        elif isinstance(first_arg, ast.Name):
+            return _resolve_return(
+                first_arg, intermediate_dicts, func_node, tree, debug
+            )
+
+    # Fallback for other function calls
+    if call_node.args and isinstance(call_node.args[0], ast.Dict):
+        return _extract_dict_structure(
+            call_node.args[0], func_node, tree, intermediate_dicts
+        )
 
     return {}
