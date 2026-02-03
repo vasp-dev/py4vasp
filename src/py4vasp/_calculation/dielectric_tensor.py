@@ -3,7 +3,9 @@
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._calculation import base
+from py4vasp._calculation import base, cell
+from py4vasp._demo import dielectric_tensor
+from py4vasp._demo.dielectric_tensor import dielectric_tensor
 from py4vasp._raw import data as raw_data
 from py4vasp._util import check, convert
 from py4vasp._util.tensor import symmetry_reduce, tensor_constants
@@ -39,39 +41,63 @@ class DielectricTensor(base.Refinery):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        relaxed_ion_tensor, ion_isotropic_constant = None, None
+        tensor_reduced, isotropic_dielectric_constant, polarizability_2d = (
+            None,
+            None,
+            None,
+        )
         try:
-            relaxed_ion_tensor = self._read_relaxed_ion()
-            ion_isotropic_constant, _ = tensor_constants(relaxed_ion_tensor)
+            tensor = self._read_relaxed_ion()
+            isotropic_dielectric_constant, polarizability_2d = (
+                self._calculate_dielectric_quantities(tensor)
+            )
+            tensor_reduced = list(symmetry_reduce(tensor))
         except:
             pass
 
-        clamped_ion_tensor = self._raw_data.electron[:]
-        electron_isotropic_constant, _ = tensor_constants(clamped_ion_tensor)
+        method = (
+            convert.text_to_string(self._raw_data.method)
+            if not check.is_none(self._raw_data.method)
+            else None
+        )
 
-        # TODO add additional quantities as computed in vaspdb module
         dielectric_tensor_db = {
             "dielectric_tensor": {
-                "method": (
-                    convert.text_to_string(self._raw_data.method)
-                    if not check.is_none(self._raw_data.method)
-                    else None
-                ),
-                "tensor_relaxed_ion": (
-                    None
-                    if relaxed_ion_tensor is None
-                    else list(symmetry_reduce(relaxed_ion_tensor))
-                ),
-                "static_dielectric_constant_relaxed_ion": ion_isotropic_constant,
-                "tensor_clamped_ion": (
-                    None
-                    if clamped_ion_tensor is None
-                    else list(symmetry_reduce(clamped_ion_tensor))
-                ),
-                "static_dielectric_constant_clamped_ion": electron_isotropic_constant,
-            },
+                "method": method,
+                "tensor_reduced": tensor_reduced,
+                "isotropic_dielectric_constant": isotropic_dielectric_constant,
+                "polarizability_2d": polarizability_2d,
+            }
         }
         return dielectric_tensor_db
+
+    @base.data_access
+    def _calculate_dielectric_quantities(self, tensor: np.ndarray) -> float:
+        # 2D polarizability for slab systems
+        polarizability_2d = None
+        is_2d_system = None
+        try:
+            if not (check.is_none(self._raw_data.cell)):
+                final_cell = cell.Cell.from_data(self._raw_data.cell)
+                if final_cell.is_2d_system:
+                    is_2d_system = True
+                    polarizability_2d = _calculate_2d_polarizability(
+                        tensor, final_cell.lattice_vectors()
+                    )
+        except Exception:
+            pass
+        # 3D isotropic dielectric constant
+        isotropic_dielectric_constant = None
+        isotropic_dielectric_constant = float(np.mean(np.diag(tensor)))
+        if is_2d_system is None:
+            # unknown dimensionality of system
+            return isotropic_dielectric_constant, None
+        elif is_2d_system:
+            # confirmed 2D
+            return isotropic_dielectric_constant, polarizability_2d
+        else:
+            # confirmed 3D
+            return isotropic_dielectric_constant, None
 
     @base.data_access
     def __str__(self):
@@ -116,3 +142,40 @@ def _description(method):
         return "excluding local field effects"
     message = f"The method {method} is not implemented in this version of py4vasp."
     raise exception.NotImplemented(message)
+
+
+def _find_vacuum_direction(lattice_vectors: np.ndarray) -> int:
+    """
+    Identify vacuum direction as the lattice vector with the largest length.
+    """
+    try:
+        if lattice_vectors.shape != (3, 3):
+            return None
+        lengths = np.linalg.norm(lattice_vectors, axis=1)
+        return int(np.argmax(lengths))
+    except Exception:
+        return None
+
+
+def _calculate_2d_polarizability(
+    dielectric_tensor: np.ndarray, lattice_vectors: np.ndarray
+) -> float:
+    """
+    Compute 2D polarizability (alpha_2D) for a slab system with unknown vacuum direction.
+    """
+    try:
+        vacuum_dir = _find_vacuum_direction(lattice_vectors)
+        if vacuum_dir is None:
+            return None
+
+        # In-plane directions
+        in_plane_dirs = [i for i in range(3) if i != vacuum_dir]
+
+        eps_parallel = np.mean([dielectric_tensor[i, i] for i in in_plane_dirs])
+
+        l_vacuum = np.linalg.norm(lattice_vectors[vacuum_dir])
+
+        alpha_2d = (l_vacuum / (4.0 * np.pi)) * (eps_parallel - 1.0)
+        return alpha_2d
+    except Exception:
+        return None

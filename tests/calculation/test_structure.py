@@ -6,7 +6,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import exception, raw
 from py4vasp._calculation._stoichiometry import Stoichiometry
 from py4vasp._calculation.structure import Structure
 from py4vasp._util import check
@@ -141,7 +141,14 @@ def ZnS(raw_data):
 
 
 @pytest.fixture(
-    params=["Sr2TiO4", "Sr2TiO4 without ion types", "Fe3O4", "Ca3AsBr3", "ZnS"]
+    params=[
+        "Sr2TiO4",
+        "Sr2TiO4 without ion types",
+        "Fe3O4",
+        "Ca3AsBr3",
+        "ZnS",
+        "Graphite",
+    ]
 )
 def structures(request, raw_data):
     return make_structure(raw_data.structure(request.param))
@@ -157,7 +164,7 @@ def not_a_supercell(request):
     return request.param
 
 
-def make_structure(raw_structure):
+def make_structure(raw_structure: raw.Structure):
     structure = Structure.from_data(raw_structure)
     structure.ref = types.SimpleNamespace()
     if not raw_structure.cell.scale.is_none():
@@ -166,6 +173,8 @@ def make_structure(raw_structure):
         scale = 1.0
     structure.ref.lattice_vectors = scale * raw_structure.cell.lattice_vectors
     structure.ref.volume = np.abs(np.linalg.det(structure.ref.lattice_vectors))
+    structure.ref.area_2d = structure._cell()._area_2d()
+    structure.ref.is_2d_system = structure.is_2d_system()
     structure.ref.positions = raw_structure.positions
     if check.is_none(raw_structure.stoichiometry.ion_types):
         structure.ion_type_arg = {"ion_types": ("Sr", "Ti", "O")}
@@ -502,13 +511,26 @@ def test_to_database(structures, Assert):
         structures.ref.positions[-1] if has_timesteps else structures.ref.positions
     )
     final_volume = structures.ref.volume[-1] if has_timesteps else structures.ref.volume
+    final_area_2d = (
+        (structures.ref.area_2d if structures.ref.area_2d is not None else None)
+        if has_timesteps
+        else structures.ref.area_2d
+    )
     final_lattice_vectors = (
         structures.ref.lattice_vectors[-1]
         if has_timesteps
         else structures.ref.lattice_vectors
     )
+    final_is_2d_system = structures.ref.is_2d_system
     assert db_dict["num_ions"] == len(final_positions)
-    assert db_dict["volume_cell"] == pytest.approx(final_volume)
+    assert db_dict["cell_volume"] == pytest.approx(final_volume)
+    if final_is_2d_system:
+        assert db_dict["cell_area_2d"] == pytest.approx(final_area_2d)
+        assert db_dict["is_2d_system"] == final_is_2d_system
+        assert final_area_2d is not None
+    else:
+        assert db_dict["cell_area_2d"] is None
+        assert not db_dict["is_2d_system"]
     Assert.allclose(db_dict["lattice_vector_a"], final_lattice_vectors[0])
     Assert.allclose(db_dict["lattice_vector_b"], final_lattice_vectors[1])
     Assert.allclose(db_dict["lattice_vector_c"], final_lattice_vectors[2])

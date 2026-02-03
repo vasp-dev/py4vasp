@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from dataclasses import dataclass
+from typing import Union
 
 import numpy as np
 
@@ -269,10 +270,15 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
 
         lengths = [None, None, None]
         angles = [None, None, None]
+        is_2d_system = None
+        cell_area_2d = None
         try:
             cell = self._cell()
             lengths = list(cell.lengths())
             angles = list(cell.angles())
+            is_2d_system = cell.is_2d_system
+            if is_2d_system:
+                cell_area_2d = cell._area_2d()
         except:
             pass
 
@@ -280,7 +286,9 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
             {
                 "structure": {
                     "num_ions": self.number_atoms(),
-                    "volume_cell": volume,
+                    "cell_volume": volume,
+                    "cell_area_2d": cell_area_2d,
+                    "is_2d_system": is_2d_system,
                     "lattice_vector_a": (
                         list(lattice[0]) if lattice[0] is not None else None
                     ),
@@ -809,6 +817,13 @@ Atoms # atomic
         array([...])
         """
         return np.abs(np.linalg.det(self.lattice_vectors()))
+
+    @base.data_access
+    def is_2d_system(self) -> Union[bool, np.ndarray]:
+        """
+        Heuristic check for 2D system: one lattice vector significantly larger than the other two.
+        """
+        return self._cell().is_2d_system
 
     @base.data_access
     def number_atoms(self):

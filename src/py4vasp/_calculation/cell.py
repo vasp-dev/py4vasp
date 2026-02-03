@@ -1,10 +1,14 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from typing import Union
+
 import numpy as np
 
 from py4vasp._calculation import base, slice_
 from py4vasp._raw import data as raw_data
 from py4vasp._util import check, reader
+
+_VACUUM_RATIO = 2.5
 
 
 class Cell(slice_.Mixin, base.Refinery):
@@ -81,12 +85,59 @@ class Cell(slice_.Mixin, base.Refinery):
             angles = np.array([alpha, beta, gamma])
         return angles
 
+    @property
+    def is_2d_system(self) -> Union[bool, np.ndarray]:
+        """Determine if the system is 2D based on the lattice vectors."""
+        lengths = self.lengths()
+        if lengths.ndim == 2:
+            return np.array([_is_2d(l) for l in lengths])
+        else:
+            lengths = self.lengths()
+            return _is_2d(lengths)
+
+    def _area_2d(self) -> Union[float, np.ndarray]:
+        """Area of the 2D cell if the system is 2D."""
+        lattices = self.lattice_vectors()
+        lengths = self.lengths()
+
+        if lattices.ndim == 3:
+            return np.array(
+                [
+                    _get_area_2d(lattice, length)
+                    for lattice, length in zip(lattices, lengths)
+                ]
+            )
+        else:
+            return _get_area_2d(lattices, lengths)
+
     def _get_steps(self):
         return self._steps if self._is_trajectory else ()
 
     @property
     def _is_trajectory(self):
         return self._raw_data.lattice_vectors.ndim == 3
+
+
+def _is_2d(lengths: np.ndarray) -> bool:
+    if lengths.shape != (3,):
+        raise ValueError("Lengths must be a 1D array of length 3.")
+    max_length_idx = np.argmax(lengths)
+    other_lengths = [l for i, l in enumerate(lengths) if i != max_length_idx]
+    return bool(
+        np.all([(lengths[max_length_idx] / l) >= _VACUUM_RATIO for l in other_lengths])
+    )
+
+
+def _get_area_2d(lattice: np.ndarray, lengths: np.ndarray) -> float:
+    if len(lattice.shape) != 2 or lattice.shape != (3, 3):
+        raise ValueError("Lattice must be a 3x3 array.")
+    if len(lengths.shape) != 1 or lengths.shape != (3,):
+        raise ValueError("Lengths must be a 1D array of length 3.")
+    max_length_idx = np.argmax(lengths)
+    vec1 = lattice[(max_length_idx + 1) % 3]
+    vec2 = lattice[(max_length_idx + 2) % 3]
+    area = np.linalg.norm(np.cross(vec1, vec2))
+    return area
 
 
 class _LatticeVectors(reader.Reader):

@@ -248,6 +248,8 @@ class DielectricTensor:
     "The dielectric tensor in the independent particle approximation."
     method: str
     "The method used to generate the dielectric tensor."
+    cell: Cell = NONE()
+    "The simulation cell used for the calculation."
 
 
 @dataclasses.dataclass

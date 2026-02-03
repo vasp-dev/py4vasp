@@ -257,6 +257,7 @@ schema.add(
     ion=f"{group}/ion_dielectric_tensor",
     independent_particle=f"{group}/independent_particle_dielectric_tensor",
     method=f"{group}/method_dielectric_tensor",
+    cell=Link("cell", "final"),
 )
 #
 schema.add(

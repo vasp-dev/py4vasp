@@ -410,6 +410,8 @@ class RawDataFactory:
             return _demo.structure.Sr2TiO4(has_ion_types=False)
         elif selection == "ZnS":
             return _demo.structure.ZnS()
+        elif selection == "Graphite":
+            return _demo.structure.Graphite()
         else:
             raise exception.NotImplemented()
 
