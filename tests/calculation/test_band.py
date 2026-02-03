@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation.band import Band
+from py4vasp._calculation.band import _OCCUPATION_CUTOFF, Band
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.projector import Projector
 
@@ -21,7 +21,9 @@ def single_band(raw_data):
     band.ref.fermi_energy = 0.0
     band.ref.bands = raw_band.dispersion.eigenvalues[0] - band.ref.fermi_energy_argument
     band.ref.occupations = raw_band.occupations[0]
-    band.ref.num_occupied_bands = int(np.max(np.sum(band.ref.occupations > 0, axis=-1)))
+    band.ref.num_occupied_bands = int(
+        np.max(np.sum(band.ref.occupations > _OCCUPATION_CUTOFF, axis=-1))
+    )
     band.ref.kpoints = Kpoint.from_data(raw_band.dispersion.kpoints)
     return band
 
@@ -34,7 +36,9 @@ def multiple_bands(raw_data):
     band.ref.fermi_energy = raw_band.fermi_energy
     band.ref.bands = raw_band.dispersion.eigenvalues[0] - raw_band.fermi_energy
     band.ref.occupations = raw_band.occupations[0]
-    band.ref.num_occupied_bands = int(np.max(np.sum(band.ref.occupations > 0, axis=-1)))
+    band.ref.num_occupied_bands = int(
+        np.max(np.sum(band.ref.occupations > _OCCUPATION_CUTOFF, axis=-1))
+    )
     band.ref.kpoints = Kpoint.from_data(raw_band.dispersion.kpoints)
     return band
 
@@ -80,11 +84,11 @@ def spin_polarized(raw_data):
     band.ref.bands_down = raw_band.dispersion.eigenvalues[1]
     band.ref.occupations_up = raw_band.occupations[0]
     band.ref.num_occupied_bands_up = int(
-        np.max(np.sum(band.ref.occupations_up > 0, axis=-1))
+        np.max(np.sum(band.ref.occupations_up > _OCCUPATION_CUTOFF, axis=-1))
     )
     band.ref.occupations_down = raw_band.occupations[1]
     band.ref.num_occupied_bands_down = int(
-        np.max(np.sum(band.ref.occupations_down > 0, axis=-1))
+        np.max(np.sum(band.ref.occupations_down > _OCCUPATION_CUTOFF, axis=-1))
     )
     return band
 
@@ -117,7 +121,9 @@ def noncollinear_projectors(raw_data):
     band.ref.Ba_sigma_y = np.sum(raw_band.projections[2, 0:2], axis=(0, 1))
     band.ref.d_sigma_z = np.sum(raw_band.projections[3, :, 2], axis=0)
     band.ref.occupations = raw_band.occupations[0]
-    band.ref.num_occupied_bands = int(np.max(np.sum(band.ref.occupations > 0, axis=-1)))
+    band.ref.num_occupied_bands = int(
+        np.max(np.sum(band.ref.occupations > _OCCUPATION_CUTOFF, axis=-1))
+    )
     band.ref.fermi_energy = raw_band.fermi_energy
     return band
 
