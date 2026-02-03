@@ -401,12 +401,14 @@ Types are always keys that are in all_keys."""
                 selections_list if len(selections_list) > 0 else None,
             )
 
+    sort_keys_list = ["energy"]
+
     if to_print:
         print("\n--- PARSED KEYS: ---")
         for k, v in sorted(all_keys.items()):
             if v is not None and len(v) > 0:
                 print(f"\t{k}:")
-                should_sort = k in ["energy"]
+                should_sort = k in sort_keys_list
                 vsort = sorted(v) if should_sort else v
                 for subkey in vsort:
                     print(f"\t\t- {subkey}")
@@ -427,8 +429,10 @@ Types are always keys that are in all_keys."""
                 f"\t{k}:\n\t\ttype: {v[0]}\n\t\tselections: {v[1] if v[1] is not None else 'default'}"
             )
 
-    # TODO fix remaining EMPTY KEYS where they should not be empty
-    main_keys = {k: v for k, v in sorted(all_keys.items(), key=lambda item: item[0])}
+    main_keys = {
+        k: (v if not k in sort_keys_list else sorted(v))
+        for k, v in sorted(all_keys.items(), key=lambda item: item[0])
+    }
     output_type_dict = {
         k: v for k, v in sorted(output_type_dict.items(), key=lambda item: item[0])
     }
@@ -485,8 +489,6 @@ def _extract_keys_from_file(
     refinery_classes = set()
     classes_with_method = set()
 
-    is_debug_file = debug and filepath.stem in ["run_info", "energy", "phonon_band"]
-
     # First pass: find all Refinery classes
     for node in tree.body:
         if isinstance(node, ast.ClassDef):
@@ -514,12 +516,10 @@ def _extract_keys_from_file(
                             and item.name == "_to_database"
                         ):
                             classes_with_method.add(class_key)
-                            if is_debug_file:
+                            if debug:
                                 print(f"\n[{filepath.stem}] Found _to_database method")
-                            file_keys = _extract_keys_from_function(
-                                item, tree, is_debug_file
-                            )
-                            if is_debug_file:
+                            file_keys = _extract_keys_from_function(item, tree, debug)
+                            if debug:
                                 print(f"[{filepath.stem}] Result: {file_keys}")
                             keys.update(file_keys)
 
@@ -616,9 +616,7 @@ def _extract_keys_from_body(
                     intermediate_dicts[f"_ast_{var_name}"] = stmt.value
                 # Track dictionary comprehensions
                 elif isinstance(stmt.value, ast.DictComp):
-                    comp_keys = _extract_keys_from_dict_comp(
-                        stmt.value, func_node, tree
-                    )
+                    comp_keys = _extract_keys_from_dict_comp(stmt.value, tree)
                     if comp_keys:
                         intermediate_dicts[var_name] = comp_keys
                 # Track method calls
@@ -681,9 +679,7 @@ def _get_global_var_items(
     return []
 
 
-def _extract_keys_from_dict_comp(
-    comp_node: ast.DictComp, func_node: ast.FunctionDef, tree: ast.AST
-) -> List[str]:
+def _extract_keys_from_dict_comp(comp_node: ast.DictComp, tree: ast.AST) -> List[str]:
     """Extract keys from a dictionary comprehension."""
     keys = []
     key_node = comp_node.key
@@ -716,21 +712,25 @@ def _extract_keys_from_dict_comp(
 
 
 def _evaluate_fstring(
-    fstring_node: ast.JoinedStr, target_node: ast.AST, value: str
+    fstring_node: ast.JoinedStr, target_node: ast.AST, substitution_value: str
 ) -> Optional[str]:
-    """Evaluate f-string by substituting iteration variable."""
-    result_parts = []
+    """Evaluate f-string by substituting iteration variable with a concrete value."""
     target_name = target_node.id if isinstance(target_node, ast.Name) else None
+    if not target_name:
+        return None
 
+    result_parts = []
     for part in fstring_node.values:
+        # Handle constant string parts
         const_val = _get_constant_value(part)
         if const_val:
             result_parts.append(const_val)
+        # Handle variable substitution
         elif isinstance(part, ast.FormattedValue):
             if isinstance(part.value, ast.Name) and part.value.id == target_name:
-                result_parts.append(value)
+                result_parts.append(substitution_value)
             else:
-                return None  # Can't evaluate
+                return None  # Can't evaluate complex expressions
 
     return "".join(result_parts)
 
@@ -743,21 +743,24 @@ def _resolve_return(
     debug: bool = False,
 ) -> Dict[str, List[str]]:
     """Resolve a return statement to extract database keys."""
-    # Handle variable returns
+    # Resolve variable references to their stored AST nodes or cached keys
     if isinstance(return_node, ast.Name):
         var_name = return_node.id
         ast_key = f"_ast_{var_name}"
         if ast_key in intermediate_dicts:
+            # Use the stored AST node for full structural analysis
             return_node = intermediate_dicts[ast_key]
         elif var_name in intermediate_dicts:
-            # Return cached keys if dict structure already known
+            # Return already-extracted keys (simple case)
             return {var_name: intermediate_dicts[var_name]}
+        else:
+            return {}
 
-    # Handle dict returns
+    # Handle dict literal returns
     if isinstance(return_node, ast.Dict):
         return _extract_dict_structure(return_node, func_node, tree, intermediate_dicts)
 
-    # Handle call returns (like combine_db_dicts)
+    # Handle function call returns (e.g., combine_db_dicts)
     if isinstance(return_node, ast.Call):
         return _resolve_call_return(
             return_node, func_node, tree, intermediate_dicts, debug
@@ -767,7 +770,7 @@ def _resolve_return(
 
 
 def _resolve_call(
-    call_node: ast.Call, func_node: ast.FunctionDef, tree: ast.AST, debug: bool = False
+    call_node: ast.Call, func_node: ast.FunctionDef, tree: ast.AST
 ) -> List[str]:
     """Resolve a method/function call to extract returned dict keys."""
     method_name = None
@@ -830,9 +833,7 @@ def _track_dict_construction_in_loop(
                                     )
                                     if source_keys:
                                         transformed_keys = _transform_keys_from_loop(
-                                            source_keys,
-                                            target.slice,
-                                            for_stmt,
+                                            source_keys, target.slice
                                         )
                                         if dict_name not in intermediate_dicts:
                                             intermediate_dicts[dict_name] = []
@@ -844,7 +845,6 @@ def _track_dict_construction_in_loop(
                                         transformed_keys = _transform_keys_from_loop(
                                             intermediate_dicts[source_dict],
                                             target.slice,
-                                            for_stmt,
                                         )
                                         if dict_name not in intermediate_dicts:
                                             intermediate_dicts[dict_name] = []
@@ -853,35 +853,27 @@ def _track_dict_construction_in_loop(
                                         )
 
 
-def _transform_keys_from_loop(
-    source_keys: List[str], slice_node: ast.AST, for_node: ast.For
-) -> List[str]:
+def _transform_keys_from_loop(source_keys: List[str], slice_node: ast.AST) -> List[str]:
     """Transform keys based on f-string or concatenation pattern."""
-    transformed = []
+    if not isinstance(slice_node, ast.JoinedStr):
+        return source_keys
 
-    # Check if using f-string
-    if isinstance(slice_node, ast.JoinedStr):
-        # Extract suffix patterns
-        suffixes = []
-        has_variable = False
-        for part in slice_node.values:
-            if isinstance(part, ast.Constant):
-                suffixes.append(part.value)
-            elif isinstance(part, ast.FormattedValue):
-                has_variable = True
+    # Extract suffix patterns from f-string
+    suffixes = []
+    has_variable = False
+    for part in slice_node.values:
+        const_val = _get_constant_value(part)
+        if const_val:
+            suffixes.append(const_val)
+        elif isinstance(part, ast.FormattedValue):
+            has_variable = True
 
-        # If there's a variable in the f-string, assume it's iterating source keys
-        if has_variable and suffixes:
-            # Apply suffix to each source key
-            suffix = "".join(suffixes)
-            for key in source_keys:
-                transformed.append(f"{key}{suffix}")
-        else:
-            transformed = source_keys
-    else:
-        transformed = source_keys
+    # If there's a variable in the f-string, apply suffix to each source key
+    if has_variable and suffixes:
+        suffix = "".join(suffixes)
+        return [f"{key}{suffix}" for key in source_keys]
 
-    return transformed
+    return source_keys
 
 
 def _extract_all_dict_keys(
@@ -890,19 +882,20 @@ def _extract_all_dict_keys(
     tree: ast.AST,
     intermediate_dicts: dict = None,
 ) -> List[str]:
-    """Extract all keys from a dict node, including **unpacked dicts."""
+    """Extract all keys from a dict, handling literal keys and **unpacked dicts."""
     if intermediate_dicts is None:
         intermediate_dicts = {}
 
     keys = []
     for key_node, val_node in zip(dict_node.keys, dict_node.values):
         if key_node is None:
-            # **dict unpacking
+            # **dict unpacking - resolve the unpacked dictionary
             if isinstance(val_node, ast.Call):
                 keys.extend(_resolve_call(val_node, func_node, tree))
             elif isinstance(val_node, ast.Name) and val_node.id in intermediate_dicts:
                 keys.extend(intermediate_dicts[val_node.id])
         else:
+            # Literal key
             const_key = _get_constant_value(key_node)
             if const_key:
                 keys.append(const_key)
@@ -917,20 +910,27 @@ def _resolve_call_return(
     intermediate_dicts: dict = None,
     debug: bool = False,
 ) -> Dict[str, List[str]]:
-    """Extract keys from a function call in a return statement."""
+    """Extract keys from a function call in a return statement.
+
+    Handles special cases like combine_db_dicts where we need to analyze arguments.
+    """
     if intermediate_dicts is None:
         intermediate_dicts = {}
 
+    if not call_node.args:
+        return {}
+
+    # Get function name
     func_name = None
     if isinstance(call_node.func, ast.Name):
         func_name = call_node.func.id
     elif isinstance(call_node.func, ast.Attribute):
         func_name = call_node.func.attr
 
-    # Handle combine_db_dicts - look at first argument
-    if func_name and "combine" in func_name.lower() and call_node.args:
-        first_arg = call_node.args[0]
+    first_arg = call_node.args[0]
 
+    # Handle combine_db_dicts - extract from first argument
+    if func_name and "combine" in func_name.lower():
         if isinstance(first_arg, ast.Dict):
             return _extract_dict_structure(
                 first_arg, func_node, tree, intermediate_dicts
@@ -940,10 +940,8 @@ def _resolve_call_return(
                 first_arg, intermediate_dicts, func_node, tree, debug
             )
 
-    # Fallback for other function calls
-    if call_node.args and isinstance(call_node.args[0], ast.Dict):
-        return _extract_dict_structure(
-            call_node.args[0], func_node, tree, intermediate_dicts
-        )
+    # Fallback: try to extract from first dict argument
+    if isinstance(first_arg, ast.Dict):
+        return _extract_dict_structure(first_arg, func_node, tree, intermediate_dicts)
 
     return {}
