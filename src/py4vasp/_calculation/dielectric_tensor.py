@@ -46,12 +46,29 @@ class DielectricTensor(base.Refinery):
             None,
             None,
         )
+        (
+            tensor_reduced_ionic,
+            isotropic_dielectric_constant_ionic,
+            polarizability_2d_ionic,
+        ) = (
+            None,
+            None,
+            None,
+        )
         try:
             tensor = self._read_relaxed_ion()
             isotropic_dielectric_constant, polarizability_2d = (
                 self._calculate_dielectric_quantities(tensor)
             )
             tensor_reduced = list(symmetry_reduce(tensor))
+        except:
+            pass
+        try:
+            tensor = self._raw_data.ion[:]
+            isotropic_dielectric_constant_ionic, polarizability_2d_ionic = (
+                self._calculate_dielectric_quantities(tensor)
+            )
+            tensor_reduced_ionic = list(symmetry_reduce(tensor))
         except:
             pass
 
@@ -64,9 +81,12 @@ class DielectricTensor(base.Refinery):
         dielectric_tensor_db = {
             "dielectric_tensor": {
                 "method": method,
-                "tensor_reduced": tensor_reduced,
-                "isotropic_dielectric_constant": isotropic_dielectric_constant,
-                "polarizability_2d": polarizability_2d,
+                "tensor_reduced_ionic": tensor_reduced_ionic,
+                "isotropic_dielectric_constant_ionic": isotropic_dielectric_constant_ionic,
+                "polarizability_2d_ionic": polarizability_2d_ionic,
+                "tensor_reduced_total": tensor_reduced,
+                "isotropic_dielectric_constant_total": isotropic_dielectric_constant,
+                "polarizability_2d_total": polarizability_2d,
             }
         }
         return dielectric_tensor_db

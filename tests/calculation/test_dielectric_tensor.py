@@ -54,12 +54,17 @@ def make_reference(raw_data, method, expected_description):
         tensor.ref.relaxed_ion = raw_tensor.ion + raw_tensor.electron
     tensor.ref.independent_particle = raw_tensor.independent_particle
     tensor.ref.polarizability_2d = None
+    tensor.ref.polarizability_2d_ionic = None
     if not (check.is_none(raw_tensor.cell)):
         tensor.ref.cell = Cell.from_data(raw_tensor.cell)
         if tensor.ref.cell.is_2d_system:
             tensor.ref.polarizability_2d = _calculate_2d_polarizability(
                 tensor.ref.relaxed_ion, tensor.ref.cell.lattice_vectors()
             )
+            if not check.is_none(raw_tensor.ion):
+                tensor.ref.polarizability_2d_ionic = _calculate_2d_polarizability(
+                    raw_tensor.ion, tensor.ref.cell.lattice_vectors()
+                )
     tensor.ref.method = method.split()[0]
     tensor.ref.expected_description = expected_description
     return tensor
@@ -153,22 +158,33 @@ def _check_to_database(tensor, Assert):
     import numpy as np
 
     if tensor.ref.relaxed_ion is None:
-        assert db_dict["tensor_reduced"] is None
-        assert db_dict["isotropic_dielectric_constant"] is None
-        assert db_dict["polarizability_2d"] is None
+        assert db_dict["tensor_reduced_total"] is None
+        assert db_dict["isotropic_dielectric_constant_total"] is None
+        assert db_dict["polarizability_2d_total"] is None
+        assert db_dict["tensor_reduced_ionic"] is None
+        assert db_dict["isotropic_dielectric_constant_ionic"] is None
+        assert db_dict["polarizability_2d_ionic"] is None
     else:
         relaxed_ion_expected_list = [9.0, 17.0, 25.0, 13.0, 21.0, 17.0]
-        Assert.allclose(db_dict["tensor_reduced"], relaxed_ion_expected_list)
-        assert db_dict["isotropic_dielectric_constant"] == pytest.approx(
+        ionic_expected_list = [9.0, 13.0, 17.0, 11.0, 15.0, 13.0]
+        Assert.allclose(db_dict["tensor_reduced_total"], relaxed_ion_expected_list)
+        Assert.allclose(db_dict["tensor_reduced_ionic"], ionic_expected_list)
+        assert db_dict["isotropic_dielectric_constant_total"] == pytest.approx(
             float(np.trace(tensor.ref.relaxed_ion) / 3.0)
         )
+        assert db_dict["isotropic_dielectric_constant_ionic"] == pytest.approx(
+            float(np.trace(tensor.ref.relaxed_ion - tensor.ref.clamped_ion) / 3.0)
+        )
         if tensor.ref.polarizability_2d is not None:
-            assert db_dict["polarizability_2d"] == pytest.approx(
+            assert db_dict["polarizability_2d_total"] == pytest.approx(
                 tensor.ref.polarizability_2d
             )
+            assert db_dict["polarizability_2d_ionic"] == pytest.approx(
+                tensor.ref.polarizability_2d_ionic
+            )
         else:
-            assert db_dict["polarizability_2d"] is None
-
+            assert db_dict["polarizability_2d_total"] is None
+            assert db_dict["polarizability_2d_ionic"] is None
     for k, v in db_dict.items():
         if k.startswith("isotropic_dielectric_constant"):
             assert v is None or isinstance(v, (int, float))
