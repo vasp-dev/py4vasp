@@ -149,15 +149,22 @@ def test_get_formula_and_compound(ion_types, ion_numbers, expectations):
 
 def test_get_all_possible_keys():
     """Test that get_all_possible_keys runs without error and returns a non-empty dict."""
-    all_keys = database.get_all_possible_keys(to_print=False, debug=False)
+    all_keys, output_type_dict = database.get_all_possible_keys(
+        to_print=False, debug=False
+    )
     assert isinstance(all_keys, dict)
+    assert isinstance(output_type_dict, dict)
     assert len(all_keys) > 0
+    assert len(output_type_dict) > 0
     for k in QUANTITIES:
-        assert k in all_keys
+        assert k.lstrip("_") in all_keys
+        assert k in output_type_dict
+        assert output_type_dict[k][0] == k.lstrip("_")
     for group, quantities in GROUPS.items():
         for quantity in quantities:
-            key = f"{group}.{quantity}"
+            key = f"{group}_{quantity}"
             assert key in all_keys
+            assert f"{group}.{quantity}" in output_type_dict
 
     assert (
         sum(

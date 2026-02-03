@@ -313,10 +313,15 @@ def get_all_possible_keys(
 
     Returns
     -------
-    Dict[str, List[str]]
-        A dictionary where keys are the top-level database keys and values are
-        lists of nested keys within each top-level key. If a class inherits from
-        base.Refinery but doesn't implement _to_database, the value is None.
+    Tuple[Dict[str, List[str]], Dict[str, Tuple[str, List[str]]]]
+        A tuple:
+          - A dictionary where keys are the top-level database keys and values are
+            lists of nested keys within each top-level key. If a class inherits from
+            base.Refinery but doesn't implement _to_database, the value is None.
+          - A dictionary mapping all available keys (group.quantity:selection) to their
+            (type, available selections).
+            You can use this to look up which selections are available for a given type,
+            and which properties can be found under additional_properties[<type>:<selection>].
     """
     calculation_dir = Path(__file__).parent.parent / "_calculation"
     all_keys = {}
@@ -358,20 +363,37 @@ def get_all_possible_keys(
                 traceback.print_exc()
             continue
 
+    output_type_dict: dict[str, tuple[str, list[str]]] = {}
+    """Map all available keys (group.quantity:selection) to their (types, selections).
+Types are always keys that are in all_keys."""
+
+    from py4vasp._calculation import GROUPS
+
     for k in list(all_keys.keys()):
-        selections = _get_unique_selections_str(k)
-        if selections == "NONE":
+        try:
+            selections_list = unique_selections(k)
+        except:
+            selections_list = []
+        constructed_key = _quantity_label_to_db_key(k)
+        for sel in selections_list:
+            if sel in GROUPS.keys():
+                output_type_dict[f"{sel}._{k}"] = (k, [sel])
+        if len(selections_list) == 0:
             all_keys.pop(k)
+        else:
+            selections_list = [
+                sel for sel in selections_list if sel not in GROUPS.keys()
+            ]
+            output_type_dict[constructed_key] = (
+                k,
+                selections_list if len(selections_list) > 0 else None,
+            )
 
     if to_print:
         print("\n--- PARSED KEYS: ---")
         for k, v in sorted(all_keys.items()):
             if v is not None and len(v) > 0:
-                print(
-                    f"\t{_quantity_label_to_db_key(k)}:("
-                    + _get_unique_selections_str(k)
-                    + ")"
-                )
+                print(f"\t{k}:")
                 should_sort = k in ["energy"]
                 vsort = sorted(v) if should_sort else v
                 for subkey in vsort:
@@ -380,39 +402,39 @@ def get_all_possible_keys(
         print("\n--- EMPTY KEYS ---")
         for k, v in sorted(all_keys.items()):
             if v is not None and len(v) == 0:
-                print(
-                    f"\t{_quantity_label_to_db_key(k)}:("
-                    + _get_unique_selections_str(k)
-                    + ")"
-                )
+                print(f"\t{k}")
 
         print("\n--- MISSING _to_database ---")
         for k, v in sorted(all_keys.items()):
             if v is None:
-                print(
-                    f"\t{_quantity_label_to_db_key(k)}:("
-                    + _get_unique_selections_str(k)
-                    + ")"
-                )
+                print(f"\t{k}")
+
+        print("\n--- OUTPUT TYPE DICT ---")
+        for k, v in sorted(output_type_dict.items()):
+            print(
+                f"\t{k}:\n\t\ttype: {v[0]}\n\t\tselections: {v[1] if v[1] is not None else 'default'}"
+            )
 
     # TODO fix remaining EMPTY KEYS where they should not be empty
-    # TODO discuss with Martin and/or Zahed whether the keys in the dictionary should be group.quantity:selection or quantity:selection
-    # (then selection can also be a group) -- decide this for get_all_possible_keys and available_quantities, then fix accordingly
-
-    for k in list(all_keys.keys()):
-        new_label = _quantity_label_to_db_key(k)
-        if new_label != k:
-            all_keys[new_label] = all_keys.pop(k)
-
-    all_keys = {k: v for k, v in sorted(all_keys.items(), key=lambda item: item[0])}
-    return all_keys
+    main_keys = {k: v for k, v in sorted(all_keys.items(), key=lambda item: item[0])}
+    output_type_dict = {
+        k: v for k, v in sorted(output_type_dict.items(), key=lambda item: item[0])
+    }
+    return main_keys, output_type_dict
 
 
 def _get_unique_selections_str(key: str) -> str:
     """Get a string representation of unique selections for a given key."""
     selections = []
     try:
+        from py4vasp._calculation import GROUPS
+
+        for group in GROUPS.keys():
+            if key.startswith(f"{group}._"):
+                return f"{group}"
+
         selections = unique_selections(key)
+        selections = [sel for sel in selections if sel not in GROUPS.keys()]
         return ", ".join(selections)
     except:
         return "NONE"
@@ -436,7 +458,7 @@ def _quantity_label_to_db_key(label: str) -> str:
             if label.startswith(expected_label):
                 split1, split2 = label[: len(group)], label[(len(group) + 1) :]
                 if quantity.startswith("_"):
-                    split2 = f"_{split2}"
+                    split2 = f"_{split2.lstrip('_')}"
                 db_key = f"{split1}.{split2}"
                 return db_key
     for quantity in QUANTITIES:
