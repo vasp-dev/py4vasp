@@ -326,6 +326,8 @@ def get_all_possible_keys(
     calculation_dir = Path(__file__).parent.parent / "_calculation"
     all_keys = {}
 
+    from py4vasp._calculation import GROUPS, QUANTITIES
+
     for py_file in calculation_dir.glob("*.py"):
         if py_file.name == "__init__.py":
             continue
@@ -341,19 +343,31 @@ def get_all_possible_keys(
                 all_keys[py_file.stem] = []
 
             for key, nested_keys in file_keys.items():
-                if key in all_keys:
-                    if all_keys[key] is not None and nested_keys is not None:
-                        # Merge nested keys, keeping unique ones
-                        all_keys[key] = list(set(all_keys[key] + nested_keys))
-                    elif nested_keys is not None:
+                if (
+                    (key in QUANTITIES)
+                    or (f"_{key}" in QUANTITIES)
+                    or any([key.startswith(f"{group}_") for group in GROUPS.keys()])
+                ):
+                    if key in all_keys:
+                        if all_keys[key] is not None and nested_keys is not None:
+                            # Merge nested keys, keeping unique ones
+                            all_keys[key] = list(set(all_keys[key] + nested_keys))
+                        elif nested_keys is not None:
+                            all_keys[key] = nested_keys
+                    else:
                         all_keys[key] = nested_keys
-                else:
-                    all_keys[key] = nested_keys
 
             # Add classes without _to_database method
             for class_name in classes_without_method:
-                if class_name not in all_keys:
-                    all_keys[class_name] = None
+                if (
+                    (class_name in QUANTITIES)
+                    or (f"_{class_name}" in QUANTITIES)
+                    or any(
+                        [class_name.startswith(f"{group}_") for group in GROUPS.keys()]
+                    )
+                ):
+                    if class_name not in all_keys:
+                        all_keys[class_name] = None
 
         except Exception as e:
             print(f"Warning: Could not process {py_file.name}: {e}")
@@ -366,8 +380,6 @@ def get_all_possible_keys(
     output_type_dict: dict[str, tuple[str, list[str]]] = {}
     """Map all available keys (group.quantity:selection) to their (types, selections).
 Types are always keys that are in all_keys."""
-
-    from py4vasp._calculation import GROUPS
 
     for k in list(all_keys.keys()):
         try:
