@@ -3,11 +3,12 @@
 import re
 import types
 from dataclasses import dataclass
+from unittest.mock import patch
 
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import exception, interpolate
 from py4vasp._calculation.effective_coulomb import EffectiveCoulomb
 from py4vasp._third_party import numeric
 from py4vasp._util import check, convert
@@ -313,6 +314,20 @@ def test_plot_with_analytic_continuation_and_spin_selection(
     assert series.label == "screened down~down"
 
 
+def test_plot_with_custom_analytic_continuation_parameters(
+    nonpolarized_crpar, not_core, Assert
+):
+    config = interpolate.AAAConfig(
+        rtol=1e-5, max_terms=50, clean_up=False, clean_up_tol=1e-6
+    )
+    omega = np.linspace(0, 10, 20)
+    with patch("py4vasp._third_party.numeric.analytic_continuation") as mock:
+        mock.return_value = np.zeros_like(omega)
+        graph = nonpolarized_crpar.plot("U", omega=omega, config=config)
+        mock.assert_called_once()
+        assert mock.call_args.kwargs["config"] == config
+
+
 def test_plot_radial_potential(effective_coulomb, Assert):
     if effective_coulomb.ref.radial_data is not None:
         check_radial_plot_has_correct_series(effective_coulomb, Assert)
@@ -377,7 +392,7 @@ def test_plot_radial_interpolation(nonpolarized_crpar, not_core, Assert):
     assert graph.ylabel == "Coulomb potential (eV)"
     for series, ref_series in zip(graph, ref_graph):
         Assert.allclose(series.x, radius)
-        expected_interpolated_values = interpolate(radial_data, ref_series.y, radius)
+        expected_interpolated_values = interpolate_r(radial_data, ref_series.y, radius)
         Assert.allclose(series.y, expected_interpolated_values, tolerance=100)
         assert series.label == ref_series.label
         assert series.marker is None
@@ -393,11 +408,11 @@ def test_plot_radial_interpolation_spin_selection(collinear_crpa, not_core, Asse
     assert len(graph) == len(ref_graph)
     for series, ref_series, label in zip(graph, ref_graph, expected_labels):
         Assert.allclose(series.x, radius)
-        Assert.allclose(series.y, interpolate(radial_data, ref_series.y, radius))
+        Assert.allclose(series.y, interpolate_r(radial_data, ref_series.y, radius))
         assert series.label == label
 
 
-def interpolate(radial_data, potential, radius):
+def interpolate_r(radial_data, potential, radius):
     U0 = potential[0]
     interpolation = numeric.interpolate_with_function(
         EffectiveCoulomb.ohno_potential, radial_data["radius"], potential / U0, radius

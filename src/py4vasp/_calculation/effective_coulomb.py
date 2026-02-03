@@ -6,7 +6,7 @@ from types import EllipsisType
 import numpy as np
 from numpy.typing import ArrayLike
 
-from py4vasp import exception
+from py4vasp import exception, interpolate
 from py4vasp._calculation import base, cell
 from py4vasp._third_party import graph, numeric
 from py4vasp._util import check, convert, index, select
@@ -226,6 +226,7 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
         selection: str = "U J V",
         omega: None | EllipsisType | np.ndarray = None,
         radius: None | EllipsisType | np.ndarray = None,
+        config: interpolate.AAAConfig = interpolate.AAAConfig(),
     ) -> graph.Graph:
         """Generate a graph representation of the effective Coulomb interaction.
 
@@ -239,8 +240,13 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
         Parameters
         ----------
         selection
-            Specifies which data to plot. Default is "total". For collinear calculations,
-            you can select a specific spin coupling like "up~up" or "up~down".
+            Specifies which data to plot. Default is "U", "V", and "J". You can also
+            select "u" or "v". For collinear calculations, you select a specific spin
+            coupling with "up~up" or "up~down". Different choices can be combined, e.g.,
+            "U(up~up)" or "J(up~down)". You may prefix the selection with "bare" or
+            "screened" to select the bare or screened potential, e.g., "bare(U)". If no
+            prefix is given, it is deduced from the selection, e.g., "U" is interpreted
+            as "screened(U)".
 
         omega
             Frequency values for frequency-dependent plots. If not set, or set to
@@ -254,6 +260,10 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
             are used. You can also provide specific radii, then the data  will be
             interpolated to the selected radii.
 
+        config
+            Configuration for the analytic continuation of the frequency-dependent data.
+            Use this if you need to adjust the parameters of the analytic continuation.
+
         Returns
         -------
         -
@@ -261,14 +271,14 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
             interaction data.
         """
         tree = select.Tree.from_selection(selection)
-        plotter = self._make_plotter(omega, radius)
+        plotter = self._make_plotter(omega, radius, config)
         potentials = self._get_effective_potentials(tree, plotter)
         series = plotter.make_all_series(potentials)
         return graph.Graph(
             series, xlabel=plotter.xlabel, ylabel="Coulomb potential (eV)"
         )
 
-    def _make_plotter(self, omega, radius):
+    def _make_plotter(self, omega, radius, config):
         if omega is not None and radius is not None:
             if radius is not ...:
                 raise exception.NotImplemented(
@@ -276,13 +286,13 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
                 )
             omega_in = self._read_frequencies().get("frequencies")
             positions = self._read_positions()
-            return _OmegaPlotter(omega_in, omega, positions)
+            return _OmegaPlotter(omega_in, omega, config, positions)
         if radius is not None:
             positions = self._read_positions()
             return _RadialPlotter(positions, radius)
         else:
             omega_in = self._read_frequencies().get("frequencies")
-            return _OmegaPlotter(omega_in, omega)
+            return _OmegaPlotter(omega_in, omega, config)
 
     def _get_effective_potentials(self, tree, plotter):
         return [
@@ -405,7 +415,7 @@ class _CoulombPotential:
 
 
 class _OmegaPlotter:
-    def __init__(self, omega_in, omega_out, positions=None):
+    def __init__(self, omega_in, omega_out, config, positions=None):
         self.omega_in = omega_in
         self.interpolate = omega_out is not None and omega_out is not ...
         if omega_in is None:
@@ -414,6 +424,7 @@ class _OmegaPlotter:
             raise exception.DataMismatch("The output does not contain position data.")
         self.omega_out = omega_out if self.interpolate else omega_in
         self.xlabel = "ω (eV)" if self.interpolate else "Im(ω) (eV)"
+        self.config = config
         self.positions = positions
 
     def interpolate_bare_if_necessary(self, potential):
@@ -424,7 +435,10 @@ class _OmegaPlotter:
         if not self.interpolate:
             return potential
         return numeric.analytic_continuation(
-            self.omega_in, potential.T, self.omega_out
+            self.omega_in,
+            potential.T,
+            self.omega_out,
+            config=self.config,
         ).T
 
     def make_all_series(self, potentials):
