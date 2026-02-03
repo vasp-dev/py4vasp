@@ -244,10 +244,10 @@ class DielectricTensor:
     "The electronic contribution to the dielectric tensor."
     ion: VaspData
     "The ionic contribution to the dielectric tensor."
-    independent_particle: VaspData
-    "The dielectric tensor in the independent particle approximation."
     method: str
     "The method used to generate the dielectric tensor."
+    independent_particle: VaspData = NONE()
+    "The dielectric tensor in the independent particle approximation."
     cell: Cell = NONE()
     "The simulation cell used for the calculation."
 

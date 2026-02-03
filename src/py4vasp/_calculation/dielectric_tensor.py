@@ -117,7 +117,7 @@ Macroscopic static dielectric tensor (dimensionless)
             return self._raw_data.electron[:] + self._raw_data.ion[:]
 
     def _read_independent_particle(self):
-        if self._raw_data.independent_particle.is_none():
+        if check.is_none(self._raw_data.independent_particle):
             return None
         else:
             return self._raw_data.independent_particle[:]
