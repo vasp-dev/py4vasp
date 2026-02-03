@@ -164,19 +164,6 @@ def _description(method):
     raise exception.NotImplemented(message)
 
 
-def _find_vacuum_direction(lattice_vectors: np.ndarray) -> int:
-    """
-    Identify vacuum direction as the lattice vector with the largest length.
-    """
-    try:
-        if lattice_vectors.shape != (3, 3):
-            return None
-        lengths = np.linalg.norm(lattice_vectors, axis=1)
-        return int(np.argmax(lengths))
-    except Exception:
-        return None
-
-
 def _calculate_2d_polarizability(
     dielectric_tensor: np.ndarray, lattice_vectors: np.ndarray
 ) -> float:
@@ -184,7 +171,7 @@ def _calculate_2d_polarizability(
     Compute 2D polarizability (alpha_2D) for a slab system with unknown vacuum direction.
     """
     try:
-        vacuum_dir = _find_vacuum_direction(lattice_vectors)
+        vacuum_dir = cell._find_vacuum_direction(lattice_vectors)
         if vacuum_dir is None:
             return None
 

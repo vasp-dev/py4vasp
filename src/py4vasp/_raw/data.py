@@ -705,6 +705,8 @@ class PiezoelectricTensor:
     "The electronic contribution to the piezoelectric tensor"
     ion: VaspData
     "The ionic contribution to the piezoelectric tensor"
+    cell: Cell = NONE()
+    "The final cell used for the calculation."
 
 
 @dataclasses.dataclass

@@ -15,6 +15,20 @@ def piezoelectric_tensor(raw_data):
     tensor.ref = types.SimpleNamespace()
     tensor.ref.clamped_ion = raw_tensor.electron
     tensor.ref.relaxed_ion = raw_tensor.ion + raw_tensor.electron
+    tensor.ref.piezo = raw_tensor.ion
+    tensor.ref.is_2d = False
+    return tensor
+
+
+@pytest.fixture
+def piezoelectric_tensor_as_slab(raw_data):
+    raw_tensor = raw_data.piezoelectric_tensor("as-slab")
+    tensor = PiezoelectricTensor.from_data(raw_tensor)
+    tensor.ref = types.SimpleNamespace()
+    tensor.ref.clamped_ion = raw_tensor.electron
+    tensor.ref.relaxed_ion = raw_tensor.ion + raw_tensor.electron
+    tensor.ref.piezo = raw_tensor.ion
+    tensor.ref.is_2d = True
     return tensor
 
 
@@ -42,16 +56,30 @@ Piezoelectric tensor (C/m²)
     assert actual == {"text/plain": reference}
 
 
-def test_to_database(piezoelectric_tensor):
+def _check_to_database(piezoelectric_tensor):
     db_dict = piezoelectric_tensor._read_to_database()["piezoelectric_tensor:default"]
     for idx, suffix in enumerate(["x", "y", "z"]):
-        assert db_dict[f"relaxed_ion_tensor_{suffix}"] == list(
-            symmetry_reduce(piezoelectric_tensor.ref.relaxed_ion[idx])
+        assert db_dict[f"3d_tensor_reduced_{suffix}"] == list(
+            symmetry_reduce(piezoelectric_tensor.ref.piezo[idx])
         )
-        assert (
-            db_dict[f"piezoelectric_constant_isotropic_{suffix}"]
-            == tensor_constants(piezoelectric_tensor.ref.relaxed_ion[idx])[0]
-        )
+        assert db_dict[f"3d_piezoelectric_stress_coefficient_{suffix}"] is not None
+    for desc in ["mean_absolute", "rms", "frobenius_norm"]:
+        assert db_dict[f"3d_{desc}"] is not None
+    if piezoelectric_tensor.ref.is_2d:
+        assert db_dict["2d_plane"] is not None
+        assert db_dict["2d_tensor_reduced"] is not None
+        assert isinstance(db_dict["2d_plane"], str)
+    else:
+        assert db_dict["2d_plane"] is None
+        assert db_dict["2d_tensor_reduced"] is None
+
+
+def test_to_database(piezoelectric_tensor, Assert):
+    _check_to_database(piezoelectric_tensor)
+
+
+def test_to_database_as_slab(piezoelectric_tensor_as_slab, Assert):
+    _check_to_database(piezoelectric_tensor_as_slab)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

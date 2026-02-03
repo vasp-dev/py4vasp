@@ -140,6 +140,19 @@ def _get_area_2d(lattice: np.ndarray, lengths: np.ndarray) -> float:
     return area
 
 
+def _find_vacuum_direction(lattice_vectors: np.ndarray) -> int:
+    """
+    Identify vacuum direction as the lattice vector with the largest length.
+    """
+    try:
+        if lattice_vectors.shape != (3, 3):
+            return None
+        lengths = np.linalg.norm(lattice_vectors, axis=1)
+        return int(np.argmax(lengths))
+    except Exception:
+        return None
+
+
 class _LatticeVectors(reader.Reader):
     def error_message(self, key, err):
         key = np.array(key)

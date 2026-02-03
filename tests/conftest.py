@@ -337,7 +337,12 @@ class RawDataFactory:
 
     @staticmethod
     def piezoelectric_tensor(selection):
-        return _demo.piezoelectric_tensor.piezoelectric_tensor()
+        if selection == "default":
+            return _demo.piezoelectric_tensor.piezoelectric_tensor()
+        elif selection == "as-slab":
+            return _demo.piezoelectric_tensor.piezoelectric_tensor(selection)
+        else:
+            raise exception.NotImplemented()
 
     @staticmethod
     def polarization(selection):

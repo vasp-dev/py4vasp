@@ -587,6 +587,7 @@ schema.add(
     required=raw.Version(6, 3),
     electron=f"{group}/electron_piezoelectric_tensor",
     ion=f"{group}/ion_piezoelectric_tensor",
+    cell=Link("cell", "final"),
 )
 #
 group = "results/linear_response"
