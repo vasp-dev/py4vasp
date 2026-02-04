@@ -568,14 +568,14 @@ class Kpoint:
 
     mode: str
     "Mode used to generate the **k**-point list."
-    number: int
-    "Number of **k** points specified in the generation."
     coordinates: VaspData
     "Coordinates of the **k** points as fraction of the reciprocal lattice vectors."
     weights: VaspData
     "Weight of the **k** points used for integration."
     cell: Cell
     "Unit cell of the crystal."
+    number: int = NONE()
+    "Number of **k** points specified in the generation."
     number_x: int = NONE()
     "The number of kpoints in x direction."
     number_y: int = NONE()
