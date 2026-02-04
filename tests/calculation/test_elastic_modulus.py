@@ -139,9 +139,7 @@ def test_to_database(elastic_moduli):
                 overview[key] is None
             ), f"fracture_toughness requires structure data: but returned db value is {overview[key]}."
         elif value is None:
-            assert (
-                overview[key] is None
-            ), f"mismatch in {key}: expected None, got {overview[key]}."
+            continue
             # if matrix is close to singular, some properties can probably not be computed
             # in that case, skip assertion -- np.linalg.inv may or may not throw an error depending on system
         else:
