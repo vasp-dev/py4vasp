@@ -4,8 +4,11 @@ import types
 
 import pytest
 
-from py4vasp._calculation.piezoelectric_tensor import PiezoelectricTensor
-from py4vasp._util.tensor import symmetry_reduce, tensor_constants
+from py4vasp._calculation.piezoelectric_tensor import (
+    PiezoelectricTensor,
+    _extract_tensor,
+)
+from py4vasp._util.tensor import symmetry_reduce
 
 
 @pytest.fixture
@@ -15,8 +18,20 @@ def piezoelectric_tensor(raw_data):
     tensor.ref = types.SimpleNamespace()
     tensor.ref.clamped_ion = raw_tensor.electron
     tensor.ref.relaxed_ion = raw_tensor.ion + raw_tensor.electron
-    tensor.ref.piezo = raw_tensor.ion
+    tensor.ref.piezo = [
+        raw_tensor.ion + raw_tensor.electron,
+        raw_tensor.ion,
+        raw_tensor.electron,
+    ]
     tensor.ref.is_2d = False
+    tensor.ref.overview_data = {
+        "total_3d_piezoelectric_stress_coefficient_x": 27.0,
+        "total_3d_piezoelectric_stress_coefficient_y": 53.0,
+        "total_3d_piezoelectric_stress_coefficient_z": 79.0,
+        "total_3d_mean_absolute": 49.0,
+        "total_3d_rms": 51.6107224001628,
+        "total_3d_frobenius_norm": 218.9657507465494,
+    }
     return tensor
 
 
@@ -27,8 +42,20 @@ def piezoelectric_tensor_as_slab(raw_data):
     tensor.ref = types.SimpleNamespace()
     tensor.ref.clamped_ion = raw_tensor.electron
     tensor.ref.relaxed_ion = raw_tensor.ion + raw_tensor.electron
-    tensor.ref.piezo = raw_tensor.ion
+    tensor.ref.piezo = [
+        raw_tensor.ion + raw_tensor.electron,
+        raw_tensor.ion,
+        raw_tensor.electron,
+    ]
     tensor.ref.is_2d = True
+    tensor.ref.overview_data = {
+        "total_3d_piezoelectric_stress_coefficient_x": 27.0,
+        "total_3d_piezoelectric_stress_coefficient_y": 53.0,
+        "total_3d_piezoelectric_stress_coefficient_z": 79.0,
+        "total_3d_mean_absolute": 49.0,
+        "total_3d_rms": 51.6107224001628,
+        "total_3d_frobenius_norm": 218.9657507465494,
+    }
     return tensor
 
 
@@ -58,20 +85,29 @@ Piezoelectric tensor (C/m²)
 
 def _check_to_database(piezoelectric_tensor):
     db_dict = piezoelectric_tensor._read_to_database()["piezoelectric_tensor:default"]
-    for idx, suffix in enumerate(["x", "y", "z"]):
-        assert db_dict[f"3d_tensor_reduced_{suffix}"] == list(
-            symmetry_reduce(piezoelectric_tensor.ref.piezo[idx])
-        )
-        assert db_dict[f"3d_piezoelectric_stress_coefficient_{suffix}"] is not None
-    for desc in ["mean_absolute", "rms", "frobenius_norm"]:
-        assert db_dict[f"3d_{desc}"] is not None
-    if piezoelectric_tensor.ref.is_2d:
-        assert db_dict["2d_plane"] is not None
-        assert db_dict["2d_tensor_reduced"] is not None
-        assert isinstance(db_dict["2d_plane"], str)
-    else:
-        assert db_dict["2d_plane"] is None
-        assert db_dict["2d_tensor_reduced"] is None
+    for idx, prefix in enumerate(["total", "ionic", "electronic"]):
+        sum_2d_tensor_not_none = 0
+        for idy, suffix in enumerate(["x", "y", "z"]):
+            assert db_dict[f"{prefix}_3d_tensor_{suffix}"] == list(
+                _extract_tensor(piezoelectric_tensor.ref.piezo[idx])[
+                    idy, (0, 1, 2, 5, 3, 4)
+                ]
+            )
+            assert (
+                db_dict[f"{prefix}_3d_piezoelectric_stress_coefficient_{suffix}"]
+                is not None
+            )
+            if not piezoelectric_tensor.ref.is_2d:
+                assert db_dict[f"{prefix}_2d_tensor_{suffix}"] is None
+            elif db_dict[f"{prefix}_2d_tensor_{suffix}"] is not None:
+                sum_2d_tensor_not_none += 1
+        for desc in ["mean_absolute", "rms", "frobenius_norm"]:
+            assert db_dict[f"{prefix}_3d_{desc}"] is not None
+        if piezoelectric_tensor.ref.is_2d:
+            assert sum_2d_tensor_not_none == 2
+    # TODO add real reference data for computed values
+    for key, value in piezoelectric_tensor.ref.overview_data.items():
+        assert db_dict[key] == value
 
 
 def test_to_database(piezoelectric_tensor, Assert):

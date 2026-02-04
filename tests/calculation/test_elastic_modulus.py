@@ -5,11 +5,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp._calculation.elastic_modulus import (
-    ElasticModulus,
-    _ElasticTensor,
-    _get_C_voigt_from_4d_tensor,
-)
+from py4vasp._calculation.elastic_modulus import ElasticModulus
 from py4vasp._util.tensor import symmetry_reduce
 
 
@@ -32,29 +28,72 @@ def _setup_elastic_modulus(raw_data, selection):
     elastic_modulus.ref.relaxed_ion = raw_elastic_modulus.relaxed_ion
     elastic_modulus.ref.overview_data = _setup_overview_data(elastic_modulus)
     if selection == "SiC":
-        elastic_modulus.ref.overview_data["bulk_modulus"] = 227.9149991624522
-        elastic_modulus.ref.overview_data["shear_modulus"] = 197.09002974236228
-        elastic_modulus.ref.overview_data["youngs_modulus"] = 458.9712638295085
-        elastic_modulus.ref.overview_data["poisson_ratio"] = 0.16436956356818136
-        elastic_modulus.ref.overview_data["pugh_ratio"] = 0.8647523439292442
-        elastic_modulus.ref.overview_data["vickers_hardness"] = 31.07791529386013
-        elastic_modulus.ref.overview_data["fracture_toughness"] = 3.3895949025923313
+        elastic_modulus.ref.overview_data["total_bulk_modulus"] = 227.9149991624522
+        elastic_modulus.ref.overview_data["total_shear_modulus"] = 197.09002974236228
+        elastic_modulus.ref.overview_data["total_youngs_modulus"] = 458.9712638295085
+        elastic_modulus.ref.overview_data["total_poisson_ratio"] = 0.16436956356818136
+        elastic_modulus.ref.overview_data["total_pugh_ratio"] = 0.8647523439292442
+        elastic_modulus.ref.overview_data["total_vickers_hardness"] = 31.07791529386013
+        elastic_modulus.ref.overview_data["total_fracture_toughness"] = (
+            3.3895949025923313
+        )
+        elastic_modulus.ref.overview_data["ionic_bulk_modulus"] = -0.0001396466
+        elastic_modulus.ref.overview_data["ionic_shear_modulus"] = -7.263256685782666
+        elastic_modulus.ref.overview_data["ionic_youngs_modulus"] = (
+            -0.001256747258012485
+        )
+        elastic_modulus.ref.overview_data["ionic_poisson_ratio"] = -0.9999134596733735
+        elastic_modulus.ref.overview_data["ionic_pugh_ratio"] = 52011.67987366603
+        elastic_modulus.ref.overview_data["ionic_vickers_hardness"] = (
+            -0.003173549206852492
+        )
+        elastic_modulus.ref.overview_data["ionic_fracture_toughness"] = None
+        elastic_modulus.ref.overview_data["electronic_bulk_modulus"] = (
+            227.91517068333098
+        )
+        elastic_modulus.ref.overview_data["electronic_shear_modulus"] = (
+            208.30942571448918
+        )
+        elastic_modulus.ref.overview_data["electronic_youngs_modulus"] = (
+            478.99729799241635
+        )
+        elastic_modulus.ref.overview_data["electronic_poisson_ratio"] = (
+            0.14972545373183094
+        )
+        elastic_modulus.ref.overview_data["electronic_pugh_ratio"] = 0.9139778852365982
+        elastic_modulus.ref.overview_data["electronic_vickers_hardness"] = (
+            34.96010439285016
+        )
+        elastic_modulus.ref.overview_data["electronic_fracture_toughness"] = (
+            3.2513198905495826
+        )
     return elastic_modulus
 
 
 def _setup_overview_data(modulus_obj):
-    tensor = modulus_obj.ref.relaxed_ion
-    compact_tensor = symmetry_reduce(symmetry_reduce(tensor).T).T
-    return {
-        "elastic_modulus_reduced": list([list(l) for l in compact_tensor]),
-        "bulk_modulus": None,
-        "shear_modulus": None,
-        "youngs_modulus": None,
-        "poisson_ratio": None,
-        "pugh_ratio": None,
-        "vickers_hardness": None,
-        "fracture_toughness": None,
+    total_tensor = modulus_obj.ref.relaxed_ion
+    compact_total_tensor = symmetry_reduce(symmetry_reduce(total_tensor).T).T
+    ionic_tensor = modulus_obj.ref.relaxed_ion - modulus_obj.ref.clamped_ion
+    compact_ionic_tensor = symmetry_reduce(symmetry_reduce(ionic_tensor).T).T
+    electronic_tensor = modulus_obj.ref.clamped_ion
+    compact_electronic_tensor = symmetry_reduce(symmetry_reduce(electronic_tensor).T).T
+    return_dict = {
+        "total_3d_tensor": list([list(l) for l in compact_total_tensor]),
+        "ionic_3d_tensor": list([list(l) for l in compact_ionic_tensor]),
+        "electronic_3d_tensor": list([list(l) for l in compact_electronic_tensor]),
     }
+    for primary_key in ["total", "ionic", "electronic"]:
+        for secondary_key in [
+            "bulk_modulus",
+            "shear_modulus",
+            "youngs_modulus",
+            "poisson_ratio",
+            "pugh_ratio",
+            "vickers_hardness",
+            "fracture_toughness",
+        ]:
+            return_dict[f"{primary_key}_{secondary_key}"] = None
+    return return_dict
 
 
 def test_read(elastic_modulus, Assert):
@@ -91,23 +130,18 @@ def test_to_database(elastic_moduli):
     database_data = elastic_moduli._read_to_database()
     overview = database_data["elastic_modulus:default"]
     ref_overview = elastic_moduli.ref.overview_data
+
     for key, value in ref_overview.items():
-        if (key == "fracture_toughness") and (elastic_moduli.ref.structure is None):
+        if (key.endswith("fracture_toughness")) and (
+            elastic_moduli.ref.structure is None
+        ):
             assert (
                 overview[key] is None
             ), f"fracture_toughness requires structure data: but returned db value is {overview[key]}."
         elif value is None:
-            if (
-                np.abs(
-                    np.linalg.det(
-                        _get_C_voigt_from_4d_tensor(elastic_moduli.ref.relaxed_ion)
-                    )
-                )
-                > 1e-14
-            ):
-                assert (
-                    overview[key] is not None
-                ), f"expected non-None value for {key}, but got {overview[key]}."
+            assert (
+                overview[key] is None
+            ), f"mismatch in {key}: expected None, got {overview[key]}."
             # if matrix is close to singular, some properties can probably not be computed
             # in that case, skip assertion -- np.linalg.inv may or may not throw an error depending on system
         else:

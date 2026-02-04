@@ -1,11 +1,14 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from math import pow
+from typing import Optional
+
 import numpy as np
 
 from py4vasp._calculation import base, structure
 from py4vasp._raw import data as raw_data
 from py4vasp._util import check
-from py4vasp._util.tensor import symmetry_reduce, tensor_constants
+from py4vasp._util.tensor import symmetry_reduce
 
 
 class ElasticModulus(base.Refinery):
@@ -39,39 +42,86 @@ class ElasticModulus(base.Refinery):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        if not check.is_none(self._raw_data.relaxed_ion):
-            tensor = self._raw_data.relaxed_ion[:]
-            compact_tensor = symmetry_reduce(symmetry_reduce(tensor).T).T
-            voigt_tensor = _get_C_voigt_from_4d_tensor(self._raw_data.relaxed_ion[:])
-        else:
-            compact_tensor = None
-            voigt_tensor = None
-        # shape of implementation is consistent, but order is changed:
-        # compact tensor: XX YY ZZ XY YZ ZX
-        # voigt tensor:   XX YY ZZ YZ ZX XY
-
         volume_per_atom = None
+        (
+            bulk_modulus,
+            shear_modulus,
+            youngs_modulus,
+            poisson_ratio,
+            pugh_ratio,
+            vickers_hardness,
+            fracture_toughness,
+        ) = ([None, None, None] for _ in range(7))
+        compact_tensor = [None, None, None]
         if not check.is_none(self._raw_data.structure):
             structure_obj = structure.Structure.from_data(self._raw_data.structure)
             volume = structure_obj.volume()
             num_atoms = structure_obj.number_atoms()
             volume_per_atom = volume / num_atoms if num_atoms > 0 else None
 
-        # Properties from elastic tensor
-        elastic_properties = self._compute_elastic_properties(
-            voigt_tensor, volume_per_atom=volume_per_atom
-        )
+        total_tensor, ionic_tensor, electronic_tensor = None, None, None
+        if not check.is_none(self._raw_data.clamped_ion):
+            electronic_tensor = self._raw_data.clamped_ion[:]
+        if not check.is_none(self._raw_data.relaxed_ion):
+            total_tensor = self._raw_data.relaxed_ion[:]
+        if electronic_tensor is not None and total_tensor is not None:
+            ionic_tensor = total_tensor - electronic_tensor
+
+        for idt, tensor in enumerate([total_tensor, ionic_tensor, electronic_tensor]):
+            voigt_tensor = None
+            try:
+                if not check.is_none(tensor):
+                    compact_tensor[idt] = symmetry_reduce(symmetry_reduce(tensor).T).T
+                    voigt_tensor = compact_tensor[idt] / 10.0  # converting kbar to GPa
+                    compact_tensor[idt] = (
+                        list([list(l) for l in compact_tensor[idt]])
+                        if compact_tensor[idt] is not None
+                        else None
+                    )
+            except:
+                pass
+            try:
+                # Properties from elastic tensor
+                (
+                    bulk_modulus[idt],
+                    shear_modulus[idt],
+                    youngs_modulus[idt],
+                    poisson_ratio[idt],
+                    pugh_ratio[idt],
+                    vickers_hardness[idt],
+                    fracture_toughness[idt],
+                ) = self._compute_elastic_properties(
+                    voigt_tensor, volume_per_atom=volume_per_atom
+                )
+            except:
+                pass
 
         return {
             "elastic_modulus": {
-                "elastic_modulus_reduced": (
-                    list(
-                        [list(l) for l in compact_tensor],
-                    )
-                    if compact_tensor is not None
-                    else None
-                ),
-                **elastic_properties,
+                "total_3d_tensor": compact_tensor[0],  # [kbar]
+                "total_bulk_modulus": bulk_modulus[0],  # [GPa]
+                "total_shear_modulus": shear_modulus[0],  # [GPa]
+                "total_youngs_modulus": youngs_modulus[0],  # [GPa]
+                "total_poisson_ratio": poisson_ratio[0],  # []
+                "total_pugh_ratio": pugh_ratio[0],  # []
+                "total_vickers_hardness": vickers_hardness[0],  # [GPa]
+                "total_fracture_toughness": fracture_toughness[0],  # [MPa·m^0.5]
+                "ionic_3d_tensor": compact_tensor[1],
+                "ionic_bulk_modulus": bulk_modulus[1],
+                "ionic_shear_modulus": shear_modulus[1],
+                "ionic_youngs_modulus": youngs_modulus[1],
+                "ionic_poisson_ratio": poisson_ratio[1],
+                "ionic_pugh_ratio": pugh_ratio[1],
+                "ionic_vickers_hardness": vickers_hardness[1],
+                "ionic_fracture_toughness": fracture_toughness[1],
+                "electronic_3d_tensor": compact_tensor[2],
+                "electronic_bulk_modulus": bulk_modulus[2],
+                "electronic_shear_modulus": shear_modulus[2],
+                "electronic_youngs_modulus": youngs_modulus[2],
+                "electronic_poisson_ratio": poisson_ratio[2],
+                "electronic_pugh_ratio": pugh_ratio[2],
+                "electronic_vickers_hardness": vickers_hardness[2],
+                "electronic_fracture_toughness": fracture_toughness[2],
             }
         }
 
@@ -83,7 +133,9 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
 {_elastic_modulus_string(self._raw_data.clamped_ion[:], "clamped-ion")}
 {_elastic_modulus_string(self._raw_data.relaxed_ion[:], "relaxed-ion")}"""
 
-    def _compute_elastic_properties(self, voigt_tensor, volume_per_atom):
+    def _compute_elastic_properties(
+        self, voigt_tensor: np.ndarray, volume_per_atom: Optional[float] = None
+    ) -> tuple:
         (
             bulk_modulus,
             shear_modulus,
@@ -128,15 +180,15 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
         except Exception as e:
             pass
 
-        return {
-            "bulk_modulus": bulk_modulus,  # GPa
-            "shear_modulus": shear_modulus,  # GPa
-            "youngs_modulus": youngs_modulus,  # GPa
-            "poisson_ratio": poisson_ratio,  # dimensionless
-            "pugh_ratio": pugh_ratio,  # dimensionless
-            "vickers_hardness": vickers_hardness,  # GPa
-            "fracture_toughness": fracture_toughness,  # MPa m^1/2
-        }
+        return (
+            bulk_modulus,
+            shear_modulus,
+            youngs_modulus,
+            poisson_ratio,
+            pugh_ratio,
+            vickers_hardness,
+            fracture_toughness,
+        )
 
 
 def _elastic_modulus_string(tensor, label):
@@ -145,32 +197,6 @@ def _elastic_modulus_string(tensor, label):
     directions = ("XX", "YY", "ZZ", "XY", "YZ", "ZX")
     lines = (line(dir_, vec) for dir_, vec in zip(directions, compact_tensor))
     return f"{label:^79}".rstrip() + "\n" + "\n".join(lines)
-
-
-def _get_C_voigt_from_4d_tensor(tensor_4d):
-    """
-    Reads 4D elastic tensor and converts it to 6x6 matrix in Voigt notation
-    """
-    voigt_indices = {
-        (0, 0): 0,  # XX
-        (1, 1): 1,  # YY
-        (2, 2): 2,  # ZZ
-        (1, 2): 3,  # YZ
-        (0, 2): 4,  # ZX
-        (0, 1): 5,  # XY
-    }
-
-    C_voigt = np.zeros((6, 6))
-
-    for i in range(3):
-        for j in range(3):
-            for k in range(3):
-                for l in range(3):
-                    voigt_i = voigt_indices.get((i, j), voigt_indices.get((j, i)))
-                    voigt_j = voigt_indices.get((k, l), voigt_indices.get((l, k)))
-                    C_voigt[voigt_i, voigt_j] = tensor_4d[i, j, k, l]
-
-    return C_voigt / 10  # Convert from kbar to GPa
 
 
 class _ElasticTensor:
@@ -314,8 +340,8 @@ class _ElasticTensor:
         return (
             0.096
             * E
-            * (1 - 8.5 * nu + 19.5 * nu**2)
-            / (1 - 7.5 * nu + 12.2 * nu**2 + 19.6 * nu**3)
+            * (1 - 8.5 * nu + 19.5 * pow(nu, 2))
+            / (1 - 7.5 * nu + 12.2 * pow(nu, 2) + 19.6 * pow(nu, 3))
         )
 
     def get_fracture_toughness(self, V0):
@@ -324,17 +350,19 @@ class _ElasticTensor:
 
         DOI: 10.1063/1.5113622
         """
-        if V0 is None:
+        if check.is_none(V0):
             return None
         _, _, E, nu = self.get_VRH()
         return (
             1e-2
-            * 8840**-0.5
-            * V0 ** (1 / 6)
-            * (
-                E
-                * (1 - 13.7 * nu + 48.6 * nu**2)
-                / (1 - 15.2 * nu + 70.2 * nu**2 - 81.5 * nu**3)
+            * pow(8840, -0.5)
+            * pow(V0, 1.0 / 6.0)
+            * pow(
+                (
+                    E
+                    * (1.0 - 13.7 * nu + 48.6 * pow(nu, 2.0))
+                    / (1.0 - 15.2 * nu + 70.2 * pow(nu, 2.0) - 81.5 * pow(nu, 3.0))
+                ),
+                1.5,
             )
-            ** 1.5
         )

@@ -9,7 +9,7 @@ from py4vasp import exception, raw
 from py4vasp._calculation import _stoichiometry, base, cell, slice_
 from py4vasp._raw import data as raw_data
 from py4vasp._third_party import view
-from py4vasp._util import database, import_, parse
+from py4vasp._util import check, database, import_, parse
 
 ase = import_.optional("ase")
 ase_io = import_.optional("ase.io")
@@ -270,15 +270,20 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
 
         lengths = [None, None, None]
         angles = [None, None, None]
-        is_2d_system = None
         cell_area_2d = None
+        cell_area_2d_span = None
+        dimensionality = 3
+        try:
+            dimensionality = self._dimensionality()
+        except:
+            pass
+
         try:
             cell = self._cell()
             lengths = list(cell.lengths())
             angles = list(cell.angles())
-            is_2d_system = cell.is_2d_system
-            if is_2d_system:
-                cell_area_2d = cell._area_2d()
+            if dimensionality == 2:
+                cell_area_2d, cell_area_2d_span = cell._area_2d()
         except:
             pass
 
@@ -287,20 +292,21 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
                 "structure": {
                     "num_ions": self.number_atoms(),
                     "cell_volume": volume,
+                    "dimensionality": dimensionality,
                     "cell_area_2d": cell_area_2d,
-                    "is_2d_system": is_2d_system,
-                    "lattice_vector_a": (
+                    "cell_area_2d_span": cell_area_2d_span,
+                    "lattice_vector_1": (
                         list(lattice[0]) if lattice[0] is not None else None
                     ),
-                    "lattice_vector_b": (
+                    "lattice_vector_2": (
                         list(lattice[1]) if lattice[1] is not None else None
                     ),
-                    "lattice_vector_c": (
+                    "lattice_vector_3": (
                         list(lattice[2]) if lattice[2] is not None else None
                     ),
-                    "lattice_vector_a_length": lengths[0],
-                    "lattice_vector_b_length": lengths[1],
-                    "lattice_vector_c_length": lengths[2],
+                    "lattice_vector_1_length": lengths[0],
+                    "lattice_vector_2_length": lengths[1],
+                    "lattice_vector_3_length": lengths[2],
                     "angle_alpha": angles[0],
                     "angle_beta": angles[1],
                     "angle_gamma": angles[2],
@@ -819,11 +825,24 @@ Atoms # atomic
         return np.abs(np.linalg.det(self.lattice_vectors()))
 
     @base.data_access
-    def is_2d_system(self) -> Union[bool, np.ndarray]:
+    def _dimensionality(self) -> Union[int, np.ndarray]:
         """
-        Heuristic check for 2D system: one lattice vector significantly larger than the other two.
+        Heuristic check for dimensionality of system.
         """
-        return self._cell().is_2d_system
+        # TODO add check for actual vacuum if ldipol, idipol are not set
+        # TODO consider case of multi-atom molecule, which should return 1
+        if not check.is_none(self._raw_data.idipol):
+            if self._raw_data.idipol < 1:
+                return 3
+            elif self._raw_data.idipol in [1, 2, 3]:
+                return 2
+            elif self._raw_data.idipol == 4:
+                return 0
+
+        cell_ = self._cell()
+        if bool(np.all(np.array(cell_.is_suspected_2d_system))):
+            return 2
+        return 3
 
     @base.data_access
     def number_atoms(self):

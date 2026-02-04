@@ -41,13 +41,18 @@ def Fe3O4():
     return raw.Cell(lattice_vectors, scale=raw.VaspData(None))
 
 
-def Graphite():
+def Graphite(with_ldipol=False):
     lattice_vectors = [
         [2.44104624, 0.00000000, 0.00000000],
         [-1.22052312, 2.11400806, 0.00000000],
         [0.00000000, 0.00000000, 22.0000000],
     ]
-    return raw.Cell(np.asarray(lattice_vectors), scale=raw.VaspData(1.0))
+    return raw.Cell(
+        np.asarray(lattice_vectors),
+        scale=raw.VaspData(1.0),
+        ldipol=None if not with_ldipol else True,
+        idipol=None if not with_ldipol else 3,
+    )
 
 
 def Ni100():

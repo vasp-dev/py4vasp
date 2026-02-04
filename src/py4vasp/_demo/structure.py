@@ -121,7 +121,7 @@ def Fe3O4():
     )
 
 
-def Graphite():
+def Graphite(with_ldipol=False):
     positions = [
         [0.00000000, 0.00000000, 0.00000000],
         [0.33333333, 0.66666667, 0.00000000],
@@ -136,8 +136,10 @@ def Graphite():
     ]
     return raw.Structure(
         stoichiometry=_demo.stoichiometry.Graphite(),
-        cell=_demo.cell.Graphite(),
+        cell=_demo.cell.Graphite(with_ldipol=with_ldipol),
         positions=raw.VaspData(positions),
+        ldipol=None if not with_ldipol else True,
+        idipol=None if not with_ldipol else 3,
     )
 
 

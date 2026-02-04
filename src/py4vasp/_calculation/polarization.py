@@ -73,11 +73,11 @@ electronic dipole moment: {vec_to_string(self._raw_data.electron[:])}
 
         return {
             "polarization": {
-                "dipole_norm_ionic": ionic_norm,
-                "dipole_norm_electronic": electronic_norm,
-                "dipole_norm_total": total_norm,
-                "dipole_moment_ionic": ion_dipole,
-                "dipole_moment_electronic": electron_dipole,
-                "dipole_moment_total": total_dipole,
+                "total_dipole_norm": total_norm,
+                "total_dipole_moment": total_dipole,
+                "ionic_dipole_norm": ionic_norm,
+                "ionic_dipole_moment": ion_dipole,
+                "electronic_dipole_norm": electronic_norm,
+                "electronic_dipole_moment": electron_dipole,
             }
         }

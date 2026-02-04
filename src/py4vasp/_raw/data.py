@@ -89,6 +89,10 @@ class Cell:
     "Lattice vectors defining the unit cell."
     scale: Optional[float] = NONE()
     "Global scaling factor applied to all lattice vectors."
+    idipol: Optional[int] = NONE()
+    """The direction along which dipole correction is applied, if any."""
+    ldipol: Optional[int] = NONE()
+    """Whether dipole correction is applied."""
 
 
 @dataclasses.dataclass
@@ -844,6 +848,10 @@ class Structure:
     "Unit cell of the crystal or simulation cell for molecules."
     positions: VaspData
     "Position of all atoms in the unit cell in units of the lattice vectors."
+    idipol: Optional[int] = NONE()
+    "The direction along which dipole correction is applied, if any."
+    ldipol: Optional[int] = NONE()
+    "Whether dipole correction is applied."
 
 
 @dataclasses.dataclass

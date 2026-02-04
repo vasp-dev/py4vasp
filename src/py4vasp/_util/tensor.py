@@ -2,9 +2,11 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
+from py4vasp._util import check
+
 
 def symmetry_reduce(tensor):
-    if tensor is None:
+    if check.is_none(tensor):
         return None
     symmetry_reduced_tensor = [
         tensor[0, 0],
@@ -18,7 +20,7 @@ def symmetry_reduce(tensor):
 
 
 def tensor_constants(tensor):
-    if tensor is None:
+    if check.is_none(tensor):
         return None, None
     eigenvalues, _ = np.linalg.eig(tensor)
     anisotropic_constants = [float(ev) for ev in eigenvalues]

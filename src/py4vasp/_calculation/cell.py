@@ -1,9 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 
+from py4vasp import exception
 from py4vasp._calculation import base, slice_
 from py4vasp._raw import data as raw_data
 from py4vasp._util import check, reader
@@ -86,29 +87,36 @@ class Cell(slice_.Mixin, base.Refinery):
         return angles
 
     @property
-    def is_2d_system(self) -> Union[bool, np.ndarray]:
+    def is_suspected_2d_system(self) -> Union[bool, np.ndarray]:
         """Determine if the system is 2D based on the lattice vectors."""
         lengths = self.lengths()
+        dipole_direction = _idipol_to_direction(
+            self._raw_data.idipol, self._raw_data.ldipol
+        )
         if lengths.ndim == 2:
-            return np.array([_is_2d(l) for l in lengths])
+            return np.array([_is_suspected_2d(l, dipole_direction) for l in lengths])
         else:
             lengths = self.lengths()
-            return _is_2d(lengths)
+            return _is_suspected_2d(lengths, dipole_direction)
 
-    def _area_2d(self) -> Union[float, np.ndarray]:
+    @base.data_access
+    def _area_2d(self) -> tuple[Union[float, np.ndarray], Union[str, np.ndarray]]:
         """Area of the 2D cell if the system is 2D."""
         lattices = self.lattice_vectors()
         lengths = self.lengths()
-
+        idipol_direction = _idipol_to_direction(
+            self._raw_data.idipol, self._raw_data.ldipol
+        )
         if lattices.ndim == 3:
-            return np.array(
-                [
-                    _get_area_2d(lattice, length)
-                    for lattice, length in zip(lattices, lengths)
-                ]
-            )
+            area_list = [
+                _get_area_2d(lattice, length, idipol_direction)
+                for lattice, length in zip(lattices, lengths)
+            ]
+            return np.array([area[0] for area in area_list]), [
+                area[1] for area in area_list
+            ]
         else:
-            return _get_area_2d(lattices, lengths)
+            return _get_area_2d(lattices, lengths, idipol_direction)
 
     def _get_steps(self):
         return self._steps if self._is_trajectory else ()
@@ -117,40 +125,75 @@ class Cell(slice_.Mixin, base.Refinery):
     def _is_trajectory(self):
         return self._raw_data.lattice_vectors.ndim == 3
 
+    def _find_likely_vacuum_direction(self):
+        """Identify likeliest vacuum direction as the lattice vector with the largest length, or from IDIPOL flag."""
+        try:
+            lattice_vectors = self.lattice_vectors()
+            dipole_direction = _idipol_to_direction(
+                self._raw_data.idipol, self._raw_data.ldipol
+            )
+            if lattice_vectors.ndim == 3:
+                if dipole_direction is not None:
+                    return (
+                        np.zeros(lattice_vectors.shape[0], dtype=int) + dipole_direction
+                    )
+                return np.argmax(np.linalg.norm(lattice_vectors, axis=-1), axis=-1)
+            else:
+                return dipole_direction or int(
+                    np.argmax(np.linalg.norm(lattice_vectors, axis=-1))
+                )
+        except Exception:
+            return None
 
-def _is_2d(lengths: np.ndarray) -> bool:
+
+def _is_suspected_2d(
+    lengths: np.ndarray, dipole_direction: Optional[int] = None
+) -> bool:
+    if (dipole_direction is not None) and (
+        dipole_direction >= 0 and dipole_direction <= 2
+    ):
+        return True
     if lengths.shape != (3,):
-        raise ValueError("Lengths must be a 1D array of length 3.")
-    max_length_idx = np.argmax(lengths)
+        raise exception._Py4VaspInternalError(
+            "Lengths must be a 1D array of length 3 or dipole must be specified."
+        )
+    max_length_idx = (
+        dipole_direction if dipole_direction is not None else np.argmax(lengths)
+    )
     other_lengths = [l for i, l in enumerate(lengths) if i != max_length_idx]
     return bool(
         np.all([(lengths[max_length_idx] / l) >= _VACUUM_RATIO for l in other_lengths])
     )
 
 
-def _get_area_2d(lattice: np.ndarray, lengths: np.ndarray) -> float:
+def _get_area_2d(
+    lattice: np.ndarray, lengths: np.ndarray, idipol_direction: Optional[int] = None
+) -> tuple[float, str]:
     if len(lattice.shape) != 2 or lattice.shape != (3, 3):
         raise ValueError("Lattice must be a 3x3 array.")
     if len(lengths.shape) != 1 or lengths.shape != (3,):
         raise ValueError("Lengths must be a 1D array of length 3.")
-    max_length_idx = np.argmax(lengths)
-    vec1 = lattice[(max_length_idx + 1) % 3]
-    vec2 = lattice[(max_length_idx + 2) % 3]
-    area = np.linalg.norm(np.cross(vec1, vec2))
-    return area
+    max_length_idx = (
+        idipol_direction if idipol_direction is not None else np.argmax(lengths)
+    )
+    idx1 = (max_length_idx + 1) % 3
+    idx2 = (max_length_idx + 2) % 3
+    area = np.linalg.norm(np.cross(lattice[idx1], lattice[idx2]))
+    return area, f"{idx1+1}{idx2+1}"
 
 
-def _find_vacuum_direction(lattice_vectors: np.ndarray) -> int:
-    """
-    Identify vacuum direction as the lattice vector with the largest length.
-    """
-    try:
-        if lattice_vectors.shape != (3, 3):
-            return None
-        lengths = np.linalg.norm(lattice_vectors, axis=1)
-        return int(np.argmax(lengths))
-    except Exception:
-        return None
+def _idipol_to_direction(
+    idipol: Optional[int] = None, ldipol: Optional[int] = None
+) -> int:
+    dipole_direction = None
+    if not check.is_none(idipol):
+        dipole_direction = int(idipol) - 1
+        if dipole_direction < 0 or dipole_direction > 2:
+            dipole_direction = None
+    if not check.is_none(ldipol):
+        if not bool(ldipol):
+            dipole_direction = None
+    return dipole_direction
 
 
 class _LatticeVectors(reader.Reader):

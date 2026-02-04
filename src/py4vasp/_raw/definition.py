@@ -79,6 +79,8 @@ schema.add(
     raw.Cell,
     scale="intermediate/ion_dynamics/scale",
     lattice_vectors="intermediate/ion_dynamics/lattice_vectors",
+    idipol="input/incar/IDIPOL",
+    ldipol="input/incar/LDIPOL",
 )
 schema.add(
     raw.Cell,
@@ -86,6 +88,8 @@ schema.add(
     required=raw.Version(6, 5),
     scale="results/positions/scale",
     lattice_vectors="results/positions/lattice_vectors",
+    idipol="input/incar/IDIPOL",
+    ldipol="input/incar/LDIPOL",
 )
 schema.add(
     raw.Cell,
@@ -93,6 +97,8 @@ schema.add(
     required=raw.Version(6, 4),
     scale="results/phonons/primitive/scale",
     lattice_vectors="results/phonons/primitive/lattice_vectors",
+    idipol="input/incar/IDIPOL",
+    ldipol="input/incar/LDIPOL",
 )
 schema.add(
     raw.Cell,
@@ -100,6 +106,8 @@ schema.add(
     required=raw.Version(6, 5),
     scale="results/supercell/scale",
     lattice_vectors="results/supercell/lattice_vectors",
+    idipol="input/incar/IDIPOL",
+    ldipol="input/incar/LDIPOL",
 )
 #
 schema.add(
@@ -678,6 +686,8 @@ schema.add(
     stoichiometry=Link("stoichiometry", DEFAULT_SOURCE),
     cell=Link("cell", DEFAULT_SOURCE),
     positions="intermediate/ion_dynamics/position_ions",
+    idipol="input/incar/IDIPOL",
+    ldipol="input/incar/LDIPOL",
 )
 schema.add(
     raw.Structure,
@@ -686,6 +696,8 @@ schema.add(
     stoichiometry=Link("stoichiometry", DEFAULT_SOURCE),
     cell=Link("cell", "final"),
     positions="results/positions/position_ions",
+    idipol="input/incar/IDIPOL",
+    ldipol="input/incar/LDIPOL",
 )
 schema.add(
     raw.Structure,
@@ -694,6 +706,8 @@ schema.add(
     cell=Link("cell", "exciton"),
     stoichiometry=Link("stoichiometry", "exciton"),
     positions="results/supercell/position_ions",
+    idipol="input/incar/IDIPOL",
+    ldipol="input/incar/LDIPOL",
 )
 schema.add(raw.Structure, name="poscar", file="POSCAR", data_factory=read.structure)
 #

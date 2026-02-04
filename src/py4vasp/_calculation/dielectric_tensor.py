@@ -4,11 +4,9 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._calculation import base, cell
-from py4vasp._demo import dielectric_tensor
-from py4vasp._demo.dielectric_tensor import dielectric_tensor
 from py4vasp._raw import data as raw_data
 from py4vasp._util import check, convert
-from py4vasp._util.tensor import symmetry_reduce, tensor_constants
+from py4vasp._util.tensor import symmetry_reduce
 
 
 class DielectricTensor(base.Refinery):
@@ -41,36 +39,29 @@ class DielectricTensor(base.Refinery):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        tensor_reduced, isotropic_dielectric_constant, polarizability_2d = (
-            None,
-            None,
-            None,
-        )
-        (
-            tensor_reduced_ionic,
-            isotropic_dielectric_constant_ionic,
-            polarizability_2d_ionic,
-        ) = (
-            None,
-            None,
-            None,
-        )
-        try:
-            tensor = self._read_relaxed_ion()
-            isotropic_dielectric_constant, polarizability_2d = (
-                self._calculate_dielectric_quantities(tensor)
-            )
-            tensor_reduced = list(symmetry_reduce(tensor))
-        except:
-            pass
-        try:
-            tensor = self._raw_data.ion[:]
-            isotropic_dielectric_constant_ionic, polarizability_2d_ionic = (
-                self._calculate_dielectric_quantities(tensor)
-            )
-            tensor_reduced_ionic = list(symmetry_reduce(tensor))
-        except:
-            pass
+        tensor_reduced = [None, None, None]
+        isotropic_dielectric_constant = [None, None, None]
+        polarizability_2d = [None, None, None]
+
+        total_tensor, ionic_tensor, electronic_tensor = None, None, None
+        if not check.is_none(self._raw_data.electron):
+            electronic_tensor = self._raw_data.electron[:]
+        if not check.is_none(self._raw_data.ion):
+            ionic_tensor = self._raw_data.ion[:]
+        if not check.is_none(self._raw_data.ion) and not check.is_none(
+            self._raw_data.electron
+        ):
+            total_tensor = self._raw_data.electron[:] + self._raw_data.ion[:]
+
+        for idt, tensor in enumerate([total_tensor, ionic_tensor, electronic_tensor]):
+            try:
+                tensor_reduced[idt] = list(symmetry_reduce(tensor.T))
+                (
+                    isotropic_dielectric_constant[idt],
+                    polarizability_2d[idt],
+                ) = self._calculate_dielectric_quantities(tensor)
+            except:
+                pass
 
         method = (
             convert.text_to_string(self._raw_data.method)
@@ -81,12 +72,21 @@ class DielectricTensor(base.Refinery):
         dielectric_tensor_db = {
             "dielectric_tensor": {
                 "method": method,
-                "tensor_reduced_ionic": tensor_reduced_ionic,
-                "isotropic_dielectric_constant_ionic": isotropic_dielectric_constant_ionic,
-                "polarizability_2d_ionic": polarizability_2d_ionic,
-                "tensor_reduced_total": tensor_reduced,
-                "isotropic_dielectric_constant_total": isotropic_dielectric_constant,
-                "polarizability_2d_total": polarizability_2d,
+                "total_3d_tensor": tensor_reduced[0],
+                "total_3d_isotropic_dielectric_constant": isotropic_dielectric_constant[
+                    0
+                ],
+                "total_2d_polarizability": polarizability_2d[0],
+                "ionic_3d_tensor": tensor_reduced[1],
+                "ionic_3d_isotropic_dielectric_constant": isotropic_dielectric_constant[
+                    1
+                ],
+                "ionic_2d_polarizability": polarizability_2d[1],
+                "electronic_3d_tensor": tensor_reduced[2],
+                "electronic_3d_isotropic_dielectric_constant": isotropic_dielectric_constant[
+                    2
+                ],
+                "electronic_2d_polarizability": polarizability_2d[2],
             }
         }
         return dielectric_tensor_db
@@ -94,30 +94,19 @@ class DielectricTensor(base.Refinery):
     @base.data_access
     def _calculate_dielectric_quantities(self, tensor: np.ndarray) -> float:
         # 2D polarizability for slab systems
+        # TODO migrate finding vacuum direction to structure
         polarizability_2d = None
-        is_2d_system = None
         try:
             if not (check.is_none(self._raw_data.cell)):
                 final_cell = cell.Cell.from_data(self._raw_data.cell)
-                if final_cell.is_2d_system:
-                    is_2d_system = True
-                    polarizability_2d = _calculate_2d_polarizability(
-                        tensor, final_cell.lattice_vectors()
-                    )
+                if final_cell:
+                    polarizability_2d = _calculate_2d_polarizability(tensor, final_cell)
         except Exception:
             pass
         # 3D isotropic dielectric constant
         isotropic_dielectric_constant = None
         isotropic_dielectric_constant = float(np.mean(np.diag(tensor)))
-        if is_2d_system is None:
-            # unknown dimensionality of system
-            return isotropic_dielectric_constant, None
-        elif is_2d_system:
-            # confirmed 2D
-            return isotropic_dielectric_constant, polarizability_2d
-        else:
-            # confirmed 3D
-            return isotropic_dielectric_constant, None
+        return isotropic_dielectric_constant, polarizability_2d
 
     @base.data_access
     def __str__(self):
@@ -165,22 +154,20 @@ def _description(method):
 
 
 def _calculate_2d_polarizability(
-    dielectric_tensor: np.ndarray, lattice_vectors: np.ndarray
+    dielectric_tensor: np.ndarray, cell_: cell.Cell
 ) -> float:
     """
     Compute 2D polarizability (alpha_2D) for a slab system with unknown vacuum direction.
     """
     try:
-        vacuum_dir = cell._find_vacuum_direction(lattice_vectors)
+        vacuum_dir = cell_._find_likely_vacuum_direction()
         if vacuum_dir is None:
             return None
 
-        # In-plane directions
-        in_plane_dirs = [i for i in range(3) if i != vacuum_dir]
-
-        eps_parallel = np.mean([dielectric_tensor[i, i] for i in in_plane_dirs])
-
-        l_vacuum = np.linalg.norm(lattice_vectors[vacuum_dir])
+        eps_parallel = np.mean(
+            [dielectric_tensor[i, i] for i in range(3) if i != vacuum_dir]
+        )
+        l_vacuum = np.linalg.norm(cell_.lattice_vectors()[vacuum_dir])
 
         alpha_2d = (l_vacuum / (4.0 * np.pi)) * (eps_parallel - 1.0)
         return alpha_2d
