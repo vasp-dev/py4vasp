@@ -226,6 +226,7 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
         selection: str = "U J V",
         omega: None | EllipsisType | np.ndarray = None,
         radius: None | EllipsisType | np.ndarray = None,
+        radius_max: None | float = None,
         config: interpolate.AAAConfig = interpolate.AAAConfig(),
     ) -> graph.Graph:
         """Generate a graph representation of the effective Coulomb interaction.
@@ -234,8 +235,8 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
         are provided:
 
         - If only omega is given: creates a frequency-dependent plot
-        - If only radius is given: creates a radial-dependent plot
-        - If both omega and radius are given: creates a frequency plot for all radii
+        - If only radius/radius_max is given: creates a radial-dependent plot
+        - If both omega and radius/radius_max are given: creates a frequency plot for all radii
 
         Parameters
         ----------
@@ -260,6 +261,10 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
             are used. You can also provide specific radii, then the data  will be
             interpolated to the selected radii.
 
+        radius_max
+            Maximum radius for radial-dependent plots. If set, all data for radii
+            greater than this value will be ignored.
+
         config
             Configuration for the analytic continuation of the frequency-dependent data.
             Use this if you need to adjust the parameters of the analytic continuation.
@@ -271,25 +276,26 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
             interaction data.
         """
         tree = select.Tree.from_selection(selection)
-        plotter = self._make_plotter(omega, radius, config)
+        plotter = self._make_plotter(omega, radius, radius_max, config)
         potentials = self._get_effective_potentials(tree, plotter)
         series = plotter.make_all_series(potentials)
         return graph.Graph(
             series, xlabel=plotter.xlabel, ylabel="Coulomb potential (eV)"
         )
 
-    def _make_plotter(self, omega, radius, config):
-        if omega is not None and radius is not None:
-            if radius is not ...:
+    def _make_plotter(self, omega, radius, radius_max, config):
+        radius_set = radius is not None or radius_max is not None
+        if omega is not None and radius_set:
+            if radius is not ... and radius is not None:
                 raise exception.NotImplemented(
                     "Interpolating radial data for frequency plots is not implemented."
                 )
             omega_in = self._read_frequencies().get("frequencies")
             positions = self._read_positions()
-            return _OmegaPlotter(omega_in, omega, config, positions)
-        if radius is not None:
+            return _OmegaPlotter(omega_in, omega, config, positions, radius_max)
+        if radius_set:
             positions = self._read_positions()
-            return _RadialPlotter(positions, radius)
+            return _RadialPlotter(positions, radius, radius_max)
         else:
             omega_in = self._read_frequencies().get("frequencies")
             return _OmegaPlotter(omega_in, omega, config)
@@ -415,7 +421,7 @@ class _CoulombPotential:
 
 
 class _OmegaPlotter:
-    def __init__(self, omega_in, omega_out, config, positions=None):
+    def __init__(self, omega_in, omega_out, config, positions=None, radius_max=None):
         self.omega_in = omega_in
         self.interpolate = omega_out is not None and omega_out is not ...
         if omega_in is None:
@@ -425,7 +431,9 @@ class _OmegaPlotter:
         self.omega_out = omega_out if self.interpolate else omega_in
         self.xlabel = "ω (eV)" if self.interpolate else "Im(ω) (eV)"
         self.config = config
-        self.positions = positions
+        if positions is not None:
+            self.positions = positions["positions"]
+            _, self.mask = transform_positions_to_radial(positions, radius_max)
 
     def interpolate_bare_if_necessary(self, potential):
         num_omega = len(self.omega_out)
@@ -442,40 +450,40 @@ class _OmegaPlotter:
         ).T
 
     def make_all_series(self, potentials):
-        if self.positions:
+        if hasattr(self, "positions"):
             return [
-                self._make_one_series(potential, position=i, suffix=f" @ {position}")
+                self._make_one_series(potential, position=position)
                 for potential in potentials
-                for i, position in enumerate(self.positions["positions"])
+                for position in self.positions[self.mask]
             ]
         else:
             return [self._make_one_series(potential) for potential in potentials]
 
-    def _make_one_series(self, potential, position=0, suffix=""):
+    def _make_one_series(self, potential, position=None):
+        if position is None:
+            position_index = 0
+            suffix = ""
+        else:
+            lookup = np.all(self.positions == position, axis=1)
+            position_index = np.squeeze(np.where(lookup))
+            suffix = f" @ {position}"
         omega = self.omega_out.real if self.interpolate else self.omega_out.imag
         label = f"{potential.component} {potential.selector_label}{suffix}"
         if potential.strength.ndim == 1:
             strength = potential.strength
         else:
-            strength = potential.strength[:, position]
+            strength = potential.strength[:, position_index]
         return graph.Series(omega, strength.real, label=label)
 
 
 class _RadialPlotter:
     xlabel = "Radius (Å)"
 
-    def __init__(self, positions, radius_out):
-        if not positions:
-            raise exception.DataMismatch("The output does not contain position data.")
-        self.radius_in = self._transform_positions_to_radial(positions)
+    def __init__(self, positions, radius_out, radius_max):
+        self.radius_in, self.mask = transform_positions_to_radial(positions, radius_max)
         self.interpolate = radius_out is not None and radius_out is not ...
         self.radius_out = radius_out if self.interpolate else self.radius_in
         self.marker = None if self.interpolate else "*"
-
-    def _transform_positions_to_radial(self, positions):
-        return np.linalg.norm(
-            positions["lattice_vectors"] @ positions["positions"].T, axis=0
-        )
 
     def interpolate_bare_if_necessary(self, potential):
         return self._ohno_interpolation(potential)
@@ -484,9 +492,9 @@ class _RadialPlotter:
         return self._ohno_interpolation(potential)
 
     def _ohno_interpolation(self, potential):
+        potential = potential.real[..., self.mask]
         if not self.interpolate:
-            return potential.real
-        potential = potential.real
+            return potential
         if potential.ndim == 2:
             # if multiple frequencies are present, take only omega = 0
             potential = potential[0]
@@ -508,3 +516,15 @@ class _RadialPlotter:
             # use only omega = 0
             strength = potential.strength[0]
         return graph.Series(self.radius_out, strength, label=label, marker=self.marker)
+
+
+def transform_positions_to_radial(positions, radius_max):
+    if not positions:
+        raise exception.DataMismatch("The output does not contain position data.")
+    radius = np.linalg.norm(
+        positions["lattice_vectors"] @ positions["positions"].T, axis=0
+    )
+    if radius_max is None:
+        return radius, slice(None)
+    mask = radius <= radius_max
+    return radius[mask], mask

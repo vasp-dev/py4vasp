@@ -354,6 +354,17 @@ def check_radial_plot_raises_error(effective_coulomb):
         effective_coulomb.plot(radius=...)
 
 
+def test_plot_radial_with_cutoff(nonpolarized_crpar, Assert):
+    effective_coulomb = nonpolarized_crpar
+    graph = effective_coulomb.plot("U", radius_max=10)
+    assert len(graph) == 1
+    series = graph[0]
+    mask = effective_coulomb.ref.radial_data["radius"] < 10
+    Assert.allclose(series.x, effective_coulomb.ref.radial_data["radius"][mask])
+    Assert.allclose(series.y, effective_coulomb.ref.radial_data["screened U"][0, mask])
+    assert series.label == "screened U"
+
+
 @pytest.mark.parametrize("selection", ["total", "up~up", "down~down", "up~down"])
 def test_plot_radial_selected_spin(collinear_crpa, selection, Assert):
     effective_coulomb = collinear_crpa
@@ -384,38 +395,56 @@ def test_plot_radial_invalid_selection(nonpolarized_crpar, selection):
 
 def test_plot_radial_interpolation(nonpolarized_crpar, not_core, Assert):
     radial_data = nonpolarized_crpar.ref.radial_data
-    radius = np.linspace(0.0, np.max(radial_data["radius"]), 30)
+    radius_in = radial_data["radius"]
+    radius_out = np.linspace(0.0, np.max(radius_in), 30)
     ref_graph = nonpolarized_crpar.plot(radius=...)
-    graph = nonpolarized_crpar.plot(radius=radius)
+    graph = nonpolarized_crpar.plot(radius=radius_out)
     assert len(graph) == len(ref_graph)
     assert graph.xlabel == "Radius (Å)"
     assert graph.ylabel == "Coulomb potential (eV)"
     for series, ref_series in zip(graph, ref_graph):
-        Assert.allclose(series.x, radius)
-        expected_interpolated_values = interpolate_r(radial_data, ref_series.y, radius)
-        Assert.allclose(series.y, expected_interpolated_values, tolerance=100)
+        Assert.allclose(series.x, radius_out)
+        interpolated_values = interpolate_r(radius_in, ref_series.y, radius_out)
+        Assert.allclose(series.y, interpolated_values, tolerance=100)
+        assert series.label == ref_series.label
+        assert series.marker is None
+
+
+def test_plot_radial_interpolation_with_cutoff(nonpolarized_crpar, not_core, Assert):
+    radial_data = nonpolarized_crpar.ref.radial_data
+    radius_in = radial_data["radius"][radial_data["radius"] < 10]
+    radius_out = np.linspace(0.0, np.max(radius_in), 30)
+    ref_graph = nonpolarized_crpar.plot(radius=..., radius_max=10)
+    graph = nonpolarized_crpar.plot(radius=radius_out, radius_max=10)
+    assert len(graph) == len(ref_graph)
+    assert graph.xlabel == "Radius (Å)"
+    assert graph.ylabel == "Coulomb potential (eV)"
+    for series, ref_series in zip(graph, ref_graph):
+        Assert.allclose(series.x, radius_out)
+        interpolated_values = interpolate_r(radius_in, ref_series.y, radius_out)
+        Assert.allclose(series.y, interpolated_values, tolerance=100)
         assert series.label == ref_series.label
         assert series.marker is None
 
 
 def test_plot_radial_interpolation_spin_selection(collinear_crpa, not_core, Assert):
     effective_coulomb = collinear_crpa
-    radial_data = effective_coulomb.ref.radial_data
-    radius = np.linspace(0, 10)
+    radius_in = effective_coulomb.ref.radial_data["radius"]
+    radius_out = np.linspace(0, 10)
     ref_graph = effective_coulomb.plot("up~down(U V)", radius=...)
-    graph = effective_coulomb.plot("up~down(U V)", radius=radius)
+    graph = effective_coulomb.plot("up~down(U V)", radius=radius_out)
     expected_labels = ["screened up~down_U", "bare up~down_V"]
     assert len(graph) == len(ref_graph)
     for series, ref_series, label in zip(graph, ref_graph, expected_labels):
-        Assert.allclose(series.x, radius)
-        Assert.allclose(series.y, interpolate_r(radial_data, ref_series.y, radius))
+        Assert.allclose(series.x, radius_out)
+        Assert.allclose(series.y, interpolate_r(radius_in, ref_series.y, radius_out))
         assert series.label == label
 
 
-def interpolate_r(radial_data, potential, radius):
+def interpolate_r(radius_in, potential, radius_out):
     U0 = potential[0]
     interpolation = numeric.interpolate_with_function(
-        EffectiveCoulomb.ohno_potential, radial_data["radius"], potential / U0, radius
+        EffectiveCoulomb.ohno_potential, radius_in, potential / U0, radius_out
     )
     return U0 * interpolation
 
@@ -433,6 +462,26 @@ def test_plot_radial_and_frequency(effective_coulomb, Assert):
     assert graph.ylabel == "Coulomb potential (eV)"
     expected_labels = radial_data["label for both"]
     expected_lines = omega_data["U for both"].real
+    for series, expected_line, label in zip(graph, expected_lines, expected_labels):
+        Assert.allclose(series.x, omega_data["frequencies"].imag)
+        Assert.allclose(series.y, expected_line)
+        assert series.label == label
+
+
+def test_plot_radial_and_frequency_with_cutoff(nonpolarized_crpar, Assert):
+    omega_data = nonpolarized_crpar.ref.omega_data
+    radial_data = nonpolarized_crpar.ref.radial_data
+    graph = nonpolarized_crpar.plot("U", omega=..., radius_max=10)
+    mask = radial_data["radius"] < 10
+    assert len(graph) == sum(mask)
+    assert graph.xlabel == "Im(ω) (eV)"
+    assert graph.ylabel == "Coulomb potential (eV)"
+    expected_labels = [
+        label
+        for label, is_within_cutoff in zip(radial_data["label for both"], mask)
+        if is_within_cutoff
+    ]
+    expected_lines = omega_data["U for both"][mask].real
     for series, expected_line, label in zip(graph, expected_lines, expected_labels):
         Assert.allclose(series.x, omega_data["frequencies"].imag)
         Assert.allclose(series.y, expected_line)
