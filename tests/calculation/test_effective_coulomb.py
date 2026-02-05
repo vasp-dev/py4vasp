@@ -353,6 +353,7 @@ def check_radial_plot_raises_error(effective_coulomb):
     with pytest.raises(exception.DataMismatch):
         effective_coulomb.plot(radius=...)
 
+
 def test_plot_radial_with_cutoff(nonpolarized_crpar, Assert):
     effective_coulomb = nonpolarized_crpar
     graph = effective_coulomb.plot("U", radius_max=10)
@@ -360,7 +361,7 @@ def test_plot_radial_with_cutoff(nonpolarized_crpar, Assert):
     series = graph[0]
     mask = effective_coulomb.ref.radial_data["radius"] < 10
     Assert.allclose(series.x, effective_coulomb.ref.radial_data["radius"][mask])
-    Assert.allclose(series.y, effective_coulomb.ref.radial_data["screened U"][0,mask])
+    Assert.allclose(series.y, effective_coulomb.ref.radial_data["screened U"][0, mask])
     assert series.label == "screened U"
 
 
@@ -461,6 +462,26 @@ def test_plot_radial_and_frequency(effective_coulomb, Assert):
     assert graph.ylabel == "Coulomb potential (eV)"
     expected_labels = radial_data["label for both"]
     expected_lines = omega_data["U for both"].real
+    for series, expected_line, label in zip(graph, expected_lines, expected_labels):
+        Assert.allclose(series.x, omega_data["frequencies"].imag)
+        Assert.allclose(series.y, expected_line)
+        assert series.label == label
+
+
+def test_plot_radial_and_frequency_with_cutoff(nonpolarized_crpar, Assert):
+    omega_data = nonpolarized_crpar.ref.omega_data
+    radial_data = nonpolarized_crpar.ref.radial_data
+    graph = nonpolarized_crpar.plot("U", omega=..., radius_max=10)
+    mask = radial_data["radius"] < 10
+    assert len(graph) == sum(mask)
+    assert graph.xlabel == "Im(ω) (eV)"
+    assert graph.ylabel == "Coulomb potential (eV)"
+    expected_labels = [
+        label
+        for label, is_within_cutoff in zip(radial_data["label for both"], mask)
+        if is_within_cutoff
+    ]
+    expected_lines = omega_data["U for both"][mask].real
     for series, expected_line, label in zip(graph, expected_lines, expected_labels):
         Assert.allclose(series.x, omega_data["frequencies"].imag)
         Assert.allclose(series.y, expected_line)
