@@ -226,6 +226,7 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
         selection: str = "U J V",
         omega: None | EllipsisType | np.ndarray = None,
         radius: None | EllipsisType | np.ndarray = None,
+        radius_max: None | float = None,
         config: interpolate.AAAConfig = interpolate.AAAConfig(),
     ) -> graph.Graph:
         """Generate a graph representation of the effective Coulomb interaction.
@@ -234,8 +235,8 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
         are provided:
 
         - If only omega is given: creates a frequency-dependent plot
-        - If only radius is given: creates a radial-dependent plot
-        - If both omega and radius are given: creates a frequency plot for all radii
+        - If only radius/radius_max is given: creates a radial-dependent plot
+        - If both omega and radius/radius_max are given: creates a frequency plot for all radii
 
         Parameters
         ----------
@@ -260,6 +261,8 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
             are used. You can also provide specific radii, then the data  will be
             interpolated to the selected radii.
 
+        radius_max
+
         config
             Configuration for the analytic continuation of the frequency-dependent data.
             Use this if you need to adjust the parameters of the analytic continuation.
@@ -271,15 +274,16 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
             interaction data.
         """
         tree = select.Tree.from_selection(selection)
-        plotter = self._make_plotter(omega, radius, config)
+        plotter = self._make_plotter(omega, radius, radius_max,config)
         potentials = self._get_effective_potentials(tree, plotter)
         series = plotter.make_all_series(potentials)
         return graph.Graph(
             series, xlabel=plotter.xlabel, ylabel="Coulomb potential (eV)"
         )
 
-    def _make_plotter(self, omega, radius, config):
-        if omega is not None and radius is not None:
+    def _make_plotter(self, omega, radius, radius_max, config):
+        radius_set = (radius is not None or radius_max is not None)
+        if omega is not None and radius_set:
             if radius is not ...:
                 raise exception.NotImplemented(
                     "Interpolating radial data for frequency plots is not implemented."
@@ -287,9 +291,9 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
             omega_in = self._read_frequencies().get("frequencies")
             positions = self._read_positions()
             return _OmegaPlotter(omega_in, omega, config, positions)
-        if radius is not None:
+        if radius_set:
             positions = self._read_positions()
-            return _RadialPlotter(positions, radius)
+            return _RadialPlotter(positions, radius, radius_max)
         else:
             omega_in = self._read_frequencies().get("frequencies")
             return _OmegaPlotter(omega_in, omega, config)
@@ -464,10 +468,15 @@ class _OmegaPlotter:
 class _RadialPlotter:
     xlabel = "Radius (Å)"
 
-    def __init__(self, positions, radius_out):
+    def __init__(self, positions, radius_out, radius_max):
         if not positions:
             raise exception.DataMismatch("The output does not contain position data.")
         self.radius_in = self._transform_positions_to_radial(positions)
+        if radius_max:
+            self.mask = self.radius_in <= radius_max
+            self.radius_in = self.radius_in[self.mask]
+        else:
+            self.mask = slice(None)
         self.interpolate = radius_out is not None and radius_out is not ...
         self.radius_out = radius_out if self.interpolate else self.radius_in
         self.marker = None if self.interpolate else "*"
@@ -484,9 +493,9 @@ class _RadialPlotter:
         return self._ohno_interpolation(potential)
 
     def _ohno_interpolation(self, potential):
+        potential = potential.real[..., self.mask]
         if not self.interpolate:
-            return potential.real
-        potential = potential.real
+            return potential
         if potential.ndim == 2:
             # if multiple frequencies are present, take only omega = 0
             potential = potential[0]
