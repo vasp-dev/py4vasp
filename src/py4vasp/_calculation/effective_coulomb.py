@@ -262,6 +262,8 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
             interpolated to the selected radii.
 
         radius_max
+            Maximum radius for radial-dependent plots. If set, all data for radii
+            greater than this value will be ignored.
 
         config
             Configuration for the analytic continuation of the frequency-dependent data.
