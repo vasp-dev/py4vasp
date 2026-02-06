@@ -116,8 +116,16 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        final_velocity_norms = np.linalg.norm(self._velocity[-1], axis=-1)
-        initial_velocity_norms = np.linalg.norm(self._velocity[0], axis=-1)
+        if self._raw_data.velocities[:].ndim == 2:
+            final_velocity_norms = np.linalg.norm(self._raw_data.velocities[:], axis=-1)
+            initial_velocity_norms = final_velocity_norms.copy()
+        else:
+            final_velocity_norms = np.linalg.norm(
+                self._raw_data.velocities[-1], axis=-1
+            )
+            initial_velocity_norms = np.linalg.norm(
+                self._raw_data.velocities[0], axis=-1
+            )
         return {
             "velocity": {
                 "final_velocity_min": float(np.min(final_velocity_norms)),

@@ -61,15 +61,15 @@ class Cell(slice_.Mixin, base.Refinery):
 
             alpha = [
                 np.degrees(np.arccos(np.dot(bi, ci) / (lb[i] * lc[i])))
-                for i, bi, ci in enumerate(zip(b, c))
+                for i, (bi, ci) in enumerate(zip(b, c))
             ]
             beta = [
                 np.degrees(np.arccos(np.dot(ai, ci) / (la[i] * lc[i])))
-                for i, ai, ci in enumerate(zip(a, c))
+                for i, (ai, ci) in enumerate(zip(a, c))
             ]
             gamma = [
                 np.degrees(np.arccos(np.dot(ai, bi) / (la[i] * lb[i])))
-                for i, ai, bi in enumerate(zip(a, b))
+                for i, (ai, bi) in enumerate(zip(a, b))
             ]
             angles = np.array([alpha, beta, gamma]).T
         else:
@@ -100,7 +100,7 @@ class Cell(slice_.Mixin, base.Refinery):
             return _is_suspected_2d(lengths, dipole_direction)
 
     @base.data_access
-    def _area_2d(self) -> tuple[Union[float, np.ndarray], Union[str, np.ndarray]]:
+    def _area_2d(self) -> tuple[Union[float, np.ndarray], Union[str, list[str]]]:
         """Area of the 2D cell if the system is 2D."""
         lattices = self.lattice_vectors()
         lengths = self.lengths()

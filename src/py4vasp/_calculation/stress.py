@@ -113,8 +113,12 @@ in kB   {stress_to_string(stress)}
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        initial_stress_tensor = self._stress[0]
-        final_stress_tensor = self._stress[-1]
+        if self._raw_data.stress[:].ndim == 3:
+            initial_stress_tensor = self._raw_data.stress[0]
+            final_stress_tensor = self._raw_data.stress[-1]
+        else:
+            initial_stress_tensor = self._raw_data.stress[:]
+            final_stress_tensor = self._raw_data.stress[:]
 
         return {
             "stress": {

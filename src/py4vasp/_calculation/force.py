@@ -121,10 +121,14 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        if check.is_none(self._force):
+        if check.is_none(self._raw_data.forces):
             raise exception.NoData("No force data available to write to database.")
-        final_force_norms = np.linalg.norm(self._force[-1], axis=-1)
-        initial_force_norms = np.linalg.norm(self._force[0], axis=-1)
+        if self._raw_data.forces[:].ndim == 2:
+            final_force_norms = np.linalg.norm(self._raw_data.forces[:], axis=-1)
+            initial_force_norms = final_force_norms.copy()
+        else:
+            final_force_norms = np.linalg.norm(self._raw_data.forces[-1], axis=-1)
+            initial_force_norms = np.linalg.norm(self._raw_data.forces[0], axis=-1)
         return {
             "force": {
                 "final_force_min": float(np.min(final_force_norms)),

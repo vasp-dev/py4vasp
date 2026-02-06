@@ -256,60 +256,160 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
+        steps_sel = self._steps
+        self._steps = slice(None)
         stoichiometry = self._stoichiometry()._read_to_database(*args, **kwargs)
 
         # TODO add more structure properties
-        lattice = self.lattice_vectors()
-        if lattice.ndim != 2:
-            lattice = [None, None, None]
-        volume = None
+        final_lattice, initial_lattice = ([None, None, None] for _ in range(2))
         try:
-            volume = self.volume()
-        except Exception:
+            lattices = self.lattice_vectors()
+            final_lattice = lattices[-1] if lattices.ndim == 3 else lattices
+            initial_lattice = lattices[0] if lattices.ndim == 3 else lattices
+            if final_lattice.ndim != 2:
+                final_lattice = [None, None, None]
+            if initial_lattice.ndim != 2:
+                initial_lattice = [None, None, None]
+        except:
+            pass
+        volume_final, volume_initial = (None for _ in range(2))
+        try:
+            volumes = self.volume()
+            volume_final = (
+                volumes[-1]
+                if not isinstance(volumes, (float, np.float64, np.float32))
+                else volumes
+            )
+            volume_initial = (
+                volumes[0]
+                if not isinstance(volumes, (float, np.float64, np.float32))
+                else volumes
+            )
+        except Exception as e:
             pass
 
-        lengths = [None, None, None]
-        angles = [None, None, None]
-        cell_area_2d = None
-        cell_area_2d_span = None
+        lengths_final, angles_final, lengths_initial, angles_initial = (
+            None for _ in range(4)
+        )
+        (
+            cell_area_2d_final,
+            cell_area_2d_span_final,
+            cell_area_2d_initial,
+            cell_area_2d_span_initial,
+        ) = (None for _ in range(4))
         dimensionality = 3
         try:
             dimensionality = self._dimensionality()
-        except:
+        except Exception as e:
             pass
 
         try:
-            cell = self._cell()
-            lengths = list(cell.lengths())
-            angles = list(cell.angles())
+            cell_: cell.Cell = self._cell()
+            lengths = cell_.lengths()
+            lengths_final = lengths[-1] if lengths.ndim == 2 else lengths
+            lengths_initial = lengths[0] if lengths.ndim == 2 else lengths
+            angles = cell_.angles()
+            angles_final = angles[-1] if angles.ndim == 2 else angles
+            angles_initial = angles[0] if angles.ndim == 2 else angles
             if dimensionality == 2:
-                cell_area_2d, cell_area_2d_span = cell._area_2d()
-        except:
+                cell_area_2d, cell_area_2d_span = cell_._area_2d()
+                cell_area_2d_final = (
+                    cell_area_2d[-1]
+                    if isinstance(cell_area_2d, np.ndarray)
+                    else cell_area_2d
+                )
+                cell_area_2d_initial = (
+                    cell_area_2d[0]
+                    if isinstance(cell_area_2d, np.ndarray)
+                    else cell_area_2d
+                )
+                cell_area_2d_span_final = (
+                    cell_area_2d_span[-1]
+                    if isinstance(cell_area_2d_span, list)
+                    else cell_area_2d_span
+                )
+                cell_area_2d_span_initial = (
+                    cell_area_2d_span[0]
+                    if isinstance(cell_area_2d_span, list)
+                    else cell_area_2d_span
+                )
+        except Exception as e:
             pass
+
+        num_atoms = self.number_atoms() or None
+        self._steps = steps_sel
 
         return database.combine_db_dicts(
             {
                 "structure": {
-                    "num_ions": self.number_atoms(),
-                    "cell_volume": volume,
+                    "num_ions": num_atoms,
                     "dimensionality": dimensionality,
-                    "cell_area_2d": cell_area_2d,
-                    "cell_area_2d_span": cell_area_2d_span,
-                    "lattice_vector_1": (
-                        list(lattice[0]) if lattice[0] is not None else None
+                    "final_cell_volume": volume_final,
+                    "final_cell_area_2d": cell_area_2d_final,
+                    "final_cell_area_2d_span": cell_area_2d_span_final,
+                    "final_lattice_vector_1": (
+                        list(final_lattice[0]) if final_lattice[0] is not None else None
                     ),
-                    "lattice_vector_2": (
-                        list(lattice[1]) if lattice[1] is not None else None
+                    "final_lattice_vector_2": (
+                        list(final_lattice[1]) if final_lattice[1] is not None else None
                     ),
-                    "lattice_vector_3": (
-                        list(lattice[2]) if lattice[2] is not None else None
+                    "final_lattice_vector_3": (
+                        list(final_lattice[2]) if final_lattice[2] is not None else None
                     ),
-                    "lattice_vector_1_length": lengths[0],
-                    "lattice_vector_2_length": lengths[1],
-                    "lattice_vector_3_length": lengths[2],
-                    "angle_alpha": angles[0],
-                    "angle_beta": angles[1],
-                    "angle_gamma": angles[2],
+                    "final_lattice_vector_1_length": (
+                        lengths_final[0] if lengths_final is not None else None
+                    ),
+                    "final_lattice_vector_2_length": (
+                        lengths_final[1] if lengths_final is not None else None
+                    ),
+                    "final_lattice_vector_3_length": (
+                        lengths_final[2] if lengths_final is not None else None
+                    ),
+                    "final_angle_alpha": (
+                        angles_final[0] if angles_final is not None else None
+                    ),
+                    "final_angle_beta": (
+                        angles_final[1] if angles_final is not None else None
+                    ),
+                    "final_angle_gamma": (
+                        angles_final[2] if angles_final is not None else None
+                    ),
+                    "initial_cell_volume": volume_initial,
+                    "initial_cell_area_2d": cell_area_2d_initial,
+                    "initial_cell_area_2d_span": cell_area_2d_span_initial,
+                    "initial_lattice_vector_1": (
+                        list(initial_lattice[0])
+                        if initial_lattice[0] is not None
+                        else None
+                    ),
+                    "initial_lattice_vector_2": (
+                        list(initial_lattice[1])
+                        if initial_lattice[1] is not None
+                        else None
+                    ),
+                    "initial_lattice_vector_3": (
+                        list(initial_lattice[2])
+                        if initial_lattice[2] is not None
+                        else None
+                    ),
+                    "initial_lattice_vector_1_length": (
+                        lengths_initial[0] if lengths_initial is not None else None
+                    ),
+                    "initial_lattice_vector_2_length": (
+                        lengths_initial[1] if lengths_initial is not None else None
+                    ),
+                    "initial_lattice_vector_3_length": (
+                        lengths_initial[2] if lengths_initial is not None else None
+                    ),
+                    "initial_angle_alpha": (
+                        angles_initial[0] if angles_initial is not None else None
+                    ),
+                    "initial_angle_beta": (
+                        angles_initial[1] if angles_initial is not None else None
+                    ),
+                    "initial_angle_gamma": (
+                        angles_initial[2] if angles_initial is not None else None
+                    ),
                 },
             },
             stoichiometry,
