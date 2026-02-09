@@ -49,14 +49,14 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
         data = self._to_database()["effective_coulomb"]
         return f"""\
 averaged bare interaction
-bare Hubbard U = {data["bare_V"].real:8.4f} {data["bare_V"].imag:8.4f}
-bare Hubbard u = {data["bare_v"].real:8.4f} {data["bare_v"].imag:8.4f}
-bare Hubbard J = {data["bare_J"].real:8.4f} {data["bare_J"].imag:8.4f}
+bare Hubbard U = {data["bare_V_uppercase"].real:8.4f} {data["bare_V_uppercase"].imag:8.4f}
+bare Hubbard u = {data["bare_v_lowercase"].real:8.4f} {data["bare_v_lowercase"].imag:8.4f}
+bare Hubbard J = {data["bare_J_uppercase"].real:8.4f} {data["bare_J_uppercase"].imag:8.4f}
 
 averaged interaction parameter
-screened Hubbard U = {data["screened_U"].real:8.4f} {data["screened_U"].imag:8.4f}
-screened Hubbard u = {data["screened_u"].real:8.4f} {data["screened_u"].imag:8.4f}
-screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4f}
+screened Hubbard U = {data["screened_U_uppercase"].real:8.4f} {data["screened_U_uppercase"].imag:8.4f}
+screened Hubbard u = {data["screened_u_lowercase"].real:8.4f} {data["screened_u_lowercase"].imag:8.4f}
+screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_uppercase"].imag:8.4f}
 """
 
     def _to_database(self, *args, **kwargs) -> dict[str, dict]:
@@ -95,12 +95,12 @@ screened Hubbard J = {data["screened_J"].real:8.4f} {data["screened_J"].imag:8.4
         v = convert.to_complex(self._raw_data.bare_potential_high_cutoff[access_v])
         Vj = convert.to_complex(self._raw_data.bare_potential_high_cutoff[access_Vj])
         overview = {
-            "screened_U": complex(np.average(U)),
-            "screened_u": complex(np.average(u)),
-            "screened_J": complex(np.average(J)),
-            "bare_V": complex(np.average(V)),
-            "bare_v": complex(np.average(v)),
-            "bare_J": complex(np.average(Vj)),
+            "screened_U_uppercase": complex(np.average(U)),
+            "screened_u_lowercase": complex(np.average(u)),
+            "screened_J_uppercase": complex(np.average(J)),
+            "bare_V_uppercase": complex(np.average(V)),
+            "bare_v_lowercase": complex(np.average(v)),
+            "bare_J_uppercase": complex(np.average(Vj)),
         }
         return {"effective_coulomb": overview}
 
