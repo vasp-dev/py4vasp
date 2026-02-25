@@ -123,7 +123,9 @@ def test_ion_arrows(is_structure, Assert, not_core):
         ion_arrows=[
             IonArrow(
                 np.random.rand(
-                    len(inputs["atoms_trajectory"]), len(inputs["atoms_trajectory"][0]), 3
+                    len(inputs["atoms_trajectory"]),
+                    len(inputs["atoms_trajectory"][0]),
+                    3,
                 ),
                 label="Magnetization",
                 color="#00FFFF",
@@ -131,7 +133,9 @@ def test_ion_arrows(is_structure, Assert, not_core):
             ),
             IonArrow(
                 np.random.rand(
-                    len(inputs["atoms_trajectory"]), len(inputs["atoms_trajectory"][0]), 3
+                    len(inputs["atoms_trajectory"]),
+                    len(inputs["atoms_trajectory"][0]),
+                    3,
                 ),
                 label="Velocities",
                 color="#84FF00",

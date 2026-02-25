@@ -235,8 +235,12 @@ class View:
             structure["selections_show_xyz_aside"] = self.show_axes
             structure["selections_show_abc_aside"] = self.show_axes
         if self.show_axes_at is not None:
-            structure["selections_axes_abc_shift"] = self._convert_to_list(self.show_axes_at)
-            structure["selections_axes_xyz_shift"] = self._convert_to_list(self.show_axes_at)
+            structure["selections_axes_abc_shift"] = self._convert_to_list(
+                self.show_axes_at
+            )
+            structure["selections_axes_xyz_shift"] = self._convert_to_list(
+                self.show_axes_at
+            )
 
         # === Meta options ===
         if self.structure_title:
