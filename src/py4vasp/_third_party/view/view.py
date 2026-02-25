@@ -178,18 +178,18 @@ class View:
         to call initialize a VASP Viewer widget."""
         self._verify()
         structure: dict = {
-            "positions": self._convert_to_list(self.positions),
-            "types": self._convert_to_list(self.elements),
-            "lattice": self._convert_to_list(self.lattice_vectors),
+            "atoms_trajectory": self._convert_to_list(self.positions),
+            "atoms_types": self._convert_to_list(self.elements),
+            "lattice_vectors": self._convert_to_list(self.lattice_vectors),
         }
 
         # === Atoms options ===
         if self.atom_radius is not None:
-            structure["atom_radius"] = self.atom_radius
+            structure["selections_atom_radius"] = self.atom_radius
 
         # === Vector Group options ===
         if self.ion_arrows is not None:
-            structure["ion_arrows"] = [
+            structure["ion_arrow_groups"] = [
                 {
                     "label": arrow.label,
                     "quantity": self._convert_to_list(arrow.quantity),
@@ -202,7 +202,7 @@ class View:
             # TODO merge isosurface branch
             # TODO handle list of grid scalars instead of single grid scalar only
             # TODO adjust UI to support this
-            structure["grid_scalars"] = [
+            structure["grid_scalar_groups"] = [
                 {
                     "label": grid_quantity.label,
                     "data": grid_quantity.quantity,  # TODO check type
@@ -220,26 +220,27 @@ class View:
 
         # === Lattice options ===
         if self.shift is not None:
-            structure["constant_shift"] = self._convert_to_list(self.shift)
+            structure["selections_constant_shift"] = self._convert_to_list(self.shift)
         if self.supercell is not None:
-            structure["supercell"] = self._convert_to_list(self.supercell)
+            structure["selections_supercell"] = self._convert_to_list(self.supercell)
 
         # === Visualization options ===
         if self.camera is not None:
-            structure["camera_mode"] = self.camera
+            structure["selections_camera_mode"] = self.camera
         if self.show_cell is not None:
-            structure["show_lattice"] = self.show_cell
+            structure["selections_show_lattice"] = self.show_cell
         if self.show_axes is not None:
-            structure["show_xyz"] = False
-            structure["show_abc"] = self.show_axes
-            structure["show_xyz_aside"] = self.show_axes
-            structure["show_abc_aside"] = self.show_axes
+            structure["selections_show_xyz"] = False
+            structure["selections_show_abc"] = self.show_axes
+            structure["selections_show_xyz_aside"] = self.show_axes
+            structure["selections_show_abc_aside"] = self.show_axes
         if self.show_axes_at is not None:
-            structure["axes_scene_shift"] = self._convert_to_list(self.show_axes_at)
+            structure["selections_axes_abc_shift"] = self._convert_to_list(self.show_axes_at)
+            structure["selections_axes_xyz_shift"] = self._convert_to_list(self.show_axes_at)
 
         # === Meta options ===
         if self.structure_title:
-            structure["descriptor"] = self.structure_title
+            structure["selections_descriptor"] = self.structure_title
 
         return vaspview.Widget(structure)
 

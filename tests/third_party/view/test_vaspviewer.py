@@ -25,9 +25,9 @@ hasVaspView = pytest.mark.skipif(
 def base_input_view(is_structure):
     if is_structure:
         return {
-            "elements": [["Sr", "Ti", "O", "O", "O"]],
+            "atoms_types": [["Sr", "Ti", "O", "O", "O"]],
             "lattice_vectors": [4 * np.eye(3)],
-            "positions": [
+            "atoms_trajectory": [
                 [
                     [0.0, 0.0, 0.0],
                     [0.5, 0.5, 0.5],
@@ -39,12 +39,12 @@ def base_input_view(is_structure):
         }
     else:
         return {
-            "elements": [["Ga", "As"], ["Ga", "As"]],
+            "atoms_types": [["Ga", "As"], ["Ga", "As"]],
             "lattice_vectors": [
                 2.8 * (np.ones((3, 3)) - np.eye(3)),
                 2.9 * (np.ones((3, 3)) - np.eye(3)),
             ],
-            "positions": [
+            "atoms_trajectory": [
                 [
                     [0.0, 0.0, 0.0],
                     [0.25, 0.25, 0.25],
@@ -123,7 +123,7 @@ def test_ion_arrows(is_structure, Assert, not_core):
         ion_arrows=[
             IonArrow(
                 np.random.rand(
-                    len(inputs["positions"]), len(inputs["positions"][0]), 3
+                    len(inputs["atoms_trajectory"]), len(inputs["atoms_trajectory"][0]), 3
                 ),
                 label="Magnetization",
                 color="#00FFFF",
@@ -131,7 +131,7 @@ def test_ion_arrows(is_structure, Assert, not_core):
             ),
             IonArrow(
                 np.random.rand(
-                    len(inputs["positions"]), len(inputs["positions"][0]), 3
+                    len(inputs["atoms_trajectory"]), len(inputs["atoms_trajectory"][0]), 3
                 ),
                 label="Velocities",
                 color="#84FF00",
