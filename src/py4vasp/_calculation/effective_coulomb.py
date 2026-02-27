@@ -9,6 +9,7 @@ from numpy.typing import ArrayLike
 from py4vasp import exception, interpolate
 from py4vasp._calculation import base, cell
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import EffectiveCoulomb_DB
 from py4vasp._third_party import graph, numeric
 from py4vasp._util import check, convert, index, select
 
@@ -102,7 +103,7 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
             "bare_v_lowercase": complex(np.average(v)),
             "bare_J_uppercase": complex(np.average(Vj)),
         }
-        return {"effective_coulomb": overview}
+        return {"effective_coulomb": EffectiveCoulomb_DB(**overview)}
 
     def _wannier_indices_iiii(self):
         """Return the indices that trace over diagonal of the 4 Wannier states. This

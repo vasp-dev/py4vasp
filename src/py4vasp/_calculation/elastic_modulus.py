@@ -7,6 +7,7 @@ import numpy as np
 
 from py4vasp._calculation import base, structure
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import ElasticModulus_DB
 from py4vasp._util import check
 from py4vasp._util.tensor import symmetry_reduce
 
@@ -97,7 +98,7 @@ class ElasticModulus(base.Refinery):
                 pass
 
         return {
-            "elastic_modulus": {
+            "elastic_modulus": ElasticModulus_DB(**{
                 "total_3d_tensor": compact_tensor[0],  # [kbar]
                 "total_bulk_modulus": bulk_modulus[0],  # [GPa]
                 "total_shear_modulus": shear_modulus[0],  # [GPa]
@@ -122,7 +123,7 @@ class ElasticModulus(base.Refinery):
                 "electronic_pugh_ratio": pugh_ratio[2],
                 "electronic_vickers_hardness": vickers_hardness[2],
                 "electronic_fracture_toughness": fracture_toughness[2],
-            }
+            })
         }
 
     @base.data_access
