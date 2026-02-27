@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
 
+import numpy as np
 import pytest
 
 from py4vasp import _config, exception
@@ -109,6 +110,27 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
     -0.55710      1.27201      1.38866        60.000000     61.000000     62.000000
 """.strip()
     assert actual == {"text/plain": ref_plain}
+
+
+def test_to_database(forces):
+    db_dict = forces._read_to_database()["force:default"]
+    for prefix, suffix_ in [
+        ("final", ["min", "median", "mean", "max"]),
+        ("initial", ["min", "max"]),
+    ]:
+        for suffix in suffix_:
+            assert f"{prefix}_force_{suffix}" in db_dict
+            assert isinstance(db_dict[f"{prefix}_force_{suffix}"], (float, type(None)))
+        assert f"{prefix}_index_force_max" in db_dict
+        index = db_dict[f"{prefix}_index_force_max"]
+        assert isinstance(index, (int, type(None)))
+        assert 0 <= index < forces.ref.forces.shape[1]
+        assert index == np.argmax(
+            np.linalg.norm(
+                (forces.ref.forces[-1] if prefix == "final" else forces.ref.forces[0]),
+                axis=-1,
+            )
+        )
 
 
 def test_factory_methods(raw_data, check_factory_methods):

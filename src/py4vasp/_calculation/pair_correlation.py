@@ -1,8 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._calculation import base, slice_
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph
-from py4vasp._util import convert, documentation, index, select
+from py4vasp._util import check, convert, documentation, index, select
 
 
 def _selection_string(default):
@@ -40,6 +41,8 @@ class PairCorrelation(slice_.Mixin, base.Refinery, graph.Mixin):
     {examples}
     """
 
+    _raw_data: raw_data.PairCorrelation
+
     @base.data_access
     @documentation.format(
         selection=_selection_string("all possibilities are read"),
@@ -66,6 +69,20 @@ class PairCorrelation(slice_.Mixin, base.Refinery, graph.Mixin):
         return {
             "distances": self._raw_data.distances[:],
             **self._read_data(selection),
+        }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        distance_min, distance_max = None, None
+        if not check.is_none(self._raw_data.distances):
+            distance_min = float(self._raw_data.distances[0])
+            distance_max = float(self._raw_data.distances[-1])
+
+        return {
+            "pair_correlation": {
+                "distance_min": distance_min,
+                "distance_max": distance_max,
+            }
         }
 
     @base.data_access

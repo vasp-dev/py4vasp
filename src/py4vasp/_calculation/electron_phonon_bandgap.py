@@ -7,6 +7,7 @@ import numpy as np
 from py4vasp._calculation import base
 from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
 from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph
 from py4vasp._util import index, select
 
@@ -24,6 +25,8 @@ class BandgapInstance(ElectronPhononInstance, graph.Mixin):
         parent: Reference to the parent calculation object containing the data.
         index: Index specifying which dataset to access from the parent.
     """
+
+    _raw_data: raw_data.ElectronPhononBandgap
 
     def __init__(self, parent, index):
         self.parent = parent

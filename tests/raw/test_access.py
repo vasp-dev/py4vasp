@@ -173,13 +173,7 @@ def test_access_from_file(mock_access):
 
 def test_required_version(mock_access):
     mock_file, sources = mock_access
-    mock_get_version = mock_file.return_value.__enter__.return_value.__getitem__
-    version = {
-        VERSION.major: mock_version_dataset(1),
-        VERSION.minor: mock_version_dataset(0),
-        VERSION.patch: mock_version_dataset(2),
-    }
-    mock_get_version.side_effect = lambda key: version[key]
+    mock_get_version = initialize_version_mock(mock_file)
     with raw.access("simple"):
         mock_get_version.assert_not_called()
     with pytest.raises(exception.OutdatedVaspVersion):
@@ -188,6 +182,25 @@ def test_required_version(mock_access):
     assert mock_get_version.call_count == 3
     expected_calls = call(VERSION.major), call(VERSION.minor), call(VERSION.patch)
     mock_get_version.assert_has_calls(expected_calls, any_order=True)
+
+
+def test_optional_type_become_none_instead_of_raising_error(mock_access):
+    mock_file, sources = mock_access
+    mock_get_version = initialize_version_mock(mock_file)
+    with raw.access("with_optional_link") as with_optional:
+        assert with_optional.simple.is_none()
+    assert mock_get_version.call_count == 3
+
+
+def initialize_version_mock(mock_file):
+    mock_get_version = mock_file.return_value.__enter__.return_value.__getitem__
+    version = {
+        VERSION.major: mock_version_dataset(1),
+        VERSION.minor: mock_version_dataset(0),
+        VERSION.patch: mock_version_dataset(2),
+    }
+    mock_get_version.side_effect = lambda key: version[key]
+    return mock_get_version
 
 
 def mock_version_dataset(number):
@@ -229,7 +242,7 @@ def test_access_length(mock_access):
         assert with_length.num_data == num_data
     mock_get.side_effect = (None,)
     with raw.access(quantity) as with_length:
-        assert with_length.num_data is None
+        assert with_length.num_data.is_none()
 
 
 def test_access_data_factory(mock_schema, tmp_path):

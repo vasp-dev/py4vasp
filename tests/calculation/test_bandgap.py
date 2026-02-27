@@ -40,6 +40,8 @@ def setup_bandgap(raw_gap):
     bandgap.ref.kpoint_vbm = raw_gap.values[..., KPOINT_VBM]
     bandgap.ref.kpoint_cbm = raw_gap.values[..., KPOINT_CBM]
     bandgap.ref.direct = raw_gap.values[..., TOP] - raw_gap.values[..., BOTTOM]
+    bandgap.ref.lower_band_direct = raw_gap.values[..., BOTTOM]
+    bandgap.ref.upper_band_direct = raw_gap.values[..., TOP]
     bandgap.ref.kpoint_direct = raw_gap.values[..., KPOINT_DIRECT]
     bandgap.ref.fermi_energy = raw_gap.values[:, 0, FERMI]
     return bandgap
@@ -312,3 +314,65 @@ Fermi energy:               11.401754"""
 def test_factory_methods(raw_data, check_factory_methods):
     raw_gap = raw_data.bandgap("default")
     check_factory_methods(Bandgap, raw_gap)
+
+
+def _check_to_database(_bandgap, Assert):
+    database_data = _bandgap._read_to_database()
+    db_dict = database_data["bandgap:default"]
+
+    for k in [
+        "valence_band_maximum",
+        "conduction_band_minimum",
+        "fundamental",
+        "kpoint_vbm",
+        "kpoint_cbm",
+        "lower_band_direct",
+        "upper_band_direct",
+        "direct",
+        "kpoint_direct",
+    ]:
+        for suffix in ["spin_independent", "spin_up", "spin_down"]:
+            actual_key = f"{k}_{suffix}"
+            assert (
+                actual_key in db_dict
+            ), f"Expected key '{actual_key}' missing from database output."
+
+    def _check_quantity(dict_, key_, ref_value):
+        for idx, suffix in enumerate(["spin_independent", "spin_up", "spin_down"]):
+            actual_key = f"{key_}_{suffix}"
+            if idx == 0 or _bandgap._spin_polarized():
+                Assert.allclose(dict_[actual_key], ref_value[idx], 1e6)
+            else:
+                assert (
+                    dict_[actual_key] is None
+                ), f"Expected None for key '{actual_key}', but got {dict_[actual_key]}."
+            if actual_key.startswith("kpoint"):
+                assert dict_[actual_key] is None or (
+                    isinstance(dict_[actual_key], list)
+                    and all(isinstance(i, float) for i in dict_[actual_key])
+                ), f"{actual_key} has unexpected type {type(dict_[actual_key])}: {dict_[actual_key]}"
+                assert dict_[actual_key] is None or (
+                    len(dict_[actual_key]) == 3
+                ), f"{actual_key} has unexpected length {len(dict_[actual_key])}: {dict_[actual_key]}"
+            else:
+                assert dict_[actual_key] is None or isinstance(
+                    dict_[actual_key], float
+                ), f"{actual_key} has unexpected type {type(dict_[actual_key])}: {dict_[actual_key]}"
+
+    _check_quantity(db_dict, "valence_band_maximum", _bandgap.ref.vbm[-1])
+    _check_quantity(db_dict, "conduction_band_minimum", _bandgap.ref.cbm[-1])
+    _check_quantity(db_dict, "fundamental", _bandgap.ref.fundamental[-1,])
+    _check_quantity(db_dict, "kpoint_vbm", _bandgap.ref.kpoint_vbm[-1])
+    _check_quantity(db_dict, "kpoint_cbm", _bandgap.ref.kpoint_cbm[-1])
+    _check_quantity(db_dict, "direct", _bandgap.ref.direct[-1])
+    _check_quantity(db_dict, "kpoint_direct", _bandgap.ref.kpoint_direct[-1])
+    _check_quantity(db_dict, "lower_band_direct", _bandgap.ref.lower_band_direct[-1])
+    _check_quantity(db_dict, "upper_band_direct", _bandgap.ref.upper_band_direct[-1])
+
+
+def test_to_database_default(bandgap, Assert):
+    _check_to_database(bandgap, Assert)
+
+
+def test_to_database_spin_polarized(spin_polarized, Assert):
+    _check_to_database(spin_polarized, Assert)

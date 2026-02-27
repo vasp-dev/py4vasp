@@ -7,7 +7,8 @@ import numpy as np
 from py4vasp import exception, raw
 from py4vasp._calculation import base
 from py4vasp._calculation.selection import Selection
-from py4vasp._util import check, convert, documentation, import_, select
+from py4vasp._raw import data as raw_data
+from py4vasp._util import check, convert, database, documentation, import_, select
 
 mdtraj = import_.optional("mdtraj")
 pd = import_.optional("pandas")
@@ -22,6 +23,8 @@ ion_types : Sequence
 
 class Stoichiometry(base.Refinery):
     """The stoichiometry of the crystal describes how many ions of each type exist in a crystal."""
+
+    _raw_data: raw_data.Stoichiometry
 
     @classmethod
     def from_ase(cls, structure):
@@ -79,6 +82,31 @@ class Stoichiometry(base.Refinery):
             throughout all of the refinement classes.
         """
         return {**self._default_selection(), **self._specific_selection(ion_types)}
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        ion_types = (
+            list(self._ion_types(None))
+            if not check.is_none(self._raw_data.ion_types)
+            else None
+        )
+        num_ion_types = (
+            list(self._raw_data.number_ion_types)
+            if not check.is_none(self._raw_data.number_ion_types)
+            else None
+        )
+        formula, compound, simple_types, simple_numbers, primitive_numbers = (
+            database.get_formula_and_compound(ion_types, num_ion_types)
+        )
+        return {
+            "stoichiometry": {
+                "ion_types": simple_types,
+                "num_ion_types": simple_numbers,
+                "num_ion_types_primitive": primitive_numbers,
+                "formula": formula,
+                "compound": compound,
+            }
+        }
 
     @base.data_access
     @documentation.format(ion_types=ion_types_documentation)

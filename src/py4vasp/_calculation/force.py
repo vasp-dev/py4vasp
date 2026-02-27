@@ -2,10 +2,11 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import _config
+from py4vasp import _config, exception
 from py4vasp._calculation import base, slice_, structure
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import view
-from py4vasp._util import reader
+from py4vasp._util import check, database, reader
 
 
 class Force(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
@@ -47,6 +48,8 @@ class Force(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     >>> calculation.force[1:4].number_steps()
     3
     """
+
+    _raw_data: raw_data.Force
 
     force_rescale = 1.5
     "Scaling constant to convert forces to Å."
@@ -114,6 +117,29 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         return {
             "structure": self._structure[self._steps].read(),
             "forces": self._force[self._steps],
+        }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        if check.is_none(self._raw_data.forces):
+            raise exception.NoData("No force data available to write to database.")
+        if self._raw_data.forces[:].ndim == 2:
+            final_force_norms = np.linalg.norm(self._raw_data.forces[:], axis=-1)
+            initial_force_norms = final_force_norms.copy()
+        else:
+            final_force_norms = np.linalg.norm(self._raw_data.forces[-1], axis=-1)
+            initial_force_norms = np.linalg.norm(self._raw_data.forces[0], axis=-1)
+        return {
+            "force": {
+                "final_force_min": float(np.min(final_force_norms)),
+                "final_force_median": float(np.median(final_force_norms)),
+                "final_force_mean": float(np.mean(final_force_norms)),
+                "final_force_max": float(np.max(final_force_norms)),
+                "final_index_force_max": int(np.argmax(final_force_norms)),
+                "initial_force_min": float(np.min(initial_force_norms)),
+                "initial_force_max": float(np.max(initial_force_norms)),
+                "initial_index_force_max": int(np.argmax(initial_force_norms)),
+            },
         }
 
     @base.data_access

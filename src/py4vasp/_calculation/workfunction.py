@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import exception
 from py4vasp._calculation import bandgap, base
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph
 
 
@@ -17,6 +18,8 @@ class Workfunction(base.Refinery, graph.Mixin):
     flag in the INCAR file. This class provides then the functionality to analyze the
     resulting potential.
     """
+
+    _raw_data: raw_data.Workfunction
 
     @base.data_access
     def __str__(self):
@@ -57,6 +60,21 @@ class Workfunction(base.Refinery, graph.Mixin):
             "vacuum_potential": self._raw_data.vacuum_potential[:],
             "fermi_energy": self._raw_data.fermi_energy,
             **band_extrema,
+        }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        try:
+            gap = bandgap.Bandgap.from_data(self._raw_data.reference_potential)
+            is_metallic = gap._output_gap("fundamental", to_string=False) <= 0.0
+        except exception.NoData:
+            is_metallic = None
+
+        return {
+            "workfunction": {
+                "direction": self._raw_data.idipol,  # index of lattice vector
+                "workfunction": None,  # TODO workfunction value = vacuum potential - fermi energy if METAL, check
+            }
         }
 
     @base.data_access

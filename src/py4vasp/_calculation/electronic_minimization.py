@@ -5,7 +5,9 @@ import numpy as np
 
 from py4vasp import exception, raw
 from py4vasp._calculation import base, slice_
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph
+from py4vasp._util import check
 
 
 class ElectronicMinimization(slice_.Mixin, base.Refinery, graph.Mixin):
@@ -14,6 +16,8 @@ class ElectronicMinimization(slice_.Mixin, base.Refinery, graph.Mixin):
     The OSZICAR file written out by VASP stores information related to convergence.
     Please check the `vasp-wiki <https://www.vasp.at/wiki/index.php/OSZICAR>`__ for more
     details about the exact outputs generated for each combination of INCAR tags."""
+
+    _raw_data: raw_data.ElectronicMinimization
 
     def _more_than_one_ionic_step(self, data):
         return any(isinstance(_data, list) for _data in data) == True
@@ -75,6 +79,74 @@ N, E, dE, deps, ncg, rms, rms(c)"""
         for key in keys_to_include:
             return_data[key] = self._read(key)
         return return_data
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        num_max_electronic_steps_per_ionic = None
+        num_min_electronic_steps_per_ionic = None
+        num_electronic_steps = None
+        elmin_is_converged_all = None
+        elmin_is_converged_final = None
+
+        try:
+            if not check.is_none(self._raw_data.is_elmin_converged):
+                elmin_is_converged_all = bool(
+                    np.all(np.array(self._raw_data.is_elmin_converged[:]) == 0.0)
+                )
+                elmin_is_converged_final = bool(
+                    self._raw_data.is_elmin_converged[-1] == 0.0
+                )
+        except:
+            pass
+
+        try:
+            (
+                num_max_electronic_steps_per_ionic,
+                num_min_electronic_steps_per_ionic,
+                num_electronic_steps,
+            ) = self._get_electronic_steps_info()
+        except exception.NoData:
+            pass
+
+        return {
+            "electronic_minimization": {
+                "num_electronic_steps": num_electronic_steps,
+                "elmin_is_converged_all": elmin_is_converged_all,
+                "elmin_is_converged_final": elmin_is_converged_final,
+                "num_max_electronic_steps_per_ionic": num_max_electronic_steps_per_ionic,
+                "num_min_electronic_steps_per_ionic": num_min_electronic_steps_per_ionic,
+            }
+        }
+
+    def _get_electronic_steps_info(self) -> tuple[int, int, int]:
+        if check.is_none(self._raw_data.convergence_data):
+            return None, None, None
+
+        data = getattr(self._raw_data, "convergence_data")
+        iteration_number = data[:, 0]
+        split_index = np.where(iteration_number == 1)[0]
+        data = [raw.VaspData(_data) for _data in np.vsplit(data, split_index)[1:][:]]
+
+        labels = [label.decode("utf-8") for label in self._raw_data.label]
+        data_index = labels.index("N")
+        N_data = [list(_data[:, data_index]) for _data in data]
+        num_electronic_steps_per_ionic = [len(_data) for _data in N_data]
+        is_none = [_data.is_none() for _data in data]
+        if np.all(is_none):
+            return None, None, None
+
+        if (len(num_electronic_steps_per_ionic)) == 0:
+            return None, None, None
+
+        num_max_electronic_steps_per_ionic = max(num_electronic_steps_per_ionic)
+        num_min_electronic_steps_per_ionic = min(num_electronic_steps_per_ionic)
+        num_electronic_steps = sum(num_electronic_steps_per_ionic)
+
+        return (
+            num_max_electronic_steps_per_ionic,
+            num_min_electronic_steps_per_ionic,
+            num_electronic_steps,
+        )
 
     def _from_bytes_to_utf(self, quantity: list):
         return [_quantity.decode("utf-8") for _quantity in quantity]

@@ -1,6 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import numpy as np
+
+from py4vasp import exception
 from py4vasp._calculation import base
+from py4vasp._raw import data as raw_data
 
 
 class Polarization(base.Refinery):
@@ -17,6 +21,8 @@ class Polarization(base.Refinery):
     charge or ion leaves one side of the unit cell and reenters at the opposite
     side. Therefore you always need to compare changes of polarization.
     """
+
+    _raw_data: raw_data.Polarization
 
     @base.data_access
     def __str__(self):
@@ -40,4 +46,38 @@ electronic dipole moment: {vec_to_string(self._raw_data.electron[:])}
         return {
             "electron_dipole": self._raw_data.electron[:],
             "ion_dipole": self._raw_data.ion[:],
+        }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        ionic_norm = None
+        electronic_norm = None
+        total_norm = None
+
+        electron_dipole = None
+        ion_dipole = None
+        total_dipole = None
+
+        try:
+            electron_dipole = list(self._raw_data.electron[:])
+            ion_dipole = list(self._raw_data.ion[:])
+            total_dipole = list(self._raw_data.electron[:] + self._raw_data.ion[:])
+
+            ionic_norm = np.linalg.norm(self._raw_data.ion[:])
+            electronic_norm = np.linalg.norm(self._raw_data.electron[:])
+            total_norm = np.linalg.norm(
+                self._raw_data.electron[:] + self._raw_data.ion[:]
+            )
+        except exception.NoData:
+            pass
+
+        return {
+            "polarization": {
+                "total_dipole_norm": total_norm,
+                "total_dipole_moment": total_dipole,
+                "ionic_dipole_norm": ionic_norm,
+                "ionic_dipole_moment": ion_dipole,
+                "electronic_dipole_norm": electronic_norm,
+                "electronic_dipole_moment": electron_dipole,
+            }
         }

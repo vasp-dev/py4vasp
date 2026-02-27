@@ -6,7 +6,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import exception, raw
 from py4vasp._calculation._stoichiometry import Stoichiometry
 from py4vasp._calculation.structure import Structure
 from py4vasp._util import check
@@ -140,6 +140,25 @@ def ZnS(raw_data):
     return make_structure(raw_data.structure("ZnS"))
 
 
+@pytest.fixture
+def Graphite(raw_data):
+    return make_structure(raw_data.structure("Graphite"))
+
+
+@pytest.fixture(
+    params=[
+        "Sr2TiO4",
+        "Sr2TiO4 without ion types",
+        "Fe3O4",
+        "Ca3AsBr3",
+        "ZnS",
+        "Graphite",
+    ]
+)
+def structures(request, raw_data):
+    return make_structure(raw_data.structure(request.param))
+
+
 @pytest.fixture(params=[None, 2, (3, 2, 1)])
 def supercell(request):
     return request.param
@@ -150,7 +169,7 @@ def not_a_supercell(request):
     return request.param
 
 
-def make_structure(raw_structure):
+def make_structure(raw_structure: raw.Structure):
     structure = Structure.from_data(raw_structure)
     structure.ref = types.SimpleNamespace()
     if not raw_structure.cell.scale.is_none():
@@ -158,6 +177,14 @@ def make_structure(raw_structure):
     else:
         scale = 1.0
     structure.ref.lattice_vectors = scale * raw_structure.cell.lattice_vectors
+    structure.ref.volume = np.abs(np.linalg.det(structure.ref.lattice_vectors))
+    if structure._is_trajectory:
+        structure.ref.area_2d, structure.ref.area_2d_span = (
+            structure[:]._cell()._area_2d()
+        )
+    else:
+        structure.ref.area_2d, structure.ref.area_2d_span = structure._cell()._area_2d()
+    structure.ref.dimensionality = structure._dimensionality()
     structure.ref.positions = raw_structure.positions
     if check.is_none(raw_structure.stoichiometry.ion_types):
         structure.ion_type_arg = {"ion_types": ("Sr", "Ti", "O")}
@@ -485,6 +512,88 @@ def get_reference_output(steps, ion_types=None):
 def test_print_Ca3AsBr3(Ca3AsBr3, format_):
     actual, _ = format_(Ca3AsBr3)
     assert actual["text/plain"] == REF_Ca3AsBr3
+
+
+def test_is_suspected_2d_system(Graphite, Sr2TiO4, Fe3O4):
+    assert Graphite._cell().is_suspected_2d_system
+    assert not Sr2TiO4._cell().is_suspected_2d_system
+    assert not Fe3O4._cell().is_suspected_2d_system
+
+
+def test_system_dimensionality(Graphite, Sr2TiO4, Fe3O4):
+    assert Graphite._dimensionality() == 2
+    assert Sr2TiO4._dimensionality() == 3
+    assert Fe3O4._dimensionality() == 3
+
+
+def test_to_database(structures, Assert):
+    db_dict = structures._read_to_database()["structure:default"]
+    has_timesteps = structures.ref.positions.ndim == 3
+    final_positions = (
+        structures.ref.positions[-1] if has_timesteps else structures.ref.positions
+    )
+    final_volume = structures.ref.volume[-1] if has_timesteps else structures.ref.volume
+    initial_volume = (
+        structures.ref.volume[0] if has_timesteps else structures.ref.volume
+    )
+    final_area_2d = (
+        (structures.ref.area_2d[-1] if structures.ref.area_2d is not None else None)
+        if has_timesteps
+        else structures.ref.area_2d
+    )
+    initial_area_2d = (
+        (structures.ref.area_2d[0] if structures.ref.area_2d is not None else None)
+        if has_timesteps
+        else structures.ref.area_2d
+    )
+    final_lattice_vectors = (
+        structures.ref.lattice_vectors[-1]
+        if has_timesteps
+        else structures.ref.lattice_vectors
+    )
+    initial_lattice_vectors = (
+        structures.ref.lattice_vectors[0]
+        if has_timesteps
+        else structures.ref.lattice_vectors
+    )
+    final_dimensionality = structures.ref.dimensionality
+    assert db_dict["num_ions"] == len(final_positions)
+    assert db_dict["dimensionality"] == final_dimensionality
+
+    for lattice_vectors, area_2d, volume, prefix in [
+        (final_lattice_vectors, final_area_2d, final_volume, "final"),
+        (initial_lattice_vectors, initial_area_2d, initial_volume, "initial"),
+    ]:
+        assert db_dict[f"{prefix}_cell_volume"] == pytest.approx(volume)
+        if final_dimensionality == 2:
+            assert db_dict[f"{prefix}_cell_area_2d"] == pytest.approx(area_2d)
+            assert db_dict[f"{prefix}_cell_area_2d_span"] == "12"
+        else:
+            assert db_dict[f"{prefix}_cell_area_2d"] is None
+            assert db_dict[f"{prefix}_cell_area_2d_span"] is None
+
+        for idx in range(3):
+            Assert.allclose(
+                db_dict[f"{prefix}_lattice_vector_{idx+1}"], lattice_vectors[idx]
+            )
+            assert db_dict[f"{prefix}_lattice_vector_{idx+1}_length"] == pytest.approx(
+                np.linalg.norm(lattice_vectors[idx])
+            )
+    alpha, beta, gamma = (
+        np.degrees(
+            np.arccos(
+                np.dot(lattice_vectors[i], lattice_vectors[j])
+                / (
+                    np.linalg.norm(lattice_vectors[i])
+                    * np.linalg.norm(lattice_vectors[j])
+                )
+            )
+        )
+        for i, j in ((1, 2), (0, 2), (0, 1))
+    )
+    assert db_dict[f"{prefix}_angle_alpha"] == pytest.approx(alpha)
+    assert db_dict[f"{prefix}_angle_beta"] == pytest.approx(beta)
+    assert db_dict[f"{prefix}_angle_gamma"] == pytest.approx(gamma)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

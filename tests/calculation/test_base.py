@@ -49,6 +49,12 @@ class Example(base.Refinery):
         return self._raw_data.content
 
     @base.data_access
+    def _to_database(self, *args, **kwargs):
+        return {
+            "example": {"data": self._raw_data.content, "args": args, "kwargs": kwargs}
+        }
+
+    @base.data_access
     def wrapper(self):
         return self.read()
 
@@ -378,3 +384,18 @@ def test_selection_from_property(mock_access):
     example = Example.from_path()
     assert example.selection_from_property() is None
     assert example.selection_from_property(SELECTION) == SELECTION
+
+
+def test_read_to_database(mock_schema):
+    example = Example.from_data(RAW_DATA)
+    database_data = example._read_to_database()
+    assert "example:default" in database_data
+    assert database_data["example:default"]["data"] == RAW_DATA.content
+    assert database_data["example:default"]["args"] == ()
+    assert database_data["example:default"]["kwargs"] == {
+        "current_db": None,
+        "original_quantity": "example",
+        "original_selection": None,
+        "original_subquantity_selections": {},
+        "subquantity_chain": None,
+    }

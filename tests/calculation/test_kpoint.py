@@ -19,6 +19,11 @@ def explicit_kpoints(raw_data):
     kpoints.ref.coordinates = raw_kpoints.coordinates
     kpoints.ref.weights = raw_kpoints.weights
     kpoints.ref.labels = [""] * len(raw_kpoints.coordinates)
+    kpoints.ref.grid = [
+        raw_kpoints.number_x,
+        raw_kpoints.number_y,
+        raw_kpoints.number_z,
+    ]
     # note index difference between Fortran and Python
     kpoints.ref.labels[8] = "foo"
     kpoints.ref.labels[24] = "bar"
@@ -33,7 +38,13 @@ def grid_kpoints(raw_data):
     raw_kpoints = raw_data.kpoint("automatic")
     kpoints = Kpoint.from_data(raw_kpoints)
     kpoints.ref = types.SimpleNamespace()
+    kpoints.ref.mode = "automatic"
     kpoints.ref.line_length = len(raw_kpoints.coordinates)
+    kpoints.ref.grid = [
+        raw_kpoints.number_x,
+        raw_kpoints.number_y,
+        raw_kpoints.number_z,
+    ]
     return kpoints
 
 
@@ -42,6 +53,7 @@ def line_kpoints(raw_data):
     raw_kpoints = raw_data.kpoint("line with_labels")
     kpoints = Kpoint.from_data(raw_kpoints)
     kpoints.ref = types.SimpleNamespace()
+    kpoints.ref.mode = "line"
     kpoints.ref.line_length = raw_kpoints.number
     kpoints.ref.number_lines = len(raw_kpoints.coordinates) // raw_kpoints.number
     kpoints.ref.labels = [""] * len(raw_kpoints.coordinates)
@@ -61,6 +73,9 @@ def qpoints(raw_data):
     kpoints = Kpoint.from_data(raw_kpoints)
     kpoints.ref = types.SimpleNamespace()
     cartesian = to_cartesian(raw_kpoints.coordinates, raw_kpoints.cell)
+    kpoints.ref.mode = "line"
+    kpoints.ref.line_length = raw_kpoints.number
+    kpoints.ref.number_lines = len(raw_kpoints.coordinates) // raw_kpoints.number
     kpoints.ref.distances = multiple_line_distances(cartesian, raw_kpoints.number)
     return kpoints
 
@@ -263,6 +278,37 @@ reciprocal
 0.75 0.6666666666666666 0.875  47
     """.strip()
     assert actual == {"text/plain": reference}
+
+
+def _check_to_database(data):
+    db_dict = data._read_to_database()["kpoint:default"]
+    assert db_dict["mode"] == data.ref.mode
+    assert db_dict["line_length"] == data.ref.line_length
+    assert db_dict["num_lines"] == getattr(data.ref, "number_lines", 1)
+    assert db_dict["num_kpoints_total"] == len(data._raw_data.coordinates)
+    assert db_dict["num_kpoints_grid"] == getattr(data.ref, "grid", None)
+    labels = db_dict.get("labels", None)
+    if labels is not None:
+        labels = [k for k in labels if k != ""]
+    unique_labels = sorted(set(labels)) if labels is not None else None
+    assert db_dict["labels"] == labels
+    assert db_dict["labels_unique"] == unique_labels
+
+
+def test_to_database_explicit(explicit_kpoints):
+    _check_to_database(explicit_kpoints)
+
+
+def test_to_database_grid(grid_kpoints):
+    _check_to_database(grid_kpoints)
+
+
+def test_to_database_line(line_kpoints):
+    _check_to_database(line_kpoints)
+
+
+def test_to_database_qpoints(qpoints):
+    _check_to_database(qpoints)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

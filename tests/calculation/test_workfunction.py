@@ -17,6 +17,7 @@ def setup_reference(raw_workfunction):
     workfunction = Workfunction.from_data(raw_workfunction)
     workfunction.ref = raw_workfunction
     raw_gap = raw_workfunction.reference_potential
+    workfunction.ref.idipol = raw_workfunction.idipol
     workfunction.ref.lattice_vector = f"lattice vector {raw_workfunction.idipol}"
     workfunction.ref.vbm = raw_gap.values[-1, 0, 0]
     workfunction.ref.cbm = raw_gap.values[-1, 0, 1]
@@ -84,6 +85,17 @@ workfunction along {lattice_vector}:
         cbm=workfunction.ref.cbm,
     )
     assert actual == {"text/plain": reference}
+
+
+def test_to_database(workfunction):
+    actual = workfunction._read_to_database()
+    expected = {
+        "workfunction:default": {
+            "direction": workfunction.ref.idipol,
+            "workfunction": None,
+        }
+    }
+    assert actual == expected
 
 
 def test_factory_methods(raw_data, check_factory_methods):

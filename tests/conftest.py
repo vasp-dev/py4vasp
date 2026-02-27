@@ -239,7 +239,7 @@ class RawDataFactory:
 
     @staticmethod
     def elastic_modulus(selection):
-        return _demo.elastic_modulus.elastic_modulus()
+        return _demo.elastic_modulus.elastic_modulus(selection)
 
     @staticmethod
     def electron_phonon_band_gap(selection):
@@ -337,7 +337,12 @@ class RawDataFactory:
 
     @staticmethod
     def piezoelectric_tensor(selection):
-        return _demo.piezoelectric_tensor.piezoelectric_tensor()
+        if selection == "default":
+            return _demo.piezoelectric_tensor.piezoelectric_tensor()
+        elif selection == "as-slab":
+            return _demo.piezoelectric_tensor.piezoelectric_tensor(selection)
+        else:
+            raise exception.NotImplemented()
 
     @staticmethod
     def polarization(selection):
@@ -379,6 +384,13 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
+    def run_info(selection: str):
+        if selection == "Sr2TiO4":
+            return _demo.run_info.Sr2TiO4()
+        else:
+            raise exception.NotImplemented()
+
+    @staticmethod
     def stress(selection, randomize: bool = False):
         if selection == "Sr2TiO4":
             return _demo.stress.Sr2TiO4(randomize)
@@ -403,6 +415,8 @@ class RawDataFactory:
             return _demo.structure.Sr2TiO4(has_ion_types=False)
         elif selection == "ZnS":
             return _demo.structure.ZnS()
+        elif selection == "Graphite":
+            return _demo.structure.Graphite()
         else:
             raise exception.NotImplemented()
 

@@ -5,7 +5,12 @@ import types
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation.dielectric_tensor import DielectricTensor
+from py4vasp._calculation.cell import Cell
+from py4vasp._calculation.dielectric_tensor import (
+    DielectricTensor,
+    _calculate_2d_polarizability,
+)
+from py4vasp._util import check
 
 
 @pytest.fixture
@@ -32,6 +37,12 @@ def nscf_tensor(raw_data):
     return make_reference(raw_data, "nscf without_ion", expected_description)
 
 
+@pytest.fixture
+def tensor_with_slab_cell(raw_data):
+    expected_description = "including local field effects in DFT"
+    return make_reference(raw_data, "dft_slab with_ion", expected_description)
+
+
 def make_reference(raw_data, method, expected_description):
     raw_tensor = raw_data.dielectric_tensor(method)
     tensor = DielectricTensor.from_data(raw_tensor)
@@ -42,6 +53,23 @@ def make_reference(raw_data, method, expected_description):
     else:
         tensor.ref.relaxed_ion = raw_tensor.ion + raw_tensor.electron
     tensor.ref.independent_particle = raw_tensor.independent_particle
+    tensor.ref.polarizability_2d = None
+    tensor.ref.polarizability_2d_ionic = None
+    if not (check.is_none(raw_tensor.cell)):
+        tensor.ref.cell = Cell.from_data(raw_tensor.cell)
+
+        tensor.ref.polarizability_2d = _calculate_2d_polarizability(
+            tensor.ref.relaxed_ion, tensor.ref.cell
+        )
+        if not check.is_none(raw_tensor.ion):
+            tensor.ref.polarizability_2d_ionic = _calculate_2d_polarizability(
+                raw_tensor.ion, tensor.ref.cell
+            )
+        tensor.ref.polarizability_2d_electronic = _calculate_2d_polarizability(
+            raw_tensor.electron, tensor.ref.cell
+        )
+    else:
+        tensor.ref.polarizability_2d_electronic = None
     tensor.ref.method = method.split()[0]
     tensor.ref.expected_description = expected_description
     return tensor
@@ -125,3 +153,85 @@ Macroscopic static dielectric tensor (dimensionless)
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dielectric_tensor("dft with_ion")
     check_factory_methods(DielectricTensor, data)
+
+
+def _check_to_database(tensor, Assert):
+    actual = tensor._read_to_database()
+    db_dict = actual["dielectric_tensor:default"]
+
+    assert db_dict["method"] == tensor.ref.method
+    import numpy as np
+
+    # check tensors
+    relaxed_ion_expected_list = [9.0, 17.0, 25.0, 13.0, 21.0, 17.0]
+    ionic_expected_list = [9.0, 13.0, 17.0, 11.0, 15.0, 13.0]
+    electronic_expected_list = [0.0, 4.0, 8.0, 2.0, 6.0, 4.0]
+
+    # ionic and total only if available
+    if tensor.ref.relaxed_ion is not None:
+        Assert.allclose(db_dict["total_3d_tensor"], relaxed_ion_expected_list)
+        Assert.allclose(db_dict["ionic_3d_tensor"], ionic_expected_list)
+
+        assert db_dict["total_3d_isotropic_dielectric_constant"] == pytest.approx(
+            float(np.trace(tensor.ref.relaxed_ion) / 3.0)
+        )
+        assert db_dict["ionic_3d_isotropic_dielectric_constant"] == pytest.approx(
+            float(np.trace(tensor.ref.relaxed_ion - tensor.ref.clamped_ion) / 3.0)
+        )
+
+        assert db_dict["total_2d_polarizability"] == pytest.approx(
+            tensor.ref.polarizability_2d
+        )
+        assert db_dict["ionic_2d_polarizability"] == pytest.approx(
+            tensor.ref.polarizability_2d_ionic
+        )
+    else:
+        assert db_dict["total_3d_tensor"] is None
+        assert db_dict["ionic_3d_tensor"] is None
+        assert db_dict["total_3d_isotropic_dielectric_constant"] is None
+        assert db_dict["ionic_3d_isotropic_dielectric_constant"] is None
+        assert db_dict["total_2d_polarizability"] is None
+        assert db_dict["ionic_2d_polarizability"] is None
+
+    # electronic should never be None
+    Assert.allclose(db_dict["electronic_3d_tensor"], electronic_expected_list)
+    assert db_dict["electronic_3d_isotropic_dielectric_constant"] == pytest.approx(
+        float(np.trace(tensor.ref.clamped_ion) / 3.0)
+    )
+    assert db_dict["electronic_2d_polarizability"] == pytest.approx(
+        tensor.ref.polarizability_2d_electronic
+    )
+
+    # check types
+    for k, v in db_dict.items():
+        if k.endswith("isotropic_dielectric_constant"):
+            assert v is None or isinstance(v, (int, float))
+        if k.endswith("polarizability"):
+            assert v is None or isinstance(v, (int, float))
+        elif k.endswith("tensor"):
+            assert v is None or (
+                isinstance(v, list) and all(isinstance(i, (int, float)) for i in v)
+            )
+            assert v is None or len(v) == 6
+        elif k == "method":
+            assert v is None or isinstance(v, str)
+
+
+def test_to_database_dft(dft_tensor, Assert):
+    _check_to_database(dft_tensor, Assert)
+
+
+def test_to_database_rpa(rpa_tensor, Assert):
+    _check_to_database(rpa_tensor, Assert)
+
+
+def test_to_database_scf(scf_tensor, Assert):
+    _check_to_database(scf_tensor, Assert)
+
+
+def test_to_database_nscf(nscf_tensor, Assert):
+    _check_to_database(nscf_tensor, Assert)
+
+
+def test_to_database_slab_cell(tensor_with_slab_cell, Assert):
+    _check_to_database(tensor_with_slab_cell, Assert)

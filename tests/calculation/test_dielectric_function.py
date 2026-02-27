@@ -367,6 +367,25 @@ dielectric function:
     assert actual == {"text/plain": reference}
 
 
+def _check_to_database(dielectric_function):
+    database_data = dielectric_function._read_to_database()
+    assert "dielectric_function:default" in database_data
+    db_dict = database_data["dielectric_function:default"]
+    assert db_dict["energy_min"] == float(np.min(dielectric_function.ref.energies))
+    assert db_dict["energy_max"] == float(np.max(dielectric_function.ref.energies))
+
+    for k, v in db_dict.items():
+        assert v is None or isinstance(v, float)
+
+
+def test_to_database_electronic(electronic):
+    _check_to_database(electronic)
+
+
+def test_to_database_ionic(ionic):
+    _check_to_database(ionic)
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dielectric_function("electron")
     check_factory_methods(DielectricFunction, data)

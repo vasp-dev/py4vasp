@@ -1,6 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
+import types
+
 import numpy as np
 import pytest
 
@@ -26,6 +28,14 @@ def Ba2PbO4(raw_data):
 @pytest.fixture
 def missing_orbitals(raw_data):
     return Projector.from_data(raw_data.projector("without_orbitals"))
+
+
+@pytest.fixture(params=["Sr2TiO4", "Fe3O4", "Ba2PbO4", "without_orbitals"])
+def all_projectors(request, raw_data):
+    projector = Projector.from_data(raw_data.projector(request.param))
+    projector.ref = types.SimpleNamespace()
+    projector.ref.orbital_types = list(projector.selections().get("orbital", {}))
+    return projector
 
 
 @pytest.fixture
@@ -316,3 +326,13 @@ def test_factory_methods(raw_data, check_factory_methods, projections):
     data = raw_data.projector("Sr2TiO4")
     parameters = {"project": {"selection": "Sr", "projections": projections}}
     check_factory_methods(Projector, data, parameters)
+
+
+def test_to_database(all_projectors):
+    db_dict = all_projectors._read_to_database()["projector:default"]
+    if db_dict["orbital_types"] is not None:
+        assert sorted(db_dict["orbital_types"]) == sorted(
+            all_projectors.ref.orbital_types
+        )
+    else:
+        assert all_projectors.ref.orbital_types == []

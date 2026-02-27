@@ -4,12 +4,12 @@ import numpy as np
 
 from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry, base, structure
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph, view
-from py4vasp._util import documentation, import_, index, select, slicing
+from py4vasp._util import database, documentation, import_, index, select, slicing
 from py4vasp._util.density import SliceArguments, Visualizer
 
 pretty = import_.optional("IPython.lib.pretty")
-
 
 _DEFAULT = 0
 _INTERNAL = "_density"
@@ -47,6 +47,8 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
     components. One may also be interested in the kinetic energy density for
     metaGGA calculations.
     """
+
+    _raw_data: raw_data.Density
 
     @base.data_access
     def __str__(self):

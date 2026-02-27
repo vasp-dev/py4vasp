@@ -5,13 +5,25 @@ import textwrap
 
 import numpy as np
 
+from py4vasp import exception
+from py4vasp._raw.data_wrapper import VaspData
+
 
 def text_to_string(text):
     "Text can be either bytes or string"
     try:
-        return text.decode()
+        return _attempt_str_conversion(text.decode())
     except (UnicodeDecodeError, AttributeError):
-        return text
+        return _attempt_str_conversion(text)
+
+
+def _attempt_str_conversion(string) -> str:
+    try:
+        return str(string)
+    except Exception as exc:
+        raise exception.NoData(
+            "The data could not be converted to string (likely missing)."
+        ) from exc
 
 
 def to_complex(array):

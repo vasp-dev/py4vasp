@@ -6,6 +6,7 @@ import itertools
 import numpy as np
 
 from py4vasp._calculation import base, structure
+from py4vasp._raw import data as raw_data
 from py4vasp._util import check
 
 
@@ -21,6 +22,8 @@ class ForceConstant(base.Refinery, structure.Mixin):
     Keep in mind that they are the second derivative at the equilibrium position so
     a careful relaxation is required to eliminate the first derivative (i.e. forces).
     """
+
+    _raw_data: raw_data.ForceConstant
 
     @base.data_access
     def __str__(self):

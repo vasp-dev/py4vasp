@@ -1,8 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import numpy as np
+
 from py4vasp import exception
-from py4vasp._calculation import base
-from py4vasp._util import convert
+from py4vasp._calculation import base, cell
+from py4vasp._raw import data as raw_data
+from py4vasp._util import check, convert
+from py4vasp._util.tensor import symmetry_reduce
 
 
 class DielectricTensor(base.Refinery):
@@ -13,6 +17,8 @@ class DielectricTensor(base.Refinery):
     anisotropic nature of a material's dielectric properties. Each element of the
     tensor corresponds to the dielectric function along a specific crystallographic
     axis."""
+
+    _raw_data: raw_data.DielectricTensor
 
     @base.data_access
     def to_dict(self):
@@ -32,6 +38,77 @@ class DielectricTensor(base.Refinery):
         }
 
     @base.data_access
+    def _to_database(self, *args, **kwargs):
+        tensor_reduced = [None, None, None]
+        isotropic_dielectric_constant = [None, None, None]
+        polarizability_2d = [None, None, None]
+
+        total_tensor, ionic_tensor, electronic_tensor = None, None, None
+        if not check.is_none(self._raw_data.electron):
+            electronic_tensor = self._raw_data.electron[:]
+        if not check.is_none(self._raw_data.ion):
+            ionic_tensor = self._raw_data.ion[:]
+        if not check.is_none(self._raw_data.ion) and not check.is_none(
+            self._raw_data.electron
+        ):
+            total_tensor = self._raw_data.electron[:] + self._raw_data.ion[:]
+
+        for idt, tensor in enumerate([total_tensor, ionic_tensor, electronic_tensor]):
+            try:
+                tensor_reduced[idt] = list(symmetry_reduce(tensor.T))
+                (
+                    isotropic_dielectric_constant[idt],
+                    polarizability_2d[idt],
+                ) = self._calculate_dielectric_quantities(tensor)
+            except:
+                pass
+
+        method = (
+            convert.text_to_string(self._raw_data.method)
+            if not check.is_none(self._raw_data.method)
+            else None
+        )
+
+        dielectric_tensor_db = {
+            "dielectric_tensor": {
+                "method": method,
+                "total_3d_tensor": tensor_reduced[0],
+                "total_3d_isotropic_dielectric_constant": isotropic_dielectric_constant[
+                    0
+                ],
+                "total_2d_polarizability": polarizability_2d[0],
+                "ionic_3d_tensor": tensor_reduced[1],
+                "ionic_3d_isotropic_dielectric_constant": isotropic_dielectric_constant[
+                    1
+                ],
+                "ionic_2d_polarizability": polarizability_2d[1],
+                "electronic_3d_tensor": tensor_reduced[2],
+                "electronic_3d_isotropic_dielectric_constant": isotropic_dielectric_constant[
+                    2
+                ],
+                "electronic_2d_polarizability": polarizability_2d[2],
+            }
+        }
+        return dielectric_tensor_db
+
+    @base.data_access
+    def _calculate_dielectric_quantities(self, tensor: np.ndarray) -> float:
+        # 2D polarizability for slab systems
+        # TODO migrate finding vacuum direction to structure
+        polarizability_2d = None
+        try:
+            if not (check.is_none(self._raw_data.cell)):
+                final_cell = cell.Cell.from_data(self._raw_data.cell)
+                if final_cell:
+                    polarizability_2d = _calculate_2d_polarizability(tensor, final_cell)
+        except Exception:
+            pass
+        # 3D isotropic dielectric constant
+        isotropic_dielectric_constant = None
+        isotropic_dielectric_constant = float(np.mean(np.diag(tensor)))
+        return isotropic_dielectric_constant, polarizability_2d
+
+    @base.data_access
     def __str__(self):
         data = self.to_dict()
         return f"""
@@ -43,13 +120,13 @@ Macroscopic static dielectric tensor (dimensionless)
 """.strip()
 
     def _read_relaxed_ion(self):
-        if self._raw_data.ion.is_none():
+        if check.is_none(self._raw_data.ion):
             return None
         else:
             return self._raw_data.electron[:] + self._raw_data.ion[:]
 
     def _read_independent_particle(self):
-        if self._raw_data.independent_particle.is_none():
+        if check.is_none(self._raw_data.independent_particle):
             return None
         else:
             return self._raw_data.independent_particle[:]
@@ -74,3 +151,25 @@ def _description(method):
         return "excluding local field effects"
     message = f"The method {method} is not implemented in this version of py4vasp."
     raise exception.NotImplemented(message)
+
+
+def _calculate_2d_polarizability(
+    dielectric_tensor: np.ndarray, cell_: cell.Cell
+) -> float:
+    """
+    Compute 2D polarizability (alpha_2D) for a slab system with unknown vacuum direction.
+    """
+    try:
+        vacuum_dir = cell_._find_likely_vacuum_direction()
+        if vacuum_dir is None:
+            return None
+
+        eps_parallel = np.mean(
+            [dielectric_tensor[i, i] for i in range(3) if i != vacuum_dir]
+        )
+        l_vacuum = np.linalg.norm(cell_.lattice_vectors()[vacuum_dir])
+
+        alpha_2d = (l_vacuum / (4.0 * np.pi)) * (eps_parallel - 1.0)
+        return alpha_2d
+    except Exception:
+        return None

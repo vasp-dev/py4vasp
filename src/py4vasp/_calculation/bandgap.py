@@ -7,6 +7,7 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._calculation import base, slice_
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, select
 
@@ -43,6 +44,8 @@ class Bandgap(slice_.Mixin, base.Refinery, graph.Mixin):
 
     {examples}
     """
+
+    _raw_data: raw_data.Bandgap
 
     @base.data_access
     def __str__(self):
@@ -82,18 +85,24 @@ Fermi energy:    {fermi_energy}"""
         else:
             return "      spin independent"
 
-    def _output_energy(self, label, component=slice(None)):
+    def _output_energy(self, label, component=slice(None), to_string=True):
         energies = self._get(label, steps=self._last_step_in_slice, component=component)
+        if not (to_string):
+            return energies
         return (9 * " ").join(map("{:20.6f}".format, energies))
 
-    def _output_gap(self, label):
+    def _output_gap(self, label, to_string=True):
         gaps = self._gap(label, steps=self._last_step_in_slice)
+        if not (to_string):
+            return gaps
         return (9 * " ").join(map("{:20.6f}".format, gaps))
 
-    def _output_kpoint(self, label):
+    def _output_kpoint(self, label, to_string=True):
         kpoints = self._kpoint(label, steps=self._last_step_in_slice)
-        to_string = lambda kpoint: " ".join(map("{:8.4f}".format, kpoint))
-        return " " + "   ".join(map(to_string, kpoints))
+        to_string_convert = lambda kpoint: " ".join(map("{:8.4f}".format, kpoint))
+        if not (to_string):
+            return np.array(kpoints).round(decimals=10).tolist()
+        return " " + "   ".join(map(to_string_convert, kpoints))
 
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "to_dict"))
@@ -116,6 +125,43 @@ Fermi energy:    {fermi_energy}"""
             **self._kpoint_dict("direct"),
             "fermi_energy": self._get("Fermi energy", component=0),
         }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        bandgap_dict = {
+            "valence_band_maximum": self._output_energy(
+                "valence band maximum", to_string=False
+            ),
+            "conduction_band_minimum": self._output_energy(
+                "conduction band minimum", to_string=False
+            ),
+            "fundamental": self._output_gap("fundamental", to_string=False),
+            "kpoint_vbm": self._output_kpoint("VBM", to_string=False),
+            "kpoint_cbm": self._output_kpoint("CBM", to_string=False),
+            "lower_band_direct": self._output_energy(
+                "direct gap bottom", to_string=False
+            ),
+            "upper_band_direct": self._output_energy("direct gap top", to_string=False),
+            "direct": self._output_gap("direct", to_string=False),
+            "kpoint_direct": self._output_kpoint("direct", to_string=False),
+        }
+
+        final_dict = {}
+        for k, v in bandgap_dict.items():
+            final_dict[f"{k}_spin_independent"] = (
+                v[0] if not isinstance(v, float) else float(v)
+            )
+            final_dict[f"{k}_spin_up"] = (
+                (v[1] if not isinstance(v[1], float) else float(v[1]))
+                if self._spin_polarized()
+                else None
+            )
+            final_dict[f"{k}_spin_down"] = (
+                (v[2] if not isinstance(v[2], float) else float(v[2]))
+                if self._spin_polarized()
+                else None
+            )
+        return {"bandgap": final_dict}
 
     def _gap_dict(self, label):
         gaps = self._gap(label).T

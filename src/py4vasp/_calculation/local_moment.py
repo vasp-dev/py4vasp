@@ -4,6 +4,7 @@ import numpy as np
 
 from py4vasp import _config, exception
 from py4vasp._calculation import base, slice_, structure
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import view
 from py4vasp._util import check, documentation, select
 
@@ -72,6 +73,7 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     3
     """
 
+    _raw_data: raw_data.LocalMoment
     _missing_data_message = "Atom resolved magnetic information not present, please verify LORBIT tag is set."
 
     length_moments = 1.5
@@ -156,6 +158,31 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
             **self._add_total_magnetic_moment(),
             **self._add_spin_and_orbital_moments(),
         }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        spin_moments_orbitals = None
+        if not check.is_none(self._raw_data.spin_moments):
+            if not self._is_nonpolarized:
+                spin_moments_orbitals = self._raw_data.spin_moments[-1, -1]
+
+        spin_moment_total_min = None
+        spin_moment_total_max = None
+        if spin_moments_orbitals is not None:
+            spin_moments_total = np.sum(
+                spin_moments_orbitals, axis=-1
+            )  # sum over orbitals
+            spin_moment_total_min = float(np.min(spin_moments_total))
+            spin_moment_total_max = float(np.max(spin_moments_total))
+
+        data_dict = {
+            "local_moment": {
+                "has_orbital_moments": self._has_orbital_moments,
+                "final_spin_moment_total_min": spin_moment_total_min,
+                "final_spin_moment_total_max": spin_moment_total_max,
+            }
+        }
+        return data_dict
 
     @base.data_access
     @documentation.format(selection=_moment_selection)

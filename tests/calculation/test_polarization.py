@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
 
+import numpy as np
 import pytest
 
 from py4vasp._calculation.polarization import Polarization
@@ -32,6 +33,21 @@ ionic dipole moment:          4.00000     5.00000     6.00000
 electronic dipole moment:     1.00000     2.00000     3.00000
 """.strip()
     assert actual == {"text/plain": reference}
+
+
+def test_to_database(polarization):
+    db_dict = polarization._read_to_database()["polarization:default"]
+    assert db_dict["ionic_dipole_moment"] == list(polarization.ref.ion_dipole)
+    assert db_dict["electronic_dipole_moment"] == list(polarization.ref.electron_dipole)
+    total_dipole = polarization.ref.ion_dipole + polarization.ref.electron_dipole
+    assert db_dict["total_dipole_moment"] == list(total_dipole)
+    assert db_dict["ionic_dipole_norm"] == float(
+        np.linalg.norm(polarization.ref.ion_dipole)
+    )
+    assert db_dict["electronic_dipole_norm"] == float(
+        np.linalg.norm(polarization.ref.electron_dipole)
+    )
+    assert db_dict["total_dipole_norm"] == float(np.linalg.norm(total_dipole))
 
 
 def test_factory_methods(raw_data, check_factory_methods):

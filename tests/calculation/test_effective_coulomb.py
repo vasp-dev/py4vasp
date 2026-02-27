@@ -186,12 +186,12 @@ def setup_overview_data(setup, read_data):
     v = weight_j * (weight * np.einsum("sijji->", V_ijkl) - V)
     Vj = weight_j * (weight * np.einsum("sijij->", V_ijkl) - V)
     return {
-        "screened_U": U,
-        "screened_u": u,
-        "screened_J": J,
-        "bare_V": V,
-        "bare_v": v,
-        "bare_J": Vj,
+        "screened_U_uppercase": U,
+        "screened_u_lowercase": u,
+        "screened_J_uppercase": J,
+        "bare_V_uppercase": V,
+        "bare_v_lowercase": v,
+        "bare_J_uppercase": Vj,
     }
 
 
@@ -506,7 +506,7 @@ def test_selections(effective_coulomb):
 
 
 def test_to_database(effective_coulomb, Assert):
-    data = effective_coulomb._to_database()["effective_coulomb"]
+    data = effective_coulomb._read_to_database()["effective_coulomb:default"]
     assert data.keys() == effective_coulomb.ref.overview_data.keys()
     for key in data.keys():
         Assert.allclose(data[key], effective_coulomb.ref.overview_data[key])

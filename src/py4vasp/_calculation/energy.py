@@ -3,6 +3,7 @@
 import numpy as np
 
 from py4vasp._calculation import base, slice_
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
 
@@ -39,6 +40,26 @@ _SELECTIONS = {
     "weight          WEIGHT": ["weight", "WEIGHT"],
 }
 
+_DB_KEYS = {
+    "ion-electron   TOTEN": "ion_electron",
+    "kinetic energy EKIN": "kinetic_energy",
+    "kin. lattice   EKIN_LAT": "kinetic_energy_lattice",
+    "temperature    TEIN": "temperature",
+    "nose potential ES": "nose_potential",
+    "nose kinetic   EPS": "nose_kinetic",
+    "total energy   ETOTAL": "total_energy",
+    "free energy    TOTEN": "free_energy",
+    "energy without entropy": "energy_without_entropy",
+    "energy(sigma->0)": "energy_sigma_0",
+    "step            STEP": "step",
+    "One el. energy  E1": "one_electron_energy",
+    "Hartree energy  -DENC": "hartree_energy",
+    "exchange        EXHF": "exchange_energy",
+    "free energy     TOTEN": "free_energy",
+    "free energy cap TOTENCAP": "free_energy_cap",
+    "weight          WEIGHT": "weight",
+}
+
 
 @documentation.format(examples=slice_.examples("energy"))
 class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
@@ -57,6 +78,8 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
 
     {examples}
     """
+
+    _raw_data: raw_data.Energy
 
     @base.data_access
     def __str__(self):
@@ -109,6 +132,43 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
             convert.text_to_string(label).strip(): value[self._steps]
             for label, value in zip(self._raw_data.labels, raw_values)
         }
+
+    def _default_dict_all(self):
+        raw_values = np.array(self._raw_data.values).T
+        return {
+            convert.text_to_string(label).strip(): value[:]
+            for label, value in zip(self._raw_data.labels, raw_values)
+        }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        default_dict = self._default_dict_all()
+        energy_dict = {}
+
+        # Loop over known DB keys to ensure consistent key extraction
+        for original_label, db_key in _DB_KEYS.items():
+            v = default_dict.get(original_label, None)
+            if v is not None:
+                v = np.array(v)
+
+            energy_dict[f"{db_key}_initial"] = None if v is None else float(v[0])
+            energy_dict[f"{db_key}_min"] = None if v is None else float(np.min(v))
+            energy_dict[f"{db_key}_step_min"] = None if v is None else int(np.argmin(v))
+            energy_dict[f"{db_key}_final"] = None if v is None else float(v[-1])
+
+        # Handle any additional keys not in _DB_KEYS
+        for k, v in default_dict.items():
+            if k not in _DB_KEYS:
+                vs = np.array(v) if v is not None else None
+                key = convert.text_to_string(k).strip().lower().replace(" ", "_")
+                energy_dict[f"{key}_initial"] = None if v is None else float(vs[0])
+                energy_dict[f"{key}_min"] = None if v is None else float(np.min(vs))
+                energy_dict[f"{key}_step_min"] = (
+                    None if v is None else int(np.argmin(vs))
+                )
+                energy_dict[f"{key}_final"] = None if v is None else float(vs[-1])
+
+        return {"energy": energy_dict}
 
     @base.data_access
     @documentation.format(

@@ -5,6 +5,7 @@ import types
 import numpy as np
 import pytest
 
+from py4vasp import _demo
 from py4vasp._calculation._dispersion import Dispersion
 from py4vasp._calculation.exciton_eigenvector import ExcitonEigenvector
 
@@ -22,6 +23,8 @@ def exciton_eigenvector(raw_data):
     eigenvector.ref.bse_index = raw_eigenvector.bse_index - 1
     eigenvector.ref.first_valence_band = raw_eigenvector.first_valence_band - 1
     eigenvector.ref.first_conduction_band = raw_eigenvector.first_conduction_band - 1
+    eigenvector.ref.NBANDSV = _demo.NUMBER_CONDUCTION_BANDS
+    eigenvector.ref.NBANDSO = _demo.NUMBER_VALENCE_BANDS
     return eigenvector
 
 
@@ -49,6 +52,15 @@ BSE eigenvector data:
     2 valence bands
     1 conduction bands"""
     assert actual == {"text/plain": reference}
+
+
+def test_to_database(exciton_eigenvector):
+    db_dict = exciton_eigenvector._read_to_database()["exciton_eigenvector:default"]
+    assert db_dict["num_valence_bands"] == exciton_eigenvector.ref.NBANDSO
+    assert db_dict["num_conduction_bands"] == exciton_eigenvector.ref.NBANDSV
+    for k in db_dict:
+        if k.startswith("num_"):
+            assert isinstance(db_dict[k], (int, type(None)))
 
 
 def test_factory_methods(raw_data, check_factory_methods):

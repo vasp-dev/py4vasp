@@ -1,13 +1,15 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from dataclasses import dataclass
+from typing import Union
 
 import numpy as np
 
 from py4vasp import exception, raw
 from py4vasp._calculation import _stoichiometry, base, cell, slice_
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import view
-from py4vasp._util import import_, parse
+from py4vasp._util import check, database, import_, parse
 
 ase = import_.optional("ase")
 ase_io = import_.optional("ase.io")
@@ -94,6 +96,8 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
     >>> calculation.structure[1:4].number_steps()
     3
     """
+
+    _raw_data: raw_data.Structure
 
     A_to_nm = 0.1
     "Converting Å to nm used for mdtraj trajectories."
@@ -249,6 +253,167 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
             "elements": self._stoichiometry().elements(ion_types),
             "names": self._stoichiometry().names(ion_types),
         }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        steps_sel = self._steps
+        self._steps = slice(None)
+        stoichiometry = self._stoichiometry()._read_to_database(*args, **kwargs)
+
+        # TODO add more structure properties
+        final_lattice, initial_lattice = ([None, None, None] for _ in range(2))
+        try:
+            lattices = self.lattice_vectors()
+            final_lattice = lattices[-1] if lattices.ndim == 3 else lattices
+            initial_lattice = lattices[0] if lattices.ndim == 3 else lattices
+            if final_lattice.ndim != 2:
+                final_lattice = [None, None, None]
+            if initial_lattice.ndim != 2:
+                initial_lattice = [None, None, None]
+        except:
+            pass
+        volume_final, volume_initial = (None for _ in range(2))
+        try:
+            volumes = self.volume()
+            volume_final = (
+                volumes[-1]
+                if not isinstance(volumes, (float, np.float64, np.float32))
+                else volumes
+            )
+            volume_initial = (
+                volumes[0]
+                if not isinstance(volumes, (float, np.float64, np.float32))
+                else volumes
+            )
+        except Exception as e:
+            pass
+
+        lengths_final, angles_final, lengths_initial, angles_initial = (
+            None for _ in range(4)
+        )
+        (
+            cell_area_2d_final,
+            cell_area_2d_span_final,
+            cell_area_2d_initial,
+            cell_area_2d_span_initial,
+        ) = (None for _ in range(4))
+        dimensionality = 3
+        try:
+            dimensionality = self._dimensionality()
+        except Exception as e:
+            pass
+
+        try:
+            cell_: cell.Cell = self._cell()
+            lengths = cell_.lengths()
+            lengths_final = lengths[-1] if lengths.ndim == 2 else lengths
+            lengths_initial = lengths[0] if lengths.ndim == 2 else lengths
+            angles = cell_.angles()
+            angles_final = angles[-1] if angles.ndim == 2 else angles
+            angles_initial = angles[0] if angles.ndim == 2 else angles
+            if dimensionality == 2:
+                cell_area_2d, cell_area_2d_span = cell_._area_2d()
+                cell_area_2d_final = (
+                    cell_area_2d[-1]
+                    if isinstance(cell_area_2d, np.ndarray)
+                    else cell_area_2d
+                )
+                cell_area_2d_initial = (
+                    cell_area_2d[0]
+                    if isinstance(cell_area_2d, np.ndarray)
+                    else cell_area_2d
+                )
+                cell_area_2d_span_final = (
+                    cell_area_2d_span[-1]
+                    if isinstance(cell_area_2d_span, list)
+                    else cell_area_2d_span
+                )
+                cell_area_2d_span_initial = (
+                    cell_area_2d_span[0]
+                    if isinstance(cell_area_2d_span, list)
+                    else cell_area_2d_span
+                )
+        except Exception as e:
+            pass
+
+        num_atoms = self.number_atoms() or None
+        self._steps = steps_sel
+
+        return database.combine_db_dicts(
+            {
+                "structure": {
+                    "num_ions": num_atoms,
+                    "dimensionality": dimensionality,
+                    "final_cell_volume": volume_final,
+                    "final_cell_area_2d": cell_area_2d_final,
+                    "final_cell_area_2d_span": cell_area_2d_span_final,
+                    "final_lattice_vector_1": (
+                        list(final_lattice[0]) if final_lattice[0] is not None else None
+                    ),
+                    "final_lattice_vector_2": (
+                        list(final_lattice[1]) if final_lattice[1] is not None else None
+                    ),
+                    "final_lattice_vector_3": (
+                        list(final_lattice[2]) if final_lattice[2] is not None else None
+                    ),
+                    "final_lattice_vector_1_length": (
+                        lengths_final[0] if lengths_final is not None else None
+                    ),
+                    "final_lattice_vector_2_length": (
+                        lengths_final[1] if lengths_final is not None else None
+                    ),
+                    "final_lattice_vector_3_length": (
+                        lengths_final[2] if lengths_final is not None else None
+                    ),
+                    "final_angle_alpha": (
+                        angles_final[0] if angles_final is not None else None
+                    ),
+                    "final_angle_beta": (
+                        angles_final[1] if angles_final is not None else None
+                    ),
+                    "final_angle_gamma": (
+                        angles_final[2] if angles_final is not None else None
+                    ),
+                    "initial_cell_volume": volume_initial,
+                    "initial_cell_area_2d": cell_area_2d_initial,
+                    "initial_cell_area_2d_span": cell_area_2d_span_initial,
+                    "initial_lattice_vector_1": (
+                        list(initial_lattice[0])
+                        if initial_lattice[0] is not None
+                        else None
+                    ),
+                    "initial_lattice_vector_2": (
+                        list(initial_lattice[1])
+                        if initial_lattice[1] is not None
+                        else None
+                    ),
+                    "initial_lattice_vector_3": (
+                        list(initial_lattice[2])
+                        if initial_lattice[2] is not None
+                        else None
+                    ),
+                    "initial_lattice_vector_1_length": (
+                        lengths_initial[0] if lengths_initial is not None else None
+                    ),
+                    "initial_lattice_vector_2_length": (
+                        lengths_initial[1] if lengths_initial is not None else None
+                    ),
+                    "initial_lattice_vector_3_length": (
+                        lengths_initial[2] if lengths_initial is not None else None
+                    ),
+                    "initial_angle_alpha": (
+                        angles_initial[0] if angles_initial is not None else None
+                    ),
+                    "initial_angle_beta": (
+                        angles_initial[1] if angles_initial is not None else None
+                    ),
+                    "initial_angle_gamma": (
+                        angles_initial[2] if angles_initial is not None else None
+                    ),
+                },
+            },
+            stoichiometry,
+        )
 
     @base.data_access
     def to_view(self, supercell=None, ion_types=None):
@@ -758,6 +923,26 @@ Atoms # atomic
         array([...])
         """
         return np.abs(np.linalg.det(self.lattice_vectors()))
+
+    @base.data_access
+    def _dimensionality(self) -> Union[int, np.ndarray]:
+        """
+        Heuristic check for dimensionality of system.
+        """
+        # TODO add check for actual vacuum if ldipol, idipol are not set
+        # TODO consider case of multi-atom molecule, which should return 1
+        if not check.is_none(self._raw_data.idipol):
+            if self._raw_data.idipol < 1:
+                return 3
+            elif self._raw_data.idipol in [1, 2, 3]:
+                return 2
+            elif self._raw_data.idipol == 4:
+                return 0
+
+        cell_ = self._cell()
+        if bool(np.all(np.array(cell_.is_suspected_2d_system))):
+            return 2
+        return 3
 
     @base.data_access
     def number_atoms(self):

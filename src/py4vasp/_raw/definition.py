@@ -2,10 +2,10 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import py4vasp._raw.data as raw
 from py4vasp._raw import read
-from py4vasp._raw.schema import Length, Link, Schema
+from py4vasp._raw.schema import DEFAULT_SELECTION, Length, Link, Schema
 
 DEFAULT_FILE = "vaspout.h5"
-DEFAULT_SOURCE = "default"
+DEFAULT_SOURCE = DEFAULT_SELECTION
 VERSION_DATA = raw.Version("version/major", "version/minor", "version/patch")
 
 schema = Schema(VERSION_DATA)
@@ -19,6 +19,11 @@ def get_schema():
 def selections(quantity):
     "Return all possible selections for a particular quantity."
     return schema.selections(quantity)
+
+
+def unique_selections(quantity):
+    "Return all unique selections for a particular quantity."
+    return schema.unique_selections(quantity)
 
 
 schema.add(
@@ -74,6 +79,8 @@ schema.add(
     raw.Cell,
     scale="intermediate/ion_dynamics/scale",
     lattice_vectors="intermediate/ion_dynamics/lattice_vectors",
+    idipol="input/incar/IDIPOL",
+    ldipol="input/incar/LDIPOL",
 )
 schema.add(
     raw.Cell,
@@ -81,6 +88,8 @@ schema.add(
     required=raw.Version(6, 5),
     scale="results/positions/scale",
     lattice_vectors="results/positions/lattice_vectors",
+    idipol="input/incar/IDIPOL",
+    ldipol="input/incar/LDIPOL",
 )
 schema.add(
     raw.Cell,
@@ -88,6 +97,8 @@ schema.add(
     required=raw.Version(6, 4),
     scale="results/phonons/primitive/scale",
     lattice_vectors="results/phonons/primitive/lattice_vectors",
+    idipol="input/incar/IDIPOL",
+    ldipol="input/incar/LDIPOL",
 )
 schema.add(
     raw.Cell,
@@ -95,6 +106,8 @@ schema.add(
     required=raw.Version(6, 5),
     scale="results/supercell/scale",
     lattice_vectors="results/supercell/lattice_vectors",
+    idipol="input/incar/IDIPOL",
+    ldipol="input/incar/LDIPOL",
 )
 #
 schema.add(
@@ -252,6 +265,7 @@ schema.add(
     ion=f"{group}/ion_dielectric_tensor",
     independent_particle=f"{group}/independent_particle_dielectric_tensor",
     method=f"{group}/method_dielectric_tensor",
+    cell=Link("cell", "final"),
 )
 #
 schema.add(
@@ -332,6 +346,7 @@ schema.add(
     required=raw.Version(6, 3),
     clamped_ion=f"{group}/clamped_ion_elastic_modulus",
     relaxed_ion=f"{group}/relaxed_ion_elastic_modulus",
+    structure=Link("structure", DEFAULT_SOURCE),
 )
 #
 schema.add(
@@ -580,6 +595,7 @@ schema.add(
     required=raw.Version(6, 3),
     electron=f"{group}/electron_piezoelectric_tensor",
     ion=f"{group}/ion_piezoelectric_tensor",
+    cell=Link("cell", "final"),
 )
 #
 group = "results/linear_response"
@@ -622,6 +638,24 @@ schema.add(
 )
 #
 schema.add(
+    raw.RuntimeData,
+    vasp_version=Link("version", DEFAULT_SOURCE),
+)
+schema.add(
+    raw.RunInfo,
+    system=Link("system", DEFAULT_SOURCE),
+    runtime=Link("runtime_data", DEFAULT_SOURCE),
+    fermi_energy="results/electron_dos/efermi",
+    bandgap=Link("bandgap", DEFAULT_SOURCE),
+    band_dispersion_eigenvalues="results/electron_eigenvalues/eigenvalues",
+    band_projections="results/projectors/par",
+    len_dos=Length("results/electron_dos/dos"),
+    structure=Link("structure", DEFAULT_SOURCE),
+    contcar=Link("CONTCAR", DEFAULT_SOURCE),
+    phonon_dispersion=Link("dispersion", "phonon"),
+)
+#
+schema.add(
     raw.Stoichiometry,
     ion_types="results/positions/ion_types",
     number_ion_types="results/positions/number_ion_types",
@@ -652,6 +686,8 @@ schema.add(
     stoichiometry=Link("stoichiometry", DEFAULT_SOURCE),
     cell=Link("cell", DEFAULT_SOURCE),
     positions="intermediate/ion_dynamics/position_ions",
+    idipol="input/incar/IDIPOL",
+    ldipol="input/incar/LDIPOL",
 )
 schema.add(
     raw.Structure,
@@ -660,6 +696,8 @@ schema.add(
     stoichiometry=Link("stoichiometry", DEFAULT_SOURCE),
     cell=Link("cell", "final"),
     positions="results/positions/position_ions",
+    idipol="input/incar/IDIPOL",
+    ldipol="input/incar/LDIPOL",
 )
 schema.add(
     raw.Structure,
@@ -668,6 +706,8 @@ schema.add(
     cell=Link("cell", "exciton"),
     stoichiometry=Link("stoichiometry", "exciton"),
     positions="results/supercell/position_ions",
+    idipol="input/incar/IDIPOL",
+    ldipol="input/incar/LDIPOL",
 )
 schema.add(raw.Structure, name="poscar", file="POSCAR", data_factory=read.structure)
 #

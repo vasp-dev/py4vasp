@@ -314,6 +314,27 @@ def test_incorrect_step(example_moments):
         example_moments[out_of_bounds].charge()
 
 
+def test_to_database(example_moments):
+    db_dict = example_moments._read_to_database()["local_moment:default"]
+    orbital_moments = getattr(example_moments.ref, "orbital_moments", None)
+    assert db_dict["has_orbital_moments"] == (orbital_moments is not None)
+
+    total_final_spin_moment = getattr(example_moments.ref, "spin_moments", None)
+    sums_moments = None
+    if total_final_spin_moment is not None:
+        if example_moments._is_collinear:
+            total_final_spin_moment = total_final_spin_moment[-1, :]
+        elif example_moments._is_noncollinear:
+            total_final_spin_moment = total_final_spin_moment[-1, :, :, -1]
+        sums_moments = np.sum(total_final_spin_moment, axis=-1)
+    assert db_dict["final_spin_moment_total_min"] == (
+        np.min(sums_moments) if (sums_moments is not None) else None
+    )
+    assert db_dict["final_spin_moment_total_max"] == (
+        np.max(sums_moments) if (sums_moments is not None) else None
+    )
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.local_moment("collinear")
     check_factory_methods(LocalMoment, data)

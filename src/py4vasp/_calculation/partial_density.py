@@ -8,6 +8,7 @@ import numpy as np
 
 from py4vasp import _config, exception
 from py4vasp._calculation import base, structure
+from py4vasp._raw import data as raw_data
 from py4vasp._third_party import view
 from py4vasp._third_party.graph import Graph
 from py4vasp._third_party.graph.contour import Contour
@@ -39,6 +40,8 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
     Since this is postprocessing data for a fixed density, there are no ionic steps
     to separate the data.
     """
+
+    _raw_data: raw_data.PartialDensity
 
     @dataclasses.dataclass
     class STM_settings:

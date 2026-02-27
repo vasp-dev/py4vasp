@@ -105,6 +105,12 @@ phonon DOS:
     assert actual == {"text/plain": reference}
 
 
+def test_to_database(phonon_dos):
+    db_dict = phonon_dos._read_to_database()["phonon_dos:default"]
+    assert db_dict["energy_min"] == float(phonon_dos.ref.energies[0])
+    assert db_dict["energy_max"] == float(phonon_dos.ref.energies[-1])
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.phonon_dos("default")
     check_factory_methods(PhononDos, data)

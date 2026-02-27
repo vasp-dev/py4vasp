@@ -5,7 +5,7 @@ import pytest
 from py4vasp import exception
 from py4vasp._calculation._stoichiometry import Stoichiometry
 from py4vasp._calculation.selection import Selection
-from py4vasp._util import import_, select
+from py4vasp._util import check, convert, import_, select
 
 ase = import_.optional("ase")
 pd = import_.optional("pandas")
@@ -82,6 +82,40 @@ class Base:
         actual, _ = format_(self.stoichiometry)
         assert actual == self.format_output
 
+    def test_to_database(self):
+        db_dict = self.stoichiometry._read_to_database()["stoichiometry:default"]
+        expected_ion_types = getattr(self, "ref_ion_types", self.unique_elements)
+        expected_num_ion_types = getattr(self, "ref_num_ion_types", None)
+        assert (
+            db_dict["ion_types"] == expected_ion_types
+        ), f"ion_types mismatch: {db_dict['ion_types']} vs. {expected_ion_types}"
+        assert (
+            db_dict["num_ion_types"] == expected_num_ion_types
+        ), f"num_ion_types mismatch: {db_dict['num_ion_types']} vs. {expected_num_ion_types}"
+        if db_dict["num_ion_types"] is not None:
+            for nt, rnt in zip(
+                db_dict["num_ion_types"],
+                db_dict["num_ion_types_primitive"],
+            ):
+                assert (
+                    rnt <= nt
+                ), f"Primitive cell has more atoms ({rnt}) than the full cell ({nt})"
+            if getattr(self, "ref_num_ion_types_primitive", None) is not None:
+                assert (
+                    db_dict["num_ion_types_primitive"]
+                    == self.ref_num_ion_types_primitive
+                ), f"num_ion_types_primitive mismatch: {db_dict['num_ion_types_primitive']} vs. {self.ref_num_ion_types_primitive}"
+        else:
+            assert (
+                db_dict["num_ion_types_primitive"] is None
+            ), f"If num_ion_types is None, num_ion_types_primitive must be None as well but is {db_dict['num_ion_types_primitive']}."
+        assert isinstance(db_dict["formula"], (str, type(None)))
+        if getattr(self, "ref_formula", None) is not None:
+            assert db_dict["formula"] == self.ref_formula
+        assert isinstance(db_dict["compound"], (str, type(None)))
+        if getattr(self, "ref_compound", None) is not None:
+            assert db_dict["compound"] == self.ref_compound
+
     @property
     def unique_elements(self):
         elements = []
@@ -110,6 +144,11 @@ class TestSr2TiO4(Base):
             "text/plain": "Sr2TiO4",
             "text/html": "Sr<sub>2</sub>TiO<sub>4</sub>",
         }
+        self.ref_ion_types = ["O", "Sr", "Ti"]
+        self.ref_num_ion_types = [4, 2, 1]
+        self.ref_num_ion_types_primitive = [4, 2, 1]
+        self.ref_formula = "O4Sr2Ti"
+        self.ref_compound = "O-Sr-Ti"
 
     def check_ion_indices(self, stoichiometry):
         assert stoichiometry["Sr"] == Selection(indices=slice(0, 2), label="Sr")
@@ -137,6 +176,11 @@ class TestCa3AsBr3(Base):
             "text/plain": "Ca3AsBr3",
             "text/html": "Ca<sub>3</sub>AsBr<sub>3</sub>",
         }
+        self.ref_ion_types = ["As", "Br", "Ca"]
+        self.ref_num_ion_types = [1, 3, 3]
+        self.ref_num_ion_types_primitive = [1, 3, 3]
+        self.ref_formula = "AsBr3Ca3"
+        self.ref_compound = "As-Br-Ca"
 
     def check_ion_indices(self, stoichiometry):
         assert stoichiometry["Ca"] == Selection(indices=[0, 1, 4], label="Ca")
@@ -166,6 +210,13 @@ class TestBa2MnO4(Base):
                 "text/plain": "(A)2(B)(C)4",
                 "text/html": "<em>A</em><sub>2</sub><em>B</em><em>C</em><sub>4</sub>",
             }
+        self.ref_ion_types = ["O", "Sr", "Ti"] if request.param == "Sr2TiO4" else None
+        self.ref_num_ion_types = [4, 2, 1] if request.param == "Sr2TiO4" else None
+        self.ref_num_ion_types_primitive = (
+            None if not request.param == "Sr2TiO4" else [4, 2, 1]
+        )
+        self.ref_formula = None if not request.param == "Sr2TiO4" else "O4Sr2Ti"
+        self.ref_compound = None if not request.param == "Sr2TiO4" else "O-Sr-Ti"
 
     def check_ion_indices(self, stoichiometry):
         assert stoichiometry["Ba"] == Selection(indices=slice(0, 2), label="Ba")

@@ -7,7 +7,8 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._calculation import base
-from py4vasp._util import convert, documentation
+from py4vasp._raw import data as raw_data
+from py4vasp._util import check, convert, documentation
 
 _kpoints_selection = """\
 selection : str, optional
@@ -38,6 +39,8 @@ class Kpoint(base.Refinery):
     generate a band structure. It may also be used to programmatically analyze the
     selected **k** point mesh or take subsets along high symmetry lines.
     """
+
+    _raw_data: raw_data.Kpoint
 
     @base.data_access
     def __str__(self):
@@ -75,6 +78,42 @@ reciprocal"""
             "coordinates": self._raw_data.coordinates[:],
             "weights": self._raw_data.weights[:],
             **labels_dict,
+        }
+
+    @base.data_access
+    def _to_database(self, *args, **kwargs):
+        number_x = self._raw_data.number_x
+        number_y = self._raw_data.number_y
+        number_z = self._raw_data.number_z
+
+        has_grid = not (any(check.is_none(n) for n in (number_x, number_y, number_z)))
+
+        grid_kpoints = (
+            None
+            if not (has_grid)
+            else [
+                number_x,
+                number_y,
+                number_z,
+            ]
+        )
+
+        user_labels = None
+        if not check.is_none(self._raw_data.label_indices):
+            user_labels = [k for k in self._labels_from_file() if k != ""]
+            user_labels = None if len(user_labels) == 0 else user_labels
+        sampled_points = sorted(set(user_labels)) if user_labels is not None else None
+
+        return {
+            "kpoint": {
+                "mode": self.mode(),
+                "line_length": self.line_length(),
+                "num_kpoints_total": self.number_kpoints(),
+                "num_lines": self.number_lines(),
+                "num_kpoints_grid": grid_kpoints,
+                "labels": user_labels,
+                "labels_unique": sampled_points,
+            }
         }
 
     @base.data_access
