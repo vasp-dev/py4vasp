@@ -316,11 +316,79 @@ def get_dataclass_fields(dataclass: Any) -> List[dict]:
     Returns
     -------
     List[dict]
-        A list of dictionaries, each containing the name and type of a field.
+        A list of dictionaries, each containing the name, type, and
+        optional field documentation of a dataclass field.
     """
     from dataclasses import fields
 
-    return [{"name": field.name, "type": field.type} for field in fields(dataclass)]
+    dataclass_fields = fields(dataclass)
+    docstrings = _get_dataclass_field_docstrings(dataclass)
+    return [
+        {
+            "name": field.name,
+            "type": field.type,
+            "documentation": docstrings.get(field.name),
+        }
+        for field in dataclass_fields
+    ]
+
+
+def _get_dataclass_field_docstrings(dataclass: Any) -> Dict[str, Optional[str]]:
+    """Extract per-field documentation from a dataclass using AST.
+
+    Expects field documentation to be provided as a string expression directly
+    below the corresponding field definition.
+    """
+    try:
+        source_file = inspect.getsourcefile(dataclass)
+        if source_file is None:
+            return {}
+        source = Path(source_file).read_text()
+        tree = ast.parse(source)
+        class_node = _find_class_node(tree, dataclass.__name__)
+        if class_node is None:
+            return {}
+
+        docstrings: Dict[str, Optional[str]] = {}
+        class_body = class_node.body
+        for index, node in enumerate(class_body):
+            field_name = _extract_field_name(node)
+            if field_name is None:
+                continue
+            docstrings[field_name] = _extract_following_docstring(class_body, index)
+        return docstrings
+    except Exception:
+        return {}
+
+
+def _find_class_node(tree: ast.AST, class_name: str) -> Optional[ast.ClassDef]:
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef) and node.name == class_name:
+            return node
+    return None
+
+
+def _extract_field_name(node: ast.AST) -> Optional[str]:
+    if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+        return node.target.id
+    if isinstance(node, ast.Assign) and len(node.targets) == 1:
+        target = node.targets[0]
+        if isinstance(target, ast.Name):
+            return target.id
+    return None
+
+
+def _extract_following_docstring(
+    class_body: List[ast.stmt], index: int
+) -> Optional[str]:
+    next_index = index + 1
+    if next_index >= len(class_body):
+        return None
+    next_node = class_body[next_index]
+    if not isinstance(next_node, ast.Expr):
+        return None
+    doc = _get_constant_value(next_node.value)
+    return doc if isinstance(doc, str) else None
 
 
 def get_all_possible_keys(
