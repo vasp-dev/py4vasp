@@ -304,6 +304,22 @@ def get_formula_and_compound(
         primitive_numbers,
     )
 
+def get_dataclass_fields(dataclass: Any) -> List[dict]:
+    """Get the fields of a dataclass as a list of dictionaries.
+
+    Parameters
+    ----------
+    dataclass : Any
+        The dataclass to get the fields from.
+
+    Returns
+    -------
+    List[dict]
+        A list of dictionaries, each containing the name and type of a field.
+    """
+    from dataclasses import fields
+
+    return [{"name": field.name, "type": field.type} for field in fields(dataclass)]
 
 def get_all_possible_keys(
     to_print: bool = False, debug: bool = False
@@ -328,12 +344,16 @@ def get_all_possible_keys(
 
     from py4vasp._calculation import GROUPS, QUANTITIES
 
+    _USE_LEGACY = False
+
     for py_file in calculation_dir.glob("*.py"):
         if py_file.name == "__init__.py":
             continue
 
         try:
-            file_keys, classes_without_method = _extract_keys_from_file(py_file, debug)
+            file_keys, classes_without_method = _extract_keys_from_file(
+                py_file, debug, _USE_LEGACY
+            )
 
             if debug:
                 print(f"\n=== DEBUG {py_file.name} ===")
@@ -478,7 +498,7 @@ def _get_constant_value(node: ast.AST) -> Optional[str]:
 
 
 def _extract_keys_from_file(
-    filepath: Path, debug: bool = False
+    filepath: Path, debug: bool = False, use_legacy: bool = False
 ) -> tuple[Dict[str, List[str]], List[str]]:
     """Extract database keys from a single Python file."""
     with open(filepath, "r") as f:
@@ -518,13 +538,33 @@ def _extract_keys_from_file(
                             classes_with_method.add(class_key)
                             if debug:
                                 print(f"\n[{filepath.stem}] Found _to_database method")
-                            file_keys = _extract_keys_from_function(item, tree, debug)
+                            if use_legacy:
+                                file_keys = _extract_keys_from_function(
+                                    item, tree, debug
+                                )
+                            else:
+                                file_keys = _extract_keys_from_dataclass(node.name)
                             if debug:
                                 print(f"[{filepath.stem}] Result: {file_keys}")
                             keys.update(file_keys)
 
     classes_without_method = list(refinery_classes - classes_with_method)
     return keys, classes_without_method
+
+
+def _extract_keys_from_dataclass(class_key: str) -> Dict[str, List[str]]:
+    """Extract keys from a dataclass-based _to_database method."""
+    # This is a simplified version that assumes the dataclass fields correspond to the keys.
+    # It does not handle complex logic, but it should work for straightforward cases.
+    try:
+        module = __import__(f"py4vasp._raw.data_db", fromlist=[None])
+        cls = getattr(module, f"{class_key}_DB")
+        from dataclasses import fields
+
+        return {convert.quantity_name(class_key): [field.name for field in fields(cls)]}
+    except Exception as e:
+        print(f"Error extracting keys from dataclass {class_key}: {e}")
+    return {}
 
 
 def _extract_keys_from_function(
