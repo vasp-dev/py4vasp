@@ -139,10 +139,12 @@ Fermi energy:    {fermi_energy}"""
             "fundamental_bandgap": self._output_gap("fundamental", to_string=False),
             "kpoint_vbm": self._output_kpoint("VBM", to_string=False),
             "kpoint_cbm": self._output_kpoint("CBM", to_string=False),
-            "lower_band_direct": self._output_energy(
+            "lower_band_direct_bandgap": self._output_energy(
                 "direct gap bottom", to_string=False
             ),
-            "upper_band_direct": self._output_energy("direct gap top", to_string=False),
+            "upper_band_direct_bandgap": self._output_energy(
+                "direct gap top", to_string=False
+            ),
             "direct_bandgap": self._output_gap("direct", to_string=False),
             "kpoint_direct_bandgap": self._output_kpoint("direct", to_string=False),
         }

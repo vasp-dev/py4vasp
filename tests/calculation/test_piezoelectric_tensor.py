@@ -8,6 +8,7 @@ from py4vasp._calculation.piezoelectric_tensor import (
     PiezoelectricTensor,
     _extract_tensor,
 )
+from py4vasp._raw.data_db import PiezoelectricTensor_DB
 from py4vasp._util.tensor import symmetry_reduce
 
 
@@ -84,30 +85,35 @@ Piezoelectric tensor (C/m²)
 
 
 def _check_to_database(piezoelectric_tensor):
-    db_dict = piezoelectric_tensor._read_to_database()["piezoelectric_tensor:default"]
+    db_data: PiezoelectricTensor_DB = piezoelectric_tensor._read_to_database()[
+        "piezoelectric_tensor:default"
+    ]
+    assert isinstance(db_data, PiezoelectricTensor_DB)
     for idx, prefix in enumerate(["total", "ionic", "electronic"]):
         sum_2d_tensor_not_none = 0
         for idy, suffix in enumerate(["x", "y", "z"]):
-            assert db_dict[f"{prefix}_3d_tensor_{suffix}"] == list(
+            assert getattr(db_data, f"{prefix}_3d_tensor_{suffix}") == list(
                 _extract_tensor(piezoelectric_tensor.ref.piezo[idx])[
                     idy, (0, 1, 2, 5, 3, 4)
                 ]
             )
             assert (
-                db_dict[f"{prefix}_3d_piezoelectric_stress_coefficient_{suffix}"]
+                getattr(
+                    db_data, f"{prefix}_3d_piezoelectric_stress_coefficient_{suffix}"
+                )
                 is not None
             )
             if not piezoelectric_tensor.ref.is_2d:
-                assert db_dict[f"{prefix}_2d_tensor_{suffix}"] is None
-            elif db_dict[f"{prefix}_2d_tensor_{suffix}"] is not None:
+                assert getattr(db_data, f"{prefix}_2d_tensor_{suffix}") is None
+            elif getattr(db_data, f"{prefix}_2d_tensor_{suffix}") is not None:
                 sum_2d_tensor_not_none += 1
         for desc in ["mean_absolute", "rms", "frobenius_norm"]:
-            assert db_dict[f"{prefix}_3d_{desc}"] is not None
+            assert getattr(db_data, f"{prefix}_3d_{desc}") is not None
         if piezoelectric_tensor.ref.is_2d:
             assert sum_2d_tensor_not_none == 2
     # TODO add real reference data for computed values
     for key, value in piezoelectric_tensor.ref.overview_data.items():
-        assert db_dict[key] == value
+        assert getattr(db_data, key) == value
 
 
 def test_to_database(piezoelectric_tensor, Assert):

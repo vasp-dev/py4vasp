@@ -155,7 +155,9 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
             energy_dict[f"{db_key}_initial"] = None if v is None else float(v[0])
             if (db_key != "step") and (v is not None):
                 energy_dict[f"{db_key}_min"] = None if v is None else float(np.min(v))
-                energy_dict[f"{db_key}_step_min"] = None if v is None else int(np.argmin(v))
+                energy_dict[f"{db_key}_step_min"] = (
+                    None if v is None else int(np.argmin(v))
+                )
             energy_dict[f"{db_key}_final"] = None if v is None else float(v[-1])
 
         # Handle any additional keys not in _DB_KEYS

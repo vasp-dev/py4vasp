@@ -5,7 +5,7 @@ import dataclasses
 import functools
 import inspect
 import pathlib
-from typing import Optional
+from typing import Any, Optional
 
 from py4vasp import exception, raw
 from py4vasp._raw.definition import schema
@@ -152,7 +152,7 @@ class Refinery:
         subquantity_chain: Optional[str] = None,
         original_group_name: Optional[str] = None,
         **kwargs,
-    ):
+    ) -> dict[str, Any]:
         """Internal method to convert the data to a database format.
 
         This method is intended for internal use only and should not be called
@@ -270,7 +270,7 @@ class Refinery:
                 # if quantity already exists in db, return empty dict to avoid recomputation
                 return {}  # {expected_db_key: current_db[expected_db_key]}
             # otherwise, compute the database representation
-            database_data = self._to_database(
+            database_data: dict[str, Any] = self._to_database(
                 *args,
                 current_db=current_db,
                 original_quantity=original_quantity,

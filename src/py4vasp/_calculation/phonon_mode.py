@@ -72,8 +72,12 @@ class PhononMode(base.Refinery, structure.Mixin):
             else None
         )
 
-        frequencies_real_max = float(np.max(frequencies.real)) if frequencies is not None else None
-        frequencies_imag_max = float(np.max(frequencies.imag)) if frequencies is not None else None
+        frequencies_real_max = (
+            float(np.max(frequencies.real)) if frequencies is not None else None
+        )
+        frequencies_imag_max = (
+            float(np.max(frequencies.imag)) if frequencies is not None else None
+        )
 
         return {
             "phonon_mode": PhononMode_DB(

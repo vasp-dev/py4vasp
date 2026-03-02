@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from py4vasp._calculation.elastic_modulus import ElasticModulus
+from py4vasp._raw.data_db import ElasticModulus_DB
 from py4vasp._util.tensor import symmetry_reduce
 
 
@@ -30,7 +31,7 @@ def _setup_elastic_modulus(raw_data, selection):
     if selection == "SiC":
         elastic_modulus.ref.overview_data["total_bulk_modulus"] = 227.9149991624522
         elastic_modulus.ref.overview_data["total_shear_modulus"] = 197.09002974236228
-        elastic_modulus.ref.overview_data["total_youngs_modulus"] = 458.9712638295085
+        elastic_modulus.ref.overview_data["total_young_modulus"] = 458.9712638295085
         elastic_modulus.ref.overview_data["total_poisson_ratio"] = 0.16436956356818136
         elastic_modulus.ref.overview_data["total_pugh_ratio"] = 0.8647523439292442
         elastic_modulus.ref.overview_data["total_vickers_hardness"] = 31.07791529386013
@@ -39,9 +40,7 @@ def _setup_elastic_modulus(raw_data, selection):
         )
         elastic_modulus.ref.overview_data["ionic_bulk_modulus"] = -0.0001396466
         elastic_modulus.ref.overview_data["ionic_shear_modulus"] = -7.263256685782666
-        elastic_modulus.ref.overview_data["ionic_youngs_modulus"] = (
-            -0.001256747258012485
-        )
+        elastic_modulus.ref.overview_data["ionic_young_modulus"] = -0.001256747258012485
         elastic_modulus.ref.overview_data["ionic_poisson_ratio"] = -0.9999134596733735
         elastic_modulus.ref.overview_data["ionic_pugh_ratio"] = 52011.67987366603
         elastic_modulus.ref.overview_data["ionic_vickers_hardness"] = (
@@ -54,7 +53,7 @@ def _setup_elastic_modulus(raw_data, selection):
         elastic_modulus.ref.overview_data["electronic_shear_modulus"] = (
             208.30942571448918
         )
-        elastic_modulus.ref.overview_data["electronic_youngs_modulus"] = (
+        elastic_modulus.ref.overview_data["electronic_young_modulus"] = (
             478.99729799241635
         )
         elastic_modulus.ref.overview_data["electronic_poisson_ratio"] = (
@@ -128,7 +127,7 @@ ZX         117.0000    121.0000    125.0000    119.0000    123.0000    121.0000
 
 def test_to_database(elastic_moduli):
     database_data = elastic_moduli._read_to_database()
-    overview = database_data["elastic_modulus:default"]
+    overview: ElasticModulus_DB = database_data["elastic_modulus:default"]
     ref_overview = elastic_moduli.ref.overview_data
 
     for key, value in ref_overview.items():
@@ -136,16 +135,16 @@ def test_to_database(elastic_moduli):
             elastic_moduli.ref.structure is None
         ):
             assert (
-                overview[key] is None
-            ), f"fracture_toughness requires structure data: but returned db value is {overview[key]}."
+                getattr(overview, key) is None
+            ), f"fracture_toughness requires structure data: but returned db value is {getattr(overview, key)}."
         elif value is None:
             continue
             # if matrix is close to singular, some properties can probably not be computed
             # in that case, skip assertion -- np.linalg.inv may or may not throw an error depending on system
         else:
             assert np.all(
-                np.array(np.isclose(overview[key], value))
-            ), f"mismatch in {key}: expected {value}, got {overview[key]}."
+                np.array(np.isclose(getattr(overview, key), value))
+            ), f"mismatch in {key}: expected {value}, got {getattr(overview, key)}."
 
 
 def test_factory_methods(raw_data, check_factory_methods):

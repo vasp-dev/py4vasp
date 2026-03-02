@@ -9,6 +9,7 @@ from py4vasp._calculation._dispersion import Dispersion
 from py4vasp._calculation.bandgap import Bandgap
 from py4vasp._calculation.run_info import RunInfo
 from py4vasp._calculation.structure import Structure
+from py4vasp._raw.data_db import RunInfo_DB
 from py4vasp._util import check
 
 
@@ -32,56 +33,55 @@ def run_info(request, raw_data):
     return run_info
 
 
-def _check_dict(data_dict, runinfo_ref):
+def _check_dict(data_db: RunInfo_DB, runinfo_ref):
     # from runtime
-    assert data_dict["vasp_version"] == runinfo_ref.runtime.vasp_version
+    assert data_db.vasp_version == runinfo_ref.runtime.vasp_version
 
     # from structure
     assert (
-        data_dict["num_ion_steps"]
-        == runinfo_ref.structure._raw_data.positions[:].shape[0]
+        data_db.num_ionic_steps == runinfo_ref.structure._raw_data.positions[:].shape[0]
     )
 
     # from system
-    assert data_dict["system_tag"] == runinfo_ref.system_name
+    assert data_db.system_tag == runinfo_ref.system_name
 
     # from contcar
-    assert data_dict["has_selective_dynamics"] == (
+    assert data_db.has_selective_dynamics == (
         not check.is_none(runinfo_ref.contcar._raw_data.selective_dynamics)
     )
-    assert data_dict["has_ion_velocities"] == (
+    assert data_db.has_ion_velocities == (
         not check.is_none(runinfo_ref.contcar._raw_data.ion_velocities)
     )
-    assert data_dict["has_lattice_velocities"] == (
+    assert data_db.has_lattice_velocities == (
         not check.is_none(runinfo_ref.contcar._raw_data.lattice_velocities)
     )
 
     # from phonon dispersion
     assert (
-        data_dict["phonon_num_qpoints"]
+        data_db.phonon_num_qpoints
         == runinfo_ref.phonon_dispersion._raw_data.eigenvalues[:].shape[0]
     )
     assert (
-        data_dict["phonon_num_modes"]
+        data_db.phonon_num_modes
         == runinfo_ref.phonon_dispersion._raw_data.eigenvalues[:].shape[1]
     )
 
     # extra collection
-    assert data_dict["grid_coarse_shape"] is None
-    assert data_dict["grid_fine_shape"] is None
-    assert data_dict["is_success"] is None
-    assert data_dict["fermi_energy"] == runinfo_ref.fermi_energy
-    assert data_dict["is_collinear"] == (runinfo_ref.len_dos == 2)
-    assert data_dict["is_noncollinear"] == (runinfo_ref.len_dos == 4)
-    assert data_dict["is_metallic"] == all(
+    assert data_db.grid_coarse_shape is None
+    assert data_db.grid_fine_shape is None
+    assert data_db.is_success is None
+    assert data_db.fermi_energy == runinfo_ref.fermi_energy
+    assert data_db.is_collinear == (runinfo_ref.len_dos == 2)
+    assert data_db.is_noncollinear == (runinfo_ref.len_dos == 4)
+    assert data_db.is_metallic == all(
         runinfo_ref.bandgap._output_gap("fundamental", to_string=False) <= 0.0
     )
-    assert data_dict["magnetization_total"] is None
-    assert data_dict["magnetization_order"] is None
+    assert data_db.is_magnetic is None
+    assert data_db.magnetization_order is None
 
 
 def test_read(run_info):
-    _check_dict(run_info.read(), run_info.ref)
+    _check_dict(RunInfo_DB(**run_info.read()), run_info.ref)
 
 
 def test_to_database(run_info):

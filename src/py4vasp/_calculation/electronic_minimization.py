@@ -114,8 +114,8 @@ N, E, dE, deps, ncg, rms, rms(c)"""
                 num_electronic_steps=num_electronic_steps,
                 elmin_is_converged_all=elmin_is_converged_all,
                 elmin_is_converged_final=elmin_is_converged_final,
-                num_max_electronic_steps_per_ionic=num_max_electronic_steps_per_ionic,
-                num_min_electronic_steps_per_ionic=num_min_electronic_steps_per_ionic,
+                num_max_electronic_steps_per_ionic_step=num_max_electronic_steps_per_ionic,
+                num_min_electronic_steps_per_ionic_step=num_min_electronic_steps_per_ionic,
             )
         }
 

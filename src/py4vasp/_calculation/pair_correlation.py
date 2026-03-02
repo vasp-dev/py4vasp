@@ -80,7 +80,9 @@ class PairCorrelation(slice_.Mixin, base.Refinery, graph.Mixin):
             distance_max = float(self._raw_data.distances[-1])
 
         return {
-            "pair_correlation": PairCorrelation_DB(distance_min=distance_min, distance_max=distance_max),
+            "pair_correlation": PairCorrelation_DB(
+                distance_min=distance_min, distance_max=distance_max
+            ),
         }
 
     @base.data_access

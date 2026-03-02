@@ -9,6 +9,7 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._calculation.dielectric_function import DielectricFunction
+from py4vasp._raw.data_db import DielectricFunction_DB
 
 
 @pytest.fixture
@@ -370,12 +371,20 @@ dielectric function:
 def _check_to_database(dielectric_function):
     database_data = dielectric_function._read_to_database()
     assert "dielectric_function:default" in database_data
-    db_dict = database_data["dielectric_function:default"]
-    assert db_dict["energy_min"] == float(np.min(dielectric_function.ref.energies))
-    assert db_dict["energy_max"] == float(np.max(dielectric_function.ref.energies))
+    db_data: DielectricFunction_DB = database_data["dielectric_function:default"]
+    assert isinstance(db_data, DielectricFunction_DB)
+    assert db_data.energy_min == float(np.min(dielectric_function.ref.energies))
+    assert db_data.energy_max == float(np.max(dielectric_function.ref.energies))
 
-    for k, v in db_dict.items():
-        assert v is None or isinstance(v, float)
+    for fld in dataclasses.fields(DielectricFunction_DB):
+        if fld.name.startswith("__"):
+            assert isinstance(getattr(db_data, fld.name), str)
+        elif fld.name.endswith("index"):
+            assert isinstance(getattr(db_data, fld.name), int)
+        else:
+            assert getattr(db_data, fld.name) is None or isinstance(
+                getattr(db_data, fld.name), float
+            )
 
 
 def test_to_database_electronic(electronic):

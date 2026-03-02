@@ -10,6 +10,7 @@ import pytest
 
 from py4vasp import exception, interpolate
 from py4vasp._calculation.effective_coulomb import EffectiveCoulomb
+from py4vasp._raw.data_db import EffectiveCoulomb_DB
 from py4vasp._third_party import numeric
 from py4vasp._util import check, convert
 
@@ -506,10 +507,13 @@ def test_selections(effective_coulomb):
 
 
 def test_to_database(effective_coulomb, Assert):
-    data = effective_coulomb._read_to_database()["effective_coulomb:default"]
-    assert data.keys() == effective_coulomb.ref.overview_data.keys()
-    for key in data.keys():
-        Assert.allclose(data[key], effective_coulomb.ref.overview_data[key])
+    data: EffectiveCoulomb_DB = effective_coulomb._read_to_database()[
+        "effective_coulomb:default"
+    ]
+    assert isinstance(data, EffectiveCoulomb_DB)
+    for key in effective_coulomb.ref.overview_data.keys():
+        assert hasattr(data, key)
+        Assert.allclose(getattr(data, key), effective_coulomb.ref.overview_data[key])
 
 
 def test_print(effective_coulomb, format_):
@@ -523,7 +527,12 @@ screened Hubbard U =\s+[-\d.]+\s+[-\d.]+
 screened Hubbard u =\s+[-\d.]+\s+[-\d.]+
 screened Hubbard J =\s+[-\d.]+\s+[-\d.]+"""
     actual, _ = format_(effective_coulomb)
-    assert actual.keys() == {"text/plain"}
+    assert actual.keys() == {"text/plain"}, (
+        "EffectiveCoulomb should only have a text/plain representation but has: "
+        + ", ".join(actual.keys())
+        + " | "
+        + str(actual)
+    )
     assert re.search(expected_result, actual["text/plain"], re.MULTILINE)
 
 

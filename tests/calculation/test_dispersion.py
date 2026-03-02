@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
+from dataclasses import fields
 
 import numpy as np
 import pytest
@@ -8,6 +9,7 @@ import pytest
 from py4vasp._calculation._dispersion import Dispersion
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.projector import SPIN_PROJECTION
+from py4vasp._raw.data_db import Dispersion_DB
 
 
 @pytest.fixture(params=["single_band", "spin_polarized", "line", "phonon"])
@@ -116,23 +118,27 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 def _check_to_database(dispersion_):
     data = dispersion_._read_to_database()
-    db_dict = data["dispersion:default"]
+    db_data: Dispersion_DB = data["dispersion:default"]
+    assert isinstance(db_data, Dispersion_DB)
 
     eigenvalues = dispersion_.ref.eigenvalues
-    assert np.isclose(db_dict["eigenvalue_min"], float(np.min(eigenvalues)))
-    assert np.isclose(db_dict["eigenvalue_max"], float(np.max(eigenvalues)))
+    assert np.isclose(db_data.eigenvalue_min, float(np.min(eigenvalues)))
+    assert np.isclose(db_data.eigenvalue_max, float(np.max(eigenvalues)))
     if dispersion_.ref.spin_polarized:
-        assert np.isclose(db_dict["eigenvalue_min_up"], float(np.min(eigenvalues[0])))
-        assert np.isclose(db_dict["eigenvalue_max_up"], float(np.max(eigenvalues[0])))
-        assert np.isclose(db_dict["eigenvalue_min_down"], float(np.min(eigenvalues[1])))
-        assert np.isclose(db_dict["eigenvalue_max_down"], float(np.max(eigenvalues[1])))
+        assert np.isclose(db_data.eigenvalue_min_up, float(np.min(eigenvalues[0])))
+        assert np.isclose(db_data.eigenvalue_max_up, float(np.max(eigenvalues[0])))
+        assert np.isclose(db_data.eigenvalue_min_down, float(np.min(eigenvalues[1])))
+        assert np.isclose(db_data.eigenvalue_max_down, float(np.max(eigenvalues[1])))
     else:
-        assert db_dict["eigenvalue_min_up"] is None
-        assert db_dict["eigenvalue_max_up"] is None
-        assert db_dict["eigenvalue_min_down"] is None
-        assert db_dict["eigenvalue_max_down"] is None
+        assert db_data.eigenvalue_min_up is None
+        assert db_data.eigenvalue_max_up is None
+        assert db_data.eigenvalue_min_down is None
+        assert db_data.eigenvalue_max_down is None
 
-    for k, v in db_dict.items():
+    for fld in fields(db_data):
+        if fld.name.startswith("__"):
+            continue
+        v = getattr(db_data, fld.name)
         assert v is None or isinstance(v, (int, float))
 
 

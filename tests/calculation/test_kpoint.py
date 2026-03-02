@@ -7,6 +7,7 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._calculation.kpoint import Kpoint
+from py4vasp._raw.data_db import Kpoint_DB
 
 
 @pytest.fixture
@@ -281,18 +282,21 @@ reciprocal
 
 
 def _check_to_database(data):
-    db_dict = data._read_to_database()["kpoint:default"]
-    assert db_dict["mode"] == data.ref.mode
-    assert db_dict["line_length"] == data.ref.line_length
-    assert db_dict["num_lines"] == getattr(data.ref, "number_lines", 1)
-    assert db_dict["num_kpoints_total"] == len(data._raw_data.coordinates)
-    assert db_dict["num_kpoints_grid"] == getattr(data.ref, "grid", None)
-    labels = db_dict.get("labels", None)
-    if labels is not None:
-        labels = [k for k in labels if k != ""]
+    db_data: Kpoint_DB = data._read_to_database()["kpoint:default"]
+    assert isinstance(db_data, Kpoint_DB)
+
+    assert db_data.mode == data.ref.mode
+    assert db_data.line_length == data.ref.line_length
+    assert db_data.num_lines == getattr(data.ref, "number_lines", 1)
+    assert db_data.num_kpoints_total == len(data._raw_data.coordinates)
+    assert db_data.num_kpoints_grid == getattr(data.ref, "grid", None)
+    if db_data.labels is not None:
+        labels = [k for k in db_data.labels if k != ""]
+    else:
+        labels = None
     unique_labels = sorted(set(labels)) if labels is not None else None
-    assert db_dict["labels"] == labels
-    assert db_dict["labels_unique"] == unique_labels
+    assert db_data.labels == labels
+    assert db_data.labels_unique == unique_labels
 
 
 def test_to_database_explicit(explicit_kpoints):

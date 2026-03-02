@@ -9,6 +9,7 @@ import pytest
 from py4vasp import _config, exception
 from py4vasp._calculation.local_moment import LocalMoment
 from py4vasp._calculation.structure import Structure
+from py4vasp._raw.data_db import LocalMoment_DB
 
 
 @pytest.fixture(params=[slice(None), slice(1, 3), 0, -1])
@@ -315,9 +316,13 @@ def test_incorrect_step(example_moments):
 
 
 def test_to_database(example_moments):
-    db_dict = example_moments._read_to_database()["local_moment:default"]
+    db_data: LocalMoment_DB = example_moments._read_to_database()[
+        "local_moment:default"
+    ]
+    assert isinstance(db_data, LocalMoment_DB)
+
     orbital_moments = getattr(example_moments.ref, "orbital_moments", None)
-    assert db_dict["has_orbital_moments"] == (orbital_moments is not None)
+    assert db_data.has_orbital_moments == (orbital_moments is not None)
 
     total_final_spin_moment = getattr(example_moments.ref, "spin_moments", None)
     sums_moments = None
@@ -327,10 +332,10 @@ def test_to_database(example_moments):
         elif example_moments._is_noncollinear:
             total_final_spin_moment = total_final_spin_moment[-1, :, :, -1]
         sums_moments = np.sum(total_final_spin_moment, axis=-1)
-    assert db_dict["final_spin_moment_total_min"] == (
+    assert db_data.final_spin_moment_total_min == (
         np.min(sums_moments) if (sums_moments is not None) else None
     )
-    assert db_dict["final_spin_moment_total_max"] == (
+    assert db_data.final_spin_moment_total_max == (
         np.max(sums_moments) if (sums_moments is not None) else None
     )
 

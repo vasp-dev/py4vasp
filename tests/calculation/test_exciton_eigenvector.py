@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
+from dataclasses import fields
 
 import numpy as np
 import pytest
@@ -8,6 +9,7 @@ import pytest
 from py4vasp import _demo
 from py4vasp._calculation._dispersion import Dispersion
 from py4vasp._calculation.exciton_eigenvector import ExcitonEigenvector
+from py4vasp._raw.data_db import ExcitonEigenvector_DB
 
 
 @pytest.fixture
@@ -25,6 +27,7 @@ def exciton_eigenvector(raw_data):
     eigenvector.ref.first_conduction_band = raw_eigenvector.first_conduction_band - 1
     eigenvector.ref.NBANDSV = _demo.NUMBER_CONDUCTION_BANDS
     eigenvector.ref.NBANDSO = _demo.NUMBER_VALENCE_BANDS
+    eigenvector.ref.num_kpoints = raw_eigenvector.dispersion.kpoints.number
     return eigenvector
 
 
@@ -55,12 +58,15 @@ BSE eigenvector data:
 
 
 def test_to_database(exciton_eigenvector):
-    db_dict = exciton_eigenvector._read_to_database()["exciton_eigenvector:default"]
-    assert db_dict["num_valence_bands"] == exciton_eigenvector.ref.NBANDSO
-    assert db_dict["num_conduction_bands"] == exciton_eigenvector.ref.NBANDSV
-    for k in db_dict:
-        if k.startswith("num_"):
-            assert isinstance(db_dict[k], (int, type(None)))
+    db_data: ExcitonEigenvector_DB = exciton_eigenvector._read_to_database()[
+        "exciton_eigenvector:default"
+    ]
+    assert db_data.num_valence_bands == exciton_eigenvector.ref.NBANDSO
+    assert db_data.num_conduction_bands == exciton_eigenvector.ref.NBANDSV
+    assert db_data.num_kpoints == exciton_eigenvector.ref.num_kpoints
+    for fld in fields(db_data):
+        if fld.name.startswith("num_"):
+            assert isinstance(getattr(db_data, fld.name), (int, type(None)))
 
 
 def test_factory_methods(raw_data, check_factory_methods):

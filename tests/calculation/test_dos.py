@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
+from dataclasses import fields
 from tabnanny import check
 from unittest.mock import patch
 
@@ -10,6 +11,7 @@ import pytest
 from py4vasp import exception
 from py4vasp._calculation.dos import Dos
 from py4vasp._calculation.projector import SPIN_PROJECTION, Projector
+from py4vasp._raw.data_db import Dos_DB
 
 
 @pytest.fixture
@@ -341,57 +343,51 @@ def test_factory_methods(raw_data, check_factory_methods):
 def _check_to_database(dos, fermi_energy=None):
     db_dict = dos._read_to_database(fermi_energy=fermi_energy)
     assert "dos:default" in db_dict
-    dos_db = db_dict["dos:default"]
+    dos_db: Dos_DB = db_dict["dos:default"]
 
-    for k in [
-        "energy_min",
-        "energy_max",
-        "dos_at_fermi_total",
-        "dos_at_fermi_up",
-        "dos_at_fermi_down",
-        "dos_at_raw_fermi_total",
-        "dos_at_raw_fermi_up",
-        "dos_at_raw_fermi_down",
-    ]:
-        assert k in dos_db
+    assert isinstance(dos_db, Dos_DB)
+
     _fermi_energy = fermi_energy if fermi_energy is not None else dos.ref.fermi_energy
     _raw_fermi_energy = dos.ref.fermi_energy
 
     assert np.isclose(
-        dos_db["energy_min"], float(np.min(dos.ref.energies + _raw_fermi_energy))
+        dos_db.energy_min, float(np.min(dos.ref.energies + _raw_fermi_energy))
     )
     assert np.isclose(
-        dos_db["energy_max"], float(np.max(dos.ref.energies + _raw_fermi_energy))
+        dos_db.energy_max, float(np.max(dos.ref.energies + _raw_fermi_energy))
     )
 
     if hasattr(dos.ref, "dos"):
         for k in ["dos_at_fermi_total", "dos_at_raw_fermi_total"]:
-            assert dos_db[k] is not None
+            assert getattr(dos_db, k) is not None
         for k in [
             "dos_at_fermi_up",
             "dos_at_fermi_down",
             "dos_at_raw_fermi_up",
             "dos_at_raw_fermi_down",
         ]:
-            assert dos_db[k] is None
+            assert getattr(dos_db, k) is None
     else:
         for k in ["dos_at_fermi_total", "dos_at_raw_fermi_total"]:
-            assert dos_db[k] is None
+            assert getattr(dos_db, k) is None
         for k in [
             "dos_at_fermi_up",
             "dos_at_fermi_down",
             "dos_at_raw_fermi_up",
             "dos_at_raw_fermi_down",
         ]:
-            assert dos_db[k] is not None
+            assert getattr(dos_db, k) is not None
     for kstr in ["up", "down", "total"]:
         if _fermi_energy == _raw_fermi_energy:
             k1 = f"dos_at_fermi_{kstr}"
             k2 = f"dos_at_raw_fermi_{kstr}"
-            assert (dos_db[k1] is None and dos_db[k2] is None) or np.isclose(
-                dos_db[k1], dos_db[k2]
-            )
-    for k, v in dos_db.items():
+            assert (
+                getattr(dos_db, k1) is None and getattr(dos_db, k2) is None
+            ) or np.isclose(getattr(dos_db, k1), getattr(dos_db, k2))
+    for fld in fields(dos_db):
+        if fld.name.startswith("__"):
+            continue
+        v = getattr(dos_db, fld.name)
         assert v is None or isinstance(v, (int, float))
 
 

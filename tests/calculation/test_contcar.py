@@ -6,6 +6,7 @@ import pytest
 
 from py4vasp._calculation._CONTCAR import CONTCAR as _CONTCAR
 from py4vasp._calculation.structure import Structure
+from py4vasp._raw.data_db import CONTCAR_DB
 
 REF_Sr2TiO4 = """\
 Sr2TiO4
@@ -122,8 +123,7 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 def test_to_database(CONTCAR):
     database_data = CONTCAR._read_to_database()
-    db_dict = database_data["CONTCAR:default"]
+    db_dict: CONTCAR_DB = database_data["CONTCAR:default"]
 
-    assert "system" in db_dict
-    assert db_dict["system"] == CONTCAR.ref.system
-    assert isinstance(db_dict["system"], (str, type(None)))
+    assert db_dict.system == CONTCAR.ref.system
+    assert isinstance(db_dict.system, (str, type(None)))

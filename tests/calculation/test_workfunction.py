@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from py4vasp._calculation.workfunction import Workfunction
+from py4vasp._raw.data_db import Workfunction_DB
 
 
 @pytest.fixture(params=[1, 2, 3])
@@ -88,13 +89,9 @@ workfunction along {lattice_vector}:
 
 
 def test_to_database(workfunction):
-    actual = workfunction._read_to_database()
-    expected = {
-        "workfunction:default": {
-            "direction": workfunction.ref.idipol,
-            "workfunction": None,
-        }
-    }
+    actual: Workfunction_DB = workfunction._read_to_database()["workfunction:default"]
+    assert isinstance(actual, Workfunction_DB)
+    expected = Workfunction_DB(workfunction.ref.idipol, None)
     assert actual == expected
 
 

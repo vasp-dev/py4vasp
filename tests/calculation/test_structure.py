@@ -9,6 +9,7 @@ import pytest
 from py4vasp import exception, raw
 from py4vasp._calculation._stoichiometry import Stoichiometry
 from py4vasp._calculation.structure import Structure
+from py4vasp._raw.data_db import Structure_DB
 from py4vasp._util import check
 
 REF_POSCAR = """\
@@ -527,7 +528,8 @@ def test_system_dimensionality(Graphite, Sr2TiO4, Fe3O4):
 
 
 def test_to_database(structures, Assert):
-    db_dict = structures._read_to_database()["structure:default"]
+    db_data: Structure_DB = structures._read_to_database()["structure:default"]
+    assert isinstance(db_data, Structure_DB)
     has_timesteps = structures.ref.positions.ndim == 3
     final_positions = (
         structures.ref.positions[-1] if has_timesteps else structures.ref.positions
@@ -557,28 +559,29 @@ def test_to_database(structures, Assert):
         else structures.ref.lattice_vectors
     )
     final_dimensionality = structures.ref.dimensionality
-    assert db_dict["num_ions"] == len(final_positions)
-    assert db_dict["dimensionality"] == final_dimensionality
+    assert db_data.num_ions == len(final_positions)
+    assert db_data.dimensionality == final_dimensionality
 
     for lattice_vectors, area_2d, volume, prefix in [
         (final_lattice_vectors, final_area_2d, final_volume, "final"),
         (initial_lattice_vectors, initial_area_2d, initial_volume, "initial"),
     ]:
-        assert db_dict[f"{prefix}_cell_volume"] == pytest.approx(volume)
+        assert getattr(db_data, f"{prefix}_cell_volume") == pytest.approx(volume)
         if final_dimensionality == 2:
-            assert db_dict[f"{prefix}_cell_area_2d"] == pytest.approx(area_2d)
-            assert db_dict[f"{prefix}_cell_area_2d_span"] == "12"
+            assert getattr(db_data, f"{prefix}_cell_area_2d") == pytest.approx(area_2d)
+            assert getattr(db_data, f"{prefix}_cell_area_2d_span") == "12"
         else:
-            assert db_dict[f"{prefix}_cell_area_2d"] is None
-            assert db_dict[f"{prefix}_cell_area_2d_span"] is None
+            assert getattr(db_data, f"{prefix}_cell_area_2d") is None
+            assert getattr(db_data, f"{prefix}_cell_area_2d_span") is None
 
         for idx in range(3):
             Assert.allclose(
-                db_dict[f"{prefix}_lattice_vector_{idx+1}"], lattice_vectors[idx]
+                getattr(db_data, f"{prefix}_lattice_vector_{idx+1}"),
+                lattice_vectors[idx],
             )
-            assert db_dict[f"{prefix}_lattice_vector_{idx+1}_length"] == pytest.approx(
-                np.linalg.norm(lattice_vectors[idx])
-            )
+            assert getattr(
+                db_data, f"{prefix}_lattice_vector_{idx+1}_length"
+            ) == pytest.approx(np.linalg.norm(lattice_vectors[idx]))
     alpha, beta, gamma = (
         np.degrees(
             np.arccos(
@@ -591,9 +594,9 @@ def test_to_database(structures, Assert):
         )
         for i, j in ((1, 2), (0, 2), (0, 1))
     )
-    assert db_dict[f"{prefix}_angle_alpha"] == pytest.approx(alpha)
-    assert db_dict[f"{prefix}_angle_beta"] == pytest.approx(beta)
-    assert db_dict[f"{prefix}_angle_gamma"] == pytest.approx(gamma)
+    assert getattr(db_data, f"{prefix}_angle_alpha") == pytest.approx(alpha)
+    assert getattr(db_data, f"{prefix}_angle_beta") == pytest.approx(beta)
+    assert getattr(db_data, f"{prefix}_angle_gamma") == pytest.approx(gamma)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

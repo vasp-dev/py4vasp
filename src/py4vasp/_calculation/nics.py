@@ -78,9 +78,7 @@ nucleus-independent chemical shift:
     @base.data_access
     def _to_database(self, *args, **kwargs):
         method = "grid" if self._data_is_on_grid else "positions"
-        return {
-            "nics": Nics_DB(method=method)
-        }
+        return {"nics": Nics_DB(method=method)}
 
     def _get_method_and_positions(self):
         if self._data_is_on_grid:

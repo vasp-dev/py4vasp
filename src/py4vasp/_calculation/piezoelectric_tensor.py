@@ -126,7 +126,8 @@ class PiezoelectricTensor(base.Refinery):
                         tensor_2d[0][0]
                         if (in_plane[0] is not None and in_plane[0][0])
                         else None
-                    )                        if tensor_2d[0] is not None
+                    )
+                    if tensor_2d[0] is not None
                     else None
                 ),
                 total_2d_tensor_y=(
@@ -134,7 +135,8 @@ class PiezoelectricTensor(base.Refinery):
                         tensor_2d[0][1]
                         if (in_plane[0] is not None and in_plane[0][1])
                         else None
-                    )                        if tensor_2d[0] is not None
+                    )
+                    if tensor_2d[0] is not None
                     else None
                 ),
                 total_2d_tensor_z=(
@@ -142,7 +144,8 @@ class PiezoelectricTensor(base.Refinery):
                         tensor_2d[0][2]
                         if (in_plane[0] is not None and in_plane[0][2])
                         else None
-                    )                        if tensor_2d[0] is not None
+                    )
+                    if tensor_2d[0] is not None
                     else None
                 ),
                 ionic_3d_tensor_x=reduced_tensor_x[1],
@@ -159,7 +162,8 @@ class PiezoelectricTensor(base.Refinery):
                         tensor_2d[1][0]
                         if (in_plane[1] is not None and in_plane[1][0])
                         else None
-                    )                        if tensor_2d[1] is not None
+                    )
+                    if tensor_2d[1] is not None
                     else None
                 ),
                 ionic_2d_tensor_y=(
@@ -167,7 +171,8 @@ class PiezoelectricTensor(base.Refinery):
                         tensor_2d[1][1]
                         if (in_plane[1] is not None and in_plane[1][1])
                         else None
-                    )                        if tensor_2d[1] is not None
+                    )
+                    if tensor_2d[1] is not None
                     else None
                 ),
                 ionic_2d_tensor_z=(
@@ -175,7 +180,8 @@ class PiezoelectricTensor(base.Refinery):
                         tensor_2d[1][2]
                         if (in_plane[1] is not None and in_plane[1][2])
                         else None
-                    )                        if tensor_2d[1] is not None
+                    )
+                    if tensor_2d[1] is not None
                     else None
                 ),
                 electronic_3d_tensor_x=reduced_tensor_x[2],
@@ -192,7 +198,8 @@ class PiezoelectricTensor(base.Refinery):
                         tensor_2d[2][0]
                         if (in_plane[2] is not None and in_plane[2][0])
                         else None
-                    )                        if tensor_2d[2] is not None
+                    )
+                    if tensor_2d[2] is not None
                     else None
                 ),
                 electronic_2d_tensor_y=(
@@ -200,7 +207,8 @@ class PiezoelectricTensor(base.Refinery):
                         tensor_2d[2][1]
                         if (in_plane[2] is not None and in_plane[2][1])
                         else None
-                    )                        if tensor_2d[2] is not None
+                    )
+                    if tensor_2d[2] is not None
                     else None
                 ),
                 electronic_2d_tensor_z=(
@@ -208,7 +216,8 @@ class PiezoelectricTensor(base.Refinery):
                         tensor_2d[2][2]
                         if (in_plane[2] is not None and in_plane[2][2])
                         else None
-                    )                        if tensor_2d[2] is not None
+                    )
+                    if tensor_2d[2] is not None
                     else None
                 ),
             )

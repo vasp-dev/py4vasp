@@ -3,12 +3,16 @@ from typing import Any, Dict, List, Optional
 
 __SCHEMA_VERSION__ = "0.1.0"
 
+
 @dataclass
 class _DBDataMixin:
     """Mixin for dataclasses that will be stored in the database."""
 
-    __schema_version__: str = field(init=False, default_factory=lambda: __SCHEMA_VERSION__)
+    __schema_version__: str = field(
+        init=False, default_factory=lambda: __SCHEMA_VERSION__
+    )
     """The version of the database data schema. This can be used to track changes in the data structure and ensure compatibility when reading from the database."""
+
 
 @dataclass
 class CONTCAR_DB(_DBDataMixin):
@@ -16,6 +20,7 @@ class CONTCAR_DB(_DBDataMixin):
 
     system: Optional[str] = None
     """The description of the system as given in the CONTCAR file (first line)."""
+
 
 @dataclass
 class Dispersion_DB(_DBDataMixin):
@@ -34,6 +39,7 @@ class Dispersion_DB(_DBDataMixin):
     eigenvalue_max_down: Optional[float] = None
     """The maximum eigenvalue for spin-down electrons across all bands and k-points."""
 
+
 @dataclass
 class Stoichiometry_DB(_DBDataMixin):
     """Data class for storing stoichiometry data in the database."""
@@ -48,6 +54,7 @@ class Stoichiometry_DB(_DBDataMixin):
     """The chemical formula of the system, in the format {element}{count if count > 1 else ''}, e.g. A3B2CD4."""
     compound: Optional[str] = None
     """The name of the compound, in the format {element1}-{element2}-..., e.g. A-B-C."""
+
 
 @dataclass
 class Band_DB(_DBDataMixin):
@@ -65,6 +72,7 @@ class Band_DB(_DBDataMixin):
     """The raw Fermi energy as read from the OUTCAR file."""
     fermi_energy: Optional[float] = None
     """The Fermi energy used for plotting the band structure, which may be different from the raw Fermi energy based on user input."""
+
 
 @dataclass
 class Bandgap_DB(_DBDataMixin):
@@ -88,13 +96,17 @@ class Bandgap_DB(_DBDataMixin):
     """The energy of the conduction band minimum for spin-up electrons, in eV."""
     conduction_band_minimum_spin_down: Optional[float] = None
     """The energy of the conduction band minimum for spin-down electrons, in eV."""
-    kpoint_vbm_spin_independent: Optional[List[float]] = field(default_factory=lambda: None)
+    kpoint_vbm_spin_independent: Optional[List[float]] = field(
+        default_factory=lambda: None
+    )
     """The k-point where the valence band maximum occurs, in fractional coordinates."""
     kpoint_vbm_spin_up: Optional[List[float]] = field(default_factory=lambda: None)
     """The k-point where the valence band maximum for spin-up electrons occurs, in fractional coordinates."""
     kpoint_vbm_spin_down: Optional[List[float]] = field(default_factory=lambda: None)
     """The k-point where the valence band maximum for spin-down electrons occurs, in fractional coordinates."""
-    kpoint_cbm_spin_independent: Optional[List[float]] = field(default_factory=lambda: None)
+    kpoint_cbm_spin_independent: Optional[List[float]] = field(
+        default_factory=lambda: None
+    )
     """The k-point where the conduction band minimum occurs, in fractional coordinates."""
     kpoint_cbm_spin_up: Optional[List[float]] = field(default_factory=lambda: None)
     """The k-point where the conduction band minimum for spin-up electrons occurs, in fractional coordinates."""
@@ -107,24 +119,31 @@ class Bandgap_DB(_DBDataMixin):
     """The value of the direct band gap for spin-up electrons, in eV."""
     direct_bandgap_spin_down: Optional[float] = None
     """The value of the direct band gap for spin-down electrons, in eV."""
-    lower_band_direct_spin_independent: Optional[float] = None
+    lower_band_direct_bandgap_spin_independent: Optional[float] = None
     """The energy of the highest occupied band at the k-point where the direct band gap occurs, in eV."""
-    lower_band_direct_spin_up: Optional[float] = None
+    lower_band_direct_bandgap_spin_up: Optional[float] = None
     """The energy of the highest occupied spin-up band at the k-point where the direct band gap occurs, in eV."""
-    lower_band_direct_spin_down: Optional[float] = None
+    lower_band_direct_bandgap_spin_down: Optional[float] = None
     """The energy of the highest occupied spin-down band at the k-point where the direct band gap occurs, in eV."""
-    upper_band_direct_spin_independent: Optional[float] = None
+    upper_band_direct_bandgap_spin_independent: Optional[float] = None
     """The energy of the lowest unoccupied band at the k-point where the direct band gap occurs, in eV."""
-    upper_band_direct_spin_up: Optional[float] = None
+    upper_band_direct_bandgap_spin_up: Optional[float] = None
     """The energy of the lowest unoccupied spin-up band at the k-point where the direct band gap occurs, in eV."""
-    upper_band_direct_spin_down: Optional[float] = None
+    upper_band_direct_bandgap_spin_down: Optional[float] = None
     """The energy of the lowest unoccupied spin-down band at the k-point where the direct band gap occurs, in eV."""
-    kpoint_direct_bandgap_spin_independent: Optional[List[float]] = field(default_factory=lambda: None)
+    kpoint_direct_bandgap_spin_independent: Optional[List[float]] = field(
+        default_factory=lambda: None
+    )
     """The k-point where the direct band gap occurs, in fractional coordinates."""
-    kpoint_direct_bandgap_spin_up: Optional[List[float]] = field(default_factory=lambda: None)
+    kpoint_direct_bandgap_spin_up: Optional[List[float]] = field(
+        default_factory=lambda: None
+    )
     """The k-point where the direct band gap for spin-up electrons occurs, in fractional coordinates."""
-    kpoint_direct_bandgap_spin_down: Optional[List[float]] = field(default_factory=lambda: None)
+    kpoint_direct_bandgap_spin_down: Optional[List[float]] = field(
+        default_factory=lambda: None
+    )
     """The k-point where the direct band gap for spin-down electrons occurs, in fractional coordinates."""
+
 
 @dataclass
 class BornEffectiveCharge_DB(_DBDataMixin):
@@ -139,7 +158,8 @@ class BornEffectiveCharge_DB(_DBDataMixin):
     eigenvalue_max_index: Optional[int] = None
     """The index of the ion with the maximum eigenvalue of the Born effective charge tensor."""
 
-@dataclass 
+
+@dataclass
 class DielectricFunction_DB(_DBDataMixin):
     """Data class for storing dielectric function data in the database."""
 
@@ -148,33 +168,37 @@ class DielectricFunction_DB(_DBDataMixin):
     energy_max: Optional[float] = None
     """The maximum energy at which the dielectric function was evaluated, in eV."""
 
-@dataclass 
+
+@dataclass
 class DielectricTensor_DB(_DBDataMixin):
     """Data class for storing dielectric tensor data in the database."""
 
     method: Optional[str] = None
     """The method used to calculate the dielectric tensor."""
-    
+
     total_3d_tensor: Optional[List[List[float]]] = field(default_factory=lambda: None)
     """The full 3D dielectric tensor for the total response, including both ionic and electronic contributions. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
     total_3d_isotropic_dielectric_constant: Optional[float] = None
     """The isotropic dielectric constant for the total response, calculated as the average of the diagonal elements of the total 3D dielectric tensor."""
     total_2d_polarizability: Optional[float] = None
     """The 2D polarizability for the total response, calculated from the total 3D dielectric tensor and the cell geometry."""
-    
+
     ionic_3d_tensor: Optional[List[List[float]]] = field(default_factory=lambda: None)
     """The full 3D dielectric tensor for the ionic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
     ionic_3d_isotropic_dielectric_constant: Optional[float] = None
     """The isotropic dielectric constant for the ionic contribution, calculated as the average of the diagonal elements of the ionic 3D dielectric tensor."""
     ionic_2d_polarizability: Optional[float] = None
     """The 2D polarizability for the ionic contribution, calculated from the ionic 3D dielectric tensor and the cell geometry."""
-    
-    electronic_3d_tensor: Optional[List[List[float]]] = field(default_factory=lambda: None)
+
+    electronic_3d_tensor: Optional[List[List[float]]] = field(
+        default_factory=lambda: None
+    )
     """The full 3D dielectric tensor for the electronic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
     electronic_3d_isotropic_dielectric_constant: Optional[float] = None
     """The isotropic dielectric constant for the electronic contribution, calculated as the average of the diagonal elements of the electronic 3D dielectric tensor."""
     electronic_2d_polarizability: Optional[float] = None
     """The 2D polarizability for the electronic contribution, calculated from the electronic 3D dielectric tensor and the cell geometry."""
+
 
 @dataclass
 class Dos_DB(_DBDataMixin):
@@ -192,12 +216,13 @@ class Dos_DB(_DBDataMixin):
     dos_at_raw_fermi_up: Optional[float] = None
     """The density of states at the raw Fermi energy as read from the OUTCAR file for spin-up electrons, in states/eV."""
     dos_at_raw_fermi_down: Optional[float] = None
-    """The density of states at the raw Fermi energy as read from the OUTCAR file for spin-down electrons, in states/eV.""" 
+    """The density of states at the raw Fermi energy as read from the OUTCAR file for spin-down electrons, in states/eV."""
 
     energy_min: Optional[float] = None
     """The minimum energy at which the density of states was evaluated, in eV."""
     energy_max: Optional[float] = None
     """The maximum energy at which the density of states was evaluated, in eV."""
+
 
 @dataclass
 class EffectiveCoulomb_DB(_DBDataMixin):
@@ -217,6 +242,7 @@ class EffectiveCoulomb_DB(_DBDataMixin):
     bare_J_uppercase: Optional[float] = None
     """The value of the bare effective Coulomb interaction J, in eV."""
 
+
 @dataclass
 class ElasticModulus_DB(_DBDataMixin):
     """Data class for storing elastic modulus data in the database."""
@@ -227,36 +253,53 @@ class ElasticModulus_DB(_DBDataMixin):
     """The bulk modulus calculated from the total 3D elastic modulus tensor, in GPa."""
     total_shear_modulus: Optional[float] = None
     """The shear modulus calculated from the total 3D elastic modulus tensor, in GPa."""
+    total_young_modulus: Optional[float] = None
+    """The Young's modulus calculated from the total 3D elastic modulus tensor, in GPa."""
+    total_poisson_ratio: Optional[float] = None
+    """The Poisson's ratio calculated from the total 3D elastic modulus tensor."""
     total_pugh_ratio: Optional[float] = None
     """The Pugh ratio calculated from the total bulk and shear moduli."""
     total_vickers_hardness: Optional[float] = None
     """The Vickers hardness calculated from the total bulk and shear moduli, in GPa."""
     total_fracture_toughness: Optional[float] = None
     """The fracture toughness calculated from the total bulk and shear moduli, in MPa*m^0.5."""
+
     ionic_3d_tensor: Optional[List[List[float]]] = field(default_factory=lambda: None)
     """The full 3D elastic modulus tensor for the ionic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
     ionic_bulk_modulus: Optional[float] = None
     """The bulk modulus calculated from the ionic contribution to the elastic modulus tensor, in GPa."""
     ionic_shear_modulus: Optional[float] = None
     """The shear modulus calculated from the ionic contribution to the elastic modulus tensor, in GPa."""
+    ionic_young_modulus: Optional[float] = None
+    """The Young's modulus calculated from the ionic contribution to the elastic modulus tensor, in GPa."""
+    ionic_poisson_ratio: Optional[float] = None
+    """The Poisson's ratio calculated from the ionic contribution to the elastic modulus tensor."""
     ionic_pugh_ratio: Optional[float] = None
     """The Pugh ratio calculated from the ionic contribution to the bulk and shear moduli."""
     ionic_vickers_hardness: Optional[float] = None
     """The Vickers hardness calculated from the ionic contribution to the bulk and shear moduli, in GPa."""
     ionic_fracture_toughness: Optional[float] = None
     """The fracture toughness calculated from the ionic contribution to the bulk and shear moduli, in MPa*m^0.5."""
-    electronic_3d_tensor: Optional[List[List[float]]] = field(default_factory=lambda: None)
+
+    electronic_3d_tensor: Optional[List[List[float]]] = field(
+        default_factory=lambda: None
+    )
     """The full 3D elastic modulus tensor for the electronic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
     electronic_bulk_modulus: Optional[float] = None
     """The bulk modulus calculated from the electronic contribution to the elastic modulus tensor, in GPa."""
     electronic_shear_modulus: Optional[float] = None
     """The shear modulus calculated from the electronic contribution to the elastic modulus tensor, in GPa."""
+    electronic_young_modulus: Optional[float] = None
+    """The Young's modulus calculated from the electronic contribution to the elastic modulus tensor, in GPa."""
+    electronic_poisson_ratio: Optional[float] = None
+    """The Poisson's ratio calculated from the electronic contribution to the elastic modulus tensor."""
     electronic_pugh_ratio: Optional[float] = None
     """The Pugh ratio calculated from the electronic contribution to the bulk and shear moduli."""
     electronic_vickers_hardness: Optional[float] = None
     """The Vickers hardness calculated from the electronic contribution to the bulk and shear moduli, in GPa."""
     electronic_fracture_toughness: Optional[float] = None
     """The fracture toughness calculated from the electronic contribution to the bulk and shear moduli, in MPa*m^0.5."""
+
 
 @dataclass
 class ElectronicMinimization_DB(_DBDataMixin):
@@ -272,6 +315,7 @@ class ElectronicMinimization_DB(_DBDataMixin):
     """Whether the electronic minimization converged for all ionic steps."""
     elmin_is_converged_final: Optional[bool] = None
     """Whether the electronic minimization converged for the final ionic step."""
+
 
 @dataclass
 class Energy_DB(_DBDataMixin):
@@ -302,7 +346,7 @@ class Energy_DB(_DBDataMixin):
     kinetic_energy_lattice_step_min: Optional[float] = None
     """The kinetic energy of the lattice at the step where the minimum kinetic energy of the lattice occurs, in eV."""
     kinetic_energy_lattice_final: Optional[float] = None
-    """The final kinetic energy of the lattice, in eV."""   
+    """The final kinetic energy of the lattice, in eV."""
 
     temperature_initial: Optional[float] = None
     """The initial temperature, in K."""
@@ -423,6 +467,7 @@ class Energy_DB(_DBDataMixin):
     other_energy_data: Optional[Dict[str, float]] = field(default_factory=lambda: None)
     """A dictionary to store any additional energy data that may be relevant for the calculation, where the keys are descriptive names of the energy terms and the values are the corresponding energy values in eV."""
 
+
 @dataclass
 class ExcitonEigenvector_DB(_DBDataMixin):
     """Data class for storing exciton eigenvector data in the database."""
@@ -433,6 +478,7 @@ class ExcitonEigenvector_DB(_DBDataMixin):
     """The number of valence bands included in the BSE calculation."""
     num_conduction_bands: Optional[int] = None
     """The number of conduction bands included in the BSE calculation."""
+
 
 @dataclass
 class Force_DB(_DBDataMixin):
@@ -456,6 +502,7 @@ class Force_DB(_DBDataMixin):
     initial_index_force_max: Optional[int] = None
     """The index of the atom with the maximum force on the initial step."""
 
+
 @dataclass
 class Kpoint_DB(_DBDataMixin):
     """Data class for storing k-point data in the database."""
@@ -466,7 +513,7 @@ class Kpoint_DB(_DBDataMixin):
     """The number of points used to sample a single line in the Brillouin zone."""
     num_kpoints_total: Optional[int] = None
     """The total number of k-points in the calculation."""
-    num_kpoints_grid: Optional[List[float, float, float]] = field(default_factory=lambda: None)
+    num_kpoints_grid: Optional[List[float]] = field(default_factory=lambda: None)
     """The number of k-points along each reciprocal lattice vector for grid sampling, in the order (kx, ky, kz)."""
     num_lines: Optional[int] = None
     """The number of lines in the Brillouin zone along which the band structure is sampled."""
@@ -474,6 +521,7 @@ class Kpoint_DB(_DBDataMixin):
     """The labels of the high-symmetry k-points corresponding to each line, in the order (line1_start, line1_end, line2_start, line2_end, ...)."""
     labels_unique: Optional[List[str]] = field(default_factory=lambda: None)
     """The unique labels of the high-symmetry k-points, in alphabetical order."""
+
 
 @dataclass
 class LocalMoment_DB(_DBDataMixin):
@@ -486,12 +534,14 @@ class LocalMoment_DB(_DBDataMixin):
     final_spin_moment_total_max: Optional[float] = None
     """The maximum total spin magnetic moment across all atoms on the final step, in μB."""
 
+
 @dataclass
 class Nics_DB(_DBDataMixin):
     """Data class for storing NICS data in the database."""
 
     method: Optional[str] = None
     """The method used to calculate the NICS, e.g. grid, positions, etc."""
+
 
 @dataclass
 class PairCorrelation_DB(_DBDataMixin):
@@ -502,6 +552,7 @@ class PairCorrelation_DB(_DBDataMixin):
     distance_max: Optional[float] = None
     """The maximum distance at which the pair correlation function was evaluated, in Å."""
 
+
 @dataclass
 class PhononDos_DB(_DBDataMixin):
     """Data class for storing phonon density of states data in the database."""
@@ -511,14 +562,16 @@ class PhononDos_DB(_DBDataMixin):
     energy_max: Optional[float] = None
     """The maximum energy at which the phonon density of states was evaluated, in THz."""
 
+
 @dataclass
 class PhononMode_DB(_DBDataMixin):
     """Data class for storing phonon mode data in the database."""
 
     frequencies_real_max: Optional[float] = None
     """The maximum real frequency across all phonon modes and q-points, in THz."""
-    frequencies_imaginary_max: Optional[float] = None
+    frequencies_imag_max: Optional[float] = None
     """The maximum imaginary frequency across all phonon modes and q-points, in THz."""
+
 
 @dataclass
 class PiezoelectricTensor_DB(_DBDataMixin):
@@ -530,11 +583,17 @@ class PiezoelectricTensor_DB(_DBDataMixin):
     """The full 3D piezoelectric tensor for the total response in Voigt notation in order (xx, yy, zz, xy, yz, zx) along y direction, in C/m^2."""
     total_3d_tensor_z: Optional[List[List[float]]] = field(default_factory=lambda: None)
     """The full 3D piezoelectric tensor for the total response in Voigt notation in order (xx, yy, zz, xy, yz, zx) along z direction."""
-    total_3d_piezoelectric_stress_coefficient_x: Optional[float] = field(default_factory=lambda: None)
+    total_3d_piezoelectric_stress_coefficient_x: Optional[float] = field(
+        default_factory=lambda: None
+    )
     """The piezoelectric stress coefficient for the total response along x direction, in C/m^2."""
-    total_3d_piezoelectric_stress_coefficient_y: Optional[float] = field(default_factory=lambda: None)
+    total_3d_piezoelectric_stress_coefficient_y: Optional[float] = field(
+        default_factory=lambda: None
+    )
     """The piezoelectric stress coefficient for the total response along y direction, in C/m^2."""
-    total_3d_piezoelectric_stress_coefficient_z: Optional[float] = field(default_factory=lambda: None)
+    total_3d_piezoelectric_stress_coefficient_z: Optional[float] = field(
+        default_factory=lambda: None
+    )
     """The piezoelectric stress coefficient for the total response along z direction, in C/m^2."""
     total_3d_mean_absolute: Optional[float] = None
     """The mean absolute value of the elements of the total 3D piezoelectric tensor, in C/m^2."""
@@ -555,11 +614,17 @@ class PiezoelectricTensor_DB(_DBDataMixin):
     """The full 3D piezoelectric tensor for the ionic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along y direction, in C/m^2."""
     ionic_3d_tensor_z: Optional[List[List[float]]] = field(default_factory=lambda: None)
     """The full 3D piezoelectric tensor for the ionic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along z direction, in C/m^2."""
-    ionic_3d_piezoelectric_stress_coefficient_x: Optional[float] = field(default_factory=lambda: None)
+    ionic_3d_piezoelectric_stress_coefficient_x: Optional[float] = field(
+        default_factory=lambda: None
+    )
     """The piezoelectric stress coefficient for the ionic contribution along x direction, in C/m^2."""
-    ionic_3d_piezoelectric_stress_coefficient_y: Optional[float] = field(default_factory=lambda: None)
+    ionic_3d_piezoelectric_stress_coefficient_y: Optional[float] = field(
+        default_factory=lambda: None
+    )
     """The piezoelectric stress coefficient for the ionic contribution along y direction, in C/m^2."""
-    ionic_3d_piezoelectric_stress_coefficient_z: Optional[float] = field(default_factory=lambda: None)
+    ionic_3d_piezoelectric_stress_coefficient_z: Optional[float] = field(
+        default_factory=lambda: None
+    )
     """The piezoelectric stress coefficient for the ionic contribution along z direction, in C/m^2."""
     ionic_3d_mean_absolute: Optional[float] = None
     """The mean absolute value of the elements of the ionic contribution to the 3D piezoelectric tensor, in C/m^2."""
@@ -572,19 +637,31 @@ class PiezoelectricTensor_DB(_DBDataMixin):
     ionic_2d_tensor_y: Optional[List[List[float]]] = field(default_factory=lambda: None)
     """The full 2D piezoelectric tensor for the ionic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along y direction, in C/m."""
     ionic_2d_tensor_z: Optional[List[List[float]]] = field(default_factory=lambda: None)
-    """The full 2D piezoelectric tensor for the ionic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along z direction, in C/m."""    
+    """The full 2D piezoelectric tensor for the ionic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along z direction, in C/m."""
 
-    electronic_3d_tensor_x: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    electronic_3d_tensor_x: Optional[List[List[float]]] = field(
+        default_factory=lambda: None
+    )
     """The full 3D piezoelectric tensor for the electronic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along x direction, in C/m^2."""
-    electronic_3d_tensor_y: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    electronic_3d_tensor_y: Optional[List[List[float]]] = field(
+        default_factory=lambda: None
+    )
     """The full 3D piezoelectric tensor for the electronic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along y direction, in C/m^2."""
-    electronic_3d_tensor_z: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    electronic_3d_tensor_z: Optional[List[List[float]]] = field(
+        default_factory=lambda: None
+    )
     """The full 3D piezoelectric tensor for the electronic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along z direction, in C/m^2."""
-    electronic_3d_piezoelectric_stress_coefficient_x: Optional[float] = field(default_factory=lambda: None)
+    electronic_3d_piezoelectric_stress_coefficient_x: Optional[float] = field(
+        default_factory=lambda: None
+    )
     """The piezoelectric stress coefficient for the electronic contribution along x direction, in C/m^2."""
-    electronic_3d_piezoelectric_stress_coefficient_y: Optional[float] = field(default_factory=lambda: None)
+    electronic_3d_piezoelectric_stress_coefficient_y: Optional[float] = field(
+        default_factory=lambda: None
+    )
     """The piezoelectric stress coefficient for the electronic contribution along y direction, in C/m^2."""
-    electronic_3d_piezoelectric_stress_coefficient_z: Optional[float] = field(default_factory=lambda: None)
+    electronic_3d_piezoelectric_stress_coefficient_z: Optional[float] = field(
+        default_factory=lambda: None
+    )
     """The piezoelectric stress coefficient for the electronic contribution along z direction, in C/m^2."""
     electronic_3d_mean_absolute: Optional[float] = None
     """The mean absolute value of the elements of the electronic contribution to the 3D piezoelectric tensor, in C/m^2."""
@@ -592,12 +669,19 @@ class PiezoelectricTensor_DB(_DBDataMixin):
     """The root mean square value of the elements of the electronic contribution to the 3D piezoelectric tensor, in C/m^2."""
     electronic_3d_frobenius_norm: Optional[float] = None
     """The Frobenius norm of the electronic contribution to the 3D piezoelectric tensor, in C/m^2."""
-    electronic_2d_tensor_x: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    electronic_2d_tensor_x: Optional[List[List[float]]] = field(
+        default_factory=lambda: None
+    )
     """The full 2D piezoelectric tensor for the electronic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along x direction, in C/m."""
-    electronic_2d_tensor_y: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    electronic_2d_tensor_y: Optional[List[List[float]]] = field(
+        default_factory=lambda: None
+    )
     """The full 2D piezoelectric tensor for the electronic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along y direction, in C/m."""
-    electronic_2d_tensor_z: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    electronic_2d_tensor_z: Optional[List[List[float]]] = field(
+        default_factory=lambda: None
+    )
     """The full 2D piezoelectric tensor for the electronic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along z direction, in C/m."""
+
 
 @dataclass
 class Polarization_DB(_DBDataMixin):
@@ -605,16 +689,17 @@ class Polarization_DB(_DBDataMixin):
 
     total_dipole_norm: Optional[float] = None
     """The norm of the total dipole moment vector, including both ionic and electronic contributions."""
-    total_dipole_moment: Optional[List[float, float, float]] = None
+    total_dipole_moment: Optional[List[float]] = None
     """The total dipole moment vector, including both ionic and electronic contributions."""
     ionic_dipole_norm: Optional[float] = None
     """The norm of the ionic dipole moment vector."""
-    ionic_dipole_moment: Optional[List[float, float, float]] = None
+    ionic_dipole_moment: Optional[List[float]] = None
     """The ionic dipole moment vector."""
     electronic_dipole_norm: Optional[float] = None
     """The norm of the electronic dipole moment vector."""
-    electronic_dipole_moment: Optional[List[float, float, float]] = None
+    electronic_dipole_moment: Optional[List[float]] = None
     """The electronic dipole moment vector."""
+
 
 @dataclass
 class Potential_DB(_DBDataMixin):
@@ -638,6 +723,7 @@ class Potential_DB(_DBDataMixin):
     total_potential_mean_magnetization: Optional[float] = None
     """The mean value of the total local potential magnetization, calculated as the mean of the norm of the magnetization potential vector, in eV."""
 
+
 @dataclass
 class Projector_DB(_DBDataMixin):
     """Data class for storing projector data in the database."""
@@ -645,13 +731,14 @@ class Projector_DB(_DBDataMixin):
     orbital_types: Optional[List[str]] = field(default_factory=lambda: None)
     """The types of orbitals used for the projectors, e.g. s, p, d, f."""
 
+
 @dataclass
 class RunInfo_DB(_DBDataMixin):
     """Data class for storing general run information in the database."""
 
     vasp_version: Optional[str] = None
     """The version of VASP used for the calculation."""
-    
+
     grid_coarse_shape: Optional[List[int]] = field(default_factory=lambda: None)
     """The shape of the coarse grid used for the calculation, in the order (nx, ny, nz)."""
     grid_fine_shape: Optional[List[int]] = field(default_factory=lambda: None)
@@ -689,6 +776,7 @@ class RunInfo_DB(_DBDataMixin):
     phonon_num_modes: Optional[int] = None
     """The number of phonon modes calculated."""
 
+
 @dataclass
 class Stress_DB(_DBDataMixin):
     """Data class for storing stress data in the database."""
@@ -697,8 +785,11 @@ class Stress_DB(_DBDataMixin):
     """The mean trace of the stress tensor across all atoms on the initial step, in GPa."""
     final_stress_mean: Optional[float] = None
     """The mean trace of the stress tensor across all atoms on the final step, in GPa."""
-    final_stress_tensor: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    final_stress_tensor: Optional[List[List[float]]] = field(
+        default_factory=lambda: None
+    )
     """The full 3D stress tensor on the final step, in GPa, in the order (xx, yy, zz, xy, yz, zx)."""
+
 
 @dataclass
 class Structure_DB(_DBDataMixin):
@@ -713,7 +804,7 @@ class Structure_DB(_DBDataMixin):
     - 2 = slab structure with vacuum along one lattice vector
     - 1 = multi-atom molecule or wire structure with vacuum along two lattice vectors
     - 0 = single-atom structure with vacuum along all three lattice vectors"""
-    
+
     final_cell_volume: Optional[float] = None
     """The volume of the unit cell on the final step, in Å^3."""
     final_cell_area_2d: Optional[float] = None
@@ -738,18 +829,24 @@ class Structure_DB(_DBDataMixin):
     """The angle between the first and third lattice vectors on the final step, in degrees."""
     final_angle_gamma: Optional[float] = None
     """The angle between the first and second lattice vectors on the final step, in degrees."""
-    
+
     initial_cell_volume: Optional[float] = None
     """The volume of the unit cell on the initial step, in Å^3."""
     initial_cell_area_2d: Optional[float] = None
     """The area of the unit cell in 2D materials on the initial step, calculated as the product of the two lattice vectors that are not along the vacuum direction, in Å^2."""
     initial_cell_area_2d_span: Optional[str] = None
     """The two lattice vectors that are used to calculate the area of the unit cell in 2D materials on the initial step, in the format '12', '13', or '23'."""
-    initial_lattice_vector_1: Optional[List[float]] = field(default_factory=lambda: None)
+    initial_lattice_vector_1: Optional[List[float]] = field(
+        default_factory=lambda: None
+    )
     """The first lattice vector on the initial step, in Å."""
-    initial_lattice_vector_2: Optional[List[float]] = field(default_factory=lambda: None)
+    initial_lattice_vector_2: Optional[List[float]] = field(
+        default_factory=lambda: None
+    )
     """The second lattice vector on the initial step, in Å."""
-    initial_lattice_vector_3: Optional[List[float]] = field(default_factory=lambda: None)
+    initial_lattice_vector_3: Optional[List[float]] = field(
+        default_factory=lambda: None
+    )
     """The third lattice vector on the initial step, in Å."""
     initial_lattice_vector_1_length: Optional[float] = None
     """The length of the first lattice vector on the initial step, in Å."""
@@ -763,6 +860,7 @@ class Structure_DB(_DBDataMixin):
     """The angle between the first and third lattice vectors on the initial step, in degrees."""
     initial_angle_gamma: Optional[float] = None
     """The angle between the first and second lattice vectors on the initial step, in degrees."""
+
 
 @dataclass
 class Velocity_DB(_DBDataMixin):
@@ -787,6 +885,7 @@ class Velocity_DB(_DBDataMixin):
     """The maximum velocity across all atoms on the initial step, in Å/fs."""
     initial_index_velocity_max: Optional[int] = None
     """The index of the atom with the maximum velocity on the initial step."""
+
 
 @dataclass
 class Workfunction_DB(_DBDataMixin):
