@@ -304,6 +304,7 @@ def get_formula_and_compound(
         primitive_numbers,
     )
 
+
 def get_dataclass_fields(dataclass: Any) -> List[dict]:
     """Get the fields of a dataclass as a list of dictionaries.
 
@@ -320,6 +321,7 @@ def get_dataclass_fields(dataclass: Any) -> List[dict]:
     from dataclasses import fields
 
     return [{"name": field.name, "type": field.type} for field in fields(dataclass)]
+
 
 def get_all_possible_keys(
     to_print: bool = False, debug: bool = False
