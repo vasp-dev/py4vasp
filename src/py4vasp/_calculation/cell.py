@@ -179,7 +179,7 @@ def _get_area_2d(
     idx1 = (max_length_idx + 1) % 3
     idx2 = (max_length_idx + 2) % 3
     area = np.linalg.norm(np.cross(lattice[idx1], lattice[idx2]))
-    return area, f"{idx1+1}{idx2+1}"
+    return area, f"{min(idx1, idx2)+1}{max(idx1, idx2)+1}"
 
 
 def _idipol_to_direction(

@@ -4,6 +4,7 @@ import numpy as np
 
 from py4vasp._calculation import _dispersion, base
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import ExcitonEigenvector_DB
 from py4vasp._util import check, convert
 
 
@@ -62,17 +63,20 @@ class ExcitonEigenvector(base.Refinery):
     def _to_database(self, *args, **kwargs):
         num_bands_valence = None
         num_bands_conduction = None
+        num_kpoints = None
 
         if not check.is_none(self._raw_data.bse_index):
             bse_index = self._raw_data.bse_index[:]
             num_bands_conduction = np.shape(bse_index)[2]
             num_bands_valence = np.shape(bse_index)[3]
+            num_kpoints = np.shape(bse_index)[1]
 
         return {
-            "exciton_eigenvector": {
-                "num_valence_bands": num_bands_valence,
-                "num_conduction_bands": num_bands_conduction,
-            }
+            "exciton_eigenvector": ExcitonEigenvector_DB(
+                num_kpoints=num_kpoints,
+                num_valence_bands=num_bands_valence,
+                num_conduction_bands=num_bands_conduction,
+            )
         }
 
     @property

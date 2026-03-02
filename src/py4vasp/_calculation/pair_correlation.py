@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._calculation import base, slice_
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import PairCorrelation_DB
 from py4vasp._third_party import graph
 from py4vasp._util import check, convert, documentation, index, select
 
@@ -79,10 +80,7 @@ class PairCorrelation(slice_.Mixin, base.Refinery, graph.Mixin):
             distance_max = float(self._raw_data.distances[-1])
 
         return {
-            "pair_correlation": {
-                "distance_min": distance_min,
-                "distance_max": distance_max,
-            }
+            "pair_correlation": PairCorrelation_DB(distance_min=distance_min, distance_max=distance_max),
         }
 
     @base.data_access

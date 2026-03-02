@@ -5,6 +5,7 @@ import numpy as np
 from py4vasp import _config, exception
 from py4vasp._calculation import base, slice_, structure
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import Force_DB
 from py4vasp._third_party import view
 from py4vasp._util import check, database, reader
 
@@ -130,16 +131,16 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
             final_force_norms = np.linalg.norm(self._raw_data.forces[-1], axis=-1)
             initial_force_norms = np.linalg.norm(self._raw_data.forces[0], axis=-1)
         return {
-            "force": {
-                "final_force_min": float(np.min(final_force_norms)),
-                "final_force_median": float(np.median(final_force_norms)),
-                "final_force_mean": float(np.mean(final_force_norms)),
-                "final_force_max": float(np.max(final_force_norms)),
-                "final_index_force_max": int(np.argmax(final_force_norms)),
-                "initial_force_min": float(np.min(initial_force_norms)),
-                "initial_force_max": float(np.max(initial_force_norms)),
-                "initial_index_force_max": int(np.argmax(initial_force_norms)),
-            },
+            "force": Force_DB(
+                final_force_min=float(np.min(final_force_norms)),
+                final_force_median=float(np.median(final_force_norms)),
+                final_force_mean=float(np.mean(final_force_norms)),
+                final_force_max=float(np.max(final_force_norms)),
+                final_index_force_max=int(np.argmax(final_force_norms)),
+                initial_force_min=float(np.min(initial_force_norms)),
+                initial_force_max=float(np.max(initial_force_norms)),
+                initial_index_force_max=int(np.argmax(initial_force_norms)),
+            ),
         }
 
     @base.data_access

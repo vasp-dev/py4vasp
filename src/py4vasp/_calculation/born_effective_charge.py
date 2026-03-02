@@ -83,12 +83,12 @@ ion {ion + 1:4d}   {element}
 
         return database.combine_db_dicts(
             {
-                "born_effective_charge": BornEffectiveCharge_DB(**{
-                    "eigenvalue_min": eigenvalue_min,
-                    "eigenvalue_min_index": eigenvalue_min_index,
-                    "eigenvalue_max": eigenvalue_max,
-                    "eigenvalue_max_index": eigenvalue_max_index,
-                }),
+                "born_effective_charge": BornEffectiveCharge_DB(
+                    eigenvalue_min=eigenvalue_min,
+                    eigenvalue_min_index=eigenvalue_min_index,
+                    eigenvalue_max=eigenvalue_max,
+                    eigenvalue_max_index=eigenvalue_max_index,
+                ),
             },
             structure,
         )

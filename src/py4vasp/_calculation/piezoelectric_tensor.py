@@ -4,6 +4,7 @@ import numpy as np
 
 from py4vasp._calculation import base, cell
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import PiezoelectricTensor_DB
 from py4vasp._util import check
 from py4vasp._util.tensor import symmetry_reduce, tensor_constants
 
@@ -110,116 +111,107 @@ class PiezoelectricTensor(base.Refinery):
             except:
                 pass
         return {
-            "piezoelectric_tensor": {
-                "total_3d_tensor_x": reduced_tensor_x[0],
-                "total_3d_tensor_y": reduced_tensor_y[0],
-                "total_3d_tensor_z": reduced_tensor_z[0],
-                "total_3d_piezoelectric_stress_coefficient_x": e11[0],
-                "total_3d_piezoelectric_stress_coefficient_y": e22[0],
-                "total_3d_piezoelectric_stress_coefficient_z": e33[0],
-                "total_3d_mean_absolute": e_avg_abs[0],
-                "total_3d_rms": e_rms[0],
-                "total_3d_frobenius_norm": e_frobenius[0],
-                "total_2d_tensor_x": (
+            "piezoelectric_tensor": PiezoelectricTensor_DB(
+                total_3d_tensor_x=reduced_tensor_x[0],
+                total_3d_tensor_y=reduced_tensor_y[0],
+                total_3d_tensor_z=reduced_tensor_z[0],
+                total_3d_piezoelectric_stress_coefficient_x=e11[0],
+                total_3d_piezoelectric_stress_coefficient_y=e22[0],
+                total_3d_piezoelectric_stress_coefficient_z=e33[0],
+                total_3d_mean_absolute=e_avg_abs[0],
+                total_3d_rms=e_rms[0],
+                total_3d_frobenius_norm=e_frobenius[0],
+                total_2d_tensor_x=(
                     (
                         tensor_2d[0][0]
                         if (in_plane[0] is not None and in_plane[0][0])
                         else None
-                    )
-                    if tensor_2d[0] is not None
+                    )                        if tensor_2d[0] is not None
                     else None
                 ),
-                "total_2d_tensor_y": (
+                total_2d_tensor_y=(
                     (
                         tensor_2d[0][1]
                         if (in_plane[0] is not None and in_plane[0][1])
                         else None
-                    )
-                    if tensor_2d[0] is not None
+                    )                        if tensor_2d[0] is not None
                     else None
                 ),
-                "total_2d_tensor_z": (
+                total_2d_tensor_z=(
                     (
                         tensor_2d[0][2]
                         if (in_plane[0] is not None and in_plane[0][2])
                         else None
-                    )
-                    if tensor_2d[0] is not None
+                    )                        if tensor_2d[0] is not None
                     else None
                 ),
-                "ionic_3d_tensor_x": reduced_tensor_x[1],
-                "ionic_3d_tensor_y": reduced_tensor_y[1],
-                "ionic_3d_tensor_z": reduced_tensor_z[1],
-                "ionic_3d_piezoelectric_stress_coefficient_x": e11[1],
-                "ionic_3d_piezoelectric_stress_coefficient_y": e22[1],
-                "ionic_3d_piezoelectric_stress_coefficient_z": e33[1],
-                "ionic_3d_mean_absolute": e_avg_abs[1],
-                "ionic_3d_rms": e_rms[1],
-                "ionic_3d_frobenius_norm": e_frobenius[1],
-                "ionic_2d_tensor_x": (
+                ionic_3d_tensor_x=reduced_tensor_x[1],
+                ionic_3d_tensor_y=reduced_tensor_y[1],
+                ionic_3d_tensor_z=reduced_tensor_z[1],
+                ionic_3d_piezoelectric_stress_coefficient_x=e11[1],
+                ionic_3d_piezoelectric_stress_coefficient_y=e22[1],
+                ionic_3d_piezoelectric_stress_coefficient_z=e33[1],
+                ionic_3d_mean_absolute=e_avg_abs[1],
+                ionic_3d_rms=e_rms[1],
+                ionic_3d_frobenius_norm=e_frobenius[1],
+                ionic_2d_tensor_x=(
                     (
                         tensor_2d[1][0]
                         if (in_plane[1] is not None and in_plane[1][0])
                         else None
-                    )
-                    if tensor_2d[1] is not None
+                    )                        if tensor_2d[1] is not None
                     else None
                 ),
-                "ionic_2d_tensor_y": (
+                ionic_2d_tensor_y=(
                     (
                         tensor_2d[1][1]
                         if (in_plane[1] is not None and in_plane[1][1])
                         else None
-                    )
-                    if tensor_2d[1] is not None
+                    )                        if tensor_2d[1] is not None
                     else None
                 ),
-                "ionic_2d_tensor_z": (
+                ionic_2d_tensor_z=(
                     (
                         tensor_2d[1][2]
                         if (in_plane[1] is not None and in_plane[1][2])
                         else None
-                    )
-                    if tensor_2d[1] is not None
+                    )                        if tensor_2d[1] is not None
                     else None
                 ),
-                "electronic_3d_tensor_x": reduced_tensor_x[2],
-                "electronic_3d_tensor_y": reduced_tensor_y[2],
-                "electronic_3d_tensor_z": reduced_tensor_z[2],
-                "electronic_3d_piezoelectric_stress_coefficient_x": e11[2],
-                "electronic_3d_piezoelectric_stress_coefficient_y": e22[2],
-                "electronic_3d_piezoelectric_stress_coefficient_z": e33[2],
-                "electronic_3d_mean_absolute": e_avg_abs[2],
-                "electronic_3d_rms": e_rms[2],
-                "electronic_3d_frobenius_norm": e_frobenius[2],
-                "electronic_2d_tensor_x": (
+                electronic_3d_tensor_x=reduced_tensor_x[2],
+                electronic_3d_tensor_y=reduced_tensor_y[2],
+                electronic_3d_tensor_z=reduced_tensor_z[2],
+                electronic_3d_piezoelectric_stress_coefficient_x=e11[2],
+                electronic_3d_piezoelectric_stress_coefficient_y=e22[2],
+                electronic_3d_piezoelectric_stress_coefficient_z=e33[2],
+                electronic_3d_mean_absolute=e_avg_abs[2],
+                electronic_3d_rms=e_rms[2],
+                electronic_3d_frobenius_norm=e_frobenius[2],
+                electronic_2d_tensor_x=(
                     (
                         tensor_2d[2][0]
                         if (in_plane[2] is not None and in_plane[2][0])
                         else None
-                    )
-                    if tensor_2d[2] is not None
+                    )                        if tensor_2d[2] is not None
                     else None
                 ),
-                "electronic_2d_tensor_y": (
+                electronic_2d_tensor_y=(
                     (
                         tensor_2d[2][1]
                         if (in_plane[2] is not None and in_plane[2][1])
                         else None
-                    )
-                    if tensor_2d[2] is not None
+                    )                        if tensor_2d[2] is not None
                     else None
                 ),
-                "electronic_2d_tensor_z": (
+                electronic_2d_tensor_z=(
                     (
                         tensor_2d[2][2]
                         if (in_plane[2] is not None and in_plane[2][2])
                         else None
-                    )
-                    if tensor_2d[2] is not None
+                    )                        if tensor_2d[2] is not None
                     else None
                 ),
-            }
+            )
         }
 
 

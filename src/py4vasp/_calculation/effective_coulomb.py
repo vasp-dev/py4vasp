@@ -95,15 +95,14 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
         V = convert.to_complex(self._raw_data.bare_potential_high_cutoff[access_V])
         v = convert.to_complex(self._raw_data.bare_potential_high_cutoff[access_v])
         Vj = convert.to_complex(self._raw_data.bare_potential_high_cutoff[access_Vj])
-        overview = {
-            "screened_U_uppercase": complex(np.average(U)),
-            "screened_u_lowercase": complex(np.average(u)),
-            "screened_J_uppercase": complex(np.average(J)),
-            "bare_V_uppercase": complex(np.average(V)),
-            "bare_v_lowercase": complex(np.average(v)),
-            "bare_J_uppercase": complex(np.average(Vj)),
-        }
-        return {"effective_coulomb": EffectiveCoulomb_DB(**overview)}
+        return {"effective_coulomb": EffectiveCoulomb_DB(
+            screened_U_uppercase=complex(np.average(U)),
+            screened_u_lowercase=complex(np.average(u)),
+            screened_J_uppercase=complex(np.average(J)),
+            bare_V_uppercase=complex(np.average(V)),
+            bare_v_lowercase=complex(np.average(v)),
+            bare_J_uppercase=complex(np.average(Vj)),
+        )}
 
     def _wannier_indices_iiii(self):
         """Return the indices that trace over diagonal of the 4 Wannier states. This

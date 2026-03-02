@@ -254,14 +254,14 @@ class Band(base.Refinery, graph.Mixin):
 
         return database.combine_db_dicts(
             {
-                "band": Band_DB(**{
-                    "num_considered_bands": num_checked_bands,
-                    "num_occupied_bands": num_total_occupied,
-                    "num_occupied_bands_up": num_occupied_up,
-                    "num_occupied_bands_down": num_occupied_down,
-                    "fermi_energy_raw": raw_fermi_energy,
-                    "fermi_energy": fermi_energy or raw_fermi_energy,
-                }),
+                "band": Band_DB(
+                    num_considered_bands=num_checked_bands,
+                    num_occupied_bands=num_total_occupied,
+                    num_occupied_bands_up=num_occupied_up,
+                    num_occupied_bands_down=num_occupied_down,
+                    fermi_energy_raw=raw_fermi_energy,
+                    fermi_energy=fermi_energy or raw_fermi_energy,
+                ),
             },
             dispersion,
         )

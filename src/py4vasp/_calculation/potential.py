@@ -7,6 +7,7 @@ import numpy as np
 from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import Potential_DB
 from py4vasp._third_party import view
 from py4vasp._util import (
     check,
@@ -138,13 +139,13 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         }
 
         potential_dict = {
-            "potential": {
+            "potential": Potential_DB(
                 **has_potential_dict,
-                "total_potential_mean": total_potential_mean,
-                "total_potential_mean_up": total_potential_mean_up,
-                "total_potential_mean_down": total_potential_mean_down,
-                "total_potential_mean_magnetization": total_potential_mean_magnetization,
-            }
+                total_potential_mean=total_potential_mean,
+                total_potential_mean_up=total_potential_mean_up,
+                total_potential_mean_down=total_potential_mean_down,
+                total_potential_mean_magnetization=total_potential_mean_magnetization,
+            )
         }
 
         return database.combine_db_dicts(potential_dict, structure)

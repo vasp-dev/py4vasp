@@ -6,6 +6,7 @@ import numpy as np
 from py4vasp import exception, raw
 from py4vasp._calculation import base, slice_
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import ElectronicMinimization_DB
 from py4vasp._third_party import graph
 from py4vasp._util import check
 
@@ -109,13 +110,13 @@ N, E, dE, deps, ncg, rms, rms(c)"""
             pass
 
         return {
-            "electronic_minimization": {
-                "num_electronic_steps": num_electronic_steps,
-                "elmin_is_converged_all": elmin_is_converged_all,
-                "elmin_is_converged_final": elmin_is_converged_final,
-                "num_max_electronic_steps_per_ionic": num_max_electronic_steps_per_ionic,
-                "num_min_electronic_steps_per_ionic": num_min_electronic_steps_per_ionic,
-            }
+            "electronic_minimization": ElectronicMinimization_DB(
+                num_electronic_steps=num_electronic_steps,
+                elmin_is_converged_all=elmin_is_converged_all,
+                elmin_is_converged_final=elmin_is_converged_final,
+                num_max_electronic_steps_per_ionic=num_max_electronic_steps_per_ionic,
+                num_min_electronic_steps_per_ionic=num_min_electronic_steps_per_ionic,
+            )
         }
 
     def _get_electronic_steps_info(self) -> tuple[int, int, int]:

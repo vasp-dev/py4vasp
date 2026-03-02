@@ -4,6 +4,7 @@ import numpy as np
 
 from py4vasp._calculation import base, slice_
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import Energy_DB
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
 
@@ -152,23 +153,25 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
                 v = np.array(v)
 
             energy_dict[f"{db_key}_initial"] = None if v is None else float(v[0])
-            energy_dict[f"{db_key}_min"] = None if v is None else float(np.min(v))
-            energy_dict[f"{db_key}_step_min"] = None if v is None else int(np.argmin(v))
+            if (db_key != "step") and (v is not None):
+                energy_dict[f"{db_key}_min"] = None if v is None else float(np.min(v))
+                energy_dict[f"{db_key}_step_min"] = None if v is None else int(np.argmin(v))
             energy_dict[f"{db_key}_final"] = None if v is None else float(v[-1])
 
         # Handle any additional keys not in _DB_KEYS
+        extra_dict = {}
         for k, v in default_dict.items():
             if k not in _DB_KEYS:
                 vs = np.array(v) if v is not None else None
                 key = convert.text_to_string(k).strip().lower().replace(" ", "_")
-                energy_dict[f"{key}_initial"] = None if v is None else float(vs[0])
-                energy_dict[f"{key}_min"] = None if v is None else float(np.min(vs))
-                energy_dict[f"{key}_step_min"] = (
+                extra_dict[f"{key}_initial"] = None if v is None else float(vs[0])
+                extra_dict[f"{key}_min"] = None if v is None else float(np.min(vs))
+                extra_dict[f"{key}_step_min"] = (
                     None if v is None else int(np.argmin(vs))
                 )
-                energy_dict[f"{key}_final"] = None if v is None else float(vs[-1])
+                extra_dict[f"{key}_final"] = None if v is None else float(vs[-1])
 
-        return {"energy": energy_dict}
+        return {"energy": Energy_DB(**energy_dict, other_energy_data=extra_dict)}
 
     @base.data_access
     @documentation.format(

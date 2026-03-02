@@ -63,14 +63,14 @@ class Dispersion(base.Refinery):
 
         return database.combine_db_dicts(
             {
-                "dispersion": Dispersion_DB(**{
-                    "eigenvalue_min": min_eigenvalue,
-                    "eigenvalue_max": max_eigenvalue,
-                    "eigenvalue_min_up": min_eigenvalue_up,
-                    "eigenvalue_max_up": max_eigenvalue_up,
-                    "eigenvalue_min_down": min_eigenvalue_down,
-                    "eigenvalue_max_down": max_eigenvalue_down,
-                }),
+                "dispersion": Dispersion_DB(
+                    eigenvalue_min=min_eigenvalue,
+                    eigenvalue_max=max_eigenvalue,
+                    eigenvalue_min_up=min_eigenvalue_up,
+                    eigenvalue_max_up=max_eigenvalue_up,
+                    eigenvalue_min_down=min_eigenvalue_down,
+                    eigenvalue_max_down=max_eigenvalue_down,
+                ),
             },
             self._kpoints._read_to_database(*args, **kwargs),
         )

@@ -4,6 +4,7 @@ import numpy as np
 
 from py4vasp._calculation import base, slice_, structure
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import Stress_DB
 from py4vasp._util import reader, tensor
 
 
@@ -121,11 +122,11 @@ in kB   {stress_to_string(stress)}
             final_stress_tensor = self._raw_data.stress[:]
 
         return {
-            "stress": {
-                "initial_stress_mean": np.trace(initial_stress_tensor) / 3.0,
-                "final_stress_mean": np.trace(final_stress_tensor) / 3.0,
-                "final_stress_tensor": tensor.symmetry_reduce(final_stress_tensor),
-            }
+            "stress": Stress_DB(
+                initial_stress_mean=np.trace(initial_stress_tensor) / 3.0,
+                final_stress_mean=np.trace(final_stress_tensor) / 3.0,
+                final_stress_tensor=tensor.symmetry_reduce(final_stress_tensor),
+            )
         }
 
     @base.data_access

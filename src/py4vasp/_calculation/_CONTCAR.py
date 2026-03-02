@@ -40,13 +40,13 @@ class CONTCAR(base.Refinery, view.Mixin, structure.Mixin):
         structure = self._structure._read_to_database(*args, **kwargs)
         return database.combine_db_dicts(
             {
-                "CONTCAR": CONTCAR_DB(**{
-                    "system": (
+                "CONTCAR": CONTCAR_DB(
+                    system=(
                         convert.text_to_string(self._raw_data.system)
                         if not check.is_none(self._raw_data.system)
                         else None
                     ),
-                })
+                )
             },
             structure,
         )

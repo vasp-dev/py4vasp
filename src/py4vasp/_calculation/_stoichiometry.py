@@ -100,13 +100,13 @@ class Stoichiometry(base.Refinery):
             database.get_formula_and_compound(ion_types, num_ion_types)
         )
         return {
-            "stoichiometry": Stoichiometry_DB(**{
-                "ion_types": simple_types,
-                "num_ion_types": simple_numbers,
-                "num_ion_types_primitive": primitive_numbers,
-                "formula": formula,
-                "compound": compound,
-            }),
+            "stoichiometry": Stoichiometry_DB(
+                ion_types=simple_types,
+                num_ion_types=simple_numbers,
+                num_ion_types_primitive=primitive_numbers,
+                formula=formula,
+                compound=compound,
+            ),
         }
 
     @base.data_access

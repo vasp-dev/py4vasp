@@ -8,6 +8,7 @@ import numpy as np
 from py4vasp import exception
 from py4vasp._calculation import base
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import Kpoint_DB
 from py4vasp._util import check, convert, documentation
 
 _kpoints_selection = """\
@@ -105,15 +106,15 @@ reciprocal"""
         sampled_points = sorted(set(user_labels)) if user_labels is not None else None
 
         return {
-            "kpoint": {
-                "mode": self.mode(),
-                "line_length": self.line_length(),
-                "num_kpoints_total": self.number_kpoints(),
-                "num_lines": self.number_lines(),
-                "num_kpoints_grid": grid_kpoints,
-                "labels": user_labels,
-                "labels_unique": sampled_points,
-            }
+            "kpoint": Kpoint_DB(
+                mode=self.mode(),
+                line_length=self.line_length(),
+                num_kpoints_total=self.number_kpoints(),
+                num_lines=self.number_lines(),
+                num_kpoints_grid=grid_kpoints,
+                labels=user_labels,
+                labels_unique=sampled_points,
+            )
         }
 
     @base.data_access
