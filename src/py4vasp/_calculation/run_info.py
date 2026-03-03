@@ -3,6 +3,7 @@
 from py4vasp._calculation import bandgap, base, exception
 from py4vasp._calculation._dispersion import Dispersion
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import RunInfo_DB
 from py4vasp._util import check
 
 
@@ -66,7 +67,7 @@ class RunInfo(base.Refinery):
             "is_collinear": is_collinear,
             "is_noncollinear": is_noncollinear,
             "is_metallic": is_metallic,
-            "magnetization_total": is_magnetic,
+            "is_magnetic": is_magnetic,
             "magnetization_order": magnetic_order,
         }
 
@@ -137,7 +138,7 @@ class RunInfo(base.Refinery):
             pass
 
         return {
-            "num_ion_steps": num_ion_steps,
+            "num_ionic_steps": num_ion_steps,
         }
 
     def _dict_from_contcar(self) -> dict:
@@ -183,5 +184,5 @@ class RunInfo(base.Refinery):
     @base.data_access
     def _to_database(self, *args, **kwargs):
         return {
-            "run_info": self.to_dict(),
+            "run_info": RunInfo_DB(**self.to_dict()),
         }

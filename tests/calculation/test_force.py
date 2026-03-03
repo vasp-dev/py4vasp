@@ -8,6 +8,7 @@ import pytest
 from py4vasp import _config, exception
 from py4vasp._calculation.force import Force
 from py4vasp._calculation.structure import Structure
+from py4vasp._raw.data_db import Force_DB
 
 
 @pytest.fixture
@@ -113,16 +114,18 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
 
 
 def test_to_database(forces):
-    db_dict = forces._read_to_database()["force:default"]
+    db_data: Force_DB = forces._read_to_database()["force:default"]
+    assert isinstance(db_data, Force_DB)
     for prefix, suffix_ in [
         ("final", ["min", "median", "mean", "max"]),
         ("initial", ["min", "max"]),
     ]:
         for suffix in suffix_:
-            assert f"{prefix}_force_{suffix}" in db_dict
-            assert isinstance(db_dict[f"{prefix}_force_{suffix}"], (float, type(None)))
-        assert f"{prefix}_index_force_max" in db_dict
-        index = db_dict[f"{prefix}_index_force_max"]
+            assert isinstance(
+                getattr(db_data, f"{prefix}_force_{suffix}"), (float, type(None))
+            )
+        assert hasattr(db_data, f"{prefix}_index_force_max")
+        index = getattr(db_data, f"{prefix}_index_force_max")
         assert isinstance(index, (int, type(None)))
         assert 0 <= index < forces.ref.forces.shape[1]
         assert index == np.argmax(

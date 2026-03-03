@@ -7,6 +7,7 @@ import numpy as np
 
 from py4vasp._calculation import base, structure
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import ElasticModulus_DB
 from py4vasp._util import check
 from py4vasp._util.tensor import symmetry_reduce
 
@@ -97,32 +98,32 @@ class ElasticModulus(base.Refinery):
                 pass
 
         return {
-            "elastic_modulus": {
-                "total_3d_tensor": compact_tensor[0],  # [kbar]
-                "total_bulk_modulus": bulk_modulus[0],  # [GPa]
-                "total_shear_modulus": shear_modulus[0],  # [GPa]
-                "total_youngs_modulus": youngs_modulus[0],  # [GPa]
-                "total_poisson_ratio": poisson_ratio[0],  # []
-                "total_pugh_ratio": pugh_ratio[0],  # []
-                "total_vickers_hardness": vickers_hardness[0],  # [GPa]
-                "total_fracture_toughness": fracture_toughness[0],  # [MPa·m^0.5]
-                "ionic_3d_tensor": compact_tensor[1],
-                "ionic_bulk_modulus": bulk_modulus[1],
-                "ionic_shear_modulus": shear_modulus[1],
-                "ionic_youngs_modulus": youngs_modulus[1],
-                "ionic_poisson_ratio": poisson_ratio[1],
-                "ionic_pugh_ratio": pugh_ratio[1],
-                "ionic_vickers_hardness": vickers_hardness[1],
-                "ionic_fracture_toughness": fracture_toughness[1],
-                "electronic_3d_tensor": compact_tensor[2],
-                "electronic_bulk_modulus": bulk_modulus[2],
-                "electronic_shear_modulus": shear_modulus[2],
-                "electronic_youngs_modulus": youngs_modulus[2],
-                "electronic_poisson_ratio": poisson_ratio[2],
-                "electronic_pugh_ratio": pugh_ratio[2],
-                "electronic_vickers_hardness": vickers_hardness[2],
-                "electronic_fracture_toughness": fracture_toughness[2],
-            }
+            "elastic_modulus": ElasticModulus_DB(
+                total_3d_tensor=compact_tensor[0],  # [kbar]
+                total_bulk_modulus=bulk_modulus[0],  # [GPa]
+                total_shear_modulus=shear_modulus[0],  # [GPa]
+                total_young_modulus=youngs_modulus[0],  # [GPa]
+                total_poisson_ratio=poisson_ratio[0],  # []
+                total_pugh_ratio=pugh_ratio[0],  # []
+                total_vickers_hardness=vickers_hardness[0],  # [GPa]
+                total_fracture_toughness=fracture_toughness[0],  # [MPa·m^0.5]
+                ionic_3d_tensor=compact_tensor[1],
+                ionic_bulk_modulus=bulk_modulus[1],
+                ionic_shear_modulus=shear_modulus[1],
+                ionic_young_modulus=youngs_modulus[1],
+                ionic_poisson_ratio=poisson_ratio[1],
+                ionic_pugh_ratio=pugh_ratio[1],
+                ionic_vickers_hardness=vickers_hardness[1],
+                ionic_fracture_toughness=fracture_toughness[1],
+                electronic_3d_tensor=compact_tensor[2],
+                electronic_bulk_modulus=bulk_modulus[2],
+                electronic_shear_modulus=shear_modulus[2],
+                electronic_young_modulus=youngs_modulus[2],
+                electronic_poisson_ratio=poisson_ratio[2],
+                electronic_pugh_ratio=pugh_ratio[2],
+                electronic_vickers_hardness=vickers_hardness[2],
+                electronic_fracture_toughness=fracture_toughness[2],
+            )
         }
 
     @base.data_access

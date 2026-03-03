@@ -5,6 +5,7 @@ import numpy as np
 from py4vasp import exception
 from py4vasp._calculation import base, structure
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import BornEffectiveCharge_DB
 from py4vasp._util import check, database
 
 
@@ -82,12 +83,12 @@ ion {ion + 1:4d}   {element}
 
         return database.combine_db_dicts(
             {
-                "born_effective_charge": {
-                    "eigenvalue_min": eigenvalue_min,
-                    "eigenvalue_min_index": eigenvalue_min_index,
-                    "eigenvalue_max": eigenvalue_max,
-                    "eigenvalue_max_index": eigenvalue_max_index,
-                }
+                "born_effective_charge": BornEffectiveCharge_DB(
+                    eigenvalue_min=eigenvalue_min,
+                    eigenvalue_min_index=eigenvalue_min_index,
+                    eigenvalue_max=eigenvalue_max,
+                    eigenvalue_max_index=eigenvalue_max_index,
+                ),
             },
             structure,
         )

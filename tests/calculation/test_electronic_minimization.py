@@ -2,12 +2,14 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
 import types
+from dataclasses import fields
 
 import numpy as np
 import pytest
 
 from py4vasp import exception
 from py4vasp._calculation.electronic_minimization import ElectronicMinimization
+from py4vasp._raw.data_db import ElectronicMinimization_DB
 
 
 @pytest.fixture
@@ -34,8 +36,8 @@ def electronic_minimization(raw_data):
         "num_electronic_steps": len(electronic_minimization.ref.N),
         "elmin_is_converged_all": all(is_elmin_converged),
         "elmin_is_converged_final": is_elmin_converged[-1],
-        "num_max_electronic_steps_per_ionic": len(electronic_minimization.ref.N),
-        "num_min_electronic_steps_per_ionic": len(electronic_minimization.ref.N),
+        "num_max_electronic_steps_per_ionic_step": len(electronic_minimization.ref.N),
+        "num_min_electronic_steps_per_ionic_step": len(electronic_minimization.ref.N),
     }
     return electronic_minimization
 
@@ -100,25 +102,30 @@ def test_is_converged(electronic_minimization):
 
 
 def test_to_database(electronic_minimization):
-    database_data = electronic_minimization._read_to_database()[
-        "electronic_minimization:default"
-    ]
+    database_data: ElectronicMinimization_DB = (
+        electronic_minimization._read_to_database()["electronic_minimization:default"]
+    )
     overview_data = electronic_minimization.ref.overview_data
 
-    for k in database_data:
-        assert k in overview_data, f"{k} is missing in reference data"
-    for k, v in overview_data.items():
+    assert isinstance(database_data, ElectronicMinimization_DB)
+
+    for fld in fields(database_data):
+        k = fld.name
+        v = getattr(database_data, k)
+        if k.startswith("__"):
+            continue
+
         assert (
-            v == database_data[k]
-        ), f"{k} has unexpected value {database_data[k]}, expected {v}"
+            v == overview_data[k]
+        ), f"{k} has unexpected value {v}, expected {overview_data[k]}"
         if k.startswith("num"):
             assert isinstance(
-                database_data[k], (int, type(None))
-            ), f"{k} has unexpected type {type(database_data[k])}: {database_data[k]}"
+                v, (int, type(None))
+            ), f"{k} has unexpected type {type(v)}: {v}"
         elif k.startswith("elmin_is_converged"):
             assert isinstance(
-                database_data[k], (bool, type(None))
-            ), f"{k} has unexpected type {type(database_data[k])}: {database_data[k]}"
+                v, (bool, type(None))
+            ), f"{k} has unexpected type {type(v)}: {v}"
 
 
 # def test_factory_methods(raw_data, check_factory_methods):

@@ -5,6 +5,7 @@ import numpy as np
 from py4vasp import _config
 from py4vasp._calculation import base, slice_, structure
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import Velocity_DB
 from py4vasp._third_party import view
 from py4vasp._util import reader
 
@@ -127,21 +128,21 @@ class Velocity(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
                 self._raw_data.velocities[0], axis=-1
             )
         return {
-            "velocity": {
-                "final_velocity_min": float(np.min(final_velocity_norms)),
-                "final_velocity_max": float(np.max(final_velocity_norms)),
-                "final_velocity_mean": float(np.mean(final_velocity_norms)),
-                "final_velocity_std": (
+            "velocity": Velocity_DB(
+                final_velocity_min=float(np.min(final_velocity_norms)),
+                final_velocity_max=float(np.max(final_velocity_norms)),
+                final_velocity_mean=float(np.mean(final_velocity_norms)),
+                final_velocity_std=(
                     float(np.std(final_velocity_norms))
                     if len(final_velocity_norms) > 1
                     else 0.0
                 ),
-                "final_velocity_median": float(np.median(final_velocity_norms)),
-                "final_index_velocity_max": int(np.argmax(final_velocity_norms)),
-                "initial_velocity_min": float(np.min(initial_velocity_norms)),
-                "initial_velocity_max": float(np.max(initial_velocity_norms)),
-                "initial_index_velocity_max": int(np.argmax(initial_velocity_norms)),
-            }
+                final_velocity_median=float(np.median(final_velocity_norms)),
+                final_index_velocity_max=int(np.argmax(final_velocity_norms)),
+                initial_velocity_min=float(np.min(initial_velocity_norms)),
+                initial_velocity_max=float(np.max(initial_velocity_norms)),
+                initial_index_velocity_max=int(np.argmax(initial_velocity_norms)),
+            )
         }
 
     @base.data_access

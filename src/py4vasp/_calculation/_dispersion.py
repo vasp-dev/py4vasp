@@ -5,6 +5,7 @@ import numpy as np
 import py4vasp._third_party.graph as _graph
 from py4vasp._calculation import base, kpoint, projector
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import Dispersion_DB
 from py4vasp._util import check, database
 
 
@@ -62,14 +63,14 @@ class Dispersion(base.Refinery):
 
         return database.combine_db_dicts(
             {
-                "dispersion": {
-                    "eigenvalue_min": min_eigenvalue,
-                    "eigenvalue_max": max_eigenvalue,
-                    "eigenvalue_min_up": min_eigenvalue_up,
-                    "eigenvalue_max_up": max_eigenvalue_up,
-                    "eigenvalue_min_down": min_eigenvalue_down,
-                    "eigenvalue_max_down": max_eigenvalue_down,
-                },
+                "dispersion": Dispersion_DB(
+                    eigenvalue_min=min_eigenvalue,
+                    eigenvalue_max=max_eigenvalue,
+                    eigenvalue_min_up=min_eigenvalue_up,
+                    eigenvalue_max_up=max_eigenvalue_up,
+                    eigenvalue_min_down=min_eigenvalue_down,
+                    eigenvalue_max_down=max_eigenvalue_down,
+                ),
             },
             self._kpoints._read_to_database(*args, **kwargs),
         )

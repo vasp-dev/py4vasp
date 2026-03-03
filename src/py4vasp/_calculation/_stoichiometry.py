@@ -8,6 +8,7 @@ from py4vasp import exception, raw
 from py4vasp._calculation import base
 from py4vasp._calculation.selection import Selection
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import Stoichiometry_DB
 from py4vasp._util import check, convert, database, documentation, import_, select
 
 mdtraj = import_.optional("mdtraj")
@@ -99,13 +100,13 @@ class Stoichiometry(base.Refinery):
             database.get_formula_and_compound(ion_types, num_ion_types)
         )
         return {
-            "stoichiometry": {
-                "ion_types": simple_types,
-                "num_ion_types": simple_numbers,
-                "num_ion_types_primitive": primitive_numbers,
-                "formula": formula,
-                "compound": compound,
-            }
+            "stoichiometry": Stoichiometry_DB(
+                ion_types=simple_types,
+                num_ion_types=simple_numbers,
+                num_ion_types_primitive=primitive_numbers,
+                formula=formula,
+                compound=compound,
+            ),
         }
 
     @base.data_access

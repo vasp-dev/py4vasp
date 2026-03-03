@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from py4vasp._calculation.polarization import Polarization
+from py4vasp._raw.data_db import Polarization_DB
 
 
 @pytest.fixture
@@ -36,18 +37,20 @@ electronic dipole moment:     1.00000     2.00000     3.00000
 
 
 def test_to_database(polarization):
-    db_dict = polarization._read_to_database()["polarization:default"]
-    assert db_dict["ionic_dipole_moment"] == list(polarization.ref.ion_dipole)
-    assert db_dict["electronic_dipole_moment"] == list(polarization.ref.electron_dipole)
+    db_data: Polarization_DB = polarization._read_to_database()["polarization:default"]
+    assert isinstance(db_data, Polarization_DB)
+
+    assert db_data.ionic_dipole_moment == list(polarization.ref.ion_dipole)
+    assert db_data.electronic_dipole_moment == list(polarization.ref.electron_dipole)
     total_dipole = polarization.ref.ion_dipole + polarization.ref.electron_dipole
-    assert db_dict["total_dipole_moment"] == list(total_dipole)
-    assert db_dict["ionic_dipole_norm"] == float(
+    assert db_data.total_dipole_moment == list(total_dipole)
+    assert db_data.ionic_dipole_norm == float(
         np.linalg.norm(polarization.ref.ion_dipole)
     )
-    assert db_dict["electronic_dipole_norm"] == float(
+    assert db_data.electronic_dipole_norm == float(
         np.linalg.norm(polarization.ref.electron_dipole)
     )
-    assert db_dict["total_dipole_norm"] == float(np.linalg.norm(total_dipole))
+    assert db_data.total_dipole_norm == float(np.linalg.norm(total_dipole))
 
 
 def test_factory_methods(raw_data, check_factory_methods):

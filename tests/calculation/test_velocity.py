@@ -8,6 +8,7 @@ import pytest
 from py4vasp import _config, exception
 from py4vasp._calculation.structure import Structure
 from py4vasp._calculation.velocity import Velocity
+from py4vasp._raw.data_db import Velocity_DB
 
 
 @pytest.fixture
@@ -115,7 +116,8 @@ def test_print_Sr2TiO4(Sr2TiO4, format_):
 
 
 def test_to_database(velocities):
-    db_dict = velocities._read_to_database()["velocity:default"]
+    db_data: Velocity_DB = velocities._read_to_database()["velocity:default"]
+    assert isinstance(db_data, Velocity_DB)
     has_timesteps = velocities.ref.velocities.ndim == 3
     final_velocities = (
         velocities.ref.velocities[-1] if has_timesteps else velocities.ref.velocities
@@ -127,15 +129,15 @@ def test_to_database(velocities):
     final_norms = np.linalg.norm(final_velocities, axis=1)
     initial_norms = np.linalg.norm(initial_velocities, axis=1)
 
-    assert db_dict["final_velocity_min"] == float(np.min(final_norms))
-    assert db_dict["final_velocity_max"] == float(np.max(final_norms))
-    assert db_dict["final_velocity_mean"] == float(np.mean(final_norms))
-    assert db_dict["final_velocity_std"] == float(np.std(final_norms))
-    assert db_dict["final_velocity_median"] == float(np.median(final_norms))
-    assert db_dict["final_index_velocity_max"] == int(np.argmax(final_norms))
-    assert db_dict["initial_velocity_min"] == float(np.min(initial_norms))
-    assert db_dict["initial_velocity_max"] == float(np.max(initial_norms))
-    assert db_dict["initial_index_velocity_max"] == int(np.argmax(initial_norms))
+    assert db_data.final_velocity_min == float(np.min(final_norms))
+    assert db_data.final_velocity_max == float(np.max(final_norms))
+    assert db_data.final_velocity_mean == float(np.mean(final_norms))
+    assert db_data.final_velocity_std == float(np.std(final_norms))
+    assert db_data.final_velocity_median == float(np.median(final_norms))
+    assert db_data.final_index_velocity_max == int(np.argmax(final_norms))
+    assert db_data.initial_velocity_min == float(np.min(initial_norms))
+    assert db_data.initial_velocity_max == float(np.max(initial_norms))
+    assert db_data.initial_index_velocity_max == int(np.argmax(initial_norms))
 
 
 def test_factory_methods(raw_data, check_factory_methods):

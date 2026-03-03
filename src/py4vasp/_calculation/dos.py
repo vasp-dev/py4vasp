@@ -4,6 +4,7 @@ import numpy as np
 
 from py4vasp._calculation import base, projector
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import Dos_DB
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_
 
@@ -201,24 +202,24 @@ class Dos(base.Refinery, graph.Mixin):
         dos_at_raw_fermi_down = dos_at_raw_fermi_dict.get("down", None)
 
         return {
-            "dos": {
-                "dos_at_fermi_total": dos_at_fermi_total,
-                "dos_at_fermi_up": dos_at_fermi_up,
-                "dos_at_fermi_down": dos_at_fermi_down,
-                "dos_at_raw_fermi_total": dos_at_raw_fermi_total,
-                "dos_at_raw_fermi_up": dos_at_raw_fermi_up,
-                "dos_at_raw_fermi_down": dos_at_raw_fermi_down,
-                "energy_min": (
+            "dos": Dos_DB(
+                dos_at_fermi_total=dos_at_fermi_total,
+                dos_at_fermi_up=dos_at_fermi_up,
+                dos_at_fermi_down=dos_at_fermi_down,
+                dos_at_raw_fermi_total=dos_at_raw_fermi_total,
+                dos_at_raw_fermi_up=dos_at_raw_fermi_up,
+                dos_at_raw_fermi_down=dos_at_raw_fermi_down,
+                energy_min=(
                     float(np.min(self._raw_data.energies[:]))
                     if not check.is_none(self._raw_data.energies)
                     else None
                 ),
-                "energy_max": (
+                energy_max=(
                     float(np.max(self._raw_data.energies[:]))
                     if not check.is_none(self._raw_data.energies)
                     else None
                 ),
-            }
+            )
         }
 
     def _dos_at_energy(self, energy):

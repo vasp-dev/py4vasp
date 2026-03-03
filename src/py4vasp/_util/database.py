@@ -305,6 +305,92 @@ def get_formula_and_compound(
     )
 
 
+def get_dataclass_fields(dataclass: Any) -> List[dict]:
+    """Get the fields of a dataclass as a list of dictionaries.
+
+    Parameters
+    ----------
+    dataclass : Any
+        The dataclass to get the fields from.
+
+    Returns
+    -------
+    List[dict]
+        A list of dictionaries, each containing the name, type, and
+        optional field documentation of a dataclass field.
+    """
+    from dataclasses import fields
+
+    dataclass_fields = fields(dataclass)
+    docstrings = _get_dataclass_field_docstrings(dataclass)
+    return [
+        {
+            "name": field.name,
+            "type": field.type,
+            "documentation": docstrings.get(field.name),
+        }
+        for field in dataclass_fields
+    ]
+
+
+def _get_dataclass_field_docstrings(dataclass: Any) -> Dict[str, Optional[str]]:
+    """Extract per-field documentation from a dataclass using AST.
+
+    Expects field documentation to be provided as a string expression directly
+    below the corresponding field definition.
+    """
+    try:
+        source_file = inspect.getsourcefile(dataclass)
+        if source_file is None:
+            return {}
+        source = Path(source_file).read_text()
+        tree = ast.parse(source)
+        class_node = _find_class_node(tree, dataclass.__name__)
+        if class_node is None:
+            return {}
+
+        docstrings: Dict[str, Optional[str]] = {}
+        class_body = class_node.body
+        for index, node in enumerate(class_body):
+            field_name = _extract_field_name(node)
+            if field_name is None:
+                continue
+            docstrings[field_name] = _extract_following_docstring(class_body, index)
+        return docstrings
+    except Exception:
+        return {}
+
+
+def _find_class_node(tree: ast.AST, class_name: str) -> Optional[ast.ClassDef]:
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef) and node.name == class_name:
+            return node
+    return None
+
+
+def _extract_field_name(node: ast.AST) -> Optional[str]:
+    if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+        return node.target.id
+    if isinstance(node, ast.Assign) and len(node.targets) == 1:
+        target = node.targets[0]
+        if isinstance(target, ast.Name):
+            return target.id
+    return None
+
+
+def _extract_following_docstring(
+    class_body: List[ast.stmt], index: int
+) -> Optional[str]:
+    next_index = index + 1
+    if next_index >= len(class_body):
+        return None
+    next_node = class_body[next_index]
+    if not isinstance(next_node, ast.Expr):
+        return None
+    doc = _get_constant_value(next_node.value)
+    return doc if isinstance(doc, str) else None
+
+
 def get_all_possible_keys(
     to_print: bool = False, debug: bool = False
 ) -> Dict[str, List[str]]:
@@ -328,12 +414,16 @@ def get_all_possible_keys(
 
     from py4vasp._calculation import GROUPS, QUANTITIES
 
+    _USE_LEGACY = False
+
     for py_file in calculation_dir.glob("*.py"):
         if py_file.name == "__init__.py":
             continue
 
         try:
-            file_keys, classes_without_method = _extract_keys_from_file(py_file, debug)
+            file_keys, classes_without_method = _extract_keys_from_file(
+                py_file, debug, _USE_LEGACY
+            )
 
             if debug:
                 print(f"\n=== DEBUG {py_file.name} ===")
@@ -478,7 +568,7 @@ def _get_constant_value(node: ast.AST) -> Optional[str]:
 
 
 def _extract_keys_from_file(
-    filepath: Path, debug: bool = False
+    filepath: Path, debug: bool = False, use_legacy: bool = False
 ) -> tuple[Dict[str, List[str]], List[str]]:
     """Extract database keys from a single Python file."""
     with open(filepath, "r") as f:
@@ -518,13 +608,33 @@ def _extract_keys_from_file(
                             classes_with_method.add(class_key)
                             if debug:
                                 print(f"\n[{filepath.stem}] Found _to_database method")
-                            file_keys = _extract_keys_from_function(item, tree, debug)
+                            if use_legacy:
+                                file_keys = _extract_keys_from_function(
+                                    item, tree, debug
+                                )
+                            else:
+                                file_keys = _extract_keys_from_dataclass(node.name)
                             if debug:
                                 print(f"[{filepath.stem}] Result: {file_keys}")
                             keys.update(file_keys)
 
     classes_without_method = list(refinery_classes - classes_with_method)
     return keys, classes_without_method
+
+
+def _extract_keys_from_dataclass(class_key: str) -> Dict[str, List[str]]:
+    """Extract keys from a dataclass-based _to_database method."""
+    # This is a simplified version that assumes the dataclass fields correspond to the keys.
+    # It does not handle complex logic, but it should work for straightforward cases.
+    try:
+        module = __import__(f"py4vasp._raw.data_db", fromlist=[None])
+        cls = getattr(module, f"{class_key}_DB")
+        from dataclasses import fields
+
+        return {convert.quantity_name(class_key): [field.name for field in fields(cls)]}
+    except Exception as e:
+        print(f"Error extracting keys from dataclass {class_key}: {e}")
+    return {}
 
 
 def _extract_keys_from_function(

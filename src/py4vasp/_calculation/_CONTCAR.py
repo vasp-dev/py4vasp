@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._calculation import _stoichiometry, base, structure, system
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import CONTCAR_DB
 from py4vasp._third_party import view
 from py4vasp._util import check, convert, database
 
@@ -39,13 +40,13 @@ class CONTCAR(base.Refinery, view.Mixin, structure.Mixin):
         structure = self._structure._read_to_database(*args, **kwargs)
         return database.combine_db_dicts(
             {
-                "CONTCAR": {
-                    "system": (
+                "CONTCAR": CONTCAR_DB(
+                    system=(
                         convert.text_to_string(self._raw_data.system)
                         if not check.is_none(self._raw_data.system)
                         else None
                     ),
-                }
+                )
             },
             structure,
         )

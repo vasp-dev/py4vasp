@@ -5,6 +5,7 @@ import pytest
 from py4vasp import exception
 from py4vasp._calculation._stoichiometry import Stoichiometry
 from py4vasp._calculation.selection import Selection
+from py4vasp._raw.data_db import Stoichiometry_DB
 from py4vasp._util import check, convert, import_, select
 
 ase = import_.optional("ase")
@@ -83,38 +84,41 @@ class Base:
         assert actual == self.format_output
 
     def test_to_database(self):
-        db_dict = self.stoichiometry._read_to_database()["stoichiometry:default"]
+        db_data: Stoichiometry_DB = self.stoichiometry._read_to_database()[
+            "stoichiometry:default"
+        ]
+        assert isinstance(db_data, Stoichiometry_DB)
+
         expected_ion_types = getattr(self, "ref_ion_types", self.unique_elements)
         expected_num_ion_types = getattr(self, "ref_num_ion_types", None)
         assert (
-            db_dict["ion_types"] == expected_ion_types
-        ), f"ion_types mismatch: {db_dict['ion_types']} vs. {expected_ion_types}"
+            db_data.ion_types == expected_ion_types
+        ), f"ion_types mismatch: {db_data.ion_types} vs. {expected_ion_types}"
         assert (
-            db_dict["num_ion_types"] == expected_num_ion_types
-        ), f"num_ion_types mismatch: {db_dict['num_ion_types']} vs. {expected_num_ion_types}"
-        if db_dict["num_ion_types"] is not None:
+            db_data.num_ion_types == expected_num_ion_types
+        ), f"num_ion_types mismatch: {db_data.num_ion_types} vs. {expected_num_ion_types}"
+        if db_data.num_ion_types is not None:
             for nt, rnt in zip(
-                db_dict["num_ion_types"],
-                db_dict["num_ion_types_primitive"],
+                db_data.num_ion_types,
+                db_data.num_ion_types_primitive,
             ):
                 assert (
                     rnt <= nt
                 ), f"Primitive cell has more atoms ({rnt}) than the full cell ({nt})"
             if getattr(self, "ref_num_ion_types_primitive", None) is not None:
                 assert (
-                    db_dict["num_ion_types_primitive"]
-                    == self.ref_num_ion_types_primitive
-                ), f"num_ion_types_primitive mismatch: {db_dict['num_ion_types_primitive']} vs. {self.ref_num_ion_types_primitive}"
+                    db_data.num_ion_types_primitive == self.ref_num_ion_types_primitive
+                ), f"num_ion_types_primitive mismatch: {db_data.num_ion_types_primitive} vs. {self.ref_num_ion_types_primitive}"
         else:
             assert (
-                db_dict["num_ion_types_primitive"] is None
-            ), f"If num_ion_types is None, num_ion_types_primitive must be None as well but is {db_dict['num_ion_types_primitive']}."
-        assert isinstance(db_dict["formula"], (str, type(None)))
+                db_data.num_ion_types_primitive is None
+            ), f"If num_ion_types is None, num_ion_types_primitive must be None as well but is {db_data.num_ion_types_primitive}."
+        assert isinstance(db_data.formula, (str, type(None)))
         if getattr(self, "ref_formula", None) is not None:
-            assert db_dict["formula"] == self.ref_formula
-        assert isinstance(db_dict["compound"], (str, type(None)))
+            assert db_data.formula == self.ref_formula
+        assert isinstance(db_data.compound, (str, type(None)))
         if getattr(self, "ref_compound", None) is not None:
-            assert db_dict["compound"] == self.ref_compound
+            assert db_data.compound == self.ref_compound
 
     @property
     def unique_elements(self):

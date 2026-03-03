@@ -7,6 +7,7 @@ import numpy as np
 from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry, base, structure
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import Nics_DB
 from py4vasp._third_party import graph, view
 from py4vasp._util import check, documentation, import_, index, select, slicing
 
@@ -76,11 +77,8 @@ nucleus-independent chemical shift:
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        return {
-            "nics": {
-                "method": "grid" if self._data_is_on_grid else "positions",
-            }
-        }
+        method = "grid" if self._data_is_on_grid else "positions"
+        return {"nics": Nics_DB(method=method)}
 
     def _get_method_and_positions(self):
         if self._data_is_on_grid:

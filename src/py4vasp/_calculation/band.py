@@ -10,6 +10,7 @@ from numpy.typing import ArrayLike
 from py4vasp import exception
 from py4vasp._calculation import _dispersion, base, kpoint, projector
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import Band_DB
 from py4vasp._third_party import graph
 from py4vasp._util import (
     check,
@@ -253,14 +254,14 @@ class Band(base.Refinery, graph.Mixin):
 
         return database.combine_db_dicts(
             {
-                "band": {
-                    "num_considered_bands": num_checked_bands,
-                    "num_occupied_bands": num_total_occupied,
-                    "num_occupied_bands_up": num_occupied_up,
-                    "num_occupied_bands_down": num_occupied_down,
-                    "fermi_energy_raw": raw_fermi_energy,
-                    "fermi_energy": fermi_energy or raw_fermi_energy,
-                },
+                "band": Band_DB(
+                    num_considered_bands=num_checked_bands,
+                    num_occupied_bands=num_total_occupied,
+                    num_occupied_bands_up=num_occupied_up,
+                    num_occupied_bands_down=num_occupied_down,
+                    fermi_energy_raw=raw_fermi_energy,
+                    fermi_energy=fermi_energy or raw_fermi_energy,
+                ),
             },
             dispersion,
         )

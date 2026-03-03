@@ -7,6 +7,7 @@ import pytest
 
 from py4vasp._calculation.phonon_mode import PhononMode
 from py4vasp._calculation.structure import Structure
+from py4vasp._raw.data_db import PhononMode_DB
 
 
 @pytest.fixture
@@ -62,11 +63,12 @@ def test_print(phonon_mode, format_):
 
 
 def test_to_database(phonon_mode):
-    db_dict = phonon_mode._read_to_database()["phonon_mode:default"]
-    assert db_dict["frequencies_real_max"] == float(
+    db_data: PhononMode_DB = phonon_mode._read_to_database()["phonon_mode:default"]
+    assert isinstance(db_data, PhononMode_DB)
+    assert db_data.frequencies_real_max == float(
         np.max(phonon_mode.ref.frequencies.real)
     )
-    assert db_dict["frequencies_imag_max"] == float(
+    assert db_data.frequencies_imag_max == float(
         np.max(phonon_mode.ref.frequencies.imag)
     )
 

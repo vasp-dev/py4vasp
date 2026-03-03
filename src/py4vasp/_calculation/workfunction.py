@@ -3,6 +3,7 @@
 from py4vasp import exception
 from py4vasp._calculation import bandgap, base
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import Workfunction_DB
 from py4vasp._third_party import graph
 
 
@@ -71,10 +72,10 @@ class Workfunction(base.Refinery, graph.Mixin):
             is_metallic = None
 
         return {
-            "workfunction": {
-                "direction": self._raw_data.idipol,  # index of lattice vector
-                "workfunction": None,  # TODO workfunction value = vacuum potential - fermi energy if METAL, check
-            }
+            "workfunction": Workfunction_DB(
+                direction=self._raw_data.idipol,  # index of lattice vector
+                workfunction_value=None,  # TODO workfunction value = vacuum potential - fermi energy if METAL, check
+            )
         }
 
     @base.data_access

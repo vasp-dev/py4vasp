@@ -6,6 +6,7 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._calculation.pair_correlation import PairCorrelation
+from py4vasp._raw.data_db import PairCorrelation_DB
 
 
 @pytest.fixture
@@ -97,9 +98,12 @@ def check_to_image(pair_correlation, filename_argument, expected_filename):
 
 
 def test_to_database(pair_correlation):
-    db_dict = pair_correlation._read_to_database()["pair_correlation:default"]
-    assert db_dict["distance_min"] == float(pair_correlation.ref.distances[0])
-    assert db_dict["distance_max"] == float(pair_correlation.ref.distances[-1])
+    db_data: PairCorrelation_DB = pair_correlation._read_to_database()[
+        "pair_correlation:default"
+    ]
+    assert isinstance(db_data, PairCorrelation_DB)
+    assert db_data.distance_min == float(pair_correlation.ref.distances[0])
+    assert db_data.distance_max == float(pair_correlation.ref.distances[-1])
 
 
 def test_factory_methods(raw_data, check_factory_methods):

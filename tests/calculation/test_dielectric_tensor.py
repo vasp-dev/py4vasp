@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
+from dataclasses import fields
 
 import pytest
 
@@ -10,6 +11,7 @@ from py4vasp._calculation.dielectric_tensor import (
     DielectricTensor,
     _calculate_2d_polarizability,
 )
+from py4vasp._raw.data_db import DielectricTensor_DB
 from py4vasp._util import check
 
 
@@ -157,9 +159,10 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 def _check_to_database(tensor, Assert):
     actual = tensor._read_to_database()
-    db_dict = actual["dielectric_tensor:default"]
+    db_data: DielectricTensor_DB = actual["dielectric_tensor:default"]
+    assert isinstance(db_data, DielectricTensor_DB)
 
-    assert db_dict["method"] == tensor.ref.method
+    assert db_data.method == tensor.ref.method
     import numpy as np
 
     # check tensors
@@ -169,51 +172,52 @@ def _check_to_database(tensor, Assert):
 
     # ionic and total only if available
     if tensor.ref.relaxed_ion is not None:
-        Assert.allclose(db_dict["total_3d_tensor"], relaxed_ion_expected_list)
-        Assert.allclose(db_dict["ionic_3d_tensor"], ionic_expected_list)
+        Assert.allclose(db_data.total_3d_tensor, relaxed_ion_expected_list)
+        Assert.allclose(db_data.ionic_3d_tensor, ionic_expected_list)
 
-        assert db_dict["total_3d_isotropic_dielectric_constant"] == pytest.approx(
+        assert db_data.total_3d_isotropic_dielectric_constant == pytest.approx(
             float(np.trace(tensor.ref.relaxed_ion) / 3.0)
         )
-        assert db_dict["ionic_3d_isotropic_dielectric_constant"] == pytest.approx(
+        assert db_data.ionic_3d_isotropic_dielectric_constant == pytest.approx(
             float(np.trace(tensor.ref.relaxed_ion - tensor.ref.clamped_ion) / 3.0)
         )
 
-        assert db_dict["total_2d_polarizability"] == pytest.approx(
+        assert db_data.total_2d_polarizability == pytest.approx(
             tensor.ref.polarizability_2d
         )
-        assert db_dict["ionic_2d_polarizability"] == pytest.approx(
+        assert db_data.ionic_2d_polarizability == pytest.approx(
             tensor.ref.polarizability_2d_ionic
         )
     else:
-        assert db_dict["total_3d_tensor"] is None
-        assert db_dict["ionic_3d_tensor"] is None
-        assert db_dict["total_3d_isotropic_dielectric_constant"] is None
-        assert db_dict["ionic_3d_isotropic_dielectric_constant"] is None
-        assert db_dict["total_2d_polarizability"] is None
-        assert db_dict["ionic_2d_polarizability"] is None
+        assert db_data.total_3d_tensor is None
+        assert db_data.ionic_3d_tensor is None
+        assert db_data.total_3d_isotropic_dielectric_constant is None
+        assert db_data.ionic_3d_isotropic_dielectric_constant is None
+        assert db_data.total_2d_polarizability is None
+        assert db_data.ionic_2d_polarizability is None
 
     # electronic should never be None
-    Assert.allclose(db_dict["electronic_3d_tensor"], electronic_expected_list)
-    assert db_dict["electronic_3d_isotropic_dielectric_constant"] == pytest.approx(
+    Assert.allclose(db_data.electronic_3d_tensor, electronic_expected_list)
+    assert db_data.electronic_3d_isotropic_dielectric_constant == pytest.approx(
         float(np.trace(tensor.ref.clamped_ion) / 3.0)
     )
-    assert db_dict["electronic_2d_polarizability"] == pytest.approx(
+    assert db_data.electronic_2d_polarizability == pytest.approx(
         tensor.ref.polarizability_2d_electronic
     )
 
     # check types
-    for k, v in db_dict.items():
-        if k.endswith("isotropic_dielectric_constant"):
+    for fld in fields(db_data):
+        v = getattr(db_data, fld.name)
+        if fld.name.endswith("isotropic_dielectric_constant"):
             assert v is None or isinstance(v, (int, float))
-        if k.endswith("polarizability"):
+        if fld.name.endswith("polarizability"):
             assert v is None or isinstance(v, (int, float))
-        elif k.endswith("tensor"):
+        elif fld.name.endswith("tensor"):
             assert v is None or (
                 isinstance(v, list) and all(isinstance(i, (int, float)) for i in v)
             )
             assert v is None or len(v) == 6
-        elif k == "method":
+        elif fld.name == "method":
             assert v is None or isinstance(v, str)
 
 

@@ -1,11 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
+from dataclasses import fields
 
 import pytest
 
 from py4vasp._calculation.born_effective_charge import BornEffectiveCharge
 from py4vasp._calculation.structure import Structure
+from py4vasp._raw.data_db import BornEffectiveCharge_DB
 
 
 @pytest.fixture
@@ -75,14 +77,20 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 def test_to_database(Sr2TiO4):
     database_data = Sr2TiO4._read_to_database()
-    born_db = database_data["born_effective_charge:default"]
-    assert born_db["eigenvalue_min"] == Sr2TiO4.ref.minmax_info[0]
-    assert born_db["eigenvalue_max"] == Sr2TiO4.ref.minmax_info[2]
-    assert born_db["eigenvalue_min_index"] == Sr2TiO4.ref.minmax_info[1]
-    assert born_db["eigenvalue_max_index"] == Sr2TiO4.ref.minmax_info[3]
+    born_db: BornEffectiveCharge_DB = database_data["born_effective_charge:default"]
+    assert born_db.eigenvalue_min == Sr2TiO4.ref.minmax_info[0]
+    assert born_db.eigenvalue_max == Sr2TiO4.ref.minmax_info[2]
+    assert born_db.eigenvalue_min_index == Sr2TiO4.ref.minmax_info[1]
+    assert born_db.eigenvalue_max_index == Sr2TiO4.ref.minmax_info[3]
 
-    for k, v in born_db.items():
-        if k.endswith("index"):
-            assert v is None or isinstance(v, int)
+    for fld in fields(BornEffectiveCharge_DB):
+        if fld.name.startswith("__"):
+            assert isinstance(getattr(born_db, fld.name), str)
+        elif fld.name.endswith("index"):
+            assert getattr(born_db, fld.name) is None or isinstance(
+                getattr(born_db, fld.name), int
+            )
         else:
-            assert v is None or isinstance(v, float)
+            assert getattr(born_db, fld.name) is None or isinstance(
+                getattr(born_db, fld.name), float
+            )

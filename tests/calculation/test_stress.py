@@ -7,6 +7,7 @@ import pytest
 from py4vasp import exception
 from py4vasp._calculation.stress import Stress
 from py4vasp._calculation.structure import Structure
+from py4vasp._raw.data_db import Stress_DB
 
 
 @pytest.fixture
@@ -96,14 +97,15 @@ in kB      18.00000    22.00000    26.00000    20.00000    24.00000    22.00000
 
 
 def test_to_database(stresses, Assert):
-    db_dict = stresses._read_to_database()["stress:default"]
+    db_data: Stress_DB = stresses._read_to_database()["stress:default"]
+    assert isinstance(db_data, Stress_DB)
     initial_tensor = stresses.ref.stress[0]
     final_tensor = stresses.ref.stress[-1]
 
-    assert db_dict["initial_stress_mean"] == pytest.approx(
+    assert db_data.initial_stress_mean == pytest.approx(
         (initial_tensor[0, 0] + initial_tensor[1, 1] + initial_tensor[2, 2]) / 3.0
     )
-    assert db_dict["final_stress_mean"] == pytest.approx(
+    assert db_data.final_stress_mean == pytest.approx(
         (final_tensor[0, 0] + final_tensor[1, 1] + final_tensor[2, 2]) / 3.0
     )
 
@@ -116,7 +118,7 @@ def test_to_database(stresses, Assert):
         0.5 * (final_tensor[0, 2] + final_tensor[2, 0]),
     ]
 
-    Assert.allclose(db_dict["final_stress_tensor"], reduced_final_tensor)
+    Assert.allclose(db_data.final_stress_tensor, reduced_final_tensor)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

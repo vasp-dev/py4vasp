@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
+from dataclasses import fields
 from unittest.mock import patch
 
 import numpy as np
@@ -10,6 +11,7 @@ from py4vasp import exception
 from py4vasp._calculation.band import _OCCUPATION_CUTOFF, Band
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.projector import Projector
+from py4vasp._raw.data_db import Band_DB
 
 
 @pytest.fixture
@@ -521,46 +523,42 @@ spin polarized band data:
 
 
 def _check_to_database(_band):
-    database_data = _band._read_to_database(
+    database_data: Band_DB = _band._read_to_database(
         fermi_energy=getattr(_band.ref, "fermi_energy_argument", None)
     )["band:default"]
 
-    for k in [
-        "fermi_energy",
-        "fermi_energy_raw",
-        "num_considered_bands",
-        "num_occupied_bands",
-        "num_occupied_bands_up",
-        "num_occupied_bands_down",
-    ]:
-        assert k in database_data
+    assert isinstance(database_data, Band_DB)
 
-    assert database_data["fermi_energy_raw"] == _band.ref.fermi_energy
-    assert database_data["fermi_energy"] == getattr(
+    assert database_data.fermi_energy_raw == _band.ref.fermi_energy
+    assert database_data.fermi_energy == getattr(
         _band.ref, "fermi_energy_argument", _band.ref.fermi_energy
     )
 
     if getattr(_band.ref, "num_occupied_bands", None) is not None:
-        assert database_data["num_occupied_bands"] == _band.ref.num_occupied_bands
+        assert database_data.num_occupied_bands == _band.ref.num_occupied_bands
     elif (
         getattr(_band.ref, "occupations_up", None) is not None
         and getattr(_band.ref, "occupations_down", None) is not None
     ):
-        assert database_data["num_occupied_bands_up"] == _band.ref.num_occupied_bands_up
+        assert database_data.num_occupied_bands_up == _band.ref.num_occupied_bands_up
         assert (
-            database_data["num_occupied_bands_down"]
-            == _band.ref.num_occupied_bands_down
+            database_data.num_occupied_bands_down == _band.ref.num_occupied_bands_down
         )
 
-    for k, v in database_data.items():
-        if k.startswith("num"):
-            assert v is None or isinstance(
-                v, int
-            ), f"{k} has unexpected type {type(v)}: {v}"
+    for fld in fields(Band_DB):
+        if fld.name.startswith("num"):
+            assert getattr(database_data, fld.name) is None or isinstance(
+                getattr(database_data, fld.name), int
+            ), f"{fld.name} has unexpected type {type(getattr(database_data, fld.name))}: {getattr(database_data, fld.name)}"
         else:
-            assert v is None or isinstance(
-                v, float
-            ), f"{k} has unexpected type {type(v)}: {v}"
+            assert (
+                getattr(database_data, fld.name) is None
+                or isinstance(getattr(database_data, fld.name), float)
+                or (
+                    fld.name.startswith("__")
+                    and isinstance(getattr(database_data, fld.name), str)
+                )
+            ), f"{fld.name} has unexpected type {type(getattr(database_data, fld.name))}: {getattr(database_data, fld.name)}"
 
 
 def test_to_database_single_band(single_band):

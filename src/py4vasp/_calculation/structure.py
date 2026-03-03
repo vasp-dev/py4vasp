@@ -8,6 +8,7 @@ import numpy as np
 from py4vasp import exception, raw
 from py4vasp._calculation import _stoichiometry, base, cell, slice_
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import Structure_DB
 from py4vasp._third_party import view
 from py4vasp._util import check, database, import_, parse
 
@@ -341,76 +342,76 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
 
         return database.combine_db_dicts(
             {
-                "structure": {
-                    "num_ions": num_atoms,
-                    "dimensionality": dimensionality,
-                    "final_cell_volume": volume_final,
-                    "final_cell_area_2d": cell_area_2d_final,
-                    "final_cell_area_2d_span": cell_area_2d_span_final,
-                    "final_lattice_vector_1": (
+                "structure": Structure_DB(
+                    num_ions=num_atoms,
+                    dimensionality=dimensionality,
+                    final_cell_volume=volume_final,
+                    final_cell_area_2d=cell_area_2d_final,
+                    final_cell_area_2d_span=cell_area_2d_span_final,
+                    final_lattice_vector_1=(
                         list(final_lattice[0]) if final_lattice[0] is not None else None
                     ),
-                    "final_lattice_vector_2": (
+                    final_lattice_vector_2=(
                         list(final_lattice[1]) if final_lattice[1] is not None else None
                     ),
-                    "final_lattice_vector_3": (
+                    final_lattice_vector_3=(
                         list(final_lattice[2]) if final_lattice[2] is not None else None
                     ),
-                    "final_lattice_vector_1_length": (
+                    final_lattice_vector_1_length=(
                         lengths_final[0] if lengths_final is not None else None
                     ),
-                    "final_lattice_vector_2_length": (
+                    final_lattice_vector_2_length=(
                         lengths_final[1] if lengths_final is not None else None
                     ),
-                    "final_lattice_vector_3_length": (
+                    final_lattice_vector_3_length=(
                         lengths_final[2] if lengths_final is not None else None
                     ),
-                    "final_angle_alpha": (
+                    final_angle_alpha=(
                         angles_final[0] if angles_final is not None else None
                     ),
-                    "final_angle_beta": (
+                    final_angle_beta=(
                         angles_final[1] if angles_final is not None else None
                     ),
-                    "final_angle_gamma": (
+                    final_angle_gamma=(
                         angles_final[2] if angles_final is not None else None
                     ),
-                    "initial_cell_volume": volume_initial,
-                    "initial_cell_area_2d": cell_area_2d_initial,
-                    "initial_cell_area_2d_span": cell_area_2d_span_initial,
-                    "initial_lattice_vector_1": (
+                    initial_cell_volume=volume_initial,
+                    initial_cell_area_2d=cell_area_2d_initial,
+                    initial_cell_area_2d_span=cell_area_2d_span_initial,
+                    initial_lattice_vector_1=(
                         list(initial_lattice[0])
                         if initial_lattice[0] is not None
                         else None
                     ),
-                    "initial_lattice_vector_2": (
+                    initial_lattice_vector_2=(
                         list(initial_lattice[1])
                         if initial_lattice[1] is not None
                         else None
                     ),
-                    "initial_lattice_vector_3": (
+                    initial_lattice_vector_3=(
                         list(initial_lattice[2])
                         if initial_lattice[2] is not None
                         else None
                     ),
-                    "initial_lattice_vector_1_length": (
+                    initial_lattice_vector_1_length=(
                         lengths_initial[0] if lengths_initial is not None else None
                     ),
-                    "initial_lattice_vector_2_length": (
+                    initial_lattice_vector_2_length=(
                         lengths_initial[1] if lengths_initial is not None else None
                     ),
-                    "initial_lattice_vector_3_length": (
+                    initial_lattice_vector_3_length=(
                         lengths_initial[2] if lengths_initial is not None else None
                     ),
-                    "initial_angle_alpha": (
+                    initial_angle_alpha=(
                         angles_initial[0] if angles_initial is not None else None
                     ),
-                    "initial_angle_beta": (
+                    initial_angle_beta=(
                         angles_initial[1] if angles_initial is not None else None
                     ),
-                    "initial_angle_gamma": (
+                    initial_angle_gamma=(
                         angles_initial[2] if angles_initial is not None else None
                     ),
-                },
+                ),
             },
             stoichiometry,
         )

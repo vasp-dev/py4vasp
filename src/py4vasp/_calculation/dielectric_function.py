@@ -4,6 +4,7 @@ import numpy as np
 
 from py4vasp._calculation import base
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import DielectricFunction_DB
 from py4vasp._third_party import graph
 from py4vasp._util import check, convert, index, select
 
@@ -65,18 +66,18 @@ dielectric function:
     @base.data_access
     def _to_database(self, *args, **kwargs):
         dielectric_function_db = {
-            "dielectric_function": {
-                "energy_min": (
+            "dielectric_function": DielectricFunction_DB(
+                energy_min=(
                     float(np.min(self._raw_data.energies[:]))
                     if not check.is_none(self._raw_data.energies)
                     else None
                 ),
-                "energy_max": (
+                energy_max=(
                     float(np.max(self._raw_data.energies[:]))
                     if not check.is_none(self._raw_data.energies)
                     else None
                 ),
-            }
+            )
         }
         return dielectric_function_db
 

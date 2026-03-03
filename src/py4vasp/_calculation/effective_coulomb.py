@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from types import EllipsisType
 
 import numpy as np
@@ -9,6 +9,7 @@ from numpy.typing import ArrayLike
 from py4vasp import exception, interpolate
 from py4vasp._calculation import base, cell
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import EffectiveCoulomb_DB
 from py4vasp._third_party import graph, numeric
 from py4vasp._util import check, convert, index, select
 
@@ -46,7 +47,7 @@ class EffectiveCoulomb(base.Refinery, graph.Mixin):
 
     @base.data_access
     def __str__(self):
-        data = self._to_database()["effective_coulomb"]
+        data = asdict(self._to_database()["effective_coulomb"])
         return f"""\
 averaged bare interaction
 bare Hubbard U = {data["bare_V_uppercase"].real:8.4f} {data["bare_V_uppercase"].imag:8.4f}
@@ -59,7 +60,7 @@ screened Hubbard u = {data["screened_u_lowercase"].real:8.4f} {data["screened_u_
 screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_uppercase"].imag:8.4f}
 """
 
-    def _to_database(self, *args, **kwargs) -> dict[str, dict]:
+    def _to_database(self, *args, **kwargs) -> dict[str, EffectiveCoulomb_DB]:
         wannier_iiii = self._wannier_indices_iiii()
         wannier_ijji = self._wannier_indices_ijji()
         wannier_ijij = self._wannier_indices_ijij()
@@ -94,15 +95,16 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
         V = convert.to_complex(self._raw_data.bare_potential_high_cutoff[access_V])
         v = convert.to_complex(self._raw_data.bare_potential_high_cutoff[access_v])
         Vj = convert.to_complex(self._raw_data.bare_potential_high_cutoff[access_Vj])
-        overview = {
-            "screened_U_uppercase": complex(np.average(U)),
-            "screened_u_lowercase": complex(np.average(u)),
-            "screened_J_uppercase": complex(np.average(J)),
-            "bare_V_uppercase": complex(np.average(V)),
-            "bare_v_lowercase": complex(np.average(v)),
-            "bare_J_uppercase": complex(np.average(Vj)),
+        return {
+            "effective_coulomb": EffectiveCoulomb_DB(
+                screened_U_uppercase=complex(np.average(U)),
+                screened_u_lowercase=complex(np.average(u)),
+                screened_J_uppercase=complex(np.average(J)),
+                bare_V_uppercase=complex(np.average(V)),
+                bare_v_lowercase=complex(np.average(v)),
+                bare_J_uppercase=complex(np.average(Vj)),
+            )
         }
-        return {"effective_coulomb": overview}
 
     def _wannier_indices_iiii(self):
         """Return the indices that trace over diagonal of the 4 Wannier states. This

@@ -6,6 +6,7 @@ import warnings
 from py4vasp import exception
 from py4vasp._calculation import _stoichiometry, base
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import Projector_DB
 from py4vasp._util import check, convert, documentation, index, select
 
 SPIN_PROJECTION = "is_spin_projection"
@@ -134,13 +135,13 @@ class Projector(base.Refinery):
     @base.data_access
     def _to_database(self, *args, **kwargs):
         return {
-            "projector": {
-                "orbital_types": (
+            "projector": Projector_DB(
+                orbital_types=(
                     sorted(list(self._init_orbital_dict().keys()), key=self._sort_key)
                     if not check.is_none(self._raw_data.orbital_types)
                     else None
                 )
-            }
+            )
         }
 
     def _init_atom_dict(self):

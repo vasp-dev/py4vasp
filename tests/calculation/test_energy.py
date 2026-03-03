@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
+from dataclasses import fields
 from unittest.mock import patch
 
 import numpy as np
@@ -8,6 +9,7 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._calculation.energy import _DB_KEYS, Energy
+from py4vasp._raw.data_db import Energy_DB
 from py4vasp._util import convert
 
 
@@ -199,21 +201,27 @@ def test_print(steps, step_label, MD_energy, format_):
 
 
 def test_to_database(MD_energy):
-    database_data = MD_energy._read_to_database()["energy:default"]
+    database_data: Energy_DB = MD_energy._read_to_database()["energy:default"]
 
+    assert isinstance(database_data, Energy_DB)
     assert len(MD_energy.ref.labels) > 0
 
     for idx, _label in enumerate(MD_energy.ref.labels):
         ref_values = MD_energy.ref.values[idx]
         label = _DB_KEYS.get(_label)
         try:
-            assert database_data[f"{label}_initial"] == float(ref_values[0])
-            assert database_data[f"{label}_final"] == float(ref_values[-1])
-            assert database_data[f"{label}_min"] == float(np.min(ref_values))
-            assert database_data[f"{label}_step_min"] == int(np.argmin(ref_values))
+            assert getattr(database_data, f"{label}_initial") == float(ref_values[0])
+            assert getattr(database_data, f"{label}_final") == float(ref_values[-1])
+            if label != "step":
+                assert getattr(database_data, f"{label}_min") == float(
+                    np.min(ref_values)
+                )
+                assert getattr(database_data, f"{label}_step_min") == int(
+                    np.argmin(ref_values)
+                )
         except KeyError as e:
             raise AssertionError(
-                f"Missing key {e} in database data, keys: {list(database_data.keys())}"
+                f"Missing key {e} in database data, keys: {list([fld.name for fld in fields(database_data)])}"
             ) from e
 
 

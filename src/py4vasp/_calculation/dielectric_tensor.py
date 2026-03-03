@@ -5,6 +5,7 @@ import numpy as np
 from py4vasp import exception
 from py4vasp._calculation import base, cell
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import DielectricTensor_DB
 from py4vasp._util import check, convert
 from py4vasp._util.tensor import symmetry_reduce
 
@@ -70,24 +71,20 @@ class DielectricTensor(base.Refinery):
         )
 
         dielectric_tensor_db = {
-            "dielectric_tensor": {
-                "method": method,
-                "total_3d_tensor": tensor_reduced[0],
-                "total_3d_isotropic_dielectric_constant": isotropic_dielectric_constant[
-                    0
-                ],
-                "total_2d_polarizability": polarizability_2d[0],
-                "ionic_3d_tensor": tensor_reduced[1],
-                "ionic_3d_isotropic_dielectric_constant": isotropic_dielectric_constant[
-                    1
-                ],
-                "ionic_2d_polarizability": polarizability_2d[1],
-                "electronic_3d_tensor": tensor_reduced[2],
-                "electronic_3d_isotropic_dielectric_constant": isotropic_dielectric_constant[
+            "dielectric_tensor": DielectricTensor_DB(
+                method=method,
+                total_3d_tensor=tensor_reduced[0],
+                total_3d_isotropic_dielectric_constant=isotropic_dielectric_constant[0],
+                total_2d_polarizability=polarizability_2d[0],
+                ionic_3d_tensor=tensor_reduced[1],
+                ionic_3d_isotropic_dielectric_constant=isotropic_dielectric_constant[1],
+                ionic_2d_polarizability=polarizability_2d[1],
+                electronic_3d_tensor=tensor_reduced[2],
+                electronic_3d_isotropic_dielectric_constant=isotropic_dielectric_constant[
                     2
                 ],
-                "electronic_2d_polarizability": polarizability_2d[2],
-            }
+                electronic_2d_polarizability=polarizability_2d[2],
+            )
         }
         return dielectric_tensor_db
 

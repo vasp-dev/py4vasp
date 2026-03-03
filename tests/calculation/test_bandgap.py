@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
+from dataclasses import fields
 from unittest.mock import patch
 
 import numpy as np
@@ -8,6 +9,7 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._calculation.bandgap import Bandgap
+from py4vasp._raw.data_db import Bandgap_DB
 
 VBM = 0
 CBM = 1
@@ -318,56 +320,59 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 def _check_to_database(_bandgap, Assert):
     database_data = _bandgap._read_to_database()
-    db_dict = database_data["bandgap:default"]
+    db_dict: Bandgap_DB = database_data["bandgap:default"]
 
-    for k in [
-        "valence_band_maximum",
-        "conduction_band_minimum",
-        "fundamental",
-        "kpoint_vbm",
-        "kpoint_cbm",
-        "lower_band_direct",
-        "upper_band_direct",
-        "direct",
-        "kpoint_direct",
-    ]:
-        for suffix in ["spin_independent", "spin_up", "spin_down"]:
-            actual_key = f"{k}_{suffix}"
-            assert (
-                actual_key in db_dict
-            ), f"Expected key '{actual_key}' missing from database output."
+    assert isinstance(db_dict, Bandgap_DB), f"Expected Bandgap_DB, got {type(db_dict)}"
+    for fld in fields(Bandgap_DB):
+        if fld.name.startswith("kpoint"):
+            assert isinstance(
+                getattr(db_dict, fld.name), (type(None), list)
+            ), f"Expected type Optional[List[float]] for {fld.name}, got {type(getattr(db_dict, fld.name))}"
+        elif fld.name.startswith("__"):
+            assert isinstance(
+                getattr(db_dict, fld.name), (type(None), str)
+            ), f"Expected type Optional[str] for {fld.name}, got {type(getattr(db_dict, fld.name))}"
+        else:
+            assert isinstance(
+                getattr(db_dict, fld.name), (type(None), float)
+            ), f"Expected type Optional[float] for {fld.name}, got {type(getattr(db_dict, fld.name))}"
 
     def _check_quantity(dict_, key_, ref_value):
         for idx, suffix in enumerate(["spin_independent", "spin_up", "spin_down"]):
             actual_key = f"{key_}_{suffix}"
+            actual_value = getattr(dict_, actual_key)
             if idx == 0 or _bandgap._spin_polarized():
-                Assert.allclose(dict_[actual_key], ref_value[idx], 1e6)
+                Assert.allclose(actual_value, ref_value[idx], 1e6)
             else:
                 assert (
-                    dict_[actual_key] is None
-                ), f"Expected None for key '{actual_key}', but got {dict_[actual_key]}."
+                    actual_value is None
+                ), f"Expected None for key '{actual_key}', but got {actual_value}."
             if actual_key.startswith("kpoint"):
-                assert dict_[actual_key] is None or (
-                    isinstance(dict_[actual_key], list)
-                    and all(isinstance(i, float) for i in dict_[actual_key])
-                ), f"{actual_key} has unexpected type {type(dict_[actual_key])}: {dict_[actual_key]}"
-                assert dict_[actual_key] is None or (
-                    len(dict_[actual_key]) == 3
-                ), f"{actual_key} has unexpected length {len(dict_[actual_key])}: {dict_[actual_key]}"
+                assert actual_value is None or (
+                    isinstance(actual_value, list)
+                    and all(isinstance(i, float) for i in actual_value)
+                ), f"{actual_key} has unexpected type {type(actual_value)}: {actual_value}"
+                assert actual_value is None or (
+                    len(actual_value) == 3
+                ), f"{actual_key} has unexpected length {len(actual_value)}: {actual_value}"
             else:
-                assert dict_[actual_key] is None or isinstance(
-                    dict_[actual_key], float
-                ), f"{actual_key} has unexpected type {type(dict_[actual_key])}: {dict_[actual_key]}"
+                assert actual_value is None or isinstance(
+                    actual_value, float
+                ), f"{actual_key} has unexpected type {type(actual_value)}: {actual_value}"
 
     _check_quantity(db_dict, "valence_band_maximum", _bandgap.ref.vbm[-1])
     _check_quantity(db_dict, "conduction_band_minimum", _bandgap.ref.cbm[-1])
-    _check_quantity(db_dict, "fundamental", _bandgap.ref.fundamental[-1,])
+    _check_quantity(db_dict, "fundamental_bandgap", _bandgap.ref.fundamental[-1,])
     _check_quantity(db_dict, "kpoint_vbm", _bandgap.ref.kpoint_vbm[-1])
     _check_quantity(db_dict, "kpoint_cbm", _bandgap.ref.kpoint_cbm[-1])
-    _check_quantity(db_dict, "direct", _bandgap.ref.direct[-1])
-    _check_quantity(db_dict, "kpoint_direct", _bandgap.ref.kpoint_direct[-1])
-    _check_quantity(db_dict, "lower_band_direct", _bandgap.ref.lower_band_direct[-1])
-    _check_quantity(db_dict, "upper_band_direct", _bandgap.ref.upper_band_direct[-1])
+    _check_quantity(db_dict, "direct_bandgap", _bandgap.ref.direct[-1])
+    _check_quantity(db_dict, "kpoint_direct_bandgap", _bandgap.ref.kpoint_direct[-1])
+    _check_quantity(
+        db_dict, "lower_band_direct_bandgap", _bandgap.ref.lower_band_direct[-1]
+    )
+    _check_quantity(
+        db_dict, "upper_band_direct_bandgap", _bandgap.ref.upper_band_direct[-1]
+    )
 
 
 def test_to_database_default(bandgap, Assert):

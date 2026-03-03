@@ -8,6 +8,7 @@ import numpy as np
 from py4vasp import exception
 from py4vasp._calculation import base, slice_
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import Bandgap_DB
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, select
 
@@ -135,15 +136,17 @@ Fermi energy:    {fermi_energy}"""
             "conduction_band_minimum": self._output_energy(
                 "conduction band minimum", to_string=False
             ),
-            "fundamental": self._output_gap("fundamental", to_string=False),
+            "fundamental_bandgap": self._output_gap("fundamental", to_string=False),
             "kpoint_vbm": self._output_kpoint("VBM", to_string=False),
             "kpoint_cbm": self._output_kpoint("CBM", to_string=False),
-            "lower_band_direct": self._output_energy(
+            "lower_band_direct_bandgap": self._output_energy(
                 "direct gap bottom", to_string=False
             ),
-            "upper_band_direct": self._output_energy("direct gap top", to_string=False),
-            "direct": self._output_gap("direct", to_string=False),
-            "kpoint_direct": self._output_kpoint("direct", to_string=False),
+            "upper_band_direct_bandgap": self._output_energy(
+                "direct gap top", to_string=False
+            ),
+            "direct_bandgap": self._output_gap("direct", to_string=False),
+            "kpoint_direct_bandgap": self._output_kpoint("direct", to_string=False),
         }
 
         final_dict = {}
@@ -161,7 +164,7 @@ Fermi energy:    {fermi_energy}"""
                 if self._spin_polarized()
                 else None
             )
-        return {"bandgap": final_dict}
+        return {"bandgap": Bandgap_DB(**final_dict)}
 
     def _gap_dict(self, label):
         gaps = self._gap(label).T

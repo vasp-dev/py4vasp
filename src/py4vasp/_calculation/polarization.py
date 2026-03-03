@@ -5,6 +5,7 @@ import numpy as np
 from py4vasp import exception
 from py4vasp._calculation import base
 from py4vasp._raw import data as raw_data
+from py4vasp._raw.data_db import Polarization_DB
 
 
 class Polarization(base.Refinery):
@@ -72,12 +73,12 @@ electronic dipole moment: {vec_to_string(self._raw_data.electron[:])}
             pass
 
         return {
-            "polarization": {
-                "total_dipole_norm": total_norm,
-                "total_dipole_moment": total_dipole,
-                "ionic_dipole_norm": ionic_norm,
-                "ionic_dipole_moment": ion_dipole,
-                "electronic_dipole_norm": electronic_norm,
-                "electronic_dipole_moment": electron_dipole,
-            }
+            "polarization": Polarization_DB(
+                total_dipole_norm=total_norm,
+                total_dipole_moment=total_dipole,
+                ionic_dipole_norm=ionic_norm,
+                ionic_dipole_moment=ion_dipole,
+                electronic_dipole_norm=electronic_norm,
+                electronic_dipole_moment=electron_dipole,
+            )
         }
