@@ -1,6 +1,6 @@
 [project]
 name = "py4vasp"
-version = "0.10.4"
+version = "0.11.0"
 description = "Tool for assisting with the analysis and setup of VASP calculations."
 authors = [
     { name = "VASP Software GmbH", email = "py4vasp@vasp.at" },
