@@ -3,7 +3,6 @@ name: test-full
 on:
   push:
     branches: [master]
-    tags: ["v*"]
   pull_request:
     branches: [master]
 

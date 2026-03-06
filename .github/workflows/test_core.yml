@@ -3,7 +3,6 @@ name: test-core
 on:
   push:
     branches: [master]
-    tags: ["v*"]
   pull_request:
     branches: [master]
 
