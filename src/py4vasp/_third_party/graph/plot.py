@@ -33,15 +33,20 @@ def plot(x, y, label=None, **kwargs):
     --------
     Plot simple x-y data with an optional label
 
+    >>> x = np.array([1, 2, 3])
+    >>> y = np.array([4, 5, 6])
     >>> plot(x, y, "label")
+    Graph(series=Series(x=array([1, 2, 3]), y=array([4, 5, 6]), label='label', ...), ...)
 
     Plot two series in the same graph
 
-    >>> plot(x1, y1) + plot(x2, y2)
+    >>> plot(x, y) + plot(x + 1, y + 2)
+    Graph(series=(Series(x=array([1, 2, 3]), y=array([4, 5, 6]), ...), Series(x=array([2, 3, 4]), y=array([6, 7, 8]), ...)), ...)
 
     Attributes of the graph are modified by keyword arguments
 
     >>> plot(x, y, xlabel="xaxis", ylabel="yaxis")
+    Graph(series=Series(...), ..., xlabel='xaxis', ..., ylabel='yaxis', ...)
     """
     series = _parse_series(x, y, label, **kwargs)
     for_graph = {key: val for key, val in kwargs.items() if key in Graph._fields}

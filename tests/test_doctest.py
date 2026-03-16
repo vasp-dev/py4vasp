@@ -3,6 +3,7 @@
 import doctest
 import pathlib
 
+import numpy as np
 import pytest
 
 import py4vasp
@@ -47,6 +48,28 @@ def interesting_example(example):
 def test_calculation(example: doctest.DocTest, tmp_path: pathlib.Path):
     optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
     runner = doctest.DocTestRunner(optionflags=optionflags)
+    example.globs["py4vasp"] = py4vasp
+    example.globs["path"] = tmp_path / example.name.replace(".", "_")
+    result = runner.run(example)
+    assert result.failed == 0
+    assert result.attempted > 0
+
+
+def get_graph_examples():
+    finder = doctest.DocTestFinder()
+    try:
+        return finder.find(py4vasp.plot)
+    except exception.ModuleNotInstalled:
+        return []
+
+
+@pytest.mark.parametrize(
+    "example", get_graph_examples(), ids=lambda example: example.name
+)
+def test_graph_functions(example: doctest.DocTest, tmp_path: pathlib.Path):
+    optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
+    runner = doctest.DocTestRunner(optionflags=optionflags)
+    example.globs["np"] = np
     example.globs["py4vasp"] = py4vasp
     example.globs["path"] = tmp_path / example.name.replace(".", "_")
     result = runner.run(example)
