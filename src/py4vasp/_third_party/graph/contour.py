@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import itertools
+from typing import Generator, Tuple
 
 import numpy as np
 
@@ -221,7 +222,49 @@ class Contour(trace.Trace):
     Use manual scaling when comparing multiple plots or adjusting readability.
     """
 
-    def to_plotly(self):
+    def to_plotly(self) -> Generator[Tuple["Contour" | "Heatmap", dict], None, None]:
+        """
+        Convert the contour data to Plotly figure format.
+
+        This method transforms the internal data representation into a format suitable
+        for visualization with Plotly. It handles three types of plots: contour plots,
+        heatmaps, and quiver (vector field) plots, depending on the data configuration.
+
+        Returns
+        -------
+        -
+            A generator yielding tuples of (plot_data, options) where plot_data is the
+            Plotly-compatible data structure and options contains the plot configuration.
+
+        Notes
+        -----
+        The method tiles the data according to the supercell dimensions and transposes
+        it to match Plotly's expected data layout (swapping a and b axes). The lattice
+        vectors are scaled by the supercell dimensions before creating the plot.
+
+        Examples
+        --------
+        Generate a monochrome heatmap
+
+        >>> from py4vasp.graph import Lattice
+        >>> lattice = Lattice(vectors=np.array([[3.0, 0.0], [0.0, 3.0]]))
+        >>> data = np.random.rand(50, 50)
+        >>> heatmap = Contour(data, lattice, "heatmap", color_scheme="monochrome")
+        >>> for plot_data, options in heatmap.to_plotly():
+        ...     print(plot_data)
+        ...     print(options)
+        Heatmap(...)
+        {'shapes': ..., 'annotations': ...}
+
+        Create a contour plot
+
+        >>> contour = Contour(data, lattice, "contour", isolevels=True)
+        >>> for plot_data, options in contour.to_plotly():
+        ...     print(plot_data)
+        ...     print(options)
+        Contour(...)
+        {'shapes': ..., 'annotations': ...}
+        """
         lattice_supercell = np.diag(self.supercell) @ self.lattice.vectors
         # swap a and b axes because that is the way plotly expects the data
         data = np.tile(self.data, self.supercell).T
