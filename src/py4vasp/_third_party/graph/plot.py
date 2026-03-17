@@ -39,19 +39,17 @@ def plot(x: np.ndarray, y: np.ndarray, label: str = None, **kwargs) -> Graph:
     --------
     Plot simple x-y data with a label
 
-    >>> x = np.array([1, 2, 3])
-    >>> y = np.array([4, 5, 6])
-    >>> plot(x, y, "my data")
+    >>> plot(x=[1, 2, 3], y=[4, 5, 6], label="my data")
     Graph(series=Series(x=array([1, 2, 3]), y=array([4, 5, 6]), label='my data', ...), ...)
 
     Combine multiple series in one graph using the + operator
 
-    >>> plot(x, y) + plot(x + 1, y + 2)
+    >>> plot(x=[1, 2, 3], y=[4, 5, 6]) + plot(x=[2, 3, 4], y=[6, 7, 8])
     Graph(series=(Series(x=array([1, 2, 3]), y=array([4, 5, 6]), ...), Series(x=array([2, 3, 4]), y=array([6, 7, 8]), ...)), ...)
 
     Customize axis labels with keyword arguments
 
-    >>> plot(x, y, xlabel="Time (s)", ylabel="Amplitude")
+    >>> plot(x=[1, 2, 3], y=[4, 5, 6], xlabel="Time (s)", ylabel="Amplitude")
     Graph(series=Series(...), ..., xlabel='Time (s)', ..., ylabel='Amplitude', ...)
     """
     series = _parse_series(x, y, label, **kwargs)

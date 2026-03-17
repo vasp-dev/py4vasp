@@ -276,7 +276,7 @@ class Graph(Sequence):
     def _any_are_contour(self):
         return any(isinstance(series, Contour) for series in self)
 
-    def to_frame(self):
+    def to_frame(self) -> pd.DataFrame:
         """Convert graph to a pandas dataframe.
 
         Every series will have at least two columns, named after the series name
@@ -286,8 +286,41 @@ class Graph(Sequence):
 
         Returns
         -------
-        Dataframe
+        -
             A pandas dataframe with columns for each series in the graph
+
+        Examples
+        --------
+        Convert a graph with a single series to a dataframe:
+
+        >>> graph = py4vasp.plot(x=[1, 2, 3], y=[4, 5, 6], label="data")
+        >>> df = graph.to_frame()
+        >>> print(df)
+           data.x  data.y
+        0       1       4
+        1       2       5
+        2       3       6
+
+        Convert a graph with multiple series to a dataframe:
+
+        >>> graph = Graph(series=[
+        ...     Series(x=[1, 2], y=[3, 4], label="series1"),
+        ...     Series(x=[1, 2], y=[5, 6], label="series2")
+        ... ])
+        >>> df = graph.to_frame()
+        >>> print(df)
+           series1.x  series1.y  series2.x  series2.y
+        0          1          3          1          5
+        1          2          4          2          6
+
+        Convert a graph with weighted series to a dataframe:
+
+        >>> graph = Graph(series=Series(x=[1, 2], y=[3, 4], weight=[0.5, 0.8], label="weighted"))
+        >>> df = graph.to_frame()
+        >>> print(df)
+           weighted.x  weighted.y  weighted.weight
+        0           1           3              0.5
+        1           2           4              0.8
         """
         df = pd.DataFrame()
         for series in np.atleast_1d(self.series):

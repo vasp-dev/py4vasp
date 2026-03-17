@@ -52,9 +52,11 @@ class Series(trace.Trace):
         if len(self.x) != self.y.shape[-1]:
             message = "The length of the two plotted components is inconsistent."
             raise exception.IncorrectUsage(message)
-        if self.weight is not None and len(self.x) != self.weight.shape[-1]:
-            message = "The length of weight and plot is inconsistent."
-            raise exception.IncorrectUsage(message)
+        if self.weight is not None:
+            self.weight = np.asarray(self.weight)
+            if len(self.x) != self.weight.shape[-1]:
+                message = "The length of weight and plot is inconsistent."
+                raise exception.IncorrectUsage(message)
         self._raise_error_if_annotations_length_incorrect()
         self._frozen = True
 
