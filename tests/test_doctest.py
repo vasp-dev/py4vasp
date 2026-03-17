@@ -59,7 +59,11 @@ def test_calculation(example: doctest.DocTest, tmp_path: pathlib.Path):
 def get_graph_examples():
     finder = doctest.DocTestFinder()
     try:
-        return finder.find(py4vasp.plot) + finder.find(py4vasp.graph.Graph)
+        return (
+            finder.find(py4vasp.plot)
+            + finder.find(py4vasp.graph.Graph)
+            + finder.find(py4vasp.graph.Series)
+        )
     except exception.ModuleNotInstalled:
         return []
 
