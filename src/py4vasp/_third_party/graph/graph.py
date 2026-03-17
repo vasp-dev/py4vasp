@@ -6,6 +6,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, fields, replace
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 
@@ -23,32 +24,118 @@ pd = import_.optional("pandas")
 
 @dataclass
 class Graph(Sequence):
-    """Wraps the functionality to generate graphs of series.
+    """A flexible container for creating and managing data visualization graphs.
 
-    From a single or multiple series a graph is generated based on the optional
-    parameters set in this class.
+    The Graph class provides a comprehensive interface for creating, customizing, and
+    exporting data visualizations. It supports single or multiple data series, interactive
+    plotting with Plotly, and various export formats including CSV and pandas DataFrames.
+
+    This class acts as both a container for data series and a configuration object for
+    plot properties such as axis labels, ranges, sizes, and titles. It implements the
+    Sequence protocol, allowing iteration and indexing over the contained series.
+
+    Key Features
+    ------------
+    - Support for single or multiple data series
+    - Interactive visualization using Plotly
+    - Customizable axis labels, ranges, and tick positions
+    - Configurable figure dimensions
+    - Subplot support for organizing multiple plots vertically
+    - Secondary y-axis support for comparing series with different scales
+    - Export capabilities to CSV, pandas DataFrame, and Plotly figures
+    - Automatic color cycling for multiple series
+    - Contour plot support with aspect ratio handling
+
+    Notes
+    -----
+    - The class is designed to be immutable after initialization; new attributes cannot
+      be added after creation to prevent typos.
+    - Graphs can be combined using the + operator, which merges series and reconciles
+      compatible settings.
+    - When using subplots, all series must have the subplot attribute set to a positive
+      integer indicating the subplot row number.
+    - Colorbars are automatically positioned to avoid overlap with the legend.
+    - For contour plots, axes are hidden and aspect ratios are locked to maintain
+      spatial relationships.
+
+    See Also
+    --------
+    :class:`~py4vasp.graph.Series` : The primary data series type for line and scatter plots.
+    :class:`~py4vasp.graph.Contour` : A specialized series type for contour and heatmap visualizations.
+
+    Examples
+    --------
+    Create a simple graph and modify its properties:
+
+    >>> import numpy as np
+    >>> x = np.array([1, 2, 3, 4, 5])
+    >>> y = np.array([2, 4, 6, 8, 10])
+    >>> graph = py4vasp.plot(x, y, "my data")
+    >>> graph.xlabel = "Time (s)"
+    >>> graph.ylabel = "Temperature (K)"
+    >>> graph.title = "Temperature vs Time"
+    >>> graph.show()
+
+    Modify the axis ranges to zoom into a specific region:
+
+    >>> x = np.linspace(0, 10, 100)
+    >>> y = np.sin(x)
+    >>> graph = py4vasp.plot(x, y, "sine wave")
+    >>> graph.xrange = (2, 8)
+    >>> graph.yrange = (-0.5, 0.5)
+    >>> graph.show()
+
+    Customize the figure size:
+
+    >>> x = np.array([1, 2, 3])
+    >>> y = np.array([4, 5, 6])
+    >>> graph = py4vasp.plot(x, y, "data")
+    >>> graph.xsize = 1200
+    >>> graph.ysize = 800
+    >>> graph.show()
+
+    Add custom tick positions and labels:
+
+    >>> x = np.array([0, 1, 2, 3])
+    >>> y = np.array([1, 4, 9, 16])
+    >>> graph = py4vasp.plot(x, y, "squares")
+    >>> graph.xticks = {0: "start", 1: "one", 2: "two", 3: "end"}
+    >>> graph.show()
+
+    Combine multiple series and modify the combined graph:
+
+    >>> x = np.linspace(0, 2*np.pi, 50)
+    >>> y1 = np.sin(x)
+    >>> y2 = np.cos(x)
+    >>> graph1 = py4vasp.plot(x, y1, "sin")
+    >>> graph2 = py4vasp.plot(x, y2, "cos")
+    >>> combined = graph1 + graph2
+    >>> combined.xlabel = "Angle (rad)"
+    >>> combined.ylabel = "Amplitude"
+    >>> combined.title = "Trigonometric Functions"
+    >>> combined.show()
     """
 
-    series: Trace or Sequence[Trace]
-    "One or more series shown in the graph."
-    xlabel: str = None
-    "Label for the x axis."
-    xrange: tuple = None
-    "Reduce the x axis to this interval."
-    xticks: dict = None
-    "A dictionary specifying positions and labels where ticks are placed on the x axis."
-    xsize: int = 720
-    "Width of the resulting figure."
-    ylabel: str = None
-    "Label for the y axis."
-    yrange: tuple = None
-    "Reduce the y axis to this interval."
-    y2label: str = None
-    "Label for the secondary y axis."
-    ysize: int = 540
-    "Height of the resulting figure."
-    title: str = None
-    "Title of the graph."
+    series: Trace | Sequence[Trace]
+    "One or more data series (e.g., Series, Contour, or Trace objects) to be displayed in the graph."
+    xlabel: Optional[str] = None
+    "Label for the x-axis. For subplots, provide a list of labels corresponding to each subplot."
+    xrange: Optional[tuple] = None
+    "Tuple specifying the visible range of the x-axis as (min, max)."
+    xticks: Optional[dict] = None
+    "Dictionary mapping tick positions (keys) to their labels (values) for the x-axis."
+    xsize: Optional[int] = 720
+    "Width of the figure in pixels."
+    ylabel: Optional[str] = None
+    "Label for the y-axis. For subplots, provide a list of labels corresponding to each subplot."
+    yrange: Optional[tuple] = None
+    "Tuple specifying the visible range of the y-axis as (min, max)."
+    y2label: Optional[str] = None
+    "Label for the secondary y-axis (only applicable when series use the secondary y-axis)."
+    ysize: Optional[int] = 540
+    "Height of the figure in pixels."
+    title: Optional[str] = None
+    "Title displayed at the top of the graph."
     _frozen = False
 
     def __setattr__(self, key, value):
