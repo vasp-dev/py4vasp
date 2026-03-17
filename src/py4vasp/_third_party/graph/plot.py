@@ -1,52 +1,58 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import numpy as np
+
 from py4vasp._third_party.graph.graph import Graph
 from py4vasp._third_party.graph.series import Series
 
 
-def plot(x, y, label=None, **kwargs):
-    """Plot the given data, modifying the look with some optional arguments.
+def plot(x: np.ndarray, y: np.ndarray, label: str = None, **kwargs) -> Graph:
+    """Plot data with a simple, clean interface optimized for quick visualization.
 
-    The intent of this function is not to provide a full fledged plotting functionality
-    but as a convenient wrapper around the objects used by py4vasp. This gives a
-    similar look and feel for the tutorials and facilitates simple plots with a very
-    minimal interface. Use a proper plotting library (e.g. matplotlib or plotly) to
-    realize more advanced plots.
+    This function provides a streamlined plotting experience with sensible defaults
+    and minimal boilerplate. It wraps the :class:`~py4vasp._third_party.graph.graph.Graph`
+    and :class:`~py4vasp._third_party.graph.series.Series` classes to enable rapid
+    creation of clear, consistent visualizations.
+
+    For simple plots, this function offers an intuitive interface. For more complex
+    visualizations, you can extend the returned Graph object or use specialized
+    plotting libraries like matplotlib or plotly.
 
     Parameters
     ----------
-    x : np.ndarray
-        The x values of the coordinates.
-    y : np.ndarray
-        The y values of the coordinates.
-    label : str
-        If set this will be used to label the series.
+    x
+        The x coordinates of the data points.
+    y
+        The y coordinates of the data points.
+    label
+        Label for the data series, useful for legends.
     **kwargs
-        All additional arguments will be passed to initialize Series and Graph.
+        Additional keyword arguments are distributed to :class:`~py4vasp._third_party.graph.series.Series`
+        and :class:`~py4vasp._third_party.graph.graph.Graph` to customize appearance and behavior.
 
     Returns
     -------
-    Graph
-        A graph containing all given series and optional styles.
+    -
+        A graph containing the plotted series with the specified styling options.
 
     Examples
     --------
-    Plot simple x-y data with an optional label
+    Plot simple x-y data with a label
 
     >>> x = np.array([1, 2, 3])
     >>> y = np.array([4, 5, 6])
-    >>> plot(x, y, "label")
-    Graph(series=Series(x=array([1, 2, 3]), y=array([4, 5, 6]), label='label', ...), ...)
+    >>> plot(x, y, "my data")
+    Graph(series=Series(x=array([1, 2, 3]), y=array([4, 5, 6]), label='my data', ...), ...)
 
-    Plot two series in the same graph
+    Combine multiple series in one graph using the + operator
 
     >>> plot(x, y) + plot(x + 1, y + 2)
     Graph(series=(Series(x=array([1, 2, 3]), y=array([4, 5, 6]), ...), Series(x=array([2, 3, 4]), y=array([6, 7, 8]), ...)), ...)
 
-    Attributes of the graph are modified by keyword arguments
+    Customize axis labels with keyword arguments
 
-    >>> plot(x, y, xlabel="xaxis", ylabel="yaxis")
-    Graph(series=Series(...), ..., xlabel='xaxis', ..., ylabel='yaxis', ...)
+    >>> plot(x, y, xlabel="Time (s)", ylabel="Amplitude")
+    Graph(series=Series(...), ..., xlabel='Time (s)', ..., ylabel='Amplitude', ...)
     """
     series = _parse_series(x, y, label, **kwargs)
     for_graph = {key: val for key, val in kwargs.items() if key in Graph._fields}
