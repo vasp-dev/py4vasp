@@ -261,12 +261,10 @@ class View:
             try:
                 if len(attribute.quantity) > 1:
                     if mode == "ngl":
-                        raise exception.NotImplemented(
-                            """\
+                        raise exception.NotImplemented("""\
     Currently isosurfaces and ion arrows are implemented only for cases where there is only
     one frame in the trajectory. Make sure that either only one frame for the positions
-    attribute is supplied with its corresponding grid scalar or ion arrow component."""
-                        )
+    attribute is supplied with its corresponding grid scalar or ion arrow component.""")
             except AttributeError:
                 pass
 

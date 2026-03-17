@@ -26,6 +26,7 @@ and `data[:,1,1]`, respectively. The last selection is equivalent to
 `np.sum(data[:,:,2], axis=-1)` because we sum over all dimensions mentioned as keys
 in `maps`.
 """
+
 import abc
 import dataclasses
 import itertools
