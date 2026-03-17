@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from dataclasses import dataclass, fields
-from typing import Optional
+from typing import Generator, Optional, Tuple
 
 import numpy as np
 
@@ -117,7 +117,43 @@ class Series(trace.Trace):
             for field in fields(self)
         )
 
-    def to_plotly(self):
+    def to_plotly(self) -> Generator[Tuple["go.Scatter", dict], None, None]:
+        """
+        Convert the series data to Plotly trace format.
+
+        This method generates Plotly trace objects from the series data, yielding each
+        trace along with its subplot configuration. The first trace is marked specially
+        to handle legend display correctly.
+
+        Yields
+        ------
+        tuple
+            A tuple containing:
+            - trace : plotly.graph_objs trace object
+                The Plotly trace object created from the series data.
+            - config : dict
+                A dictionary with subplot configuration, containing the row number.
+
+        Notes
+        -----
+        The y-data is converted to at least a 2D array to ensure consistent handling
+        of both single and multiple series. Only the first trace is marked as such
+        to control legend behavior in Plotly.
+
+        Examples
+        --------
+        >>> series = Series(x=[1, 2, 3], y=[4, 5, 6], subplot=1)
+        >>> for trace, config in series.to_plotly():
+        ...     print(f"Trace type: {type(trace).__name__}, Row: {config['row']}")
+        Trace type: Scatter, Row: 1
+
+        >>> series = Series(x=[1, 2, 3], y=[[4, 5, 6], [7, 8, 9]], subplot=2)
+        >>> traces = list(series.to_plotly())
+        >>> len(traces)
+        2
+        >>> traces[0][1]['row']
+        2
+        """
         first_trace = True
         for item in enumerate(np.atleast_2d(np.array(self.y))):
             yield self._make_trace(*item, first_trace), {"row": self.subplot}
