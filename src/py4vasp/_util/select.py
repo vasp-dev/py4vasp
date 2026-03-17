@@ -44,6 +44,7 @@ For the common case, where you want to use the user selection to specify the ind
 an array, the `py4vasp._util.index.Selector` defines an interface compatible with the
 features of the Tree.
 """
+
 import dataclasses
 import itertools
 

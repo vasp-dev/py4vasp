@@ -194,10 +194,8 @@ def validate_data(cls):
         )
         np.testing.assert_almost_equal(cls.dft.nions, cls.mlff.nions)
     except AssertionError:
-        raise exception.IncorrectUsage(
-            """\
-Please pass a consistent set of data between DFT and MLFF calculations."""
-        )
+        raise exception.IncorrectUsage("""\
+Please pass a consistent set of data between DFT and MLFF calculations.""")
 
 
 def set_number_of_configurations(cls):

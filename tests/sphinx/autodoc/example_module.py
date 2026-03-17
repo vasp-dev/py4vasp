@@ -3,6 +3,7 @@
 """
 Example module for Sphinx autodoc testing.
 """
+
 from dataclasses import dataclass
 
 
