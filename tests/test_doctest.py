@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import doctest
 import pathlib
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -72,6 +73,7 @@ def test_graph_functions(example: doctest.DocTest, tmp_path: pathlib.Path):
     example.globs["np"] = np
     example.globs["py4vasp"] = py4vasp
     example.globs["path"] = tmp_path / example.name.replace(".", "_")
-    result = runner.run(example)
+    with patch("plotly.graph_objs.Figure.show"):
+        result = runner.run(example)
     assert result.failed == 0
     assert result.attempted > 0

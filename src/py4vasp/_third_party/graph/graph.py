@@ -94,7 +94,37 @@ class Graph(Sequence):
         return figure
 
     def show(self):
-        "Show the graph with the default look."
+        """Display the graph in an interactive viewer.
+
+        This method renders the graph using an interactive plotting backend, allowing
+        you to visualize and explore the data. The graph will open in your default
+        viewer, typically a web browser or an integrated notebook interface.
+
+        The visualization supports interactive features such as zooming, panning,
+        hovering over data points to see values, and toggling legend entries to
+        show or hide specific data series.
+
+        Examples
+        --------
+        Create and display a simple graph:
+
+        >>> x = np.array([1, 2, 3])
+        >>> y = np.array([4, 5, 6])
+        >>> graph = py4vasp.plot(x, y, "my data")
+        >>> graph.show()
+
+        Display a graph after customizing its appearance:
+
+        >>> x = np.array([1, 2, 3])
+        >>> y = np.array([4, 5, 6])
+        >>> graph = py4vasp.plot(x, y, "my data")
+        >>> graph.xlabel = "Time (s)"
+        >>> graph.ylabel = "Temperature (K)"
+        >>> graph.show()
+
+        In Jupyter notebooks, the graph will be embedded inline, while in scripts
+        it will open in a separate browser window.
+        """
         self.to_plotly().show()
 
     def label(self, new_label: str) -> None:
@@ -105,7 +135,7 @@ class Graph(Sequence):
 
         Parameters
         ----------
-        new_label : str
+        new_label
             The new label added to the series.
 
         Examples
