@@ -79,8 +79,48 @@ class Graph(Sequence):
     def __len__(self):
         return np.atleast_1d(self.series).size
 
-    def to_plotly(self):
-        "Convert the graph to a plotly figure."
+    def to_plotly(self) -> go.Figure:
+        """Convert the graph to a plotly figure for interactive visualization and customization.
+
+        This method transforms the internal graph representation into a Plotly Figure object,
+        which enables interactive plotting, customization, and export capabilities. The resulting
+        figure includes all traces, shapes, and annotations from the graph, properly organized
+        into subplots if multiple rows are specified.
+
+        Once converted to a Plotly figure, you can:
+        - Display the graph interactively in Jupyter notebooks or web browsers
+        - Further customize the layout, colors, fonts, and other visual properties
+        - Export to various formats (HTML, PNG, PDF, SVG)
+        - Add additional traces, annotations, or modify existing elements
+        - Save the figure for later use or sharing
+
+        Returns
+        -------
+        go.Figure
+            A Plotly Figure object containing all graph elements (traces, shapes, annotations)
+            with the configured legend settings.
+
+        Examples
+        --------
+        >>> # Example 1: Display an interactive plot in a Jupyter notebook
+        >>> graph = py4vasp.plot(x=[1, 2, 3], y=[4, 5, 6], label="my data")
+        >>> fig = graph.to_plotly()
+        >>> fig.show()
+
+        >>> # Example 2: Customize the figure after conversion
+        >>> graph = py4vasp.plot(x=[1, 2, 3], y=[4, 5, 6], label="my data")
+        >>> fig = graph.to_plotly()
+        >>> fig.update_layout(title="Custom Title", template="plotly_dark")
+        Figure(...)
+        >>> fig.update_xaxes(title_text="Custom X Label")
+        Figure(...)
+        >>> fig.show()
+
+        >>> # Example 3: Export the figure to an HTML file
+        >>> graph = py4vasp.plot(x=[1, 2, 3], y=[4, 5, 6], label="my data")
+        >>> fig = graph.to_plotly()
+        >>> fig.write_html(path / "my_graph.html")
+        """
         figure = self._make_plotly_figure()
         for trace, options in self._generate_plotly_traces():
             if options.get("row") is None:
