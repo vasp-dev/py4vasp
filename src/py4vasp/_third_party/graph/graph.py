@@ -5,6 +5,7 @@ import uuid
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, fields, replace
+from pathlib import Path
 
 import numpy as np
 
@@ -294,16 +295,62 @@ class Graph(Sequence):
             df = df.join(_df, how="outer")
         return df
 
-    def to_csv(self, filename):
-        """Export graph to a csv file.
+    def to_csv(self, filename: str | Path) -> None:
+        """Export graph data to a CSV file.
 
-        Starting from the dataframe generated from `to_frame`, use the `to_csv` method
-        implemented in pandas to write out a csv file with a given filename
+        This method saves all series data in the graph to a CSV file. Each series
+        will have columns for x and y values, named after the series label. If weights
+        are provided, they will also be included as additional columns.
 
         Parameters
         ----------
-        filename: str | Path
-            Name of the exported csv file
+        filename
+            Path to the output CSV file.
+
+        Examples
+        --------
+        Export a simple graph to CSV:
+
+        >>> x = np.array([1, 2, 3])
+        >>> y = np.array([4, 5, 6])
+        >>> graph = py4vasp.plot(x, y, "my data")
+        >>> graph.to_csv(str(path / "output.csv"))
+        >>> with open(path / "output.csv") as f:
+        ...     print(f.read())
+        my_data.x,my_data.y
+        1,4
+        2,5
+        3,6
+
+        Export a graph with multiple series:
+
+        >>> x = np.array([1, 2, 3])
+        >>> y1 = np.array([4, 5, 6])
+        >>> y2 = np.array([7, 8, 9])
+        >>> graph = py4vasp.plot(x, y1, "series 1") + py4vasp.plot(x, y2, "series 2")
+        >>> graph.to_csv(path / "multi_series.csv")
+        >>> with open(path / "multi_series.csv") as f:
+        ...     print(f.read())
+        series_1.x,series_1.y,series_2.x,series_2.y
+        1,4,1,7
+        2,5,2,8
+        3,6,3,9
+
+        Export a graph with weighted data:
+
+        >>> from py4vasp._third_party.graph.series import Series
+        >>> x = np.array([1, 2, 3])
+        >>> y = np.array([4, 5, 6])
+        >>> weight = np.array([0.1, 0.2, 0.3])
+        >>> series = Series(x=x, y=y, weight=weight, label="weighted data")
+        >>> graph = Graph(series=series)
+        >>> graph.to_csv(path / "weighted_output.csv")
+        >>> with open(path / "weighted_output.csv") as f:
+        ...     print(f.read())
+        weighted_data.x,weighted_data.y,weighted_data.weight
+        1,4,0.1
+        2,5,0.2
+        3,6,0.3
         """
         df = self.to_frame()
         df.to_csv(filename, index=False)

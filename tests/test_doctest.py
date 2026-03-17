@@ -72,7 +72,7 @@ def test_graph_functions(example: doctest.DocTest, tmp_path: pathlib.Path):
     runner = doctest.DocTestRunner(optionflags=optionflags)
     example.globs["np"] = np
     example.globs["py4vasp"] = py4vasp
-    example.globs["path"] = tmp_path / example.name.replace(".", "_")
+    example.globs["path"] = tmp_path
     with patch("plotly.graph_objs.Figure.show"):
         result = runner.run(example)
     assert result.failed == 0
