@@ -97,7 +97,7 @@ class Graph(Sequence):
         "Show the graph with the default look."
         self.to_plotly().show()
 
-    def label(self, new_label):
+    def label(self, new_label: str) -> None:
         """Apply a new label to all series within.
 
         If there is only a single series, the label will replace the current one. If there
@@ -107,6 +107,24 @@ class Graph(Sequence):
         ----------
         new_label : str
             The new label added to the series.
+
+        Examples
+        --------
+        Replace the current label with a new one for a single series.
+
+        >>> x = np.array([1, 2, 3])
+        >>> y = np.array([4, 5, 6])
+        >>> graph = py4vasp.plot(x, y, "old label")
+        >>> graph.label("new label")
+        Graph(series=[Series(..., label='new label', ...)], ...)
+
+        Prefix the current label with a new one for multiple series.
+
+        >>> x = np.array([1, 2, 3])
+        >>> y = np.array([4, 5, 6])
+        >>> graph = py4vasp.plot(x, y, "one") + py4vasp.plot(x, y, "two")
+        >>> graph.label("prefix")
+        Graph(series=[Series(..., label='prefix one', ...), Series(..., label='prefix two', ...)], ...)
         """
         self.series = [self._make_label(series, new_label) for series in self]
         return self

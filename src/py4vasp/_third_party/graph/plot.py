@@ -10,9 +10,9 @@ def plot(x: np.ndarray, y: np.ndarray, label: str = None, **kwargs) -> Graph:
     """Plot data with a simple, clean interface optimized for quick visualization.
 
     This function provides a streamlined plotting experience with sensible defaults
-    and minimal boilerplate. It wraps the :class:`~py4vasp._third_party.graph.graph.Graph`
-    and :class:`~py4vasp._third_party.graph.series.Series` classes to enable rapid
-    creation of clear, consistent visualizations.
+    and minimal boilerplate. It wraps the :class:`~py4vasp.graph.Graph` and
+    :class:`~py4vasp.graph.Series` classes to enable rapid creation of clear,
+    consistent visualizations.
 
     For simple plots, this function offers an intuitive interface. For more complex
     visualizations, you can extend the returned Graph object or use specialized
@@ -27,8 +27,8 @@ def plot(x: np.ndarray, y: np.ndarray, label: str = None, **kwargs) -> Graph:
     label
         Label for the data series, useful for legends.
     **kwargs
-        Additional keyword arguments are distributed to :class:`~py4vasp._third_party.graph.series.Series`
-        and :class:`~py4vasp._third_party.graph.graph.Graph` to customize appearance and behavior.
+        Additional keyword arguments are distributed to :class:`~py4vasp.graph.Series`
+        and :class:`~py4vasp.graph.Graph` to customize appearance and behavior.
 
     Returns
     -------
