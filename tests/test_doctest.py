@@ -61,6 +61,7 @@ def get_graph_examples():
     try:
         return (
             finder.find(py4vasp.plot)
+            + finder.find(py4vasp.graph.Contour)
             + finder.find(py4vasp.graph.Graph)
             + finder.find(py4vasp.graph.Series)
         )

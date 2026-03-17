@@ -25,26 +25,32 @@ class Series(trace.Trace):
     >>> x = np.linspace(0, 10, 100)
     >>> y = np.sin(x)
     >>> series = Series(x=x, y=y, label="Sine wave")
+    >>> py4vasp.graph.Graph(series).show()
 
     Create scatter plot with custom color and marker:
     >>> series = Series(x=[1, 2, 3], y=[4, 5, 6], label="Data", color="blue",
     ...     marker="circle")
+    >>> py4vasp.graph.Graph(series).show()
 
     Add weighted points (size based on weight):
     >>> series = Series(x=[1, 2, 3], y=[4, 5, 6], weight=[10, 20, 30],
     ...     weight_mode="size")
+    >>> py4vasp.graph.Graph(series).show()
 
     Add hover annotations:
     >>> series = Series(x=[1, 2, 3], y=[4, 5, 6], annotations={
     ...     "Temperature": [20, 25, 30], "Unit": "°C"})
+    >>> py4vasp.graph.Graph(series).show()
 
     Plot multiple lines (2D y data):
     >>> y_multi = np.array([[1, 2, 3], [4, 5, 6]])
     >>> series = Series(x=[0, 1, 2], y=y_multi, label="Multi-line")
+    >>> py4vasp.graph.Graph(series).show()
 
     Create area plot with uncertainty:
     >>> series = Series(x=[1, 2, 3], y=[10, 20, 15], weight=[2, 3, 2.5],
     ...     color="rgba(255,0,0,0.3)")
+    >>> py4vasp.graph.Graph(series).show()
     """
 
     x: np.ndarray
