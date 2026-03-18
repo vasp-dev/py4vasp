@@ -403,7 +403,7 @@ class Graph(Sequence):
     def _any_are_contour(self):
         return any(isinstance(series, Contour) for series in self)
 
-    def to_frame(self) -> pd.DataFrame:
+    def to_frame(self) -> "pd.DataFrame":
         """Convert graph to a pandas dataframe.
 
         Every series will have at least two columns, named after the series name
