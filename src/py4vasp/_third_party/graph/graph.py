@@ -166,7 +166,7 @@ class Graph(Sequence):
     def __len__(self):
         return np.atleast_1d(self.series).size
 
-    def to_plotly(self) -> go.Figure:
+    def to_plotly(self) -> "go.Figure":
         """Convert the graph to a plotly figure for interactive visualization and customization.
 
         This method transforms the internal graph representation into a Plotly Figure object,
