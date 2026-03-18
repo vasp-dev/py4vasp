@@ -15,19 +15,25 @@ def test_creating_default_calculation(tmp_path):
     demo.calculation(tmp_path / "specific_example")
 
 
-def get_calculation_examples():
-    finder = doctest.DocTestFinder()
+finder = doctest.DocTestFinder()
+
+
+def find_examples(obj):
     try:
-        examples = (
-            finder.find(_calculation)
-            + finder.find(_calculation.band)
-            + finder.find(_calculation.dos)
-            + finder.find(_calculation.force)
-            + finder.find(_calculation.local_moment)
-            + finder.find(_calculation.structure)
-        )
+        return finder.find(obj)
     except exception.ModuleNotInstalled:
         return []
+
+
+def get_calculation_examples():
+    examples = (
+        find_examples(_calculation)
+        + find_examples(_calculation.band)
+        + find_examples(_calculation.dos)
+        + find_examples(_calculation.force)
+        + find_examples(_calculation.local_moment)
+        + find_examples(_calculation.structure)
+    )
     return [example for example in examples if interesting_example(example)]
 
 
@@ -57,16 +63,12 @@ def test_calculation(example: doctest.DocTest, tmp_path: pathlib.Path):
 
 
 def get_graph_examples():
-    finder = doctest.DocTestFinder()
-    try:
-        return (
-            finder.find(py4vasp.plot)
-            + finder.find(py4vasp.graph.Contour)
-            + finder.find(py4vasp.graph.Graph)
-            + finder.find(py4vasp.graph.Series)
-        )
-    except exception.ModuleNotInstalled:
-        return []
+    return (
+        find_examples(py4vasp.plot)
+        + find_examples(py4vasp.graph.Contour)
+        + find_examples(py4vasp.graph.Graph)
+        + find_examples(py4vasp.graph.Series)
+    )
 
 
 @pytest.mark.parametrize(
