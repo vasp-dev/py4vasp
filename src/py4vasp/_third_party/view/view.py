@@ -49,33 +49,75 @@ def _rotate(arrow, transformation):
 
 @dataclass
 class Isosurface:
+    """Dataclass to store the settings for an isosurface to be plotted for a grid quantity.
+    
+    This class does not hold the data for the isosurface itself, only the settings for how an isosurface should be plotted as a `GridQuantity`.
+    
+    Examples
+    --------
+    Each `GridQuantity` object needs matching `Isosurface` objects to specify how the isosurfaces for this quantity should be plotted. 
+    For example, if you want to plot an isosurface for a charge density with an isolevel of 0.1, red color and 50% opacity, you can create an `Isosurface` object like this:
+    
+    >>> from py4vasp.view import Isosurface
+    >>> Isosurface(isolevel=0.1, color='red', opacity=0.5)
+    Isosurface(isolevel=0.1, color='red', opacity=0.5)
+    """
+
     isolevel: float
-    "The isosurface moves through points where the interpolated data has this value."
+    """The isosurface moves through points where the interpolated data has this value. For example, if the quantity is a charge density, an isolevel of 0.1 means that the isosurface will be drawn through points where the charge density has a value of 0.1."""
     color: str
-    "Color with which the isosurface should be drawn"
+    """Color with which the isosurface should be drawn. For example, '#2FB5AB' or 'red'."""
     opacity: float
-    "Amount of light blocked by the isosurface."
+    """Amount of light blocked by the isosurface. Must be a value between 0 and 1, where 0 means fully transparent and 1 means fully opaque."""
 
 
 @dataclass
 class GridQuantity:
+    """Dataclass to store a quantity defined on a grid and the settings for the isosurfaces to be plotted for this quantity.
+    
+    Examples
+    --------
+    If you want to plot an isosurface for a charge density with an isolevel of 0.1, red color and 50% opacity, you can create a `GridQuantity` object with a single step like this:
+    
+    >>> from py4vasp.view import GridQuantity, Isosurface
+    >>> quantity = [[[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0.1, 0], [0, 0.15, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]]]
+    >>> isosurface = Isosurface(isolevel=0.1, color='red', opacity=0.5)
+    >>> GridQuantity(quantity=quantity, label='Charge Density', isosurfaces=[isosurface])
+    GridQuantity(quantity=[[[[...]]]], label=..., isosurfaces=[Isosurface(...)])
+    """
+
     quantity: npt.ArrayLike
-    """The quantity which is to be plotted as an isosurface"""
+    """The quantity which is to be plotted as an isosurface. Expected shape is (number of steps, grid size x, grid size y, grid size z)."""
     label: str
     """Name of the quantity"""
     isosurfaces: Sequence[Isosurface] = None
+    """Sequence of isosurfaces to be plotted for this quantity."""
 
 
 @dataclass
 class IonArrow:
+    """Dataclass to store a vectorial quantity defined at the ion positions and the settings for the arrows to be plotted for this quantity.
+    Positions for these arrows will be inferred in the context of the structure / ion positions, as provided, e.g., in the `View` class.
+
+    Examples
+    --------
+    If you want to plot arrows for a spin quantity with red color and a radius of 0.2, you can create an `IonArrow` object with a single step like this:
+    
+    >>> from py4vasp.view import IonArrow
+    >>> quantity = [[[[1, 0, 0], [-1, 0, 0]], [[0.5, 0.5, 0], [-0.5, -0.5, 0]]]]
+    >>> IonArrow(quantity=quantity, label='Spin', color='red', radius=0.2)
+    IonArrow(quantity=[[[[...]]]], label=..., color=..., radius=...)
+    """
+
     quantity: npt.ArrayLike
-    """Vector quantity to be used to draw arrows at the ion positions"""
+    """Vector quantity to be used to draw arrows at the ion positions.
+    The shape is expected to be (number of steps, number of ions, 3) and the vectors are expected to be in Cartesian coordinates."""
     label: str
     """Name of the quantity"""
     color: str
-    "Color with which the arrows should be drawn"
+    """Color with which the arrows should be drawn. For example, '#2FB5AB' or 'red'."""
     radius: float
-    "Radius of the arrows"
+    """Radius of the arrows"""
 
 
 _x_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((3, 0, 0)), color="#000000")
@@ -97,32 +139,94 @@ def _recenter(arrow, origin=None):
 
 @dataclass
 class View:
+    """Class to store all information required for 3D visualization of a structure, isosurfaces and vectorial quantities (e.g., spins, magnetization etc.).
+    
+    The available methods `to_ngl` and `to_vasp_viewer` convert the information stored in this class to a widget.
+    Depending on which packages are installed, one or the other method might raise an Exception.
+    
+    Typically, its methods will be called from the `plot` method, which wraps the `to_view` method and automatically selects the viewer based on the installed packages.
+    
+    Examples
+    --------
+    Generally speaking, you might obtain `View` objects by calling the corresponding `plot` methods on the different quantities:
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+    >>> calculation.structure.plot()
+    View(...)
+
+    >>> calculation.nics.plot()
+    View(...)
+
+    But you can also create `View` objects directly. For example:
+
+    >>> from py4vasp.view import View
+
+    The created View object will automatically display as a widget in supported environments, e.g., in Jupyter notebooks.
+
+    >>> elements = [["Si", "Si"], ["Na", "Cl"]]
+    >>> lattice_vectors = [[[3, 0, 0], [0, 3, 0], [0, 0, 3]], [[4, 0, 0], [0, 4, 0], [0, 0, 4]]]
+    >>> positions = [[[0, 0, 0], [0.25, 0.25, 0.25]], [[0, 0, 0], [0.5, 0.5, 0.5]]]
+    >>> view = View(
+            elements=elements,
+            lattice_vectors=lattice_vectors,
+            positions=positions,
+        )
+    >>> view
+    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], ...)
+
+    It is possible to add quantities or change settings after creating the View object:
+    
+    >>> view.supercell = (2, 2, 2)
+    >>> view
+    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], ... supercell=(2, 2, 2), ...)
+
+    You may wish to add arrows at the atom centers, for example to visualize spins or forces. You can do this by creating an `IonArrow` object and adding it to the `ion_arrows` attribute of the `View` object:
+    
+    >>> from py4vasp.view import IonArrow
+    >>> quantity = [[[[1, 0, 0], [-1, 0, 0]], [[0.5, 0.5, 0], [-0.5, -0.5, 0]]]]
+    >>> ion_arrow = IonArrow(quantity=quantity, label='Spin', color='red', radius=0.2)
+    >>> view.ion_arrows = [ion_arrow]
+    >>> view
+    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], ... ion_arrows=[IonArrow(...)], ...)
+
+    Similarly, you can add isosurfaces for quantities defined on a grid by creating `GridQuantity` objects and adding them to the `grid_scalars` attribute of the `View` object:
+
+    >>> from py4vasp.view import GridQuantity, Isosurface
+    >>> quantity = [[[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0.1, 0], [0, 0.15, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]]]
+    >>> isosurface = Isosurface(isolevel=0.1, color='red', opacity=0.5)
+    >>> grid_quantity = GridQuantity(quantity=quantity, label='Charge Density', isosurfaces=[isosurface])
+    >>> view.grid_scalars = [grid_quantity]
+    >>> view
+    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], ... grid_scalars=[GridQuantity(...)], ...)
+    """
+
     elements: npt.ArrayLike
-    """Elements for all structures in the trajectory"""
+    """Elements for all structures in the trajectory. Expected shape is (number of steps, number of ions)."""
     lattice_vectors: npt.ArrayLike
-    """Lattice vectors for all structures in the trajectory"""
+    """Lattice vectors for all structures in the trajectory. Expected shape is (number of steps, 3, 3)."""
     positions: npt.ArrayLike
-    """Ion positions for all structures in the trajectory"""
+    """Ion positions for all structures in the trajectory. Expected shape is (number of steps, number of ions, 3)."""
     grid_scalars: Sequence[GridQuantity] = None
-    """This sequence stores quantities that are generated on a grid."""
+    """This sequence stores quantities that are generated on a grid. Expected shape is (number of quantities,)."""
     ion_arrows: Sequence[IonArrow] = None
-    """This sequence stores arrows at the atom-centers."""
+    """This sequence stores arrows at the atom-centers. Expected shape is (number of quantities,)."""
     supercell: npt.ArrayLike = (1, 1, 1)
-    "Defines how many multiple of the cell are drawn along each of the coordinate axis."
+    """Defines how many multiples of the cell are drawn along each coordinate axes, in integer values. Valid shapes are (1,), or (3,), and valid dtype=int."""
     show_cell: bool = True
     """Defines if a cell is shown in ngl."""
     show_axes: bool = False
-    """Defines if the axes is shown in the viewer"""
+    """Defines if the axes is shown in the viewer."""
     show_axes_at: Sequence[float] = None
-    """Defines where the axis is shown, defaults to the origin"""
+    """Defines where the axis is shown, defaults to the origin. Given in Direct coordinates. Expected shape is (3,)."""
     shift: npt.ArrayLike = None
-    """Defines the shift of the origin"""
+    """Defines the shift of the origin, defaults to no shift. Given in Direct coordinates. Expected shape is (3,). This is useful if you want to change the origin of the unit cell, e.g., to the center of the cell."""
     camera: str = "orthographic"
-    """Defines the camera view type (orthographic or perspective)"""
+    """Defines the camera view type (orthographic or perspective)."""
     atom_radius: float = None
-    """Defines the radius of the atoms in VASP Viewer"""
+    """Defines the radius of the atoms (only available for VASP Viewer). Must be a positive number."""
     structure_title: str = None
-    """Title of the structure to be shown in VASP Viewer"""
+    """Title of the structure to be shown (only available for VASP Viewer)."""
 
     def __post_init__(self):
         self._verify()
