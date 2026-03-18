@@ -72,7 +72,7 @@ def get_graph_examples():
 @pytest.mark.parametrize(
     "example", get_graph_examples(), ids=lambda example: example.name
 )
-def test_graph_functions(example: doctest.DocTest, tmp_path: pathlib.Path):
+def test_graph_functions(example: doctest.DocTest, tmp_path: pathlib.Path, not_core):
     optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
     runner = doctest.DocTestRunner(optionflags=optionflags)
     example.globs["np"] = np
