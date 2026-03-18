@@ -50,13 +50,18 @@ def _rotate(arrow, transformation):
 @dataclass
 class Isosurface:
     """Dataclass to store the settings for an isosurface to be plotted for a grid quantity.
-    
-    This class does not hold the data for the isosurface itself, only the settings for how an isosurface should be plotted as a `GridQuantity`.
-    
+
+    This class does not hold the data for the isosurface itself, only the settings for how
+    an isosurface should be plotted as a :class:`~py4vasp.view.GridQuantity`.
+
     Examples
     --------
-    Each `GridQuantity` object needs matching `Isosurface` objects to specify how the isosurfaces for this quantity should be plotted. 
-    For example, if you want to plot an isosurface for a charge density with an isolevel of 0.1, red color and 50% opacity, you can create an `Isosurface` object like this:
+    Each :class:`~py4vasp.view.GridQuantity` object needs matching
+    :class:`~py4vasp.view.Isosurface` objects to specify how the isosurfaces for this
+    quantity should be plotted.
+    For example, if you want to plot an isosurface for a charge density with an isolevel
+    of 0.1, red color and 50% opacity, you can create an :class:`~py4vasp.view.Isosurface`
+    object like this:
     
     >>> from py4vasp.view import Isosurface
     >>> Isosurface(isolevel=0.1, color='red', opacity=0.5)
@@ -74,10 +79,12 @@ class Isosurface:
 @dataclass
 class GridQuantity:
     """Dataclass to store a quantity defined on a grid and the settings for the isosurfaces to be plotted for this quantity.
-    
+
     Examples
     --------
-    If you want to plot an isosurface for a charge density with an isolevel of 0.1, red color and 50% opacity, you can create a `GridQuantity` object with a single step like this:
+    If you want to plot an isosurface for a charge density with an isolevel of 0.1, red
+    color and 50% opacity, you can create a :class:`~py4vasp.view.GridQuantity` object
+    with a single step like this:
     
     >>> from py4vasp.view import GridQuantity, Isosurface
     >>> quantity = [[[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0.1, 0], [0, 0.15, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]]]
@@ -97,11 +104,14 @@ class GridQuantity:
 @dataclass
 class IonArrow:
     """Dataclass to store a vectorial quantity defined at the ion positions and the settings for the arrows to be plotted for this quantity.
-    Positions for these arrows will be inferred in the context of the structure / ion positions, as provided, e.g., in the `View` class.
+
+    Positions for these arrows will be inferred in the context of the structure / ion
+    positions, as provided, e.g., in the :class:`~py4vasp.view.View` class.
 
     Examples
     --------
-    If you want to plot arrows for a spin quantity with red color and a radius of 0.2, you can create an `IonArrow` object with a single step like this:
+    If you want to plot arrows for a spin quantity with red color and a radius of 0.2,
+    you can create an :class:`~py4vasp.view.IonArrow` object with a single step like this:
     
     >>> from py4vasp.view import IonArrow
     >>> quantity = [[[[1, 0, 0], [-1, 0, 0]], [[0.5, 0.5, 0], [-0.5, -0.5, 0]]]]
@@ -140,15 +150,45 @@ def _recenter(arrow, origin=None):
 @dataclass
 class View:
     """Class to store all information required for 3D visualization of a structure, isosurfaces and vectorial quantities (e.g., spins, magnetization etc.).
-    
-    The available methods `to_ngl` and `to_vasp_viewer` convert the information stored in this class to a widget.
-    Depending on which packages are installed, one or the other method might raise an Exception.
-    
-    Typically, its methods will be called from the `plot` method, which wraps the `to_view` method and automatically selects the viewer based on the installed packages.
-    
+
+    The View class acts as a unified data container for 3D structural visualization,
+    supporting crystal structures with optional supercell expansion, scalar field
+    isosurfaces, and vector quantities drawn as arrows at ion positions. It supports
+    multi-step ionic trajectories and two interactive viewer backends.
+
+    Key Features
+    ------------
+    - Visualization of crystal structures with optional supercell expansion
+    - Isosurface rendering for grid-based scalar quantities, e.g., charge density 
+      (see :class:`~py4vasp.view.GridQuantity`)
+    - Arrow visualization of vector quantities at ion positions, e.g., spins or forces
+      (see :class:`~py4vasp.view.IonArrow`)
+    - Support for multi-step ionic trajectories
+    - Compatible with NGL and VASP Viewer backends
+    - Configurable cell display, coordinate axes, camera mode, and unit cell origin shift
+
+    Notes
+    -----
+    - The methods :meth:`to_ngl` and :meth:`to_vasp_viewer` convert the stored information
+      to an interactive widget; which method is available depends on the installed packages.
+    - Typically, :class:`~py4vasp.view.View` objects are obtained by calling the `plot`
+      method on a calculation quantity, which internally calls `to_view` and automatically
+      selects the viewer.
+    - In NGL mode, isosurfaces and ion arrows are currently supported only for single-frame
+      trajectories.
+    - The created `View` object will automatically display as a widget in supported
+      environments, e.g., in Jupyter notebooks.
+
+    See Also
+    --------
+    :class:`~py4vasp.view.IonArrow` : Vectorial quantity at ion positions, visualized as arrows.
+    :class:`~py4vasp.view.GridQuantity` : Scalar quantity on a grid, visualized as isosurfaces.
+    :class:`~py4vasp.view.Isosurface` : Settings for a single isosurface within a :class:`~py4vasp.view.GridQuantity`.
+
     Examples
     --------
-    Generally speaking, you might obtain `View` objects by calling the corresponding `plot` methods on the different quantities:
+    Generally speaking, you might obtain :class:`~py4vasp.view.View` objects by calling
+    the corresponding `plot` methods on the different quantities:
 
     >>> from py4vasp import demo
     >>> calculation = demo.calculation(path)
@@ -158,31 +198,31 @@ class View:
     >>> calculation.nics.plot()
     View(...)
 
-    But you can also create `View` objects directly. For example:
+    But you can also create :class:`~py4vasp.view.View` objects directly. For example:
 
     >>> from py4vasp.view import View
 
-    The created View object will automatically display as a widget in supported environments, e.g., in Jupyter notebooks.
+    The created `View` object will automatically display as a widget in supported
+    environments, e.g., in Jupyter notebooks.
 
     >>> elements = [["Si", "Si"], ["Na", "Cl"]]
     >>> lattice_vectors = [[[3, 0, 0], [0, 3, 0], [0, 0, 3]], [[4, 0, 0], [0, 4, 0], [0, 0, 4]]]
     >>> positions = [[[0, 0, 0], [0.25, 0.25, 0.25]], [[0, 0, 0], [0.5, 0.5, 0.5]]]
-    >>> view = View(
-            elements=elements,
-            lattice_vectors=lattice_vectors,
-            positions=positions,
-        )
+    >>> view = View(elements=elements, lattice_vectors=lattice_vectors, positions=positions)
     >>> view
     View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], ...)
 
-    It is possible to add quantities or change settings after creating the View object:
-    
+    It is possible to add quantities or change settings after creating the
+    :class:`~py4vasp.view.View` object:
+
     >>> view.supercell = (2, 2, 2)
     >>> view
     View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], ... supercell=(2, 2, 2), ...)
 
-    You may wish to add arrows at the atom centers, for example to visualize spins or forces. You can do this by creating an `IonArrow` object and adding it to the `ion_arrows` attribute of the `View` object:
-    
+    You may wish to add arrows at the atom centers, for example to visualize spins or
+    forces. You can do this by creating an :class:`~py4vasp.view.IonArrow` object and
+    adding it to the `ion_arrows` attribute of the :class:`~py4vasp.view.View` object:
+
     >>> from py4vasp.view import IonArrow
     >>> quantity = [[[[1, 0, 0], [-1, 0, 0]], [[0.5, 0.5, 0], [-0.5, -0.5, 0]]]]
     >>> ion_arrow = IonArrow(quantity=quantity, label='Spin', color='red', radius=0.2)
@@ -190,7 +230,9 @@ class View:
     >>> view
     View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], ... ion_arrows=[IonArrow(...)], ...)
 
-    Similarly, you can add isosurfaces for quantities defined on a grid by creating `GridQuantity` objects and adding them to the `grid_scalars` attribute of the `View` object:
+    Similarly, you can add isosurfaces for quantities defined on a grid by creating
+    :class:`~py4vasp.view.GridQuantity` objects and adding them to the `grid_scalars`
+    attribute of the :class:`~py4vasp.view.View` object:
 
     >>> from py4vasp.view import GridQuantity, Isosurface
     >>> quantity = [[[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0.1, 0], [0, 0.15, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]]]
