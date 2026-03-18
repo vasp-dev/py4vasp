@@ -62,7 +62,7 @@ class Isosurface:
     For example, if you want to plot an isosurface for a charge density with an isolevel
     of 0.1, red color and 50% opacity, you can create an :class:`~py4vasp.view.Isosurface`
     object like this:
-    
+
     >>> from py4vasp.view import Isosurface
     >>> Isosurface(isolevel=0.1, color='red', opacity=0.5)
     Isosurface(isolevel=0.1, color='red', opacity=0.5)
@@ -85,7 +85,7 @@ class GridQuantity:
     If you want to plot an isosurface for a charge density with an isolevel of 0.1, red
     color and 50% opacity, you can create a :class:`~py4vasp.view.GridQuantity` object
     with a single step like this:
-    
+
     >>> from py4vasp.view import GridQuantity, Isosurface
     >>> quantity = [[[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0.1, 0], [0, 0.15, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]]]
     >>> isosurface = Isosurface(isolevel=0.1, color='red', opacity=0.5)
@@ -112,7 +112,7 @@ class IonArrow:
     --------
     If you want to plot arrows for a spin quantity with red color and a radius of 0.2,
     you can create an :class:`~py4vasp.view.IonArrow` object with a single step like this:
-    
+
     >>> from py4vasp.view import IonArrow
     >>> quantity = [[[[1, 0, 0], [-1, 0, 0]], [[0.5, 0.5, 0], [-0.5, -0.5, 0]]]]
     >>> IonArrow(quantity=quantity, label='Spin', color='red', radius=0.2)
@@ -159,7 +159,7 @@ class View:
     Key Features
     ------------
     - Visualization of crystal structures with optional supercell expansion
-    - Isosurface rendering for grid-based scalar quantities, e.g., charge density 
+    - Isosurface rendering for grid-based scalar quantities, e.g., charge density
       (see :class:`~py4vasp.view.GridQuantity`)
     - Arrow visualization of vector quantities at ion positions, e.g., spins or forces
       (see :class:`~py4vasp.view.IonArrow`)
@@ -248,7 +248,7 @@ class View:
     lattice_vectors: npt.ArrayLike
     """Lattice vectors for all structures in the trajectory. Expected shape is (number of steps, 3, 3)."""
     positions: npt.ArrayLike
-    """Ion positions for all structures in the trajectory. Expected shape is (number of steps, number of ions, 3)."""
+    """Ion positions for all structures in the trajectory, in Direct coordinates. Expected shape is (number of steps, number of ions, 3)."""
     grid_scalars: Sequence[GridQuantity] = None
     """This sequence stores quantities that are generated on a grid. Expected shape is (number of quantities,)."""
     ion_arrows: Sequence[IonArrow] = None
