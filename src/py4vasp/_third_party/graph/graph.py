@@ -5,6 +5,8 @@ import uuid
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, fields, replace
+from pathlib import Path
+from typing import Optional
 
 import numpy as np
 
@@ -22,32 +24,118 @@ pd = import_.optional("pandas")
 
 @dataclass
 class Graph(Sequence):
-    """Wraps the functionality to generate graphs of series.
+    """A flexible container for creating and managing data visualization graphs.
 
-    From a single or multiple series a graph is generated based on the optional
-    parameters set in this class.
+    The Graph class provides a comprehensive interface for creating, customizing, and
+    exporting data visualizations. It supports single or multiple data series, interactive
+    plotting with Plotly, and various export formats including CSV and pandas DataFrames.
+
+    This class acts as both a container for data series and a configuration object for
+    plot properties such as axis labels, ranges, sizes, and titles. It implements the
+    Sequence protocol, allowing iteration and indexing over the contained series.
+
+    Key Features
+    ------------
+    - Support for single or multiple data series
+    - Interactive visualization using Plotly
+    - Customizable axis labels, ranges, and tick positions
+    - Configurable figure dimensions
+    - Subplot support for organizing multiple plots vertically
+    - Secondary y-axis support for comparing series with different scales
+    - Export capabilities to CSV, pandas DataFrame, and Plotly figures
+    - Automatic color cycling for multiple series
+    - Contour plot support with aspect ratio handling
+
+    Notes
+    -----
+    - The class is designed to be immutable after initialization; new attributes cannot
+      be added after creation to prevent typos.
+    - Graphs can be combined using the + operator, which merges series and reconciles
+      compatible settings.
+    - When using subplots, all series must have the subplot attribute set to a positive
+      integer indicating the subplot row number.
+    - Colorbars are automatically positioned to avoid overlap with the legend.
+    - For contour plots, axes are hidden and aspect ratios are locked to maintain
+      spatial relationships.
+
+    See Also
+    --------
+    :class:`~py4vasp.graph.Series` : The primary data series type for line and scatter plots.
+    :class:`~py4vasp.graph.Contour` : A specialized series type for contour and heatmap visualizations.
+
+    Examples
+    --------
+    Create a simple graph and modify its properties:
+
+    >>> import numpy as np
+    >>> x = np.array([1, 2, 3, 4, 5])
+    >>> y = np.array([2, 4, 6, 8, 10])
+    >>> graph = py4vasp.plot(x, y, "my data")
+    >>> graph.xlabel = "Time (s)"
+    >>> graph.ylabel = "Temperature (K)"
+    >>> graph.title = "Temperature vs Time"
+    >>> graph.show()
+
+    Modify the axis ranges to zoom into a specific region:
+
+    >>> x = np.linspace(0, 10, 100)
+    >>> y = np.sin(x)
+    >>> graph = py4vasp.plot(x, y, "sine wave")
+    >>> graph.xrange = (2, 8)
+    >>> graph.yrange = (-0.5, 0.5)
+    >>> graph.show()
+
+    Customize the figure size:
+
+    >>> x = np.array([1, 2, 3])
+    >>> y = np.array([4, 5, 6])
+    >>> graph = py4vasp.plot(x, y, "data")
+    >>> graph.xsize = 1200
+    >>> graph.ysize = 800
+    >>> graph.show()
+
+    Add custom tick positions and labels:
+
+    >>> x = np.array([0, 1, 2, 3])
+    >>> y = np.array([1, 4, 9, 16])
+    >>> graph = py4vasp.plot(x, y, "squares")
+    >>> graph.xticks = {0: "start", 1: "one", 2: "two", 3: "end"}
+    >>> graph.show()
+
+    Combine multiple series and modify the combined graph:
+
+    >>> x = np.linspace(0, 2*np.pi, 50)
+    >>> y1 = np.sin(x)
+    >>> y2 = np.cos(x)
+    >>> graph1 = py4vasp.plot(x, y1, "sin")
+    >>> graph2 = py4vasp.plot(x, y2, "cos")
+    >>> combined = graph1 + graph2
+    >>> combined.xlabel = "Angle (rad)"
+    >>> combined.ylabel = "Amplitude"
+    >>> combined.title = "Trigonometric Functions"
+    >>> combined.show()
     """
 
-    series: Trace or Sequence[Trace]
-    "One or more series shown in the graph."
-    xlabel: str = None
-    "Label for the x axis."
-    xrange: tuple = None
-    "Reduce the x axis to this interval."
-    xticks: dict = None
-    "A dictionary specifying positions and labels where ticks are placed on the x axis."
-    xsize: int = 720
-    "Width of the resulting figure."
-    ylabel: str = None
-    "Label for the y axis."
-    yrange: tuple = None
-    "Reduce the y axis to this interval."
-    y2label: str = None
-    "Label for the secondary y axis."
-    ysize: int = 540
-    "Height of the resulting figure."
-    title: str = None
-    "Title of the graph."
+    series: Trace | Sequence[Trace]
+    "One or more data series (e.g., Series, Contour, or Trace objects) to be displayed in the graph."
+    xlabel: Optional[str] = None
+    "Label for the x-axis. For subplots, provide a list of labels corresponding to each subplot."
+    xrange: Optional[tuple] = None
+    "Tuple specifying the visible range of the x-axis as (min, max)."
+    xticks: Optional[dict] = None
+    "Dictionary mapping tick positions (keys) to their labels (values) for the x-axis."
+    xsize: Optional[int] = 720
+    "Width of the figure in pixels."
+    ylabel: Optional[str] = None
+    "Label for the y-axis. For subplots, provide a list of labels corresponding to each subplot."
+    yrange: Optional[tuple] = None
+    "Tuple specifying the visible range of the y-axis as (min, max)."
+    y2label: Optional[str] = None
+    "Label for the secondary y-axis (only applicable when series use the secondary y-axis)."
+    ysize: Optional[int] = 540
+    "Height of the figure in pixels."
+    title: Optional[str] = None
+    "Title displayed at the top of the graph."
     _frozen = False
 
     def __setattr__(self, key, value):
@@ -78,8 +166,48 @@ class Graph(Sequence):
     def __len__(self):
         return np.atleast_1d(self.series).size
 
-    def to_plotly(self):
-        "Convert the graph to a plotly figure."
+    def to_plotly(self) -> "go.Figure":
+        """Convert the graph to a plotly figure for interactive visualization and customization.
+
+        This method transforms the internal graph representation into a Plotly Figure object,
+        which enables interactive plotting, customization, and export capabilities. The resulting
+        figure includes all traces, shapes, and annotations from the graph, properly organized
+        into subplots if multiple rows are specified.
+
+        Once converted to a Plotly figure, you can:
+        - Display the graph interactively in Jupyter notebooks or web browsers
+        - Further customize the layout, colors, fonts, and other visual properties
+        - Export to various formats (HTML, PNG, PDF, SVG)
+        - Add additional traces, annotations, or modify existing elements
+        - Save the figure for later use or sharing
+
+        Returns
+        -------
+        go.Figure
+            A Plotly Figure object containing all graph elements (traces, shapes, annotations)
+            with the configured legend settings.
+
+        Examples
+        --------
+        >>> # Example 1: Display an interactive plot in a Jupyter notebook
+        >>> graph = py4vasp.plot(x=[1, 2, 3], y=[4, 5, 6], label="my data")
+        >>> fig = graph.to_plotly()
+        >>> fig.show()
+
+        >>> # Example 2: Customize the figure after conversion
+        >>> graph = py4vasp.plot(x=[1, 2, 3], y=[4, 5, 6], label="my data")
+        >>> fig = graph.to_plotly()
+        >>> fig.update_layout(title="Custom Title", template="plotly_dark")
+        Figure(...)
+        >>> fig.update_xaxes(title_text="Custom X Label")
+        Figure(...)
+        >>> fig.show()
+
+        >>> # Example 3: Export the figure to an HTML file
+        >>> graph = py4vasp.plot(x=[1, 2, 3], y=[4, 5, 6], label="my data")
+        >>> fig = graph.to_plotly()
+        >>> fig.write_html(path / "my_graph.html")
+        """
         figure = self._make_plotly_figure()
         for trace, options in self._generate_plotly_traces():
             if options.get("row") is None:
@@ -94,10 +222,40 @@ class Graph(Sequence):
         return figure
 
     def show(self):
-        "Show the graph with the default look."
+        """Display the graph in an interactive viewer.
+
+        This method renders the graph using an interactive plotting backend, allowing
+        you to visualize and explore the data. The graph will open in your default
+        viewer, typically a web browser or an integrated notebook interface.
+
+        The visualization supports interactive features such as zooming, panning,
+        hovering over data points to see values, and toggling legend entries to
+        show or hide specific data series.
+
+        Examples
+        --------
+        Create and display a simple graph:
+
+        >>> x = np.array([1, 2, 3])
+        >>> y = np.array([4, 5, 6])
+        >>> graph = py4vasp.plot(x, y, "my data")
+        >>> graph.show()
+
+        Display a graph after customizing its appearance:
+
+        >>> x = np.array([1, 2, 3])
+        >>> y = np.array([4, 5, 6])
+        >>> graph = py4vasp.plot(x, y, "my data")
+        >>> graph.xlabel = "Time (s)"
+        >>> graph.ylabel = "Temperature (K)"
+        >>> graph.show()
+
+        In Jupyter notebooks, the graph will be embedded inline, while in scripts
+        it will open in a separate browser window.
+        """
         self.to_plotly().show()
 
-    def label(self, new_label):
+    def label(self, new_label: str) -> None:
         """Apply a new label to all series within.
 
         If there is only a single series, the label will replace the current one. If there
@@ -105,8 +263,26 @@ class Graph(Sequence):
 
         Parameters
         ----------
-        new_label : str
+        new_label
             The new label added to the series.
+
+        Examples
+        --------
+        Replace the current label with a new one for a single series.
+
+        >>> x = np.array([1, 2, 3])
+        >>> y = np.array([4, 5, 6])
+        >>> graph = py4vasp.plot(x, y, "old label")
+        >>> graph.label("new label")
+        Graph(series=[Series(..., label='new label', ...)], ...)
+
+        Prefix the current label with a new one for multiple series.
+
+        >>> x = np.array([1, 2, 3])
+        >>> y = np.array([4, 5, 6])
+        >>> graph = py4vasp.plot(x, y, "one") + py4vasp.plot(x, y, "two")
+        >>> graph.label("prefix")
+        Graph(series=[Series(..., label='prefix one', ...), Series(..., label='prefix two', ...)], ...)
         """
         self.series = [self._make_label(series, new_label) for series in self]
         return self
@@ -227,7 +403,7 @@ class Graph(Sequence):
     def _any_are_contour(self):
         return any(isinstance(series, Contour) for series in self)
 
-    def to_frame(self):
+    def to_frame(self) -> "pd.DataFrame":
         """Convert graph to a pandas dataframe.
 
         Every series will have at least two columns, named after the series name
@@ -237,8 +413,41 @@ class Graph(Sequence):
 
         Returns
         -------
-        Dataframe
+        -
             A pandas dataframe with columns for each series in the graph
+
+        Examples
+        --------
+        Convert a graph with a single series to a dataframe:
+
+        >>> graph = py4vasp.plot(x=[1, 2, 3], y=[4, 5, 6], label="data")
+        >>> df = graph.to_frame()
+        >>> print(df)
+           data.x  data.y
+        0       1       4
+        1       2       5
+        2       3       6
+
+        Convert a graph with multiple series to a dataframe:
+
+        >>> graph = Graph(series=[
+        ...     Series(x=[1, 2], y=[3, 4], label="series1"),
+        ...     Series(x=[1, 2], y=[5, 6], label="series2")
+        ... ])
+        >>> df = graph.to_frame()
+        >>> print(df)
+           series1.x  series1.y  series2.x  series2.y
+        0          1          3          1          5
+        1          2          4          2          6
+
+        Convert a graph with weighted series to a dataframe:
+
+        >>> graph = Graph(series=Series(x=[1, 2], y=[3, 4], weight=[0.5, 0.8], label="weighted"))
+        >>> df = graph.to_frame()
+        >>> print(df)
+           weighted.x  weighted.y  weighted.weight
+        0           1           3              0.5
+        1           2           4              0.8
         """
         df = pd.DataFrame()
         for series in np.atleast_1d(self.series):
@@ -246,16 +455,62 @@ class Graph(Sequence):
             df = df.join(_df, how="outer")
         return df
 
-    def to_csv(self, filename):
-        """Export graph to a csv file.
+    def to_csv(self, filename: str | Path) -> None:
+        """Export graph data to a CSV file.
 
-        Starting from the dataframe generated from `to_frame`, use the `to_csv` method
-        implemented in pandas to write out a csv file with a given filename
+        This method saves all series data in the graph to a CSV file. Each series
+        will have columns for x and y values, named after the series label. If weights
+        are provided, they will also be included as additional columns.
 
         Parameters
         ----------
-        filename: str | Path
-            Name of the exported csv file
+        filename
+            Path to the output CSV file.
+
+        Examples
+        --------
+        Export a simple graph to CSV:
+
+        >>> x = np.array([1, 2, 3])
+        >>> y = np.array([4, 5, 6])
+        >>> graph = py4vasp.plot(x, y, "my data")
+        >>> graph.to_csv(str(path / "output.csv"))
+        >>> with open(path / "output.csv") as f:
+        ...     print(f.read())
+        my_data.x,my_data.y
+        1,4
+        2,5
+        3,6
+
+        Export a graph with multiple series:
+
+        >>> x = np.array([1, 2, 3])
+        >>> y1 = np.array([4, 5, 6])
+        >>> y2 = np.array([7, 8, 9])
+        >>> graph = py4vasp.plot(x, y1, "series 1") + py4vasp.plot(x, y2, "series 2")
+        >>> graph.to_csv(path / "multi_series.csv")
+        >>> with open(path / "multi_series.csv") as f:
+        ...     print(f.read())
+        series_1.x,series_1.y,series_2.x,series_2.y
+        1,4,1,7
+        2,5,2,8
+        3,6,3,9
+
+        Export a graph with weighted data:
+
+        >>> from py4vasp._third_party.graph.series import Series
+        >>> x = np.array([1, 2, 3])
+        >>> y = np.array([4, 5, 6])
+        >>> weight = np.array([0.1, 0.2, 0.3])
+        >>> series = Series(x=x, y=y, weight=weight, label="weighted data")
+        >>> graph = Graph(series=series)
+        >>> graph.to_csv(path / "weighted_output.csv")
+        >>> with open(path / "weighted_output.csv") as f:
+        ...     print(f.read())
+        weighted_data.x,weighted_data.y,weighted_data.weight
+        1,4,0.1
+        2,5,0.2
+        3,6,0.3
         """
         df = self.to_frame()
         df.to_csv(filename, index=False)

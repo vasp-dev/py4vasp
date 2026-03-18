@@ -2,6 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import abc
 import os
+from pathlib import Path
+from typing import Optional
 
 from py4vasp._third_party.graph.graph import Graph
 from py4vasp._util import convert
@@ -16,36 +18,81 @@ class Mixin(abc.ABC):
     def to_graph(self, *args, **kwargs):
         pass
 
-    def plot(self, *args, **kwargs):
-        """Almost same as the :py:meth:`to_graph` function.
+    def plot(self, *args, **kwargs) -> Graph:
+        """Plot the data by generating and optionally merging graphs.
 
-        All arguments will be passed to to_graph. If the :py:meth:`to_graph` would
-        produce multiple graphs this method will merge them into a single one."""
+        This method is almost identical to :py:meth:`to_graph`, but with one key difference:
+        if :py:meth:`to_graph` would produce multiple graphs, this method will automatically
+        merge them into a single graph.
+
+        Parameters
+        ----------
+        *args : tuple
+            Positional arguments passed to :py:meth:`to_graph`.
+        **kwargs : dict
+            Keyword arguments passed to :py:meth:`to_graph`.
+
+        Returns
+        -------
+        -
+            A single graph object. If :py:meth:`to_graph` produces multiple graphs,
+            they are merged into one.
+        """
         graph_or_graphs = self.to_graph(*args, **kwargs)
         if isinstance(graph_or_graphs, Graph):
             return graph_or_graphs
         else:
             return _merge_graphs(graph_or_graphs)
 
-    def to_plotly(self, *args, **kwargs):
-        """Produces a graph and convertes it to a plotly figure.
+    def to_plotly(self, *args, **kwargs) -> "go.Figure":
+        """Convert the data to a plotly figure for interactive plotting.
 
-        The arguments to this function are passed on to the :py:meth:`to_graph` method.
-        Takes the resulting graph and converts it to a plotly figure."""
+        This method calls :py:meth:`to_graph` with the provided arguments and converts
+        the resulting graph to a plotly figure object that can be displayed in Jupyter
+        notebooks or saved to HTML.
+
+        Parameters
+        ----------
+        *args : tuple
+            Positional arguments passed to :py:meth:`to_graph`.
+        **kwargs : dict
+            Keyword arguments passed to :py:meth:`to_graph`.
+
+        Returns
+        -------
+        -
+            Interactive plotly figure object.
+        """
         return self.to_graph(*args, **kwargs).to_plotly()
 
-    def to_image(self, *args, filename=None, **kwargs):
-        """Read the data and generate an image writing to the given filename.
-
-        The filetype is automatically deduced from the filename; possible
+    def to_image(self, *args, filename: Optional[str | Path] = None, **kwargs) -> None:
+        """
+        The filetype is automatically deduced from the filename; possible formats
         are common raster (png, jpg) and vector (svg, pdf) formats.
-        If no filename is provided a default filename is deduced from the
+        If no filename is provided, a default filename is deduced from the
         name of the class and the picture has png format.
 
-        Note that the filename must be a keyword argument, i.e., you explicitly
-        need to write *filename="name_of_file"* because the arguments are passed
-        on to the :py:meth:`to_graph` method. Please check the documentation of that
-        method to learn which arguments are allowed."""
+        Parameters
+        ----------
+        *args
+            Positional arguments passed to the :py:meth:`to_plotly` method.
+        filename
+            Path where the image will be saved. Can be absolute or relative to
+            the current working directory. If relative, the file will be saved
+            relative to the internal path. If None, defaults to "{classname}.png"
+            where classname is derived from the class name.
+        **kwargs
+            Keyword arguments passed to the :py:meth:`to_plotly` method.
+
+
+        Notes
+        -----
+        This function has a side effect or writing the image to disk at the specified
+        location. The filename must be a keyword argument, i.e., you explicitly need to
+        write ``filename="name_of_file"`` because the positional arguments are passed
+        on to the :py:meth:`to_plotly` method. Please check the documentation of
+        that method to learn which arguments are allowed.
+        """
         fig = self.to_plotly(*args, **kwargs)
         classname = convert.quantity_name(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.png"
@@ -55,40 +102,51 @@ class Mixin(abc.ABC):
             writeout_path = self._path / filename
         fig.write_image(writeout_path)
 
-    def to_frame(self, *args, **kwargs):
-        """Convert data to pandas dataframe.
+    def to_frame(self, *args, **kwargs) -> "pd.DataFrame":
+        """Convert data to pandas DataFrame.
 
-        This will first convert use the :py:meth:`to_graph` method to convert to a
-        Graph. All arguments are passed to that method. The resulting graph is then
-        converted to a dataframe.
+        This method first uses the :py:meth:`to_graph` method to convert the data to a
+        Graph object, then converts the resulting graph to a pandas DataFrame.
 
-        Returns
-        -------
-        Dataframe
-            Pandas dataframe corresponding to data in the graph
+        Parameters
+        ----------
+        *args : tuple
+            Positional arguments passed to :py:meth:`to_graph`.
+        **kwargs : dict
+            Keyword arguments passed to :py:meth:`to_graph`.
+
+        See Also
+        --------
+        to_graph : Convert data to Graph object.
         """
         graph = self.to_graph(*args, **kwargs)
         return graph.to_frame()
 
-    def to_csv(self, *args, filename=None, **kwargs):
-        """Writes the data to a csv file.
+    def to_csv(self, *args, filename: Optional[str | Path] = None, **kwargs):
+        """Convert data to CSV file and save to disk.
 
-        Writes out a csv file for data stored in a dataframe generated with
-        the :py:meth:`to_frame` method. Useful for creating external plots
-        for further analysis.
-
-        If no filename is provided a default filename is deduced from the
-        name of the class.
-
-        Note that the filename must be a keyword argument, i.e., you explicitly
-        need to write *filename="name_of_file"* because the arguments are passed
-        on to the :py:meth:`to_graph` method. Please check the documentation of that
-        method to learn which arguments are allowed.
+        This method calls :py:meth:`to_frame` with the provided arguments and saves
+        the resulting DataFrame to a CSV file. The file format is comma-separated values.
 
         Parameters
         ----------
-        filename: str | Path
-            Name of the csv file which the data is exported to.
+        *args
+            Positional arguments passed to :py:meth:`to_frame`.
+        filename
+            Path where the CSV file will be saved. Can be absolute or relative to
+            the current working directory. If relative, the file will be saved
+            relative to the internal path. If None, defaults to "{classname}.csv"
+            where classname is derived from the class name.
+        **kwargs
+            Keyword arguments passed to :py:meth:`to_frame`.
+
+        Notes
+        -----
+        This function has a side effect of writing the CSV file to disk at the specified
+        location. The filename must be a keyword argument, i.e., you explicitly need to
+        write ``filename="name_of_file"`` because the positional arguments are passed
+        on to the :py:meth:`to_frame` method. Please check the documentation of
+        that method to learn which arguments are allowed.
         """
         classname = convert.quantity_name(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.csv"

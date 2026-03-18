@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from dataclasses import dataclass, fields
+from typing import Generator, Optional, Tuple
 
 import numpy as np
 
@@ -15,35 +16,73 @@ go = import_.optional("plotly.graph_objects")
 class Series(trace.Trace):
     """Represents a single series in a graph.
 
-    Typically this corresponds to a single line of x-y data with an optional label used
-    in the legend of the figure. The look of the series is modified by some of the other
-    optional arguments.
+    A Series object encapsulates x-y data for plotting, with support for multiple plot
+    types (lines, areas, scatter points) and customization options.
+
+    Examples
+    --------
+    Create a simple line plot:
+    >>> x = np.linspace(0, 10, 100)
+    >>> y = np.sin(x)
+    >>> series = Series(x=x, y=y, label="Sine wave")
+    >>> py4vasp.graph.Graph(series).show()
+
+    Create scatter plot with custom color and marker:
+    >>> series = Series(x=[1, 2, 3], y=[4, 5, 6], label="Data", color="blue",
+    ...     marker="circle")
+    >>> py4vasp.graph.Graph(series).show()
+
+    Add weighted points (size based on weight):
+    >>> series = Series(x=[1, 2, 3], y=[4, 5, 6], weight=[10, 20, 30],
+    ...     weight_mode="size")
+    >>> py4vasp.graph.Graph(series).show()
+
+    Add hover annotations:
+    >>> series = Series(x=[1, 2, 3], y=[4, 5, 6], annotations={
+    ...     "Temperature": [20, 25, 30], "Unit": "°C"})
+    >>> py4vasp.graph.Graph(series).show()
+
+    Plot multiple lines (2D y data):
+    >>> y_multi = np.array([[1, 2, 3], [4, 5, 6]])
+    >>> series = Series(x=[0, 1, 2], y=y_multi, label="Multi-line")
+    >>> py4vasp.graph.Graph(series).show()
+
+    Create area plot with uncertainty:
+    >>> series = Series(x=[1, 2, 3], y=[10, 20, 15], weight=[2, 3, 2.5],
+    ...     color="rgba(255,0,0,0.3)")
+    >>> py4vasp.graph.Graph(series).show()
     """
 
     x: np.ndarray
-    "The x coordinates of the series."
+    """The x coordinates of the series."""
     y: np.ndarray
-    """The y coordinates of the series. If the data is 2-dimensional multiple lines are
+    """The y coordinates of the series. If the data is 2-dimensional, multiple lines are
     generated with a common entry in the legend."""
-    label: str = None
-    "A label for the series used in the legend."
-    weight: np.ndarray = None
-    "When a weight is set, the series will modify the plot according to weight_mode."
+    label: Optional[str] = None
+    """A label for the series used in the legend."""
+    weight: Optional[np.ndarray] = None
+    """Optional weights that modify the plot according to weight_mode. Can be used to
+    show uncertainty bands, scale marker sizes, or color-code points."""
     weight_mode: str = "size"
-    """If weight_mode is 'size', the size of the plot is adjusted according to the weight.
-    If weight_mode is 'color', the color of the plot is adjusted according to the weight."""
-    annotations: dict = None
-    """If present, stores the metadata for this line or each point of the plot. Note
-    that each element of the dictionary must have either size 1 or the same size as the
-    x coordinates."""
+    """Controls how weights affect the visualization:
+    - 'size': Adjusts the size of markers based on weight values
+    - 'color': Adjusts the color of markers based on weight values (uses coloraxis)
+    """
+    annotations: Optional[dict] = None
+    """Optional metadata dictionary for hover text. Keys are labels and values are either
+    scalars (same for all points) or arrays matching the length of x coordinates.
+    Displayed on hover as key-value pairs."""
     y2: bool = False
-    "Use a secondary y axis to show this series."
-    subplot: int = None
-    "Split series into different axes"
-    color: str = None
-    "The color used for this series."
-    marker: str = None
-    "Which marker is used for the series, None defaults to line mode."
+    """If True, plot this series on a secondary y-axis (right side)."""
+    subplot: Optional[int] = None
+    """Subplot index for this series. If specified, the series is plotted in a separate
+    subplot rather than overlaid with others."""
+    color: Optional[str] = None
+    """The color used for this series. Accepts any valid CSS color string, including
+    rgba() for transparency in area plots."""
+    marker: Optional[str] = None
+    """Marker style for scatter plots. If None, displays as a line plot. Common values
+    include 'circle', 'square', 'diamond', etc."""
     _frozen = False
 
     def __post_init__(self):
@@ -52,9 +91,11 @@ class Series(trace.Trace):
         if len(self.x) != self.y.shape[-1]:
             message = "The length of the two plotted components is inconsistent."
             raise exception.IncorrectUsage(message)
-        if self.weight is not None and len(self.x) != self.weight.shape[-1]:
-            message = "The length of weight and plot is inconsistent."
-            raise exception.IncorrectUsage(message)
+        if self.weight is not None:
+            self.weight = np.asarray(self.weight)
+            if len(self.x) != self.weight.shape[-1]:
+                message = "The length of weight and plot is inconsistent."
+                raise exception.IncorrectUsage(message)
         self._raise_error_if_annotations_length_incorrect()
         self._frozen = True
 
@@ -82,7 +123,43 @@ class Series(trace.Trace):
             for field in fields(self)
         )
 
-    def to_plotly(self):
+    def to_plotly(self) -> Generator[Tuple["go.Scatter", dict], None, None]:
+        """
+        Convert the series data to Plotly trace format.
+
+        This method generates Plotly trace objects from the series data, yielding each
+        trace along with its subplot configuration. The first trace is marked specially
+        to handle legend display correctly.
+
+        Yields
+        ------
+        tuple
+            A tuple containing:
+            - trace : plotly.graph_objs trace object
+                The Plotly trace object created from the series data.
+            - config : dict
+                A dictionary with subplot configuration, containing the row number.
+
+        Notes
+        -----
+        The y-data is converted to at least a 2D array to ensure consistent handling
+        of both single and multiple series. Only the first trace is marked as such
+        to control legend behavior in Plotly.
+
+        Examples
+        --------
+        >>> series = Series(x=[1, 2, 3], y=[4, 5, 6], subplot=1)
+        >>> for trace, config in series.to_plotly():
+        ...     print(f"Trace type: {type(trace).__name__}, Row: {config['row']}")
+        Trace type: Scatter, Row: 1
+
+        >>> series = Series(x=[1, 2, 3], y=[[4, 5, 6], [7, 8, 9]], subplot=2)
+        >>> traces = list(series.to_plotly())
+        >>> len(traces)
+        2
+        >>> traces[0][1]['row']
+        2
+        """
         first_trace = True
         for item in enumerate(np.atleast_2d(np.array(self.y))):
             yield self._make_trace(*item, first_trace), {"row": self.subplot}
