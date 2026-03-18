@@ -4,7 +4,7 @@ import itertools
 import os
 import tempfile
 from dataclasses import dataclass
-from typing import NamedTuple, Sequence
+from typing import NamedTuple, Optional, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -38,7 +38,7 @@ class _Arrow3d(NamedTuple):
         )
 
 
-def _rotate(arrow, transformation):
+def _rotate(arrow: _Arrow3d, transformation: npt.ArrayLike) -> _Arrow3d:
     return _Arrow3d(
         transformation @ arrow.tail,
         transformation @ arrow.tip,
@@ -135,7 +135,7 @@ _y_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((0, 3, 0)), color="#000000")
 _z_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((0, 0, 3)), color="#000000")
 
 
-def _recenter(arrow, origin=None):
+def _recenter(arrow: _Arrow3d, origin: npt.ArrayLike = None) -> _Arrow3d:
     if origin is not None:
         return _Arrow3d(
             arrow.tail + origin,
@@ -249,9 +249,9 @@ class View:
     """Lattice vectors for all structures in the trajectory. Expected shape is (number of steps, 3, 3)."""
     positions: npt.ArrayLike
     """Ion positions for all structures in the trajectory, in Direct coordinates. Expected shape is (number of steps, number of ions, 3)."""
-    grid_scalars: Sequence[GridQuantity] = None
+    grid_scalars: Optional[Sequence[GridQuantity]] = None
     """This sequence stores quantities that are generated on a grid. Expected shape is (number of quantities,)."""
-    ion_arrows: Sequence[IonArrow] = None
+    ion_arrows: Optional[Sequence[IonArrow]] = None
     """This sequence stores arrows at the atom-centers. Expected shape is (number of quantities,)."""
     supercell: npt.ArrayLike = (1, 1, 1)
     """Defines how many multiples of the cell are drawn along each coordinate axes, in integer values. Valid shapes are (1,), or (3,), and valid dtype=int."""
@@ -259,21 +259,21 @@ class View:
     """Defines if a cell is shown in ngl."""
     show_axes: bool = False
     """Defines if the axes is shown in the viewer."""
-    show_axes_at: Sequence[float] = None
+    show_axes_at: Optional[Sequence[float]] = None
     """Defines where the axis is shown, defaults to the origin. Given in Direct coordinates. Expected shape is (3,)."""
-    shift: npt.ArrayLike = None
+    shift: Optional[npt.ArrayLike] = None
     """Defines the shift of the origin, defaults to no shift. Given in Direct coordinates. Expected shape is (3,). This is useful if you want to change the origin of the unit cell, e.g., to the center of the cell."""
     camera: str = "orthographic"
     """Defines the camera view type (orthographic or perspective)."""
-    atom_radius: float = None
+    atom_radius: Optional[float] = None
     """Defines the radius of the atoms (only available for VASP Viewer). Must be a positive number."""
-    structure_title: str = None
+    structure_title: Optional[str] = None
     """Title of the structure to be shown (only available for VASP Viewer)."""
 
     def __post_init__(self):
         self._verify()
 
-    def _ipython_display_(self, mode="auto"):
+    def _ipython_display_(self, mode: str = "auto"):
         if mode == "auto":
             if import_.is_imported(vaspview):
                 mode = "vasp_viewer"
@@ -300,6 +300,13 @@ class View:
         This method creates the widget required to view a structure, isosurfaces and
         arrows at atom centers. The attributes of View are used as a starting point to
         determine which methods are called (either isosurface, arrows, etc).
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.structure.to_view().to_ngl()
+        NGLWidget(...)
         """
         self._verify("ngl")
         trajectory = [self._create_atoms(i) for i in self._iterate_trajectory_frames()]
