@@ -73,3 +73,6 @@ build-backend = "hatchling.build"
 
 [tool.isort]
 profile = "black"
+
+[tool.black]
+target-version = ["py311"]
