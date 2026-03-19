@@ -352,24 +352,38 @@ reciprocal"""
         Loop over all possible k points and return the indices of the ones for which
         k-point - start is linear dependent on finish - start.
 
+        The primary use case is to extract a band-structure-like slice from a
+        regular **k**-point grid. In certain calculation types — such as
+        time-dependent DFT (TDDFT), GW, or BSE — VASP only supports uniform
+        Gamma or Monkhorst-Pack meshes and does not accept an explicit line-mode
+        **k**-point set. Instead of running a separate band-structure calculation,
+        you can use this method to select all grid points that happen to lie on a
+        high-symmetry path and then plot the quantities of interest (e.g. dielectric
+        function, self-energy, or quasiparticle weights) along that line. The
+        selection is purely geometric: a **k** point is included if and only if it
+        is collinear with the segment ``[start, finish]``, i.e. the cross product of
+        ``(k - start)`` and ``(finish - start)`` is zero to numerical precision.
+
         Parameters
         ----------
         start
-            The starting k-point of the path segment.
-            Expects exactly 3 coordinates.
+            The starting **k** point of the path segment in fractional (crystal)
+            coordinates. Expects exactly 3 coordinates.
         finish
-            The ending k-point of the path segment.
-            Expects exactly 3 coordinates.
+            The ending **k** point of the path segment in fractional (crystal)
+            coordinates. Expects exactly 3 coordinates.
         {selection}
 
         Returns
         -------
         -
-            A list of indices of all k points that fulfil the linear dependence.
+            An integer array of indices (into the full **k**-point list) of all
+            **k** points that lie on the line segment from ``start`` to ``finish``.
 
         Examples
         --------
-        Find linear dependent k points between start and finish:
+        Extract all **k** points on a line through the Brillouin zone at fixed
+        :math:`k_y = 0` and :math:`k_z = 0.125` from a regular mesh:
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
