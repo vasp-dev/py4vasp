@@ -39,6 +39,7 @@ from py4vasp._demo import (
     stoichiometry,
     stress,
     structure,
+    system,
     velocity,
     workfunction,
 )

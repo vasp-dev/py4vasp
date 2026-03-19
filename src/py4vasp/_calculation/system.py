@@ -11,10 +11,26 @@ class System(base.Refinery):
     _raw_data: raw_data.System
 
     @base.data_access
-    def __str__(self):
+    def __str__(self) -> str:
         return convert.text_to_string(self._raw_data.system)
 
     @base.data_access
-    def to_dict(self):
-        "Returns a dictionary containing the system tag."
+    def to_dict(self) -> dict[str, str]:
+        """Read the system tag into a dictionary.
+
+        Returns
+        -------
+        -
+            A dictionary with a single key ``"system"`` whose value is the
+            title string set by the :tag:`SYSTEM` tag in the INCAR file.
+
+        Examples
+        --------
+        Read the system tag of a calculation:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.system.to_dict()
+        {'system': '...'}
+        """
         return {"system": str(self)}

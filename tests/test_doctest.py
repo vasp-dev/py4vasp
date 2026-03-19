@@ -34,6 +34,7 @@ def get_calculation_examples():
         + find_examples(_calculation.kpoint)
         + find_examples(_calculation.local_moment)
         + find_examples(_calculation.structure)
+        + find_examples(_calculation.system)
     )
     return [example for example in examples if interesting_example(example)]
 
