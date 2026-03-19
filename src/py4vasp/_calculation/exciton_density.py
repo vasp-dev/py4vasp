@@ -47,6 +47,7 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
     You can also visualize a 3d isosurface of the density:
 
     >>> calculation.exciton.density.plot()
+    View(...)
 
     Finally, you can inspect possible selections with:
 

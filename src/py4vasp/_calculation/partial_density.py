@@ -64,6 +64,7 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
     You can also visualize a 3d isosurface of the density:
 
     >>> calculation.partial_density.plot()
+    View(...)
 
     You can also generate an STM image from the partial density:
 
@@ -72,8 +73,11 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
     It is also possible to access the contributing bands ([0] means all bands contribute), grid, and contributing k-points:
 
     >>> calculation.partial_density.bands()
+    array(...)
     >>> calculation.partial_density.grid()
+    array(...)
     >>> calculation.partial_density.kpoints()
+    array(...)
 
     Finally, you can inspect possible selections with:
 

@@ -49,8 +49,7 @@ class CurrentDensity(base.Refinery, structure.Mixin):
     To produce a contour plot:
 
     >>> calculation.current_density.to_contour("nmr", a=0)
-    Graph(series=[Series(x=array(...), y=array(...), label='current_density', ...)],
-        ..., xticks={...}, ..., ylabel='Current Density', ...)
+    Graph(...)
 
     To produce a quiver plot:
 

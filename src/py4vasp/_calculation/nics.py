@@ -2,6 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
 
+from typing import Optional, Union
+
 import numpy as np
 
 from py4vasp import _config, exception
@@ -17,7 +19,46 @@ _DEFAULT_SELECTION: str = "isotropic"
 
 
 class Nics(base.Refinery, structure.Mixin, view.Mixin):
-    """This class accesses information on the nucleus-independent chemical shift (NICS)."""
+    """This class accesses information on the nucleus-independent chemical shift (NICS).
+
+    Examples
+    --------
+
+    First, we create some example data do that you can follow along. Please define a
+    variable `path` with the path to a directory that exists and does not contain any
+    VASP calculation data. Alternatively, you can use your own data if you have run
+    VASP and construct `calculation` from it.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    See some basic information about NICS by printing the object:
+
+    >>> print(calculation.nics)
+    nucleus-independent chemical shift:...
+
+    For your own postprocessing, you can read the band data into a Python dictionary:
+
+    >>> calculation.nics.read()
+    {'structure': ..., 'nics': array(...), 'method': ...}
+
+    You can also obtain the NICS as a numpy array directly:
+
+    >>> calculation.nics.to_numpy()
+    array(...)
+
+    You can also visualize a 3d isosurface of the chemical shift:
+
+    >>> calculation.nics.plot()
+    View(...)
+
+    Alternatively, you can visualize a contour plot of the chemical shift in a plane:
+
+    >>> calculation.nics.to_contour(c=0)
+    Graph(...)
+
+    Please check the documentation of each of these methods for more details on how to use them and which options they provide.
+    """
 
     _raw_data: raw_data.Nics
 
@@ -60,9 +101,6 @@ nucleus-independent chemical shift:
     def to_dict(self):
         """Read NICS into a dictionary.
 
-        Parameters
-        ----------
-
         Returns
         -------
         dict
@@ -91,7 +129,7 @@ nucleus-independent chemical shift:
         return check.is_none(self._raw_data.positions)
 
     @base.data_access
-    def to_numpy(self, selection=None):
+    def to_numpy(self, selection: Optional[str] = None):
         """Convert NICS to a numpy array.
 
         The resulting shape will be the NICS grid data with respect to the selection.
@@ -110,7 +148,7 @@ nucleus-independent chemical shift:
         selected_data = self._read_selected_data(selection)
         return np.squeeze(list(selected_data.values()))
 
-    def _read_selected_data(self, selection):
+    def _read_selected_data(self, selection: Optional[str]):
         if self._data_is_on_grid:
             # transpose because it is written like that in the hdf5 file
             nics_data = np.array(self._raw_data.nics_grid).T
@@ -152,7 +190,12 @@ nucleus-independent chemical shift:
         }
 
     @base.data_access
-    def to_view(self, selection=None, supercell=None, **user_options):
+    def to_view(
+        self,
+        selection: Optional[str] = None,
+        supercell: Optional[Union[int, np.ndarray]] = None,
+        **user_options,
+    ):
         """Plot the selected chemical shift as a 3d isosurface within the structure.
 
         Parameters
@@ -218,7 +261,14 @@ nucleus-independent chemical shift:
     @base.data_access
     @documentation.format(plane=slicing.PLANE, parameters=slicing.PARAMETERS)
     def to_contour(
-        self, selection=None, *, a=None, b=None, c=None, normal=None, supercell=None
+        self,
+        selection: Optional[str] = None,
+        *,
+        a: Optional[float] = None,
+        b: Optional[float] = None,
+        c: Optional[float] = None,
+        normal: Optional[str] = None,
+        supercell: Optional[Union[int, np.ndarray]] = None,
     ):
         """Generate a contour plot of chemical shift.
 

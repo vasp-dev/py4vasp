@@ -81,6 +81,8 @@ def _generate_default_data(h5f, waveh5f=None):
         write(waveh5f, _demo.density.Sr2TiO4())
         write(waveh5f, _demo.density.Sr2TiO4(), selection="tau")
     write(h5f, _demo.partial_density.partial_density("Sr2TiO4"))
+    write(h5f, _demo.nics.Sr2TiO4())
+    write(h5f, _demo.potential.Sr2TiO4("all"))
 
 
 def _generate_collinear_data(h5f, waveh5f=None):
