@@ -5,6 +5,7 @@ from fractions import Fraction
 from typing import Any
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from py4vasp import exception
 from py4vasp._calculation import base
@@ -345,7 +346,7 @@ reciprocal"""
 
     @base.data_access
     @documentation.format(selection=_kpoints_selection)
-    def path_indices(self, start, finish):
+    def path_indices(self, start: ArrayLike, finish: ArrayLike) -> np.ndarray:
         """Find linear dependent k points between start and finish
 
         Loop over all possible k points and return the indices of the ones for which
@@ -353,18 +354,29 @@ reciprocal"""
 
         Parameters
         ----------
-        start : ArrayLike
+        start
             The starting k-point of the path segment.
             Expects exactly 3 coordinates.
-        finish : ArrayLike
+        finish
             The ending k-point of the path segment.
             Expects exactly 3 coordinates.
         {selection}
 
         Returns
         -------
-        list[int]
+        -
             A list of indices of all k points that fulfil the linear dependence.
+
+        Examples
+        --------
+        Find linear dependent k points between start and finish:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> start = [0, 0, 0.125]
+        >>> finish = [1, 0, 0.125]
+        >>> calculation.kpoint.path_indices(start, finish)
+        array([...])
         """
         direction = np.array(finish) - np.array(start)
         deltas = self._raw_data.coordinates - np.array(start)
