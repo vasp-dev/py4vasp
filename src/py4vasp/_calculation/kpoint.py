@@ -137,7 +137,7 @@ reciprocal"""
 
     @base.data_access
     @documentation.format(selection=_kpoints_selection)
-    def line_length(self):
+    def line_length(self) -> int:
         """Get the number of points per line in the Brillouin zone.
 
         Parameters
@@ -146,8 +146,17 @@ reciprocal"""
 
         Returns
         -------
-        int
+        -
             The number of points used to sample a single line.
+
+        Examples
+        --------
+        Get the number of points per line in the Brillouin zone:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.kpoint.line_length()
+        48
         """
         if self.mode() == "line":
             return self._raw_data.number
@@ -155,7 +164,7 @@ reciprocal"""
 
     @base.data_access
     @documentation.format(selection=_kpoints_selection)
-    def number_lines(self):
+    def number_lines(self) -> int:
         """Get the number of lines in the Brillouin zone.
 
         Parameters
@@ -164,14 +173,23 @@ reciprocal"""
 
         Returns
         -------
-        int
+        -
             The number of lines the band structure contains. For regular meshes this is set to 1.
+
+        Examples
+        --------
+        Get the number of lines in the Brillouin zone for the "kpoints_opt" mesh:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.kpoint.number_lines(selection="kpoints_opt")
+        4
         """
-        return self.number_kpoints() // self.line_length()
+        return int(self.number_kpoints() // self.line_length())
 
     @base.data_access
     @documentation.format(selection=_kpoints_selection)
-    def number_kpoints(self):
+    def number_kpoints(self) -> int:
         """Get the number of points in the Brillouin zone.
 
         Parameters
@@ -180,14 +198,23 @@ reciprocal"""
 
         Returns
         -------
-        int
+        -
             The number of points used to sample the Brillouin zone.
+
+        Examples
+        --------
+        Get the number of points in the Brillouin zone:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.kpoint.number_kpoints()
+        48
         """
         return len(self._raw_data.coordinates)
 
     @base.data_access
     @documentation.format(selection=_kpoints_selection)
-    def distances(self):
+    def distances(self) -> np.ndarray:
         """Convert the coordinates of the **k** points into a one dimensional array
 
         For every line in the Brillouin zone, the distance between each **k** point
@@ -201,9 +228,18 @@ reciprocal"""
 
         Returns
         -------
-        np.ndarray
+        -
             A reduction of the **k** points onto a one-dimensional array based
             on the distance between the points.
+
+        Examples
+        --------
+        Convert the coordinates of the **k** points into a one dimensional array:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.kpoint.distances()
+        array([...])
         """
         cell = _last_step(self._raw_data.cell.lattice_vectors)
         cartesian_kpoints = np.linalg.solve(cell, self._raw_data.coordinates[:].T).T
@@ -216,7 +252,7 @@ reciprocal"""
 
     @base.data_access
     @documentation.format(selection=_kpoints_selection)
-    def mode(self):
+    def mode(self) -> str:
         """Get the **k**-point generation mode specified in the Vasp input file
 
         Parameters
@@ -225,8 +261,17 @@ reciprocal"""
 
         Returns
         -------
-        str
+        -
             A string representing which mode was used to setup the k-points.
+
+        Examples
+        --------
+        Get the **k**-point generation mode specified in the KPOINTS_OPT file:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.kpoint.mode(selection="kpoints_opt")
+        'line'
         """
         mode = convert.text_to_string(self._raw_data.mode).strip() or "# empty string"
         first_char = mode[0].lower()
@@ -249,8 +294,21 @@ reciprocal"""
 
     @base.data_access
     @documentation.format(selection=_kpoints_selection)
-    def labels(self):
+    def labels(self) -> list[str] | None:
         """Get any labels given in the input file for specific **k** points.
+
+        The returned labels depend on the **k**-point mode and whether the user provided
+        explicit labels in the input file:
+
+        - If labels are specified in the KPOINTS file, a list of strings is returned with
+          one entry per **k** point. Points with no user-defined label get an empty string,
+          while labeled points carry the name from the input file.
+        - If line mode is used but no labels were given, VASP automatically assigns labels
+          at the band edges (the first and last point of each line segment). Interior points
+          along the line receive an empty string. Labels are formatted as LaTeX fractions,
+          e.g. ``$[0 0 0]$`` or ``$[\\frac{{1}}{{2}} 0 \\frac{{1}}{{2}}]$``.
+        - For any other mode without explicit labels (e.g., a regular Gamma or Monkhorst-Pack
+          grid), ``None`` is returned because no meaningful labeling exists.
 
         Parameters
         ----------
@@ -258,9 +316,25 @@ reciprocal"""
 
         Returns
         -------
-        list[str]
-            A list of all the k-points explicitly named in the file or the coordinates of the
-            band edges if no name was provided.
+        -
+            A list of strings (one per **k** point) with labels for named points and empty
+            strings for unlabeled points, or ``None`` if no labeling is applicable.
+
+        Examples
+        --------
+        If no labels were given in the input file and the line mode is not used, this method returns None:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> result = calculation.kpoint.labels()
+        >>> assert result is None
+
+        If line mode is used VASP automatically assigns labels to the band edges. In this case,
+        the method returns a list where band-edge points carry LaTeX-formatted coordinates and
+        interior points are empty strings. The example below uses the KPOINTS_OPT file:
+
+        >>> calculation.kpoint.labels(selection="kpoints_opt")
+        ['$[0 0 0]$', ...]
         """
         if not self._raw_data.label_indices.is_none():
             return self._labels_from_file()
