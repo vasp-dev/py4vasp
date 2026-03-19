@@ -31,8 +31,11 @@ def get_calculation_examples():
         + find_examples(_calculation.band)
         + find_examples(_calculation.dos)
         + find_examples(_calculation.force)
+        + find_examples(_calculation.kpoint)
         + find_examples(_calculation.local_moment)
+        + find_examples(_calculation.projector)
         + find_examples(_calculation.structure)
+        + find_examples(_calculation.system)
     )
     return [example for example in examples if interesting_example(example)]
 

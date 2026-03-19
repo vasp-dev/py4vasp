@@ -1,8 +1,5 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import re
-import warnings
-
 from py4vasp import exception
 from py4vasp._calculation import _stoichiometry, base
 from py4vasp._raw import data as raw_data
@@ -97,30 +94,28 @@ class Projector(base.Refinery):
         Examples
         --------
 
-        For nonpolarized SrTiO3 with :tag:`LORBIT` = 10, this would work like this
+        For nonpolarized Fe3O4 with :tag:`LORBIT` = 10, this would work like this
 
-        >>> calculation.projector.to_dict()
-        {
-            "atom": {
-                "Sr": slice(0, 1),
-                "Ti": slice(1, 2),
-                "O": slice(2, 5),
-                "1": slice(0, 1),
-                "2": slice(1, 2),
-                "3": slice(2, 3),
-                "4": slice(3, 4),
-                "5": slice(4, 5),
-            },
-            "orbital": {
-                "s": slice(0, 1),
-                "p": slice(1, 2),
-                "d": slice(2, 3),
-                "f": slice(3, 4),
-            },
-            "spin": {
-                "total": slice(0, 1),
-            }
-        }
+        >>> import pprint
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, selection="collinear")
+        >>> pprint.pp(calculation.projector.to_dict())
+        {'atom': {'Fe': slice(0, 3, None),
+                  '1': slice(0, 1, None),
+                  '2': slice(1, 2, None),
+                  '3': slice(2, 3, None),
+                  'O': slice(3, 7, None),
+                  '4': slice(3, 4, None),
+                  '5': slice(4, 5, None),
+                  '6': slice(5, 6, None),
+                  '7': slice(6, 7, None)},
+         'orbital': {'s': slice(0, 1, None),
+                     'p': slice(1, 2, None),
+                     'd': slice(2, 3, None),
+                     'f': slice(3, 4, None)},
+         'spin': {'total': slice(0, 2, None),
+                  'up': slice(0, 1, None),
+                  'down': slice(1, 2, None)}}
         """
         if self._raw_data.orbital_types.is_none():
             return {}
@@ -190,8 +185,41 @@ class Projector(base.Refinery):
 
     @base.data_access
     def selections(self):
-        """Return a dictionary describing what options are available to specify the
-        atom, orbital, and spin."""
+        """Return the available selection strings for atom, orbital, and spin projections.
+
+        Use this method to discover which labels you can pass to the ``selection``
+        argument of methods that support orbital projections (e.g.
+        :meth:`~py4vasp._calculation.band.Band.to_dict` or
+        :meth:`~py4vasp._calculation.dos.Dos.to_dict`). The returned lists contain
+        all valid identifiers in a consistent order: atoms are sorted by element and
+        then by index, orbitals follow angular-momentum order (s, p, d, f), and spin
+        components start with ``total``.
+
+        Returns
+        -------
+        -
+            A dictionary with three keys:
+
+            - ``"atom"`` — sorted list of element names and one-based ion indices,
+              e.g. ``["Fe", "O", "1", "2", "3", ...]``.
+            - ``"orbital"`` — sorted list of orbital labels, e.g.
+              ``["s", "p", "px", "py", "pz", "d", ...]``.
+            - ``"spin"`` — sorted list of spin components, e.g.
+              ``["total", "up", "down"]`` for collinear calculations or
+              ``["total", "sigma_x", "sigma_y", "sigma_z"]`` for noncollinear ones.
+
+            Returns an empty dictionary if :tag:`LORBIT` was not set in the INCAR file.
+
+        Examples
+        --------
+        List the available projections of a nonpolarized Sr2TiO4 calculation:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.projector.selections()
+        {'atom': ['Sr', 'Ti', 'O', '1', '2', '3', ...], 'orbital': ['s', 'p', 'px', 'py', ...],
+            'spin': ['total']}
+        """
         dicts = self.to_dict()
         if len(dicts) == 0:
             return dicts
@@ -245,6 +273,14 @@ class Projector(base.Refinery):
     def project(self, selection, projections):
         """Select a certain subset of the given projections and return them with a
         suitable label.
+
+        We create some example data do that you can follow along. Please define a
+        variable `path` with the path to a directory that exists and does not contain any
+        VASP calculation data. Alternatively, you can use your own data if you have run
+        VASP and construct `calculation` from it.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
 
         Parameters
         ----------
