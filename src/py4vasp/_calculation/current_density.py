@@ -1,6 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
+from typing import Optional, Union
+
 import numpy as np
 
 from py4vasp import exception
@@ -13,12 +15,12 @@ from py4vasp._util.density import SliceArguments, Visualizer
 pretty = import_.optional("IPython.lib.pretty")
 
 _COMMON_PARAMETERS = f"""\
-selection : str or None
+selection : str | None = None
     Selects which of the possible available currents is used. Check the
     `selections` method for all available choices.
 
 {slicing.PARAMETERS}
-supercell : int or np.ndarray
+supercell : int | np.ndarray | None = None
     Replicate the contour plot periodically a given number of times. If you
     provide two different numbers, the resulting cell will be the two remaining
     lattice vectors multiplied by the specific number."""
@@ -29,6 +31,41 @@ class CurrentDensity(base.Refinery, structure.Mixin):
 
     A current density j is a vectorial quantity (j_x, j_y, j_z) on every grid point.
     It describes how the current flows at every point in space.
+
+    Examples
+    --------
+
+    First, we create some example data that you can follow along. Please define a
+    variable `path` with the path to a directory that exists and does not contain any
+    VASP calculation data. Alternatively, you can use your own data if you have run
+    VASP and construct `calculation` from it.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    To produce current density plots, please check the `to_contour` and `to_quiver` functions for
+    a more detailed documentation.
+
+    To produce a contour plot:
+
+    >>> calculation.current_density.to_contour("nmr", a=0)
+    Graph(series=[Series(x=array(...), y=array(...), label='current_density', ...)],
+        ..., xticks={...}, ..., ylabel='Current Density', ...)
+
+    To produce a quiver plot:
+
+    >>> calculation.current_density.to_quiver("nmr", a=0)
+    Graph(series=[Contour(...)...]...)
+
+    For your own postprocessing, you can read the current density data into a Python dictionary:
+
+    >>> calculation.current_density.read("nmr")
+    {'structure': {...}, 'current_x': array(...), 'current_y': array(...), 'current_z': array(...)}
+
+    You can inspect possible choices with:
+
+    >>> calculation.current_density.selections("nmr")
+    {'current_density': ['nmr']}
     """
 
     _raw_data: raw_data.CurrentDensity
@@ -77,8 +114,15 @@ current density:
     @base.data_access
     @documentation.format(plane=slicing.PLANE, parameters=_COMMON_PARAMETERS)
     def to_contour(
-        self, selection=None, *, a=None, b=None, c=None, normal=None, supercell=None
-    ):
+        self,
+        selection: Optional[str] = None,
+        *,
+        a: Optional[float] = None,
+        b: Optional[float] = None,
+        c: Optional[float] = None,
+        normal: Optional[str] = None,
+        supercell: Optional[Union[int, np.ndarray]] = None,
+    ) -> graph.Graph:
         """Generate a contour plot of current density.
 
         {plane}
@@ -89,7 +133,7 @@ current density:
 
         Returns
         -------
-        graph
+        Graph
             A current density plot in the plane spanned by the 2 remaining lattice vectors.
 
         Examples
@@ -123,8 +167,15 @@ current density:
     @base.data_access
     @documentation.format(plane=slicing.PLANE, parameters=_COMMON_PARAMETERS)
     def to_quiver(
-        self, selection=None, *, a=None, b=None, c=None, normal=None, supercell=None
-    ):
+        self,
+        selection: Optional[str] = None,
+        *,
+        a: Optional[float] = None,
+        b: Optional[float] = None,
+        c: Optional[float] = None,
+        normal: Optional[str] = None,
+        supercell: Optional[Union[int, np.ndarray]] = None,
+    ) -> graph.Graph:
         """Generate a quiver plot of current density.
 
         {plane}
@@ -136,7 +187,7 @@ current density:
 
         Returns
         -------
-        graph
+        Graph
             A quiver plot in the plane spanned by the 2 remaining lattice vectors.
 
         Examples

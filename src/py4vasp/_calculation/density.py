@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from typing import Optional, Union
+
 import numpy as np
 
 from py4vasp import _config, exception
@@ -22,7 +24,7 @@ _COMPONENTS = {
 _MAGNETIZATION = ("magnetization", "mag", "m")
 _COMMON_PARAMETERS = f"""\
 {slicing.PARAMETERS}
-supercell : int or np.ndarray
+supercell : int | np.ndarray | None = None
     Replicate the contour plot periodically a given number of times. If you
     provide two different numbers, the resulting cell will be the two remaining
     lattice vectors multiplied by the specific number.
@@ -46,6 +48,56 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
     density. For noncollinear calculations, the magnetization density has three
     components. One may also be interested in the kinetic energy density for
     metaGGA calculations.
+
+    Examples
+    --------
+
+    First, we create some example data do that you can follow along. Please define a
+    variable `path` with the path to a directory that exists and does not contain any
+    VASP calculation data. Alternatively, you can use your own data if you have run
+    VASP and construct `calculation` from it.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    To produce density plots, please check the `to_contour` and `to_quiver` functions for
+    a more detailed documentation.
+
+    To produce a contour plot:
+
+    >>> calculation.density.to_contour(a=0)
+    Graph(series=[Series(x=array(...), y=array(...), ...)],
+        ..., xticks={...}, ..., ylabel='Density', ...)
+
+    To produce a quiver plot:
+
+    >>> calculation.density.to_quiver(c=0, supercell=2)
+    Graph(series=[Contour(...)...]...)
+
+    You can also visualize a 3d isosurface of the density:
+
+    >>> calculation.density.plot()
+
+    For your own postprocessing, you can read the band data into a Python dictionary:
+
+    >>> calculation.density.read()
+    {'structure': ..., 'charge': array(...)}
+
+    Alternatively, obtain the density as a numpy array directly:
+
+    >>> calculation.density.to_numpy()
+    array(...)
+
+    It is also possible to test for non-polarized, collinear, and noncollinear calculations with:
+
+    >>> calculation.density.is_nonpolarized()
+    >>> calculation.density.is_collinear()
+    >>> calculation.density.is_noncollinear()
+
+    Finally, you can inspect possible selections with:
+
+    >>> calculation.density.selections()
+    {'density': ['default','charge', ...], 'component': ['0'...]}
     """
 
     _raw_data: raw_data.Density
@@ -188,23 +240,28 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         return np.moveaxis(self._raw_data.charge, 0, -1).T
 
     @base.data_access
-    def to_view(self, selection=None, supercell=None, **user_options):
+    def to_view(
+        self,
+        selection: Optional[str] = None,
+        supercell: Optional[Union[int, np.ndarray]] = None,
+        **user_options,
+    ) -> view.View:
         """Plot the selected density as a 3d isosurface within the structure.
 
         Parameters
         ----------
-        selection : str
+        selection : str | None = None
             Can be either *charge* or *magnetization*, depending on which quantity
             should be visualized.  For a noncollinear calculation, the density has
             4 components which can be represented in a 2x2 matrix. Specify the
             component of the density in terms of the Pauli matrices: sigma_1,
             sigma_2, sigma_3.
 
-        supercell : int or np.ndarray
+        supercell : int | np.ndarray | None = None
             If present the data is replicated the specified number of times along each
             direction.
 
-        user_options
+        user_options : dict
             Further arguments with keyword that get directly passed on to the
             visualizer. Most importantly, you can set isolevel to adjust the
             value at which the isosurface is drawn.
@@ -322,15 +379,22 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
     @base.data_access
     @documentation.format(plane=slicing.PLANE, common_parameters=_COMMON_PARAMETERS)
     def to_contour(
-        self, selection=None, *, a=None, b=None, c=None, normal=None, supercell=None
-    ):
+        self,
+        selection: Optional[str] = None,
+        *,
+        a: Optional[float] = None,
+        b: Optional[float] = None,
+        c: Optional[float] = None,
+        normal: Optional[str] = None,
+        supercell: Optional[Union[int, np.ndarray]] = None,
+    ) -> graph.Graph:
         """Generate a contour plot of the selected component of the density.
 
         {plane}
 
         Parameters
         ----------
-        selection : str
+        selection : str | None = None
             Select which component of the density you want to visualize. Please use the
             `selections` method to get all available choices.
 
@@ -384,7 +448,15 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
 
     @base.data_access
     @documentation.format(plane=slicing.PLANE, common_parameters=_COMMON_PARAMETERS)
-    def to_quiver(self, *, a=None, b=None, c=None, normal=None, supercell=None):
+    def to_quiver(
+        self,
+        *,
+        a: Optional[float] = None,
+        b: Optional[float] = None,
+        c: Optional[float] = None,
+        normal: Optional[str] = None,
+        supercell: Optional[Union[int, np.ndarray]] = None,
+    ) -> graph.Graph:
         """Generate a quiver plot of magnetization density.
 
         {plane}

@@ -31,7 +31,7 @@ a, b, c : float
     of the first vector in the b-c plane. The fractional height uses periodic
     boundary conditions.
 
-normal : str or None
+normal : str | None
     If not set, py4vasp will align the first remaining lattice vector with the
     x-axis and the second one such that the angle between the lattice vectors
     is preserved. You can set it to "x", "y", or "z"; then py4vasp will rotate
