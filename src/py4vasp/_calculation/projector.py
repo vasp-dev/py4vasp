@@ -191,8 +191,41 @@ class Projector(base.Refinery):
 
     @base.data_access
     def selections(self):
-        """Return a dictionary describing what options are available to specify the
-        atom, orbital, and spin."""
+        """Return the available selection strings for atom, orbital, and spin projections.
+
+        Use this method to discover which labels you can pass to the ``selection``
+        argument of methods that support orbital projections (e.g.
+        :meth:`~py4vasp._calculation.band.Band.to_dict` or
+        :meth:`~py4vasp._calculation.dos.Dos.to_dict`). The returned lists contain
+        all valid identifiers in a consistent order: atoms are sorted by element and
+        then by index, orbitals follow angular-momentum order (s, p, d, f), and spin
+        components start with ``total``.
+
+        Returns
+        -------
+        -
+            A dictionary with three keys:
+
+            - ``"atom"`` — sorted list of element names and one-based ion indices,
+              e.g. ``["Fe", "O", "1", "2", "3", ...]``.
+            - ``"orbital"`` — sorted list of orbital labels, e.g.
+              ``["s", "p", "px", "py", "pz", "d", ...]``.
+            - ``"spin"`` — sorted list of spin components, e.g.
+              ``["total", "up", "down"]`` for collinear calculations or
+              ``["total", "sigma_x", "sigma_y", "sigma_z"]`` for noncollinear ones.
+
+            Returns an empty dictionary if :tag:`LORBIT` was not set in the INCAR file.
+
+        Examples
+        --------
+        List the available projections of a nonpolarized Sr2TiO4 calculation:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.projector.selections()
+        {'atom': ['Sr', 'Ti', 'O', '1', '2', '3', ...], 'orbital': ['s', 'p', 'px', 'py', ...],
+            'spin': ['total']}
+        """
         dicts = self.to_dict()
         if len(dicts) == 0:
             return dicts
