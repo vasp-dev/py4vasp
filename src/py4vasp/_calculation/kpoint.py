@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import functools
 from fractions import Fraction
+from typing import Any
 
 import numpy as np
 
@@ -54,7 +55,7 @@ reciprocal"""
 
     @base.data_access
     @documentation.format(selection=_kpoints_selection)
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         """Read the **k** points data into a dictionary.
 
         Parameters
@@ -63,12 +64,29 @@ reciprocal"""
 
         Returns
         -------
-        dict
+        -
             Contains the coordinates of the **k** points (in crystal units) as
             well as their weights used for integrations. Moreover, some data
             specified in the input file of Vasp are transferred such as the mode
             used to generate the **k** points, the line length (if line mode was
             used), and any labels set for specific points.
+
+        Examples
+        --------
+
+        Read the **k** points data into a dictionary:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.kpoint.to_dict()
+        {{'mode': ..., 'line_length': ..., 'number_kpoints': ..., 'coordinates': array(...),
+            'weights': array(...)...}}
+
+        Select the **k** points from the "kpoints_opt" mesh instead of the default one:
+
+        >>> calculation.kpoint.to_dict(selection="kpoints_opt")
+        {{'mode': ..., 'line_length': ..., 'number_kpoints': ..., 'coordinates': array(...),
+            'weights': array(...)...}}
         """
         labels = self.labels()
         labels_dict = {} if labels is None else {"labels": labels}
