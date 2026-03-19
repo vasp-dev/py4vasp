@@ -1,8 +1,5 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import re
-import warnings
-
 from py4vasp import exception
 from py4vasp._calculation import _stoichiometry, base
 from py4vasp._raw import data as raw_data
