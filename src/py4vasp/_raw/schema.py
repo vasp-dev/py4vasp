@@ -9,7 +9,7 @@ from typing import Any, Callable, Optional
 
 import numpy as np
 
-from py4vasp import exception, raw
+from py4vasp import exception
 from py4vasp._util import check, convert
 
 DEFAULT_SELECTION = "default"
