@@ -66,7 +66,6 @@ class _State:
         source = self._get_source(quantity, source)
         filename = self._file or source.file or DEFAULT_FILE
         path = self._path / pathlib.Path(filename)
-        print(f"{source.data=}")
         if source.data is not None:
             return self._access_data_from_hdf5(quantity, source, path)
         else:
