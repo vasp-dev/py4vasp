@@ -56,7 +56,7 @@ class CurrentDensity(base.Refinery, structure.Mixin):
     >>> calculation.current_density.to_quiver("nmr", c=0)
     Graph(series=[Contour(data=array([[[...]]]), ..., cut='c', ...)], ...)
 
-    For your own postprocessing, you can read the current density data into a Python dictionary:
+    For your own postprocessing, you can read the current density data into a Python dict:
 
     >>> calculation.current_density.read("nmr")
     {'structure': {...}, 'current_x': array([[[[...]]]], ...), 'current_y': array([[[[...]]]], ...), 'current_z': array([[[[...]]]], ...)}
