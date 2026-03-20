@@ -146,7 +146,6 @@ class _State:
             return tuple(convert.text_to_string(index) for index in valid_indices)
 
     def _get_dataset(self, h5f, key, valid_indices=None):
-        print(f"Accessing dataset with key {key} and valid_indices {valid_indices}")
         if check.is_none(key):
             return raw.VaspData(None)
         if isinstance(key, Link):
