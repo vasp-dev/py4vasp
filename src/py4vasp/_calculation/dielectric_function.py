@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from fractions import Fraction
+
 import numpy as np
 
 from py4vasp._calculation import base
@@ -145,16 +147,23 @@ dielectric function:
         energies = self._raw_data.energies[:]
         selector = self._make_selector()
         return [
-            graph.Series(energies, selector[selection], selector.label(selection))
+            graph.Series(
+                energies, selector[selection], self._create_label(selector, selection)
+            )
             for selection in self._generate_selections(selection)
         ]
 
     def _make_selector(self):
-        maps = {
-            3: self._init_complex_dict(),
-            0: self._init_components_dict(),
-            1: self._init_directions_dict(),
-        }
+        if self._has_q_point():
+            maps = {
+                1: self._init_complex_dict(),
+            }
+        else:
+            maps = {
+                3: self._init_complex_dict(),
+                0: self._init_components_dict(),
+                1: self._init_directions_dict(),
+            }
         return index.Selector(maps, self._get_data(), reduction=np.average)
 
     def _init_components_dict(self):
@@ -182,9 +191,20 @@ dielectric function:
             density = np.reshape(self._raw_data.dielectric_function, new_shape)
             current = np.reshape(self._raw_data.current_current, new_shape)
             return np.array([density, current])
+        elif self._has_q_point():
+            return self._raw_data.dielectric_function
         else:
             new_shape = (1, 9, number_points, complex_)
             return np.reshape(self._raw_data.dielectric_function, new_shape)
+
+    def _create_label(self, selector, selection):
+        if self._has_q_point():
+            q_point_label = ",".join(
+                str(convert.Fraction(q)) for q in self._raw_data.q_point
+            )
+            return f"{selector.label(selection)}_[{q_point_label}]"
+        else:
+            return selector.label(selection)
 
     def _generate_selections(self, selection):
         tree = select.Tree.from_selection(selection)

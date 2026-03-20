@@ -116,6 +116,23 @@ def test_ionic_plot_default(ionic, Assert):
     check_figure_contains_plots(fig, plots, Assert)
 
 
+def test_q_point_plot_default(q_point, Assert):
+    plots = [
+        Plot(
+            x=q_point.ref.energies,
+            y=q_point.ref.dielectric_function.real,
+            label=expected_plot_name("Re", "[0,1/3,0.707]"),
+        ),
+        Plot(
+            x=q_point.ref.energies,
+            y=q_point.ref.dielectric_function.imag,
+            label=expected_plot_name("Im", "[0,1/3,0.707]"),
+        ),
+    ]
+    fig = q_point.plot()
+    check_figure_contains_plots(fig, plots, Assert)
+
+
 def test_electronic_plot_component(electronic, Assert):
     density_plots = [
         Plot(
