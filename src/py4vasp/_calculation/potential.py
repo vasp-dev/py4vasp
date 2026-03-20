@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import itertools
+from typing import Optional, Union
 
 import numpy as np
 
@@ -52,6 +53,51 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
     which potentials are written with the :tag:`WRT_POTENTIAL` tag. This class provides
     the methods to read and visualize the potential. If you are interested in the
     average potential, you may also look at the :data:`~py4vasp.calculation.workfunction`.
+
+    Examples
+    --------
+
+    First, we create some example data do that you can follow along. Please define a
+    variable `path` with the path to a directory that exists and does not contain any
+    VASP calculation data. Alternatively, you can use your own data if you have run
+    VASP and construct `calculation` from it.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    See some basic information about the Potential by printing the object:
+
+    >>> print(calculation.potential)
+    nonpolarized potential:...
+
+    For your own postprocessing, you can read the potential data into a Python dictionary:
+
+    >>> calculation.potential.read()
+    {'structure': {...}, 'total': array([[[...]]], ...), 'ionic': array([[[...]]], ...), 'xc': array([[[...]]], ...), 'hartree': array([[[...]]], ...)}
+
+    You can also plot the 3d isosurface of the selected potential:
+
+    >>> calculation.potential.plot()
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='total potential', isosurfaces=[Isosurface(...)])], ...)
+
+
+    Alternatively, you can visualize a contour plot of the potential in a plane:
+
+    >>> calculation.potential.to_contour(c=0)
+    Graph(series=[Contour(data=array([[...]]...), ..., cut='c', ...)], ...)
+
+    You can check possible selections for the potential - however, the selection options for the potential are quite flexible at the level of individual methods.
+
+    >>> calculation.potential.selections()
+    {'potential': ['default'...]...}
+
+    You may also visualize the magnetic part of the potential as a quiver plot:
+
+    >>> calculation_nc = demo.calculation(path, selection="noncollinear")
+    >>> calculation_nc.potential.to_quiver(c=0.2, supercell=2)
+    Graph(series=[Contour(data=array([[[...]]]), lattice=Plane(..., cut='c', ...), ..., supercell=array([2, 2]), ...)], ...)
+
+    Please check the documentation of each of these methods for more details on how to use them and which options they provide.
     """
 
     _raw_data: raw_data.Potential
@@ -151,7 +197,12 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
         return database.combine_db_dicts(potential_dict, structure)
 
     @base.data_access
-    def to_view(self, selection="total", supercell=None, **user_options):
+    def to_view(
+        self,
+        selection: str = "total",
+        supercell: Optional[Union[int, np.ndarray]] = None,
+        **user_options,
+    ):
         """Plot an isosurface of a selected potential.
 
         Parameters
@@ -188,7 +239,14 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
     @base.data_access
     @documentation.format(plane=slicing.PLANE, parameters=_COMMON_PARAMETERS)
     def to_contour(
-        self, selection="total", *, a=None, b=None, c=None, normal=None, supercell=None
+        self,
+        selection: str = "total",
+        *,
+        a: Optional[float] = None,
+        b: Optional[float] = None,
+        c: Optional[float] = None,
+        normal: Optional[str] = None,
+        supercell: Optional[Union[int, np.ndarray]] = None,
     ):
         """Generate a 2D contour plot of the selected potential on a slice through the cell.
 

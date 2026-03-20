@@ -2,6 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import abc
 
+from py4vasp._third_party.view.view import View
+
 """Use the Mixin for all quantities that define an option to produce a structure view.
 This will automatically implement all the common functionality to visualize this data.turn this graphs into
 different formats."""
@@ -9,10 +11,10 @@ different formats."""
 
 class Mixin(abc.ABC):
     @abc.abstractmethod
-    def to_view(self, *args, **kwargs):
+    def to_view(self, *args, **kwargs) -> View:
         pass
 
-    def plot(self, *args, **kwargs):
+    def plot(self, *args, **kwargs) -> View:
         """Wrapper around :meth:`to_view` method.
 
         This method will visualize the quantity in the structure. Please refer to

@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
 import warnings
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 
@@ -39,13 +39,78 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
     not the down-spin density.
     Since this is postprocessing data for a fixed density, there are no ionic steps
     to separate the data.
+
+    Examples
+    --------
+
+    First, we create some example data do that you can follow along. Please define a
+    variable `path` with the path to a directory that exists and does not contain any
+    VASP calculation data. Alternatively, you can use your own data if you have run
+    VASP and construct `calculation` from it.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    For your own postprocessing, you can read the band data into a Python dictionary:
+
+    >>> calculation.partial_density.read()
+    {'structure': {...}, 'grid': array([...]), 'bands': array([...]), 'kpoints': array([...]), 'partial_density': array([[[...]]], ...)}
+
+    Alternatively, obtain the density as a numpy array directly:
+
+    >>> calculation.partial_density.to_numpy()
+    array([[[...]]], ...)
+
+    You can also visualize a 3d isosurface of the density:
+
+    >>> calculation.partial_density.plot()
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='total', isosurfaces=[Isosurface(...)])], ...)
+
+    You can also generate an STM image from the partial density:
+
+    >>> calculation.partial_density.to_stm() # doctest: +SKIP
+
+    It is also possible to access the contributing bands ([0] means all bands contribute), grid, and contributing k-points:
+
+    >>> calculation.partial_density.bands()
+    array([...])
+    >>> calculation.partial_density.grid()
+    array([...])
+    >>> calculation.partial_density.kpoints()
+    array([...])
+
+    Finally, you can inspect possible selections with:
+
+    >>> calculation.partial_density.selections()
+    {'partial_density': ['default'...]...}
+
+    Please check the documentation of these methods for more details on how to use them and which options they provide.
     """
 
     _raw_data: raw_data.PartialDensity
 
     @dataclasses.dataclass
     class STM_settings:
-        """Settings for the STM simulation."""
+        """Settings for the STM simulation.
+
+        Parameters
+        ----------
+        sigma_z : float
+            The standard deviation of the Gaussian filter in the z-direction.
+            The default is 4.0.
+        sigma_xy : float
+            The standard deviation of the Gaussian filter in the xy-plane.
+            The default is 4.0.
+        truncate : float
+            The truncation of the Gaussian filter.
+            The default is 3.0.
+        enhancement_factor : float
+            The enhancement factor for the output of the constant height STM image.
+            The default is 1000.
+        interpolation_factor : int
+            The interpolation factor for the z-direction in case of constant current mode.
+            The default is 10.
+        """
 
         sigma_z: float = 4.0
         """The standard deviation of the Gaussian filter in the z-direction.
@@ -137,6 +202,42 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
         Graph
             The STM image as a graph object. The title is the label of the Contour
             object.
+
+        Examples
+        --------
+        >>> calculation = Calculation.from_path(".") # doctest: +SKIP
+        >>> calculation.partial_density.to_stm() # doctest: +SKIP
+
+        You can also specify the mode and spin channel:
+
+        >>> calculation.partial_density.to_stm(selection="constant_current up") # doctest: +SKIP
+
+        In `constant_height` mode, you can also specify the tip height:
+
+        >>> calculation.partial_density.to_stm(selection="constant_height", tip_height=3.0) # doctest: +SKIP
+
+        Similarly, in `constant_current` mode, you can specify the tunneling current:
+
+        >>> calculation.partial_density.to_stm(selection="constant_current", current=0.5) # doctest: +SKIP
+
+        You may also wish to specify a larger supercell for better visualization:
+
+        >>> calculation.partial_density.to_stm(supercell=3) # doctest: +SKIP
+
+        And finally, you may wish to adjust the settings of the STM simulation itself.
+        This can be achieved by the STM_settings dataclass:
+
+        >>> stm_settings = calculation.partial_density.STM_settings(sigma_z=5.0, sigma_xy=5.0, truncate=4.0, enhancement_factor=500) # doctest: +SKIP
+        >>> calculation.partial_density.to_stm(stm_settings=stm_settings) # doctest: +SKIP
+
+        In the case of `constant_current` mode, the interpolation factor can also be set:
+
+        >>> stm_settings = calculation.partial_density.STM_settings(interpolation_factor=12) # doctest: +SKIP
+        >>> calculation.partial_density.to_stm(selection="constant_current", stm_settings=stm_settings) # doctest: +SKIP
+
+        Note that you can check the STM_settings dataclass for details on its implementation and default settings:
+
+        >>> calculation.partial_density.STM_settings? # doctest: +SKIP
         """
         _raise_error_if_vacuum_too_small(self._estimate_vacuum())
 
@@ -301,15 +402,20 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
         return self._raw_data.partial_charge.shape[2] == 2
 
     @base.data_access
-    def to_view(self, selection="total", supercell=None, **user_options):
+    def to_view(
+        self,
+        selection: str = "total",
+        supercell: Optional[Union[int, np.ndarray]] = None,
+        **user_options,
+    ):
         """Plot the selected partial density as a 3d isosurface within the structure.
 
         Parameters
         ----------
-        selection : str
-            Can be *total*, *up* or *down*.
+        selection : str = "total"
+            Can be *"total"*, *"up"* or *"down"*.
 
-        supercell : int or np.ndarray
+        supercell : int | np.ndarray | None = None
             If present the data is replicated the specified number of times along each
             direction.
 
@@ -322,6 +428,17 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
         -------
         View
             Visualize an isosurface of the density within the 3d structure.
+
+        Examples
+        --------
+        >>> calculation = Calculation.from_path(".") # doctest: +SKIP
+        >>> calculation.partial_density.to_view() # doctest: +SKIP
+        View(...)
+
+        You can also specify the spin channel, the supercell, and user options:
+
+        >>> calculation.partial_density.to_view(selection="up", supercell=2, isolevel=0.3) # doctest: +SKIP
+        View(...)
         """
         viewer = self._structure.plot(supercell)
         partial_charge = self.to_numpy(selection)
@@ -339,7 +456,7 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
         return view.Isosurface(isolevel=isolevel, color=color, opacity=opacity)
 
     @base.data_access
-    def to_numpy(self, selection="total", band=0, kpoint=0):
+    def to_numpy(self, selection: str = "total", band: int = 0, kpoint: int = 0):
         """Return the partial charge density as a 3D array.
 
         Parameters
@@ -356,6 +473,17 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
         -------
         np.array
             The partial charge density as a 3D array.
+
+        Examples
+        --------
+        >>> calculation = Calculation.from_path(".") # doctest: +SKIP
+        >>> calculation.partial_density.to_numpy() # doctest: +SKIP
+        array(...)
+
+        You can also specify the spin channel, band, and k-point:
+
+        >>> calculation.partial_density.to_numpy(selection="up", band=2, kpoint=3) # doctest: +SKIP
+        array(...)
         """
 
         band = self._check_band_index(band)

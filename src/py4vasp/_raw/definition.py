@@ -5,6 +5,7 @@ from py4vasp._raw import read
 from py4vasp._raw.schema import DEFAULT_SELECTION, Length, Link, Schema
 
 DEFAULT_FILE = "vaspout.h5"
+DEFAULT_WAVEFILE = "vaspwave.h5"
 DEFAULT_SOURCE = DEFAULT_SELECTION
 VERSION_DATA = raw.Version("version/major", "version/minor", "version/patch")
 
@@ -134,7 +135,7 @@ schema.add(
 schema.add(
     raw.Density,
     alias=["charge", "n", "charge_density", "electronic_charge_density"],
-    file="vaspwave.h5",
+    file=DEFAULT_WAVEFILE,
     structure=Link("structure", DEFAULT_SOURCE),
     charge="charge/charge",
 )
@@ -143,7 +144,7 @@ schema.add(
     name="tau",
     required=raw.Version(6, 5),
     alias=["kinetic_energy", "kinetic_energy_density"],
-    file="vaspwave.h5",
+    file=DEFAULT_WAVEFILE,
     structure=Link("structure", DEFAULT_SOURCE),
     charge="kinetic_energy_density/values",
 )
@@ -326,7 +327,7 @@ schema.add(
 schema.add(
     raw.Energy,
     name="afqmc",
-    file="vaspwave.h5",
+    file=DEFAULT_WAVEFILE,
     required=raw.Version(6, 5, 1),
     labels="afqmc/ensemble/energy_labels",
     values="afqmc/ensemble/ensemble_sampling",

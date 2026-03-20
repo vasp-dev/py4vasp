@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from typing import Optional, Union
+
 import numpy as np
 
 from py4vasp import _config, exception
@@ -20,6 +22,40 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
 
     The exciton charge densities can be calculated via the BSE/TDHF algorithm in
     VASP. With this class you can extract these charge densities.
+
+    Examples
+    --------
+
+    First, we create some example data do that you can follow along. Please define a
+    variable `path` with the path to a directory that exists and does not contain any
+    VASP calculation data. Alternatively, you can use your own data if you have run
+    VASP and construct `calculation` from it.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    For your own postprocessing, you can read the band data into a Python dictionary:
+
+    >>> calculation.exciton.density.read()
+    {'structure': {...}, 'charge': array([[[[...]]]]...)}
+
+    Alternatively, obtain the density as a numpy array directly:
+
+    >>> calculation.exciton.density.to_numpy()
+    array([[[[...]]]]...)
+
+    You can also visualize a 3d isosurface of the density:
+
+    >>> calculation.exciton.density.plot()
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='1', isosurfaces=[Isosurface(...)])], ...)
+
+
+    Finally, you can inspect possible selections with:
+
+    >>> calculation.exciton.density.selections()
+    {'exciton_density': ['default'...]...}
+
+    Please check the documentation of these methods for more details on how to use them and which options they provide.
     """
 
     _raw_data: raw_data.ExcitonDensity
@@ -62,19 +98,25 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
         return np.moveaxis(self._raw_data.exciton_charge, 0, -1).T
 
     @base.data_access
-    def to_view(self, selection=None, supercell=None, center=False, **user_options):
+    def to_view(
+        self,
+        selection: Optional[str] = None,
+        supercell: Optional[Union[int, np.ndarray]] = None,
+        center: bool = False,
+        **user_options,
+    ) -> view.View:
         """Plot the selected exciton density as a 3d isosurface within the structure.
 
         Parameters
         ----------
-        selection : str
+        selection : str | None = None
             Can be exciton index or a combination, i.e., "1" or "1+2+3"
 
-        supercell : int or np.ndarray
+        supercell : int | np.ndarray | None = None
             If present the data is replicated the specified number of times along each
             direction.
 
-        center : bool
+        center : bool = False
             Shift the origin of the unit cell to the center. This is helpful if you
             the exciton is at the corner of the cell.
 
