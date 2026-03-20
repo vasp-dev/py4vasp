@@ -120,9 +120,13 @@ Fermi energy:    {fermi_energy}"""
         """
         return {
             **self._gap_dict("fundamental"),
+            "valence_band_maximum": self.valence_band_maximum(),
+            "conduction_band_minimum": self.conduction_band_minimum(),
             **self._kpoint_dict("VBM"),
             **self._kpoint_dict("CBM"),
             **self._gap_dict("direct"),
+            "direct_gap_bottom": self._get(GAPS["direct"].bottom, component=0),
+            "direct_gap_top": self._get(GAPS["direct"].top, component=0),
             **self._kpoint_dict("direct"),
             "fermi_energy": self._get("Fermi energy", component=0),
         }

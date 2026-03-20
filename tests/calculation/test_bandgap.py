@@ -57,9 +57,27 @@ def steps(request):
 def test_read_default(bandgap, steps, Assert):
     actual = bandgap.read() if steps == -1 else bandgap[steps].read()
     Assert.allclose(actual["fundamental"], bandgap.ref.fundamental[steps, 0])
+    Assert.allclose(actual["valence_band_maximum"], bandgap.ref.vbm[steps, 0])
+    Assert.allclose(actual["conduction_band_minimum"], bandgap.ref.cbm[steps, 0])
     Assert.allclose(actual["kpoint_VBM"], bandgap.ref.kpoint_vbm[steps, 0])
     Assert.allclose(actual["kpoint_CBM"], bandgap.ref.kpoint_cbm[steps, 0])
+    print(
+        "expected",
+        bandgap.ref.direct[steps, 0],
+        bandgap.ref.lower_band_direct[steps, 0],
+        bandgap.ref.upper_band_direct[steps, 0],
+    )
+    print(
+        "actual",
+        actual["direct"],
+        actual["direct_gap_bottom"],
+        actual["direct_gap_top"],
+    )
     Assert.allclose(actual["direct"], bandgap.ref.direct[steps, 0])
+    Assert.allclose(
+        actual["direct_gap_bottom"], bandgap.ref.lower_band_direct[steps, 0]
+    )
+    Assert.allclose(actual["direct_gap_top"], bandgap.ref.upper_band_direct[steps, 0])
     Assert.allclose(actual["kpoint_direct"], bandgap.ref.kpoint_direct[steps, 0])
     Assert.allclose(actual["fermi_energy"], bandgap.ref.fermi_energy[steps])
 
