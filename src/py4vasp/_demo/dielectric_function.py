@@ -19,6 +19,7 @@ def ionic():
     return raw.DielectricFunction(
         energies=np.linspace(0, 1, _demo.NUMBER_POINTS),
         dielectric_function=_demo.wrap_random_data(shape),
+        q_point=raw.VaspData(np.zeros(3)),
     )
 
 
@@ -27,5 +28,5 @@ def q_point():
     return raw.DielectricFunction(
         energies=np.linspace(0, 2, _demo.NUMBER_POINTS),
         dielectric_function=_demo.wrap_random_data(shape),
-        q_point=np.array([0, 1 / 3, np.sqrt(0.5)]),
+        q_point=raw.VaspData(np.array([0, 1 / 3, np.sqrt(0.5)])),
     )

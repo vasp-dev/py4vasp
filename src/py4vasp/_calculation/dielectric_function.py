@@ -96,7 +96,7 @@ dielectric function:
 
     def _add_q_point_if_available(self):
         if self._has_q_point():
-            return {"q_point": self._raw_data.q_point}
+            return {"q_point": self._raw_data.q_point[:]}
         else:
             return {}
 
@@ -154,15 +154,15 @@ dielectric function:
         ]
 
     def _make_selector(self):
-        if self._has_q_point():
-            maps = {
-                1: self._init_complex_dict(),
-            }
-        else:
+        if self._has_tensor_data():
             maps = {
                 3: self._init_complex_dict(),
                 0: self._init_components_dict(),
                 1: self._init_directions_dict(),
+            }
+        else:
+            maps = {
+                1: self._init_complex_dict(),
             }
         return index.Selector(maps, self._get_data(), reduction=np.average)
 
@@ -191,20 +191,23 @@ dielectric function:
             density = np.reshape(self._raw_data.dielectric_function, new_shape)
             current = np.reshape(self._raw_data.current_current, new_shape)
             return np.array([density, current])
-        elif self._has_q_point():
-            return self._raw_data.dielectric_function
-        else:
+        elif self._has_tensor_data():
             new_shape = (1, 9, number_points, complex_)
             return np.reshape(self._raw_data.dielectric_function, new_shape)
+        else:
+            return self._raw_data.dielectric_function
 
     def _create_label(self, selector, selection):
-        if self._has_q_point():
+        if self._has_tensor_data():
+            return selector.label(selection)
+        else:
             q_point_label = ",".join(
                 str(convert.Fraction(q)) for q in self._raw_data.q_point
             )
-            return f"{selector.label(selection)}_[{q_point_label}]"
-        else:
-            return selector.label(selection)
+            return f"{selector.label(selection)}_q=[{q_point_label}]"
+
+    def _has_tensor_data(self):
+        return self._raw_data.dielectric_function.ndim == 4
 
     def _generate_selections(self, selection):
         tree = select.Tree.from_selection(selection)

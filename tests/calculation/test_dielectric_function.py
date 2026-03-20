@@ -32,6 +32,7 @@ def ionic(raw_data):
     ionic.ref.energies = raw_ionic.energies
     to_complex = lambda data: data[..., 0] + 1j * data[..., 1]
     ionic.ref.dielectric_function = to_complex(raw_ionic.dielectric_function)
+    ionic.ref.q_point = raw_ionic.q_point
     return ionic
 
 
@@ -121,12 +122,12 @@ def test_q_point_plot_default(q_point, Assert):
         Plot(
             x=q_point.ref.energies,
             y=q_point.ref.dielectric_function.real,
-            label=expected_plot_name("Re", "[0,1/3,0.707]"),
+            label=expected_plot_name("Re", "q=[0,1/3,0.707]"),
         ),
         Plot(
             x=q_point.ref.energies,
             y=q_point.ref.dielectric_function.imag,
-            label=expected_plot_name("Im", "[0,1/3,0.707]"),
+            label=expected_plot_name("Im", "q=[0,1/3,0.707]"),
         ),
     ]
     fig = q_point.plot()
@@ -306,6 +307,11 @@ def test_ionic_plot_nested(ionic, Assert):
 def test_incorrect_direction_raises_error(electronic):
     with pytest.raises(exception.IncorrectUsage):
         electronic.plot("incorrect")
+
+
+def test_component_selection_for_qpoint_raises_error(q_point):
+    with pytest.raises(exception.IncorrectUsage):
+        q_point.plot("xx")
 
 
 def isotropic(tensor):
