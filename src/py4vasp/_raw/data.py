@@ -234,6 +234,8 @@ class DielectricFunction:
     "The values of the dielectric function (frequency-dependent 3x3 tensor)."
     current_current: VaspData = NONE()
     "Dielectric function obtained using the current-current response."
+    q_point: VaspData = NONE()
+    "The q-point at which the dielectric function is evaluated."
 
 
 @dataclasses.dataclass

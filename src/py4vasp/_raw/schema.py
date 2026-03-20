@@ -10,7 +10,7 @@ from typing import Any, Callable, Optional
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._util import convert
+from py4vasp._util import check, convert
 
 DEFAULT_SELECTION = "default"
 
@@ -137,7 +137,7 @@ class Schema:
         self._verified = True
 
     def _verify_source(self, key, source):
-        if source.data is None:
+        if check.is_none(source.data):
             self._verify_data_factory_present(key, source.data_factory)
             return
         for field in dataclasses.fields(source.data):
