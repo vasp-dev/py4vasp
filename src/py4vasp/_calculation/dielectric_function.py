@@ -130,13 +130,16 @@ dielectric function:
     @base.data_access
     def selections(self):
         "Returns a dictionary of possible selections for component, direction, and complex value."
+        complex_selections = {"complex": ["real", "Re", "imag", "Im"]}
+        if not self._has_tensor_data():
+            return complex_selections
         components = (
             ["density", "current"] if self._has_current_component() else ["density"]
         )
         return {
             "components": components,
             "directions": [key for key in self._init_directions_dict() if key],
-            "complex": ["real", "Re", "imag", "Im"],
+            **complex_selections,
         }
 
     def _replace_complex_labels(self, selection):

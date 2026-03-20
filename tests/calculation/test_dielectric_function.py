@@ -390,6 +390,10 @@ def test_ionic_selections(ionic):
     }
 
 
+def test_q_point_selections(q_point):
+    assert q_point.selections() == {"complex": ["real", "Re", "imag", "Im"]}
+
+
 def test_electronic_print(electronic, format_):
     actual, _ = format_(electronic)
     reference = f"""
