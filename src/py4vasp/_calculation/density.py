@@ -68,11 +68,6 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
     >>> calculation.density.to_contour(a=0)
     Graph(...)
 
-    To produce a quiver plot:
-
-    >>> calculation.density.to_quiver(c=0, supercell=2) # doctest: +SKIP
-    Graph(...)
-
     You can also visualize a 3d isosurface of the density:
 
     >>> calculation.density.plot()
@@ -97,10 +92,21 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
     >>> calculation.density.is_noncollinear()
     False
 
-    Finally, you can inspect possible selections with:
+    You can inspect possible selections with:
 
     >>> calculation.density.selections()
     {'density': [...], 'component': ['0']}
+
+    To produce a quiver plot for a noncollinear calculation:
+
+    >>> from py4vasp import demo
+    >>> calculation_nc = demo.calculation(path, selection="noncollinear")
+    >>> calculation_nc.density.is_noncollinear()
+    True
+    >>> calculation_nc.density.to_quiver(c=0, supercell=2)
+    Graph(...)
+
+    Please check the documentation of these methods for more details on how to use them and which options they provide.
     """
 
     _raw_data: raw_data.Density

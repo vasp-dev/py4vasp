@@ -65,6 +65,8 @@ class CurrentDensity(base.Refinery, structure.Mixin):
 
     >>> calculation.current_density.selections("nmr")
     {'current_density': ['nmr']}
+
+    Please check the documentation of these methods for more details on how to use them and which options they provide.
     """
 
     _raw_data: raw_data.CurrentDensity
@@ -140,17 +142,17 @@ current density:
 
         Cut a plane at the origin of the third lattice vector.
 
-        >>> calculation.current_density.to_contour(c=0)
+        >>> calculation.current_density.to_contour("nmr", c=0)
 
         Replicate a plane in the middle of the second lattice vector 2 times in each
         direction.
 
-        >>> calculation.current_density.to_contour(b=0.5, supercell=2)
+        >>> calculation.current_density.to_contour("nmr", b=0.5, supercell=2)
 
         Take a slice along the first lattice vector and rotate it such that the normal
         of the plane aligns with the x axis.
 
-        >>> calculation.current_density.to_contour(a=0.3, normal="x")
+        >>> calculation.current_density.to_contour("nmr", a=0.3, normal="x")
         """
         label, grid_vector = self._read_current_density(selection)
         grid_scalar = np.linalg.norm(grid_vector, axis=-1)
@@ -194,17 +196,17 @@ current density:
 
         Cut a plane at the origin of the third lattice vector.
 
-        >>> calculation.current_density.to_quiver(c=0)
+        >>> calculation.current_density.to_quiver("nmr", c=0)
 
         Replicate a plane in the middle of the second lattice vector 2 times in each
         direction.
 
-        >>> calculation.current_density.to_quiver(b=0.5, supercell=2)
+        >>> calculation.current_density.to_quiver("nmr", b=0.5, supercell=2)
 
         Take a slice along the first lattice vector and rotate it such that the normal
         of the plane aligns with the x axis.
 
-        >>> calculation.current_density.to_quiver(a=0.3, normal="x")
+        >>> calculation.current_density.to_quiver("nmr", a=0.3, normal="x")
         """
         # set up data
         label, data = self._read_current_density(selection)

@@ -91,7 +91,26 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
 
     @dataclasses.dataclass
     class STM_settings:
-        """Settings for the STM simulation."""
+        """Settings for the STM simulation.
+
+        Parameters
+        ----------
+        sigma_z : float
+            The standard deviation of the Gaussian filter in the z-direction.
+            The default is 4.0.
+        sigma_xy : float
+            The standard deviation of the Gaussian filter in the xy-plane.
+            The default is 4.0.
+        truncate : float
+            The truncation of the Gaussian filter.
+            The default is 3.0.
+        enhancement_factor : float
+            The enhancement factor for the output of the constant height STM image.
+            The default is 1000.
+        interpolation_factor : int
+            The interpolation factor for the z-direction in case of constant current mode.
+            The default is 10.
+        """
 
         sigma_z: float = 4.0
         """The standard deviation of the Gaussian filter in the z-direction.
@@ -192,6 +211,33 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
         You can also specify the mode and spin channel:
 
         >>> calculation.partial_density.to_stm(selection="constant_current up") # doctest: +SKIP
+
+        In `constant_height` mode, you can also specify the tip height:
+
+        >>> calculation.partial_density.to_stm(selection="constant_height", tip_height=3.0) # doctest: +SKIP
+
+        Similarly, in `constant_current` mode, you can specify the tunneling current:
+
+        >>> calculation.partial_density.to_stm(selection="constant_current", current=0.5) # doctest: +SKIP
+
+        You may also wish to specify a larger supercell for better visualization:
+
+        >>> calculation.partial_density.to_stm(supercell=3) # doctest: +SKIP
+
+        And finally, you may wish to adjust the settings of the STM simulation itself.
+        This can be achieved by the STM_settings dataclass:
+
+        >>> stm_settings = calculation.partial_density.STM_settings(sigma_z=5.0, sigma_xy=5.0, truncate=4.0, enhancement_factor=500) # doctest: +SKIP
+        >>> calculation.partial_density.to_stm(stm_settings=stm_settings) # doctest: +SKIP
+
+        In the case of `constant_current` mode, the interpolation factor can also be set:
+
+        >>> stm_settings = calculation.partial_density.STM_settings(interpolation_factor=12) # doctest: +SKIP
+        >>> calculation.partial_density.to_stm(selection="constant_current", stm_settings=stm_settings) # doctest: +SKIP
+
+        Note that you can check the STM_settings dataclass for details on its implementation and default settings:
+
+        >>> calculation.partial_density.STM_settings? # doctest: +SKIP
         """
         _raise_error_if_vacuum_too_small(self._estimate_vacuum())
 
@@ -366,10 +412,10 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
 
         Parameters
         ----------
-        selection : str
-            Can be *total*, *up* or *down*.
+        selection : str = "total"
+            Can be *"total"*, *"up"* or *"down"*.
 
-        supercell : int | np.ndarray
+        supercell : int | np.ndarray | None = None
             If present the data is replicated the specified number of times along each
             direction.
 
@@ -387,6 +433,12 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
         --------
         >>> calculation = Calculation.from_path(".") # doctest: +SKIP
         >>> calculation.partial_density.to_view() # doctest: +SKIP
+        View(...)
+
+        You can also specify the spin channel, the supercell, and user options:
+
+        >>> calculation.partial_density.to_view(selection="up", supercell=2, isolevel=0.3) # doctest: +SKIP
+        View(...)
         """
         viewer = self._structure.plot(supercell)
         partial_charge = self.to_numpy(selection)
@@ -421,6 +473,17 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
         -------
         np.array
             The partial charge density as a 3D array.
+
+        Examples
+        --------
+        >>> calculation = Calculation.from_path(".") # doctest: +SKIP
+        >>> calculation.partial_density.to_numpy() # doctest: +SKIP
+        array(...)
+
+        You can also specify the spin channel, band, and k-point:
+
+        >>> calculation.partial_density.to_numpy(selection="up", band=2, kpoint=3) # doctest: +SKIP
+        array(...)
         """
 
         band = self._check_band_index(band)

@@ -95,6 +95,10 @@ def _generate_noncollinear_data(h5f, waveh5f=None):
     write(h5f, _demo.band.noncollinear_bands("with_projectors"))
     write(h5f, _demo.dos.Ba2PbO4("noncollinear"))
     write(h5f, _demo.local_moment.local_moment("orbital_moments"))
+    if waveh5f is not None:
+        write(waveh5f, _demo.density.Fe3O4("noncollinear"))
+        write(waveh5f, _demo.density.Fe3O4("noncollinear"), selection="tau")
+    write(h5f, _demo.potential.Fe3O4("noncollinear", "all"))
 
 
 def _generate_spin_texture_data(h5f, waveh5f=None):

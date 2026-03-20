@@ -85,16 +85,17 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
     >>> calculation.potential.to_contour(c=0)
     Graph(...)
 
-    You may also visualize the magnetic part of the potential as a quiver plot:
-
-    >>> calculation.potential.to_quiver(c=0.2, supercell=2) # doctest: +SKIP
-
-    You can check possible selections for the potential with:
+    You can check possible selections for the potential - however, the selection options for the potential are quite flexible at the level of individual methods.
 
     >>> calculation.potential.selections()
     {'potential': ['default'...]...}
 
-    However, the selection options for the potential are quite flexible at the level of individual methods.
+    You may also visualize the magnetic part of the potential as a quiver plot:
+
+    >>> calculation_nc = demo.calculation(path, selection="noncollinear")
+    >>> calculation_nc.potential.to_quiver(c=0.2, supercell=2)
+    Graph(...)
+
     Please check the documentation of each of these methods for more details on how to use them and which options they provide.
     """
 
