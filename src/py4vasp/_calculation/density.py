@@ -71,17 +71,17 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
     You can also visualize a 3d isosurface of the density:
 
     >>> calculation.density.plot()
-    View(elements=array([[...]], ...), lattice_vectors=array([[[...]]]), positions=array([[[...]]]), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]), label='charge', isosurfaces=[Isosurface(...)])], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='charge', isosurfaces=[Isosurface(...)])], ...)
 
     For your own postprocessing, you can read the band data into a Python dictionary:
 
     >>> calculation.density.read()
-    {'structure': ..., 'charge': array([[[...]]])}
+    {'structure': ..., 'charge': array([[[...]]], ...)}
 
     Alternatively, obtain the density as a numpy array directly:
 
     >>> calculation.density.to_numpy()
-    array([[[[...]]]])
+    array([[[[...]]]], ...)
 
     It is also possible to test for non-polarized, collinear, and noncollinear calculations with:
 

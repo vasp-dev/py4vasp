@@ -59,7 +59,7 @@ class CurrentDensity(base.Refinery, structure.Mixin):
     For your own postprocessing, you can read the current density data into a Python dictionary:
 
     >>> calculation.current_density.read("nmr")
-    {'structure': {...}, 'current_x': array([[[[...]]]]), 'current_y': array([[[[...]]]]), 'current_z': array([[[[...]]]])}
+    {'structure': {...}, 'current_x': array([[[[...]]]], ...), 'current_y': array([[[[...]]]], ...), 'current_z': array([[[[...]]]], ...)}
 
     You can inspect possible choices with:
 

@@ -40,23 +40,23 @@ class Nics(base.Refinery, structure.Mixin, view.Mixin):
     For your own postprocessing, you can read the band data into a Python dictionary:
 
     >>> calculation.nics.read()
-    {'structure': {...}, 'nics': array([[[[[...]]]]]), 'method': ...}
+    {'structure': {...}, 'nics': array([[[[[...]]]]]...), 'method': ...}
 
     You can also obtain the NICS as a numpy array directly:
 
     >>> calculation.nics.to_numpy()
-    array([[[[[...]]]]])
+    array([[[[[...]]]]]...)
 
     You can also visualize a 3d isosurface of the chemical shift:
 
     >>> calculation.nics.plot()
-    View(elements=array([[...]], ...), lattice_vectors=array([[[...]]]), positions=array([[[...]]]), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]), label='isotropic NICS', isosurfaces=[Isosurface(...)])], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...)])], ...)
 
 
     Alternatively, you can visualize a contour plot of the chemical shift in a plane:
 
     >>> calculation.nics.to_contour(c=0)
-    Graph(series=[Contour(data=array([[...]]), ..., cut='c', ...)], ...)
+    Graph(series=[Contour(data=array([[...]]...), ..., cut='c', ...)], ...)
 
     Please check the documentation of each of these methods for more details on how to use them and which options they provide.
     """

@@ -193,10 +193,10 @@ class View:
     >>> from py4vasp import demo
     >>> calculation = demo.calculation(path)
     >>> calculation.structure.plot()
-    View(elements=array([[...]], ...), lattice_vectors=array([[[...]]]), positions=array([[[...]]]), grid_scalars=None, ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=None, ...)
 
     >>> calculation.nics.plot()
-    View(elements=array([[...]], ...), lattice_vectors=array([[[...]]]), positions=array([[[...]]]), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]), label='isotropic NICS', isosurfaces=[Isosurface(...), ...])], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...), ...])], ...)
 
     But you can also create :class:`~py4vasp.view.View` objects directly. For example:
 
@@ -240,7 +240,7 @@ class View:
     >>> grid_quantity = GridQuantity(quantity=quantity, label='Charge Density', isosurfaces=[isosurface])
     >>> view.grid_scalars = [grid_quantity]
     >>> view
-    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], grid_scalars=[GridQuantity(quantity=array([[[[...]]]]), label='Charge Density', isosurfaces=[Isosurface(...)])], ...)
+    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='Charge Density', isosurfaces=[Isosurface(...)])], ...)
     """
 
     elements: npt.ArrayLike

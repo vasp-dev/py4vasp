@@ -73,18 +73,18 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
     For your own postprocessing, you can read the potential data into a Python dictionary:
 
     >>> calculation.potential.read()
-    {'structure': {...}, 'total': array([[[...]]]), 'ionic': array([[[...]]]), 'xc': array([[[...]]]), 'hartree': array([[[...]]])}
+    {'structure': {...}, 'total': array([[[...]]], ...), 'ionic': array([[[...]]], ...), 'xc': array([[[...]]], ...), 'hartree': array([[[...]]], ...)}
 
     You can also plot the 3d isosurface of the selected potential:
 
     >>> calculation.potential.plot()
-    View(elements=array([[...]], ...), lattice_vectors=array([[[...]]]), positions=array([[[...]]]), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]), label='total potential', isosurfaces=[Isosurface(...)])], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='total potential', isosurfaces=[Isosurface(...)])], ...)
 
 
     Alternatively, you can visualize a contour plot of the potential in a plane:
 
     >>> calculation.potential.to_contour(c=0)
-    Graph(series=[Contour(data=array([[...]]), ..., cut='c', ...)], ...)
+    Graph(series=[Contour(data=array([[...]]...), ..., cut='c', ...)], ...)
 
     You can check possible selections for the potential - however, the selection options for the potential are quite flexible at the level of individual methods.
 
