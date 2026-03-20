@@ -396,22 +396,29 @@ def test_q_point_selections(q_point):
 
 def test_electronic_print(electronic, format_):
     actual, _ = format_(electronic)
-    reference = f"""
+    reference = f"""\
 dielectric function:
     energies: [0.00, 1.00] 50 points
     components: density, current
-    directions: isotropic, xx, yy, zz, xy, yz, xz
-    """.strip()
+    directions: isotropic, xx, yy, zz, xy, yz, xz"""
     assert actual == {"text/plain": reference}
 
 
 def test_ionic_print(ionic, format_):
     actual, _ = format_(ionic)
-    reference = f"""
+    reference = f"""\
 dielectric function:
     energies: [0.00, 1.00] 50 points
-    directions: isotropic, xx, yy, zz, xy, yz, xz
-    """.strip()
+    directions: isotropic, xx, yy, zz, xy, yz, xz"""
+    assert actual == {"text/plain": reference}
+
+
+def test_q_point_print(q_point, format_):
+    actual, _ = format_(q_point)
+    reference = f"""\
+dielectric function:
+    energies: [0.00, 2.00] 50 points
+    q-point: [0.000, 0.333, 0.707]"""
     assert actual == {"text/plain": reference}
 
 

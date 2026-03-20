@@ -37,11 +37,23 @@ class DielectricFunction(base.Refinery, graph.Mixin):
     @base.data_access
     def __str__(self):
         energies = self._raw_data.energies
-        return f"""
+        header = f"""\
 dielectric function:
-    energies: [{energies[0]:0.2f}, {energies[-1]:0.2f}] {len(energies)} points
-{self._components()}    directions: isotropic, xx, yy, zz, xy, yz, xz
-        """.strip()
+    energies: [{energies[0]:0.2f}, {energies[-1]:0.2f}] {len(energies)} points"""
+        if self._has_tensor_data():
+            footer = "directions: isotropic, xx, yy, zz, xy, yz, xz"
+        else:
+            qpoint_label = ", ".join(f"{q:0.3f}" for q in self._raw_data.q_point)
+            footer = f"q-point: [{qpoint_label}]"
+        if self._has_current_component():
+            return f"""\
+{header}
+    components: density, current
+    {footer}"""
+        else:
+            return f"""\
+{header}
+    {footer}"""
 
     def _components(self):
         if self._has_current_component():
