@@ -38,7 +38,7 @@ def partial_density(selection):
         spin_dimension = 1
     grid = raw.VaspData(tuple(reversed(grid_dim)))
     charge_shape = (len(kpoints), len(bands), spin_dimension, *grid_dim)
-    gaussian_charge = np.random.rand(charge_shape)
+    gaussian_charge = np.random.rand(*charge_shape)
     cov = grid_dim[0] / 10  # standard deviation
     z = np.arange(grid_dim[0])  # z range
     for gy in range(grid_dim[1]):
