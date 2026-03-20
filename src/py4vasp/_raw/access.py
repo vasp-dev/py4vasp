@@ -11,7 +11,7 @@ from py4vasp import exception, raw
 from py4vasp._raw.definition import DEFAULT_FILE, DEFAULT_SOURCE, schema
 from py4vasp._raw.mapping import Mapping
 from py4vasp._raw.schema import Length, Link, error_message
-from py4vasp._util import convert
+from py4vasp._util import check, convert
 
 
 @contextlib.contextmanager
@@ -66,6 +66,7 @@ class _State:
         source = self._get_source(quantity, source)
         filename = self._file or source.file or DEFAULT_FILE
         path = self._path / pathlib.Path(filename)
+        print(f"{source.data=}")
         if source.data is not None:
             return self._access_data_from_hdf5(quantity, source, path)
         else:
@@ -145,7 +146,8 @@ class _State:
             return tuple(convert.text_to_string(index) for index in valid_indices)
 
     def _get_dataset(self, h5f, key, valid_indices=None):
-        if key is None:
+        print(f"Accessing dataset with key {key} and valid_indices {valid_indices}")
+        if check.is_none(key):
             return raw.VaspData(None)
         if isinstance(key, Link):
             return self._resolve_link(key)

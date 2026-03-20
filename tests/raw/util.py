@@ -5,6 +5,7 @@ from typing import Optional
 
 from py4vasp import raw
 from py4vasp._raw import mapping
+from py4vasp._raw.data import NONE
 
 VERSION = raw.Version("major_dataset", "minor_dataset", "patch_dataset")
 
@@ -18,7 +19,7 @@ class Simple:
 @dataclasses.dataclass
 class OptionalArgument:
     mandatory: str
-    optional: str = None
+    optional: str = NONE()
 
 
 @dataclasses.dataclass

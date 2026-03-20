@@ -9,7 +9,7 @@ from typing import Any, Callable, Optional
 
 import numpy as np
 
-from py4vasp import exception
+from py4vasp import exception, raw
 from py4vasp._util import check, convert
 
 DEFAULT_SELECTION = "default"
@@ -247,7 +247,7 @@ def _parse_specification(specification):
     for field in dataclasses.fields(specification.data):
         key = field.name
         value = getattr(specification.data, key)
-        if value:
+        if not check.is_none(value):
             yield _parse_field(key, value)
 
 

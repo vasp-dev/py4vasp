@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
+
 import pytest
 from util import VERSION, Mapping, OptionalArgument, Simple, WithLength, WithLink
 
@@ -12,6 +14,7 @@ from py4vasp._raw.schema import (
     _get_processed_selection,
     _get_selections_for_subquantities,
 )
+from py4vasp._util import check
 
 
 def test_simple_schema():
@@ -68,12 +71,26 @@ def test_optional_argument():
     schema.add(OptionalArgument, name=name, mandatory=only_mandatory.mandatory)
     schema.add(OptionalArgument, mandatory=both.mandatory, optional=both.optional)
     reference = {
-        "optional_argument": {
-            name: Source(only_mandatory, labels=["mandatory"]),
-            "default": Source(both, labels=["default"]),
-        }
+        name: Source(only_mandatory, labels=["mandatory"]),
+        "default": Source(both, labels=["default"]),
     }
-    assert remove_version(schema.sources) == reference
+    assert schema.sources.keys() == {"version", "optional_argument"}
+    actual = schema.sources["optional_argument"]
+    for key in reference:
+        assert key in actual
+        actual_data = actual[key].data
+        reference_data = reference[key].data
+        for field in dataclasses.fields(reference_data):
+            field_name = field.name
+            actual_value = getattr(actual_data, field_name)
+            reference_value = getattr(reference_data, field_name)
+            if check.is_none(reference_value):
+                assert check.is_none(actual_value)
+            else:
+                assert actual_value == reference_value
+        actual[key].data = None
+        reference[key].data = None
+        assert actual[key] == reference[key]
 
 
 def test_links():
