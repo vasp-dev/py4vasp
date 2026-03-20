@@ -71,26 +71,12 @@ def test_optional_argument():
     schema.add(OptionalArgument, name=name, mandatory=only_mandatory.mandatory)
     schema.add(OptionalArgument, mandatory=both.mandatory, optional=both.optional)
     reference = {
-        name: Source(only_mandatory, labels=["mandatory"]),
-        "default": Source(both, labels=["default"]),
+        "optional_argument": {
+            name: Source(only_mandatory, labels=["mandatory"]),
+            "default": Source(both, labels=["default"]),
+        }
     }
-    assert schema.sources.keys() == {"version", "optional_argument"}
-    actual = schema.sources["optional_argument"]
-    for key in reference:
-        assert key in actual
-        actual_data = actual[key].data
-        reference_data = reference[key].data
-        for field in dataclasses.fields(reference_data):
-            field_name = field.name
-            actual_value = getattr(actual_data, field_name)
-            reference_value = getattr(reference_data, field_name)
-            if check.is_none(reference_value):
-                assert check.is_none(actual_value)
-            else:
-                assert actual_value == reference_value
-        actual[key].data = None
-        reference[key].data = None
-        assert actual[key] == reference[key]
+    check_sources_are_the_same(remove_version(schema.sources), reference)
 
 
 def test_links():
@@ -175,7 +161,32 @@ def test_file_version():
 
 def test_complex(complex_schema):
     schema, reference = complex_schema
-    assert schema.sources == reference
+    check_sources_are_the_same(schema.sources, reference)
+
+
+def check_sources_are_the_same(actual, reference):
+    for quantity in actual:
+        assert quantity in reference
+        actual_datasets = actual[quantity]
+        reference_datasets = reference[quantity]
+        for key in reference_datasets:
+            assert key in actual_datasets
+            actual_dataset = actual_datasets[key].data
+            reference_dataset = reference_datasets[key].data
+            if check.is_none(reference_dataset):
+                assert check.is_none(actual_dataset)
+                continue
+            for field in dataclasses.fields(reference_dataset):
+                field_name = field.name
+                actual_value = getattr(actual_dataset, field_name)
+                reference_value = getattr(reference_dataset, field_name)
+                if check.is_none(reference_value):
+                    assert check.is_none(actual_value)
+                else:
+                    assert actual_value == reference_value
+            actual_datasets[key].data = None
+            reference_datasets[key].data = None
+            assert actual_datasets[key] == reference_datasets[key]
 
 
 def test_complex_str(complex_schema):
