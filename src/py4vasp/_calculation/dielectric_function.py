@@ -35,11 +35,23 @@ class DielectricFunction(base.Refinery, graph.Mixin):
     @base.data_access
     def __str__(self):
         energies = self._raw_data.energies
-        return f"""
+        header = f"""\
 dielectric function:
-    energies: [{energies[0]:0.2f}, {energies[-1]:0.2f}] {len(energies)} points
-{self._components()}    directions: isotropic, xx, yy, zz, xy, yz, xz
-        """.strip()
+    energies: [{energies[0]:0.2f}, {energies[-1]:0.2f}] {len(energies)} points"""
+        if self._has_tensor_data():
+            footer = "directions: isotropic, xx, yy, zz, xy, yz, xz"
+        else:
+            qpoint_label = ", ".join(f"{q:0.3f}" for q in self._raw_data.q_point)
+            footer = f"q-point: [{qpoint_label}]"
+        if self._has_current_component():
+            return f"""\
+{header}
+    components: density, current
+    {footer}"""
+        else:
+            return f"""\
+{header}
+    {footer}"""
 
     def _components(self):
         if self._has_current_component():
@@ -61,6 +73,7 @@ dielectric function:
             "energies": self._raw_data.energies[:],
             "dielectric_function": data,
             **self._add_current_current_if_available(),
+            **self._add_q_point_if_available(),
         }
 
     @base.data_access
@@ -91,6 +104,15 @@ dielectric function:
     def _has_current_component(self):
         return not check.is_none(self._raw_data.current_current)
 
+    def _add_q_point_if_available(self):
+        if self._has_q_point():
+            return {"q_point": self._raw_data.q_point[:]}
+        else:
+            return {}
+
+    def _has_q_point(self):
+        return not check.is_none(self._raw_data.q_point)
+
     @base.data_access
     def to_graph(self, selection=None):
         """Read the data and generate a figure with the selected directions.
@@ -118,13 +140,16 @@ dielectric function:
     @base.data_access
     def selections(self):
         "Returns a dictionary of possible selections for component, direction, and complex value."
+        complex_selections = {"complex": ["real", "Re", "imag", "Im"]}
+        if not self._has_tensor_data():
+            return complex_selections
         components = (
             ["density", "current"] if self._has_current_component() else ["density"]
         )
         return {
             "components": components,
             "directions": [key for key in self._init_directions_dict() if key],
-            "complex": ["real", "Re", "imag", "Im"],
+            **complex_selections,
         }
 
     def _replace_complex_labels(self, selection):
@@ -135,16 +160,23 @@ dielectric function:
         energies = self._raw_data.energies[:]
         selector = self._make_selector()
         return [
-            graph.Series(energies, selector[selection], selector.label(selection))
+            graph.Series(
+                energies, selector[selection], self._create_label(selector, selection)
+            )
             for selection in self._generate_selections(selection)
         ]
 
     def _make_selector(self):
-        maps = {
-            3: self._init_complex_dict(),
-            0: self._init_components_dict(),
-            1: self._init_directions_dict(),
-        }
+        if self._has_tensor_data():
+            maps = {
+                3: self._init_complex_dict(),
+                0: self._init_components_dict(),
+                1: self._init_directions_dict(),
+            }
+        else:
+            maps = {
+                1: self._init_complex_dict(),
+            }
         return index.Selector(maps, self._get_data(), reduction=np.average)
 
     def _init_components_dict(self):
@@ -172,9 +204,23 @@ dielectric function:
             density = np.reshape(self._raw_data.dielectric_function, new_shape)
             current = np.reshape(self._raw_data.current_current, new_shape)
             return np.array([density, current])
-        else:
+        elif self._has_tensor_data():
             new_shape = (1, 9, number_points, complex_)
             return np.reshape(self._raw_data.dielectric_function, new_shape)
+        else:
+            return self._raw_data.dielectric_function
+
+    def _create_label(self, selector, selection):
+        if self._has_tensor_data():
+            return selector.label(selection)
+        else:
+            q_point_label = ",".join(
+                str(convert.Fraction(q)) for q in self._raw_data.q_point
+            )
+            return f"{selector.label(selection)}_q=[{q_point_label}]"
+
+    def _has_tensor_data(self):
+        return self._raw_data.dielectric_function.ndim == 4
 
     def _generate_selections(self, selection):
         tree = select.Tree.from_selection(selection)

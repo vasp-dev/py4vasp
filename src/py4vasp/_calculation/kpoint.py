@@ -447,13 +447,5 @@ def _line_distances(coordinates):
 
 
 def _kpoint_label(kpoint):
-    fractions = [_to_latex(coordinate) for coordinate in kpoint]
+    fractions = [convert.Fraction(coordinate).latex() for coordinate in kpoint]
     return f"$[{fractions[0]} {fractions[1]} {fractions[2]}]$"
-
-
-def _to_latex(float):
-    fraction = Fraction.from_float(float).limit_denominator()
-    if fraction.denominator == 1:
-        return str(fraction.numerator)
-    else:
-        return f"\\frac{{{fraction.numerator}}}{{{fraction.denominator}}}"

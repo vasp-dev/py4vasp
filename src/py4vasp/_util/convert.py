@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import fractions
 import re
 import textwrap
 
@@ -112,3 +113,30 @@ def to_lab(hex):
     a = 500 * (f(x / xn) - f(y))
     b = 200 * (f(y) - f(z / zn))
     return np.array((l, a, b))
+
+
+class Fraction:
+    "A wrapper around Fraction that returns the original number if the error is too large."
+
+    def __init__(self, number):
+        fraction = fractions.Fraction(number).limit_denominator(20)
+        if abs(float(fraction) - number) > 1e-5:
+            self.value = number
+        else:
+            self.value = fraction
+
+    def __str__(self):
+        if self.is_fraction():
+            return str(self.value)
+        else:
+            return f"{self.value:.3f}"
+
+    def is_fraction(self):
+        return isinstance(self.value, fractions.Fraction)
+
+    def latex(self):
+        if not self.is_fraction():
+            return f"{self.value:.3f}"
+        if self.value.denominator == 1:
+            return str(self.value.numerator)
+        return f"\\frac{{{self.value.numerator}}}{{{self.value.denominator}}}"

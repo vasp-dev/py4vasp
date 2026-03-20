@@ -32,7 +32,20 @@ def ionic(raw_data):
     ionic.ref.energies = raw_ionic.energies
     to_complex = lambda data: data[..., 0] + 1j * data[..., 1]
     ionic.ref.dielectric_function = to_complex(raw_ionic.dielectric_function)
+    ionic.ref.q_point = raw_ionic.q_point
     return ionic
+
+
+@pytest.fixture
+def q_point(raw_data):
+    raw_q_point = raw_data.dielectric_function("q_point")
+    q_point = DielectricFunction.from_data(raw_q_point)
+    q_point.ref = types.SimpleNamespace()
+    q_point.ref.energies = raw_q_point.energies
+    to_complex = lambda data: data[..., 0] + 1j * data[..., 1]
+    q_point.ref.dielectric_function = to_complex(raw_q_point.dielectric_function)
+    q_point.ref.q_point = raw_q_point.q_point
+    return q_point
 
 
 def test_electronic_read(electronic, Assert):
@@ -41,6 +54,10 @@ def test_electronic_read(electronic, Assert):
 
 def test_ionic_read(ionic, Assert):
     check_dielectric_read(ionic, Assert)
+
+
+def test_q_point_read(q_point, Assert):
+    check_dielectric_read(q_point, Assert)
 
 
 def check_dielectric_read(dielectric_function, Assert):
@@ -53,6 +70,10 @@ def check_dielectric_read(dielectric_function, Assert):
             Assert.allclose(actual["current_current"], reference.current_current)
         else:
             assert "current_current" not in actual
+        if hasattr(reference, "q_point"):
+            Assert.allclose(actual["q_point"], reference.q_point)
+        else:
+            assert "q_point" not in actual
 
 
 @dataclasses.dataclass
@@ -93,6 +114,23 @@ def test_ionic_plot_default(ionic, Assert):
         ),
     ]
     fig = ionic.plot()
+    check_figure_contains_plots(fig, plots, Assert)
+
+
+def test_q_point_plot_default(q_point, Assert):
+    plots = [
+        Plot(
+            x=q_point.ref.energies,
+            y=q_point.ref.dielectric_function.real,
+            label=expected_plot_name("Re", "q=[0,1/3,0.707]"),
+        ),
+        Plot(
+            x=q_point.ref.energies,
+            y=q_point.ref.dielectric_function.imag,
+            label=expected_plot_name("Im", "q=[0,1/3,0.707]"),
+        ),
+    ]
+    fig = q_point.plot()
     check_figure_contains_plots(fig, plots, Assert)
 
 
@@ -271,6 +309,11 @@ def test_incorrect_direction_raises_error(electronic):
         electronic.plot("incorrect")
 
 
+def test_component_selection_for_qpoint_raises_error(q_point):
+    with pytest.raises(exception.IncorrectUsage):
+        q_point.plot("xx")
+
+
 def isotropic(tensor):
     return np.trace(tensor) / 3
 
@@ -347,24 +390,35 @@ def test_ionic_selections(ionic):
     }
 
 
+def test_q_point_selections(q_point):
+    assert q_point.selections() == {"complex": ["real", "Re", "imag", "Im"]}
+
+
 def test_electronic_print(electronic, format_):
     actual, _ = format_(electronic)
-    reference = f"""
+    reference = f"""\
 dielectric function:
     energies: [0.00, 1.00] 50 points
     components: density, current
-    directions: isotropic, xx, yy, zz, xy, yz, xz
-    """.strip()
+    directions: isotropic, xx, yy, zz, xy, yz, xz"""
     assert actual == {"text/plain": reference}
 
 
 def test_ionic_print(ionic, format_):
     actual, _ = format_(ionic)
-    reference = f"""
+    reference = f"""\
 dielectric function:
     energies: [0.00, 1.00] 50 points
-    directions: isotropic, xx, yy, zz, xy, yz, xz
-    """.strip()
+    directions: isotropic, xx, yy, zz, xy, yz, xz"""
+    assert actual == {"text/plain": reference}
+
+
+def test_q_point_print(q_point, format_):
+    actual, _ = format_(q_point)
+    reference = f"""\
+dielectric function:
+    energies: [0.00, 2.00] 50 points
+    q-point: [0.000, 0.333, 0.707]"""
     assert actual == {"text/plain": reference}
 
 

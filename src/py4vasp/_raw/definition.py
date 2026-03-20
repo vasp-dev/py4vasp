@@ -164,7 +164,6 @@ schema.add(
     required=raw.Version(6, 4),
     energies=f"{group}/ion_{energies}",
     dielectric_function=f"{group}/ion{values}",
-    current_current=None,
 )
 schema.add(
     raw.DielectricFunction,
@@ -172,7 +171,7 @@ schema.add(
     required=raw.Version(6, 4),
     energies=f"{group}/bse_{energies}",
     dielectric_function=f"{group}/bse{values}",
-    current_current=None,
+    q_point=f"{group}/bse_wave_vector",
 )
 schema.add(
     raw.DielectricFunction,
@@ -180,7 +179,6 @@ schema.add(
     required=raw.Version(6, 4),
     energies=f"{group}/tdhf_{energies}",
     dielectric_function=f"{group}/tdhf{values}",
-    current_current=None,
 )
 schema.add(
     raw.DielectricFunction,
@@ -188,7 +186,6 @@ schema.add(
     required=raw.Version(6, 4),
     energies=f"{group}/ipa_{energies}",
     dielectric_function=f"{group}/ipa{values}",
-    current_current=None,
 )
 schema.add(
     raw.DielectricFunction,
@@ -204,7 +201,6 @@ schema.add(
     required=raw.Version(6, 4),
     energies=f"{group}/resonant_{energies}",
     dielectric_function=f"{group}/resonant{values}",
-    current_current=None,
 )
 schema.add(
     raw.DielectricFunction,
@@ -212,7 +208,6 @@ schema.add(
     required=raw.Version(6, 4),
     energies=f"{group}/dft_{energies}",
     dielectric_function=f"{group}/dft{values}",
-    current_current=None,
 )
 schema.add(
     raw.DielectricFunction,
@@ -220,7 +215,6 @@ schema.add(
     required=raw.Version(6, 4),
     energies=f"{group}/tcte_{energies}",
     dielectric_function=f"{group}/tcte{values}",
-    current_current=None,
 )
 schema.add(
     raw.DielectricFunction,
@@ -228,7 +222,6 @@ schema.add(
     required=raw.Version(6, 4),
     energies=f"{group}/tctc_{energies}",
     dielectric_function=f"{group}/tctc{values}",
-    current_current=None,
 )
 schema.add(
     raw.DielectricFunction,
@@ -236,7 +229,6 @@ schema.add(
     required=raw.Version(6, 5, 1),
     energies=f"{group}/XAS_{energies}",
     dielectric_function=f"{group}/XAS{values}",
-    current_current=None,
 )
 group = "results/linear_response_kpoints_opt"
 schema.add(

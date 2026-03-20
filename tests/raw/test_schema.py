@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
+
 import pytest
 from util import VERSION, Mapping, OptionalArgument, Simple, WithLength, WithLink
 
@@ -12,6 +14,7 @@ from py4vasp._raw.schema import (
     _get_processed_selection,
     _get_selections_for_subquantities,
 )
+from py4vasp._util import check
 
 
 def test_simple_schema():
@@ -73,7 +76,7 @@ def test_optional_argument():
             "default": Source(both, labels=["default"]),
         }
     }
-    assert remove_version(schema.sources) == reference
+    check_sources_are_the_same(remove_version(schema.sources), reference)
 
 
 def test_links():
@@ -158,7 +161,32 @@ def test_file_version():
 
 def test_complex(complex_schema):
     schema, reference = complex_schema
-    assert schema.sources == reference
+    check_sources_are_the_same(schema.sources, reference)
+
+
+def check_sources_are_the_same(actual, reference):
+    for quantity in actual:
+        assert quantity in reference
+        actual_datasets = actual[quantity]
+        reference_datasets = reference[quantity]
+        for key in reference_datasets:
+            assert key in actual_datasets
+            actual_dataset = actual_datasets[key].data
+            reference_dataset = reference_datasets[key].data
+            if check.is_none(reference_dataset):
+                assert check.is_none(actual_dataset)
+                continue
+            for field in dataclasses.fields(reference_dataset):
+                field_name = field.name
+                actual_value = getattr(actual_dataset, field_name)
+                reference_value = getattr(reference_dataset, field_name)
+                if check.is_none(reference_value):
+                    assert check.is_none(actual_value)
+                else:
+                    assert actual_value == reference_value
+            actual_datasets[key].data = None
+            reference_datasets[key].data = None
+            assert actual_datasets[key] == reference_datasets[key]
 
 
 def test_complex_str(complex_schema):
