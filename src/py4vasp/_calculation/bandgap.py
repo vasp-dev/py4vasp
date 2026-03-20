@@ -120,16 +120,37 @@ Fermi energy:    {fermi_energy}"""
         """
         return {
             **self._gap_dict("fundamental"),
-            "valence_band_maximum": self.valence_band_maximum(),
-            "conduction_band_minimum": self.conduction_band_minimum(),
+            **self._band_dict("fundamental"),
             **self._kpoint_dict("VBM"),
             **self._kpoint_dict("CBM"),
             **self._gap_dict("direct"),
-            "direct_gap_bottom": self._get(GAPS["direct"].bottom, component=0),
-            "direct_gap_top": self._get(GAPS["direct"].top, component=0),
+            **self._band_dict("direct"),
             **self._kpoint_dict("direct"),
             "fermi_energy": self._get("Fermi energy", component=0),
         }
+
+    def _band_dict(self, label):
+        result = {}
+        bottoms = self._get(GAPS[label].bottom)
+        tops = self._get(GAPS[label].top)
+        for bottom, top, suffix in zip(bottoms.T, tops.T, self._suffixes()):
+            result[GAPS[label].bottom.replace(" ", "_") + suffix] = bottom
+            result[GAPS[label].top.replace(" ", "_") + suffix] = top
+        return result
+
+    def _gap_dict(self, label):
+        gaps = self._gap(label).T
+        return {f"{label}{suffix}": gap for gap, suffix in zip(gaps, self._suffixes())}
+
+    def _kpoint_dict(self, label):
+        kpoint = self._kpoint(label)
+        return {
+            f"kpoint_{label}{suffix}": kpoint[..., i, :]
+            for i, suffix in enumerate(self._suffixes())
+        }
+
+    def _suffixes(self):
+        return ("", "_up", "_down") if self._spin_polarized() else ("",)
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
@@ -169,20 +190,6 @@ Fermi energy:    {fermi_energy}"""
                 else None
             )
         return {"bandgap": Bandgap_DB(**final_dict)}
-
-    def _gap_dict(self, label):
-        gaps = self._gap(label).T
-        return {f"{label}{suffix}": gap for gap, suffix in zip(gaps, self._suffixes())}
-
-    def _kpoint_dict(self, label):
-        kpoint = self._kpoint(label)
-        return {
-            f"kpoint_{label}{suffix}": kpoint[..., i, :]
-            for i, suffix in enumerate(self._suffixes())
-        }
-
-    def _suffixes(self):
-        return ("", "_up", "_down") if self._spin_polarized() else ("",)
 
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "fundamental"))
