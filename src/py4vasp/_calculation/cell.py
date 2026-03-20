@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from contextlib import suppress
 from typing import Optional, Union
 
 import numpy as np
@@ -127,7 +128,7 @@ class Cell(slice_.Mixin, base.Refinery):
 
     def _find_likely_vacuum_direction(self):
         """Identify likeliest vacuum direction as the lattice vector with the largest length, or from IDIPOL flag."""
-        try:
+        with suppress(exception.Py4VaspError):
             lattice_vectors = self.lattice_vectors()
             dipole_direction = _idipol_to_direction(
                 self._raw_data.idipol, self._raw_data.ldipol
@@ -142,8 +143,8 @@ class Cell(slice_.Mixin, base.Refinery):
                 return dipole_direction or int(
                     np.argmax(np.linalg.norm(lattice_vectors, axis=-1))
                 )
-        except Exception:
-            return None
+        
+        return None
 
 
 def _is_suspected_2d(

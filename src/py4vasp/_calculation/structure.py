@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from contextlib import suppress
 from dataclasses import dataclass
 from typing import Union
 
@@ -263,7 +264,7 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
 
         # TODO add more structure properties
         final_lattice, initial_lattice = ([None, None, None] for _ in range(2))
-        try:
+        with suppress(exception.Py4VaspError):
             lattices = self.lattice_vectors()
             final_lattice = lattices[-1] if lattices.ndim == 3 else lattices
             initial_lattice = lattices[0] if lattices.ndim == 3 else lattices
@@ -271,10 +272,9 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
                 final_lattice = [None, None, None]
             if initial_lattice.ndim != 2:
                 initial_lattice = [None, None, None]
-        except:
-            pass
+
         volume_final, volume_initial = (None for _ in range(2))
-        try:
+        with suppress(exception.Py4VaspError):
             volumes = self.volume()
             volume_final = (
                 volumes[-1]
@@ -286,8 +286,6 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
                 if not isinstance(volumes, (float, np.float64, np.float32))
                 else volumes
             )
-        except Exception as e:
-            pass
 
         lengths_final, angles_final, lengths_initial, angles_initial = (
             None for _ in range(4)
@@ -299,12 +297,10 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
             cell_area_2d_span_initial,
         ) = (None for _ in range(4))
         dimensionality = 3
-        try:
+        with suppress(exception.Py4VaspError):
             dimensionality = self._dimensionality()
-        except Exception as e:
-            pass
 
-        try:
+        with suppress(exception.Py4VaspError):
             cell_: cell.Cell = self._cell()
             lengths = cell_.lengths()
             lengths_final = lengths[-1] if lengths.ndim == 2 else lengths
@@ -334,8 +330,6 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
                     if isinstance(cell_area_2d_span, list)
                     else cell_area_2d_span
                 )
-        except Exception as e:
-            pass
 
         num_atoms = self.number_atoms() or None
         self._steps = steps_sel

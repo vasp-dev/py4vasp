@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
+from contextlib import suppress
 from typing import Optional, Union
 
 import numpy as np
@@ -104,12 +105,11 @@ current density:
     @base.data_access
     def _to_database(self, *args, **kwargs):
         density_dict = {"current_density": {}}
-        try:
+        structure_ = {}
+        with suppress(exception.Py4VaspError):
             structure_ = structure.Structure.from_data(
                 self._raw_data.structure
             )._read_to_database(*args, **kwargs)
-        except:
-            structure_ = {}
         return database.combine_db_dicts(density_dict, structure_)
 
     @base.data_access

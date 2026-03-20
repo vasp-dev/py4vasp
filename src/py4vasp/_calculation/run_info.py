@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from contextlib import suppress
+
 from py4vasp._calculation import bandgap, base, exception
 from py4vasp._calculation._dispersion import Dispersion
 from py4vasp._raw import data as raw_data
@@ -39,10 +41,8 @@ class RunInfo(base.Refinery):
 
     def _dict_additional_collection(self) -> dict:
         fermi_energy = None
-        try:
+        with suppress(exception.NoData):
             fermi_energy = self._raw_data.fermi_energy
-        except exception.NoData:
-            pass
 
         is_success = None  # TODO implement
 
@@ -72,43 +72,37 @@ class RunInfo(base.Refinery):
         }
 
     def _is_collinear(self):
-        try:
+        if not check.is_none(self._raw_data.len_dos):
             return self._raw_data.len_dos == 2
-        except exception.NoData:
-            try:
+        else:
+            if not check.is_none(self._raw_data.band_dispersion_eigenvalues):
                 return len(self._raw_data.band_dispersion_eigenvalues) == 2
-            except exception.NoData:
+            else:
                 return None
 
     def _is_noncollinear(self):
-        try:
+        if not check.is_none(self._raw_data.len_dos):
             return self._raw_data.len_dos == 4
-        except exception.NoData:
-            try:
-                if check.is_none(self._raw_data.band_projections):
-                    return None
+        else:
+            if not check.is_none(self._raw_data.band_projections):
                 return len(self._raw_data.band_projections) == 4
-            except exception.NoData:
+            else:
                 return None
 
     def _is_metallic(self):
-        try:
+        with suppress(exception.Py4VaspError, exception.OutdatedVaspVersion, exception.NoData):
             if check.is_none(self._raw_data.bandgap):
                 return None
             gap = bandgap.Bandgap.from_data(self._raw_data.bandgap)
             return all(gap._output_gap("fundamental", to_string=False) <= 0.0)
-        except (exception.OutdatedVaspVersion, exception.NoData):
-            return None
-        except:
-            return None
+        
+        return None
 
     def _dict_from_system(self) -> dict:
         system_tag = None
 
-        try:
+        with suppress(exception.NoData):
             system_tag = self._read("system", "system")
-        except exception.NoData:
-            pass
 
         return {
             "system_tag": system_tag,
@@ -117,11 +111,9 @@ class RunInfo(base.Refinery):
     def _dict_from_runtime(self) -> dict:
         vasp_version = None
 
-        try:
+        with suppress(exception.NoData):
             runtime_data = self._raw_data.runtime
             vasp_version = None if runtime_data is None else runtime_data.vasp_version
-        except exception.NoData:
-            pass
 
         return {
             "vasp_version": vasp_version,
@@ -130,12 +122,10 @@ class RunInfo(base.Refinery):
     def _dict_from_structure(self) -> dict:
         num_ion_steps = None
 
-        try:
+        with suppress(exception.NoData, AttributeError):
             positions = self._read("structure", "positions")
             if not check.is_none(positions):
                 num_ion_steps = 1 if positions.ndim == 2 else positions.shape[0]
-        except (exception.NoData, AttributeError):
-            pass
 
         return {
             "num_ionic_steps": num_ion_steps,
@@ -146,7 +136,7 @@ class RunInfo(base.Refinery):
         has_lattice_velocities = None
         has_ion_velocities = None
 
-        try:
+        with suppress(exception.NoData):
             has_selective_dynamics = not check.is_none(
                 self._read("contcar", "selective_dynamics")
             )
@@ -156,8 +146,6 @@ class RunInfo(base.Refinery):
             has_ion_velocities = not check.is_none(
                 self._read("contcar", "ion_velocities")
             )
-        except exception.NoData:
-            pass
 
         return {
             "has_selective_dynamics": has_selective_dynamics,
@@ -169,12 +157,10 @@ class RunInfo(base.Refinery):
         phonon_num_qpoints = None
         phonon_num_modes = None
 
-        try:
+        with suppress(exception.NoData):
             eigenvalues = self._raw_data.phonon_dispersion.eigenvalues
             phonon_num_qpoints = eigenvalues.shape[0]
             phonon_num_modes = eigenvalues.shape[1]
-        except exception.NoData:
-            pass
 
         return {
             "phonon_num_qpoints": phonon_num_qpoints,

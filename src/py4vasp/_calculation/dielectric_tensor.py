@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from contextlib import suppress
+
 import numpy as np
 
 from py4vasp import exception
@@ -55,14 +57,12 @@ class DielectricTensor(base.Refinery):
             total_tensor = self._raw_data.electron[:] + self._raw_data.ion[:]
 
         for idt, tensor in enumerate([total_tensor, ionic_tensor, electronic_tensor]):
-            try:
+            with suppress(exception.Py4VaspError):
                 tensor_reduced[idt] = list(symmetry_reduce(tensor.T))
                 (
                     isotropic_dielectric_constant[idt],
                     polarizability_2d[idt],
                 ) = self._calculate_dielectric_quantities(tensor)
-            except:
-                pass
 
         method = (
             convert.text_to_string(self._raw_data.method)
@@ -93,13 +93,12 @@ class DielectricTensor(base.Refinery):
         # 2D polarizability for slab systems
         # TODO migrate finding vacuum direction to structure
         polarizability_2d = None
-        try:
+        with suppress(exception.Py4VaspError):
             if not (check.is_none(self._raw_data.cell)):
                 final_cell = cell.Cell.from_data(self._raw_data.cell)
                 if final_cell:
                     polarizability_2d = _calculate_2d_polarizability(tensor, final_cell)
-        except Exception:
-            pass
+
         # 3D isotropic dielectric constant
         isotropic_dielectric_constant = None
         isotropic_dielectric_constant = float(np.mean(np.diag(tensor)))
@@ -156,7 +155,7 @@ def _calculate_2d_polarizability(
     """
     Compute 2D polarizability (alpha_2D) for a slab system with unknown vacuum direction.
     """
-    try:
+    with suppress(exception.Py4VaspError):
         vacuum_dir = cell_._find_likely_vacuum_direction()
         if vacuum_dir is None:
             return None
@@ -168,5 +167,4 @@ def _calculate_2d_polarizability(
 
         alpha_2d = (l_vacuum / (4.0 * np.pi)) * (eps_parallel - 1.0)
         return alpha_2d
-    except Exception:
-        return None
+    return None

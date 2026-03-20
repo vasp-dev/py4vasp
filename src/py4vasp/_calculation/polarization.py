@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from contextlib import suppress
+
 import numpy as np
 
 from py4vasp import exception
@@ -59,7 +61,7 @@ electronic dipole moment: {vec_to_string(self._raw_data.electron[:])}
         ion_dipole = None
         total_dipole = None
 
-        try:
+        with suppress(exception.NoData):
             electron_dipole = list(self._raw_data.electron[:])
             ion_dipole = list(self._raw_data.ion[:])
             total_dipole = list(self._raw_data.electron[:] + self._raw_data.ion[:])
@@ -69,8 +71,6 @@ electronic dipole moment: {vec_to_string(self._raw_data.electron[:])}
             total_norm = np.linalg.norm(
                 self._raw_data.electron[:] + self._raw_data.ion[:]
             )
-        except exception.NoData:
-            pass
 
         return {
             "polarization": Polarization_DB(
