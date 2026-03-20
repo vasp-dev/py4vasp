@@ -49,17 +49,17 @@ class CurrentDensity(base.Refinery, structure.Mixin):
     To produce a contour plot:
 
     >>> calculation.current_density.to_contour("nmr", a=0)
-    Graph(...)
+    Graph(series=[Contour(data=array([[...]]), ..., cut='a', ...)], ...)
 
     To produce a quiver plot:
 
-    >>> calculation.current_density.to_quiver("nmr", a=0)
-    Graph(series=[Contour(...)...]...)
+    >>> calculation.current_density.to_quiver("nmr", c=0)
+    Graph(series=[Contour(data=array([[[...]]]), ..., cut='c', ...)], ...)
 
     For your own postprocessing, you can read the current density data into a Python dictionary:
 
     >>> calculation.current_density.read("nmr")
-    {'structure': {...}, 'current_x': array(...), 'current_y': array(...), 'current_z': array(...)}
+    {'structure': {...}, 'current_x': array([[[[...]]]]), 'current_y': array([[[[...]]]]), 'current_z': array([[[[...]]]])}
 
     You can inspect possible choices with:
 

@@ -193,10 +193,10 @@ class View:
     >>> from py4vasp import demo
     >>> calculation = demo.calculation(path)
     >>> calculation.structure.plot()
-    View(...)
+    View(elements=array([[...]], ...), lattice_vectors=array([[[...]]]), positions=array([[[...]]]), grid_scalars=None, ...)
 
     >>> calculation.nics.plot()
-    View(...)
+    View(elements=array([[...]], ...), lattice_vectors=array([[[...]]]), positions=array([[[...]]]), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]), label='isotropic NICS', isosurfaces=[Isosurface(...), ...])], ...)
 
     But you can also create :class:`~py4vasp.view.View` objects directly. For example:
 
@@ -210,7 +210,7 @@ class View:
     >>> positions = [[[0, 0, 0], [0.25, 0.25, 0.25]], [[0, 0, 0], [0.5, 0.5, 0.5]]]
     >>> view = View(elements=elements, lattice_vectors=lattice_vectors, positions=positions)
     >>> view
-    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], ...)
+    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], grid_scalars=None, ...)
 
     It is possible to add quantities or change settings after creating the
     :class:`~py4vasp.view.View` object:
@@ -240,7 +240,7 @@ class View:
     >>> grid_quantity = GridQuantity(quantity=quantity, label='Charge Density', isosurfaces=[isosurface])
     >>> view.grid_scalars = [grid_quantity]
     >>> view
-    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], ... grid_scalars=[GridQuantity(...)], ...)
+    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], grid_scalars=[GridQuantity(quantity=array([[[[...]]]]), label='Charge Density', isosurfaces=[Isosurface(...)])], ...)
     """
 
     elements: npt.ArrayLike

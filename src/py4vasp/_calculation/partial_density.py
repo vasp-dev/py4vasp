@@ -54,17 +54,17 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
     For your own postprocessing, you can read the band data into a Python dictionary:
 
     >>> calculation.partial_density.read()
-    {'structure': ..., 'grid': ..., 'bands': ..., 'kpoints': ..., 'partial_density': array(...)}
+    {'structure': {...}, 'grid': array([...]), 'bands': array([...]), 'kpoints': array([...]), 'partial_density': array([[[...]]])}
 
     Alternatively, obtain the density as a numpy array directly:
 
     >>> calculation.partial_density.to_numpy()
-    array(...)
+    array([[[...]]])
 
     You can also visualize a 3d isosurface of the density:
 
     >>> calculation.partial_density.plot()
-    View(...)
+    View(elements=array([[...]], ...), lattice_vectors=array([[[...]]]), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]), label='total', isosurfaces=[Isosurface(...)])], ...)
 
     You can also generate an STM image from the partial density:
 
@@ -73,11 +73,11 @@ class PartialDensity(base.Refinery, structure.Mixin, view.Mixin):
     It is also possible to access the contributing bands ([0] means all bands contribute), grid, and contributing k-points:
 
     >>> calculation.partial_density.bands()
-    array(...)
+    array([...])
     >>> calculation.partial_density.grid()
-    array(...)
+    array([...])
     >>> calculation.partial_density.kpoints()
-    array(...)
+    array([...])
 
     Finally, you can inspect possible selections with:
 

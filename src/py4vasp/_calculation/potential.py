@@ -73,17 +73,18 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
     For your own postprocessing, you can read the potential data into a Python dictionary:
 
     >>> calculation.potential.read()
-    {'structure': ..., 'total': array(...), 'ionic': array(...), 'xc': array(...), 'hartree': array(...)}
+    {'structure': {...}, 'total': array([[[...]]]), 'ionic': array([[[...]]]), 'xc': array([[[...]]]), 'hartree': array([[[...]]])}
 
     You can also plot the 3d isosurface of the selected potential:
 
     >>> calculation.potential.plot()
-    View(...)
+    View(elements=array([[...]], ...), lattice_vectors=array([[[...]]]), positions=array([[[...]]]), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]), label='total potential', isosurfaces=[Isosurface(...)])], ...)
+
 
     Alternatively, you can visualize a contour plot of the potential in a plane:
 
     >>> calculation.potential.to_contour(c=0)
-    Graph(...)
+    Graph(series=[Contour(data=array([[...]]), ..., cut='c', ...)], ...)
 
     You can check possible selections for the potential - however, the selection options for the potential are quite flexible at the level of individual methods.
 
@@ -94,7 +95,7 @@ class Potential(base.Refinery, structure.Mixin, view.Mixin):
 
     >>> calculation_nc = demo.calculation(path, selection="noncollinear")
     >>> calculation_nc.potential.to_quiver(c=0.2, supercell=2)
-    Graph(...)
+    Graph(series=[Contour(data=array([[[...]]]), lattice=Plane(..., cut='c', ...), ..., supercell=array([2, 2]), ...)], ...)
 
     Please check the documentation of each of these methods for more details on how to use them and which options they provide.
     """

@@ -77,6 +77,7 @@ def _generate_default_data(h5f, waveh5f=None):
     write(h5f, _demo.band.line_mode("no_labels"), selection="kpoints_opt")
     write(h5f, _demo.dos.Sr2TiO4("no_projectors"), selection="kpoints_opt")
     write(h5f, _demo.current_density.current_density("all"), selection="nmr")
+    write(h5f, _demo.exciton.density.Sr2TiO4())
     if waveh5f is not None:
         write(waveh5f, _demo.density.Sr2TiO4())
         write(waveh5f, _demo.density.Sr2TiO4(), selection="tau")

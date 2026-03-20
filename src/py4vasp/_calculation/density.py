@@ -66,22 +66,22 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
     To produce a contour plot:
 
     >>> calculation.density.to_contour(a=0)
-    Graph(...)
+    Graph(series=[Contour(data=array([[...]]), ..., cut='a', ...)], ...)
 
     You can also visualize a 3d isosurface of the density:
 
     >>> calculation.density.plot()
-    View(...)
+    View(elements=array([[...]], ...), lattice_vectors=array([[[...]]]), positions=array([[[...]]]), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]), label='charge', isosurfaces=[Isosurface(...)])], ...)
 
     For your own postprocessing, you can read the band data into a Python dictionary:
 
     >>> calculation.density.read()
-    {'structure': ..., 'charge': array(...)}
+    {'structure': ..., 'charge': array([[[...]]])}
 
     Alternatively, obtain the density as a numpy array directly:
 
     >>> calculation.density.to_numpy()
-    array(...)
+    array([[[[...]]]])
 
     It is also possible to test for non-polarized, collinear, and noncollinear calculations with:
 
@@ -104,7 +104,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
     >>> calculation_nc.density.is_noncollinear()
     True
     >>> calculation_nc.density.to_quiver(c=0, supercell=2)
-    Graph(...)
+    Graph(series=[Contour(data=array([[[...]]]), ..., cut='c', ...)], ...)
 
     Please check the documentation of these methods for more details on how to use them and which options they provide.
     """

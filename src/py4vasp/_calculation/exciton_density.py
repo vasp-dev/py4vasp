@@ -37,24 +37,25 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
     For your own postprocessing, you can read the band data into a Python dictionary:
 
     >>> calculation.exciton.density.read()
-    {'structure': ..., 'charge': array(...)}
+    {'structure': {...}, 'charge': array([[[[...]]]])}
 
     Alternatively, obtain the density as a numpy array directly:
 
     >>> calculation.exciton.density.to_numpy()
-    array(...)
+    array([[[[...]]]])
 
     You can also visualize a 3d isosurface of the density:
 
     >>> calculation.exciton.density.plot()
-    View(...)
+    View(elements=array([[...]], ...), lattice_vectors=array([[[...]]]), positions=array([[[...]]]), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]), label='1', isosurfaces=[Isosurface(...)])], ...)
+
 
     Finally, you can inspect possible selections with:
 
     >>> calculation.exciton.density.selections()
     {'exciton_density': ['default'...]...}
 
-    Check the documentation of these methods for more details on how to use them and which options they provide.
+    Please check the documentation of these methods for more details on how to use them and which options they provide.
     """
 
     _raw_data: raw_data.ExcitonDensity
