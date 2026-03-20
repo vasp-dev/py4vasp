@@ -35,12 +35,28 @@ def ionic(raw_data):
     return ionic
 
 
+@pytest.fixture
+def q_point(raw_data):
+    raw_q_point = raw_data.dielectric_function("q_point")
+    q_point = DielectricFunction.from_data(raw_q_point)
+    q_point.ref = types.SimpleNamespace()
+    q_point.ref.energies = raw_q_point.energies
+    to_complex = lambda data: data[..., 0] + 1j * data[..., 1]
+    q_point.ref.dielectric_function = to_complex(raw_q_point.dielectric_function)
+    q_point.ref.q_point = raw_q_point.q_point
+    return q_point
+
+
 def test_electronic_read(electronic, Assert):
     check_dielectric_read(electronic, Assert)
 
 
 def test_ionic_read(ionic, Assert):
     check_dielectric_read(ionic, Assert)
+
+
+def test_q_point_read(q_point, Assert):
+    check_dielectric_read(q_point, Assert)
 
 
 def check_dielectric_read(dielectric_function, Assert):
@@ -53,6 +69,10 @@ def check_dielectric_read(dielectric_function, Assert):
             Assert.allclose(actual["current_current"], reference.current_current)
         else:
             assert "current_current" not in actual
+        if hasattr(reference, "q_point"):
+            Assert.allclose(actual["q_point"], reference.q_point)
+        else:
+            assert "q_point" not in actual
 
 
 @dataclasses.dataclass

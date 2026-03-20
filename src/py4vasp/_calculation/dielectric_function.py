@@ -61,6 +61,7 @@ dielectric function:
             "energies": self._raw_data.energies[:],
             "dielectric_function": data,
             **self._add_current_current_if_available(),
+            **self._add_q_point_if_available(),
         }
 
     @base.data_access
@@ -90,6 +91,15 @@ dielectric function:
 
     def _has_current_component(self):
         return not check.is_none(self._raw_data.current_current)
+
+    def _add_q_point_if_available(self):
+        if self._has_q_point():
+            return {"q_point": self._raw_data.q_point}
+        else:
+            return {}
+
+    def _has_q_point(self):
+        return not check.is_none(self._raw_data.q_point)
 
     @base.data_access
     def to_graph(self, selection=None):

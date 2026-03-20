@@ -187,6 +187,8 @@ class RawDataFactory:
             return _demo.dielectric_function.electron()
         elif selection == "ion":
             return _demo.dielectric_function.ionic()
+        elif selection == "q_point":
+            return _demo.dielectric_function.q_point()
         else:
             raise exception.NotImplemented()
 
