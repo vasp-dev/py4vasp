@@ -65,12 +65,6 @@ class Workfunction(base.Refinery, graph.Mixin):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        try:
-            gap = bandgap.Bandgap.from_data(self._raw_data.reference_potential)
-            is_metallic = gap._output_gap("fundamental", to_string=False) <= 0.0
-        except exception.NoData:
-            is_metallic = None
-
         return {
             "workfunction": Workfunction_DB(
                 direction=self._raw_data.idipol,  # index of lattice vector
