@@ -189,13 +189,7 @@ def test_get_all_possible_keys():
     assert output_type_dict["current_density"] is None
 
     assert (
-        sum(
-            [
-                1
-                for v in all_keys.values()
-                if len(v) > 0 and isinstance(v[0], tuple)
-            ]
-        )
+        sum([1 for v in all_keys.values() if len(v) > 0 and isinstance(v[0], tuple)])
         > 10
     )
 

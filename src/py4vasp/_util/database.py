@@ -482,7 +482,9 @@ def get_all_possible_keys(
         if len(selections_list) == 0:
             all_keys.pop(k)
         else:
-            selections_list = [sel for sel in selections_list if sel not in GROUPS.keys()]
+            selections_list = [
+                sel for sel in selections_list if sel not in GROUPS.keys()
+            ]
             non_default_selections = [
                 sel for sel in selections_list if sel != DEFAULT_SOURCE
             ]
