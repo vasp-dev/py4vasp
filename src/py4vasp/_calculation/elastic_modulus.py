@@ -13,6 +13,15 @@ from py4vasp._raw.data_db import ElasticModulus_DB
 from py4vasp._util import check
 from py4vasp._util.tensor import symmetry_reduce
 
+_TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
+    exception.Py4VaspError,
+    np.linalg.LinAlgError,
+    AttributeError,
+    TypeError,
+    ValueError,
+    ZeroDivisionError,
+)
+
 
 class ElasticModulus(base.Refinery):
     """The elastic modulus is the second derivative of the energy with respect to strain.
@@ -72,7 +81,7 @@ class ElasticModulus(base.Refinery):
 
         for idt, tensor in enumerate([total_tensor, ionic_tensor, electronic_tensor]):
             voigt_tensor = None
-            with suppress(exception.Py4VaspError):
+            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
                 if not check.is_none(tensor):
                     compact_tensor[idt] = symmetry_reduce(symmetry_reduce(tensor).T).T
                     voigt_tensor = compact_tensor[idt] / 10.0  # converting kbar to GPa
@@ -82,7 +91,7 @@ class ElasticModulus(base.Refinery):
                         else None
                     )
 
-            with suppress(exception.Py4VaspError):
+            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
                 # Properties from elastic tensor
                 (
                     bulk_modulus[idt],
@@ -146,15 +155,15 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
             fracture_toughness,
         ) = (None, None, None, None, None, None, None)
 
-        with suppress(exception.Py4VaspError):
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             elastic_tensor = _ElasticTensor.from_array(voigt_tensor)
 
-            with suppress(exception.Py4VaspError):
+            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
                 bulk_modulus, shear_modulus, youngs_modulus, poisson_ratio = (
                     elastic_tensor.get_VRH()
                 )
 
-            with suppress(exception.Py4VaspError):
+            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
                 if shear_modulus is not None and bulk_modulus is not None:
                     pugh_ratio = (
                         shear_modulus / bulk_modulus
@@ -162,10 +171,10 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                         else 0.0 if shear_modulus == 0 else None
                     )
 
-            with suppress(exception.Py4VaspError):
+            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
                 vickers_hardness = elastic_tensor.get_hardness()
 
-            with suppress(exception.Py4VaspError):
+            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
                 fracture_toughness = elastic_tensor.get_fracture_toughness(
                     volume_per_atom
                 )

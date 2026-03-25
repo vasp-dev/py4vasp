@@ -11,6 +11,13 @@ from py4vasp._raw.data_db import DielectricTensor_DB
 from py4vasp._util import check, convert
 from py4vasp._util.tensor import symmetry_reduce
 
+_TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
+    exception.Py4VaspError,
+    AttributeError,
+    TypeError,
+    ValueError,
+)
+
 
 class DielectricTensor(base.Refinery):
     """The dielectric tensor is the static limit of the :attr:`dielectric function<py4vasp.calculation.dielectric_function>`.
@@ -57,7 +64,7 @@ class DielectricTensor(base.Refinery):
             total_tensor = self._raw_data.electron[:] + self._raw_data.ion[:]
 
         for idt, tensor in enumerate([total_tensor, ionic_tensor, electronic_tensor]):
-            with suppress(exception.Py4VaspError):
+            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
                 tensor_reduced[idt] = list(symmetry_reduce(tensor.T))
                 (
                     isotropic_dielectric_constant[idt],
@@ -93,7 +100,7 @@ class DielectricTensor(base.Refinery):
         # 2D polarizability for slab systems
         # TODO migrate finding vacuum direction to structure
         polarizability_2d = None
-        with suppress(exception.Py4VaspError):
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             if not (check.is_none(self._raw_data.cell)):
                 final_cell = cell.Cell.from_data(self._raw_data.cell)
                 if final_cell:
@@ -155,7 +162,7 @@ def _calculate_2d_polarizability(
     """
     Compute 2D polarizability (alpha_2D) for a slab system with unknown vacuum direction.
     """
-    with suppress(exception.Py4VaspError):
+    with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
         vacuum_dir = cell_._find_likely_vacuum_direction()
         if vacuum_dir is None:
             return None
