@@ -157,23 +157,39 @@ def test_get_all_possible_keys():
     assert len(all_keys) > 0
     assert len(output_type_dict) > 0
     for k in QUANTITIES:
-        assert k.lstrip("_") in all_keys
         assert k in output_type_dict
-        assert output_type_dict[k][0] == k.lstrip("_")
+        dataclass_name = output_type_dict[k]
+        if dataclass_name is None:
+            continue
+        if dataclass_name.endswith("_DB"):
+            assert dataclass_name in all_keys
+            assert isinstance(all_keys[dataclass_name], list)
+            if all_keys[dataclass_name]:
+                name, dtype = all_keys[dataclass_name][0]
+                assert isinstance(name, str)
+                assert isinstance(dtype, str)
+        else:
+            assert isinstance(dataclass_name, str)
     for group, quantities in GROUPS.items():
         for quantity in quantities:
-            key = f"{group}_{quantity}"
-            assert key in all_keys
-            assert f"{group}.{quantity}" in output_type_dict
+            grouped_key = f"{group}.{quantity}"
+            assert grouped_key in output_type_dict
+            dataclass_name = output_type_dict[grouped_key]
+            if dataclass_name is None:
+                continue
+            if dataclass_name.endswith("_DB"):
+                assert dataclass_name in all_keys
+            else:
+                assert isinstance(dataclass_name, str)
+
+    # Validate explicit entries for non-default selections.
+    assert output_type_dict["band"] == output_type_dict["band:kpoints_opt"]
+    assert output_type_dict["band"] == output_type_dict["band:kpoints_wan"]
+    assert "band:default" not in output_type_dict
+    assert output_type_dict["current_density"] is None
 
     assert (
-        sum(
-            [
-                1
-                for v in all_keys.values()
-                if ((v is not None) and len(v) > 0) and (v[0] is not None)
-            ]
-        )
+        sum([1 for v in all_keys.values() if len(v) > 0 and isinstance(v[0], tuple)])
         > 10
     )
 

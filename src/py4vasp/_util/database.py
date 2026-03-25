@@ -393,21 +393,20 @@ def _extract_following_docstring(
 
 def get_all_possible_keys(
     to_print: bool = False, debug: bool = False
-) -> Dict[str, List[str]]:
+) -> tuple[Dict[str, List[Tuple[str, str]]], Dict[str, Optional[str]]]:
     """
     Extract all possible keys from _to_database methods in calculation classes.
 
     Returns
     -------
-    Tuple[Dict[str, List[str]], Dict[str, Tuple[str, List[str]]]]
+        Tuple[Dict[str, List[Tuple[str, str]]], Dict[str, Optional[str]]]
         A tuple:
-          - A dictionary where keys are the top-level database keys and values are
-            lists of nested keys within each top-level key. If a class inherits from
-            base.Refinery but doesn't implement _to_database, the value is None.
-          - A dictionary mapping all available keys (group.quantity:selection) to their
-            (type, available selections).
-            You can use this to look up which selections are available for a given type,
-            and which properties can be found under additional_properties[<type>:<selection>].
+                    - A dictionary where keys are database dataclass names (e.g. Band_DB) and
+                        values are lists of tuples containing (attribute_name, attribute_type).
+                    - A dictionary mapping all available keys (group.quantity[:selection]) to
+                        their dataclass names. If no matching dataclass exists, the value is None.
+                        The default selection is represented without a suffix, e.g. "band"
+                        instead of "band:default".
     """
     calculation_dir = Path(__file__).parent.parent / "_calculation"
     all_keys = {}
@@ -467,9 +466,8 @@ def get_all_possible_keys(
                 traceback.print_exc()
             continue
 
-    output_type_dict: dict[str, tuple[str, list[str]]] = {}
-    """Map all available keys (group.quantity:selection) to their (types, selections).
-Types are always keys that are in all_keys."""
+    output_type_dict: dict[str, Optional[str]] = {}
+    """Map all available keys (group.quantity[:selection]) to dataclass names."""
 
     for k in list(all_keys.keys()):
         try:
@@ -477,19 +475,22 @@ Types are always keys that are in all_keys."""
         except:
             selections_list = []
         constructed_key = _quantity_label_to_db_key(k)
+        dataclass_name = _get_dataclass_name_for_quantity(k)
         for sel in selections_list:
             if sel in GROUPS.keys():
-                output_type_dict[f"{sel}._{k}"] = (k, [sel])
+                output_type_dict[f"{sel}._{k}"] = dataclass_name
         if len(selections_list) == 0:
             all_keys.pop(k)
         else:
             selections_list = [
                 sel for sel in selections_list if sel not in GROUPS.keys()
             ]
-            output_type_dict[constructed_key] = (
-                k,
-                selections_list if len(selections_list) > 0 else None,
-            )
+            non_default_selections = [
+                sel for sel in selections_list if sel != DEFAULT_SOURCE
+            ]
+            output_type_dict[constructed_key] = dataclass_name
+            for sel in non_default_selections:
+                output_type_dict[f"{constructed_key}:{sel}"] = dataclass_name
 
     sort_keys_list = ["energy"]
 
@@ -515,18 +516,65 @@ Types are always keys that are in all_keys."""
 
         print("\n--- OUTPUT TYPE DICT ---")
         for k, v in sorted(output_type_dict.items()):
-            print(
-                f"\t{k}:\n\t\ttype: {v[0]}\n\t\tselections: {v[1] if v[1] is not None else 'default'}"
-            )
+            print(f"\t{k}:\n\t\ttype: {v}")
 
     main_keys = {
-        k: (v if not k in sort_keys_list else sorted(v))
-        for k, v in sorted(all_keys.items(), key=lambda item: item[0])
+        dataclass_name: _get_dataclass_field_tuples(dataclass_name)
+        for k in sorted(all_keys.keys())
+        for dataclass_name in [_get_dataclass_name_for_quantity(k)]
+        if dataclass_name is not None
     }
     output_type_dict = {
         k: v for k, v in sorted(output_type_dict.items(), key=lambda item: item[0])
     }
     return main_keys, output_type_dict
+
+
+@functools.cache
+def _get_quantity_to_dataclass_map() -> Dict[str, str]:
+    module = __import__("py4vasp._raw.data_db", fromlist=[None])
+    quantity_to_dataclass: Dict[str, str] = {}
+    for class_name in dir(module):
+        if not class_name.endswith("_DB"):
+            continue
+        base_name = class_name[: -len("_DB")]
+        quantity_to_dataclass[convert.quantity_name(base_name)] = class_name
+    return quantity_to_dataclass
+
+
+def _get_dataclass_name_for_quantity(quantity_label: str) -> Optional[str]:
+    quantity_to_dataclass = _get_quantity_to_dataclass_map()
+
+    direct_match = quantity_to_dataclass.get(quantity_label.lstrip("_"))
+    if direct_match is not None:
+        return direct_match
+
+    db_key = _quantity_label_to_db_key(quantity_label)
+    quantity_part = db_key.split(".", 1)[-1].split(":", 1)[0]
+    return quantity_to_dataclass.get(quantity_part.lstrip("_"))
+
+
+@functools.cache
+def _get_dataclass_field_tuples(dataclass_name: str) -> List[Tuple[str, str]]:
+    module = __import__("py4vasp._raw.data_db", fromlist=[None])
+    dataclass = getattr(module, dataclass_name, None)
+    if dataclass is None:
+        return []
+    return [
+        (field["name"], _format_type_name(field["type"]))
+        for field in get_dataclass_fields(dataclass)
+    ]
+
+
+def _format_type_name(field_type: Any) -> str:
+    if isinstance(field_type, str):
+        return field_type
+    field_type_str = str(field_type)
+    if field_type_str.startswith("typing."):
+        return field_type_str[len("typing.") :]
+    if field_type_str.startswith("<class '") and field_type_str.endswith("'>"):
+        return field_type_str[len("<class '") : -len("'>")]
+    return field_type_str
 
 
 def _quantity_label_to_db_key(label: str) -> str:
