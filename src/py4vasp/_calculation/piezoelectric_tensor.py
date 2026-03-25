@@ -11,6 +11,14 @@ from py4vasp._raw.data_db import PiezoelectricTensor_DB
 from py4vasp._util import check
 from py4vasp._util.tensor import symmetry_reduce, tensor_constants
 
+_TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
+    exception.Py4VaspError,
+    AttributeError,
+    TypeError,
+    ValueError,
+    IndexError,
+)
+
 
 class PiezoelectricTensor(base.Refinery):
     """The piezoelectric tensor is the derivative of the energy with respect to strain and field.
@@ -85,7 +93,7 @@ class PiezoelectricTensor(base.Refinery):
         for idt, tensor in enumerate([total_tensor, ionic_tensor, electronic_tensor]):
             e_tensor = None
             # Piezoelectric stress tensor e_ij (C/m^2)
-            with suppress(exception.Py4VaspError):
+            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
                 e_tensor = _extract_tensor(
                     tensor
                 )  # 3x6 tensor, column order: XX YY ZZ YZ ZX XY
@@ -100,7 +108,7 @@ class PiezoelectricTensor(base.Refinery):
                     if in_plane[idt] is not None and lvac is not None:
                         tensor_2d[idt] = e_tensor * lvac
 
-            with suppress(exception.Py4VaspError):
+            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
                 (
                     e11[idt],
                     e22[idt],

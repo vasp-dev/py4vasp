@@ -1,6 +1,5 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from contextlib import suppress
 from math import pow
 from typing import Optional
 
@@ -54,6 +53,10 @@ class ElasticModulus(base.Refinery):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
+        encountered_errors = kwargs.get("encountered_errors")
+        selection = kwargs.get("selection") or "default"
+        error_key = f"elastic_modulus:{selection}"
+
         volume_per_atom = None
         (
             bulk_modulus,
@@ -81,7 +84,12 @@ class ElasticModulus(base.Refinery):
 
         for idt, tensor in enumerate([total_tensor, ionic_tensor, electronic_tensor]):
             voigt_tensor = None
-            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+            with base.suppress_and_record(
+                encountered_errors,
+                error_key,
+                *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
+                context=f"to_database.tensor[{idt}]",
+            ):
                 if not check.is_none(tensor):
                     compact_tensor[idt] = symmetry_reduce(symmetry_reduce(tensor).T).T
                     voigt_tensor = compact_tensor[idt] / 10.0  # converting kbar to GPa
@@ -91,7 +99,12 @@ class ElasticModulus(base.Refinery):
                         else None
                     )
 
-            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+            with base.suppress_and_record(
+                encountered_errors,
+                error_key,
+                *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
+                context=f"to_database.properties[{idt}]",
+            ):
                 # Properties from elastic tensor
                 (
                     bulk_modulus[idt],
@@ -102,7 +115,10 @@ class ElasticModulus(base.Refinery):
                     vickers_hardness[idt],
                     fracture_toughness[idt],
                 ) = self._compute_elastic_properties(
-                    voigt_tensor, volume_per_atom=volume_per_atom
+                    voigt_tensor,
+                    volume_per_atom=volume_per_atom,
+                    encountered_errors=encountered_errors,
+                    error_key=error_key,
                 )
 
         return {
@@ -143,7 +159,12 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
 {_elastic_modulus_string(self._raw_data.relaxed_ion[:], "relaxed-ion")}"""
 
     def _compute_elastic_properties(
-        self, voigt_tensor: np.ndarray, volume_per_atom: Optional[float] = None
+        self,
+        voigt_tensor: np.ndarray,
+        volume_per_atom: Optional[float] = None,
+        *,
+        encountered_errors: Optional[dict[str, list[str]]] = None,
+        error_key: Optional[str] = None,
     ) -> tuple:
         (
             bulk_modulus,
@@ -155,15 +176,30 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
             fracture_toughness,
         ) = (None, None, None, None, None, None, None)
 
-        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+        with base.suppress_and_record(
+            encountered_errors,
+            error_key,
+            *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
+            context="compute_elastic_properties.init",
+        ):
             elastic_tensor = _ElasticTensor.from_array(voigt_tensor)
 
-            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+            with base.suppress_and_record(
+                encountered_errors,
+                error_key,
+                *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
+                context="compute_elastic_properties.vrh",
+            ):
                 bulk_modulus, shear_modulus, youngs_modulus, poisson_ratio = (
                     elastic_tensor.get_VRH()
                 )
 
-            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+            with base.suppress_and_record(
+                encountered_errors,
+                error_key,
+                *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
+                context="compute_elastic_properties.pugh",
+            ):
                 if shear_modulus is not None and bulk_modulus is not None:
                     pugh_ratio = (
                         shear_modulus / bulk_modulus
@@ -171,10 +207,20 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                         else 0.0 if shear_modulus == 0 else None
                     )
 
-            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+            with base.suppress_and_record(
+                encountered_errors,
+                error_key,
+                *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
+                context="compute_elastic_properties.hardness",
+            ):
                 vickers_hardness = elastic_tensor.get_hardness()
 
-            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+            with base.suppress_and_record(
+                encountered_errors,
+                error_key,
+                *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
+                context="compute_elastic_properties.fracture",
+            ):
                 fracture_toughness = elastic_tensor.get_fracture_toughness(
                     volume_per_atom
                 )

@@ -15,6 +15,13 @@ from py4vasp._util.density import SliceArguments, Visualizer
 
 pretty = import_.optional("IPython.lib.pretty")
 
+_TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
+    exception.Py4VaspError,
+    AttributeError,
+    TypeError,
+    ValueError,
+)
+
 _COMMON_PARAMETERS = f"""\
 selection : str | None = None
     Selects which of the possible available currents is used. Check the
@@ -106,7 +113,7 @@ current density:
     def _to_database(self, *args, **kwargs):
         density_dict = {"current_density": {}}
         structure_ = {}
-        with suppress(exception.Py4VaspError):
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             structure_ = structure.Structure.from_data(
                 self._raw_data.structure
             )._read_to_database(*args, **kwargs)

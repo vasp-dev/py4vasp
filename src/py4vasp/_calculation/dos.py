@@ -14,6 +14,15 @@ from py4vasp._util import check, documentation, import_
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
 
+_TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
+    exception.Py4VaspError,
+    AttributeError,
+    TypeError,
+    ValueError,
+    IndexError,
+    ZeroDivisionError,
+)
+
 
 class Dos(base.Refinery, graph.Mixin):
     """The density of states (DOS) describes the number of states per energy.
@@ -226,7 +235,7 @@ class Dos(base.Refinery, graph.Mixin):
         }
 
     def _dos_at_energy(self, energy):
-        with suppress(exception.Py4VaspError):
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             energies = self._raw_data.energies[:]
             dos_dict = self._read_total_dos()
             # interpolate between DOS at closest energies

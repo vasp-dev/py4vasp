@@ -14,6 +14,15 @@ class RunInfo(base.Refinery):
 
     _raw_data: raw_data.RunInfo
 
+    _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
+        exception.Py4VaspError,
+        exception.OutdatedVaspVersion,
+        exception.NoData,
+        AttributeError,
+        TypeError,
+        ValueError,
+    )
+
     @base.data_access
     def to_dict(self):
         "Convert the run information to a dictionary."
@@ -90,12 +99,12 @@ class RunInfo(base.Refinery):
                 return None
 
     def _is_metallic(self):
-        with suppress(exception.Py4VaspError, exception.OutdatedVaspVersion, exception.NoData):
+        with suppress(*self._TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             if check.is_none(self._raw_data.bandgap):
                 return None
             gap = bandgap.Bandgap.from_data(self._raw_data.bandgap)
             return all(gap._output_gap("fundamental", to_string=False) <= 0.0)
-        
+
         return None
 
     def _dict_from_system(self) -> dict:

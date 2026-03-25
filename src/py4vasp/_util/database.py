@@ -358,7 +358,7 @@ def _get_dataclass_field_docstrings(dataclass: Any) -> Dict[str, Optional[str]]:
                 continue
             docstrings[field_name] = _extract_following_docstring(class_body, index)
         return docstrings
-    
+
     return {}
 
 

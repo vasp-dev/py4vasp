@@ -12,6 +12,14 @@ from py4vasp._raw.data_db import ElectronicMinimization_DB
 from py4vasp._third_party import graph
 from py4vasp._util import check
 
+_TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
+    exception.Py4VaspError,
+    AttributeError,
+    TypeError,
+    ValueError,
+    IndexError,
+)
+
 
 class ElectronicMinimization(slice_.Mixin, base.Refinery, graph.Mixin):
     """Access the convergence data for each electronic step.
@@ -91,7 +99,7 @@ N, E, dE, deps, ncg, rms, rms(c)"""
         elmin_is_converged_all = None
         elmin_is_converged_final = None
 
-        with suppress(exception.Py4VaspError):
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             if not check.is_none(self._raw_data.is_elmin_converged):
                 elmin_is_converged_all = bool(
                     np.all(np.array(self._raw_data.is_elmin_converged[:]) == 0.0)
@@ -100,7 +108,7 @@ N, E, dE, deps, ncg, rms, rms(c)"""
                     self._raw_data.is_elmin_converged[-1] == 0.0
                 )
 
-        with suppress(exception.NoData):
+        with suppress(exception.NoData, *_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             (
                 num_max_electronic_steps_per_ionic,
                 num_min_electronic_steps_per_ionic,

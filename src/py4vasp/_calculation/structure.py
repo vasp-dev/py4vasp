@@ -19,6 +19,15 @@ mdtraj = import_.optional("mdtraj")
 
 __all__ = ["Structure"]
 
+_TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
+    exception.Py4VaspError,
+    np.linalg.LinAlgError,
+    AttributeError,
+    TypeError,
+    ValueError,
+    IndexError,
+)
+
 
 @dataclass
 class _Format:
@@ -264,7 +273,7 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
 
         # TODO add more structure properties
         final_lattice, initial_lattice = ([None, None, None] for _ in range(2))
-        with suppress(exception.Py4VaspError):
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             lattices = self.lattice_vectors()
             final_lattice = lattices[-1] if lattices.ndim == 3 else lattices
             initial_lattice = lattices[0] if lattices.ndim == 3 else lattices
@@ -274,7 +283,7 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
                 initial_lattice = [None, None, None]
 
         volume_final, volume_initial = (None for _ in range(2))
-        with suppress(exception.Py4VaspError):
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             volumes = self.volume()
             volume_final = (
                 volumes[-1]
@@ -297,10 +306,10 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
             cell_area_2d_span_initial,
         ) = (None for _ in range(4))
         dimensionality = 3
-        with suppress(exception.Py4VaspError):
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             dimensionality = self._dimensionality()
 
-        with suppress(exception.Py4VaspError):
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             cell_: cell.Cell = self._cell()
             lengths = cell_.lengths()
             lengths_final = lengths[-1] if lengths.ndim == 2 else lengths
