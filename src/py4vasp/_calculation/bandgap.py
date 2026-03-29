@@ -86,23 +86,17 @@ Fermi energy:    {fermi_energy}"""
         else:
             return "      spin independent"
 
-    def _output_energy(self, label, component=slice(None), to_string=True):
+    def _output_energy(self, label, component=slice(None)):
         energies = self._get(label, steps=self._last_step_in_slice, component=component)
-        if not (to_string):
-            return energies
         return (9 * " ").join(map("{:20.6f}".format, energies))
 
-    def _output_gap(self, label, to_string=True):
+    def _output_gap(self, label):
         gaps = self._gap(label, steps=self._last_step_in_slice)
-        if not (to_string):
-            return gaps
         return (9 * " ").join(map("{:20.6f}".format, gaps))
 
-    def _output_kpoint(self, label, to_string=True):
+    def _output_kpoint(self, label):
         kpoints = self._kpoint(label, steps=self._last_step_in_slice)
         to_string_convert = lambda kpoint: " ".join(map("{:8.4f}".format, kpoint))
-        if not (to_string):
-            return np.array(kpoints).round(decimals=10).tolist()
         return " " + "   ".join(map(to_string_convert, kpoints))
 
     @base.data_access
@@ -120,33 +114,50 @@ Fermi energy:    {fermi_energy}"""
         """
         return {
             **self._gap_dict("fundamental"),
+            **self._band_dict("fundamental"),
             **self._kpoint_dict("VBM"),
             **self._kpoint_dict("CBM"),
             **self._gap_dict("direct"),
+            **self._band_dict("direct"),
             **self._kpoint_dict("direct"),
             "fermi_energy": self._get("Fermi energy", component=0),
         }
 
+    def _band_dict(self, label):
+        result = {}
+        bottoms = self._get(GAPS[label].bottom)
+        tops = self._get(GAPS[label].top)
+        for bottom, top, suffix in zip(bottoms.T, tops.T, self._suffixes()):
+            result[GAPS[label].bottom.replace(" ", "_") + suffix] = bottom
+            result[GAPS[label].top.replace(" ", "_") + suffix] = top
+        return result
+
+    def _gap_dict(self, label):
+        gaps = self._gap(label).T
+        return {f"{label}{suffix}": gap for gap, suffix in zip(gaps, self._suffixes())}
+
+    def _kpoint_dict(self, label):
+        kpoint = self._kpoint(label)
+        return {
+            f"kpoint_{label}{suffix}": kpoint[..., i, :]
+            for i, suffix in enumerate(self._suffixes())
+        }
+
+    def _suffixes(self):
+        return ("", "_up", "_down") if self._spin_polarized() else ("",)
+
     @base.data_access
     def _to_database(self, *args, **kwargs):
         bandgap_dict = {
-            "valence_band_maximum": self._output_energy(
-                "valence band maximum", to_string=False
-            ),
-            "conduction_band_minimum": self._output_energy(
-                "conduction band minimum", to_string=False
-            ),
-            "fundamental_bandgap": self._output_gap("fundamental", to_string=False),
-            "kpoint_vbm": self._output_kpoint("VBM", to_string=False),
-            "kpoint_cbm": self._output_kpoint("CBM", to_string=False),
-            "lower_band_direct_bandgap": self._output_energy(
-                "direct gap bottom", to_string=False
-            ),
-            "upper_band_direct_bandgap": self._output_energy(
-                "direct gap top", to_string=False
-            ),
-            "direct_bandgap": self._output_gap("direct", to_string=False),
-            "kpoint_direct_bandgap": self._output_kpoint("direct", to_string=False),
+            "valence_band_maximum": self._get(GAPS["fundamental"].bottom),
+            "conduction_band_minimum": self._get(GAPS["fundamental"].top),
+            "fundamental_bandgap": self._gap("fundamental"),
+            "kpoint_vbm": self._kpoint("VBM").tolist(),
+            "kpoint_cbm": self._kpoint("CBM").tolist(),
+            "lower_band_direct_bandgap": self._get(GAPS["direct"].bottom),
+            "upper_band_direct_bandgap": self._get(GAPS["direct"].top),
+            "direct_bandgap": self._gap("direct"),
+            "kpoint_direct_bandgap": self._kpoint("direct").tolist(),
         }
 
         final_dict = {}
@@ -165,20 +176,6 @@ Fermi energy:    {fermi_energy}"""
                 else None
             )
         return {"bandgap": Bandgap_DB(**final_dict)}
-
-    def _gap_dict(self, label):
-        gaps = self._gap(label).T
-        return {f"{label}{suffix}": gap for gap, suffix in zip(gaps, self._suffixes())}
-
-    def _kpoint_dict(self, label):
-        kpoint = self._kpoint(label)
-        return {
-            f"kpoint_{label}{suffix}": kpoint[..., i, :]
-            for i, suffix in enumerate(self._suffixes())
-        }
-
-    def _suffixes(self):
-        return ("", "_up", "_down") if self._spin_polarized() else ("",)
 
     @base.data_access
     @documentation.format(examples=slice_.examples("bandgap", "fundamental"))
