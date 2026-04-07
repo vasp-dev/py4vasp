@@ -6,6 +6,7 @@ from py4vasp._calculation import bandgap, base, exception
 from py4vasp._calculation._dispersion import Dispersion
 from py4vasp._raw import data as raw_data
 from py4vasp._raw.data_db import RunInfo_DB
+from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._util import check
 
 
@@ -52,6 +53,8 @@ class RunInfo(base.Refinery):
         fermi_energy = None
         with suppress(exception.NoData):
             fermi_energy = self._raw_data.fermi_energy
+        if isinstance(fermi_energy, VaspData):
+            fermi_energy = fermi_energy._data
 
         is_success = None  # TODO implement
 
