@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,8 @@ import pytest
 from py4vasp import demo
 from py4vasp._calculation import GROUPS, QUANTITIES
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
+from py4vasp._raw.data_db import _DBDataMixin
+from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._raw.definition import DEFAULT_SOURCE
 from py4vasp._util import database
 
@@ -263,3 +266,20 @@ def test_demo_db_with_tags(tags, tmp_path):
     demo_calc_db = demo_calc._to_database(tags=tags)
     basic_db_checks(demo_calc_db)
     assert demo_calc_db.metadata.tags == tags
+
+
+def test_no_vaspdata_in_db():
+    """Check that VaspData objects are converted to their underlying data under the _DBDataMixin for the database wrapper classes."""
+
+    @dataclasses.dataclass
+    class DummyClassDB(_DBDataMixin):
+        field1: int = None
+        field2: str = None
+        field3: bool = None
+
+    dummyClass = DummyClassDB(
+        field1=VaspData(None), field2=VaspData("test"), field3=True
+    )
+    assert dummyClass.field1 is None
+    assert dummyClass.field2 == "test"
+    assert dummyClass.field3 is True
