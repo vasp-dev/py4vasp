@@ -5,7 +5,6 @@ import dataclasses
 import functools
 import inspect
 import pathlib
-from contextlib import suppress
 from typing import Any, Optional
 
 from py4vasp import exception, raw
