@@ -1,7 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from contextlib import suppress
+
 import numpy as np
 
+from py4vasp import exception
 from py4vasp._calculation import base, projector
 from py4vasp._raw import data as raw_data
 from py4vasp._raw.data_db import Dos_DB
@@ -10,6 +13,15 @@ from py4vasp._util import check, documentation, import_
 
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
+
+_TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
+    exception.Py4VaspError,
+    AttributeError,
+    TypeError,
+    ValueError,
+    IndexError,
+    ZeroDivisionError,
+)
 
 
 class Dos(base.Refinery, graph.Mixin):
@@ -223,7 +235,7 @@ class Dos(base.Refinery, graph.Mixin):
         }
 
     def _dos_at_energy(self, energy):
-        try:
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             energies = self._raw_data.energies[:]
             dos_dict = self._read_total_dos()
             # interpolate between DOS at closest energies
@@ -254,8 +266,7 @@ class Dos(base.Refinery, graph.Mixin):
                         / (energy_high - energy_low)
                     )
             return dos_at_energy
-        except:
-            return {}
+        return {}
 
     @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)

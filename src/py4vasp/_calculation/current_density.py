@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
+from contextlib import suppress
 from typing import Optional, Union
 
 import numpy as np
@@ -13,6 +14,13 @@ from py4vasp._util import database, documentation, import_, slicing
 from py4vasp._util.density import SliceArguments, Visualizer
 
 pretty = import_.optional("IPython.lib.pretty")
+
+_TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
+    exception.Py4VaspError,
+    AttributeError,
+    TypeError,
+    ValueError,
+)
 
 _COMMON_PARAMETERS = f"""\
 selection : str | None = None
@@ -104,12 +112,11 @@ current density:
     @base.data_access
     def _to_database(self, *args, **kwargs):
         density_dict = {"current_density": {}}
-        try:
+        structure_ = {}
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             structure_ = structure.Structure.from_data(
                 self._raw_data.structure
             )._read_to_database(*args, **kwargs)
-        except:
-            structure_ = {}
         return database.combine_db_dicts(density_dict, structure_)
 
     @base.data_access

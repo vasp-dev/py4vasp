@@ -206,6 +206,10 @@ class _DatabaseData:
     Keys are constructed like 'group.quantity:selection' where group and
     selection are optional. The values are dictionaries of properties."""
 
+    encountered_errors: Optional[dict[str, list[str]]] = None
+    """Non-fatal errors encountered while assembling database data.
+    Keys follow the same quantity:selection convention as additional_properties."""
+
 
 @dataclasses.dataclass
 class Density:

@@ -18,6 +18,17 @@ from py4vasp._raw.definition import (
 from py4vasp._raw.schema import Link
 from py4vasp._util import convert, database, import_
 
+
+def _append_database_error(
+    encountered_errors: dict[str, list[str]],
+    key: str,
+    error: Exception,
+    context: str,
+):
+    message = f"{context} | {type(error).__name__}: {error}"
+    encountered_errors.setdefault(key, []).append(message)
+
+
 INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
 QUANTITIES = (
     "band",
@@ -293,9 +304,11 @@ instead of the constructor Calculation()."""
             )
 
         # Check available quantities and compute additional properties
-        database_data.available_quantities, database_data.additional_properties = (
-            self._compute_database_data(hdf5_path, fermi_energy=fermi_energy)
-        )
+        (
+            database_data.available_quantities,
+            database_data.additional_properties,
+            database_data.encountered_errors,
+        ) = self._compute_database_data(hdf5_path, fermi_energy=fermi_energy)
 
         # Return DatabaseData object for VaspDB to process
         return database_data
@@ -334,7 +347,9 @@ instead of the constructor Calculation()."""
 
     def _compute_database_data(
         self, hdf5_path: pathlib.Path, fermi_energy: Optional[float] = None
-    ) -> Tuple[dict[str, tuple[bool, list[str]]], dict[str, dict]]:
+    ) -> Tuple[
+        dict[str, tuple[bool, list[str]]], dict[str, dict], dict[str, list[str]]
+    ]:
         """Computes a dict of available py4vasp dataclasses and all available database data.
 
         Returns
@@ -352,6 +367,7 @@ instead of the constructor Calculation()."""
         """
         available_quantities = {}
         additional_properties = {}
+        encountered_errors = {}
 
         # clear cached calls to should_load
         database.should_load.cache_clear()
@@ -363,6 +379,7 @@ instead of the constructor Calculation()."""
             QUANTITIES,
             available_quantities,
             additional_properties,
+            encountered_errors,
             fermi_energy=fermi_energy,
         )
         for group, quantities in GROUPS.items():
@@ -371,6 +388,7 @@ instead of the constructor Calculation()."""
                 quantities,
                 available_quantities,
                 additional_properties,
+                encountered_errors,
                 group_name=group,
                 fermi_energy=fermi_energy,
             )
@@ -383,7 +401,7 @@ instead of the constructor Calculation()."""
         available_quantities = database.clean_db_dict_keys(available_quantities)
         additional_properties = database.clean_db_dict_keys(additional_properties)
 
-        return available_quantities, additional_properties
+        return available_quantities, additional_properties, encountered_errors
 
     def _loop_quantities(
         self,
@@ -391,6 +409,7 @@ instead of the constructor Calculation()."""
         quantities,
         available_quantities,
         additional_properties,
+        encountered_errors,
         group_name=None,
         fermi_energy: Optional[float] = None,
     ) -> Tuple[dict[str, tuple[bool, list[str]]], dict[str, dict]]:
@@ -414,6 +433,7 @@ instead of the constructor Calculation()."""
                         quantity,
                         group_name,
                         additional_properties,
+                        encountered_errors,
                         fermi_energy=fermi_energy,
                     )
                 )
@@ -444,6 +464,7 @@ instead of the constructor Calculation()."""
         quantity_name: str,
         group_name: Optional[str] = None,
         current_db: dict = {},
+        encountered_errors: Optional[dict[str, list[str]]] = None,
         fermi_energy: Optional[float] = None,
     ) -> Tuple[bool, dict, list[str]]:
         "Compute additional data to be stored in the database."
@@ -459,6 +480,9 @@ instead of the constructor Calculation()."""
         )
         additional_properties = {}
         additional_related_keys = []
+        base_key, _ = database.construct_database_data_key(
+            group_name, quantity_name, selection
+        )
 
         try:
             # check if readable
@@ -494,6 +518,13 @@ instead of the constructor Calculation()."""
         except exception.FileAccessError:
             pass  # happens when vaspout.h5 or vaspwave.h5 (where relevant) are missing
         except Exception as e:
+            if encountered_errors is not None:
+                _append_database_error(
+                    encountered_errors,
+                    base_key,
+                    e,
+                    context="availability_check",
+                )
             # print(
             #     f"[CHECK] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:",
             #     e,
@@ -507,6 +538,7 @@ instead of the constructor Calculation()."""
                 )._read_to_database(
                     selection=str(selection),
                     current_db=current_db,
+                    encountered_errors=encountered_errors,
                     original_group_name=group_name,
                     fermi_energy=fermi_energy,
                 )
@@ -516,6 +548,13 @@ instead of the constructor Calculation()."""
                 # )
                 pass  # happens when VASP version is too old for this quantity
             except Exception as e:
+                if encountered_errors is not None:
+                    _append_database_error(
+                        encountered_errors,
+                        base_key,
+                        e,
+                        context="read_to_database",
+                    )
                 # print(
                 #     f"[ADD] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection} (please consider filing a bug report):",
                 #     e,

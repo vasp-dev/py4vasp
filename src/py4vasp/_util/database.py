@@ -3,6 +3,7 @@
 import ast
 import functools
 import inspect
+from contextlib import suppress
 from math import gcd
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -339,7 +340,7 @@ def _get_dataclass_field_docstrings(dataclass: Any) -> Dict[str, Optional[str]]:
     Expects field documentation to be provided as a string expression directly
     below the corresponding field definition.
     """
-    try:
+    with suppress(Exception):
         source_file = inspect.getsourcefile(dataclass)
         if source_file is None:
             return {}
@@ -357,8 +358,8 @@ def _get_dataclass_field_docstrings(dataclass: Any) -> Dict[str, Optional[str]]:
                 continue
             docstrings[field_name] = _extract_following_docstring(class_body, index)
         return docstrings
-    except Exception:
-        return {}
+
+    return {}
 
 
 def _find_class_node(tree: ast.AST, class_name: str) -> Optional[ast.ClassDef]:
@@ -470,10 +471,9 @@ def get_all_possible_keys(
     """Map all available keys (group.quantity[:selection]) to dataclass names."""
 
     for k in list(all_keys.keys()):
-        try:
+        selections_list = []
+        with suppress(exception.Py4VaspError):
             selections_list = unique_selections(k)
-        except:
-            selections_list = []
         constructed_key = _quantity_label_to_db_key(k)
         dataclass_name = _get_dataclass_name_for_quantity(k)
         for sel in selections_list:

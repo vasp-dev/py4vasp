@@ -3,6 +3,7 @@
 import itertools
 import os
 import tempfile
+from contextlib import suppress
 from dataclasses import dataclass
 from typing import NamedTuple, Optional, Sequence
 
@@ -411,15 +412,13 @@ class View:
         if not attributes:
             return
         for attribute in attributes:
-            try:
+            with suppress(AttributeError):
                 if len(attribute.quantity) > 1:
                     if mode == "ngl":
                         raise exception.NotImplemented("""\
     Currently isosurfaces and ion arrows are implemented only for cases where there is only
     one frame in the trajectory. Make sure that either only one frame for the positions
     attribute is supplied with its corresponding grid scalar or ion arrow component.""")
-            except AttributeError:
-                pass
 
     def _raise_error_if_number_steps_inconsistent(self):
         if len(self.elements) == len(self.lattice_vectors) == len(self.positions):

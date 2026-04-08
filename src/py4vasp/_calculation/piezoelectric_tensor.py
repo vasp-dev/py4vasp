@@ -1,12 +1,23 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from contextlib import suppress
+
 import numpy as np
 
+from py4vasp import exception
 from py4vasp._calculation import base, cell
 from py4vasp._raw import data as raw_data
 from py4vasp._raw.data_db import PiezoelectricTensor_DB
 from py4vasp._util import check
 from py4vasp._util.tensor import symmetry_reduce, tensor_constants
+
+_TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
+    exception.Py4VaspError,
+    AttributeError,
+    TypeError,
+    ValueError,
+    IndexError,
+)
 
 
 class PiezoelectricTensor(base.Refinery):
@@ -82,7 +93,7 @@ class PiezoelectricTensor(base.Refinery):
         for idt, tensor in enumerate([total_tensor, ionic_tensor, electronic_tensor]):
             e_tensor = None
             # Piezoelectric stress tensor e_ij (C/m^2)
-            try:
+            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
                 e_tensor = _extract_tensor(
                     tensor
                 )  # 3x6 tensor, column order: XX YY ZZ YZ ZX XY
@@ -96,10 +107,8 @@ class PiezoelectricTensor(base.Refinery):
                     in_plane[idt], lvac = _compute_2d_plane_and_conversion_factor(cCell)
                     if in_plane[idt] is not None and lvac is not None:
                         tensor_2d[idt] = e_tensor * lvac
-            except Exception as e:
-                pass
 
-            try:
+            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
                 (
                     e11[idt],
                     e22[idt],
@@ -108,8 +117,7 @@ class PiezoelectricTensor(base.Refinery):
                     e_rms[idt],
                     e_frobenius[idt],
                 ) = _compute_bulk_quantities(e_tensor)
-            except:
-                pass
+
         return {
             "piezoelectric_tensor": PiezoelectricTensor_DB(
                 total_3d_tensor_x=reduced_tensor_x[0],

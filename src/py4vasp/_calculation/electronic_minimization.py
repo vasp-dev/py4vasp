@@ -1,6 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
+from contextlib import suppress
+
 import numpy as np
 
 from py4vasp import exception, raw
@@ -9,6 +11,14 @@ from py4vasp._raw import data as raw_data
 from py4vasp._raw.data_db import ElectronicMinimization_DB
 from py4vasp._third_party import graph
 from py4vasp._util import check
+
+_TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
+    exception.Py4VaspError,
+    AttributeError,
+    TypeError,
+    ValueError,
+    IndexError,
+)
 
 
 class ElectronicMinimization(slice_.Mixin, base.Refinery, graph.Mixin):
@@ -89,7 +99,7 @@ N, E, dE, deps, ncg, rms, rms(c)"""
         elmin_is_converged_all = None
         elmin_is_converged_final = None
 
-        try:
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             if not check.is_none(self._raw_data.is_elmin_converged):
                 elmin_is_converged_all = bool(
                     np.all(np.array(self._raw_data.is_elmin_converged[:]) == 0.0)
@@ -97,17 +107,13 @@ N, E, dE, deps, ncg, rms, rms(c)"""
                 elmin_is_converged_final = bool(
                     self._raw_data.is_elmin_converged[-1] == 0.0
                 )
-        except:
-            pass
 
-        try:
+        with suppress(exception.NoData, *_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             (
                 num_max_electronic_steps_per_ionic,
                 num_min_electronic_steps_per_ionic,
                 num_electronic_steps,
             ) = self._get_electronic_steps_info()
-        except exception.NoData:
-            pass
 
         return {
             "electronic_minimization": ElectronicMinimization_DB(

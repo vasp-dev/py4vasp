@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from contextlib import suppress
+
 from py4vasp import exception
 from py4vasp._calculation import bandgap, base
 from py4vasp._raw import data as raw_data
@@ -46,14 +48,14 @@ class Workfunction(base.Refinery, graph.Mixin):
             Contains vacuum potential, average potential and relevant reference energies
             within the surface.
         """
-        try:
+        band_extrema = {}
+        with suppress(exception.NoData):
             gap = bandgap.Bandgap.from_data(self._raw_data.reference_potential)
             band_extrema = {
                 "valence_band_maximum": gap.valence_band_maximum(),
                 "conduction_band_minimum": gap.conduction_band_minimum(),
             }
-        except exception.NoData:
-            band_extrema = {}
+
         return {
             "direction": f"lattice vector {self._raw_data.idipol}",
             "distance": self._raw_data.distance[:],
@@ -65,11 +67,10 @@ class Workfunction(base.Refinery, graph.Mixin):
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
-        try:
+        is_metallic = None
+        with suppress(exception.NoData):
             gap = bandgap.Bandgap.from_data(self._raw_data.reference_potential)
             is_metallic = gap._output_gap("fundamental", to_string=False) <= 0.0
-        except exception.NoData:
-            is_metallic = None
 
         return {
             "workfunction": Workfunction_DB(

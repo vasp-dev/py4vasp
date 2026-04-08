@@ -32,6 +32,35 @@ def data_access(func):
     return func_with_access
 
 
+def record_encountered_error(
+    encountered_errors: Optional[dict[str, list[str]]],
+    key: str,
+    error: Exception,
+    context: Optional[str] = None,
+):
+    """Store a concise error message for later inspection by database callers."""
+    if encountered_errors is None or key is None:
+        return
+    message = f"{type(error).__name__}: {error}"
+    if context:
+        message = f"{context} | {message}"
+    encountered_errors.setdefault(key, []).append(message)
+
+
+@contextlib.contextmanager
+def suppress_and_record(
+    encountered_errors: Optional[dict[str, list[str]]],
+    key: str,
+    *exceptions,
+    context: Optional[str] = None,
+):
+    """Like contextlib.suppress, but also records the suppressed error message."""
+    try:
+        yield
+    except exceptions as error:
+        record_encountered_error(encountered_errors, key, error, context=context)
+
+
 class Refinery:
     def __init__(self, data_context, **kwargs):
         self._data_context = data_context
@@ -304,10 +333,36 @@ class Refinery:
                 )
             return database_data
         except AttributeError as e:
+            selection = kwargs.get("selection") or "default"
+            key = database.clean_db_key(
+                raw_db_key if "raw_db_key" in locals() else _quantity(self.__class__),
+                db_key_suffix=f":{selection}",
+                group_name=original_group_name,
+            )
+            record_encountered_error(
+                kwargs.get("encountered_errors"),
+                key,
+                e,
+                context="_read_to_database",
+            )
             # print(
             #     f"[CHECK] AttributeError in _read_to_database of {self.__class__.__name__} (original: {original_quantity}:{original_selection}, {subquantity_chain}): {e}"
             # )
             # if the particular quantity does not implement database reading, return empty dict
+            return {}
+        except Exception as e:
+            selection = kwargs.get("selection") or "default"
+            key = database.clean_db_key(
+                raw_db_key if "raw_db_key" in locals() else _quantity(self.__class__),
+                db_key_suffix=f":{selection}",
+                group_name=original_group_name,
+            )
+            record_encountered_error(
+                kwargs.get("encountered_errors"),
+                key,
+                e,
+                context="_read_to_database",
+            )
             return {}
 
     @data_access

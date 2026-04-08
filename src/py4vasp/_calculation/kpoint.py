@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import functools
+from contextlib import suppress
 from fractions import Fraction
 from typing import Any
 
@@ -18,6 +19,17 @@ selection : str, optional
     You can select "kpoints_opt" or "kpoints_wan" here, to read from those meshes instead
     of the default one defined by the KPOINTS file.
 """
+
+_TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
+    exception.Py4VaspError,
+    exception.RefinementError,
+)
+
+
+def _safe_call(func):
+    with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+        return func()
+    return None
 
 
 class Kpoint(base.Refinery):
@@ -124,12 +136,17 @@ reciprocal"""
             user_labels = None if len(user_labels) == 0 else user_labels
         sampled_points = sorted(set(user_labels)) if user_labels is not None else None
 
+        mode = _safe_call(self.mode)
+        line_length = _safe_call(self.line_length)
+        num_kpoints_total = _safe_call(self.number_kpoints)
+        num_lines = _safe_call(self.number_lines)
+
         return {
             "kpoint": Kpoint_DB(
-                mode=self.mode(),
-                line_length=self.line_length(),
-                num_kpoints_total=self.number_kpoints(),
-                num_lines=self.number_lines(),
+                mode=mode,
+                line_length=line_length,
+                num_kpoints_total=num_kpoints_total,
+                num_lines=num_lines,
                 num_kpoints_grid=grid_kpoints,
                 labels=user_labels,
                 labels_unique=sampled_points,
