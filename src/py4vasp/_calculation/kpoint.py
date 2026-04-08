@@ -26,6 +26,12 @@ _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
 )
 
 
+def _safe_call(func):
+    with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+        return func()
+    return None
+
+
 class Kpoint(base.Refinery):
     """The **k**-point mesh used in the VASP calculation.
 
@@ -130,15 +136,10 @@ reciprocal"""
             user_labels = None if len(user_labels) == 0 else user_labels
         sampled_points = sorted(set(user_labels)) if user_labels is not None else None
 
-        mode, line_length, num_kpoints_total, num_lines = None, None, None, None
-        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
-            mode = self.mode()
-        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
-            line_length = self.line_length()
-        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
-            num_kpoints_total = self.number_kpoints()
-        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
-            num_lines = self.number_lines()
+        mode = _safe_call(self.mode)
+        line_length = _safe_call(self.line_length)
+        num_kpoints_total = _safe_call(self.number_kpoints)
+        num_lines = _safe_call(self.number_lines)
 
         return {
             "kpoint": Kpoint_DB(
