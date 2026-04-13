@@ -460,8 +460,8 @@ def get_all_possible_keys(
                         all_keys[class_name] = None
 
         except Exception as e:
-            print(f"Warning: Could not process {py_file.name}: {e}")
             if debug:
+                print(f"Warning: Could not process {py_file.name}: {e}")
                 import traceback
 
                 traceback.print_exc()
@@ -661,7 +661,9 @@ def _extract_keys_from_file(
                                     item, tree, debug
                                 )
                             else:
-                                file_keys = _extract_keys_from_dataclass(node.name)
+                                file_keys = _extract_keys_from_dataclass(
+                                    node.name, debug
+                                )
                             if debug:
                                 print(f"[{filepath.stem}] Result: {file_keys}")
                             keys.update(file_keys)
@@ -670,7 +672,9 @@ def _extract_keys_from_file(
     return keys, classes_without_method
 
 
-def _extract_keys_from_dataclass(class_key: str) -> Dict[str, List[str]]:
+def _extract_keys_from_dataclass(
+    class_key: str, debug: bool = False
+) -> Dict[str, List[str]]:
     """Extract keys from a dataclass-based _to_database method."""
     # This is a simplified version that assumes the dataclass fields correspond to the keys.
     # It does not handle complex logic, but it should work for straightforward cases.
@@ -681,7 +685,8 @@ def _extract_keys_from_dataclass(class_key: str) -> Dict[str, List[str]]:
 
         return {convert.quantity_name(class_key): [field.name for field in fields(cls)]}
     except Exception as e:
-        print(f"Error extracting keys from dataclass {class_key}: {e}")
+        if debug:
+            print(f"Error extracting keys from dataclass {class_key}: {e}")
     return {}
 
 
