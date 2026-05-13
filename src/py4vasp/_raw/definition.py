@@ -415,6 +415,24 @@ schema.add(
     transport_function=f"{group}/transport_{{}}/transport_function",
     scattering_approximation=f"{group}/transport_{{}}/scattering_approximation",
 )
+schema.add(
+    raw.ElectronPhononTransport,
+    name="spin",
+    required=raw.Version(6, 5, 2),
+    chemical_potential=Link("electron_phonon_chemical_potential", DEFAULT_SOURCE),
+    valid_indices=f"{group}/transport_meta/ncalculators",
+    id_index=f"{group}/transport_{{}}/id_idx",
+    temperatures=f"{group}/transport_{{}}/temps",
+    electronic_conductivity=f"{group}/transport_{{}}/spin/e_conductivity",
+    mobility=f"{group}/transport_{{}}/mobility",
+    seebeck=f"{group}/transport_{{}}/spin/seebeck",
+    peltier=f"{group}/transport_{{}}/spin/peltier",
+    nbands_sum=f"{group}/self_energy_{{}}/nbands_sum",
+    delta=f"{group}/self_energy_{{}}/delta",
+    electronic_thermal_conductivity=f"{group}/transport_{{}}/spin/e_t_conductivity",
+    transport_function=f"{group}/transport_{{}}/spin/transport_function",
+    scattering_approximation=f"{group}/transport_{{}}/scattering_approximation",
+)
 #
 group = "results/linear_response"
 schema.add(

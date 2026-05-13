@@ -10,6 +10,7 @@ import pytest
 from py4vasp import exception
 from py4vasp._calculation.electron_phonon_transport import (
     DIRECTIONS,
+    SPINS,
     ElectronPhononTransport,
     TransportInstance,
 )
@@ -494,3 +495,170 @@ def test_factory_methods(raw_data, check_factory_methods):
     }
     skip_methods = ["count", "access", "index"]  # inherited from Sequence
     check_factory_methods(ElectronPhononTransport, data, parameters, skip_methods)
+
+
+# ====================== Spin-resolved transport tests ======================
+
+
+@pytest.fixture
+def raw_transport_spin(raw_data):
+    return raw_data.electron_phonon_transport("spin")
+
+
+@pytest.fixture
+def transport_spin(raw_transport_spin):
+    transport = ElectronPhononTransport.from_data(raw_transport_spin)
+    transport.ref = types.SimpleNamespace()
+    transport.ref.temperatures = raw_transport_spin.temperatures
+    transport.ref.transport_function = raw_transport_spin.transport_function
+    transport.ref.electronic_conductivity = raw_transport_spin.electronic_conductivity
+    transport.ref.mobility = raw_transport_spin.mobility
+    transport.ref.seebeck = raw_transport_spin.seebeck
+    transport.ref.peltier = raw_transport_spin.peltier
+    transport.ref.electronic_thermal_conductivity = (
+        raw_transport_spin.electronic_thermal_conductivity
+    )
+    transport.ref.nbands_sum = raw_transport_spin.nbands_sum
+    transport.ref.selfen_delta = raw_transport_spin.delta
+    transport.ref.selfen_carrier_den = _make_reference_carrier_den(raw_transport_spin)
+    transport.ref.scattering_approx = raw_transport_spin.scattering_approximation
+    return transport
+
+
+def test_read_instance_spin(transport_spin, Assert):
+    for i, instance in enumerate(transport_spin):
+        d = instance.to_dict()
+        expected_keys = {
+            "temperatures",
+            "transport_function",
+            "electronic_conductivity",
+            "mobility",
+            "seebeck",
+            "peltier",
+            "electronic_thermal_conductivity",
+            "metadata",
+        }
+        assert d.keys() == expected_keys
+        Assert.allclose(d["temperatures"], transport_spin.ref.temperatures[i])
+        # spin data has extra nspin dimension
+        Assert.allclose(d["seebeck"], transport_spin.ref.seebeck[i])
+        assert d["seebeck"].ndim == 4  # (ntemps, nspin, 3, 3) for one instance
+        Assert.allclose(d["mobility"], transport_spin.ref.mobility[i])
+        assert d["mobility"].ndim == 3  # mobility has no spin dimension: (ntemps, 3, 3)
+
+
+def test_selections_spin(transport_spin):
+    selections = transport_spin.selections()
+    assert "spin" in selections
+    assert set(selections["spin"]) == set(SPINS.keys())
+
+
+def test_selections_no_spin(transport):
+    selections = transport.selections()
+    assert "spin" not in selections
+
+
+@pytest.mark.parametrize(
+    "selection",
+    (
+        "electronic_conductivity",
+        "seebeck",
+        "peltier",
+        "electronic_thermal_conductivity",
+    ),
+)
+def test_plot_instance_spin_default_sums(transport_spin, selection, Assert):
+    """Without spin selection, spin data is summed over the spin axis."""
+    for index_, instance in enumerate(transport_spin):
+        graph = instance.plot(selection)
+        assert len(graph) == 1
+        series = graph[0]
+        # sum over spin (axis=1 for a single instance), then isotropic trace
+        raw = getattr(transport_spin.ref, selection)[index_]  # (ntemps, nspin, 3, 3)
+        spin_sum = np.sum(raw, axis=1)  # sum over nspin -> (ntemps, 3, 3)
+        expected = np.trace(spin_sum, axis1=1, axis2=2) / 3
+        Assert.allclose(series.y, expected)
+        assert series.label == "isotropic"
+
+
+@pytest.mark.parametrize("spin_name, spin_idx", SPINS.items())
+def test_plot_instance_spin_selection(transport_spin, spin_name, spin_idx, Assert):
+    index_ = 0
+    instance = transport_spin[index_]
+    graph = instance.plot(f"seebeck({spin_name})")
+    assert len(graph) == 1
+    series = graph[0]
+    raw = transport_spin.ref.seebeck[index_]  # (ntemps, nspin, 3, 3)
+    expected = np.trace(raw[:, spin_idx], axis1=1, axis2=2) / 3
+    Assert.allclose(series.y, expected)
+    assert series.label == spin_name
+
+
+def test_plot_instance_spin_and_direction(transport_spin, Assert):
+    index_ = 1
+    instance = transport_spin[index_]
+    graph = instance.plot("electronic_conductivity(up(xx))")
+    assert len(graph) == 1
+    series = graph[0]
+    raw = transport_spin.ref.electronic_conductivity[index_]  # (ntemps, nspin, 3, 3)
+    expected = raw[:, 0, 0, 0]  # up, xx
+    Assert.allclose(series.y, expected)
+
+
+def test_plot_instance_spin_both_spins(transport_spin, Assert):
+    index_ = 0
+    instance = transport_spin[index_]
+    graph = instance.plot("seebeck(up, down)")
+    assert len(graph) == 2
+    raw = transport_spin.ref.seebeck[index_]  # (ntemps, nspin, 3, 3)
+    for series, spin_idx in zip(graph, (0, 1)):
+        expected = np.trace(raw[:, spin_idx], axis1=1, axis2=2) / 3
+        Assert.allclose(series.y, expected)
+
+
+@pytest.mark.parametrize(
+    "selection",
+    (
+        "electronic_conductivity",
+        "seebeck",
+        "peltier",
+        "electronic_thermal_conductivity",
+    ),
+)
+def test_plot_mapping_spin_default_sums(transport_spin, selection, Assert):
+    """Without spin selection on mapping, spin data is summed over the spin axis."""
+    graph = transport_spin.plot(selection)
+    temperatures = transport_spin.ref.temperatures[0]
+    assert len(graph) == len(temperatures)
+    raw = getattr(transport_spin.ref, selection)  # (ninst, ntemps, nspin, 3, 3)
+    spin_sum = np.sum(raw, axis=2)  # (ninst, ntemps, 3, 3)
+    data = np.trace(spin_sum, axis1=2, axis2=3) / 3
+    for temperature, series, expected_y in zip(temperatures, graph, data.T):
+        Assert.allclose(series.x, transport_spin.ref.selfen_carrier_den)
+        Assert.allclose(series.y, expected_y)
+        assert series.label == f"T={temperature}K"
+
+
+@pytest.mark.parametrize("spin_name, spin_idx", SPINS.items())
+def test_plot_mapping_spin_selection(transport_spin, spin_name, spin_idx, Assert):
+    graph = transport_spin.plot(f"seebeck({spin_name})")
+    temperatures = transport_spin.ref.temperatures[0]
+    assert len(graph) == len(temperatures)
+    raw = transport_spin.ref.seebeck  # (ninst, ntemps, nspin, 3, 3)
+    data = np.trace(raw[:, :, spin_idx], axis1=2, axis2=3) / 3
+    for temperature, series, expected_y in zip(temperatures, graph, data.T):
+        Assert.allclose(series.x, transport_spin.ref.selfen_carrier_den)
+        Assert.allclose(series.y, expected_y)
+        assert spin_name in series.label
+
+
+def test_plot_no_spin_data_spin_selection_raises(transport):
+    """Selecting spin on non-spin data should raise an error."""
+    with pytest.raises(exception.IncorrectUsage):
+        transport[0].plot("seebeck(up)")
+
+
+def test_plot_no_spin_data_mapping_spin_selection_raises(transport):
+    """Selecting spin on non-spin mapping data should raise an error."""
+    with pytest.raises(exception.IncorrectUsage):
+        transport.plot("seebeck(up)")

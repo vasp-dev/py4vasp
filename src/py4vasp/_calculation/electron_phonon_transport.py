@@ -25,6 +25,10 @@ DIRECTIONS = {
     "yz": [5, 7],
 }
 
+SPINS = {
+    "up": 0,
+    "down": 1,
+}
 
 UNITS = {
     "electronic_conductivity": "S/m",
@@ -33,6 +37,38 @@ UNITS = {
     "peltier": "V",
     "electronic_thermal_conductivity": "W/(m.K)",
 }
+
+
+def _selection_contains_spin(selections):
+    for sel in selections:
+        for item in sel:
+            if isinstance(item, str) and item in SPINS:
+                return True
+    return False
+
+
+class _SpinDirectionReduction(index.Reduction):
+    """Custom reduction that sums over spin and averages over direction."""
+
+    def __init__(self, keys):
+        pass
+
+    def __call__(self, array, axis):
+        # axis = (spin_axis, direction_axis); reduce higher axis first to
+        # keep indices stable.
+        result = np.average(array, axis=axis[-1])
+        return np.sum(result, axis=axis[0])
+
+
+def _build_label(direction, spins=None):
+    parts = []
+    if direction not in ("isotropic", None):
+        parts.append(direction)
+    if spins:
+        parts.extend(spins)
+    if not parts:
+        parts.append("isotropic")
+    return ", ".join(parts)
 
 
 class TransportInstance(ElectronPhononInstance, graph.Mixin):
@@ -305,13 +341,32 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
     def _select_data(self, quantity, selection):
         tree = select.Tree.from_selection(selection)
         selections = list(tree.selections())
-        maps = {1: DIRECTIONS}
-        data = self._get_data(quantity).reshape(-1, 9)
-        selector = index.Selector(maps, data, reduction=np.average)
+        data = self._get_data(quantity)
+        has_spin = data.ndim == 4  # (ntemps, nspin, 3, 3) vs (ntemps, 3, 3)
+        spin_selected = _selection_contains_spin(selections)
+        if spin_selected and not has_spin:
+            raise exception.IncorrectUsage(
+                "Spin selection is not available for data without spin resolution."
+            )
+        if has_spin:
+            data = data.reshape(data.shape[0], data.shape[1], 9)
+            spin_map = {None: slice(None), **SPINS}
+            maps = {1: spin_map, 2: DIRECTIONS}
+            reduction = _SpinDirectionReduction
+        else:
+            data = data.reshape(-1, 9)
+            maps = {1: DIRECTIONS}
+            reduction = np.average
+        selector = index.Selector(maps, data, reduction=reduction)
         result = {
             selector.label(selection): selector[selection] for selection in selections
         }
         return result if len(result) > 1 else next(iter(result.values()))
+
+    def _has_spin(self):
+        """Check if this instance has spin-resolved data."""
+        data = self._get_data("electronic_conductivity")
+        return data.ndim == 4  # (ntemps, nspin, 3, 3)
 
     def selections(self):
         """Returns the available property names that can be selected for this instance."""
@@ -366,7 +421,14 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
             **super().selections(),
             "transport": list(UNITS.keys()),
         }
+        if self._has_spin_data():
+            base_selections["spin"] = list(SPINS.keys())
         return self._accumulator().selections(base_selections)
+
+    def _has_spin_data(self):
+        """Check if any instance has spin-resolved data."""
+        first_instance = TransportInstance(self, 0)
+        return first_instance._has_spin()
 
     @property
     def units(self) -> Dict[str, str]:
@@ -489,7 +551,9 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
     def _get_instances(self, selection):
         selection_string = select.selections_to_string((selection,))
-        filter_keys = UNITS.keys() | DIRECTIONS.keys() | {"T", "temperature"}
+        filter_keys = (
+            UNITS.keys() | DIRECTIONS.keys() | SPINS.keys() | {"T", "temperature"}
+        )
         return self._select_instances(selection_string, filter_keys)
 
     @base.data_access
@@ -556,9 +620,19 @@ class _SeriesBuilderBase:
                 f"Selection must contain exactly one transport direction, but '{select.selections_to_string((selection,))}' contains {selected_directions}."
             )
 
-    def _get_data_from_instance(self, direction, instance):
+    def _get_spin_from_selection(self, selection):
+        return [item for item in selection if isinstance(item, str) and item in SPINS]
+
+    def _get_data_from_instance(self, direction, instance, spins=None):
+        parts = [s for s in (direction, *(spins or [])) if s]
+        if not parts:
+            combined = ""
+        elif len(parts) == 1:
+            combined = parts[0]
+        else:
+            combined = "(".join(parts) + ")" * (len(parts) - 1)
         get_quantity = getattr(instance, self.quantity)
-        return get_quantity(selection=direction)
+        return get_quantity(selection=combined)
 
 
 class _SeriesBuilderInstance(_SeriesBuilderBase):
@@ -568,9 +642,10 @@ class _SeriesBuilderInstance(_SeriesBuilderBase):
         This will plot selected quantity over temperature."""
         self.quantity = self._get_and_check_quantity(selection)
         direction = self._get_and_check_direction(selection)
+        spins = self._get_spin_from_selection(selection)
         x = instance.temperatures()
-        y = self._get_data_from_instance(direction, instance)
-        label = direction or "isotropic"
+        y = self._get_data_from_instance(direction, instance, spins)
+        label = _build_label(direction, spins)
         return graph.Series(x, y, label=label)
 
 
@@ -583,10 +658,11 @@ class _SeriesBuilderMapping(_SeriesBuilderBase):
         """
         self.quantity = self._get_and_check_quantity(selection)
         direction = self._get_and_check_direction(selection)
+        spins = self._get_spin_from_selection(selection)
         x, annotations = self._get_metadata(instances)
         temperatures, mask = self._get_temperature(selection, instances)
-        data = self._get_transport_data(direction, instances, mask)
-        common_label = self._assign_common_label(direction)
+        data = self._get_transport_data(direction, instances, mask, spins)
+        common_label = self._assign_common_label(direction, spins)
         marker = self._use_marker_if_metadata_is_different(annotations)
         assert len(temperatures) == len(data)
         for T, y in zip(temperatures, data):
@@ -637,18 +713,20 @@ class _SeriesBuilderMapping(_SeriesBuilderBase):
         else:
             return np.full_like(all_temperatures, True, dtype=bool)
 
-    def _get_transport_data(self, direction, instances, mask):
+    def _get_transport_data(self, direction, instances, mask, spins=None):
         joint_data = []
         for instance in instances:
-            transport_data = self._get_data_from_instance(direction, instance)
+            transport_data = self._get_data_from_instance(direction, instance, spins)
             joint_data.append(transport_data[mask])
         return np.array(joint_data).T
 
-    def _assign_common_label(self, direction):
-        if direction in ("isotropic", None):
-            return ""
-        else:
-            return f"{direction}, "
+    def _assign_common_label(self, direction, spins=None):
+        parts = []
+        if direction not in ("isotropic", None):
+            parts.append(direction)
+        if spins:
+            parts.extend(spins)
+        return ", ".join(parts) + ", " if parts else ""
 
     def _use_marker_if_metadata_is_different(self, annotations):
         for value in annotations.values():
