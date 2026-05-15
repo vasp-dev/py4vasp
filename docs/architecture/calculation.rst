@@ -11,14 +11,14 @@ Overview
 
 .. code-block:: text
 
-   Calculation ──→ Source ──→ DataAccess[T]() ──→ context manager yields T
+   Calculation ──→ Source ──→ DataAccess[T]() ──→ iterable of DataContext[T]
                     ↑              ↑
        FileSource | DictSource    Generic: carries the raw dataclass type
 
 Components:
 
 1. **Source** — where data comes from (file vs. in-memory)
-2. **DataAccess[T]** — typed, callable context manager for raw data
+2. **DataAccess[T]** — typed, callable iterable for raw data
 3. **Quantities** — plain classes owning a ``DataAccess[T]``
 4. **Groups** — thin namespaces for nested quantities (one level deep)
 5. **Calculation** — top-level entry point, resolves attributes from a registry
@@ -60,13 +60,23 @@ quantity name. Three implementations cover all use cases:
 DataAccess[T]
 -------------
 
-The central generic. Quantities own a ``DataAccess[T]`` and call it as a
-context manager. The type parameter ``T`` is the raw dataclass type, giving
-full autocomplete and type checking inside the ``with`` block.
+The central generic. Quantities own a ``DataAccess[T]`` and call it as an
+**iterable**. The type parameter ``T`` is the raw dataclass type, giving
+full autocomplete and type checking on the ``raw`` variable.
+
+Each call returns an iterable of ``DataContext[T]`` objects — one per matched
+source. Each ``DataContext`` supports tuple unpacking as ``(raw, context)``.
 
 .. code-block:: python
 
    T = TypeVar("T")
+
+   class DataContext(Generic[T]):
+       selection_name: str | None
+       remaining_selection: str | None
+
+       def access_data(self) -> ContextManager[T]: ...
+       def __iter__(self): return iter((self._raw, self))
 
    class DataAccess(Generic[T]):
        def __init__(self, source: Source, quantity_name: str):
@@ -78,16 +88,14 @@ full autocomplete and type checking inside the ``with`` block.
            """Wrap raw data directly (testing / composition)."""
            return cls(DataSource(raw_data), quantity_name="")
 
-       @contextmanager
-       def __call__(self, selection: str | None = None) -> Iterator[T]:
-           with self._source.access(self._quantity_name, selection=selection) as raw:
-               yield raw
+       def __call__(self, selection: str | None = None) -> Iterator[DataContext[T]]:
+           ...
 
 Usage inside a quantity:
 
 .. code-block:: python
 
-   with self._data(selection=selection) as raw:
+   for raw, _ in self._data(selection=selection):
        raw.eigenvalues  # ← typed as RawBand, autocomplete works
 
 
@@ -135,7 +143,7 @@ method for direct construction from raw data.
            return cls(data=DataAccess.from_data(raw))
 
        def read(self, selection: str | None = None) -> dict:
-           with self._data(selection=selection) as raw:
+           for raw, _ in self._data(selection=selection):
                return {
                    "eigenvalues": np.array(raw.eigenvalues) - raw.fermi_energy,
                    ...
@@ -170,7 +178,7 @@ selection. Data is read lazily — only when ``read()`` or ``plot()`` is called.
            return Structure(data=self._data, steps=steps)
 
        def read(self) -> dict:
-           with self._data() as raw:
+           for raw, _ in self._data():
                return {
                    "lattice_vectors": slice_steps(raw.lattice_vectors, self._steps, single_step_ndim=2),
                    ...
@@ -195,7 +203,7 @@ relevant subset of its raw data:
    @quantity("density")
    class Density:
        def read(self) -> dict:
-           with self._data() as raw:
+           for raw, _ in self._data():
                structure = Structure.from_data(raw.structure)
                return {
                    "charge": np.array(raw.charge),
