@@ -39,14 +39,6 @@ UNITS = {
 }
 
 
-def _selection_contains_spin(selections):
-    for sel in selections:
-        for item in sel:
-            if isinstance(item, str) and item in SPINS:
-                return True
-    return False
-
-
 class _SpinDirectionReduction(index.Reduction):
     """Custom reduction that sums over spin and averages over direction."""
 
@@ -90,7 +82,11 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
         """
         return f"Electron-phonon transport instance {self.index + 1}:\n{self._metadata_string()}"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def read(self, selection=None):
+        "Convenient wrapper around to_dict. Check that function for examples and optional arguments."
+        return self.to_dict(selection=selection)
+
+    def to_dict(self, selection=None) -> Dict[str, Any]:
         """Returns a dictionary with selected transport properties for this instance.
 
         Returns
@@ -115,7 +111,7 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
             "peltier",
             "electronic_thermal_conductivity",
         ]
-        result = {name: self._get_data(name) for name in names}
+        result = {name: self._get_data(name, selection=selection) for name in names}
         result["metadata"] = self.read_metadata()
         return result
 
@@ -341,9 +337,19 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
     def _select_data(self, quantity, selection):
         tree = select.Tree.from_selection(selection)
         selections = list(tree.selections())
-        data = self._get_data(quantity)
+        spin_selected = any(
+            select.contains(sel, spin) for sel in selections for spin in SPINS
+        )
+        if spin_selected:
+            try:
+                data = self._get_data(quantity, selection="spin")
+            except exception.IncorrectUsage:
+                # from_data does not support source switching; the spin data may
+                # already be present in the default source (e.g. in tests).
+                data = self._get_data(quantity)
+        else:
+            data = self._get_data(quantity)
         has_spin = data.ndim == 4  # (ntemps, nspin, 3, 3) vs (ntemps, 3, 3)
-        spin_selected = _selection_contains_spin(selections)
         if spin_selected and not has_spin:
             raise exception.IncorrectUsage(
                 "Spin selection is not available for data without spin resolution."

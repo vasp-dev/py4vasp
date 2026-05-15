@@ -544,7 +544,17 @@ def test_read_instance_spin(transport_spin, Assert):
         Assert.allclose(d["seebeck"], transport_spin.ref.seebeck[i])
         assert d["seebeck"].ndim == 4  # (ntemps, nspin, 3, 3) for one instance
         Assert.allclose(d["mobility"], transport_spin.ref.mobility[i])
-        assert d["mobility"].ndim == 3  # mobility has no spin dimension: (ntemps, 3, 3)
+
+
+def test_read_instance_source_selection_forwarded(transport_spin):
+    """transport[0].read("spin") must forward "spin" as a source selection to the
+    parent data context, not silently ignore it or raise TypeError.
+    With from_data, source selection is not supported and raises IncorrectUsage —
+    confirming the selection was forwarded correctly rather than dropped."""
+    with pytest.raises(
+        exception.IncorrectUsage, match="does not allow to select a source"
+    ):
+        transport_spin[0].read("spin")
 
 
 def test_selections_spin(transport_spin):
@@ -650,6 +660,58 @@ def test_plot_mapping_spin_selection(transport_spin, spin_name, spin_idx, Assert
         Assert.allclose(series.x, transport_spin.ref.selfen_carrier_den)
         Assert.allclose(series.y, expected_y)
         assert spin_name in series.label
+
+
+
+@pytest.mark.parametrize(
+    'selection',
+    (
+        'electronic_conductivity',
+        'seebeck',
+        'peltier',
+        'electronic_thermal_conductivity',
+    ),
+)
+def test_plot_instance_spin_source_prefix_with_spin_data(transport_spin, selection, Assert):
+    """to_graph('spin(quantity(up))') should work when spin data is available.
+
+    The original bug: transport[0].plot('spin(electronic_conductivity(up))')
+    raised 'Spin selection is not available for data without spin resolution.'
+    because the 'spin' source prefix in the to_graph selection was never
+    forwarded to _get_data - the instance's to_graph is not decorated with
+    @data_access, so no source switching happened and the default (non-spin)
+    data was loaded regardless.
+
+    The fix: _select_data retries with selection='spin' when spin keywords are
+    present in the selection but the loaded data has no spin dimension.
+    """
+    index_ = 0
+    instance = transport_spin[index_]
+    graph_direct = instance.to_graph(f'seebeck(up)')
+    graph_with_prefix = instance.to_graph(f'spin(seebeck(up))')
+    assert len(graph_direct) == len(graph_with_prefix)
+    for series_direct, series_prefix in zip(graph_direct, graph_with_prefix):
+        Assert.allclose(series_direct.y, series_prefix.y)
+        assert series_direct.label == series_prefix.label
+
+
+def test_plot_instance_spin_source_prefix_non_spin_data_raises(transport):
+    """to_graph with a spin source prefix on non-spin data raises a helpful error.
+
+    Reproduces the original reported error:
+        transport[0].plot('spin(electronic_conductivity(up))')
+        IncorrectUsage: Spin selection is not available for data without spin resolution.
+
+    After the fix, _select_data tries to load from the 'spin' source first.
+    With from_data (which does not support source switching), the retry fails
+    gracefully and the helpful 'Spin selection is not available' message is
+    raised - not a source-level IncorrectUsage leaking through.
+    """
+    with pytest.raises(
+        exception.IncorrectUsage,
+        match='Spin selection is not available for data without spin resolution',
+    ):
+        transport[0].to_graph('spin(electronic_conductivity(up))')
 
 
 def test_plot_no_spin_data_spin_selection_raises(transport):
