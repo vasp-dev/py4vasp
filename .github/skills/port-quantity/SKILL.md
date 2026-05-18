@@ -29,7 +29,18 @@ def merge_graphs(source, quantity_name, selection, impl_factory, method, *args, 
 def merge_dicts(source, quantity_name, selection, impl_factory, method, *args, **kwargs):
     """Combine dict results with selection-prefixed keys."""
     ...
+
+def merge_single(source, quantity_name, selection, impl_factory, method, *args, **kwargs):
+    """Return one result unwrapped, or a dict for multiple. EXCEPTION only."""
+    ...
 ```
+
+**Choosing the merge strategy:**
+
+- `merge_dicts` — **the default** for every method that returns a `dict`. Use this almost always.
+- `merge_graphs` — for methods that return a `Graph` (typically `plot`).
+- `merge_single` — **the exception**. Use only when the method must return exactly one
+  element and returning a dict for multiple selections would be wrong (very rare).
 
 All call the inner `_dispatch` which:
 1. Parses `selection` via `_parse_selections` → list of `SelectionContext(selection_name, remaining_selection)`.
@@ -45,13 +56,17 @@ class SelectionContext(typing.NamedTuple):
 
 ### Impl pattern
 
+Type hints on `_raw` and in `from_data` are **mandatory** — never omit them.
+They document which raw dataclass the Impl works with and are essential for
+readability and static analysis.
+
 ```python
 class _BandImpl:
-    def __init__(self, raw: RawBand):
+    def __init__(self, raw: raw_data.Band):
         self._raw = raw
 
     @classmethod
-    def from_data(cls, raw: RawBand) -> _BandImpl:
+    def from_data(cls, raw: raw_data.Band) -> _BandImpl:
         return cls(raw)
 
     def read(self) -> dict:
@@ -79,11 +94,36 @@ class Band:
             _BandImpl.from_data, _BandImpl.read,
         )
 
+    def to_dict(self, selection: str | None = None) -> dict:
+        """Public alias for read(). Part of the public interface — never deprecate."""
+        return self.read(selection=selection)
+
     def plot(self, selection: str | None = None) -> Graph:
         return merge_graphs(
             self._source, self._quantity_name, selection,
             _BandImpl.from_data, _BandImpl.plot,
         )
+```
+
+**Important:** Every dispatcher method that has `@base.data_access` in the old
+Refinery code has `selection` injected into it at runtime. After porting, **all**
+dispatcher methods must declare `selection: str | None = None` in their signature,
+even if the Refinery method had no explicit `selection` parameter.
+
+**`to_dict` is part of the public interface and must never be deprecated or
+removed.** In the new architecture, `to_dict` is a thin alias that delegates to
+`read()`. Tests for `to_dict` should verify it returns the same result as `read()`:
+
+```python
+# Tests for to_dict
+def test_to_dict_matches_read(raw):
+    impl = _BandgapImpl.from_data(raw)
+    assert impl.to_dict() == impl.read()  # or via dispatcher:
+
+def test_dispatcher_to_dict_matches_read(raw):
+    source = DataSource(raw)
+    dispatcher = Bandgap(source=source, quantity_name="bandgap")
+    assert dispatcher.to_dict() == dispatcher.read()
 ```
 
 Extra arguments from the dispatcher method are forwarded:
@@ -116,6 +156,9 @@ class Bandgap:
 ### 2 — Create the Impl class
 
 Create a private `_<Name>Impl` class. It takes raw data in its constructor and has a `from_data` classmethod. Move all transform logic here.
+
+Type hints on `_raw` and in `from_data` are **mandatory**. Always use the exact
+raw dataclass type from `_raw/data.py`.
 
 ```python
 # Before (on the Refinery)
@@ -176,6 +219,9 @@ class Bandgap(graph.Mixin):
             self._source, self._quantity_name, selection,
             self._impl_factory, _BandgapImpl.read,
         )
+
+    def to_dict(self, selection: str | None = None) -> dict:
+        return self.read(selection=selection)
 
     def plot(self, selection: str | None = None) -> Graph:
         return merge_graphs(
@@ -317,10 +363,21 @@ dispatcher infrastructure isn't fully wired or factory methods changed), mark it
 with `@pytest.mark.skip(reason="...")` so it remains visible and will be
 re-enabled later.
 
+**`to_dict` tests:** `to_dict` is a public method — do not skip or delete its
+tests. Instead, restructure them so they verify that `to_dict` and `read`
+return the same result:
+
 ```python
 @pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     ...
+```
+
+```python
+# to_dict test: verify it equals read()
+def test_to_dict_matches_read(raw):
+    impl = _BandgapImpl.from_data(raw)
+    assert impl.to_dict() == impl.read()
 ```
 
 Tests split into two categories:
@@ -389,7 +446,10 @@ For each quantity being ported:
 - [ ] `self._raw_data.x` → `self._raw.x` in Impl
 - [ ] `@base.data_access` decorators removed
 - [ ] Dispatcher class created with `@quantity("name")` decorator
-- [ ] Dispatcher calls `merge_graphs` / `merge_dicts` — no lambdas
+- [ ] All dispatcher methods have `selection: str | None = None` parameter
+- [ ] Dispatcher calls `merge_dicts` (default) or `merge_graphs` (for Graph) — no lambdas; `merge_single` only when a single return is required
+- [ ] `to_dict` kept in both Impl and dispatcher; dispatcher delegates to `read()`; not deprecated
+- [ ] Type hints on `_raw` attribute and `from_data` classmethod (mandatory, never omit)
 - [ ] Impl method passed as unbound reference: `_BandImpl.read`
 - [ ] Extra args forwarded via `*args, **kwargs`
 - [ ] Step indexing: `__getitem__` on dispatcher, `_impl_factory` captures steps
@@ -399,6 +459,7 @@ For each quantity being ported:
 - [ ] Small mixins kept (e.g. `graph.Mixin`)
 - [ ] `base.Refinery` and `slice_.Mixin` removed from inheritance
 - [ ] Tests split: Impl unit tests + dispatcher integration tests
+- [ ] Tests for `to_dict` restructured to verify it matches `read()` — not skipped
 - [ ] Tests never removed — non-working tests marked `@pytest.mark.skip(reason="...")`
 - [ ] Removed from `QUANTITIES`/`GROUPS` in `__init__.py`
 - [ ] All non-skipped tests pass

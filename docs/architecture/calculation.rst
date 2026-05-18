@@ -202,30 +202,10 @@ Higher-level helpers differ only in how they merge the results. Each calls
 
 .. code-block:: python
 
-   def merge_single(source, quantity_name, selection, impl_factory, method, *args, **kwargs):
-       """Dispatch and unwrap: return a single result or a dict if multiple.
-
-       - Single selection → return the result directly.
-       - Multiple selections → return {selection_name: result} dict.
-       """
-       results = _dispatch(source, quantity_name, selection, impl_factory, method, *args, **kwargs)
-       if len(results) == 1:
-           return next(iter(results.values()))
-       return results
-
-   def merge_graphs(source, quantity_name, selection, impl_factory, method, *args, **kwargs):
-       """Dispatch and merge Graph results into a single overlay Graph."""
-       results = _dispatch(source, quantity_name, selection, impl_factory, method, *args, **kwargs)
-       all_series = []
-       for sel, graph in results.items():
-           for series in graph.series:
-               series.label = sel
-               all_series.append(series)
-       return Graph(series=all_series)
-
    def merge_dicts(source, quantity_name, selection, impl_factory, method, *args, **kwargs):
        """Dispatch and merge dict results into a single combined dict.
 
+       **Default for every method that returns a dict.** Use this almost always.
        Keys are prefixed with the selection name when multiple selections are present.
        """
        results = _dispatch(source, quantity_name, selection, impl_factory, method, *args, **kwargs)
@@ -236,6 +216,37 @@ Higher-level helpers differ only in how they merge the results. Each calls
            for k, v in d.items():
                combined[f"{k}_{sel}"] = v
        return combined
+
+   def merge_graphs(source, quantity_name, selection, impl_factory, method, *args, **kwargs):
+       """Dispatch and merge Graph results into a single overlay Graph.
+
+       Use for methods that return a ``Graph`` (typically ``plot``).
+       """
+       results = _dispatch(source, quantity_name, selection, impl_factory, method, *args, **kwargs)
+       all_series = []
+       for sel, graph in results.items():
+           for series in graph.series:
+               series.label = sel
+               all_series.append(series)
+       return Graph(series=all_series)
+
+   def merge_single(source, quantity_name, selection, impl_factory, method, *args, **kwargs):
+       """Dispatch and unwrap — EXCEPTION only.
+
+       Use only when the method must return exactly one element and returning a
+       dict for multiple selections would be wrong. This is rare.
+       """
+       results = _dispatch(source, quantity_name, selection, impl_factory, method, *args, **kwargs)
+       if len(results) == 1:
+           return next(iter(results.values()))
+       return results
+
+Choose the merge helper as follows:
+
+- ``merge_dicts`` — **the default**. Use for every method that returns a ``dict``.
+- ``merge_graphs`` — for methods that return a ``Graph`` (typically ``plot``).
+- ``merge_single`` — **exception only**. Use when exactly one return element is
+  required and a dict-of-results would not make sense.
 
 
 Example: Band Quantity
@@ -261,6 +272,9 @@ Example: Band Quantity
                "eigenvalues": np.array(self._raw.eigenvalues) - self._raw.fermi_energy,
            }
 
+       def to_dict(self) -> dict:
+           return self.read()
+
        def plot(self) -> Graph:
            data = self.read()
            return Graph(series=[Series(x=data["kpoint_distances"], y=data["eigenvalues"])])
@@ -276,10 +290,15 @@ Example: Band Quantity
            self._quantity_name = quantity_name
 
        def read(self, selection: str | None = None) -> dict | dict[str, dict]:
-           return merge_single(
+           return merge_dicts(
                self._source, self._quantity_name, selection,
                _BandImpl.from_data, _BandImpl.read,
            )
+
+       def to_dict(self, selection: str | None = None) -> dict | dict[str, dict]:
+           """``to_dict`` is part of the public interface. Always keep it.
+           In the new architecture, it delegates to ``read()``."""
+           return self.read(selection=selection)
 
        def plot(self, selection: str | None = None) -> Graph:
            return merge_graphs(
@@ -305,6 +324,24 @@ dispatch function calls it as ``method(impl)``. Extra ``*args`` and
    class _BandImpl:
        def plot(self, fermi_energy=None) -> Graph:
            ...
+
+.. note::
+
+   ``@base.data_access`` in the old Refinery architecture injects a
+   ``selection`` argument into every decorated method at runtime. After porting,
+   **every** dispatcher method must declare ``selection: str | None = None`` in
+   its signature — even if the original Refinery method had no ``selection``
+   parameter.
+
+   Type hints on ``_raw`` and in ``from_data`` are **mandatory**. Always use
+   the exact raw dataclass type from ``_raw/data.py``. Example::
+
+       def __init__(self, raw: raw_data.Band):
+           self._raw = raw
+
+       @classmethod
+       def from_data(cls, raw: raw_data.Band) -> _BandImpl:
+           return cls(raw)
 
 
 Separation of Concerns
@@ -361,7 +398,7 @@ the Impl via a partial ``impl_factory``:
            return _StructureImpl.from_data(raw, steps=self._steps)
 
        def read(self, selection: str | None = None) -> dict:
-           return merge_single(
+           return merge_dicts(
                self._source, self._quantity_name, selection,
                self._impl_factory, _StructureImpl.read,
            )
@@ -407,8 +444,14 @@ to the Impl method via ``**kwargs`` when the Impl method accepts a
 
 Merging is handled by choosing the appropriate dispatch helper:
 
-- ``merge_dicts`` — combines dict results with selection-prefixed keys (default for ``read``).
+- ``merge_dicts`` — **the default**. Use for every method that returns a ``dict``.
 - ``merge_graphs`` — overlays Graph results into one figure (for ``plot``).
+- ``merge_single`` — **exception only**, when exactly one return element is required.
+
+``to_dict`` is part of the public interface and must never be deprecated.
+In the new architecture, the Impl's ``to_dict`` delegates to ``read()``, and
+the dispatcher's ``to_dict`` delegates to ``read(selection=selection)``. Tests
+should verify that ``to_dict`` and ``read`` return the same result.
 
 
 Registry & Decorator
@@ -535,8 +578,9 @@ The following were resolved during the design process:
    plain ``quantity`` string when selection is None.
 
 4. **Dispatch is a set of standalone functions** — ``_dispatch``,
-   ``dispatch_single``, ``dispatch_merge``. No mixin, no base class. All extra
-   arguments from the dispatcher method are forwarded via ``*args, **kwargs``.
+   ``merge_single``, ``merge_dicts``, ``merge_graphs``. No mixin, no base
+   class. All extra arguments from the dispatcher method are forwarded via
+   ``*args, **kwargs``.
 
 5. **Merge helpers are named after their strategy** — ``merge_dicts``, ``merge_graphs``.
    Each calls ``_dispatch`` internally. No generic ``dispatch_merge`` with a merge 
