@@ -1,78 +1,101 @@
 ---
 name: port-quantity
-description: "Port a py4vasp quantity from the inheritance-based Refinery architecture to the new composition-based DataAccess[T] architecture. USE WHEN: migrating an existing quantity class, porting tests, or adding a new quantity. Triggers: 'port quantity', 'migrate to new architecture', 'convert to composition', 'new architecture', 'refactor quantity'."
+description: "Port a py4vasp quantity from the inheritance-based Refinery architecture to the new Dispatcher/Impl architecture. USE WHEN: migrating an existing quantity class, porting tests, or adding a new quantity. Triggers: 'port quantity', 'migrate to new architecture', 'convert to composition', 'new architecture', 'refactor quantity'."
 ---
 
-# Port a py4vasp Quantity to the Composition Architecture
+# Port a py4vasp Quantity to the Dispatcher/Impl Architecture
 
-Port an existing `Refinery`-based quantity to the new architecture described in `docs/architecture/calculation.rst`. The prototype is in `notebook/ArchitectureVariant.ipynb`.
+Port an existing `Refinery`-based quantity to the new architecture described in `docs/architecture/calculation.rst`.
 
 ## Core Design Contract
 
-**Quantities are plain classes** that own a `DataAccess[T]` and call it as an **iterable**.
+Each quantity is split into two classes:
 
-### What `DataAccess.__call__` returns
+- **Dispatcher** (public, e.g. ``Band``) — user-facing, attached to ``Calculation``. Owns the ``Source``, calls standalone dispatch functions that parse selections, open data, construct the Impl, call methods, and merge results.
+- **Impl** (private, e.g. ``_BandImpl``) — constructed via ``from_data(raw)``. Works with exactly one raw data object. Contains all transform logic. Primary unit-testing target.
 
-`DataAccess.__call__(selection)` returns an **iterable of `DataContext[T]`** — one per matched source. Each `DataContext` carries raw data and selection metadata:
+The dispatcher does **not** have ``from_data``. That lives exclusively on the Impl.
 
-```python
-class DataContext(Generic[T]):
-    selection_name: str | None       # resolved source name (e.g. "kpoints_opt", or None = default)
-    remaining_selection: str | None  # selection string after the source part is removed
+### Selection dispatch
 
-    def access_data(self) -> ContextManager[T]: ...  # explicit access
-    def __iter__(self): ...  # supports tuple unpacking as (raw, self)
-```
-
-This replaces the hidden state that `_FunctionWrapper` previously managed via `self._data_context.selection` and the rewritten `selection=` kwarg passed to the inner function.
-
-**Usage pattern — most methods (context not needed):**
+Selection dispatch is handled by standalone functions named after their merge
+strategy. The dispatcher just calls the appropriate one:
 
 ```python
-def read(self) -> dict:
-    for raw, _ in self._data():
-        return {"fermi_energy": raw.fermi_energy, ...}
+def merge_graphs(source, quantity_name, selection, impl_factory, method, *args, **kwargs):
+    """Overlay Graph results into a single figure."""
+    ...
+
+def merge_dicts(source, quantity_name, selection, impl_factory, method, *args, **kwargs):
+    """Combine dict results with selection-prefixed keys."""
+    ...
 ```
 
-**Usage pattern — selection forwarding (context needed):**
+All call the inner `_dispatch` which:
+1. Parses `selection` via `_parse_selections` → list of `SelectionContext(selection_name, remaining_selection)`.
+2. For each context, calls `source.access(quantity_name, selection=ctx.selection_name)`.
+3. Inside the context, calls `impl_factory(raw)` then `method(impl, *args, **kwargs)`.
+4. Collects results as `{selection_name: result}`.
 
 ```python
-def to_dict(self, selection: str | None = None, ...) -> dict:
-    for raw, ctx in self._data(selection=selection):
-        projections = self._projector(raw).project(ctx.remaining_selection, raw.projections)
-        return {...}
+class SelectionContext(typing.NamedTuple):
+    selection_name: str | None
+    remaining_selection: str | None
 ```
 
-**Usage pattern — multi-source (loop runs multiple times):**
+### Impl pattern
 
 ```python
-def to_dict(self, selection=None) -> dict:
-    results = {}
-    for raw, ctx in self._data(selection=selection):
-        results[ctx.selection_name or "default"] = self._process(raw)
-    if len(results) == 1:
-        return next(iter(results.values()))
-    return results
+class _BandImpl:
+    def __init__(self, raw: RawBand):
+        self._raw = raw
+
+    @classmethod
+    def from_data(cls, raw: RawBand) -> _BandImpl:
+        return cls(raw)
+
+    def read(self) -> dict:
+        return {
+            "eigenvalues": np.array(self._raw.eigenvalues) - self._raw.fermi_energy,
+            ...
+        }
+
+    def plot(self) -> Graph:
+        ...
 ```
 
-`DataAccess.__call__` internally reproduces the `_FunctionWrapper` source-resolution logic:
-1. Parse `selection` via `select.Tree`.
-2. Look up matching source names against the schema.
-3. Remove the matched source from the selection; reassemble remainder as a string.
-4. Call `source.access(quantity_name, source_name)` to enter the HDF5 context.
-5. Yield `DataContext(raw=data, selection_name=source_name, remaining_selection=remainder)`.
-
-For single-source selections (the common case), the loop body runs once. For multiple sources (e.g. `"kpoints_opt, default"`), it runs once per source.
-
-### `from_data` constructor (unchanged public API)
+### Dispatcher pattern
 
 ```python
-@classmethod
-def from_data(cls, raw: RawBand) -> Band:
-    return cls(data=DataAccess.from_data(raw))
+@quantity("band")
+class Band:
+    def __init__(self, source: Source, quantity_name: str = "band"):
+        self._source = source
+        self._quantity_name = quantity_name
+
+    def read(self, selection: str | None = None) -> dict:
+        return merge_dicts(
+            self._source, self._quantity_name, selection,
+            _BandImpl.from_data, _BandImpl.read,
+        )
+
+    def plot(self, selection: str | None = None) -> Graph:
+        return merge_graphs(
+            self._source, self._quantity_name, selection,
+            _BandImpl.from_data, _BandImpl.plot,
+        )
 ```
 
-`DataAccess.from_data(raw)` wraps the object in a `DataSource` that yields it unchanged. The `DataContext` will have `selection_name=None` and `remaining_selection` equal to the original `selection` argument — because there is no source to strip when data is injected directly. The loop always runs exactly once.
+Extra arguments from the dispatcher method are forwarded:
+
+```python
+def plot(self, selection=None, fermi_energy=None):
+    return merge_graphs(
+        self._source, self._quantity_name, selection,
+        _BandImpl.from_data, _BandImpl.plot,
+        fermi_energy=fermi_energy,
+    )
+```
 
 ---
 
@@ -80,198 +103,279 @@ def from_data(cls, raw: RawBand) -> Band:
 
 ### 1 — Identify the raw dataclass
 
-Open `src/py4vasp/_raw/data.py`. Find the dataclass matching this quantity (CamelCase of the quantity name). This becomes `T` in `DataAccess[T]`. Note all fields and their types — they will be used via `raw.<field>` inside the `for` loop.
+Open `src/py4vasp/_raw/data.py`. Find the dataclass matching this quantity (CamelCase of the quantity name). This becomes the type for the Impl's `_raw` attribute. Note all fields and their types.
 
-Example for `band`:
+Example for `bandgap`:
 ```python
 @dataclasses.dataclass
-class Band:
-    dispersion: Dispersion
-    fermi_energy: float
-    occupations: VaspData
-    projectors: Projector
-    projections: VaspData = NONE()
+class Bandgap:
+    labels: VaspData
+    values: VaspData
 ```
 
-### 2 — Rewrite the class header
+### 2 — Create the Impl class
 
-Remove `base.Refinery` from the inheritance list. Keep small mixins (e.g. `graph.Mixin`). Add the `@quantity()` decorator.
+Create a private `_<Name>Impl` class. It takes raw data in its constructor and has a `from_data` classmethod. Move all transform logic here.
 
 ```python
-# Before
-class Band(base.Refinery, graph.Mixin):
-    _raw_data: raw_data.Band
+# Before (on the Refinery)
+class Bandgap(slice_.Mixin, base.Refinery, graph.Mixin):
+    _raw_data: raw_data.Bandgap
 
-# After
-from py4vasp._core import DataAccess, quantity
+    @base.data_access
+    def to_dict(self):
+        return {
+            **self._gap_dict("fundamental"),
+            ...
+            "fermi_energy": self._get("Fermi energy", component=0),
+        }
 
-@quantity("band")                         # or @quantity("dos", group="phonon")
-class Band(graph.Mixin):
-    def __init__(self, data: DataAccess[raw_data.Band]):
-        self._data = data
-
-    @classmethod
-    def from_data(cls, raw: raw_data.Band) -> Band:
-        return cls(data=DataAccess.from_data(raw))
-```
-
-For step-indexed quantities (structure, energy, force, …) also add:
-```python
-    def __init__(self, data: DataAccess[raw_data.Structure], steps=None):
-        self._data = data
+# After (Impl)
+class _BandgapImpl:
+    def __init__(self, raw: raw_data.Bandgap, steps=None):
+        self._raw = raw
         self._steps = steps
 
-    def __getitem__(self, steps) -> Structure:
-        return Structure(data=self._data, steps=steps)
+    @classmethod
+    def from_data(cls, raw: raw_data.Bandgap, steps=None) -> _BandgapImpl:
+        return cls(raw, steps=steps)
+
+    def read(self) -> dict:
+        return {
+            **self._gap_dict("fundamental"),
+            ...
+            "fermi_energy": self._get("Fermi energy", component=0),
+        }
 ```
 
-### 3 — Replace every `@base.data_access` method
+Key changes:
+- Replace `self._raw_data` with `self._raw` everywhere in the Impl.
+- Remove `@base.data_access` decorators — Impl methods are plain methods.
+- The Impl never touches `Source` or selection dispatch.
 
-For each method decorated with `@base.data_access`:
+### 3 — Create the Dispatcher class
 
-1. **Remove** the decorator.
-2. **Iterate** with `for raw, _ in self._data(selection=selection):` (use `ctx` instead of `_` when selection info is needed).
-3. **Replace** `self._raw_data.<field>` with `raw.<field>`.
-4. **Replace** the remaining selection (old transparent kwarg injection) with `ctx.remaining_selection`.
-5. **Use** `ctx.selection_name` anywhere the old code used `self._selection`.
-
-```python
-# Before
-@base.data_access
-def to_dict(self, selection: Optional[str] = None, fermi_energy=None) -> dict:
-    dispersion = self._dispersion().read()
-    fermi_e = self._raw_data.fermi_energy
-    projections = self._read_projections(selection)   # selection = remaining part
-    return {...}
-
-# After — context needed (selection forwarding)
-def to_dict(self, selection: str | None = None, fermi_energy=None) -> dict:
-    for raw, ctx in self._data(selection=selection):
-        dispersion = self._dispersion(raw).read()
-        fermi_e = raw.fermi_energy
-        projections = self._read_projections(ctx.remaining_selection, raw)
-        return {...}
-
-# After — context not needed
-def to_graph(self, fermi_energy=None) -> graph.Graph:
-    for raw, _ in self._data():
-        return self._dispersion(raw).plot(fermi_energy=fermi_energy)
-```
-
-### 4 — Update internal helpers
-
-Private helpers (`_dispersion`, `_projector`, `_kpoint`, `_read_projections`, etc.) currently read `self._raw_data` directly. Pass raw data as an explicit argument instead, since the context is only open inside the calling public method.
+Create the public class with the `@quantity()` decorator. It owns the `Source` and delegates to dispatch functions.
 
 ```python
-# Before
-def _dispersion(self):
-    return _dispersion.Dispersion.from_data(self._raw_data.dispersion)
+@quantity("bandgap")
+class Bandgap(graph.Mixin):
+    def __init__(self, source: Source, quantity_name: str = "bandgap", steps=None):
+        self._source = source
+        self._quantity_name = quantity_name
+        self._steps = steps
 
-# After
-def _dispersion(self, raw: raw_data.Band):
-    return _dispersion.Dispersion.from_data(raw.dispersion)
-```
+    def __getitem__(self, steps) -> Bandgap:
+        return Bandgap(self._source, self._quantity_name, steps=steps)
 
-Call from public methods:
-```python
-for raw, _ in self._data(selection=selection):
-    graph = self._dispersion(raw).plot(...)
-```
+    def _impl_factory(self, raw):
+        return _BandgapImpl.from_data(raw, steps=self._steps)
 
-### 5 — Port `_to_database`
+    def read(self, selection: str | None = None) -> dict:
+        return merge_dicts(
+            self._source, self._quantity_name, selection,
+            self._impl_factory, _BandgapImpl.read,
+        )
 
-Same pattern as public methods — open the context, use `ctx.raw`:
-
-```python
-# Before
-@base.data_access
-def _to_database(self, selection=None, **kwargs) -> dict:
-    dispersion = self._dispersion()._read_to_database(**kwargs)
-    fermi_e = self._raw_data.fermi_energy
-    return database.combine_db_dicts({"band": Band_DB(fermi_energy=fermi_e, ...)}, dispersion)
-
-# After
-def _to_database(self, selection=None, **kwargs) -> dict:
-    for raw, _ in self._data(selection=selection):
-        dispersion = self._dispersion(raw)._read_to_database(**kwargs)
-        return database.combine_db_dicts(
-            {"band": Band_DB(fermi_energy=raw.fermi_energy, ...)},
-            dispersion,
+    def plot(self, selection: str | None = None) -> Graph:
+        return merge_graphs(
+            self._source, self._quantity_name, selection,
+            self._impl_factory, _BandgapImpl.plot,
+            selection=selection,  # if the Impl's plot method needs the selection
         )
 ```
 
-### 6 — Handle composition with other quantities
+For step-indexed quantities, use `self._impl_factory` as a bound method that captures `self._steps` via the partial pattern shown above.
 
-Use `from_data` with the relevant raw sub-field — same as before:
+### 4 — Move private helpers to the Impl
+
+Private helpers (`_gap`, `_get`, `_kpoint`, `_spin_polarized`, etc.) that read `self._raw_data` move to the Impl and read `self._raw` instead.
 
 ```python
-for raw, _ in self._data():
-    structure = Structure.from_data(raw.structure)
-    lattice = structure.to_dict()
+# Before (Refinery)
+def _spin_polarized(self):
+    return self._raw_data.values.shape[1] == 3
+
+# After (Impl)
+def _spin_polarized(self):
+    return self._raw.values.shape[1] == 3
+```
+
+### 5 — Handle selection forwarding
+
+When the Impl method needs the remaining selection (e.g. for projection parsing), it accepts it as a parameter. The dispatch function forwards it via `**kwargs`:
+
+```python
+# Dispatcher
+def plot(self, selection=None):
+    return merge_graphs(
+        self._source, self._quantity_name, selection,
+        self._impl_factory, _BandgapImpl.plot,
+    )
+
+# The remaining_selection from SelectionContext is available inside
+# _dispatch and forwarded to the Impl method.
+```
+
+For quantities where the Impl's `plot` method handles its own selection parsing internally (like Bandgap's `_parse`), the `selection` argument is forwarded directly as a kwarg.
+
+### 6 — Handle composition with other quantities
+
+Use the other Impl's `from_data` directly — no Source needed:
+
+```python
+class _DensityImpl:
+    def read(self) -> dict:
+        structure = _StructureImpl.from_data(self._raw.structure)
+        return {
+            "charge": np.array(self._raw.charge),
+            "structure": structure.read(),
+        }
 ```
 
 ### 7 — Step-indexed quantities
 
-Apply `slice_steps` explicitly in each method. Import from `py4vasp._core`:
+Steps live on the dispatcher and are passed to the Impl via the factory:
+
+```python
+# Dispatcher
+def __getitem__(self, steps) -> Structure:
+    return Structure(self._source, self._quantity_name, steps=steps)
+
+def _impl_factory(self, raw):
+    return _StructureImpl.from_data(raw, steps=self._steps)
+```
+
+The Impl applies `slice_steps` explicitly:
 
 ```python
 from py4vasp._core import slice_steps
 
-def to_dict(self) -> dict:
-    for raw, _ in self._data():
+class _StructureImpl:
+    def __init__(self, raw, steps=None):
+        self._raw = raw
+        self._steps = steps
+
+    def read(self) -> dict:
         return {
             "lattice_vectors": slice_steps(
-                np.array(raw.lattice_vectors), self._steps, single_step_ndim=2
+                np.array(self._raw.lattice_vectors), self._steps, default_ndim=2
             ),
-            "positions": slice_steps(
-                np.array(raw.positions), self._steps, single_step_ndim=2
-            ),
-            "elements": raw.elements,
         }
 ```
 
-`slice_steps(data, steps, single_step_ndim)` rules:
+`slice_steps(data, steps, default_ndim)` rules:
 - `steps=None` → last step (default)
 - `steps=3` → single step
 - `steps=slice(1, 8)` → range
-- `data.ndim <= single_step_ndim` → no step axis, return unchanged
+- `data.ndim <= default_ndim` → no step axis, return unchanged
 
-### 8 — Port the tests
+### 8 — Port `__str__` and display methods
 
-Tests using `QuantityClass.from_data(raw)` are unchanged. Only remove references to `_data_context` or `_raw_data` internals.
-
-To test selection forwarding, use a `SpySource`:
+Move the string formatting logic to the Impl. The dispatcher calls it through dispatch:
 
 ```python
-from contextlib import contextmanager
+# Impl
+class _BandgapImpl:
+    def __str__(self):
+        template = """..."""
+        return template.format(...)
 
-class SpySource:
-    def __init__(self, raw):
-        self._raw, self.calls = raw, []
-
-    @contextmanager
-    def access(self, quantity, selection=None):
-        self.calls.append({"quantity": quantity, "selection": selection})
-        yield self._raw
-
-spy = SpySource(raw_band)
-band = Band(data=DataAccess(spy, "band"))
-band.read(selection="kpoints_opt")
-assert spy.calls[-1]["selection"] == "kpoints_opt"
+# Dispatcher
+class Bandgap:
+    def __str__(self):
+        return merge_strings(
+            self._source, self._quantity_name, None,
+            self._impl_factory, _BandgapImpl.__str__,
+        )
 ```
 
-### 9 — Remove from `QUANTITIES` / `GROUPS`
+### 9 — Port `_to_database`
+
+Same dispatch pattern. The Impl has the `_to_database` method:
+
+```python
+# Impl
+class _BandgapImpl:
+    def _to_database(self) -> dict:
+        bandgap_dict = {...}
+        return {"bandgap": Bandgap_DB(**final_dict)}
+
+# Dispatcher
+class Bandgap:
+    def _read_to_database(self, *args, **kwargs):
+        return merge_dicts(
+            self._source, self._quantity_name, None,
+            self._impl_factory, _BandgapImpl._to_database,
+        )
+```
+
+### 10 — Port the tests
+
+**Never remove an existing test.** If a test cannot work yet (e.g. because the
+dispatcher infrastructure isn't fully wired or factory methods changed), mark it
+with `@pytest.mark.skip(reason="...")` so it remains visible and will be
+re-enabled later.
+
+```python
+@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
+def test_factory_methods(raw_data, check_factory_methods):
+    ...
+```
+
+Tests split into two categories:
+
+**Unit tests (Impl directly, no I/O):**
+
+```python
+def test_bandgap_read():
+    raw = raw_data.Bandgap(labels=..., values=...)
+    impl = _BandgapImpl.from_data(raw)
+    result = impl.read()
+    assert ...
+
+def test_bandgap_step_selection():
+    raw = raw_data.Bandgap(labels=..., values=...)
+    impl = _BandgapImpl.from_data(raw, steps=3)
+    result = impl.read()
+    assert ...
+```
+
+**Integration tests (full pipeline via DictSource):**
+
+```python
+def test_bandgap_via_calculation():
+    source = DictSource({"bandgap": raw_data.Bandgap(...)})
+    calc = Calculation(source=source)
+    result = calc.bandgap.read()
+    assert ...
+```
+
+The existing `from_data` pattern in tests like:
+```python
+bandgap = Bandgap.from_data(raw_gap)
+```
+should be migrated to:
+```python
+impl = _BandgapImpl.from_data(raw_gap)
+```
+
+Or for testing the dispatcher with the full dispatch pipeline:
+```python
+source = DataSource(raw_gap)
+bandgap = Bandgap(source=source, quantity_name="bandgap")
+```
+
+### 11 — Remove from `QUANTITIES` / `GROUPS`
 
 In `src/py4vasp/_calculation/__init__.py`, remove the quantity's string entry from `QUANTITIES` (or `GROUPS`). The `@quantity()` decorator handles registration automatically.
 
-### 10 — Verify
+### 12 — Verify
 
 ```bash
 pytest tests/calculation/test_{name}.py -v   # quantity-level tests
 pytest tests/ -x                             # full suite
 ```
-
-Confirm that `ctx.raw.<field>` autocompletes in the IDE inside `with self._data(...) as ctx:`.
 
 ---
 
@@ -279,22 +383,25 @@ Confirm that `ctx.raw.<field>` autocompletes in the IDE inside `with self._data(
 
 For each quantity being ported:
 
-- [ ] Raw dataclass type `T` identified in `_raw/data.py`
-- [ ] `base.Refinery` removed; `@quantity("name")` (or `group=`) decorator added
-- [ ] `__init__(self, data: DataAccess[T])` added; small mixins kept
-- [ ] `from_data(cls, raw: T)` class method added
-- [ ] All `@base.data_access` decorators removed
-- [ ] `for raw, _ in self._data(...):` — or `raw, ctx` when selection info needed
-- [ ] `self._raw_data.x` → `raw.x` inside the `for` loop
-- [ ] Remaining `selection` arg → `ctx.remaining_selection`
-- [ ] `self._selection` (source name) → `ctx.selection_name`
-- [ ] Private helpers accept `raw` as explicit argument
-- [ ] `_to_database` migrated with `for raw, _ in self._data(...):` pattern
-- [ ] Step indexing added if applicable (`__getitem__`, `self._steps`, `slice_steps()`)
-- [ ] Composition via `OtherQuantity.from_data(ctx.raw.subfield)`
-- [ ] Tests pass; no references to `_data_context` or `_raw_data` internals
+- [ ] Raw dataclass type identified in `_raw/data.py`
+- [ ] Impl class created: `_<Name>Impl` with `from_data(raw, steps=None)`
+- [ ] All transform logic moved from Refinery to Impl
+- [ ] `self._raw_data.x` → `self._raw.x` in Impl
+- [ ] `@base.data_access` decorators removed
+- [ ] Dispatcher class created with `@quantity("name")` decorator
+- [ ] Dispatcher calls `merge_graphs` / `merge_dicts` — no lambdas
+- [ ] Impl method passed as unbound reference: `_BandImpl.read`
+- [ ] Extra args forwarded via `*args, **kwargs`
+- [ ] Step indexing: `__getitem__` on dispatcher, `_impl_factory` captures steps
+- [ ] Composition: other Impl's `from_data` called directly
+- [ ] `__str__` / `_repr_pretty_` ported through dispatch
+- [ ] `_to_database` ported through dispatch
+- [ ] Small mixins kept (e.g. `graph.Mixin`)
+- [ ] `base.Refinery` and `slice_.Mixin` removed from inheritance
+- [ ] Tests split: Impl unit tests + dispatcher integration tests
+- [ ] Tests never removed — non-working tests marked `@pytest.mark.skip(reason="...")`
 - [ ] Removed from `QUANTITIES`/`GROUPS` in `__init__.py`
-- [ ] IDE autocomplete works on `raw.<field>` inside the `for` loop
+- [ ] All non-skipped tests pass
 
 ---
 
@@ -303,10 +410,7 @@ For each quantity being ported:
 | File | Purpose |
 |------|---------|
 | `docs/architecture/calculation.rst` | Full architecture description |
-| `notebook/ArchitectureVariant.ipynb` | Runnable prototype |
 | `src/py4vasp/_raw/data.py` | Raw dataclass definitions |
 | `src/py4vasp/_raw/definition.py` | Schema (sources per quantity) |
-| `src/py4vasp/_calculation/data_access.py` | Production DataAccess implementation |
-| `tests/calculation/test_data_access.py` | DataAccess test suite |
-| `src/py4vasp/_calculation/band.py` | Reference: complex existing quantity |
-| `tests/calculation/test_band.py` | Reference: test structure to preserve |
+| `src/py4vasp/_calculation/bandgap.py` | Reference: existing Refinery quantity |
+| `tests/calculation/test_bandgap.py` | Reference: existing test structure |

@@ -3,23 +3,32 @@ Calculation Architecture
 
 This document describes the internal architecture of the ``Calculation`` class
 and how quantities access raw data. The design uses **composition over
-inheritance**: quantities are plain classes that own a generic ``DataAccess[T]``
-object rather than inheriting from a base class.
+inheritance**: quantities are split into a public dispatcher class and a private
+implementation class. The dispatcher handles multi-selection parsing and
+iteration; the implementation works with a single raw data object.
 
 Overview
 --------
 
 .. code-block:: text
 
-   Calculation ──→ Source ──→ DataAccess[T]() ──→ iterable of DataContext[T]
-                    ↑              ↑
-       FileSource | DictSource    Generic: carries the raw dataclass type
+   Calculation ──→ Source ──→ Band (dispatcher)
+                    ↑              │
+       FileSource | DataSource    │ for each selection:
+                                  │   source.access(name, sel)
+                                  ▼
+                              _BandImpl (single raw data)
+                                  │
+                                  ▼
+                              transform → result
+
+   Multiple selections → {selection: result} dict (or custom merge)
 
 Components:
 
 1. **Source** — where data comes from (file vs. in-memory)
-2. **DataAccess[T]** — typed, callable iterable for raw data
-3. **Quantities** — plain classes owning a ``DataAccess[T]``
+2. **Dispatcher (public)** — handles selection parsing, iteration, merging
+3. **Impl (private)** — constructed via ``from_data(raw)``, works on one raw dataset
 4. **Groups** — thin namespaces for nested quantities (one level deep)
 5. **Calculation** — top-level entry point, resolves attributes from a registry
 6. **Registry** — ``@quantity()`` decorator for declarative registration
@@ -28,27 +37,31 @@ Components:
 Source
 ------
 
-A ``Source`` provides a context manager that yields raw data for a given
-quantity name. Three implementations cover all use cases:
+A ``Source`` provides a context manager that yields **one** raw data object for
+a given quantity name and selection. No iteration — one call, one dataset.
 
 ``FileSource(path)``
-   Production: opens HDF5 file, yields lazy dataset references.
+   Production: opens HDF5 file at ``path``, yields lazy dataset references for
+   the requested quantity/selection.
 
 ``DataSource(raw_data)``
-   Wraps a single raw data object. Used for unit testing one quantity and for
-   composition (passing a data subset to another quantity).
+   Wraps a single raw data object directly. Used for unit testing an Impl class
+   and for composition (passing a data subset to another quantity).
 
 ``DictSource(data_dict)``
-   Maps quantity names to raw data objects. Used for integration-testing a full
-   ``Calculation`` without file I/O.
+   Maps ``(quantity_name, selection)`` pairs to raw data objects. Used for
+   integration-testing a full ``Calculation`` without file I/O.
 
 .. code-block:: python
 
    class Source(Protocol):
-       def access(self, quantity: str, selection: str | None = None):
+       @contextmanager
+       def access(self, quantity: str, selection: str | None = None) -> Iterator[T]:
+           """Yield one raw data object for the given quantity and selection."""
            ...
 
    class DataSource:
+       """Wraps a single raw data object. Ignores quantity/selection."""
        def __init__(self, raw_data):
            self._raw_data = raw_data
 
@@ -56,47 +69,17 @@ quantity name. Three implementations cover all use cases:
        def access(self, quantity: str, selection: str | None = None):
            yield self._raw_data
 
+   class DictSource:
+       """Maps quantity names (with optional selection) to raw data."""
+       def __init__(self, data: dict):
+           self._data = data  # e.g. {"band": raw_band, ("band", "up"): raw_band_up}
 
-DataAccess[T]
--------------
-
-The central generic. Quantities own a ``DataAccess[T]`` and call it as an
-**iterable**. The type parameter ``T`` is the raw dataclass type, giving
-full autocomplete and type checking on the ``raw`` variable.
-
-Each call returns an iterable of ``DataContext[T]`` objects — one per matched
-source. Each ``DataContext`` supports tuple unpacking as ``(raw, context)``.
-
-.. code-block:: python
-
-   T = TypeVar("T")
-
-   class DataContext(Generic[T]):
-       selection_name: str | None
-       remaining_selection: str | None
-
-       def access_data(self) -> ContextManager[T]: ...
-       def __iter__(self): return iter((self._raw, self))
-
-   class DataAccess(Generic[T]):
-       def __init__(self, source: Source, quantity_name: str):
-           self._source = source
-           self._quantity_name = quantity_name
-
-       @classmethod
-       def from_data(cls, raw_data: T) -> DataAccess[T]:
-           """Wrap raw data directly (testing / composition)."""
-           return cls(DataSource(raw_data), quantity_name="")
-
-       def __call__(self, selection: str | None = None) -> Iterator[DataContext[T]]:
-           ...
-
-Usage inside a quantity:
-
-.. code-block:: python
-
-   for raw, _ in self._data(selection=selection):
-       raw.eigenvalues  # ← typed as RawBand, autocomplete works
+       @contextmanager
+       def access(self, quantity: str, selection: str | None = None):
+           key = (quantity, selection) if selection else quantity
+           if key not in self._data:
+               key = quantity  # fall back to unselected
+           yield self._data[key]
 
 
 Raw Data Definitions
@@ -121,122 +104,324 @@ For composition, a raw dataclass can embed another:
    @dataclass
    class RawDensity:
        charge: np.ndarray
-       structure: RawStructure  # subset passed to Structure.from_data()
+       structure: RawStructure  # subset passed to _StructureImpl.from_data()
 
 
-Quantities
-----------
+Quantities — The Dispatcher/Impl Split
+---------------------------------------
 
-Quantities are **plain classes** — no base class. They receive a
-``DataAccess[T]`` via their constructor and provide a ``from_data`` class
-method for direct construction from raw data.
+Each quantity is split into two classes:
+
+- **Dispatcher** (public, e.g. ``Band``) — the user-facing class attached to
+  ``Calculation``. It owns the ``Source``, parses multi-selections, calls
+  ``source.access()`` for each individual selection, constructs the Impl, and
+  merges results. The dispatcher does **not** have ``from_data``; that lives
+  exclusively on the Impl.
+
+- **Impl** (private, e.g. ``_BandImpl``) — constructed via ``from_data(raw)``.
+  Works with exactly one raw data object. Contains all transform logic. This is
+  the primary unit-testing target.
+
+
+Selection Context
+~~~~~~~~~~~~~~~~~
+
+``_parse_selections`` returns a list of ``SelectionContext`` named tuples, each
+carrying the resolved source name and the remaining (unconsumed) selection
+string:
 
 .. code-block:: python
 
-   @quantity("band")
-   class Band:
-       def __init__(self, data: DataAccess[RawBand]):
-           self._data = data
+   class SelectionContext(typing.NamedTuple):
+       selection_name: str | None       # resolved source (e.g. "kpoints_opt")
+       remaining_selection: str | None  # leftover after source is stripped
+
+   def _parse_selections(selection: str | None) -> list[SelectionContext]:
+       """Parse a user selection into individual (source, remainder) pairs.
+
+       Uses the schema to identify which part of the selection refers to a data
+       source and which part is forwarded to the Impl method.
+       """
+       if selection is None:
+           return [SelectionContext(None, None)]
+       tree = select.Tree.from_selection(selection)
+       result = []
+       for sel in tree.selections():
+           source_name, remaining = _match_source(sel)
+           result.append(SelectionContext(source_name, remaining))
+       return result
+
+
+Standalone Dispatch Functions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The dispatch logic is a set of standalone functions — not a method on any
+class. Each quantity's public methods call one of these. All extra arguments
+from the dispatcher method are forwarded to the Impl method.
+
+The core building block is ``_dispatch``, which iterates over parsed
+selections and calls the Impl method for each one:
+
+.. code-block:: python
+
+   def _dispatch(source, quantity_name, selection, impl_factory, method, *args, **kwargs):
+       """Core dispatch: parse selections, call method for each, collect results.
+
+       Parameters
+       ----------
+       source : Source
+           The data source (FileSource, DictSource, etc.).
+       quantity_name : str
+           Name used to look up data in the source.
+       selection : str | None
+           User-provided selection string (may contain multiple comma-separated items).
+       impl_factory : callable(raw, ...) -> Impl
+           Typically ``_BandImpl.from_data``. Called with the raw data object.
+       method : unbound method reference
+           The Impl method to call, e.g. ``_BandImpl.read``.
+       *args, **kwargs
+           Extra arguments forwarded to ``method(impl, *args, **kwargs)``.
+
+       Returns
+       -------
+       dict[str, result]
+           Maps selection_name (or "default") to each result.
+       """
+       contexts = _parse_selections(selection)
+       results = {}
+       for ctx in contexts:
+           with source.access(quantity_name, selection=ctx.selection_name) as raw:
+               impl = impl_factory(raw)
+               result = method(impl, *args, **kwargs)
+               key = ctx.selection_name or "default"
+               results[key] = result
+       return results
+
+Higher-level helpers differ only in how they merge the results. Each calls
+``_dispatch`` internally and is named after its merge strategy:
+
+.. code-block:: python
+
+   def merge_single(source, quantity_name, selection, impl_factory, method, *args, **kwargs):
+       """Dispatch and unwrap: return a single result or a dict if multiple.
+
+       - Single selection → return the result directly.
+       - Multiple selections → return {selection_name: result} dict.
+       """
+       results = _dispatch(source, quantity_name, selection, impl_factory, method, *args, **kwargs)
+       if len(results) == 1:
+           return next(iter(results.values()))
+       return results
+
+   def merge_graphs(source, quantity_name, selection, impl_factory, method, *args, **kwargs):
+       """Dispatch and merge Graph results into a single overlay Graph."""
+       results = _dispatch(source, quantity_name, selection, impl_factory, method, *args, **kwargs)
+       all_series = []
+       for sel, graph in results.items():
+           for series in graph.series:
+               series.label = sel
+               all_series.append(series)
+       return Graph(series=all_series)
+
+   def merge_dicts(source, quantity_name, selection, impl_factory, method, *args, **kwargs):
+       """Dispatch and merge dict results into a single combined dict.
+
+       Keys are prefixed with the selection name when multiple selections are present.
+       """
+       results = _dispatch(source, quantity_name, selection, impl_factory, method, *args, **kwargs)
+       if len(results) == 1:
+           return next(iter(results.values()))
+       combined = {}
+       for sel, d in results.items():
+           for k, v in d.items():
+               combined[f"{k}_{sel}"] = v
+       return combined
+
+
+Example: Band Quantity
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   # --- Impl: single raw data, pure transform logic ---
+
+   class _BandImpl:
+       """Processes a single band dataset. Testable without file I/O."""
+
+       def __init__(self, raw: RawBand):
+           self._raw = raw
 
        @classmethod
-       def from_data(cls, raw: RawBand) -> Band:
-           return cls(data=DataAccess.from_data(raw))
+       def from_data(cls, raw: RawBand) -> _BandImpl:
+           return cls(raw)
 
-       def read(self, selection: str | None = None) -> dict:
-           for raw, _ in self._data(selection=selection):
-               return {
-                   "eigenvalues": np.array(raw.eigenvalues) - raw.fermi_energy,
-                   ...
-               }
+       def read(self) -> dict:
+           return {
+               "kpoint_distances": np.array(self._raw.kpoint_distances),
+               "eigenvalues": np.array(self._raw.eigenvalues) - self._raw.fermi_energy,
+           }
 
-       def plot(self, selection: str | None = None) -> dict:
+       def plot(self) -> Graph:
+           data = self.read()
+           return Graph(series=[Series(x=data["kpoint_distances"], y=data["eigenvalues"])])
+
+   # --- Dispatcher ---
+
+   @quantity("band")
+   class Band:
+       """Public band structure quantity. Handles selection dispatch."""
+
+       def __init__(self, source: Source, quantity_name: str = "band"):
+           self._source = source
+           self._quantity_name = quantity_name
+
+       def read(self, selection: str | None = None) -> dict | dict[str, dict]:
+           return merge_single(
+               self._source, self._quantity_name, selection,
+               _BandImpl.from_data, _BandImpl.read,
+           )
+
+       def plot(self, selection: str | None = None) -> Graph:
+           return merge_graphs(
+               self._source, self._quantity_name, selection,
+               _BandImpl.from_data, _BandImpl.plot,
+           )
+
+Note: ``_BandImpl.read`` is passed as an unbound method reference — the
+dispatch function calls it as ``method(impl)``. Extra ``*args`` and
+``**kwargs`` from the dispatcher are forwarded, e.g.:
+
+.. code-block:: python
+
+   # Dispatcher method with extra arguments
+   def plot(self, selection=None, fermi_energy=None):
+       return merge_graphs(
+           self._source, self._quantity_name, selection,
+           _BandImpl.from_data, _BandImpl.plot,
+           fermi_energy=fermi_energy,
+       )
+
+   # Impl method receives them
+   class _BandImpl:
+       def plot(self, fermi_energy=None) -> Graph:
            ...
 
-``from_data`` serves two purposes:
 
-- **Testing**: construct a quantity with fake numpy data, no file I/O.
-- **Composition**: one quantity passes a raw data subset to another quantity's
-  ``from_data``.
+Separation of Concerns
+~~~~~~~~~~~~~~~~~~~~~~
+
+=============================  ============================  ==========================
+Responsibility                 Dispatcher (``Band``)         Impl (``_BandImpl``)
+=============================  ============================  ==========================
+Owns the Source                ✓
+Calls dispatch functions       ✓
+Parses multi-selection         (done by ``_parse_selections``)
+Opens data (context manager)   (done by ``_dispatch``)
+Constructs Impl from raw       (done by ``_dispatch``)
+Transform logic                                              ✓
+Testable without I/O                                         ✓ (via ``from_data``)
+=============================  ============================  ==========================
 
 
 Step Indexing
 ~~~~~~~~~~~~~
 
-Quantities defined over multiple ionic steps support ``__getitem__``. It
-returns a new instance sharing the same ``DataAccess`` but storing the step
-selection. Data is read lazily — only when ``read()`` or ``plot()`` is called.
+Step indexing lives on the **dispatcher**. ``__getitem__`` returns a copy of
+the dispatcher with the step selection stored. The dispatcher passes steps to
+the Impl via a partial ``impl_factory``:
 
 .. code-block:: python
 
+   class _StructureImpl:
+       def __init__(self, raw: RawStructure, steps=None):
+           self._raw = raw
+           self._steps = steps
+
+       @classmethod
+       def from_data(cls, raw: RawStructure, steps=None) -> _StructureImpl:
+           return cls(raw, steps=steps)
+
+       def read(self) -> dict:
+           return {
+               "lattice_vectors": slice_steps(self._raw.lattice_vectors, self._steps, default_ndim=2),
+               "positions": slice_steps(self._raw.positions, self._steps, default_ndim=2),
+           }
+
    @quantity("structure")
    class Structure:
-       def __init__(self, data: DataAccess[RawStructure], steps=None):
-           self._data = data
+       def __init__(self, source: Source, quantity_name: str = "structure", steps=None):
+           self._source = source
+           self._quantity_name = quantity_name
            self._steps = steps
 
        def __getitem__(self, steps) -> Structure:
-           return Structure(data=self._data, steps=steps)
+           return Structure(self._source, self._quantity_name, steps=steps)
 
-       def read(self) -> dict:
-           for raw, _ in self._data():
-               return {
-                   "lattice_vectors": slice_steps(raw.lattice_vectors, self._steps, single_step_ndim=2),
-                   ...
-               }
+       def _impl_factory(self, raw):
+           return _StructureImpl.from_data(raw, steps=self._steps)
 
-The ``slice_steps`` helper handles three cases:
+       def read(self, selection: str | None = None) -> dict:
+           return merge_single(
+               self._source, self._quantity_name, selection,
+               self._impl_factory, _StructureImpl.read,
+           )
+
+The ``slice_steps`` helper handles:
 
 - ``steps=None`` → return last step (default)
 - ``steps=3`` → return single step
 - ``steps=slice(1, 8)`` → return range of steps
-- Data has no step dimension (``ndim <= single_step_ndim``) → pass through unchanged
+- Data has no step dimension (``ndim <= default_ndim``) → pass through unchanged
 
 
 Composition Between Quantities
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When a quantity needs another quantity's logic, it calls ``from_data`` with the
-relevant subset of its raw data:
+When a quantity needs another quantity's logic, it uses the other Impl's
+``from_data`` directly — no Source needed:
 
 .. code-block:: python
 
-   @quantity("density")
-   class Density:
+   class _DensityImpl:
+       def __init__(self, raw: RawDensity):
+           self._raw = raw
+
        def read(self) -> dict:
-           for raw, _ in self._data():
-               structure = Structure.from_data(raw.structure)
-               return {
-                   "charge": np.array(raw.charge),
-                   "structure": structure.read(),
-               }
+           structure = _StructureImpl.from_data(self._raw.structure)
+           return {
+               "charge": np.array(self._raw.charge),
+               "structure": structure.read(),
+           }
+
+This keeps composition simple: one Impl calls another Impl's ``from_data``.
 
 
-Selection Forwarding
-~~~~~~~~~~~~~~~~~~~~
+Selection Parsing
+~~~~~~~~~~~~~~~~~
 
-Users pass a ``selection`` argument to methods. It propagates through
-``DataAccess.__call__`` to ``Source.access``, which uses it to select the
-appropriate dataset:
+Selection parsing is described in the `Selection Context`_ section above.
+``_parse_selections`` uses the schema to separate the source part from the
+remaining selection. The ``SelectionContext.remaining_selection`` is forwarded
+to the Impl method via ``**kwargs`` when the Impl method accepts a
+``selection`` parameter.
 
-.. code-block:: python
+Merging is handled by choosing the appropriate dispatch helper:
 
-   calc.band.plot(selection="custom_kpath")
-   # → DataAccess.__call__(selection="custom_kpath")
-   # → source.access("band", selection="custom_kpath")
+- ``merge_dicts`` — combines dict results with selection-prefixed keys (default for ``read``).
+- ``merge_graphs`` — overlays Graph results into one figure (for ``plot``).
 
 
 Registry & Decorator
 --------------------
 
-The ``@quantity()`` decorator registers a class and sets its
-``_quantity_name``:
+The ``@quantity()`` decorator registers the **dispatcher** class:
 
 .. code-block:: python
 
    @quantity("band")                   # → Calculation.band
    @quantity("dos", group="phonon")    # → Calculation.phonon.dos
 
-The registry maps names to classes (top-level) or to dicts of classes (groups):
+The registry maps names to dispatcher classes (top-level) or to dicts (groups):
 
 .. code-block:: python
 
@@ -250,9 +435,8 @@ The registry maps names to classes (top-level) or to dicts of classes (groups):
 Group
 -----
 
-A ``Group`` is a thin namespace. It receives the source and a dict of quantity
-classes. On attribute access it creates the quantity with
-``DataAccess(source, quantity_name)``.
+A ``Group`` is a thin namespace. It receives the source and a dict of
+dispatcher classes. On attribute access it instantiates the dispatcher.
 
 .. code-block:: python
 
@@ -262,14 +446,15 @@ classes. On attribute access it creates the quantity with
 
        def __getattr__(self, name: str):
            cls = self._quantities[name]
-           return cls(data=DataAccess(self._source, cls._quantity_name))
+           return cls(source=self._source, quantity_name=cls._quantity_name)
 
 
 Calculation
 -----------
 
-``Calculation`` is the public entry point. It resolves attributes from the
-registry, instantiating quantities or groups on first access.
+``Calculation`` is the public entry point. Immutable after construction.
+Resolves attributes from the registry, instantiating dispatchers or groups on
+first access.
 
 .. code-block:: python
 
@@ -286,7 +471,38 @@ registry, instantiating quantities or groups on first access.
            entry = _REGISTRY[name]
            if isinstance(entry, dict):
                return Group(self._source, entry)
-           return entry(data=DataAccess(self._source, entry._quantity_name))
+           return entry(source=self._source, quantity_name=entry._quantity_name)
+
+
+Testing Patterns
+----------------
+
+**Unit test an Impl (Approach A — no I/O, no Source):**
+
+.. code-block:: python
+
+   def test_band_read():
+       raw = RawBand(
+           kpoint_distances=np.array([0, 0.5, 1.0]),
+           eigenvalues=np.array([[0.0, 1.0, 2.0]]),
+           fermi_energy=0.5,
+       )
+       impl = _BandImpl.from_data(raw)
+       result = impl.read()
+       assert np.allclose(result["eigenvalues"], [[-0.5, 0.5, 1.5]])
+
+**Integration test via Calculation (Approach B — full pipeline, no files):**
+
+.. code-block:: python
+
+   def test_band_plot_multiselection():
+       source = DictSource({
+           ("band", "up"): RawBand(...),
+           ("band", "down"): RawBand(...),
+       })
+       calc = Calculation(source=source)
+       result = calc.band.plot(selection="up, down")
+       assert len(result.series) == 2
 
 
 Public API
@@ -302,3 +518,34 @@ The architecture preserves the existing user-facing API:
    calc.structure[3].read()
    calc.energy[1:8].plot()
    calc.band.plot(selection="custom")
+
+
+Resolved Decisions
+------------------
+
+The following were resolved during the design process:
+
+1. **Dispatcher does not have ``from_data``.**
+   Composition uses the Impl directly. External testing uses ``DictSource``.
+
+2. **Steps are passed to the Impl** (not applied after).
+   The Impl's ``from_data`` signature is ``from_data(raw, steps=None)``.
+
+3. **DictSource uses tuple keys** — ``(quantity, selection)``, falling back to
+   plain ``quantity`` string when selection is None.
+
+4. **Dispatch is a set of standalone functions** — ``_dispatch``,
+   ``dispatch_single``, ``dispatch_merge``. No mixin, no base class. All extra
+   arguments from the dispatcher method are forwarded via ``*args, **kwargs``.
+
+5. **Merge helpers are named after their strategy** — ``merge_dicts``, ``merge_graphs``.
+   Each calls ``_dispatch`` internally. No generic ``dispatch_merge`` with a merge 
+   parameter — the function name *is* the strategy.
+
+6. **``_parse_selections`` returns ``SelectionContext`` tuples** carrying
+   ``(selection_name, remaining_selection)`` — matching the previous
+   ``DataContext`` semantics but without iteration over a generic.
+
+7. **Impl methods are passed as unbound references** — ``_BandImpl.read``
+   instead of ``lambda impl: impl.read()``. The dispatch function calls
+   ``method(impl, *args, **kwargs)``.
