@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from __future__ import annotations
 
+import functools
 from contextlib import contextmanager
 from typing import Generic, Iterator, TypeVar
 
@@ -10,22 +11,11 @@ from py4vasp._util import select
 T = TypeVar("T")
 
 
-class DataContext(Generic[T]):
-    """One matched source in a DataAccess iteration.
+class _DataContext(Generic[T]):
+    """One matched source in a _DataAccess iteration.
 
     Carries raw data for one resolved source along with selection metadata.
-    Yielded by iterating over the result of ``DataAccess.__call__``.
-
-    Supports two usage patterns::
-
-        # Pattern A: explicit access
-        for context in data_access(selection):
-            with context.access_data() as raw:
-                process(raw, context.remaining_selection)
-
-        # Pattern B: tuple unpacking (convenience)
-        for raw, context in data_access(selection):
-            process(raw, context.remaining_selection)
+    Internal helper used by ``_dispatch``.
     """
 
     __slots__ = ("_raw", "selection_name", "remaining_selection")
@@ -61,16 +51,10 @@ class _DataSource:
         yield self._raw_data
 
 
-class DataAccess(Generic[T]):
-    """Generic callable that iterates over matched sources, yielding DataContext[T].
+class _DataAccess(Generic[T]):
+    """Internal helper that resolves source selections from schema and iterates contexts.
 
-    Constructed by Calculation (with a real source) or via ``from_data`` for testing.
-    Each call returns an iterable of ``DataContext`` — one per matched source.
-
-    Usage inside a quantity::
-
-        for raw, ctx in self._data(selection):
-            process(raw, ctx.remaining_selection)
+    Used by ``_dispatch`` to handle selection parsing and source access.
     """
 
     def __init__(self, source, quantity_name: str):
@@ -78,11 +62,11 @@ class DataAccess(Generic[T]):
         self._quantity_name = quantity_name
 
     @classmethod
-    def from_data(cls, raw_data: T) -> DataAccess[T]:
-        """Create a DataAccess that yields the given raw data directly."""
+    def from_data(cls, raw_data: T) -> _DataAccess[T]:
+        """Create a _DataAccess that yields the given raw data directly."""
         return cls(_DataSource(raw_data), quantity_name="")
 
-    def __call__(self, selection: str | None = None) -> Iterator[DataContext[T]]:
+    def __call__(self, selection: str | None = None) -> Iterator[_DataContext[T]]:
         """Return an iterable of DataContext[T], one per matched source."""
         if self._quantity_name:
             return self._iterate_with_resolution(selection)
@@ -91,7 +75,7 @@ class DataAccess(Generic[T]):
     def _iterate_passthrough(self, selection):
         """from_data path: no schema lookup, yield raw directly."""
         with self._source.access(self._quantity_name, selection=selection) as raw:
-            yield DataContext(
+            yield _DataContext(
                 raw=raw,
                 selection_name=None,
                 remaining_selection=selection,
@@ -104,7 +88,7 @@ class DataAccess(Generic[T]):
             remaining = select.selections_to_string(remaining_parts)
             remaining = remaining if remaining else None
             with self._source.access(self._quantity_name, selection=source_name) as raw:
-                yield DataContext(
+                yield _DataContext(
                     raw=raw,
                     selection_name=source_name,
                     remaining_selection=remaining,
@@ -144,28 +128,70 @@ class DataAccess(Generic[T]):
         return option.lower(), remaining
 
 
-def merge(results):
-    """Collect a generator of results and unwrap or combine them.
+def _dispatch(source, quantity_name, selection, impl_factory, method, *args, **kwargs):
+    """Resolve selections, call impl method per selection, return ``{key: result}``.
 
-    Designed for use with the ``DataAccess`` iteration pattern::
-
-        result = merge(
-            process(raw, ctx.remaining_selection)
-            for raw, ctx in self._data(selection)
-        )
-
-    Rules:
-
-    - Empty or all-``None`` → ``None``
-    - Single non-``None`` result → returned as-is (unwrapped)
-    - Multiple non-``None`` results → merged via ``dict.update``
+    For each resolved selection, opens the source, constructs an Impl via
+    ``impl_factory(raw)``, and calls ``method(impl, *args, **kwargs)``.  The result
+    is stored under the selection name (or ``"default"`` when there is no explicit
+    source selection).
     """
-    collected = [r for r in results if r is not None]
-    if not collected:
-        return None
-    if len(collected) == 1:
-        return collected[0]
+    data_access = _DataAccess(source, quantity_name)
+    results = {}
+    for raw, ctx in data_access(selection=selection):
+        impl = impl_factory(raw)
+        result = method(impl, *args, **kwargs)
+        key = ctx.selection_name if ctx.selection_name is not None else "default"
+        results[key] = result
+    return results
+
+
+def merge_single(
+    source, quantity_name, selection, impl_factory, method, *args, **kwargs
+):
+    """Dispatch and return the single result or a ``{selection: result}`` dict.
+
+    - **Single selection** → result returned directly (unwrapped).
+    - **Multiple selections** → ``{selection_name: result, …}`` dict.
+    """
+    results = _dispatch(
+        source, quantity_name, selection, impl_factory, method, *args, **kwargs
+    )
+    if len(results) == 1:
+        return next(iter(results.values()))
+    return results
+
+
+def merge_graphs(
+    source, quantity_name, selection, impl_factory, method, *args, **kwargs
+):
+    """Dispatch and overlay all ``Graph`` results into a single ``Graph``.
+
+    Uses ``Graph.__add__`` (via ``functools.reduce``) so that all series are
+    combined into one graph for multi-selection plots.
+    """
+    results = _dispatch(
+        source, quantity_name, selection, impl_factory, method, *args, **kwargs
+    )
+    return functools.reduce(lambda a, b: a + b, results.values())
+
+
+def merge_dicts(
+    source, quantity_name, selection, impl_factory, method, *args, **kwargs
+):
+    """Dispatch and merge ``dict`` results.
+
+    - **Single selection** → dict returned directly.
+    - **Multiple selections** → flat dict with keys prefixed by the selection
+      name: ``{original_key}_{selection_name}``.
+    """
+    results = _dispatch(
+        source, quantity_name, selection, impl_factory, method, *args, **kwargs
+    )
+    if len(results) == 1:
+        return next(iter(results.values()))
     combined = {}
-    for r in collected:
-        combined.update(r)
+    for sel, d in results.items():
+        for k, v in d.items():
+            combined[f"{k}_{sel}"] = v
     return combined

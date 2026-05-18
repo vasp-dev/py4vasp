@@ -4,10 +4,11 @@ import dataclasses
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 
-from py4vasp import exception
-from py4vasp._calculation.data_access import DataAccess, DataContext, merge
+from py4vasp._calculation.data_access import merge_dicts, merge_graphs, merge_single
+from py4vasp._third_party.graph import Graph, Series
 
 SELECTION = "alternative"
 
@@ -15,11 +16,6 @@ SELECTION = "alternative"
 @dataclasses.dataclass
 class RawBand:
     fermi_energy: float = 0.5
-
-
-@dataclasses.dataclass
-class RawStructure:
-    elements: list = dataclasses.field(default_factory=list)
 
 
 @pytest.fixture
@@ -43,234 +39,177 @@ class SpySource:
         yield self._raw
 
 
-class TestDataContext:
-    def test_tuple_unpacking(self):
-        raw = RawBand()
-        ctx = DataContext(raw, selection_name="src", remaining_selection="rem")
-        unpacked_raw, unpacked_ctx = ctx
-        assert unpacked_raw is raw
-        assert unpacked_ctx is ctx
+def _make_impl(value):
+    """Build a minimal Impl whose read() returns a dict and plot() returns a Graph."""
 
-    def test_access_data_yields_raw(self):
-        raw = RawBand()
-        ctx = DataContext(raw, selection_name=None, remaining_selection=None)
-        with ctx.access_data() as raw_data:
-            assert raw_data is raw
+    class _Impl:
+        def __init__(self, raw):
+            self._raw = raw
 
-    def test_selection_attributes(self):
-        ctx = DataContext(
-            RawBand(), selection_name="kpoints_opt", remaining_selection="Sr p"
-        )
-        assert ctx.selection_name == "kpoints_opt"
-        assert ctx.remaining_selection == "Sr p"
+        @classmethod
+        def from_data(cls, raw):
+            return cls(raw)
 
+        def read(self):
+            return {"value": self._raw.fermi_energy}
 
-class TestFromData:
-    """DataAccess.from_data(raw) wraps raw data for direct access."""
-
-    def test_yields_one_context(self):
-        raw = RawBand()
-        contexts = list(DataAccess.from_data(raw)())
-        assert len(contexts) == 1
-
-    def test_access_data_yields_raw_object(self):
-        raw = RawBand()
-        for context in DataAccess.from_data(raw)():
-            with context.access_data() as raw_data:
-                assert raw_data is raw
-
-    def test_selection_name_is_none(self):
-        raw = RawBand()
-        for context in DataAccess.from_data(raw)():
-            assert context.selection_name is None
-
-    def test_remaining_selection_is_none_without_selection(self):
-        raw = RawBand()
-        for context in DataAccess.from_data(raw)():
-            assert context.remaining_selection is None
-
-    def test_selection_passed_as_remaining(self):
-        raw = RawBand()
-        for context in DataAccess.from_data(raw)(selection="Sr p"):
-            assert context.remaining_selection == "Sr p"
-            assert context.selection_name is None
-
-    def test_tuple_unpacking_yields_raw_and_context(self):
-        raw = RawBand()
-        for raw_data, ctx in DataAccess.from_data(raw)():
-            assert raw_data is raw
-            assert isinstance(ctx, DataContext)
-            assert ctx.selection_name is None
-
-    def test_each_call_creates_fresh_iterator(self):
-        raw = RawBand()
-        access = DataAccess.from_data(raw)
-        assert len(list(access())) == 1
-        assert len(list(access())) == 1
-
-
-class TestSourceBacked:
-    """DataAccess(source, quantity_name) delegates to the source."""
-
-    def test_calls_source_with_quantity_name(self):
-        spy = SpySource(RawBand())
-        list(DataAccess(spy, "band")())
-        assert spy.calls[0]["quantity"] == "band"
-
-    def test_yields_raw_from_source(self):
-        raw = RawBand()
-        spy = SpySource(raw)
-        for raw_data, _ in DataAccess(spy, "band")():
-            assert raw_data is raw
-
-    def test_no_selection_passes_none_to_source(self):
-        spy = SpySource(RawBand())
-        list(DataAccess(spy, "band")())
-        assert spy.calls[0]["selection"] is None
-
-
-class TestSourceResolution:
-    """DataAccess resolves source names from the schema and strips them from selection."""
-
-    def test_single_source_recognized(self, mock_schema):
-        raw = RawBand()
-        spy = SpySource(raw)
-        contexts = list(DataAccess(spy, "example")(selection=SELECTION))
-        assert len(contexts) == 1
-        _, ctx = contexts[0]
-        assert ctx.selection_name == SELECTION
-        assert ctx.remaining_selection is None
-        assert spy.calls[0]["selection"] == SELECTION
-
-    def test_source_stripped_from_compound_selection(self, mock_schema):
-        raw = RawBand()
-        spy = SpySource(raw)
-        contexts = list(DataAccess(spy, "example")(selection=f"{SELECTION}(Sr p)"))
-        assert len(contexts) == 1
-        _, ctx = contexts[0]
-        assert ctx.selection_name == SELECTION
-        assert ctx.remaining_selection == "Sr, p"
-        assert spy.calls[0]["selection"] == SELECTION
-
-    def test_non_source_tokens_pass_through(self, mock_schema):
-        raw = RawBand()
-        spy = SpySource(raw)
-        contexts = list(DataAccess(spy, "example")(selection="Sr p"))
-        assert len(contexts) == 1
-        _, ctx = contexts[0]
-        assert ctx.selection_name is None
-        assert ctx.remaining_selection == "Sr, p"
-        assert spy.calls[0]["selection"] is None
-
-    def test_whitespace_and_case_normalization(self, mock_schema):
-        raw = RawBand()
-        spy = SpySource(raw)
-        selection = f"  {SELECTION.upper()}  "
-        contexts = list(DataAccess(spy, "example")(selection=selection))
-        _, ctx = contexts[0]
-        assert ctx.selection_name == SELECTION
-        assert spy.calls[0]["selection"] == SELECTION
-
-    def test_multiple_sources_yield_multiple_contexts(self, mock_schema):
-        raw = RawBand()
-        spy = SpySource(raw)
-        contexts = list(DataAccess(spy, "example")(selection=f"default {SELECTION}"))
-        assert len(contexts) == 2
-        names = {ctx.selection_name for _, ctx in contexts}
-        assert names == {"default", SELECTION}
-
-    def test_mixed_source_and_non_source(self, mock_schema):
-        raw = RawBand()
-        spy = SpySource(raw)
-        contexts = list(DataAccess(spy, "example")(selection=f"foo {SELECTION}(bar)"))
-        assert len(contexts) == 2
-        by_name = {ctx.selection_name: ctx for _, ctx in contexts}
-        assert by_name[None].remaining_selection == "foo"
-        assert by_name[SELECTION].remaining_selection == "bar"
-
-    def test_from_data_skips_schema_lookup(self, mock_schema):
-        raw = RawBand()
-        for _, ctx in DataAccess.from_data(raw)(selection=SELECTION):
-            assert ctx.selection_name is None
-            assert ctx.remaining_selection == SELECTION
-        mock_schema.selections.assert_not_called()
-
-    def test_no_selection_yields_default_source(self, mock_schema):
-        raw = RawBand()
-        spy = SpySource(raw)
-        contexts = list(DataAccess(spy, "example")())
-        assert len(contexts) == 1
-        _, ctx = contexts[0]
-        assert ctx.selection_name is None
-        assert ctx.remaining_selection is None
-
-
-class TestErrorHandling:
-    """DataAccess raises appropriate errors for invalid selections."""
-
-    @pytest.mark.parametrize("operator", ["+", "-"])
-    def test_operations_with_source_raise_not_implemented(self, operator, mock_schema):
-        spy = SpySource(RawBand())
-        with pytest.raises(exception.NotImplemented):
-            list(
-                DataAccess(spy, "example")(selection=f"default {operator} {SELECTION}")
+        def plot(self):
+            return Graph(
+                Series(x=np.array([1, 2]), y=np.array([self._raw.fermi_energy] * 2))
             )
 
-    def test_non_string_selection_raises_error(self, mock_schema):
-        spy = SpySource(RawBand())
-        with pytest.raises(exception.IncorrectUsage):
-            list(DataAccess(spy, "example")(selection=123))
-
-    def test_operations_from_data_pass_through(self):
-        """from_data does not do schema lookup, so operations are just passed as-is."""
-        raw = RawBand()
-        for _, ctx in DataAccess.from_data(raw)(selection="A + B"):
-            assert ctx.remaining_selection == "A + B"
+    return _Impl
 
 
-class TestMerge:
-    """merge() collects a generator of results and unwraps or combines them."""
+class TestMergeSingle:
+    """merge_single dispatches over selections and unwraps or returns a dict."""
 
-    def test_empty_returns_none(self):
-        assert merge(x for x in []) is None
+    def test_no_selection_returns_single_result(self):
+        raw = RawBand(fermi_energy=1.0)
+        source = SpySource(raw)
+        Impl = _make_impl(1.0)
+        result = merge_single(source, "band", None, Impl.from_data, Impl.read)
+        assert result == {"value": 1.0}
 
-    def test_single_none_returns_none(self):
-        assert merge(x for x in [None]) is None
+    def test_single_selection_returns_unwrapped_result(self, mock_schema):
+        raw = RawBand(fermi_energy=2.0)
+        source = SpySource(raw)
+        Impl = _make_impl(2.0)
+        result = merge_single(source, "example", SELECTION, Impl.from_data, Impl.read)
+        assert result == {"value": 2.0}
 
-    def test_all_none_returns_none(self):
-        assert merge(x for x in [None, None]) is None
-
-    def test_single_result_unwrapped(self):
-        result = merge(x for x in [{"a": 1}])
-        assert result == {"a": 1}
-
-    def test_single_result_can_be_any_type(self):
-        sentinel = object()
-        result = merge(x for x in [sentinel])
-        assert result is sentinel
-
-    def test_multiple_dict_results_merged(self):
-        result = merge(x for x in [{"a": 1}, {"b": 2}])
-        assert result == {"a": 1, "b": 2}
-
-    def test_none_values_skipped_in_multi_result(self):
-        result = merge(x for x in [None, {"a": 1}])
-        assert result == {"a": 1}
-
-    def test_primary_pattern_with_data_access(self):
-        """merge() works with the DataAccess iteration pattern."""
-        raw = RawBand(fermi_energy=0.5)
-        data_access = DataAccess.from_data(raw)
-        result = merge({"fermi_energy": r.fermi_energy} for r, _ in data_access())
-        assert result == {"fermi_energy": 0.5}
-
-    def test_multi_source_pattern_with_data_access(self, mock_schema):
-        """merge() combines results from multiple sources."""
-        raw = RawBand(fermi_energy=0.5)
-        spy = SpySource(raw)
-        data_access = DataAccess(spy, "example")
-        result = merge(
-            {ctx.selection_name or "default": raw.fermi_energy}
-            for raw, ctx in data_access(selection=f"default {SELECTION}")
+    def test_multiple_selections_return_dict(self, mock_schema):
+        raw = RawBand(fermi_energy=3.0)
+        source = SpySource(raw)
+        Impl = _make_impl(3.0)
+        result = merge_single(
+            source, "example", f"default {SELECTION}", Impl.from_data, Impl.read
         )
-        assert result == {"default": 0.5, SELECTION: 0.5}
+        assert isinstance(result, dict)
+        assert set(result.keys()) == {"default", SELECTION}
+        assert result["default"] == {"value": 3.0}
+
+    def test_extra_kwargs_forwarded_to_method(self):
+        raw = RawBand(fermi_energy=1.0)
+        source = SpySource(raw)
+        received = {}
+
+        class _ImplWithKwarg:
+            def __init__(self, raw):
+                self._raw = raw
+
+            @classmethod
+            def from_data(cls, raw):
+                return cls(raw)
+
+            def read(self, scale=1):
+                received["scale"] = scale
+                return {"value": self._raw.fermi_energy * scale}
+
+        result = merge_single(
+            source, "band", None, _ImplWithKwarg.from_data, _ImplWithKwarg.read, scale=5
+        )
+        assert received["scale"] == 5
+        assert result == {"value": 5.0}
+
+    def test_source_is_called_with_resolved_selection(self, mock_schema):
+        raw = RawBand(fermi_energy=0.0)
+        source = SpySource(raw)
+        Impl = _make_impl(0.0)
+        merge_single(source, "example", SELECTION, Impl.from_data, Impl.read)
+        assert source.calls[0]["selection"] == SELECTION
+        assert source.calls[0]["quantity"] == "example"
+
+
+class TestMergeGraphs:
+    """merge_graphs dispatches and combines Graph results via Graph.__add__."""
+
+    def test_single_selection_returns_graph(self):
+        raw = RawBand(fermi_energy=1.0)
+        source = SpySource(raw)
+        Impl = _make_impl(1.0)
+        result = merge_graphs(source, "band", None, Impl.from_data, Impl.plot)
+        assert isinstance(result, Graph)
+        assert len(result) == 1
+
+    def test_multiple_selections_merged_into_one_graph(self, mock_schema):
+        raw = RawBand(fermi_energy=1.0)
+        source = SpySource(raw)
+        Impl = _make_impl(1.0)
+        result = merge_graphs(
+            source, "example", f"default {SELECTION}", Impl.from_data, Impl.plot
+        )
+        assert isinstance(result, Graph)
+        assert len(result) == 2
+
+    def test_extra_kwargs_forwarded_to_method(self):
+        raw = RawBand(fermi_energy=1.0)
+        source = SpySource(raw)
+        received = {}
+
+        class _ImplWithKwarg:
+            def __init__(self, raw):
+                self._raw = raw
+
+            @classmethod
+            def from_data(cls, raw):
+                return cls(raw)
+
+            def plot(self, label="default"):
+                received["label"] = label
+                return Graph(Series(x=np.array([1]), y=np.array([1.0]), label=label))
+
+        merge_graphs(
+            source,
+            "band",
+            None,
+            _ImplWithKwarg.from_data,
+            _ImplWithKwarg.plot,
+            label="custom",
+        )
+        assert received["label"] == "custom"
+
+
+class TestMergeDicts:
+    """merge_dicts dispatches and merges dict results, prefixing keys for multiple selections."""
+
+    def test_single_selection_returns_dict_unwrapped(self):
+        raw = RawBand(fermi_energy=1.0)
+        source = SpySource(raw)
+        Impl = _make_impl(1.0)
+        result = merge_dicts(source, "band", None, Impl.from_data, Impl.read)
+        assert result == {"value": 1.0}
+
+    def test_multiple_selections_prefix_keys(self, mock_schema):
+        raw = RawBand(fermi_energy=2.0)
+        source = SpySource(raw)
+        Impl = _make_impl(2.0)
+        result = merge_dicts(
+            source, "example", f"default {SELECTION}", Impl.from_data, Impl.read
+        )
+        assert "value_default" in result
+        assert f"value_{SELECTION}" in result
+        assert result["value_default"] == 2.0
+
+    def test_extra_kwargs_forwarded_to_method(self):
+        raw = RawBand(fermi_energy=1.0)
+        source = SpySource(raw)
+        received = {}
+
+        class _ImplWithKwarg:
+            def __init__(self, raw):
+                self._raw = raw
+
+            @classmethod
+            def from_data(cls, raw):
+                return cls(raw)
+
+            def read(self, scale=1):
+                received["scale"] = scale
+                return {"value": self._raw.fermi_energy * scale}
+
+        result = merge_dicts(
+            source, "band", None, _ImplWithKwarg.from_data, _ImplWithKwarg.read, scale=3
+        )
+        assert received["scale"] == 3
+        assert result == {"value": 3.0}
