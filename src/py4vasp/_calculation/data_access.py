@@ -142,3 +142,30 @@ class DataAccess(Generic[T]):
             )
             raise exception.NotImplemented(message)
         return option.lower(), remaining
+
+
+def merge(results):
+    """Collect a generator of results and unwrap or combine them.
+
+    Designed for use with the ``DataAccess`` iteration pattern::
+
+        result = merge(
+            process(raw, ctx.remaining_selection)
+            for raw, ctx in self._data(selection)
+        )
+
+    Rules:
+
+    - Empty or all-``None`` → ``None``
+    - Single non-``None`` result → returned as-is (unwrapped)
+    - Multiple non-``None`` results → merged via ``dict.update``
+    """
+    collected = [r for r in results if r is not None]
+    if not collected:
+        return None
+    if len(collected) == 1:
+        return collected[0]
+    combined = {}
+    for r in collected:
+        combined.update(r)
+    return combined

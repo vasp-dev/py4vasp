@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation.data_access import DataAccess, DataContext
+from py4vasp._calculation.data_access import DataAccess, DataContext, merge
 
 SELECTION = "alternative"
 
@@ -226,3 +226,51 @@ class TestErrorHandling:
         raw = RawBand()
         for _, ctx in DataAccess.from_data(raw)(selection="A + B"):
             assert ctx.remaining_selection == "A + B"
+
+
+class TestMerge:
+    """merge() collects a generator of results and unwraps or combines them."""
+
+    def test_empty_returns_none(self):
+        assert merge(x for x in []) is None
+
+    def test_single_none_returns_none(self):
+        assert merge(x for x in [None]) is None
+
+    def test_all_none_returns_none(self):
+        assert merge(x for x in [None, None]) is None
+
+    def test_single_result_unwrapped(self):
+        result = merge(x for x in [{"a": 1}])
+        assert result == {"a": 1}
+
+    def test_single_result_can_be_any_type(self):
+        sentinel = object()
+        result = merge(x for x in [sentinel])
+        assert result is sentinel
+
+    def test_multiple_dict_results_merged(self):
+        result = merge(x for x in [{"a": 1}, {"b": 2}])
+        assert result == {"a": 1, "b": 2}
+
+    def test_none_values_skipped_in_multi_result(self):
+        result = merge(x for x in [None, {"a": 1}])
+        assert result == {"a": 1}
+
+    def test_primary_pattern_with_data_access(self):
+        """merge() works with the DataAccess iteration pattern."""
+        raw = RawBand(fermi_energy=0.5)
+        data_access = DataAccess.from_data(raw)
+        result = merge({"fermi_energy": r.fermi_energy} for r, _ in data_access())
+        assert result == {"fermi_energy": 0.5}
+
+    def test_multi_source_pattern_with_data_access(self, mock_schema):
+        """merge() combines results from multiple sources."""
+        raw = RawBand(fermi_energy=0.5)
+        spy = SpySource(raw)
+        data_access = DataAccess(spy, "example")
+        result = merge(
+            {ctx.selection_name or "default": raw.fermi_energy}
+            for raw, ctx in data_access(selection=f"default {SELECTION}")
+        )
+        assert result == {"default": 0.5, SELECTION: 0.5}
