@@ -3,7 +3,7 @@ name: port-quantity
 description: "Port a py4vasp quantity from the inheritance-based Refinery architecture to the new Dispatcher/Impl architecture. USE WHEN: migrating an existing quantity class, porting tests, or adding a new quantity. Triggers: 'port quantity', 'migrate to new architecture', 'convert to composition', 'new architecture', 'refactor quantity'."
 ---
 
-# Port a py4vasp Quantity to the Dispatcher/Impl Architecture
+# Port a py4vasp Quantity to the Dispatcher/Handler Architecture
 
 Port an existing `Refinery`-based quantity to the new architecture described in `docs/architecture/calculation.rst`.
 
@@ -11,10 +11,10 @@ Port an existing `Refinery`-based quantity to the new architecture described in 
 
 Each quantity is split into two classes:
 
-- **Dispatcher** (public, e.g. ``Band``) — user-facing, attached to ``Calculation``. Owns the ``Source``, calls standalone dispatch functions that parse selections, open data, construct the Impl, call methods, and merge results.
-- **Impl** (private, e.g. ``_BandImpl``) — constructed via ``from_data(raw)``. Works with exactly one raw data object. Contains all transform logic. Primary unit-testing target.
+- **Dispatcher** (public, e.g. ``Band``) — user-facing, attached to ``Calculation``. Owns the ``Source``, calls standalone dispatch functions that parse selections, open data, construct the Handler, call methods, and merge results.
+- **Handler** (private, e.g. ``BandHandler``) — constructed via ``from_data(raw)``. Works with exactly one raw data object. Contains all transform logic. Primary unit-testing target.
 
-The dispatcher does **not** have ``from_data``. That lives exclusively on the Impl.
+The dispatcher does **not** have ``from_data``. That lives exclusively on the Handler.
 
 ### Selection dispatch
 
@@ -22,30 +22,30 @@ Selection dispatch is handled by standalone functions named after their merge
 strategy. The dispatcher just calls the appropriate one:
 
 ```python
-def merge_graphs(source, quantity_name, selection, impl_factory, method, *args, **kwargs):
+def merge_default(source, quantity_name, selection, handler_factory, method, *args, **kwargs):
+    """Use this if no specific merge strategy is required. This will merge the results
+    into a dict by selection name if more than one result is returned."""
+    ...
+
+def merge_graphs(source, quantity_name, selection, handler_factory, method, *args, **kwargs):
     """Overlay Graph results into a single figure."""
     ...
 
-def merge_dicts(source, quantity_name, selection, impl_factory, method, *args, **kwargs):
-    """Combine dict results with selection-prefixed keys."""
-    ...
-
-def merge_single(source, quantity_name, selection, impl_factory, method, *args, **kwargs):
-    """Return one result unwrapped, or a dict for multiple. EXCEPTION only."""
+def merge_strings(source, quantity_name, selection, handler_factory, method, *args, **kwargs):
+    """Return a single string by concatenating results for all selections."""
     ...
 ```
 
 **Choosing the merge strategy:**
 
-- `merge_dicts` — **the default** for every method that returns a `dict`. Use this almost always.
+- `merge_default` — **the default** for every method. Use this almost always.
 - `merge_graphs` — for methods that return a `Graph` (typically `plot`).
-- `merge_single` — **the exception**. Use only when the method must return exactly one
-  element and returning a dict for multiple selections would be wrong (very rare).
+- `merge_strings` — for methods that return a string (e.g. `__str__`).
 
 All call the inner `_dispatch` which:
 1. Parses `selection` via `_parse_selections` → list of `SelectionContext(selection_name, remaining_selection)`.
 2. For each context, calls `source.access(quantity_name, selection=ctx.selection_name)`.
-3. Inside the context, calls `impl_factory(raw)` then `method(impl, *args, **kwargs)`.
+3. Inside the context, calls `handler_factory(raw)` then `method(handler, *args, **kwargs)`.
 4. Collects results as `{selection_name: result}`.
 
 ```python
@@ -54,24 +54,26 @@ class SelectionContext(typing.NamedTuple):
     remaining_selection: str | None
 ```
 
-### Impl pattern
+### Handler pattern
 
-Type hints on `_raw` and in `from_data` are **mandatory** — never omit them.
-They document which raw dataclass the Impl works with and are essential for
+Type hints on `_raw_band` and in `from_data` are **mandatory** — never omit them.
+They document which raw dataclass the Handler works with and are essential for
 readability and static analysis.
 
 ```python
-class _BandImpl:
-    def __init__(self, raw: raw_data.Band):
-        self._raw = raw
+from py4vasp import raw
+
+class BandHandler:
+    def __init__(self, raw_band: raw.Band):
+        self._raw_band = raw_band
 
     @classmethod
-    def from_data(cls, raw: raw_data.Band) -> _BandImpl:
-        return cls(raw)
+    def from_data(cls, raw_band: raw.Band) -> "BandHandler":
+        return cls(raw_band)
 
     def read(self) -> dict:
         return {
-            "eigenvalues": np.array(self._raw.eigenvalues) - self._raw.fermi_energy,
+            "eigenvalues": np.array(self._raw_band.eigenvalues) - self._raw_band.fermi_energy,
             ...
         }
 
@@ -89,9 +91,9 @@ class Band:
         self._quantity_name = quantity_name
 
     def read(self, selection: str | None = None) -> dict:
-        return merge_dicts(
+        return merge_default(
             self._source, self._quantity_name, selection,
-            _BandImpl.from_data, _BandImpl.read,
+            BandHandler.from_data, BandHandler.read,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
@@ -101,7 +103,7 @@ class Band:
     def plot(self, selection: str | None = None) -> Graph:
         return merge_graphs(
             self._source, self._quantity_name, selection,
-            _BandImpl.from_data, _BandImpl.plot,
+            BandHandler.from_data, BandHandler.plot,
         )
 ```
 
@@ -116,12 +118,12 @@ removed.** In the new architecture, `to_dict` is a thin alias that delegates to
 
 ```python
 # Tests for to_dict
-def test_to_dict_matches_read(raw):
-    impl = _BandgapImpl.from_data(raw)
-    assert impl.to_dict() == impl.read()  # or via dispatcher:
+def test_to_dict_matches_read(raw_bandgap):
+    handler = BandgapHandler.from_data(raw_bandgap)
+    assert handler.to_dict() == handler.read()  # or via dispatcher:
 
-def test_dispatcher_to_dict_matches_read(raw):
-    source = DataSource(raw)
+def test_dispatcher_to_dict_matches_read(raw_bandgap):
+    source = DataSource(raw_bandgap)
     dispatcher = Bandgap(source=source, quantity_name="bandgap")
     assert dispatcher.to_dict() == dispatcher.read()
 ```
@@ -132,7 +134,7 @@ Extra arguments from the dispatcher method are forwarded:
 def plot(self, selection=None, fermi_energy=None):
     return merge_graphs(
         self._source, self._quantity_name, selection,
-        _BandImpl.from_data, _BandImpl.plot,
+        BandHandler.from_data, BandHandler.plot,
         fermi_energy=fermi_energy,
     )
 ```
@@ -143,7 +145,7 @@ def plot(self, selection=None, fermi_energy=None):
 
 ### 1 — Identify the raw dataclass
 
-Open `src/py4vasp/_raw/data.py`. Find the dataclass matching this quantity (CamelCase of the quantity name). This becomes the type for the Impl's `_raw` attribute. Note all fields and their types.
+Open `src/py4vasp/_raw/data.py`. Find the dataclass matching this quantity (CamelCase of the quantity name). This becomes the type for the Handler's `_raw_<quantity>` attribute. Note all fields and their types.
 
 Example for `bandgap`:
 ```python
@@ -153,12 +155,12 @@ class Bandgap:
     values: VaspData
 ```
 
-### 2 — Create the Impl class
+### 2 — Create the Handler class
 
-Create a private `_<Name>Impl` class. It takes raw data in its constructor and has a `from_data` classmethod. Move all transform logic here.
+Create a private `<Quantity>Handler` class. It takes raw data in its constructor and has a `from_data` classmethod. Move all transform logic here.
 
-Type hints on `_raw` and in `from_data` are **mandatory**. Always use the exact
-raw dataclass type from `_raw/data.py`.
+Type hints on `_raw_<quantity>` and in `from_data` are **mandatory**. Always use the exact
+raw dataclass type from `py4vasp.raw` defined in `py4vasp/_raw/data.py`.
 
 ```python
 # Before (on the Refinery)
@@ -173,15 +175,15 @@ class Bandgap(slice_.Mixin, base.Refinery, graph.Mixin):
             "fermi_energy": self._get("Fermi energy", component=0),
         }
 
-# After (Impl)
-class _BandgapImpl:
-    def __init__(self, raw: raw_data.Bandgap, steps=None):
-        self._raw = raw
+# After (Handler)
+class _BandgapHandler:
+    def __init__(self, raw_bandgap: raw.Bandgap, steps=None):
+        self._raw_bandgap = raw_bandgap
         self._steps = steps
 
     @classmethod
-    def from_data(cls, raw: raw_data.Bandgap, steps=None) -> _BandgapImpl:
-        return cls(raw, steps=steps)
+    def from_data(cls, raw_bandgap: raw.Bandgap, steps=None) -> _BandgapHandler:
+        return cls(raw_bandgap, steps=steps)
 
     def read(self) -> dict:
         return {
@@ -192,9 +194,9 @@ class _BandgapImpl:
 ```
 
 Key changes:
-- Replace `self._raw_data` with `self._raw` everywhere in the Impl.
-- Remove `@base.data_access` decorators — Impl methods are plain methods.
-- The Impl never touches `Source` or selection dispatch.
+- Replace `self._raw_data` with `self._raw_<quantity>` everywhere in the Handler.
+- Remove `@base.data_access` decorators — Handler methods are plain methods.
+- The Handler never touches `Source` or selection dispatch.
 
 ### 3 — Create the Dispatcher class
 
@@ -211,13 +213,13 @@ class Bandgap(graph.Mixin):
     def __getitem__(self, steps) -> Bandgap:
         return Bandgap(self._source, self._quantity_name, steps=steps)
 
-    def _impl_factory(self, raw):
-        return _BandgapImpl.from_data(raw, steps=self._steps)
+    def _handler_factory(self, raw):
+        return BandgapHandler.from_data(raw, steps=self._steps)
 
     def read(self, selection: str | None = None) -> dict:
-        return merge_dicts(
+        return merge_default(
             self._source, self._quantity_name, selection,
-            self._impl_factory, _BandgapImpl.read,
+            self._handler_factory, BandgapHandler.read,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
@@ -226,86 +228,86 @@ class Bandgap(graph.Mixin):
     def plot(self, selection: str | None = None) -> Graph:
         return merge_graphs(
             self._source, self._quantity_name, selection,
-            self._impl_factory, _BandgapImpl.plot,
-            selection=selection,  # if the Impl's plot method needs the selection
+            self._handler_factory, BandgapHandler.plot,
+            selection=selection,  # if the Handler's plot method needs the selection
         )
 ```
 
-For step-indexed quantities, use `self._impl_factory` as a bound method that captures `self._steps` via the partial pattern shown above.
+For step-indexed quantities, use `self._handler_factory` as a bound method that captures `self._steps` via the partial pattern shown above.
 
-### 4 — Move private helpers to the Impl
+### 4 — Move private helpers to the Handler
 
-Private helpers (`_gap`, `_get`, `_kpoint`, `_spin_polarized`, etc.) that read `self._raw_data` move to the Impl and read `self._raw` instead.
+Private helpers (`_gap`, `_get`, `_kpoint`, `_spin_polarized`, etc.) that read `self._raw_data` move to the Handler and read `self._raw_<quantity>` instead.
 
 ```python
 # Before (Refinery)
 def _spin_polarized(self):
     return self._raw_data.values.shape[1] == 3
 
-# After (Impl)
+# After (Handler)
 def _spin_polarized(self):
-    return self._raw.values.shape[1] == 3
+    return self._raw_bandgap.values.shape[1] == 3
 ```
 
 ### 5 — Handle selection forwarding
 
-When the Impl method needs the remaining selection (e.g. for projection parsing), it accepts it as a parameter. The dispatch function forwards it via `**kwargs`:
+When the Handler method needs the remaining selection (e.g. for projection parsing), it accepts it as a parameter. The dispatch function forwards it via `**kwargs`:
 
 ```python
 # Dispatcher
 def plot(self, selection=None):
     return merge_graphs(
         self._source, self._quantity_name, selection,
-        self._impl_factory, _BandgapImpl.plot,
+        self._handler_factory, BandgapHandler.plot,
     )
 
 # The remaining_selection from SelectionContext is available inside
-# _dispatch and forwarded to the Impl method.
+# _dispatch and forwarded to the Handler method.
 ```
 
-For quantities where the Impl's `plot` method handles its own selection parsing internally (like Bandgap's `_parse`), the `selection` argument is forwarded directly as a kwarg.
+For quantities where the Handler's `plot` method handles its own selection parsing internally (like Bandgap's `_parse`), the `selection` argument is forwarded directly as a kwarg.
 
 ### 6 — Handle composition with other quantities
 
 Use the other Impl's `from_data` directly — no Source needed:
 
 ```python
-class _DensityImpl:
+class DensityHandler:
     def read(self) -> dict:
-        structure = _StructureImpl.from_data(self._raw.structure)
+        structure = _StructureHandler.from_data(self._raw_density.structure)
         return {
-            "charge": np.array(self._raw.charge),
+            "charge": np.array(self._raw_density.charge),
             "structure": structure.read(),
         }
 ```
 
 ### 7 — Step-indexed quantities
 
-Steps live on the dispatcher and are passed to the Impl via the factory:
+Steps live on the dispatcher and are passed to the Handler via the factory:
 
 ```python
 # Dispatcher
 def __getitem__(self, steps) -> Structure:
     return Structure(self._source, self._quantity_name, steps=steps)
 
-def _impl_factory(self, raw):
-    return _StructureImpl.from_data(raw, steps=self._steps)
+def _handler_factory(self, raw):
+    return StructureHandler.from_data(raw, steps=self._steps)
 ```
 
-The Impl applies `slice_steps` explicitly:
+The Handler applies `slice_steps` explicitly:
 
 ```python
 from py4vasp._core import slice_steps
 
-class _StructureImpl:
-    def __init__(self, raw, steps=None):
-        self._raw = raw
+class StructureHandler:
+    def __init__(self, raw_structure: raw.Structure, steps=None):
+        self._raw_structure = raw_structure
         self._steps = steps
 
     def read(self) -> dict:
         return {
             "lattice_vectors": slice_steps(
-                np.array(self._raw.lattice_vectors), self._steps, default_ndim=2
+                np.array(self._raw_structure.lattice_vectors), self._steps, default_ndim=2
             ),
         }
 ```
@@ -318,11 +320,11 @@ class _StructureImpl:
 
 ### 8 — Port `__str__` and display methods
 
-Move the string formatting logic to the Impl. The dispatcher calls it through dispatch:
+Move the string formatting logic to the Handler. The dispatcher calls it through dispatch:
 
 ```python
-# Impl
-class _BandgapImpl:
+# Handler
+class BandgapHandler:
     def __str__(self):
         template = """..."""
         return template.format(...)
@@ -332,17 +334,17 @@ class Bandgap:
     def __str__(self):
         return merge_strings(
             self._source, self._quantity_name, None,
-            self._impl_factory, _BandgapImpl.__str__,
+            self._handler_factory, BandgapHandler.__str__,
         )
 ```
 
 ### 9 — Port `_to_database`
 
-Same dispatch pattern. The Impl has the `_to_database` method:
+Same dispatch pattern. The Handler has the `_to_database` method:
 
 ```python
-# Impl
-class _BandgapImpl:
+# Handler
+class BandgapHandler:
     def _to_database(self) -> dict:
         bandgap_dict = {...}
         return {"bandgap": Bandgap_DB(**final_dict)}
@@ -350,9 +352,9 @@ class _BandgapImpl:
 # Dispatcher
 class Bandgap:
     def _read_to_database(self, *args, **kwargs):
-        return merge_dicts(
+        return merge_default(
             self._source, self._quantity_name, None,
-            self._impl_factory, _BandgapImpl._to_database,
+            self._handler_factory, BandgapHandler._to_database,
         )
 ```
 
@@ -375,26 +377,26 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 ```python
 # to_dict test: verify it equals read()
-def test_to_dict_matches_read(raw):
-    impl = _BandgapImpl.from_data(raw)
-    assert impl.to_dict() == impl.read()
+def test_to_dict_matches_read(raw_bandgap):
+    handler = BandgapHandler.from_data(raw_bandgap)
+    assert handler.to_dict() == handler.read()
 ```
 
 Tests split into two categories:
 
-**Unit tests (Impl directly, no I/O):**
+**Unit tests (Handler directly, no I/O):**
 
 ```python
 def test_bandgap_read():
     raw = raw_data.Bandgap(labels=..., values=...)
-    impl = _BandgapImpl.from_data(raw)
-    result = impl.read()
+    handler = BandgapHandler.from_data(raw)
+    result = handler.read()
     assert ...
 
 def test_bandgap_step_selection():
     raw = raw_data.Bandgap(labels=..., values=...)
-    impl = _BandgapImpl.from_data(raw, steps=3)
-    result = impl.read()
+    handler = BandgapHandler.from_data(raw, steps=3)
+    result = handler.read()
     assert ...
 ```
 
@@ -402,7 +404,7 @@ def test_bandgap_step_selection():
 
 ```python
 def test_bandgap_via_calculation():
-    source = DictSource({"bandgap": raw_data.Bandgap(...)})
+    source = DictSource({"bandgap": raw.Bandgap(...)})
     calc = Calculation(source=source)
     result = calc.bandgap.read()
     assert ...
@@ -410,16 +412,16 @@ def test_bandgap_via_calculation():
 
 The existing `from_data` pattern in tests like:
 ```python
-bandgap = Bandgap.from_data(raw_gap)
+bandgap = Bandgap.from_data(raw_bandgap)
 ```
 should be migrated to:
 ```python
-impl = _BandgapImpl.from_data(raw_gap)
+handler = BandgapHandler.from_data(raw_bandgap)
 ```
 
 Or for testing the dispatcher with the full dispatch pipeline:
 ```python
-source = DataSource(raw_gap)
+source = DataSource(raw_bandgap)
 bandgap = Bandgap(source=source, quantity_name="bandgap")
 ```
 
@@ -441,24 +443,24 @@ pytest tests/ -x                             # full suite
 For each quantity being ported:
 
 - [ ] Raw dataclass type identified in `_raw/data.py`
-- [ ] Impl class created: `_<Name>Impl` with `from_data(raw, steps=None)`
-- [ ] All transform logic moved from Refinery to Impl
-- [ ] `self._raw_data.x` → `self._raw.x` in Impl
+- [ ] Impl class created: `<Name>Handler` with `from_data(raw, steps=None)`
+- [ ] All transform logic moved from Refinery to Handler
+- [ ] `self._raw_data.x` → `self._raw_<name>.x` in Handler
 - [ ] `@base.data_access` decorators removed
 - [ ] Dispatcher class created with `@quantity("name")` decorator
 - [ ] All dispatcher methods have `selection: str | None = None` parameter
-- [ ] Dispatcher calls `merge_dicts` (default) or `merge_graphs` (for Graph) — no lambdas; `merge_single` only when a single return is required
-- [ ] `to_dict` kept in both Impl and dispatcher; dispatcher delegates to `read()`; not deprecated
-- [ ] Type hints on `_raw` attribute and `from_data` classmethod (mandatory, never omit)
-- [ ] Impl method passed as unbound reference: `_BandImpl.read`
+- [ ] Dispatcher calls `merge_default` (default) or `merge_graphs` (for Graph) — no lambdas; `merge_strings` (for strings)
+- [ ] `to_dict` kept in both Handler and dispatcher; dispatcher delegates to `read()`; not deprecated
+- [ ] Type hints on `_raw_<name>` attribute and `from_data` classmethod (mandatory, never omit)
+- [ ] Handler method passed as unbound reference: `BandHandler.read`
 - [ ] Extra args forwarded via `*args, **kwargs`
-- [ ] Step indexing: `__getitem__` on dispatcher, `_impl_factory` captures steps
-- [ ] Composition: other Impl's `from_data` called directly
+- [ ] Step indexing: `__getitem__` on dispatcher, `_handler_factory` captures steps
+- [ ] Composition: other Handler's `from_data` called directly
 - [ ] `__str__` / `_repr_pretty_` ported through dispatch
 - [ ] `_to_database` ported through dispatch
 - [ ] Small mixins kept (e.g. `graph.Mixin`)
 - [ ] `base.Refinery` and `slice_.Mixin` removed from inheritance
-- [ ] Tests split: Impl unit tests + dispatcher integration tests
+- [ ] Tests split: Handler unit tests + dispatcher integration tests
 - [ ] Tests for `to_dict` restructured to verify it matches `read()` — not skipped
 - [ ] Tests never removed — non-working tests marked `@pytest.mark.skip(reason="...")`
 - [ ] Removed from `QUANTITIES`/`GROUPS` in `__init__.py`
