@@ -176,13 +176,13 @@ class Bandgap(slice_.Mixin, base.Refinery, graph.Mixin):
         }
 
 # After (Handler)
-class _BandgapHandler:
+class BandgapHandler:
     def __init__(self, raw_bandgap: raw.Bandgap, steps=None):
         self._raw_bandgap = raw_bandgap
         self._steps = steps
 
     @classmethod
-    def from_data(cls, raw_bandgap: raw.Bandgap, steps=None) -> _BandgapHandler:
+    def from_data(cls, raw_bandgap: raw.Bandgap, steps=None) -> "BandgapHandler":
         return cls(raw_bandgap, steps=steps)
 
     def read(self) -> dict:
@@ -229,7 +229,6 @@ class Bandgap(graph.Mixin):
         return merge_graphs(
             self._source, self._quantity_name, selection,
             self._handler_factory, BandgapHandler.plot,
-            selection=selection,  # if the Handler's plot method needs the selection
         )
 ```
 
@@ -251,21 +250,32 @@ def _spin_polarized(self):
 
 ### 5 — Handle selection forwarding
 
-When the Handler method needs the remaining selection (e.g. for projection parsing), it accepts it as a parameter. The dispatch function forwards it via `**kwargs`:
+`_dispatch` does **not** automatically forward `remaining_selection` to the
+Handler. `SelectionContext.remaining_selection` is used only internally to
+identify which source to open.
+
+If a Handler method needs to parse a selection string further (e.g. filtering
+spin channels or orbital projections), pass the full `selection` string
+explicitly as a keyword argument from the dispatcher:
 
 ```python
-# Dispatcher
+# Dispatcher — forward selection explicitly when the handler needs it
 def plot(self, selection=None):
     return merge_graphs(
         self._source, self._quantity_name, selection,
         self._handler_factory, BandgapHandler.plot,
+        selection=selection,
     )
 
-# The remaining_selection from SelectionContext is available inside
-# _dispatch and forwarded to the Handler method.
+# Handler — receives the full selection string and parses it itself
+class BandgapHandler:
+    def plot(self, selection=None) -> Graph:
+        tree = select.Tree.from_selection(selection)
+        ...
 ```
 
-For quantities where the Handler's `plot` method handles its own selection parsing internally (like Bandgap's `_parse`), the `selection` argument is forwarded directly as a kwarg.
+For quantities whose Handler methods do not need further selection parsing,
+omit the `selection=selection` kwarg entirely.
 
 ### 6 — Handle composition with other quantities
 
@@ -297,7 +307,7 @@ def _handler_factory(self, raw):
 The Handler applies `slice_steps` explicitly:
 
 ```python
-from py4vasp._core import slice_steps
+from py4vasp._calculation.dispatch import slice_steps
 
 class StructureHandler:
     def __init__(self, raw_structure: raw.Structure, steps=None):

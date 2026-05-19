@@ -136,20 +136,25 @@ string:
        selection_name: str | None       # resolved source (e.g. "kpoints_opt")
        remaining_selection: str | None  # leftover after source is stripped
 
-   def _parse_selections(selection: str | None) -> list[SelectionContext]:
+   def _parse_selections(quantity_name: str, selection: str | None) -> list[SelectionContext]:
        """Parse a user selection into individual (source, remainder) pairs.
 
-       Uses the schema to identify which part of the selection refers to a data
-       source and which part is forwarded to the Handler method.
+       Consults the schema for quantity_name to identify which part of the
+       selection refers to a data source and which part is the remaining
+       selection. Multiple Tree entries that resolve to the same source name
+       are grouped into a single SelectionContext.
        """
        if selection is None:
            return [SelectionContext(None, None)]
        tree = select.Tree.from_selection(selection)
-       result = []
+       grouped = {}
        for sel in tree.selections():
-           source_name, remaining = _match_source(sel)
-           result.append(SelectionContext(source_name, remaining))
-       return result
+           source_name, remaining = _find_source_in_schema(sel, quantity_name)
+           grouped.setdefault(source_name, []).append(remaining)
+       return [
+           SelectionContext(source_name, selections_to_string(remaining_list) or None)
+           for source_name, remaining_list in grouped.items()
+       ]
 
 
 Standalone Dispatch Functions
@@ -187,7 +192,7 @@ selections and calls the Impl method for each one:
        dict[str, result]
            Maps selection_name (or "default") to each result.
        """
-       contexts = _parse_selections(selection)
+       contexts = _parse_selections(quantity_name, selection)
        results = {}
        for ctx in contexts:
            with source.access(quantity_name, selection=ctx.selection_name) as raw:
@@ -414,10 +419,11 @@ Selection Parsing
 ~~~~~~~~~~~~~~~~~
 
 Selection parsing is described in the `Selection Context`_ section above.
-``_parse_selections`` uses the schema to separate the source part from the
-remaining selection. The ``SelectionContext.remaining_selection`` is forwarded
-to the Handler method via ``**kwargs`` when the Handler method accepts a
-``selection`` parameter.
+``_parse_selections`` consults the schema for the quantity to separate the
+source part from the remaining selection. ``SelectionContext.remaining_selection``
+is **not** automatically forwarded to the Handler — if a Handler method needs
+further selection parsing, the dispatcher must pass it explicitly as a ``**kwarg``
+(see the step-forwarding pattern in the SKILL.md migration guide).
 
 Merging is handled by choosing the appropriate dispatch helper:
 
