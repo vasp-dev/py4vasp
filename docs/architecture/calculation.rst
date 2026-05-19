@@ -219,7 +219,7 @@ Higher-level helpers differ only in how they merge the results. Each calls
        """
        ...
 
-   def merge_single(source, quantity_name, selection, handler_factory, method, *args, **kwargs):
+   def merge_strings(source, quantity_name, selection, handler_factory, method, *args, **kwargs):
        """Dispatch and merge strings into a single string.
 
        Use for methods that return a string.
