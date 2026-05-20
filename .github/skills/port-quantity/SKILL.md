@@ -403,22 +403,36 @@ class Bandgap:
 
 ### 9 — Port `_to_database`
 
-Same dispatch pattern. The Handler has the `_to_database` method:
+Database serialization lives **exclusively on the Handler** as a public method.
+The Dispatcher has **no** database method — no `to_database`, no `_read_to_database`.
 
 ```python
-# Handler
+# Handler only — public, no leading underscore
 class BandgapHandler:
-    def _to_database(self) -> dict:
+    def to_database(self) -> dict:
         bandgap_dict = {...}
         return {"bandgap": Bandgap_DB(**final_dict)}
 
-# Dispatcher
-class Bandgap:
-    def _read_to_database(self, *args, **kwargs):
-        return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, BandgapHandler._to_database,
-        )
+# Dispatcher — nothing. Do NOT add a database method here.
+```
+
+The method must return a `dict` with a single key (the quantity name) mapping to
+a dataclass instance from `_raw/data_db.py`. Database consumers call
+`Handler.from_data(raw).to_database()` directly.
+
+Tests for `to_database` use a `BandgapHandler` instance, not the dispatcher:
+
+```python
+@pytest.fixture
+def bandgap_handler(raw_data):
+    return setup_bandgap_handler(raw_data.bandgap("default"))
+
+def test_to_database_default(bandgap_handler, Assert):
+    _check_to_database(bandgap_handler, Assert)
+
+def _check_to_database(handler, Assert):
+    db_data = handler.to_database()   # call on handler, not dispatcher
+    ...
 ```
 
 ### 10 — Port the tests
@@ -521,7 +535,7 @@ For each quantity being ported:
 - [ ] Step indexing: `__getitem__` on dispatcher, `_handler_factory` captures steps
 - [ ] Composition: other Handler's `from_data` called directly
 - [ ] `__str__` / `_repr_pretty_` ported through dispatch
-- [ ] `_to_database` ported through dispatch
+- [ ] `Handler.to_database()` implemented (public, no underscore); Dispatcher has no database method
 - [ ] Small mixins kept (e.g. `graph.Mixin`)
 - [ ] `base.Refinery` and `slice_.Mixin` removed from inheritance
 - [ ] Tests split: Handler unit tests + dispatcher integration tests

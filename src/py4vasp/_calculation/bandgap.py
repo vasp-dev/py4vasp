@@ -112,7 +112,7 @@ Fermi energy:    {fermi_energy}"""
             fermi_energy=self._output_energy("Fermi energy", component=slice(0, 1)),
         )
 
-    def _to_database(self) -> dict:
+    def to_database(self) -> dict:
         bandgap_dict = {
             "valence_band_maximum": self._output_energy(
                 "valence band maximum", to_string=False
@@ -475,15 +475,6 @@ class Bandgap(graph.Mixin):
 
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
-
-    def _read_to_database(self, *args, **kwargs):
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            None,
-            self._handler_factory,
-            BandgapHandler._to_database,
-        )
 
     def _spin_polarized(self):
         """Convenience for tests that access this on the dispatcher."""

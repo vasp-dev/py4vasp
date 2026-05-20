@@ -34,6 +34,18 @@ def spin_polarized(raw_data):
     return setup_bandgap(raw_gap)
 
 
+@pytest.fixture
+def bandgap_handler(raw_data):
+    raw_gap = raw_data.bandgap("default")
+    return setup_bandgap_handler(raw_gap)
+
+
+@pytest.fixture
+def spin_polarized_handler(raw_data):
+    raw_gap = raw_data.bandgap("spin_polarized")
+    return setup_bandgap_handler(raw_gap)
+
+
 def setup_bandgap(raw_gap):
     bandgap = Bandgap.from_data(raw_gap)
     bandgap.ref = types.SimpleNamespace()
@@ -48,6 +60,21 @@ def setup_bandgap(raw_gap):
     bandgap.ref.kpoint_direct = raw_gap.values[..., KPOINT_DIRECT]
     bandgap.ref.fermi_energy = raw_gap.values[:, 0, FERMI]
     return bandgap
+
+
+def setup_bandgap_handler(raw_gap):
+    handler = BandgapHandler.from_data(raw_gap)
+    handler.ref = types.SimpleNamespace()
+    handler.ref.fundamental = raw_gap.values[..., CBM] - raw_gap.values[..., VBM]
+    handler.ref.vbm = raw_gap.values[..., VBM]
+    handler.ref.cbm = raw_gap.values[..., CBM]
+    handler.ref.kpoint_vbm = raw_gap.values[..., KPOINT_VBM]
+    handler.ref.kpoint_cbm = raw_gap.values[..., KPOINT_CBM]
+    handler.ref.direct = raw_gap.values[..., TOP] - raw_gap.values[..., BOTTOM]
+    handler.ref.lower_band_direct = raw_gap.values[..., BOTTOM]
+    handler.ref.upper_band_direct = raw_gap.values[..., TOP]
+    handler.ref.kpoint_direct = raw_gap.values[..., KPOINT_DIRECT]
+    return handler
 
 
 @pytest.fixture(params=[slice(None), slice(1, 3), 0, -1])
@@ -321,8 +348,8 @@ def test_factory_methods(raw_data, check_factory_methods):
     check_factory_methods(Bandgap, raw_gap)
 
 
-def _check_to_database(_bandgap, Assert):
-    database_data = _bandgap._read_to_database()
+def _check_to_database(_handler, Assert):
+    database_data = _handler.to_database()
     db_dict: Bandgap_DB = database_data["bandgap"]
 
     assert isinstance(db_dict, Bandgap_DB), f"Expected Bandgap_DB, got {type(db_dict)}"
@@ -344,7 +371,7 @@ def _check_to_database(_bandgap, Assert):
         for idx, suffix in enumerate(["spin_independent", "spin_up", "spin_down"]):
             actual_key = f"{key_}_{suffix}"
             actual_value = getattr(dict_, actual_key)
-            if idx == 0 or _bandgap._spin_polarized():
+            if idx == 0 or _handler._spin_polarized():
                 Assert.allclose(actual_value, ref_value[idx], 1e6)
             else:
                 assert (
@@ -363,27 +390,27 @@ def _check_to_database(_bandgap, Assert):
                     actual_value, float
                 ), f"{actual_key} has unexpected type {type(actual_value)}: {actual_value}"
 
-    _check_quantity(db_dict, "valence_band_maximum", _bandgap.ref.vbm[-1])
-    _check_quantity(db_dict, "conduction_band_minimum", _bandgap.ref.cbm[-1])
-    _check_quantity(db_dict, "fundamental_bandgap", _bandgap.ref.fundamental[-1,])
-    _check_quantity(db_dict, "kpoint_vbm", _bandgap.ref.kpoint_vbm[-1])
-    _check_quantity(db_dict, "kpoint_cbm", _bandgap.ref.kpoint_cbm[-1])
-    _check_quantity(db_dict, "direct_bandgap", _bandgap.ref.direct[-1])
-    _check_quantity(db_dict, "kpoint_direct_bandgap", _bandgap.ref.kpoint_direct[-1])
+    _check_quantity(db_dict, "valence_band_maximum", _handler.ref.vbm[-1])
+    _check_quantity(db_dict, "conduction_band_minimum", _handler.ref.cbm[-1])
+    _check_quantity(db_dict, "fundamental_bandgap", _handler.ref.fundamental[-1,])
+    _check_quantity(db_dict, "kpoint_vbm", _handler.ref.kpoint_vbm[-1])
+    _check_quantity(db_dict, "kpoint_cbm", _handler.ref.kpoint_cbm[-1])
+    _check_quantity(db_dict, "direct_bandgap", _handler.ref.direct[-1])
+    _check_quantity(db_dict, "kpoint_direct_bandgap", _handler.ref.kpoint_direct[-1])
     _check_quantity(
-        db_dict, "lower_band_direct_bandgap", _bandgap.ref.lower_band_direct[-1]
+        db_dict, "lower_band_direct_bandgap", _handler.ref.lower_band_direct[-1]
     )
     _check_quantity(
-        db_dict, "upper_band_direct_bandgap", _bandgap.ref.upper_band_direct[-1]
+        db_dict, "upper_band_direct_bandgap", _handler.ref.upper_band_direct[-1]
     )
 
 
-def test_to_database_default(bandgap, Assert):
-    _check_to_database(bandgap, Assert)
+def test_to_database_default(bandgap_handler, Assert):
+    _check_to_database(bandgap_handler, Assert)
 
 
-def test_to_database_spin_polarized(spin_polarized, Assert):
-    _check_to_database(spin_polarized, Assert)
+def test_to_database_spin_polarized(spin_polarized_handler, Assert):
+    _check_to_database(spin_polarized_handler, Assert)
 
 
 def test_to_dict_matches_read(raw_data, Assert):

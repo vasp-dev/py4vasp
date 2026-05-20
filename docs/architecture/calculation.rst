@@ -415,6 +415,41 @@ When a quantity needs another quantity's logic, it uses the other Impl's
 This keeps composition simple: one Handler calls another Handler's ``from_data``.
 
 
+Database Serialization
+~~~~~~~~~~~~~~~~~~~~~~
+
+Database serialization is the Handler's responsibility. ``to_database()`` is a
+**public** method on the Handler; the Dispatcher has **no** database method.
+
+.. code-block:: python
+
+   class BandgapHandler:
+       def to_database(self) -> dict:
+           """Return database-ready data as {quantity_name: DataclassInstance}."""
+           return {"bandgap": Bandgap_DB(...)}
+
+The method must return a ``dict`` whose single key is the quantity name and whose
+value is a dataclass instance defined in ``_raw/data_db.py``.
+
+The Dispatcher does **not** expose ``to_database`` or any ``_read_to_database``
+wrapper. Database consumers access the data by constructing a Handler directly
+via ``from_data``:
+
+.. code-block:: python
+
+   handler = BandgapHandler.from_data(raw_bandgap)
+   db_data = handler.to_database()   # {"bandgap": Bandgap_DB(...)}
+
+.. note::
+
+   The aggregation loop in ``_calculation/__init__.py`` currently calls
+   ``._read_to_database()`` on Dispatcher objects (Refinery pattern). Updating that
+   loop to call ``Handler.to_database()`` for new-style quantities is a separate
+   follow-up task. Until then, database aggregation for ported quantities is handled
+   by keeping the ``_QuantityGroup`` infrastructure in ``__init__.py`` unchanged and
+   scheduling a dedicated migration.
+
+
 Selection Parsing
 ~~~~~~~~~~~~~~~~~
 
