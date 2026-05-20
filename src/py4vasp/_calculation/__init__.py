@@ -32,7 +32,6 @@ def _append_database_error(
 INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
 QUANTITIES = (
     "band",
-    "bandgap",
     "born_effective_charge",
     "current_density",
     "density",

@@ -3,7 +3,7 @@
 from contextlib import suppress
 
 from py4vasp import exception
-from py4vasp._calculation import bandgap, base
+from py4vasp._calculation import bandgap as bandgap_module, base
 from py4vasp._raw import data as raw_data
 from py4vasp._raw.data_db import Workfunction_DB
 from py4vasp._third_party import graph
@@ -50,7 +50,9 @@ class Workfunction(base.Refinery, graph.Mixin):
         """
         band_extrema = {}
         with suppress(exception.NoData):
-            gap = bandgap.Bandgap.from_data(self._raw_data.reference_potential)
+            gap = bandgap_module.BandgapHandler.from_data(
+                self._raw_data.reference_potential
+            )
             band_extrema = {
                 "valence_band_maximum": gap.valence_band_maximum(),
                 "conduction_band_minimum": gap.conduction_band_minimum(),
@@ -69,7 +71,9 @@ class Workfunction(base.Refinery, graph.Mixin):
     def _to_database(self, *args, **kwargs):
         is_metallic = None
         with suppress(exception.NoData):
-            gap = bandgap.Bandgap.from_data(self._raw_data.reference_potential)
+            gap = bandgap_module.BandgapHandler.from_data(
+                self._raw_data.reference_potential
+            )
             is_metallic = gap._output_gap("fundamental", to_string=False) <= 0.0
 
         return {

@@ -6,7 +6,7 @@ import pytest
 
 from py4vasp._calculation._CONTCAR import CONTCAR
 from py4vasp._calculation._dispersion import Dispersion
-from py4vasp._calculation.bandgap import Bandgap
+from py4vasp._calculation.bandgap import Bandgap, BandgapHandler
 from py4vasp._calculation.run_info import RunInfo
 from py4vasp._calculation.structure import Structure
 from py4vasp._raw.data_db import RunInfo_DB
@@ -21,7 +21,7 @@ def run_info(request, raw_data):
     run_info.ref.system_name = raw_run_info.system.system
     run_info.ref.runtime = raw_run_info.runtime
     run_info.ref.fermi_energy = raw_run_info.fermi_energy
-    run_info.ref.bandgap = Bandgap.from_data(raw_run_info.bandgap)
+    run_info.ref.bandgap = BandgapHandler.from_data(raw_run_info.bandgap)
     run_info.ref.len_dos = raw_run_info.len_dos
     run_info.ref.band_dispersion_eigenvalues = raw_run_info.band_dispersion_eigenvalues
     run_info.ref.band_projections = raw_run_info.band_projections

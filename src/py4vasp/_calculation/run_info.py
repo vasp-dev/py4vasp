@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from contextlib import suppress
 
-from py4vasp._calculation import bandgap, base, exception
+from py4vasp._calculation import bandgap as bandgap_module, base, exception
 from py4vasp._calculation._dispersion import Dispersion
 from py4vasp._raw import data as raw_data
 from py4vasp._raw.data_db import RunInfo_DB
@@ -105,7 +105,7 @@ class RunInfo(base.Refinery):
         with suppress(*self._TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             if check.is_none(self._raw_data.bandgap):
                 return None
-            gap = bandgap.Bandgap.from_data(self._raw_data.bandgap)
+            gap = bandgap_module.BandgapHandler.from_data(self._raw_data.bandgap)
             return all(gap._output_gap("fundamental", to_string=False) <= 0.0)
 
         return None

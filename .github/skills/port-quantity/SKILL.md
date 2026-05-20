@@ -234,6 +234,59 @@ class Bandgap(graph.Mixin):
 
 For step-indexed quantities, use `self._handler_factory` as a bound method that captures `self._steps` via the partial pattern shown above.
 
+### 3.5 — Port docstrings to the Dispatcher
+
+Every public method docstring from the Refinery **must** be carried over to the
+corresponding Dispatcher method. Do not leave bare one-liners in place of the
+original prose.
+
+The `@documentation.format` decorator and `slice_.examples` helper work exactly
+as in the old architecture — keep using them on the Dispatcher:
+
+```python
+from py4vasp._calculation import slice_
+from py4vasp._util import documentation
+
+@quantity("bandgap")
+@documentation.format(examples=slice_.examples("bandgap"))
+class Bandgap(graph.Mixin):
+    """...original class docstring...
+
+    {examples}
+    """
+
+    @documentation.format(examples=slice_.examples("bandgap", "read"))
+    def read(self, selection: str | None = None) -> dict:
+        """Read the bandgap data from a VASP relaxation or MD trajectory.
+
+        Returns
+        -------
+        dict
+            Contains ...
+
+        {examples}
+        """
+
+    @documentation.format(examples=slice_.examples("bandgap", "to_dict"))
+    def to_dict(self, selection: str | None = None) -> dict:
+        """Read the bandgap data from a VASP relaxation or MD trajectory.
+
+        Convenient alias for :py:meth:`read`. Check that method for examples
+        and optional arguments.
+
+        {examples}
+        """
+```
+
+**Rules:**
+- Apply `@documentation.format(examples=slice_.examples("quantity", "method"))` to every
+  method that had it on the Refinery.
+- Apply `@documentation.format(examples=slice_.examples("quantity"))` to the class itself.
+- `to_dict` on the Dispatcher is an alias — give it a short docstring noting the alias
+  relationship, but keep the `@documentation.format` decorator so the examples are present.
+- Do **not** port `@documentation.format` to the Handler — its methods are internal
+  and do not need user-facing examples.
+
 ### 4 — Move private helpers to the Handler
 
 Private helpers (`_gap`, `_get`, `_kpoint`, `_spin_polarized`, etc.) that read `self._raw_data` move to the Handler and read `self._raw_<quantity>` instead.
@@ -458,6 +511,7 @@ For each quantity being ported:
 - [ ] `self._raw_data.x` → `self._raw_<name>.x` in Handler
 - [ ] `@base.data_access` decorators removed
 - [ ] Dispatcher class created with `@quantity("name")` decorator
+- [ ] Docstrings ported from Refinery to Dispatcher; `@documentation.format` + `slice_.examples` applied where the Refinery had them
 - [ ] All dispatcher methods have `selection: str | None = None` parameter
 - [ ] Dispatcher calls `merge_default` (default) or `merge_graphs` (for Graph) — no lambdas; `merge_strings` (for strings)
 - [ ] `to_dict` kept in both Handler and dispatcher; dispatcher delegates to `read()`; not deprecated
