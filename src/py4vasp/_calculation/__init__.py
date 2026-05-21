@@ -336,6 +336,11 @@ instead of the constructor Calculation()."""
             return entry(source=self._source, quantity_name=entry._quantity_name)
         raise AttributeError(f"'Calculation' has no attribute '{name}'")
 
+    def __dir__(self):
+        names = set(super().__dir__())
+        names.update(_REGISTRY.keys())
+        return sorted(names)
+
     # Input files are not in current release
     # @property
     # def INCAR(self):

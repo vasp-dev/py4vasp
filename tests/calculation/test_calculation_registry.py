@@ -159,3 +159,39 @@ class TestCalculationGetattr:
             calc = Calculation.from_path(".")
             # 'energy' is an old-arch quantity; it must still be accessible
             assert hasattr(calc, "energy")
+
+
+class TestCalculationDir:
+    def test_registry_quantities_appear_in_dir(self, tmp_path):
+        with _isolated_registry():
+
+            @quantity("fake_dir_qty")
+            class FakeDirDispatcher(_FakeDispatcher):
+                _quantity_name = "fake_dir_qty"
+
+                def __init__(self, source, quantity_name="fake_dir_qty"):
+                    self.source = source
+                    self.quantity_name = quantity_name
+
+            calc = Calculation.from_path(tmp_path)
+            assert "fake_dir_qty" in dir(calc)
+
+    def test_registry_groups_appear_in_dir(self, tmp_path):
+        with _isolated_registry():
+
+            @quantity("fake_dir_member", group="fake_dir_group")
+            class FakeDirGroupDispatcher(_FakeDispatcher):
+                _quantity_name = "fake_dir_member"
+
+                def __init__(self, source, quantity_name="fake_dir_member"):
+                    self.source = source
+                    self.quantity_name = quantity_name
+
+            calc = Calculation.from_path(tmp_path)
+            assert "fake_dir_group" in dir(calc)
+
+    def test_existing_attributes_still_in_dir(self, tmp_path):
+        calc = Calculation.from_path(tmp_path)
+        names = dir(calc)
+        assert "from_path" in names
+        assert "from_file" in names
