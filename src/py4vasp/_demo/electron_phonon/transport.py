@@ -24,12 +24,6 @@ def transport(selection):
         _demo.AXES,
         _demo.AXES,
     ]
-    mobility_shape = [
-        _demo.NUMBER_SAMPLES,
-        _demo.NUMBER_TEMPERATURES,
-        _demo.AXES,
-        _demo.AXES,
-    ]
     base_selection = "default" if is_spin else selection
     scattering_approx = _demo.electron_phonon.wrap_scattering_approximation(
         base_selection
@@ -42,7 +36,7 @@ def transport(selection):
         delta=_demo.electron_phonon.wrap_delta(base_selection, seed=733144842),
         temperatures=[temperature_mesh for _ in range(_demo.NUMBER_SAMPLES)],
         transport_function=_demo.wrap_random_data(transport_shape),
-        mobility=_demo.wrap_random_data(mobility_shape),
+        mobility=_demo.wrap_random_data(spin_tensor_shape),
         seebeck=_demo.wrap_random_data(spin_tensor_shape),
         peltier=_demo.wrap_random_data(spin_tensor_shape),
         electronic_conductivity=_demo.wrap_random_data(spin_tensor_shape),

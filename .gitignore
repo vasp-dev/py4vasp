@@ -1,3 +1,9 @@
+notebook
+backup
+node_modules
+work
+_old_templates
+
 *~
 # File open for editing in vi
 *.swp

@@ -544,6 +544,7 @@ def test_read_instance_spin(transport_spin, Assert):
         Assert.allclose(d["seebeck"], transport_spin.ref.seebeck[i])
         assert d["seebeck"].ndim == 4  # (ntemps, nspin, 3, 3) for one instance
         Assert.allclose(d["mobility"], transport_spin.ref.mobility[i])
+        assert d["mobility"].ndim == 4  # (ntemps, nspin, 3, 3) for spin-resolved
 
 
 def test_read_instance_source_selection_forwarded(transport_spin):
@@ -572,6 +573,7 @@ def test_selections_no_spin(transport):
     "selection",
     (
         "electronic_conductivity",
+        "mobility",
         "seebeck",
         "peltier",
         "electronic_thermal_conductivity",
@@ -630,6 +632,7 @@ def test_plot_instance_spin_both_spins(transport_spin, Assert):
     "selection",
     (
         "electronic_conductivity",
+        "mobility",
         "seebeck",
         "peltier",
         "electronic_thermal_conductivity",
@@ -662,17 +665,19 @@ def test_plot_mapping_spin_selection(transport_spin, spin_name, spin_idx, Assert
         assert spin_name in series.label
 
 
-
 @pytest.mark.parametrize(
-    'selection',
+    "selection",
     (
-        'electronic_conductivity',
-        'seebeck',
-        'peltier',
-        'electronic_thermal_conductivity',
+        "electronic_conductivity",
+        "mobility",
+        "seebeck",
+        "peltier",
+        "electronic_thermal_conductivity",
     ),
 )
-def test_plot_instance_spin_source_prefix_with_spin_data(transport_spin, selection, Assert):
+def test_plot_instance_spin_source_prefix_with_spin_data(
+    transport_spin, selection, Assert
+):
     """to_graph('spin(quantity(up))') should work when spin data is available.
 
     The original bug: transport[0].plot('spin(electronic_conductivity(up))')
@@ -687,8 +692,8 @@ def test_plot_instance_spin_source_prefix_with_spin_data(transport_spin, selecti
     """
     index_ = 0
     instance = transport_spin[index_]
-    graph_direct = instance.to_graph(f'seebeck(up)')
-    graph_with_prefix = instance.to_graph(f'spin(seebeck(up))')
+    graph_direct = instance.to_graph(f"{selection}(up)")
+    graph_with_prefix = instance.to_graph(f"spin({selection}(up))")
     assert len(graph_direct) == len(graph_with_prefix)
     for series_direct, series_prefix in zip(graph_direct, graph_with_prefix):
         Assert.allclose(series_direct.y, series_prefix.y)
@@ -709,9 +714,9 @@ def test_plot_instance_spin_source_prefix_non_spin_data_raises(transport):
     """
     with pytest.raises(
         exception.IncorrectUsage,
-        match='Spin selection is not available for data without spin resolution',
+        match="Spin selection is not available for data without spin resolution",
     ):
-        transport[0].to_graph('spin(electronic_conductivity(up))')
+        transport[0].to_graph("spin(electronic_conductivity(up))")
 
 
 def test_plot_no_spin_data_spin_selection_raises(transport):
@@ -724,3 +729,41 @@ def test_plot_no_spin_data_mapping_spin_selection_raises(transport):
     """Selecting spin on non-spin mapping data should raise an error."""
     with pytest.raises(exception.IncorrectUsage):
         transport.plot("seebeck(up)")
+
+
+@pytest.mark.parametrize("spin_name, spin_idx", SPINS.items())
+def test_plot_instance_spin_mobility_selection(
+    transport_spin, spin_name, spin_idx, Assert
+):
+    """Mobility with explicit spin selection should return spin-resolved data."""
+    index_ = 0
+    instance = transport_spin[index_]
+    graph = instance.plot(f"mobility({spin_name})")
+    assert len(graph) == 1
+    series = graph[0]
+    raw = transport_spin.ref.mobility[index_]  # (ntemps, nspin, 3, 3)
+    expected = np.trace(raw[:, spin_idx], axis1=1, axis2=2) / 3
+    Assert.allclose(series.y, expected)
+    assert series.label == spin_name
+
+
+@pytest.mark.parametrize("spin_name, spin_idx", SPINS.items())
+def test_plot_mapping_spin_mobility_selection(
+    transport_spin, spin_name, spin_idx, Assert
+):
+    """Mapping plot of mobility with spin selection should return spin-resolved data."""
+    graph = transport_spin.plot(f"mobility({spin_name})")
+    temperatures = transport_spin.ref.temperatures[0]
+    assert len(graph) == len(temperatures)
+    raw = transport_spin.ref.mobility  # (ninst, ntemps, nspin, 3, 3)
+    data = np.trace(raw[:, :, spin_idx], axis1=2, axis2=3) / 3
+    for temperature, series, expected_y in zip(temperatures, graph, data.T):
+        Assert.allclose(series.x, transport_spin.ref.selfen_carrier_den)
+        Assert.allclose(series.y, expected_y)
+        assert spin_name in series.label
+
+
+def test_plot_no_spin_data_mobility_spin_selection_raises(transport):
+    """Selecting spin on non-spin mobility data should raise an error."""
+    with pytest.raises(exception.IncorrectUsage):
+        transport[0].plot("mobility(up)")

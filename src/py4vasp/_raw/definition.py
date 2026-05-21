@@ -424,7 +424,7 @@ schema.add(
     id_index=f"{group}/transport_{{}}/id_idx",
     temperatures=f"{group}/transport_{{}}/temps",
     electronic_conductivity=f"{group}/transport_{{}}/spin/e_conductivity",
-    mobility=f"{group}/transport_{{}}/mobility",
+    mobility=f"{group}/transport_{{}}/spin/mobility",
     seebeck=f"{group}/transport_{{}}/spin/seebeck",
     peltier=f"{group}/transport_{{}}/spin/peltier",
     nbands_sum=f"{group}/self_energy_{{}}/nbands_sum",
