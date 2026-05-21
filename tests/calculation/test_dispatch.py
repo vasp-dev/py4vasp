@@ -1,7 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import contextlib
-from unittest.mock import patch
+import pathlib
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -9,6 +10,7 @@ import pytest
 from py4vasp._calculation.dispatch import (
     DataSource,
     DictSource,
+    FileSource,
     Group,
     SelectionContext,
     _dispatch,
@@ -89,36 +91,48 @@ class TestDictSource:
 
 class TestParseSelections:
     def test_schema_source_returns_source_name(self):
-        with patch("py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]
+        ):
             result = _parse_selections("test_qty", "foo")
         assert result == [SelectionContext("foo", None)]
 
     def test_schema_source_with_remaining_in_outer_position(self):
-        with patch("py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]
+        ):
             result = _parse_selections("test_qty", "foo(bar)")
         assert result == [SelectionContext("foo", "bar")]
 
     def test_schema_source_in_inner_position_same_result(self):
         # "bar(foo)" and "foo(bar)" must produce the same SelectionContext because
         # the schema lookup scans the whole tuple, not just position 0.
-        with patch("py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]
+        ):
             result = _parse_selections("test_qty", "bar(foo)")
         assert result == [SelectionContext("foo", "bar")]
 
     def test_no_schema_match_becomes_remaining(self):
-        with patch("py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]
+        ):
             result = _parse_selections("test_qty", "bar(baz)")
         assert result == [SelectionContext(None, "bar(baz)")]
 
     def test_multiple_children_are_grouped(self):
         # "foo(bar,baz)" yields two tuples from Tree that both resolve to source
         # "foo"; they must be grouped into one SelectionContext.
-        with patch("py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]
+        ):
             result = _parse_selections("test_qty", "foo(bar,baz)")
         assert result == [SelectionContext("foo", "bar, baz")]
 
     def test_mixed_known_and_unknown_tokens(self):
-        with patch("py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]
+        ):
             result = _parse_selections("test_qty", "foo, bar")
         assert result == [
             SelectionContext("foo", None),
@@ -126,25 +140,33 @@ class TestParseSelections:
         ]
 
     def test_source_matching_is_case_insensitive(self):
-        with patch("py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]
+        ):
             result = _parse_selections("test_qty", "FOO(bar)")
         assert result == [SelectionContext("foo", "bar")]
 
     def test_operation_in_child_becomes_remaining(self):
         # "foo(bar + baz)" → source "foo", remaining is the combined expression.
-        with patch("py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]
+        ):
             result = _parse_selections("test_qty", "foo(bar + baz)")
         assert result == [SelectionContext("foo", "bar + baz")]
 
     def test_range_notation_as_remaining(self):
         # "foo(bar:baz)" → source "foo", remaining is the range expression.
-        with patch("py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]
+        ):
             result = _parse_selections("test_qty", "foo(bar:baz)")
         assert result == [SelectionContext("foo", "bar:baz")]
 
     def test_source_in_inner_with_range_parent(self):
         # "bar:baz(foo)" → 'foo' is the source; 'bar:baz' is the remaining range.
-        with patch("py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["foo"]
+        ):
             result = _parse_selections("test_qty", "bar:baz(foo)")
         assert result == [SelectionContext("foo", "bar:baz")]
 
@@ -183,7 +205,9 @@ class TestDispatch:
     def test_dispatch_single_named_selection(self):
         raw = {"value": 10}
         source = DictSource({("quantity", "up"): raw})
-        with patch("py4vasp._calculation.dispatch.schema_selections", return_value=["up"]):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["up"]
+        ):
             results = _dispatch(
                 source, "quantity", "up", _FakeHandler.from_data, _FakeHandler.read
             )
@@ -193,7 +217,9 @@ class TestDispatch:
         raw_a = {"value": 1}
         raw_b = {"value": 2}
         source = DictSource({("quantity", "a"): raw_a, ("quantity", "b"): raw_b})
-        with patch("py4vasp._calculation.dispatch.schema_selections", return_value=["a", "b"]):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["a", "b"]
+        ):
             results = _dispatch(
                 source, "quantity", "a, b", _FakeHandler.from_data, _FakeHandler.read
             )
@@ -238,7 +264,9 @@ class TestMergeDefault:
     def test_single_named_selection_returns_result_directly(self):
         raw = {"value": 7}
         source = DictSource({("quantity", "up"): raw})
-        with patch("py4vasp._calculation.dispatch.schema_selections", return_value=["up"]):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["up"]
+        ):
             result = merge_default(
                 source, "quantity", "up", _FakeHandler.from_data, _FakeHandler.read
             )
@@ -248,7 +276,9 @@ class TestMergeDefault:
         raw_a = {"value": 1}
         raw_b = {"value": 2}
         source = DictSource({("quantity", "a"): raw_a, ("quantity", "b"): raw_b})
-        with patch("py4vasp._calculation.dispatch.schema_selections", return_value=["a", "b"]):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["a", "b"]
+        ):
             result = merge_default(
                 source, "quantity", "a, b", _FakeHandler.from_data, _FakeHandler.read
             )
@@ -304,7 +334,9 @@ class TestMergeGraphs:
         raw_a = {"x": np.array([1, 2]), "y": np.array([3, 4])}
         raw_b = {"x": np.array([5, 6]), "y": np.array([7, 8])}
         source = DictSource({("quantity", "a"): raw_a, ("quantity", "b"): raw_b})
-        with patch("py4vasp._calculation.dispatch.schema_selections", return_value=["a", "b"]):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["a", "b"]
+        ):
             result = merge_graphs(
                 source, "quantity", "a, b", _GraphHandler.from_data, _GraphHandler.plot
             )
@@ -315,7 +347,9 @@ class TestMergeGraphs:
         raw_a = {"x": np.array([1, 2]), "y": np.array([3, 4])}
         raw_b = {"x": np.array([5, 6]), "y": np.array([7, 8])}
         source = DictSource({("quantity", "a"): raw_a, ("quantity", "b"): raw_b})
-        with patch("py4vasp._calculation.dispatch.schema_selections", return_value=["a", "b"]):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["a", "b"]
+        ):
             result = merge_graphs(
                 source, "quantity", "a, b", _GraphHandler.from_data, _GraphHandler.plot
             )
@@ -351,7 +385,9 @@ class TestMergeStrings:
         raw_a = {"text": "first"}
         raw_b = {"text": "second"}
         source = DictSource({("quantity", "a"): raw_a, ("quantity", "b"): raw_b})
-        with patch("py4vasp._calculation.dispatch.schema_selections", return_value=["a", "b"]):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["a", "b"]
+        ):
             result = merge_strings(
                 source,
                 "quantity",
@@ -524,3 +560,74 @@ class TestGroup:
         group = Group(source, {"fake": _FakeDispatcher})
         with pytest.raises(AttributeError):
             group.nonexistent
+
+
+class TestFileSource:
+    def test_path_returns_resolved_pathlib_path(self, tmp_path):
+        source = FileSource(tmp_path)
+        assert source.path == tmp_path.resolve()
+        assert isinstance(source.path, pathlib.Path)
+
+    def test_path_resolves_relative_path(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        source = FileSource(".")
+        assert source.path == tmp_path.resolve()
+
+    def test_access_delegates_to_raw_access(self, tmp_path):
+        raw_data = object()
+        mock_ctx = MagicMock()
+        mock_ctx.__enter__ = MagicMock(return_value=raw_data)
+        mock_ctx.__exit__ = MagicMock(return_value=False)
+        source = FileSource(tmp_path)
+        with patch(
+            "py4vasp._calculation.dispatch._raw_module.access"
+        ) as mock_raw_access:
+            mock_raw_access.return_value = mock_ctx
+            with source.access("band") as data:
+                assert data is raw_data
+            mock_raw_access.assert_called_once_with(
+                "band", selection=None, path=source.path, file=None
+            )
+
+    def test_access_forwards_selection(self, tmp_path):
+        raw_data = object()
+        mock_ctx = MagicMock()
+        mock_ctx.__enter__ = MagicMock(return_value=raw_data)
+        mock_ctx.__exit__ = MagicMock(return_value=False)
+        source = FileSource(tmp_path)
+        with patch(
+            "py4vasp._calculation.dispatch._raw_module.access"
+        ) as mock_raw_access:
+            mock_raw_access.return_value = mock_ctx
+            with source.access("band", selection="kpoints_opt") as data:
+                pass
+            mock_raw_access.assert_called_once_with(
+                "band", selection="kpoints_opt", path=source.path, file=None
+            )
+
+    def test_access_forwards_file_kwarg(self, tmp_path):
+        raw_data = object()
+        mock_ctx = MagicMock()
+        mock_ctx.__enter__ = MagicMock(return_value=raw_data)
+        mock_ctx.__exit__ = MagicMock(return_value=False)
+        file_name = tmp_path / "vaspout.h5"
+        source = FileSource(tmp_path, file=file_name)
+        with patch(
+            "py4vasp._calculation.dispatch._raw_module.access"
+        ) as mock_raw_access:
+            mock_raw_access.return_value = mock_ctx
+            with source.access("energy") as data:
+                pass
+            mock_raw_access.assert_called_once_with(
+                "energy", selection=None, path=source.path, file=file_name
+            )
+
+
+class TestSourcePathProperty:
+    def test_data_source_path_is_none(self):
+        source = DataSource(object())
+        assert source.path is None
+
+    def test_dict_source_path_is_none(self):
+        source = DictSource({})
+        assert source.path is None

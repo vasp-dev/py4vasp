@@ -7,10 +7,12 @@ Provides Source classes, dispatch functions, merge strategies, and the
 """
 
 import contextlib
+import pathlib
 import typing
 
 import numpy as np
 
+from py4vasp import raw as _raw_module
 from py4vasp._raw.definition import selections as schema_selections
 from py4vasp._third_party.graph import Graph
 from py4vasp._util import select
@@ -98,8 +100,36 @@ def _parse_selections(quantity_name, selection):
     return result
 
 
+class FileSource:
+    """Production source: reads raw data from HDF5 files in a directory.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        Directory of the VASP calculation.
+    file : str or pathlib.Path or None
+        Specific HDF5 file to read from. If None, the schema default is used.
+    """
+
+    def __init__(self, path, file=None):
+        self._path = pathlib.Path(path).expanduser().resolve()
+        self._file = file
+
+    @property
+    def path(self):
+        """The resolved path of the calculation directory."""
+        return self._path
+
+    @contextlib.contextmanager
+    def access(self, quantity, selection=None):
+        with _raw_module.access(quantity, selection=selection, path=self._path, file=self._file) as raw:
+            yield raw
+
+
 class DataSource:
     """Wraps a single raw data object. Ignores quantity/selection."""
+
+    path = None
 
     def __init__(self, raw_data):
         self._raw_data = raw_data
@@ -111,6 +141,8 @@ class DataSource:
 
 class DictSource:
     """Maps quantity names (with optional selection) to raw data."""
+
+    path = None
 
     def __init__(self, data):
         self._data = data

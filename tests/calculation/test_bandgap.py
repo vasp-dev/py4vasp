@@ -206,7 +206,6 @@ def test_bandgap_to_plotly(mock_plot, bandgap):
     assert fig == graph.to_plotly.return_value
 
 
-@pytest.mark.skip(reason="Dispatcher does not have _path attribute")
 def test_to_image(bandgap):
     check_to_image(bandgap, None, "bandgap.png")
     custom_filename = "custom.jpg"
@@ -342,7 +341,6 @@ direct gap:                  0.044108                     0.041885              
 Fermi energy:               11.401754"""
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     raw_gap = raw_data.bandgap("default")
     check_factory_methods(Bandgap, raw_gap)

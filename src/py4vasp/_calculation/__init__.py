@@ -7,6 +7,7 @@ from typing import Any, List, Optional, Tuple, Union
 import h5py
 
 from py4vasp import exception
+from py4vasp._calculation.dispatch import FileSource, Group, _REGISTRY
 from py4vasp._raw.access import access
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
 from py4vasp._raw.definition import (
@@ -189,6 +190,7 @@ instead of the constructor Calculation()."""
         calc = cls(_internal=True)
         calc._path = pathlib.Path(path_name).expanduser().resolve()
         calc._file = None
+        calc._source = FileSource(calc._path)
         return calc
 
     @classmethod
@@ -235,6 +237,7 @@ instead of the constructor Calculation()."""
         calc = cls(_internal=True)
         calc._path = pathlib.Path(file_name).expanduser().resolve().parent
         calc._file = file_name
+        calc._source = FileSource(calc._path, file=file_name)
         return calc
 
     def _to_database(
@@ -315,6 +318,23 @@ instead of the constructor Calculation()."""
     def path(self):
         "Return the path in which the calculation is run."
         return self._path
+
+    def __getattr__(self, name):
+        # Only called when normal attribute lookup (including class-level properties
+        # set by _add_all_refinement_classes) has already failed.
+        if name.startswith("_"):
+            raise AttributeError(name)
+        if name not in _REGISTRY:
+            try:
+                importlib.import_module(f"py4vasp._calculation.{name}")
+            except ImportError:
+                pass
+        if name in _REGISTRY:
+            entry = _REGISTRY[name]
+            if isinstance(entry, dict):
+                return Group(self._source, entry)
+            return entry(source=self._source, quantity_name=entry._quantity_name)
+        raise AttributeError(f"'Calculation' has no attribute '{name}'")
 
     # Input files are not in current release
     # @property
