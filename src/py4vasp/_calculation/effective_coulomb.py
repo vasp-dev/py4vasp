@@ -1,53 +1,39 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import pathlib
 from dataclasses import asdict, dataclass
 from types import EllipsisType
 
 import numpy as np
 from numpy.typing import ArrayLike
 
-from py4vasp import exception, interpolate
-from py4vasp._calculation import base, cell
-from py4vasp._raw import data as raw_data
+from py4vasp import exception, interpolate, raw
+from py4vasp._calculation import cell
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    FileSource,
+    merge_default,
+    merge_graphs,
+    merge_strings,
+    quantity,
+)
 from py4vasp._raw.data_db import EffectiveCoulomb_DB
 from py4vasp._third_party import graph, numeric
 from py4vasp._util import check, convert, index, select
 
 
-class EffectiveCoulomb(base.Refinery, graph.Mixin):
-    """Effective Coulomb interaction U obtained with the constrained random phase approximation (cRPA).
+class EffectiveCoulombHandler:
+    """Handler for the effective_coulomb quantity. Works with exactly one raw.EffectiveCoulomb object."""
 
-    This class provides post-processing routines to read and visualize first-principles
-    results from constrained Random Phase Approximation (cRPA) calculations. After you
-    have performed a cRPA calculation using VASP this class can visualize the effective
-    Coulomb interaction *U* along the radial or frequency axis. Youy can use this *U*
-    mean-field theories like DFT+*U* and Dynamical Mean Field Theory (DMFT).
+    def __init__(self, raw_coulomb: raw.EffectiveCoulomb):
+        self._raw_coulomb = raw_coulomb
 
-    The cRPA method is essential for strongly correlated materials, where standard Density
-    Functional Theory (DFT) often incorrectly predicts a metallic ground state or fails to
-    capture magnetic order. You can activate the cRPA calculation in VASP by setting
-    :tag:`ALGO` = `CRPAR` in the INCAR file. The method computes the effective Coulomb
-    interaction *U* in real space by excluding screening processes within a predefined
-    correlated subspace, typically associated with localized orbitals such as *d* or *f*
-    states.
+    @classmethod
+    def from_data(cls, raw_coulomb: raw.EffectiveCoulomb) -> "EffectiveCoulombHandler":
+        return cls(raw_coulomb)
 
-    While different flavors of cRPA exist, we recommend using the spectral cRPA (s-cRPA)
-    method that you activate by setting :tag:`LSCRPA` = `.TRUE.`. in the INCAR file. This
-    approach overcomes significant limitations of earlier cRPA formulations [1]_, in
-    particular numerical instabilities for highly occupied correlated shells or unphysical
-    results like negative *U* values.
-
-    References
-    ----------
-    .. [1] Kaltak, M., *et al.*, Constrained Random Phase Approximation: the spectral
-        method, Phys. Rev. B 112, 245102 (2025), https://doi.org/10.1103/m3gh-g6r6
-    """
-
-    _raw_data: raw_data.EffectiveCoulomb
-
-    @base.data_access
-    def __str__(self):
-        data = asdict(self._to_database()["effective_coulomb"])
+    def __str__(self) -> str:
+        data = asdict(self.to_database()["effective_coulomb"])
         return f"""\
 averaged bare interaction
 bare Hubbard U = {data["bare_V_uppercase"].real:8.4f} {data["bare_V_uppercase"].imag:8.4f}
@@ -60,7 +46,8 @@ screened Hubbard u = {data["screened_u_lowercase"].real:8.4f} {data["screened_u_
 screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_uppercase"].imag:8.4f}
 """
 
-    def _to_database(self, *args, **kwargs) -> dict[str, EffectiveCoulomb_DB]:
+    def to_database(self) -> dict[str, EffectiveCoulomb_DB]:
+        """Serialize effective Coulomb data for database storage."""
         wannier_iiii = self._wannier_indices_iiii()
         wannier_ijji = self._wannier_indices_ijji()
         wannier_ijij = self._wannier_indices_ijij()
@@ -89,12 +76,12 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
             access_U = access_V = (spin_diagonal, wannier_iiii, complex_)
             access_u = access_v = (spin_diagonal, wannier_ijji, complex_)
             access_J = access_Vj = (spin_diagonal, wannier_ijij, complex_)
-        U = convert.to_complex(self._raw_data.screened_potential[access_U])
-        u = convert.to_complex(self._raw_data.screened_potential[access_u])
-        J = convert.to_complex(self._raw_data.screened_potential[access_J])
-        V = convert.to_complex(self._raw_data.bare_potential_high_cutoff[access_V])
-        v = convert.to_complex(self._raw_data.bare_potential_high_cutoff[access_v])
-        Vj = convert.to_complex(self._raw_data.bare_potential_high_cutoff[access_Vj])
+        U = convert.to_complex(self._raw_coulomb.screened_potential[access_U])
+        u = convert.to_complex(self._raw_coulomb.screened_potential[access_u])
+        J = convert.to_complex(self._raw_coulomb.screened_potential[access_J])
+        V = convert.to_complex(self._raw_coulomb.bare_potential_high_cutoff[access_V])
+        v = convert.to_complex(self._raw_coulomb.bare_potential_high_cutoff[access_v])
+        Vj = convert.to_complex(self._raw_coulomb.bare_potential_high_cutoff[access_Vj])
         return {
             "effective_coulomb": EffectiveCoulomb_DB(
                 screened_U_uppercase=complex(np.average(U)),
@@ -107,19 +94,13 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
         }
 
     def _wannier_indices_iiii(self):
-        """Return the indices that trace over diagonal of the 4 Wannier states. This
-        should be equivalent to `np.einsum('iiii->', data)` if data is a reshaped array
-        of 4 Wannier indices."""
-        n = self._raw_data.number_wannier_states
+        n = self._raw_coulomb.number_wannier_states
         step = n**3 + n**2 + n + 1
         stop = n**4
         return slice(0, stop, step)
 
     def _wannier_indices_ijij(self):
-        """Return the indices that run over pairs of Wannier states. This should be
-        equivalent to `np.einsum('ijij->', data` if data is a reshaped array of 4
-        Wannier indices and the diagonal is set to 0."""
-        n = self._raw_data.number_wannier_states
+        n = self._raw_coulomb.number_wannier_states
         stop = n**4
         slice_included = slice(0, stop, n**2 + 1)
         slice_excluded = slice(0, stop, n**3 + n**2 + n + 1)
@@ -127,10 +108,7 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
         return np.setdiff1d(indices[slice_included], indices[slice_excluded])
 
     def _wannier_indices_ijji(self):
-        """Return the indices that run over pairs of Wannier states. This should be
-        equivalent to `np.einsum('ijji->', data` if data is a reshaped array of 4
-        Wannier indices and the diagonal is set to 0."""
-        n = self._raw_data.number_wannier_states
+        n = self._raw_coulomb.number_wannier_states
         stop = n**4
         indices_included = np.concatenate(
             [i * (n**3 + 1) + np.arange(0, n**3, n**2 + n) for i in range(n)]
@@ -139,8 +117,7 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
         indices = np.arange(stop)
         return np.setdiff1d(indices_included, indices[slice_excluded])
 
-    @base.data_access
-    def to_dict(self) -> dict[str, np.ndarray]:
+    def read(self) -> dict[str, np.ndarray]:
         """Convert the effective Coulomb object to a dictionary representation.
 
         The integrals are evaluated over 4 Wannier functions. For the bare Coulomb
@@ -167,20 +144,24 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
             **self._read_positions(),
         }
 
+    def to_dict(self) -> dict[str, np.ndarray]:
+        """Public alias for read()."""
+        return self.read()
+
     @property
     def _has_frequencies(self):
-        return len(self._raw_data.frequencies) > 1
+        return len(self._raw_coulomb.frequencies) > 1
 
     @property
     def _has_positions(self):
-        return not check.is_none(self._raw_data.positions)
+        return not check.is_none(self._raw_coulomb.positions)
 
     @property
     def _is_collinear(self):
-        return len(self._raw_data.bare_potential_low_cutoff) == 3
+        return len(self._raw_coulomb.bare_potential_low_cutoff) == 3
 
     def _read_high_cutoff(self):
-        V = convert.to_complex(self._raw_data.bare_potential_high_cutoff[:])
+        V = convert.to_complex(self._raw_coulomb.bare_potential_high_cutoff[:])
         if self._has_positions:
             V = np.moveaxis(V, -1, 0)
         V = self._unpack_wannier_indices(V)
@@ -189,14 +170,14 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
         return V
 
     def _read_low_cutoff(self):
-        C = convert.to_complex(self._raw_data.bare_potential_low_cutoff[:])
+        C = convert.to_complex(self._raw_coulomb.bare_potential_low_cutoff[:])
         C = self._unpack_wannier_indices(C)
         if self._has_frequencies:
             C = C[..., np.newaxis]
         return C
 
     def _read_screened(self):
-        U = convert.to_complex(self._raw_data.screened_potential[:])
+        U = convert.to_complex(self._raw_coulomb.screened_potential[:])
         if self._has_positions:
             U = np.moveaxis(U, -1, 0)
         U = self._unpack_wannier_indices(U)
@@ -205,34 +186,33 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
         return U
 
     def _unpack_wannier_indices(self, data):
-        num_wannier = self._raw_data.number_wannier_states
+        num_wannier = self._raw_coulomb.number_wannier_states
         new_shape = data.shape[:-1] + 4 * (num_wannier,)
         return data.reshape(new_shape)
 
     def _read_frequencies(self):
         if not self._has_frequencies:
             return {}
-        return {"frequencies": convert.to_complex(self._raw_data.frequencies[:])}
+        return {"frequencies": convert.to_complex(self._raw_coulomb.frequencies[:])}
 
     def _read_positions(self):
         if not self._has_positions:
             return {}
         return {
             "lattice_vectors": self._cell().lattice_vectors(),
-            "positions": self._raw_data.positions[:],
+            "positions": self._raw_coulomb.positions[:],
         }
 
     def _cell(self):
-        return cell.Cell.from_data(self._raw_data.cell)
+        return cell.Cell.from_data(self._raw_coulomb.cell)
 
-    @base.data_access
     def to_graph(
         self,
         selection: str = "U J V",
         omega: None | EllipsisType | np.ndarray = None,
         radius: None | EllipsisType | np.ndarray = None,
         radius_max: None | float = None,
-        config: interpolate.AAAConfig = interpolate.AAAConfig(),
+        config=None,
     ) -> graph.Graph:
         """Generate a graph representation of the effective Coulomb interaction.
 
@@ -280,6 +260,8 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
             A graph object containing the visualization of the effective Coulomb
             interaction data.
         """
+        if config is None:
+            config = interpolate.AAAConfig()
         tree = select.Tree.from_selection(selection)
         plotter = self._make_plotter(omega, radius, radius_max, config)
         potentials = self._get_effective_potentials(tree, plotter)
@@ -327,7 +309,7 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
     def _get_bare_potential(self, selection, plotter):
         selection = self._filter_component_from_selection(selection)
         maps = self._create_map("bare")
-        potential = self._raw_data.bare_potential_high_cutoff
+        potential = self._raw_coulomb.bare_potential_high_cutoff
         selector = index.Selector(maps, potential, reduction=np.average)
         V = convert.to_complex(selector[selection])
         V = plotter.interpolate_bare_if_necessary(V)
@@ -336,7 +318,7 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
     def _get_screened_potential(self, selection, plotter):
         selection = self._filter_component_from_selection(selection)
         maps = self._create_map("screened")
-        potential = self._raw_data.screened_potential
+        potential = self._raw_coulomb.screened_potential
         selector = index.Selector(maps, potential, reduction=np.average)
         U = convert.to_complex(selector[selection])
         U = plotter.interpolate_screened_if_necessary(U)
@@ -357,7 +339,7 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
         if self._is_collinear:
             spin_map = {
                 convert.text_to_string(label): slice(i, i + 1)
-                for i, label in enumerate(self._raw_data.spin_labels[:])
+                for i, label in enumerate(self._raw_coulomb.spin_labels[:])
             }
             spin_map[None] = spin_map["total"] = slice(0, 2)
         else:
@@ -376,6 +358,172 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
             "V": wannier_iiii,
             "v": wannier_ijji,
         }
+
+    def selections(self) -> dict[str, list[str]]:
+        """Return a dictionary describing what kind of data are available."""
+        spin_map = self._create_spin_map()
+        component_map = self._create_component_map()
+        return {
+            "spin": [str(key) for key in spin_map if key is not None],
+            "screening": ["screened", "bare"],
+            "potential": [str(key) for key in component_map if key is not None],
+        }
+
+
+@quantity("effective_coulomb")
+class EffectiveCoulomb(graph.Mixin):
+    """Effective Coulomb interaction U obtained with the constrained random phase approximation (cRPA).
+
+    This class provides post-processing routines to read and visualize first-principles
+    results from constrained Random Phase Approximation (cRPA) calculations. After you
+    have performed a cRPA calculation using VASP this class can visualize the effective
+    Coulomb interaction *U* along the radial or frequency axis. Youy can use this *U*
+    mean-field theories like DFT+*U* and Dynamical Mean Field Theory (DMFT).
+
+    The cRPA method is essential for strongly correlated materials, where standard Density
+    Functional Theory (DFT) often incorrectly predicts a metallic ground state or fails to
+    capture magnetic order. You can activate the cRPA calculation in VASP by setting
+    :tag:`ALGO` = `CRPAR` in the INCAR file. The method computes the effective Coulomb
+    interaction *U* in real space by excluding screening processes within a predefined
+    correlated subspace, typically associated with localized orbitals such as *d* or *f*
+    states.
+
+    While different flavors of cRPA exist, we recommend using the spectral cRPA (s-cRPA)
+    method that you activate by setting :tag:`LSCRPA` = `.TRUE.`. in the INCAR file. This
+    approach overcomes significant limitations of earlier cRPA formulations [1]_, in
+    particular numerical instabilities for highly occupied correlated shells or unphysical
+    results like negative *U* values.
+
+    References
+    ----------
+    .. [1] Kaltak, M., *et al.*, Constrained Random Phase Approximation: the spectral
+        method, Phys. Rev. B 112, 245102 (2025), https://doi.org/10.1103/m3gh-g6r6
+    """
+
+    def __init__(self, source, quantity_name: str = "effective_coulomb"):
+        self._source = source
+        self._quantity_name = quantity_name
+
+    @classmethod
+    def from_data(cls, raw_coulomb: raw.EffectiveCoulomb) -> "EffectiveCoulomb":
+        """Create an EffectiveCoulomb dispatcher from raw data (convenience for testing)."""
+        return cls(source=DataSource(raw_coulomb))
+
+    @classmethod
+    def from_path(cls, path=".") -> "EffectiveCoulomb":
+        """Create an EffectiveCoulomb dispatcher that reads from HDF5 files at *path*."""
+        return cls(source=FileSource(path))
+
+    @classmethod
+    def from_file(cls, file_name) -> "EffectiveCoulomb":
+        """Create an EffectiveCoulomb dispatcher that reads from a specific HDF5 file."""
+        resolved = pathlib.Path(file_name).expanduser().resolve()
+        return cls(source=FileSource(resolved.parent, file=file_name))
+
+    @property
+    def _path(self):
+        """Path used for file-export methods. Falls back to cwd."""
+        return self._source.path or pathlib.Path.cwd()
+
+    @property
+    def path(self):
+        """Returns the path from which the output is obtained."""
+        return self._path
+
+    def _handler_factory(self, raw_data):
+        return EffectiveCoulombHandler.from_data(raw_data)
+
+    def read(self, selection: str | None = None) -> dict[str, np.ndarray]:
+        """Convert the effective Coulomb object to a dictionary representation.
+
+        Returns
+        -------
+        -
+            A dictionary containing the effective Coulomb interaction data.
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            EffectiveCoulombHandler.read,
+        )
+
+    def to_dict(self, selection: str | None = None) -> dict[str, np.ndarray]:
+        """Public alias for read(). Check that method for examples and optional arguments."""
+        return self.read(selection=selection)
+
+    def to_graph(
+        self,
+        selection: str = "U J V",
+        omega: None | EllipsisType | np.ndarray = None,
+        radius: None | EllipsisType | np.ndarray = None,
+        radius_max: None | float = None,
+        config=None,
+    ) -> graph.Graph:
+        """Generate a graph representation of the effective Coulomb interaction.
+
+        Parameters
+        ----------
+        selection
+            Specifies which data to plot. Default is "U", "V", and "J".
+        omega
+            Frequency values for frequency-dependent plots.
+        radius
+            Radial distance values for radial-dependent plots.
+        radius_max
+            Maximum radius for radial-dependent plots.
+        config
+            Configuration for analytic continuation.
+
+        Returns
+        -------
+        -
+            A graph object containing the visualization of the effective Coulomb
+            interaction data.
+        """
+        return merge_graphs(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            EffectiveCoulombHandler.to_graph,
+            selection,
+            omega=omega,
+            radius=radius,
+            radius_max=radius_max,
+            config=config,
+        )
+
+    def selections(self, selection: str | None = None) -> dict[str, list[str]]:
+        """Return a dictionary describing what kind of data are available.
+
+        Returns
+        -------
+        -
+            Dictionary containing available selection options with their possible values.
+            Keys include the selection criteria "spin", "screening", and "potential".
+        """
+        result = merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            EffectiveCoulombHandler.selections,
+        )
+        return {"effective_coulomb": ["default"], **result}
+
+    def __str__(self, selection: str | None = None) -> str:
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            EffectiveCoulombHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
 
     @staticmethod
     def ohno_potential(radius: ArrayLike, delta: float) -> np.ndarray:
@@ -397,25 +545,6 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
         """
         delta = np.abs(delta)
         return np.sqrt(delta / (radius + delta))
-
-    @base.data_access
-    def selections(self) -> dict[str, list[str]]:
-        """Return a dictionary describing what kind of data are available.
-
-        Returns
-        -------
-        -
-            Dictionary containing available selection options with their possible values.
-            Keys include the selection criteria "spin", "screening", and "potential".
-        """
-        spin_map = self._create_spin_map()
-        component_map = self._create_component_map()
-        return {
-            **super().selections(),
-            "spin": [str(key) for key in spin_map if key is not None],
-            "screening": ["screened", "bare"],
-            "potential": [str(key) for key in component_map if key is not None],
-        }
 
 
 @dataclass

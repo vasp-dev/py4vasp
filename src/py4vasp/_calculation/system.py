@@ -1,11 +1,42 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp._calculation import base
-from py4vasp._raw import data as raw_data
+import pathlib
+
+from py4vasp import raw
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    FileSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._util import convert
 
 
-class System(base.Refinery):
+class SystemHandler:
+    """Handler for the system tag. Works with exactly one raw.System object."""
+
+    def __init__(self, raw_system: raw.System):
+        self._raw_system = raw_system
+
+    @classmethod
+    def from_data(cls, raw_system: raw.System) -> "SystemHandler":
+        return cls(raw_system)
+
+    def read(self) -> dict:
+        """Read the system tag into a dictionary."""
+        return {"system": str(self)}
+
+    def to_dict(self) -> dict:
+        """Public alias for read()."""
+        return self.read()
+
+    def __str__(self) -> str:
+        return convert.text_to_string(self._raw_system.system)
+
+
+@quantity("system")
+class System:
     """The :tag:`SYSTEM` tag in the INCAR file is a title you choose for a VASP calculation.
 
     VASP lets you attach a free-form description to every calculation via the
@@ -23,14 +54,27 @@ class System(base.Refinery):
     Sr2TiO4 calculation
     """
 
-    _raw_data: raw_data.System
+    def __init__(self, source, quantity_name: str = "system"):
+        self._source = source
+        self._quantity_name = quantity_name
 
-    @base.data_access
-    def __str__(self) -> str:
-        return convert.text_to_string(self._raw_data.system)
+    @classmethod
+    def from_data(cls, raw_system: raw.System) -> "System":
+        """Create a System dispatcher from raw data (convenience for testing)."""
+        return cls(source=DataSource(raw_system))
 
-    @base.data_access
-    def to_dict(self) -> dict[str, str]:
+    @classmethod
+    def from_path(cls, path=".") -> "System":
+        """Create a System dispatcher that reads from HDF5 files at *path*."""
+        return cls(source=FileSource(path))
+
+    @classmethod
+    def from_file(cls, file_name) -> "System":
+        """Create a System dispatcher that reads from a specific HDF5 file."""
+        resolved = pathlib.Path(file_name).expanduser().resolve()
+        return cls(source=FileSource(resolved.parent, file=file_name))
+
+    def read(self, selection: str | None = None) -> dict:
         """Read the system tag into a dictionary.
 
         Returns
@@ -45,7 +89,42 @@ class System(base.Refinery):
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
+        >>> calculation.system.read()
+        {'system': 'Sr2TiO4 calculation'}
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            SystemHandler.from_data,
+            SystemHandler.read,
+        )
+
+    def to_dict(self, selection: str | None = None) -> dict:
+        """Read the system tag into a dictionary.
+
+        Convenient alias for :py:meth:`read`. Check that method for examples
+        and optional arguments.
+
+        Examples
+        --------
+        Read the system tag of a calculation:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
         >>> calculation.system.to_dict()
         {'system': 'Sr2TiO4 calculation'}
         """
-        return {"system": str(self)}
+        return self.read(selection=selection)
+
+    def __str__(self) -> str:
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            None,
+            SystemHandler.from_data,
+            SystemHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))

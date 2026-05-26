@@ -1,33 +1,43 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import pathlib
 from contextlib import suppress
 
-from py4vasp._calculation import bandgap as bandgap_module, base, exception
-from py4vasp._calculation._dispersion import Dispersion
-from py4vasp._raw import data as raw_data
+from py4vasp import raw
+from py4vasp._calculation import bandgap as bandgap_module, exception
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    FileSource,
+    merge_default,
+    quantity,
+)
 from py4vasp._raw.data_db import RunInfo_DB
 from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._util import check
 
 
-class RunInfo(base.Refinery):
-    "Contains information about the VASP run."
+_TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
+    exception.Py4VaspError,
+    exception.OutdatedVaspVersion,
+    exception.NoData,
+    AttributeError,
+    TypeError,
+    ValueError,
+)
 
-    _raw_data: raw_data.RunInfo
 
-    _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
-        exception.Py4VaspError,
-        exception.OutdatedVaspVersion,
-        exception.NoData,
-        AttributeError,
-        TypeError,
-        ValueError,
-    )
+class RunInfoHandler:
+    """Handler for run info. Works with exactly one raw.RunInfo object."""
 
-    @base.data_access
-    def to_dict(self):
-        "Convert the run information to a dictionary."
+    def __init__(self, raw_run_info: raw.RunInfo):
+        self._raw_run_info = raw_run_info
 
+    @classmethod
+    def from_data(cls, raw_run_info: raw.RunInfo) -> "RunInfoHandler":
+        return cls(raw_run_info)
+
+    def read(self) -> dict:
+        """Convert the run information to a dictionary."""
         return {
             **self._dict_from_runtime(),
             **self._dict_from_system(),
@@ -37,8 +47,18 @@ class RunInfo(base.Refinery):
             **self._dict_from_phonon_dispersion(),
         }
 
-    def _read(self, *keys: str) -> dict:
-        data = self._raw_data
+    def to_dict(self) -> dict:
+        """Public alias for read()."""
+        return self.read()
+
+    def to_database(self) -> dict:
+        """Serialize run info for the database."""
+        return {
+            "run_info": RunInfo_DB(**self.read()),
+        }
+
+    def _read_attr(self, *keys: str):
+        data = self._raw_run_info
         for key in keys:
             data = getattr(data, key, None)
             if data is None:
@@ -52,7 +72,7 @@ class RunInfo(base.Refinery):
     def _dict_additional_collection(self) -> dict:
         fermi_energy = None
         with suppress(exception.NoData):
-            fermi_energy = self._raw_data.fermi_energy
+            fermi_energy = self._raw_run_info.fermi_energy
         if isinstance(fermi_energy, VaspData):
             fermi_energy = fermi_energy._data
 
@@ -62,7 +82,7 @@ class RunInfo(base.Refinery):
         is_noncollinear = self._is_noncollinear()
         is_metallic = self._is_metallic()
         is_magnetic = None  # TODO implement
-        magnetic_order = None  # TODO implement, maybe as magnetic_space_group (ferromagnetic, antiferromagnetic, ...) via symmetry
+        magnetic_order = None  # TODO implement
 
         grid_coarse_shape = (
             None  # TODO implement for FFT grid (currently not written to H5)
@@ -84,61 +104,54 @@ class RunInfo(base.Refinery):
         }
 
     def _is_collinear(self):
-        if not check.is_none(self._raw_data.len_dos):
-            return self._raw_data.len_dos == 2
+        if not check.is_none(self._raw_run_info.len_dos):
+            return self._raw_run_info.len_dos == 2
         else:
-            if not check.is_none(self._raw_data.band_dispersion_eigenvalues):
-                return len(self._raw_data.band_dispersion_eigenvalues) == 2
+            if not check.is_none(self._raw_run_info.band_dispersion_eigenvalues):
+                return len(self._raw_run_info.band_dispersion_eigenvalues) == 2
             else:
                 return None
 
     def _is_noncollinear(self):
-        if not check.is_none(self._raw_data.len_dos):
-            return self._raw_data.len_dos == 4
+        if not check.is_none(self._raw_run_info.len_dos):
+            return self._raw_run_info.len_dos == 4
         else:
-            if not check.is_none(self._raw_data.band_projections):
-                return len(self._raw_data.band_projections) == 4
+            if not check.is_none(self._raw_run_info.band_projections):
+                return len(self._raw_run_info.band_projections) == 4
             else:
                 return None
 
     def _is_metallic(self):
-        with suppress(*self._TO_DATABASE_SUPPRESSED_EXCEPTIONS):
-            if check.is_none(self._raw_data.bandgap):
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+            if check.is_none(self._raw_run_info.bandgap):
                 return None
-            gap = bandgap_module.BandgapHandler.from_data(self._raw_data.bandgap)
+            gap = bandgap_module.BandgapHandler.from_data(self._raw_run_info.bandgap)
             return all(gap._output_gap("fundamental", to_string=False) <= 0.0)
-
         return None
 
     def _dict_from_system(self) -> dict:
         system_tag = None
-
         with suppress(exception.NoData):
-            system_tag = self._read("system", "system")
-
+            system_tag = self._read_attr("system", "system")
         return {
             "system_tag": system_tag,
         }
 
     def _dict_from_runtime(self) -> dict:
         vasp_version = None
-
         with suppress(exception.NoData):
-            runtime_data = self._raw_data.runtime
+            runtime_data = self._raw_run_info.runtime
             vasp_version = None if runtime_data is None else runtime_data.vasp_version
-
         return {
             "vasp_version": vasp_version,
         }
 
     def _dict_from_structure(self) -> dict:
         num_ion_steps = None
-
         with suppress(exception.NoData, AttributeError):
-            positions = self._read("structure", "positions")
+            positions = self._read_attr("structure", "positions")
             if not check.is_none(positions):
                 num_ion_steps = 1 if positions.ndim == 2 else positions.shape[0]
-
         return {
             "num_ionic_steps": num_ion_steps,
         }
@@ -147,18 +160,16 @@ class RunInfo(base.Refinery):
         has_selective_dynamics = None
         has_lattice_velocities = None
         has_ion_velocities = None
-
         with suppress(exception.NoData):
             has_selective_dynamics = not check.is_none(
-                self._read("contcar", "selective_dynamics")
+                self._read_attr("contcar", "selective_dynamics")
             )
             has_lattice_velocities = not check.is_none(
-                self._read("contcar", "lattice_velocities")
+                self._read_attr("contcar", "lattice_velocities")
             )
             has_ion_velocities = not check.is_none(
-                self._read("contcar", "ion_velocities")
+                self._read_attr("contcar", "ion_velocities")
             )
-
         return {
             "has_selective_dynamics": has_selective_dynamics,
             "has_lattice_velocities": has_lattice_velocities,
@@ -168,19 +179,51 @@ class RunInfo(base.Refinery):
     def _dict_from_phonon_dispersion(self) -> dict:
         phonon_num_qpoints = None
         phonon_num_modes = None
-
         with suppress(exception.NoData):
-            eigenvalues = self._raw_data.phonon_dispersion.eigenvalues
+            eigenvalues = self._raw_run_info.phonon_dispersion.eigenvalues
             phonon_num_qpoints = eigenvalues.shape[0]
             phonon_num_modes = eigenvalues.shape[1]
-
         return {
             "phonon_num_qpoints": phonon_num_qpoints,
             "phonon_num_modes": phonon_num_modes,
         }
 
-    @base.data_access
-    def _to_database(self, *args, **kwargs):
-        return {
-            "run_info": RunInfo_DB(**self.to_dict()),
-        }
+
+@quantity("run_info")
+class RunInfo:
+    "Contains information about the VASP run."
+
+    def __init__(self, source, quantity_name: str = "run_info"):
+        self._source = source
+        self._quantity_name = quantity_name
+
+    @classmethod
+    def from_data(cls, raw_run_info: raw.RunInfo) -> "RunInfo":
+        """Create a RunInfo dispatcher from raw data (convenience for testing)."""
+        return cls(source=DataSource(raw_run_info))
+
+    @classmethod
+    def from_path(cls, path=".") -> "RunInfo":
+        """Create a RunInfo dispatcher that reads from HDF5 files at *path*."""
+        return cls(source=FileSource(path))
+
+    @classmethod
+    def from_file(cls, file_name) -> "RunInfo":
+        """Create a RunInfo dispatcher that reads from a specific HDF5 file."""
+        resolved = pathlib.Path(file_name).expanduser().resolve()
+        return cls(source=FileSource(resolved.parent, file=file_name))
+
+    def read(self, selection: str | None = None) -> dict:
+        "Convert the run information to a dictionary."
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            RunInfoHandler.from_data,
+            RunInfoHandler.read,
+        )
+
+    def to_dict(self, selection: str | None = None) -> dict:
+        """Public alias for read()."""
+        return self.read(selection=selection)
+

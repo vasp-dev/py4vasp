@@ -1,12 +1,19 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import pathlib
 from contextlib import suppress
 
 import numpy as np
 
-from py4vasp import exception
-from py4vasp._calculation import base, cell
-from py4vasp._raw import data as raw_data
+from py4vasp import exception, raw
+from py4vasp._calculation import cell
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    FileSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._raw.data_db import PiezoelectricTensor_DB
 from py4vasp._util import check
 from py4vasp._util.tensor import symmetry_reduce, tensor_constants
@@ -20,38 +27,27 @@ _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
 )
 
 
-class PiezoelectricTensor(base.Refinery):
-    """The piezoelectric tensor is the derivative of the energy with respect to strain and field.
+class PiezoelectricTensorHandler:
+    """Handler for the piezoelectric_tensor quantity. Works with exactly one raw.PiezoelectricTensor object."""
 
-    The piezoelectric tensor represents the coupling between mechanical stress and
-    electrical polarization in a material. VASP computes the piezoelectric tensor with
-    a linear response calculation. The piezoelectric tensor is a 3x3 matrix that relates
-    the three components of stress to the three components of polarization.
-    Specifically, it describes how the application of mechanical stress induces an
-    electric polarization and, conversely, how an applied electric field results in
-    a deformation.
+    def __init__(self, raw_piezoelectric_tensor: raw.PiezoelectricTensor):
+        self._raw_piezoelectric_tensor = raw_piezoelectric_tensor
 
-    The piezoelectric tensor helps to characterize the efficiency and anisotropy of the
-    piezoelectric response. A large piezoelectric tensor is useful e.g. for sensors
-    and actuators. Moreover, the tensor's symmetry properties are coupled to the crystal
-    structure and symmetry. Therefore a mismatch of the symmetry properties between
-    calculations and experiment can reveal underlying flaws in the characterization of
-    the crystal structure.
-    """
+    @classmethod
+    def from_data(
+        cls, raw_piezoelectric_tensor: raw.PiezoelectricTensor
+    ) -> "PiezoelectricTensorHandler":
+        return cls(raw_piezoelectric_tensor)
 
-    _raw_data: raw_data.PiezoelectricTensor
-
-    @base.data_access
     def __str__(self):
-        data = self.to_dict()
+        data = self.read()
         return f"""Piezoelectric tensor (C/m²)
          XX          YY          ZZ          XY          YZ          ZX
 ---------------------------------------------------------------------------
 {_tensor_to_string(data["clamped_ion"], "clamped-ion")}
 {_tensor_to_string(data["relaxed_ion"], "relaxed-ion")}"""
 
-    @base.data_access
-    def to_dict(self):
+    def read(self) -> dict:
         """Read the ionic and electronic contribution to the piezoelectric tensor
         into a dictionary.
 
@@ -64,14 +60,17 @@ class PiezoelectricTensor(base.Refinery):
         dict
             The clamped ion and relaxed ion data for the piezoelectric tensor.
         """
-        electron_data = self._raw_data.electron[:]
+        electron_data = self._raw_piezoelectric_tensor.electron[:]
         return {
             "clamped_ion": electron_data,
-            "relaxed_ion": electron_data + self._raw_data.ion[:],
+            "relaxed_ion": electron_data + self._raw_piezoelectric_tensor.ion[:],
         }
 
-    @base.data_access
-    def _to_database(self, *args, **kwargs):
+    def to_dict(self) -> dict:
+        """Public alias for read()."""
+        return self.read()
+
+    def to_database(self) -> dict:
         reduced_tensor_x, reduced_tensor_y, reduced_tensor_z, tensor_2d = (
             [None, None, None] for _ in range(4)
         )
@@ -81,14 +80,17 @@ class PiezoelectricTensor(base.Refinery):
         )
 
         total_tensor, electronic_tensor, ionic_tensor = None, None, None
-        if not check.is_none(self._raw_data.ion) and not check.is_none(
-            self._raw_data.electron
+        if not check.is_none(self._raw_piezoelectric_tensor.ion) and not check.is_none(
+            self._raw_piezoelectric_tensor.electron
         ):
-            total_tensor = self._raw_data.electron[:] + self._raw_data.ion[:]
-        if not check.is_none(self._raw_data.electron):
-            electronic_tensor = self._raw_data.electron[:]
-        if not check.is_none(self._raw_data.ion):
-            ionic_tensor = self._raw_data.ion[:]
+            total_tensor = (
+                self._raw_piezoelectric_tensor.electron[:]
+                + self._raw_piezoelectric_tensor.ion[:]
+            )
+        if not check.is_none(self._raw_piezoelectric_tensor.electron):
+            electronic_tensor = self._raw_piezoelectric_tensor.electron[:]
+        if not check.is_none(self._raw_piezoelectric_tensor.ion):
+            ionic_tensor = self._raw_piezoelectric_tensor.ion[:]
 
         for idt, tensor in enumerate([total_tensor, ionic_tensor, electronic_tensor]):
             e_tensor = None
@@ -102,8 +104,8 @@ class PiezoelectricTensor(base.Refinery):
                 reduced_tensor_y[idt] = e_tensor[1, (0, 1, 2, 5, 3, 4)].tolist()
                 reduced_tensor_z[idt] = e_tensor[2, (0, 1, 2, 5, 3, 4)].tolist()
 
-                if not check.is_none(self._raw_data.cell):
-                    cCell = cell.Cell.from_data(self._raw_data.cell)
+                if not check.is_none(self._raw_piezoelectric_tensor.cell):
+                    cCell = cell.Cell.from_data(self._raw_piezoelectric_tensor.cell)
                     in_plane[idt], lvac = _compute_2d_plane_and_conversion_factor(cCell)
                     if in_plane[idt] is not None and lvac is not None:
                         tensor_2d[idt] = e_tensor * lvac
@@ -230,6 +232,96 @@ class PiezoelectricTensor(base.Refinery):
                 ),
             )
         }
+
+
+@quantity("piezoelectric_tensor")
+class PiezoelectricTensor:
+    """The piezoelectric tensor is the derivative of the energy with respect to strain and field.
+
+    The piezoelectric tensor represents the coupling between mechanical stress and
+    electrical polarization in a material. VASP computes the piezoelectric tensor with
+    a linear response calculation. The piezoelectric tensor is a 3x3 matrix that relates
+    the three components of stress to the three components of polarization.
+    Specifically, it describes how the application of mechanical stress induces an
+    electric polarization and, conversely, how an applied electric field results in
+    a deformation.
+
+    The piezoelectric tensor helps to characterize the efficiency and anisotropy of the
+    piezoelectric response. A large piezoelectric tensor is useful e.g. for sensors
+    and actuators. Moreover, the tensor's symmetry properties are coupled to the crystal
+    structure and symmetry. Therefore a mismatch of the symmetry properties between
+    calculations and experiment can reveal underlying flaws in the characterization of
+    the crystal structure.
+    """
+
+    def __init__(self, source, quantity_name: str = "piezoelectric_tensor"):
+        self._source = source
+        self._quantity_name = quantity_name
+
+    @classmethod
+    def from_data(
+        cls, raw_piezoelectric_tensor: raw.PiezoelectricTensor
+    ) -> "PiezoelectricTensor":
+        """Create a PiezoelectricTensor dispatcher from raw data (convenience for testing)."""
+        return cls(source=DataSource(raw_piezoelectric_tensor))
+
+    @classmethod
+    def from_path(cls, path="."):
+        """Create a PiezoelectricTensor dispatcher that reads from HDF5 files at *path*."""
+        return cls(source=FileSource(path))
+
+    @classmethod
+    def from_file(cls, file_name):
+        """Create a PiezoelectricTensor dispatcher that reads from a specific HDF5 file."""
+        resolved = pathlib.Path(file_name).expanduser().resolve()
+        return cls(source=FileSource(resolved.parent, file=file_name))
+
+    def read(self, selection: str | None = None) -> dict:
+        """Read the ionic and electronic contribution to the piezoelectric tensor
+        into a dictionary.
+
+        It will combine both terms as the total piezoelectric tensor (relaxed_ion)
+        but also give the pure electronic contribution, so that you can separate the
+        parts.
+
+        Returns
+        -------
+        dict
+            The clamped ion and relaxed ion data for the piezoelectric tensor.
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            PiezoelectricTensorHandler.from_data,
+            PiezoelectricTensorHandler.read,
+        )
+
+    def to_dict(self, selection: str | None = None) -> dict:
+        """Read the ionic and electronic contribution to the piezoelectric tensor
+        into a dictionary.
+
+        Convenient alias for :py:meth:`read`. Check that method for examples
+        and optional arguments.
+
+        Returns
+        -------
+        dict
+            The clamped ion and relaxed ion data for the piezoelectric tensor.
+        """
+        return self.read(selection=selection)
+
+    def __str__(self):
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            None,
+            PiezoelectricTensorHandler.from_data,
+            PiezoelectricTensorHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
 
 
 def _tensor_to_string(tensor, label):

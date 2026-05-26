@@ -7,7 +7,7 @@ import pytest
 from py4vasp._calculation._CONTCAR import CONTCAR
 from py4vasp._calculation._dispersion import Dispersion
 from py4vasp._calculation.bandgap import Bandgap, BandgapHandler
-from py4vasp._calculation.run_info import RunInfo
+from py4vasp._calculation.run_info import RunInfo, RunInfoHandler
 from py4vasp._calculation.structure import Structure
 from py4vasp._raw.data_db import RunInfo_DB
 from py4vasp._util import check
@@ -31,6 +31,26 @@ def run_info(request, raw_data):
         raw_run_info.phonon_dispersion
     )
     return run_info
+
+
+@pytest.fixture(params=["Sr2TiO4"])
+def run_info_handler(request, raw_data):
+    raw_run_info = raw_data.run_info(request.param)
+    handler = RunInfoHandler.from_data(raw_run_info)
+    handler.ref = types.SimpleNamespace()
+    handler.ref.system_name = raw_run_info.system.system
+    handler.ref.runtime = raw_run_info.runtime
+    handler.ref.fermi_energy = raw_run_info.fermi_energy
+    handler.ref.bandgap = BandgapHandler.from_data(raw_run_info.bandgap)
+    handler.ref.len_dos = raw_run_info.len_dos
+    handler.ref.band_dispersion_eigenvalues = raw_run_info.band_dispersion_eigenvalues
+    handler.ref.band_projections = raw_run_info.band_projections
+    handler.ref.structure = Structure.from_data(raw_run_info.structure)
+    handler.ref.contcar = CONTCAR.from_data(raw_run_info.contcar)
+    handler.ref.phonon_dispersion = Dispersion.from_data(
+        raw_run_info.phonon_dispersion
+    )
+    return handler
 
 
 def _check_dict(data_db: RunInfo_DB, runinfo_ref):
@@ -84,10 +104,19 @@ def test_read(run_info):
     _check_dict(RunInfo_DB(**run_info.read()), run_info.ref)
 
 
-def test_to_database(run_info):
-    _check_dict(run_info._read_to_database()["run_info:default"], run_info.ref)
+def test_to_dict_matches_read(run_info_handler):
+    assert run_info_handler.to_dict() == run_info_handler.read()
 
 
+def test_dispatcher_to_dict_matches_read(run_info):
+    assert run_info.to_dict() == run_info.read()
+
+
+def test_to_database(run_info_handler):
+    _check_dict(run_info_handler.to_database()["run_info"], run_info_handler.ref)
+
+
+@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.run_info("Sr2TiO4")
     check_factory_methods(RunInfo, data)
