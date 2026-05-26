@@ -153,11 +153,11 @@ class TestCalculationGetattr:
             calc = Calculation.from_path(tmp_path)
             assert calc.fake_qty3.source.path == calc._path
 
-    def test_old_arch_quantities_still_accessible(self):
-        """Old-arch properties set by _add_all_refinement_classes take precedence."""
+    def test_new_arch_quantities_accessible_via_getattr(self):
+        """New-arch quantities registered via @quantity are accessible via __getattr__."""
         with patch("py4vasp.raw.access"):
             calc = Calculation.from_path(".")
-            # 'energy' is an old-arch quantity; it must still be accessible
+            # 'energy' is a new-arch quantity wired via _REGISTRY/__getattr__
             assert hasattr(calc, "energy")
 
 
