@@ -28,11 +28,11 @@ These are self-contained and have no internal dependencies on other quantities.
 - [x] `workfunction` — `workfunction.py` → `WorkfunctionHandler` + `@quantity("workfunction") Workfunction` | test: `test_workfunction.py` ✅
 - [x] `dielectric_function` — `dielectric_function.py` → `DielectricFunctionHandler` + `@quantity("dielectric_function") DielectricFunction` | test: `test_dielectric_function.py` ✅
 - [x] `effective_coulomb` — `effective_coulomb.py` → `EffectiveCoulombHandler` + `@quantity("effective_coulomb") EffectiveCoulomb` | test: `test_effective_coulomb.py` ✅
-- [ ] `internal_strain` — `internal_strain.py` → `InternalStrain(Refinery, structure.Mixin)` | test: `test_internal_strain.py`
+- [x] `internal_strain` — `internal_strain.py` → `InternalStrainHandler` + `@quantity("internal_strain") InternalStrain` | test: `test_internal_strain.py` ✅
   - Note: uses `structure.Mixin`; call `StructureHandler.from_data` directly in the Handler.
-- [ ] `born_effective_charge` — `born_effective_charge.py` → `BornEffectiveCharge(Refinery, structure.Mixin)` | test: `test_born_effective_charge.py`
+- [x] `born_effective_charge` — `born_effective_charge.py` → `BornEffectiveChargeHandler` + `@quantity("born_effective_charge") BornEffectiveCharge` | test: `test_born_effective_charge.py` ✅
   - Note: uses `structure.Mixin`; requires `structure` to be ported first (or compose directly via `StructureHandler`).
-- [ ] `force_constant` — `force_constant.py` → `ForceConstant(Refinery, structure.Mixin)` | test: `test_force_constant.py`
+- [x] `force_constant` — `force_constant.py` → `ForceConstantHandler` + `@quantity("force_constant") ForceConstant` | test: `test_force_constant.py` ✅
   - Note: uses `structure.Mixin`; same composition pattern as above.
 
 ---

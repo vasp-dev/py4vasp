@@ -33,13 +33,10 @@ def _append_database_error(
 INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
 QUANTITIES = (
     "band",
-    "born_effective_charge",
     "current_density",
     "density",
     "dos",
     "force",
-    "force_constant",
-    "internal_strain",
     "kpoint",
     "local_moment",
     "nics",
