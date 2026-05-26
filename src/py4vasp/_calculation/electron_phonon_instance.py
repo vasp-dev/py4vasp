@@ -9,7 +9,9 @@ class ElectronPhononInstance(abc.ABC):
         self.parent = parent
         self.index = index
 
-    def _get_data(self, name):
+    def _get_data(self, name, selection=None):
+        if selection is not None:
+            return self.parent._get_data(name, self.index, selection=selection)
         return self.parent._get_data(name, self.index)
 
     @abc.abstractmethod
