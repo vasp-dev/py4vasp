@@ -70,8 +70,14 @@ def test_read(piezoelectric_tensor, Assert):
 def test_to_dict_matches_read(raw_data):
     raw_tensor = raw_data.piezoelectric_tensor("default")
     handler = PiezoelectricTensorHandler.from_data(raw_tensor)
-    assert handler.to_dict()["clamped_ion"].tolist() == handler.read()["clamped_ion"].tolist()
-    assert handler.to_dict()["relaxed_ion"].tolist() == handler.read()["relaxed_ion"].tolist()
+    assert (
+        handler.to_dict()["clamped_ion"].tolist()
+        == handler.read()["clamped_ion"].tolist()
+    )
+    assert (
+        handler.to_dict()["relaxed_ion"].tolist()
+        == handler.read()["relaxed_ion"].tolist()
+    )
 
 
 def test_dispatcher_to_dict_matches_read(piezoelectric_tensor):

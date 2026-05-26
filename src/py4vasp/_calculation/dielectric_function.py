@@ -222,8 +222,7 @@ dielectric function:
             return selector.label(selection)
         else:
             q_point_label = ",".join(
-                str(convert.Fraction(q))
-                for q in self._raw_dielectric_function.q_point
+                str(convert.Fraction(q)) for q in self._raw_dielectric_function.q_point
             )
             return f"{selector.label(selection)}_q=[{q_point_label}]"
 

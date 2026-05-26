@@ -8,7 +8,10 @@ import numpy as np
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation.dielectric_function import DielectricFunction, DielectricFunctionHandler
+from py4vasp._calculation.dielectric_function import (
+    DielectricFunction,
+    DielectricFunctionHandler,
+)
 from py4vasp._raw.data_db import DielectricFunction_DB
 
 

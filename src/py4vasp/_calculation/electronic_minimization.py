@@ -290,4 +290,3 @@ class ElectronicMinimization(graph.Mixin):
 
     def _repr_pretty_(self, p, cycle):
         p.text(str(self) if not cycle else "...")
-

@@ -5,7 +5,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp._calculation.elastic_modulus import ElasticModulus
+from py4vasp._calculation.elastic_modulus import ElasticModulus, ElasticModulusHandler
 from py4vasp._raw.data_db import ElasticModulus_DB
 from py4vasp._util.tensor import symmetry_reduce
 
@@ -24,6 +24,7 @@ def _setup_elastic_modulus(raw_data, selection):
     raw_elastic_modulus = raw_data.elastic_modulus(selection)
     elastic_modulus = ElasticModulus.from_data(raw_elastic_modulus)
     elastic_modulus.ref = types.SimpleNamespace()
+    elastic_modulus.ref.raw_elastic_modulus = raw_elastic_modulus
     elastic_modulus.ref.structure = raw_elastic_modulus.structure
     elastic_modulus.ref.clamped_ion = raw_elastic_modulus.clamped_ion
     elastic_modulus.ref.relaxed_ion = raw_elastic_modulus.relaxed_ion
@@ -101,6 +102,12 @@ def test_read(elastic_modulus, Assert):
     Assert.allclose(actual["relaxed_ion"], elastic_modulus.ref.relaxed_ion)
 
 
+def test_to_dict_matches_read(elastic_modulus, Assert):
+    handler = ElasticModulusHandler.from_data(elastic_modulus.ref.raw_elastic_modulus)
+    Assert.allclose(handler.to_dict()["clamped_ion"], handler.read()["clamped_ion"])
+    Assert.allclose(handler.to_dict()["relaxed_ion"], handler.read()["relaxed_ion"])
+
+
 def test_print(elastic_modulus, format_):
     actual, _ = format_(elastic_modulus)
     reference = f"""
@@ -126,8 +133,9 @@ ZX         117.0000    121.0000    125.0000    119.0000    123.0000    121.0000
 
 
 def test_to_database(elastic_moduli):
-    database_data = elastic_moduli._read_to_database()
-    overview: ElasticModulus_DB = database_data["elastic_modulus:default"]
+    handler = ElasticModulusHandler.from_data(elastic_moduli.ref.raw_elastic_modulus)
+    database_data = handler.to_database()
+    overview: ElasticModulus_DB = database_data["elastic_modulus"]
     ref_overview = elastic_moduli.ref.overview_data
 
     for key, value in ref_overview.items():

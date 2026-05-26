@@ -279,5 +279,3 @@ selection : str
 
     >>> calculation.pair_correlation.labels()
 """
-
-

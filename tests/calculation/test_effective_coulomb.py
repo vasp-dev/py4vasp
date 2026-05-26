@@ -9,7 +9,10 @@ import numpy as np
 import pytest
 
 from py4vasp import exception, interpolate
-from py4vasp._calculation.effective_coulomb import EffectiveCoulomb, EffectiveCoulombHandler
+from py4vasp._calculation.effective_coulomb import (
+    EffectiveCoulomb,
+    EffectiveCoulombHandler,
+)
 from py4vasp._raw.data_db import EffectiveCoulomb_DB
 from py4vasp._third_party import numeric
 from py4vasp._util import check, convert

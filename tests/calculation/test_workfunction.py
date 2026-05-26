@@ -90,6 +90,7 @@ workfunction along {lattice_vector}:
 
 def test_to_database(raw_data):
     from py4vasp._calculation.workfunction import WorkfunctionHandler
+
     raw_workfunction = raw_data.workfunction("1")
     handler = WorkfunctionHandler.from_data(raw_workfunction)
     actual: Workfunction_DB = handler.to_database()["workfunction"]

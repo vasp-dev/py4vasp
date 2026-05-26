@@ -15,7 +15,6 @@ from py4vasp._raw.data_db import RunInfo_DB
 from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._util import check
 
-
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
     exception.Py4VaspError,
     exception.OutdatedVaspVersion,
@@ -226,4 +225,3 @@ class RunInfo:
     def to_dict(self, selection: str | None = None) -> dict:
         """Public alias for read()."""
         return self.read(selection=selection)
-
