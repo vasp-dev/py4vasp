@@ -51,9 +51,9 @@ These use `slice_.Mixin` and require `slice_steps` in the Handler.
 
 These are not in `QUANTITIES`/`GROUPS` but are composed into other quantities.
 
-- [ ] `_stoichiometry` — `_stoichiometry.py` → `Stoichiometry(Refinery)` | test: `test_stoichiometry.py`
+- [x] `_stoichiometry` — `_stoichiometry.py` → `StoichiometryHandler` added | test: `test_stoichiometry.py`
   - Note: internal, no `@quantity` registration needed; stays in `QUANTITIES` as `"_stoichiometry"` until all dependents are ported.
-- [ ] `cell` — `cell.py` → `Cell(slice_.Mixin, Refinery)` | no dedicated public test (internal helper)
+- [x] `cell` — `cell.py` → `CellHandler` added | no dedicated public test (internal helper)
   - Note: not in `QUANTITIES`; used by `StructureHandler` via composition.
 
 ---
@@ -62,7 +62,7 @@ These are not in `QUANTITIES`/`GROUPS` but are composed into other quantities.
 
 Port before any quantity that composes Structure.
 
-- [ ] `structure` — `structure.py` → `Structure(slice_.Mixin, Refinery, view.Mixin)` | test: `test_structure.py`
+- [x] `structure` — `structure.py` → `StructureHandler` added | test: `test_structure.py`
   - Note: step-indexed; composes `CellHandler` and `StoichiometryHandler` internally.
   - Note: many downstream quantities depend on `StructureHandler.from_data`.
 

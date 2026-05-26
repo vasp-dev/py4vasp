@@ -5,8 +5,9 @@ from typing import Optional, Union
 
 import numpy as np
 
-from py4vasp import exception
+from py4vasp import exception, raw
 from py4vasp._calculation import base, slice_
+from py4vasp._calculation.dispatch import slice_steps
 from py4vasp._raw import data as raw_data
 from py4vasp._util import check, reader
 
@@ -19,6 +20,143 @@ _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
     ValueError,
     np.linalg.LinAlgError,
 )
+
+
+class CellHandler:
+    """Processes cell data from a single raw.Cell object."""
+
+    def __init__(self, raw_cell: raw.Cell, steps=None):
+        self._raw_cell = raw_cell
+        self._steps = steps
+
+    @classmethod
+    def from_data(cls, raw_cell: raw.Cell, steps=None) -> "CellHandler":
+        return cls(raw_cell, steps=steps)
+
+    def lattice_vectors(self):
+        """Lattice vectors of the simulation cell for all selected steps."""
+        lattice_vectors = _LatticeVectors(self._raw_cell.lattice_vectors)
+        return self.scale() * lattice_vectors[self._get_steps()]
+
+    def scale(self):
+        """Scale factor of the simulation cell."""
+        if isinstance(self._raw_cell.scale, np.float64):
+            return self._raw_cell.scale
+        if not check.is_none(self._raw_cell.scale):
+            return self._raw_cell.scale[()]
+        else:
+            return 1.0
+
+    def lengths(self):
+        """Lengths of the simulation cell for all selected steps."""
+        lattices = self.lattice_vectors()
+        if lattices.ndim == 3:
+            lengths_a = np.linalg.norm(lattices[:, 0, :], axis=-1)
+            lengths_b = np.linalg.norm(lattices[:, 1, :], axis=-1)
+            lengths_c = np.linalg.norm(lattices[:, 2, :], axis=-1)
+            lengths = np.array([lengths_a, lengths_b, lengths_c]).T
+            return lengths
+        else:
+            lengths_a = np.linalg.norm(lattices[0, :])
+            lengths_b = np.linalg.norm(lattices[1, :])
+            lengths_c = np.linalg.norm(lattices[2, :])
+            lengths = np.array([lengths_a, lengths_b, lengths_c])
+        return lengths
+
+    def angles(self):
+        """Angles of the simulation cell for all selected steps."""
+        lattices = self.lattice_vectors()
+        if lattices.ndim == 3:
+            a = lattices[:, 0]
+            b = lattices[:, 1]
+            c = lattices[:, 2]
+            lengths = self.lengths()
+            la = lengths[:, 0]
+            lb = lengths[:, 1]
+            lc = lengths[:, 2]
+
+            alpha = [
+                np.degrees(np.arccos(np.dot(bi, ci) / (lb[i] * lc[i])))
+                for i, (bi, ci) in enumerate(zip(b, c))
+            ]
+            beta = [
+                np.degrees(np.arccos(np.dot(ai, ci) / (la[i] * lc[i])))
+                for i, (ai, ci) in enumerate(zip(a, c))
+            ]
+            gamma = [
+                np.degrees(np.arccos(np.dot(ai, bi) / (la[i] * lb[i])))
+                for i, (ai, bi) in enumerate(zip(a, b))
+            ]
+            angles = np.array([alpha, beta, gamma]).T
+        else:
+            a = lattices[0]
+            b = lattices[1]
+            c = lattices[2]
+            la = np.linalg.norm(a)
+            lb = np.linalg.norm(b)
+            lc = np.linalg.norm(c)
+
+            alpha = np.degrees(np.arccos(np.dot(b, c) / (lb * lc)))
+            beta = np.degrees(np.arccos(np.dot(a, c) / (la * lc)))
+            gamma = np.degrees(np.arccos(np.dot(a, b) / (la * lb)))
+            angles = np.array([alpha, beta, gamma])
+        return angles
+
+    @property
+    def is_suspected_2d_system(self) -> Union[bool, np.ndarray]:
+        """Determine if the system is 2D based on the lattice vectors."""
+        lengths = self.lengths()
+        dipole_direction = _idipol_to_direction(
+            self._raw_cell.idipol, self._raw_cell.ldipol
+        )
+        if lengths.ndim == 2:
+            return np.array([_is_suspected_2d(l, dipole_direction) for l in lengths])
+        else:
+            return _is_suspected_2d(lengths, dipole_direction)
+
+    def _area_2d(self) -> tuple[Union[float, np.ndarray], Union[str, list[str]]]:
+        """Area of the 2D cell if the system is 2D."""
+        lattices = self.lattice_vectors()
+        lengths = self.lengths()
+        idipol_direction = _idipol_to_direction(
+            self._raw_cell.idipol, self._raw_cell.ldipol
+        )
+        if lattices.ndim == 3:
+            area_list = [
+                _get_area_2d(lattice, length, idipol_direction)
+                for lattice, length in zip(lattices, lengths)
+            ]
+            return np.array([area[0] for area in area_list]), [
+                area[1] for area in area_list
+            ]
+        else:
+            return _get_area_2d(lattices, lengths, idipol_direction)
+
+    def _find_likely_vacuum_direction(self):
+        """Identify likeliest vacuum direction."""
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+            lattice_vectors = self.lattice_vectors()
+            dipole_direction = _idipol_to_direction(
+                self._raw_cell.idipol, self._raw_cell.ldipol
+            )
+            if lattice_vectors.ndim == 3:
+                if dipole_direction is not None:
+                    return (
+                        np.zeros(lattice_vectors.shape[0], dtype=int) + dipole_direction
+                    )
+                return np.argmax(np.linalg.norm(lattice_vectors, axis=-1), axis=-1)
+            else:
+                return dipole_direction or int(
+                    np.argmax(np.linalg.norm(lattice_vectors, axis=-1))
+                )
+        return None
+
+    def _get_steps(self):
+        return self._steps if self._is_trajectory else ()
+
+    @property
+    def _is_trajectory(self):
+        return self._raw_cell.lattice_vectors.ndim == 3
 
 
 class Cell(slice_.Mixin, base.Refinery):

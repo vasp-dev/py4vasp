@@ -3,7 +3,7 @@
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation._stoichiometry import Stoichiometry
+from py4vasp._calculation._stoichiometry import Stoichiometry, StoichiometryHandler
 from py4vasp._calculation.selection import Selection
 from py4vasp._raw.data_db import Stoichiometry_DB
 from py4vasp._util import check, convert, import_, select
@@ -84,9 +84,8 @@ class Base:
         assert actual == self.format_output
 
     def test_to_database(self):
-        db_data: Stoichiometry_DB = self.stoichiometry._read_to_database()[
-            "stoichiometry:default"
-        ]
+        handler = StoichiometryHandler.from_data(self.stoichiometry._raw_data)
+        db_data: Stoichiometry_DB = handler.to_database()["stoichiometry"]
         assert isinstance(db_data, Stoichiometry_DB)
 
         expected_ion_types = getattr(self, "ref_ion_types", self.unique_elements)
