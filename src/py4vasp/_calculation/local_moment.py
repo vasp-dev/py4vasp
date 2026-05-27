@@ -48,7 +48,9 @@ class LocalMomentHandler:
         self._steps = steps
 
     @classmethod
-    def from_data(cls, raw_local_moment: raw.LocalMoment, steps=None) -> "LocalMomentHandler":
+    def from_data(
+        cls, raw_local_moment: raw.LocalMoment, steps=None
+    ) -> "LocalMomentHandler":
         return cls(raw_local_moment, steps=steps)
 
     def __str__(self) -> str:
@@ -95,10 +97,14 @@ class LocalMomentHandler:
         }
 
     def to_view(self, selection="total", supercell=None):
-        structure = StructureHandler.from_data(self._raw_local_moment.structure, steps=self._steps)
+        structure = StructureHandler.from_data(
+            self._raw_local_moment.structure, steps=self._steps
+        )
         viewer = structure.to_view(supercell)
         if not self._is_nonpolarized:
-            viewer.ion_arrows = list(self._prepare_magnetic_moments_for_plotting(selection))
+            viewer.ion_arrows = list(
+                self._prepare_magnetic_moments_for_plotting(selection)
+            )
         return viewer
 
     def projected_charge(self):

@@ -64,7 +64,9 @@ class VelocityHandler:
             The dictionary contains the ion velocities as well as the structural
             information for reference.
         """
-        structure = StructureHandler.from_data(self._raw_velocity.structure, steps=self._steps)
+        structure = StructureHandler.from_data(
+            self._raw_velocity.structure, steps=self._steps
+        )
         return {
             "structure": structure.read(),
             "velocities": self.to_numpy(),
@@ -72,7 +74,9 @@ class VelocityHandler:
 
     def to_numpy(self) -> np.ndarray:
         """Convert the ion velocities for the selected steps into a numpy array."""
-        return slice_steps(np.array(self._raw_velocity.velocities), self._steps, default_ndim=2)
+        return slice_steps(
+            np.array(self._raw_velocity.velocities), self._steps, default_ndim=2
+        )
 
     def to_database(self) -> dict:
         """Serialize velocity statistics to the database format."""

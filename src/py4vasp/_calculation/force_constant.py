@@ -59,9 +59,9 @@ class ForceConstantHandler:
             "force_constants": self._raw_force_constant.force_constants[:],
         }
         if not check.is_none(self._raw_force_constant.selective_dynamics):
-            result["selective_dynamics"] = (
-                self._raw_force_constant.selective_dynamics[:]
-            )
+            result["selective_dynamics"] = self._raw_force_constant.selective_dynamics[
+                :
+            ]
         return result
 
     def eigenvectors(self):
@@ -78,8 +78,8 @@ class ForceConstantHandler:
         structure = StructureHandler.from_data(self._raw_force_constant.structure)
         number_ions = structure.number_atoms()
         unpacked_eigenvectors = np.zeros((len(eigenvectors), number_ions, 3))
-        selective_dynamics = (
-            self._raw_force_constant.selective_dynamics[:].astype(np.bool_)
+        selective_dynamics = self._raw_force_constant.selective_dynamics[:].astype(
+            np.bool_
         )
         unpacked_eigenvectors[:, selective_dynamics] = eigenvectors
         return eigenvalues, unpacked_eigenvectors
