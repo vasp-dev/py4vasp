@@ -12,7 +12,7 @@ import typing
 
 import numpy as np
 
-from py4vasp import raw as _raw_module
+from py4vasp import exception, raw as _raw_module
 from py4vasp._raw.definition import selections as schema_selections
 from py4vasp._third_party.graph import Graph
 from py4vasp._util import select
@@ -266,7 +266,12 @@ def slice_steps(data, steps, default_ndim):
         return data
     if steps is None:
         return data[-1]
-    return data[steps]
+    try:
+        return data[steps]
+    except (IndexError, TypeError) as error:
+        raise exception.IncorrectUsage(
+            f"Error accessing step {steps!r}. Please check that it is a valid integer or slice."
+        ) from error
 
 
 class Group:

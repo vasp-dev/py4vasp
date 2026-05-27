@@ -45,7 +45,12 @@ class StructureHandler:
         elif self._steps == -1:
             self._slice = slice(-1, None)
         else:
-            self._slice = slice(self._steps, self._steps + 1)
+            try:
+                self._slice = slice(self._steps, self._steps + 1)
+            except TypeError as error:
+                raise exception.IncorrectUsage(
+                    f"Steps must be an integer or slice, got {type(self._steps).__name__!r}."
+                ) from error
 
     @classmethod
     def from_data(cls, raw_structure: raw.Structure, steps=None) -> "StructureHandler":

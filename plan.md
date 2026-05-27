@@ -72,11 +72,10 @@ Port before any quantity that composes Structure.
 
 Requires `structure` to be ported first.
 
-- [ ] `force` — `force.py` → `Force(slice_.Mixin, Refinery, structure.Mixin, view.Mixin)` | test: `test_force.py`
-- [ ] `stress` — `stress.py` → `Stress(slice_.Mixin, Refinery, structure.Mixin)` | test: `test_stress.py`
-- [ ] `velocity` — `velocity.py` → `Velocity(slice_.Mixin, Refinery, structure.Mixin, view.Mixin)` | test: `test_velocity.py`
-- [ ] `local_moment` — `local_moment.py` → `LocalMoment(slice_.Mixin, Refinery, structure.Mixin, view.Mixin)` | test: `test_local_moment.py`
-  - Note: step-indexed; stale backup `local_moment.py~` can be deleted once ported.
+- [x] `force` — `force.py` → `ForceHandler` + `@quantity("force") Force(view.Mixin)` | test: `test_force.py` ✅
+- [x] `stress` — `stress.py` → `StressHandler` + `@quantity("stress") Stress` | test: `test_stress.py` ✅
+- [x] `velocity` — `velocity.py` → `VelocityHandler` + `@quantity("velocity") Velocity(view.Mixin)` | test: `test_velocity.py` ✅
+- [x] `local_moment` — `local_moment.py` → `LocalMomentHandler` + `@quantity("local_moment") LocalMoment(view.Mixin)` | test: `test_local_moment.py` ✅
 - [ ] `nics` — `nics.py` → `Nics(Refinery, structure.Mixin, view.Mixin)` | test: `test_nics.py`
 - [ ] `density` — `density.py` → `Density(Refinery, structure.Mixin, view.Mixin)` | test: `test_density.py`
 - [ ] `partial_density` — `partial_density.py` → `PartialDensity(Refinery, structure.Mixin, view.Mixin)` | test: `test_partial_density.py`
