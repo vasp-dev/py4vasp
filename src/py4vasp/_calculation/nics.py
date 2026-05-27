@@ -1,14 +1,15 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-
-
+import copy
 from typing import Optional, Union
 
 import numpy as np
 
 from py4vasp import _config, exception
-from py4vasp._calculation import _stoichiometry, base, structure
-from py4vasp._raw import data as raw_data
+from py4vasp._calculation import _stoichiometry
+from py4vasp._calculation.dispatch import DataSource, merge_default, merge_strings, quantity
+from py4vasp._calculation.structure import StructureHandler
+from py4vasp._raw import data as raw
 from py4vasp._raw.data_db import Nics_DB
 from py4vasp._third_party import graph, view
 from py4vasp._util import check, documentation, import_, index, select, slicing
@@ -18,54 +19,18 @@ pretty = import_.optional("IPython.lib.pretty")
 _DEFAULT_SELECTION: str = "isotropic"
 
 
-class Nics(base.Refinery, structure.Mixin, view.Mixin):
-    """This class accesses information on the nucleus-independent chemical shift (NICS).
+class NicsHandler:
+    """Handler for NICS data — performs all data access and transformation."""
 
-    Examples
-    --------
+    def __init__(self, raw_nics: raw.Nics):
+        self._raw_nics = raw_nics
 
-    First, we create some example data do that you can follow along. Please define a
-    variable `path` with the path to a directory that exists and does not contain any
-    VASP calculation data. Alternatively, you can use your own data if you have run
-    VASP and construct `calculation` from it.
+    @classmethod
+    def from_data(cls, raw_nics: raw.Nics) -> "NicsHandler":
+        return cls(raw_nics)
 
-    >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
-
-    See some basic information about NICS by printing the object:
-
-    >>> print(calculation.nics)
-    nucleus-independent chemical shift:...
-
-    For your own postprocessing, you can read the band data into a Python dictionary:
-
-    >>> calculation.nics.read()
-    {'structure': {...}, 'nics': array([[[[[...]]]]]...), 'method': ...}
-
-    You can also obtain the NICS as a numpy array directly:
-
-    >>> calculation.nics.to_numpy()
-    array([[[[[...]]]]]...)
-
-    You can also visualize a 3d isosurface of the chemical shift:
-
-    >>> calculation.nics.plot()
-    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...)])], ...)
-
-
-    Alternatively, you can visualize a contour plot of the chemical shift in a plane:
-
-    >>> calculation.nics.to_contour(c=0)
-    Graph(series=[Contour(data=array([[...]]...), ..., cut='c', ...)], ...)
-
-    Please check the documentation of each of these methods for more details on how to use them and which options they provide.
-    """
-
-    _raw_data: raw_data.Nics
-
-    @base.data_access
-    def __str__(self):
-        raw_stoichiometry = self._raw_data.structure.stoichiometry
+    def __str__(self) -> str:
+        raw_stoichiometry = self._raw_nics.structure.stoichiometry
         stoichiometry = _stoichiometry.Stoichiometry.from_data(raw_stoichiometry)
         if self._data_is_on_grid:
             data_string = self._grid_to_string()
@@ -76,91 +41,77 @@ nucleus-independent chemical shift:
     structure: {pretty.pretty(stoichiometry)}
 {data_string}"""
 
-    def _grid_to_string(self):
-        grid = self._raw_data.nics_grid.shape[1:]
-        return f"""\
-    grid: {grid[2]}, {grid[1]}, {grid[0]}
-    tensor shape: 3x3"""
+    def read(self) -> dict:
+        return self.to_dict()
 
-    def _points_to_string(self):
-        positions = self._raw_data.positions[:].T
-        tensors = self.to_numpy()
-        return "\n\n".join(self._format_nics(*item) for item in zip(positions, tensors))
-
-    def _format_nics(self, position, tensor):
-        position_string = " ".join(f"{x:10.6f}" for x in position)
-        newline_with_indent = "\n        "
-        tensor = np.round(tensor, 14)
-        tensor_string = newline_with_indent.join(
-            "   ".join(f"{x:+.6e}" for x in column) for column in tensor
-        )
-        return f"""\
-    NICS at {position_string}: |
-        {tensor_string}"""
-
-    @base.data_access
-    def to_dict(self):
-        """Read NICS into a dictionary.
-
-        Returns
-        -------
-        dict
-            Contains the structure information as well as the nucleus-independent chemical shift represented on a grid in the unit cell.
-        """
+    def to_dict(self) -> dict:
         result = {
-            "structure": self._structure.read(),
+            "structure": self._structure().read(),
             "nics": self.to_numpy(),
             **self._get_method_and_positions(),
         }
         return result
 
-    @base.data_access
-    def _to_database(self, *args, **kwargs):
+    def to_database(self) -> dict:
         method = "grid" if self._data_is_on_grid else "positions"
         return {"nics": Nics_DB(method=method)}
 
-    def _get_method_and_positions(self):
-        if self._data_is_on_grid:
-            return {"method": "grid"}
-        else:
-            return {"method": "positions", "positions": self._raw_data.positions[:].T}
-
-    @property
-    def _data_is_on_grid(self):
-        return check.is_none(self._raw_data.positions)
-
-    @base.data_access
     def to_numpy(self, selection: Optional[str] = None):
-        """Convert NICS to a numpy array.
-
-        The resulting shape will be the NICS grid data with respect to the selection.
-
-        Parameters
-        ----------
-        selection : str or None
-            The tensor element(s) to extract.
-            Can be None (in which case the whole tensor is returned), isotropic, or one of "xx", "xy", ...
-
-        Returns
-        -------
-        np.ndarray
-            All components of NICS.
-        """
         selected_data = self._read_selected_data(selection)
         return np.squeeze(list(selected_data.values()))
 
+    def to_view(
+        self,
+        selection: Optional[str] = None,
+        supercell: Optional[Union[int, np.ndarray]] = None,
+        **user_options,
+    ):
+        self._raise_error_if_used_in_points_mode()
+        selection = selection or _DEFAULT_SELECTION
+        viewer = self._structure().to_view(supercell)
+        viewer.grid_scalars = [
+            self._make_grid_quantity(*item, user_options)
+            for item in self._read_selected_data(selection).items()
+        ]
+        return viewer
+
+    def to_contour(
+        self,
+        selection: Optional[str] = None,
+        *,
+        a: Optional[float] = None,
+        b: Optional[float] = None,
+        c: Optional[float] = None,
+        normal: Optional[str] = None,
+        supercell: Optional[Union[int, np.ndarray]] = None,
+    ):
+        self._raise_error_if_used_in_points_mode()
+        selection = selection or _DEFAULT_SELECTION
+        cut, fraction = slicing.get_cut(a, b, c)
+        plane = slicing.plane(self._structure().lattice_vectors(), cut, normal)
+        contour_plots = [
+            self._make_contour(*item, plane, fraction, supercell)
+            for item in self._read_selected_data(selection).items()
+        ]
+        return graph.Graph(contour_plots)
+
+    def _structure(self):
+        return StructureHandler.from_data(self._raw_nics.structure)
+
+    @property
+    def _data_is_on_grid(self):
+        return check.is_none(self._raw_nics.positions)
+
     def _read_selected_data(self, selection: Optional[str]):
         if self._data_is_on_grid:
-            # transpose because it is written like that in the hdf5 file
-            nics_data = np.array(self._raw_data.nics_grid).T
+            nics_data = np.array(self._raw_nics.nics_grid).T
         else:
-            nics_data = np.array(self._raw_data.nics_points)
+            nics_data = np.array(self._raw_nics.nics_points)
             nics_data = nics_data.reshape((len(nics_data), 9))
         if selection is None:
             new_shape = (*nics_data.shape[:-1], 3, 3)
             return {None: nics_data.reshape(new_shape)}
         tree = select.Tree.from_selection(selection)
-        # last dimension is direction
         maps = {nics_data.ndim - 1: self._init_directions_dict()}
         selector = index.Selector(maps, nics_data, reduction=_TensorReduction)
         return {
@@ -190,61 +141,32 @@ nucleus-independent chemical shift:
             "asymmetry": slice(None),
         }
 
-    @base.data_access
-    def to_view(
-        self,
-        selection: Optional[str] = None,
-        supercell: Optional[Union[int, np.ndarray]] = None,
-        **user_options,
-    ):
-        """Plot the selected chemical shift as a 3d isosurface within the structure.
+    def _get_method_and_positions(self):
+        if self._data_is_on_grid:
+            return {"method": "grid"}
+        else:
+            return {"method": "positions", "positions": self._raw_nics.positions[:].T}
 
-        Parameters
-        ----------
-        selection : str or None
-            Axis along which to plot.
-            Can be one of "xx", "xy", ...
-            Can also be "isotropic" to plot the trace.
-            If selection is None, it defaults to "isotropic".
+    def _grid_to_string(self):
+        grid = self._raw_nics.nics_grid.shape[1:]
+        return f"""    grid: {grid[2]}, {grid[1]}, {grid[0]}
+    tensor shape: 3x3"""
 
-        supercell : int or np.ndarray
-            If present the data is replicated the specified number of times along each
-            direction.
+    def _points_to_string(self):
+        positions = self._raw_nics.positions[:].T
+        tensors = self.to_numpy()
+        return "\n\n".join(self._format_nics(*item) for item in zip(positions, tensors))
 
-        user_options
-            Further arguments with keyword that get directly passed on to the
-            visualizer. Most importantly, you can set isolevel to adjust the
-            value at which the isosurface is drawn.
-
-        Returns
-        -------
-        View
-            Visualize an isosurface of the selected chemical shift within the 3d structure.
-
-        Examples
-        --------
-        >>> from py4vasp import calculation
-
-        Plot the isotropic chemical shift as a 3d isosurface.
-
-        >>> calculation.nics.plot()
-
-        Plot the chemical shift with "xx" selection as a 3d isosurface.
-
-        >>> calculation.nics.plot(selection="xx")
-
-        Plot the isotropic chemical shift with specified isolevel as a 3d isosurface.
-
-        >>> calculation.nics.plot(isolevel=0.6)
-        """
-        self._raise_error_if_used_in_points_mode()
-        selection = selection or _DEFAULT_SELECTION
-        viewer = self._structure.plot(supercell)
-        viewer.grid_scalars = [
-            self._make_grid_quantity(*item, user_options)
-            for item in self._read_selected_data(selection).items()
-        ]
-        return viewer
+    def _format_nics(self, position, tensor):
+        position_string = " ".join(f"{x:10.6f}" for x in position)
+        newline_with_indent = "\n        "
+        tensor = np.round(tensor, 14)
+        tensor_string = newline_with_indent.join(
+            "   ".join(f"{x:+.6e}" for x in column) for column in tensor
+        )
+        return f"""\
+    NICS at {position_string}: |
+        {tensor_string}"""
 
     def _make_grid_quantity(self, key, quantity, user_options):
         return view.GridQuantity(
@@ -259,78 +181,6 @@ nucleus-independent chemical shift:
             view.Isosurface(-isolevel, _config.VASP_COLORS["red"], opacity),
         ]
 
-    @base.data_access
-    @documentation.format(plane=slicing.PLANE, parameters=slicing.PARAMETERS)
-    def to_contour(
-        self,
-        selection: Optional[str] = None,
-        *,
-        a: Optional[float] = None,
-        b: Optional[float] = None,
-        c: Optional[float] = None,
-        normal: Optional[str] = None,
-        supercell: Optional[Union[int, np.ndarray]] = None,
-    ):
-        """Generate a contour plot of chemical shift.
-
-        {plane}
-
-        Parameters
-        ----------
-        {parameters}
-
-        selection : str or None
-            Axis along which to plot.
-            Can be one of "xx", "xy", ...
-            Can also be "isotropic" to plot the trace.
-            If selection is None, it defaults to "isotropic".
-
-        supercell : int or np.ndarray
-            If present the data is replicated the specified number of times along each
-            direction.
-
-        Returns
-        -------
-        graph
-            A chemical shift plot in the plane spanned by the 2 remaining lattice vectors.
-
-        Examples
-        --------
-        >>> from py4vasp import calculation
-
-        Cut a plane through the isotropic chemical shift at the origin of the third lattice
-        vector.
-
-        >>> calculation.nics.to_contour(c=0)
-
-        Replicate a plane in the middle of the second lattice vector 2 times in each
-        direction.
-
-        >>> calculation.nics.to_contour(b=0.5, supercell=2)
-
-        Take a slice of the chemical shift with "xy" selection along the first lattice
-        vector and
-        rotate it such that the plane normal aligns with the x axis.
-
-        >>> calculation.nics.to_contour(a=0.3, selection=0.3, normal="x")
-
-        Cut a plan through the isotropic chemical shift at the origin of the third lattice
-        vector, then show isosurface level values along contour lines.
-
-        >>> plot = calculation.nics.to_contour(c=0, selection=0.3, normal="x")
-        >>> plot.series[0].show_contour_values = True
-        >>> plot.show()
-        """
-        self._raise_error_if_used_in_points_mode()
-        selection = selection or _DEFAULT_SELECTION
-        cut, fraction = slicing.get_cut(a, b, c)
-        plane = slicing.plane(self._structure.lattice_vectors(), cut, normal)
-        contour_plots = [
-            self._make_contour(*item, plane, fraction, supercell)
-            for item in self._read_selected_data(selection).items()
-        ]
-        return graph.Graph(contour_plots)
-
     def _make_contour(self, key, data, plane, fraction, supercell):
         grid_scalar = slicing.grid_scalar(data, plane, fraction)
         label = f"{key} NICS contour ({plane.cut})"
@@ -344,6 +194,102 @@ nucleus-independent chemical shift:
             return
         raise exception.IncorrectUsage(
             "You set LNICSALL = .FALSE. in the INCAR file. This mode is incompatible with the plotting routines."
+        )
+
+
+@quantity("nics")
+class Nics(view.Mixin):
+    """This class accesses information on the nucleus-independent chemical shift (NICS)."""
+
+    def __init__(self, source, quantity_name="nics"):
+        self._source = source
+        self._quantity_name = quantity_name
+
+    @classmethod
+    def from_data(cls, raw_nics):
+        return cls(source=DataSource(raw_nics))
+
+    def _handler_factory(self, raw):
+        return NicsHandler.from_data(raw)
+
+    def __str__(self):
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            NicsHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
+    def read(self, selection=None) -> dict:
+        """Read NICS into a dictionary."""
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            NicsHandler.read,
+        )
+
+    def to_dict(self, selection=None) -> dict:
+        """Alias for read()."""
+        return self.read(selection=selection)
+
+    def to_numpy(self, selection: Optional[str] = None):
+        """Convert NICS to a numpy array."""
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            NicsHandler.to_numpy,
+            selection,
+        )
+
+    def to_view(
+        self,
+        selection: Optional[str] = None,
+        supercell: Optional[Union[int, np.ndarray]] = None,
+        **user_options,
+    ):
+        """Plot the selected chemical shift as a 3d isosurface within the structure."""
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            NicsHandler.to_view,
+            selection,
+            supercell=supercell,
+            **user_options,
+        )
+
+    def to_contour(
+        self,
+        selection: Optional[str] = None,
+        *,
+        a: Optional[float] = None,
+        b: Optional[float] = None,
+        c: Optional[float] = None,
+        normal: Optional[str] = None,
+        supercell: Optional[Union[int, np.ndarray]] = None,
+    ):
+        """Generate a contour plot of chemical shift."""
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            NicsHandler.to_contour,
+            selection,
+            a=a,
+            b=b,
+            c=c,
+            normal=normal,
+            supercell=supercell,
         )
 
 
@@ -381,7 +327,6 @@ class _TensorReduction(index.Reduction):
 
     def _haeberlen_mehring(self, eigenvalues):
         delta_iso = np.average(eigenvalues, axis=-1)
-        # equivalent to |delta_11 - delta_iso| > |delta_33 - delta_iso|
         mask = delta_iso < eigenvalues[..., 1]
         delta_xx = np.where(mask, eigenvalues[..., 2], eigenvalues[..., 0])
         delta_zz = np.where(mask, eigenvalues[..., 0], eigenvalues[..., 2])

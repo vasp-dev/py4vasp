@@ -1,13 +1,88 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp._calculation import _stoichiometry, base, structure, system
-from py4vasp._raw import data as raw_data
+import copy
+
+from py4vasp._calculation import _stoichiometry
+from py4vasp._calculation.dispatch import DataSource, merge_default, merge_strings, quantity
+from py4vasp._calculation.structure import StructureHandler
+from py4vasp._raw import data as raw
 from py4vasp._raw.data_db import CONTCAR_DB
 from py4vasp._third_party import view
 from py4vasp._util import check, convert, database
 
 
-class CONTCAR(base.Refinery, view.Mixin, structure.Mixin):
+class CONTCARHandler:
+    """Handler for CONTCAR data — performs all data access and transformation."""
+
+    def __init__(self, raw_contcar: raw.CONTCAR):
+        self._raw_contcar = raw_contcar
+
+    @classmethod
+    def from_data(cls, raw_contcar: raw.CONTCAR) -> "CONTCARHandler":
+        return cls(raw_contcar)
+
+    def read(self) -> dict:
+        return self.to_dict()
+
+    def to_dict(self) -> dict:
+        return {
+            **self._structure().read(),
+            "system": convert.text_to_string(self._raw_contcar.system),
+            **self._read("selective_dynamics"),
+            **self._read("lattice_velocities"),
+            **self._read("ion_velocities"),
+        }
+
+    def to_database(self) -> dict:
+        structure_db = self._structure().to_database()
+        return database.combine_db_dicts(
+            {
+                "CONTCAR": CONTCAR_DB(
+                    system=(
+                        convert.text_to_string(self._raw_contcar.system)
+                        if not check.is_none(self._raw_contcar.system)
+                        else None
+                    ),
+                )
+            },
+            structure_db,
+        )
+
+    def to_view(self, supercell=None):
+        return self._structure().to_view(supercell)
+
+    def __str__(self) -> str:
+        return "\n".join(self._line_generator())
+
+    def _line_generator(self):
+        cell = self._raw_contcar.structure.cell
+        positions = self._raw_contcar.structure.positions
+        selective_dynamics = self._raw_contcar.selective_dynamics
+        yield convert.text_to_string(self._raw_contcar.system)
+        yield from _cell_lines(cell)
+        yield self._stoichiometry().to_POSCAR()
+        if not selective_dynamics.is_none():
+            yield "Selective dynamics"
+        yield "Direct"
+        yield from _ion_position_lines(positions, selective_dynamics)
+        yield from _lattice_velocity_lines(self._raw_contcar.lattice_velocities, cell)
+        yield from _ion_velocity_lines(self._raw_contcar.ion_velocities)
+
+    def _structure(self):
+        return StructureHandler.from_data(self._raw_contcar.structure)
+
+    def _stoichiometry(self):
+        return _stoichiometry.Stoichiometry.from_data(
+            self._raw_contcar.structure.stoichiometry
+        )
+
+    def _read(self, key):
+        data = getattr(self._raw_contcar, key)
+        return {key: data[:]} if not data.is_none() else {}
+
+
+@quantity("_CONTCAR")
+class CONTCAR(view.Mixin):
     """CONTCAR contains structural restart-data after a relaxation or MD simulation.
 
     The CONTCAR contains the final structure of the VASP calculation. It can be used as
@@ -15,83 +90,52 @@ class CONTCAR(base.Refinery, view.Mixin, structure.Mixin):
     CONTCAR might contain additional information about the system such as the ion
     and lattice velocities."""
 
-    _raw_data: raw_data.CONTCAR
+    def __init__(self, source, quantity_name="_CONTCAR"):
+        self._source = source
+        self._quantity_name = quantity_name
 
-    @base.data_access
-    def to_dict(self):
-        """Extract the structural data and the available additional data to a dictionary.
+    @classmethod
+    def from_data(cls, raw_contcar):
+        return cls(source=DataSource(raw_contcar))
 
-        Returns
-        -------
-        dict
-            Contains the final structure and information about the selective dynamics,
-            lattice and ion velocities if available.
-        """
-        return {
-            **self._structure.read(),
-            "system": convert.text_to_string(self._raw_data.system),
-            **self._read("selective_dynamics"),
-            **self._read("lattice_velocities"),
-            **self._read("ion_velocities"),
-        }
+    def _handler_factory(self, raw):
+        return CONTCARHandler.from_data(raw)
 
-    @base.data_access
-    def _to_database(self, *args, **kwargs):
-        structure = self._structure._read_to_database(*args, **kwargs)
-        return database.combine_db_dicts(
-            {
-                "CONTCAR": CONTCAR_DB(
-                    system=(
-                        convert.text_to_string(self._raw_data.system)
-                        if not check.is_none(self._raw_data.system)
-                        else None
-                    ),
-                )
-            },
-            structure,
+    def __str__(self):
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            CONTCARHandler.__str__,
         )
 
-    def _read(self, key):
-        data = getattr(self._raw_data, key)
-        return {key: data[:]} if not data.is_none() else {}
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
 
-    @base.data_access
+    def read(self, selection=None) -> dict:
+        """Extract the structural data and available additional data to a dictionary."""
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            CONTCARHandler.read,
+        )
+
+    def to_dict(self, selection=None) -> dict:
+        """Alias for read()."""
+        return self.read(selection=selection)
+
     def to_view(self, supercell=None):
-        """Generate a visualization of the final structure.
-
-        Parameters
-        ----------
-        supercell : int or np.ndarray
-            Scales all axes by the given factors.
-
-        Returns
-        -------
-        View
-            A 3d visualization of the structure.
-        """
-        return self._structure.plot(supercell)
-
-    @base.data_access
-    def __str__(self):
-        return "\n".join(self._line_generator())
-
-    def _line_generator(self):
-        cell = self._raw_data.structure.cell
-        positions = self._raw_data.structure.positions
-        selective_dynamics = self._raw_data.selective_dynamics
-        yield convert.text_to_string(self._raw_data.system)
-        yield from _cell_lines(cell)
-        yield self._stoichiometry().to_POSCAR()
-        if not selective_dynamics.is_none():
-            yield "Selective dynamics"
-        yield "Direct"
-        yield from _ion_position_lines(positions, selective_dynamics)
-        yield from _lattice_velocity_lines(self._raw_data.lattice_velocities, cell)
-        yield from _ion_velocity_lines(self._raw_data.ion_velocities)
-
-    def _stoichiometry(self):
-        return _stoichiometry.Stoichiometry.from_data(
-            self._raw_data.structure.stoichiometry
+        """Generate a visualization of the final structure."""
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            CONTCARHandler.to_view,
+            supercell,
         )
 
 

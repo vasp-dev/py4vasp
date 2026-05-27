@@ -33,16 +33,10 @@ def _append_database_error(
 INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
 QUANTITIES = (
     "band",
-    "current_density",
-    "density",
     "dos",
     "kpoint",
-    "nics",
-    "partial_density",
-    "potential",
     "projector",
     "structure",
-    "_CONTCAR",
     "_dispersion",
     "_stoichiometry",
 )
