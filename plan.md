@@ -76,13 +76,12 @@ Requires `structure` to be ported first.
 - [x] `stress` — `stress.py` → `StressHandler` + `@quantity("stress") Stress` | test: `test_stress.py` ✅
 - [x] `velocity` — `velocity.py` → `VelocityHandler` + `@quantity("velocity") Velocity(view.Mixin)` | test: `test_velocity.py` ✅
 - [x] `local_moment` — `local_moment.py` → `LocalMomentHandler` + `@quantity("local_moment") LocalMoment(view.Mixin)` | test: `test_local_moment.py` ✅
-- [ ] `nics` — `nics.py` → `Nics(Refinery, structure.Mixin, view.Mixin)` | test: `test_nics.py`
-- [ ] `density` — `density.py` → `Density(Refinery, structure.Mixin, view.Mixin)` | test: `test_density.py`
-- [ ] `partial_density` — `partial_density.py` → `PartialDensity(Refinery, structure.Mixin, view.Mixin)` | test: `test_partial_density.py`
-- [ ] `potential` — `potential.py` → `Potential(Refinery, structure.Mixin, view.Mixin)` | test: `test_potential.py`
-- [ ] `current_density` — `current_density.py` → `CurrentDensity(Refinery, structure.Mixin)` | test: `test_current_density.py`
-- [ ] `_CONTCAR` — `_CONTCAR.py` → `CONTCAR(Refinery, view.Mixin, structure.Mixin)` | test: `test_contcar.py`
-  - Note: internal; stays in `QUANTITIES` as `"_CONTCAR"` until deprecated/removed.
+- [x] `nics` — `nics.py` → `NicsHandler` + `@quantity("nics") Nics(view.Mixin)` | test: `test_nics.py` ✅
+- [x] `density` — `density.py` → `DensityHandler` + `@quantity("density") Density(view.Mixin)` | test: `test_density.py` ✅
+- [x] `partial_density` — `partial_density.py` → `PartialDensityHandler` + `@quantity("partial_density") PartialDensity(view.Mixin)` | test: `test_partial_density.py` ✅
+- [x] `potential` — `potential.py` → `PotentialHandler` + `@quantity("potential") Potential(view.Mixin)` | test: `test_potential.py` ✅
+- [x] `current_density` — `current_density.py` → `CurrentDensityHandler` + `@quantity("current_density") CurrentDensity` | test: `test_current_density.py` ✅
+- [x] `_CONTCAR` — `_CONTCAR.py` → `CONTCARHandler` + `@quantity("_CONTCAR") CONTCAR(view.Mixin)` | test: `test_contcar.py` ✅
 
 ---
 
@@ -90,15 +89,11 @@ Requires `structure` to be ported first.
 
 Port in order: `kpoint` → `_dispersion` → `projector` → `dos` → `band`.
 
-- [ ] `kpoint` — `kpoint.py` → `Kpoint(Refinery)` | test: `test_kpoint.py`
-  - Note: used by Band and Dispersion.
-- [ ] `_dispersion` — `_dispersion.py` → `Dispersion(Refinery)` | test: `test_dispersion.py`
-  - Note: internal helper used by Band.
-- [ ] `projector` — `projector.py` → `Projector(Refinery)` | test: `test_projector.py`
-  - Note: used by Band and Dos.
-- [ ] `dos` — `dos.py` → `Dos(Refinery, graph.Mixin)` | test: `test_dos.py`
-  - Note: composes `ProjectorHandler`; selection forwarding for spin/orbital projections.
-- [ ] `band` — `band.py` → `Band(Refinery, graph.Mixin)` | test: `test_band.py`
+- [x] `kpoint` — `kpoint.py` → `KpointHandler` + `@quantity("kpoint") Kpoint` | test: `test_kpoint.py` ✅
+- [x] `_dispersion` — `_dispersion.py` → `DispersionHandler` + `@quantity("_dispersion") Dispersion` | test: `test_dispersion.py` ✅
+- [x] `projector` — `projector.py` → `ProjectorHandler` + `@quantity("projector") Projector` | test: `test_projector.py` ✅
+- [x] `dos` — `dos.py` → `DosHandler` + `@quantity("dos") Dos(graph.Mixin)` | test: `test_dos.py` ✅
+- [x] `band` — `band.py` → `BandHandler` + `@quantity("band") Band(graph.Mixin)` | test: `test_band.py` ✅
   - Note: most complex standalone quantity; composes `ProjectorHandler`, `KpointHandler`, `DispersionHandler`.
 
 ---

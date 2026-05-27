@@ -32,12 +32,7 @@ def _append_database_error(
 
 INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
 QUANTITIES = (
-    "band",
-    "dos",
-    "kpoint",
-    "projector",
     "structure",
-    "_dispersion",
     "_stoichiometry",
 )
 GROUPS = {
