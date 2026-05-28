@@ -3,7 +3,12 @@
 import numpy as np
 
 from py4vasp import raw
-from py4vasp._calculation.dispatch import DataSource, merge_default, merge_strings, quantity
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw.data_db import PhononMode_DB
 from py4vasp._util import check, convert
@@ -104,8 +109,11 @@ class PhononMode:
 
     def __str__(self) -> str:
         return merge_strings(
-            self._source, self._quantity_name, None,
-            self._handler_factory, PhononModeHandler.__str__,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            PhononModeHandler.__str__,
         )
 
     def _repr_pretty_(self, p, cycle):
@@ -113,8 +121,11 @@ class PhononMode:
 
     def read(self, selection: str | None = None) -> dict:
         return merge_default(
-            self._source, self._quantity_name, selection,
-            self._handler_factory, PhononModeHandler.read,
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            PhononModeHandler.read,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
@@ -124,6 +135,9 @@ class PhononMode:
     def frequencies(self, selection: str | None = None) -> np.ndarray:
         """Read the phonon frequencies as a numpy array."""
         return merge_default(
-            self._source, self._quantity_name, selection,
-            self._handler_factory, PhononModeHandler.frequencies,
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            PhononModeHandler.frequencies,
         )

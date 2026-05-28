@@ -7,7 +7,13 @@ import numpy as np
 from py4vasp import raw
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation._stoichiometry import StoichiometryHandler
-from py4vasp._calculation.dispatch import DataSource, merge_default, merge_graphs, merge_strings, quantity
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_graphs,
+    merge_strings,
+    quantity,
+)
 from py4vasp._third_party import graph
 from py4vasp._util import convert, database, index, select
 
@@ -77,10 +83,7 @@ class PhononBandHandler:
         maps = {2: self._init_atom_dict(), 3: self._init_direction_dict()}
         selector = index.Selector(maps, np.abs(self._modes()), use_number_labels=True)
         tree = select.Tree.from_selection(selection)
-        return {
-            selector.label(sel): width * selector[sel]
-            for sel in tree.selections()
-        }
+        return {selector.label(sel): width * selector[sel] for sel in tree.selections()}
 
     def _init_atom_dict(self) -> dict:
         return {
@@ -118,8 +121,11 @@ class PhononBand(graph.Mixin):
 
     def __str__(self) -> str:
         return merge_strings(
-            self._source, self._quantity_name, None,
-            self._handler_factory, PhononBandHandler.__str__,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            PhononBandHandler.__str__,
         )
 
     def _repr_pretty_(self, p, cycle):
@@ -127,8 +133,11 @@ class PhononBand(graph.Mixin):
 
     def read(self, selection: str | None = None) -> dict:
         return merge_default(
-            self._source, self._quantity_name, selection,
-            self._handler_factory, PhononBandHandler.read,
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            PhononBandHandler.read,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
@@ -138,14 +147,21 @@ class PhononBand(graph.Mixin):
     def to_graph(self, selection: str | None = None, width: float = 1.0) -> graph.Graph:
         """Generate a graph of the phonon bands."""
         return merge_graphs(
-            self._source, self._quantity_name, None,
-            self._handler_factory, PhononBandHandler.to_graph,
-            selection, width,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            PhononBandHandler.to_graph,
+            selection,
+            width,
         )
 
     def selections(self, selection: str | None = None) -> dict:
         """Return atom and direction selections available for projection."""
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, PhononBandHandler.selections,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            PhononBandHandler.selections,
         )

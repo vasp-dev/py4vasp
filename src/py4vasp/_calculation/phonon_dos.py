@@ -4,7 +4,13 @@ import pathlib
 
 from py4vasp import raw
 from py4vasp._calculation._stoichiometry import StoichiometryHandler
-from py4vasp._calculation.dispatch import DataSource, merge_default, merge_graphs, merge_strings, quantity
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_graphs,
+    merge_strings,
+    quantity,
+)
 from py4vasp._raw.data_db import PhononDos_DB
 from py4vasp._third_party import graph
 from py4vasp._util import check, index, select
@@ -79,10 +85,7 @@ class PhononDosHandler:
             maps, self._raw_phonon_dos.projections, use_number_labels=True
         )
         tree = select.Tree.from_selection(selection)
-        return {
-            selector.label(sel): selector[sel]
-            for sel in tree.selections()
-        }
+        return {selector.label(sel): selector[sel] for sel in tree.selections()}
 
     def _init_atom_dict(self) -> dict:
         return {
@@ -120,8 +123,11 @@ class PhononDos(graph.Mixin):
 
     def __str__(self) -> str:
         return merge_strings(
-            self._source, self._quantity_name, None,
-            self._handler_factory, PhononDosHandler.__str__,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            PhononDosHandler.__str__,
         )
 
     def _repr_pretty_(self, p, cycle):
@@ -129,8 +135,11 @@ class PhononDos(graph.Mixin):
 
     def read(self, selection: str | None = None) -> dict:
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, PhononDosHandler.read,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            PhononDosHandler.read,
             selection,
         )
 
@@ -141,16 +150,22 @@ class PhononDos(graph.Mixin):
     def to_graph(self, selection: str | None = None) -> graph.Graph:
         """Generate a graph of the selected phonon DOS."""
         return merge_graphs(
-            self._source, self._quantity_name, None,
-            self._handler_factory, PhononDosHandler.to_graph,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            PhononDosHandler.to_graph,
             selection,
         )
 
     def selections(self, selection: str | None = None) -> dict:
         """Return atom and direction selections available for projection."""
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, PhononDosHandler.selections,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            PhononDosHandler.selections,
         )
 
 
