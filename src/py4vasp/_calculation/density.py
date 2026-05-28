@@ -78,9 +78,6 @@ class DensityHandler:
     structure: {pretty.pretty(stoichiometry)}
     grid: {grid[2]}, {grid[1]}, {grid[0]}"""
 
-    def read(self) -> dict:
-        return self.to_dict()
-
     def to_dict(self) -> dict:
         _raise_error_if_no_data(self._raw_density.charge)
         result = {"structure": self._structure().read()}
@@ -265,7 +262,76 @@ class DensityHandler:
 
 @quantity("density")
 class Density(view.Mixin):
-    """This class accesses various densities (charge, magnetization, ...) of VASP."""
+    """This class accesses various densities (charge, magnetization, ...) of VASP.
+
+    The charge density is one key quantity optimized by VASP. With this class you
+    can extract the final density and visualize it within the structure of the
+    system. For collinear calculations, one can also consider the magnetization
+    density. For noncollinear calculations, the magnetization density has three
+    components. One may also be interested in the kinetic energy density for
+    metaGGA calculations.
+
+    Examples
+    --------
+
+    First, we create some example data do that you can follow along. Please define a
+    variable `path` with the path to a directory that exists and does not contain any
+    VASP calculation data. Alternatively, you can use your own data if you have run
+    VASP and construct `calculation` from it.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    To produce density plots, please check the `to_contour` and `to_quiver` functions for
+    a more detailed documentation.
+
+    To produce a contour plot:
+
+    >>> calculation.density.to_contour(a=0)
+    Graph(series=[Contour(data=array([[...]]), ..., cut='a', ...)], ...)
+
+    You can also visualize a 3d isosurface of the density:
+
+    >>> calculation.density.plot()
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='charge', isosurfaces=[Isosurface(...)])], ...)
+
+    For your own postprocessing, you can read the band data into a Python dictionary:
+
+    >>> calculation.density.read()
+    {'structure': ..., 'charge': array([[[...]]], ...)}
+
+    Alternatively, obtain the density as a numpy array directly:
+
+    >>> calculation.density.to_numpy()
+    array([[[[...]]]], ...)
+
+    It is also possible to test for non-polarized, collinear, and noncollinear calculations
+    with:
+
+    >>> calculation.density.is_nonpolarized()
+    True
+    >>> calculation.density.is_collinear()
+    False
+    >>> calculation.density.is_noncollinear()
+    False
+
+    You can inspect possible selections with:
+
+    >>> calculation.density.selections()
+    {'density': [...], 'component': ['0']}
+
+    To produce a quiver plot for a noncollinear calculation:
+
+    >>> from py4vasp import demo
+    >>> calculation_nc = demo.calculation(path, selection="noncollinear")
+    >>> calculation_nc.density.is_noncollinear()
+    True
+    >>> calculation_nc.density.to_quiver(c=0, supercell=2)
+    Graph(series=[Contour(data=array([[[...]]]), ..., cut='c', ...)], ...)
+
+    Please check the documentation of these methods for more details on how to use them
+    and which options they provide.
+    """
 
     def __init__(self, source, quantity_name="density", selection_name=None):
         self._source = source
@@ -297,21 +363,93 @@ class Density(view.Mixin):
         p.text(str(self))
 
     def read(self, selection=None) -> dict:
-        """Read the density into a dictionary."""
+        """Read the density into a dictionary.
+
+        Parameters
+        ----------
+        selection : str
+            VASP computes different densities depending on the INCAR settings. With this
+            parameter, you can control which one of them is returned. Please use the
+            `selections` routine to get a list of all possible choices.
+
+        Returns
+        -------
+        dict
+            Contains the structure information as well as the density represented
+            on a grid in the unit cell.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
             self._selection_name,
             self._handler_factory,
-            DensityHandler.read,
+            DensityHandler.to_dict,
         )
 
     def to_dict(self, selection=None) -> dict:
-        """Alias for read()."""
+        """Convenient alias for :py:meth:`read`."""
         return self.read(selection=selection)
 
+    @documentation.format(
+        component0=_join_with_emphasis(_COMPONENTS[0]),
+        component1=_join_with_emphasis(_COMPONENTS[1]),
+        component2=_join_with_emphasis(_COMPONENTS[2]),
+        component3=_join_with_emphasis(_COMPONENTS[3]),
+    )
     def selections(self, selection=None) -> dict:
-        """Returns possible densities VASP can produce along with all available components."""
+        """Returns possible densities VASP can produce along with all available components.
+
+        In the dictionary, the key *density* lists all different densities you can access
+        from the VASP output provided you set the relevant INCAR tags. You can combine
+        any of these with any possible choice from the key *component* to further
+        specify the particular output you will receive. If you do not specify a *density*
+        or a *component* the other routines will default to the electronic charge and
+        the 0-th component.
+
+        To nest density and component, please use parentheses, e.g. ``charge(1, 2)`` or
+        ``3(kinetic_energy)``.
+
+        For convenience, py4vasp accepts the following aliases
+
+        electronic charge density
+            *charge*, *n*, *charge_density*, and *electronic_charge_density*
+
+        kinetic energy density
+            *kinetic_energy*, *kinetic_energy*, and *kinetic_energy_density*
+
+        0th component
+            {component0}
+
+        1st component
+            {component1}
+
+        2nd component
+            {component2}
+
+        3rd component
+            {component3}
+
+        Returns
+        -------
+        dict
+            Possible densities and components to pass as selection in other functions
+            on density.
+
+        Notes
+        -----
+        In the special case of collinear calculations, *magnetization*, *mag*, and *m*
+        are another alias for the 3rd component of the charge density.
+
+        Examples
+        --------
+        >>> calculation = py4vasp.Calculation.from_path(".")
+        >>> calculation.density.to_dict("n")
+        >>> calculation.density.plot("magnetization")
+
+        Using synonyms and nesting
+
+        >>> calculation.density.plot("n m(1,2) mag(sigma_z)")
+        """
         result = merge_default(
             self._source,
             self._quantity_name,
@@ -323,7 +461,17 @@ class Density(view.Mixin):
         return result
 
     def to_numpy(self, selection=None):
-        """Convert the density to a numpy array."""
+        """Convert the density to a numpy array.
+
+        The number of components is 1 for nonpolarized calculations, 2 for collinear
+        calculations, and 4 for noncollinear calculations. Each component is 3
+        dimensional according to the grid VASP uses for the FFTs.
+
+        Returns
+        -------
+        np.ndarray
+            All components of the selected density.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
@@ -338,7 +486,49 @@ class Density(view.Mixin):
         supercell: Optional[Union[int, np.ndarray]] = None,
         **user_options,
     ) -> view.View:
-        """Plot the selected density as a 3d isosurface within the structure."""
+        """Plot the selected density as a 3d isosurface within the structure.
+
+        Parameters
+        ----------
+        selection : str | None = None
+            Can be either *charge* or *magnetization*, depending on which quantity
+            should be visualized.  For a noncollinear calculation, the density has
+            4 components which can be represented in a 2x2 matrix. Specify the
+            component of the density in terms of the Pauli matrices: sigma_1,
+            sigma_2, sigma_3.
+
+        supercell : int | np.ndarray | None = None
+            If present the data is replicated the specified number of times along each
+            direction.
+
+        user_options : dict
+            Further arguments with keyword that get directly passed on to the
+            visualizer. Most importantly, you can set isolevel to adjust the
+            value at which the isosurface is drawn.
+
+        Returns
+        -------
+        View
+            Visualize an isosurface of the density within the 3d structure.
+
+        Examples
+        --------
+
+        >>> calculation = py4vasp.Calculation.from_path(".")
+
+        Plot an isosurface of the electronic charge density
+
+        >>> calculation.density.plot()
+
+        Plot isosurfaces for positive (blue) and negative (red) magnetization
+        of a spin-polarized calculation (ISPIN=2)
+
+        >>> calculation.density.plot("m")
+
+        Plot the isosurface for the third component of a noncollinear magnetization
+
+        >>> calculation.density.plot("m(3)")
+        """
         return merge_default(
             self._source,
             self._quantity_name,
@@ -350,6 +540,7 @@ class Density(view.Mixin):
             **user_options,
         )
 
+    @documentation.format(plane=slicing.PLANE, common_parameters=_COMMON_PARAMETERS)
     def to_contour(
         self,
         selection: Optional[str] = None,
@@ -360,7 +551,42 @@ class Density(view.Mixin):
         normal: Optional[str] = None,
         supercell: Optional[Union[int, np.ndarray]] = None,
     ) -> graph.Graph:
-        """Generate a contour plot of the selected component of the density."""
+        """Generate a contour plot of the selected component of the density.
+
+        {plane}
+
+        Parameters
+        ----------
+        selection : str | None = None
+            Select which component of the density you want to visualize. Please use the
+            `selections` method to get all available choices.
+
+        {common_parameters}
+
+        Returns
+        -------
+        Graph
+            A contour plot in the plane spanned by the 2 remaining lattice vectors.
+
+
+        Examples
+        --------
+
+        Cut a plane through the magnetization density at the origin of the third lattice
+        vector.
+
+        >>> calculation.density.to_contour("3", c=0)
+
+        Replicate a plane in the middle of the second lattice vector 2 times in each
+        direction.
+
+        >>> calculation.density.to_contour(b=0.5, supercell=2)
+
+        Take a slice of the kinetic energy density along the first lattice vector and
+        rotate it such that the normal of the plane aligns with the x axis.
+
+        >>> calculation.density.to_contour("kinetic_energy", a=0.3, normal="x")
+        """
         return merge_default(
             self._source,
             self._quantity_name,
@@ -375,6 +601,7 @@ class Density(view.Mixin):
             supercell=supercell,
         )
 
+    @documentation.format(plane=slicing.PLANE, common_parameters=_COMMON_PARAMETERS)
     def to_quiver(
         self,
         *,
@@ -384,7 +611,42 @@ class Density(view.Mixin):
         normal: Optional[str] = None,
         supercell: Optional[Union[int, np.ndarray]] = None,
     ) -> graph.Graph:
-        """Generate a quiver plot of magnetization density."""
+        """Generate a quiver plot of magnetization density.
+
+        {plane}
+
+        For a collinear calculation, the magnetization density will be aligned with the
+        y axis of the plane. For noncollinear calculations, the magnetization density
+        is projected into the plane.
+
+        Parameters
+        ----------
+        {common_parameters}
+
+        Returns
+        -------
+        Graph
+            A quiver plot in the plane spanned by the 2 remaining lattice vectors.
+
+
+        Examples
+        --------
+
+        Cut a plane at the origin of the third lattice vector.
+
+        >>> calculation.density.to_quiver(c=0)
+
+        Replicate a plane in the middle of the second lattice vector 2 times in each
+        direction.
+
+        >>> calculation.density.to_quiver(b=0.5, supercell=2)
+
+        Take a slice of the spin components of the kinetic energy density along the
+        first lattice vector and rotate it such that the normal of the plane aligns with
+        the x axis.
+
+        >>> calculation.density.to_quiver("kinetic_energy", a=0.3, normal="x")
+        """
         return merge_default(
             self._source,
             self._quantity_name,
