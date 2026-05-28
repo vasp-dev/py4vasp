@@ -73,9 +73,6 @@ class PotentialHandler:
         )
         return "\n    ".join([description, structure, grid, available])
 
-    def read(self) -> dict:
-        return self.to_dict()
-
     def to_dict(self) -> dict:
         result = {"structure": self._structure().read()}
         items = [self._generate_items(kind) for kind in VALID_KINDS]
@@ -245,7 +242,61 @@ class PotentialHandler:
 
 @quantity("potential")
 class Potential(view.Mixin):
-    """The local potential describes the interactions between electrons and ions."""
+    """The local potential describes the interactions between electrons and ions.
+
+    In DFT calculations, the local potential consists of various contributions, each
+    representing different aspects of the electron-electron and electron-ion
+    interactions. The ionic potential arises from the attraction between electrons and
+    the atomic nuclei. The Hartree potential accounts for the repulsion between
+    electrons resulting from the electron density itself. Additionally, the
+    exchange-correlation (xc) potential approximates the effects of electron exchange
+    and correlation. The accuracy of this approximation directly influences the
+    accuracy of the calculated properties.
+
+    In VASP, the local potential is defined in real space on the FFT grid. You control
+    which potentials are written with the :tag:`WRT_POTENTIAL` tag. This class provides
+    the methods to read and visualize the potential. If you are interested in the
+    average potential, you may also look at the
+    :data:`~py4vasp.calculation.workfunction`.
+
+    Examples
+    --------
+    First, we create some example data do that you can follow along. Please define a
+    variable `path` with the path to a directory that exists and does not contain any
+    VASP calculation data. Alternatively, you can use your own data if you have run
+    VASP and construct `calculation` from it.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    See some basic information about the Potential by printing the object:
+
+    >>> print(calculation.potential)
+    nonpolarized potential:...
+
+    For your own postprocessing, you can read the potential data into a Python dictionary:
+
+    >>> calculation.potential.read()
+    {'structure': {...}, 'total': array([[[...]]], ...), 'ionic': array([[[...]]], ...), 'xc': array([[[...]]], ...), 'hartree': array([[[...]]], ...)}
+
+    You can also plot the 3d isosurface of the selected potential:
+
+    >>> calculation.potential.plot()
+    View(...)
+
+    Alternatively, you can visualize a contour plot of the potential in a plane:
+
+    >>> calculation.potential.to_contour(c=0)
+    Graph(series=[Contour(data=array([[...]]...), ..., cut='c', ...)], ...)
+
+    You can check possible selections for the potential:
+
+    >>> calculation.potential.selections()
+    {'potential': ['default'...]...}
+
+    Please check the documentation of each of these methods for more details on
+    how to use them and which options they provide.
+    """
 
     def __init__(self, source, quantity_name="potential"):
         self._source = source
@@ -271,17 +322,27 @@ class Potential(view.Mixin):
         p.text(str(self))
 
     def read(self, selection=None) -> dict:
-        """Store all available contributions to the potential in a dictionary."""
+        """Store all available contributions to the potential in a dictionary.
+
+        Returns
+        -------
+        dict
+            The dictionary contains the total potential as well as the potential
+            differences between up and down for collinear or the directional potential
+            for noncollinear calculations. If individual contributions to the potential
+            are available, these are returned, too. Structural information is given for
+            reference.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
             None,
             self._handler_factory,
-            PotentialHandler.read,
+            PotentialHandler.to_dict,
         )
 
     def to_dict(self, selection=None) -> dict:
-        """Alias for read()."""
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
     def to_view(
@@ -290,7 +351,25 @@ class Potential(view.Mixin):
         supercell: Optional[Union[int, np.ndarray]] = None,
         **user_options,
     ):
-        """Plot an isosurface of a selected potential."""
+        """Plot an isosurface of a selected potential.
+
+        Parameters
+        ----------
+        selection : str
+            Select the kind of potential of which you want the isosurface.
+        supercell : int or np.ndarray
+            If present the data is replicated the specified number of times along each
+            direction.
+        user_options
+            Further arguments with keyword that get directly passed on to the
+            visualizer. Most importantly, you can set isolevel (in eV) to adjust the
+            value at which the isosurface is drawn.
+
+        Returns
+        -------
+        View
+            A visualization of the potential isosurface within the crystal structure.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
@@ -302,6 +381,7 @@ class Potential(view.Mixin):
             **user_options,
         )
 
+    @documentation.format(plane=slicing.PLANE, parameters=_COMMON_PARAMETERS)
     def to_contour(
         self,
         selection: str = "total",
@@ -312,7 +392,42 @@ class Potential(view.Mixin):
         normal: Optional[str] = None,
         supercell: Optional[Union[int, np.ndarray]] = None,
     ):
-        """Generate a 2D contour plot of the selected potential."""
+        """Generate a 2D contour plot of the selected potential on a slice through the cell.
+
+        {plane}
+
+        Parameters
+        ----------
+        selection : str, optional
+            Specifies which potential to plot. Can be any of the valid kinds
+            ("total", "ionic", "xc", "hartree"). For "total" and "xc" potentials
+            in spin-polarized calculations, you can select "up" or "down" components
+            (e.g., "total_up"). For noncollinear calculations, you can select
+            spin components ("x", "y", "z").
+
+        {parameters}
+
+        Returns
+        -------
+        Graph
+            A Graph object containing the contour plot. The plot shows the selected
+            potential component on the specified 2D slice.
+
+        Examples
+        --------
+        Cut a plane through the potential at the origin of the third lattice vector.
+
+        >>> calculation.potential.to_contour(c=0)
+
+        Plot the Hartree potential in the (100) plane crossing at 0.5 fractional coordinate
+
+        >>> calculation.potential.to_contour(selection="hartree", a=0.5)
+
+        Plot the sigma_z-component of the xc potential in a 2x2 supercell in the plane
+        defined by the first two lattice vectors.
+
+        >>> calculation.potential.to_contour(selection="xc_z", c=0.2, supercell=2)
+        """
         return merge_default(
             self._source,
             self._quantity_name,
@@ -327,10 +442,47 @@ class Potential(view.Mixin):
             supercell=supercell,
         )
 
+    @documentation.format(plane=slicing.PLANE, parameters=_COMMON_PARAMETERS)
     def to_quiver(
         self, selection="total", *, a=None, b=None, c=None, normal=None, supercell=None
     ):
-        """Generate a 2D quiver plot of the magnetic part of the potential."""
+        """Generate a 2D quiver plot of the magnetic part of the potential on a slice.
+
+        This method visualizes the vector field of the magnetization potential
+        (difference between spin-up and spin-down potentials for collinear cases,
+        or the vector components for noncollinear cases) as arrows on a 2D slice
+        through the simulation cell.
+
+        {plane}
+
+        Parameters
+        ----------
+        selection : str, optional
+            Specifies which magnetic potential to plot. It must be a kind that
+            can have a magnetic component, i.e., "total" or "xc".
+            Component selection is not allowed for quiver plots as it inherently plots
+            the vector nature of the magnetization.
+
+        {parameters}
+
+        Returns
+        -------
+        Graph
+            A Graph object containing the quiver plot. The plot shows
+            arrows representing the magnitude and direction of the magnetic
+            potential in the specified 2D slice.
+
+        Examples
+        --------
+        Plot the magnetization of the total potential in the a-b plane
+
+        >>> calculation.potential.to_quiver(c=0)
+
+        Plot the magnetization of the xc potential in the (010) plane
+        crossing at 0.25 fractional coordinate, using a 2x2 supercell.
+
+        >>> calculation.potential.to_quiver(selection="xc", b=0.25, supercell=2)
+        """
         return merge_default(
             self._source,
             self._quantity_name,
