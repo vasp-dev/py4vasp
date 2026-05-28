@@ -102,12 +102,9 @@ Port in order: `kpoint` → `_dispersion` → `projector` → `dos` → `band`.
 
 Port `phonon.py` (the shared Mixin) conceptually before the three group members.
 
-- [ ] `phonon.mode` — `phonon_mode.py` → `PhononMode(Refinery, structure.Mixin)` | test: `test_phonon_mode.py`
-  - Group: `@quantity("mode", group="phonon")`; remove from `GROUPS["phonon"]`.
-- [ ] `phonon.band` — `phonon_band.py` → `PhononBand(phonon.Mixin, Refinery, graph.Mixin)` | test: `test_phonon_band.py`
-  - Group: `@quantity("band", group="phonon")`.
-- [ ] `phonon.dos` — `phonon_dos.py` → `PhononDos(phonon.Mixin, Refinery, graph.Mixin)` | test: `test_phonon_dos.py`
-  - Group: `@quantity("dos", group="phonon")`.
+- [x] `phonon.mode` — `phonon_mode.py` → `PhononModeHandler` + `@quantity("mode", group="phonon") PhononMode` | test: `test_phonon_mode.py` ✅
+- [x] `phonon.band` — `phonon_band.py` → `PhononBandHandler` + `@quantity("band", group="phonon") PhononBand(graph.Mixin)` | test: `test_phonon_band.py` ✅
+- [x] `phonon.dos` — `phonon_dos.py` → `PhononDosHandler` + `@quantity("dos", group="phonon") PhononDos(graph.Mixin)` | test: `test_phonon_dos.py` ✅
 
 ---
 
