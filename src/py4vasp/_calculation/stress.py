@@ -47,10 +47,6 @@ Total   {stress_to_string(stress / eV_to_kB)}
 in kB   {stress_to_string(stress)}
 """.strip()
 
-    def read(self) -> dict:
-        """Read the stress into a dictionary."""
-        return self.to_dict()
-
     def to_dict(self) -> dict:
         """Read the stress and associated structural information for one or more
         selected steps of the trajectory.
@@ -196,6 +192,10 @@ class Stress:
         p.text(str(self) if not cycle else "...")
 
     def to_dict(self, selection: str | None = None) -> dict:
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
+        return self.read(selection=selection)
+
+    def read(self, selection: str | None = None) -> dict:
         """Read the stress and associated structural information for one or more
         selected steps of the trajectory.
 
@@ -213,41 +213,34 @@ class Stress:
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
 
-        If you use the `to_dict` method, the result will depend on the steps that you
+        If you use the `read` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
         step will be used. The structure is included to provide the necessary context for
         the stress.
 
-        >>> calculation.stress.to_dict()
+        >>> calculation.stress.read()
         {'structure': {...}, 'stress': array([[...]])}
 
         To select the results for all steps, you don't specify the array boundaries.
         Notice that in this case the stress contains an additional dimension for the
         different steps.
 
-        >>> calculation.stress[:].to_dict()
+        >>> calculation.stress[:].read()
         {'structure': {...}, 'stress': array([[[...]]])}
 
         You can also select specific steps or a subset of steps as follows
 
-        >>> calculation.stress[1].to_dict()
+        >>> calculation.stress[1].read()
             {'structure': {...}, 'stress': array([[...]])}
-        >>> calculation.stress[0:2].to_dict()
+        >>> calculation.stress[0:2].read()
         {'structure': {...}, 'stress': array([[[...]]])}
-        """
-        return self.read(selection=selection)
-
-    def read(self, selection: str | None = None) -> dict:
-        """Read the stress and associated structural information.
-
-        Convenient alias for :py:meth:`to_dict`.
         """
         return merge_default(
             self._source,
             self._quantity_name,
             selection,
             self._handler_factory,
-            StressHandler.read,
+            StressHandler.to_dict,
         )
 
     def number_steps(self, selection: str | None = None) -> int:
