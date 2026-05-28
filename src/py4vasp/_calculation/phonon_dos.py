@@ -13,7 +13,8 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._raw.data_db import PhononDos_DB
 from py4vasp._third_party import graph
-from py4vasp._util import check, index, select
+from py4vasp._util import check, documentation, index, select
+from py4vasp._calculation import phonon
 
 
 class PhononDosHandler:
@@ -34,10 +35,22 @@ class PhononDosHandler:
     {3 * stoichiometry.number_atoms()} modes
     {stoichiometry}"""
 
-    def read(self, selection=None) -> dict:
-        return self.to_dict(selection=selection)
-
     def to_dict(self, selection=None) -> dict:
+        """Read the phonon DOS into a dictionary.
+
+        Parameters
+        ----------
+        selection : str
+            A string specifying the projection of the phonon modes onto atoms and
+            directions. See `selections` for available options.
+
+        Returns
+        -------
+        dict
+            Contains the energies at which the phonon DOS was computed. The total
+            DOS is returned and any possible projected DOS selected by the *selection*
+            argument.
+        """
         return {
             "energies": self._raw_phonon_dos.energies[:],
             "total": self._raw_phonon_dos.dos[:],
@@ -107,7 +120,22 @@ class PhononDosHandler:
 
 @quantity("dos", group="phonon")
 class PhononDos(graph.Mixin):
-    """The phonon density of states (DOS) describes the number of modes per energy."""
+    """The phonon density of states (DOS) describes the number of modes per energy.
+
+    The phonon density of states (DOS) is a representation of the distribution of
+    phonons in a material across different frequencies. It provides a histogram of the
+    number of phonon states per frequency interval. Peaks and features in the DOS reveal
+    the density of vibrational modes at specific frequencies. One can related these
+    properties to study e.g. the heat capacity or the thermal conductivity.
+
+    Projecting the phonon density of states (DOS) onto specific atoms highlights the
+    contribution of each atomic species to the vibrational spectrum. This analysis helps
+    to understand the role of individual elements' impact on the material's thermal and
+    mechanical properties. The projected phonon DOS can guide towards engineering these
+    properties by substitution of specific atoms. Additionally, the atom-specific
+    projection allows for the identification of localized modes or vibrations associated
+    with specific atomic species.
+    """
 
     def __init__(self, source, quantity_name: str = "phonon_dos"):
         self._source = source
@@ -133,22 +161,48 @@ class PhononDos(graph.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
+    @documentation.format(selection=phonon.selection_doc)
     def read(self, selection: str | None = None) -> dict:
+        """Read the phonon DOS into a dictionary.
+
+        Parameters
+        ----------
+        {selection}
+
+        Returns
+        -------
+        dict
+            Contains the energies at which the phonon DOS was computed. The total
+            DOS is returned and any possible projected DOS selected by the *selection*
+            argument.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
             None,
             self._handler_factory,
-            PhononDosHandler.read,
+            PhononDosHandler.to_dict,
             selection,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
-        """Read the phonon DOS into a dictionary."""
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
+    @documentation.format(selection=phonon.selection_doc)
     def to_graph(self, selection: str | None = None) -> graph.Graph:
-        """Generate a graph of the selected phonon DOS."""
+        """Generate a graph of the selected phonon DOS.
+
+        Parameters
+        ----------
+        {selection}
+
+        Returns
+        -------
+        Graph
+            The graph contains the total DOS. If a selection is given, in addition the
+            projected DOS is shown.
+        """
         return merge_graphs(
             self._source,
             self._quantity_name,
