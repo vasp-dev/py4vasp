@@ -39,22 +39,11 @@ class ElasticModulusHandler:
     def from_data(cls, raw_elastic_modulus: raw.ElasticModulus) -> "ElasticModulusHandler":
         return cls(raw_elastic_modulus)
 
-    def read(self) -> dict:
-        """Read the clamped-ion and relaxed-ion elastic modulus into a dictionary.
-
-        Returns
-        -------
-        dict
-            Contains the level of approximation and its associated elastic modulus.
-        """
+    def to_dict(self) -> dict:
         return {
             "clamped_ion": self._raw_elastic_modulus.clamped_ion[:],
             "relaxed_ion": self._raw_elastic_modulus.relaxed_ion[:],
         }
-
-    def to_dict(self) -> dict:
-        """Public alias for read()."""
-        return self.read()
 
     def __str__(self) -> str:
         return f"""Elastic modulus (kBar)
@@ -289,20 +278,11 @@ class ElasticModulus:
             self._quantity_name,
             selection,
             self._handler_factory,
-            ElasticModulusHandler.read,
+            ElasticModulusHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
-        """Read the clamped-ion and relaxed-ion elastic modulus into a dictionary.
-
-        Convenient alias for :py:meth:`read`. Check that method for examples
-        and optional arguments.
-
-        Returns
-        -------
-        dict
-            Contains the level of approximation and its associated elastic modulus.
-        """
+        """Convenient alias for :py:meth:`read`."""
         return self.read(selection=selection)
 
     def __str__(self, selection: str | None = None):
