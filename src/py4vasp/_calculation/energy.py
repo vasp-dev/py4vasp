@@ -93,9 +93,6 @@ class EnergyHandler:
             text += f"\n   {label_str}={value:17.6f}"
         return text
 
-    def read(self, selection=None) -> dict:
-        return self.to_dict(selection)
-
     def to_dict(self, selection=None) -> dict:
         if selection is None:
             return self._default_dict()
@@ -295,30 +292,12 @@ class Energy(graph.Mixin):
             self._quantity_name,
             selection,
             self._handler_factory,
-            EnergyHandler.read,
+            EnergyHandler.to_dict,
             selection,
         )
 
-    @documentation.format(
-        selection=_selection_string("all energies"),
-        examples=slice_.examples("energy", "to_dict"),
-    )
     def to_dict(self, selection=None) -> dict:
-        """Read the energy data and store it in a dictionary.
-
-        Convenient alias for :py:meth:`read`. Check that method for examples
-        and optional arguments.
-
-        Parameters
-        ----------
-        {selection}
-
-        Returns
-        -------
-        dict
-
-        {examples}
-        """
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
     @documentation.format(
