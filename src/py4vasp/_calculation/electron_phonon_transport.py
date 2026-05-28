@@ -85,11 +85,7 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
         """
         return f"Electron-phonon transport instance {self.index + 1}:\n{self._metadata_string()}"
 
-    def read(self, selection=None):
-        "Convenient wrapper around to_dict. Check that function for examples and optional arguments."
-        return self.to_dict(selection=selection)
-
-    def to_dict(self, selection=None) -> Dict[str, Any]:
+    def read(self, selection=None) -> Dict[str, Any]:
         """Returns a dictionary with selected transport properties for this instance.
 
         Returns
@@ -117,6 +113,10 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
         result = {name: self._get_data(name, selection=selection) for name in names}
         result["metadata"] = self.read_metadata()
         return result
+
+    def to_dict(self, selection=None) -> Dict[str, Any]:
+        """Convenient alias for :py:meth:`read`."""
+        return self.read(selection=selection)
 
     def temperatures(self) -> np.ndarray:
         """Returns the temperatures at which transport properties are computed.
@@ -510,10 +510,7 @@ class ElectronPhononTransport(abc.Sequence, graph.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self, selection=None):
-        return self.to_dict(selection=selection)
-
-    def to_dict(self, selection=None) -> Dict[str, Any]:
+    def read(self, selection=None) -> Dict[str, Any]:
         """Return a dictionary that lists how many accumulators are available
 
         Returns
@@ -528,6 +525,10 @@ class ElectronPhononTransport(abc.Sequence, graph.Mixin):
             self._handler_factory,
             ElectronPhononTransportHandler.to_dict,
         )
+
+    def to_dict(self, selection=None) -> Dict[str, Any]:
+        """Convenient alias for :py:meth:`read`."""
+        return self.read(selection=selection)
 
     def selections(self, selection=None) -> Dict[str, Any]:
         """Return a dictionary describing what options are available to read the transport.
