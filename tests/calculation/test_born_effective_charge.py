@@ -71,7 +71,7 @@ ion    7   O
     2    57.00000    58.00000    59.00000
     3    60.00000    61.00000    62.00000
 """.strip()
-    assert actual == {"text/plain": reference}
+    assert actual == reference
 
 
 @pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")

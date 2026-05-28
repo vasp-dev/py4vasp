@@ -52,6 +52,11 @@ ion {ion + 1:4d}   {element}
     def to_dict(self) -> dict:
         """Read structure information and Born effective charges into a dictionary.
 
+        The structural information is added to inform about which atoms are included
+        in the array. The Born effective charges array contains the mixed second
+        derivative with respect to an electric field and an atomic displacement for
+        all atoms and possible directions.
+
         Returns
         -------
         dict
@@ -96,7 +101,16 @@ ion {ion + 1:4d}   {element}
 
 @quantity("born_effective_charge")
 class BornEffectiveCharge:
-    """The Born effective charge tensors couple electric field and atomic displacement."""
+    """The Born effective charge tensors couple electric field and atomic displacement.
+
+    You can use this class to extract the Born effective charges of a linear
+    response calculation. The Born effective charges describes the effective charge of
+    an ion in a crystal lattice when subjected to an external electric field.
+    These charges account for the displacement of the ion positions in response to the
+    field, reflecting the distortion of the crystal structure. Born effective charges
+    help understanding the material's response to external stimuli, such as
+    piezoelectric and ferroelectric behavior.
+    """
 
     def __init__(self, source, quantity_name: str = "born_effective_charge"):
         self._source = source
@@ -134,7 +148,18 @@ class BornEffectiveCharge:
         )
 
     def read(self, selection: str | None = None) -> dict:
-        """Read structure information and Born effective charges into a dictionary."""
+        """Read structure information and Born effective charges into a dictionary.
+
+        The structural information is added to inform about which atoms are included
+        in the array. The Born effective charges array contains the mixed second
+        derivative with respect to an electric field and an atomic displacement for
+        all atoms and possible directions.
+
+        Returns
+        -------
+        dict
+            Contains structural information as well as the Born effective charges.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
