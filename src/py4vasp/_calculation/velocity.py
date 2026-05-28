@@ -51,10 +51,6 @@ class VelocityHandler:
     def _element_to_string(self, element):
         return f"{element:21.16f}"
 
-    def read(self) -> dict:
-        """Return the structure and ion velocities in a dictionary."""
-        return self.to_dict()
-
     def to_dict(self) -> dict:
         """Return the structure and ion velocities in a dictionary.
 
@@ -68,7 +64,7 @@ class VelocityHandler:
             self._raw_velocity.structure, steps=self._steps
         )
         return {
-            "structure": structure.read(),
+            "structure": structure.to_dict(),
             "velocities": self.to_numpy(),
         }
 
@@ -232,6 +228,10 @@ class Velocity(view.Mixin):
         p.text(str(self) if not cycle else "...")
 
     def to_dict(self, selection: str | None = None) -> dict:
+        """Convenient alias for :py:meth:`read`."""
+        return self.read(selection=selection)
+
+    def read(self, selection: str | None = None) -> dict:
         """Return the structure and ion velocities in a dictionary.
 
         Returns
@@ -239,20 +239,43 @@ class Velocity(view.Mixin):
         dict
             The dictionary contains the ion velocities as well as the structural
             information for reference.
-        """
-        return self.read(selection=selection)
 
-    def read(self, selection: str | None = None) -> dict:
-        """Return the structure and ion velocities in a dictionary.
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this
+        method. You can also use your own VASP calculation data if you have it available.
 
-        Convenient alias for :py:meth:`to_dict`.
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        If you use the `read` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used. The structure is included to provide the necessary context
+        for the velocities.
+
+        >>> calculation.velocity.read()
+        {'structure': {...}, 'velocities': array([[...]])}
+
+        To select the results for all steps, you don't specify the array boundaries.
+        Notice that in this case the velocities contain an additional dimension for the
+        different steps.
+
+        >>> calculation.velocity[:].read()
+        {'structure': {...}, 'velocities': array([[[...]]])}
+
+        You can also select specific steps or a subset of steps as follows
+
+        >>> calculation.velocity[1].read()
+        {'structure': {...}, 'velocities': array([[...]])}
+        >>> calculation.velocity[0:2].read()
+        {'structure': {...}, 'velocities': array([[[...]]])}
         """
         return merge_default(
             self._source,
             self._quantity_name,
             selection,
             self._handler_factory,
-            VelocityHandler.read,
+            VelocityHandler.to_dict,
         )
 
     def to_numpy(self, selection: str | None = None) -> np.ndarray:
@@ -264,6 +287,35 @@ class Velocity(view.Mixin):
         -------
         np.ndarray
             A numpy array of the velocities of the selected steps.
+
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this
+        method. You can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        If you use the `to_numpy` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> calculation.velocity.to_numpy()
+        array([[...]])
+
+        To select the results for all steps, you don't specify the array boundaries.
+        Notice that in this case the velocities contain an additional dimension for the
+        different steps.
+
+        >>> calculation.velocity[:].to_numpy()
+        array([[[...]]])
+
+        You can also select specific steps or a subset of steps as follows
+
+        >>> calculation.velocity[1].to_numpy()
+        array([[...]])
+        >>> calculation.velocity[0:2].to_numpy()
+        array([[[...], [...]]])
         """
         return merge_default(
             self._source,
@@ -290,6 +342,43 @@ class Velocity(view.Mixin):
         -------
         View
             Contains all atoms and the velocities are drawn as vectors.
+
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this
+        method. You can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        If you use the `to_view` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> calculation.velocity.to_view()
+        View(..., ion_arrows=[IonArrow(quantity=array([[...]]), label='velocities', ...)], ...)
+
+        To select the results for all steps, you don't specify the array boundaries.
+
+        >>> calculation.velocity[:].to_view()
+        View(..., ion_arrows=[IonArrow(quantity=array([[[...]]]), label='velocities', ...)], ...)
+
+        You can also select specific steps or a subset of steps as follows
+
+        >>> calculation.velocity[1].to_view()
+        View(..., ion_arrows=[IonArrow(quantity=array([[...]]), label='velocities', ...)], ...)
+        >>> calculation.velocity[0:2].to_view()
+        View(..., ion_arrows=[IonArrow(quantity=array([[[...], [...]]]), label='velocities', ...)], ...)
+
+        You may also replicate the structure by specifying a supercell.
+
+        >>> calculation.velocity.to_view(supercell=2)
+        View(..., supercell=array([2, 2, 2]), ...)
+
+        The supercell size can also be different for the different directions.
+
+        >>> calculation.velocity.to_view(supercell=[2,3,1])
+        View(..., supercell=array([2, 3, 1]), ...)
         """
         return merge_default(
             self._source,
