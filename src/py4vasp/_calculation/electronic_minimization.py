@@ -68,9 +68,6 @@ class ElectronicMinimizationHandler:
                 string += format_rep.format(*_data)
         return string
 
-    def read(self, selection=None) -> dict:
-        return self.to_dict(selection)
-
     def to_dict(self, selection=None) -> dict:
         """Extract convergence data and return as a dict."""
         return_data = {}
@@ -244,22 +241,48 @@ class ElectronicMinimization(graph.Mixin):
         return ElectronicMinimizationHandler.from_data(raw_data, steps=self._steps)
 
     def read(self, selection=None) -> dict:
-        """Extract convergence data from the HDF5 file and make it available in a dict."""
+        """Extract convergence data from the HDF5 file and make it available in a dict
+
+        Parameters
+        ----------
+        selection: str
+            Choose from either iteration_number, free_energy, free_energy_change,
+            bandstructure_energy_change, number_hamiltonian_evaluations, norm_residual,
+            difference_charge_density to get specific columns of the OSZICAR file. In
+            case no selection is provided, supply all columns.
+
+        Returns
+        -------
+        dict
+            Contains a dict from the HDF5 related to OSZICAR convergence data
+        """
         return merge_default(
             self._source,
             self._quantity_name,
             selection,
             self._handler_factory,
-            ElectronicMinimizationHandler.read,
+            ElectronicMinimizationHandler.to_dict,
             selection,
         )
 
     def to_dict(self, selection=None) -> dict:
-        """Convenient alias for :py:meth:`read`."""
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
     def to_graph(self, selection="E") -> graph.Graph:
-        """Graph the change in parameter with iteration number."""
+        """Graph the change in parameter with iteration number.
+
+        Parameters
+        ----------
+        selection: str
+            Choose strings consistent with the OSZICAR format
+
+        Returns
+        -------
+        Graph
+            The Graph with the quantity plotted on y-axis and the iteration number of
+            the x-axis.
+        """
         return merge_graphs(
             self._source,
             self._quantity_name,
