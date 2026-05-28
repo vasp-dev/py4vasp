@@ -62,9 +62,6 @@ class CurrentDensityHandler:
     grid: {grid[2]}, {grid[1]}, {grid[0]}
     selections: {", ".join(str(index) for index in self._raw_current_density.valid_indices)}"""
 
-    def read(self) -> dict:
-        return self.to_dict()
-
     def to_dict(self) -> dict:
         """Read the current density and structural information into a Python dictionary."""
         return {"structure": self._structure().read(), **self._read_current_densities()}
@@ -137,7 +134,44 @@ class CurrentDensity:
     """Represents current density on the grid in the unit cell.
 
     A current density j is a vectorial quantity (j_x, j_y, j_z) on every grid point.
-    It describes how the current flows at every point in space."""
+    It describes how the current flows at every point in space.
+
+    Examples
+    --------
+
+    First, we create some example data that you can follow along. Please define a
+    variable `path` with the path to a directory that exists and does not contain any
+    VASP calculation data. Alternatively, you can use your own data if you have run
+    VASP and construct `calculation` from it.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    To produce current density plots, please check the `to_contour` and `to_quiver`
+    functions for a more detailed documentation.
+
+    To produce a contour plot:
+
+    >>> calculation.current_density.to_contour("nmr", a=0)
+    Graph(series=[Contour(data=array([[...]]), ..., cut='a', ...)], ...)
+
+    To produce a quiver plot:
+
+    >>> calculation.current_density.to_quiver("nmr", c=0)
+    Graph(series=[Contour(data=array([[[...]]]), ..., cut='c', ...)], ...)
+
+    For your own postprocessing, you can read the current density data into a Python dict:
+
+    >>> calculation.current_density.read("nmr")
+    {'structure': {...}, 'current_x': array([[[[...]]]],  ...), 'current_y': array([[[[...]]]], ...), 'current_z': array([[[[...]]]],  ...)}
+
+    You can inspect possible choices with:
+
+    >>> calculation.current_density.selections("nmr")
+    {'current_density': ['nmr']}
+
+    Please check the documentation of these methods for more details on how to use them
+    and which options they provide."""
 
     def __init__(self, source, quantity_name="current_density"):
         self._source = source
@@ -163,19 +197,26 @@ class CurrentDensity:
         p.text(str(self))
 
     def read(self, selection=None) -> dict:
-        """Read the current density and structural information into a Python dictionary."""
+        """Read the current density and structural information into a Python dictionary.
+
+        Returns
+        -------
+        dict
+            Contains all available current density data as well as structural information.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
             None,
             self._handler_factory,
-            CurrentDensityHandler.read,
+            CurrentDensityHandler.to_dict,
         )
 
     def to_dict(self, selection=None) -> dict:
-        """Alias for read()."""
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
+    @documentation.format(plane=slicing.PLANE, parameters=_COMMON_PARAMETERS)
     def to_contour(
         self,
         selection: Optional[str] = None,
@@ -186,7 +227,37 @@ class CurrentDensity:
         normal: Optional[str] = None,
         supercell: Optional[Union[int, np.ndarray]] = None,
     ) -> graph.Graph:
-        """Generate a contour plot of current density."""
+        """Generate a contour plot of current density.
+
+        {plane}
+
+        Parameters
+        ----------
+        {parameters}
+
+        Returns
+        -------
+        Graph
+            A current density plot in the plane spanned by the 2 remaining lattice
+            vectors.
+
+        Examples
+        --------
+
+        Cut a plane at the origin of the third lattice vector.
+
+        >>> calculation.current_density.to_contour("nmr", c=0)
+
+        Replicate a plane in the middle of the second lattice vector 2 times in each
+        direction.
+
+        >>> calculation.current_density.to_contour("nmr", b=0.5, supercell=2)
+
+        Take a slice along the first lattice vector and rotate it such that the normal
+        of the plane aligns with the x axis.
+
+        >>> calculation.current_density.to_contour("nmr", a=0.3, normal="x")
+        """
         return merge_default(
             self._source,
             self._quantity_name,
@@ -201,6 +272,7 @@ class CurrentDensity:
             supercell=supercell,
         )
 
+    @documentation.format(plane=slicing.PLANE, parameters=_COMMON_PARAMETERS)
     def to_quiver(
         self,
         selection: Optional[str] = None,
@@ -211,7 +283,36 @@ class CurrentDensity:
         normal: Optional[str] = None,
         supercell: Optional[Union[int, np.ndarray]] = None,
     ) -> graph.Graph:
-        """Generate a quiver plot of current density."""
+        """Generate a quiver plot of current density.
+
+        {plane}
+
+        Parameters
+        ----------
+        {parameters}
+
+        Returns
+        -------
+        Graph
+            A quiver plot in the plane spanned by the 2 remaining lattice vectors.
+
+        Examples
+        --------
+
+        Cut a plane at the origin of the third lattice vector.
+
+        >>> calculation.current_density.to_quiver("nmr", c=0)
+
+        Replicate a plane in the middle of the second lattice vector 2 times in each
+        direction.
+
+        >>> calculation.current_density.to_quiver("nmr", b=0.5, supercell=2)
+
+        Take a slice along the first lattice vector and rotate it such that the normal
+        of the plane aligns with the x axis.
+
+        >>> calculation.current_density.to_quiver("nmr", a=0.3, normal="x")
+        """
         return merge_default(
             self._source,
             self._quantity_name,
