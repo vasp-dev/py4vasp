@@ -33,9 +33,6 @@ class ExcitonEigenvectorHandler:
     {shape[3]} valence bands
     {shape[2]} conduction bands"""
 
-    def read(self) -> dict:
-        return self.to_dict()
-
     def to_dict(self) -> dict:
         eigenvectors = convert.to_complex(self._raw_exciton_eigenvector.eigenvectors[:])
         dispersion = self._dispersion().to_dict()
@@ -112,14 +109,26 @@ class ExcitonEigenvector:
         p.text(str(self))
 
     def read(self, selection: str | None = None) -> dict:
+        """Read the data into a dictionary.
+
+        Returns
+        -------
+        dict
+            The dictionary contains the relevant k-point distances and labels as well as
+            the electronic band eigenvalues. To produce fatband plots, use the array
+            *bse_index* to access the relevant quantities of the BSE eigenvectors. Note
+            that the dimensions of the bse_index array are **k** points, conduction
+            bands, valence bands and that the conduction and valence band indices may
+            be offset by first_valence_band and first_conduction_band, respectively.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
             selection,
             self._handler_factory,
-            ExcitonEigenvectorHandler.read,
+            ExcitonEigenvectorHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
-        """Read the BSE eigenvector data into a dictionary."""
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
