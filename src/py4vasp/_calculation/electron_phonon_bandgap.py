@@ -227,7 +227,7 @@ class ElectronPhononBandgap(abc.Sequence):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def to_dict(self, selection=None):
+    def read(self, selection=None):
         """
         Converts the bandgap data to a dictionary format.
         """
@@ -239,8 +239,9 @@ class ElectronPhononBandgap(abc.Sequence):
             ElectronPhononBandgapHandler.to_dict,
         )
 
-    def read(self, selection=None):
-        return self.to_dict(selection=selection)
+    def to_dict(self, selection=None):
+        """Convenient alias for :py:meth:`read`."""
+        return self.read(selection=selection)
 
     def selections(self, selection=None):
         """Return a dictionary describing what options are available to read the
