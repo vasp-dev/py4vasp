@@ -117,7 +117,7 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
         indices = np.arange(stop)
         return np.setdiff1d(indices_included, indices[slice_excluded])
 
-    def read(self) -> dict[str, np.ndarray]:
+    def to_dict(self) -> dict[str, np.ndarray]:
         """Convert the effective Coulomb object to a dictionary representation.
 
         The integrals are evaluated over 4 Wannier functions. For the bare Coulomb
@@ -143,10 +143,6 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
             **self._read_frequencies(),
             **self._read_positions(),
         }
-
-    def to_dict(self) -> dict[str, np.ndarray]:
-        """Public alias for read()."""
-        return self.read()
 
     @property
     def _has_frequencies(self):
@@ -436,21 +432,32 @@ class EffectiveCoulomb(graph.Mixin):
     def read(self, selection: str | None = None) -> dict[str, np.ndarray]:
         """Convert the effective Coulomb object to a dictionary representation.
 
+        The integrals are evaluated over 4 Wannier functions. For the bare Coulomb
+        interaction, these integrals can be computed with either a high :tag:`ENCUT`
+        or low cutoff :tag:`ENCUTGW` that you set in the INCAR file. The screened Coulomb
+        interaction is evaluated with the dielectric function and will have smaller
+        values than the bare Coulomb potential. If you set :tag:`TWO_CENTER` = `.TRUE.`
+        in the INCAR file, the Coulomb interactions are evaluated also at neighboring
+        cells.
+
         Returns
         -------
         -
-            A dictionary containing the effective Coulomb interaction data.
+            A dictionary containing the effective Coulomb interaction data. In particular,
+            it includes the bare Coulomb interaction with high and low cutoffs, the screened
+            Coulomb interaction, and optionally the frequencies and positions at which the
+            interactions are evaluated.
         """
         return merge_default(
             self._source,
             self._quantity_name,
             selection,
             self._handler_factory,
-            EffectiveCoulombHandler.read,
+            EffectiveCoulombHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict[str, np.ndarray]:
-        """Public alias for read(). Check that method for examples and optional arguments."""
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
     def to_graph(
@@ -463,18 +470,43 @@ class EffectiveCoulomb(graph.Mixin):
     ) -> graph.Graph:
         """Generate a graph representation of the effective Coulomb interaction.
 
+        The method automatically determines the plot type based on which parameters
+        are provided:
+
+        - If only omega is given: creates a frequency-dependent plot
+        - If only radius/radius_max is given: creates a radial-dependent plot
+        - If both omega and radius/radius_max are given: creates a frequency plot for all radii
+
         Parameters
         ----------
         selection
-            Specifies which data to plot. Default is "U", "V", and "J".
+            Specifies which data to plot. Default is "U", "V", and "J". You can also
+            select "u" or "v". For collinear calculations, you select a specific spin
+            coupling with "up~up" or "up~down". Different choices can be combined, e.g.,
+            "U(up~up)" or "J(up~down)". You may prefix the selection with "bare" or
+            "screened" to select the bare or screened potential, e.g., "bare(U)". If no
+            prefix is given, it is deduced from the selection, e.g., "U" is interpreted
+            as "screened(U)".
+
         omega
-            Frequency values for frequency-dependent plots.
+            Frequency values for frequency-dependent plots. If not set, or set to
+            ellipsis (...), the frequency points along the imaginary axis are used.
+            You can also provide specific frequencies on the real axis, then the data
+            will be analytically continued and plotted for the selected frequencies.
+
         radius
-            Radial distance values for radial-dependent plots.
+            Radial distance values for radial-dependent plots. If not set, the plot
+            will be for r=0. If set to ellipsis (...), the radial points used in VASP
+            are used. You can also provide specific radii, then the data  will be
+            interpolated to the selected radii.
+
         radius_max
-            Maximum radius for radial-dependent plots.
+            Maximum radius for radial-dependent plots. If set, all data for radii
+            greater than this value will be ignored.
+
         config
-            Configuration for analytic continuation.
+            Configuration for the analytic continuation of the frequency-dependent data.
+            Use this if you need to adjust the parameters of the analytic continuation.
 
         Returns
         -------
