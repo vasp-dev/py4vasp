@@ -42,9 +42,6 @@ class ExcitonDensityHandler:
     grid: {grid[2]}, {grid[1]}, {grid[0]}
     excitons: {len(self._raw_exciton_density.exciton_charge)}"""
 
-    def read(self) -> dict:
-        return self.to_dict()
-
     def to_dict(self) -> dict:
         _raise_error_if_no_data(self._raw_exciton_density.exciton_charge)
         return {
@@ -92,7 +89,46 @@ class ExcitonDensityHandler:
 
 @quantity("density", group="exciton")
 class ExcitonDensity(view.Mixin):
-    """This class accesses exciton charge densities of VASP."""
+    """This class accesses exciton charge densities of VASP.
+
+    The exciton charge densities can be calculated via the BSE/TDHF algorithm in
+    VASP. With this class you can extract these charge densities.
+
+    Examples
+    --------
+    First, we create some example data so that you can follow along. Please define a
+    variable `path` with the path to a directory that exists and does not contain any
+    VASP calculation data. Alternatively, you can use your own data if you have run
+    VASP and construct `calculation` from it.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    For your own postprocessing, you can read the exciton density data into a Python
+    dictionary:
+
+    >>> calculation.exciton.density.read()
+    {'structure': {...}, 'charge': array([[[[...]]]]...)}
+
+    Alternatively, obtain the density as a numpy array directly:
+
+    >>> calculation.exciton.density.to_numpy()
+    array([[[[...]]]]...)
+
+    You can also visualize a 3d isosurface of the density:
+
+    >>> calculation.exciton.density.plot()
+    ...
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='1', isosurfaces=[Isosurface(...)])], ...)
+
+    Finally, you can inspect possible selections with:
+
+    >>> calculation.exciton.density.selections()
+    {'exciton_density': ['default'...]...}
+
+    Please check the documentation of these methods for more details on how to use
+    them and which options they provide.
+    """
 
     def __init__(self, source, quantity_name: str = "exciton_density"):
         self._source = source
@@ -118,20 +154,34 @@ class ExcitonDensity(view.Mixin):
         p.text(str(self))
 
     def read(self, selection: str | None = None) -> dict:
+        """Read the exciton density into a dictionary.
+
+        Returns
+        -------
+        dict
+            Contains the supercell structure information as well as the exciton
+            charge density represented on a grid in the supercell.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
             selection,
             self._handler_factory,
-            ExcitonDensityHandler.read,
+            ExcitonDensityHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
-        """Read the exciton density into a dictionary."""
+        """Convenient alias for :py:meth:`read`."""
         return self.read(selection=selection)
 
     def to_numpy(self, selection: str | None = None) -> np.ndarray:
-        """Convert the exciton charge density to a numpy array."""
+        """Convert the exciton charge density to a numpy array.
+
+        Returns
+        -------
+        np.ndarray
+            Charge density of all excitons.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
@@ -147,7 +197,41 @@ class ExcitonDensity(view.Mixin):
         center: bool = False,
         **user_options,
     ) -> view.View:
-        """Plot the selected exciton density as a 3d isosurface within the structure."""
+        """Plot the selected exciton density as a 3d isosurface within the structure.
+
+        Parameters
+        ----------
+        selection : str | None = None
+            Can be exciton index or a combination, i.e., "1" or "1+2+3"
+
+        supercell : int | np.ndarray | None = None
+            If present the data is replicated the specified number of times along each
+            direction.
+
+        center : bool = False
+            Shift the origin of the unit cell to the center. This is helpful if
+            the exciton is at the corner of the cell.
+
+        user_options
+            Further arguments with keyword that get directly passed on to the
+            visualizer. Most importantly, you can set isolevel to adjust the
+            value at which the isosurface is drawn.
+
+        Returns
+        -------
+        View
+            Visualize an isosurface of the exciton density within the 3d structure.
+
+        Examples
+        --------
+        >>> calculation = py4vasp.Calculation.from_path(".")
+        Plot an isosurface of the first exciton charge density
+        >>> calculation.exciton.density.plot()
+        Plot an isosurface of the third exciton charge density
+        >>> calculation.exciton.density.plot("3")
+        Plot an isosurface of the sum of first and second exciton charge densities
+        >>> calculation.exciton.density.plot("1+2")
+        """
         return merge_default(
             self._source,
             self._quantity_name,
