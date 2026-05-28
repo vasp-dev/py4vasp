@@ -347,7 +347,7 @@ class Dos(graph.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             DosHandler.to_dict,
             selection,
@@ -452,7 +452,7 @@ class Dos(graph.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             DosHandler.to_graph,
             selection,
@@ -547,7 +547,7 @@ class Dos(graph.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             DosHandler.to_frame,
             selection,

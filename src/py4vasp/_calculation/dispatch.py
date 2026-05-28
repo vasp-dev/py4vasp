@@ -185,10 +185,22 @@ def _dispatch(
     for ctx in contexts:
         with source.access(quantity_name, selection=ctx.selection_name) as raw:
             handler = handler_factory(raw)
-            result = method(handler, *args, **kwargs)
+            effective_args = _substitute_remaining_selection(args, selection, ctx.remaining_selection)
+            result = method(handler, *effective_args, **kwargs)
             key = ctx.selection_name or "default"
             results[key] = result
     return results
+
+
+def _substitute_remaining_selection(args, original_selection, remaining_selection):
+    """Replace args[0] with remaining_selection when it equals the original dispatch selection.
+
+    This ensures that source-level selectors (e.g. "kpoints_opt") are stripped before
+    the handler receives the selection, so only the projector/content part is forwarded.
+    """
+    if not args or args[0] != original_selection:
+        return args
+    return (remaining_selection,) + args[1:]
 
 
 def merge_default(
