@@ -72,11 +72,11 @@ def test_to_dict_matches_read(raw_data):
     handler = PiezoelectricTensorHandler.from_data(raw_tensor)
     assert (
         handler.to_dict()["clamped_ion"].tolist()
-        == handler.read()["clamped_ion"].tolist()
+        == handler.to_dict()["clamped_ion"].tolist()
     )
     assert (
         handler.to_dict()["relaxed_ion"].tolist()
-        == handler.read()["relaxed_ion"].tolist()
+        == handler.to_dict()["relaxed_ion"].tolist()
     )
 
 

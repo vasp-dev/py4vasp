@@ -40,14 +40,14 @@ class PiezoelectricTensorHandler:
         return cls(raw_piezoelectric_tensor)
 
     def __str__(self):
-        data = self.read()
+        data = self.to_dict()
         return f"""Piezoelectric tensor (C/m²)
          XX          YY          ZZ          XY          YZ          ZX
 ---------------------------------------------------------------------------
 {_tensor_to_string(data["clamped_ion"], "clamped-ion")}
 {_tensor_to_string(data["relaxed_ion"], "relaxed-ion")}"""
 
-    def read(self) -> dict:
+    def to_dict(self) -> dict:
         """Read the ionic and electronic contribution to the piezoelectric tensor
         into a dictionary.
 
@@ -65,10 +65,6 @@ class PiezoelectricTensorHandler:
             "clamped_ion": electron_data,
             "relaxed_ion": electron_data + self._raw_piezoelectric_tensor.ion[:],
         }
-
-    def to_dict(self) -> dict:
-        """Public alias for read()."""
-        return self.read()
 
     def to_database(self) -> dict:
         reduced_tensor_x, reduced_tensor_y, reduced_tensor_z, tensor_2d = (
@@ -294,21 +290,11 @@ class PiezoelectricTensor:
             self._quantity_name,
             selection,
             PiezoelectricTensorHandler.from_data,
-            PiezoelectricTensorHandler.read,
+            PiezoelectricTensorHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
-        """Read the ionic and electronic contribution to the piezoelectric tensor
-        into a dictionary.
-
-        Convenient alias for :py:meth:`read`. Check that method for examples
-        and optional arguments.
-
-        Returns
-        -------
-        dict
-            The clamped ion and relaxed ion data for the piezoelectric tensor.
-        """
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
     def __str__(self):
