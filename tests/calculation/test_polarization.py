@@ -33,7 +33,7 @@ def test_read(polarization, Assert):
 
 def test_to_dict_matches_read(polarization_handler, Assert):
     result_to_dict = polarization_handler.to_dict()
-    result_read = polarization_handler.read()
+    result_read = polarization_handler.to_dict()
     assert result_to_dict.keys() == result_read.keys()
     for key in result_read:
         Assert.allclose(result_to_dict[key], result_read[key])

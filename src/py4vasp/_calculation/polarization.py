@@ -26,7 +26,7 @@ class PolarizationHandler:
     def from_data(cls, raw_polarization: raw.Polarization) -> "PolarizationHandler":
         return cls(raw_polarization)
 
-    def read(self) -> dict:
+    def to_dict(self) -> dict:
         """Read electronic and ionic polarization into a dictionary.
 
         Returns
@@ -38,10 +38,6 @@ class PolarizationHandler:
             "electron_dipole": self._raw_polarization.electron[:],
             "ion_dipole": self._raw_polarization.ion[:],
         }
-
-    def to_dict(self) -> dict:
-        """Public alias for read()."""
-        return self.read()
 
     def __str__(self):
         vec_to_string = lambda vec: " ".join(f"{x:11.5f}" for x in vec)
@@ -133,20 +129,11 @@ class Polarization:
             self._quantity_name,
             selection,
             PolarizationHandler.from_data,
-            PolarizationHandler.read,
+            PolarizationHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
-        """Read electronic and ionic polarization into a dictionary.
-
-        Convenient alias for :py:meth:`read`. Check that method for examples
-        and optional arguments.
-
-        Returns
-        -------
-        dict
-            Contains the electronic and ionic dipole moments.
-        """
+        """Convenient alias for :py:meth:`read`."""
         return self.read(selection=selection)
 
     def __str__(self):
