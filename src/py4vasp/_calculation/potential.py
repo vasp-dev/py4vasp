@@ -74,7 +74,7 @@ class PotentialHandler:
         return "\n    ".join([description, structure, grid, available])
 
     def to_dict(self) -> dict:
-        result = {"structure": self._structure().read()}
+        result = {"structure": self._structure().to_dict()}
         items = [self._generate_items(kind) for kind in VALID_KINDS]
         result.update(itertools.chain(*items))
         return result

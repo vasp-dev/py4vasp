@@ -68,7 +68,7 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
             self._raw_force.structure, steps=self._steps
         )
         return {
-            "structure": structure.read(),
+            "structure": structure.to_dict(),
             "forces": slice_steps(
                 np.array(self._raw_force.forces), self._steps, default_ndim=2
             ),

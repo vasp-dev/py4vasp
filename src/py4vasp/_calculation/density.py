@@ -80,7 +80,7 @@ class DensityHandler:
 
     def to_dict(self) -> dict:
         _raise_error_if_no_data(self._raw_density.charge)
-        result = {"structure": self._structure().read()}
+        result = {"structure": self._structure().to_dict()}
         result.update(self._read_density())
         return result
 

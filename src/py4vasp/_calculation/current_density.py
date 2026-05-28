@@ -64,7 +64,7 @@ class CurrentDensityHandler:
 
     def to_dict(self) -> dict:
         """Read the current density and structural information into a Python dictionary."""
-        return {"structure": self._structure().read(), **self._read_current_densities()}
+        return {"structure": self._structure().to_dict(), **self._read_current_densities()}
 
     def to_database(self) -> dict:
         density_dict = {"current_density": {}}

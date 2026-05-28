@@ -37,7 +37,7 @@ class PhononModeHandler:
 
     def to_dict(self) -> dict:
         return {
-            "structure": self._structure().read(),
+            "structure": self._structure().to_dict(),
             "frequencies": self.frequencies(),
             "eigenvectors": self._raw_phonon_mode.eigenvectors[:],
         }

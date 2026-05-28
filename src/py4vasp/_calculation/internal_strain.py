@@ -50,7 +50,7 @@ Internal strain tensor (eV/Å):
         """
         structure = StructureHandler.from_data(self._raw_internal_strain.structure)
         return {
-            "structure": structure.read(),
+            "structure": structure.to_dict(),
             "internal_strain": self._raw_internal_strain.internal_strain[:],
         }
 

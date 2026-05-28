@@ -56,7 +56,7 @@ nucleus-independent chemical shift:
             chemical shift represented on a grid in the unit cell.
         """
         result = {
-            "structure": self._structure().read(),
+            "structure": self._structure().to_dict(),
             "nics": self.to_numpy(),
             **self._get_method_and_positions(),
         }

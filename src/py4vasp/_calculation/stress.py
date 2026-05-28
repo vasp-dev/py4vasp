@@ -64,7 +64,7 @@ in kB   {stress_to_string(stress)}
             "stress": slice_steps(
                 np.array(self._raw_stress.stress), self._steps, default_ndim=2
             ),
-            "structure": structure.read(),
+            "structure": structure.to_dict(),
         }
 
     def to_database(self) -> dict:

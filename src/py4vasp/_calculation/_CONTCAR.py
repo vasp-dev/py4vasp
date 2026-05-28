@@ -26,7 +26,7 @@ class CONTCARHandler:
 
     def to_dict(self) -> dict:
         return {
-            **self._structure().read(),
+            **self._structure().to_dict(),
             "system": convert.text_to_string(self._raw_contcar.system),
             **self._read("selective_dynamics"),
             **self._read("lattice_velocities"),

@@ -45,7 +45,7 @@ class ExcitonDensityHandler:
     def to_dict(self) -> dict:
         _raise_error_if_no_data(self._raw_exciton_density.exciton_charge)
         return {
-            "structure": self._structure().read(),
+            "structure": self._structure().to_dict(),
             "charge": self.to_numpy(),
         }
 

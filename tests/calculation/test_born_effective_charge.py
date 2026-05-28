@@ -28,7 +28,7 @@ def Sr2TiO4(raw_data):
 
 def test_Sr2TiO4_read(Sr2TiO4, Assert):
     actual = Sr2TiO4.read()
-    reference_structure = Sr2TiO4.ref.structure.read()
+    reference_structure = Sr2TiO4.ref.structure.to_dict()
     for key in actual["structure"]:
         if key in ("elements", "names"):
             assert actual["structure"][key] == reference_structure[key]

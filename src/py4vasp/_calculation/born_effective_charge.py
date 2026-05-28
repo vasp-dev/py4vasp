@@ -45,6 +45,9 @@ ion {ion + 1:4d}   {element}
     3 {vec_to_string(charge_tensor[2])}"""
         return result
 
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
     def read(self) -> dict:
         """Read structure information and Born effective charges into a dictionary."""
         return self.to_dict()
@@ -66,7 +69,7 @@ ion {ion + 1:4d}   {element}
             self._raw_born_effective_charge.structure
         )
         return {
-            "structure": structure.read(),
+            "structure": structure.to_dict(),
             "charge_tensors": self._raw_born_effective_charge.charge_tensors[:],
         }
 

@@ -51,7 +51,7 @@ class ForceConstantHandler:
         """
         structure = StructureHandler.from_data(self._raw_force_constant.structure)
         result = {
-            "structure": structure.read(),
+            "structure": structure.to_dict(),
             "force_constants": self._raw_force_constant.force_constants[:],
         }
         if not check.is_none(self._raw_force_constant.selective_dynamics):

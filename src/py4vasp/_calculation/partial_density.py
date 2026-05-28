@@ -85,7 +85,7 @@ class PartialDensityHandler:
     def to_dict(self) -> dict:
         parchg = np.squeeze(self._raw_partial_density.partial_charge[:].T)
         return {
-            "structure": self._structure().read(),
+            "structure": self._structure().to_dict(),
             "grid": self.grid(),
             "bands": self.bands(),
             "kpoints": self.kpoints(),
