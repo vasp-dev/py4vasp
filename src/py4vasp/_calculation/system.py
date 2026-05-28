@@ -23,13 +23,9 @@ class SystemHandler:
     def from_data(cls, raw_system: raw.System) -> "SystemHandler":
         return cls(raw_system)
 
-    def read(self) -> dict:
+    def to_dict(self) -> dict:
         """Read the system tag into a dictionary."""
         return {"system": str(self)}
-
-    def to_dict(self) -> dict:
-        """Public alias for read()."""
-        return self.read()
 
     def __str__(self) -> str:
         return convert.text_to_string(self._raw_system.system)
@@ -97,24 +93,11 @@ class System:
             self._quantity_name,
             selection,
             SystemHandler.from_data,
-            SystemHandler.read,
+            SystemHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
-        """Read the system tag into a dictionary.
-
-        Convenient alias for :py:meth:`read`. Check that method for examples
-        and optional arguments.
-
-        Examples
-        --------
-        Read the system tag of a calculation:
-
-        >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
-        >>> calculation.system.to_dict()
-        {'system': 'Sr2TiO4 calculation'}
-        """
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
     def __str__(self) -> str:

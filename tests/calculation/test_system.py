@@ -24,12 +24,12 @@ def test_system_read(string_format, byte_format):
 
 def check_system_read(raw_system):
     expected = {"system": text_to_string(raw_system.system)}
-    assert SystemHandler.from_data(raw_system).read() == expected
+    assert SystemHandler.from_data(raw_system).to_dict() == expected
 
 
 def test_to_dict_matches_read(string_format):
     handler = SystemHandler.from_data(string_format)
-    assert handler.to_dict() == handler.read()
+    assert handler.to_dict() == {"system": text_to_string(string_format.system)}
 
 
 def test_dispatcher_to_dict_matches_read(string_format):
