@@ -38,7 +38,26 @@ class PartialDensityHandler:
 
     @dataclasses.dataclass
     class STM_settings:
-        """Settings for the STM simulation."""
+        """Settings for the STM simulation.
+
+        Parameters
+        ----------
+        sigma_z : float
+            The standard deviation of the Gaussian filter in the z-direction.
+            The default is 4.0.
+        sigma_xy : float
+            The standard deviation of the Gaussian filter in the xy-plane.
+            The default is 4.0.
+        truncate : float
+            The truncation of the Gaussian filter.
+            The default is 3.0.
+        enhancement_factor : float
+            The enhancement factor for the output of the constant height STM image.
+            The default is 1000.
+        interpolation_factor : int
+            The interpolation factor for the z-direction in case of constant current mode.
+            The default is 10.
+        """
 
         sigma_z: float = 4.0
         sigma_xy: float = 4.0
@@ -62,9 +81,6 @@ class PartialDensityHandler:
         {"summed over all contributing bands" if 0 in self.bands() else f" separated for bands: {self.bands()}"}
         {"summed over all contributing k-points" if 0 in self.kpoints() else f" separated for k-points: {self.kpoints()}"}
         """.strip()
-
-    def read(self) -> dict:
-        return self.to_dict()
 
     def to_dict(self) -> dict:
         parchg = np.squeeze(self._raw_partial_density.partial_charge[:].T)
@@ -318,7 +334,62 @@ class PartialDensityHandler:
 @quantity("partial_density")
 class PartialDensity(view.Mixin):
     """Partial charges describe the fraction of the charge density in a certain energy,
-    band, or k-point range."""
+    band, or k-point range.
+
+    Partial charges are produced by a post-processing VASP run after self-consistent
+    convergence is achieved. They are stored in an array of shape
+    (ngxf, ngyf, ngzf, ispin, nbands, nkpts). The first three dimensions are the
+    FFT grid dimensions, the fourth dimension is the spin index, the fifth dimension
+    is the band index, and the sixth dimension is the k-point index. Both band and
+    k-point arrays are also saved and accessible in the .bands() and kpoints() methods.
+    If ispin=2, the second spin index is the magnetization density (up-down),
+    not the down-spin density.
+    Since this is postprocessing data for a fixed density, there are no ionic steps
+    to separate the data.
+
+    Examples
+    --------
+    First, we create some example data do that you can follow along. Please define a
+    variable `path` with the path to a directory that exists and does not contain any
+    VASP calculation data. Alternatively, you can use your own data if you have run
+    VASP and construct `calculation` from it.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    For your own postprocessing, you can read the band data into a Python dictionary:
+
+    >>> calculation.partial_density.read()
+    {'structure': {...}, 'grid': array([...]), 'bands': array([...]), 'kpoints': array([...]), 'partial_density': array([[[...]]], ...)}
+
+    Alternatively, obtain the density as a numpy array directly:
+
+    >>> calculation.partial_density.to_numpy()
+    array([[[...]]], ...)
+
+    You can also visualize a 3d isosurface of the density:
+
+    >>> calculation.partial_density.plot()
+    View(...)
+
+    It is also possible to access the contributing bands ([0] means all bands
+    contribute), grid, and contributing k-points:
+
+    >>> calculation.partial_density.bands()
+    array([...])
+    >>> calculation.partial_density.grid()
+    array([...])
+    >>> calculation.partial_density.kpoints()
+    array([...])
+
+    Finally, you can inspect possible selections with:
+
+    >>> calculation.partial_density.selections()
+    {'partial_density': ['default'...]...}
+
+    Please check the documentation of these methods for more details on how to use
+    them and which options they provide.
+    """
 
     STM_settings = PartialDensityHandler.STM_settings
 
@@ -347,18 +418,28 @@ class PartialDensity(view.Mixin):
 
     @property
     def stm_settings(self):
+        """Return the default STM settings."""
         return self.STM_settings()
 
     def read(self, selection=None) -> dict:
+        """Store the partial charges in a dictionary.
+
+        Returns
+        -------
+        dict
+            The dictionary contains the partial charges as well as the structural
+            information for reference.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
             None,
             self._handler_factory,
-            PartialDensityHandler.read,
+            PartialDensityHandler.to_dict,
         )
 
     def to_dict(self, selection=None) -> dict:
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
     def grid(self):
@@ -371,6 +452,11 @@ class PartialDensity(view.Mixin):
         )
 
     def bands(self):
+        """Return the band array listing the contributing bands.
+
+        [2,4,5] means that the 2nd, 4th, and 5th bands are contributing while
+        [0] means that all bands are contributing.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
@@ -380,6 +466,11 @@ class PartialDensity(view.Mixin):
         )
 
     def kpoints(self):
+        """Return the k-points array listing the contributing k-points.
+
+        [2,4,5] means that the 2nd, 4th, and 5th k-points are contributing with
+        all weights = 1. [0] means that all k-points are contributing.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
@@ -389,6 +480,34 @@ class PartialDensity(view.Mixin):
         )
 
     def to_numpy(self, selection: str = "total", band: int = 0, kpoint: int = 0):
+        """Return the partial charge density as a 3D array.
+
+        Parameters
+        ----------
+        selection : str
+            The spin channel to be used. The default is "total".
+            The other options are "up" and "down".
+        band : int
+            The band index. The default is 0, which means that all bands are summed.
+        kpoint : int
+            The k-point index. The default is 0, which means that all k-points are summed.
+
+        Returns
+        -------
+        np.array
+            The partial charge density as a 3D array.
+
+        Examples
+        --------
+        >>> calculation = Calculation.from_path(".") # doctest: +SKIP
+        >>> calculation.partial_density.to_numpy() # doctest: +SKIP
+        array(...)
+
+        You can also specify the spin channel, band, and k-point:
+
+        >>> calculation.partial_density.to_numpy(selection="up", band=2, kpoint=3) # doctest: +SKIP
+        array(...)
+        """
         return merge_default(
             self._source,
             self._quantity_name,
@@ -406,6 +525,36 @@ class PartialDensity(view.Mixin):
         supercell: Optional[Union[int, np.ndarray]] = None,
         **user_options,
     ):
+        """Plot the selected partial density as a 3d isosurface within the structure.
+
+        Parameters
+        ----------
+        selection : str
+            Can be *"total"*, *"up"* or *"down"*.
+        supercell : int | np.ndarray | None
+            If present the data is replicated the specified number of times along each
+            direction.
+        user_options
+            Further arguments with keyword that get directly passed on to the
+            visualizer. Most importantly, you can set isolevel to adjust the
+            value at which the isosurface is drawn.
+
+        Returns
+        -------
+        View
+            Visualize an isosurface of the density within the 3d structure.
+
+        Examples
+        --------
+        >>> calculation = Calculation.from_path(".") # doctest: +SKIP
+        >>> calculation.partial_density.to_view() # doctest: +SKIP
+        View(...)
+
+        You can also specify the spin channel, the supercell, and user options:
+
+        >>> calculation.partial_density.to_view(selection="up", supercell=2, isolevel=0.3) # doctest: +SKIP
+        View(...)
+        """
         return merge_default(
             self._source,
             self._quantity_name,
@@ -426,6 +575,52 @@ class PartialDensity(view.Mixin):
         supercell: Union[int, np.ndarray] = 2,
         stm_settings=None,
     ) -> Graph:
+        """Generate STM image data from the partial charge density.
+
+        Parameters
+        ----------
+        selection : str
+            The mode in which the STM is operated and the spin channel to be used.
+            Possible modes are "constant_height" (default) and "constant_current".
+            Possible spin selections are "total" (default), "up", and "down".
+        tip_height : float
+            The height of the STM tip above the surface in Angstrom.
+            The default is 2.0 Angstrom. Only used in "constant_height" mode.
+        current : float
+            The tunneling current in nA. The default is 1.
+            Only used in "constant_current" mode.
+        supercell : int | np.ndarray
+            The supercell to be used for plotting the STM. The default is 2.
+        stm_settings : STM_settings
+            Settings for the STM simulation concerning smoothening parameters
+            and interpolation. The default is STM_settings().
+
+        Returns
+        -------
+        Graph
+            The STM image as a graph object.
+
+        Examples
+        --------
+        >>> calculation = Calculation.from_path(".") # doctest: +SKIP
+        >>> calculation.partial_density.to_stm() # doctest: +SKIP
+
+        You can also specify the mode and spin channel:
+
+        >>> calculation.partial_density.to_stm(selection="constant_current up") # doctest: +SKIP
+
+        In `constant_height` mode, you can also specify the tip height:
+
+        >>> calculation.partial_density.to_stm(selection="constant_height", tip_height=3.0) # doctest: +SKIP
+
+        Similarly, in `constant_current` mode, you can specify the tunneling current:
+
+        >>> calculation.partial_density.to_stm(selection="constant_current", current=0.5) # doctest: +SKIP
+
+        You may also wish to specify a larger supercell for better visualization:
+
+        >>> calculation.partial_density.to_stm(supercell=3) # doctest: +SKIP
+        """
         if stm_settings is None:
             stm_settings = self.STM_settings()
         return merge_default(
