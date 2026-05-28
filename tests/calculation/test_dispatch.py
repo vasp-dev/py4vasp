@@ -15,6 +15,7 @@ from py4vasp._calculation.dispatch import (
     SelectionContext,
     _dispatch,
     _parse_selections,
+    _substitute_remaining_selection,
     _REGISTRY,
     merge_default,
     merge_graphs,
@@ -250,6 +251,129 @@ class TestDispatch:
             2,
         )
         assert results == {"default": {"value": 10}}
+
+    def test_source_selector_is_stripped_before_handler_receives_selection(self):
+        """Regression: when selection matches a schema source key (e.g. 'kpoints_opt'),
+        the handler must receive the *remaining* selection (None here), not the raw
+        source-key string.  Before the fix this caused an IncorrectUsage error because
+        the projector tried to interpret 'kpoints_opt' as an orbital/atom selector."""
+        received = {}
+
+        class _RecordingHandler:
+            def __init__(self, raw):
+                self._raw = raw
+
+            @classmethod
+            def from_data(cls, raw):
+                return cls(raw)
+
+            def read_selection(self, selection):
+                received["selection"] = selection
+                return self._raw
+
+        raw = {"value": 99}
+        source = DictSource({("qty", "src"): raw})
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["src"]
+        ):
+            _dispatch(
+                source,
+                "qty",
+                "src",
+                _RecordingHandler.from_data,
+                _RecordingHandler.read_selection,
+                "src",  # caller passes the full original selection as args[0]
+            )
+        # After stripping the source key, the handler should see None, not "src"
+        assert received["selection"] is None
+
+    def test_non_source_selection_is_forwarded_unchanged(self):
+        """Plain projector/content selections (not in the schema) must pass through
+        to the handler unmodified."""
+        received = {}
+
+        class _RecordingHandler:
+            def __init__(self, raw):
+                self._raw = raw
+
+            @classmethod
+            def from_data(cls, raw):
+                return cls(raw)
+
+            def read_selection(self, selection):
+                received["selection"] = selection
+                return self._raw
+
+        raw = {"value": 7}
+        source = DataSource(raw)
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["src"]
+        ):
+            _dispatch(
+                source,
+                "qty",
+                "atom",
+                _RecordingHandler.from_data,
+                _RecordingHandler.read_selection,
+                "atom",
+            )
+        assert received["selection"] == "atom"
+
+    def test_source_with_remaining_content_selection(self):
+        """'src(atom)' → source='src', handler receives remaining='atom', not 'src(atom)'."""
+        received = {}
+
+        class _RecordingHandler:
+            def __init__(self, raw):
+                self._raw = raw
+
+            @classmethod
+            def from_data(cls, raw):
+                return cls(raw)
+
+            def read_selection(self, selection):
+                received["selection"] = selection
+                return self._raw
+
+        raw = {"value": 3}
+        source = DictSource({("qty", "src"): raw})
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["src"]
+        ):
+            _dispatch(
+                source,
+                "qty",
+                "src(atom)",
+                _RecordingHandler.from_data,
+                _RecordingHandler.read_selection,
+                "src(atom)",
+            )
+        assert received["selection"] == "atom"
+
+
+class TestSubstituteRemainingSelection:
+    def test_replaces_first_arg_when_it_matches_original(self):
+        assert _substitute_remaining_selection(("src",), "src", None) == (None,)
+
+    def test_replaces_with_non_none_remaining(self):
+        assert _substitute_remaining_selection(("src(a)",), "src(a)", "a") == ("a",)
+
+    def test_leaves_trailing_args_intact(self):
+        result = _substitute_remaining_selection(("src", 1.0), "src", None)
+        assert result == (None, 1.0)
+
+    def test_no_substitution_when_args_empty(self):
+        assert _substitute_remaining_selection((), "src", None) == ()
+
+    def test_no_substitution_when_args_differ(self):
+        # args[0] is a different value — leave it alone
+        result = _substitute_remaining_selection(("other",), "src", None)
+        assert result == ("other",)
+
+    def test_none_selection_is_a_noop(self):
+        # Both original and remaining are None — result unchanged
+        result = _substitute_remaining_selection((None,), None, None)
+        assert result == (None,)
 
 
 class TestMergeDefault:
