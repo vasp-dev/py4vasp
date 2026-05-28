@@ -3,6 +3,7 @@ backup
 node_modules
 work
 _old_templates
+.github/hooks/
 
 *~
 # File open for editing in vi

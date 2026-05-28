@@ -115,19 +115,19 @@ Port `phonon.py` (the shared Mixin) conceptually before the three group members.
 
 ---
 
-### Group 9 — Electron-phonon group (complex)
+### Group 9 — Electron-phonon group (complex) ✅
 
 `ElectronPhononSelfEnergy` and `ElectronPhononTransport` also inherit `abc.Sequence` — figure out how to expose `__len__`/`__getitem__` on the Dispatcher without using the Refinery pattern.
 
-- [ ] `electron_phonon.chemical_potential` — `electron_phonon_chemical_potential.py` → `ElectronPhononChemicalPotential(Refinery)` | test: `test_electron_phonon_chemical_potential.py`
+- [x] `electron_phonon.chemical_potential` — `electron_phonon_chemical_potential.py` → `ElectronPhononChemicalPotential(Refinery)` | test: `test_electron_phonon_chemical_potential.py`
   - Group: `@quantity("chemical_potential", group="electron_phonon")`; remove from `GROUPS["electron_phonon"]`.
-- [ ] `electron_phonon.bandgap` — `electron_phonon_bandgap.py` → `ElectronPhononBandgap(Refinery, abc.Sequence)` | test: `test_electron_phonon_bandgap.py`
+- [x] `electron_phonon.bandgap` — `electron_phonon_bandgap.py` → `ElectronPhononBandgap(Refinery, abc.Sequence)` | test: `test_electron_phonon_bandgap.py`
   - Note: step-indexed via `abc.Sequence`; complex internal structure.
   - Group: `@quantity("bandgap", group="electron_phonon")`.
-- [ ] `electron_phonon.self_energy` — `electron_phonon_self_energy.py` → `ElectronPhononSelfEnergy(Refinery, abc.Sequence)` | test: `test_electron_phonon_self_energy.py`
+- [x] `electron_phonon.self_energy` — `electron_phonon_self_energy.py` → `ElectronPhononSelfEnergy(Refinery, abc.Sequence)` | test: `test_electron_phonon_self_energy.py`
   - Note: `abc.Sequence` exposes sub-instances; requires careful Handler factory design.
   - Group: `@quantity("self_energy", group="electron_phonon")`.
-- [ ] `electron_phonon.transport` — `electron_phonon_transport.py` → `ElectronPhononTransport(Refinery, abc.Sequence, graph.Mixin)` | test: `test_electron_phonon_transport.py`
+- [x] `electron_phonon.transport` — `electron_phonon_transport.py` → `ElectronPhononTransport(Refinery, abc.Sequence, graph.Mixin)` | test: `test_electron_phonon_transport.py`
   - Note: most complex quantity; `abc.Sequence` + graph; leave for last.
   - Group: `@quantity("transport", group="electron_phonon")`.
 

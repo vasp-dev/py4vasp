@@ -2,11 +2,10 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from collections import abc
 
-from py4vasp import exception
-from py4vasp._calculation import base
+from py4vasp import exception, raw
+from py4vasp._calculation.dispatch import DataSource, merge_default, merge_strings, quantity
 from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
 from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
-from py4vasp._raw import data as raw_data
 from py4vasp._util import convert
 
 
@@ -25,8 +24,6 @@ class SelfEnergyInstance(ElectronPhononInstance):
     >>> data = instance.to_dict()
     >>> fan_value = instance.get_fan((iband, ikpt, isp))
     """
-
-    _raw_data: raw_data.ElectronPhononSelfEnergy
 
     def __str__(self):
         """
@@ -117,7 +114,55 @@ class SelfEnergyInstance(ElectronPhononInstance):
         return SparseTensor(band_kpoint_spin_index, band_start, tensor_data)
 
 
-class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
+class ElectronPhononSelfEnergyHandler(abc.Sequence):
+    """Handler for electron-phonon self-energy data."""
+
+    def __init__(self, raw_data: raw.ElectronPhononSelfEnergy):
+        self._raw_data = raw_data
+
+    @classmethod
+    def from_data(cls, raw_data: raw.ElectronPhononSelfEnergy) -> "ElectronPhononSelfEnergyHandler":
+        return cls(raw_data)
+
+    def _accumulator(self):
+        return ElectronPhononAccumulator(self, self._raw_data)
+
+    def __str__(self):
+        return str(self._accumulator())
+
+    def to_dict(self):
+        return self._accumulator().to_dict()
+
+    def selections(self):
+        base_selections = {
+            convert.quantity_name(self.__class__.__name__.replace("Handler", "")): ["default"],
+        }
+        return self._accumulator().selections(base_selections)
+
+    def chemical_potential_mu_tag(self):
+        return self._accumulator().chemical_potential_mu_tag()
+
+    def select(self, selection):
+        indices = self._accumulator().select_indices(selection)
+        return [SelfEnergyInstance(self, index) for index in indices]
+
+    def _get_data(self, name, index):
+        return self._accumulator().get_data(name, index)
+
+    def eigenvalues(self):
+        return self._raw_data.eigenvalues[:]
+
+    def __getitem__(self, key):
+        if 0 <= key < len(self._raw_data.valid_indices):
+            return SelfEnergyInstance(self, key)
+        raise IndexError("Index out of range for electron-phonon self energy instance.")
+
+    def __len__(self):
+        return len(self._raw_data.valid_indices)
+
+
+@quantity("self_energy", group="electron_phonon")
+class ElectronPhononSelfEnergy(abc.Sequence):
     """Access and analyze electron-phonon self-energy data.
 
     This class provides methods to access, select, and analyze the electron-phonon
@@ -140,15 +185,30 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
         >>> data = instance.to_dict()
     """
 
-    def _accumulator(self):
-        return ElectronPhononAccumulator(self, self._raw_data)
+    def __init__(self, source, quantity_name: str = "electron_phonon_self_energy"):
+        self._source = source
+        self._quantity_name = quantity_name
 
-    @base.data_access
+    @classmethod
+    def from_data(cls, raw_data: raw.ElectronPhononSelfEnergy) -> "ElectronPhononSelfEnergy":
+        return cls(source=DataSource(raw_data))
+
+    def _handler_factory(self, raw):
+        return ElectronPhononSelfEnergyHandler.from_data(raw)
+
     def __str__(self):
-        return str(self._accumulator())
+        return merge_strings(
+            self._source, self._quantity_name, None,
+            self._handler_factory, ElectronPhononSelfEnergyHandler.__str__,
+        )
 
-    @base.data_access
-    def to_dict(self):
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
+    def read(self, selection=None):
+        return self.to_dict(selection=selection)
+
+    def to_dict(self, selection=None):
         """Return a dictionary that lists how many accumulators are available
 
         Returns
@@ -156,10 +216,12 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
         dict
             Dictionary containing information about the available accumulators.
         """
-        return self._accumulator().to_dict()
+        return merge_default(
+            self._source, self._quantity_name, selection,
+            self._handler_factory, ElectronPhononSelfEnergyHandler.to_dict,
+        )
 
-    @base.data_access
-    def selections(self):
+    def selections(self, selection=None):
         """Return a dictionary describing what options are available to read the electron self-energies.
 
         Returns
@@ -168,11 +230,12 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
             Dictionary containing available selection options with their possible values.
             Keys include selection criteria like "nbands_sum", "selfen_approx", "selfen_delta".
         """
-        base_selections = super().selections()
-        return self._accumulator().selections(base_selections)
+        return merge_default(
+            self._source, self._quantity_name, selection,
+            self._handler_factory, ElectronPhononSelfEnergyHandler.selections,
+        )
 
-    @base.data_access
-    def chemical_potential_mu_tag(self):
+    def chemical_potential_mu_tag(self, selection=None):
         """Return the chemical potential tag and values.
 
         Returns
@@ -182,9 +245,11 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
             describing the chemical potential parameter and values_array contains
             the numerical values.
         """
-        return self._accumulator().chemical_potential_mu_tag()
+        return merge_default(
+            self._source, self._quantity_name, selection,
+            self._handler_factory, ElectronPhononSelfEnergyHandler.chemical_potential_mu_tag,
+        )
 
-    @base.data_access
     def select(self, selection):
         """Return a list of SelfEnergyInstance objects matching the selection.
 
@@ -199,14 +264,9 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
         list[SelfEnergyInstance]
             Instances that match the selection criteria.
         """
-        indices = self._accumulator().select_indices(selection)
-        return [SelfEnergyInstance(self, index) for index in indices]
+        with self._source.access(self._quantity_name) as raw:
+            return self._handler_factory(raw).select(selection)
 
-    @base.data_access
-    def _get_data(self, name, index):
-        return self._accumulator().get_data(name, index)
-
-    @base.data_access
     def eigenvalues(self):
         """Return the eigenvalues from the raw data.
 
@@ -215,17 +275,16 @@ class ElectronPhononSelfEnergy(base.Refinery, abc.Sequence):
         np.ndarray
             Array containing eigenvalues for all k-points, bands, and spin channels.
         """
-        return self._raw_data.eigenvalues[:]
+        with self._source.access(self._quantity_name) as raw:
+            return self._handler_factory(raw).eigenvalues()
 
-    @base.data_access
     def __getitem__(self, key):
-        if 0 <= key < len(self._raw_data.valid_indices):
-            return SelfEnergyInstance(self, key)
-        raise IndexError("Index out of range for electron-phonon self energy instance.")
+        with self._source.access(self._quantity_name) as raw:
+            return self._handler_factory(raw)[key]
 
-    @base.data_access
     def __len__(self):
-        return len(self._raw_data.valid_indices)
+        with self._source.access(self._quantity_name) as raw:
+            return len(self._handler_factory(raw))
 
 
 class SparseTensor:

@@ -4,29 +4,22 @@ from typing import Any, Dict, Tuple
 
 from numpy.typing import NDArray
 
-from py4vasp import exception
-from py4vasp._calculation import base
-from py4vasp._raw import data as raw_data
+from py4vasp import exception, raw
+from py4vasp._calculation.dispatch import DataSource, merge_default, merge_strings, quantity
 from py4vasp._util import check
 
 
-class ElectronPhononChemicalPotential(base.Refinery):
-    """
-    Provides access to the electron-phonon chemical potential data calculated
-    during an electron-phonon calculation.
+class ElectronPhononChemicalPotentialHandler:
+    """Handler for electron-phonon chemical potential data."""
 
-    This class allows users to retrieve information about the chemical potential,
-    carrier density, Fermi energy, and related quantities as computed in electron-phonon
-    calculations. It also provides access to the INCAR tag used to set the carrier density.
-    """
+    def __init__(self, raw_data: raw.ElectronPhononChemicalPotential):
+        self._raw_data = raw_data
 
-    _raw_data: raw_data.ElectronPhononChemicalPotential
+    @classmethod
+    def from_data(cls, raw_data: raw.ElectronPhononChemicalPotential) -> "ElectronPhononChemicalPotentialHandler":
+        return cls(raw_data)
 
-    @base.data_access
     def __str__(self) -> str:
-        """
-        Return a formatted string representation of the electron-phonon chemical potential object.
-        """
         return "\n".join(self._generate_lines())
 
     def _generate_lines(self):
@@ -47,7 +40,6 @@ class ElectronPhononChemicalPotential(base.Refinery):
             yield f"T={T:16.8f}" + format_row(carrier_density)
         yield " " * 19 + underline
 
-    @base.data_access
     def mu_tag(self) -> Tuple[str, NDArray]:
         """
         Get the INCAR tag and value used to set the carrier density or chemical potential.
@@ -57,11 +49,6 @@ class ElectronPhononChemicalPotential(base.Refinery):
         -
             The INCAR tag name and its corresponding value as set in the calculation.
             Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
-
-        Notes
-        -----
-        The method checks for the presence of carrier density, chemical potential,
-        or carrier per cell in the raw data and returns the first one found.
         """
         if not check.is_none(self._raw_data.carrier_den):
             return "selfen_carrier_den", self._raw_data.carrier_den[:]
@@ -73,12 +60,9 @@ class ElectronPhononChemicalPotential(base.Refinery):
             "None of the carrier density, chemical potential, or carrier per cell data is available in the raw data."
         )
 
-    @base.data_access
     def label(self) -> str:
         """
         Get a descriptive label for the electron-phonon chemical potential data.
-
-        This can be useful for plotting or identifying the type of data.
 
         Returns
         -------
@@ -95,7 +79,9 @@ class ElectronPhononChemicalPotential(base.Refinery):
             "None of the carrier density, chemical potential, or carrier per cell data is available in the raw data."
         )
 
-    @base.data_access
+    def read(self) -> Dict[str, Any]:
+        return self.to_dict()
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert the electron-phonon chemical potential data to a dictionary.
@@ -114,3 +100,92 @@ class ElectronPhononChemicalPotential(base.Refinery):
             "temperatures": self._raw_data.temperatures[:],
             tag: value,
         }
+
+
+@quantity("chemical_potential", group="electron_phonon")
+class ElectronPhononChemicalPotential:
+    """
+    Provides access to the electron-phonon chemical potential data calculated
+    during an electron-phonon calculation.
+
+    This class allows users to retrieve information about the chemical potential,
+    carrier density, Fermi energy, and related quantities as computed in electron-phonon
+    calculations. It also provides access to the INCAR tag used to set the carrier density.
+    """
+
+    def __init__(self, source, quantity_name: str = "electron_phonon_chemical_potential"):
+        self._source = source
+        self._quantity_name = quantity_name
+
+    @classmethod
+    def from_data(cls, raw_data: raw.ElectronPhononChemicalPotential) -> "ElectronPhononChemicalPotential":
+        return cls(source=DataSource(raw_data))
+
+    def _handler_factory(self, raw):
+        return ElectronPhononChemicalPotentialHandler.from_data(raw)
+
+    def __str__(self) -> str:
+        """
+        Return a formatted string representation of the electron-phonon chemical potential object.
+        """
+        return merge_strings(
+            self._source, self._quantity_name, None,
+            self._handler_factory, ElectronPhononChemicalPotentialHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
+    def read(self, selection=None) -> Dict[str, Any]:
+        return self.to_dict(selection=selection)
+
+    def to_dict(self, selection=None) -> Dict[str, Any]:
+        """
+        Convert the electron-phonon chemical potential data to a dictionary.
+
+        Returns
+        -------
+        -
+            A dictionary containing the Fermi energy, chemical potential, carrier density,
+            temperatures, and the INCAR tag/value used to set the carrier density.
+        """
+        return merge_default(
+            self._source, self._quantity_name, selection,
+            self._handler_factory, ElectronPhononChemicalPotentialHandler.to_dict,
+        )
+
+    def mu_tag(self, selection=None) -> Tuple[str, NDArray]:
+        """
+        Get the INCAR tag and value used to set the carrier density or chemical potential.
+
+        Returns
+        -------
+        -
+            The INCAR tag name and its corresponding value as set in the calculation.
+            Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
+
+        Notes
+        -----
+        The method checks for the presence of carrier density, chemical potential,
+        or carrier per cell in the raw data and returns the first one found.
+        """
+        return merge_default(
+            self._source, self._quantity_name, selection,
+            self._handler_factory, ElectronPhononChemicalPotentialHandler.mu_tag,
+        )
+
+    def label(self, selection=None) -> str:
+        """
+        Get a descriptive label for the electron-phonon chemical potential data.
+
+        This can be useful for plotting or identifying the type of data.
+
+        Returns
+        -------
+        -
+            A label indicating the type of data contained in this object and its units.
+        """
+        return merge_default(
+            self._source, self._quantity_name, selection,
+            self._handler_factory, ElectronPhononChemicalPotentialHandler.label,
+        )

@@ -26,7 +26,9 @@ class ExcitonDensityHandler:
         self._raw_exciton_density = raw_exciton_density
 
     @classmethod
-    def from_data(cls, raw_exciton_density: raw.ExcitonDensity) -> "ExcitonDensityHandler":
+    def from_data(
+        cls, raw_exciton_density: raw.ExcitonDensity
+    ) -> "ExcitonDensityHandler":
         return cls(raw_exciton_density)
 
     def __str__(self) -> str:
@@ -105,8 +107,11 @@ class ExcitonDensity(view.Mixin):
 
     def __str__(self) -> str:
         return merge_strings(
-            self._source, self._quantity_name, None,
-            self._handler_factory, ExcitonDensityHandler.__str__,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            ExcitonDensityHandler.__str__,
         )
 
     def _repr_pretty_(self, p, cycle):
@@ -114,8 +119,11 @@ class ExcitonDensity(view.Mixin):
 
     def read(self, selection: str | None = None) -> dict:
         return merge_default(
-            self._source, self._quantity_name, selection,
-            self._handler_factory, ExcitonDensityHandler.read,
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ExcitonDensityHandler.read,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
@@ -125,8 +133,11 @@ class ExcitonDensity(view.Mixin):
     def to_numpy(self, selection: str | None = None) -> np.ndarray:
         """Convert the exciton charge density to a numpy array."""
         return merge_default(
-            self._source, self._quantity_name, selection,
-            self._handler_factory, ExcitonDensityHandler.to_numpy,
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ExcitonDensityHandler.to_numpy,
         )
 
     def to_view(
@@ -138,9 +149,15 @@ class ExcitonDensity(view.Mixin):
     ) -> view.View:
         """Plot the selected exciton density as a 3d isosurface within the structure."""
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, ExcitonDensityHandler.to_view,
-            selection, supercell=supercell, center=center, **user_options,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            ExcitonDensityHandler.to_view,
+            selection,
+            supercell=supercell,
+            center=center,
+            **user_options,
         )
 
 

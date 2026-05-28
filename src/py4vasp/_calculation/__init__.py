@@ -35,9 +35,7 @@ QUANTITIES = (
     "structure",
     "_stoichiometry",
 )
-GROUPS = {
-    "electron_phonon": ("bandgap", "chemical_potential", "self_energy", "transport"),
-}
+GROUPS = {}
 GROUP_TYPE_ALIAS = {
     convert.to_camelcase(f"{group}_{member}"): f"{group}.{member}"
     for group, members in GROUPS.items()

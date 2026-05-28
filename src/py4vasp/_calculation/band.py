@@ -22,7 +22,7 @@ from py4vasp._calculation.projector import ProjectorHandler
 from py4vasp._raw import data as raw
 from py4vasp._raw.data_db import Band_DB
 from py4vasp._third_party import graph
-from py4vasp._util import check, database, import_, index, select, slicing
+from py4vasp._util import check, database, documentation, import_, index, select, slicing
 
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
@@ -277,7 +277,44 @@ class BandHandler:
 
 @quantity("band")
 class Band(graph.Mixin):
-    """The band structure contains the k point resolved eigenvalues."""
+    """The band structure contains the **k** point resolved eigenvalues.
+
+    The most common use case of this class is to produce the electronic band
+    structure along a path in the Brillouin zone used in a non self consistent
+    VASP calculation. In some cases you may want to use the `to_dict` function
+    just to obtain the eigenvalue and projection data though in that case the
+    **k**-point distances that are calculated are meaningless.
+
+    Examples
+    --------
+    First, we create some example data do that you can follow along. Please define a
+    variable `path` with the path to a directory that exists and does not contain any
+    VASP calculation data. Alternatively, you can use your own data if you have run
+    VASP and construct `calculation` from it.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    To produce band structure plot use, please check the `to_graph` function for
+    a more detailed documentation.
+
+    >>> calculation.band.plot()
+    Graph(series=[Series(x=array(...), y=array(...), label='bands', ...)],
+        ..., xticks={...}, ..., ylabel='Energy (eV)', ...)
+
+    For your own postprocessing, you can read the band data into a Python dictionary
+
+    >>> calculation.band.read()
+    {'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
+        'occupations': array(...)}
+
+    These methods take additional selections, if you used VASP with :tag:`LORBIT`.
+    You can inspect possible choices with
+
+    >>> calculation.band.selections()
+    {'band': ['default', 'kpoints_opt', 'kpoints_wan'],
+        'atom': [...], 'orbital': [...], 'spin': [...]}
+    """
 
     def __init__(self, source, quantity_name="band"):
         self._source = source
@@ -314,10 +351,210 @@ class Band(graph.Mixin):
             fermi_energy=fermi_energy,
         )
 
+    @documentation.format(selection_doc=projector.selection_doc)
     def to_dict(self, selection=None, fermi_energy=None) -> dict:
+        """Read the data into a dictionary.
+
+        You may use this data for your own postprocessing tools. Sometimes you may
+        want to choose different representations of the electronic band structure or
+        you want to use the electronic eigenvalues and occupations to compute integrals
+        over the Brillouin zone.
+
+        We create some example data do that you can follow along. Please define a
+        variable `path` with the path to a directory that exists and does not contain any
+        VASP calculation data. Alternatively, you can use your own data if you have run
+        VASP and construct `calculation` from it.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> collinear_calculation = demo.calculation(path, selection="collinear")
+        >>> noncollinear_calculation = demo.calculation(path, selection="noncollinear")
+
+        Parameters
+        ----------
+        {selection_doc}
+        fermi_energy : float
+            Overwrite the Fermi energy of the band structure calculation with a more
+            accurate one from a different calculation. This is recommended for metallic
+            systems where the Fermi energy may be significantly different.
+
+        Returns
+        -------
+        dict
+            Contains the **k**-point path for plotting band structures with the
+            eigenvalues shifted to bring the Fermi energy to 0. If available
+            and a selection is passed, the projections of these bands on the
+            selected projectors are included. If you specified '''k'''-point labels
+            in the KPOINTS file, these are returned as well.
+
+        Examples
+        --------
+        Return the **k** points, the electronic eigenvalues, and the Fermi energy as
+        a Python dictionary
+
+        >>> calculation.band.to_dict()
+        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
+            'occupations': array(...)}}
+
+        Select the p orbitals of the first atom in the POSCAR file:
+
+        >>> calculation.band.to_dict(selection="1(p)")
+        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
+            'occupations': array(...), 'Sr_1_p': array(...)}}
+
+        Select the d orbitals of Sr and Ti:
+
+        >>> calculation.band.to_dict("d(Sr, Ti)")
+        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
+            'occupations': array(...), 'Sr_d': array(...), 'Ti_d': array(...)}}
+
+        For collinear calculations, the spin channels are treated separately
+
+        >>> collinear_calculation.band.to_dict()
+        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands_up': array(...),
+            'bands_down': array(...), 'occupations_up': array(...),
+            'occupations_down': array(...)}}
+
+        You can also select particular spin channels, for example the spin-up contribution
+        of the first three atoms combined
+
+        >>> collinear_calculation.band.to_dict("up(1:3)")
+        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands_up': array(...),
+            'bands_down': array(...), 'occupations_up': array(...),
+            'occupations_down': array(...), '1:3_up': array(...)}}
+
+        For noncollinear calculations, the resulting dictionary has the same structure
+        as for the nonpolarized case
+
+        >>> noncollinear_calculation.band.to_dict()
+        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
+            'occupations': array(...)}}
+
+        If you want to investigate the spin projection of the bands, you can select
+        particular spin components. Here, we select the x and z components of the spin
+
+        >>> noncollinear_calculation.band.to_dict("sigma_x, sigma_z")
+        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
+            'occupations': array(...), 'sigma_x': array(...), 'sigma_z': array(...),
+            'is_spin_projection': ['sigma_x', 'sigma_z']}}
+
+        Add the contribution of three d orbitals
+
+        >>> calculation.band.to_dict("dxy + dxz + dyz")
+        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
+            'occupations': array(...), 'dxy + dxz + dyz': array(...)}}
+
+        Read the density of states generated by the '''k'''-point mesh in the KPOINTS_OPT
+        file
+
+        >>> calculation.band.to_dict("kpoints_opt")
+        {{'kpoint_distances': array(...), 'kpoint_labels': ..., 'fermi_energy': ...,
+            'bands': array(...), 'occupations': array(...)}}
+        """
         return self.read(selection=selection, fermi_energy=fermi_energy)
 
+    @documentation.format(selection_doc=projector.selection_doc)
     def to_graph(self, selection=None, fermi_energy=None, width=0.5) -> graph.Graph:
+        """Read the data and generate a graph.
+
+        On the x axis, we show the **k** points as distances from the previous ones.
+        This representation makes sense, if you selected a line mode in the KPOINTS
+        file. When you provide labels for the **k** points those will be added in the
+        plot. We show all bands included in the calculation :tag:`NBANDS`.
+
+        If you used the code with :tag:`LORBIT`, you can also plot the projected band
+        structure. Here, each band will have a linewidth proportional to the projection
+        of the band on reference orbitals. The maximum width is adjustable with an
+        argument.
+
+        We create some example data do that you can follow along. Please define a
+        variable `path` with the path to a directory that exists and does not contain any
+        VASP calculation data. Alternatively, you can use your own data if you have run
+        VASP and construct `calculation` from it.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> collinear_calculation = demo.calculation(path, selection="collinear")
+        >>> noncollinear_calculation = demo.calculation(path, selection="noncollinear")
+
+        Parameters
+        ----------
+        {selection_doc}
+        fermi_energy : float
+            Overwrite the Fermi energy of the band structure calculation with a more
+            accurate one from a different calculation. This is recommended for metallic
+            systems where the Fermi energy may be significantly different.
+        width : float
+            Specifies the width (in eV) of the fatbands if a selection of projections is
+            specified. If the projection amounts to 100%, the line will be drawn with
+            this width.
+
+        Returns
+        -------
+        Graph
+            Figure containing the spin-up and spin-down bands. If a selection
+            is provided the width of the bands represents the projections of the
+            bands onto the specified projectors.
+
+        Examples
+        --------
+        Plot the band structure with possible **k** point labels if they have been
+        provided in the KPOINTS file
+
+        >>> calculation.band.to_graph()
+        Graph(series=[Series(x=array(...), y=array(...), label='bands', ...)],
+            ..., xticks={{...}}, ..., ylabel='Energy (eV)', ...)
+
+        Select the p orbitals of the first atom in the POSCAR file:
+
+        >>> calculation.band.to_graph(selection="1(p)")
+        Graph(series=[Series(..., label='Sr_1_p', weight=array(...), ...)], ...)
+
+        Select the d orbitals of Sr and Ti:
+
+        >>> calculation.band.to_graph("d(Sr, Ti)")
+        Graph(series=[Series(..., label='Sr_d', ...), Series(..., label='Ti_d', ...)], ...)
+
+        For collinear calculations, the spin channels are treated separately
+
+        >>> collinear_calculation.band.to_graph()
+        Graph(series=[Series(..., label='up', ...), Series(..., label='down', ...)], ...)
+
+        You can also select particular spin channels, for example the spin-up contribution
+        of the first three atoms combined
+
+        >>> collinear_calculation.band.to_graph("up(1:3)")
+        Graph(series=[Series(..., label='1:3_up', ...)], ...)
+
+        For noncollinear calculations, the resulting dictionary has the same structure
+        as for the nonpolarized case
+
+        >>> noncollinear_calculation.band.to_graph()
+        Graph(series=[Series(..., label='bands', ...)], ...)
+
+        If you want to investigate the spin projection of the bands, you can select
+        particular spin components. Here, we select the x component of the spin
+
+        >>> noncollinear_calculation.band.to_graph("sigma_x")
+        Graph(series=[Series(..., label='sigma_x', ...)], ...)
+
+        Add the contribution of three d orbitals
+
+        >>> calculation.band.to_graph("dxy + dxz + dyz")
+        Graph(series=[Series(..., label='dxy + dxz + dyz', ...)], ...)
+
+        Read the density of states generated by the '''k'''-point mesh in the KPOINTS_OPT
+        file
+
+        >>> calculation.band.to_graph("kpoints_opt")
+        Graph(series=[Series(..., label='bands', ...)], ...)
+
+        If you use projections, you can also adjust the width of the lines. Passing
+        the argument `width=1.0` increases the maximum linewidth to 1 eV
+
+        >>> calculation.band.to_graph("d", width=1.0)
+        Graph(series=[Series(..., label='d', weight=array(...), ...)], ...)
+        """
         return merge_default(
             self._source,
             self._quantity_name,
@@ -329,7 +566,88 @@ class Band(graph.Mixin):
             width=width,
         )
 
+    @documentation.format(selection_doc=projector.selection_doc)
     def to_frame(self, selection=None, fermi_energy=None):
+        """Read the data into a DataFrame.
+
+        We create some example data do that you can follow along. Please define a
+        variable `path` with the path to a directory that exists and does not contain any
+        VASP calculation data. Alternatively, you can use your own data if you have run
+        VASP and construct `calculation` from it.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> collinear_calculation = demo.calculation(path, selection="collinear")
+        >>> noncollinear_calculation = demo.calculation(path, selection="noncollinear")
+
+        Parameters
+        ----------
+        {selection_doc}
+        fermi_energy : float
+            Overwrite the Fermi energy of the band structure calculation with a more
+            accurate one from a different calculation. This is recommended for metallic
+            systems where the Fermi energy may be significantly different.
+
+        Returns
+        -------
+        pd.DataFrame
+            Contains the eigenvalues and corresponding occupations for all k-points and
+            bands. If a selection string is given, in addition the orbital projections
+            on these bands are returned.
+
+        Examples
+        --------
+        Get the band structure of all bands without projections
+
+        >>> calculation.band.to_frame()
+           kpoint_distances  bands  occupations
+        0  ...
+
+        Select the p orbitals of the first atom in the POSCAR file:
+
+        >>> calculation.band.to_frame(selection="1(p)")
+           kpoint_distances  bands  occupations  Sr_1_p
+        0  ...
+
+        Select the d orbitals of Sr and Ti:
+
+        >>> calculation.band.to_frame("d(Sr, Ti)")
+           kpoint_distances  bands  occupations  Sr_d  Ti_d
+        0  ...
+
+        For collinear calculations, the spin channels are treated separately
+
+        >>> collinear_calculation.band.to_frame()
+           kpoint_distances  bands_up  bands_down  occupations_up  occupations_down
+        0  ...
+
+        You can also select particular spin channels, for example the spin-up contribution
+        of the first three atoms combined
+
+        >>> collinear_calculation.band.to_frame("up(1:3)")
+           kpoint_distances  bands_up  ...  occupations_down  1:3_up
+        0  ...
+
+        For noncollinear calculations, the resulting dictionary has the same structure
+        as for the nonpolarized case
+
+        >>> noncollinear_calculation.band.to_frame()
+           kpoint_distances  bands  occupations
+        0  ...
+
+        If you want to investigate the spin projection of the bands, you can select
+        particular spin components. Here, we select the x and z components of the spin
+
+        >>> noncollinear_calculation.band.to_frame("sigma_x, sigma_z")
+           kpoint_distances  bands  occupations  sigma_x  sigma_z
+        0  ...
+
+        Add the contribution of three d orbitals
+
+        >>> calculation.band.to_frame("dxy + dxz + dyz")
+           kpoint_distances  bands  occupations  dxy + dxz + dyz
+        0  ...
+        """
         return merge_default(
             self._source,
             self._quantity_name,
@@ -341,6 +659,133 @@ class Band(graph.Mixin):
         )
 
     def to_quiver(self, selection, normal=None, supercell=None) -> graph.Graph:
+        """Generate a quiver plot of spin texture.
+
+        Note that plotting the spin texture requires a special setup of the VASP
+        calculation. You need to run a noncollinear calculation and a suitable
+        **k**-point mesh. The **k**-point mesh must be a regular two-dimensional grid,
+        i.e. one of the three reciprocal lattice directions must not be sampled
+        (1 in that direction). py4vasp will check this condition and raise an error if
+        it is not fulfilled.
+
+        The spin texture is represented by arrows in a plane in reciprocal space. The
+        plane is defined by the two reciprocal lattice vectors that are sampled by the
+        **k**-point mesh. The normal of this plane can be rotated to align with a
+        Cartesian axis if desired. The arrows represent the spin expectation value
+        at each **k** point. You can select which components of the spin are shown
+        and which bands are included. You can also select particular atoms and orbitals.
+
+        Let us generate some example data do that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, you can use your own data if you have run VASP with an
+        appropriate k-point mesh.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, selection="spin_texture")
+
+        Parameters
+        ----------
+        selection
+            A string specifying the components of the spin and the bands to be included
+            in the plot. This must be provided and py4vasp will raise an error if it is
+            not in the correct format. The selection string has the following structure:
+
+               <spin_component>~<spin_component>(band=<band_index>)
+
+            where <spin_component> is one of "sigma_x", "sigma_y", or "sigma_z", and
+            <band_index> is the index of the band to be included (1-based). For the
+            spin component, you can also use the alias "x", "y", or "z" and "sigma_1",
+            "sigma_2", or "sigma_3".
+
+            In addition, you can project onto particular atoms and orbitals similar to
+            the other methods in this class:
+
+            -   To specify the **atom**, you can either use its element name (Si, Al, ...)
+                or its index as given in the input file (1, 2, ...). For the latter
+                option it is also possible to specify ranges (e.g. 1:4).
+            -   To select a particular **orbital** you can give a string (s, px, dxz, ...)
+                or select multiple orbitals by their angular momentum (s, p, d, f).
+            -   If you used a different **k**-point mesh choose "kpoints_opt" or "kpoints_wan"
+                to select them instead of the default mesh specified in the KPOINTS file.
+
+            You separate multiple selections by commas or whitespace and can nest them using
+            parenthesis, e.g. `Sr(s, p)` or `s(up), p(down)`. The order of the selections
+            does not matter, but it is case sensitive to distinguish p (angular momentum
+            l = 1) from P (phosphorus).
+
+            It is possible to add or subtract different components, e.g., a selection of
+            "Ti(d) - O(p)" would project onto the d orbitals of Ti and the p orbitals of O
+            and then compute the difference of these two selections.
+
+            If you are unsure about the specific projections that are available, you can use
+
+            >>> calculation.projector.selections()
+            {'atom': [...], 'orbital': [...], 'spin': [...]}
+
+            to get a list of all available ones.
+        normal
+            Set the Cartesian direction "x", "y", or "z" parallel to which the normal of
+            the plane is rotated. Alteratively, set it to "auto" to rotate to the closest
+            Cartesian axis. If you set it to None, the normal will not be considered and
+            the first remaining lattice vector will be aligned with the x axis instead.
+        supercell
+            Replicate the contour plot periodically a given number of times. If you
+            provide two different numbers, the resulting cell will be the two remaining
+            lattice vectors multiplied by the specific number.
+
+        Returns
+        -------
+        Graph
+            A quiver plot for the spin texture in the plane spanned by the 2 remaining
+            lattice vectors. The arrows represent the spin expectation value at each
+            **k** point. The plot is replicated periodically according to the specified
+            supercell.
+
+        Examples
+        --------
+        Plot a projection of the spin texture in reciprocal space, summed over all atoms
+        and orbitals, for the first band and the x and y components.
+
+        >>> calculation.band.to_quiver("x~y(band=1)")
+        Graph(series=[Contour(data=array([[[...]]]), ..., label='x~y_band=1', ...)], ...,
+            title='Spin Texture')
+
+        Select the Ba atom, the third band, the x and z spin components, then sum
+        over all orbitals:
+
+        >>> calculation.band.to_quiver("Ba(sigma_1~sigma_3(band=3))")
+        Graph(series=[Contour(..., label='Ba_sigma_1~sigma_3_band=3', ...)], ...)
+
+        Select the Pb atom, s orbital, second band and the x and y spin components:
+
+        >>> calculation.band.to_quiver("Pb(s(band=2(sigma_x~sigma_y)))")
+        Graph(series=[Contour(..., label='Pb_s_sigma_x~sigma_y_band=2', ...)], ...)
+
+        To plot a 3x3 supercell of the reciprocal lattice plane:
+
+        >>> calculation.band.to_quiver(selection="band=1(x~y)", supercell=3)
+        Graph(series=[Contour(..., supercell=array([3, 3]), ...)], ...)
+
+        You can also provide different replication numbers for the two remaining
+        lattice vectors:
+
+        >>> calculation.band.to_quiver(selection="band=1(x~y)", supercell=np.array([2, 4]))
+        Graph(series=[Contour(..., supercell=array([2, 4]), ...)], ...)
+
+        We can also use KPOINTS_OPT to specify a different mesh. We can use the normal
+        argument to rotate the plane normal to align with the nearest coordinate axis.
+
+        >>> calculation.band.to_quiver(selection="kpoints_opt(band=1(x~y))", normal="auto")
+        Graph(series=[Contour(data=array([[[...]]]), ...)], ...)
+
+        The automatic rotation will only work if one of the reciprocal lattice vectors is
+        sufficiently close to a Cartesian axis. If this is not the case, you can manually
+        specify the desired axis. For example, to rotate the plane normal to align with
+        the x coordinate axis:
+
+        >>> calculation.band.to_quiver(selection="band=1(x~y)", normal="x")
+        Graph(series=[Contour(data=array([[[...]]]), ...)], ...)
+        """
         return merge_default(
             self._source,
             self._quantity_name,
