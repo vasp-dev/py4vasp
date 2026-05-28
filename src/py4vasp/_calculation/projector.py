@@ -65,10 +65,43 @@ class ProjectorHandler:
     atoms: {", ".join(self._stoichiometry().ion_types())}
     orbitals: {", ".join(self._orbital_types())}""" + spin_projection
 
-    def read(self) -> dict:
-        return self.to_dict()
-
     def to_dict(self) -> dict:
+        """Return a map from labels to indices in the arrays produced by VASP.
+
+        Returns
+        -------
+        dict
+            A dictionary containing three dictionaries for spin, atom, and orbitals.
+            Each of those describes which indices VASP uses to store certain elements
+            for projected quantities. If VASP was run without setting :tag:`LORBIT`
+            this will return an empty dictionary.
+
+        Examples
+        --------
+
+        For nonpolarized Fe3O4 with :tag:`LORBIT` = 10, this would work like this
+
+        >>> import pprint
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, selection="collinear")
+        >>> pprint.pp(calculation.projector.to_dict())
+        {'atom': {'Fe': slice(0, 3, None),
+                  '1': slice(0, 1, None),
+                  '2': slice(1, 2, None),
+                  '3': slice(2, 3, None),
+                  'O': slice(3, 7, None),
+                  '4': slice(3, 4, None),
+                  '5': slice(4, 5, None),
+                  '6': slice(5, 6, None),
+                  '7': slice(6, 7, None)},
+         'orbital': {'s': slice(0, 1, None),
+                     'p': slice(1, 2, None),
+                     'd': slice(2, 3, None),
+                     'f': slice(3, 4, None)},
+         'spin': {'total': slice(0, 2, None),
+                  'up': slice(0, 1, None),
+                  'down': slice(1, 2, None)}}
+        """
         if self._raw_projector.orbital_types.is_none():
             return {}
         atom_dict = self._init_atom_dict()
@@ -227,7 +260,15 @@ class ProjectorHandler:
 
 @quantity("projector")
 class Projector:
-    """The projectors used for atom and orbital resolved quantities."""
+    """The projectors used for atom and orbital resolved quantities.
+
+    This is a utility class that facilitates projecting quantities such as the
+    electronic band structure and the DOS on atoms and orbitals. As a user, you can
+    investigate the available projections with the :meth:`read` or :meth:`selections`
+    methods. The former is useful for scripts, when you need to know which array
+    index corresponds to which orbital or atom. The latter describes the available
+    selections that you can use in the methods that project on orbitals or atoms.
+    """
 
     def __init__(self, source, quantity_name="projector"):
         self._source = source
@@ -250,12 +291,49 @@ class Projector:
         p.text(str(self))
 
     def read(self, selection=None) -> dict:
+        """Return a map from labels to indices in the arrays produced by VASP.
+
+        Returns
+        -------
+        dict
+            A dictionary containing three dictionaries for spin, atom, and orbitals.
+            Each of those describes which indices VASP uses to store certain elements
+            for projected quantities. If VASP was run without setting :tag:`LORBIT`
+            this will return an empty dictionary.
+
+        Examples
+        --------
+
+        For nonpolarized Fe3O4 with :tag:`LORBIT` = 10, this would work like this
+
+        >>> import pprint
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, selection="collinear")
+        >>> pprint.pp(calculation.projector.read())
+        {'atom': {'Fe': slice(0, 3, None),
+                  '1': slice(0, 1, None),
+                  '2': slice(1, 2, None),
+                  '3': slice(2, 3, None),
+                  'O': slice(3, 7, None),
+                  '4': slice(3, 4, None),
+                  '5': slice(4, 5, None),
+                  '6': slice(5, 6, None),
+                  '7': slice(6, 7, None)},
+         'orbital': {'s': slice(0, 1, None),
+                     'p': slice(1, 2, None),
+                     'd': slice(2, 3, None),
+                     'f': slice(3, 4, None)},
+         'spin': {'total': slice(0, 2, None),
+                  'up': slice(0, 1, None),
+                  'down': slice(1, 2, None)}}
+        """
         return merge_default(
             self._source, self._quantity_name, None,
-            self._handler_factory, ProjectorHandler.read,
+            self._handler_factory, ProjectorHandler.to_dict,
         )
 
     def to_dict(self, selection=None) -> dict:
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
     def selections(self) -> dict:
