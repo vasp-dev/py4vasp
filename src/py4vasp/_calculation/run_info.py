@@ -35,7 +35,7 @@ class RunInfoHandler:
     def from_data(cls, raw_run_info: raw.RunInfo) -> "RunInfoHandler":
         return cls(raw_run_info)
 
-    def read(self) -> dict:
+    def to_dict(self) -> dict:
         """Convert the run information to a dictionary."""
         return {
             **self._dict_from_runtime(),
@@ -46,14 +46,10 @@ class RunInfoHandler:
             **self._dict_from_phonon_dispersion(),
         }
 
-    def to_dict(self) -> dict:
-        """Public alias for read()."""
-        return self.read()
-
     def to_database(self) -> dict:
         """Serialize run info for the database."""
         return {
-            "run_info": RunInfo_DB(**self.read()),
+            "run_info": RunInfo_DB(**self.to_dict()),
         }
 
     def _read_attr(self, *keys: str):
@@ -219,9 +215,9 @@ class RunInfo:
             self._quantity_name,
             selection,
             RunInfoHandler.from_data,
-            RunInfoHandler.read,
+            RunInfoHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
-        """Public alias for read()."""
+        """Convenient alias for :py:meth:`read`."""
         return self.read(selection=selection)

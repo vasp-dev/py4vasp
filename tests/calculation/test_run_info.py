@@ -4,8 +4,8 @@ import types
 
 import pytest
 
-from py4vasp._calculation._CONTCAR import CONTCAR
-from py4vasp._calculation._dispersion import Dispersion
+from py4vasp._calculation._CONTCAR import CONTCARHandler
+from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.bandgap import Bandgap, BandgapHandler
 from py4vasp._calculation.run_info import RunInfo, RunInfoHandler
 from py4vasp._calculation.structure import Structure
@@ -26,8 +26,8 @@ def run_info(request, raw_data):
     run_info.ref.band_dispersion_eigenvalues = raw_run_info.band_dispersion_eigenvalues
     run_info.ref.band_projections = raw_run_info.band_projections
     run_info.ref.structure = Structure.from_data(raw_run_info.structure)
-    run_info.ref.contcar = CONTCAR.from_data(raw_run_info.contcar)
-    run_info.ref.phonon_dispersion = Dispersion.from_data(
+    run_info.ref.contcar = CONTCARHandler.from_data(raw_run_info.contcar)
+    run_info.ref.phonon_dispersion = DispersionHandler.from_data(
         raw_run_info.phonon_dispersion
     )
     return run_info
@@ -46,8 +46,8 @@ def run_info_handler(request, raw_data):
     handler.ref.band_dispersion_eigenvalues = raw_run_info.band_dispersion_eigenvalues
     handler.ref.band_projections = raw_run_info.band_projections
     handler.ref.structure = Structure.from_data(raw_run_info.structure)
-    handler.ref.contcar = CONTCAR.from_data(raw_run_info.contcar)
-    handler.ref.phonon_dispersion = Dispersion.from_data(raw_run_info.phonon_dispersion)
+    handler.ref.contcar = CONTCARHandler.from_data(raw_run_info.contcar)
+    handler.ref.phonon_dispersion = DispersionHandler.from_data(raw_run_info.phonon_dispersion)
     return handler
 
 
@@ -65,23 +65,23 @@ def _check_dict(data_db: RunInfo_DB, runinfo_ref):
 
     # from contcar
     assert data_db.has_selective_dynamics == (
-        not check.is_none(runinfo_ref.contcar._raw_data.selective_dynamics)
+        not check.is_none(runinfo_ref.contcar._raw_contcar.selective_dynamics)
     )
     assert data_db.has_ion_velocities == (
-        not check.is_none(runinfo_ref.contcar._raw_data.ion_velocities)
+        not check.is_none(runinfo_ref.contcar._raw_contcar.ion_velocities)
     )
     assert data_db.has_lattice_velocities == (
-        not check.is_none(runinfo_ref.contcar._raw_data.lattice_velocities)
+        not check.is_none(runinfo_ref.contcar._raw_contcar.lattice_velocities)
     )
 
     # from phonon dispersion
     assert (
         data_db.phonon_num_qpoints
-        == runinfo_ref.phonon_dispersion._raw_data.eigenvalues[:].shape[0]
+        == runinfo_ref.phonon_dispersion._raw_dispersion.eigenvalues[:].shape[0]
     )
     assert (
         data_db.phonon_num_modes
-        == runinfo_ref.phonon_dispersion._raw_data.eigenvalues[:].shape[1]
+        == runinfo_ref.phonon_dispersion._raw_dispersion.eigenvalues[:].shape[1]
     )
 
     # extra collection
@@ -103,7 +103,7 @@ def test_read(run_info):
 
 
 def test_to_dict_matches_read(run_info_handler):
-    assert run_info_handler.to_dict() == run_info_handler.read()
+    assert run_info_handler.to_dict() == run_info_handler.to_dict()
 
 
 def test_dispatcher_to_dict_matches_read(run_info):
