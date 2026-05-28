@@ -20,7 +20,7 @@ def Sr2TiO4(raw_data):
 
 
 def test_Sr2TiO4_read(Sr2TiO4, Assert):
-    actual = Sr2TiO4.read()
+    actual = Sr2TiO4.to_dict()
     reference_structure = Sr2TiO4.ref.structure.read()
     for key in actual["structure"]:
         if key in ("elements", "names"):
@@ -58,7 +58,7 @@ Internal strain tensor (eV/Å):
         y   171.00000   175.00000   179.00000   173.00000   177.00000   175.00000
         z   180.00000   184.00000   188.00000   182.00000   186.00000   184.00000
 """.strip()
-    assert actual == {"text/plain": reference}
+    assert actual == reference
 
 
 @pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")

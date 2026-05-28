@@ -38,10 +38,6 @@ Internal strain tensor (eV/Å):
                 ion_string = "    "
         return result.strip()
 
-    def read(self) -> dict:
-        """Read the internal strain to a dictionary."""
-        return self.to_dict()
-
     def to_dict(self) -> dict:
         """Read the internal strain to a dictionary.
 
@@ -105,17 +101,25 @@ class InternalStrain:
         )
 
     def read(self, selection: str | None = None) -> dict:
-        """Read the internal strain to a dictionary."""
+        """Read the internal strain to a dictionary.
+
+        Returns
+        -------
+        dict
+            The dictionary contains the structure of the system. As well as the internal
+            strain tensor for all ions. The internal strain is the derivative of the
+            energy with respect to ionic position and strain of the cell.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
             selection,
             InternalStrainHandler.from_data,
-            InternalStrainHandler.read,
+            InternalStrainHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
-        """Convenient alias for :py:meth:`read`."""
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
 
