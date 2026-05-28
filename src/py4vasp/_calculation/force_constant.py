@@ -41,10 +41,6 @@ class ForceConstantHandler:
             selective_dynamics = self._raw_force_constant.selective_dynamics[:]
         return str(_StringFormatter(number_ions, force_constants, selective_dynamics))
 
-    def read(self) -> dict:
-        """Read structure information and force constants into a dictionary."""
-        return self.to_dict()
-
     def to_dict(self) -> dict:
         """Read structure information and force constants into a dictionary.
 
@@ -184,13 +180,23 @@ class ForceConstant:
         )
 
     def read(self, selection: str | None = None) -> dict:
-        """Read structure information and force constants into a dictionary."""
+        """Read structure information and force constants into a dictionary.
+
+        The structural information is added to inform about which atoms are included
+        in the array. The force constants array contains the second derivatives with
+        respect to atomic displacement for all atoms and directions.
+
+        Returns
+        -------
+        dict
+            Contains structural information as well as the raw force constant data.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
             selection,
             ForceConstantHandler.from_data,
-            ForceConstantHandler.read,
+            ForceConstantHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
@@ -208,7 +214,16 @@ class ForceConstant:
         )
 
     def to_molden(self, selection: str | None = None) -> str:
-        """Convert the eigenvectors of the force constant into molden format."""
+        """Convert the eigenvectors of the force constant into molden format.
+
+        Keep in mind that the eigenvectors indicate the direction of the forces and do
+        not take into account the masses of the atom.
+
+        Returns
+        -------
+        str
+            String describing the structure and eigenvectors in molden format.
+        """
         return merge_default(
             self._source,
             self._quantity_name,

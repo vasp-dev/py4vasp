@@ -27,7 +27,7 @@ def Sr2TiO4(raw_data, request):
 
 
 def test_Sr2TiO4_read(Sr2TiO4, Assert):
-    actual = Sr2TiO4.read()
+    actual = Sr2TiO4.to_dict()
     reference_structure = Sr2TiO4.ref.structure.read()
     Assert.same_structure(actual["structure"], reference_structure)
     Assert.allclose(actual["force_constants"], Sr2TiO4.ref.force_constants)
@@ -39,7 +39,7 @@ def test_Sr2TiO4_read(Sr2TiO4, Assert):
 
 def test_Sr2TiO4_print(Sr2TiO4):
     actual = str(Sr2TiO4)
-    assert actual == Sr2TiO4.ref.format_output
+    assert actual == Sr2TiO4.ref.format_output["text/plain"]
 
 
 def get_format_output(selection):
