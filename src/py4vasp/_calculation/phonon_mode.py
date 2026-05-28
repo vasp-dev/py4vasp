@@ -35,9 +35,6 @@ class PhononModeHandler:
 {phonon_frequencies}
 """
 
-    def read(self) -> dict:
-        return self.to_dict()
-
     def to_dict(self) -> dict:
         return {
             "structure": self._structure().read(),
@@ -120,16 +117,27 @@ class PhononMode:
         p.text(str(self))
 
     def read(self, selection: str | None = None) -> dict:
+        """Read structure data and properties of the phonon mode into a dictionary.
+
+        The frequency and eigenvector describe with how atoms move under the influence
+        of a particular phonon mode. Structural information is added to understand
+        what the displacement correspond to.
+
+        Returns
+        -------
+        dict
+            Structural information, phonon frequencies and eigenvectors.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
             selection,
             self._handler_factory,
-            PhononModeHandler.read,
+            PhononModeHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
-        """Read structure data and properties of the phonon mode into a dictionary."""
+        """Convenient alias for :py:meth:`read`."""
         return self.read(selection=selection)
 
     def frequencies(self, selection: str | None = None) -> np.ndarray:
