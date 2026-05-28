@@ -44,9 +44,6 @@ reciprocal"""
             text += "\n" + f"{kpoint[0]} {kpoint[1]} {kpoint[2]}  {weight}"
         return text
 
-    def read(self) -> dict:
-        return self.to_dict()
-
     def to_dict(self) -> dict[str, Any]:
         labels = self.labels()
         labels_dict = {} if labels is None else {"labels": labels}
@@ -182,7 +179,27 @@ reciprocal"""
 
 @quantity("kpoint")
 class Kpoint:
-    """The k-point mesh used in the VASP calculation."""
+    """The **k**-point mesh used in the VASP calculation.
+
+    In VASP calculations, **k** points play an important role in discretizing the
+    Brillouin zone of a crystal. For self-consistent DFT calculations, typically a
+    regular grid of **k** points is employed to sample the Brillouin zone. A
+    sufficiently dense **k**-points mesh is critical for the precision of your DFT
+    calculation, so make sure to test the results for different meshes. Denser
+    **k** point meshes provide more accurate results but also demand greater
+    computational resources.
+
+    Another common use case is irregular meshes in non-self-consistent calculations.
+    In particular in band structure analysis, one employs a mesh along specific lines
+    in the Brillouin zone. The line mode involves connecting high-symmetry points and
+    calculating the electronic band structure along these paths.
+
+    This class provides utility functionality to extract information about either of
+    the aforementioned use cases. As such it is mostly used as a helper class for
+    other postprocessing classes to extract the required information, e.g., to
+    generate a band structure. It may also be used to programmatically analyze the
+    selected **k** point mesh or take subsets along high symmetry lines.
+    """
 
     def __init__(self, source, quantity_name="kpoint"):
         self._source = source
@@ -205,51 +222,241 @@ class Kpoint:
         p.text(str(self))
 
     def read(self, selection=None) -> dict:
+        """Read the **k** points data into a dictionary.
+
+        Parameters
+        ----------
+        selection : str, optional
+            You can select "kpoints_opt" or "kpoints_wan" here, to read from those
+            meshes instead of the default one defined by the KPOINTS file.
+
+        Returns
+        -------
+        -
+            Contains the coordinates of the **k** points (in crystal units) as
+            well as their weights used for integrations. Moreover, some data
+            specified in the input file of Vasp are transferred such as the mode
+            used to generate the **k** points, the line length (if line mode was
+            used), and any labels set for specific points.
+
+        Examples
+        --------
+        Read the **k** points data into a dictionary:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.kpoint.read()
+        {'mode': ..., 'line_length': ..., 'number_kpoints': ..., 'coordinates': array(...), 'weights': array(...)}
+
+        Select the **k** points from the "kpoints_opt" mesh instead of the default one:
+
+        >>> calculation.kpoint.read(selection="kpoints_opt")
+        {'mode': ..., 'line_length': ..., 'number_kpoints': ..., 'coordinates': array(...), 'weights': array(...)}
+        """
         return merge_default(
             self._source, self._quantity_name, None,
-            self._handler_factory, KpointHandler.read,
+            self._handler_factory, KpointHandler.to_dict,
         )
 
     def to_dict(self, selection=None) -> dict:
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
     def line_length(self) -> int:
+        """Get the number of points per line in the Brillouin zone.
+
+        Returns
+        -------
+        -
+            The number of points used to sample a single line.
+
+        Examples
+        --------
+        Get the number of points per line in the Brillouin zone:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.kpoint.line_length()
+        48
+        """
         return merge_default(
             self._source, self._quantity_name, None,
             self._handler_factory, KpointHandler.line_length,
         )
 
     def number_lines(self) -> int:
+        """Get the number of lines in the Brillouin zone.
+
+        Returns
+        -------
+        -
+            The number of lines the band structure contains. For regular meshes this is
+            set to 1.
+
+        Examples
+        --------
+        Get the number of lines in the Brillouin zone:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.kpoint.number_lines()
+        4
+        """
         return merge_default(
             self._source, self._quantity_name, None,
             self._handler_factory, KpointHandler.number_lines,
         )
 
     def number_kpoints(self) -> int:
+        """Get the number of points in the Brillouin zone.
+
+        Returns
+        -------
+        -
+            The number of points used to sample the Brillouin zone.
+
+        Examples
+        --------
+        Get the number of points in the Brillouin zone:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.kpoint.number_kpoints()
+        48
+        """
         return merge_default(
             self._source, self._quantity_name, None,
             self._handler_factory, KpointHandler.number_kpoints,
         )
 
     def distances(self) -> np.ndarray:
+        """Convert the coordinates of the **k** points into a one dimensional array.
+
+        For every line in the Brillouin zone, the distance between each **k** point
+        and the start of the line is calculated. Then the distances of different
+        lines are concatenated into a single list. This routine is mostly useful
+        to plot data along high-symmetry lines like band structures.
+
+        Returns
+        -------
+        -
+            A reduction of the **k** points onto a one-dimensional array based
+            on the distance between the points.
+
+        Examples
+        --------
+        Convert the coordinates of the **k** points into a one dimensional array:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.kpoint.distances()
+        array([...])
+        """
         return merge_default(
             self._source, self._quantity_name, None,
             self._handler_factory, KpointHandler.distances,
         )
 
     def mode(self) -> str:
+        """Get the **k**-point generation mode specified in the Vasp input file.
+
+        Returns
+        -------
+        -
+            A string representing which mode was used to setup the k-points.
+
+        Examples
+        --------
+        Get the **k**-point generation mode:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.kpoint.mode()
+        'line'
+        """
         return merge_default(
             self._source, self._quantity_name, None,
             self._handler_factory, KpointHandler.mode,
         )
 
     def labels(self) -> list[str] | None:
+        """Get any labels given in the input file for specific **k** points.
+
+        The returned labels depend on the **k**-point mode and whether the user
+        provided explicit labels in the input file:
+
+        - If labels are specified in the KPOINTS file, a list of strings is returned
+          with one entry per **k** point. Points with no user-defined label get an
+          empty string, while labeled points carry the name from the input file.
+        - If line mode is used but no labels were given, VASP automatically assigns
+          labels at the band edges. Interior points along the line receive an empty
+          string. Labels are formatted as LaTeX fractions.
+        - For any other mode without explicit labels (e.g., a regular Gamma or
+          Monkhorst-Pack grid), ``None`` is returned.
+
+        Returns
+        -------
+        -
+            A list of strings (one per **k** point) or ``None`` if no labeling is
+            applicable.
+
+        Examples
+        --------
+        If no labels were given and line mode is not used, returns None:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> result = calculation.kpoint.labels()
+        >>> assert result is None
+
+        If line mode is used, VASP automatically assigns labels to the band edges:
+
+        >>> calculation.kpoint.labels()
+        ['$[0 0 0]$', ...]
+        """
         return merge_default(
             self._source, self._quantity_name, None,
             self._handler_factory, KpointHandler.labels,
         )
 
     def path_indices(self, start: ArrayLike, finish: ArrayLike) -> np.ndarray:
+        """Find linear dependent k points between start and finish.
+
+        Loop over all possible k points and return the indices of the ones for which
+        k-point - start is linear dependent on finish - start.
+
+        The primary use case is to extract a band-structure-like slice from a
+        regular **k**-point grid. In certain calculation types — such as
+        time-dependent DFT (TDDFT), GW, or BSE — VASP only supports uniform
+        Gamma or Monkhorst-Pack meshes. You can use this method to select all grid
+        points that happen to lie on a high-symmetry path.
+
+        Parameters
+        ----------
+        start
+            The starting **k** point of the path segment in fractional (crystal)
+            coordinates. Expects exactly 3 coordinates.
+        finish
+            The ending **k** point of the path segment in fractional (crystal)
+            coordinates. Expects exactly 3 coordinates.
+
+        Returns
+        -------
+        -
+            An integer array of indices (into the full **k**-point list) of all
+            **k** points that lie on the line segment from ``start`` to ``finish``.
+
+        Examples
+        --------
+        Extract all **k** points on a line through the Brillouin zone:
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> start = [0, 0, 0.125]
+        >>> finish = [1, 0, 0.125]
+        >>> calculation.kpoint.path_indices(start, finish)
+        array([...])
+        """
         return merge_default(
             self._source, self._quantity_name, None,
             self._handler_factory, KpointHandler.path_indices,
