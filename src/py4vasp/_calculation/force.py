@@ -50,10 +50,6 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
             result += f"\n{position_to_string(position)}    {force_to_string(force)}"
         return result
 
-    def read(self) -> dict:
-        """Read the forces into a dictionary."""
-        return self.to_dict()
-
     def to_dict(self) -> dict:
         """Read the forces into a dictionary.
 
@@ -228,7 +224,7 @@ class Force(view.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self) if not cycle else "...")
 
-    def to_dict(self, selection: str | None = None) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the forces into a dictionary.
 
         Forces and associated structural information for one or more selected steps of
@@ -250,48 +246,39 @@ class Force(view.Mixin):
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
 
-        If you use the `to_dict` method, the result will depend on the steps that you
+        If you use the `read` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
         step will be used. The structure is included to provide the necessary context for
         the forces.
 
-        >>> calculation.force.to_dict()
+        >>> calculation.force.read()
         {'structure': {...}, 'forces': array([[...]])}
 
         To select the results for all steps, you don't specify the array boundaries.
         Notice that in this case the forces contain an additional dimension for the
         different steps.
 
-        >>> calculation.force[:].to_dict()
+        >>> calculation.force[:].read()
         {'structure': {...}, 'forces': array([[[...]]])}
 
         You can also select specific steps or a subset of steps as follows
 
-        >>> calculation.force[1].to_dict()
+        >>> calculation.force[1].read()
         {'structure': {...}, 'forces': array([[...]])}
-        >>> calculation.force[0:2].to_dict()
+        >>> calculation.force[0:2].read()
         {'structure': {...}, 'forces': array([[[...]]])}
-        """
-        return self.read(selection=selection)
-
-    def read(self, selection: str | None = None) -> dict:
-        """Read the forces into a dictionary.
-
-        Convenient alias for :py:meth:`to_dict`.
-
-        Returns
-        -------
-        dict
-            Contains the forces for all selected steps and the structural information
-            to know on which atoms the forces act.
         """
         return merge_default(
             self._source,
             self._quantity_name,
             selection,
             self._handler_factory,
-            ForceHandler.read,
+            ForceHandler.to_dict,
         )
+
+    def to_dict(self, selection: str | None = None) -> dict:
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
+        return self.read(selection=selection)
 
     def to_view(self, supercell=None) -> view.View:
         """Visualize the forces showing arrows at the atoms.
@@ -311,6 +298,43 @@ class Force(view.Mixin):
         View
             Shows the structure with cell and all atoms adding arrows to the atoms
             sized according to the strength of the force.
+
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this method.
+        You can also use your own VASP calculation data if you have it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        If you use the `to_view` method, the result will depend on the steps that you
+        selected with the [] operator. Without any selection the results from the final
+        step will be used.
+
+        >>> calculation.force.to_view()
+        View(..., ion_arrows=[IonArrow(quantity=array([[...]]), label='forces', ...)], ...)
+
+        To select the results for all steps, you don't specify the array boundaries.
+
+        >>> calculation.force[:].to_view()
+        View(..., ion_arrows=[IonArrow(quantity=array([[[...]]]), label='forces', ...)], ...)
+
+        You can also select specific steps or a subset of steps as follows
+
+        >>> calculation.force[1].to_view()
+        View(..., ion_arrows=[IonArrow(quantity=array([[...]]), label='forces', ...)], ...)
+        >>> calculation.force[0:2].to_view()
+        View(..., ion_arrows=[IonArrow(quantity=array([[[...], [...]]]), label='forces', ...)], ...)
+
+        You may also replicate the structure by specifying a supercell.
+
+        >>> calculation.force.to_view(supercell=2)
+        View(..., supercell=array([2, 2, 2]), ...)
+
+        The supercell size can also be different for the different directions.
+
+        >>> calculation.force.to_view(supercell=[2,3,1])
+        View(..., supercell=array([2, 3, 1]), ...)
         """
         return merge_default(
             self._source,
