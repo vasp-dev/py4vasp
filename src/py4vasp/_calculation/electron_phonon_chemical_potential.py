@@ -5,7 +5,12 @@ from typing import Any, Dict, Tuple
 from numpy.typing import NDArray
 
 from py4vasp import exception, raw
-from py4vasp._calculation.dispatch import DataSource, merge_default, merge_strings, quantity
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._util import check
 
 
@@ -16,7 +21,9 @@ class ElectronPhononChemicalPotentialHandler:
         self._raw_data = raw_data
 
     @classmethod
-    def from_data(cls, raw_data: raw.ElectronPhononChemicalPotential) -> "ElectronPhononChemicalPotentialHandler":
+    def from_data(
+        cls, raw_data: raw.ElectronPhononChemicalPotential
+    ) -> "ElectronPhononChemicalPotentialHandler":
         return cls(raw_data)
 
     def __str__(self) -> str:
@@ -113,12 +120,16 @@ class ElectronPhononChemicalPotential:
     calculations. It also provides access to the INCAR tag used to set the carrier density.
     """
 
-    def __init__(self, source, quantity_name: str = "electron_phonon_chemical_potential"):
+    def __init__(
+        self, source, quantity_name: str = "electron_phonon_chemical_potential"
+    ):
         self._source = source
         self._quantity_name = quantity_name
 
     @classmethod
-    def from_data(cls, raw_data: raw.ElectronPhononChemicalPotential) -> "ElectronPhononChemicalPotential":
+    def from_data(
+        cls, raw_data: raw.ElectronPhononChemicalPotential
+    ) -> "ElectronPhononChemicalPotential":
         return cls(source=DataSource(raw_data))
 
     def _handler_factory(self, raw):
@@ -129,8 +140,11 @@ class ElectronPhononChemicalPotential:
         Return a formatted string representation of the electron-phonon chemical potential object.
         """
         return merge_strings(
-            self._source, self._quantity_name, None,
-            self._handler_factory, ElectronPhononChemicalPotentialHandler.__str__,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            ElectronPhononChemicalPotentialHandler.__str__,
         )
 
     def _repr_pretty_(self, p, cycle):
@@ -150,8 +164,11 @@ class ElectronPhononChemicalPotential:
             temperatures, and the INCAR tag/value used to set the carrier density.
         """
         return merge_default(
-            self._source, self._quantity_name, selection,
-            self._handler_factory, ElectronPhononChemicalPotentialHandler.to_dict,
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononChemicalPotentialHandler.to_dict,
         )
 
     def mu_tag(self, selection=None) -> Tuple[str, NDArray]:
@@ -170,8 +187,11 @@ class ElectronPhononChemicalPotential:
         or carrier per cell in the raw data and returns the first one found.
         """
         return merge_default(
-            self._source, self._quantity_name, selection,
-            self._handler_factory, ElectronPhononChemicalPotentialHandler.mu_tag,
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononChemicalPotentialHandler.mu_tag,
         )
 
     def label(self, selection=None) -> str:
@@ -186,6 +206,9 @@ class ElectronPhononChemicalPotential:
             A label indicating the type of data contained in this object and its units.
         """
         return merge_default(
-            self._source, self._quantity_name, selection,
-            self._handler_factory, ElectronPhononChemicalPotentialHandler.label,
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononChemicalPotentialHandler.label,
         )

@@ -5,7 +5,12 @@ from collections import abc
 import numpy as np
 
 from py4vasp import raw
-from py4vasp._calculation.dispatch import DataSource, merge_default, merge_strings, quantity
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
 from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
 from py4vasp._third_party import graph
@@ -134,7 +139,9 @@ class ElectronPhononBandgapHandler(abc.Sequence):
         self._raw_data = raw_data
 
     @classmethod
-    def from_data(cls, raw_data: raw.ElectronPhononBandgap) -> "ElectronPhononBandgapHandler":
+    def from_data(
+        cls, raw_data: raw.ElectronPhononBandgap
+    ) -> "ElectronPhononBandgapHandler":
         return cls(raw_data)
 
     def _accumulator(self):
@@ -148,7 +155,9 @@ class ElectronPhononBandgapHandler(abc.Sequence):
 
     def selections(self):
         base_selections = {
-            convert.quantity_name(self.__class__.__name__.replace("Handler", "")): ["default"],
+            convert.quantity_name(self.__class__.__name__.replace("Handler", "")): [
+                "default"
+            ],
         }
         result = self._accumulator().selections(base_selections)
         result.pop("scattering_approx", None)
@@ -208,8 +217,11 @@ class ElectronPhononBandgap(abc.Sequence):
 
     def __str__(self):
         return merge_strings(
-            self._source, self._quantity_name, None,
-            self._handler_factory, ElectronPhononBandgapHandler.__str__,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            ElectronPhononBandgapHandler.__str__,
         )
 
     def _repr_pretty_(self, p, cycle):
@@ -220,8 +232,11 @@ class ElectronPhononBandgap(abc.Sequence):
         Converts the bandgap data to a dictionary format.
         """
         return merge_default(
-            self._source, self._quantity_name, selection,
-            self._handler_factory, ElectronPhononBandgapHandler.to_dict,
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononBandgapHandler.to_dict,
         )
 
     def read(self, selection=None):
@@ -241,8 +256,11 @@ class ElectronPhononBandgap(abc.Sequence):
             - <mu_tag>: The chemical potential value for the current index.
         """
         return merge_default(
-            self._source, self._quantity_name, selection,
-            self._handler_factory, ElectronPhononBandgapHandler.selections,
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononBandgapHandler.selections,
         )
 
     def chemical_potential_mu_tag(self, selection=None):
@@ -257,8 +275,11 @@ class ElectronPhononBandgap(abc.Sequence):
             Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
         """
         return merge_default(
-            self._source, self._quantity_name, selection,
-            self._handler_factory, ElectronPhononBandgapHandler.chemical_potential_mu_tag,
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononBandgapHandler.chemical_potential_mu_tag,
         )
 
     def select(self, selection):

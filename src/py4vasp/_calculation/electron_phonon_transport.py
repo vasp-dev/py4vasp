@@ -8,7 +8,12 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from py4vasp import exception, raw
-from py4vasp._calculation.dispatch import DataSource, merge_default, merge_strings, quantity
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
 from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
 from py4vasp._third_party import graph
@@ -390,7 +395,9 @@ class ElectronPhononTransportHandler(abc.Sequence):
         self._raw_data = raw_data
 
     @classmethod
-    def from_data(cls, raw_data: raw.ElectronPhononTransport) -> "ElectronPhononTransportHandler":
+    def from_data(
+        cls, raw_data: raw.ElectronPhononTransport
+    ) -> "ElectronPhononTransportHandler":
         return cls(raw_data)
 
     def _accumulator(self):
@@ -404,7 +411,9 @@ class ElectronPhononTransportHandler(abc.Sequence):
 
     def selections(self) -> Dict[str, Any]:
         base_selections = {
-            convert.quantity_name(self.__class__.__name__.replace("Handler", "")): ["default"],
+            convert.quantity_name(self.__class__.__name__.replace("Handler", "")): [
+                "default"
+            ],
             "transport": list(UNITS.keys()),
         }
         if self._has_spin_data():
@@ -481,7 +490,9 @@ class ElectronPhononTransport(abc.Sequence, graph.Mixin):
         self._path = pathlib.Path.cwd()
 
     @classmethod
-    def from_data(cls, raw_data: raw.ElectronPhononTransport) -> "ElectronPhononTransport":
+    def from_data(
+        cls, raw_data: raw.ElectronPhononTransport
+    ) -> "ElectronPhononTransport":
         return cls(source=DataSource(raw_data))
 
     def _handler_factory(self, raw):
@@ -489,8 +500,11 @@ class ElectronPhononTransport(abc.Sequence, graph.Mixin):
 
     def __str__(self):
         return merge_strings(
-            self._source, self._quantity_name, None,
-            self._handler_factory, ElectronPhononTransportHandler.__str__,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            ElectronPhononTransportHandler.__str__,
         )
 
     def _repr_pretty_(self, p, cycle):
@@ -508,8 +522,11 @@ class ElectronPhononTransport(abc.Sequence, graph.Mixin):
             Dictionary containing information about the available accumulators.
         """
         return merge_default(
-            self._source, self._quantity_name, selection,
-            self._handler_factory, ElectronPhononTransportHandler.to_dict,
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononTransportHandler.to_dict,
         )
 
     def selections(self, selection=None) -> Dict[str, Any]:
@@ -522,8 +539,11 @@ class ElectronPhononTransport(abc.Sequence, graph.Mixin):
             Keys include selection criteria like "nbands_sum", "selfen_approx", "selfen_delta".
         """
         return merge_default(
-            self._source, self._quantity_name, selection,
-            self._handler_factory, ElectronPhononTransportHandler.selections,
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononTransportHandler.selections,
         )
 
     @property
@@ -549,8 +569,11 @@ class ElectronPhononTransport(abc.Sequence, graph.Mixin):
             Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
         """
         return merge_default(
-            self._source, self._quantity_name, selection,
-            self._handler_factory, ElectronPhononTransportHandler.chemical_potential_mu_tag,
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononTransportHandler.chemical_potential_mu_tag,
         )
 
     def select(self, selection: str) -> List[TransportInstance]:

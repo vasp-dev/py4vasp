@@ -3,7 +3,12 @@
 from collections import abc
 
 from py4vasp import exception, raw
-from py4vasp._calculation.dispatch import DataSource, merge_default, merge_strings, quantity
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
 from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
 from py4vasp._util import convert
@@ -121,7 +126,9 @@ class ElectronPhononSelfEnergyHandler(abc.Sequence):
         self._raw_data = raw_data
 
     @classmethod
-    def from_data(cls, raw_data: raw.ElectronPhononSelfEnergy) -> "ElectronPhononSelfEnergyHandler":
+    def from_data(
+        cls, raw_data: raw.ElectronPhononSelfEnergy
+    ) -> "ElectronPhononSelfEnergyHandler":
         return cls(raw_data)
 
     def _accumulator(self):
@@ -135,7 +142,9 @@ class ElectronPhononSelfEnergyHandler(abc.Sequence):
 
     def selections(self):
         base_selections = {
-            convert.quantity_name(self.__class__.__name__.replace("Handler", "")): ["default"],
+            convert.quantity_name(self.__class__.__name__.replace("Handler", "")): [
+                "default"
+            ],
         }
         return self._accumulator().selections(base_selections)
 
@@ -190,7 +199,9 @@ class ElectronPhononSelfEnergy(abc.Sequence):
         self._quantity_name = quantity_name
 
     @classmethod
-    def from_data(cls, raw_data: raw.ElectronPhononSelfEnergy) -> "ElectronPhononSelfEnergy":
+    def from_data(
+        cls, raw_data: raw.ElectronPhononSelfEnergy
+    ) -> "ElectronPhononSelfEnergy":
         return cls(source=DataSource(raw_data))
 
     def _handler_factory(self, raw):
@@ -198,8 +209,11 @@ class ElectronPhononSelfEnergy(abc.Sequence):
 
     def __str__(self):
         return merge_strings(
-            self._source, self._quantity_name, None,
-            self._handler_factory, ElectronPhononSelfEnergyHandler.__str__,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            ElectronPhononSelfEnergyHandler.__str__,
         )
 
     def _repr_pretty_(self, p, cycle):
@@ -217,8 +231,11 @@ class ElectronPhononSelfEnergy(abc.Sequence):
             Dictionary containing information about the available accumulators.
         """
         return merge_default(
-            self._source, self._quantity_name, selection,
-            self._handler_factory, ElectronPhononSelfEnergyHandler.to_dict,
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononSelfEnergyHandler.to_dict,
         )
 
     def selections(self, selection=None):
@@ -231,8 +248,11 @@ class ElectronPhononSelfEnergy(abc.Sequence):
             Keys include selection criteria like "nbands_sum", "selfen_approx", "selfen_delta".
         """
         return merge_default(
-            self._source, self._quantity_name, selection,
-            self._handler_factory, ElectronPhononSelfEnergyHandler.selections,
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononSelfEnergyHandler.selections,
         )
 
     def chemical_potential_mu_tag(self, selection=None):
@@ -246,8 +266,11 @@ class ElectronPhononSelfEnergy(abc.Sequence):
             the numerical values.
         """
         return merge_default(
-            self._source, self._quantity_name, selection,
-            self._handler_factory, ElectronPhononSelfEnergyHandler.chemical_potential_mu_tag,
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononSelfEnergyHandler.chemical_potential_mu_tag,
         )
 
     def select(self, selection):
