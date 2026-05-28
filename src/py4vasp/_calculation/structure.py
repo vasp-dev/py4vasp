@@ -56,17 +56,37 @@ class StructureHandler:
     def from_data(cls, raw_structure: raw.Structure, steps=None) -> "StructureHandler":
         return cls(raw_structure, steps=steps)
 
-    def read(self, ion_types=None) -> dict:
-        """Read the structural information into a dictionary."""
+    def to_dict(self, ion_types=None) -> dict:
+        """Read the structural information into a dictionary.
+
+        The returned dictionary contains the following keys:
+        - 'lattice_vectors': The lattice vectors of the unit cell.
+        - 'positions': The positions of the atoms in the unit cell.
+        - 'elements': The chemical elements of the atoms in the unit cell.
+        - 'names': The names of the atoms in the unit cell.
+
+        Note that 'elements' and 'names' have the same length as the number of atoms in
+        the unit cell.
+
+        Parameters
+        ----------
+        ion_types : Sequence
+            Overwrite the ion types present in the raw data. You can use this to quickly
+            generate different stoichiometries without modifying the underlying raw data.
+
+        Returns
+        -------
+        dict
+            Contains the unit cell of the crystal, as well as the position of
+            all the atoms in units of the lattice vectors and the elements of
+            the atoms for all selected steps.
+        """
         return {
             "lattice_vectors": self.lattice_vectors(),
             "positions": self.positions(),
             "elements": self._stoichiometry().elements(ion_types),
             "names": self._stoichiometry().names(ion_types),
         }
-
-    def to_dict(self, ion_types=None) -> dict:
-        return self.read(ion_types=ion_types)
 
     def __str__(self):
         """Generate a string representing the final structure usable as a POSCAR file."""
@@ -100,7 +120,7 @@ class StructureHandler:
                 "Converting multiple structures to ASE trajectories is not implemented."
             )
             raise exception.NotImplemented(message)
-        data = self.read(ion_types)
+        data = self.to_dict(ion_types)
         structure = ase.Atoms(
             symbols=data["elements"],
             cell=data["lattice_vectors"],
@@ -126,8 +146,7 @@ class StructureHandler:
         if not self._is_slice:
             message = "Converting a single structure to mdtraj is not implemented."
             raise exception.NotImplemented(message)
-        data = self.read(ion_types)
-        xyz = data["positions"] @ data["lattice_vectors"] * self.A_to_nm
+        data = self.to_dict(ion_types) @ data["lattice_vectors"] * self.A_to_nm
         trajectory = mdtraj.Trajectory(
             xyz, self._stoichiometry().to_mdtraj(ion_types)
         )
@@ -635,7 +654,7 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         return "\n".join(lines)
 
     @base.data_access
-    def to_dict(self, ion_types=None):
+    def read(self, ion_types=None):
         """Read the structural information into a dictionary.
 
         The returned dictionary contains the following keys:
@@ -668,11 +687,11 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
 
-        If you use the `to_dict` method, the result will depend on the steps that you
+        If you use the `read` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
         step will be used.
 
-        >>> calculation.structure.to_dict()
+        >>> calculation.structure.read()
         {'lattice_vectors': array([[...]]), 'positions': array([[...]]),
             'elements': [...], 'names': [...]}
 
@@ -680,16 +699,16 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         Notice that in this case the lattice vectors and positions contain an additional
         dimension for the different steps.
 
-        >>> calculation.structure[:].to_dict()
+        >>> calculation.structure[:].read()
         {'lattice_vectors': array([[[...]]]), 'positions': array([[[...]]]),
             'elements': [...], 'names': [...]}
 
         You can also select specific steps or a subset of steps as follows
 
-        >>> calculation.structure[1].to_dict()
+        >>> calculation.structure[1].read()
         {'lattice_vectors': array([[...]]), 'positions': array([[...]]),
             'elements': [...], 'names': [...]}
-        >>> calculation.structure[0:2].to_dict()
+        >>> calculation.structure[0:2].read()
         {'lattice_vectors': array([[[...]]]), 'positions': array([[[...]]]),
             'elements': [...], 'names': [...]}
         """
@@ -699,6 +718,11 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
             "elements": self._stoichiometry().elements(ion_types),
             "names": self._stoichiometry().names(ion_types),
         }
+
+    @base.data_access
+    def to_dict(self, ion_types=None):
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
+        return self.read(ion_types=ion_types)
 
     @base.data_access
     def _to_database(self, *args, **kwargs):
