@@ -30,7 +30,7 @@ class DielectricFunctionHandler:
     ) -> "DielectricFunctionHandler":
         return cls(raw_dielectric_function)
 
-    def read(self) -> dict:
+    def to_dict(self) -> dict:
         """Read the data into a dictionary.
 
         Returns
@@ -48,10 +48,6 @@ class DielectricFunctionHandler:
             **self._add_current_current_if_available(),
             **self._add_q_point_if_available(),
         }
-
-    def to_dict(self) -> dict:
-        """Public alias for read()."""
-        return self.read()
 
     def to_database(self) -> dict:
         """Serialize dielectric function data for database storage."""
@@ -323,7 +319,7 @@ class DielectricFunction(graph.Mixin):
             self._quantity_name,
             selection,
             self._handler_factory,
-            DielectricFunctionHandler.read,
+            DielectricFunctionHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
