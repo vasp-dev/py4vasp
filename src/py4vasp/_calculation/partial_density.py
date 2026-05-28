@@ -9,7 +9,12 @@ import numpy as np
 
 from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry
-from py4vasp._calculation.dispatch import DataSource, merge_default, merge_strings, quantity
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
 from py4vasp._third_party import view
@@ -45,7 +50,9 @@ class PartialDensityHandler:
         self._raw_partial_density = raw_partial_density
 
     @classmethod
-    def from_data(cls, raw_partial_density: raw.PartialDensity) -> "PartialDensityHandler":
+    def from_data(
+        cls, raw_partial_density: raw.PartialDensity
+    ) -> "PartialDensityHandler":
         return cls(raw_partial_density)
 
     def __str__(self) -> str:
@@ -203,7 +210,9 @@ class PartialDensityHandler:
         self._raise_error_if_selection_not_understood(selection, mode, spin)
         smoothed_charge = self._get_stm_data(spin, stm_settings)
         if mode == "constant_height" or mode is None:
-            return self._constant_height_stm(smoothed_charge, tip_height, spin, stm_settings)
+            return self._constant_height_stm(
+                smoothed_charge, tip_height, spin, stm_settings
+            )
         current = current * 1e-09
         return self._constant_current_stm(smoothed_charge, current, spin, stm_settings)
 

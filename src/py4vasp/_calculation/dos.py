@@ -7,7 +7,12 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._calculation import projector
-from py4vasp._calculation.dispatch import DataSource, merge_default, merge_strings, quantity
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._calculation.projector import ProjectorHandler
 from py4vasp._raw import data as raw
 from py4vasp._raw.data_db import Dos_DB
@@ -191,8 +196,11 @@ class Dos(graph.Mixin):
 
     def __str__(self):
         return merge_strings(
-            self._source, self._quantity_name, None,
-            self._handler_factory, DosHandler.__str__,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            DosHandler.__str__,
         )
 
     def _repr_pretty_(self, p, cycle):
@@ -200,8 +208,11 @@ class Dos(graph.Mixin):
 
     def read(self, selection=None) -> dict:
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, DosHandler.read,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            DosHandler.read,
             selection,
         )
 
@@ -210,23 +221,33 @@ class Dos(graph.Mixin):
 
     def to_graph(self, selection=None) -> graph.Graph:
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, DosHandler.to_graph,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            DosHandler.to_graph,
             selection,
         )
 
     def to_frame(self, selection=None):
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, DosHandler.to_frame,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            DosHandler.to_frame,
             selection,
         )
 
     def selections(self) -> dict:
         from py4vasp._raw import definition as raw_module
+
         handler_selections = merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, DosHandler.selections,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            DosHandler.selections,
         )
         sources = list(raw_module.selections(self._quantity_name))
         return {self._quantity_name: sources, **handler_selections}

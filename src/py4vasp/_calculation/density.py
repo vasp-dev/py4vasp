@@ -8,7 +8,12 @@ import numpy as np
 
 from py4vasp import _config, exception, raw as raw_module
 from py4vasp._calculation import _stoichiometry
-from py4vasp._calculation.dispatch import DataSource, merge_default, merge_strings, quantity
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
 from py4vasp._third_party import graph, view
@@ -51,7 +56,9 @@ class DensityHandler:
         self._selection_name = selection_name
 
     @classmethod
-    def from_data(cls, raw_density: raw.Density, selection_name=None) -> "DensityHandler":
+    def from_data(
+        cls, raw_density: raw.Density, selection_name=None
+    ) -> "DensityHandler":
         return cls(raw_density, selection_name=selection_name)
 
     def __str__(self) -> str:
@@ -112,7 +119,9 @@ class DensityHandler:
             view.GridQuantity(
                 quantity=selector[sel].T[np.newaxis],
                 label=self._label(selector.label(sel)),
-                isosurfaces=self._grid_quantity_properties(selector, sel, map_, user_options),
+                isosurfaces=self._grid_quantity_properties(
+                    selector, sel, map_, user_options
+                ),
             )
             for sel in selections
         ]
@@ -138,7 +147,9 @@ class DensityHandler:
             (self._label(selector.label(sel)) or "charge"): selector[sel].T
             for sel in selections
         }
-        return visualizer.to_contour(dataDict, SliceArguments(a, b, c, normal, supercell))
+        return visualizer.to_contour(
+            dataDict, SliceArguments(a, b, c, normal, supercell)
+        )
 
     def to_quiver(
         self,
@@ -155,7 +166,9 @@ class DensityHandler:
             data = self.to_numpy()[1:]
         visualizer = Visualizer(self._structure())
         dataDict = {(self._selection or "magnetization"): data}
-        return visualizer.to_quiver(dataDict, SliceArguments(a, b, c, normal, supercell))
+        return visualizer.to_quiver(
+            dataDict, SliceArguments(a, b, c, normal, supercell)
+        )
 
     def is_nonpolarized(self):
         return len(self._raw_density.charge) == 1
@@ -447,6 +460,6 @@ def _raise_error_if_no_data(data):
             "Density data was not found. Note that the density information is written "
             "on the demand to a different file (vaspwave.h5). Please make sure that "
             "this file exists and LCHARGH5 = T is set in the INCAR file. Another "
-            "common issue is when you create `Calculation.from_file(\"vaspout.h5\")` "
+            'common issue is when you create `Calculation.from_file("vaspout.h5")` '
             "because this will overwrite the default file behavior."
         )

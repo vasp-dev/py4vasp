@@ -11,7 +11,12 @@ from numpy.typing import ArrayLike
 from py4vasp import exception
 from py4vasp._calculation import projector
 from py4vasp._calculation._dispersion import DispersionHandler
-from py4vasp._calculation.dispatch import DataSource, merge_default, merge_strings, quantity
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._calculation.kpoint import KpointHandler
 from py4vasp._calculation.projector import ProjectorHandler
 from py4vasp._raw import data as raw
@@ -123,9 +128,7 @@ class BandHandler:
         selector = self._make_selector(self._raw_band.projections)
         tree = select.Tree.from_selection(selection)
         quiver_plots = [
-            graph.Contour(
-                **self._quiver_plot(selector, sel, nkp1, nkp2), **options
-            )
+            graph.Contour(**self._quiver_plot(selector, sel, nkp1, nkp2), **options)
             for sel in tree.selections()
         ]
         return graph.Graph(quiver_plots, title="Spin Texture")
@@ -152,7 +155,9 @@ class BandHandler:
     def _projections(self, selection, width):
         if selection is None:
             return None
-        check.raise_error_if_not_number(width, "Width of fat band structure must be a number.")
+        check.raise_error_if_not_number(
+            width, "Width of fat band structure must be a number."
+        )
         projections = self._read_projections(selection)
         spin_projections = projections.get(projector.SPIN_PROJECTION, [])
         for label, weight in projections.items():
@@ -193,8 +198,12 @@ class BandHandler:
     def _extract_relevant_data(self, selection, fermi_energy):
         need_to_be_repeated = ("kpoint_distances", "kpoint_labels")
         relevant_keys = (
-            "bands", "bands_up", "bands_down",
-            "occupations", "occupations_up", "occupations_down",
+            "bands",
+            "bands_up",
+            "bands_down",
+            "occupations",
+            "occupations_up",
+            "occupations_down",
         )
         data = {}
         for key, value in self.to_dict(selection, fermi_energy).items():
@@ -284,8 +293,11 @@ class Band(graph.Mixin):
 
     def __str__(self):
         return merge_strings(
-            self._source, self._quantity_name, None,
-            self._handler_factory, BandHandler.__str__,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            BandHandler.__str__,
         )
 
     def _repr_pretty_(self, p, cycle):
@@ -293,9 +305,13 @@ class Band(graph.Mixin):
 
     def read(self, selection=None, fermi_energy=None) -> dict:
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, BandHandler.read,
-            selection, fermi_energy=fermi_energy,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            BandHandler.read,
+            selection,
+            fermi_energy=fermi_energy,
         )
 
     def to_dict(self, selection=None, fermi_energy=None) -> dict:
@@ -303,30 +319,48 @@ class Band(graph.Mixin):
 
     def to_graph(self, selection=None, fermi_energy=None, width=0.5) -> graph.Graph:
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, BandHandler.to_graph,
-            selection, fermi_energy=fermi_energy, width=width,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            BandHandler.to_graph,
+            selection,
+            fermi_energy=fermi_energy,
+            width=width,
         )
 
     def to_frame(self, selection=None, fermi_energy=None):
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, BandHandler.to_frame,
-            selection, fermi_energy=fermi_energy,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            BandHandler.to_frame,
+            selection,
+            fermi_energy=fermi_energy,
         )
 
     def to_quiver(self, selection, normal=None, supercell=None) -> graph.Graph:
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, BandHandler.to_quiver,
-            selection, normal=normal, supercell=supercell,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            BandHandler.to_quiver,
+            selection,
+            normal=normal,
+            supercell=supercell,
         )
 
     def selections(self) -> dict:
         from py4vasp._raw import definition as raw_module
+
         handler_selections = merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, BandHandler.selections,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            BandHandler.selections,
         )
         sources = list(raw_module.selections(self._quantity_name))
         return {self._quantity_name: sources, **handler_selections}

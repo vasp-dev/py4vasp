@@ -8,7 +8,12 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp._calculation import _stoichiometry
-from py4vasp._calculation.dispatch import DataSource, merge_default, merge_strings, quantity
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
 from py4vasp._third_party import graph
@@ -42,7 +47,9 @@ class CurrentDensityHandler:
         self._raw_current_density = raw_current_density
 
     @classmethod
-    def from_data(cls, raw_current_density: raw.CurrentDensity) -> "CurrentDensityHandler":
+    def from_data(
+        cls, raw_current_density: raw.CurrentDensity
+    ) -> "CurrentDensityHandler":
         return cls(raw_current_density)
 
     def __str__(self) -> str:
@@ -111,7 +118,9 @@ class CurrentDensityHandler:
         return StructureHandler.from_data(self._raw_current_density.structure)
 
     def _read_current_densities(self):
-        return dict(self._read_current_density(key) for key in self._raw_current_density)
+        return dict(
+            self._read_current_density(key) for key in self._raw_current_density
+        )
 
     def _read_current_density(self, key=None):
         key = key or self._raw_current_density.valid_indices[-1]
