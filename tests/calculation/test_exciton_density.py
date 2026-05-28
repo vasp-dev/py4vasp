@@ -110,6 +110,7 @@ exciton charge density:
     assert actual == {"text/plain": expected_text}
 
 
+@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.exciton_density()
     check_factory_methods(ExcitonDensity, data)

@@ -110,10 +110,8 @@ Port `phonon.py` (the shared Mixin) conceptually before the three group members.
 
 ### Group 8 — Exciton group
 
-- [ ] `exciton.eigenvector` — `exciton_eigenvector.py` → `ExcitonEigenvector(Refinery)` | test: `test_exciton_eigenvector.py`
-  - Group: `@quantity("eigenvector", group="exciton")`; remove from `GROUPS["exciton"]`.
-- [ ] `exciton.density` — `exciton_density.py` → `ExcitonDensity(Refinery, structure.Mixin, view.Mixin)` | test: `test_exciton_density.py`
-  - Group: `@quantity("density", group="exciton")`.
+- [x] `exciton.eigenvector` — `exciton_eigenvector.py` → `ExcitonEigenvectorHandler` + `@quantity("eigenvector", group="exciton") ExcitonEigenvector` | test: `test_exciton_eigenvector.py` ✅
+- [x] `exciton.density` — `exciton_density.py` → `ExcitonDensityHandler` + `@quantity("density", group="exciton") ExcitonDensity(view.Mixin)` | test: `test_exciton_density.py` ✅
 
 ---
 

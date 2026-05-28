@@ -7,7 +7,7 @@ from typing import Any, List, Optional, Tuple, Union
 import h5py
 
 from py4vasp import exception
-from py4vasp._calculation.dispatch import FileSource, Group, _REGISTRY
+from py4vasp._calculation.dispatch import _REGISTRY, FileSource, Group
 from py4vasp._raw.access import access
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
 from py4vasp._raw.definition import (
@@ -37,7 +37,6 @@ QUANTITIES = (
 )
 GROUPS = {
     "electron_phonon": ("bandgap", "chemical_potential", "self_energy", "transport"),
-    "exciton": ("density", "eigenvector"),
 }
 GROUP_TYPE_ALIAS = {
     convert.to_camelcase(f"{group}_{member}"): f"{group}.{member}"
