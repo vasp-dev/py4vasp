@@ -45,9 +45,6 @@ class PairCorrelationHandler:
     ) -> "PairCorrelationHandler":
         return cls(raw_pair_correlation, steps)
 
-    def read(self, selection=None) -> dict:
-        return self.to_dict(selection)
-
     def to_dict(self, selection=None) -> dict:
         """Read the pair-correlation function and store it in a dictionary."""
         selection = self._default_selection_if_none(selection)
@@ -191,7 +188,7 @@ class PairCorrelation(graph.Mixin):
             self._quantity_name,
             selection,
             self._handler_factory,
-            PairCorrelationHandler.read,
+            PairCorrelationHandler.to_dict,
             selection,
         )
 
@@ -200,20 +197,7 @@ class PairCorrelation(graph.Mixin):
         examples=slice_.examples("pair_correlation", "to_dict", "block"),
     )
     def to_dict(self, selection=None) -> dict:
-        """Read the pair-correlation function and store it in a dictionary.
-
-        Convenient alias for :py:meth:`read`.
-
-        Parameters
-        ----------
-        {selection}
-
-        Returns
-        -------
-        dict
-
-        {examples}
-        """
+        """Convenient alias for :py:meth:`read`."""
         return self.read(selection=selection)
 
     @documentation.format(
