@@ -220,9 +220,6 @@ class ElectronPhononSelfEnergy(abc.Sequence):
         p.text(str(self))
 
     def read(self, selection=None):
-        return self.to_dict(selection=selection)
-
-    def to_dict(self, selection=None):
         """Return a dictionary that lists how many accumulators are available
 
         Returns
@@ -237,6 +234,10 @@ class ElectronPhononSelfEnergy(abc.Sequence):
             self._handler_factory,
             ElectronPhononSelfEnergyHandler.to_dict,
         )
+
+    def to_dict(self, selection=None):
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
+        return self.read(selection=selection)
 
     def selections(self, selection=None):
         """Return a dictionary describing what options are available to read the electron self-energies.
