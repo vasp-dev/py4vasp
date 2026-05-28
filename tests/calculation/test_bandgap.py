@@ -411,16 +411,6 @@ def test_to_database_spin_polarized(spin_polarized_handler, Assert):
     _check_to_database(spin_polarized_handler, Assert)
 
 
-def test_to_dict_matches_read(raw_data, Assert):
-    raw_gap = raw_data.bandgap("default")
-    handler = BandgapHandler.from_data(raw_gap)
-    to_dict_result = handler.to_dict()
-    read_result = handler.read()
-    assert to_dict_result.keys() == read_result.keys()
-    for key in to_dict_result:
-        Assert.allclose(to_dict_result[key], read_result[key])
-
-
 def test_dispatcher_to_dict_matches_read(raw_data, Assert):
     raw_gap = raw_data.bandgap("default")
     source = DataSource(raw_gap)

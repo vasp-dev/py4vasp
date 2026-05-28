@@ -47,8 +47,7 @@ class BandgapHandler:
     def from_data(cls, raw_bandgap: raw.Bandgap, steps=None) -> "BandgapHandler":
         return cls(raw_bandgap, steps=steps)
 
-    def read(self) -> dict:
-        """Read the bandgap data."""
+    def to_dict(self) -> dict:
         return {
             **self._gap_dict("fundamental"),
             **self._kpoint_dict("VBM"),
@@ -57,10 +56,6 @@ class BandgapHandler:
             **self._kpoint_dict("direct"),
             "fermi_energy": self._get("Fermi energy", component=0),
         }
-
-    def to_dict(self) -> dict:
-        """Public alias for read()."""
-        return self.read()
 
     def fundamental(self) -> np.ndarray:
         """Return the fundamental bandgap."""
@@ -350,24 +345,11 @@ class Bandgap(graph.Mixin):
             self._quantity_name,
             selection,
             self._handler_factory,
-            BandgapHandler.read,
+            BandgapHandler.to_dict,
         )
 
-    @documentation.format(examples=slice_.examples("bandgap", "to_dict"))
     def to_dict(self, selection: str | None = None) -> dict:
-        """Read the bandgap data from a VASP relaxation or MD trajectory.
-
-        Convenient alias for :py:meth:`read`. Check that method for examples
-        and optional arguments.
-
-        Returns
-        -------
-        dict
-            Contains the fundamental and direct gap as well as the coordinates of the
-            k points where the relevant points in the band structure are.
-
-        {examples}
-        """
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
     @documentation.format(examples=slice_.examples("bandgap", "fundamental"))
