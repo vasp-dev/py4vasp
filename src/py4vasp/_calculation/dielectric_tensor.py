@@ -36,7 +36,7 @@ class DielectricTensorHandler:
     def from_data(cls, raw_dielectric_tensor: raw.DielectricTensor) -> "DielectricTensorHandler":
         return cls(raw_dielectric_tensor)
 
-    def read(self) -> dict:
+    def to_dict(self) -> dict:
         """Read the dielectric tensor into a dictionary.
 
         Returns
@@ -52,12 +52,8 @@ class DielectricTensorHandler:
             "method": convert.text_to_string(self._raw_dielectric_tensor.method),
         }
 
-    def to_dict(self) -> dict:
-        """Public alias for read()."""
-        return self.read()
-
     def __str__(self) -> str:
-        data = self.read()
+        data = self.to_dict()
         return f"""
 Macroscopic static dielectric tensor (dimensionless)
   {_description(data["method"])}
@@ -218,21 +214,11 @@ class DielectricTensor:
             self._quantity_name,
             selection,
             self._handler_factory,
-            DielectricTensorHandler.read,
+            DielectricTensorHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
-        """Read the dielectric tensor into a dictionary.
-
-        Convenient alias for :py:meth:`read`. Check that method for examples
-        and optional arguments.
-
-        Returns
-        -------
-        dict
-            Contains the dielectric tensor and a string describing the method it
-            was obtained.
-        """
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
     def __str__(self, selection: str | None = None):
