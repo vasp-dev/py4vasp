@@ -57,9 +57,13 @@ in kB   {stress_to_string(stress)}
             Contains the stress for all selected steps and the structural information
             to know on which cell the stress acts.
         """
-        structure = StructureHandler.from_data(self._raw_stress.structure, steps=self._steps)
+        structure = StructureHandler.from_data(
+            self._raw_stress.structure, steps=self._steps
+        )
         return {
-            "stress": slice_steps(np.array(self._raw_stress.stress), self._steps, default_ndim=2),
+            "stress": slice_steps(
+                np.array(self._raw_stress.stress), self._steps, default_ndim=2
+            ),
             "structure": structure.read(),
         }
 
@@ -252,4 +256,3 @@ class Stress:
             self._handler_factory,
             StressHandler.number_steps,
         )
-

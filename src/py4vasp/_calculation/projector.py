@@ -2,7 +2,12 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import exception
 from py4vasp._calculation import _stoichiometry
-from py4vasp._calculation.dispatch import DataSource, merge_default, merge_strings, quantity
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._raw import data as raw
 from py4vasp._raw.data_db import Projector_DB
 from py4vasp._util import check, convert, index, select
@@ -198,10 +203,18 @@ class ProjectorHandler:
 
     def _sort_key(self, key):
         spin_keys = [
-            "total", "up", "down",
-            "sigma_x", "sigma_y", "sigma_z",
-            "x", "y", "z",
-            "sigma_1", "sigma_2", "sigma_3",
+            "total",
+            "up",
+            "down",
+            "sigma_x",
+            "sigma_y",
+            "sigma_z",
+            "x",
+            "y",
+            "z",
+            "sigma_1",
+            "sigma_2",
+            "sigma_3",
         ]
         orbital_keys = ["s", "p", "d", "f"]
         if key in spin_keys:
@@ -283,8 +296,11 @@ class Projector:
 
     def __str__(self):
         return merge_strings(
-            self._source, self._quantity_name, None,
-            self._handler_factory, ProjectorHandler.__str__,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            ProjectorHandler.__str__,
         )
 
     def _repr_pretty_(self, p, cycle):
@@ -328,8 +344,11 @@ class Projector:
                   'down': slice(1, 2, None)}}
         """
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, ProjectorHandler.to_dict,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            ProjectorHandler.to_dict,
         )
 
     def to_dict(self, selection=None) -> dict:
@@ -338,15 +357,23 @@ class Projector:
 
     def selections(self) -> dict:
         from py4vasp._raw import definition as raw_module
+
         handler_selections = merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, ProjectorHandler.selections,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            ProjectorHandler.selections,
         )
         return handler_selections
 
     def project(self, selection, projections):
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, ProjectorHandler.project,
-            selection, projections,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            ProjectorHandler.project,
+            selection,
+            projections,
         )

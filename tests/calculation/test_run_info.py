@@ -47,7 +47,9 @@ def run_info_handler(request, raw_data):
     handler.ref.band_projections = raw_run_info.band_projections
     handler.ref.structure = Structure.from_data(raw_run_info.structure)
     handler.ref.contcar = CONTCARHandler.from_data(raw_run_info.contcar)
-    handler.ref.phonon_dispersion = DispersionHandler.from_data(raw_run_info.phonon_dispersion)
+    handler.ref.phonon_dispersion = DispersionHandler.from_data(
+        raw_run_info.phonon_dispersion
+    )
     return handler
 
 

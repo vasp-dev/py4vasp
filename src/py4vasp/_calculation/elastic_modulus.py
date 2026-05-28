@@ -36,7 +36,9 @@ class ElasticModulusHandler:
         self._raw_elastic_modulus = raw_elastic_modulus
 
     @classmethod
-    def from_data(cls, raw_elastic_modulus: raw.ElasticModulus) -> "ElasticModulusHandler":
+    def from_data(
+        cls, raw_elastic_modulus: raw.ElasticModulus
+    ) -> "ElasticModulusHandler":
         return cls(raw_elastic_modulus)
 
     def to_dict(self) -> dict:
@@ -69,7 +71,9 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
         compact_tensor = [None, None, None]
 
         if not check.is_none(self._raw_elastic_modulus.structure):
-            structure_obj = structure.Structure.from_data(self._raw_elastic_modulus.structure)
+            structure_obj = structure.Structure.from_data(
+                self._raw_elastic_modulus.structure
+            )
             volume = structure_obj.volume()
             num_atoms = structure_obj.number_atoms()
             volume_per_atom = volume / num_atoms if num_atoms > 0 else None

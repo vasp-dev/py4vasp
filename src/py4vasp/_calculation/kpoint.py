@@ -9,7 +9,12 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from py4vasp import exception
-from py4vasp._calculation.dispatch import DataSource, merge_default, merge_strings, quantity
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._raw import data as raw
 from py4vasp._raw.data_db import Kpoint_DB
 from py4vasp._util import check, convert
@@ -40,7 +45,9 @@ class KpointHandler:
         text = f"""k-points
 {len(self._raw_kpoint.coordinates)}
 reciprocal"""
-        for kpoint, weight in zip(self._raw_kpoint.coordinates, self._raw_kpoint.weights):
+        for kpoint, weight in zip(
+            self._raw_kpoint.coordinates, self._raw_kpoint.weights
+        ):
             text += "\n" + f"{kpoint[0]} {kpoint[1]} {kpoint[2]}  {weight}"
         return text
 
@@ -61,11 +68,7 @@ reciprocal"""
         number_y = self._raw_kpoint.number_y
         number_z = self._raw_kpoint.number_z
         has_grid = not (any(check.is_none(n) for n in (number_x, number_y, number_z)))
-        grid_kpoints = (
-            None
-            if not has_grid
-            else [number_x, number_y, number_z]
-        )
+        grid_kpoints = None if not has_grid else [number_x, number_y, number_z]
         user_labels = None
         if not check.is_none(self._raw_kpoint.label_indices):
             user_labels = [k for k in self._labels_from_file() if k != ""]
@@ -125,7 +128,7 @@ reciprocal"""
             return "monkhorst"
         else:
             raise exception.RefinementError(
-                f"Could not understand the mode \'{mode}\' when refining the raw kpoints data."
+                f"Could not understand the mode '{mode}' when refining the raw kpoints data."
             )
 
     def labels(self) -> list[str] | None:
@@ -214,8 +217,11 @@ class Kpoint:
 
     def __str__(self):
         return merge_strings(
-            self._source, self._quantity_name, None,
-            self._handler_factory, KpointHandler.__str__,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            KpointHandler.__str__,
         )
 
     def _repr_pretty_(self, p, cycle):
@@ -254,8 +260,11 @@ class Kpoint:
         {'mode': ..., 'line_length': ..., 'number_kpoints': ..., 'coordinates': array(...), 'weights': array(...)}
         """
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, KpointHandler.to_dict,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            KpointHandler.to_dict,
         )
 
     def to_dict(self, selection=None) -> dict:
@@ -280,8 +289,11 @@ class Kpoint:
         48
         """
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, KpointHandler.line_length,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            KpointHandler.line_length,
         )
 
     def number_lines(self) -> int:
@@ -303,8 +315,11 @@ class Kpoint:
         4
         """
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, KpointHandler.number_lines,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            KpointHandler.number_lines,
         )
 
     def number_kpoints(self) -> int:
@@ -325,8 +340,11 @@ class Kpoint:
         48
         """
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, KpointHandler.number_kpoints,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            KpointHandler.number_kpoints,
         )
 
     def distances(self) -> np.ndarray:
@@ -353,8 +371,11 @@ class Kpoint:
         array([...])
         """
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, KpointHandler.distances,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            KpointHandler.distances,
         )
 
     def mode(self) -> str:
@@ -375,8 +396,11 @@ class Kpoint:
         'line'
         """
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, KpointHandler.mode,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            KpointHandler.mode,
         )
 
     def labels(self) -> list[str] | None:
@@ -415,8 +439,11 @@ class Kpoint:
         ['$[0 0 0]$', ...]
         """
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, KpointHandler.labels,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            KpointHandler.labels,
         )
 
     def path_indices(self, start: ArrayLike, finish: ArrayLike) -> np.ndarray:
@@ -458,19 +485,27 @@ class Kpoint:
         array([...])
         """
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, KpointHandler.path_indices,
-            start, finish,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            KpointHandler.path_indices,
+            start,
+            finish,
         )
 
     def selections(self):
         from py4vasp._raw import definition as raw_module
+
         return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
 
     def _reciprocal_lattice_vectors(self):
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, KpointHandler._reciprocal_lattice_vectors,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            KpointHandler._reciprocal_lattice_vectors,
         )
 
 

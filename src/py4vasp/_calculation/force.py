@@ -64,10 +64,14 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
             Contains the forces for all selected steps and the structural information
             to know on which atoms the forces act.
         """
-        structure = StructureHandler.from_data(self._raw_force.structure, steps=self._steps)
+        structure = StructureHandler.from_data(
+            self._raw_force.structure, steps=self._steps
+        )
         return {
             "structure": structure.read(),
-            "forces": slice_steps(np.array(self._raw_force.forces), self._steps, default_ndim=2),
+            "forces": slice_steps(
+                np.array(self._raw_force.forces), self._steps, default_ndim=2
+            ),
         }
 
     def to_database(self) -> dict:
@@ -354,4 +358,3 @@ class Force(view.Mixin):
             self._handler_factory,
             ForceHandler.number_steps,
         )
-

@@ -147,9 +147,7 @@ class StructureHandler:
             message = "Converting a single structure to mdtraj is not implemented."
             raise exception.NotImplemented(message)
         data = self.to_dict(ion_types) @ data["lattice_vectors"] * self.A_to_nm
-        trajectory = mdtraj.Trajectory(
-            xyz, self._stoichiometry().to_mdtraj(ion_types)
-        )
+        trajectory = mdtraj.Trajectory(xyz, self._stoichiometry().to_mdtraj(ion_types))
         trajectory.unitcell_vectors = data["lattice_vectors"] * self.A_to_nm
         return trajectory
 

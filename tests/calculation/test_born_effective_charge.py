@@ -37,8 +37,8 @@ def test_Sr2TiO4_read(Sr2TiO4, Assert):
     Assert.allclose(actual["charge_tensors"], Sr2TiO4.ref.charge_tensors)
 
 
-def test_Sr2TiO4_print(Sr2TiO4):
-    actual = str(Sr2TiO4)
+def test_Sr2TiO4_print(Sr2TiO4, format_):
+    actual, _ = format_(Sr2TiO4)
     reference = """
 BORN EFFECTIVE CHARGES (including local field effects) (in |e|, cumulative output)
 ---------------------------------------------------------------------------------
@@ -71,7 +71,7 @@ ion    7   O
     2    57.00000    58.00000    59.00000
     3    60.00000    61.00000    62.00000
 """.strip()
-    assert actual == reference
+    assert actual == {"text/plain": reference}
 
 
 @pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")

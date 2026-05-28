@@ -103,8 +103,12 @@ def test_read(elastic_modulus, Assert):
 
 
 def test_to_dict_matches_read(elastic_modulus, Assert):
-    Assert.allclose(elastic_modulus.to_dict()["clamped_ion"], elastic_modulus.read()["clamped_ion"])
-    Assert.allclose(elastic_modulus.to_dict()["relaxed_ion"], elastic_modulus.read()["relaxed_ion"])
+    Assert.allclose(
+        elastic_modulus.to_dict()["clamped_ion"], elastic_modulus.read()["clamped_ion"]
+    )
+    Assert.allclose(
+        elastic_modulus.to_dict()["relaxed_ion"], elastic_modulus.read()["relaxed_ion"]
+    )
 
 
 def test_print(elastic_modulus, format_):

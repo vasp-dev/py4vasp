@@ -33,7 +33,9 @@ class DielectricTensorHandler:
         self._raw_dielectric_tensor = raw_dielectric_tensor
 
     @classmethod
-    def from_data(cls, raw_dielectric_tensor: raw.DielectricTensor) -> "DielectricTensorHandler":
+    def from_data(
+        cls, raw_dielectric_tensor: raw.DielectricTensor
+    ) -> "DielectricTensorHandler":
         return cls(raw_dielectric_tensor)
 
     def to_dict(self) -> dict:
@@ -116,7 +118,9 @@ Macroscopic static dielectric tensor (dimensionless)
                 ionic_3d_isotropic_dielectric_constant=isotropic_dielectric_constant[1],
                 ionic_2d_polarizability=polarizability_2d[1],
                 electronic_3d_tensor=tensor_reduced[2],
-                electronic_3d_isotropic_dielectric_constant=isotropic_dielectric_constant[2],
+                electronic_3d_isotropic_dielectric_constant=isotropic_dielectric_constant[
+                    2
+                ],
                 electronic_2d_polarizability=polarizability_2d[2],
             )
         }
@@ -182,7 +186,9 @@ class DielectricTensor:
         self._quantity_name = quantity_name
 
     @classmethod
-    def from_data(cls, raw_dielectric_tensor: raw.DielectricTensor) -> "DielectricTensor":
+    def from_data(
+        cls, raw_dielectric_tensor: raw.DielectricTensor
+    ) -> "DielectricTensor":
         """Create a DielectricTensor dispatcher from raw data (convenience for testing)."""
         return cls(source=DataSource(raw_dielectric_tensor))
 
