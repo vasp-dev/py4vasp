@@ -86,9 +86,6 @@ class ElectronPhononChemicalPotentialHandler:
             "None of the carrier density, chemical potential, or carrier per cell data is available in the raw data."
         )
 
-    def read(self) -> Dict[str, Any]:
-        return self.to_dict()
-
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert the electron-phonon chemical potential data to a dictionary.
@@ -151,9 +148,6 @@ class ElectronPhononChemicalPotential:
         p.text(str(self))
 
     def read(self, selection=None) -> Dict[str, Any]:
-        return self.to_dict(selection=selection)
-
-    def to_dict(self, selection=None) -> Dict[str, Any]:
         """
         Convert the electron-phonon chemical potential data to a dictionary.
 
@@ -170,6 +164,10 @@ class ElectronPhononChemicalPotential:
             self._handler_factory,
             ElectronPhononChemicalPotentialHandler.to_dict,
         )
+
+    def to_dict(self, selection=None) -> Dict[str, Any]:
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
+        return self.read(selection=selection)
 
     def mu_tag(self, selection=None) -> Tuple[str, NDArray]:
         """
