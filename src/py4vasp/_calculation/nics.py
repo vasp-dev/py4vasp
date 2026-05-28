@@ -46,10 +46,15 @@ nucleus-independent chemical shift:
     structure: {pretty.pretty(stoichiometry)}
 {data_string}"""
 
-    def read(self) -> dict:
-        return self.to_dict()
-
     def to_dict(self) -> dict:
+        """Read NICS into a dictionary.
+
+        Returns
+        -------
+        dict
+            Contains the structure information as well as the nucleus-independent
+            chemical shift represented on a grid in the unit cell.
+        """
         result = {
             "structure": self._structure().read(),
             "nics": self.to_numpy(),
@@ -204,7 +209,48 @@ nucleus-independent chemical shift:
 
 @quantity("nics")
 class Nics(view.Mixin):
-    """This class accesses information on the nucleus-independent chemical shift (NICS)."""
+    """This class accesses information on the nucleus-independent chemical shift (NICS).
+
+    Examples
+    --------
+
+    First, we create some example data do that you can follow along. Please define a
+    variable `path` with the path to a directory that exists and does not contain any
+    VASP calculation data. Alternatively, you can use your own data if you have run
+    VASP and construct `calculation` from it.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    See some basic information about NICS by printing the object:
+
+    >>> print(calculation.nics)
+    nucleus-independent chemical shift:...
+
+    For your own postprocessing, you can read the band data into a Python
+    dictionary:
+
+    >>> calculation.nics.read()
+    {'structure': {...}, 'nics': array([[[[[...]]]]]...), 'method': ...}
+
+    You can also obtain the NICS as a numpy array directly:
+
+    >>> calculation.nics.to_numpy()
+    array([[[[[...]]]]]...)
+
+    You can also visualize a 3d isosurface of the chemical shift:
+
+    >>> calculation.nics.plot()
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...)])], ...)
+
+    Alternatively, you can visualize a contour plot of the chemical shift in a plane:
+
+    >>> calculation.nics.to_contour(c=0)
+    Graph(series=[Contour(data=array([[...]]...), ..., cut='c', ...)], ...)
+
+    Please check the documentation of each of these methods for more details on how to
+    use them and which options they provide.
+    """
 
     def __init__(self, source, quantity_name="nics"):
         self._source = source
@@ -230,21 +276,43 @@ class Nics(view.Mixin):
         p.text(str(self))
 
     def read(self, selection=None) -> dict:
-        """Read NICS into a dictionary."""
+        """Read NICS into a dictionary.
+
+        Returns
+        -------
+        dict
+            Contains the structure information as well as the nucleus-independent
+            chemical shift represented on a grid in the unit cell.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
             None,
             self._handler_factory,
-            NicsHandler.read,
+            NicsHandler.to_dict,
         )
 
     def to_dict(self, selection=None) -> dict:
-        """Alias for read()."""
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
     def to_numpy(self, selection: Optional[str] = None):
-        """Convert NICS to a numpy array."""
+        """Convert NICS to a numpy array.
+
+        The resulting shape will be the NICS grid data with respect to the selection.
+
+        Parameters
+        ----------
+        selection : str or None
+            The tensor element(s) to extract.
+            Can be None (in which case the whole tensor is returned), isotropic, or
+            one of "xx", "xy", ...
+
+        Returns
+        -------
+        np.ndarray
+            All components of NICS.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
@@ -260,7 +328,45 @@ class Nics(view.Mixin):
         supercell: Optional[Union[int, np.ndarray]] = None,
         **user_options,
     ):
-        """Plot the selected chemical shift as a 3d isosurface within the structure."""
+        """Plot the selected chemical shift as a 3d isosurface within the structure.
+
+        Parameters
+        ----------
+        selection : str or None
+            Axis along which to plot.
+            Can be one of "xx", "xy", ...
+            Can also be "isotropic" to plot the trace.
+            If selection is None, it defaults to "isotropic".
+        supercell : int or np.ndarray
+            If present the data is replicated the specified number of times along each
+            direction.
+        user_options
+            Further arguments with keyword that get directly passed on to the
+            visualizer. Most importantly, you can set isolevel to adjust the
+            value at which the isosurface is drawn.
+
+        Returns
+        -------
+        View
+            Visualize an isosurface of the selected chemical shift within the 3d
+            structure.
+
+        Examples
+        --------
+        >>> from py4vasp import calculation
+
+        Plot the isotropic chemical shift as a 3d isosurface.
+
+        >>> calculation.nics.plot()
+
+        Plot the chemical shift with "xx" selection as a 3d isosurface.
+
+        >>> calculation.nics.plot(selection="xx")
+
+        Plot the isotropic chemical shift with specified isolevel as a 3d isosurface.
+
+        >>> calculation.nics.plot(isolevel=0.6)
+        """
         return merge_default(
             self._source,
             self._quantity_name,
@@ -272,6 +378,7 @@ class Nics(view.Mixin):
             **user_options,
         )
 
+    @documentation.format(plane=slicing.PLANE, parameters=slicing.PARAMETERS)
     def to_contour(
         self,
         selection: Optional[str] = None,
@@ -282,7 +389,54 @@ class Nics(view.Mixin):
         normal: Optional[str] = None,
         supercell: Optional[Union[int, np.ndarray]] = None,
     ):
-        """Generate a contour plot of chemical shift."""
+        """Generate a contour plot of chemical shift.
+
+        {plane}
+
+        Parameters
+        ----------
+        {parameters}
+        selection : str or None
+            Axis along which to plot.
+            Can be one of "xx", "xy", ...
+            Can also be "isotropic" to plot the trace.
+            If selection is None, it defaults to "isotropic".
+        supercell : int or np.ndarray
+            If present the data is replicated the specified number of times along each
+            direction.
+
+        Returns
+        -------
+        graph
+            A chemical shift plot in the plane spanned by the 2 remaining lattice
+            vectors.
+
+        Examples
+        --------
+        >>> from py4vasp import calculation
+
+        Cut a plane through the isotropic chemical shift at the origin of the third
+        lattice vector.
+
+        >>> calculation.nics.to_contour(c=0)
+
+        Replicate a plane in the middle of the second lattice vector 2 times in each
+        direction.
+
+        >>> calculation.nics.to_contour(b=0.5, supercell=2)
+
+        Take a slice of the chemical shift with "xy" selection along the first lattice
+        vector and rotate it such that the plane normal aligns with the x axis.
+
+        >>> calculation.nics.to_contour(a=0.3, selection=0.3, normal="x")
+
+        Cut a plane through the isotropic chemical shift at the origin of the third
+        lattice vector, then show isosurface level values along contour lines.
+
+        >>> plot = calculation.nics.to_contour(c=0, selection=0.3, normal="x")
+        >>> plot.series[0].show_contour_values = True
+        >>> plot.show()
+        """
         return merge_default(
             self._source,
             self._quantity_name,
