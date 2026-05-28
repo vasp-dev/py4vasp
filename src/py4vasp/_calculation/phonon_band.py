@@ -5,6 +5,7 @@ import pathlib
 import numpy as np
 
 from py4vasp import raw
+from py4vasp._calculation import phonon
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation._stoichiometry import StoichiometryHandler
 from py4vasp._calculation.dispatch import (
@@ -15,7 +16,7 @@ from py4vasp._calculation.dispatch import (
     quantity,
 )
 from py4vasp._third_party import graph
-from py4vasp._util import convert, database, index, select
+from py4vasp._util import convert, database, documentation, index, select
 
 
 class PhononBandHandler:
@@ -33,9 +34,6 @@ class PhononBandHandler:
     {self._raw_phonon_band.dispersion.eigenvalues.shape[0]} q-points
     {self._raw_phonon_band.dispersion.eigenvalues.shape[1]} modes
     {self._stoichiometry()}"""
-
-    def read(self) -> dict:
-        return self.to_dict()
 
     def to_dict(self) -> dict:
         dispersion = self._dispersion().to_dict()
@@ -105,7 +103,22 @@ class PhononBandHandler:
 
 @quantity("band", group="phonon")
 class PhononBand(graph.Mixin):
-    """The phonon band structure contains the **q**-resolved phonon eigenvalues."""
+    """The phonon band structure contains the **q**-resolved phonon eigenvalues.
+
+    The phonon band structure is a graphical representation of the phonons. It
+    illustrates the relationship between the frequency of modes and their corresponding
+    wave vectors in the Brillouin zone. Each line or branch in the band structure
+    represents a specific phonon, and the slope of these branches provides information
+    about their velocity.
+
+    The phonon band structure includes the dispersion relations of phonons, which reveal
+    how vibrational frequencies vary with direction in the crystal lattice. The presence
+    of band gaps or band crossings indicates the material's ability to conduct or
+    insulate heat. Additionally, the branches near the high-symmetry points in the
+    Brillouin zone offer insights into the material's anharmonicity and thermal
+    conductivity. Furthermore, phonons with imaginary frequencies indicate the presence
+    of a structural instability.
+    """
 
     def __init__(self, source, quantity_name: str = "phonon_band"):
         self._source = source
@@ -132,20 +145,43 @@ class PhononBand(graph.Mixin):
         p.text(str(self))
 
     def read(self, selection: str | None = None) -> dict:
+        """Read the phonon band structure into a dictionary.
+
+        Returns
+        -------
+        dict
+            Contains the **q**-point path for plotting phonon band structures and
+            the phonon bands. In addition the phonon modes are returned.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
             selection,
             self._handler_factory,
-            PhononBandHandler.read,
+            PhononBandHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
-        """Read the phonon band structure into a dictionary."""
+        """Convenient alias for :py:meth:`read`."""
         return self.read(selection=selection)
 
+    @documentation.format(selection=phonon.selection_doc)
     def to_graph(self, selection: str | None = None, width: float = 1.0) -> graph.Graph:
-        """Generate a graph of the phonon bands."""
+        """Generate a graph of the phonon bands.
+
+        Parameters
+        ----------
+        {selection}
+        width : float
+            Specifies the width illustrating the projections.
+
+        Returns
+        -------
+        Graph
+            Contains the phonon band structure for all the **q** points. If a
+            selection is provided, the width of the bands is adjusted according to
+            the projection.
+        """
         return merge_graphs(
             self._source,
             self._quantity_name,
