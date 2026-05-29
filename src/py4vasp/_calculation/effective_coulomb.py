@@ -1,6 +1,5 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import pathlib
 from dataclasses import asdict, dataclass
 from types import EllipsisType
 
@@ -11,7 +10,6 @@ from py4vasp import exception, interpolate, raw
 from py4vasp._calculation import cell
 from py4vasp._calculation.dispatch import (
     DataSource,
-    FileSource,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -405,22 +403,6 @@ class EffectiveCoulomb(graph.Mixin):
         """Create an EffectiveCoulomb dispatcher from raw data (convenience for testing)."""
         return cls(source=DataSource(raw_coulomb))
 
-    @classmethod
-    def from_path(cls, path=".") -> "EffectiveCoulomb":
-        """Create an EffectiveCoulomb dispatcher that reads from HDF5 files at *path*."""
-        return cls(source=FileSource(path))
-
-    @classmethod
-    def from_file(cls, file_name) -> "EffectiveCoulomb":
-        """Create an EffectiveCoulomb dispatcher that reads from a specific HDF5 file."""
-        resolved = pathlib.Path(file_name).expanduser().resolve()
-        return cls(source=FileSource(resolved.parent, file=file_name))
-
-    @property
-    def _path(self):
-        """Path used for file-export methods. Falls back to cwd."""
-        return self._source.path or pathlib.Path.cwd()
-
     @property
     def path(self):
         """Returns the path from which the output is obtained."""
@@ -544,11 +526,11 @@ class EffectiveCoulomb(graph.Mixin):
         )
         return {"effective_coulomb": ["default"], **result}
 
-    def __str__(self) -> str:
+    def __str__(self, selection=None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             EffectiveCoulombHandler.__str__,
         )

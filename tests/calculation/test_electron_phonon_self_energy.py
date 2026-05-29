@@ -305,7 +305,6 @@ def test_print_instance(self_energy, format_):
     assert actual == {"text/plain": str(instance)}
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.electron_phonon_self_energy("default")
     parameters = {"select": {"selection": "selfen_approx=SERTA"}}

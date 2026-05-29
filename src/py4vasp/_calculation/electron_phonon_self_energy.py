@@ -207,11 +207,11 @@ class ElectronPhononSelfEnergy(abc.Sequence):
     def _handler_factory(self, raw):
         return ElectronPhononSelfEnergyHandler.from_data(raw)
 
-    def __str__(self):
+    def __str__(self, selection=None):
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ElectronPhononSelfEnergyHandler.__str__,
         )

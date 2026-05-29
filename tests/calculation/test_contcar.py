@@ -117,7 +117,6 @@ def test_print(CONTCAR, format_):
     assert actual == {"text/plain": CONTCAR.ref.string}
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     raw_contcar = raw_data.CONTCAR("Sr2TiO4")
     check_factory_methods(_CONTCAR, raw_contcar)

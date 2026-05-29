@@ -48,6 +48,5 @@ def check_system_print(raw_system, format_):
     assert actual["text/plain"] == text_to_string(raw_system.system)
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(string_format, check_factory_methods):
     check_factory_methods(System, string_format)

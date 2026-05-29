@@ -1,6 +1,5 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import pathlib
 from typing import Optional
 
 import numpy as np
@@ -9,7 +8,6 @@ from py4vasp import exception, raw
 from py4vasp._calculation import base, cell
 from py4vasp._calculation.dispatch import (
     DataSource,
-    FileSource,
     merge_default,
     merge_strings,
     quantity,
@@ -192,17 +190,6 @@ class DielectricTensor:
         """Create a DielectricTensor dispatcher from raw data (convenience for testing)."""
         return cls(source=DataSource(raw_dielectric_tensor))
 
-    @classmethod
-    def from_path(cls, path=".") -> "DielectricTensor":
-        """Create a DielectricTensor dispatcher that reads from HDF5 files at *path*."""
-        return cls(source=FileSource(path))
-
-    @classmethod
-    def from_file(cls, file_name) -> "DielectricTensor":
-        """Create a DielectricTensor dispatcher that reads from a specific HDF5 file."""
-        resolved = pathlib.Path(file_name).expanduser().resolve()
-        return cls(source=FileSource(resolved.parent, file=file_name))
-
     def _handler_factory(self, raw_data):
         return DielectricTensorHandler.from_data(raw_data)
 
@@ -227,11 +214,11 @@ class DielectricTensor:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read()
 
-    def __str__(self):
+    def __str__(self, selection=None):
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             DielectricTensorHandler.__str__,
         )

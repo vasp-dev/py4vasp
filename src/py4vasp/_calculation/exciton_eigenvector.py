@@ -96,11 +96,11 @@ class ExcitonEigenvector:
     def _handler_factory(self, raw):
         return ExcitonEigenvectorHandler.from_data(raw)
 
-    def __str__(self) -> str:
+    def __str__(self, selection=None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ExcitonEigenvectorHandler.__str__,
         )

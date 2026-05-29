@@ -2,14 +2,12 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
 import itertools
-import pathlib
 
 import numpy as np
 
 from py4vasp import raw
 from py4vasp._calculation.dispatch import (
     DataSource,
-    FileSource,
     merge_default,
     merge_strings,
     quantity,
@@ -155,26 +153,11 @@ class ForceConstant:
         """Create a ForceConstant dispatcher from raw data (convenience for testing)."""
         return cls(source=DataSource(raw_force_constant))
 
-    @classmethod
-    def from_path(cls, path=".") -> "ForceConstant":
-        """Create a ForceConstant dispatcher that reads from HDF5 files at *path*."""
-        return cls(source=FileSource(path))
-
-    @classmethod
-    def from_file(cls, file_name) -> "ForceConstant":
-        """Create a ForceConstant dispatcher that reads from a specific HDF5 file."""
-        resolved = pathlib.Path(file_name).expanduser().resolve()
-        return cls(source=FileSource(resolved.parent, file=file_name))
-
-    @property
-    def _path(self):
-        return self._source.path
-
-    def __str__(self) -> str:
+    def __str__(self, selection=None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             ForceConstantHandler.from_data,
             ForceConstantHandler.__str__,
         )

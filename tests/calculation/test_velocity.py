@@ -142,7 +142,6 @@ def test_to_database(velocities):
     assert db_data.initial_index_velocity_max == int(np.argmax(initial_norms))
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.velocity("Fe3O4")
     check_factory_methods(Velocity, data)

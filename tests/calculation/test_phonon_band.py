@@ -138,7 +138,6 @@ def test_to_database(phonon_band):
     assert db_dict == {}
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.phonon_band("default")
     check_factory_methods(PhononBand, data)

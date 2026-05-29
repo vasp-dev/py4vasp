@@ -1,7 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import copy
-import pathlib
 
 import numpy as np
 
@@ -9,7 +8,6 @@ from py4vasp import raw
 from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     DataSource,
-    FileSource,
     merge_default,
     merge_strings,
     quantity,
@@ -159,21 +157,6 @@ class Stress:
         """Create a Stress dispatcher from raw data (convenience for testing)."""
         return cls(source=DataSource(raw_stress))
 
-    @classmethod
-    def from_path(cls, path=".") -> "Stress":
-        """Create a Stress dispatcher that reads from HDF5 files at *path*."""
-        return cls(source=FileSource(path))
-
-    @classmethod
-    def from_file(cls, file_name) -> "Stress":
-        """Create a Stress dispatcher that reads from a specific HDF5 file."""
-        resolved = pathlib.Path(file_name).expanduser().resolve()
-        return cls(source=FileSource(resolved.parent, file=file_name))
-
-    @property
-    def _path(self):
-        return self._source.path
-
     def __getitem__(self, steps) -> "Stress":
         new = copy.copy(self)
         new._steps = steps
@@ -182,12 +165,12 @@ class Stress:
     def _handler_factory(self, raw):
         return StressHandler.from_data(raw, steps=self._steps)
 
-    def __str__(self) -> str:
+    def __str__(self, selection=None) -> str:
         "Convert the stress to a format similar to the OUTCAR file."
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StressHandler.__str__,
         )

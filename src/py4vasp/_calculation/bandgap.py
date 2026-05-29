@@ -2,7 +2,6 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import copy
 import itertools
-import pathlib
 import typing
 
 import numpy as np
@@ -11,7 +10,6 @@ from py4vasp import exception, raw
 from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     DataSource,
-    FileSource,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -303,22 +301,6 @@ class Bandgap(graph.Mixin):
     def from_data(cls, raw_bandgap: raw.Bandgap):
         """Create a Bandgap dispatcher from raw data (convenience for testing)."""
         return cls(source=DataSource(raw_bandgap))
-
-    @classmethod
-    def from_path(cls, path="."):
-        """Create a Bandgap dispatcher that reads from HDF5 files at *path*."""
-        return cls(source=FileSource(path))
-
-    @classmethod
-    def from_file(cls, file_name):
-        """Create a Bandgap dispatcher that reads from a specific HDF5 file."""
-        resolved = pathlib.Path(file_name).expanduser().resolve()
-        return cls(source=FileSource(resolved.parent, file=file_name))
-
-    @property
-    def _path(self):
-        """Path used for file-export methods (e.g. to_image). Falls back to cwd."""
-        return self._source.path or pathlib.Path.cwd()
 
     def __getitem__(self, steps) -> "Bandgap":
         new = copy.copy(self)

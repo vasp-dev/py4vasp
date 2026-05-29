@@ -1,13 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import copy
-import pathlib
 
 from py4vasp import raw
 from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     DataSource,
-    FileSource,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -134,25 +132,10 @@ class PairCorrelation(graph.Mixin):
         """Create a PairCorrelation dispatcher from raw data."""
         return cls(source=DataSource(raw_pair_correlation))
 
-    @classmethod
-    def from_path(cls, path="."):
-        """Create a PairCorrelation dispatcher from HDF5 files at *path*."""
-        return cls(source=FileSource(path))
-
-    @classmethod
-    def from_file(cls, file_name):
-        """Create a PairCorrelation dispatcher from a specific HDF5 file."""
-        resolved = pathlib.Path(file_name).expanduser().resolve()
-        return cls(source=FileSource(resolved.parent, file=file_name))
-
     @property
     def path(self):
         """Path used for file-export methods."""
-        return self._source.path or pathlib.Path.cwd()
-
-    @property
-    def _path(self):
-        return self.path
+        return self._path
 
     def __getitem__(self, steps) -> "PairCorrelation":
         new = copy.copy(self)
@@ -236,11 +219,11 @@ class PairCorrelation(graph.Mixin):
             PairCorrelationHandler.labels,
         )
 
-    def __str__(self) -> str:
+    def __str__(self, selection=None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PairCorrelationHandler.__str__,
         )

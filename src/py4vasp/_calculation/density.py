@@ -350,11 +350,11 @@ class Density(view.Mixin):
     def _handler_factory(self, raw):
         return DensityHandler.from_data(raw, selection_name=self._selection_name)
 
-    def __str__(self):
+    def __str__(self, selection=None):
         return merge_strings(
             self._source,
             self._quantity_name,
-            self._selection_name,
+            selection or self._selection_name,
             self._handler_factory,
             DensityHandler.__str__,
         )

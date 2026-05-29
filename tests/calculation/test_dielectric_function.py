@@ -455,7 +455,6 @@ def test_to_database_ionic(ionic):
     _check_to_database(ionic)
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dielectric_function("electron")
     check_factory_methods(DielectricFunction, data)

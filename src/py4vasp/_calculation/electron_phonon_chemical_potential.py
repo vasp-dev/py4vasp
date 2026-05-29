@@ -132,14 +132,14 @@ class ElectronPhononChemicalPotential:
     def _handler_factory(self, raw):
         return ElectronPhononChemicalPotentialHandler.from_data(raw)
 
-    def __str__(self) -> str:
+    def __str__(self, selection=None) -> str:
         """
         Return a formatted string representation of the electron-phonon chemical potential object.
         """
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ElectronPhononChemicalPotentialHandler.__str__,
         )

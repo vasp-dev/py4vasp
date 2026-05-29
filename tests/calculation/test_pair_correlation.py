@@ -109,7 +109,6 @@ def test_to_database(pair_correlation, raw_data):
     assert db_data.distance_max == float(pair_correlation.ref.distances[-1])
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.pair_correlation("Sr2TiO4")
     check_factory_methods(PairCorrelation, data)

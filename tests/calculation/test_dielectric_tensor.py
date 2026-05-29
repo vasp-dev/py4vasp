@@ -155,7 +155,6 @@ Macroscopic static dielectric tensor (dimensionless)
     assert actual == {"text/plain": expected}
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dielectric_tensor("dft with_ion")
     check_factory_methods(DielectricTensor, data)

@@ -325,7 +325,6 @@ def test_missing_orbitals_print(missing_orbitals, format_):
     assert actual == {"text/plain": "no projectors"}
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods, projections):
     data = raw_data.projector("Sr2TiO4")
     parameters = {"project": {"selection": "Sr", "projections": projections}}

@@ -1,6 +1,5 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import pathlib
 from contextlib import suppress
 
 import numpy as np
@@ -9,7 +8,6 @@ from py4vasp import exception, raw
 from py4vasp._calculation import cell
 from py4vasp._calculation.dispatch import (
     DataSource,
-    FileSource,
     merge_default,
     merge_strings,
     quantity,
@@ -261,17 +259,6 @@ class PiezoelectricTensor:
         """Create a PiezoelectricTensor dispatcher from raw data (convenience for testing)."""
         return cls(source=DataSource(raw_piezoelectric_tensor))
 
-    @classmethod
-    def from_path(cls, path="."):
-        """Create a PiezoelectricTensor dispatcher that reads from HDF5 files at *path*."""
-        return cls(source=FileSource(path))
-
-    @classmethod
-    def from_file(cls, file_name):
-        """Create a PiezoelectricTensor dispatcher that reads from a specific HDF5 file."""
-        resolved = pathlib.Path(file_name).expanduser().resolve()
-        return cls(source=FileSource(resolved.parent, file=file_name))
-
     def read(self) -> dict:
         """Read the ionic and electronic contribution to the piezoelectric tensor
         into a dictionary.
@@ -297,11 +284,11 @@ class PiezoelectricTensor:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read()
 
-    def __str__(self):
+    def __str__(self, selection=None):
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             PiezoelectricTensorHandler.from_data,
             PiezoelectricTensorHandler.__str__,
         )

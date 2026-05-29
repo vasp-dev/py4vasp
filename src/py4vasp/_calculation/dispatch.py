@@ -24,6 +24,9 @@ _REGISTRY = {}
 def quantity(name, group=None):
     """Decorator that registers a dispatcher class in the registry.
 
+    Also injects ``from_path``, ``from_file``, and a ``_path`` property
+    onto the class so that every dispatcher can be instantiated standalone.
+
     Parameters
     ----------
     name : str
@@ -34,6 +37,26 @@ def quantity(name, group=None):
 
     def decorator(cls):
         cls._quantity_name = name
+
+        @classmethod
+        def from_path(klass, path="."):
+            """Create dispatcher that reads from HDF5 files at *path*."""
+            return klass(source=FileSource(path))
+
+        @classmethod
+        def from_file(klass, file_name):
+            """Create dispatcher that reads from a specific HDF5 file."""
+            resolved = pathlib.Path(file_name).expanduser().resolve()
+            return klass(source=FileSource(resolved.parent, file=file_name))
+
+        cls.from_path = from_path
+        cls.from_file = from_file
+
+        if not isinstance(getattr(cls, "_path", None), property):
+            cls._path = property(
+                lambda self: self._source.path or pathlib.Path.cwd()
+            )
+
         if group is None:
             _REGISTRY[name] = cls
         else:
@@ -159,20 +182,27 @@ class DictSource:
 
 
 def _method_accepts_selection(method):
-    """Check if the handler method's first positional parameter (after self) is 'selection'."""
+    """Check if the handler method's first positional parameter (after self) is 'selection'.
+
+    Returns a tuple (accepts, has_default) where:
+    - accepts: True if the first param is named 'selection'
+    - has_default: True if that param has a default value
+    """
     try:
         sig = inspect.signature(method)
         params = list(sig.parameters.values())
         non_self = [p for p in params if p.name != "self"]
         if not non_self:
-            return False
+            return False, False
         first = non_self[0]
-        return first.name == "selection" and first.kind in (
+        accepts = first.name == "selection" and first.kind in (
             inspect.Parameter.POSITIONAL_ONLY,
             inspect.Parameter.POSITIONAL_OR_KEYWORD,
         )
+        has_default = first.default is not inspect.Parameter.empty
+        return accepts, has_default
     except (ValueError, TypeError):
-        return False
+        return False, False
 
 
 def _dispatch(
@@ -205,13 +235,16 @@ def _dispatch(
         Maps selection_name (or "default") to each result.
     """
     contexts = _parse_selections(quantity_name, selection)
-    handler_wants_selection = _method_accepts_selection(method)
+    handler_wants_selection, selection_has_default = _method_accepts_selection(method)
     results = {}
     for ctx in contexts:
         with source.access(quantity_name, selection=ctx.selection_name) as raw:
             handler = handler_factory(raw)
             if handler_wants_selection:
-                result = method(handler, ctx.remaining_selection, *args, **kwargs)
+                if ctx.remaining_selection is None and selection_has_default:
+                    result = method(handler, *args, **kwargs)
+                else:
+                    result = method(handler, ctx.remaining_selection, *args, **kwargs)
             else:
                 result = method(handler, *args, **kwargs)
             key = ctx.selection_name or "default"

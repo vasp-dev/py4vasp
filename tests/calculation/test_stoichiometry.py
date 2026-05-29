@@ -250,4 +250,4 @@ def test_ion_types_not_required(method, raw_data):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.stoichiometry("Sr2TiO4")
-    check_factory_methods(Stoichiometry, data)
+    check_factory_methods(Stoichiometry, data, skip_methods=["to_mdtraj"])

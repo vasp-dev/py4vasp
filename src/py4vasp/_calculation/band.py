@@ -324,7 +324,6 @@ class Band(graph.Mixin):
     def __init__(self, source, quantity_name="band"):
         self._source = source
         self._quantity_name = quantity_name
-        self._path = pathlib.Path.cwd()
 
     @classmethod
     def from_data(cls, raw_band):

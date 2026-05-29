@@ -1,13 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import pathlib
 
 import numpy as np
 
 from py4vasp import raw
 from py4vasp._calculation.dispatch import (
     DataSource,
-    FileSource,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -280,22 +278,6 @@ class DielectricFunction(graph.Mixin):
     ) -> "DielectricFunction":
         """Create a DielectricFunction dispatcher from raw data (convenience for testing)."""
         return cls(source=DataSource(raw_dielectric_function))
-
-    @classmethod
-    def from_path(cls, path=".") -> "DielectricFunction":
-        """Create a DielectricFunction dispatcher that reads from HDF5 files at *path*."""
-        return cls(source=FileSource(path))
-
-    @classmethod
-    def from_file(cls, file_name) -> "DielectricFunction":
-        """Create a DielectricFunction dispatcher that reads from a specific HDF5 file."""
-        resolved = pathlib.Path(file_name).expanduser().resolve()
-        return cls(source=FileSource(resolved.parent, file=file_name))
-
-    @property
-    def _path(self):
-        """Path used for file-export methods. Falls back to cwd."""
-        return self._source.path or pathlib.Path.cwd()
 
     @property
     def path(self):

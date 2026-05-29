@@ -104,11 +104,11 @@ class PhononMode:
     def _handler_factory(self, raw):
         return PhononModeHandler.from_data(raw)
 
-    def __str__(self) -> str:
+    def __str__(self, selection=None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PhononModeHandler.__str__,
         )

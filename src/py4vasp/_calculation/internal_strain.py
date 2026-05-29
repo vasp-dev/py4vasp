@@ -1,11 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import pathlib
 
 from py4vasp import raw
 from py4vasp._calculation.dispatch import (
     DataSource,
-    FileSource,
     merge_default,
     merge_strings,
     quantity,
@@ -76,26 +74,11 @@ class InternalStrain:
         """Create an InternalStrain dispatcher from raw data (convenience for testing)."""
         return cls(source=DataSource(raw_internal_strain))
 
-    @classmethod
-    def from_path(cls, path=".") -> "InternalStrain":
-        """Create an InternalStrain dispatcher that reads from HDF5 files at *path*."""
-        return cls(source=FileSource(path))
-
-    @classmethod
-    def from_file(cls, file_name) -> "InternalStrain":
-        """Create an InternalStrain dispatcher that reads from a specific HDF5 file."""
-        resolved = pathlib.Path(file_name).expanduser().resolve()
-        return cls(source=FileSource(resolved.parent, file=file_name))
-
-    @property
-    def _path(self):
-        return self._source.path
-
-    def __str__(self) -> str:
+    def __str__(self, selection=None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             InternalStrainHandler.from_data,
             InternalStrainHandler.__str__,
         )

@@ -99,7 +99,6 @@ def test_to_database(raw_data):
     assert actual == expected
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     raw_workfunction = raw_data.workfunction("1")
     check_factory_methods(Workfunction, raw_workfunction)

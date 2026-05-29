@@ -1,11 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import pathlib
 
 from py4vasp import raw
 from py4vasp._calculation.dispatch import (
     DataSource,
-    FileSource,
     merge_default,
     merge_strings,
     quantity,
@@ -59,17 +57,6 @@ class System:
         """Create a System dispatcher from raw data (convenience for testing)."""
         return cls(source=DataSource(raw_system))
 
-    @classmethod
-    def from_path(cls, path=".") -> "System":
-        """Create a System dispatcher that reads from HDF5 files at *path*."""
-        return cls(source=FileSource(path))
-
-    @classmethod
-    def from_file(cls, file_name) -> "System":
-        """Create a System dispatcher that reads from a specific HDF5 file."""
-        resolved = pathlib.Path(file_name).expanduser().resolve()
-        return cls(source=FileSource(resolved.parent, file=file_name))
-
     def read(self) -> dict:
         """Read the system tag into a dictionary.
 
@@ -100,11 +87,11 @@ class System:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read()
 
-    def __str__(self) -> str:
+    def __str__(self, selection=None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             SystemHandler.from_data,
             SystemHandler.__str__,
         )

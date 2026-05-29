@@ -125,7 +125,6 @@ def test_to_database(stresses, Assert):
     Assert.allclose(db_data.final_stress_tensor, reduced_final_tensor)
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.stress("Sr2TiO4")
     check_factory_methods(Stress, data)

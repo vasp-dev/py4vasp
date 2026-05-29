@@ -410,7 +410,6 @@ def test_to_database(reference_potential):
     )
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.potential("Fe3O4 collinear total")
     check_factory_methods(Potential, data)

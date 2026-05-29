@@ -487,7 +487,6 @@ class ElectronPhononTransport(abc.Sequence, graph.Mixin):
     def __init__(self, source, quantity_name: str = "electron_phonon_transport"):
         self._source = source
         self._quantity_name = quantity_name
-        self._path = pathlib.Path.cwd()
 
     @classmethod
     def from_data(

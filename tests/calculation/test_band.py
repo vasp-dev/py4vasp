@@ -582,7 +582,6 @@ def test_to_database_noncollinear_projectors(noncollinear_projectors):
     _check_to_database(noncollinear_projectors)
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.band("multiple")
     parameters = {"to_quiver": {"selection": "x~y(band=1)"}}

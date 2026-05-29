@@ -75,7 +75,6 @@ def test_to_database(phonon_mode):
     )
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.phonon_mode("Sr2TiO4")
     check_factory_methods(PhononMode, data)

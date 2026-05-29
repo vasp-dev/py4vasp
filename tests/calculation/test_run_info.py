@@ -116,7 +116,6 @@ def test_to_database(run_info_handler):
     _check_dict(run_info_handler.to_database()["run_info"], run_info_handler.ref)
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.run_info("Sr2TiO4")
     check_factory_methods(RunInfo, data)

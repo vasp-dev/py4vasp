@@ -123,7 +123,6 @@ class PhononBand(graph.Mixin):
     def __init__(self, source, quantity_name: str = "phonon_band"):
         self._source = source
         self._quantity_name = quantity_name
-        self._path = pathlib.Path.cwd()
 
     @classmethod
     def from_data(cls, raw_phonon_band: raw.PhononBand) -> "PhononBand":
@@ -188,7 +187,7 @@ class PhononBand(graph.Mixin):
             selection,
             self._handler_factory,
             PhononBandHandler.to_graph,
-            width,
+            width=width,
         )
 
     def selections(self, selection=None) -> dict:

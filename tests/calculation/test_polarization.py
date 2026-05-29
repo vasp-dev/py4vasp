@@ -75,7 +75,6 @@ def test_to_database(raw_data):
     assert db_data.total_dipole_norm == float(np.linalg.norm(total_dipole))
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.polarization("default")
     check_factory_methods(Polarization, data)

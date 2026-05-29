@@ -140,7 +140,6 @@ class PhononDos(graph.Mixin):
     def __init__(self, source, quantity_name: str = "phonon_dos"):
         self._source = source
         self._quantity_name = quantity_name
-        self._path = pathlib.Path.cwd()
 
     @classmethod
     def from_data(cls, raw_phonon_dos: raw.PhononDos) -> "PhononDos":

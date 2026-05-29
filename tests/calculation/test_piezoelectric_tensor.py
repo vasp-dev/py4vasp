@@ -144,7 +144,6 @@ def test_to_database_as_slab(raw_data, piezoelectric_tensor_as_slab):
     _check_to_database(raw_tensor, piezoelectric_tensor_as_slab.ref)
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.piezoelectric_tensor("default")
     check_factory_methods(PiezoelectricTensor, data)

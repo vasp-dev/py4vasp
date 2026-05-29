@@ -96,7 +96,6 @@ def test_print(chemical_potential, format_):
     assert actual == {"text/plain": str(chemical_potential)}
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.electron_phonon_chemical_potential("carrier_den")
     check_factory_methods(ChemicalPotential, data)

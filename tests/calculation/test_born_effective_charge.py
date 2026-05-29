@@ -74,7 +74,6 @@ ion    7   O
     assert actual == {"text/plain": reference}
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.born_effective_charge("Sr2TiO4")
     check_factory_methods(BornEffectiveCharge, data)

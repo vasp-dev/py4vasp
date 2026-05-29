@@ -303,7 +303,6 @@ def test_print_instance(band_gap, format_):
     assert actual == {"text/plain": str(instance)}
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.electron_phonon_band_gap("default")
     parameters = {"select": {"selection": "selfen_carrier_den=0.01"}}

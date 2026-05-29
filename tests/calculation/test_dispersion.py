@@ -112,7 +112,6 @@ def test_print(dispersion, format_):
     assert actual == {"text/plain": reference}
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dispersion("single_band")
     check_factory_methods(Dispersion, data)

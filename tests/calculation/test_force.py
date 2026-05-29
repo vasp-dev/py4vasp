@@ -138,7 +138,6 @@ def test_to_database(forces):
         )
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.force("Fe3O4")
     check_factory_methods(Force, data)

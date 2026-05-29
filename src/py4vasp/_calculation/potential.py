@@ -309,11 +309,11 @@ class Potential(view.Mixin):
     def _handler_factory(self, raw):
         return PotentialHandler.from_data(raw)
 
-    def __str__(self):
+    def __str__(self, selection=None):
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PotentialHandler.__str__,
         )

@@ -158,7 +158,6 @@ def test_to_database(elastic_moduli):
             ), f"mismatch in {key}: expected {value}, got {getattr(overview, key)}."
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.elastic_modulus("dft")
     check_factory_methods(ElasticModulus, data)

@@ -73,7 +73,6 @@ def test_to_database(exciton_eigenvector):
             assert isinstance(getattr(db_data, fld.name), (int, type(None)))
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.exciton_eigenvector("default")
     check_factory_methods(ExcitonEigenvector, data)

@@ -227,7 +227,6 @@ def test_to_database(MD_energy, raw_data):
             ) from e
 
 
-@pytest.mark.skip(reason="Dispatcher not yet wired to Calculation")
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.energy("MD")
     check_factory_methods(Energy, data)

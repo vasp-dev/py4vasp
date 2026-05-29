@@ -1,13 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import pathlib
 from contextlib import suppress
 
 from py4vasp import exception, raw
 from py4vasp._calculation import bandgap as bandgap_module
 from py4vasp._calculation.dispatch import (
     DataSource,
-    FileSource,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -122,22 +120,6 @@ class Workfunction(graph.Mixin):
         """Create a Workfunction dispatcher from raw data (convenience for testing)."""
         return cls(source=DataSource(raw_workfunction))
 
-    @classmethod
-    def from_path(cls, path=".") -> "Workfunction":
-        """Create a Workfunction dispatcher that reads from HDF5 files at *path*."""
-        return cls(source=FileSource(path))
-
-    @classmethod
-    def from_file(cls, file_name) -> "Workfunction":
-        """Create a Workfunction dispatcher that reads from a specific HDF5 file."""
-        resolved = pathlib.Path(file_name).expanduser().resolve()
-        return cls(source=FileSource(resolved.parent, file=file_name))
-
-    @property
-    def _path(self):
-        """Path used for file-export methods. Falls back to cwd."""
-        return self._source.path or pathlib.Path.cwd()
-
     @property
     def path(self):
         """Returns the path from which the output is obtained."""
@@ -190,11 +172,11 @@ class Workfunction(graph.Mixin):
             WorkfunctionHandler.to_graph,
         )
 
-    def __str__(self) -> str:
+    def __str__(self, selection=None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             WorkfunctionHandler.__str__,
         )
