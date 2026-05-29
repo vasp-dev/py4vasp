@@ -307,11 +307,11 @@ class Kpoint:
 
         Examples
         --------
-        Get the number of lines in the Brillouin zone:
+        Get the number of lines in the Brillouin zone for the "kpoints_opt" mesh:
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
-        >>> calculation.kpoint.number_lines()
+        >>> calculation.kpoint.number_lines(selection="kpoints_opt")
         4
         """
         return merge_default(
@@ -388,11 +388,11 @@ class Kpoint:
 
         Examples
         --------
-        Get the **k**-point generation mode:
+        Get the **k**-point generation mode specified in the KPOINTS_OPT file:
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
-        >>> calculation.kpoint.mode()
+        >>> calculation.kpoint.mode(selection="kpoints_opt")
         'line'
         """
         return merge_default(
@@ -433,9 +433,11 @@ class Kpoint:
         >>> result = calculation.kpoint.labels()
         >>> assert result is None
 
-        If line mode is used, VASP automatically assigns labels to the band edges:
+        If line mode is used VASP automatically assigns labels to the band edges. In this case,
+        the method returns a list where band-edge points carry LaTeX-formatted coordinates and
+        interior points are empty strings. The example below uses the KPOINTS_OPT file:
 
-        >>> calculation.kpoint.labels()
+        >>> calculation.kpoint.labels(selection="kpoints_opt")
         ['$[0 0 0]$', ...]
         """
         return merge_default(
