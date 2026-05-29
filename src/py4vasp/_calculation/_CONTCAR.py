@@ -132,7 +132,7 @@ class CONTCAR(view.Mixin):
         """Alias for read()."""
         return self.read(selection=selection)
 
-    def to_view(self, selection=None, supercell=None):
+    def to_view(self, supercell=None, selection=None):
         """Generate a visualization of the final structure."""
         return merge_default(
             self._source,
