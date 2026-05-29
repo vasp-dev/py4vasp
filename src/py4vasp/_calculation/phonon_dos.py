@@ -149,11 +149,11 @@ class PhononDos(graph.Mixin):
     def _handler_factory(self, raw):
         return PhononDosHandler.from_data(raw)
 
-    def __str__(self) -> str:
+    def __str__(self, selection=None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PhononDosHandler.__str__,
         )
@@ -179,10 +179,9 @@ class PhononDos(graph.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PhononDosHandler.to_dict,
-            selection,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
@@ -206,18 +205,17 @@ class PhononDos(graph.Mixin):
         return merge_graphs(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PhononDosHandler.to_graph,
-            selection,
         )
 
-    def selections(self, selection: str | None = None) -> dict:
+    def selections(self, selection=None) -> dict:
         """Return atom and direction selections available for projection."""
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PhononDosHandler.selections,
         )

@@ -3,7 +3,12 @@
 import copy
 
 from py4vasp._calculation import _stoichiometry
-from py4vasp._calculation.dispatch import DataSource, merge_default, merge_strings, quantity
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
 from py4vasp._raw.data_db import CONTCAR_DB
@@ -101,11 +106,11 @@ class CONTCAR(view.Mixin):
     def _handler_factory(self, raw):
         return CONTCARHandler.from_data(raw)
 
-    def __str__(self):
+    def __str__(self, selection=None):
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             CONTCARHandler.__str__,
         )
@@ -118,7 +123,7 @@ class CONTCAR(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             CONTCARHandler.read,
         )
@@ -127,12 +132,12 @@ class CONTCAR(view.Mixin):
         """Alias for read()."""
         return self.read(selection=selection)
 
-    def to_view(self, supercell=None):
+    def to_view(self, selection=None, supercell=None):
         """Generate a visualization of the final structure."""
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             CONTCARHandler.to_view,
             supercell,

@@ -237,11 +237,11 @@ class Dos(graph.Mixin):
     def _handler_factory(self, raw):
         return DosHandler.from_data(raw)
 
-    def __str__(self):
+    def __str__(self, selection=None):
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             DosHandler.__str__,
         )
@@ -350,7 +350,6 @@ class Dos(graph.Mixin):
             selection,
             self._handler_factory,
             DosHandler.to_dict,
-            selection,
         )
 
     def to_dict(self, selection=None) -> dict:
@@ -455,7 +454,6 @@ class Dos(graph.Mixin):
             selection,
             self._handler_factory,
             DosHandler.to_graph,
-            selection,
         )
 
     @documentation.format(selection_doc=projector.selection_doc)
@@ -550,16 +548,15 @@ class Dos(graph.Mixin):
             selection,
             self._handler_factory,
             DosHandler.to_frame,
-            selection,
         )
 
-    def selections(self) -> dict:
+    def selections(self, selection=None) -> dict:
         from py4vasp._raw import definition as raw_module
 
         handler_selections = merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             DosHandler.selections,
         )

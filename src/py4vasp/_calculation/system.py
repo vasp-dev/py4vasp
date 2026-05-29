@@ -70,7 +70,7 @@ class System:
         resolved = pathlib.Path(file_name).expanduser().resolve()
         return cls(source=FileSource(resolved.parent, file=file_name))
 
-    def read(self, selection: str | None = None) -> dict:
+    def read(self) -> dict:
         """Read the system tag into a dictionary.
 
         Returns
@@ -91,14 +91,14 @@ class System:
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             SystemHandler.from_data,
             SystemHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read(selection=selection)
+        return self.read()
 
     def __str__(self) -> str:
         return merge_strings(

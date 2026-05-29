@@ -116,7 +116,7 @@ class PhononMode:
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self, selection: str | None = None) -> dict:
+    def read(self) -> dict:
         """Read structure data and properties of the phonon mode into a dictionary.
 
         The frequency and eigenvector describe with how atoms move under the influence
@@ -131,21 +131,21 @@ class PhononMode:
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             PhononModeHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read(selection=selection)
+        return self.read()
 
-    def frequencies(self, selection: str | None = None) -> np.ndarray:
+    def frequencies(self) -> np.ndarray:
         """Read the phonon frequencies as a numpy array."""
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             PhononModeHandler.frequencies,
         )

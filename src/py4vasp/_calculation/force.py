@@ -215,12 +215,12 @@ class Force(view.Mixin):
     def _handler_factory(self, raw):
         return ForceHandler.from_data(raw, steps=self._steps)
 
-    def __str__(self, selection: str | None = None) -> str:
+    def __str__(self) -> str:
         "Convert the forces to a format similar to the OUTCAR file."
         return merge_strings(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             ForceHandler.__str__,
         )
@@ -228,7 +228,7 @@ class Force(view.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self) if not cycle else "...")
 
-    def read(self, selection: str | None = None) -> dict:
+    def read(self) -> dict:
         """Read the forces into a dictionary.
 
         Forces and associated structural information for one or more selected steps of
@@ -275,14 +275,14 @@ class Force(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             ForceHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read(selection=selection)
+        return self.read()
 
     def to_view(self, supercell=None) -> view.View:
         """Visualize the forces showing arrows at the atoms.
@@ -349,12 +349,12 @@ class Force(view.Mixin):
             supercell,
         )
 
-    def number_steps(self, selection: str | None = None) -> int:
+    def number_steps(self) -> int:
         """Return the number of forces in the trajectory."""
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             ForceHandler.number_steps,
         )

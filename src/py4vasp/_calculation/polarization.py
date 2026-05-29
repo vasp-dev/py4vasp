@@ -116,7 +116,7 @@ class Polarization:
         resolved = pathlib.Path(file_name).expanduser().resolve()
         return cls(source=FileSource(resolved.parent, file=file_name))
 
-    def read(self, selection: str | None = None) -> dict:
+    def read(self) -> dict:
         """Read electronic and ionic polarization into a dictionary.
 
         Returns
@@ -127,14 +127,14 @@ class Polarization:
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             PolarizationHandler.from_data,
             PolarizationHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read(selection=selection)
+        return self.read()
 
     def __str__(self):
         return merge_strings(

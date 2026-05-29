@@ -3,7 +3,12 @@
 import numpy as np
 
 import py4vasp._third_party.graph as _graph
-from py4vasp._calculation.dispatch import DataSource, merge_default, merge_strings, quantity
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._calculation.kpoint import KpointHandler
 from py4vasp._calculation import projector
 from py4vasp._raw import data as raw
@@ -113,8 +118,11 @@ class Dispersion:
 
     def __str__(self):
         return merge_strings(
-            self._source, self._quantity_name, None,
-            self._handler_factory, DispersionHandler.__str__,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            DispersionHandler.__str__,
         )
 
     def _repr_pretty_(self, p, cycle):
@@ -122,8 +130,11 @@ class Dispersion:
 
     def read(self, selection=None) -> dict:
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, DispersionHandler.read,
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            DispersionHandler.read,
         )
 
     def to_dict(self, selection=None) -> dict:
@@ -131,8 +142,11 @@ class Dispersion:
 
     def plot(self, projections=None):
         return merge_default(
-            self._source, self._quantity_name, None,
-            self._handler_factory, DispersionHandler.plot,
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            DispersionHandler.plot,
             projections,
         )
 

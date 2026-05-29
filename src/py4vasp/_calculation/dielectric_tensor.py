@@ -206,7 +206,7 @@ class DielectricTensor:
     def _handler_factory(self, raw_data):
         return DielectricTensorHandler.from_data(raw_data)
 
-    def read(self, selection: str | None = None) -> dict:
+    def read(self) -> dict:
         """Read the dielectric tensor into a dictionary.
 
         Returns
@@ -218,20 +218,20 @@ class DielectricTensor:
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             DielectricTensorHandler.to_dict,
         )
 
-    def to_dict(self, selection: str | None = None) -> dict:
+    def to_dict(self) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read(selection=selection)
+        return self.read()
 
-    def __str__(self, selection: str | None = None):
+    def __str__(self):
         return merge_strings(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             DielectricTensorHandler.__str__,
         )

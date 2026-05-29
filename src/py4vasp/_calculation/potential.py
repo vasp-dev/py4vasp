@@ -321,7 +321,7 @@ class Potential(view.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self, selection=None) -> dict:
+    def read(self) -> dict:
         """Store all available contributions to the potential in a dictionary.
 
         Returns
@@ -341,9 +341,9 @@ class Potential(view.Mixin):
             PotentialHandler.to_dict,
         )
 
-    def to_dict(self, selection=None) -> dict:
+    def to_dict(self) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read(selection=selection)
+        return self.read()
 
     def to_view(
         self,
@@ -373,10 +373,9 @@ class Potential(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PotentialHandler.to_view,
-            selection,
             supercell=supercell,
             **user_options,
         )
@@ -431,10 +430,9 @@ class Potential(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PotentialHandler.to_contour,
-            selection,
             a=a,
             b=b,
             c=c,
@@ -486,10 +484,9 @@ class Potential(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PotentialHandler.to_quiver,
-            selection,
             a=a,
             b=b,
             c=c,

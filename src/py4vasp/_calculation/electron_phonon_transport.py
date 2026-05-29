@@ -498,11 +498,11 @@ class ElectronPhononTransport(abc.Sequence, graph.Mixin):
     def _handler_factory(self, raw):
         return ElectronPhononTransportHandler.from_data(raw)
 
-    def __str__(self):
+    def __str__(self, selection=None):
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ElectronPhononTransportHandler.__str__,
         )

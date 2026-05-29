@@ -294,11 +294,11 @@ class Projector:
     def _handler_factory(self, raw):
         return ProjectorHandler.from_data(raw)
 
-    def __str__(self):
+    def __str__(self, selection=None):
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ProjectorHandler.__str__,
         )
@@ -346,7 +346,7 @@ class Projector:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ProjectorHandler.to_dict,
         )
@@ -355,13 +355,13 @@ class Projector:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
-    def selections(self) -> dict:
+    def selections(self, selection=None) -> dict:
         from py4vasp._raw import definition as raw_module
 
         handler_selections = merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ProjectorHandler.selections,
         )
@@ -371,9 +371,8 @@ class Projector:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ProjectorHandler.project,
-            selection,
             projections,
         )

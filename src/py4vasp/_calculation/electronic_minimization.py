@@ -262,7 +262,6 @@ class ElectronicMinimization(graph.Mixin):
             selection,
             self._handler_factory,
             ElectronicMinimizationHandler.to_dict,
-            selection,
         )
 
     def to_dict(self, selection=None) -> dict:
@@ -289,7 +288,6 @@ class ElectronicMinimization(graph.Mixin):
             selection,
             self._handler_factory,
             ElectronicMinimizationHandler.to_graph,
-            selection,
         )
 
     def is_converged(self) -> np.ndarray:
@@ -302,11 +300,11 @@ class ElectronicMinimization(graph.Mixin):
             ElectronicMinimizationHandler.is_converged,
         )
 
-    def __str__(self, selection: str | None = None) -> str:
+    def __str__(self) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             ElectronicMinimizationHandler.__str__,
         )

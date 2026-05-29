@@ -352,11 +352,11 @@ class LocalMoment(view.Mixin):
     def _handler_factory(self, raw):
         return LocalMomentHandler.from_data(raw, steps=self._steps)
 
-    def __str__(self, selection=None) -> str:
+    def __str__(self) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             LocalMomentHandler.__str__,
         )
@@ -365,7 +365,7 @@ class LocalMoment(view.Mixin):
         p.text(str(self) if not cycle else "...")
 
     @documentation.format(index_note=_index_note)
-    def read(self, selection=None) -> dict:
+    def read(self) -> dict:
         """Read the charges and magnetization data into a dictionary.
 
         Be careful when comparing the magnetic moments to experimental data. The
@@ -426,14 +426,14 @@ class LocalMoment(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             LocalMomentHandler.to_dict,
         )
 
-    def to_dict(self, selection=None) -> dict:
+    def to_dict(self) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read(selection=selection)
+        return self.read()
 
     @documentation.format(selection=_moment_selection)
     def to_view(self, selection="total", supercell=None):
@@ -504,14 +504,13 @@ class LocalMoment(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             LocalMomentHandler.to_view,
-            selection,
             supercell,
         )
 
-    def projected_charge(self, selection=None):
+    def projected_charge(self):
         """Read the orbital- and site-projected charges of the selected steps.
 
         Returns
@@ -545,7 +544,7 @@ class LocalMoment(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             LocalMomentHandler.projected_charge,
         )
@@ -610,13 +609,12 @@ class LocalMoment(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             LocalMomentHandler.projected_magnetic,
-            selection,
         )
 
-    def charge(self, selection=None):
+    def charge(self):
         """Read the site-projected charges of the selected steps.
 
         Returns
@@ -657,7 +655,7 @@ class LocalMoment(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             LocalMomentHandler.charge,
         )
@@ -733,27 +731,26 @@ class LocalMoment(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             LocalMomentHandler.magnetic,
-            selection,
         )
 
-    def selections(self, selection=None) -> dict:
+    def selections(self) -> dict:
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             LocalMomentHandler.selections,
         )
 
-    def number_steps(self, selection=None) -> int:
+    def number_steps(self) -> int:
         """Return the number of local moments in the trajectory."""
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             LocalMomentHandler.number_steps,
         )

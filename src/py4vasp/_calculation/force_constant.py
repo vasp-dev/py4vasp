@@ -170,16 +170,16 @@ class ForceConstant:
     def _path(self):
         return self._source.path
 
-    def __str__(self, selection: str | None = None) -> str:
+    def __str__(self) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             ForceConstantHandler.from_data,
             ForceConstantHandler.__str__,
         )
 
-    def read(self, selection: str | None = None) -> dict:
+    def read(self) -> dict:
         """Read structure information and force constants into a dictionary.
 
         The structural information is added to inform about which atoms are included
@@ -194,26 +194,26 @@ class ForceConstant:
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             ForceConstantHandler.from_data,
             ForceConstantHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read(selection=selection)
+        return self.read()
 
-    def eigenvectors(self, selection: str | None = None):
+    def eigenvectors(self):
         """Compute the eigenvectors of the force constant matrix."""
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             ForceConstantHandler.from_data,
             ForceConstantHandler.eigenvectors,
         )
 
-    def to_molden(self, selection: str | None = None) -> str:
+    def to_molden(self) -> str:
         """Convert the eigenvectors of the force constant into molden format.
 
         Keep in mind that the eigenvectors indicate the direction of the forces and do
@@ -227,7 +227,7 @@ class ForceConstant:
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             ForceConstantHandler.from_data,
             ForceConstantHandler.to_molden,
         )

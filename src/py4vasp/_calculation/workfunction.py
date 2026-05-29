@@ -146,7 +146,7 @@ class Workfunction(graph.Mixin):
     def _handler_factory(self, raw_data):
         return WorkfunctionHandler.from_data(raw_data)
 
-    def read(self, selection: str | None = None) -> dict:
+    def read(self) -> dict:
         """Reports useful information about the workfunction as a dictionary.
 
         In addition to the vacuum potential, the dictionary contains typical reference
@@ -163,16 +163,16 @@ class Workfunction(graph.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             WorkfunctionHandler.read,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Public alias for read(). Check that method for examples and optional arguments."""
-        return self.read(selection=selection)
+        return self.read()
 
-    def to_graph(self, selection: str | None = None) -> graph.Graph:
+    def to_graph(self) -> graph.Graph:
         """Plot the average potential along the lattice vector selected by IDIPOL.
 
         Returns
@@ -185,16 +185,16 @@ class Workfunction(graph.Mixin):
         return merge_graphs(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             WorkfunctionHandler.to_graph,
         )
 
-    def __str__(self, selection: str | None = None) -> str:
+    def __str__(self) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             WorkfunctionHandler.__str__,
         )

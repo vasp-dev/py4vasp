@@ -349,7 +349,6 @@ class DielectricFunction(graph.Mixin):
             selection,
             self._handler_factory,
             DielectricFunctionHandler.to_graph,
-            selection,
         )
 
     def selections(self, selection: str | None = None) -> dict:

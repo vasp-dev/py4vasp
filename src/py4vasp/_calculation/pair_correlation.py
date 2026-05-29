@@ -189,7 +189,6 @@ class PairCorrelation(graph.Mixin):
             selection,
             self._handler_factory,
             PairCorrelationHandler.to_dict,
-            selection,
         )
 
     @documentation.format(
@@ -225,24 +224,23 @@ class PairCorrelation(graph.Mixin):
             selection,
             self._handler_factory,
             PairCorrelationHandler.to_graph,
-            selection,
         )
 
-    def labels(self, selection: str | None = None) -> tuple:
+    def labels(self) -> tuple:
         """Return all possible labels for the selection string."""
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             PairCorrelationHandler.labels,
         )
 
-    def __str__(self, selection: str | None = None) -> str:
+    def __str__(self) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             PairCorrelationHandler.__str__,
         )

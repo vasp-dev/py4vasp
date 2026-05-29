@@ -215,11 +215,11 @@ class Kpoint:
     def _handler_factory(self, raw):
         return KpointHandler.from_data(raw)
 
-    def __str__(self):
+    def __str__(self, selection=None):
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             KpointHandler.__str__,
         )
@@ -257,12 +257,12 @@ class Kpoint:
         Select the **k** points from the "kpoints_opt" mesh instead of the default one:
 
         >>> calculation.kpoint.read(selection="kpoints_opt")
-        {'mode': ..., 'line_length': ..., 'number_kpoints': ..., 'coordinates': array(...), 'weights': array(...)}
+        {'mode': ..., 'line_length': ..., 'number_kpoints': ..., 'coordinates': array(...), 'weights': array(...), 'labels': ...}
         """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             KpointHandler.to_dict,
         )
@@ -271,7 +271,7 @@ class Kpoint:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
-    def line_length(self) -> int:
+    def line_length(self, selection=None) -> int:
         """Get the number of points per line in the Brillouin zone.
 
         Returns
@@ -291,12 +291,12 @@ class Kpoint:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             KpointHandler.line_length,
         )
 
-    def number_lines(self) -> int:
+    def number_lines(self, selection=None) -> int:
         """Get the number of lines in the Brillouin zone.
 
         Returns
@@ -317,12 +317,12 @@ class Kpoint:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             KpointHandler.number_lines,
         )
 
-    def number_kpoints(self) -> int:
+    def number_kpoints(self, selection=None) -> int:
         """Get the number of points in the Brillouin zone.
 
         Returns
@@ -342,12 +342,12 @@ class Kpoint:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             KpointHandler.number_kpoints,
         )
 
-    def distances(self) -> np.ndarray:
+    def distances(self, selection=None) -> np.ndarray:
         """Convert the coordinates of the **k** points into a one dimensional array.
 
         For every line in the Brillouin zone, the distance between each **k** point
@@ -373,12 +373,12 @@ class Kpoint:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             KpointHandler.distances,
         )
 
-    def mode(self) -> str:
+    def mode(self, selection=None) -> str:
         """Get the **k**-point generation mode specified in the Vasp input file.
 
         Returns
@@ -398,12 +398,12 @@ class Kpoint:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             KpointHandler.mode,
         )
 
-    def labels(self) -> list[str] | None:
+    def labels(self, selection=None) -> list[str] | None:
         """Get any labels given in the input file for specific **k** points.
 
         The returned labels depend on the **k**-point mode and whether the user
@@ -441,12 +441,14 @@ class Kpoint:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             KpointHandler.labels,
         )
 
-    def path_indices(self, start: ArrayLike, finish: ArrayLike) -> np.ndarray:
+    def path_indices(
+        self, start: ArrayLike, finish: ArrayLike, selection=None
+    ) -> np.ndarray:
         """Find linear dependent k points between start and finish.
 
         Loop over all possible k points and return the indices of the ones for which
@@ -487,7 +489,7 @@ class Kpoint:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             KpointHandler.path_indices,
             start,
@@ -499,11 +501,11 @@ class Kpoint:
 
         return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
 
-    def _reciprocal_lattice_vectors(self):
+    def _reciprocal_lattice_vectors(self, selection=None):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             KpointHandler._reciprocal_lattice_vectors,
         )

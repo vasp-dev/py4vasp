@@ -208,16 +208,16 @@ class RunInfo:
         resolved = pathlib.Path(file_name).expanduser().resolve()
         return cls(source=FileSource(resolved.parent, file=file_name))
 
-    def read(self, selection: str | None = None) -> dict:
+    def read(self) -> dict:
         "Convert the run information to a dictionary."
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             RunInfoHandler.from_data,
             RunInfoHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read(selection=selection)
+        return self.read()

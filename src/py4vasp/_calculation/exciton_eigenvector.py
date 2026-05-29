@@ -108,7 +108,7 @@ class ExcitonEigenvector:
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self, selection: str | None = None) -> dict:
+    def read(self) -> dict:
         """Read the data into a dictionary.
 
         Returns
@@ -124,11 +124,11 @@ class ExcitonEigenvector:
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             ExcitonEigenvectorHandler.to_dict,
         )
 
-    def to_dict(self, selection: str | None = None) -> dict:
+    def to_dict(self) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read(selection=selection)
+        return self.read()

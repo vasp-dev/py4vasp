@@ -421,7 +421,7 @@ class PartialDensity(view.Mixin):
         """Return the default STM settings."""
         return self.STM_settings()
 
-    def read(self, selection=None) -> dict:
+    def read(self) -> dict:
         """Store the partial charges in a dictionary.
 
         Returns
@@ -438,9 +438,9 @@ class PartialDensity(view.Mixin):
             PartialDensityHandler.to_dict,
         )
 
-    def to_dict(self, selection=None) -> dict:
+    def to_dict(self) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read(selection=selection)
+        return self.read()
 
     def grid(self):
         return merge_default(
@@ -511,10 +511,9 @@ class PartialDensity(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PartialDensityHandler.to_numpy,
-            selection,
             band=band,
             kpoint=kpoint,
         )
@@ -558,10 +557,9 @@ class PartialDensity(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PartialDensityHandler.to_view,
-            selection,
             supercell=supercell,
             **user_options,
         )
@@ -626,10 +624,9 @@ class PartialDensity(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PartialDensityHandler.to_stm,
-            selection,
             tip_height=tip_height,
             current=current,
             supercell=supercell,

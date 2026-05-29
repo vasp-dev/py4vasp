@@ -147,7 +147,7 @@ class ElectronPhononChemicalPotential:
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self, selection=None) -> Dict[str, Any]:
+    def read(self) -> Dict[str, Any]:
         """
         Convert the electron-phonon chemical potential data to a dictionary.
 
@@ -160,16 +160,16 @@ class ElectronPhononChemicalPotential:
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             ElectronPhononChemicalPotentialHandler.to_dict,
         )
 
     def to_dict(self, selection=None) -> Dict[str, Any]:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read(selection=selection)
+        return self.read()
 
-    def mu_tag(self, selection=None) -> Tuple[str, NDArray]:
+    def mu_tag(self) -> Tuple[str, NDArray]:
         """
         Get the INCAR tag and value used to set the carrier density or chemical potential.
 
@@ -187,12 +187,12 @@ class ElectronPhononChemicalPotential:
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             ElectronPhononChemicalPotentialHandler.mu_tag,
         )
 
-    def label(self, selection=None) -> str:
+    def label(self) -> str:
         """
         Get a descriptive label for the electron-phonon chemical potential data.
 
@@ -206,7 +206,7 @@ class ElectronPhononChemicalPotential:
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             ElectronPhononChemicalPotentialHandler.label,
         )

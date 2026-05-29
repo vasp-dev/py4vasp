@@ -215,11 +215,11 @@ class Velocity(view.Mixin):
     def _handler_factory(self, raw):
         return VelocityHandler.from_data(raw, steps=self._steps)
 
-    def __str__(self, selection: str | None = None) -> str:
+    def __str__(self) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             VelocityHandler.__str__,
         )
@@ -229,9 +229,9 @@ class Velocity(view.Mixin):
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read(selection=selection)
+        return self.read()
 
-    def read(self, selection: str | None = None) -> dict:
+    def read(self) -> dict:
         """Return the structure and ion velocities in a dictionary.
 
         Returns
@@ -273,12 +273,12 @@ class Velocity(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             VelocityHandler.to_dict,
         )
 
-    def to_numpy(self, selection: str | None = None) -> np.ndarray:
+    def to_numpy(self) -> np.ndarray:
         """Convert the ion velocities for the selected steps into a numpy array.
 
         The velocities are given in units of Å/fs.
@@ -320,7 +320,7 @@ class Velocity(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             VelocityHandler.to_numpy,
         )
@@ -389,12 +389,12 @@ class Velocity(view.Mixin):
             supercell,
         )
 
-    def number_steps(self, selection: str | None = None) -> int:
+    def number_steps(self) -> int:
         """Return the number of velocities in the trajectory."""
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             VelocityHandler.number_steps,
         )

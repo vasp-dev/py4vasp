@@ -91,16 +91,16 @@ class InternalStrain:
     def _path(self):
         return self._source.path
 
-    def __str__(self, selection: str | None = None) -> str:
+    def __str__(self) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             InternalStrainHandler.from_data,
             InternalStrainHandler.__str__,
         )
 
-    def read(self, selection: str | None = None) -> dict:
+    def read(self) -> dict:
         """Read the internal strain to a dictionary.
 
         Returns
@@ -113,14 +113,14 @@ class InternalStrain:
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             InternalStrainHandler.from_data,
             InternalStrainHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read(selection=selection)
+        return self.read()
 
 
 def _add_matrix_string(ion_string, displacement, matrix):

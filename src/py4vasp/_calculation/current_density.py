@@ -64,7 +64,10 @@ class CurrentDensityHandler:
 
     def to_dict(self) -> dict:
         """Read the current density and structural information into a Python dictionary."""
-        return {"structure": self._structure().to_dict(), **self._read_current_densities()}
+        return {
+            "structure": self._structure().to_dict(),
+            **self._read_current_densities(),
+        }
 
     def to_database(self) -> dict:
         density_dict = {"current_density": {}}
@@ -196,7 +199,7 @@ class CurrentDensity:
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self, selection=None) -> dict:
+    def read(self) -> dict:
         """Read the current density and structural information into a Python dictionary.
 
         Returns
@@ -212,9 +215,9 @@ class CurrentDensity:
             CurrentDensityHandler.to_dict,
         )
 
-    def to_dict(self, selection=None) -> dict:
+    def to_dict(self) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read(selection=selection)
+        return self.read()
 
     @documentation.format(plane=slicing.PLANE, parameters=_COMMON_PARAMETERS)
     def to_contour(
@@ -261,10 +264,9 @@ class CurrentDensity:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             CurrentDensityHandler.to_contour,
-            selection,
             a=a,
             b=b,
             c=c,
@@ -316,10 +318,9 @@ class CurrentDensity:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             CurrentDensityHandler.to_quiver,
-            selection,
             a=a,
             b=b,
             c=c,

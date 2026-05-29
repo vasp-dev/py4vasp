@@ -461,7 +461,6 @@ class Bandgap(graph.Mixin):
             selection,
             self._handler_factory,
             BandgapHandler.to_graph,
-            selection,
         )
 
     def __str__(self, selection: str | None = None):

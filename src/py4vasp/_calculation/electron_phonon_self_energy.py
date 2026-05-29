@@ -219,7 +219,7 @@ class ElectronPhononSelfEnergy(abc.Sequence):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self, selection=None):
+    def read(self):
         """Return a dictionary that lists how many accumulators are available
 
         Returns
@@ -230,16 +230,16 @@ class ElectronPhononSelfEnergy(abc.Sequence):
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             ElectronPhononSelfEnergyHandler.to_dict,
         )
 
     def to_dict(self, selection=None):
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read(selection=selection)
+        return self.read()
 
-    def selections(self, selection=None):
+    def selections(self):
         """Return a dictionary describing what options are available to read the electron self-energies.
 
         Returns
@@ -251,12 +251,12 @@ class ElectronPhononSelfEnergy(abc.Sequence):
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             ElectronPhononSelfEnergyHandler.selections,
         )
 
-    def chemical_potential_mu_tag(self, selection=None):
+    def chemical_potential_mu_tag(self):
         """Return the chemical potential tag and values.
 
         Returns
@@ -269,7 +269,7 @@ class ElectronPhononSelfEnergy(abc.Sequence):
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             ElectronPhononSelfEnergyHandler.chemical_potential_mu_tag,
         )

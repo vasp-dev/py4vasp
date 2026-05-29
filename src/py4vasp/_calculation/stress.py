@@ -182,12 +182,12 @@ class Stress:
     def _handler_factory(self, raw):
         return StressHandler.from_data(raw, steps=self._steps)
 
-    def __str__(self, selection: str | None = None) -> str:
+    def __str__(self) -> str:
         "Convert the stress to a format similar to the OUTCAR file."
         return merge_strings(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             StressHandler.__str__,
         )
@@ -197,9 +197,9 @@ class Stress:
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read(selection=selection)
+        return self.read()
 
-    def read(self, selection: str | None = None) -> dict:
+    def read(self) -> dict:
         """Read the stress and associated structural information for one or more
         selected steps of the trajectory.
 
@@ -242,17 +242,17 @@ class Stress:
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             StressHandler.to_dict,
         )
 
-    def number_steps(self, selection: str | None = None) -> int:
+    def number_steps(self) -> int:
         """Return the number of stress components in the trajectory."""
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             StressHandler.number_steps,
         )

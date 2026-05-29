@@ -100,15 +100,15 @@ class DensityHandler:
 
     def to_view(
         self,
-        selection: Optional[str] = None,
+        component: Optional[str] = None,
         supercell: Optional[Union[int, np.ndarray]] = None,
         **user_options,
     ) -> view.View:
         _raise_error_if_no_data(self._raw_density.charge)
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_density.charge)
-        selection = selection or _INTERNAL
-        tree = select.Tree.from_selection(selection)
+        component = component or _INTERNAL
+        tree = select.Tree.from_selection(component)
         selections = list(self._filter_noncollinear_magnetization_from_selections(tree))
         structure_handler = self._structure()
         viewer = structure_handler.to_view(supercell)
@@ -126,7 +126,7 @@ class DensityHandler:
 
     def to_contour(
         self,
-        selection: Optional[str] = None,
+        component: Optional[str] = None,
         *,
         a: Optional[float] = None,
         b: Optional[float] = None,
@@ -136,8 +136,8 @@ class DensityHandler:
     ) -> graph.Graph:
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_density.charge)
-        selection = selection or _INTERNAL
-        tree = select.Tree.from_selection(selection)
+        component = component or _INTERNAL
+        tree = select.Tree.from_selection(component)
         selections = list(self._filter_noncollinear_magnetization_from_selections(tree))
         visualizer = Visualizer(self._structure())
         dataDict = {
@@ -362,7 +362,7 @@ class Density(view.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self, selection=None) -> dict:
+    def read(self) -> dict:
         """Read the density into a dictionary.
 
         Parameters
@@ -386,9 +386,9 @@ class Density(view.Mixin):
             DensityHandler.to_dict,
         )
 
-    def to_dict(self, selection=None) -> dict:
+    def to_dict(self) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read(selection=selection)
+        return self.read()
 
     @documentation.format(
         component0=_join_with_emphasis(_COMPONENTS[0]),
@@ -396,7 +396,7 @@ class Density(view.Mixin):
         component2=_join_with_emphasis(_COMPONENTS[2]),
         component3=_join_with_emphasis(_COMPONENTS[3]),
     )
-    def selections(self, selection=None) -> dict:
+    def selections(self) -> dict:
         """Returns possible densities VASP can produce along with all available components.
 
         In the dictionary, the key *density* lists all different densities you can access
@@ -460,7 +460,7 @@ class Density(view.Mixin):
         result["density"] = list(raw_module.selections(self._quantity_name))
         return result
 
-    def to_numpy(self, selection=None):
+    def to_numpy(self):
         """Convert the density to a numpy array.
 
         The number of components is 1 for nonpolarized calculations, 2 for collinear

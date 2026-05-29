@@ -293,7 +293,6 @@ class Energy(graph.Mixin):
             selection,
             self._handler_factory,
             EnergyHandler.to_dict,
-            selection,
         )
 
     def to_dict(self, selection=None) -> dict:
@@ -324,7 +323,6 @@ class Energy(graph.Mixin):
             selection,
             self._handler_factory,
             EnergyHandler.to_graph,
-            selection,
         )
 
     @documentation.format(
@@ -353,7 +351,6 @@ class Energy(graph.Mixin):
             selection,
             self._handler_factory,
             EnergyHandler.to_numpy,
-            selection,
         )
 
     def selections(self, selection: str | None = None) -> dict:

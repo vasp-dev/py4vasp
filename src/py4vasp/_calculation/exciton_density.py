@@ -141,11 +141,11 @@ class ExcitonDensity(view.Mixin):
     def _handler_factory(self, raw):
         return ExcitonDensityHandler.from_data(raw)
 
-    def __str__(self) -> str:
+    def __str__(self, selection=None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ExcitonDensityHandler.__str__,
         )
@@ -153,7 +153,7 @@ class ExcitonDensity(view.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self, selection: str | None = None) -> dict:
+    def read(self, selection=None) -> dict:
         """Read the exciton density into a dictionary.
 
         Returns
@@ -170,11 +170,11 @@ class ExcitonDensity(view.Mixin):
             ExcitonDensityHandler.to_dict,
         )
 
-    def to_dict(self, selection: str | None = None) -> dict:
+    def to_dict(self, selection=None) -> dict:
         """Convenient alias for :py:meth:`read`."""
         return self.read(selection=selection)
 
-    def to_numpy(self, selection: str | None = None) -> np.ndarray:
+    def to_numpy(self, selection=None) -> np.ndarray:
         """Convert the exciton charge density to a numpy array.
 
         Returns
@@ -235,10 +235,9 @@ class ExcitonDensity(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ExcitonDensityHandler.to_view,
-            selection,
             supercell=supercell,
             center=center,
             **user_options,

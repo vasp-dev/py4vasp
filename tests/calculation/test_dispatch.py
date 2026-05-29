@@ -190,6 +190,9 @@ class _FakeHandler:
     def read(self):
         return {"value": self._raw_data["value"]}
 
+    def read_with_selection(self, selection):
+        return {"value": self._raw_data["value"], "selection": selection}
+
     def read_with_args(self, scale=1):
         return {"value": self._raw_data["value"] * scale}
 
@@ -282,7 +285,6 @@ class TestDispatch:
                 "src",
                 _RecordingHandler.from_data,
                 _RecordingHandler.read_selection,
-                "src",  # caller passes the full original selection as args[0]
             )
         # After stripping the source key, the handler should see None, not "src"
         assert received["selection"] is None
@@ -315,7 +317,6 @@ class TestDispatch:
                 "atom",
                 _RecordingHandler.from_data,
                 _RecordingHandler.read_selection,
-                "atom",
             )
         assert received["selection"] == "atom"
 
@@ -346,9 +347,42 @@ class TestDispatch:
                 "src(atom)",
                 _RecordingHandler.from_data,
                 _RecordingHandler.read_selection,
-                "src(atom)",
             )
         assert received["selection"] == "atom"
+
+    def test_selection_not_forwarded_when_handler_has_no_selection_param(self):
+        """If the handler method has no `selection` parameter, dispatch must not
+        forward it — only source routing happens."""
+        raw = {"value": 42}
+        source = DataSource(raw)
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["src"]
+        ):
+            result = _dispatch(
+                source,
+                "quantity",
+                "something",
+                _FakeHandler.from_data,
+                _FakeHandler.read,
+            )
+        assert result == {"default": {"value": 42}}
+
+    def test_handler_with_selection_receives_remaining_selection(self):
+        """If the handler method accepts `selection`, dispatch auto-forwards
+        the remaining_selection."""
+        raw = {"value": 5}
+        source = DataSource(raw)
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["src"]
+        ):
+            result = _dispatch(
+                source,
+                "quantity",
+                None,
+                _FakeHandler.from_data,
+                _FakeHandler.read_with_selection,
+            )
+        assert result == {"default": {"value": 5, "selection": None}}
 
 
 class TestSubstituteRemainingSelection:

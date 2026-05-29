@@ -141,16 +141,16 @@ class BornEffectiveCharge:
     def _path(self):
         return self._source.path
 
-    def __str__(self, selection: str | None = None) -> str:
+    def __str__(self) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             BornEffectiveChargeHandler.from_data,
             BornEffectiveChargeHandler.__str__,
         )
 
-    def read(self, selection: str | None = None) -> dict:
+    def read(self) -> dict:
         """Read structure information and Born effective charges into a dictionary.
 
         The structural information is added to inform about which atoms are included
@@ -166,11 +166,11 @@ class BornEffectiveCharge:
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             BornEffectiveChargeHandler.from_data,
             BornEffectiveChargeHandler.read,
         )
 
-    def to_dict(self, selection: str | None = None) -> dict:
+    def to_dict(self) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read(selection=selection)
+        return self.read()

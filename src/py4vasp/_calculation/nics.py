@@ -275,7 +275,7 @@ class Nics(view.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self, selection=None) -> dict:
+    def read(self) -> dict:
         """Read NICS into a dictionary.
 
         Returns
@@ -292,9 +292,9 @@ class Nics(view.Mixin):
             NicsHandler.to_dict,
         )
 
-    def to_dict(self, selection=None) -> dict:
+    def to_dict(self) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read(selection=selection)
+        return self.read()
 
     def to_numpy(self, selection: Optional[str] = None):
         """Convert NICS to a numpy array.
@@ -316,10 +316,9 @@ class Nics(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             NicsHandler.to_numpy,
-            selection,
         )
 
     def to_view(
@@ -370,10 +369,9 @@ class Nics(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             NicsHandler.to_view,
-            selection,
             supercell=supercell,
             **user_options,
         )
@@ -440,10 +438,9 @@ class Nics(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             NicsHandler.to_contour,
-            selection,
             a=a,
             b=b,
             c=c,

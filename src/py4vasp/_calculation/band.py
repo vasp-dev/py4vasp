@@ -333,11 +333,11 @@ class Band(graph.Mixin):
     def _handler_factory(self, raw):
         return BandHandler.from_data(raw)
 
-    def __str__(self):
+    def __str__(self, selection=None):
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             BandHandler.__str__,
         )
@@ -448,10 +448,9 @@ class Band(graph.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             BandHandler.to_dict,
-            selection,
             fermi_energy=fermi_energy,
         )
 
@@ -564,10 +563,9 @@ class Band(graph.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             BandHandler.to_graph,
-            selection,
             fermi_energy=fermi_energy,
             width=width,
         )
@@ -657,10 +655,9 @@ class Band(graph.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             BandHandler.to_frame,
-            selection,
             fermi_energy=fermi_energy,
         )
 
@@ -795,21 +792,20 @@ class Band(graph.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             BandHandler.to_quiver,
-            selection,
             normal=normal,
             supercell=supercell,
         )
 
-    def selections(self) -> dict:
+    def selections(self, selection=None) -> dict:
         from py4vasp._raw import definition as raw_module
 
         handler_selections = merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             BandHandler.selections,
         )

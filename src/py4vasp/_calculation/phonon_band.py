@@ -132,11 +132,11 @@ class PhononBand(graph.Mixin):
     def _handler_factory(self, raw):
         return PhononBandHandler.from_data(raw)
 
-    def __str__(self) -> str:
+    def __str__(self, selection=None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PhononBandHandler.__str__,
         )
@@ -144,7 +144,7 @@ class PhononBand(graph.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self, selection: str | None = None) -> dict:
+    def read(self, selection=None) -> dict:
         """Read the phonon band structure into a dictionary.
 
         Returns
@@ -161,7 +161,7 @@ class PhononBand(graph.Mixin):
             PhononBandHandler.to_dict,
         )
 
-    def to_dict(self, selection: str | None = None) -> dict:
+    def to_dict(self, selection=None) -> dict:
         """Convenient alias for :py:meth:`read`."""
         return self.read(selection=selection)
 
@@ -185,19 +185,18 @@ class PhononBand(graph.Mixin):
         return merge_graphs(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PhononBandHandler.to_graph,
-            selection,
             width,
         )
 
-    def selections(self, selection: str | None = None) -> dict:
+    def selections(self, selection=None) -> dict:
         """Return atom and direction selections available for projection."""
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PhononBandHandler.selections,
         )

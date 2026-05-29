@@ -7,6 +7,7 @@ Provides Source classes, dispatch functions, merge strategies, and the
 """
 
 import contextlib
+import inspect
 import pathlib
 import typing
 
@@ -122,7 +123,9 @@ class FileSource:
 
     @contextlib.contextmanager
     def access(self, quantity, selection=None):
-        with _raw_module.access(quantity, selection=selection, path=self._path, file=self._file) as raw:
+        with _raw_module.access(
+            quantity, selection=selection, path=self._path, file=self._file
+        ) as raw:
             yield raw
 
 
@@ -155,6 +158,23 @@ class DictSource:
         yield self._data[key]
 
 
+def _method_accepts_selection(method):
+    """Check if the handler method's first positional parameter (after self) is 'selection'."""
+    try:
+        sig = inspect.signature(method)
+        params = list(sig.parameters.values())
+        non_self = [p for p in params if p.name != "self"]
+        if not non_self:
+            return False
+        first = non_self[0]
+        return first.name == "selection" and first.kind in (
+            inspect.Parameter.POSITIONAL_ONLY,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        )
+    except (ValueError, TypeError):
+        return False
+
+
 def _dispatch(
     source, quantity_name, selection, handler_factory, method, *args, **kwargs
 ):
@@ -168,12 +188,16 @@ def _dispatch(
         Name used to look up data in the source.
     selection : str | None
         User-provided selection string (may contain multiple comma-separated items).
+        Used for source routing AND automatically forwarded to the handler method
+        (as remaining_selection with source prefix stripped) when the handler's first
+        positional parameter is named ``selection``.
     handler_factory : callable(raw) -> Handler
         Called with the raw data object to construct a handler.
     method : unbound method reference
         The Handler method to call.
     *args, **kwargs
-        Extra arguments forwarded to method(handler, *args, **kwargs).
+        Extra arguments forwarded to method(handler, [remaining_selection,] *args, **kwargs).
+        Do NOT pass selection here; it is forwarded automatically when needed.
 
     Returns
     -------
@@ -181,12 +205,15 @@ def _dispatch(
         Maps selection_name (or "default") to each result.
     """
     contexts = _parse_selections(quantity_name, selection)
+    handler_wants_selection = _method_accepts_selection(method)
     results = {}
     for ctx in contexts:
         with source.access(quantity_name, selection=ctx.selection_name) as raw:
             handler = handler_factory(raw)
-            effective_args = _substitute_remaining_selection(args, selection, ctx.remaining_selection)
-            result = method(handler, *effective_args, **kwargs)
+            if handler_wants_selection:
+                result = method(handler, ctx.remaining_selection, *args, **kwargs)
+            else:
+                result = method(handler, *args, **kwargs)
             key = ctx.selection_name or "default"
             results[key] = result
     return results
@@ -195,8 +222,10 @@ def _dispatch(
 def _substitute_remaining_selection(args, original_selection, remaining_selection):
     """Replace args[0] with remaining_selection when it equals the original dispatch selection.
 
-    This ensures that source-level selectors (e.g. "kpoints_opt") are stripped before
-    the handler receives the selection, so only the projector/content part is forwarded.
+    .. deprecated::
+        This function is no longer used internally. The dispatch system now
+        automatically forwards remaining_selection to handler methods that accept
+        a ``selection`` parameter. Kept for backward compatibility.
     """
     if not args or args[0] != original_selection:
         return args

@@ -272,7 +272,7 @@ class PiezoelectricTensor:
         resolved = pathlib.Path(file_name).expanduser().resolve()
         return cls(source=FileSource(resolved.parent, file=file_name))
 
-    def read(self, selection: str | None = None) -> dict:
+    def read(self) -> dict:
         """Read the ionic and electronic contribution to the piezoelectric tensor
         into a dictionary.
 
@@ -288,14 +288,14 @@ class PiezoelectricTensor:
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             PiezoelectricTensorHandler.from_data,
             PiezoelectricTensorHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read(selection=selection)
+        return self.read()
 
     def __str__(self):
         return merge_strings(
