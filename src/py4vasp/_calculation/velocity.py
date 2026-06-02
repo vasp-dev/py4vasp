@@ -7,6 +7,7 @@ import numpy as np
 from py4vasp import _config, raw
 from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
+    _dispatch,
     DataSource,
     merge_default,
     merge_strings,
@@ -380,4 +381,14 @@ class Velocity(view.Mixin):
             None,
             self._handler_factory,
             VelocityHandler.number_steps,
+        )
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {selection_name: handler_result_dict} for database storage."""
+        return _dispatch(
+            self._source,
+            self._quantity_name,
+            selection,
+            VelocityHandler.from_data,
+            VelocityHandler.to_database,
         )

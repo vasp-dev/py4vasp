@@ -13,6 +13,7 @@ from py4vasp._calculation import projector
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.dispatch import (
     DataSource,
+    _dispatch,
     merge_default,
     merge_strings,
     quantity,
@@ -810,6 +811,16 @@ class Band(graph.Mixin):
         )
         sources = list(raw_module.selections(self._quantity_name))
         return {self._quantity_name: sources, **handler_selections}
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {selection_name: handler_result_dict} for database storage."""
+        return _dispatch(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            BandHandler.to_database,
+        )
 
 
 def _to_series(array):

@@ -10,6 +10,7 @@ from py4vasp import exception, raw
 from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     DataSource,
+    _dispatch,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -461,3 +462,13 @@ class Bandgap(graph.Mixin):
         """Convenience for tests that access this on the dispatcher."""
         with self._source.access(self._quantity_name) as raw_data:
             return raw_data.values.shape[1] == 3
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {selection_name: handler_result_dict} for database storage."""
+        return _dispatch(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            BandgapHandler.to_database,
+        )

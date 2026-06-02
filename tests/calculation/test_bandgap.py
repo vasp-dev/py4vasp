@@ -411,6 +411,15 @@ def test_to_database_spin_polarized(spin_polarized_handler, Assert):
     _check_to_database(spin_polarized_handler, Assert)
 
 
+def test_dispatcher_to_database(bandgap):
+    """Dispatcher._to_database() must return {selection_name: handler_result_dict}."""
+    result = bandgap._to_database()
+    assert isinstance(result, dict)
+    assert "default" in result
+    assert "bandgap" in result["default"]
+    assert isinstance(result["default"]["bandgap"], Bandgap_DB)
+
+
 def test_dispatcher_to_dict_matches_read(raw_data, Assert):
     raw_gap = raw_data.bandgap("default")
     source = DataSource(raw_gap)

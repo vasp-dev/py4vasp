@@ -6,6 +6,7 @@ from py4vasp import raw
 from py4vasp._calculation import bandgap as bandgap_module, exception
 from py4vasp._calculation.dispatch import (
     DataSource,
+    _dispatch,
     merge_default,
     quantity,
 )
@@ -208,3 +209,13 @@ class RunInfo:
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
         return self.read()
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {selection_name: handler_result_dict} for database storage."""
+        return _dispatch(
+            self._source,
+            self._quantity_name,
+            selection,
+            RunInfoHandler.from_data,
+            RunInfoHandler.to_database,
+        )

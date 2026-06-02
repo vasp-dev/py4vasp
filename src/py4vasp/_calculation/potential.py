@@ -9,6 +9,7 @@ import numpy as np
 from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
+    _dispatch,
     DataSource,
     merge_default,
     merge_strings,
@@ -557,3 +558,13 @@ def _raise_error_if_nonpolarized_potential(potential):
     if _is_nonpolarized(potential):
         message = "Cannot visualize nonpolarized potential as quiver plot."
         raise exception.DataMismatch(message)
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {selection_name: handler_result_dict} for database storage."""
+        return _dispatch(
+            self._source,
+            self._quantity_name,
+            selection,
+            PotentialHandler.from_data,
+            PotentialHandler.to_database,
+        )

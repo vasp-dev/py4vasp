@@ -10,6 +10,7 @@ from numpy.typing import ArrayLike
 
 from py4vasp import exception
 from py4vasp._calculation.dispatch import (
+    _dispatch,
     DataSource,
     merge_default,
     merge_strings,
@@ -530,3 +531,13 @@ def _line_distances(coordinates):
 def _kpoint_label(kpoint):
     fractions = [convert.Fraction(coordinate).latex() for coordinate in kpoint]
     return f"$[{fractions[0]} {fractions[1]} {fractions[2]}]$"
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {selection_name: handler_result_dict} for database storage."""
+        return _dispatch(
+            self._source,
+            self._quantity_name,
+            selection,
+            KpointHandler.from_data,
+            KpointHandler.to_database,
+        )

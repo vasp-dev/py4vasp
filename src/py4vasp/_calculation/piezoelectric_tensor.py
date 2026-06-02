@@ -7,6 +7,7 @@ import numpy as np
 from py4vasp import exception, raw
 from py4vasp._calculation import cell
 from py4vasp._calculation.dispatch import (
+    _dispatch,
     DataSource,
     merge_default,
     merge_strings,
@@ -385,3 +386,13 @@ def _compute_bulk_quantities(
     e_frobenius = np.linalg.norm(e_tensor)
 
     return e11, e22, e33, e_avg_abs, e_rms, e_frobenius
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {selection_name: handler_result_dict} for database storage."""
+        return _dispatch(
+            self._source,
+            self._quantity_name,
+            selection,
+            PiezoelectricTensorHandler.from_data,
+            PiezoelectricTensorHandler.to_database,
+        )

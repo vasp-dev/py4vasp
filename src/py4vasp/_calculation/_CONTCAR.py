@@ -4,6 +4,7 @@ import copy
 
 from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
+    _dispatch,
     DataSource,
     merge_default,
     merge_strings,
@@ -208,3 +209,13 @@ def _float_format(number, scientific):
 
 def _bool_format(value):
     return "T" if value else "F"
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {selection_name: handler_result_dict} for database storage."""
+        return _dispatch(
+            self._source,
+            self._quantity_name,
+            selection,
+            CONTCARHandler.from_data,
+            CONTCARHandler.to_database,
+        )

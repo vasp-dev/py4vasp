@@ -4,6 +4,7 @@ import numpy as np
 
 import py4vasp._third_party.graph as _graph
 from py4vasp._calculation.dispatch import (
+    _dispatch,
     DataSource,
     merge_default,
     merge_strings,
@@ -216,3 +217,13 @@ def _filter_unique(ticks, labels):
                 label = previous_label + "|" + label
         result[tick] = label
     return result
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {selection_name: handler_result_dict} for database storage."""
+        return _dispatch(
+            self._source,
+            self._quantity_name,
+            selection,
+            DispersionHandler.from_data,
+            DispersionHandler.to_database,
+        )

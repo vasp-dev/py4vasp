@@ -5,6 +5,7 @@ import numpy as np
 
 from py4vasp import raw
 from py4vasp._calculation.dispatch import (
+    _dispatch,
     DataSource,
     merge_default,
     merge_graphs,
@@ -354,3 +355,13 @@ class DielectricFunction(graph.Mixin):
 
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {selection_name: handler_result_dict} for database storage."""
+        return _dispatch(
+            self._source,
+            self._quantity_name,
+            selection,
+            DielectricFunctionHandler.from_data,
+            DielectricFunctionHandler.to_database,
+        )

@@ -7,6 +7,7 @@ import numpy as np
 from py4vasp import exception, raw
 from py4vasp._calculation import base, cell
 from py4vasp._calculation.dispatch import (
+    _dispatch,
     DataSource,
     merge_default,
     merge_strings,
@@ -276,3 +277,13 @@ def _calculate_2d_polarizability(
         alpha_2d = (l_vacuum / (4.0 * np.pi)) * (eps_parallel - 1.0)
         return alpha_2d
     return None
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {selection_name: handler_result_dict} for database storage."""
+        return _dispatch(
+            self._source,
+            self._quantity_name,
+            selection,
+            DielectricTensorHandler.from_data,
+            DielectricTensorHandler.to_database,
+        )

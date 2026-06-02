@@ -4,6 +4,7 @@ import numpy as np
 
 from py4vasp import raw
 from py4vasp._calculation.dispatch import (
+    _dispatch,
     DataSource,
     merge_default,
     merge_strings,
@@ -148,4 +149,14 @@ class PhononMode:
             None,
             self._handler_factory,
             PhononModeHandler.frequencies,
+        )
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {selection_name: handler_result_dict} for database storage."""
+        return _dispatch(
+            self._source,
+            self._quantity_name,
+            selection,
+            PhononModeHandler.from_data,
+            PhononModeHandler.to_database,
         )

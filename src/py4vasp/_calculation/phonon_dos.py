@@ -5,6 +5,7 @@ import pathlib
 from py4vasp import raw
 from py4vasp._calculation._stoichiometry import StoichiometryHandler
 from py4vasp._calculation.dispatch import (
+    _dispatch,
     DataSource,
     merge_default,
     merge_graphs,
@@ -226,3 +227,13 @@ def _series(data):
         if name == "energies":
             continue
         yield graph.Series(energies, dos, name)
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {selection_name: handler_result_dict} for database storage."""
+        return _dispatch(
+            self._source,
+            self._quantity_name,
+            selection,
+            PhononDosHandler.from_data,
+            PhononDosHandler.to_database,
+        )

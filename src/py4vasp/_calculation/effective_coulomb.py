@@ -9,6 +9,7 @@ from numpy.typing import ArrayLike
 from py4vasp import exception, interpolate, raw
 from py4vasp._calculation import cell
 from py4vasp._calculation.dispatch import (
+    _dispatch,
     DataSource,
     merge_default,
     merge_graphs,
@@ -675,3 +676,13 @@ def transform_positions_to_radial(positions, radius_max):
         return radius, slice(None)
     mask = radius <= radius_max
     return radius[mask], mask
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {selection_name: handler_result_dict} for database storage."""
+        return _dispatch(
+            self._source,
+            self._quantity_name,
+            selection,
+            EffectiveCoulombHandler.from_data,
+            EffectiveCoulombHandler.to_database,
+        )

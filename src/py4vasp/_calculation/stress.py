@@ -7,6 +7,7 @@ import numpy as np
 from py4vasp import raw
 from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
+    _dispatch,
     DataSource,
     merge_default,
     merge_strings,
@@ -238,4 +239,14 @@ class Stress:
             None,
             self._handler_factory,
             StressHandler.number_steps,
+        )
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {selection_name: handler_result_dict} for database storage."""
+        return _dispatch(
+            self._source,
+            self._quantity_name,
+            selection,
+            StressHandler.from_data,
+            StressHandler.to_database,
         )

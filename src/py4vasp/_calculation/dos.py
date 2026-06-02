@@ -8,6 +8,7 @@ import numpy as np
 from py4vasp import exception
 from py4vasp._calculation import projector
 from py4vasp._calculation.dispatch import (
+    _dispatch,
     DataSource,
     merge_default,
     merge_strings,
@@ -571,3 +572,13 @@ def _series(energies, data):
 
 def _flip_down_component(name):
     return "down" in name and "up" not in name and "total" not in name
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {selection_name: handler_result_dict} for database storage."""
+        return _dispatch(
+            self._source,
+            self._quantity_name,
+            selection,
+            DosHandler.from_data,
+            DosHandler.to_database,
+        )

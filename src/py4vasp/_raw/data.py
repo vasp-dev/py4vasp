@@ -5,7 +5,7 @@ from __future__ import annotations
 import dataclasses
 import pathlib
 from datetime import datetime
-from typing import Any, Iterable, Optional, Union
+from typing import Optional, Union
 
 from py4vasp._raw import mapping
 from py4vasp._raw.data_wrapper import VaspData
@@ -136,16 +136,14 @@ class CalculationMetaData:
     """Metadata about the VASP calculation.
     This dataclass is not available for Calculation instances."""
 
-    hdf5_original_path: Union[str, pathlib.Path]
-    """The path to the HDF5 file of the original calculation."""
-    tags: Union[str, Iterable[str], None]
-    """Tags associated with the calculation."""
+    path: pathlib.Path
+    """The directory path of the calculation."""
+    schema_version: str = ""
+    """The version of the database data schema."""
 
     hdf5_internal_path: Optional[Union[str, pathlib.Path]] = None
     """The path under which vaspdb has stored the calculation files."""
 
-    infer_none_files: bool = False
-    """Whether to infer links to None files like INCAR etc. where possible."""
     has_incar: bool = False
     "Whether an INCAR file is associated with the calculation."
     has_poscar: bool = False
@@ -166,25 +164,17 @@ class CalculationMetaData:
     "The date and time when the calculation data was last updated in the database."
 
     def __post_init__(self):
-        # Convert paths to pathlib Paths
-        for file_attr in ["hdf5_original_path", "hdf5_internal_path"]:
-            file_path = getattr(self, file_attr)
-            if isinstance(file_path, str):
-                object.__setattr__(self, file_attr, pathlib.Path(file_path))
-
-        # Check existence of INCAR, POSCAR, KPOINTS, POTCAR files
-        if self.infer_none_files:
-            for file_attr in [
-                "incar",
-                "poscar",
-                "kpoints",
-                "potcar",
-                "contcar",
-                "outcar",
-            ]:
-                trial_path = self.hdf5_original_path.parent / file_attr.upper()
-                if trial_path.exists():
-                    setattr(self, f"has_{file_attr}", True)
+        # Ensure path is a pathlib.Path
+        if isinstance(self.path, str):
+            object.__setattr__(self, "path", pathlib.Path(self.path))
+        if isinstance(self.hdf5_internal_path, str):
+            object.__setattr__(
+                self, "hdf5_internal_path", pathlib.Path(self.hdf5_internal_path)
+            )
+        # Infer file presence flags from the directory
+        for file_attr in ["incar", "poscar", "kpoints", "potcar", "contcar", "outcar"]:
+            if (self.path / file_attr.upper()).exists():
+                setattr(self, f"has_{file_attr}", True)
 
 
 @dataclasses.dataclass
@@ -193,22 +183,12 @@ class _DatabaseData:
     This dataclass is not available for Calculation instances."""
 
     metadata: CalculationMetaData
-
-    available_quantities: Optional[dict[str, tuple[bool, list[str]]]] = None
-    """Dict of all py4vasp dataclasses that can be read from the HDF5 file.
-    Keys are constructed like 'group.quantity:selection' where group and
-    selection are optional. The values are booleans indicating whether the quantity is available.
-    The string list contains all aliases that can be used to refer to this particular combination
-    of group, quantity and selection."""
-
-    additional_properties: Optional[dict[str, Any]] = None
-    """Additional properties that get stored in the database.
-    Keys are constructed like 'group.quantity:selection' where group and
-    selection are optional. The values are dictionaries of properties."""
-
-    encountered_errors: Optional[dict[str, list[str]]] = None
-    """Non-fatal errors encountered while assembling database data.
-    Keys follow the same quantity:selection convention as additional_properties."""
+    properties: dict = dataclasses.field(default_factory=dict)
+    """Properties extracted from the calculation.
+    Keys follow the format 'quantity' (default selection) or 'quantity_selection'
+    (non-default selection). Group quantities use 'group_quantity' or
+    'group_quantity_selection'. Leading underscores are stripped from private
+    quantity names."""
 
 
 @dataclasses.dataclass

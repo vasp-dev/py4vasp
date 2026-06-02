@@ -7,6 +7,7 @@ import numpy as np
 from py4vasp import _config, exception, raw
 from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
+    _dispatch,
     DataSource,
     merge_default,
     merge_strings,
@@ -774,3 +775,13 @@ def _color(selection):
     if selection == "orbital":
         return _config.VASP_COLORS["red"]
     raise exception.IncorrectUsage(f"Unknown component {selection} selected.")
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {selection_name: handler_result_dict} for database storage."""
+        return _dispatch(
+            self._source,
+            self._quantity_name,
+            selection,
+            LocalMomentHandler.from_data,
+            LocalMomentHandler.to_database,
+        )

@@ -582,6 +582,15 @@ def test_to_database_noncollinear_projectors(noncollinear_projectors):
     _check_to_database(noncollinear_projectors)
 
 
+def test_dispatcher_to_database_default(single_band):
+    """Dispatcher._to_database() must return {selection_name: handler_result_dict}."""
+    result = single_band._to_database()
+    assert isinstance(result, dict)
+    assert "default" in result
+    assert "band" in result["default"]
+    assert isinstance(result["default"]["band"], Band_DB)
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.band("multiple")
     parameters = {"to_quiver": {"selection": "x~y(band=1)"}}
