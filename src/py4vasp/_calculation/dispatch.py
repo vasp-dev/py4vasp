@@ -36,7 +36,12 @@ def quantity(name, group=None):
     """
 
     def decorator(cls):
-        cls._quantity_name = name
+        if group is None:
+            cls._quantity_name = name
+        else:
+            # Use the full schema name f"{group}_{name}" so that FileSource
+            # can look up the correct schema entry (e.g. "electron_phonon_self_energy").
+            cls._quantity_name = f"{group}_{name}"
 
         @classmethod
         def from_path(klass, path="."):

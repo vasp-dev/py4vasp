@@ -622,6 +622,15 @@ class TestQuantityDecorator:
 
             assert TestEnergy._quantity_name == "test_energy"
 
+    def test_stores_full_quantity_name_for_grouped_quantity(self):
+        with _isolated_registry():
+
+            @quantity("test_dos", group="test_phonon")
+            class TestPhononDos:
+                pass
+
+            assert TestPhononDos._quantity_name == "test_phonon_test_dos"
+
     def test_registers_grouped_quantity(self):
         with _isolated_registry():
 
@@ -706,6 +715,23 @@ class TestGroup:
         group = Group(source, {"fake": _FakeDispatcher})
         result = group.fake
         assert result.quantity_name == "fake"
+
+    def test_attribute_access_passes_full_quantity_name_for_decorated_group(self):
+        # Regression test: @quantity(name, group=group) must store the full
+        # "group_name" so that Group passes the correct schema key to the
+        # dispatcher constructor, not just the short member name.
+        with _isolated_registry():
+
+            @quantity("test_dos", group="test_phonon")
+            class TestPhononDos:
+                def __init__(self, source, quantity_name="test_phonon_test_dos"):
+                    self.source = source
+                    self.quantity_name = quantity_name
+
+            source = DataSource({"value": 1})
+            group = Group(source, _REGISTRY["test_phonon"])
+            result = group.test_dos
+            assert result.quantity_name == "test_phonon_test_dos"
 
     def test_multiple_quantities_in_group(self):
         source = DataSource({"value": 1})
