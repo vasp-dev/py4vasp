@@ -317,7 +317,7 @@ def test_incorrect_step(example_moments):
 
 def test_to_database(example_moments):
     handler = LocalMomentHandler.from_data(example_moments.ref.raw_data)
-    db_data: LocalMoment_DB = handler.to_database()["local_moment"]
+    db_data: LocalMoment_DB = handler.to_database()
     assert isinstance(db_data, LocalMoment_DB)
 
     orbital_moments = getattr(example_moments.ref, "orbital_moments", None)

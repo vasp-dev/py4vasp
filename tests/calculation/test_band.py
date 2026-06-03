@@ -530,7 +530,7 @@ def _check_to_database(_band):
     handler = BandHandler.from_data(_band.ref.raw_data)
     database_data: Band_DB = handler.to_database(
         fermi_energy=getattr(_band.ref, "fermi_energy_argument", None)
-    )["band"]
+    )
 
     assert isinstance(database_data, Band_DB)
 
@@ -583,12 +583,11 @@ def test_to_database_noncollinear_projectors(noncollinear_projectors):
 
 
 def test_dispatcher_to_database_default(single_band):
-    """Dispatcher._to_database() must return {selection_name: handler_result_dict}."""
+    """Dispatcher._to_database() must return {selection_name: handler_result}."""
     result = single_band._to_database()
     assert isinstance(result, dict)
     assert "default" in result
-    assert "band" in result["default"]
-    assert isinstance(result["default"]["band"], Band_DB)
+    assert isinstance(result["default"], Band_DB)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

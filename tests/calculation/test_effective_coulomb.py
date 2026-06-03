@@ -513,7 +513,7 @@ def test_to_database(raw_data, Assert):
     for param in ("crpa", "crpa_two_center", "crpar", "crpar_two_center"):
         raw_coulomb = raw_data.effective_coulomb(param)
         handler = EffectiveCoulombHandler.from_data(raw_coulomb)
-        data: EffectiveCoulomb_DB = handler.to_database()["effective_coulomb"]
+        data: EffectiveCoulomb_DB = handler.to_database()
         assert isinstance(data, EffectiveCoulomb_DB)
         setup = determine_setup(raw_coulomb)
         read_data = setup_read_data(setup, raw_coulomb)

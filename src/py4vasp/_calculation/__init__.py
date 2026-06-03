@@ -245,6 +245,10 @@ instead of the constructor Calculation()."""
                 importlib.import_module(f"py4vasp._calculation.{name}")
             except ImportError:
                 pass
+        if name not in _REGISTRY:
+            # Could be a group name (e.g. "electron_phonon") whose member modules
+            # have different file names — import all to populate the full registry.
+            _ensure_all_quantities_imported()
         if name in _REGISTRY:
             entry = _REGISTRY[name]
             if isinstance(entry, dict):
@@ -301,7 +305,9 @@ instead of the constructor Calculation()."""
             if isinstance(entry, dict):
                 # group
                 for member_name, dispatcher_cls in entry.items():
-                    _collect_to_database(name, member_name, dispatcher_cls, self._source, properties)
+                    _collect_to_database(
+                        name, member_name, dispatcher_cls, self._source, properties
+                    )
             else:
                 _collect_to_database(None, name, entry, self._source, properties)
         return properties
@@ -324,7 +330,9 @@ def _ensure_all_quantities_imported():
 def _collect_to_database(group_name, quantity_name, dispatcher_cls, source, properties):
     """Call dispatcher._to_database() and merge results into *properties*."""
     base = quantity_name.lstrip("_")
-    dispatcher = dispatcher_cls(source=source, quantity_name=dispatcher_cls._quantity_name)
+    dispatcher = dispatcher_cls(
+        source=source, quantity_name=dispatcher_cls._quantity_name
+    )
     if not hasattr(dispatcher, "_to_database"):
         return
     try:
@@ -333,7 +341,7 @@ def _collect_to_database(group_name, quantity_name, dispatcher_cls, source, prop
         return
     except Exception:
         return
-    # result is {selection_name: handler_result_dict}
+    # result is {selection_name: handler_result}
     for sel_name, handler_dict in result.items():
         if sel_name == "default":
             if group_name is not None:

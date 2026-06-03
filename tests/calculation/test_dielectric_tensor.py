@@ -162,8 +162,7 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 def _check_to_database(tensor, Assert):
     handler = DielectricTensorHandler.from_data(tensor.ref.raw_tensor)
-    actual = handler.to_database()
-    db_data: DielectricTensor_DB = actual["dielectric_tensor"]
+    db_data: DielectricTensor_DB = handler.to_database()
     assert isinstance(db_data, DielectricTensor_DB)
 
     assert db_data.method == tensor.ref.method

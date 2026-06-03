@@ -333,7 +333,7 @@ def test_factory_methods(raw_data, check_factory_methods, projections):
 
 def test_to_database(all_projectors):
     handler = ProjectorHandler.from_data(all_projectors.ref.raw_data)
-    db_data: Projector_DB = handler.to_database()["projector"]
+    db_data: Projector_DB = handler.to_database()
     assert isinstance(db_data, Projector_DB)
     if db_data.orbital_types is not None:
         assert sorted(db_data.orbital_types) == sorted(all_projectors.ref.orbital_types)

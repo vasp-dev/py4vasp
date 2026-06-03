@@ -103,7 +103,7 @@ def check_to_image(pair_correlation, filename_argument, expected_filename):
 def test_to_database(pair_correlation, raw_data):
     raw_pair_correlation = raw_data.pair_correlation("Sr2TiO4")
     handler = PairCorrelationHandler.from_data(raw_pair_correlation)
-    db_data: PairCorrelation_DB = handler.to_database()["pair_correlation"]
+    db_data: PairCorrelation_DB = handler.to_database()
     assert isinstance(db_data, PairCorrelation_DB)
     assert db_data.distance_min == float(pair_correlation.ref.distances[0])
     assert db_data.distance_max == float(pair_correlation.ref.distances[-1])

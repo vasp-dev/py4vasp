@@ -137,8 +137,7 @@ ZX         117.0000    121.0000    125.0000    119.0000    123.0000    121.0000
 
 def test_to_database(elastic_moduli):
     handler = ElasticModulusHandler.from_data(elastic_moduli.ref.raw_elastic_modulus)
-    database_data = handler.to_database()
-    overview: ElasticModulus_DB = database_data["elastic_modulus"]
+    overview: ElasticModulus_DB = handler.to_database()
     ref_overview = elastic_moduli.ref.overview_data
 
     for key, value in ref_overview.items():

@@ -65,7 +65,7 @@ def test_print(phonon_mode, format_):
 
 def test_to_database(phonon_mode):
     handler = PhononModeHandler.from_data(phonon_mode.ref.raw_data)
-    db_data: PhononMode_DB = handler.to_database()["phonon_mode"]
+    db_data: PhononMode_DB = handler.to_database()
     assert isinstance(db_data, PhononMode_DB)
     assert db_data.frequencies_real_max == float(
         np.max(phonon_mode.ref.frequencies.real)

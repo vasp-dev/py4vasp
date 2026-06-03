@@ -134,7 +134,7 @@ phonon band data:
 
 def test_to_database(phonon_band):
     handler = PhononBandHandler.from_data(phonon_band.ref.raw_data)
-    db_dict = handler.to_database()["phonon_band"]
+    db_dict = handler.to_database()
     assert db_dict == {}
 
 

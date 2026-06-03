@@ -345,9 +345,7 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 def _check_to_database(dos, fermi_energy=None):
     handler = DosHandler.from_data(dos.ref.raw_data)
-    db_dict = handler.to_database(fermi_energy=fermi_energy)
-    assert "dos" in db_dict
-    dos_db: Dos_DB = db_dict["dos"]
+    dos_db: Dos_DB = handler.to_database(fermi_energy=fermi_energy)
 
     assert isinstance(dos_db, Dos_DB)
 

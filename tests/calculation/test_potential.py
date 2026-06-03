@@ -374,7 +374,7 @@ def test_print(reference_potential, format_):
 
 def test_to_database(reference_potential):
     handler = PotentialHandler.from_data(reference_potential.ref.raw_potential)
-    db_data: Potential_DB = handler.to_database()["potential"]
+    db_data: Potential_DB = handler.to_database()
     assert isinstance(db_data, Potential_DB)
 
     ref_kind = reference_potential.ref.included_kinds

@@ -116,7 +116,7 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
 
 def test_to_database(forces):
     handler = ForceHandler.from_data(forces.ref.raw_data)
-    db_data: Force_DB = handler.to_database()["force"]
+    db_data: Force_DB = handler.to_database()
     assert isinstance(db_data, Force_DB)
     for prefix, suffix_ in [
         ("final", ["min", "median", "mean", "max"]),

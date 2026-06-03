@@ -101,7 +101,7 @@ in kB      18.00000    22.00000    26.00000    20.00000    24.00000    22.00000
 
 def test_to_database(stresses, Assert):
     handler = StressHandler.from_data(stresses.ref.raw_data)
-    db_data: Stress_DB = handler.to_database()["stress"]
+    db_data: Stress_DB = handler.to_database()
     assert isinstance(db_data, Stress_DB)
     initial_tensor = stresses.ref.stress[0]
     final_tensor = stresses.ref.stress[-1]

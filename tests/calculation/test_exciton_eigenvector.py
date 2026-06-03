@@ -64,7 +64,7 @@ BSE eigenvector data:
 def test_to_database(exciton_eigenvector):
     db_data: ExcitonEigenvector_DB = ExcitonEigenvectorHandler.from_data(
         exciton_eigenvector.ref.raw_data
-    ).to_database()["exciton_eigenvector"]
+    ).to_database()
     assert db_data.num_valence_bands == exciton_eigenvector.ref.NBANDSO
     assert db_data.num_conduction_bands == exciton_eigenvector.ref.NBANDSV
     assert db_data.num_kpoints == exciton_eigenvector.ref.num_kpoints

@@ -524,7 +524,7 @@ def test_print(nics, format_):
 
 def test_to_database(nics):
     handler = NicsHandler.from_data(nics.ref.raw_data)
-    db_data: Nics_DB = handler.to_database()["nics"]
+    db_data: Nics_DB = handler.to_database()
     assert isinstance(db_data, Nics_DB)
     assert db_data.method == nics.ref.output["method"]
 

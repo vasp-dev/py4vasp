@@ -529,7 +529,7 @@ def test_system_dimensionality(Graphite, Sr2TiO4, Fe3O4):
 
 def test_to_database(structures, Assert):
     handler = StructureHandler.from_data(structures._raw_data)
-    db_data: Structure_DB = handler.to_database()["structure"]
+    db_data: Structure_DB = handler.to_database()
     assert isinstance(db_data, Structure_DB)
     has_timesteps = structures.ref.positions.ndim == 3
     final_positions = (

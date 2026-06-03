@@ -124,8 +124,7 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 def test_to_database(CONTCAR):
     handler = CONTCARHandler.from_data(CONTCAR.ref.raw_data)
-    database_data = handler.to_database()
-    db_dict: CONTCAR_DB = database_data["CONTCAR"]
+    db_dict: CONTCAR_DB = handler.to_database()
 
     assert db_dict.system == CONTCAR.ref.system
     assert isinstance(db_dict.system, (str, type(None)))

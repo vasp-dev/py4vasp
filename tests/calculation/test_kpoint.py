@@ -287,7 +287,7 @@ reciprocal
 
 def _check_to_database(data):
     handler = KpointHandler.from_data(data.ref.raw_data)
-    db_data: Kpoint_DB = handler.to_database()["kpoint"]
+    db_data: Kpoint_DB = handler.to_database()
     assert isinstance(db_data, Kpoint_DB)
 
     assert db_data.mode == data.ref.mode

@@ -85,7 +85,7 @@ class Base:
 
     def test_to_database(self):
         handler = StoichiometryHandler.from_data(self.stoichiometry._raw_data)
-        db_data: Stoichiometry_DB = handler.to_database()["stoichiometry"]
+        db_data: Stoichiometry_DB = handler.to_database()
         assert isinstance(db_data, Stoichiometry_DB)
 
         expected_ion_types = getattr(self, "ref_ion_types", self.unique_elements)

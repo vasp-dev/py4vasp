@@ -109,7 +109,7 @@ phonon DOS:
 
 def test_to_database(phonon_dos):
     handler = PhononDosHandler.from_data(phonon_dos.ref.raw_data)
-    db_data: PhononDos_DB = handler.to_database()["phonon_dos"]
+    db_data: PhononDos_DB = handler.to_database()
     assert isinstance(db_data, PhononDos_DB)
     assert db_data.energy_min == float(phonon_dos.ref.energies[0])
     assert db_data.energy_max == float(phonon_dos.ref.energies[-1])

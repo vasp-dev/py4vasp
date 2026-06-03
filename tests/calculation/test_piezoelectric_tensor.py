@@ -107,7 +107,7 @@ Piezoelectric tensor (C/m²)
 
 def _check_to_database(raw_tensor, piezo_ref):
     handler = PiezoelectricTensorHandler.from_data(raw_tensor)
-    db_data: PiezoelectricTensor_DB = handler.to_database()["piezoelectric_tensor"]
+    db_data: PiezoelectricTensor_DB = handler.to_database()
     assert isinstance(db_data, PiezoelectricTensor_DB)
     for idx, prefix in enumerate(["total", "ionic", "electronic"]):
         sum_2d_tensor_not_none = 0

@@ -429,9 +429,7 @@ dielectric function:
 
 def _check_to_database(dielectric_function):
     handler = DielectricFunctionHandler.from_data(dielectric_function.ref.raw_data)
-    database_data = handler.to_database()
-    assert "dielectric_function" in database_data
-    db_data: DielectricFunction_DB = database_data["dielectric_function"]
+    db_data: DielectricFunction_DB = handler.to_database()
     assert isinstance(db_data, DielectricFunction_DB)
     assert db_data.energy_min == float(np.min(dielectric_function.ref.energies))
     assert db_data.energy_max == float(np.max(dielectric_function.ref.energies))

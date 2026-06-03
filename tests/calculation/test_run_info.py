@@ -113,16 +113,15 @@ def test_dispatcher_to_dict_matches_read(run_info):
 
 
 def test_to_database(run_info_handler):
-    _check_dict(run_info_handler.to_database()["run_info"], run_info_handler.ref)
+    _check_dict(run_info_handler.to_database(), run_info_handler.ref)
 
 
 def test_dispatcher_to_database(run_info):
-    """Dispatcher._to_database() must return {selection_name: handler_result_dict}."""
+    """Dispatcher._to_database() must return {selection_name: handler_result}."""
     result = run_info._to_database()
     assert isinstance(result, dict)
     assert "default" in result
-    assert "run_info" in result["default"]
-    assert isinstance(result["default"]["run_info"], RunInfo_DB)
+    assert isinstance(result["default"], RunInfo_DB)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

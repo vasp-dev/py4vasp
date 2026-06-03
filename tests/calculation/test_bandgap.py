@@ -347,8 +347,7 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 
 def _check_to_database(_handler, Assert):
-    database_data = _handler.to_database()
-    db_dict: Bandgap_DB = database_data["bandgap"]
+    db_dict: Bandgap_DB = _handler.to_database()
 
     assert isinstance(db_dict, Bandgap_DB), f"Expected Bandgap_DB, got {type(db_dict)}"
     for fld in fields(Bandgap_DB):
@@ -412,12 +411,11 @@ def test_to_database_spin_polarized(spin_polarized_handler, Assert):
 
 
 def test_dispatcher_to_database(bandgap):
-    """Dispatcher._to_database() must return {selection_name: handler_result_dict}."""
+    """Dispatcher._to_database() must return {selection_name: handler_result}."""
     result = bandgap._to_database()
     assert isinstance(result, dict)
     assert "default" in result
-    assert "bandgap" in result["default"]
-    assert isinstance(result["default"]["bandgap"], Bandgap_DB)
+    assert isinstance(result["default"], Bandgap_DB)
 
 
 def test_dispatcher_to_dict_matches_read(raw_data, Assert):

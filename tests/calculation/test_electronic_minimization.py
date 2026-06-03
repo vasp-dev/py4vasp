@@ -107,9 +107,7 @@ def test_is_converged(electronic_minimization):
 def test_to_database(electronic_minimization, raw_data):
     raw_elmin = raw_data.electronic_minimization()
     handler = ElectronicMinimizationHandler.from_data(raw_elmin)
-    database_data: ElectronicMinimization_DB = handler.to_database()[
-        "electronic_minimization"
-    ]
+    database_data: ElectronicMinimization_DB = handler.to_database()
     overview_data = electronic_minimization.ref.overview_data
 
     assert isinstance(database_data, ElectronicMinimization_DB)

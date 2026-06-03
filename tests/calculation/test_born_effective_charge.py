@@ -80,8 +80,7 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 
 def test_to_database(Sr2TiO4):
-    database_data = Sr2TiO4.to_database()
-    born_db: BornEffectiveCharge_DB = database_data["born_effective_charge"]
+    born_db: BornEffectiveCharge_DB = Sr2TiO4.to_database()
     assert born_db.eigenvalue_min == Sr2TiO4.ref.minmax_info[0]
     assert born_db.eigenvalue_max == Sr2TiO4.ref.minmax_info[2]
     assert born_db.eigenvalue_min_index == Sr2TiO4.ref.minmax_info[1]

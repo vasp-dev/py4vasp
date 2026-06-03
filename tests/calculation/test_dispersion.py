@@ -119,8 +119,7 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 def _check_to_database(dispersion_):
     handler = DispersionHandler.from_data(dispersion_.ref.raw_data)
-    data = handler.to_database()
-    db_data: Dispersion_DB = data["dispersion"]
+    db_data: Dispersion_DB = handler.to_database()
     assert isinstance(db_data, Dispersion_DB)
 
     eigenvalues = dispersion_.ref.eigenvalues
