@@ -9,6 +9,7 @@ from py4vasp._calculation import base, cell
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -107,8 +108,7 @@ Macroscopic static dielectric tensor (dimensionless)
             else None
         )
 
-        return {
-            "dielectric_tensor": DielectricTensor_DB(
+        return DielectricTensor_DB(
                 method=method,
                 total_3d_tensor=tensor_reduced[0],
                 total_3d_isotropic_dielectric_constant=isotropic_dielectric_constant[0],
@@ -121,8 +121,7 @@ Macroscopic static dielectric tensor (dimensionless)
                     2
                 ],
                 electronic_2d_polarizability=polarizability_2d[2],
-            )
-        }
+        )
 
     # --- Private helpers ---
 
@@ -227,6 +226,16 @@ class DielectricTensor:
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
+    def _to_database(self, selection=None) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            selection,
+            DielectricTensorHandler.from_data,
+            DielectricTensorHandler.to_database,
+        )
+
 
 def _dielectric_tensor_string(tensor, label):
     if tensor is None:
@@ -277,13 +286,3 @@ def _calculate_2d_polarizability(
         alpha_2d = (l_vacuum / (4.0 * np.pi)) * (eps_parallel - 1.0)
         return alpha_2d
     return None
-
-    def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
-            self._source,
-            self._quantity_name,
-            selection,
-            DielectricTensorHandler.from_data,
-            DielectricTensorHandler.to_database,
-        )

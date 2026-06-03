@@ -17,6 +17,7 @@ from py4vasp._calculation.dispatch import (
     _parse_selections,
     _substitute_remaining_selection,
     _REGISTRY,
+    merge_to_database,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -383,6 +384,86 @@ class TestDispatch:
                 _FakeHandler.read_with_selection,
             )
         assert result == {"default": {"value": 5, "selection": None}}
+
+
+class TestDispatchToDatabase:
+    def test_default_selection_uses_quantity_name_as_key(self):
+        raw = {"value": 42}
+        source = DataSource(raw)
+        result = merge_to_database(
+            source, "energy", None, _FakeHandler.from_data, _FakeHandler.read
+        )
+        assert result == {"energy": {"value": 42}}
+
+    def test_named_selection_appends_selection_to_quantity_name(self):
+        raw = {"value": 10}
+        source = DictSource({("band", "kpoints_opt"): raw})
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections",
+            return_value=["kpoints_opt"],
+        ):
+            result = merge_to_database(
+                source,
+                "band",
+                "kpoints_opt",
+                _FakeHandler.from_data,
+                _FakeHandler.read,
+            )
+        assert result == {"band_kpoints_opt": {"value": 10}}
+
+    def test_multiple_selections_produce_distinct_keys(self):
+        raw_a = {"value": 1}
+        raw_b = {"value": 2}
+        source = DictSource({("dos", "a"): raw_a, ("dos", "b"): raw_b})
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["a", "b"]
+        ):
+            result = merge_to_database(
+                source, "dos", "a, b", _FakeHandler.from_data, _FakeHandler.read
+            )
+        assert result == {"dos_a": {"value": 1}, "dos_b": {"value": 2}}
+
+    def test_leading_underscore_stripped_from_quantity_name(self):
+        raw = {"value": 7}
+        source = DataSource(raw)
+        result = merge_to_database(
+            source, "_stoichiometry", None, _FakeHandler.from_data, _FakeHandler.read
+        )
+        assert "stoichiometry" in result
+        assert "_stoichiometry" not in result
+
+    def test_leading_underscore_stripped_with_named_selection(self):
+        raw = {"value": 3}
+        source = DictSource({("_CONTCAR", "sel"): raw})
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections", return_value=["sel"]
+        ):
+            result = merge_to_database(
+                source, "_CONTCAR", "sel", _FakeHandler.from_data, _FakeHandler.read
+            )
+        assert result == {"CONTCAR_sel": {"value": 3}}
+
+    def test_default_key_has_no_default_suffix(self):
+        raw = {"value": 5}
+        source = DataSource(raw)
+        result = merge_to_database(
+            source, "force", None, _FakeHandler.from_data, _FakeHandler.read
+        )
+        assert "force_default" not in result
+        assert "force" in result
+
+    def test_forwards_extra_kwargs_to_handler(self):
+        raw = {"value": 4}
+        source = DataSource(raw)
+        result = merge_to_database(
+            source,
+            "energy",
+            None,
+            _FakeHandler.from_data,
+            _FakeHandler.read_with_args,
+            scale=3,
+        )
+        assert result == {"energy": {"value": 12}}
 
 
 class TestSubstituteRemainingSelection:

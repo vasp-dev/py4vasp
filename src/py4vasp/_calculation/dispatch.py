@@ -58,9 +58,7 @@ def quantity(name, group=None):
         cls.from_file = from_file
 
         if not isinstance(getattr(cls, "_path", None), property):
-            cls._path = property(
-                lambda self: self._source.path or pathlib.Path.cwd()
-            )
+            cls._path = property(lambda self: self._source.path or pathlib.Path.cwd())
 
         if group is None:
             _REGISTRY[name] = cls
@@ -255,6 +253,49 @@ def _dispatch(
             key = ctx.selection_name or "default"
             results[key] = result
     return results
+
+
+def merge_to_database(
+    source, quantity_name, selection, handler_factory, method, *args, **kwargs
+):
+    """Dispatch to_database calls and return results keyed by quantity name.
+
+    Like :func:`_dispatch`, but remaps the result keys from selection names to
+    quantity-based keys: the default selection maps to just the quantity name,
+    and non-default selections map to ``quantity_selection``. Leading underscores
+    are stripped from *quantity_name* so private quantities (``_CONTCAR``,
+    ``_stoichiometry``) appear without the underscore prefix.
+
+    Parameters
+    ----------
+    source : Source
+        The data source (DataSource, DictSource, etc.).
+    quantity_name : str
+        Name used to look up data in the source. Leading underscores are stripped
+        for key generation.
+    selection : str | None
+        User-provided selection string, forwarded to :func:`_dispatch`.
+    handler_factory : callable(raw) -> Handler
+        Called with the raw data object to construct a handler.
+    method : unbound method reference
+        The Handler method to call.
+    *args, **kwargs
+        Extra arguments forwarded to the method.
+
+    Returns
+    -------
+    dict[str, result]
+        Maps ``quantity_name`` (default) or ``quantity_name_selection`` (non-default)
+        to each handler result.
+    """
+    raw_results = _dispatch(
+        source, quantity_name, selection, handler_factory, method, *args, **kwargs
+    )
+    base = quantity_name.lstrip("_")
+    return {
+        base if sel == "default" else f"{base}_{sel}": result
+        for sel, result in raw_results.items()
+    }
 
 
 def _substitute_remaining_selection(args, original_selection, remaining_selection):

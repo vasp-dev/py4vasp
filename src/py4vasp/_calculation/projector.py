@@ -5,6 +5,7 @@ from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -116,15 +117,13 @@ class ProjectorHandler:
         return {"atom": atom_dict, "orbital": orbital_dict, "spin": spin_dict}
 
     def to_database(self) -> dict:
-        return {
-            "projector": Projector_DB(
-                orbital_types=(
-                    sorted(list(self._init_orbital_dict().keys()), key=self._sort_key)
-                    if not check.is_none(self._raw_projector.orbital_types)
-                    else None
-                )
+        return Projector_DB(
+            orbital_types=(
+                sorted(list(self._init_orbital_dict().keys()), key=self._sort_key)
+                if not check.is_none(self._raw_projector.orbital_types)
+                else None
             )
-        }
+        )
 
     def selections(self) -> dict:
         dicts = self.to_dict()
@@ -379,8 +378,8 @@ class Projector:
         )
 
     def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
             self._source,
             self._quantity_name,
             selection,

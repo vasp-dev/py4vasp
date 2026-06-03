@@ -10,6 +10,7 @@ from py4vasp._calculation import base, structure
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -123,8 +124,7 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                     error_key=error_key,
                 )
 
-        return {
-            "elastic_modulus": ElasticModulus_DB(
+        return ElasticModulus_DB(
                 total_3d_tensor=compact_tensor[0],
                 total_bulk_modulus=bulk_modulus[0],
                 total_shear_modulus=shear_modulus[0],
@@ -149,8 +149,7 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                 electronic_pugh_ratio=pugh_ratio[2],
                 electronic_vickers_hardness=vickers_hardness[2],
                 electronic_fracture_toughness=fracture_toughness[2],
-            )
-        }
+        )
 
     def _compute_elastic_properties(
         self,
@@ -288,6 +287,16 @@ class ElasticModulus:
 
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            selection,
+            ElasticModulusHandler.from_data,
+            ElasticModulusHandler.to_database,
+        )
 
 
 def _elastic_modulus_string(tensor, label):
@@ -464,14 +473,4 @@ class _ElasticTensor:
                 ),
                 1.5,
             )
-        )
-
-    def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
-            self._source,
-            self._quantity_name,
-            selection,
-            ElasticModulusHandler.from_data,
-            ElasticModulusHandler.to_database,
         )

@@ -7,6 +7,7 @@ from py4vasp import raw
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -50,20 +51,18 @@ class DielectricFunctionHandler:
 
     def to_database(self) -> dict:
         """Serialize dielectric function data for database storage."""
-        return {
-            "dielectric_function": DielectricFunction_DB(
-                energy_min=(
-                    float(np.min(self._raw_dielectric_function.energies[:]))
-                    if not check.is_none(self._raw_dielectric_function.energies)
-                    else None
-                ),
-                energy_max=(
-                    float(np.max(self._raw_dielectric_function.energies[:]))
-                    if not check.is_none(self._raw_dielectric_function.energies)
-                    else None
-                ),
-            )
-        }
+        return DielectricFunction_DB(
+            energy_min=(
+                float(np.min(self._raw_dielectric_function.energies[:]))
+                if not check.is_none(self._raw_dielectric_function.energies)
+                else None
+            ),
+            energy_max=(
+                float(np.max(self._raw_dielectric_function.energies[:]))
+                if not check.is_none(self._raw_dielectric_function.energies)
+                else None
+            ),
+        )
 
     def to_graph(self, selection=None) -> graph.Graph:
         """Read the data and generate a figure with the selected directions.
@@ -357,8 +356,8 @@ class DielectricFunction(graph.Mixin):
         p.text(str(self))
 
     def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
             self._source,
             self._quantity_name,
             selection,

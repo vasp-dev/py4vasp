@@ -10,6 +10,7 @@ from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -65,7 +66,7 @@ nucleus-independent chemical shift:
 
     def to_database(self) -> dict:
         method = "grid" if self._data_is_on_grid else "positions"
-        return {"nics": Nics_DB(method=method)}
+        return Nics_DB(method=method)
 
     def to_numpy(self, selection: Optional[str] = None):
         selected_data = self._read_selected_data(selection)
@@ -449,6 +450,16 @@ class Nics(view.Mixin):
             supercell=supercell,
         )
 
+    def _to_database(self, selection=None) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            selection,
+            NicsHandler.from_data,
+            NicsHandler.to_database,
+        )
+
 
 class _TensorReduction(index.Reduction):
     def __init__(self, keys):
@@ -490,13 +501,3 @@ class _TensorReduction(index.Reduction):
         anisotropy = delta_zz - delta_iso
         asymmetry = (eigenvalues[..., 1] - delta_xx) / anisotropy
         return {"anisotropy": anisotropy, "asymmetry": asymmetry}
-
-    def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
-            self._source,
-            self._quantity_name,
-            selection,
-            NicsHandler.from_data,
-            NicsHandler.to_database,
-        )

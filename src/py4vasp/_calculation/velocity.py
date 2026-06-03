@@ -9,6 +9,7 @@ from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -82,23 +83,21 @@ class VelocityHandler:
         else:
             final_velocity_norms = np.linalg.norm(velocities[-1], axis=-1)
             initial_velocity_norms = np.linalg.norm(velocities[0], axis=-1)
-        return {
-            "velocity": Velocity_DB(
-                final_velocity_min=float(np.min(final_velocity_norms)),
-                final_velocity_max=float(np.max(final_velocity_norms)),
-                final_velocity_mean=float(np.mean(final_velocity_norms)),
-                final_velocity_std=(
-                    float(np.std(final_velocity_norms))
-                    if len(final_velocity_norms) > 1
-                    else 0.0
-                ),
-                final_velocity_median=float(np.median(final_velocity_norms)),
-                final_index_velocity_max=int(np.argmax(final_velocity_norms)),
-                initial_velocity_min=float(np.min(initial_velocity_norms)),
-                initial_velocity_max=float(np.max(initial_velocity_norms)),
-                initial_index_velocity_max=int(np.argmax(initial_velocity_norms)),
-            )
-        }
+        return Velocity_DB(
+            final_velocity_min=float(np.min(final_velocity_norms)),
+            final_velocity_max=float(np.max(final_velocity_norms)),
+            final_velocity_mean=float(np.mean(final_velocity_norms)),
+            final_velocity_std=(
+                float(np.std(final_velocity_norms))
+                if len(final_velocity_norms) > 1
+                else 0.0
+            ),
+            final_velocity_median=float(np.median(final_velocity_norms)),
+            final_index_velocity_max=int(np.argmax(final_velocity_norms)),
+            initial_velocity_min=float(np.min(initial_velocity_norms)),
+            initial_velocity_max=float(np.max(initial_velocity_norms)),
+            initial_index_velocity_max=int(np.argmax(initial_velocity_norms)),
+        )
 
     def to_view(self, supercell=None):
         """Plot the velocities as vectors in the structure."""
@@ -384,8 +383,8 @@ class Velocity(view.Mixin):
         )
 
     def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
             self._source,
             self._quantity_name,
             selection,

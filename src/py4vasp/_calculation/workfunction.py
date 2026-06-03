@@ -7,6 +7,7 @@ from py4vasp._calculation import bandgap as bandgap_module
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -64,12 +65,10 @@ class WorkfunctionHandler:
 
     def to_database(self) -> dict:
         """Serialize workfunction data for database storage."""
-        return {
-            "workfunction": Workfunction_DB(
-                direction=self._raw_workfunction.idipol,
-                workfunction_value=None,
-            )
-        }
+        return Workfunction_DB(
+            direction=self._raw_workfunction.idipol,
+            workfunction_value=None,
+        )
 
     def to_graph(self) -> graph.Graph:
         """Plot the average potential along the lattice vector selected by IDIPOL.
@@ -186,8 +185,8 @@ class Workfunction(graph.Mixin):
         p.text(str(self))
 
     def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
             self._source,
             self._quantity_name,
             selection,

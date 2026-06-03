@@ -9,6 +9,7 @@ from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -84,18 +85,16 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         else:
             final_force_norms = np.linalg.norm(forces[-1], axis=-1)
             initial_force_norms = np.linalg.norm(forces[0], axis=-1)
-        return {
-            "force": Force_DB(
-                final_force_min=float(np.min(final_force_norms)),
-                final_force_median=float(np.median(final_force_norms)),
-                final_force_mean=float(np.mean(final_force_norms)),
-                final_force_max=float(np.max(final_force_norms)),
-                final_index_force_max=int(np.argmax(final_force_norms)),
-                initial_force_min=float(np.min(initial_force_norms)),
-                initial_force_max=float(np.max(initial_force_norms)),
-                initial_index_force_max=int(np.argmax(initial_force_norms)),
-            ),
-        }
+        return Force_DB(
+            final_force_min=float(np.min(final_force_norms)),
+            final_force_median=float(np.median(final_force_norms)),
+            final_force_mean=float(np.mean(final_force_norms)),
+            final_force_max=float(np.max(final_force_norms)),
+            final_index_force_max=int(np.argmax(final_force_norms)),
+            initial_force_min=float(np.min(initial_force_norms)),
+            initial_force_max=float(np.max(initial_force_norms)),
+            initial_index_force_max=int(np.argmax(initial_force_norms)),
+        )
 
     def to_view(self, supercell=None):
         """Visualize the forces showing arrows at the atoms."""
@@ -344,8 +343,8 @@ class Force(view.Mixin):
         )
 
     def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
             self._source,
             self._quantity_name,
             selection,

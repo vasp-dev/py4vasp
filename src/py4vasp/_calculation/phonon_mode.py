@@ -6,6 +6,7 @@ from py4vasp import raw
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -55,12 +56,10 @@ class PhononModeHandler:
         frequencies_imag_max = (
             float(np.max(frequencies.imag)) if frequencies is not None else None
         )
-        return {
-            "phonon_mode": PhononMode_DB(
-                frequencies_real_max=frequencies_real_max,
-                frequencies_imag_max=frequencies_imag_max,
-            )
-        }
+        return PhononMode_DB(
+            frequencies_real_max=frequencies_real_max,
+            frequencies_imag_max=frequencies_imag_max,
+        )
 
     def frequencies(self) -> np.ndarray:
         """Read the phonon frequencies as a numpy array."""
@@ -152,8 +151,8 @@ class PhononMode:
         )
 
     def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
             self._source,
             self._quantity_name,
             selection,

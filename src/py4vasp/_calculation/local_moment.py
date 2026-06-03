@@ -9,6 +9,7 @@ from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -84,13 +85,11 @@ class LocalMomentHandler:
             spin_moments_total = np.sum(spin_moments_orbitals, axis=-1)
             spin_moment_total_min = float(np.min(spin_moments_total))
             spin_moment_total_max = float(np.max(spin_moments_total))
-        return {
-            "local_moment": LocalMoment_DB(
-                has_orbital_moments=self._has_orbital_moments,
-                final_spin_moment_total_min=spin_moment_total_min,
-                final_spin_moment_total_max=spin_moment_total_max,
-            )
-        }
+        return LocalMoment_DB(
+            has_orbital_moments=self._has_orbital_moments,
+            final_spin_moment_total_min=spin_moment_total_min,
+            final_spin_moment_total_max=spin_moment_total_max,
+        )
 
     def to_view(self, selection="total", supercell=None):
         structure = StructureHandler.from_data(
@@ -741,6 +740,16 @@ class LocalMoment(view.Mixin):
             LocalMomentHandler.number_steps,
         )
 
+    def _to_database(self, selection=None) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            selection,
+            LocalMomentHandler.from_data,
+            LocalMomentHandler.to_database,
+        )
+
 
 def _sum_over_orbitals(quantity, is_vector=False):
     if quantity is None:
@@ -775,13 +784,3 @@ def _color(selection):
     if selection == "orbital":
         return _config.VASP_COLORS["red"]
     raise exception.IncorrectUsage(f"Unknown component {selection} selected.")
-
-    def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
-            self._source,
-            self._quantity_name,
-            selection,
-            LocalMomentHandler.from_data,
-            LocalMomentHandler.to_database,
-        )

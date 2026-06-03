@@ -7,6 +7,7 @@ from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -67,11 +68,9 @@ class PairCorrelationHandler:
         if not check.is_none(self._raw_data.distances):
             distance_min = float(self._raw_data.distances[0])
             distance_max = float(self._raw_data.distances[-1])
-        return {
-            "pair_correlation": PairCorrelation_DB(
-                distance_min=distance_min, distance_max=distance_max
-            ),
-        }
+        return PairCorrelation_DB(
+            distance_min=distance_min, distance_max=distance_max
+        )
 
     @property
     def _steps_or_last(self):
@@ -232,6 +231,16 @@ class PairCorrelation(graph.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self) if not cycle else "...")
 
+    def _to_database(self, selection=None) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            selection,
+            PairCorrelationHandler.from_data,
+            PairCorrelationHandler.to_database,
+        )
+
 
 def _selection_string(default):
     return f"""\
@@ -245,13 +254,3 @@ selection : str
 
     >>> calculation.pair_correlation.labels()
 """
-
-    def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
-            self._source,
-            self._quantity_name,
-            selection,
-            PairCorrelationHandler.from_data,
-            PairCorrelationHandler.to_database,
-        )

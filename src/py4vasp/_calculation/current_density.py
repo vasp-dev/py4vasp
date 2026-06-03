@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import copy
-from contextlib import suppress
+
 from typing import Optional, Union
 
 import numpy as np
@@ -11,6 +11,7 @@ from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -18,17 +19,10 @@ from py4vasp._calculation.dispatch import (
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
 from py4vasp._third_party import graph
-from py4vasp._util import database, documentation, import_, slicing
+from py4vasp._util import documentation, import_, slicing
 from py4vasp._util.density import SliceArguments, Visualizer
 
 pretty = import_.optional("IPython.lib.pretty")
-
-_TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
-    exception.Py4VaspError,
-    AttributeError,
-    TypeError,
-    ValueError,
-)
 
 _COMMON_PARAMETERS = f"""selection : str | None = None
     Selects which of the possible available currents is used. Check the
@@ -71,11 +65,7 @@ class CurrentDensityHandler:
         }
 
     def to_database(self) -> dict:
-        density_dict = {"current_density": {}}
-        structure_ = {}
-        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
-            structure_ = self._structure().to_database()
-        return database.combine_db_dicts(density_dict, structure_)
+        return {}
 
     def to_contour(
         self,
@@ -330,8 +320,8 @@ class CurrentDensity:
         )
 
     def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
             self._source,
             self._quantity_name,
             selection,

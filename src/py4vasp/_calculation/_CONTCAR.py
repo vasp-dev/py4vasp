@@ -6,6 +6,7 @@ from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -14,7 +15,7 @@ from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
 from py4vasp._raw.data_db import CONTCAR_DB
 from py4vasp._third_party import view
-from py4vasp._util import check, convert, database
+from py4vasp._util import check, convert
 
 
 class CONTCARHandler:
@@ -39,19 +40,13 @@ class CONTCARHandler:
             **self._read("ion_velocities"),
         }
 
-    def to_database(self) -> dict:
-        structure_db = self._structure().to_database()
-        return database.combine_db_dicts(
-            {
-                "CONTCAR": CONTCAR_DB(
-                    system=(
-                        convert.text_to_string(self._raw_contcar.system)
-                        if not check.is_none(self._raw_contcar.system)
-                        else None
-                    ),
-                )
-            },
-            structure_db,
+    def to_database(self) -> CONTCAR_DB:
+        return CONTCAR_DB(
+            system=(
+                convert.text_to_string(self._raw_contcar.system)
+                if not check.is_none(self._raw_contcar.system)
+                else None
+            ),
         )
 
     def to_view(self, supercell=None):
@@ -144,6 +139,16 @@ class CONTCAR(view.Mixin):
             supercell,
         )
 
+    def _to_database(self, selection=None) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            selection,
+            CONTCARHandler.from_data,
+            CONTCARHandler.to_database,
+        )
+
 
 def _cell_lines(cell):
     yield _float_format(_cell_scale(cell.scale), scientific=False).lstrip()
@@ -209,13 +214,3 @@ def _float_format(number, scientific):
 
 def _bool_format(value):
     return "T" if value else "F"
-
-    def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
-            self._source,
-            self._quantity_name,
-            selection,
-            CONTCARHandler.from_data,
-            CONTCARHandler.to_database,
-        )

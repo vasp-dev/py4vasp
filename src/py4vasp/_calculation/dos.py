@@ -10,6 +10,7 @@ from py4vasp._calculation import projector
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -77,26 +78,24 @@ class DosHandler:
         dos_at_raw_fermi_up = dos_at_raw_fermi_dict.get("up", None)
         dos_at_raw_fermi_down = dos_at_raw_fermi_dict.get("down", None)
 
-        return {
-            "dos": Dos_DB(
-                dos_at_fermi_total=dos_at_fermi_total,
-                dos_at_fermi_up=dos_at_fermi_up,
-                dos_at_fermi_down=dos_at_fermi_down,
-                dos_at_raw_fermi_total=dos_at_raw_fermi_total,
-                dos_at_raw_fermi_up=dos_at_raw_fermi_up,
-                dos_at_raw_fermi_down=dos_at_raw_fermi_down,
-                energy_min=(
-                    float(np.min(self._raw_dos.energies[:]))
-                    if not check.is_none(self._raw_dos.energies)
-                    else None
-                ),
-                energy_max=(
-                    float(np.max(self._raw_dos.energies[:]))
-                    if not check.is_none(self._raw_dos.energies)
-                    else None
-                ),
-            )
-        }
+        return Dos_DB(
+            dos_at_fermi_total=dos_at_fermi_total,
+            dos_at_fermi_up=dos_at_fermi_up,
+            dos_at_fermi_down=dos_at_fermi_down,
+            dos_at_raw_fermi_total=dos_at_raw_fermi_total,
+            dos_at_raw_fermi_up=dos_at_raw_fermi_up,
+            dos_at_raw_fermi_down=dos_at_raw_fermi_down,
+            energy_min=(
+                float(np.min(self._raw_dos.energies[:]))
+                if not check.is_none(self._raw_dos.energies)
+                else None
+            ),
+            energy_max=(
+                float(np.max(self._raw_dos.energies[:]))
+                if not check.is_none(self._raw_dos.energies)
+                else None
+            ),
+        )
 
     def to_graph(self, selection=None) -> graph.Graph:
         data = self._read_data(selection)
@@ -563,6 +562,16 @@ class Dos(graph.Mixin):
         sources = list(raw_module.selections(self._quantity_name))
         return {self._quantity_name: sources, **handler_selections}
 
+    def _to_database(self, selection=None) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            selection,
+            DosHandler.from_data,
+            DosHandler.to_database,
+        )
+
 
 def _series(energies, data):
     for name, dos in data.items():
@@ -572,13 +581,3 @@ def _series(energies, data):
 
 def _flip_down_component(name):
     return "down" in name and "up" not in name and "total" not in name
-
-    def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
-            self._source,
-            self._quantity_name,
-            selection,
-            DosHandler.from_data,
-            DosHandler.to_database,
-        )

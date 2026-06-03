@@ -9,6 +9,7 @@ from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -75,13 +76,11 @@ in kB   {stress_to_string(stress)}
         else:
             initial_stress_tensor = stress
             final_stress_tensor = stress
-        return {
-            "stress": Stress_DB(
-                initial_stress_mean=np.trace(initial_stress_tensor) / 3.0,
-                final_stress_mean=np.trace(final_stress_tensor) / 3.0,
-                final_stress_tensor=tensor.symmetry_reduce(final_stress_tensor),
-            )
-        }
+        return Stress_DB(
+            initial_stress_mean=np.trace(initial_stress_tensor) / 3.0,
+            final_stress_mean=np.trace(final_stress_tensor) / 3.0,
+            final_stress_tensor=tensor.symmetry_reduce(final_stress_tensor),
+        )
 
     def number_steps(self) -> int:
         """Return the number of stress components in the trajectory."""
@@ -242,8 +241,8 @@ class Stress:
         )
 
     def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
             self._source,
             self._quantity_name,
             selection,

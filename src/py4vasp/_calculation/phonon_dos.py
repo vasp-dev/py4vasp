@@ -7,6 +7,7 @@ from py4vasp._calculation._stoichiometry import StoichiometryHandler
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -69,9 +70,7 @@ class PhononDosHandler:
             if not check.is_none(self._raw_phonon_dos.energies)
             else None
         )
-        return {
-            "phonon_dos": PhononDos_DB(energy_min=energy_min, energy_max=energy_max),
-        }
+        return PhononDos_DB(energy_min=energy_min, energy_max=energy_max)
 
     def to_graph(self, selection=None) -> graph.Graph:
         data = self.to_dict(selection)
@@ -220,6 +219,16 @@ class PhononDos(graph.Mixin):
             PhononDosHandler.selections,
         )
 
+    def _to_database(self, selection=None) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            selection,
+            PhononDosHandler.from_data,
+            PhononDosHandler.to_database,
+        )
+
 
 def _series(data):
     energies = data["energies"]
@@ -227,13 +236,3 @@ def _series(data):
         if name == "energies":
             continue
         yield graph.Series(energies, dos, name)
-
-    def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
-            self._source,
-            self._quantity_name,
-            selection,
-            PhononDosHandler.from_data,
-            PhononDosHandler.to_database,
-        )

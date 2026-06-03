@@ -12,6 +12,7 @@ from py4vasp import exception
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -79,17 +80,15 @@ reciprocal"""
         line_length = _safe_call(self.line_length)
         num_kpoints_total = _safe_call(self.number_kpoints)
         num_lines = _safe_call(self.number_lines)
-        return {
-            "kpoint": Kpoint_DB(
-                mode=mode,
-                line_length=line_length,
-                num_kpoints_total=num_kpoints_total,
-                num_lines=num_lines,
-                num_kpoints_grid=grid_kpoints,
-                labels=user_labels,
-                labels_unique=sampled_points,
-            )
-        }
+        return Kpoint_DB(
+            mode=mode,
+            line_length=line_length,
+            num_kpoints_total=num_kpoints_total,
+            num_lines=num_lines,
+            num_kpoints_grid=grid_kpoints,
+            labels=user_labels,
+            labels_unique=sampled_points,
+        )
 
     def line_length(self) -> int:
         if self.mode() == "line":
@@ -513,6 +512,16 @@ class Kpoint:
             KpointHandler._reciprocal_lattice_vectors,
         )
 
+    def _to_database(self, selection=None) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            selection,
+            KpointHandler.from_data,
+            KpointHandler.to_database,
+        )
+
 
 def _last_step(lattice_vectors):
     if lattice_vectors.ndim == 2:
@@ -531,13 +540,3 @@ def _line_distances(coordinates):
 def _kpoint_label(kpoint):
     fractions = [convert.Fraction(coordinate).latex() for coordinate in kpoint]
     return f"$[{fractions[0]} {fractions[1]} {fractions[2]}]$"
-
-    def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
-            self._source,
-            self._quantity_name,
-            selection,
-            KpointHandler.from_data,
-            KpointHandler.to_database,
-        )

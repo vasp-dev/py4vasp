@@ -8,6 +8,7 @@ from py4vasp import exception, raw
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -67,16 +68,14 @@ electronic dipole moment: {vec_to_string(self._raw_polarization.electron[:])}"""
                 self._raw_polarization.electron[:] + self._raw_polarization.ion[:]
             )
 
-        return {
-            "polarization": Polarization_DB(
-                total_dipole_norm=total_norm,
-                total_dipole_moment=total_dipole,
-                ionic_dipole_norm=ionic_norm,
-                ionic_dipole_moment=ion_dipole,
-                electronic_dipole_norm=electronic_norm,
-                electronic_dipole_moment=electron_dipole,
-            )
-        }
+        return Polarization_DB(
+            total_dipole_norm=total_norm,
+            total_dipole_moment=total_dipole,
+            ionic_dipole_norm=ionic_norm,
+            ionic_dipole_moment=ion_dipole,
+            electronic_dipole_norm=electronic_norm,
+            electronic_dipole_moment=electron_dipole,
+        )
 
 
 @quantity("polarization")
@@ -137,8 +136,8 @@ class Polarization:
         p.text(str(self))
 
     def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
             self._source,
             self._quantity_name,
             selection,

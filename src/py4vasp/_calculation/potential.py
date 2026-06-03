@@ -11,6 +11,7 @@ from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -21,7 +22,6 @@ from py4vasp._raw.data_db import Potential_DB
 from py4vasp._third_party import view
 from py4vasp._util import (
     check,
-    database,
     density,
     documentation,
     index,
@@ -80,9 +80,7 @@ class PotentialHandler:
         result.update(itertools.chain(*items))
         return result
 
-    def to_database(self) -> dict:
-        structure_db = self._structure().to_database()
-
+    def to_database(self) -> Potential_DB:
         total_potential_mean = None
         total_potential_mean_up = None
         total_potential_mean_down = None
@@ -112,17 +110,13 @@ class PotentialHandler:
             for kind in VALID_KINDS
         }
 
-        potential_dict = {
-            "potential": Potential_DB(
-                **has_potential_dict,
-                total_potential_mean=total_potential_mean,
-                total_potential_mean_up=total_potential_mean_up,
-                total_potential_mean_down=total_potential_mean_down,
-                total_potential_mean_magnetization=total_potential_mean_magnetization,
-            )
-        }
-
-        return database.combine_db_dicts(potential_dict, structure_db)
+        return Potential_DB(
+            **has_potential_dict,
+            total_potential_mean=total_potential_mean,
+            total_potential_mean_up=total_potential_mean_up,
+            total_potential_mean_down=total_potential_mean_down,
+            total_potential_mean_magnetization=total_potential_mean_magnetization,
+        )
 
     def to_view(
         self,
@@ -495,6 +489,16 @@ class Potential(view.Mixin):
             supercell=supercell,
         )
 
+    def _to_database(self, selection=None) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            selection,
+            PotentialHandler.from_data,
+            PotentialHandler.to_database,
+        )
+
 
 class _PotentialReduction(index.Reduction):
     def __init__(self, keys):
@@ -558,13 +562,3 @@ def _raise_error_if_nonpolarized_potential(potential):
     if _is_nonpolarized(potential):
         message = "Cannot visualize nonpolarized potential as quiver plot."
         raise exception.DataMismatch(message)
-
-    def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
-            self._source,
-            self._quantity_name,
-            selection,
-            PotentialHandler.from_data,
-            PotentialHandler.to_database,
-        )

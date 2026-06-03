@@ -11,6 +11,7 @@ from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -128,15 +129,13 @@ N, E, dE, deps, ncg, rms, rms(c)"""
                 num_electronic_steps,
             ) = self._get_electronic_steps_info()
 
-        return {
-            "electronic_minimization": ElectronicMinimization_DB(
-                num_electronic_steps=num_electronic_steps,
-                elmin_is_converged_all=elmin_is_converged_all,
-                elmin_is_converged_final=elmin_is_converged_final,
-                num_max_electronic_steps_per_ionic_step=num_max_electronic_steps_per_ionic,
-                num_min_electronic_steps_per_ionic_step=num_min_electronic_steps_per_ionic,
-            )
-        }
+        return ElectronicMinimization_DB(
+            num_electronic_steps=num_electronic_steps,
+            elmin_is_converged_all=elmin_is_converged_all,
+            elmin_is_converged_final=elmin_is_converged_final,
+            num_max_electronic_steps_per_ionic_step=num_max_electronic_steps_per_ionic,
+            num_min_electronic_steps_per_ionic_step=num_min_electronic_steps_per_ionic,
+        )
 
     @property
     def _steps_or_last(self):
@@ -297,8 +296,8 @@ class ElectronicMinimization(graph.Mixin):
         p.text(str(self) if not cycle else "...")
 
     def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
             self._source,
             self._quantity_name,
             selection,

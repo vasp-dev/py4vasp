@@ -11,6 +11,7 @@ from py4vasp._calculation import cell
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -32,7 +33,7 @@ class EffectiveCoulombHandler:
         return cls(raw_coulomb)
 
     def __str__(self) -> str:
-        data = asdict(self.to_database()["effective_coulomb"])
+        data = asdict(self.to_database())
         return f"""\
 averaged bare interaction
 bare Hubbard U = {data["bare_V_uppercase"].real:8.4f} {data["bare_V_uppercase"].imag:8.4f}
@@ -45,7 +46,7 @@ screened Hubbard u = {data["screened_u_lowercase"].real:8.4f} {data["screened_u_
 screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_uppercase"].imag:8.4f}
 """
 
-    def to_database(self) -> dict[str, EffectiveCoulomb_DB]:
+    def to_database(self) -> EffectiveCoulomb_DB:
         """Serialize effective Coulomb data for database storage."""
         wannier_iiii = self._wannier_indices_iiii()
         wannier_ijji = self._wannier_indices_ijji()
@@ -81,16 +82,14 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
         V = convert.to_complex(self._raw_coulomb.bare_potential_high_cutoff[access_V])
         v = convert.to_complex(self._raw_coulomb.bare_potential_high_cutoff[access_v])
         Vj = convert.to_complex(self._raw_coulomb.bare_potential_high_cutoff[access_Vj])
-        return {
-            "effective_coulomb": EffectiveCoulomb_DB(
-                screened_U_uppercase=complex(np.average(U)),
-                screened_u_lowercase=complex(np.average(u)),
-                screened_J_uppercase=complex(np.average(J)),
-                bare_V_uppercase=complex(np.average(V)),
-                bare_v_lowercase=complex(np.average(v)),
-                bare_J_uppercase=complex(np.average(Vj)),
-            )
-        }
+        return EffectiveCoulomb_DB(
+            screened_U_uppercase=complex(np.average(U)),
+            screened_u_lowercase=complex(np.average(u)),
+            screened_J_uppercase=complex(np.average(J)),
+            bare_V_uppercase=complex(np.average(V)),
+            bare_v_lowercase=complex(np.average(v)),
+            bare_J_uppercase=complex(np.average(Vj)),
+        )
 
     def _wannier_indices_iiii(self):
         n = self._raw_coulomb.number_wannier_states
@@ -560,6 +559,16 @@ class EffectiveCoulomb(graph.Mixin):
         delta = np.abs(delta)
         return np.sqrt(delta / (radius + delta))
 
+    def _to_database(self, selection=None) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            selection,
+            EffectiveCoulombHandler.from_data,
+            EffectiveCoulombHandler.to_database,
+        )
+
 
 @dataclass
 class _CoulombPotential:
@@ -676,13 +685,3 @@ def transform_positions_to_radial(positions, radius_max):
         return radius, slice(None)
     mask = radius <= radius_max
     return radius[mask], mask
-
-    def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
-            self._source,
-            self._quantity_name,
-            selection,
-            EffectiveCoulombHandler.from_data,
-            EffectiveCoulombHandler.to_database,
-        )

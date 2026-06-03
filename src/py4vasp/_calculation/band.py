@@ -14,6 +14,7 @@ from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -25,7 +26,6 @@ from py4vasp._raw.data_db import Band_DB
 from py4vasp._third_party import graph
 from py4vasp._util import (
     check,
-    database,
     documentation,
     import_,
     index,
@@ -68,9 +68,7 @@ class BandHandler:
             **self._read_projections(selection),
         }
 
-    def to_database(self, selection=None, fermi_energy=None) -> dict:
-        dispersion = self._dispersion().to_database()
-
+    def to_database(self, selection=None, fermi_energy=None) -> Band_DB:
         occupations = self._read_occupations()
         num_total_occupied = occupations.get("occupations", None)
         num_checked_bands = None
@@ -97,18 +95,13 @@ class BandHandler:
             else None
         )
 
-        return database.combine_db_dicts(
-            {
-                "band": Band_DB(
-                    num_considered_bands=num_checked_bands,
-                    num_occupied_bands=num_total_occupied,
-                    num_occupied_bands_up=num_occupied_up,
-                    num_occupied_bands_down=num_occupied_down,
-                    fermi_energy_raw=raw_fermi_energy,
-                    fermi_energy=fermi_energy or raw_fermi_energy,
-                ),
-            },
-            dispersion,
+        return Band_DB(
+            num_considered_bands=num_checked_bands,
+            num_occupied_bands=num_total_occupied,
+            num_occupied_bands_up=num_occupied_up,
+            num_occupied_bands_down=num_occupied_down,
+            fermi_energy_raw=raw_fermi_energy,
+            fermi_energy=fermi_energy or raw_fermi_energy,
         )
 
     def to_graph(self, selection=None, fermi_energy=None, width=0.5) -> graph.Graph:
@@ -813,8 +806,8 @@ class Band(graph.Mixin):
         return {self._quantity_name: sources, **handler_selections}
 
     def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
             self._source,
             self._quantity_name,
             selection,

@@ -9,6 +9,7 @@ from py4vasp._calculation import cell
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -115,8 +116,7 @@ class PiezoelectricTensorHandler:
                     e_frobenius[idt],
                 ) = _compute_bulk_quantities(e_tensor)
 
-        return {
-            "piezoelectric_tensor": PiezoelectricTensor_DB(
+        return PiezoelectricTensor_DB(
                 total_3d_tensor_x=reduced_tensor_x[0],
                 total_3d_tensor_y=reduced_tensor_y[0],
                 total_3d_tensor_z=reduced_tensor_z[0],
@@ -225,8 +225,7 @@ class PiezoelectricTensorHandler:
                     if tensor_2d[2] is not None
                     else None
                 ),
-            )
-        }
+        )
 
 
 @quantity("piezoelectric_tensor")
@@ -296,6 +295,16 @@ class PiezoelectricTensor:
 
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            selection,
+            PiezoelectricTensorHandler.from_data,
+            PiezoelectricTensorHandler.to_database,
+        )
 
 
 def _tensor_to_string(tensor, label):
@@ -386,13 +395,3 @@ def _compute_bulk_quantities(
     e_frobenius = np.linalg.norm(e_tensor)
 
     return e11, e22, e33, e_avg_abs, e_rms, e_frobenius
-
-    def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
-            self._source,
-            self._quantity_name,
-            selection,
-            PiezoelectricTensorHandler.from_data,
-            PiezoelectricTensorHandler.to_database,
-        )

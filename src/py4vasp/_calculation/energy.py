@@ -9,6 +9,7 @@ from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -141,7 +142,7 @@ class EnergyHandler:
                     None if vs is None else int(np.argmin(vs))
                 )
                 extra_dict[f"{key}_final"] = None if vs is None else float(vs[-1])
-        return {"energy": Energy_DB(**energy_dict, other_energy_data=extra_dict)}
+        return Energy_DB(**energy_dict, other_energy_data=extra_dict)
 
     @property
     def _steps_or_last(self):
@@ -364,6 +365,16 @@ class Energy(graph.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self) if not cycle else "...")
 
+    def _to_database(self, selection=None) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            EnergyHandler.to_database,
+        )
+
 
 class _YAxes:
     def __init__(self, tree):
@@ -380,13 +391,3 @@ class _YAxes:
     def use_y2(self, label):
         choices = _SELECTIONS["temperature    TEIN"]
         return self.use_both and label in choices
-
-    def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
-            self._source,
-            self._quantity_name,
-            selection,
-            EnergyHandler.from_data,
-            EnergyHandler.to_database,
-        )

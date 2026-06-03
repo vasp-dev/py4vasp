@@ -11,13 +11,14 @@ from py4vasp._calculation._stoichiometry import StoichiometryHandler
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_graphs,
     merge_strings,
     quantity,
 )
 from py4vasp._third_party import graph
-from py4vasp._util import convert, database, documentation, index, select
+from py4vasp._util import convert, documentation, index, select
 
 
 class PhononBandHandler:
@@ -46,13 +47,7 @@ class PhononBandHandler:
         }
 
     def to_database(self) -> dict:
-        stoichiometry = self._stoichiometry().to_database()
-        dispersion = self._dispersion().to_database()
-        return database.combine_db_dicts(
-            {"phonon_band": {}},
-            stoichiometry,
-            dispersion,
-        )
+        return {}
 
     def to_graph(self, selection=None, width=1.0) -> graph.Graph:
         projections = self._projections(selection, width)
@@ -202,8 +197,8 @@ class PhononBand(graph.Mixin):
         )
 
     def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
             self._source,
             self._quantity_name,
             selection,

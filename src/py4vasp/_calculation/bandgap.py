@@ -11,6 +11,7 @@ from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
+    merge_to_database,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -144,7 +145,7 @@ Fermi energy:    {fermi_energy}"""
                 if self._spin_polarized()
                 else None
             )
-        return {"bandgap": Bandgap_DB(**final_dict)}
+        return Bandgap_DB(**final_dict)
 
     # --- Private helpers ---
 
@@ -464,8 +465,8 @@ class Bandgap(graph.Mixin):
             return raw_data.values.shape[1] == 3
 
     def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
             self._source,
             self._quantity_name,
             selection,

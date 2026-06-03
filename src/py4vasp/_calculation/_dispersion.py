@@ -6,6 +6,7 @@ import py4vasp._third_party.graph as _graph
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -14,7 +15,7 @@ from py4vasp._calculation.kpoint import KpointHandler
 from py4vasp._calculation import projector
 from py4vasp._raw import data as raw
 from py4vasp._raw.data_db import Dispersion_DB
-from py4vasp._util import check, database
+from py4vasp._util import check
 
 
 class DispersionHandler:
@@ -64,18 +65,13 @@ class DispersionHandler:
             min_eigenvalue_down = float(np.min(eigenvalues_down))
             max_eigenvalue_down = float(np.max(eigenvalues_down))
 
-        return database.combine_db_dicts(
-            {
-                "dispersion": Dispersion_DB(
-                    eigenvalue_min=min_eigenvalue,
-                    eigenvalue_max=max_eigenvalue,
-                    eigenvalue_min_up=min_eigenvalue_up,
-                    eigenvalue_max_up=max_eigenvalue_up,
-                    eigenvalue_min_down=min_eigenvalue_down,
-                    eigenvalue_max_down=max_eigenvalue_down,
-                ),
-            },
-            self._kpoints().to_database(),
+        return Dispersion_DB(
+            eigenvalue_min=min_eigenvalue,
+            eigenvalue_max=max_eigenvalue,
+            eigenvalue_min_up=min_eigenvalue_up,
+            eigenvalue_max_up=max_eigenvalue_up,
+            eigenvalue_min_down=min_eigenvalue_down,
+            eigenvalue_max_down=max_eigenvalue_down,
         )
 
     def plot(self, projections=None):
@@ -151,6 +147,16 @@ class Dispersion:
             projections,
         )
 
+    def _to_database(self, selection=None) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            selection,
+            DispersionHandler.from_data,
+            DispersionHandler.to_database,
+        )
+
 
 def _band_structure(data, projections):
     spin_projections = projections.get(projector.SPIN_PROJECTION, [])
@@ -217,13 +223,3 @@ def _filter_unique(ticks, labels):
                 label = previous_label + "|" + label
         result[tick] = label
     return result
-
-    def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
-            self._source,
-            self._quantity_name,
-            selection,
-            DispersionHandler.from_data,
-            DispersionHandler.to_database,
-        )

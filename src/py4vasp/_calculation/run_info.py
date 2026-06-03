@@ -7,6 +7,7 @@ from py4vasp._calculation import bandgap as bandgap_module, exception
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
+    merge_to_database,
     merge_default,
     quantity,
 )
@@ -47,9 +48,7 @@ class RunInfoHandler:
 
     def to_database(self) -> dict:
         """Serialize run info for the database."""
-        return {
-            "run_info": RunInfo_DB(**self.to_dict()),
-        }
+        return RunInfo_DB(**self.to_dict())
 
     def _read_attr(self, *keys: str):
         data = self._raw_run_info
@@ -211,8 +210,8 @@ class RunInfo:
         return self.read()
 
     def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
             self._source,
             self._quantity_name,
             selection,

@@ -7,6 +7,7 @@ from py4vasp import raw
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -91,14 +92,12 @@ ion {ion + 1:4d}   {element}
             eigenvalue_max_index = int(np.argmax(traces))
             eigenvalue_min_index = int(np.argmin(traces))
 
-        return {
-            "born_effective_charge": BornEffectiveCharge_DB(
-                eigenvalue_min=eigenvalue_min,
-                eigenvalue_min_index=eigenvalue_min_index,
-                eigenvalue_max=eigenvalue_max,
-                eigenvalue_max_index=eigenvalue_max_index,
-            ),
-        }
+        return BornEffectiveCharge_DB(
+            eigenvalue_min=eigenvalue_min,
+            eigenvalue_min_index=eigenvalue_min_index,
+            eigenvalue_max=eigenvalue_max,
+            eigenvalue_max_index=eigenvalue_max_index,
+        )
 
 
 @quantity("born_effective_charge")
@@ -160,8 +159,8 @@ class BornEffectiveCharge:
         return self.read()
 
     def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
             self._source,
             self._quantity_name,
             selection,

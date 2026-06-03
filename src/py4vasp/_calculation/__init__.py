@@ -341,19 +341,11 @@ def _collect_to_database(group_name, quantity_name, dispatcher_cls, source, prop
         return
     except Exception:
         return
-    # result is {selection_name: handler_result}
-    for sel_name, handler_dict in result.items():
-        if sel_name == "default":
-            if group_name is not None:
-                key = f"{group_name}_{base}"
-            else:
-                key = base
-        else:
-            if group_name is not None:
-                key = f"{group_name}_{base}_{sel_name}"
-            else:
-                key = f"{base}_{sel_name}"
-        properties[key] = handler_dict
+    # result is {quantity[_selection]: handler_result}
+    for key, handler_result in result.items():
+        if group_name is not None:
+            key = f"{group_name}_{key}"
+        properties[key] = handler_result
 
 
 def _add_all_refinement_classes(calc):

@@ -7,6 +7,7 @@ from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
+    merge_to_database,
     merge_default,
     merge_strings,
     quantity,
@@ -63,13 +64,11 @@ class ExcitonEigenvectorHandler:
             num_bands_conduction = np.shape(bse_index)[2]
             num_bands_valence = np.shape(bse_index)[3]
             num_kpoints = np.shape(bse_index)[1]
-        return {
-            "exciton_eigenvector": ExcitonEigenvector_DB(
-                num_kpoints=num_kpoints,
-                num_valence_bands=num_bands_valence,
-                num_conduction_bands=num_bands_conduction,
-            )
-        }
+        return ExcitonEigenvector_DB(
+            num_kpoints=num_kpoints,
+            num_valence_bands=num_bands_valence,
+            num_conduction_bands=num_bands_conduction,
+        )
 
     def _dispersion(self) -> DispersionHandler:
         return DispersionHandler.from_data(self._raw_exciton_eigenvector.dispersion)
@@ -135,8 +134,8 @@ class ExcitonEigenvector:
         return self.read()
 
     def _to_database(self, selection=None) -> dict:
-        """Return {selection_name: handler_result_dict} for database storage."""
-        return _dispatch(
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
             self._source,
             self._quantity_name,
             selection,

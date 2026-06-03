@@ -414,8 +414,8 @@ def test_dispatcher_to_database(bandgap):
     """Dispatcher._to_database() must return {selection_name: handler_result}."""
     result = bandgap._to_database()
     assert isinstance(result, dict)
-    assert "default" in result
-    assert isinstance(result["default"], Bandgap_DB)
+    assert "bandgap" in result
+    assert isinstance(result["bandgap"], Bandgap_DB)
 
 
 def test_dispatcher_to_dict_matches_read(raw_data, Assert):
