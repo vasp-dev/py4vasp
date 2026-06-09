@@ -617,7 +617,10 @@ class Band(base.Refinery, graph.Mixin):
 
     def _quiver_plot(self, selector, selection, nkp1, nkp2):
         data = selector[selection]
-        data = data.reshape(2, nkp1, nkp2)
+        # VASP stores k-points with kx as the fastest-varying (innermost) index.
+        # Reshape in VASP storage order (slow, fast) then transpose to align with
+        # the (grid_a, grid_b) layout expected by the plot pipeline.
+        data = data.reshape(2, nkp2, nkp1).transpose(0, 2, 1)
         return {"data": data, "label": selector.label(selection)}
 
     def _make_selector(self, projections):

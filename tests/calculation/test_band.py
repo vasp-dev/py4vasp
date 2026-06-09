@@ -140,10 +140,10 @@ def spin_texture(raw_data, request):
     project_d_yz = np.sum(raw_band.projections[2:4, :, 2, :, 2], axis=1)
     project_5_p_zx = raw_band.projections[[1, 3], 4, 1, :, 0]
     band.ref.expected_data = {
-        "sigma_x~sigma_y_band=2": np.reshape(project_all_xy, (2, 4, 3)),
-        "Pb_sigma_1~sigma_2_band=1": np.reshape(project_Pb_xy, (2, 4, 3)),
-        "d_y~z_band=3": np.reshape(project_d_yz, (2, 4, 3)),
-        "O_2_p_x~z_band=1": np.reshape(project_5_p_zx, (2, 4, 3)),
+        "sigma_x~sigma_y_band=2": project_all_xy.reshape(2, 3, 4).transpose(0, 2, 1),
+        "Pb_sigma_1~sigma_2_band=1": project_Pb_xy.reshape(2, 3, 4).transpose(0, 2, 1),
+        "d_y~z_band=3": project_d_yz.reshape(2, 3, 4).transpose(0, 2, 1),
+        "O_2_p_x~z_band=1": project_5_p_zx.reshape(2, 3, 4).transpose(0, 2, 1),
     }
     band.ref.expected_lattice = expected_lattice(request.param)
     return band
