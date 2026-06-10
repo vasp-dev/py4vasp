@@ -177,6 +177,90 @@ def spin_texture_xy(raw_data):
     return band
 
 
+@pytest.fixture
+def asymmetric_spin_texture():
+    """15x5x1 mesh where sigma_x increases along kx and sigma_y along ky."""
+    from py4vasp import _demo, raw
+
+    nkpx, nkpy, nkpz = 15, 5, 1
+    num_kpoints = nkpx * nkpy
+    coordinates = np.array(
+        [(kx, ky, 0.0) for ky in np.linspace(0, 1, nkpy, endpoint=False)
+         for kx in np.linspace(0, 1, nkpx, endpoint=False)]
+    )
+    cell = raw.Cell(np.diag([5.0, 5.0, 10.0]).astype(float), scale=raw.VaspData(1.0))
+    kpoints = raw.Kpoint(
+        mode="explicit", number=num_kpoints,
+        number_x=nkpx, number_y=nkpy, number_z=nkpz,
+        coordinates=coordinates, weights=np.ones(num_kpoints), cell=cell,
+    )
+    dispersion = raw.Dispersion(kpoints, np.zeros((4, num_kpoints, 1)))
+    projectors = _demo.projector.Ba2PbO4(use_orbitals=True)
+    num_orbitals = len(projectors.orbital_types)
+    projections = np.zeros((4, _demo.NUMBER_ATOMS, num_orbitals, num_kpoints, 1))
+    kx_index = np.tile(np.arange(nkpx), nkpy)
+    ky_index = np.repeat(np.arange(nkpy), nkpx)
+    projections[1, :, :, :, 0] = kx_index[None, None, :]
+    projections[2, :, :, :, 0] = ky_index[None, None, :]
+    raw_band = raw.Band(
+        dispersion=dispersion, fermi_energy=0.0,
+        occupations=np.ones((4, num_kpoints, 1)),
+        projectors=projectors, projections=projections,
+    )
+    band = Band.from_data(raw_band)
+    band.ref = types.SimpleNamespace()
+    scale = _demo.NUMBER_ATOMS * num_orbitals
+    embedded = np.zeros((3, num_kpoints))
+    embedded[0] = kx_index.astype(float) * scale
+    embedded[1] = ky_index.astype(float) * scale
+    embedded = embedded.reshape(3, nkpy, nkpx).transpose(0, 2, 1)
+    reciprocal_cell = Kpoint.from_data(kpoints)._reciprocal_lattice_vectors()
+    plot_plane = slicing.plane(reciprocal_cell, "c", normal=None)
+    band.ref.expected_data = slicing._project_vectors_to_plane(plot_plane, embedded)
+    return band
+
+
+@pytest.fixture
+def rotated_spin_texture():
+    """4x3x1 mesh with a 45-degree rotated cell and uniform sigma_x = 1."""
+    from py4vasp import _demo, raw
+
+    nkpx, nkpy, nkpz = 4, 3, 1
+    num_kpoints = nkpx * nkpy
+    coordinates = np.array(
+        [(kx, ky, 0.0) for ky in np.linspace(0, 1, nkpy, endpoint=False)
+         for kx in np.linspace(0, 1, nkpx, endpoint=False)]
+    )
+    s = 5.0 / np.sqrt(2)
+    lattice = np.array([[s, s, 0.0], [-s, s, 0.0], [0.0, 0.0, 10.0]])
+    cell = raw.Cell(lattice, scale=raw.VaspData(1.0))
+    kpoints = raw.Kpoint(
+        mode="explicit", number=num_kpoints,
+        number_x=nkpx, number_y=nkpy, number_z=nkpz,
+        coordinates=coordinates, weights=np.ones(num_kpoints), cell=cell,
+    )
+    dispersion = raw.Dispersion(kpoints, np.zeros((4, num_kpoints, 1)))
+    projectors = _demo.projector.Ba2PbO4(use_orbitals=True)
+    num_orbitals = len(projectors.orbital_types)
+    projections = np.zeros((4, _demo.NUMBER_ATOMS, num_orbitals, num_kpoints, 1))
+    projections[1, :, :, :, 0] = 1.0  # uniform sigma_x
+    raw_band = raw.Band(
+        dispersion=dispersion, fermi_energy=0.0,
+        occupations=np.ones((4, num_kpoints, 1)),
+        projectors=projectors, projections=projections,
+    )
+    band = Band.from_data(raw_band)
+    band.ref = types.SimpleNamespace()
+    scale = _demo.NUMBER_ATOMS * num_orbitals
+    embedded = np.zeros((3, num_kpoints))
+    embedded[0] = scale
+    embedded = embedded.reshape(3, nkpy, nkpx).transpose(0, 2, 1)
+    reciprocal_cell = Kpoint.from_data(kpoints)._reciprocal_lattice_vectors()
+    plot_plane = slicing.plane(reciprocal_cell, "c", normal=None)
+    band.ref.expected_data = slicing._project_vectors_to_plane(plot_plane, embedded)
+    return band
+
+
 def expected_lattice(selection):
     if selection == "x~y":
         return np.array([[1.52216787, 0.0], [0.14521927, 1.51522486]])
@@ -495,6 +579,28 @@ def test_band_to_quiver_supercell(
     assert len(graph) == 1
     quiver_plot = graph.series[0]
     Assert.allclose(quiver_plot.supercell, expected_supercell)
+
+
+def test_band_to_quiver_asymmetric_mesh(asymmetric_spin_texture, Assert):
+    """With a heavily asymmetric k-mesh (15x5x1), verify correct axis ordering."""
+    graph = asymmetric_spin_texture.to_quiver("x~y(band=1)")
+    quiver_data = graph.series[0].data
+    assert quiver_data.shape[1] == 15
+    assert quiver_data.shape[2] == 5
+    Assert.allclose(quiver_data, asymmetric_spin_texture.ref.expected_data)
+
+
+def test_band_to_quiver_rotation_projects_spin_vectors(rotated_spin_texture, Assert):
+    """Verify that spin vectors are rotated into the plot frame."""
+    graph = rotated_spin_texture.to_quiver("x~y(band=1)")
+    quiver_data = graph.series[0].data
+    assert quiver_data.shape == (2, 4, 3)
+    # A pure Cartesian x-vector should project onto both plot axes for a rotated cell
+    assert not np.allclose(quiver_data[1], 0), (
+        "Rotation is not applied: sigma_x should project onto both plot axes "
+        "for a 45-degree rotated cell"
+    )
+    Assert.allclose(quiver_data, rotated_spin_texture.ref.expected_data)
 
 
 def test_multiple_bands_print(multiple_bands, format_):
