@@ -12,6 +12,7 @@ from py4vasp._calculation.band import _OCCUPATION_CUTOFF, Band
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.projector import Projector
 from py4vasp._raw.data_db import Band_DB
+from py4vasp._util import slicing
 
 
 @pytest.fixture
@@ -139,14 +140,32 @@ def spin_texture(raw_data, request):
     project_Pb_xy = np.sum(raw_band.projections[1:3, 2, :, :, 0], axis=1)
     project_d_yz = np.sum(raw_band.projections[2:4, :, 2, :, 2], axis=1)
     project_5_p_zx = raw_band.projections[[1, 3], 4, 1, :, 0]
+    cut = {"x~y": "c", "x~z": "b", "y~z": "a"}[request.param]
+    plot_plane = _spin_texture_plane(raw_band, cut)
     band.ref.expected_data = {
-        "sigma_x~sigma_y_band=2": project_all_xy.reshape(2, 3, 4).transpose(0, 2, 1),
-        "Pb_sigma_1~sigma_2_band=1": project_Pb_xy.reshape(2, 3, 4).transpose(0, 2, 1),
-        "d_y~z_band=3": project_d_yz.reshape(2, 3, 4).transpose(0, 2, 1),
-        "O_2_p_x~z_band=1": project_5_p_zx.reshape(2, 3, 4).transpose(0, 2, 1),
+        "sigma_x~sigma_y_band=2": _expected_quiver_data(project_all_xy, (0, 1), plot_plane),
+        "Pb_sigma_1~sigma_2_band=1": _expected_quiver_data(project_Pb_xy, (0, 1), plot_plane),
+        "d_y~z_band=3": _expected_quiver_data(project_d_yz, (1, 2), plot_plane),
+        "O_2_p_x~z_band=1": _expected_quiver_data(project_5_p_zx, (0, 2), plot_plane),
     }
     band.ref.expected_lattice = expected_lattice(request.param)
     return band
+
+
+def _spin_texture_plane(raw_band, cut):
+    reciprocal_cell = Kpoint.from_data(
+        raw_band.dispersion.kpoints
+    )._reciprocal_lattice_vectors()
+    return slicing.plane(reciprocal_cell, cut, normal=None)
+
+
+def _expected_quiver_data(two_component_data, axes, plot_plane):
+    """Embed 2-component spin data into 3D, reshape grid, and project onto plane."""
+    nkp1, nkp2 = 4, 3
+    embedded = np.zeros((3, two_component_data.shape[-1]), dtype=two_component_data.dtype)
+    embedded[list(axes)] = two_component_data
+    embedded = embedded.reshape(3, nkp2, nkp1).transpose(0, 2, 1)
+    return slicing._project_vectors_to_plane(plot_plane, embedded)
 
 
 @pytest.fixture
