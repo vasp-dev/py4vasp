@@ -65,7 +65,10 @@ def slice_(selection):
     x = np.linspace(0, 1, number_x, endpoint=False)
     y = np.linspace(0, 1, number_y, endpoint=False)
     z = np.linspace(0, 1, number_z, endpoint=False)
-    coordinates = np.array(list(itertools.product(x, y, z)))
+    # VASP stores k-points with kx as the fastest-varying index and kz as the
+    # slowest, equivalent to itertools.product(z, y, x) and then swapping the
+    # tuple back into (kx, ky, kz) order.
+    coordinates = np.array([(kx, ky, kz) for kz in z for ky in y for kx in x])
     kpoints = raw.Kpoint(
         mode="explicit",
         number=len(coordinates),
