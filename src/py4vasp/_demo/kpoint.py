@@ -68,9 +68,7 @@ def slice_(selection):
     # VASP stores k-points with kx as the fastest-varying index and kz as the
     # slowest, equivalent to itertools.product(z, y, x) and then swapping the
     # tuple back into (kx, ky, kz) order.
-    coordinates = np.array(
-        [(kx, ky, kz) for kz in z for ky in y for kx in x]
-    )
+    coordinates = np.array([(kx, ky, kz) for kz in z for ky in y for kx in x])
     kpoints = raw.Kpoint(
         mode="explicit",
         number=len(coordinates),

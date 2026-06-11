@@ -29,9 +29,15 @@ _OCCUPATION_CUTOFF = 1e-2  # TODO decide appropriate cutoff
 
 # Cartesian axis (x=0, y=1, z=2) corresponding to each accepted spin-component token.
 _SPIN_TOKEN_TO_CARTESIAN_AXIS = {
-    "x": 0, "sigma_x": 0, "sigma_1": 0,
-    "y": 1, "sigma_y": 1, "sigma_2": 1,
-    "z": 2, "sigma_z": 2, "sigma_3": 2,
+    "x": 0,
+    "sigma_x": 0,
+    "sigma_1": 0,
+    "y": 1,
+    "sigma_y": 1,
+    "sigma_2": 1,
+    "z": 2,
+    "sigma_z": 2,
+    "sigma_3": 2,
 }
 
 
@@ -797,11 +803,16 @@ def _to_series(array):
 def _spin_axes_from_selection(selection):
     """Determine which Cartesian axes the spin pair in *selection* corresponds to."""
     for token in selection:
-        if not isinstance(token, select.Group) or token.separator != select.pair_separator:
+        if (
+            not isinstance(token, select.Group)
+            or token.separator != select.pair_separator
+        ):
             continue
         if len(token.group) != 2:
             continue
-        axes = [_SPIN_TOKEN_TO_CARTESIAN_AXIS.get(str(member)) for member in token.group]
+        axes = [
+            _SPIN_TOKEN_TO_CARTESIAN_AXIS.get(str(member)) for member in token.group
+        ]
         if all(a is not None for a in axes):
             return tuple(sorted(axes))
     raise exception.IncorrectUsage(

@@ -143,8 +143,12 @@ def spin_texture(raw_data, request):
     cut = {"x~y": "c", "x~z": "b", "y~z": "a"}[request.param]
     plot_plane = _spin_texture_plane(raw_band, cut)
     band.ref.expected_data = {
-        "sigma_x~sigma_y_band=2": _expected_quiver_data(project_all_xy, (0, 1), plot_plane),
-        "Pb_sigma_1~sigma_2_band=1": _expected_quiver_data(project_Pb_xy, (0, 1), plot_plane),
+        "sigma_x~sigma_y_band=2": _expected_quiver_data(
+            project_all_xy, (0, 1), plot_plane
+        ),
+        "Pb_sigma_1~sigma_2_band=1": _expected_quiver_data(
+            project_Pb_xy, (0, 1), plot_plane
+        ),
         "d_y~z_band=3": _expected_quiver_data(project_d_yz, (1, 2), plot_plane),
         "O_2_p_x~z_band=1": _expected_quiver_data(project_5_p_zx, (0, 2), plot_plane),
     }
@@ -162,7 +166,9 @@ def _spin_texture_plane(raw_band, cut):
 def _expected_quiver_data(two_component_data, axes, plot_plane):
     """Embed 2-component spin data into 3D, reshape grid, and project onto plane."""
     nkp1, nkp2 = 4, 3
-    embedded = np.zeros((3, two_component_data.shape[-1]), dtype=two_component_data.dtype)
+    embedded = np.zeros(
+        (3, two_component_data.shape[-1]), dtype=two_component_data.dtype
+    )
     embedded[list(axes)] = two_component_data
     embedded = embedded.reshape(3, nkp2, nkp1).transpose(0, 2, 1)
     return slicing._project_vectors_to_plane(plot_plane, embedded)
@@ -185,14 +191,22 @@ def asymmetric_spin_texture():
     nkpx, nkpy, nkpz = 15, 5, 1
     num_kpoints = nkpx * nkpy
     coordinates = np.array(
-        [(kx, ky, 0.0) for ky in np.linspace(0, 1, nkpy, endpoint=False)
-         for kx in np.linspace(0, 1, nkpx, endpoint=False)]
+        [
+            (kx, ky, 0.0)
+            for ky in np.linspace(0, 1, nkpy, endpoint=False)
+            for kx in np.linspace(0, 1, nkpx, endpoint=False)
+        ]
     )
     cell = raw.Cell(np.diag([5.0, 5.0, 10.0]).astype(float), scale=raw.VaspData(1.0))
     kpoints = raw.Kpoint(
-        mode="explicit", number=num_kpoints,
-        number_x=nkpx, number_y=nkpy, number_z=nkpz,
-        coordinates=coordinates, weights=np.ones(num_kpoints), cell=cell,
+        mode="explicit",
+        number=num_kpoints,
+        number_x=nkpx,
+        number_y=nkpy,
+        number_z=nkpz,
+        coordinates=coordinates,
+        weights=np.ones(num_kpoints),
+        cell=cell,
     )
     dispersion = raw.Dispersion(kpoints, np.zeros((4, num_kpoints, 1)))
     projectors = _demo.projector.Ba2PbO4(use_orbitals=True)
@@ -203,9 +217,11 @@ def asymmetric_spin_texture():
     projections[1, :, :, :, 0] = kx_index[None, None, :]
     projections[2, :, :, :, 0] = ky_index[None, None, :]
     raw_band = raw.Band(
-        dispersion=dispersion, fermi_energy=0.0,
+        dispersion=dispersion,
+        fermi_energy=0.0,
         occupations=np.ones((4, num_kpoints, 1)),
-        projectors=projectors, projections=projections,
+        projectors=projectors,
+        projections=projections,
     )
     band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
@@ -228,16 +244,24 @@ def rotated_spin_texture():
     nkpx, nkpy, nkpz = 4, 3, 1
     num_kpoints = nkpx * nkpy
     coordinates = np.array(
-        [(kx, ky, 0.0) for ky in np.linspace(0, 1, nkpy, endpoint=False)
-         for kx in np.linspace(0, 1, nkpx, endpoint=False)]
+        [
+            (kx, ky, 0.0)
+            for ky in np.linspace(0, 1, nkpy, endpoint=False)
+            for kx in np.linspace(0, 1, nkpx, endpoint=False)
+        ]
     )
     s = 5.0 / np.sqrt(2)
     lattice = np.array([[s, s, 0.0], [-s, s, 0.0], [0.0, 0.0, 10.0]])
     cell = raw.Cell(lattice, scale=raw.VaspData(1.0))
     kpoints = raw.Kpoint(
-        mode="explicit", number=num_kpoints,
-        number_x=nkpx, number_y=nkpy, number_z=nkpz,
-        coordinates=coordinates, weights=np.ones(num_kpoints), cell=cell,
+        mode="explicit",
+        number=num_kpoints,
+        number_x=nkpx,
+        number_y=nkpy,
+        number_z=nkpz,
+        coordinates=coordinates,
+        weights=np.ones(num_kpoints),
+        cell=cell,
     )
     dispersion = raw.Dispersion(kpoints, np.zeros((4, num_kpoints, 1)))
     projectors = _demo.projector.Ba2PbO4(use_orbitals=True)
@@ -245,9 +269,11 @@ def rotated_spin_texture():
     projections = np.zeros((4, _demo.NUMBER_ATOMS, num_orbitals, num_kpoints, 1))
     projections[1, :, :, :, 0] = 1.0  # uniform sigma_x
     raw_band = raw.Band(
-        dispersion=dispersion, fermi_energy=0.0,
+        dispersion=dispersion,
+        fermi_energy=0.0,
         occupations=np.ones((4, num_kpoints, 1)),
-        projectors=projectors, projections=projections,
+        projectors=projectors,
+        projections=projections,
     )
     band = Band.from_data(raw_band)
     band.ref = types.SimpleNamespace()
