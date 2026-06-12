@@ -16,7 +16,7 @@ from py4vasp._util import convert, import_
 ase = import_.optional("ase")
 ase_cube = import_.optional("ase.io.cube")
 nglview = import_.optional("nglview")
-vaspview = import_.optional("vasp_viewer")
+vaspview = import_.optional("vasp.viewer")
 
 CUBE_FILENAME = "quantity.cube"
 
@@ -289,7 +289,10 @@ class View:
             widget = self.to_ngl()
             widget._ipython_display_()
         elif mode == "vasp_viewer":
+            import IPython.display
+
             widget = self.to_vasp_viewer()
+            IPython.display.display(widget)
         else:
             raise exception.IncorrectUsage(
                 f"Mode '{mode}' is not supported. Choose either 'auto', 'ngl' or 'vasp_viewer'."
@@ -338,8 +341,7 @@ class View:
         }
 
         # === Atoms options ===
-        if self.atom_radius is not None:
-            structure["selections_atom_radius"] = self.atom_radius
+        structure["selections_atom_radius"] = self.atom_radius or 1.0
 
         # === Vector Group options ===
         if self.ion_arrows is not None:
@@ -353,30 +355,43 @@ class View:
                 for arrow in self.ion_arrows
             ]
         if self.grid_scalars is not None:
-            # TODO merge isosurface branch
-            # TODO handle list of grid scalars instead of single grid scalar only
-            # TODO adjust UI to support this
-            structure["grid_scalar_groups"] = [
-                {
-                    "label": grid_quantity.label,
-                    "data": grid_quantity.quantity,  # TODO check type
-                    "isosurfaces": [  # TODO hook this list to isosurface settings
+            # TODO allow time-dependent isosurfaces (viewer-side requirement)
+            structure["volume_datasets"] = []
+            for grid_quantity in self.grid_scalars:
+                if len(grid_quantity.isosurfaces) > 0:
+                    structure["volume_datasets"].extend(
                         {
-                            "isolevel": isosurface.isolevel,
-                            "color": isosurface.color,  # TODO interpret this as base color of isosurface
-                            "opacity": isosurface.opacity,  # TODO tie this to opacity on isosurface
+                            "label": grid_quantity.label,
+                            "data": self._convert_to_list(grid_quantity.quantity[0]),
+                            "grid": grid_quantity.quantity.shape[1:],
+                            "initial_iso_value": isosurface.isolevel,
+                            "color_surface": isosurface.color,
                         }
                         for isosurface in grid_quantity.isosurfaces
-                    ],
-                }
-                for grid_quantity in self.grid_scalars
-            ]
+                    )
+                else:
+                    structure["volume_datasets"].append(
+                        {
+                            "label": grid_quantity.label,
+                            "data": self._convert_to_list(grid_quantity.quantity[0]),
+                            "grid": grid_quantity.quantity.shape[1:],
+                        }
+                    )
 
         # === Lattice options ===
         if self.shift is not None:
             structure["selections_constant_shift"] = self._convert_to_list(self.shift)
         if self.supercell is not None:
-            structure["selections_supercell"] = self._convert_to_list(self.supercell)
+            supercell_list = self._convert_to_list(self.supercell)
+            if len(supercell_list) == 1:
+                supercell_list = supercell_list * 3
+            elif len(supercell_list) == 2:
+                if supercell_list[0] != supercell_list[1]:
+                    supercell_list = supercell_list + [1]
+                else:
+                    supercell_list = supercell_list + [supercell_list[0]]
+            supercell_list = [0, 0, 0] + supercell_list
+            structure["selections_bounds"] = supercell_list
 
         # === Visualization options ===
         if self.camera is not None:
@@ -384,10 +399,7 @@ class View:
         if self.show_cell is not None:
             structure["selections_show_lattice"] = self.show_cell
         if self.show_axes is not None:
-            structure["selections_show_xyz"] = False
             structure["selections_show_abc"] = self.show_axes
-            structure["selections_show_xyz_aside"] = self.show_axes
-            structure["selections_show_abc_aside"] = self.show_axes
         if self.show_axes_at is not None:
             structure["selections_axes_abc_shift"] = self._convert_to_list(
                 self.show_axes_at
