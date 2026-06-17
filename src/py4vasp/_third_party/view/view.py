@@ -332,7 +332,18 @@ class View:
 
         This method creates the widget required to view a structure, isosurfaces and
         arrows at atom centers. The attributes of View are added to a dictionary with which
-        to call initialize a VASP Viewer widget."""
+        to initialize a VASP Viewer widget."""
+        structure = self.to_vasp_viewer_config()
+        widget = vaspview.Widget(structure)
+        return widget
+
+    def to_vasp_viewer_config(self):
+        """Create a dictionary with the configuration for VASP Viewer
+
+        This method creates a dictionary with the configuration required to view a
+        structure, isosurfaces and arrows at atom centers. The attributes of View are
+        added to a dictionary with which to initialize a VASP Viewer widget.
+        """
         self._verify()
         structure: dict = {
             "atoms_trajectory": self._convert_to_list(self.positions),
@@ -356,18 +367,19 @@ class View:
             ]
         if self.grid_scalars is not None:
             # TODO allow time-dependent isosurfaces (viewer-side requirement)
+            # TODO allow multiple isolevels for the same volume dataset (viewer-side requirement)
             structure["volume_datasets"] = []
             for grid_quantity in self.grid_scalars:
                 if len(grid_quantity.isosurfaces) > 0:
                     structure["volume_datasets"].extend(
                         {
-                            "label": grid_quantity.label,
+                            "label": grid_quantity.label + f" ({idi})",
                             "data": self._convert_to_list(grid_quantity.quantity[0]),
                             "grid": grid_quantity.quantity.shape[1:],
                             "initial_iso_value": isosurface.isolevel,
                             "color_surface": isosurface.color,
                         }
-                        for isosurface in grid_quantity.isosurfaces
+                        for idi, isosurface in enumerate(grid_quantity.isosurfaces)
                     )
                 else:
                     structure["volume_datasets"].append(
@@ -412,7 +424,7 @@ class View:
         if self.structure_title:
             structure["selections_descriptor"] = self.structure_title
 
-        return vaspview.Widget(structure)
+        return structure
 
     def _verify(self, mode=None):
         self._raise_error_if_present_on_multiple_steps(self.grid_scalars, mode)
