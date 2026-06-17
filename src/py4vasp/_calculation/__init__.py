@@ -341,9 +341,7 @@ instead of the constructor Calculation()."""
             value = getattr(data, field.name)
             if check.is_none(value):
                 continue
-            if not self._value_present(
-                value, h5f, indices, open_files, stack, seen
-            ):
+            if not self._value_present(value, h5f, indices, open_files, stack, seen):
                 all_present = False
         return True if all_present else None
 
