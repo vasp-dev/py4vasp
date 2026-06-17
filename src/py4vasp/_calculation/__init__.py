@@ -242,28 +242,38 @@ instead of the constructor Calculation()."""
         "Return the path in which the calculation is run."
         return self._path
 
-    def selections(self) -> dict[str, list[str]]:
+    def selections(self, method: Optional[str] = None) -> dict[str, dict[str, str]]:
         """Determine which quantities and selections can be loaded for this calculation.
 
         This inspects the VASP output files of the calculation and compares them against
         the schema defined in :mod:`py4vasp._raw.definition`. For every quantity that
         py4vasp can access (e.g. ``"structure"``, ``"band"``, or grouped quantities like
-        ``"exciton.density"``) it collects all selections (sources) whose data is present
-        in the files.
+        ``"exciton.density"``) it collects all selections (sources) whose data is
+        actually present and loadable.
 
-        The check is performed lazily without reading the bulk of the raw data: for each
-        selection the schema is consulted and only the existence of the corresponding
-        datasets in the HDF5 file is verified. Fields that are tagged optional in the
-        raw-data definition are allowed to be absent. If a non-optional field appears to
-        be missing, py4vasp falls back to attempting a ``read()`` of the quantity to
-        decide whether it can be loaded after all. Quantities for which no selection can
-        be loaded are omitted entirely.
+        Candidate selections are first filtered cheaply against the schema (only the
+        existence of the relevant datasets is checked). Every remaining candidate is then
+        confirmed by genuinely invoking the requested method, so the result only lists
+        selections that truly load. Because the access convention differs between
+        quantities (some take ``selection=...``, others are indexed via ``[...]``), the
+        result reports, for each selection, a ready-to-evaluate snippet showing exactly
+        how to obtain it. The snippets assume the calculation is bound to a variable
+        named ``calculation``.
+
+        Parameters
+        ----------
+        method : str, optional
+            The method the snippets should call and that is used to confirm loadability.
+            Defaults to ``"read"``. Pass e.g. ``"to_view"`` to restrict the result to
+            quantities that can be visualized and to obtain plotting snippets.
 
         Returns
         -------
-        dict[str, list[str]]
-            Maps the quantity call name to the list of loadable selections. The default
-            source is reported as ``"default"``.
+        dict[str, dict[str, str]]
+            Maps each quantity call name to a dictionary that maps every loadable
+            selection (the default source is reported as ``"default"``) to a
+            ready-to-evaluate snippet calling *method*. Quantities for which no selection
+            can be loaded are omitted entirely.
 
         Examples
         --------
@@ -271,7 +281,12 @@ instead of the constructor Calculation()."""
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
         >>> calculation.selections()
-        {'band': ['default', 'kpoints_opt'], 'structure': ['default'], ...}
+        {'band': {'default': 'calculation.band.read()', 'kpoints_opt': "calculation.band.read(selection='kpoints_opt')"}, ...}
+
+        Obtain snippets that implement 3d visualization instead:
+
+        >>> calculation.selections(method="to_view")
+        {'density': {'default': 'calculation.density.to_view()'}, ...}
         """
         _ensure_all_quantities_imported()
         result = {}
@@ -279,27 +294,43 @@ instead of the constructor Calculation()."""
             open_files = {}
             for call_name, schema_name in _public_quantities():
                 loadable = self._loadable_selections(
-                    call_name, schema_name, open_files, stack
+                    call_name, schema_name, method, open_files, stack
                 )
                 if loadable:
                     result[call_name] = loadable
         return dict(sorted(result.items()))
 
-    def _loadable_selections(self, call_name, schema_name, open_files, stack):
+    def _loadable_selections(self, call_name, schema_name, method, open_files, stack):
+        method_name = method or "read"
         try:
             sources = list(unique_selections(schema_name))
         except exception.FileAccessError:
-            return []
-        loadable = []
+            return {}
+        if not self._implements(call_name, method_name):
+            return {}
+        loadable = {}
         for source_name in sources:
             verdict = self._schema_satisfied(
                 schema_name, source_name, open_files, stack, set()
             )
-            if verdict is True:
-                loadable.append(source_name)
-            elif verdict is None and self._attempt_read(call_name, source_name):
-                loadable.append(source_name)
+            if verdict is False:
+                continue
+            # the schema check is only a cheap pre-filter; confirm by really invoking
+            # the method so that selections which cannot load are excluded
+            convention = self._attempt_method(call_name, method_name, source_name)
+            if convention is None:
+                continue
+            loadable[source_name] = _call_snippet(
+                call_name, method_name, source_name, convention
+            )
         return loadable
+
+    def _implements(self, call_name, method):
+        try:
+            quantity = self._quantity_object(call_name)
+        except Exception:
+            return False
+        return callable(getattr(quantity, method, None))
 
     def _schema_satisfied(self, schema_name, source_name, open_files, stack, seen):
         """Check whether the schema for a quantity/source is satisfied by the files.
@@ -395,21 +426,29 @@ instead of the constructor Calculation()."""
         open_files[filename] = handle
         return handle
 
-    def _attempt_read(self, call_name, source_name):
+    def _attempt_method(self, call_name, method, source_name):
+        """Return the access convention that loads *source_name*, or None if it cannot.
+
+        Tries the different selection conventions (keyword argument, indexing, positional
+        argument) and returns the name of the first one that succeeds. Any exception is
+        treated as "this convention does not apply" and the next one is tried.
+        """
         try:
             quantity = self._quantity_object(call_name)
         except Exception:
-            return False
+            return None
         selection = None if source_name == DEFAULT_SELECTION else source_name
-        for attempt in _read_attempts(quantity, selection):
+        try:
+            attempts = _method_attempts(quantity, method, selection)
+        except AttributeError:
+            return None
+        for convention, attempt in attempts:
             try:
                 attempt()
-                return True
-            except TypeError:
-                continue  # this quantity uses a different selection convention
+                return convention
             except Exception:
-                return False  # read was reachable but the data cannot be loaded
-        return False
+                continue
+        return None
 
     def _quantity_object(self, call_name):
         if "." in call_name:
@@ -535,15 +574,32 @@ def _format_index(path, index):
     return path.format(index)
 
 
-def _read_attempts(quantity, selection):
-    "Return callables that try the different selection conventions of read()."
+def _method_attempts(quantity, method, selection):
+    """Return (convention, callable) pairs trying the selection conventions of a method.
+
+    Only the two unambiguous conventions are tried: passing ``selection=`` (the source is
+    routed to the schema) and indexing the quantity (``quantity[source]``). A positional
+    argument is deliberately omitted because it would be forwarded to whatever the first
+    parameter of the method happens to be (e.g. ``ion_types`` or ``component``), which can
+    spuriously succeed without actually selecting the source.
+    """
+    func = getattr(quantity, method)
     if selection is None:
-        return [quantity.read]
+        return [("plain", func)]
     return [
-        lambda: quantity.read(selection=selection),
-        lambda: quantity[selection].read(),
-        lambda: quantity.read(selection),
+        ("keyword", lambda: func(selection=selection)),
+        ("index", lambda: getattr(quantity[selection], method)()),
     ]
+
+
+def _call_snippet(call_name, method_name, source_name, convention):
+    "Build a ready-to-evaluate snippet that loads *source_name* via *method_name*."
+    access = f"calculation.{call_name}"
+    if convention == "keyword":
+        return f"{access}.{method_name}(selection={source_name!r})"
+    if convention == "index":
+        return f"{access}[{source_name!r}].{method_name}()"
+    return f"{access}.{method_name}()"
 
 
 def _ensure_all_quantities_imported():

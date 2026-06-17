@@ -37,30 +37,53 @@ def test_selections_on_empty_path(tmp_path):
 def test_selections_on_demo_calculation(tmp_path):
     calc = demo.calculation(tmp_path / "demo_calculation")
     actual = calc.selections()
-    # quantities with data should expose their loadable selections
+    # quantities with data expose ready-to-evaluate snippets per loadable selection
     expected = {
-        "band": ["default", "kpoints_opt"],
-        "current_density": ["nmr"],
-        "dos": ["default", "kpoints_opt"],
-        "energy": ["default"],
-        "exciton.density": ["default"],
-        "force": ["default"],
-        "nics": ["default"],
-        "partial_density": ["default"],
-        "potential": ["default"],
-        "run_info": ["default"],
-        "stress": ["default"],
-        "system": ["default"],
-        "velocity": ["default"],
+        "band": {
+            "default": "calculation.band.read()",
+            "kpoints_opt": "calculation.band.read(selection='kpoints_opt')",
+        },
+        "dos": {
+            "default": "calculation.dos.read()",
+            "kpoints_opt": "calculation.dos.read(selection='kpoints_opt')",
+        },
+        "energy": {"default": "calculation.energy.read()"},
+        "exciton.density": {"default": "calculation.exciton.density.read()"},
+        "force": {"default": "calculation.force.read()"},
+        "nics": {"default": "calculation.nics.read()"},
+        "partial_density": {"default": "calculation.partial_density.read()"},
+        "potential": {"default": "calculation.potential.read()"},
+        "stress": {"default": "calculation.stress.read()"},
+        "system": {"default": "calculation.system.read()"},
+        "velocity": {"default": "calculation.velocity.read()"},
     }
-    for quantity, selections in expected.items():
-        assert actual[quantity] == selections
-    # density is written to the wavefunction file with an additional kinetic part
-    assert actual["density"] == ["default", "tau"]
+    for quantity, snippets in expected.items():
+        assert actual[quantity] == snippets
+    # density only loads the default source; the kinetic part is not available here
+    assert actual["density"] == {"default": "calculation.density.read()"}
     # structure can be read with the default and the exciton-relaxed positions
-    assert actual["structure"] == ["default", "exciton"]
+    assert actual["structure"] == {
+        "default": "calculation.structure.read()",
+        "exciton": "calculation.structure.read(selection='exciton')",
+    }
     # the result is sorted by quantity name
     assert list(actual) == sorted(actual)
+
+
+def test_selections_excludes_selections_that_do_not_load(tmp_path):
+    calc = demo.calculation(tmp_path / "demo_calculation")
+    actual = calc.selections()
+    # current_density cannot be read without specifying a cut plane -> excluded
+    assert "current_density" not in actual
+    # the kinetic-energy density (tau) source cannot be loaded in the demo data
+    assert "tau" not in actual["density"]
+
+
+def test_selections_snippets_are_evaluable(tmp_path):
+    calculation = demo.calculation(tmp_path / "demo_calculation")
+    for snippets in calculation.selections().values():
+        for snippet in snippets.values():
+            eval(snippet)  # the generated snippet must run without error
 
 
 def test_selections_excludes_quantities_without_data(tmp_path):
@@ -78,3 +101,29 @@ def test_selections_excludes_quantities_without_data(tmp_path):
     )
     for quantity in absent:
         assert quantity not in actual
+
+
+def test_selections_filtered_by_method(tmp_path):
+    calc = demo.calculation(tmp_path / "demo_calculation")
+    viewable = calc.selections(method="to_view")
+    full = calc.selections()
+    # only quantities implementing the method (and loadable via it) are reported
+    assert set(viewable) <= set(full)
+    assert viewable.keys() >= {"density", "potential", "structure"}
+    # quantities without a to_view method are excluded
+    for quantity in ("band", "dos", "energy", "stress"):
+        assert quantity not in viewable
+    # the snippets call the requested method on the matching selection
+    assert viewable["density"] == {"default": "calculation.density.to_view()"}
+    assert viewable["structure"] == {
+        "default": "calculation.structure.to_view()",
+        "exciton": "calculation.structure.to_view(selection='exciton')",
+    }
+    # the selections per quantity are still consistent with the unfiltered result
+    for quantity, snippets in viewable.items():
+        assert set(snippets) <= set(full[quantity])
+
+
+def test_selections_with_method_on_empty_path(tmp_path):
+    calc = Calculation.from_path(tmp_path)
+    assert calc.selections(method="to_view") == {}
