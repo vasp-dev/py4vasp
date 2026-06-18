@@ -102,7 +102,7 @@ class DispersionHandler:
 class Dispersion:
     """Generic class for all dispersions (electrons, phonons)."""
 
-    def __init__(self, source, quantity_name="_dispersion"):
+    def __init__(self, source, quantity_name="dispersion"):
         self._source = source
         self._quantity_name = quantity_name
 

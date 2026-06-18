@@ -37,12 +37,16 @@ def quantity(name, group=None):
     """
 
     def decorator(cls):
+        # The registry key keeps a leading underscore to mark a quantity as private
+        # (Calculation.__getattr__ rejects underscore-prefixed names), but the schema
+        # never uses that underscore, so strip it for the access name.
+        access_name = name.lstrip("_")
         if group is None:
-            cls._quantity_name = name
+            cls._quantity_name = access_name
         else:
             # Use the full schema name f"{group}_{name}" so that FileSource
             # can look up the correct schema entry (e.g. "electron_phonon_self_energy").
-            cls._quantity_name = f"{group}_{name}"
+            cls._quantity_name = f"{group}_{access_name}"
 
         @classmethod
         def from_path(klass, path="."):
