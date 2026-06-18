@@ -6,6 +6,7 @@ import numpy as np
 
 from py4vasp import exception, raw
 from py4vasp._calculation import base
+from py4vasp._calculation.dispatch import merge_to_database, quantity
 from py4vasp._calculation.selection import Selection
 from py4vasp._raw import data as raw_data
 from py4vasp._raw.data_db import Stoichiometry_DB
@@ -103,7 +104,7 @@ class StoichiometryHandler:
         """Return the number of atoms in the system."""
         return int(np.sum(self._raw_stoichiometry.number_ion_types))
 
-    def to_database(self) -> dict:
+    def to_database(self) -> Stoichiometry_DB:
         """Return database-ready stoichiometry data."""
         ion_types = (
             list(self._ion_types(None))
@@ -118,15 +119,13 @@ class StoichiometryHandler:
         formula, compound, simple_types, simple_numbers, primitive_numbers = (
             database.get_formula_and_compound(ion_types, num_ion_types)
         )
-        return {
-            "stoichiometry": Stoichiometry_DB(
-                ion_types=simple_types,
-                num_ion_types=simple_numbers,
-                num_ion_types_primitive=primitive_numbers,
-                formula=formula,
-                compound=compound,
-            ),
-        }
+        return Stoichiometry_DB(
+            ion_types=simple_types,
+            num_ion_types=simple_numbers,
+            num_ion_types_primitive=primitive_numbers,
+            formula=formula,
+            compound=compound,
+        )
 
     def _create_repr(self, number_suffix, dummy_type, ion_types=None):
         ion_string = lambda ion, number: f"{ion}{number_suffix(number)}"
@@ -168,6 +167,33 @@ class StoichiometryHandler:
             raise exception.IncorrectUsage(message)
         clean_string = lambda ion_type: convert.text_to_string(ion_type).strip()
         return (clean_string(ion_type) for ion_type in ion_types)
+
+
+@quantity("_stoichiometry")
+class _StoichiometryDispatcher:
+    """Registered dispatcher that exposes stoichiometry data for the database.
+
+    The user-facing API still lives in :class:`Stoichiometry` (a Refinery) because
+    :class:`~py4vasp._calculation.structure.Structure` calls its ``_read_to_database``
+    method. Until Structure is migrated to the dispatcher architecture, this thin
+    dispatcher provides the registered ``_to_database`` entry point that
+    ``Calculation._compute_database_data`` collects, delegating the actual work to
+    :class:`StoichiometryHandler`.
+    """
+
+    def __init__(self, source, quantity_name="stoichiometry"):
+        self._source = source
+        self._quantity_name = quantity_name
+
+    def _to_database(self, selection=None) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            selection,
+            StoichiometryHandler.from_data,
+            StoichiometryHandler.to_database,
+        )
 
 
 class Stoichiometry(base.Refinery):
