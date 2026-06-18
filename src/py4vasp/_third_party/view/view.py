@@ -607,8 +607,8 @@ def _concatenate_steps(left_steps, right_steps):
 
 
 def _merge_special_sequence(left_values, right_values):
-    left = [] if not left_values else list(left_values)
-    right = [] if not right_values else list(right_values)
+    left = [] if left_values is None else list(left_values)
+    right = [] if right_values is None else list(right_values)
     merged = []
     for value in left + right:
         if any(_entries_equal(value, seen) for seen in merged):
@@ -636,9 +636,13 @@ def _entries_equal(left_entry, right_entry):
 def _merge_view_field(left_view, right_view, field_name):
     left_field = getattr(left_view, field_name)
     right_field = getattr(right_view, field_name)
-    if not left_field:
+    if left_field is None or (
+        isinstance(left_field, (list, tuple)) and len(left_field) == 0
+    ):
         return right_field
-    if not right_field:
+    if right_field is None or (
+        isinstance(right_field, (list, tuple)) and len(right_field) == 0
+    ):
         return left_field
     if not _values_equal(left_field, right_field):
         message = f"""Cannot combine two views with incompatible {field_name}:
