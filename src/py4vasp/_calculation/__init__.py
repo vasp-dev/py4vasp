@@ -35,10 +35,7 @@ _SUPPRESSED_DB_EXCEPTIONS = (
 
 
 INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
-QUANTITIES = (
-    "structure",
-    "_stoichiometry",
-)
+QUANTITIES = ("structure",)
 GROUPS = {}
 GROUP_TYPE_ALIAS = {
     convert.to_camelcase(f"{group}_{member}"): f"{group}.{member}"
