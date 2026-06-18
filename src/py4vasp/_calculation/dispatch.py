@@ -7,6 +7,7 @@ Provides Source classes, dispatch functions, merge strategies, and the
 """
 
 import contextlib
+import dataclasses
 import inspect
 import pathlib
 import typing
@@ -255,6 +256,71 @@ def _dispatch(
     return results
 
 
+def _result_has_data(result) -> bool:
+    """Return True if *result* contains any non-None data field.
+
+    Dataclass instances (DB objects) are considered empty when every field
+    whose name does not start with ``__`` is None. Empty dicts are also
+    considered empty. Everything else is assumed to have data.
+    """
+    if dataclasses.is_dataclass(result) and not isinstance(result, type):
+        return any(
+            getattr(result, f.name) is not None
+            for f in dataclasses.fields(result)
+            if not f.name.startswith("__")
+        )
+    if isinstance(result, dict):
+        return bool(result)
+    return True
+
+
+_SUPPRESSED_DB_EXCEPTIONS = (
+    exception.Py4VaspError,
+    exception.OutdatedVaspVersion,
+    exception.NoData,
+    exception.FileAccessError,
+    AttributeError,
+    TypeError,
+    ValueError,
+)
+
+
+class SuppressErrorsSourceWrapper:
+    def __init__(self, source):
+        self._source = source
+
+    class AccessContext:
+        def __init__(self, original_context):
+            self.original_context = original_context
+            self.entered = False
+
+        def __enter__(self):
+            try:
+                self.raw = self.original_context.__enter__()
+                self.entered = True
+                return self.raw
+            except _SUPPRESSED_DB_EXCEPTIONS:
+                return None
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            if exc_type is not None and issubclass(exc_type, _SUPPRESSED_DB_EXCEPTIONS):
+                if self.entered:
+                    try:
+                        self.original_context.__exit__(exc_type, exc_val, exc_tb)
+                    except Exception:
+                        pass
+                return True
+            if self.entered:
+                return self.original_context.__exit__(exc_type, exc_val, exc_tb)
+            return False
+
+    def access(self, quantity, selection=None):
+        return self.AccessContext(self._source.access(quantity, selection))
+
+    def __getattr__(self, name):
+        return getattr(self._source, name)
+
+
 def merge_to_database(
     source, quantity_name, selection, handler_factory, method, *args, **kwargs
 ):
@@ -288,13 +354,15 @@ def merge_to_database(
         Maps ``quantity_name`` (default) or ``quantity_name_selection`` (non-default)
         to each handler result.
     """
+    wrapped_source = SuppressErrorsSourceWrapper(source)
     raw_results = _dispatch(
-        source, quantity_name, selection, handler_factory, method, *args, **kwargs
+        wrapped_source, quantity_name, selection, handler_factory, method, *args, **kwargs
     )
     base = quantity_name.lstrip("_")
     return {
         base if sel == "default" else f"{base}_{sel}": result
         for sel, result in raw_results.items()
+        if _result_has_data(result)
     }
 
 

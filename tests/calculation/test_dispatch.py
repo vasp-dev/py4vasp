@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import contextlib
+import dataclasses
 import pathlib
 from unittest.mock import MagicMock, patch
 
@@ -15,6 +16,7 @@ from py4vasp._calculation.dispatch import (
     SelectionContext,
     _dispatch,
     _parse_selections,
+    _result_has_data,
     _substitute_remaining_selection,
     _REGISTRY,
     merge_to_database,
@@ -464,6 +466,120 @@ class TestDispatchToDatabase:
             scale=3,
         )
         assert result == {"energy": {"value": 12}}
+
+
+@dataclasses.dataclass
+class _AllNoneDB:
+    x: float = None
+    y: float = None
+
+
+@dataclasses.dataclass
+class _PartialDB:
+    x: float = None
+    y: float = 1.0
+
+
+@dataclasses.dataclass
+class _DunderOnlyDB:
+    __schema_version__: str = "1.0"
+    x: float = None
+
+
+class _AllNoneHandler:
+    def __init__(self, raw_data):
+        pass
+
+    @classmethod
+    def from_data(cls, raw_data):
+        return cls(raw_data)
+
+    def to_database(self):
+        return _AllNoneDB()
+
+
+class _EmptyDictHandler:
+    def __init__(self, raw_data):
+        pass
+
+    @classmethod
+    def from_data(cls, raw_data):
+        return cls(raw_data)
+
+    def to_database(self):
+        return {}
+
+
+class TestResultHasData:
+    def test_all_none_dataclass_has_no_data(self):
+        assert not _result_has_data(_AllNoneDB())
+
+    def test_partially_filled_dataclass_has_data(self):
+        assert _result_has_data(_PartialDB())
+
+    def test_fully_filled_dataclass_has_data(self):
+        assert _result_has_data(_PartialDB(x=0.0, y=1.0))
+
+    def test_zero_value_counts_as_data(self):
+        assert _result_has_data(_AllNoneDB(x=0.0))
+
+    def test_empty_dict_has_no_data(self):
+        assert not _result_has_data({})
+
+    def test_non_empty_dict_has_data(self):
+        assert _result_has_data({"key": "value"})
+
+    def test_dunder_fields_excluded_from_check(self):
+        assert not _result_has_data(_DunderOnlyDB())
+
+    def test_dataclass_class_itself_treated_as_has_data(self):
+        assert _result_has_data(_AllNoneDB)
+
+    def test_non_dataclass_non_dict_treated_as_has_data(self):
+        assert _result_has_data("some string")
+        assert _result_has_data(42)
+
+
+class TestMergeToDatabaseFilter:
+    def test_all_none_dataclass_result_excluded(self):
+        source = DataSource({"value": 42})
+        result = merge_to_database(
+            source, "quantity", None, _AllNoneHandler.from_data, _AllNoneHandler.to_database
+        )
+        assert result == {}
+
+    def test_empty_dict_result_excluded(self):
+        source = DataSource({"value": 42})
+        result = merge_to_database(
+            source, "quantity", None, _EmptyDictHandler.from_data, _EmptyDictHandler.to_database
+        )
+        assert result == {}
+
+    def test_partial_dataclass_result_included(self):
+        class _PartialHandler:
+            def __init__(self, raw_data):
+                pass
+
+            @classmethod
+            def from_data(cls, raw_data):
+                return cls(raw_data)
+
+            def to_database(self):
+                return _PartialDB()
+
+        source = DataSource({})
+        result = merge_to_database(
+            source, "quantity", None, _PartialHandler.from_data, _PartialHandler.to_database
+        )
+        assert "quantity" in result
+        assert isinstance(result["quantity"], _PartialDB)
+
+    def test_non_empty_dict_result_included(self):
+        source = DataSource({"value": 1})
+        result = merge_to_database(
+            source, "quantity", None, _FakeHandler.from_data, _FakeHandler.read
+        )
+        assert result == {"quantity": {"value": 1}}
 
 
 class TestSubstituteRemainingSelection:
