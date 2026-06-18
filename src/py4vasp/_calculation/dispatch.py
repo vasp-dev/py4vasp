@@ -257,20 +257,29 @@ def _dispatch(
 
 
 def _result_has_data(result) -> bool:
-    """Return True if *result* contains any non-None data field.
+    """Return True if *result* contains any data field that carries data.
 
-    Dataclass instances (DB objects) are considered empty when every field
-    whose name does not start with ``__`` is None. Empty dicts are also
-    considered empty. Everything else is assumed to have data.
+    Dataclass instances (DB objects) are considered empty when every field is
+    empty. A field is empty when it is None, or when it is a ``has_*`` flag set
+    to False (such a flag only signals presence, so False means "not present").
+    Empty dicts are also considered empty. Everything else is assumed to have
+    data.
     """
     if dataclasses.is_dataclass(result) and not isinstance(result, type):
         return any(
-            getattr(result, f.name) is not None
+            _field_has_data(f.name, getattr(result, f.name))
             for f in dataclasses.fields(result)
-            if not f.name.startswith("__")
         )
     if isinstance(result, dict):
         return bool(result)
+    return True
+
+
+def _field_has_data(name, value) -> bool:
+    if value is None:
+        return False
+    if name.startswith("has_"):
+        return bool(value)
     return True
 
 

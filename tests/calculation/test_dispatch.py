@@ -481,9 +481,9 @@ class _PartialDB:
 
 
 @dataclasses.dataclass
-class _DunderOnlyDB:
-    __schema_version__: str = "1.0"
-    x: float = None
+class _HasFlagDB:
+    has_value: bool = False
+    value: float = None
 
 
 class _AllNoneHandler:
@@ -529,8 +529,11 @@ class TestResultHasData:
     def test_non_empty_dict_has_data(self):
         assert _result_has_data({"key": "value"})
 
-    def test_dunder_fields_excluded_from_check(self):
-        assert not _result_has_data(_DunderOnlyDB())
+    def test_false_has_flag_counts_as_no_data(self):
+        assert not _result_has_data(_HasFlagDB(has_value=False))
+
+    def test_true_has_flag_counts_as_data(self):
+        assert _result_has_data(_HasFlagDB(has_value=True))
 
     def test_dataclass_class_itself_treated_as_has_data(self):
         assert _result_has_data(_AllNoneDB)
