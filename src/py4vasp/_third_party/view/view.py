@@ -11,7 +11,7 @@ import numpy as np
 import numpy.typing as npt
 
 from py4vasp import exception
-from py4vasp._util import convert, import_
+from py4vasp._util import convert, import_, merge
 
 ase = import_.optional("ase")
 ase_cube = import_.optional("ase.io.cube")
@@ -578,16 +578,8 @@ class View:
 
 
 def _merge_view_fields(left_view, right_view):
-    merged = {
-        "elements": _concatenate_steps(left_view.elements, right_view.elements),
-        "lattice_vectors": _concatenate_steps(
-            left_view.lattice_vectors, right_view.lattice_vectors
-        ),
-        "positions": _concatenate_steps(left_view.positions, right_view.positions),
-    }
+    merged = {}
     for field in fields(View):
-        if field.name in merged:
-            continue
         if field.name in ("grid_scalars", "ion_arrows"):
             merged[field.name] = _merge_special_sequence(
                 getattr(left_view, field.name),
@@ -602,19 +594,8 @@ def _merge_view_fields(left_view, right_view):
     return merged
 
 
-def _concatenate_steps(left_steps, right_steps):
-    return list(left_steps) + list(right_steps)
-
-
 def _merge_special_sequence(left_values, right_values):
-    left = [] if left_values is None else list(left_values)
-    right = [] if right_values is None else list(right_values)
-    merged = []
-    for value in left + right:
-        if any(_entries_equal(value, seen) for seen in merged):
-            continue
-        merged.append(value)
-    return merged
+    return merge.merge_unique_sequences(left_values, right_values, _entries_equal)
 
 
 def _entries_equal(left_entry, right_entry):
@@ -636,33 +617,8 @@ def _entries_equal(left_entry, right_entry):
 def _merge_view_field(left_view, right_view, field_name):
     left_field = getattr(left_view, field_name)
     right_field = getattr(right_view, field_name)
-    if left_field is None or (
-        isinstance(left_field, (list, tuple)) and len(left_field) == 0
-    ):
-        return right_field
-    if right_field is None or (
-        isinstance(right_field, (list, tuple)) and len(right_field) == 0
-    ):
-        return left_field
-    if not _values_equal(left_field, right_field):
-        message = f"""Cannot combine two views with incompatible {field_name}:
-    left: {left_field}
-    right: {right_field}"""
-        raise exception.IncorrectUsage(message)
-    return left_field
+    return merge.merge_field_or_raise(left_field, right_field, field_name, "views")
 
 
 def _values_equal(left_value, right_value):
-    if isinstance(left_value, np.ndarray) or isinstance(right_value, np.ndarray):
-        try:
-            return np.array_equal(np.asarray(left_value), np.asarray(right_value))
-        except Exception:
-            return False
-    if isinstance(left_value, (list, tuple)) and isinstance(right_value, (list, tuple)):
-        if len(left_value) != len(right_value):
-            return False
-        return all(
-            _values_equal(left_entry, right_entry)
-            for left_entry, right_entry in zip(left_value, right_value)
-        )
-    return left_value == right_value
+    return merge.values_equal(left_value, right_value)

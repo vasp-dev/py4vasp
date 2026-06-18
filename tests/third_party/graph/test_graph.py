@@ -437,6 +437,16 @@ def test_merging_of_fields_of_graph(sine, parabola):
             dataclasses.replace(graph2, **{field.name: "other"}) + graph1
 
 
+def test_merging_of_numpy_field_values(parabola):
+    graph1 = Graph(parabola, xrange=np.array([0.0, 1.0]))
+    graph2 = Graph(parabola, xrange=np.array([0.0, 1.0]))
+    merged = graph1 + graph2
+    assert np.array_equal(merged.xrange, np.array([0.0, 1.0]))
+
+    with pytest.raises(exception.IncorrectUsage):
+        graph1 + Graph(parabola, xrange=np.array([0.0, 2.0]))
+
+
 def test_subplot(subplot, not_core):
     graph = Graph(subplot)
     graph.xlabel = ("first x-axis", "second x-axis")

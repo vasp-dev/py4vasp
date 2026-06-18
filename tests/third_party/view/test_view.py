@@ -418,21 +418,18 @@ def test_incorrect_shape_raises_error(view):
         View(view.elements, incorrect_unit_cell, view.positions)
 
 
-def test_add_combines_trajectory_steps(not_core):
+def test_add_requires_compatible_trajectory_fields(not_core):
     left = View(**base_input_view(is_structure=False))
-    right = View(**base_input_view(is_structure=True))
+    right = View(**base_input_view(is_structure=False))
 
     combined = left + right
 
-    left_steps = len(left.positions)
-    right_steps = len(right.positions)
-    assert len(combined.positions) == left_steps + right_steps
-    assert np.array_equal(combined.positions[:left_steps], left.positions)
-    assert np.array_equal(combined.positions[left_steps:], right.positions)
-    assert np.array_equal(combined.lattice_vectors[:left_steps], left.lattice_vectors)
-    assert np.array_equal(combined.lattice_vectors[left_steps:], right.lattice_vectors)
-    assert np.array_equal(combined.elements[:left_steps], left.elements)
-    assert np.array_equal(combined.elements[left_steps:], right.elements)
+    assert np.array_equal(combined.positions, left.positions)
+    assert np.array_equal(combined.lattice_vectors, left.lattice_vectors)
+    assert np.array_equal(combined.elements, left.elements)
+
+    with pytest.raises(exception.IncorrectUsage):
+        left + View(**base_input_view(is_structure=True))
 
 
 def test_add_merges_scalar_fields_and_raises_on_conflict(not_core):
@@ -486,6 +483,42 @@ def test_add_combines_grid_scalars_and_ion_arrows(not_core):
     assert combined.ion_arrows[1].label == "moments"
 
 
+def test_add_combines_special_sequences_as_sequences(not_core):
+    number_atoms = len(base_input_view(False)["elements"][0])
+    grid_left = GridQuantity(np.arange(8, dtype=float).reshape(1, 2, 2, 2), "left")
+    grid_right = GridQuantity(np.ones((1, 2, 2, 2)), "right")
+    arrow_left = IonArrow(
+        quantity=np.ones((1, number_atoms, 3)),
+        label="left",
+        color="#2FB5AB",
+        radius=0.1,
+    )
+    arrow_right = IonArrow(
+        quantity=np.zeros((1, number_atoms, 3)),
+        label="right",
+        color="#4C265F",
+        radius=0.2,
+    )
+
+    left = View(
+        grid_scalars=(grid_left,),
+        ion_arrows=(arrow_left,),
+        **base_input_view(False),
+    )
+    right = View(
+        grid_scalars=(copy.deepcopy(grid_left), grid_right),
+        ion_arrows=(copy.deepcopy(arrow_left), arrow_right),
+        **base_input_view(False),
+    )
+
+    combined = left + right
+
+    assert isinstance(combined.grid_scalars, tuple)
+    assert isinstance(combined.ion_arrows, tuple)
+    assert tuple(grid.label for grid in combined.grid_scalars) == ("left", "right")
+    assert tuple(arrow.label for arrow in combined.ion_arrows) == ("left", "right")
+
+
 def test_add_does_not_trigger_validation(not_core, monkeypatch):
     left = View(**base_input_view(False))
     right = View(**base_input_view(False))
@@ -497,4 +530,4 @@ def test_add_does_not_trigger_validation(not_core, monkeypatch):
 
     combined = left + right
 
-    assert len(combined.positions) == len(left.positions) + len(right.positions)
+    assert np.array_equal(combined.positions, left.positions)
