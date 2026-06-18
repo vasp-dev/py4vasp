@@ -1,21 +1,15 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import contextlib
-import dataclasses
 import importlib
 import pathlib
 from typing import Any, List, Optional, Tuple, Union
 
-import h5py
-import numpy as np
-
-from py4vasp import exception, raw
+from py4vasp import exception
 from py4vasp._calculation.dispatch import _REGISTRY, FileSource, Group
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
 from py4vasp._raw.data_db import __SCHEMA_VERSION__
-from py4vasp._raw.definition import DEFAULT_FILE, schema, unique_selections
-from py4vasp._raw.schema import DEFAULT_SELECTION, Length, Link
-from py4vasp._util import check, convert, import_
+from py4vasp._util import convert, import_, loadable
 
 
 def _append_database_error(
@@ -292,169 +286,21 @@ instead of the constructor Calculation()."""
         result = {}
         with contextlib.ExitStack() as stack:
             open_files = {}
+            cache = {}
             for call_name, schema_name in _public_quantities():
-                loadable = self._loadable_selections(
-                    call_name, schema_name, method, open_files, stack
+                snippets = loadable.loadable_selections(
+                    self,
+                    call_name,
+                    schema_name,
+                    method,
+                    open_files,
+                    stack,
+                    cache,
+                    QUANTITIES,
                 )
-                if loadable:
-                    result[call_name] = loadable
+                if snippets:
+                    result[call_name] = snippets
         return dict(sorted(result.items()))
-
-    def _loadable_selections(self, call_name, schema_name, method, open_files, stack):
-        method_name = method or "read"
-        try:
-            sources = list(unique_selections(schema_name))
-        except exception.FileAccessError:
-            return {}
-        if not self._implements(call_name, method_name):
-            return {}
-        loadable = {}
-        for source_name in sources:
-            verdict = self._schema_satisfied(
-                schema_name, source_name, open_files, stack, set()
-            )
-            if verdict is False:
-                continue
-            # the schema check is only a cheap pre-filter; confirm by really invoking
-            # the method so that selections which cannot load are excluded
-            convention = self._attempt_method(call_name, method_name, source_name)
-            if convention is None:
-                continue
-            loadable[source_name] = _call_snippet(
-                call_name, method_name, source_name, convention
-            )
-        return loadable
-
-    def _implements(self, call_name, method):
-        try:
-            quantity = self._quantity_object(call_name)
-        except Exception:
-            return False
-        return callable(getattr(quantity, method, None))
-
-    def _schema_satisfied(self, schema_name, source_name, open_files, stack, seen):
-        """Check whether the schema for a quantity/source is satisfied by the files.
-
-        Returns ``True`` if all non-optional fields are present, ``False`` if the data
-        can definitely not be loaded (file or required version missing), and ``None`` if
-        the result is inconclusive and a ``read()`` fallback should be attempted.
-        """
-        key = (schema_name, source_name)
-        if key in seen:  # protect against cyclic links
-            return True
-        seen = seen | {key}
-        try:
-            source = schema.sources[schema_name][source_name]
-        except KeyError:
-            return False
-        if source.required is not None:
-            version = self._file_version(open_files, stack)
-            if version is None or version < source.required:
-                return False
-        filename = self._file or source.file or DEFAULT_FILE
-        if source.data is None:
-            # data is produced by a custom factory reading a separate (text) file
-            return (self._path / filename).exists()
-        h5f = self._open_h5(open_files, stack, filename)
-        if h5f is None:
-            return False
-        return self._fields_present(source.data, h5f, open_files, stack, seen)
-
-    def _fields_present(self, data, h5f, open_files, stack, seen):
-        indices = self._valid_indices(data, h5f)
-        field_names = {field.name for field in dataclasses.fields(data)}
-        if "valid_indices" in field_names and not indices:
-            return False
-        all_present = True
-        for field in dataclasses.fields(data):
-            if field.name == "valid_indices" or _is_optional(field):
-                continue
-            value = getattr(data, field.name)
-            if check.is_none(value):
-                continue
-            if not self._value_present(value, h5f, indices, open_files, stack, seen):
-                all_present = False
-        return True if all_present else None
-
-    def _value_present(self, value, h5f, indices, open_files, stack, seen):
-        if isinstance(value, Link):
-            satisfied = self._schema_satisfied(
-                value.quantity, value.source, open_files, stack, seen
-            )
-            return satisfied is True
-        if isinstance(value, Length):
-            return h5f.get(value.dataset) is not None
-        path = str(value)
-        if "{}" in path:  # entry of a Mapping addressed via valid_indices
-            if not indices:
-                return False
-            return h5f.get(_format_index(path, indices[0])) is not None
-        return h5f.get(path) is not None
-
-    def _valid_indices(self, data, h5f):
-        field_names = {field.name for field in dataclasses.fields(data)}
-        if "valid_indices" not in field_names:
-            return None
-        dataset = h5f.get(str(getattr(data, "valid_indices")))
-        if dataset is None:
-            return None
-        raw_value = dataset[()]
-        if np.ndim(raw_value) == 0:
-            return list(range(int(raw_value)))
-        return [convert.text_to_string(index) for index in raw_value]
-
-    def _file_version(self, open_files, stack):
-        h5f = self._open_h5(open_files, stack, self._file or DEFAULT_FILE)
-        if h5f is None:
-            return None
-        try:
-            return raw.Version(
-                int(h5f[schema.version.major][()]),
-                int(h5f[schema.version.minor][()]),
-                int(h5f[schema.version.patch][()]),
-            )
-        except (KeyError, OSError, TypeError, ValueError):
-            return None
-
-    def _open_h5(self, open_files, stack, filename):
-        if filename in open_files:
-            return open_files[filename]
-        try:
-            handle = stack.enter_context(h5py.File(self._path / filename, "r"))
-        except (FileNotFoundError, OSError):
-            handle = None
-        open_files[filename] = handle
-        return handle
-
-    def _attempt_method(self, call_name, method, source_name):
-        """Return the access convention that loads *source_name*, or None if it cannot.
-
-        Tries the different selection conventions (keyword argument, indexing, positional
-        argument) and returns the name of the first one that succeeds. Any exception is
-        treated as "this convention does not apply" and the next one is tried.
-        """
-        try:
-            quantity = self._quantity_object(call_name)
-        except Exception:
-            return None
-        selection = None if source_name == DEFAULT_SELECTION else source_name
-        try:
-            attempts = _method_attempts(quantity, method, selection)
-        except AttributeError:
-            return None
-        for convention, attempt in attempts:
-            try:
-                attempt()
-                return convention
-            except Exception:
-                continue
-        return None
-
-    def _quantity_object(self, call_name):
-        if "." in call_name:
-            group_name, member = call_name.split(".", 1)
-            return getattr(getattr(self, group_name), member)
-        return getattr(self, call_name)
 
     def __getattr__(self, name):
         # Only called when normal attribute lookup (including class-level properties
@@ -556,50 +402,6 @@ def _public_quantities():
             continue
         pairs.append((quantity, quantity))
     return pairs
-
-
-def _is_optional(field):
-    "Return whether a dataclass field is annotated as Optional."
-    annotation = field.type
-    if not isinstance(annotation, str):
-        annotation = getattr(annotation, "__name__", str(annotation))
-    annotation = annotation.strip()
-    return annotation.startswith("Optional") or annotation.startswith("typing.Optional")
-
-
-def _format_index(path, index):
-    "Insert a valid index into a Mapping data path, mirroring the raw access logic."
-    if isinstance(index, (int, np.integer)):
-        index = int(index) + 1  # convert to Fortran index
-    return path.format(index)
-
-
-def _method_attempts(quantity, method, selection):
-    """Return (convention, callable) pairs trying the selection conventions of a method.
-
-    Only the two unambiguous conventions are tried: passing ``selection=`` (the source is
-    routed to the schema) and indexing the quantity (``quantity[source]``). A positional
-    argument is deliberately omitted because it would be forwarded to whatever the first
-    parameter of the method happens to be (e.g. ``ion_types`` or ``component``), which can
-    spuriously succeed without actually selecting the source.
-    """
-    func = getattr(quantity, method)
-    if selection is None:
-        return [("plain", func)]
-    return [
-        ("keyword", lambda: func(selection=selection)),
-        ("index", lambda: getattr(quantity[selection], method)()),
-    ]
-
-
-def _call_snippet(call_name, method_name, source_name, convention):
-    "Build a ready-to-evaluate snippet that loads *source_name* via *method_name*."
-    access = f"calculation.{call_name}"
-    if convention == "keyword":
-        return f"{access}.{method_name}(selection={source_name!r})"
-    if convention == "index":
-        return f"{access}[{source_name!r}].{method_name}()"
-    return f"{access}.{method_name}()"
 
 
 def _ensure_all_quantities_imported():

@@ -59,13 +59,13 @@ def test_selections_on_demo_calculation(tmp_path):
     }
     for quantity, snippets in expected.items():
         assert actual[quantity] == snippets
-    # density only loads the default source; the kinetic part is not available here
-    assert actual["density"] == {"default": "calculation.density.read()"}
-    # structure can be read with the default and the exciton-relaxed positions
-    assert actual["structure"] == {
-        "default": "calculation.structure.read()",
-        "exciton": "calculation.structure.read(selection='exciton')",
+    # read is decided from the files: the kinetic part (tau) is present as a dataset
+    assert actual["density"] == {
+        "default": "calculation.density.read()",
+        "tau": "calculation.density['tau'].read()",
     }
+    # structure is not migrated yet, so only its default source can be addressed
+    assert actual["structure"] == {"default": "calculation.structure.read()"}
     # the result is sorted by quantity name
     assert list(actual) == sorted(actual)
 
@@ -75,13 +75,14 @@ def test_selections_excludes_selections_that_do_not_load(tmp_path):
     actual = calc.selections()
     # current_density cannot be read without specifying a cut plane -> excluded
     assert "current_density" not in actual
-    # the kinetic-energy density (tau) source cannot be loaded in the demo data
-    assert "tau" not in actual["density"]
+    # a non-default source of a not-yet-migrated quantity cannot be addressed
+    assert set(actual["structure"]) == {"default"}
 
 
 def test_selections_snippets_are_evaluable(tmp_path):
     calculation = demo.calculation(tmp_path / "demo_calculation")
-    for snippets in calculation.selections().values():
+    # to_view confirms loadability by invoking the method, so every snippet must run
+    for snippets in calculation.selections(method="to_view").values():
         for snippet in snippets.values():
             eval(snippet)  # the generated snippet must run without error
 
@@ -115,10 +116,7 @@ def test_selections_filtered_by_method(tmp_path):
         assert quantity not in viewable
     # the snippets call the requested method on the matching selection
     assert viewable["density"] == {"default": "calculation.density.to_view()"}
-    assert viewable["structure"] == {
-        "default": "calculation.structure.to_view()",
-        "exciton": "calculation.structure.to_view(selection='exciton')",
-    }
+    assert viewable["structure"] == {"default": "calculation.structure.to_view()"}
     # the selections per quantity are still consistent with the unfiltered result
     for quantity, snippets in viewable.items():
         assert set(snippets) <= set(full[quantity])
