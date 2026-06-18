@@ -58,9 +58,20 @@ def merge_unique_sequences(left_values, right_values, entries_equal):
         message = "Special merge expected sequence inputs on both sides."
         raise exception.IncorrectUsage(message)
 
-    merged = ()
+    merged = []
     for value in itertools.chain(left_values, right_values):
         if any(entries_equal(value, seen) for seen in merged):
             continue
-        merged = (*merged, value)
-    return merged
+        merged.append(value)
+    return _as_left_sequence_type(left_values, merged)
+
+
+def _as_left_sequence_type(left_values, merged):
+    if isinstance(left_values, list):
+        return merged
+    if isinstance(left_values, tuple):
+        return tuple(merged)
+    try:
+        return type(left_values)(merged)
+    except Exception:
+        return tuple(merged)

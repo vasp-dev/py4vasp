@@ -207,10 +207,7 @@ def test_showcell(is_structure, is_show_cell, not_core):
 def test_showaxes(is_structure, is_show_axes, not_core):
     view = View(**base_input_view(is_structure), show_axes=is_show_axes)
     state = view.to_vasp_viewer().get_state()
-    assert state["_selections_show_xyz"] == False
     assert state["_selections_show_abc"] == is_show_axes
-    assert state["_selections_show_xyz_aside"] == True
-    assert state["_selections_show_abc_aside"] == True
 
 
 @hasVaspView

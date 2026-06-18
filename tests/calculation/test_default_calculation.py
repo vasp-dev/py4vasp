@@ -1,8 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import contextlib
+
 import pytest
 
 from py4vasp import Calculation, calculation, demo
+from py4vasp._raw.schema import DEFAULT_SELECTION
+from py4vasp._util import loadable
 
 
 def test_access_of_attributes():
@@ -125,3 +129,41 @@ def test_selections_filtered_by_method(tmp_path):
 def test_selections_with_method_on_empty_path(tmp_path):
     calc = Calculation.from_path(tmp_path)
     assert calc.selections(method="to_view") == {}
+
+
+def test_confirm_read_uses_public_call_name_for_fallback(tmp_path, monkeypatch):
+    calc = demo.calculation(tmp_path / "demo_calculation")
+    captured = {}
+
+    monkeypatch.setattr(loadable, "_schema_satisfied", lambda *_, **__: None)
+
+    def _record_invoke(
+        calculation,
+        call_name,
+        method_name,
+        source_name,
+        legacy_quantities,
+        convention=None,
+    ):
+        captured["call_name"] = call_name
+        captured["method_name"] = method_name
+        captured["source_name"] = source_name
+        return True
+
+    monkeypatch.setattr(loadable, "_invoke", _record_invoke)
+
+    with contextlib.ExitStack() as stack:
+        assert loadable._confirm_read(
+            calc,
+            "exciton.density",
+            "exciton_density",
+            DEFAULT_SELECTION,
+            open_files={},
+            stack=stack,
+            cache={},
+            legacy_quantities=set(),
+        )
+
+    assert captured["call_name"] == "exciton.density"
+    assert captured["method_name"] == "read"
+    assert captured["source_name"] == DEFAULT_SELECTION

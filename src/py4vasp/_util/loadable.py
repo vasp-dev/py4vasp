@@ -93,6 +93,7 @@ def _confirm_selection(
     if method_name == "read":
         return _confirm_read(
             calculation,
+            call_name,
             schema_name,
             source_name,
             open_files,
@@ -126,6 +127,7 @@ def _confirm_selection(
 
 def _confirm_read(
     calculation,
+    call_name,
     schema_name,
     source_name,
     open_files,
@@ -149,7 +151,7 @@ def _confirm_read(
     if verdict is None:
         verdict = _invoke(
             calculation,
-            schema_name.lstrip("_"),
+            call_name,
             "read",
             source_name,
             legacy_quantities,
@@ -209,6 +211,7 @@ def _fields_present(
         if isinstance(value, Link):
             if not _confirm_read(
                 calculation,
+                value.quantity.lstrip("_"),
                 value.quantity,
                 value.source,
                 open_files,

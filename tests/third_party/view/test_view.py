@@ -519,6 +519,51 @@ def test_add_combines_special_sequences_as_sequences(not_core):
     assert tuple(arrow.label for arrow in combined.ion_arrows) == ("left", "right")
 
 
+def test_add_special_sequence_preserves_left_sequence_type(not_core):
+    number_atoms = len(base_input_view(False)["elements"][0])
+    left_grid = [GridQuantity(np.arange(8, dtype=float).reshape(1, 2, 2, 2), "left")]
+    right_grid = (
+        GridQuantity(np.arange(8, dtype=float).reshape(1, 2, 2, 2), "left"),
+        GridQuantity(np.ones((1, 2, 2, 2)), "right"),
+    )
+    left_arrow = [
+        IonArrow(
+            quantity=np.ones((1, number_atoms, 3)),
+            label="left",
+            color="#2FB5AB",
+            radius=0.1,
+        )
+    ]
+    right_arrow = (
+        IonArrow(
+            quantity=np.ones((1, number_atoms, 3)),
+            label="left",
+            color="#2FB5AB",
+            radius=0.1,
+        ),
+        IonArrow(
+            quantity=np.zeros((1, number_atoms, 3)),
+            label="right",
+            color="#4C265F",
+            radius=0.2,
+        ),
+    )
+
+    left = View(grid_scalars=left_grid, ion_arrows=left_arrow, **base_input_view(False))
+    right = View(
+        grid_scalars=right_grid,
+        ion_arrows=right_arrow,
+        **base_input_view(False),
+    )
+
+    combined = left + right
+
+    assert isinstance(combined.grid_scalars, list)
+    assert isinstance(combined.ion_arrows, list)
+    assert [grid.label for grid in combined.grid_scalars] == ["left", "right"]
+    assert [arrow.label for arrow in combined.ion_arrows] == ["left", "right"]
+
+
 def test_add_does_not_trigger_validation(not_core, monkeypatch):
     left = View(**base_input_view(False))
     right = View(**base_input_view(False))
