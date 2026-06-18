@@ -4,7 +4,7 @@ import itertools
 import os
 import tempfile
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import NamedTuple, Optional, Sequence
 
 import numpy as np
@@ -273,6 +273,17 @@ class View:
 
     def __post_init__(self):
         self._verify()
+
+    def __add__(self, other):
+        if not isinstance(other, View):
+            return NotImplemented
+        merged = _merge_view_fields(self, other)
+        # Construct without calling __post_init__: validation is intentionally
+        # deferred to viewer conversion (to_ngl / to_vasp_viewer).
+        combined = object.__new__(View)
+        for field in fields(View):
+            setattr(combined, field.name, merged[field.name])
+        return combined
 
     def _ipython_display_(self, mode: str = "auto"):
         if mode == "auto":
@@ -564,3 +575,90 @@ class View:
                     transformation,
                 )
                 widget.shape.add_arrow(*(arrow_3d.to_serializable()))
+
+
+def _merge_view_fields(left_view, right_view):
+    merged = {
+        "elements": _concatenate_steps(left_view.elements, right_view.elements),
+        "lattice_vectors": _concatenate_steps(
+            left_view.lattice_vectors, right_view.lattice_vectors
+        ),
+        "positions": _concatenate_steps(left_view.positions, right_view.positions),
+    }
+    for field in fields(View):
+        if field.name in merged:
+            continue
+        if field.name in ("grid_scalars", "ion_arrows"):
+            merged[field.name] = _merge_special_sequence(
+                getattr(left_view, field.name),
+                getattr(right_view, field.name),
+            )
+            continue
+        merged[field.name] = _merge_view_field(
+            left_view,
+            right_view,
+            field.name,
+        )
+    return merged
+
+
+def _concatenate_steps(left_steps, right_steps):
+    return list(left_steps) + list(right_steps)
+
+
+def _merge_special_sequence(left_values, right_values):
+    left = [] if not left_values else list(left_values)
+    right = [] if not right_values else list(right_values)
+    merged = []
+    for value in left + right:
+        if any(_entries_equal(value, seen) for seen in merged):
+            continue
+        merged.append(value)
+    return merged
+
+
+def _entries_equal(left_entry, right_entry):
+    if left_entry is right_entry:
+        return True
+    if type(left_entry) is not type(right_entry):
+        return False
+    if hasattr(left_entry, "__dataclass_fields__"):
+        for field in fields(left_entry):
+            if not _values_equal(
+                getattr(left_entry, field.name),
+                getattr(right_entry, field.name),
+            ):
+                return False
+        return True
+    return _values_equal(left_entry, right_entry)
+
+
+def _merge_view_field(left_view, right_view, field_name):
+    left_field = getattr(left_view, field_name)
+    right_field = getattr(right_view, field_name)
+    if not left_field:
+        return right_field
+    if not right_field:
+        return left_field
+    if not _values_equal(left_field, right_field):
+        message = f"""Cannot combine two views with incompatible {field_name}:
+    left: {left_field}
+    right: {right_field}"""
+        raise exception.IncorrectUsage(message)
+    return left_field
+
+
+def _values_equal(left_value, right_value):
+    if isinstance(left_value, np.ndarray) or isinstance(right_value, np.ndarray):
+        try:
+            return np.array_equal(np.asarray(left_value), np.asarray(right_value))
+        except Exception:
+            return False
+    if isinstance(left_value, (list, tuple)) and isinstance(right_value, (list, tuple)):
+        if len(left_value) != len(right_value):
+            return False
+        return all(
+            _values_equal(left_entry, right_entry)
+            for left_entry, right_entry in zip(left_value, right_value)
+        )
+    return left_value == right_value
