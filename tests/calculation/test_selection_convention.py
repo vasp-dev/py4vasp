@@ -56,7 +56,6 @@ MULTI_SOURCE_NAMES = frozenset(
 # Some @quantity decorators use names that differ from the schema key.
 # Map decorator name -> schema name for multi-source lookup.
 _DECORATOR_TO_SCHEMA = {
-    "_CONTCAR": "CONTCAR",
     "transport": "electron_phonon_transport",
 }
 

@@ -11,6 +11,7 @@ These tests define the new expected behaviour:
     <quantity>_<selection> (non-default), with no leading underscore.
   - schema_version is stored only in metadata, not on individual _DB dataclasses.
 """
+
 import dataclasses
 import pathlib
 
@@ -19,7 +20,6 @@ import pytest
 from py4vasp import demo
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
 from py4vasp._raw.data_db import _DBDataMixin
-
 
 # ---------------------------------------------------------------------------
 # Structural tests — these do not need a running calculation
@@ -133,9 +133,7 @@ def test_run_info_in_properties(demo_db):
 def test_default_selection_key_has_no_suffix(demo_db):
     """Keys for the default selection must not have a '_default' suffix."""
     for key in demo_db.properties:
-        assert not key.endswith("_default"), (
-            f"Key {key!r} still has '_default' suffix"
-        )
+        assert not key.endswith("_default"), f"Key {key!r} still has '_default' suffix"
 
 
 def test_non_default_selection_key_format(tmp_path):
