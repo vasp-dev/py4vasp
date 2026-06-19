@@ -21,9 +21,11 @@ def write(h5f, raw_data, *, selection=None):
 
 
 def _write_dataset(h5f, target, data, valid_indices=None):
+    if check.is_none(data):
+        return
     if isinstance(target, Link):
         write(h5f, data, selection=target.source)
-    elif check.is_none(data) or isinstance(target, Length) or target in h5f:
+    elif isinstance(target, Length) or target in h5f:
         return
     elif (
         valid_indices is not None and "{" in target and isinstance(data, (list, tuple))
