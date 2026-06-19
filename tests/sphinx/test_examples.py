@@ -467,7 +467,7 @@ def test_convert_example_dos_class(sphinx_app):
 {{< /signature >}}
 
 {{< docstring >}}
-Bases: `Refinery`, `Mixin`
+Bases: `Mixin`
 
 The density of states (DOS) describes the number of states per energy.
 

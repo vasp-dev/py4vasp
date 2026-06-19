@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation.cell import Cell
+from py4vasp._calculation.cell import CellHandler
 from py4vasp._calculation.dielectric_tensor import (
     DielectricTensor,
     DielectricTensorHandler,
@@ -61,7 +61,7 @@ def make_reference(raw_data, method, expected_description):
     tensor.ref.polarizability_2d = None
     tensor.ref.polarizability_2d_ionic = None
     if not (check.is_none(raw_tensor.cell)):
-        tensor.ref.cell = Cell.from_data(raw_tensor.cell)
+        tensor.ref.cell = CellHandler.from_data(raw_tensor.cell, steps=-1)
 
         tensor.ref.polarizability_2d = _calculate_2d_polarizability(
             tensor.ref.relaxed_ion, tensor.ref.cell

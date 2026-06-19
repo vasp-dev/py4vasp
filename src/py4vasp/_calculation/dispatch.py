@@ -62,6 +62,13 @@ def quantity(name, group=None):
         cls.from_path = from_path
         cls.from_file = from_file
 
+        def __repr__(self):
+            return f"{type(self).__name__}.from_path({self._path!r})"
+
+        # Preserve an explicit __repr__ defined on the class (e.g. Structure).
+        if "__repr__" not in cls.__dict__:
+            cls.__repr__ = __repr__
+
         if not isinstance(getattr(cls, "_path", None), property):
             cls._path = property(lambda self: self._source.path or pathlib.Path.cwd())
 

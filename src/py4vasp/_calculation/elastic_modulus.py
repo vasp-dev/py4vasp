@@ -6,7 +6,8 @@ from typing import Optional
 import numpy as np
 
 from py4vasp import exception, raw
-from py4vasp._calculation import base, structure
+from py4vasp._calculation import structure
+from py4vasp._util import error
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
@@ -88,7 +89,7 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
 
         for idt, tensor in enumerate([total_tensor, ionic_tensor, electronic_tensor]):
             voigt_tensor = None
-            with base.suppress_and_record(
+            with error.suppress_and_record(
                 encountered_errors,
                 error_key,
                 *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
@@ -103,7 +104,7 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                         else None
                     )
 
-            with base.suppress_and_record(
+            with error.suppress_and_record(
                 encountered_errors,
                 error_key,
                 *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
@@ -169,7 +170,7 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
             fracture_toughness,
         ) = (None, None, None, None, None, None, None)
 
-        with base.suppress_and_record(
+        with error.suppress_and_record(
             encountered_errors,
             error_key,
             *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
@@ -177,7 +178,7 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
         ):
             elastic_tensor = _ElasticTensor.from_array(voigt_tensor)
 
-            with base.suppress_and_record(
+            with error.suppress_and_record(
                 encountered_errors,
                 error_key,
                 *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
@@ -187,7 +188,7 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                     elastic_tensor.get_VRH()
                 )
 
-            with base.suppress_and_record(
+            with error.suppress_and_record(
                 encountered_errors,
                 error_key,
                 *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
@@ -200,7 +201,7 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                         else 0.0 if shear_modulus == 0 else None
                     )
 
-            with base.suppress_and_record(
+            with error.suppress_and_record(
                 encountered_errors,
                 error_key,
                 *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
@@ -208,7 +209,7 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
             ):
                 vickers_hardness = elastic_tensor.get_hardness()
 
-            with base.suppress_and_record(
+            with error.suppress_and_record(
                 encountered_errors,
                 error_key,
                 *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,

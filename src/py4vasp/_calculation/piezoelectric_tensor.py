@@ -5,7 +5,7 @@ from contextlib import suppress
 import numpy as np
 
 from py4vasp import exception, raw
-from py4vasp._calculation import cell
+from py4vasp._calculation.cell import CellHandler
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
@@ -101,7 +101,9 @@ class PiezoelectricTensorHandler:
                 reduced_tensor_z[idt] = e_tensor[2, (0, 1, 2, 5, 3, 4)].tolist()
 
                 if not check.is_none(self._raw_piezoelectric_tensor.cell):
-                    cCell = cell.Cell.from_data(self._raw_piezoelectric_tensor.cell)
+                    cCell = CellHandler.from_data(
+                        self._raw_piezoelectric_tensor.cell, steps=-1
+                    )
                     in_plane[idt], lvac = _compute_2d_plane_and_conversion_factor(cCell)
                     if in_plane[idt] is not None and lvac is not None:
                         tensor_2d[idt] = e_tensor * lvac
@@ -334,7 +336,7 @@ def _extract_tensor(raw_tensor):
     return C_voigt
 
 
-def _compute_2d_piezoelectric(e_tensor: np.ndarray, cell_: cell.Cell) -> np.ndarray:
+def _compute_2d_piezoelectric(e_tensor: np.ndarray, cell_: CellHandler) -> np.ndarray:
     """
     Convert 3D piezoelectric stress tensor (C/m^2) to 2D (C/m).
     """
@@ -344,7 +346,7 @@ def _compute_2d_piezoelectric(e_tensor: np.ndarray, cell_: cell.Cell) -> np.ndar
 
 
 def _compute_2d_plane_and_conversion_factor(
-    cell_: cell.Cell,
+    cell_: CellHandler,
 ) -> tuple[list[bool], float]:
     """
     Identify the 2D plane (in-plane directions) and compute the conversion factor

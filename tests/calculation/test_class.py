@@ -7,7 +7,6 @@ from unittest.mock import mock_open, patch
 import pytest
 
 from py4vasp import Calculation, _calculation, control, exception
-from py4vasp._calculation import base
 
 
 @patch("py4vasp.raw.access", autospec=True)

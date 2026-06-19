@@ -5,7 +5,8 @@ from typing import Optional
 import numpy as np
 
 from py4vasp import exception, raw
-from py4vasp._calculation import base, cell
+from py4vasp._calculation.cell import CellHandler
+from py4vasp._util import error
 from py4vasp._calculation.dispatch import (
     _dispatch,
     DataSource,
@@ -86,7 +87,7 @@ Macroscopic static dielectric tensor (dimensionless)
             )
 
         for idt, tensor in enumerate([total_tensor, ionic_tensor, electronic_tensor]):
-            with base.suppress_and_record(
+            with error.suppress_and_record(
                 encountered_errors,
                 error_key,
                 *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
@@ -148,14 +149,16 @@ Macroscopic static dielectric tensor (dimensionless)
         error_key: Optional[str] = None,
     ) -> tuple:
         polarizability_2d = None
-        with base.suppress_and_record(
+        with error.suppress_and_record(
             encountered_errors,
             error_key,
             *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
             context="calculate_dielectric_quantities",
         ):
             if not (check.is_none(self._raw_dielectric_tensor.cell)):
-                final_cell = cell.Cell.from_data(self._raw_dielectric_tensor.cell)
+                final_cell = CellHandler.from_data(
+                    self._raw_dielectric_tensor.cell, steps=-1
+                )
                 if final_cell:
                     polarizability_2d = _calculate_2d_polarizability(
                         tensor,
@@ -260,7 +263,7 @@ def _description(method):
 
 def _calculate_2d_polarizability(
     dielectric_tensor: np.ndarray,
-    cell_: cell.Cell,
+    cell_: CellHandler,
     *,
     encountered_errors: Optional[dict[str, list[str]]] = None,
     error_key: Optional[str] = None,
@@ -268,7 +271,7 @@ def _calculate_2d_polarizability(
     """
     Compute 2D polarizability (alpha_2D) for a slab system with unknown vacuum direction.
     """
-    with base.suppress_and_record(
+    with error.suppress_and_record(
         encountered_errors,
         error_key,
         *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,

@@ -35,30 +35,10 @@ _SUPPRESSED_DB_EXCEPTIONS = (
 
 
 INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
-QUANTITIES = ("structure",)
-GROUPS = {}
-GROUP_TYPE_ALIAS = {
-    convert.to_camelcase(f"{group}_{member}"): f"{group}.{member}"
-    for group, members in GROUPS.items()
-    for member in members
-}
 
-AUTOSUMMARY_QUANTITIES = [
-    (quantity, f"~py4vasp.Calculation.{quantity}")
-    for quantity in QUANTITIES
-    if not quantity.startswith("_")
-]
-AUTOSUMMARY_GROUPS = [
-    (
-        f"{group}.{member}",
-        f"~py4vasp._calculation.{group}_{member}.{convert.to_camelcase(f'{group}_{member}')}",
-    )
-    for group, members in GROUPS.items()
-    for member in members
-]
-AUTOSUMMARIES = sorted(AUTOSUMMARY_QUANTITIES + AUTOSUMMARY_GROUPS)
-
-__all__ = QUANTITIES
+# QUANTITIES, GROUPS, GROUP_TYPE_ALIAS, AUTOSUMMARY_QUANTITIES, AUTOSUMMARY_GROUPS,
+# AUTOSUMMARIES, and __all__ are derived from the dispatcher _REGISTRY by
+# _rebuild_public_registry_views() at the bottom of this module.
 
 
 class Calculation:
@@ -233,8 +213,8 @@ instead of the constructor Calculation()."""
         return self._path
 
     def __getattr__(self, name):
-        # Only called when normal attribute lookup (including class-level properties
-        # set by _add_all_refinement_classes) has already failed.
+        # Resolves a quantity (or group) by name from the dispatcher _REGISTRY. Called
+        # only when normal attribute lookup has already failed.
         if name.startswith("_"):
             raise AttributeError(name)
         if name not in _REGISTRY:
@@ -345,50 +325,50 @@ def _collect_to_database(group_name, quantity_name, dispatcher_cls, source, prop
         properties[key] = handler_result
 
 
-def _add_all_refinement_classes(calc):
-    for quantity in QUANTITIES:
-        setattr(calc, quantity, _make_property(quantity))
-    for group, quantities in GROUPS.items():
-        setattr(calc, group, _make_group(group, quantities))
-    return calc
+def _rebuild_public_registry_views():
+    """Derive the public quantity/group views from the dispatcher ``_REGISTRY``.
+
+    These module-level names drive documentation generation (``_sphinx``) and database
+    key extraction (``_util.database``). They are computed from ``_REGISTRY`` so that
+    every public dispatcher quantity is exposed without a separate hardcoded list.
+    Private quantities (leading-underscore registry keys) are excluded.
+    """
+    global QUANTITIES, GROUPS, GROUP_TYPE_ALIAS
+    global AUTOSUMMARY_QUANTITIES, AUTOSUMMARY_GROUPS, AUTOSUMMARIES, __all__
+    _ensure_all_quantities_imported()
+    QUANTITIES = tuple(
+        sorted(
+            name
+            for name, entry in _REGISTRY.items()
+            if not isinstance(entry, dict) and not name.startswith("_")
+        )
+    )
+    GROUPS = {
+        group: tuple(sorted(m for m in members if not m.startswith("_")))
+        for group, members in _REGISTRY.items()
+        if isinstance(members, dict) and not group.startswith("_")
+    }
+    GROUP_TYPE_ALIAS = {
+        convert.to_camelcase(f"{group}_{member}"): f"{group}.{member}"
+        for group, members in GROUPS.items()
+        for member in members
+    }
+    AUTOSUMMARY_QUANTITIES = [
+        (quantity, f"~py4vasp.Calculation.{quantity}") for quantity in QUANTITIES
+    ]
+    AUTOSUMMARY_GROUPS = [
+        (
+            f"{group}.{member}",
+            f"~py4vasp._calculation.{group}_{member}.{convert.to_camelcase(f'{group}_{member}')}",
+        )
+        for group, members in GROUPS.items()
+        for member in members
+    ]
+    AUTOSUMMARIES = sorted(AUTOSUMMARY_QUANTITIES + AUTOSUMMARY_GROUPS)
+    __all__ = QUANTITIES
 
 
-def _make_property(quantity):
-    # Be careful when refactoring this code, if the class_ is in a scope where it gets
-    # changed like in the _add_all_refinement_classes routine, it may overwrite the
-    # previous setting and all properties point to the same quantity.
-    class_name = convert.to_camelcase(quantity)
-    module = importlib.import_module(f"py4vasp._calculation.{quantity}")
-    class_ = getattr(module, class_name)
-
-    def get_quantity(self):
-        if self._file is None:
-            return class_.from_path(self._path)
-        else:
-            return class_.from_file(self._file)
-
-    return property(get_quantity, doc=class_.__doc__)
-
-
-def _make_group(group_name, quantities):
-    # The Group class for each group is constructed on the fly. Alternatively you could
-    # create a Group for every instance needed and construct the required properties as
-    # needed. It is important that they are distinct classes.
-    def get_group(self):
-        class Group:
-            def __init__(self, calculation):
-                self._path = calculation._path
-                self._file = calculation._file
-
-        for quantity in quantities:
-            full_name = f"{group_name}_{quantity}"
-            setattr(Group, quantity, _make_property(full_name))
-        return Group(self)
-
-    return property(get_group)
-
-
-Calculation = _add_all_refinement_classes(Calculation)
+_rebuild_public_registry_views()
 
 
 class DefaultCalculationFactory:
