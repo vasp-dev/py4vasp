@@ -135,12 +135,11 @@ class Polarization:
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def _to_database(self, selection=None) -> dict:
+    def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
         return merge_to_database(
             self._source,
             self._quantity_name,
-            selection,
             PolarizationHandler.from_data,
             PolarizationHandler.to_database,
         )

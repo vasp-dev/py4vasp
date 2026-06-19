@@ -1240,12 +1240,11 @@ class Structure(view.Mixin):
             StructureHandler.number_steps,
         )
 
-    def _to_database(self, selection=None) -> dict:
+    def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
         return merge_to_database(
             self._source,
             self._quantity_name,
-            selection,
             StructureHandler.from_data,
             StructureHandler.to_database,
         )

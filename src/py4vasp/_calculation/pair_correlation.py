@@ -231,12 +231,11 @@ class PairCorrelation(graph.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self) if not cycle else "...")
 
-    def _to_database(self, selection=None) -> dict:
+    def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
         return merge_to_database(
             self._source,
             self._quantity_name,
-            selection,
             PairCorrelationHandler.from_data,
             PairCorrelationHandler.to_database,
         )

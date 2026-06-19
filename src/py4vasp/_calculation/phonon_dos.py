@@ -219,12 +219,11 @@ class PhononDos(graph.Mixin):
             PhononDosHandler.selections,
         )
 
-    def _to_database(self, selection=None) -> dict:
+    def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
         return merge_to_database(
             self._source,
             self._quantity_name,
-            selection,
             PhononDosHandler.from_data,
             PhononDosHandler.to_database,
         )

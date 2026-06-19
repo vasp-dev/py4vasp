@@ -15,7 +15,10 @@ import typing
 import numpy as np
 
 from py4vasp import exception, raw as _raw_module
-from py4vasp._raw.definition import selections as schema_selections
+from py4vasp._raw.definition import (
+    selections as schema_selections,
+    unique_selections as schema_unique_selections,
+)
 from py4vasp._third_party.graph import Graph
 from py4vasp._util import select
 
@@ -302,6 +305,9 @@ _SUPPRESSED_DB_EXCEPTIONS = (
     AttributeError,
     TypeError,
     ValueError,
+    # a source may point to an optional external file (e.g. the structure "poscar"
+    # source); its absence simply means that selection has no data for the database
+    FileNotFoundError,
 )
 
 
@@ -342,25 +348,31 @@ class SuppressErrorsSourceWrapper:
 
 
 def merge_to_database(
-    source, quantity_name, selection, handler_factory, method, *args, **kwargs
+    source, quantity_name, handler_factory, method, *args, **kwargs
 ):
-    """Dispatch to_database calls and return results keyed by quantity name.
+    """Collect database results across all of a quantity's sources.
 
-    Like :func:`_dispatch`, but remaps the result keys from selection names to
-    quantity-based keys: the default selection maps to just the quantity name,
-    and non-default selections map to ``quantity_selection``. Leading underscores
-    are stripped from *quantity_name* so private quantities (``_CONTCAR``,
+    Database collection is internal and never user-selected, so this enumerates
+    every unique (non-alias) source of *quantity_name* from the schema and lets
+    :func:`_dispatch` handle them in one pass. Results are remapped from selection
+    names to quantity-based keys: the default source maps to just the quantity
+    name and every other source to ``quantity_source``. Leading underscores are
+    stripped from *quantity_name* so private quantities (``_CONTCAR``,
     ``_stoichiometry``) appear without the underscore prefix.
+
+    Sources without data are dropped (errors are suppressed via
+    :class:`SuppressErrorsSourceWrapper`). A source whose result merely duplicates
+    the default result is dropped too, so an in-memory :class:`DataSource` (which
+    ignores the selection and yields the same data for every source) collapses to
+    a single ``quantity`` entry.
 
     Parameters
     ----------
     source : Source
         The data source (DataSource, DictSource, etc.).
     quantity_name : str
-        Name used to look up data in the source. Leading underscores are stripped
-        for key generation.
-    selection : str | None
-        User-provided selection string, forwarded to :func:`_dispatch`.
+        Name used to look up data in the source and the schema. Leading
+        underscores are stripped for key generation.
     handler_factory : callable(raw) -> Handler
         Called with the raw data object to construct a handler.
     method : unbound method reference
@@ -371,18 +383,45 @@ def merge_to_database(
     Returns
     -------
     dict[str, result]
-        Maps ``quantity_name`` (default) or ``quantity_name_selection`` (non-default)
-        to each handler result.
+        Maps ``quantity_name`` (default source) or ``quantity_name_source``
+        (other sources) to each handler result.
     """
     wrapped_source = SuppressErrorsSourceWrapper(source)
+    base = quantity_name.lstrip("_")
+    selection = _all_sources_selection(base)
     raw_results = _dispatch(
         wrapped_source, quantity_name, selection, handler_factory, method, *args, **kwargs
     )
-    base = quantity_name.lstrip("_")
-    return {
+    results = {
         base if sel == "default" else f"{base}_{sel}": result
         for sel, result in raw_results.items()
         if _result_has_data(result)
+    }
+    return _drop_duplicates_of_default(results, base)
+
+
+def _all_sources_selection(quantity_name):
+    """Return a selection string covering every unique source of *quantity_name*.
+
+    Returns None when the quantity is unknown to the schema, so :func:`_dispatch`
+    falls back to the default source only.
+    """
+    try:
+        sources = schema_unique_selections(quantity_name)
+    except exception.FileAccessError:
+        return None
+    return ", ".join(str(source_name) for source_name in sources)
+
+
+def _drop_duplicates_of_default(results, base):
+    """Drop non-default entries whose result equals the default result."""
+    if base not in results:
+        return results
+    default_result = results[base]
+    return {
+        key: result
+        for key, result in results.items()
+        if key == base or result != default_result
     }
 
 

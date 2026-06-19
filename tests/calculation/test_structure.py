@@ -610,6 +610,23 @@ def test_to_database_dispatch(raw_data):
     assert result["structure"] == expected
 
 
+def test_to_database_collects_available_sources(tmp_path):
+    """Database collection enumerates every structure source. For a CONTCAR-only
+    calculation only the ``final`` source carries data, so the result is keyed
+    ``structure_final`` (default/exciton/poscar have no data and are dropped)."""
+    import h5py
+
+    import py4vasp
+    from py4vasp._demo import CONTCAR as contcar_demo
+
+    with h5py.File(tmp_path / "vaspout.h5", "w") as h5f:
+        py4vasp._raw.write.write(h5f, raw.Version(99, 99, 99))
+        py4vasp._raw.write.write(h5f, contcar_demo.Sr2TiO4())
+    result = py4vasp.Calculation.from_path(tmp_path).structure._to_database()
+    assert set(result) == {"structure_final"}
+    assert result["structure_final"].num_ions == 7
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.structure("Sr2TiO4")
     parameters = {"__getitem__": {"steps": slice(None)}}

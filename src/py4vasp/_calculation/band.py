@@ -805,12 +805,11 @@ class Band(graph.Mixin):
         sources = list(raw_module.selections(self._quantity_name))
         return {self._quantity_name: sources, **handler_selections}
 
-    def _to_database(self, selection=None) -> dict:
+    def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
         return merge_to_database(
             self._source,
             self._quantity_name,
-            selection,
             self._handler_factory,
             BandHandler.to_database,
         )

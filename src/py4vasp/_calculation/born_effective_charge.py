@@ -158,12 +158,11 @@ class BornEffectiveCharge:
         """Convenient alias for :py:meth:`read`."""
         return self.read()
 
-    def _to_database(self, selection=None) -> dict:
+    def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
         return merge_to_database(
             self._source,
             self._quantity_name,
-            selection,
             BornEffectiveChargeHandler.from_data,
             BornEffectiveChargeHandler.to_database,
         )

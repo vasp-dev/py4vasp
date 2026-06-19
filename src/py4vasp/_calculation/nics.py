@@ -450,12 +450,11 @@ class Nics(view.Mixin):
             supercell=supercell,
         )
 
-    def _to_database(self, selection=None) -> dict:
+    def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
         return merge_to_database(
             self._source,
             self._quantity_name,
-            selection,
             NicsHandler.from_data,
             NicsHandler.to_database,
         )
