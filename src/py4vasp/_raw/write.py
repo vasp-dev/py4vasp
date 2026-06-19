@@ -2,6 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
 
+import numpy as np
+
 from py4vasp._raw.definition import DEFAULT_SOURCE, schema
 from py4vasp._raw.mapping import Mapping
 from py4vasp._raw.schema import Length, Link
@@ -33,7 +35,18 @@ def _write_dataset(h5f, target, data, valid_indices=None):
         # Handle template paths for Mapping types with multiple indices
         for index, item in zip(valid_indices, data):
             expanded_target = target.format(index)
-            h5f[expanded_target] = item
+            h5f[expanded_target] = _encode_strings(item)
     else:
-        # TODO: deal with type conversion for strings
-        h5f[target] = data
+        h5f[target] = _encode_strings(data)
+
+
+def _encode_strings(data):
+    """Encode unicode string arrays as byte strings for HDF5.
+
+    h5py cannot serialize numpy unicode arrays (dtype kind "U"); VASP stores strings
+    as fixed-length byte strings. Non-string data is returned unchanged.
+    """
+    dtype = getattr(data, "dtype", None)
+    if dtype is not None and dtype.kind == "U":
+        return np.asarray(data).astype("S")
+    return data
