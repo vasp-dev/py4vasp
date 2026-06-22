@@ -56,6 +56,19 @@ def loadable_sources(
     return loadable
 
 
+def possible_sources(schema_name):
+    """Return all schema-defined selections for one quantity."""
+    try:
+        return list(unique_selections(schema_name))
+    except exception.FileAccessError:
+        return []
+
+
+def implements_method(calculation, call_name, method_name):
+    """Return whether the quantity provides the requested method."""
+    return _implements(calculation, call_name, method_name)
+
+
 def _implements(calculation, call_name, method_name):
     try:
         quantity = _quantity_object(calculation, call_name)

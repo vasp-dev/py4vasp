@@ -141,7 +141,29 @@ def test_selections_with_only_available_false(tmp_path):
     for quantity in absent_in_available:
         assert quantity not in available
         assert quantity in full
-        assert full[quantity] == []
+        assert "default" in full[quantity]
+        assert full[quantity]
+
+
+def test_selections_with_only_available_false_on_empty_path(tmp_path):
+    calc = Calculation.from_path(tmp_path)
+    full = calc.selections(only_available=False)
+
+    assert full["band"] == ["default", "kpoints_opt", "kpoints_wan"]
+    assert "default" in full["structure"]
+    assert "final" in full["structure"]
+    assert "poscar" in full["structure"]
+    assert full["exciton.density"] == ["default"]
+
+
+def test_selections_with_method_and_only_available_false_filters_by_method(tmp_path):
+    calc = demo.calculation(tmp_path / "demo_calculation")
+    full_view = calc.selections(method="to_view", only_available=False)
+
+    assert "band" not in full_view
+    assert "dos" not in full_view
+    assert full_view["density"] == ["default", "tau"]
+    assert "default" in full_view["structure"]
 
 
 def test_confirm_read_uses_public_call_name_for_fallback(tmp_path, monkeypatch):
