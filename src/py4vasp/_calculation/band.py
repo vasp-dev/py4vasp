@@ -38,6 +38,19 @@ pretty = import_.optional("IPython.lib.pretty")
 
 _OCCUPATION_CUTOFF = 1e-2
 
+# Cartesian axis (x=0, y=1, z=2) corresponding to each accepted spin-component token.
+_SPIN_TOKEN_TO_CARTESIAN_AXIS = {
+    "x": 0,
+    "sigma_x": 0,
+    "sigma_1": 0,
+    "y": 1,
+    "sigma_y": 1,
+    "sigma_2": 1,
+    "z": 2,
+    "sigma_z": 2,
+    "sigma_3": 2,
+}
+
 
 class BandHandler:
     """Handler for electronic band structure data."""
@@ -117,17 +130,18 @@ class BandHandler:
     def to_quiver(self, selection, normal=None, supercell=None) -> graph.Graph:
         reciprocal_lattice_vectors = self._kpoint()._reciprocal_lattice_vectors()
         nkp1, nkp2, cut = self._kmesh()
-        options = {
-            "lattice": slicing.plane(
-                reciprocal_lattice_vectors, cut, normal, axis_labels=("b1", "b2", "b3")
-            )
-        }
+        plot_plane = slicing.plane(
+            reciprocal_lattice_vectors, cut, normal, axis_labels=("b1", "b2", "b3")
+        )
+        options = {"lattice": plot_plane}
         if supercell is not None:
             options["supercell"] = np.ones(2, dtype=np.int_) * supercell
         selector = self._make_selector(self._raw_band.projections)
         tree = select.Tree.from_selection(selection)
         quiver_plots = [
-            graph.Contour(**self._quiver_plot(selector, sel, nkp1, nkp2), **options)
+            graph.Contour(
+                **self._quiver_plot(selector, sel, nkp1, nkp2, plot_plane), **options
+            )
             for sel in tree.selections()
         ]
         return graph.Graph(quiver_plots, title="Spin Texture")
@@ -236,10 +250,19 @@ class BandHandler:
                 "For spin texture visualisation, a k-point grid is assumed, but could not be found for this VASP run."
             )
 
-    def _quiver_plot(self, selector, selection, nkp1, nkp2):
+    def _quiver_plot(self, selector, selection, nkp1, nkp2, plot_plane):
         data = selector[selection]
-        data = data.reshape(2, nkp1, nkp2)
-        return {"data": data, "label": selector.label(selection)}
+        axes = _spin_axes_from_selection(selection)
+        # Embed the two selected spin components into a 3D Cartesian vector so
+        # that _project_vectors_to_plane can rotate them into the plot frame.
+        embedded = np.zeros((3, data.shape[1]), dtype=data.dtype)
+        embedded[list(axes)] = data
+        # VASP stores k-points with kx as the fastest-varying (innermost) index.
+        # Reshape in VASP storage order (slow, fast) then transpose to align with
+        # the (grid_a, grid_b) layout expected by the plot pipeline.
+        embedded = embedded.reshape(3, nkp2, nkp1).transpose(0, 2, 1)
+        projected = slicing._project_vectors_to_plane(plot_plane, embedded)
+        return {"data": projected, "label": selector.label(selection)}
 
     def _make_selector(self, projections):
         maps = self._projector().to_dict()
@@ -817,6 +840,28 @@ class Band(graph.Mixin):
 
 def _to_series(array):
     return array.T.flatten()
+
+
+def _spin_axes_from_selection(selection):
+    """Determine which Cartesian axes the spin pair in *selection* corresponds to."""
+    for token in selection:
+        if (
+            not isinstance(token, select.Group)
+            or token.separator != select.pair_separator
+        ):
+            continue
+        if len(token.group) != 2:
+            continue
+        axes = [
+            _SPIN_TOKEN_TO_CARTESIAN_AXIS.get(str(member)) for member in token.group
+        ]
+        if all(a is not None for a in axes):
+            return tuple(sorted(axes))
+    raise exception.IncorrectUsage(
+        "Spin Elements must be chosen, but none are given. Please adapt your "
+        "`selection` argument to include, e.g., `x~y`. You can combine arguments "
+        "by `arg1(arg2(arg3(...)))`."
+    )
 
 
 class _ToQuiverReduction(index.Reduction):
