@@ -237,7 +237,7 @@ instead of the constructor Calculation()."""
         return self._path
 
     def selections(
-        self, method: Optional[str] = None, only_available: bool = True
+        self, method: Optional[str] = None, only_available: bool = False
     ) -> dict[str, list[str]]:
         """Determine which quantities and selections can be loaded for this calculation.
 
@@ -247,37 +247,36 @@ instead of the constructor Calculation()."""
         ``"exciton.density"``) it collects all selections (sources) whose data is
         present and loadable.
 
+        By default (``only_available=False``), the result reports all schema-defined
+        selections for each quantity. If *method* is provided, quantities are still
+        restricted to those implementing that method, but the returned selections are
+        not filtered by runtime availability.
+
         When ``only_available=True``, candidate selections are first filtered cheaply
         against the schema (only the existence of the relevant datasets is checked).
         Every remaining candidate is then confirmed by genuinely invoking the requested
         method, so the result only lists selections that truly load.
 
-        When ``only_available=False``, the result instead reports all schema-defined
-        selections for each quantity. If *method* is provided, quantities are still
-        restricted to those implementing that method, but the returned selections are
-        not filtered by runtime availability.
-
         Parameters
         ----------
         method : str, optional
-            The method to use to confirm loadability when ``only_available=True``.
-            Pass e.g. ``"to_view"`` to restrict the result to quantities that can be
-            visualized. When omitted together with ``only_available=False``, all public
-            quantities are listed with their schema-defined selections.
-            Defaults to "read" when ``only_available=True``.
+            The method to restrict to. Pass e.g. ``"to_view"`` to only include
+            quantities that implement visualization. Defaults to ``"read"`` which is
+            implemented by all quantities. When combined with ``only_available=True``,
+            the method is also used to confirm runtime loadability.
         only_available : bool, optional
-            If True (default), only return quantities for which at least one selection
-            can be loaded. If False, return all public quantities with their
-            schema-defined selections; when *method* is provided, only quantities
-            implementing that method are included.
+            If False (default), return all public quantities with their schema-defined
+            selections. If True, only return quantities for which at least one selection
+            can be loaded; when *method* is provided, only quantities implementing
+            that method are included.
 
         Returns
         -------
         dict[str, list[str]]
             Maps each quantity call name to a list of selection names (the default
-            source is reported as ``"default"``). When ``only_available=True``, the
-            list contains only actually loadable selections, and quantities with no
-            loadable selections are omitted.
+            source is reported as ``"default"``). When ``only_available=True``, only
+            actually loadable selections are included, and quantities with no loadable
+            selections are omitted.
 
         Examples
         --------
@@ -285,29 +284,27 @@ instead of the constructor Calculation()."""
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
 
-        Get all loadable quantities and their loadable selections, checking `.read()`:
+        Get all public quantities and their schema-defined selections (default):
 
         >>> calculation.selections()
-        {'band': ['default', 'kpoints_opt'], 'density': ['default', 'tau'], ...}
-
-        Restrict the result to quantities implementing a specific method:
-
-        >>> calculation.selections(method="to_view")
-        {'density': ['default'], 'exciton.density': ['default'], ...}
-
-        Get all public quantities and their schema-defined selections, including those
-        without data:
-
-        >>> calculation.selections(only_available=False)
         {'band': ['default', 'kpoints_opt', 'kpoints_wan'],
          'bandgap': ['default', 'kpoint'],
          ...}
 
-        Combine both options to list all schema-defined selections only for quantities
-        implementing a specific method:
+        Restrict to quantities implementing a specific method:
 
-        >>> calculation.selections(method="to_view", only_available=False)
+        >>> calculation.selections(method="to_view")
         {'density': ['default', 'tau'], 'exciton.density': ['default'], ...}
+
+        Get only loadable quantities and their loadable selections:
+
+        >>> calculation.selections(only_available=True)
+        {'band': ['default', 'kpoints_opt'], 'density': ['default', 'tau'], ...}
+
+        Combine both options to restrict to loadable quantities implementing a method:
+
+        >>> calculation.selections(method="to_view", only_available=True)
+        {'density': ['default'], 'exciton.density': ['default'], ...}
         """
         _ensure_all_quantities_imported()
         result = {}
@@ -329,9 +326,8 @@ instead of the constructor Calculation()."""
                     )
                     if sources:
                         result[call_name] = sources
-                elif not (
-                    method is not None
-                    and not loadable.implements_method(self, call_name, method)
+                elif method is None or loadable.implements_method(
+                    self, call_name, method
                 ):
                     result[call_name] = loadable.possible_sources(schema_name)
         return dict(sorted(result.items()))

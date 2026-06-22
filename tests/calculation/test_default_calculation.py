@@ -34,40 +34,30 @@ def test_assigning_to_input_file(tmp_path, monkeypatch):
 
 
 def test_selections_on_empty_path(tmp_path):
+    # Default (only_available=False) still returns all schema-defined quantities on empty path
     calc = Calculation.from_path(tmp_path)
-    assert calc.selections() == {}
+    full = calc.selections()
+    assert "band" in full
+    assert "bandgap" in full
+    assert full["band"] == ["default", "kpoints_opt", "kpoints_wan"]
 
 
 def test_selections_on_demo_calculation(tmp_path):
     calc = demo.calculation(tmp_path / "demo_calculation")
     actual = calc.selections()
-    # quantities with data expose list of loadable selections
-    expected = {
-        "band": ["default", "kpoints_opt"],
-        "dos": ["default", "kpoints_opt"],
-        "energy": ["default"],
-        "exciton.density": ["default"],
-        "force": ["default"],
-        "nics": ["default"],
-        "partial_density": ["default"],
-        "potential": ["default"],
-        "stress": ["default"],
-        "system": ["default"],
-        "velocity": ["default"],
-    }
-    for quantity, sources in expected.items():
-        assert actual[quantity] == sources
-    # read is decided from the files: the kinetic part (tau) is present as a dataset
-    assert actual["density"] == ["default", "tau"]
-    # structure is not migrated yet, so only its default source can be addressed
-    assert actual["structure"] == ["default"]
+    # Default now returns all public quantities with schema-defined selections
+    assert "band" in actual
+    assert "bandgap" in actual  # included even without data
+    assert "density" in actual
+    assert "structure" in actual
     # the result is sorted by quantity name
     assert list(actual) == sorted(actual)
 
 
-def test_selections_excludes_selections_that_do_not_load(tmp_path):
+def test_selections_loadable_excludes_selections_that_do_not_load(tmp_path):
+    # Use only_available=True to get only loadable quantities
     calc = demo.calculation(tmp_path / "demo_calculation")
-    actual = calc.selections()
+    actual = calc.selections(only_available=True)
     # current_density cannot be read without specifying a cut plane -> excluded
     assert "current_density" not in actual
     # a non-default source of a not-yet-migrated quantity cannot be addressed
@@ -84,10 +74,11 @@ def test_selections_evaluable(tmp_path):
         assert all(isinstance(s, str) for s in sources)
 
 
-def test_selections_excludes_quantities_without_data(tmp_path):
+def test_selections_includes_quantities_without_data(tmp_path):
+    # Default now includes all quantities; quantities without data have empty selections
     calc = demo.calculation(tmp_path / "demo_calculation")
     actual = calc.selections()
-    absent = (
+    included = (
         "bandgap",
         "born_effective_charge",
         "dielectric_function",
@@ -97,38 +88,39 @@ def test_selections_excludes_quantities_without_data(tmp_path):
         "piezoelectric_tensor",
         "polarization",
     )
-    for quantity in absent:
-        assert quantity not in actual
+    for quantity in included:
+        assert quantity in actual
 
 
 def test_selections_filtered_by_method(tmp_path):
     calc = demo.calculation(tmp_path / "demo_calculation")
     viewable = calc.selections(method="to_view")
     full = calc.selections()
-    # only quantities implementing the method (and loadable via it) are reported
+    # only quantities implementing the method are reported
     assert set(viewable) <= set(full)
     assert viewable.keys() >= {"density", "potential", "structure"}
     # quantities without a to_view method are excluded
     for quantity in ("band", "dos", "energy", "stress"):
         assert quantity not in viewable
-    # the selections per quantity are consistent with the unfiltered result
-    for quantity, sources in viewable.items():
-        assert set(sources) <= set(full[quantity])
 
 
 def test_selections_with_method_on_empty_path(tmp_path):
+    # Default (only_available=False) with method filter still returns quantities implementing the method
     calc = Calculation.from_path(tmp_path)
-    assert calc.selections(method="to_view") == {}
+    result = calc.selections(method="to_view")
+    assert "density" in result
+    assert "structure" in result
+    assert "band" not in result
 
 
-def test_selections_with_only_available_false(tmp_path):
+def test_selections_with_only_available_true(tmp_path):
     calc = demo.calculation(tmp_path / "demo_calculation")
-    available = calc.selections(only_available=True)
+    loadable = calc.selections(only_available=True)
     full = calc.selections(only_available=False)
-    # all available quantities should be in both
-    assert set(available) <= set(full)
-    # full should include quantities without data
-    absent_in_available = {
+    # loadable quantities should be a subset of all quantities
+    assert set(loadable) <= set(full)
+    # quantities without loadable data should not appear in loadable result
+    absent_in_loadable = {
         "bandgap",
         "born_effective_charge",
         "dielectric_function",
@@ -138,16 +130,17 @@ def test_selections_with_only_available_false(tmp_path):
         "piezoelectric_tensor",
         "polarization",
     }
-    for quantity in absent_in_available:
-        assert quantity not in available
+    for quantity in absent_in_loadable:
+        assert quantity not in loadable
         assert quantity in full
         assert "default" in full[quantity]
         assert full[quantity]
 
 
-def test_selections_with_only_available_false_on_empty_path(tmp_path):
+def test_selections_on_empty_path_returns_all(tmp_path):
+    # Default (only_available=False) returns schema-defined selections even without data
     calc = Calculation.from_path(tmp_path)
-    full = calc.selections(only_available=False)
+    full = calc.selections()
 
     assert full["band"] == ["default", "kpoints_opt", "kpoints_wan"]
     assert "default" in full["structure"]
@@ -156,14 +149,31 @@ def test_selections_with_only_available_false_on_empty_path(tmp_path):
     assert full["exciton.density"] == ["default"]
 
 
-def test_selections_with_method_and_only_available_false_filters_by_method(tmp_path):
+def test_selections_on_empty_path_only_available_true(tmp_path):
+    # With only_available=True on empty path, nothing loads
+    calc = Calculation.from_path(tmp_path)
+    assert calc.selections(only_available=True) == {}
+
+
+def test_selections_with_method_filters_by_implementation(tmp_path):
     calc = demo.calculation(tmp_path / "demo_calculation")
-    full_view = calc.selections(method="to_view", only_available=False)
+    # Default: all quantities implementing to_view with schema selections
+    full_view = calc.selections(method="to_view")
 
     assert "band" not in full_view
     assert "dos" not in full_view
     assert full_view["density"] == ["default", "tau"]
     assert "default" in full_view["structure"]
+
+
+def test_all_quantities_implement_read(tmp_path):
+    """Verify all quantities implement the read() method."""
+    calc = demo.calculation(tmp_path / "demo_calculation")
+    all_quantities = calc.selections(only_available=False)
+    for quantity_name in all_quantities:
+        assert loadable.implements_method(
+            calc, quantity_name, "read"
+        ), f"{quantity_name} does not implement read()"
 
 
 def test_confirm_read_uses_public_call_name_for_fallback(tmp_path, monkeypatch):
