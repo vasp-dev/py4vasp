@@ -14,7 +14,7 @@ from py4vasp._raw.schema import DEFAULT_SELECTION, Length, Link
 from py4vasp._util import check, convert
 
 
-def loadable_selections(
+def loadable_sources(
     calculation,
     call_name,
     schema_name,
@@ -24,16 +24,16 @@ def loadable_selections(
     cache,
     legacy_quantities,
 ):
-    """Return loadable selections for one quantity as {source: snippet}."""
+    """Return loadable selections for one quantity as a list of source names."""
     method_name = method or "read"
     try:
         sources = list(unique_selections(schema_name))
     except exception.FileAccessError:
-        return {}
+        return []
     if not _implements(calculation, call_name, method_name):
-        return {}
+        return []
     convention = _source_convention(calculation, call_name, legacy_quantities)
-    loadable = {}
+    loadable = []
     for source_name in sources:
         conv = "plain" if source_name == DEFAULT_SELECTION else convention
         if conv is None:
@@ -52,7 +52,7 @@ def loadable_selections(
             legacy_quantities,
         ):
             continue
-        loadable[source_name] = _call_snippet(call_name, method_name, source_name, conv)
+        loadable.append(source_name)
     return loadable
 
 

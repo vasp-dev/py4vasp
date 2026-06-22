@@ -236,38 +236,38 @@ instead of the constructor Calculation()."""
         "Return the path in which the calculation is run."
         return self._path
 
-    def selections(self, method: Optional[str] = None) -> dict[str, dict[str, str]]:
+    def selections(
+        self, method: Optional[str] = None, only_available: bool = True
+    ) -> dict[str, list[str]]:
         """Determine which quantities and selections can be loaded for this calculation.
 
         This inspects the VASP output files of the calculation and compares them against
         the schema defined in :mod:`py4vasp._raw.definition`. For every quantity that
         py4vasp can access (e.g. ``"structure"``, ``"band"``, or grouped quantities like
         ``"exciton.density"``) it collects all selections (sources) whose data is
-        actually present and loadable.
+        present and loadable.
 
         Candidate selections are first filtered cheaply against the schema (only the
         existence of the relevant datasets is checked). Every remaining candidate is then
         confirmed by genuinely invoking the requested method, so the result only lists
-        selections that truly load. Because the access convention differs between
-        quantities (some take ``selection=...``, others are indexed via ``[...]``), the
-        result reports, for each selection, a ready-to-evaluate snippet showing exactly
-        how to obtain it. The snippets assume the calculation is bound to a variable
-        named ``calculation``.
+        selections that truly load.
 
         Parameters
         ----------
         method : str, optional
-            The method the snippets should call and that is used to confirm loadability.
-            Defaults to ``"read"``. Pass e.g. ``"to_view"`` to restrict the result to
-            quantities that can be visualized and to obtain plotting snippets.
+            The method to use to confirm loadability. Defaults to ``"read"``. Pass e.g.
+            ``"to_view"`` to restrict the result to quantities that can be visualized.
+        only_available : bool, optional
+            If True (default), only return quantities for which at least one selection
+            can be loaded. If False, return all possible quantities defined in py4vasp
+            with their loadable selections.
 
         Returns
         -------
-        dict[str, dict[str, str]]
-            Maps each quantity call name to a dictionary that maps every loadable
-            selection (the default source is reported as ``"default"``) to a
-            ready-to-evaluate snippet calling *method*. Quantities for which no selection
-            can be loaded are omitted entirely.
+        dict[str, list[str]]
+            Maps each quantity call name to a list of loadable selection names
+            (the default source is reported as ``"default"``). Quantities for which
+            no selection can be loaded are omitted when ``only_available=True``.
 
         Examples
         --------
@@ -275,20 +275,21 @@ instead of the constructor Calculation()."""
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
         >>> calculation.selections()
-        {'band': {'default': 'calculation.band.read()', 'kpoints_opt': "calculation.band.read(selection='kpoints_opt')"}, ...}
+        {'band': ['default', 'kpoints_opt'], 'dos': ['default', 'kpoints_opt'], ...}
 
-        Obtain snippets that implement 3d visualization instead:
+        Get all possible quantities and their selections, including those without data:
 
-        >>> calculation.selections(method="to_view")
-        {'density': {'default': 'calculation.density.to_view()'}, ...}
+        >>> calculation.selections(only_available=False)
+        {'band': ['default', 'kpoints_opt'], ..., 'bandgap': [], ...}
         """
         _ensure_all_quantities_imported()
         result = {}
+        all_quantities = list(_public_quantities())
         with contextlib.ExitStack() as stack:
             open_files = {}
             cache = {}
-            for call_name, schema_name in _public_quantities():
-                snippets = loadable.loadable_selections(
+            for call_name, schema_name in all_quantities:
+                sources = loadable.loadable_sources(
                     self,
                     call_name,
                     schema_name,
@@ -298,8 +299,8 @@ instead of the constructor Calculation()."""
                     cache,
                     QUANTITIES,
                 )
-                if snippets:
-                    result[call_name] = snippets
+                if sources or not only_available:
+                    result[call_name] = sources
         return dict(sorted(result.items()))
 
     def __getattr__(self, name):
