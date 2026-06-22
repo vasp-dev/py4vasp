@@ -255,7 +255,10 @@ instead of the constructor Calculation()."""
         When ``only_available=True``, candidate selections are first filtered cheaply
         against the schema (only the existence of the relevant datasets is checked).
         Every remaining candidate is then confirmed by genuinely invoking the requested
-        method, so the result only lists selections that truly load.
+        method, so the result only lists selections that truly load. Selections whose
+        data is present but too large to load raise an out-of-memory error; these are
+        not reported as loadable. Instead their messages are collected and printed once
+        at the end, so a single oversized quantity never aborts the inspection.
 
         Parameters
         ----------
@@ -308,6 +311,7 @@ instead of the constructor Calculation()."""
         """
         _ensure_all_quantities_imported()
         result = {}
+        errors = []
         all_quantities = list(_public_quantities())
         with contextlib.ExitStack() as stack:
             open_files = {}
@@ -323,13 +327,19 @@ instead of the constructor Calculation()."""
                         stack,
                         cache,
                         QUANTITIES,
+                        errors,
                     )
                     if sources:
                         result[call_name] = sources
                 elif method is None or loadable.implements_method(
                     self, call_name, method
                 ):
+                    # only_available=False never loads data; it only checks whether
+                    # the quantity implements the requested method.
                     result[call_name] = loadable.possible_sources(schema_name)
+        if errors:
+            header = "Some quantities are available but could not be loaded:"
+            print("\n".join([header, *errors]))
         return dict(sorted(result.items()))
 
     def __getattr__(self, name):

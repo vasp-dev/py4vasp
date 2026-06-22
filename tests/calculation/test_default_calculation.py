@@ -176,6 +176,78 @@ def test_all_quantities_implement_read(tmp_path):
         ), f"{quantity_name} does not implement read()"
 
 
+def test_selections_only_available_false_does_not_load_data(tmp_path, monkeypatch):
+    # only_available=False must never attempt to load data
+    calc = demo.calculation(tmp_path / "demo_calculation")
+
+    def _fail(*_, **__):
+        raise AssertionError("loadable_sources should not be called")
+
+    monkeypatch.setattr(loadable, "loadable_sources", _fail)
+
+    # neither the default nor the method-filtered call should load any data
+    assert calc.selections()
+    assert calc.selections(method="to_view")
+
+
+def test_selections_collects_out_of_memory_errors(tmp_path, monkeypatch, capsys):
+    # A quantity whose data is available but too large to load raises MemoryError.
+    # selections() should not crash, should omit that quantity, and report the error.
+    calc = demo.calculation(tmp_path / "demo_calculation")
+
+    monkeypatch.setattr(loadable, "_schema_satisfied", lambda *_, **__: None)
+    real_invoke = loadable._invoke
+
+    def _invoke_with_oom(
+        calculation,
+        call_name,
+        method_name,
+        source_name,
+        legacy_quantities,
+        convention=None,
+    ):
+        if call_name == "density":
+            raise MemoryError("Unable to allocate 5.00 GiB for array")
+        return real_invoke(
+            calculation,
+            call_name,
+            method_name,
+            source_name,
+            legacy_quantities,
+            convention,
+        )
+
+    monkeypatch.setattr(loadable, "_invoke", _invoke_with_oom)
+
+    result = calc.selections(only_available=True)
+
+    # the oversized quantity is excluded from the loadable result
+    assert "density" not in result
+    # other quantities are still inspected and the call returns normally
+    assert isinstance(result, dict)
+    # the out-of-memory error is reported once at the end without crashing
+    captured = capsys.readouterr()
+    assert "density" in captured.out
+    assert "out of memory" in captured.out.lower()
+    assert "5.00 GiB" in captured.out
+
+
+def test_selections_default_does_not_report_out_of_memory(
+    tmp_path, monkeypatch, capsys
+):
+    # only_available=False never loads data, so it cannot trigger an OOM report
+    calc = demo.calculation(tmp_path / "demo_calculation")
+
+    def _fail(*_, **__):
+        raise AssertionError("loadable_sources should not be called")
+
+    monkeypatch.setattr(loadable, "loadable_sources", _fail)
+
+    calc.selections()
+    captured = capsys.readouterr()
+    assert "out of memory" not in captured.out.lower()
+
+
 def test_confirm_read_uses_public_call_name_for_fallback(tmp_path, monkeypatch):
     calc = demo.calculation(tmp_path / "demo_calculation")
     captured = {}

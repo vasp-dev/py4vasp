@@ -23,8 +23,15 @@ def loadable_sources(
     stack,
     cache,
     legacy_quantities,
+    errors,
 ):
-    """Return loadable selections for one quantity as a list of source names."""
+    """Return loadable selections for one quantity as a list of source names.
+
+    Selections whose data is theoretically available but that fail to load because
+    of an out-of-memory error are omitted from the returned list. Instead, a
+    descriptive message is appended to *errors* so the caller can report it without
+    aborting the inspection of the remaining quantities.
+    """
     method_name = method or "read"
     try:
         sources = list(unique_selections(schema_name))
@@ -39,18 +46,25 @@ def loadable_sources(
         if conv is None:
             # The source cannot be addressed yet (e.g. a not-yet-migrated quantity).
             continue
-        if not _confirm_selection(
-            calculation,
-            call_name,
-            schema_name,
-            source_name,
-            method_name,
-            conv,
-            open_files,
-            stack,
-            cache,
-            legacy_quantities,
-        ):
+        try:
+            confirmed = _confirm_selection(
+                calculation,
+                call_name,
+                schema_name,
+                source_name,
+                method_name,
+                conv,
+                open_files,
+                stack,
+                cache,
+                legacy_quantities,
+            )
+        except MemoryError as error:
+            errors.append(
+                _out_of_memory_message(call_name, method_name, source_name, conv, error)
+            )
+            continue
+        if not confirmed:
             continue
         loadable.append(source_name)
     return loadable
@@ -151,24 +165,30 @@ def _confirm_read(
     key = (schema_name, source_name)
     if key in cache:
         return cache[key]
-    cache[key] = True
-    verdict = _schema_satisfied(
-        calculation,
-        schema_name,
-        source_name,
-        open_files,
-        stack,
-        cache,
-        legacy_quantities,
-    )
-    if verdict is None:
-        verdict = _invoke(
+    cache[key] = True  # provisional value to break cyclic Link dependencies
+    try:
+        verdict = _schema_satisfied(
             calculation,
-            call_name,
-            "read",
+            schema_name,
             source_name,
+            open_files,
+            stack,
+            cache,
             legacy_quantities,
         )
+        if verdict is None:
+            verdict = _invoke(
+                calculation,
+                call_name,
+                "read",
+                source_name,
+                legacy_quantities,
+            )
+    except MemoryError:
+        # The data is available but too large to load; drop the provisional cache
+        # entry and let the caller decide how to report the failure.
+        cache.pop(key, None)
+        raise
     cache[key] = bool(verdict)
     return cache[key]
 
@@ -346,6 +366,10 @@ def _call_succeeds(func):
     try:
         func()
         return True
+    except MemoryError:
+        # Out-of-memory means the data exists but is too large to load. Propagate it
+        # so the caller can report it differently from a genuinely missing source.
+        raise
     except Exception:
         return False
 
@@ -357,3 +381,12 @@ def _call_snippet(call_name, method_name, source_name, convention):
     if convention == "index":
         return f"{access}[{source_name!r}].{method_name}()"
     return f"{access}.{method_name}()"
+
+
+def _out_of_memory_message(call_name, method_name, source_name, convention, error):
+    snippet = _call_snippet(call_name, method_name, source_name, convention)
+    reason = str(error).strip() or error.__class__.__name__
+    return (
+        f"{snippet}: the data is available but could not be loaded because it ran "
+        f"out of memory ({reason})."
+    )
