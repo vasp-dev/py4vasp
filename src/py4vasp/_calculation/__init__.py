@@ -278,15 +278,10 @@ instead of the constructor Calculation()."""
         """
         _ensure_all_quantities_imported()
         properties = {}
-        for name, entry in _REGISTRY.items():
-            if isinstance(entry, dict):
-                # group
-                for member_name, dispatcher_cls in entry.items():
-                    _collect_to_database(
-                        name, member_name, dispatcher_cls, self._source, properties
-                    )
-            else:
-                _collect_to_database(None, name, entry, self._source, properties)
+        for entry in _REGISTRY.values():
+            members = entry.values() if isinstance(entry, dict) else [entry]
+            for dispatcher_cls in members:
+                _collect_to_database(dispatcher_cls, self._source, properties)
         return properties
 
 
@@ -304,9 +299,13 @@ def _ensure_all_quantities_imported():
             pass
 
 
-def _collect_to_database(group_name, quantity_name, dispatcher_cls, source, properties):
-    """Call dispatcher._to_database() and merge results into *properties*."""
-    base = quantity_name.lstrip("_")
+def _collect_to_database(dispatcher_cls, source, properties):
+    """Call dispatcher._to_database() and merge results into *properties*.
+
+    Each dispatcher already keys its results by the full quantity name; group members
+    use ``<group>_<member>`` via their ``_quantity_name`` (e.g. ``phonon_mode``), so the
+    results merge directly without any additional group prefix.
+    """
     dispatcher = dispatcher_cls(
         source=source, quantity_name=dispatcher_cls._quantity_name
     )
@@ -318,11 +317,7 @@ def _collect_to_database(group_name, quantity_name, dispatcher_cls, source, prop
         return
     except Exception:
         return
-    # result is {quantity[_selection]: handler_result}
-    for key, handler_result in result.items():
-        if group_name is not None:
-            key = f"{group_name}_{key}"
-        properties[key] = handler_result
+    properties.update(result)
 
 
 def _rebuild_public_registry_views():
