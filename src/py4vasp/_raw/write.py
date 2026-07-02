@@ -34,6 +34,8 @@ def _write_dataset(h5f, target, data, valid_indices=None):
     ):
         # Handle template paths for Mapping types with multiple indices
         for index, item in zip(valid_indices, data):
+            if check.is_none(item):
+                continue  # field absent for this index (e.g. CRTA nbands_sum/delta)
             expanded_target = target.format(index)
             h5f[expanded_target] = _encode_strings(item)
     else:
