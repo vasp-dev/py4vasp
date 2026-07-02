@@ -5,12 +5,12 @@ import copy
 from py4vasp import raw
 from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
-    _dispatch,
     DataSource,
-    merge_to_database,
+    _dispatch,
     merge_default,
     merge_graphs,
     merge_strings,
+    merge_to_database,
     quantity,
 )
 from py4vasp._raw.data_db import PairCorrelation_DB
@@ -68,9 +68,7 @@ class PairCorrelationHandler:
         if not check.is_none(self._raw_data.distances):
             distance_min = float(self._raw_data.distances[0])
             distance_max = float(self._raw_data.distances[-1])
-        return PairCorrelation_DB(
-            distance_min=distance_min, distance_max=distance_max
-        )
+        return PairCorrelation_DB(distance_min=distance_min, distance_max=distance_max)
 
     @property
     def _steps_or_last(self):

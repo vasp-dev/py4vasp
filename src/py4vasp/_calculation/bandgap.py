@@ -11,10 +11,10 @@ from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
-    merge_to_database,
     merge_default,
     merge_graphs,
     merge_strings,
+    merge_to_database,
     quantity,
     slice_steps,
 )

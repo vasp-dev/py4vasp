@@ -7,17 +7,16 @@ import numpy as np
 
 from py4vasp import exception, raw
 from py4vasp._calculation import structure
-from py4vasp._util import error
 from py4vasp._calculation.dispatch import (
-    _dispatch,
     DataSource,
-    merge_to_database,
+    _dispatch,
     merge_default,
     merge_strings,
+    merge_to_database,
     quantity,
 )
 from py4vasp._raw.data_db import ElasticModulus_DB
-from py4vasp._util import check
+from py4vasp._util import check, error
 from py4vasp._util.tensor import symmetry_reduce
 
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
@@ -126,30 +125,30 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                 )
 
         return ElasticModulus_DB(
-                total_3d_tensor=compact_tensor[0],
-                total_bulk_modulus=bulk_modulus[0],
-                total_shear_modulus=shear_modulus[0],
-                total_young_modulus=youngs_modulus[0],
-                total_poisson_ratio=poisson_ratio[0],
-                total_pugh_ratio=pugh_ratio[0],
-                total_vickers_hardness=vickers_hardness[0],
-                total_fracture_toughness=fracture_toughness[0],
-                ionic_3d_tensor=compact_tensor[1],
-                ionic_bulk_modulus=bulk_modulus[1],
-                ionic_shear_modulus=shear_modulus[1],
-                ionic_young_modulus=youngs_modulus[1],
-                ionic_poisson_ratio=poisson_ratio[1],
-                ionic_pugh_ratio=pugh_ratio[1],
-                ionic_vickers_hardness=vickers_hardness[1],
-                ionic_fracture_toughness=fracture_toughness[1],
-                electronic_3d_tensor=compact_tensor[2],
-                electronic_bulk_modulus=bulk_modulus[2],
-                electronic_shear_modulus=shear_modulus[2],
-                electronic_young_modulus=youngs_modulus[2],
-                electronic_poisson_ratio=poisson_ratio[2],
-                electronic_pugh_ratio=pugh_ratio[2],
-                electronic_vickers_hardness=vickers_hardness[2],
-                electronic_fracture_toughness=fracture_toughness[2],
+            total_3d_tensor=compact_tensor[0],
+            total_bulk_modulus=bulk_modulus[0],
+            total_shear_modulus=shear_modulus[0],
+            total_young_modulus=youngs_modulus[0],
+            total_poisson_ratio=poisson_ratio[0],
+            total_pugh_ratio=pugh_ratio[0],
+            total_vickers_hardness=vickers_hardness[0],
+            total_fracture_toughness=fracture_toughness[0],
+            ionic_3d_tensor=compact_tensor[1],
+            ionic_bulk_modulus=bulk_modulus[1],
+            ionic_shear_modulus=shear_modulus[1],
+            ionic_young_modulus=youngs_modulus[1],
+            ionic_poisson_ratio=poisson_ratio[1],
+            ionic_pugh_ratio=pugh_ratio[1],
+            ionic_vickers_hardness=vickers_hardness[1],
+            ionic_fracture_toughness=fracture_toughness[1],
+            electronic_3d_tensor=compact_tensor[2],
+            electronic_bulk_modulus=bulk_modulus[2],
+            electronic_shear_modulus=shear_modulus[2],
+            electronic_young_modulus=youngs_modulus[2],
+            electronic_poisson_ratio=poisson_ratio[2],
+            electronic_pugh_ratio=pugh_ratio[2],
+            electronic_vickers_hardness=vickers_hardness[2],
+            electronic_fracture_toughness=fracture_toughness[2],
         )
 
     def _compute_elastic_properties(

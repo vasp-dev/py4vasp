@@ -5,12 +5,12 @@ from contextlib import suppress
 from py4vasp import exception, raw
 from py4vasp._calculation import bandgap as bandgap_module
 from py4vasp._calculation.dispatch import (
-    _dispatch,
     DataSource,
-    merge_to_database,
+    _dispatch,
     merge_default,
     merge_graphs,
     merge_strings,
+    merge_to_database,
     quantity,
 )
 from py4vasp._raw.data_db import Workfunction_DB

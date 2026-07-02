@@ -6,17 +6,16 @@ import numpy as np
 
 from py4vasp import exception, raw
 from py4vasp._calculation.cell import CellHandler
-from py4vasp._util import error
 from py4vasp._calculation.dispatch import (
-    _dispatch,
     DataSource,
-    merge_to_database,
+    _dispatch,
     merge_default,
     merge_strings,
+    merge_to_database,
     quantity,
 )
 from py4vasp._raw.data_db import DielectricTensor_DB
-from py4vasp._util import check, convert
+from py4vasp._util import check, convert, error
 from py4vasp._util.tensor import symmetry_reduce
 
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
@@ -70,7 +69,7 @@ Macroscopic static dielectric tensor (dimensionless)
         error_key = "dielectric_tensor:default"
 
         tensor_reduced = [None, None, None]
-        isotropic_dielectric_constant = [None, None, None]
+        isotropic_constant = [None, None, None]
         polarizability_2d = [None, None, None]
 
         total_tensor, ionic_tensor, electronic_tensor = None, None, None
@@ -95,7 +94,7 @@ Macroscopic static dielectric tensor (dimensionless)
             ):
                 tensor_reduced[idt] = list(symmetry_reduce(tensor.T))
                 (
-                    isotropic_dielectric_constant[idt],
+                    isotropic_constant[idt],
                     polarizability_2d[idt],
                 ) = self._calculate_dielectric_quantities(
                     tensor,
@@ -110,18 +109,16 @@ Macroscopic static dielectric tensor (dimensionless)
         )
 
         return DielectricTensor_DB(
-                method=method,
-                total_3d_tensor=tensor_reduced[0],
-                total_3d_isotropic_dielectric_constant=isotropic_dielectric_constant[0],
-                total_2d_polarizability=polarizability_2d[0],
-                ionic_3d_tensor=tensor_reduced[1],
-                ionic_3d_isotropic_dielectric_constant=isotropic_dielectric_constant[1],
-                ionic_2d_polarizability=polarizability_2d[1],
-                electronic_3d_tensor=tensor_reduced[2],
-                electronic_3d_isotropic_dielectric_constant=isotropic_dielectric_constant[
-                    2
-                ],
-                electronic_2d_polarizability=polarizability_2d[2],
+            method=method,
+            total_3d_tensor=tensor_reduced[0],
+            total_3d_isotropic_dielectric_constant=isotropic_constant[0],
+            total_2d_polarizability=polarizability_2d[0],
+            ionic_3d_tensor=tensor_reduced[1],
+            ionic_3d_isotropic_dielectric_constant=isotropic_constant[1],
+            ionic_2d_polarizability=polarizability_2d[1],
+            electronic_3d_tensor=tensor_reduced[2],
+            electronic_3d_isotropic_dielectric_constant=isotropic_constant[2],
+            electronic_2d_polarizability=polarizability_2d[2],
         )
 
     # --- Private helpers ---

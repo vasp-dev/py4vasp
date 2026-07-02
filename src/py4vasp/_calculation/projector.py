@@ -3,11 +3,11 @@
 from py4vasp import exception
 from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
-    _dispatch,
     DataSource,
-    merge_to_database,
+    _dispatch,
     merge_default,
     merge_strings,
+    merge_to_database,
     quantity,
 )
 from py4vasp._raw import data as raw
@@ -68,9 +68,12 @@ class ProjectorHandler:
             spin_projection = "\n    spin: total, sigma_x, sigma_y, sigma_z"
         else:
             spin_projection = ""
-        return f"""projectors:
+        return (
+            f"""projectors:
     atoms: {", ".join(self._stoichiometry().ion_types())}
-    orbitals: {", ".join(self._orbital_types())}""" + spin_projection
+    orbitals: {", ".join(self._orbital_types())}"""
+            + spin_projection
+        )
 
     def to_dict(self) -> dict:
         """Return a map from labels to indices in the arrays produced by VASP.

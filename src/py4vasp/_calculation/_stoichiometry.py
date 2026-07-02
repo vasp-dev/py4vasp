@@ -95,9 +95,7 @@ class StoichiometryHandler:
 
     def elements(self, ion_types=None) -> list:
         """Extract the element of all atoms."""
-        repeated_types = (
-            itertools.repeat(*x) for x in self._type_numbers(ion_types)
-        )
+        repeated_types = (itertools.repeat(*x) for x in self._type_numbers(ion_types))
         return list(itertools.chain.from_iterable(repeated_types))
 
     def ion_types_list(self, ion_types=None) -> list:
@@ -165,7 +163,9 @@ class StoichiometryHandler:
         return zip(self._ion_types(ion_types), self._raw_stoichiometry.number_ion_types)
 
     def _ion_types(self, ion_types):
-        ion_types = self._raw_stoichiometry.ion_types if ion_types is None else ion_types
+        ion_types = (
+            self._raw_stoichiometry.ion_types if ion_types is None else ion_types
+        )
         if check.is_none(ion_types):
             message = "If the ion types are not defined, you must pass them as argument to the function."
             raise exception.IncorrectUsage(message)

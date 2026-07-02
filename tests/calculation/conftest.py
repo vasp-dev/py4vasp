@@ -92,9 +92,7 @@ def _method_accepts_selection(method):
         if "selection" in params:
             return True
         # Check for **kwargs
-        return any(
-            p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()
-        )
+        return any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values())
     except (ValueError, TypeError):
         return False
 

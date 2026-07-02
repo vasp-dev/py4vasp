@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from py4vasp._calculation.dispatch import (
+    _REGISTRY,
     DataSource,
     DictSource,
     FileSource,
@@ -18,11 +19,10 @@ from py4vasp._calculation.dispatch import (
     _parse_selections,
     _result_has_data,
     _substitute_remaining_selection,
-    _REGISTRY,
-    merge_to_database,
     merge_default,
     merge_graphs,
     merge_strings,
+    merge_to_database,
     quantity,
     slice_steps,
 )
@@ -397,10 +397,12 @@ def _patch_sources(sources):
     the source element while parsing. Patching both keeps the unit tests isolated
     from the real schema.
     """
-    with patch(
-        "py4vasp._calculation.dispatch.schema_unique_selections", return_value=sources
-    ), patch(
-        "py4vasp._calculation.dispatch.schema_selections", return_value=sources
+    with (
+        patch(
+            "py4vasp._calculation.dispatch.schema_unique_selections",
+            return_value=sources,
+        ),
+        patch("py4vasp._calculation.dispatch.schema_selections", return_value=sources),
     ):
         yield
 
@@ -574,7 +576,10 @@ class TestMergeToDatabaseFilter:
     def test_empty_dict_result_excluded(self):
         source = DataSource({"value": 42})
         result = merge_to_database(
-            source, "quantity", _EmptyDictHandler.from_data, _EmptyDictHandler.to_database
+            source,
+            "quantity",
+            _EmptyDictHandler.from_data,
+            _EmptyDictHandler.to_database,
         )
         assert result == {}
 

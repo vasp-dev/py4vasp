@@ -14,11 +14,10 @@ import typing
 
 import numpy as np
 
-from py4vasp import exception, raw as _raw_module
-from py4vasp._raw.definition import (
-    selections as schema_selections,
-    unique_selections as schema_unique_selections,
-)
+from py4vasp import exception
+from py4vasp import raw as _raw_module
+from py4vasp._raw.definition import selections as schema_selections
+from py4vasp._raw.definition import unique_selections as schema_unique_selections
 from py4vasp._third_party.graph import Graph
 from py4vasp._util import select
 
@@ -347,9 +346,7 @@ class SuppressErrorsSourceWrapper:
         return getattr(self._source, name)
 
 
-def merge_to_database(
-    source, quantity_name, handler_factory, method, *args, **kwargs
-):
+def merge_to_database(source, quantity_name, handler_factory, method, *args, **kwargs):
     """Collect database results across all of a quantity's sources.
 
     Database collection is internal and never user-selected, so this enumerates
@@ -390,7 +387,13 @@ def merge_to_database(
     base = quantity_name.lstrip("_")
     selection = _all_sources_selection(base)
     raw_results = _dispatch(
-        wrapped_source, quantity_name, selection, handler_factory, method, *args, **kwargs
+        wrapped_source,
+        quantity_name,
+        selection,
+        handler_factory,
+        method,
+        *args,
+        **kwargs,
     )
     results = {
         base if sel == "default" else f"{base}_{sel}": result

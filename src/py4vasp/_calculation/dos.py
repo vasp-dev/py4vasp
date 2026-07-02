@@ -8,11 +8,11 @@ import numpy as np
 from py4vasp import exception
 from py4vasp._calculation import projector
 from py4vasp._calculation.dispatch import (
-    _dispatch,
     DataSource,
-    merge_to_database,
+    _dispatch,
     merge_default,
     merge_strings,
+    merge_to_database,
     quantity,
 )
 from py4vasp._calculation.projector import ProjectorHandler

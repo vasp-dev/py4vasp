@@ -6,7 +6,8 @@ from typing import Optional, Union
 
 import numpy as np
 
-from py4vasp import _config, exception, raw as raw_module
+from py4vasp import _config, exception
+from py4vasp import raw as raw_module
 from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
     DataSource,

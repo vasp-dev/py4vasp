@@ -5,13 +5,13 @@ from typing import Optional, Union
 import numpy as np
 
 from py4vasp import _config, exception, raw
+from py4vasp._calculation._stoichiometry import StoichiometryHandler
 from py4vasp._calculation.dispatch import (
     DataSource,
     merge_default,
     merge_strings,
     quantity,
 )
-from py4vasp._calculation._stoichiometry import StoichiometryHandler
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._third_party import view
 from py4vasp._util import index, select

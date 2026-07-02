@@ -4,7 +4,8 @@ import types
 
 import pytest
 
-from py4vasp._calculation._CONTCAR import CONTCAR as _CONTCAR, CONTCARHandler
+from py4vasp._calculation._CONTCAR import CONTCAR as _CONTCAR
+from py4vasp._calculation._CONTCAR import CONTCARHandler
 from py4vasp._calculation.structure import Structure
 from py4vasp._raw.data_db import CONTCAR_DB
 

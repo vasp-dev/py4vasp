@@ -9,8 +9,8 @@ import numpy as np
 
 from py4vasp import exception, raw
 from py4vasp._calculation import _stoichiometry
-from py4vasp._calculation.cell import CellHandler
 from py4vasp._calculation._stoichiometry import StoichiometryHandler
+from py4vasp._calculation.cell import CellHandler
 from py4vasp._calculation.dispatch import (
     DataSource,
     merge_default,
@@ -329,32 +329,20 @@ Atoms # atomic
             final_lattice_vector_3_length=(
                 lengths_final[2] if lengths_final is not None else None
             ),
-            final_angle_alpha=(
-                angles_final[0] if angles_final is not None else None
-            ),
-            final_angle_beta=(
-                angles_final[1] if angles_final is not None else None
-            ),
-            final_angle_gamma=(
-                angles_final[2] if angles_final is not None else None
-            ),
+            final_angle_alpha=(angles_final[0] if angles_final is not None else None),
+            final_angle_beta=(angles_final[1] if angles_final is not None else None),
+            final_angle_gamma=(angles_final[2] if angles_final is not None else None),
             initial_cell_volume=volume_initial,
             initial_cell_area_2d=cell_area_2d_initial,
             initial_cell_area_2d_span=cell_area_2d_span_initial,
             initial_lattice_vector_1=(
-                list(initial_lattice[0])
-                if initial_lattice[0] is not None
-                else None
+                list(initial_lattice[0]) if initial_lattice[0] is not None else None
             ),
             initial_lattice_vector_2=(
-                list(initial_lattice[1])
-                if initial_lattice[1] is not None
-                else None
+                list(initial_lattice[1]) if initial_lattice[1] is not None else None
             ),
             initial_lattice_vector_3=(
-                list(initial_lattice[2])
-                if initial_lattice[2] is not None
-                else None
+                list(initial_lattice[2]) if initial_lattice[2] is not None else None
             ),
             initial_lattice_vector_1_length=(
                 lengths_initial[0] if lengths_initial is not None else None

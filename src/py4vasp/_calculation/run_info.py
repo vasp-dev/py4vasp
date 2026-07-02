@@ -3,12 +3,13 @@
 from contextlib import suppress
 
 from py4vasp import raw
-from py4vasp._calculation import bandgap as bandgap_module, exception
+from py4vasp._calculation import bandgap as bandgap_module
+from py4vasp._calculation import exception
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
-    merge_to_database,
     merge_default,
+    merge_to_database,
     quantity,
 )
 from py4vasp._raw.data_db import RunInfo_DB

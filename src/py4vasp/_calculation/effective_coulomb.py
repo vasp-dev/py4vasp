@@ -9,12 +9,12 @@ from numpy.typing import ArrayLike
 from py4vasp import exception, interpolate, raw
 from py4vasp._calculation.cell import CellHandler
 from py4vasp._calculation.dispatch import (
-    _dispatch,
     DataSource,
-    merge_to_database,
+    _dispatch,
     merge_default,
     merge_graphs,
     merge_strings,
+    merge_to_database,
     quantity,
 )
 from py4vasp._raw.data_db import EffectiveCoulomb_DB

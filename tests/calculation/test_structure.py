@@ -517,9 +517,13 @@ def test_print_Ca3AsBr3(Ca3AsBr3, format_):
 
 
 def test_is_suspected_2d_system(Graphite, Sr2TiO4, Fe3O4):
-    assert StructureHandler.from_data(Graphite.ref.raw_data)._cell().is_suspected_2d_system
-    assert not StructureHandler.from_data(Sr2TiO4.ref.raw_data)._cell().is_suspected_2d_system
-    assert not StructureHandler.from_data(Fe3O4.ref.raw_data)._cell().is_suspected_2d_system
+    def is_suspected_2d(structure):
+        cell = StructureHandler.from_data(structure.ref.raw_data)._cell()
+        return cell.is_suspected_2d_system
+
+    assert is_suspected_2d(Graphite)
+    assert not is_suspected_2d(Sr2TiO4)
+    assert not is_suspected_2d(Fe3O4)
 
 
 def test_system_dimensionality(Graphite, Sr2TiO4, Fe3O4):
