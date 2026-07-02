@@ -1,11 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import copy
 
 from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
     DataSource,
-    _dispatch,
     merge_default,
     merge_strings,
     merge_to_database,

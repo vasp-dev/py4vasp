@@ -333,6 +333,9 @@ class SuppressErrorsSourceWrapper:
                     try:
                         self.original_context.__exit__(exc_type, exc_val, exc_tb)
                     except Exception:
+                        # Intentionally ignore teardown errors here: this wrapper suppresses
+                        # known database-access exceptions and should not re-raise failures
+                        # from the underlying context cleanup.
                         pass
                 return True
             if self.entered:

@@ -218,10 +218,14 @@ instead of the constructor Calculation()."""
         if name.startswith("_"):
             raise AttributeError(name)
         if name not in _REGISTRY:
+            module_name = f"py4vasp._calculation.{name}"
             try:
-                importlib.import_module(f"py4vasp._calculation.{name}")
-            except ImportError:
-                pass
+                importlib.import_module(module_name)
+            except ImportError as err:
+                # Missing quantity modules are expected for unknown names; however,
+                # re-raise ImportError originating from inside an existing module.
+                if err.name != module_name:
+                    raise
         if name not in _REGISTRY:
             # Could be a group name (e.g. "electron_phonon") whose member modules
             # have different file names — import all to populate the full registry.
