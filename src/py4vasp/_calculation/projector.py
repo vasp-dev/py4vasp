@@ -68,12 +68,9 @@ class ProjectorHandler:
             spin_projection = "\n    spin: total, sigma_x, sigma_y, sigma_z"
         else:
             spin_projection = ""
-        return (
-            f"""projectors:
+        return f"""projectors:
     atoms: {", ".join(self._stoichiometry().ion_types())}
-    orbitals: {", ".join(self._orbital_types())}"""
-            + spin_projection
-        )
+    orbitals: {", ".join(self._orbital_types())}""" + spin_projection
 
     def to_dict(self) -> dict:
         """Return a map from labels to indices in the arrays produced by VASP.
