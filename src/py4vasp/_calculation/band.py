@@ -874,7 +874,7 @@ class _ToQuiverReduction(index.Reduction):
             raise exception.IncorrectUsage(
                 "A band must be chosen, but none are given. Please adapt your `selection` argument to include, e.g., `band[1]`. You can combine arguments by `arg1(arg2(arg3(...)))`."
             )
-        super().__init__()
+        super().__init__(keys)
 
     def __call__(self, array: ArrayLike, axis: Iterable):
         axis = tuple(filter(None, axis))
